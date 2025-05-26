@@ -43,7 +43,7 @@ pub async fn handle_initialize<T: TemplateServerTrait>(
                 "supportedToolchains": ["rust", "deno", "python-uv"],
                 "examples": [
                     "Create a new Rust CLI project: scaffold_project with toolchain='rust'",
-                    "Generate just a Makefile: generate_template with resource_uri='template://makefile/rust/cli-binary'",
+                    "Generate just a Makefile: generate_template with resource_uri='template://makefile/rust/cli'",
                     "Search for Python templates: search_templates with query='python'"
                 ]
             }
@@ -76,7 +76,7 @@ pub async fn handle_tools_list<T: TemplateServerTrait>(
                         "properties": {
                             "resource_uri": {
                                 "type": "string",
-                                "description": "Template URI (e.g., template://makefile/rust/cli-binary)"
+                                "description": "Template URI (e.g., template://makefile/rust/cli)"
                             },
                             "parameters": {
                                 "type": "object",

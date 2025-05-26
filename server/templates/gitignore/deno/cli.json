@@ -1,9 +1,9 @@
 {
-  "uri": "template://gitignore/deno/cli-application",
+  "uri": "template://gitignore/deno/cli",
   "name": "Deno CLI Application .gitignore",
   "description": ".gitignore template for Deno projects",
   "category": "gitignore",
   "toolchain": "deno",
-  "variant": "cli-application",
+  "variant": "cli",
   "parameters": []
 }

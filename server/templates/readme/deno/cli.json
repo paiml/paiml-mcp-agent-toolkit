@@ -1,10 +1,10 @@
 {
-  "uri": "template://readme/deno/cli-application",
+  "uri": "template://readme/deno/cli",
   "name": "Deno CLI Application README",
   "description": "README template for Deno CLI applications",
   "category": "readme",
   "toolchain": "deno",
-  "variant": "cli-application",
+  "variant": "cli",
   "parameters": [
     {
       "name": "project_name",

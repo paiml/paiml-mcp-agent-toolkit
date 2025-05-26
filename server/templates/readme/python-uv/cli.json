@@ -1,10 +1,10 @@
 {
-  "uri": "template://readme/python-uv/cli-application",
+  "uri": "template://readme/python-uv/cli",
   "name": "Python UV CLI Application README",
   "description": "README template for Python UV CLI applications",
   "category": "readme",
   "toolchain": "python-uv",
-  "variant": "cli-application",
+  "variant": "cli",
   "parameters": [
     {
       "name": "project_name",

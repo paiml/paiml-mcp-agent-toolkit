@@ -70,7 +70,7 @@ paiml-mcp-agent-toolkit --help
 paiml-mcp-agent-toolkit list
 
 # Generate a Makefile
-paiml-mcp-agent-toolkit generate makefile rust/cli-binary -p project_name=my-project
+paiml-mcp-agent-toolkit generate makefile rust/cli -p project_name=my-project
 
 # Scaffold an entire project
 paiml-mcp-agent-toolkit scaffold rust --templates makefile,readme,gitignore -p project_name=my-project
@@ -247,7 +247,7 @@ echo '{
   "params": {
     "name": "generate_template",
     "arguments": {
-      "resource_uri": "template://makefile/rust/cli-binary",
+      "resource_uri": "template://makefile/rust/cli",
       "parameters": {
         "project_name": "my-awesome-cli",
         "has_tests": true,
@@ -270,16 +270,16 @@ Generate individual project files with customizable parameters.
 
 ```bash
 # Generate a Makefile
-paiml-mcp-agent-toolkit generate makefile rust/cli-binary -p project_name=my-project -p has_tests=true
+paiml-mcp-agent-toolkit generate makefile rust/cli -p project_name=my-project -p has_tests=true
 
 # Short form using aliases
-paiml-mcp-agent-toolkit gen makefile rust/cli-binary -p project_name=my-project
+paiml-mcp-agent-toolkit gen makefile rust/cli -p project_name=my-project
 
 # Output to a specific file
-paiml-mcp-agent-toolkit generate readme deno/cli-application -p project_name=my-app -o README.md
+paiml-mcp-agent-toolkit generate readme deno/cli -p project_name=my-app -o README.md
 
 # Create parent directories if needed
-paiml-mcp-agent-toolkit generate makefile rust/cli-binary -p project_name=my-project -o build/Makefile --create-dirs
+paiml-mcp-agent-toolkit generate makefile rust/cli -p project_name=my-project -o build/Makefile --create-dirs
 ```
 
 ##### `scaffold` - Scaffold complete projects
@@ -339,10 +339,10 @@ Check if your parameters are valid before generating templates.
 
 ```bash
 # Validate parameters for a template
-paiml-mcp-agent-toolkit validate template://makefile/rust/cli-binary -p project_name=my-project
+paiml-mcp-agent-toolkit validate template://makefile/rust/cli -p project_name=my-project
 
 # Check for missing required parameters
-paiml-mcp-agent-toolkit validate template://readme/rust/cli-application -p author="John Doe"
+paiml-mcp-agent-toolkit validate template://readme/rust/cli -p author="John Doe"
 ```
 
 ##### `context` - Generate project context with AST analysis
@@ -447,7 +447,7 @@ paiml-mcp-agent-toolkit search test
 paiml-mcp-agent-toolkit list --toolchain rust --category makefile
 
 # Generate with specific parameters
-paiml-mcp-agent-toolkit generate makefile rust/cli-binary \
+paiml-mcp-agent-toolkit generate makefile rust/cli \
   -p project_name=test-runner \
   -p has_tests=true \
   -p has_benchmarks=true \
@@ -458,12 +458,12 @@ paiml-mcp-agent-toolkit generate makefile rust/cli-binary \
 
 ```bash
 # First, validate your parameters
-paiml-mcp-agent-toolkit validate template://readme/python-uv/cli-application \
+paiml-mcp-agent-toolkit validate template://readme/python-uv/cli \
   -p project_name=my-python-cli \
   -p author="Dev Team"
 
 # If validation passes, generate
-paiml-mcp-agent-toolkit generate readme python-uv/cli-application \
+paiml-mcp-agent-toolkit generate readme python-uv/cli \
   -p project_name=my-python-cli \
   -p author="Dev Team" \
   -p description="Fast Python CLI with UV" \
@@ -523,10 +523,10 @@ Templates follow a hierarchical URI structure:
 template://[category]/[toolchain]/[variant]
 ```
 
-Examples:
-- `template://makefile/rust/cli-binary`
-- `template://readme/deno/web-service`
-- `template://gitignore/python-uv/library-package`
+All templates currently use the `cli` variant:
+- `template://makefile/rust/cli`
+- `template://readme/deno/cli`
+- `template://gitignore/python-uv/cli`
 
 ## Available Templates
 
@@ -548,26 +548,23 @@ help     # Show all targets
 ```
 
 #### Rust Templates
-- `template://makefile/rust/cli-binary` - CLI applications
-- `template://makefile/rust/library-crate` - Rust libraries
+- `template://makefile/rust/cli` - CLI applications and libraries
 
 #### Deno Templates
-- `template://makefile/deno/cli-application` - CLI tools
-- `template://makefile/deno/web-service` - Web services
+- `template://makefile/deno/cli` - CLI tools and web services
 
 #### Python UV Templates
-- `template://makefile/python-uv/cli-application` - CLI tools
-- `template://makefile/python-uv/library-package` - Python packages
+- `template://makefile/python-uv/cli` - CLI tools and packages
 
 ### README Templates
-- `template://readme/rust/cli-application`
-- `template://readme/deno/typescript-library`
-- `template://readme/python-uv/data-science`
+- `template://readme/rust/cli`
+- `template://readme/deno/cli`
+- `template://readme/python-uv/cli`
 
 ### Gitignore Templates
-- `template://gitignore/rust/embedded-target`
-- `template://gitignore/deno/web-deployment`
-- `template://gitignore/python-uv/data-science`
+- `template://gitignore/rust/cli`
+- `template://gitignore/deno/cli`
+- `template://gitignore/python-uv/cli`
 
 ## Development
 
@@ -712,7 +709,7 @@ Read the raw template content before rendering.
   "id": 1,
   "method": "resources/read",
   "params": {
-    "uri": "template://makefile/rust/cli-binary"
+    "uri": "template://makefile/rust/cli"
   }
 }
 ```
@@ -753,7 +750,7 @@ Generate a template with parameters.
   "params": {
     "name": "generate_template",
     "arguments": {
-      "resource_uri": "template://makefile/rust/cli-binary",
+      "resource_uri": "template://makefile/rust/cli",
       "parameters": {
         "project_name": "my-project",
         "has_tests": true
@@ -776,7 +773,7 @@ Validate template parameters before generation.
   "params": {
     "name": "validate_template",
     "arguments": {
-      "resource_uri": "template://makefile/rust/cli-binary",
+      "resource_uri": "template://makefile/rust/cli",
       "parameters": {
         "project_name": "my-project"
       }
@@ -948,7 +945,7 @@ echo '{
   "params": {
     "name": "generate_template",
     "arguments": {
-      "resource_uri": "template://makefile/rust/cli-binary",
+      "resource_uri": "template://makefile/rust/cli",
       "parameters": {
         "project_name": "demo-project"
       }
@@ -960,6 +957,7 @@ echo '{
 ## What's New
 
 ### Recent Improvements
+- 🎨 **NEW: Simplified Variants**: All templates now use a single `cli` variant for consistency
 - 🧠 **NEW: AST Context Generation**: Analyze project structure using Abstract Syntax Tree parsing for Rust, TypeScript/JavaScript, and Python with dual CLI/MCP support
 - 🎯 **NEW: Native CLI Interface**: Unified binary now supports direct CLI usage with auto-detection
 - ✅ **All 9 Templates Available**: Fixed template embedding to include all Deno and Python-uv templates

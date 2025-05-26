@@ -30,50 +30,35 @@ struct EmbeddedParameter {
 }
 
 // Embed all templates at compile time
-const MAKEFILE_RUST_CLI_BINARY_META: &str =
-    include_str!("../../templates/makefile/rust/cli-binary.json");
-const MAKEFILE_RUST_CLI_BINARY_HBS: &str =
-    include_str!("../../templates/makefile/rust/cli-binary.hbs");
+const MAKEFILE_RUST_CLI_META: &str = include_str!("../../templates/makefile/rust/cli.json");
+const MAKEFILE_RUST_CLI_HBS: &str = include_str!("../../templates/makefile/rust/cli.hbs");
 
-const README_RUST_CLI_APPLICATION_META: &str =
-    include_str!("../../templates/readme/rust/cli-application.json");
-const README_RUST_CLI_APPLICATION_HBS: &str =
-    include_str!("../../templates/readme/rust/cli-application.hbs");
+const README_RUST_CLI_META: &str = include_str!("../../templates/readme/rust/cli.json");
+const README_RUST_CLI_HBS: &str = include_str!("../../templates/readme/rust/cli.hbs");
 
-const GITIGNORE_RUST_EMBEDDED_TARGET_META: &str =
-    include_str!("../../templates/gitignore/rust/embedded-target.json");
-const GITIGNORE_RUST_EMBEDDED_TARGET_HBS: &str =
-    include_str!("../../templates/gitignore/rust/embedded-target.hbs");
+const GITIGNORE_RUST_CLI_META: &str = include_str!("../../templates/gitignore/rust/cli.json");
+const GITIGNORE_RUST_CLI_HBS: &str = include_str!("../../templates/gitignore/rust/cli.hbs");
 
-const MAKEFILE_PYTHON_UV_CLI_APPLICATION_META: &str =
-    include_str!("../../templates/makefile/python-uv/cli-application.json");
-const MAKEFILE_PYTHON_UV_CLI_APPLICATION_HBS: &str =
-    include_str!("../../templates/makefile/python-uv/cli-application.hbs");
+const MAKEFILE_PYTHON_UV_CLI_META: &str =
+    include_str!("../../templates/makefile/python-uv/cli.json");
+const MAKEFILE_PYTHON_UV_CLI_HBS: &str = include_str!("../../templates/makefile/python-uv/cli.hbs");
 
-const MAKEFILE_DENO_CLI_APPLICATION_META: &str =
-    include_str!("../../templates/makefile/deno/cli-application.json");
-const MAKEFILE_DENO_CLI_APPLICATION_HBS: &str =
-    include_str!("../../templates/makefile/deno/cli-application.hbs");
+const MAKEFILE_DENO_CLI_META: &str = include_str!("../../templates/makefile/deno/cli.json");
+const MAKEFILE_DENO_CLI_HBS: &str = include_str!("../../templates/makefile/deno/cli.hbs");
 
-const README_DENO_CLI_APPLICATION_META: &str =
-    include_str!("../../templates/readme/deno/cli-application.json");
-const README_DENO_CLI_APPLICATION_HBS: &str =
-    include_str!("../../templates/readme/deno/cli-application.hbs");
+const README_DENO_CLI_META: &str = include_str!("../../templates/readme/deno/cli.json");
+const README_DENO_CLI_HBS: &str = include_str!("../../templates/readme/deno/cli.hbs");
 
-const README_PYTHON_UV_CLI_APPLICATION_META: &str =
-    include_str!("../../templates/readme/python-uv/cli-application.json");
-const README_PYTHON_UV_CLI_APPLICATION_HBS: &str =
-    include_str!("../../templates/readme/python-uv/cli-application.hbs");
+const README_PYTHON_UV_CLI_META: &str = include_str!("../../templates/readme/python-uv/cli.json");
+const README_PYTHON_UV_CLI_HBS: &str = include_str!("../../templates/readme/python-uv/cli.hbs");
 
-const GITIGNORE_DENO_CLI_APPLICATION_META: &str =
-    include_str!("../../templates/gitignore/deno/cli-application.json");
-const GITIGNORE_DENO_CLI_APPLICATION_HBS: &str =
-    include_str!("../../templates/gitignore/deno/cli-application.hbs");
+const GITIGNORE_DENO_CLI_META: &str = include_str!("../../templates/gitignore/deno/cli.json");
+const GITIGNORE_DENO_CLI_HBS: &str = include_str!("../../templates/gitignore/deno/cli.hbs");
 
-const GITIGNORE_PYTHON_UV_CLI_APPLICATION_META: &str =
-    include_str!("../../templates/gitignore/python-uv/cli-application.json");
-const GITIGNORE_PYTHON_UV_CLI_APPLICATION_HBS: &str =
-    include_str!("../../templates/gitignore/python-uv/cli-application.hbs");
+const GITIGNORE_PYTHON_UV_CLI_META: &str =
+    include_str!("../../templates/gitignore/python-uv/cli.json");
+const GITIGNORE_PYTHON_UV_CLI_HBS: &str =
+    include_str!("../../templates/gitignore/python-uv/cli.hbs");
 
 // Convert embedded metadata to full TemplateResource
 fn convert_to_template_resource(
@@ -168,15 +153,15 @@ pub async fn list_templates(prefix: &str) -> Result<Vec<Arc<TemplateResource>>, 
     debug!("Listing embedded templates with prefix: {}", prefix);
 
     let all_metadata = vec![
-        MAKEFILE_RUST_CLI_BINARY_META,
-        README_RUST_CLI_APPLICATION_META,
-        GITIGNORE_RUST_EMBEDDED_TARGET_META,
-        MAKEFILE_PYTHON_UV_CLI_APPLICATION_META,
-        MAKEFILE_DENO_CLI_APPLICATION_META,
-        README_DENO_CLI_APPLICATION_META,
-        README_PYTHON_UV_CLI_APPLICATION_META,
-        GITIGNORE_DENO_CLI_APPLICATION_META,
-        GITIGNORE_PYTHON_UV_CLI_APPLICATION_META,
+        MAKEFILE_RUST_CLI_META,
+        README_RUST_CLI_META,
+        GITIGNORE_RUST_CLI_META,
+        MAKEFILE_PYTHON_UV_CLI_META,
+        MAKEFILE_DENO_CLI_META,
+        README_DENO_CLI_META,
+        README_PYTHON_UV_CLI_META,
+        GITIGNORE_DENO_CLI_META,
+        GITIGNORE_PYTHON_UV_CLI_META,
     ];
 
     let mut resources = Vec::new();
@@ -200,25 +185,15 @@ pub async fn get_template_metadata(uri: &str) -> Result<Arc<TemplateResource>, T
     debug!("Fetching embedded template metadata for: {}", uri);
 
     let metadata_str = match uri {
-        uri if uri.contains("makefile/rust/cli-binary") => MAKEFILE_RUST_CLI_BINARY_META,
-        uri if uri.contains("readme/rust/cli-application") => README_RUST_CLI_APPLICATION_META,
-        uri if uri.contains("gitignore/rust/embedded-target") => {
-            GITIGNORE_RUST_EMBEDDED_TARGET_META
-        }
-        uri if uri.contains("makefile/python-uv/cli-application") => {
-            MAKEFILE_PYTHON_UV_CLI_APPLICATION_META
-        }
-        uri if uri.contains("makefile/deno/cli-application") => MAKEFILE_DENO_CLI_APPLICATION_META,
-        uri if uri.contains("readme/deno/cli-application") => README_DENO_CLI_APPLICATION_META,
-        uri if uri.contains("readme/python-uv/cli-application") => {
-            README_PYTHON_UV_CLI_APPLICATION_META
-        }
-        uri if uri.contains("gitignore/deno/cli-application") => {
-            GITIGNORE_DENO_CLI_APPLICATION_META
-        }
-        uri if uri.contains("gitignore/python-uv/cli-application") => {
-            GITIGNORE_PYTHON_UV_CLI_APPLICATION_META
-        }
+        uri if uri.contains("makefile/rust/cli") => MAKEFILE_RUST_CLI_META,
+        uri if uri.contains("readme/rust/cli") => README_RUST_CLI_META,
+        uri if uri.contains("gitignore/rust/cli") => GITIGNORE_RUST_CLI_META,
+        uri if uri.contains("makefile/python-uv/cli") => MAKEFILE_PYTHON_UV_CLI_META,
+        uri if uri.contains("makefile/deno/cli") => MAKEFILE_DENO_CLI_META,
+        uri if uri.contains("readme/deno/cli") => README_DENO_CLI_META,
+        uri if uri.contains("readme/python-uv/cli") => README_PYTHON_UV_CLI_META,
+        uri if uri.contains("gitignore/deno/cli") => GITIGNORE_DENO_CLI_META,
+        uri if uri.contains("gitignore/python-uv/cli") => GITIGNORE_PYTHON_UV_CLI_META,
         _ => {
             return Err(TemplateError::NotFound(format!(
                 "Template not found: {}",
@@ -238,21 +213,15 @@ pub async fn get_template_content(uri: &str) -> Result<Arc<str>, TemplateError> 
     debug!("Fetching embedded template content for: {}", uri);
 
     let content = match uri {
-        uri if uri.contains("makefile/rust/cli-binary") => MAKEFILE_RUST_CLI_BINARY_HBS,
-        uri if uri.contains("readme/rust/cli-application") => README_RUST_CLI_APPLICATION_HBS,
-        uri if uri.contains("gitignore/rust/embedded-target") => GITIGNORE_RUST_EMBEDDED_TARGET_HBS,
-        uri if uri.contains("makefile/python-uv/cli-application") => {
-            MAKEFILE_PYTHON_UV_CLI_APPLICATION_HBS
-        }
-        uri if uri.contains("makefile/deno/cli-application") => MAKEFILE_DENO_CLI_APPLICATION_HBS,
-        uri if uri.contains("readme/deno/cli-application") => README_DENO_CLI_APPLICATION_HBS,
-        uri if uri.contains("readme/python-uv/cli-application") => {
-            README_PYTHON_UV_CLI_APPLICATION_HBS
-        }
-        uri if uri.contains("gitignore/deno/cli-application") => GITIGNORE_DENO_CLI_APPLICATION_HBS,
-        uri if uri.contains("gitignore/python-uv/cli-application") => {
-            GITIGNORE_PYTHON_UV_CLI_APPLICATION_HBS
-        }
+        uri if uri.contains("makefile/rust/cli") => MAKEFILE_RUST_CLI_HBS,
+        uri if uri.contains("readme/rust/cli") => README_RUST_CLI_HBS,
+        uri if uri.contains("gitignore/rust/cli") => GITIGNORE_RUST_CLI_HBS,
+        uri if uri.contains("makefile/python-uv/cli") => MAKEFILE_PYTHON_UV_CLI_HBS,
+        uri if uri.contains("makefile/deno/cli") => MAKEFILE_DENO_CLI_HBS,
+        uri if uri.contains("readme/deno/cli") => README_DENO_CLI_HBS,
+        uri if uri.contains("readme/python-uv/cli") => README_PYTHON_UV_CLI_HBS,
+        uri if uri.contains("gitignore/deno/cli") => GITIGNORE_DENO_CLI_HBS,
+        uri if uri.contains("gitignore/python-uv/cli") => GITIGNORE_PYTHON_UV_CLI_HBS,
         _ => {
             return Err(TemplateError::NotFound(format!(
                 "Template content not found: {}",

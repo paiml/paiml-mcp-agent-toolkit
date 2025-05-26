@@ -49,11 +49,11 @@ async fn test_get_template_metadata() {
 
     // Test Rust Makefile metadata
     let rust_makefile = server
-        .get_template_metadata("template://makefile/rust/cli-binary")
+        .get_template_metadata("template://makefile/rust/cli")
         .await
         .unwrap();
 
-    assert_eq!(rust_makefile.uri, "template://makefile/rust/cli-binary");
+    assert_eq!(rust_makefile.uri, "template://makefile/rust/cli");
     assert!(rust_makefile.name.contains("Makefile"));
     assert!(rust_makefile.description.contains("Rust"));
 
@@ -77,7 +77,7 @@ async fn test_get_template_content() {
 
     // Get content directly by URI
     let content = server
-        .get_template_content("template://readme/rust/cli-application")
+        .get_template_content("template://readme/rust/cli")
         .await
         .unwrap();
 
@@ -178,7 +178,7 @@ async fn test_rust_template_parameters() {
     let server = create_test_server();
 
     let rust_makefile = server
-        .get_template_metadata("template://makefile/rust/cli-binary")
+        .get_template_metadata("template://makefile/rust/cli")
         .await
         .unwrap();
 

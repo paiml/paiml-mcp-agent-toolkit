@@ -1,14 +1,14 @@
 {
-  "uri": "template://makefile/python-uv/cli-application",
+  "uri": "template://makefile/python-uv/cli",
   "name": "Python UV CLI Application Makefile",
   "description": "Makefile for Python CLI applications using UV package manager",
   "template_engine": "handlebars",
   "template_version": "1.0.0",
   "category": "makefile",
   "toolchain": "python-uv",
-  "variant": "cli-application",
+  "variant": "cli",
   "tags": ["python", "uv", "cli", "makefile", "build"],
-  "s3_object_key": "templates/makefile/python-uv/cli-application.hbs",
+  "s3_object_key": "templates/makefile/python-uv/cli.hbs",
   "parameters": [
     {
       "name": "project_name",

@@ -251,32 +251,10 @@ async fn handle_scaffold_project<T: TemplateServerTrait>(
 
         // Find the appropriate variant based on project type in parameters
         let variant = match template_type.as_str() {
-            "makefile" => {
-                if args.toolchain == "rust" {
-                    "cli-binary"
-                } else if args.toolchain == "deno" || args.toolchain == "python-uv" {
-                    "cli-application"
-                } else {
-                    continue;
-                }
-            }
-            "readme" => {
-                if args.toolchain == "rust"
-                    || args.toolchain == "deno"
-                    || args.toolchain == "python-uv"
-                {
-                    "cli-application"
-                } else {
-                    continue;
-                }
-            }
-            "gitignore" => {
-                match args.toolchain.as_str() {
-                    "rust" => "embedded-target", // Only variant available for Rust
-                    "deno" | "python-uv" => "cli-application",
-                    _ => continue,
-                }
-            }
+            "makefile" | "readme" | "gitignore" => match args.toolchain.as_str() {
+                "rust" | "deno" | "python-uv" => "cli",
+                _ => continue,
+            },
             _ => continue,
         };
 

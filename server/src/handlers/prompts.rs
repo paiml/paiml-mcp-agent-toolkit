@@ -22,7 +22,7 @@ pub async fn handle_prompts_list<T: TemplateServerTrait>(
                 },
                 PromptArgument {
                     name: "project_type".to_string(),
-                    description: Some("Type of project: cli-binary or library-crate".to_string()),
+                    description: Some("Type of project: cli or library-crate".to_string()),
                     required: true,
                 },
                 PromptArgument {
@@ -48,9 +48,7 @@ pub async fn handle_prompts_list<T: TemplateServerTrait>(
                 },
                 PromptArgument {
                     name: "project_type".to_string(),
-                    description: Some(
-                        "Type of project: cli-application or web-service".to_string(),
-                    ),
+                    description: Some("Type of project: cli or web-service".to_string()),
                     required: true,
                 },
                 PromptArgument {
@@ -71,9 +69,7 @@ pub async fn handle_prompts_list<T: TemplateServerTrait>(
                 },
                 PromptArgument {
                     name: "project_type".to_string(),
-                    description: Some(
-                        "Type of project: cli-application or library-package".to_string(),
-                    ),
+                    description: Some("Type of project: cli or library-package".to_string()),
                     required: true,
                 },
                 PromptArgument {
@@ -130,7 +126,7 @@ pub async fn handle_prompt_get<T: TemplateServerTrait>(
                 },
                 PromptArgument {
                     name: "project_type".to_string(),
-                    description: Some("Type of project: cli-binary or library-crate".to_string()),
+                    description: Some("Type of project: cli or library-crate".to_string()),
                     required: true,
                 },
                 PromptArgument {
@@ -156,9 +152,7 @@ pub async fn handle_prompt_get<T: TemplateServerTrait>(
                 },
                 PromptArgument {
                     name: "project_type".to_string(),
-                    description: Some(
-                        "Type of project: cli-application or web-service".to_string(),
-                    ),
+                    description: Some("Type of project: cli or web-service".to_string()),
                     required: true,
                 },
                 PromptArgument {
@@ -179,9 +173,7 @@ pub async fn handle_prompt_get<T: TemplateServerTrait>(
                 },
                 PromptArgument {
                     name: "project_type".to_string(),
-                    description: Some(
-                        "Type of project: cli-application or library-package".to_string(),
-                    ),
+                    description: Some("Type of project: cli or library-package".to_string()),
                     required: true,
                 },
                 PromptArgument {

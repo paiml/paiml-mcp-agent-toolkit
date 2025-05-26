@@ -1,14 +1,14 @@
 {
-  "uri": "template://makefile/rust/cli-binary",
-  "name": "Rust CLI Binary Makefile",
+  "uri": "template://makefile/rust/cli",
+  "name": "Rust CLI Makefile",
   "description": "Makefile for building Rust command-line applications with cargo",
   "template_engine": "handlebars",
   "template_version": "1.0.0",
   "category": "makefile",
   "toolchain": "rust",
-  "variant": "cli-binary",
+  "variant": "cli",
   "tags": ["rust", "cli", "makefile", "cargo", "build"],
-  "s3_object_key": "templates/makefile/rust/cli-binary.hbs",
+  "s3_object_key": "templates/makefile/rust/cli.hbs",
   "parameters": [
     {
       "name": "project_name",

@@ -63,11 +63,11 @@ impl TemplateServer {
 
     pub async fn warm_cache(&self) -> Result<()> {
         let common_templates = vec![
-            "template://makefile/rust/cli-binary",
-            "template://makefile/deno/cli-application",
-            "template://makefile/python-uv/cli-application",
-            "template://readme/rust/cli-application",
-            "template://gitignore/rust/embedded-target",
+            "template://makefile/rust/cli",
+            "template://makefile/deno/cli",
+            "template://makefile/python-uv/cli",
+            "template://readme/rust/cli",
+            "template://gitignore/rust/cli",
         ];
 
         info!(
