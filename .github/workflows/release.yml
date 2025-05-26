@@ -37,20 +37,20 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            binary_name: mcp_server_stateless
-            asset_name: mcp-server-linux-amd64
+            binary_name: paiml-mcp-agent-toolkit
+            asset_name: paiml-mcp-agent-toolkit-linux-amd64
           - os: macos-latest
             target: x86_64-apple-darwin
-            binary_name: mcp_server_stateless
-            asset_name: mcp-server-darwin-amd64
+            binary_name: paiml-mcp-agent-toolkit
+            asset_name: paiml-mcp-agent-toolkit-darwin-amd64
           - os: macos-latest
             target: aarch64-apple-darwin
-            binary_name: mcp_server_stateless
-            asset_name: mcp-server-darwin-arm64
+            binary_name: paiml-mcp-agent-toolkit
+            asset_name: paiml-mcp-agent-toolkit-darwin-arm64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            binary_name: mcp_server_stateless.exe
-            asset_name: mcp-server-windows-amd64.exe
+            binary_name: paiml-mcp-agent-toolkit.exe
+            asset_name: paiml-mcp-agent-toolkit-windows-amd64.exe
     
     steps:
       - uses: actions/checkout@v4
@@ -63,7 +63,7 @@ jobs:
       - name: Build
         run: |
           cd server
-          cargo build --release --target ${{ matrix.target }} --bin mcp_server_stateless
+          cargo build --release --target ${{ matrix.target }} --bin paiml-mcp-agent-toolkit
       
       - name: Compress binary (Unix)
         if: matrix.os != 'windows-latest'
