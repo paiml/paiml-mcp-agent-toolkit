@@ -67,4 +67,78 @@ mod tests {
             stdout
         );
     }
+
+    #[test]
+    fn test_no_old_binary_references_in_workflows() {
+        // Check GitHub Actions workflows for old binary names
+        let old_binary_names = vec![
+            "mcp_server_stateless",
+            "mcp-template-server",
+            "mcp_template_server",
+        ];
+
+        for old_name in &old_binary_names {
+            let output = Command::new("grep")
+                .args([
+                    "-r",
+                    old_name,
+                    "../.github/workflows/",
+                    "--include=*.yml",
+                    "--include=*.yaml",
+                ])
+                .output()
+                .expect("Failed to run grep");
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            assert!(
+                stdout.is_empty(),
+                "Found references to old binary name '{}' in GitHub Actions workflows:\n{}",
+                old_name,
+                stdout
+            );
+        }
+    }
+
+    #[test]
+    fn test_correct_binary_name_in_workflows() {
+        // Ensure workflows use the correct binary name
+        let output = Command::new("grep")
+            .args([
+                "-r",
+                "paiml-mcp-agent-toolkit",
+                "../.github/workflows/",
+                "--include=*.yml",
+                "--include=*.yaml",
+            ])
+            .output()
+            .expect("Failed to run grep");
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            !stdout.is_empty(),
+            "No references to 'paiml-mcp-agent-toolkit' found in GitHub Actions workflows. Workflows should use the correct binary name."
+        );
+    }
+
+    #[test]
+    fn test_no_wrong_repo_urls_in_workflows() {
+        // Check for incorrect repository URLs in workflows
+        let output = Command::new("grep")
+            .args([
+                "-r",
+                "pragmatic-ai-labs/paiml-mcp-agent-toolkit",
+                "../.github/workflows/",
+                "--include=*.yml",
+                "--include=*.yaml",
+            ])
+            .output()
+            .expect("Failed to run grep");
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.is_empty(),
+            "Found references to incorrect repository URL 'pragmatic-ai-labs/paiml-mcp-agent-toolkit' in workflows:\n{}\nShould be 'paiml/paiml-mcp-agent-toolkit'",
+            stdout
+        );
+    }
 }

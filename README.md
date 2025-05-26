@@ -2,8 +2,11 @@
 
 > **Professional project scaffolding toolkit for Claude Code - Generate Makefiles, READMEs, and .gitignore files with AI**
 
-[![CI](https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-78%25-green)](https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/actions)
+[![CI](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/ci.yml)
+[![Code Quality](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml)
+[![PR Checks](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/pr-checks.yml)
+[![Dependencies](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/dependencies.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/dependencies.yml)
+[![Coverage](https://img.shields.io/badge/coverage-78%25-green)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
 [![Built by Pragmatic AI Labs](https://img.shields.io/badge/Built%20by-Pragmatic%20AI%20Labs-blue)](https://paiml.com)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -19,13 +22,13 @@ The PAIML MCP Agent Toolkit is a stateless Model Context Protocol (MCP) server c
 1. **Install the MCP server**:
 ```bash
 # Option A: Use pre-built binary (recommended)
-curl -L https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-$(uname -s | tr '[:upper:]' '[:lower:]')-amd64.tar.gz -o paiml-mcp-agent-toolkit.tar.gz
+curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-$(uname -s | tr '[:upper:]' '[:lower:]')-amd64.tar.gz -o paiml-mcp-agent-toolkit.tar.gz
 tar xzf paiml-mcp-agent-toolkit.tar.gz
 chmod +x paiml-mcp-agent-toolkit
 sudo mv paiml-mcp-agent-toolkit /usr/local/bin/
 
 # Option B: Build from source
-git clone https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit.git
+git clone https://github.com/paiml/paiml-mcp-agent-toolkit.git
 cd paiml-mcp-agent-toolkit
 make install  # Automatically bumps version, builds, and installs
 
@@ -122,13 +125,13 @@ The PAIML MCP Agent Toolkit implements a production-grade template server using 
 
 Download binaries for your platform:
 
-- [Linux x64](https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-linux-x64)
-- [macOS ARM64](https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-macos-arm64)
-- [macOS x64](https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-macos-x64)
+- [Linux x64](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-linux-x64)
+- [macOS ARM64](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-macos-arm64)
+- [macOS x64](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-macos-x64)
 
 ```bash
 # Download and install
-curl -L https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-$(uname -s)-$(uname -m) -o paiml-mcp-agent-toolkit
+curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-$(uname -s)-$(uname -m) -o paiml-mcp-agent-toolkit
 chmod +x paiml-mcp-agent-toolkit
 sudo mv paiml-mcp-agent-toolkit /usr/local/bin/
 ```
@@ -137,7 +140,7 @@ sudo mv paiml-mcp-agent-toolkit /usr/local/bin/
 
 ```bash
 # Clone the repository
-git clone https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit.git
+git clone https://github.com/paiml/paiml-mcp-agent-toolkit.git
 cd paiml-mcp-agent-toolkit
 
 # Install (automatically bumps version, builds, and installs)
@@ -750,8 +753,8 @@ This project is licensed under the MIT License.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/discussions)
+- **Issues**: [GitHub Issues](https://github.com/paiml/paiml-mcp-agent-toolkit/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/paiml/paiml-mcp-agent-toolkit/discussions)
 - **Email**: contact@paiml.com
 - **Website**: [paiml.com](https://paiml.com)
 
