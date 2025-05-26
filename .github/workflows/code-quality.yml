@@ -1,0 +1,111 @@
+name: Code Quality
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  coverage-check:
+    name: Coverage Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      
+      - name: Generate coverage report
+        run: |
+          cd server
+          cargo llvm-cov --all-features --workspace --html --output-dir coverage
+          cargo llvm-cov report --summary-only > coverage-summary.txt
+      
+      - name: Check coverage threshold
+        run: |
+          cd server
+          coverage=$(cargo llvm-cov report --summary-only | grep "Total" | awk '{print $10}' | sed 's/%//')
+          echo "Current coverage: $coverage%"
+          if (( $(echo "$coverage < 70" | bc -l) )); then
+            echo "Coverage is below 70% threshold"
+            exit 1
+          fi
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: server/coverage/
+      
+      - name: Comment PR with coverage
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const coverageSummary = fs.readFileSync('server/coverage-summary.txt', 'utf8');
+            const match = coverageSummary.match(/Total.*?(\d+\.\d+)%/);
+            const percentage = match ? match[1] : 'Unknown';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Coverage Report 📊\n\n**Total Coverage:** ${percentage}%\n\n✅ Coverage threshold (70%) ${parseFloat(percentage) >= 70 ? 'passed' : 'failed'}\n\n[View full report](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+            });
+
+  complexity-check:
+    name: Code Complexity Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install complexity tools
+        run: |
+          cargo install tokei
+          cargo install cargo-geiger
+      
+      - name: Count lines of code
+        run: |
+          echo "## Lines of Code Report" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tokei server/src --exclude "*.json" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+      
+      - name: Check for unsafe code
+        run: |
+          cd server
+          echo "## Unsafe Code Report" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cargo geiger --all-features >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  documentation-check:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Check documentation
+        run: |
+          cd server
+          cargo doc --all-features --no-deps
+      
+      - name: Check for missing docs
+        run: |
+          cd server
+          cargo rustdoc --all-features -- -D missing_docs || true
+      
+      - name: Upload documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: server/target/doc/

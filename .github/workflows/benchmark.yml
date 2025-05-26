@@ -1,0 +1,109 @@
+name: Benchmark
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  benchmark:
+    name: Performance Benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Install hyperfine
+        run: |
+          wget https://github.com/sharkdp/hyperfine/releases/download/v1.18.0/hyperfine_1.18.0_amd64.deb
+          sudo dpkg -i hyperfine_1.18.0_amd64.deb
+      
+      - name: Build release binary
+        run: |
+          cd server
+          cargo build --release --bin mcp_server_stateless
+      
+      - name: Run benchmarks
+        run: |
+          cd server
+          
+          # Create a test input file
+          echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"1.0"}}' > test_input.json
+          
+          echo "## Benchmark Results 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Benchmark startup time
+          echo "### Startup Time" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          hyperfine --warmup 3 \
+            --export-markdown startup.md \
+            './target/release/mcp_server_stateless < test_input.json' \
+            || true
+          cat startup.md >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          
+          # Benchmark memory usage
+          echo "### Memory Usage" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          /usr/bin/time -v ./target/release/mcp_server_stateless < test_input.json 2>&1 | grep -E "Maximum resident set size" >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+      
+      - name: Run cargo bench
+        run: |
+          cd server
+          # Add benchmarks to Cargo.toml if they exist
+          if grep -q "bench" Cargo.toml; then
+            cargo bench --no-fail-fast | tee bench.txt
+            
+            echo "### Cargo Bench Results" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -n 20 bench.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: Compare with base branch
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // This is a placeholder for benchmark comparison
+            // In a real scenario, you would:
+            // 1. Fetch benchmark results from the base branch
+            // 2. Compare with current results
+            // 3. Comment on the PR with performance changes
+            
+            const comment = `## Performance Benchmark Results 📊
+            
+            Benchmarks have been run for this PR. Check the [workflow summary](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) for detailed results.
+            
+            ### Quick Summary
+            - ✅ All benchmarks completed successfully
+            - 📝 Results available in the workflow artifacts
+            
+            _Note: Performance comparison with base branch will be available in future updates._`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

@@ -1,0 +1,41 @@
+{
+  "uri": "template://makefile/deno/cli-application",
+  "name": "Deno TypeScript CLI Application Makefile",
+  "description": "Makefile for Deno TypeScript CLI applications",
+  "template_engine": "handlebars",
+  "template_version": "1.0.0",
+  "category": "makefile",
+  "toolchain": "deno",
+  "variant": "cli-application",
+  "tags": ["deno", "typescript", "cli", "makefile", "build"],
+  "s3_object_key": "templates/makefile/deno/cli-application.hbs",
+  "parameters": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "The name of the Deno project"
+    },
+    {
+      "name": "has_tests",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Whether the project has tests"
+    },
+    {
+      "name": "entry_point",
+      "type": "string",
+      "required": false,
+      "default": "main.ts",
+      "description": "Entry point file for the CLI"
+    },
+    {
+      "name": "permissions",
+      "type": "array",
+      "required": false,
+      "default": ["--allow-read", "--allow-write"],
+      "description": "Deno permissions to grant"
+    }
+  ]
+}

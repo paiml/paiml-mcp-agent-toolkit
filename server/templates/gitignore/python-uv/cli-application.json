@@ -1,0 +1,9 @@
+{
+  "uri": "template://gitignore/python-uv/cli-application",
+  "name": "Python UV CLI Application .gitignore",
+  "description": ".gitignore template for Python UV projects",
+  "category": "gitignore",
+  "toolchain": "python-uv",
+  "variant": "cli-application",
+  "parameters": []
+}

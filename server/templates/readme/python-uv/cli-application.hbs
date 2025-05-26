@@ -1,0 +1,32 @@
+# {{project_name}}
+
+{{#if description}}{{description}}{{else}}A Python CLI application using uv{{/if}}
+
+{{#if author}}Author: {{author}}{{/if}}
+
+## Quick Start
+
+```bash
+# Install dependencies
+uv pip install -r requirements.txt
+
+# Run the application
+python src/main.py
+
+# Run tests
+pytest
+
+# Format code
+ruff format .
+
+# Lint code
+ruff check .
+```
+
+## Development
+
+This project uses `uv` for dependency management and `ruff` for code formatting and linting.
+
+## License
+
+MIT

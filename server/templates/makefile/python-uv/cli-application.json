@@ -1,0 +1,41 @@
+{
+  "uri": "template://makefile/python-uv/cli-application",
+  "name": "Python UV CLI Application Makefile",
+  "description": "Makefile for Python CLI applications using UV package manager",
+  "template_engine": "handlebars",
+  "template_version": "1.0.0",
+  "category": "makefile",
+  "toolchain": "python-uv",
+  "variant": "cli-application",
+  "tags": ["python", "uv", "cli", "makefile", "build"],
+  "s3_object_key": "templates/makefile/python-uv/cli-application.hbs",
+  "parameters": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "The name of the Python project"
+    },
+    {
+      "name": "has_tests",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Whether the project has tests"
+    },
+    {
+      "name": "python_version",
+      "type": "string",
+      "required": false,
+      "default": "3.12",
+      "description": "Python version to use"
+    },
+    {
+      "name": "entry_point",
+      "type": "string",
+      "required": false,
+      "default": "main",
+      "description": "Entry point module for the CLI"
+    }
+  ]
+}

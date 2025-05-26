@@ -1,0 +1,54 @@
+{
+  "uri": "template://makefile/rust/cli-binary",
+  "name": "Rust CLI Binary Makefile",
+  "description": "Makefile for building Rust command-line applications with cargo",
+  "template_engine": "handlebars",
+  "template_version": "1.0.0",
+  "category": "makefile",
+  "toolchain": "rust",
+  "variant": "cli-binary",
+  "tags": ["rust", "cli", "makefile", "cargo", "build"],
+  "s3_object_key": "templates/makefile/rust/cli-binary.hbs",
+  "parameters": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "The name of the Rust project"
+    },
+    {
+      "name": "has_tests",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Whether the project has tests"
+    },
+    {
+      "name": "has_benchmarks",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Whether the project has benchmarks"
+    },
+    {
+      "name": "target",
+      "type": "string",
+      "required": false,
+      "description": "Target architecture (e.g., x86_64-unknown-linux-gnu)"
+    },
+    {
+      "name": "features",
+      "type": "array",
+      "item_type": "string",
+      "required": false,
+      "default": [],
+      "description": "List of cargo features to enable"
+    },
+    {
+      "name": "default_args",
+      "type": "string",
+      "required": false,
+      "description": "Default arguments when running the application"
+    }
+  ]
+}

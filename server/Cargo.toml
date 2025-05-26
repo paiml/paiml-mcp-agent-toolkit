@@ -1,0 +1,68 @@
+[package]
+name = "mcp-template-server"
+version = "0.1.3"
+edition = "2021"
+rust-version = "1.87.0"
+authors = ["Pragmatic AI Labs"]
+description = "MCP server for project scaffolding and template generation"
+homepage = "https://paiml.com"
+repository = "https://github.com/pragmatic-ai-labs/mcp-agent-toolkit"
+
+[dependencies]
+# Lambda runtime (optional - for Lambda deployment)
+lambda_runtime = "0.13"
+lambda_http = "0.14"
+
+# Async runtime
+tokio = { version = "1.44", features = ["rt-multi-thread", "macros", "net", "io-util"] }
+async-trait = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
+
+# Template engine
+handlebars = { version = "6.3", features = ["string_helpers"] }
+
+# Caching
+lru = { version = "0.12", features = ["hashbrown"] }
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Logging
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Utilities
+sha2 = "0.10"
+once_cell = "1.21"
+semver = { version = "1.0", features = ["serde"] }
+regex = { version = "1.11", features = ["perf"] }
+chrono = { version = "0.4", features = ["serde"] }
+hex = "0.4"
+
+# Async utilities
+futures = "0.3"
+
+[dev-dependencies]
+mockall = "0.13"
+tokio-test = "0.4"
+pretty_assertions = "1.4"
+tempfile = "3.14"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+# panic = "abort"  # Disabled to prevent terminal crashes during testing
+strip = "symbols"
+opt-level = 3
+
+[profile.lambda]
+inherits = "release"
+opt-level = "z"  # Optimize for binary size in Lambda environment
+
+[[bin]]
+name = "paiml-mcp-agent-toolkit"
+path = "src/bin/mcp_server_stateless.rs"

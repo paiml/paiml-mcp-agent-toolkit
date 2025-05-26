@@ -1,0 +1,102 @@
+# {{project_name}}
+
+{{description}}
+
+---
+
+*Generated with [Pragmatic AI Labs MCP Agent Toolkit](https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit)*
+
+{{#if features}}
+## Features
+
+{{#each features}}
+- {{this}}
+{{/each}}
+{{/if}}
+
+## Installation
+
+### Prerequisites
+
+{{#each prerequisites}}
+- {{this}}
+{{/each}}
+
+### From Source
+
+```bash
+{{install_command}}
+```
+
+### Using Cargo
+
+```bash
+cargo install {{project_name}}
+```
+
+## Usage
+
+```bash
+{{#if usage_example}}{{usage_example}}{{else}}{{project_name}} --help{{/if}}
+```
+
+## Development
+
+### Building
+
+```bash
+{{build_command}}
+```
+
+### Testing
+
+```bash
+{{test_command}}
+```
+
+### Code Quality
+
+```bash
+make lint    # Run clippy
+make format  # Format code with rustfmt
+```
+
+## Project Structure
+
+```
+{{project_name}}/
+├── Cargo.toml          # Project manifest
+├── Makefile           # Build automation
+├── README.md          # This file
+├── src/
+│   ├── main.rs        # Application entry point
+│   └── lib.rs         # Library code
+└── tests/             # Integration tests
+```
+
+## Configuration
+
+{{#if configuration}}
+{{configuration}}
+{{else}}
+Configuration can be provided through:
+- Command-line arguments
+- Environment variables
+- Configuration file (if applicable)
+
+Run `{{project_name}} --help` for detailed options.
+{{/if}}
+
+{{#if author}}
+## Author
+
+{{author}}
+{{/if}}
+
+## License
+
+This project is licensed under the {{license}} License.
+
+---
+
+Built with ❤️ using [Pragmatic AI Labs MCP Agent Toolkit](https://paiml.com)

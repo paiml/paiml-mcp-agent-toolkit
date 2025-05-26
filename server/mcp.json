@@ -1,0 +1,42 @@
+{
+  "name": "paiml-agent-toolkit",
+  "version": "1.0.0",
+  "description": "MCP Agent Toolkit - Template generation for project scaffolding",
+  "main": "target/release/mcp_server_stateless",
+  "bin": {
+    "paiml-agent-toolkit": "target/release/mcp_server_stateless"
+  },
+  "mcp": {
+    "runtime": "binary",
+    "tools": {
+      "generate_template": {
+        "description": "Generate a template file (Makefile, README, or .gitignore) for your project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "resource_uri": {
+              "type": "string",
+              "description": "Template URI (e.g., template://makefile/rust/cli-binary)"
+            },
+            "parameters": {
+              "type": "object",
+              "description": "Template parameters specific to the chosen template"
+            }
+          },
+          "required": ["resource_uri", "parameters"]
+        }
+      }
+    },
+    "resources": {
+      "template://makefile/*": {
+        "description": "Makefile templates for various languages and project types"
+      },
+      "template://readme/*": {
+        "description": "README.md templates for various project types"
+      },
+      "template://gitignore/*": {
+        "description": ".gitignore templates for various languages"
+      }
+    }
+  }
+}

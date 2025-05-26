@@ -1,0 +1,89 @@
+{
+  "uri": "template://readme/rust/cli-application",
+  "name": "Rust CLI Application README",
+  "description": "README template for Rust command-line applications",
+  "template_engine": "handlebars",
+  "template_version": "1.0.0",
+  "category": "readme",
+  "toolchain": "rust",
+  "variant": "cli-application",
+  "tags": ["rust", "cli", "readme", "documentation"],
+  "s3_object_key": "templates/readme/rust/cli-application.hbs",
+  "parameters": [
+    {
+      "name": "project_name",
+      "type": "string",
+      "required": true,
+      "description": "The name of the Rust project"
+    },
+    {
+      "name": "description",
+      "type": "string",
+      "required": true,
+      "description": "A brief description of the project"
+    },
+    {
+      "name": "features",
+      "type": "array",
+      "item_type": "string",
+      "required": false,
+      "default": [],
+      "description": "List of key features"
+    },
+    {
+      "name": "rust_version",
+      "type": "string",
+      "required": false,
+      "default": "1.75",
+      "description": "Minimum Rust version required"
+    },
+    {
+      "name": "install_command",
+      "type": "string",
+      "required": false,
+      "default": "cargo install --path .",
+      "description": "Installation command"
+    },
+    {
+      "name": "usage_example",
+      "type": "string",
+      "required": false,
+      "description": "Example usage command"
+    },
+    {
+      "name": "prerequisites",
+      "type": "array",
+      "item_type": "string",
+      "required": false,
+      "default": ["Rust 1.75 or later", "GNU Make (optional)"],
+      "description": "List of prerequisites"
+    },
+    {
+      "name": "build_command",
+      "type": "string",
+      "required": false,
+      "default": "make build",
+      "description": "Build command"
+    },
+    {
+      "name": "test_command",
+      "type": "string",
+      "required": false,
+      "default": "make test",
+      "description": "Test command"
+    },
+    {
+      "name": "license",
+      "type": "string",
+      "required": false,
+      "default": "MIT",
+      "description": "License type"
+    },
+    {
+      "name": "author",
+      "type": "string",
+      "required": false,
+      "description": "Project author"
+    }
+  ]
+}

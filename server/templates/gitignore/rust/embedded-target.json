@@ -1,0 +1,69 @@
+{
+  "uri": "template://gitignore/rust/embedded-target",
+  "name": "Rust Embedded Target .gitignore",
+  "description": "Gitignore template for Rust projects with embedded or cross-compilation targets",
+  "template_engine": "handlebars",
+  "template_version": "1.0.0",
+  "category": "gitignore",
+  "toolchain": "rust",
+  "variant": "embedded-target",
+  "tags": ["rust", "gitignore", "embedded", "cross-compilation"],
+  "s3_object_key": "templates/gitignore/rust/embedded-target.hbs",
+  "parameters": [
+    {
+      "name": "project_type",
+      "type": "string",
+      "required": false,
+      "default": "Rust CLI Application",
+      "description": "Type of project for the header comment"
+    },
+    {
+      "name": "ide_files",
+      "type": "array",
+      "item_type": "string",
+      "required": false,
+      "default": [".idea/", ".vscode/", "*.swp", "*.swo", "*~", ".DS_Store"],
+      "description": "IDE and editor files to ignore"
+    },
+    {
+      "name": "build_artifacts",
+      "type": "array",
+      "item_type": "string",
+      "required": false,
+      "default": ["target/", "Cargo.lock"],
+      "description": "Build artifacts to ignore"
+    },
+    {
+      "name": "language_specific",
+      "type": "array",
+      "item_type": "string",
+      "required": false,
+      "default": ["**/*.rs.bk", "*.pdb"],
+      "description": "Rust-specific files to ignore"
+    },
+    {
+      "name": "os_specific",
+      "type": "array",
+      "item_type": "string",
+      "required": false,
+      "default": [".DS_Store", "Thumbs.db", "desktop.ini"],
+      "description": "OS-specific files to ignore"
+    },
+    {
+      "name": "custom_patterns",
+      "type": "array",
+      "item_type": "string",
+      "required": false,
+      "default": [".env", "*.log", "temp/", "cache/"],
+      "description": "Project-specific patterns to ignore"
+    },
+    {
+      "name": "embedded_targets",
+      "type": "array",
+      "item_type": "string",
+      "required": false,
+      "default": ["*.elf", "*.bin", "*.hex", "*.map"],
+      "description": "Embedded build outputs to ignore"
+    }
+  ]
+}
