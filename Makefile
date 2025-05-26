@@ -2,7 +2,7 @@
 # Pragmatic AI Labs
 # https://paiml.com
 
-.PHONY: all validate format lint check test build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts fix validate-docs ci-status validate-naming
+.PHONY: all validate format lint check test build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts fix validate-docs ci-status validate-naming context
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -153,6 +153,12 @@ validate-naming:
 	@echo "🔍 Validating naming conventions..."
 	@$(SCRIPTS_DIR)/validate-naming.ts
 
+# Generate deep context analysis of the project
+context:
+	@echo "📊 Generating deep context analysis..."
+	@$(SCRIPTS_DIR)/deep-context.ts
+	@echo "✅ Deep context analysis complete! See deep_context.md"
+
 # Install MCP server
 install:
 	@echo "🚀 Installing MCP Agent Toolkit..."
@@ -262,6 +268,7 @@ help:
 	@echo "  validate-docs - Check documentation naming consistency"
 	@echo "  validate-naming - Validate naming conventions across the project"
 	@echo "  ci-status    - Check GitHub Actions workflow status"
+	@echo "  context      - Generate deep context analysis (AST, tree, docs)"
 	@echo "  build        - Build all projects (binaries only)"
 	@echo "  clean        - Clean all build artifacts"
 	@echo ""
