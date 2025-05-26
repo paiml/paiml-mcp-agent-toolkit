@@ -63,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: server/coverage-report/
+          path: server/coverage/
         if: always()
 
   security:
