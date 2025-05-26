@@ -1,7 +1,7 @@
 use anyhow::Result;
-use mcp_template_server::handlers;
-use mcp_template_server::models::mcp::{McpRequest, McpResponse};
-use mcp_template_server::stateless_server::StatelessTemplateServer;
+use paiml_mcp_agent_toolkit::handlers;
+use paiml_mcp_agent_toolkit::models::mcp::{McpRequest, McpResponse};
+use paiml_mcp_agent_toolkit::stateless_server::StatelessTemplateServer;
 use std::io::{self, BufRead, Write};
 use std::sync::Arc;
 use tracing::{error, info};

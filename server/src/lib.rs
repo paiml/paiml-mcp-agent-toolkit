@@ -173,4 +173,7 @@ mod tests {
 
     #[path = "../tests/lib.rs"]
     mod lib_tests;
+
+    #[path = "../tests/build_naming_validation.rs"]
+    mod build_naming_validation;
 }
