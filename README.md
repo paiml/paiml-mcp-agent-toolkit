@@ -109,6 +109,7 @@ The PAIML MCP Agent Toolkit implements a production-grade template server using 
 - 📋 **Interactive Prompts**: Guided project setup workflows
 - 📁 **Smart Directory Creation**: Files are created in project subdirectories
 - ℹ️ **Discoverable**: Built-in server info tool for metadata access
+- 🧠 **AST Context Generation**: Analyze project structure using Abstract Syntax Tree parsing
 
 ### Supported Toolchains
 
@@ -214,6 +215,13 @@ The PAIML MCP Agent Toolkit integrates seamlessly with Claude Code. Simply ask C
 "Create a .gitignore for Rust development"
 "Generate a gitignore for my Deno project"
 "Setup Python gitignore with UV and pytest"
+```
+
+**Analyze project structure:**
+```
+"Generate an AST context for my Rust project"
+"Analyze the structure of this codebase"
+"Show me all functions and structs in this project"
 ```
 
 ### For Developers
@@ -335,6 +343,24 @@ paiml-mcp-agent-toolkit validate template://makefile/rust/cli-binary -p project_
 
 # Check for missing required parameters
 paiml-mcp-agent-toolkit validate template://readme/rust/cli-application -p author="John Doe"
+```
+
+##### `context` - Generate project context with AST analysis
+
+Analyze project structure and generate context using Abstract Syntax Tree (AST) parsing.
+
+```bash
+# Generate context for current directory
+paiml-mcp-agent-toolkit context rust
+
+# Analyze specific project path
+paiml-mcp-agent-toolkit context rust --project-path /path/to/project
+
+# Output as JSON
+paiml-mcp-agent-toolkit context rust --format json
+
+# Save to file
+paiml-mcp-agent-toolkit context rust -o context.md
 ```
 
 #### Parameter Syntax
@@ -926,6 +952,7 @@ echo '{
 ## What's New
 
 ### Recent Improvements
+- 🧠 **NEW: AST Context Generation**: Analyze project structure using Abstract Syntax Tree parsing with dual CLI/MCP support
 - 🎯 **NEW: Native CLI Interface**: Unified binary now supports direct CLI usage with auto-detection
 - ✅ **All 9 Templates Available**: Fixed template embedding to include all Deno and Python-uv templates
 - 🚀 **Smart Installation**: Automatic rebuild detection based on source file changes
