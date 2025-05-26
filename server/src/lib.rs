@@ -240,4 +240,10 @@ mod tests {
 
     #[path = "../tests/build_naming_validation.rs"]
     mod build_naming_validation;
+
+    #[path = "../tests/ast_e2e.rs"]
+    mod ast_e2e;
+
+    #[path = "../tests/cli_tests.rs"]
+    mod cli_tests;
 }

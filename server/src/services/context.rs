@@ -1,4 +1,5 @@
 use crate::models::error::TemplateError;
+use crate::services::{ast_python, ast_typescript};
 use ignore::gitignore::GitignoreBuilder;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -267,8 +268,32 @@ pub async fn analyze_project(
                     }
                 }
             }
-            "deno" | "python-uv" => {
-                // TODO: Add TypeScript/Python parsing
+            "deno" => {
+                let ext = path.extension().and_then(|s| s.to_str());
+                match ext {
+                    Some("ts") | Some("tsx") => {
+                        if let Ok(file_context) =
+                            ast_typescript::analyze_typescript_file(path).await
+                        {
+                            files.push(file_context);
+                        }
+                    }
+                    Some("js") | Some("jsx") => {
+                        if let Ok(file_context) =
+                            ast_typescript::analyze_javascript_file(path).await
+                        {
+                            files.push(file_context);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            "python-uv" => {
+                if path.extension().and_then(|s| s.to_str()) == Some("py") {
+                    if let Ok(file_context) = ast_python::analyze_python_file(path).await {
+                        files.push(file_context);
+                    }
+                }
             }
             _ => {}
         }
@@ -298,15 +323,75 @@ pub async fn analyze_project(
         }
     }
 
-    // Read dependencies from Cargo.toml
-    if toolchain == "rust" {
-        if let Ok(cargo_content) = tokio::fs::read_to_string(root_path.join("Cargo.toml")).await {
-            if let Ok(cargo_toml) = cargo_content.parse::<toml::Value>() {
-                if let Some(deps) = cargo_toml.get("dependencies").and_then(|d| d.as_table()) {
-                    summary.dependencies = deps.keys().cloned().collect();
+    // Read dependencies based on toolchain
+    match toolchain {
+        "rust" => {
+            if let Ok(cargo_content) = tokio::fs::read_to_string(root_path.join("Cargo.toml")).await
+            {
+                if let Ok(cargo_toml) = cargo_content.parse::<toml::Value>() {
+                    if let Some(deps) = cargo_toml.get("dependencies").and_then(|d| d.as_table()) {
+                        summary.dependencies = deps.keys().cloned().collect();
+                    }
                 }
             }
         }
+        "deno" => {
+            // Check for deno.json or import_map.json
+            if let Ok(deno_json) = tokio::fs::read_to_string(root_path.join("deno.json")).await {
+                if let Ok(deno_config) = serde_json::from_str::<serde_json::Value>(&deno_json) {
+                    if let Some(imports) = deno_config.get("imports").and_then(|i| i.as_object()) {
+                        summary.dependencies = imports.keys().cloned().collect();
+                    }
+                }
+            }
+            // Also check package.json for Node/npm dependencies
+            if let Ok(package_json) =
+                tokio::fs::read_to_string(root_path.join("package.json")).await
+            {
+                if let Ok(package) = serde_json::from_str::<serde_json::Value>(&package_json) {
+                    if let Some(deps) = package.get("dependencies").and_then(|d| d.as_object()) {
+                        summary.dependencies.extend(deps.keys().cloned());
+                    }
+                }
+            }
+        }
+        "python-uv" => {
+            // Check for pyproject.toml (UV uses this)
+            if let Ok(pyproject_content) =
+                tokio::fs::read_to_string(root_path.join("pyproject.toml")).await
+            {
+                if let Ok(pyproject) = pyproject_content.parse::<toml::Value>() {
+                    if let Some(deps) = pyproject
+                        .get("project")
+                        .and_then(|p| p.get("dependencies"))
+                        .and_then(|d| d.as_array())
+                    {
+                        summary.dependencies = deps
+                            .iter()
+                            .filter_map(|d| d.as_str())
+                            .map(|s| s.split_whitespace().next().unwrap_or(s).to_string())
+                            .collect();
+                    }
+                }
+            }
+            // Also check requirements.txt
+            if let Ok(requirements) =
+                tokio::fs::read_to_string(root_path.join("requirements.txt")).await
+            {
+                for line in requirements.lines() {
+                    let line = line.trim();
+                    if !line.is_empty() && !line.starts_with('#') {
+                        let dep_name = line
+                            .split(['=', '>', '<', '~'])
+                            .next()
+                            .unwrap_or(line)
+                            .trim();
+                        summary.dependencies.push(dep_name.to_string());
+                    }
+                }
+            }
+        }
+        _ => {}
     }
 
     Ok(ProjectContext {

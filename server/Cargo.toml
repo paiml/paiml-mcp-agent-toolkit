@@ -53,6 +53,13 @@ proc-macro2 = "1.0"
 walkdir = "2.5"
 ignore = "0.4"
 toml = "0.8"
+# For TypeScript/JavaScript parsing
+swc_ecma_parser = "0.143"
+swc_common = "0.33"
+swc_ecma_ast = "0.112"
+swc_ecma_visit = "0.98"
+# For Python parsing
+rustpython-parser = "0.3"
 
 [dev-dependencies]
 mockall = "0.13"
