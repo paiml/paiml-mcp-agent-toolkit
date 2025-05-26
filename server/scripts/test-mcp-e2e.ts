@@ -117,7 +117,7 @@ async function runE2ETests() {
 
   // Test 1: Initialize handshake
   console.log("\n📋 Test 1: Initialize handshake");
-  const client = new McpClient(["./target/debug/mcp_server_stateless"]);
+  const client = new McpClient(["./target/debug/paiml-mcp-agent-toolkit"]);
 
   try {
     const initResponse = await client.sendRequest("initialize", {

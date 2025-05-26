@@ -294,3 +294,194 @@ async fn test_claude_code_search_templates() {
         "template://readme/rust/cli-application"
     );
 }
+
+#[tokio::test]
+async fn test_naming_convention_critical_requirement() {
+    let server = create_test_server();
+
+    // Test that all generated templates use correct "paiml-mcp-agent-toolkit" naming
+    let test_cases = vec![
+        ("rust", "test-rust-project", "A Rust CLI project"),
+        ("deno", "test-deno-project", "A Deno TypeScript project"),
+        ("python-uv", "test-python-project", "A Python UV project"),
+    ];
+
+    for (toolchain, project_name, description) in test_cases {
+        // Generate all templates for the toolchain
+        let request = create_tool_request(
+            "scaffold_project",
+            json!({
+                "toolchain": toolchain,
+                "templates": ["makefile", "readme", "gitignore"],
+                "parameters": {
+                    "project_name": project_name,
+                    "description": description,
+                    "author_name": "Test Author",
+                    "author_email": "test@example.com",
+                    "github_username": "testuser"
+                }
+            }),
+        );
+
+        let response = handle_tool_call(server.clone(), request).await;
+        assert!(
+            response.result.is_some(),
+            "Failed for toolchain: {}",
+            toolchain
+        );
+        assert!(
+            response.error.is_none(),
+            "Error for toolchain: {}",
+            toolchain
+        );
+
+        let result = response.result.unwrap();
+        let generated = result["generated"].as_array().unwrap();
+
+        // Check each generated file for naming violations
+        for file in generated {
+            let content = file["content"].as_str().unwrap();
+            let filename = file["filename"].as_str().unwrap();
+
+            // Critical: Check for old naming patterns that must not exist
+            assert!(
+                !content.contains("mcp-agent-toolkit") || content.contains("paiml-mcp-agent-toolkit"),
+                "Found incorrect 'mcp-agent-toolkit' (without paiml- prefix) in {} for toolchain {}",
+                filename, toolchain
+            );
+
+            assert!(
+                !content.contains("paiml-agent-toolkit"),
+                "Found incorrect 'paiml-agent-toolkit' (missing -mcp-) in {} for toolchain {}",
+                filename,
+                toolchain
+            );
+
+            assert!(
+                !content.contains("mcp_server_stateless"),
+                "Found old binary name 'mcp_server_stateless' in {} for toolchain {}",
+                filename,
+                toolchain
+            );
+
+            assert!(
+                !content.contains("mcp-server-"),
+                "Found old artifact pattern 'mcp-server-' in {} for toolchain {}",
+                filename,
+                toolchain
+            );
+
+            // Positive test: Ensure proper naming is used where appropriate
+            if file["template"].as_str().unwrap() == "readme" {
+                // README should mention the toolkit name
+                assert!(
+                    content.contains("paiml-mcp-agent-toolkit")
+                        || content.contains("PAIML MCP Agent Toolkit")
+                        || !content.to_lowercase().contains("toolkit"), // If no toolkit mention, that's ok
+                    "README should use correct project name in {} for toolchain {}",
+                    filename,
+                    toolchain
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_naming_convention_in_individual_templates() {
+    let server = create_test_server();
+
+    // Test individual template generation for naming compliance
+    let template_uris = vec![
+        "template://makefile/rust/cli-binary",
+        "template://makefile/deno/cli-application",
+        "template://makefile/python-uv/cli-application",
+        "template://readme/rust/cli-application",
+        "template://readme/deno/cli-application",
+        "template://readme/python-uv/cli-application",
+        "template://gitignore/rust/cli-application",
+        "template://gitignore/deno/cli-application",
+        "template://gitignore/python-uv/cli-application",
+    ];
+
+    for uri in template_uris {
+        let request = create_tool_request(
+            "generate_template",
+            json!({
+                "resource_uri": uri,
+                "parameters": {
+                    "project_name": "test-project",
+                    "description": "Test project for naming validation",
+                    "author_name": "Test Author",
+                    "author_email": "test@example.com",
+                    "github_username": "testuser"
+                }
+            }),
+        );
+
+        let response = handle_tool_call(server.clone(), request).await;
+
+        // Some URIs might not exist, that's ok for this test
+        if response.result.is_some() {
+            let result = response.result.unwrap();
+            let content = result["content"][0]["text"].as_str().unwrap();
+
+            // Apply same naming convention checks
+            assert!(
+                !content.contains("mcp-agent-toolkit")
+                    || content.contains("paiml-mcp-agent-toolkit"),
+                "Found incorrect 'mcp-agent-toolkit' in template {}",
+                uri
+            );
+
+            assert!(
+                !content.contains("paiml-agent-toolkit"),
+                "Found incorrect 'paiml-agent-toolkit' in template {}",
+                uri
+            );
+
+            assert!(
+                !content.contains("mcp_server_stateless"),
+                "Found old binary name in template {}",
+                uri
+            );
+
+            assert!(
+                !content.contains("mcp-server-"),
+                "Found old artifact pattern in template {}",
+                uri
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_server_info_naming_convention() {
+    let server = create_test_server();
+
+    // Test server info command returns correct naming
+    let request = create_tool_request("get_server_info", json!({}));
+
+    let response = handle_tool_call(server.clone(), request).await;
+
+    if response.result.is_some() {
+        let result = response.result.unwrap();
+        let info_str = serde_json::to_string(&result).unwrap();
+
+        // Server info should not contain old names
+        assert!(
+            !info_str.contains("mcp-agent-toolkit") || info_str.contains("paiml-mcp-agent-toolkit"),
+            "Server info contains incorrect 'mcp-agent-toolkit' naming"
+        );
+
+        assert!(
+            !info_str.contains("paiml-agent-toolkit"),
+            "Server info contains incorrect 'paiml-agent-toolkit' naming"
+        );
+
+        assert!(
+            !info_str.contains("mcp_server_stateless"),
+            "Server info contains old binary name"
+        );
+    }
+}

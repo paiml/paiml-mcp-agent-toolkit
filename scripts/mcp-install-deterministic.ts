@@ -23,7 +23,7 @@ const args = parse(Deno.args, {
 
 // Constants - Single source of truth
 const BINARY_NAME = "paiml-mcp-agent-toolkit";
-const MCP_SERVER_NAME = "paiml-agent-toolkit";
+const MCP_SERVER_NAME = "paiml-mcp-agent-toolkit";
 const PROJECT_ROOT = dirname(dirname(new URL(import.meta.url).pathname));
 const SERVER_DIR = join(PROJECT_ROOT, "server");
 const CARGO_TOML = join(SERVER_DIR, "Cargo.toml");
@@ -223,7 +223,7 @@ async function fixCargoToml(): Promise<void> {
 
   // Add single correct binary definition at the end
   content = content.trimEnd() + '\n\n[[bin]]\nname = "' + BINARY_NAME +
-    '"\npath = "src/bin/mcp_server_stateless.rs"\n';
+    '"\npath = "src/bin/paiml-mcp-agent-toolkit.rs"\n';
 
   await Deno.writeTextFile(CARGO_TOML, content);
   console.log("✅ Cargo.toml updated with single binary: " + BINARY_NAME);

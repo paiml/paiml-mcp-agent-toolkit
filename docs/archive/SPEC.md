@@ -388,8 +388,8 @@ name = "paiml-mcp-agent-toolkit"
 path = "src/main.rs"
 
 [[bin]]
-name = "mcp_server_stateless"
-path = "src/bin/mcp_server_stateless.rs"
+name = "paiml-mcp-agent-toolkit-server"
+path = "src/bin/paiml-mcp-agent-toolkit.rs"
 
 [dependencies]
 async-trait = "0.1"

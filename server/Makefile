@@ -1,6 +1,6 @@
 
 # MCP Template Server - Build and Deployment Makefile
-.PHONY: all validate format lint check test coverage build build-all build-binary build-docker run run-test test-http test-mcp test-integration run-mcp run-mcp-test deploy-lambda deploy-docker clean install install-latest reinstall status check-rebuild uninstall setup audit docs help
+.PHONY: all validate format lint check test coverage build build-all build-binary build-docker run run-test test-http test-mcp test-integration run-mcp run-mcp-test deploy-lambda deploy-docker clean install install-latest reinstall status check-rebuild uninstall setup audit docs help validate-docs
 
 # Default target: executes complete build pipeline
 all: format lint check test build validate
@@ -8,13 +8,14 @@ all: format lint check test build validate
 	@echo "✅ All tasks completed successfully!"
 
 # Validate everything passes (comprehensive check)
-validate:
+validate: validate-docs
 	@echo ""
 	@echo "=== Project Validation Checklist ==="
 	@echo "✓ Format: Code formatting compliance (rustfmt + deno fmt)"
 	@echo "✓ Lint: Static analysis and linting rules (clippy + deno lint)"
 	@echo "✓ Compile: Type checking and compilation (cargo check)"
 	@echo "✓ Test: Unit tests and coverage requirements (cargo test)"
+	@echo "✓ Docs: Documentation naming consistency"
 	@echo ""
 	@echo "✅ All validation checks passed!"
 
@@ -69,6 +70,14 @@ test:
 		chmod +x ./scripts/test-mcp-e2e.ts; \
 		./scripts/test-mcp-e2e.ts || exit 1; \
 	fi
+	@echo ""
+	@echo "🔍 Running critical naming convention tests..."
+	@cargo test test_naming_convention --no-fail-fast -- --nocapture || { \
+		echo "❌ CRITICAL: Naming convention tests failed!"; \
+		echo "This is a level 0 production blocker."; \
+		echo "Ensure all references use 'paiml-mcp-agent-toolkit' consistently."; \
+		exit 1; \
+	}
 
 # Generate detailed coverage report in plain text
 coverage:
@@ -109,7 +118,7 @@ build-docker:
 	fi
 
 # Default build target: binary only (no Docker)
-build: build-binary
+build: validate-docs build-binary
 	@echo ""
 	@echo "✅ Binary built successfully!"
 	@echo "   Location: ./target/release/paiml-mcp-agent-toolkit"
@@ -166,11 +175,11 @@ test-all:
 
 # Run MCP server in STDIO mode
 run-mcp:
-	cargo run --bin mcp_server_stateless
+	cargo run --bin paiml-mcp-agent-toolkit
 
 # Run MCP server in test mode (stateless server doesn't need TEST_MODE)
 run-mcp-test:
-	cargo run --bin mcp_server_stateless
+	cargo run --bin paiml-mcp-agent-toolkit
 
 # Deploy to AWS Lambda (optional)
 deploy-lambda: build-lambda
@@ -255,7 +264,7 @@ install: bump-version build-binary
 			fi \
 		fi \
 	else \
-		install -D -m 755 target/release/mcp_server_stateless $(DESTDIR)/usr/local/bin/paiml-mcp-agent-toolkit; \
+		install -D -m 755 target/release/paiml-mcp-agent-toolkit $(DESTDIR)/usr/local/bin/paiml-mcp-agent-toolkit; \
 		echo "✅ Installed to $(DESTDIR)/usr/local/bin/paiml-mcp-agent-toolkit"; \
 	fi
 	@# Verify installation
@@ -281,15 +290,15 @@ install: bump-version build-binary
 		echo ""; \
 		echo "📋 Configuring Claude Code integration..."; \
 		if command -v claude >/dev/null 2>&1; then \
-			if claude mcp list 2>/dev/null | grep -q "paiml-agent-toolkit"; then \
+			if claude mcp list 2>/dev/null | grep -q "paiml-toolkit"; then \
 				echo "✅ MCP server already configured in Claude Code"; \
 			else \
 				echo "📝 Adding MCP server to Claude Code..."; \
-				if claude mcp add paiml-agent-toolkit paiml-mcp-agent-toolkit 2>/dev/null; then \
+				if claude mcp add paiml-toolkit paiml-mcp-agent-toolkit 2>/dev/null; then \
 					echo "✅ Successfully added to Claude Code"; \
 				else \
 					echo "⚠️  Could not auto-configure Claude Code"; \
-					echo "   Run manually: claude mcp add paiml-agent-toolkit paiml-mcp-agent-toolkit"; \
+					echo "   Run manually: claude mcp add paiml-toolkit paiml-mcp-agent-toolkit"; \
 				fi \
 			fi; \
 			echo ""; \
@@ -297,7 +306,7 @@ install: bump-version build-binary
 		else \
 			echo "ℹ️  Claude CLI not found. To use with Claude Code:"; \
 			echo "   1. Install Claude CLI: npm install -g @anthropic-ai/claude-cli"; \
-			echo "   2. Run: claude mcp add paiml-agent-toolkit paiml-mcp-agent-toolkit"; \
+			echo "   2. Run: claude mcp add paiml-toolkit paiml-mcp-agent-toolkit"; \
 		fi \
 	else \
 		echo "⚠️  Binary not found in PATH!"; \
@@ -330,6 +339,11 @@ setup:
 # Security audit
 audit:
 	cargo audit
+
+# Validate documentation naming consistency
+validate-docs:
+	@echo "📖 Validating documentation naming consistency..."
+	@cd .. && deno run --allow-read --allow-env scripts/validate-docs.ts
 
 # Generate documentation
 docs:
