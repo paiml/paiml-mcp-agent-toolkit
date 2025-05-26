@@ -98,3 +98,6 @@ env/
 # Local development
 .local/
 scratch/
+
+# Generated analysis files
+deep_context.md
