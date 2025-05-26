@@ -48,7 +48,7 @@ async fn test_handle_resource_read_success() {
     let request = create_request(
         "resources/read",
         Some(json!({
-            "uri": "template://makefile/rust/cli-binary"
+            "uri": "template://makefile/rust/cli"
         })),
     );
 
@@ -63,7 +63,7 @@ async fn test_handle_resource_read_success() {
     assert_eq!(contents.len(), 1);
 
     let content = &contents[0];
-    assert_eq!(content["uri"], "template://makefile/rust/cli-binary");
+    assert_eq!(content["uri"], "template://makefile/rust/cli");
     assert_eq!(content["mimeType"], "text/x-handlebars-template");
     assert!(content["text"]
         .as_str()
@@ -131,15 +131,15 @@ async fn test_handle_resource_read_all_templates() {
     let server = create_test_server();
 
     let templates = vec![
-        "template://makefile/rust/cli-binary",
-        "template://readme/rust/cli-application",
-        "template://gitignore/rust/embedded-target",
-        "template://makefile/python-uv/cli-application",
-        "template://makefile/deno/cli-application",
-        "template://readme/deno/cli-application",
-        "template://readme/python-uv/cli-application",
-        "template://gitignore/deno/cli-application",
-        "template://gitignore/python-uv/cli-application",
+        "template://makefile/rust/cli",
+        "template://readme/rust/cli",
+        "template://gitignore/rust/cli",
+        "template://makefile/python-uv/cli",
+        "template://makefile/deno/cli",
+        "template://readme/deno/cli",
+        "template://readme/python-uv/cli",
+        "template://gitignore/deno/cli",
+        "template://gitignore/python-uv/cli",
     ];
 
     for uri in templates {

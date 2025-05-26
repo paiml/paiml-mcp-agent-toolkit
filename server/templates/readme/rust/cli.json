@@ -1,14 +1,14 @@
 {
-  "uri": "template://readme/rust/cli-application",
-  "name": "Rust CLI Application README",
+  "uri": "template://readme/rust/cli",
+  "name": "Rust CLI README",
   "description": "README template for Rust command-line applications",
   "template_engine": "handlebars",
   "template_version": "1.0.0",
   "category": "readme",
   "toolchain": "rust",
-  "variant": "cli-application",
+  "variant": "cli",
   "tags": ["rust", "cli", "readme", "documentation"],
-  "s3_object_key": "templates/readme/rust/cli-application.hbs",
+  "s3_object_key": "templates/readme/rust/cli.hbs",
   "parameters": [
     {
       "name": "project_name",

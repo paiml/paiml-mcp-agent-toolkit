@@ -1,14 +1,14 @@
 {
-  "uri": "template://gitignore/rust/embedded-target",
-  "name": "Rust Embedded Target .gitignore",
-  "description": "Gitignore template for Rust projects with embedded or cross-compilation targets",
+  "uri": "template://gitignore/rust/cli",
+  "name": "Rust CLI .gitignore",
+  "description": "Gitignore template for Rust CLI projects",
   "template_engine": "handlebars",
   "template_version": "1.0.0",
   "category": "gitignore",
   "toolchain": "rust",
-  "variant": "embedded-target",
-  "tags": ["rust", "gitignore", "embedded", "cross-compilation"],
-  "s3_object_key": "templates/gitignore/rust/embedded-target.hbs",
+  "variant": "cli",
+  "tags": ["rust", "gitignore", "cli", "cargo"],
+  "s3_object_key": "templates/gitignore/rust/cli.hbs",
   "parameters": [
     {
       "name": "project_type",

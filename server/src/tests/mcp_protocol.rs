@@ -126,7 +126,7 @@ async fn test_handle_call_tool_generate_template() {
         Some(json!({
             "name": "generate_template",
             "arguments": {
-                "resource_uri": "template://makefile/rust/cli-binary",
+                "resource_uri": "template://makefile/rust/cli",
                 "parameters": {
                     "project_name": "test-project",
                     "has_tests": true,
@@ -186,7 +186,7 @@ async fn test_handle_call_tool_missing_parameters() {
         Some(json!({
             "name": "generate_template",
             "arguments": {
-                "resource_uri": "template://makefile/rust/cli-binary"
+                "resource_uri": "template://makefile/rust/cli"
                 // Missing parameters
             }
         })),

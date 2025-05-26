@@ -184,7 +184,7 @@ mod cli_integration_tests {
             "paiml-mcp-agent-toolkit",
             "generate",
             "makefile",
-            "rust/cli-binary",
+            "rust/cli",
             "-p",
             "project_name=test-project",
             "-p",
@@ -316,7 +316,7 @@ mod cli_output_tests {
         // Test table output formatting logic
         let templates = [
             Arc::new(TemplateResource {
-                uri: "template://makefile/rust/cli-binary".to_string(),
+                uri: "template://makefile/rust/cli".to_string(),
                 category: TemplateCategory::Makefile,
                 toolchain: Toolchain::RustCli {
                     cargo_features: vec![],
@@ -334,10 +334,10 @@ mod cli_output_tests {
                 content_hash: "hash123".to_string(),
                 semantic_version: Version::parse("1.0.0").unwrap(),
                 dependency_graph: vec![],
-                s3_object_key: "templates/makefile/rust/cli-binary.hbs".to_string(),
+                s3_object_key: "templates/makefile/rust/cli.hbs".to_string(),
             }),
             Arc::new(TemplateResource {
-                uri: "template://readme/deno/cli-application".to_string(),
+                uri: "template://readme/deno/cli".to_string(),
                 category: TemplateCategory::Readme,
                 toolchain: Toolchain::DenoTypescript {
                     deno_version: "1.40.0".to_string(),
@@ -348,7 +348,7 @@ mod cli_output_tests {
                 content_hash: "hash456".to_string(),
                 semantic_version: Version::parse("1.0.0").unwrap(),
                 dependency_graph: vec![],
-                s3_object_key: "templates/readme/deno/cli-application.hbs".to_string(),
+                s3_object_key: "templates/readme/deno/cli.hbs".to_string(),
             }),
         ];
 
@@ -357,14 +357,14 @@ mod cli_output_tests {
 
         assert_eq!(
             expected_width,
-            "template://readme/deno/cli-application".len()
+            28 // Length of "template://makefile/rust/cli" which is the longest
         );
     }
 
     #[test]
     fn test_json_output_format() {
         let template = TemplateResource {
-            uri: "template://makefile/rust/cli-binary".to_string(),
+            uri: "template://makefile/rust/cli".to_string(),
             category: TemplateCategory::Makefile,
             toolchain: Toolchain::RustCli {
                 cargo_features: vec![],
@@ -379,7 +379,7 @@ mod cli_output_tests {
         };
 
         let json = serde_json::to_string_pretty(&template).unwrap();
-        assert!(json.contains("\"uri\": \"template://makefile/rust/cli-binary\""));
+        assert!(json.contains("\"uri\": \"template://makefile/rust/cli\""));
         assert!(json.contains("\"category\": \"makefile\""));
         assert!(json.contains("\"type\": \"rust\""));
     }
@@ -387,7 +387,7 @@ mod cli_output_tests {
     #[test]
     fn test_yaml_output_format() {
         let template = TemplateResource {
-            uri: "template://makefile/rust/cli-binary".to_string(),
+            uri: "template://makefile/rust/cli".to_string(),
             category: TemplateCategory::Makefile,
             toolchain: Toolchain::RustCli {
                 cargo_features: vec![],
@@ -402,7 +402,7 @@ mod cli_output_tests {
         };
 
         let yaml = serde_yaml::to_string(&template).unwrap();
-        assert!(yaml.contains("uri: template://makefile/rust/cli-binary"));
+        assert!(yaml.contains("uri: template://makefile/rust/cli"));
         assert!(yaml.contains("category: makefile"));
         assert!(yaml.contains("type: rust"));
     }
@@ -499,9 +499,9 @@ mod cli_mode_detection_tests {
     fn test_template_uri_patterns() {
         // Test valid template URI patterns
         let valid_uris = [
-            "template://makefile/rust/cli-binary",
-            "template://readme/deno/cli-application",
-            "template://gitignore/python-uv/cli-application",
+            "template://makefile/rust/cli",
+            "template://readme/deno/cli",
+            "template://gitignore/python-uv/cli",
         ];
 
         for uri in valid_uris {

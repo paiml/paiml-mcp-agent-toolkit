@@ -96,7 +96,7 @@ async fn test_claude_code_rust_cli_workflow() {
     let request = create_tool_request(
         "generate_template",
         json!({
-            "resource_uri": "template://makefile/rust/cli-binary",
+            "resource_uri": "template://makefile/rust/cli",
             "parameters": {
                 "project_name": "my-rust-cli"
             }
@@ -227,7 +227,7 @@ async fn test_claude_code_error_scenarios() {
     let request = create_tool_request(
         "generate_template",
         json!({
-            "resource_uri": "template://readme/rust/cli-binary", // Wrong variant
+            "resource_uri": "template://readme/rust/invalid-variant", // Wrong variant
             "parameters": {
                 "project_name": "test-project"
             }
@@ -242,7 +242,7 @@ async fn test_claude_code_error_scenarios() {
     let request = create_tool_request(
         "generate_template",
         json!({
-            "resource_uri": "template://makefile/rust/cli-binary",
+            "resource_uri": "template://makefile/rust/cli",
             "parameters": {} // Missing project_name
         }),
     );
@@ -291,7 +291,7 @@ async fn test_claude_code_search_templates() {
     assert_eq!(templates.len(), 1); // Only Rust README
     assert_eq!(
         templates[0]["uri"].as_str().unwrap(),
-        "template://readme/rust/cli-application"
+        "template://readme/rust/cli"
     );
 }
 
@@ -393,15 +393,15 @@ async fn test_naming_convention_in_individual_templates() {
 
     // Test individual template generation for naming compliance
     let template_uris = vec![
-        "template://makefile/rust/cli-binary",
-        "template://makefile/deno/cli-application",
-        "template://makefile/python-uv/cli-application",
-        "template://readme/rust/cli-application",
-        "template://readme/deno/cli-application",
-        "template://readme/python-uv/cli-application",
-        "template://gitignore/rust/cli-application",
-        "template://gitignore/deno/cli-application",
-        "template://gitignore/python-uv/cli-application",
+        "template://makefile/rust/cli",
+        "template://makefile/deno/cli",
+        "template://makefile/python-uv/cli",
+        "template://readme/rust/cli",
+        "template://readme/deno/cli",
+        "template://readme/python-uv/cli",
+        "template://gitignore/rust/cli",
+        "template://gitignore/deno/cli",
+        "template://gitignore/python-uv/cli",
     ];
 
     for uri in template_uris {

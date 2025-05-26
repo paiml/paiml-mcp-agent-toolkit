@@ -1,14 +1,14 @@
 {
-  "uri": "template://makefile/deno/cli-application",
+  "uri": "template://makefile/deno/cli",
   "name": "Deno TypeScript CLI Application Makefile",
   "description": "Makefile for Deno TypeScript CLI applications",
   "template_engine": "handlebars",
   "template_version": "1.0.0",
   "category": "makefile",
   "toolchain": "deno",
-  "variant": "cli-application",
+  "variant": "cli",
   "tags": ["deno", "typescript", "cli", "makefile", "build"],
-  "s3_object_key": "templates/makefile/deno/cli-application.hbs",
+  "s3_object_key": "templates/makefile/deno/cli.hbs",
   "parameters": [
     {
       "name": "project_name",

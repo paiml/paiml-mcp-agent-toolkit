@@ -120,7 +120,7 @@ async fn test_validate_template_valid() {
         Some(json!({
             "name": "validate_template",
             "arguments": {
-                "resource_uri": "template://makefile/rust/cli-binary",
+                "resource_uri": "template://makefile/rust/cli",
                 "parameters": {
                     "project_name": "test-project",
                     "has_tests": true
@@ -148,7 +148,7 @@ async fn test_validate_template_missing_required() {
         Some(json!({
             "name": "validate_template",
             "arguments": {
-                "resource_uri": "template://makefile/rust/cli-binary",
+                "resource_uri": "template://makefile/rust/cli",
                 "parameters": {
                     "has_tests": true
                     // Missing project_name
@@ -176,7 +176,7 @@ async fn test_validate_template_unknown_parameter() {
         Some(json!({
             "name": "validate_template",
             "arguments": {
-                "resource_uri": "template://makefile/rust/cli-binary",
+                "resource_uri": "template://makefile/rust/cli",
                 "parameters": {
                     "project_name": "test",
                     "unknown_param": "value"

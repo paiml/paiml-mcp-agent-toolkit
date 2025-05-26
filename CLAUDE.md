@@ -80,28 +80,28 @@ cd client && cargo test
 
 The system uses URIs following this pattern:
 ```
-template://makefile/{toolchain}/{variant}
-template://readme/{toolchain}/{project_type}
-template://gitignore/{toolchain}/{deployment_target}
+template://makefile/{toolchain}/cli
+template://readme/{toolchain}/cli
+template://gitignore/{toolchain}/cli
 ```
 
 Example URIs:
-- `template://makefile/rust/cli-binary`
-- `template://makefile/deno/web-service`
-- `template://makefile/python-uv/cli-application`
+- `template://makefile/rust/cli`
+- `template://makefile/deno/cli`
+- `template://makefile/python-uv/cli`
 
 ## Supported Toolchains
 
 1. **Rust CLI** (cargo + clippy + rustfmt)
-   - Variants: cli-binary, library-crate
+   - Variant: cli
    - Target architectures: x86_64-unknown-linux-gnu
 
 2. **Deno/TypeScript CLI** (deno native tooling)
-   - Variants: cli-application, web-service
+   - Variant: cli
    - Permissions model integrated
 
 3. **Python UV CLI** (uv + ruff + mypy)
-   - Variants: cli-application, library-package
+   - Variant: cli
    - Python 3.12+ optimized
 
 ## Performance Targets
@@ -143,7 +143,7 @@ When users ask about generating project files (Makefile, README, .gitignore), yo
    ```typescript
    // When user asks for a Makefile
    await mcp.call("generate_template", {
-     resource_uri: "template://makefile/rust/cli-binary",
+     resource_uri: "template://makefile/rust/cli",
      parameters: {
        project_name: "detected_from_cargo_toml",
        has_tests: true,

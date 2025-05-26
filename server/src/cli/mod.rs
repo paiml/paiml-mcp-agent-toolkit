@@ -38,7 +38,7 @@ enum Commands {
         /// Template category
         category: String,
 
-        /// Template path (e.g., rust/cli-binary)
+        /// Template path (e.g., rust/cli)
         template: String,
 
         /// Parameters as key=value pairs

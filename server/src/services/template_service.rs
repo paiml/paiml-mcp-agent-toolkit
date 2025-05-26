@@ -251,25 +251,8 @@ pub async fn scaffold_project<T: TemplateServerTrait>(
     // Generate each requested template
     for template_type in &templates {
         let variant = match template_type.as_str() {
-            "makefile" => {
-                if toolchain == "rust" {
-                    "cli-binary"
-                } else if toolchain == "deno" || toolchain == "python-uv" {
-                    "cli-application"
-                } else {
-                    continue;
-                }
-            }
-            "readme" => {
-                if toolchain == "rust" || toolchain == "deno" || toolchain == "python-uv" {
-                    "cli-application"
-                } else {
-                    continue;
-                }
-            }
-            "gitignore" => match toolchain {
-                "rust" => "embedded-target",
-                "deno" | "python-uv" => "cli-application",
+            "makefile" | "readme" | "gitignore" => match toolchain {
+                "rust" | "deno" | "python-uv" => "cli",
                 _ => continue,
             },
             _ => continue,
