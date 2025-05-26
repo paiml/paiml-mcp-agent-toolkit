@@ -75,6 +75,9 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@cargo-audit
+      
       - name: Run security audit via Makefile
         run: |
           cd server

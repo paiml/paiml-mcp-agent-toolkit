@@ -39,7 +39,7 @@ jobs:
       - name: Build release binary
         run: |
           cd server
-          cargo build --release --bin mcp_server_stateless
+          cargo build --release --bin paiml-mcp-agent-toolkit
       
       - name: Run benchmarks
         run: |
@@ -56,7 +56,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           hyperfine --warmup 3 \
             --export-markdown startup.md \
-            './target/release/mcp_server_stateless < test_input.json' \
+            './target/release/paiml-mcp-agent-toolkit < test_input.json' \
             || true
           cat startup.md >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
@@ -64,7 +64,7 @@ jobs:
           # Benchmark memory usage
           echo "### Memory Usage" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          /usr/bin/time -v ./target/release/mcp_server_stateless < test_input.json 2>&1 | grep -E "Maximum resident set size" >> $GITHUB_STEP_SUMMARY || true
+          /usr/bin/time -v ./target/release/paiml-mcp-agent-toolkit < test_input.json 2>&1 | grep -E "Maximum resident set size" >> $GITHUB_STEP_SUMMARY || true
           echo '```' >> $GITHUB_STEP_SUMMARY
       
       - name: Run cargo bench
