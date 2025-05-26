@@ -15,9 +15,7 @@ MCP Agent Toolkit is a production-grade MCP (Model Context Protocol) template se
 **Server Component**: Stateless Rust binary with embedded templates
 - Standalone Rust binary with all templates compiled in
 - Zero runtime dependencies - no database or cloud storage needed
-- Docker container support for easy deployment
 - JSON-RPC 2.0 compliant MCP protocol implementation
-- Optional AWS Lambda deployment for serverless use cases
 
 **Client Component**: Claude Code integration via STDIO MCP transport
 - Project analysis engine with parallel file system scanning
@@ -36,38 +34,22 @@ MCP Agent Toolkit is a production-grade MCP (Model Context Protocol) template se
 
 Example: Test scripts, build automation, and utility scripts should be written in TypeScript and executed with Deno.
 
-## Dual-Mode Server Architecture
+## Server Architecture
 
-The server supports two modes for maximum flexibility:
+The server is designed as a stateless MCP server:
 
-The server is designed as a stateless MCP server that can be deployed in multiple ways:
-
-1. **Standalone Binary** - Single executable with embedded templates
-   - No runtime dependencies
-   - Fast startup and execution
-   - Easy distribution
-
-2. **Docker Container** - Containerized for consistent deployment
-   - Pre-built images available
-   - Works with any container orchestrator
-   - Isolated runtime environment
-
-3. **AWS Lambda** (Optional) - Serverless deployment
-   - Pay-per-use pricing model
-   - Auto-scaling capabilities
-   - Integrated with API Gateway
-
-All deployment modes use the same core code and embedded templates, ensuring consistent behavior across environments.
+**Standalone Binary** - Single executable with embedded templates
+- No runtime dependencies
+- Fast startup and execution
+- Easy distribution
+- All templates compiled into the binary
 
 ## Common Commands
 
 ### Server Development
 ```bash
 # Build options
-cd server && make build          # Build binary + Docker image
-cd server && make build-binary   # Build standalone binary only
-cd server && make build-docker   # Build Docker image only
-cd server && make build-lambda   # Build AWS Lambda (optional)
+cd server && make build          # Build binary
 
 # Running locally
 cd server && make run-mcp        # Run MCP server (STDIO mode)
@@ -78,9 +60,8 @@ cd server && make test           # Run tests with coverage
 cd server && make lint           # Lint Rust and TypeScript code
 cd server && make test-mcp       # Test MCP STDIO protocol
 
-# Deployment
-docker run -i hashicorp/mcp-template-server  # Run via Docker
-cd server && make deploy-lambda  # Deploy to AWS Lambda (optional)
+# Run the binary directly
+./target/release/paiml-mcp-agent-toolkit
 ```
 
 ### Client Development (Rust CLI)
@@ -136,8 +117,7 @@ Example URIs:
 2. ~~Build template rendering engine with Handlebars~~
 3. Create client-side project analysis engine
 4. ~~Implement MCP STDIO transport layer~~
-5. ~~Add Docker container support~~
-6. Deploy MVP with three template types per toolchain
+5. Deploy MVP with three template types per toolchain
 
 ## Using MCP Agent Toolkit for Project Scaffolding
 

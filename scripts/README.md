@@ -4,22 +4,52 @@ This directory contains utility scripts for the MCP Agent Toolkit project.
 
 ## Available Scripts
 
-### mcp-reinstall.ts
-A comprehensive reinstall script for the MCP server that provides idempotent uninstall and reinstall functionality.
+### mcp-install.ts / mcp-reinstall.ts / mcp-install-deterministic.ts
+Installation and management scripts for the MCP server that provide smart rebuild detection and idempotent installation.
 
 **Usage:**
 ```bash
-./scripts/mcp-reinstall.ts              # Full uninstall and reinstall
-./scripts/mcp-reinstall.ts --uninstall  # Uninstall only  
-./scripts/mcp-reinstall.ts --install    # Install only
-./scripts/mcp-reinstall.ts --status     # Check installation status
-./scripts/mcp-reinstall.ts --help       # Show help
+./scripts/mcp-install.ts              # Smart install (rebuilds only if source changed)
+./scripts/mcp-install.ts --status     # Check installation and build status
+./scripts/mcp-install.ts --check      # Check if rebuild is needed
+./scripts/mcp-install.ts --reinstall  # Force complete reinstall
+./scripts/mcp-install.ts --help       # Show help
 ```
 
 **Note:** The standard `make install` command is now idempotent and will automatically remove any existing installation before installing the new version.
 
+### validate-docs.ts
+Validates documentation consistency and naming conventions across the project.
+
+**Usage:**
+```bash
+./scripts/validate-docs.ts  # Run validation
+# Or via make:
+make validate-docs
+```
+
+### validate-github-actions-status.ts
+Checks the status of GitHub Actions workflows and provides detailed failure analysis.
+
+**Usage:**
+```bash
+./scripts/validate-github-actions-status.ts  # Check CI status
+# Or via make:
+make ci-status
+
+# With GitHub token for higher rate limits:
+GITHUB_TOKEN=your_token make ci-status
+```
+
+**Features:**
+- Shows latest workflow run status for each workflow
+- Provides detailed failure analysis for failed jobs
+- Lists specific steps that failed
+- Offers common fixes for typical failures
+- Exits with non-zero code if any workflows are failing
+
 ### docker-setup.ts
-Docker installation and permission management script.
+Docker installation and permission management script (Docker is optional for this project).
 
 **Usage:**
 ```bash

@@ -2,7 +2,7 @@
 # Pragmatic AI Labs
 # https://paiml.com
 
-.PHONY: all validate format lint check test build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts fix validate-docs
+.PHONY: all validate format lint check test build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts fix validate-docs ci-status validate-naming
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -143,6 +143,16 @@ validate-docs:
 	@echo "📖 Validating documentation naming consistency..."
 	@deno run --allow-read --allow-env $(SCRIPTS_DIR)/validate-docs.ts
 
+# Check GitHub Actions CI status
+ci-status:
+	@echo "🔍 Checking GitHub Actions CI status..."
+	@$(SCRIPTS_DIR)/validate-github-actions-status.ts
+
+# Validate all naming conventions across the project
+validate-naming:
+	@echo "🔍 Validating naming conventions..."
+	@$(SCRIPTS_DIR)/validate-naming.ts
+
 # Install MCP server
 install:
 	@echo "🚀 Installing MCP Agent Toolkit..."
@@ -250,6 +260,8 @@ help:
 	@echo "  check        - Type check all projects"
 	@echo "  test         - Run tests in all projects"
 	@echo "  validate-docs - Check documentation naming consistency"
+	@echo "  validate-naming - Validate naming conventions across the project"
+	@echo "  ci-status    - Check GitHub Actions workflow status"
 	@echo "  build        - Build all projects (binaries only)"
 	@echo "  clean        - Clean all build artifacts"
 	@echo ""
