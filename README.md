@@ -10,6 +10,8 @@
 
 The PAIML MCP Agent Toolkit is a stateless Model Context Protocol (MCP) server created by [Pragmatic AI Labs](https://paiml.com) that provides intelligent project scaffolding through Claude Code and other MCP-compatible clients. It generates production-ready Makefiles, README files, and .gitignore configurations optimized for Rust, Deno, and Python development.
 
+![PAIML MCP Agent Toolkit Demo](assets/demo.gif)
+
 ## 🚀 Quick Start
 
 ### For Claude Code Users
