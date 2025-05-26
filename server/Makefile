@@ -80,6 +80,11 @@ test:
 		echo "Ensure all references use 'paiml-mcp-agent-toolkit' consistently."; \
 		exit 1; \
 	}
+	@if [ -f "./scripts/test-installation.ts" ] && command -v deno >/dev/null 2>&1; then \
+		echo ""; \
+		echo "🧪 Running installation validation tests..."; \
+		./scripts/test-installation.ts || exit 1; \
+	fi
 
 # Generate detailed coverage report in plain text
 coverage:
@@ -133,6 +138,11 @@ run-mcp:
 # Run MCP server in test mode (stateless server doesn't need TEST_MODE)
 run-mcp-test:
 	cargo run --bin paiml-mcp-agent-toolkit
+
+# Test installation process
+test-install:
+	@echo "🧪 Testing installation process..."
+	@deno run --allow-all scripts/test-installation.ts
 
 
 # Clean build artifacts

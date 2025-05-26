@@ -43,3 +43,127 @@ pub fn render_template(
             message: e.to_string(),
         })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_template_renderer_new() {
+        let renderer = TemplateRenderer::new();
+        assert!(renderer.is_ok());
+    }
+
+    #[test]
+    fn test_render_template_simple() {
+        let renderer = TemplateRenderer::new().unwrap();
+        let template = "Hello, {{name}}!";
+        let mut context = serde_json::Map::new();
+        context.insert("name".to_string(), Value::String("World".to_string()));
+
+        let result = render_template(&renderer, template, context);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Hello, World!");
+    }
+
+    #[test]
+    fn test_render_template_with_current_timestamp() {
+        let renderer = TemplateRenderer::new().unwrap();
+        let template = "Generated at: {{current_timestamp}}";
+        let context = serde_json::Map::new();
+
+        let result = render_template(&renderer, template, context);
+        assert!(result.is_ok());
+
+        let output = result.unwrap();
+        assert!(output.starts_with("Generated at: 20"));
+        // RFC3339 format check
+        assert!(output.contains("T") || output.contains(" "));
+        assert!(output.len() > 20); // Should have a full timestamp
+    }
+
+    #[test]
+    fn test_render_template_with_helpers() {
+        let renderer = TemplateRenderer::new().unwrap();
+        let template = "Project: {{pascal_case project_name}}";
+
+        let mut context = serde_json::Map::new();
+        context.insert(
+            "project_name".to_string(),
+            Value::String("my test project".to_string()),
+        );
+
+        let result = render_template(&renderer, template, context);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Project: MyTestProject");
+    }
+
+    #[test]
+    fn test_render_template_missing_variable() {
+        let renderer = TemplateRenderer::new().unwrap();
+        let template = "Hello, {{name}}! Your age is {{age}}.";
+        let mut context = serde_json::Map::new();
+        context.insert("name".to_string(), Value::String("Alice".to_string()));
+
+        // In non-strict mode, missing variables render as empty
+        let result = render_template(&renderer, template, context);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Hello, Alice! Your age is .");
+    }
+
+    #[test]
+    fn test_render_template_error() {
+        let renderer = TemplateRenderer::new().unwrap();
+        let template = "{{#if}}Missing condition{{/if}}"; // Invalid template
+        let context = serde_json::Map::new();
+
+        let result = render_template(&renderer, template, context);
+        assert!(result.is_err());
+
+        match result.unwrap_err() {
+            TemplateError::RenderError { line: _, message } => {
+                assert!(message.contains("if") || message.contains("param"));
+                // Line number can vary based on handlebars version
+            }
+            _ => panic!("Expected RenderError"),
+        }
+    }
+
+    #[test]
+    fn test_render_template_with_conditionals() {
+        let renderer = TemplateRenderer::new().unwrap();
+        let template = "{{#if enabled}}Feature is enabled{{else}}Feature is disabled{{/if}}";
+
+        let mut context = serde_json::Map::new();
+        context.insert("enabled".to_string(), Value::Bool(true));
+
+        let result = render_template(&renderer, template, context.clone());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Feature is enabled");
+
+        context.insert("enabled".to_string(), Value::Bool(false));
+        let result = render_template(&renderer, template, context);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Feature is disabled");
+    }
+
+    #[test]
+    fn test_render_template_preserves_original_context() {
+        let renderer = TemplateRenderer::new().unwrap();
+        let template = "Value: {{value}}, Timestamp: {{current_timestamp}}";
+
+        let mut context = serde_json::Map::new();
+        context.insert("value".to_string(), Value::String("test".to_string()));
+        context.insert(
+            "current_timestamp".to_string(),
+            Value::String("should-be-overwritten".to_string()),
+        );
+
+        let result = render_template(&renderer, template, context);
+        assert!(result.is_ok());
+
+        let output = result.unwrap();
+        assert!(output.contains("Value: test"));
+        assert!(!output.contains("should-be-overwritten"));
+    }
+}
