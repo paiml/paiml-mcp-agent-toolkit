@@ -153,6 +153,7 @@ fn convert_to_template_resource(
                 TemplateCategory::Makefile => "makefile",
                 TemplateCategory::Readme => "readme",
                 TemplateCategory::Gitignore => "gitignore",
+                TemplateCategory::Context => "context",
             },
             toolchain.as_str(),
             variant

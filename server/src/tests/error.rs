@@ -73,9 +73,7 @@ fn test_s3_error() {
 
 #[test]
 fn test_invalid_utf8_error() {
-    let invalid_bytes = vec![0xff, 0xfe, 0xfd];
-    let utf8_error = String::from_utf8(invalid_bytes).unwrap_err();
-    let error = TemplateError::InvalidUtf8(utf8_error);
+    let error = TemplateError::InvalidUtf8("Invalid UTF-8 sequence".to_string());
 
     assert!(error.to_string().contains("Invalid UTF-8"));
     assert_eq!(error.to_mcp_code(), -32000); // Generic error code

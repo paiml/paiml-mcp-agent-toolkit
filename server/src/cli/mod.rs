@@ -110,6 +110,30 @@ enum Commands {
         #[arg(short = 'p', long = "param", value_parser = parse_key_val)]
         params: Vec<(String, Value)>,
     },
+
+    /// Generate project context (AST analysis)
+    Context {
+        /// Target toolchain (rust, deno, python-uv)
+        toolchain: String,
+
+        /// Project path to analyze
+        #[arg(short = 'p', long, default_value = ".")]
+        project_path: PathBuf,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "markdown")]
+        format: ContextFormat,
+    },
+}
+
+#[derive(Clone, ValueEnum)]
+enum ContextFormat {
+    Markdown,
+    Json,
 }
 
 #[derive(Clone, ValueEnum)]
@@ -248,6 +272,32 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
                     eprintln!("  - {}: {}", error.field, error.message);
                 }
                 std::process::exit(1);
+            }
+        }
+
+        Commands::Context {
+            toolchain,
+            project_path,
+            output,
+            format,
+        } => {
+            use crate::services::context::{analyze_project, format_context_as_markdown};
+
+            // Analyze the project
+            let context = analyze_project(&project_path, &toolchain).await?;
+
+            // Format the output
+            let content = match format {
+                ContextFormat::Markdown => format_context_as_markdown(&context),
+                ContextFormat::Json => serde_json::to_string_pretty(&context)?,
+            };
+
+            // Write output
+            if let Some(path) = output {
+                tokio::fs::write(&path, &content).await?;
+                eprintln!("✅ Context written to: {}", path.display());
+            } else {
+                println!("{}", content);
             }
         }
     }

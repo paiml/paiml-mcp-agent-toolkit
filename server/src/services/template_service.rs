@@ -1,9 +1,11 @@
 use crate::models::error::TemplateError;
 use crate::models::template::{GeneratedTemplate, TemplateResource};
+use crate::services::context::{analyze_project, format_context_as_markdown};
 use crate::services::renderer;
 use crate::TemplateServerTrait;
 use serde_json::Map;
 use sha2::{Digest, Sha256};
+use std::path::Path;
 use std::sync::Arc;
 
 pub async fn get_template_content<T: TemplateServerTrait>(
@@ -23,7 +25,12 @@ pub async fn generate_template<T: TemplateServerTrait>(
     parameters: Map<String, serde_json::Value>,
 ) -> Result<GeneratedTemplate, TemplateError> {
     // Parse and validate URI
-    let (category, _toolchain, _variant) = parse_template_uri(uri)?;
+    let (category, toolchain, _variant) = parse_template_uri(uri)?;
+
+    // Handle context generation separately
+    if category == "context" {
+        return generate_context(toolchain, parameters).await;
+    }
 
     // Get template metadata
     let metadata =
@@ -63,6 +70,53 @@ pub async fn generate_template<T: TemplateServerTrait>(
         filename: format!("{}/{}", project_name, extract_filename(category)),
         checksum,
         toolchain: metadata.toolchain.clone(),
+    })
+}
+
+async fn generate_context(
+    toolchain: &str,
+    parameters: Map<String, serde_json::Value>,
+) -> Result<GeneratedTemplate, TemplateError> {
+    // Get project path from parameters
+    let project_path = parameters
+        .get("project_path")
+        .and_then(|v| v.as_str())
+        .unwrap_or(".");
+
+    // Analyze the project
+    let context = analyze_project(Path::new(project_path), toolchain).await?;
+
+    // Format as markdown
+    let content = format_context_as_markdown(&context);
+
+    // Calculate checksum
+    let mut hasher = Sha256::new();
+    hasher.update(content.as_bytes());
+    let checksum = hex::encode(hasher.finalize());
+
+    // Create toolchain enum
+    let toolchain_enum = match toolchain {
+        "rust" => crate::models::template::Toolchain::RustCli {
+            cargo_features: vec![],
+        },
+        "deno" => crate::models::template::Toolchain::DenoTypescript {
+            deno_version: "1.46".to_string(),
+        },
+        "python-uv" => crate::models::template::Toolchain::PythonUv {
+            python_version: "3.12".to_string(),
+        },
+        _ => {
+            return Err(TemplateError::InvalidUri {
+                uri: format!("template://context/{}/ast", toolchain),
+            })
+        }
+    };
+
+    Ok(GeneratedTemplate {
+        content,
+        filename: "CONTEXT.md".to_string(),
+        checksum,
+        toolchain: toolchain_enum,
     })
 }
 

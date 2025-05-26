@@ -25,13 +25,16 @@ pub enum TemplateError {
     ValidationError { parameter: String, reason: String },
 
     #[error("Invalid UTF-8 in template content")]
-    InvalidUtf8(#[from] std::string::FromUtf8Error),
+    InvalidUtf8(String),
 
     #[error("Cache operation failed")]
     CacheError(#[from] anyhow::Error),
 
     #[error("JSON serialization error")]
     JsonError(#[from] serde_json::Error),
+
+    #[error("IO operation failed")]
+    Io(#[from] std::io::Error),
 }
 
 impl TemplateError {

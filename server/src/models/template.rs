@@ -50,6 +50,7 @@ pub enum TemplateCategory {
     Makefile,
     Readme,
     Gitignore,
+    Context,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

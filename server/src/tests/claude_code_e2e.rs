@@ -485,3 +485,162 @@ async fn test_server_info_naming_convention() {
         );
     }
 }
+
+#[tokio::test]
+async fn test_ast_context_generation() {
+    let server = create_test_server();
+
+    // Create a temporary directory with some Rust files for testing
+    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    // Create a simple Rust file with various AST elements
+    let test_file_content = r#"
+use std::collections::HashMap;
+
+pub mod utils {
+    pub fn helper() {}
+}
+
+#[derive(Debug, Clone)]
+pub struct TestStruct {
+    field1: String,
+    field2: i32,
+}
+
+pub enum TestEnum {
+    Variant1,
+    Variant2(String),
+}
+
+pub trait TestTrait {
+    fn method(&self);
+}
+
+impl TestTrait for TestStruct {
+    fn method(&self) {
+        println!("Implementation");
+    }
+}
+
+pub async fn async_function() -> Result<(), Box<dyn std::error::Error>> {
+    Ok(())
+}
+
+fn private_function() {
+    // Private function
+}
+"#;
+
+    // Write test file
+    std::fs::write(temp_path.join("test.rs"), test_file_content).unwrap();
+
+    // Create a Cargo.toml file
+    let cargo_toml = r#"
+[package]
+name = "test-project"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = "1.0"
+serde = "1.0"
+"#;
+    std::fs::write(temp_path.join("Cargo.toml"), cargo_toml).unwrap();
+
+    // Test AST context generation via MCP tool
+    let request = create_tool_request(
+        "generate_template",
+        json!({
+            "resource_uri": "template://context/rust/ast",
+            "parameters": {
+                "project_path": temp_path.to_str().unwrap()
+            }
+        }),
+    );
+
+    let response = handle_tool_call(server.clone(), request).await;
+    assert!(response.result.is_some());
+    assert!(response.error.is_none());
+
+    let result = response.result.unwrap();
+    let content = result["content"][0]["text"].as_str().unwrap();
+
+    // Debug output to see what's actually generated
+    eprintln!("Generated content:\n{}", content);
+
+    // Verify the content contains expected elements
+    assert!(content.contains("# Project Context: rust Project"));
+    assert!(content.contains("## Summary"));
+    assert!(content.contains("Files analyzed: 1"));
+    // Note: Our simple AST parser counts functions at top level, not inside modules
+    assert!(content.contains("Functions: 2")); // async_function, private_function (helper is inside a module)
+    assert!(content.contains("Structs: 1")); // TestStruct
+    assert!(content.contains("Enums: 1")); // TestEnum
+    assert!(content.contains("Traits: 1")); // TestTrait
+    assert!(content.contains("Implementations: 1")); // impl TestTrait for TestStruct
+
+    // Check dependencies section
+    assert!(content.contains("## Dependencies"));
+    assert!(content.contains("- tokio"));
+    assert!(content.contains("- serde"));
+
+    // Check file analysis section
+    assert!(content.contains("## Files"));
+    assert!(content.contains("test.rs"));
+
+    // Check specific AST items
+    assert!(content.contains("**Modules:**"));
+    assert!(content.contains("`pub mod utils`"));
+
+    assert!(content.contains("**Structs:**"));
+    assert!(content.contains("`pub struct TestStruct` (2 fields)"));
+
+    assert!(content.contains("**Enums:**"));
+    assert!(content.contains("`pub enum TestEnum` (2 variants)"));
+
+    assert!(content.contains("**Traits:**"));
+    assert!(content.contains("`pub trait TestTrait`"));
+
+    assert!(content.contains("**Functions:**"));
+    assert!(content.contains("`pub async fn async_function`"));
+    assert!(content.contains("`private fn private_function`"));
+
+    assert!(content.contains("**Implementations:**"));
+    assert!(content.contains("`impl TestTrait for TestStruct`"));
+
+    // Verify the generated filename
+    assert_eq!(result["filename"].as_str().unwrap(), "CONTEXT.md");
+
+    // Test with invalid toolchain
+    let request = create_tool_request(
+        "generate_template",
+        json!({
+            "resource_uri": "template://context/invalid/ast",
+            "parameters": {
+                "project_path": temp_path.to_str().unwrap()
+            }
+        }),
+    );
+
+    let response = handle_tool_call(server.clone(), request).await;
+    assert!(response.error.is_some());
+
+    // Test with non-existent path
+    let request = create_tool_request(
+        "generate_template",
+        json!({
+            "resource_uri": "template://context/rust/ast",
+            "parameters": {
+                "project_path": "/non/existent/path"
+            }
+        }),
+    );
+
+    let response = handle_tool_call(server.clone(), request).await;
+    assert!(response.result.is_some()); // Should still succeed but with 0 files analyzed
+
+    let result = response.result.unwrap();
+    let content = result["content"][0]["text"].as_str().unwrap();
+    assert!(content.contains("Files analyzed: 0"));
+}
