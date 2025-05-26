@@ -28,7 +28,8 @@ jobs:
           cd server
           coverage=$(cargo llvm-cov report --summary-only | grep "Total" | awk '{print $10}' | sed 's/%//')
           echo "Current coverage: $coverage%"
-          if (( $(echo "$coverage < 70" | bc -l) )); then
+          # Use awk for floating point comparison instead of bc
+          if awk "BEGIN {exit !($coverage < 70)}"; then
             echo "Coverage is below 70% threshold"
             exit 1
           fi
@@ -65,10 +66,20 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       
+      - name: Cache complexity tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-tools-${{ hashFiles('**/Cargo.lock') }}
+      
       - name: Install complexity tools
         run: |
-          cargo install tokei
-          cargo install cargo-geiger
+          if ! command -v tokei &> /dev/null; then
+            cargo install tokei
+          fi
+          if ! command -v cargo-geiger &> /dev/null; then
+            cargo install cargo-geiger
+          fi
       
       - name: Count lines of code
         run: |

@@ -655,21 +655,43 @@ make test-mcp       # Run E2E MCP tests
 
 ### Development Commands
 
+All development commands can be run from the project root directory:
+
 ```bash
-# Run MCP server locally
-make run-mcp
+# Core development workflow
+make format      # Format all code (Rust + TypeScript)
+make lint        # Run linters (clippy + deno lint)
+make test        # Run all tests with coverage
+make build       # Build all projects
 
-# Run with test templates
-make run-mcp-test
+# Quality checks
+make validate    # Run all validation checks
+make coverage    # Generate detailed coverage reports
+make audit       # Run security audit
+make ci-status   # Check GitHub Actions status
 
-# Check code quality
-make lint
+# Documentation
+make docs        # Generate and open documentation
+make context     # Generate project analysis (AST, structure)
 
-# Format code
-make format
+# Running the server
+make run-mcp     # Run MCP server in STDIO mode
+make run-mcp-test # Run MCP server in test mode
 
-# Run benchmarks
+# Installation
+make install     # Install MCP server (builds first)
+make install-latest # Smart install (only if changed)
+make uninstall   # Remove MCP server
+
+# Project-specific commands
+make server-help # Show all server commands
+make server-*    # Run any server Makefile target
+
+# Run benchmarks  
 make bench
+
+# Check CI/GitHub Actions status
+make ci-status
 ```
 
 ## API Reference

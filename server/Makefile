@@ -1,6 +1,6 @@
 
 # MCP Template Server - Build and Deployment Makefile
-.PHONY: all validate format lint check test coverage build build-binary run run-test test-http test-mcp test-integration run-mcp run-mcp-test clean install install-latest reinstall status check-rebuild uninstall setup audit docs help validate-docs
+.PHONY: all validate format lint check test coverage build build-binary run run-test test-http test-mcp test-integration run-mcp run-mcp-test clean install install-latest reinstall status check-rebuild uninstall setup audit docs help validate-docs ci-status
 
 # Default target: executes complete build pipeline
 all: format lint check test build validate
@@ -59,7 +59,8 @@ test:
 	@cargo build --bin paiml-mcp-agent-toolkit
 	@if command -v cargo-llvm-cov >/dev/null 2>&1; then \
 		echo "Running tests with coverage (excluding integration tests)..."; \
-		cargo llvm-cov --summary-only -- --skip mcp_stdio_test; \
+		cargo llvm-cov --all-features --workspace --html --output-dir coverage -- --skip mcp_stdio_test; \
+		cargo llvm-cov report --summary-only; \
 	else \
 		echo "Running tests (excluding integration tests)..."; \
 		cargo test -- --skip mcp_stdio_test; \
@@ -292,11 +293,20 @@ audit:
 # Validate documentation naming consistency
 validate-docs:
 	@echo "📖 Validating documentation naming consistency..."
-	@cd .. && deno run --allow-read --allow-env scripts/validate-docs.ts
+	@if [ -f "../scripts/validate-docs.ts" ]; then \
+		cd .. && deno run --allow-read --allow-env scripts/validate-docs.ts; \
+	else \
+		echo "⚠️  Validation script not found, skipping..."; \
+	fi
 
 # Generate documentation
 docs:
 	cargo doc --no-deps --open
+
+# Check CI status (GitHub Actions)
+ci-status:
+	@echo "🔍 Checking CI status..."
+	@cd .. && deno run --allow-net --allow-env scripts/validate-github-actions-status.ts
 
 # Help command
 help:
@@ -339,6 +349,7 @@ help:
 	@echo "  setup    - Install required development tools"
 	@echo "  audit    - Run security audit"
 	@echo "  docs     - Generate and open documentation"
+	@echo "  ci-status - Check CI/GitHub Actions workflow status"
 	@echo "  help     - Show this help message"
 
 # Install latest (check for changes and rebuild if needed)

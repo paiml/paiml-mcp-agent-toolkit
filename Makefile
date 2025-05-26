@@ -2,7 +2,7 @@
 # Pragmatic AI Labs
 # https://paiml.com
 
-.PHONY: all validate format lint check test build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts fix validate-docs ci-status validate-naming context
+.PHONY: all validate format lint check test coverage build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -72,6 +72,40 @@ test:
 			echo "⚠️  Skipping $$project (no Makefile found)"; \
 		fi \
 	done
+
+# Generate coverage reports for all projects
+coverage:
+	@for project in $(PROJECTS); do \
+		if [ -d "$$project" ] && [ -f "$$project/Makefile" ]; then \
+			echo "📊 Coverage report for $$project..."; \
+			$(MAKE) -C $$project coverage; \
+		else \
+			echo "⚠️  Skipping $$project (no Makefile found)"; \
+		fi \
+	done
+
+# Run security audit on all projects
+audit:
+	@for project in $(PROJECTS); do \
+		if [ -d "$$project" ] && [ -f "$$project/Makefile" ]; then \
+			echo "🔒 Security audit for $$project..."; \
+			$(MAKE) -C $$project audit; \
+		else \
+			echo "⚠️  Skipping $$project (no Makefile found)"; \
+		fi \
+	done
+
+# Generate documentation
+docs:
+	@$(MAKE) -C server docs
+
+# Run MCP server
+run-mcp:
+	@$(MAKE) -C server run-mcp
+
+# Run MCP server in test mode
+run-mcp-test:
+	@$(MAKE) -C server run-mcp-test
 
 
 
@@ -266,12 +300,19 @@ help:
 	@echo "  lint         - Run linters in all projects (checks only)"
 	@echo "  check        - Type check all projects"
 	@echo "  test         - Run tests in all projects"
+	@echo "  coverage     - Generate coverage reports for all projects"
+	@echo "  audit        - Run security audit on all projects"
+	@echo "  docs         - Generate and open documentation"
 	@echo "  validate-docs - Check documentation naming consistency"
 	@echo "  validate-naming - Validate naming conventions across the project"
 	@echo "  ci-status    - Check GitHub Actions workflow status"
 	@echo "  context      - Generate deep context analysis (AST, tree, docs)"
 	@echo "  build        - Build all projects (binaries only)"
 	@echo "  clean        - Clean all build artifacts"
+	@echo ""
+	@echo "Running:"
+	@echo "  run-mcp      - Run MCP server in STDIO mode"
+	@echo "  run-mcp-test - Run MCP server in test mode"
 	@echo ""
 	@echo "Installation:"
 	@echo "  install        - Install MCP server binary (always builds first)"
