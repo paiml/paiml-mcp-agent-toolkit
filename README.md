@@ -19,10 +19,10 @@ The PAIML MCP Agent Toolkit is a stateless Model Context Protocol (MCP) server c
 1. **Install the MCP server**:
 ```bash
 # Option A: Use pre-built binary (recommended)
-curl -L https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/mcp-server-$(uname -s | tr '[:upper:]' '[:lower:]')-amd64.tar.gz -o mcp-server.tar.gz
-tar xzf mcp-server.tar.gz
-chmod +x mcp_server_stateless
-sudo mv mcp_server_stateless /usr/local/bin/
+curl -L https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-$(uname -s | tr '[:upper:]' '[:lower:]')-amd64.tar.gz -o paiml-mcp-agent-toolkit.tar.gz
+tar xzf paiml-mcp-agent-toolkit.tar.gz
+chmod +x paiml-mcp-agent-toolkit
+sudo mv paiml-mcp-agent-toolkit /usr/local/bin/
 
 # Option B: Build from source
 git clone https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit.git
@@ -201,7 +201,7 @@ The PAIML MCP Agent Toolkit integrates seamlessly with Claude Code. Simply ask C
 echo '{"jsonrpc":"2.0","id":1,"method":"resources/list"}' | paiml-mcp-agent-toolkit
 
 # Filter by category
-echo '{"jsonrpc":"2.0","id":1,"method":"resources/list","params":{"category":"makefile"}}' | mcp-agent-toolkit
+echo '{"jsonrpc":"2.0","id":1,"method":"resources/list","params":{"category":"makefile"}}' | paiml-mcp-agent-toolkit
 ```
 
 #### Generate a Template
@@ -223,7 +223,7 @@ echo '{
       }
     }
   }
-}' | mcp-agent-toolkit
+}' | paiml-mcp-agent-toolkit
 ```
 
 ### Template Parameters
@@ -629,7 +629,7 @@ If you previously had the MCP server registered with a different path, you'll ne
 
 ```bash
 # Remove the old server (if it exists)
-claude mcp remove paiml-agent-toolkit 2>/dev/null || true
+claude mcp remove paiml-mcp-agent-toolkit 2>/dev/null || true
 
 # Add the new server with correct path
 claude mcp add paiml-toolkit ~/.local/bin/paiml-mcp-agent-toolkit

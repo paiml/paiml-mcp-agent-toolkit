@@ -2,7 +2,7 @@
 # Pragmatic AI Labs
 # https://paiml.com
 
-.PHONY: all validate format lint check test build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts fix
+.PHONY: all validate format lint check test build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts fix validate-docs
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -15,11 +15,12 @@ SCRIPTS_DIR = scripts
 all: format build
 
 # Validate everything passes across all projects
-validate: check lint test
+validate: check lint test validate-docs
 	@echo "✅ All projects validated! All checks passed:"
 	@echo "  ✓ Type checking (cargo check)"
 	@echo "  ✓ Linting (cargo clippy + deno lint)"
 	@echo "  ✓ Testing (cargo test)"
+	@echo "  ✓ Documentation naming consistency"
 	@echo "  ✓ Ready for build!"
 
 # Format code in all projects
@@ -74,7 +75,7 @@ test:
 
 
 # Build all projects (binaries only - no Docker)
-build:
+build: validate-docs
 	@build_success=true; \
 	for project in $(PROJECTS); do \
 		if [ -d "$$project" ] && [ -f "$$project/Makefile" ]; then \
@@ -136,6 +137,11 @@ check-scripts:
 	else \
 		echo "✓ No TypeScript scripts to check"; \
 	fi
+
+# Validate documentation naming consistency
+validate-docs:
+	@echo "📖 Validating documentation naming consistency..."
+	@deno run --allow-read --allow-env $(SCRIPTS_DIR)/validate-docs.ts
 
 # Install MCP server
 install:
@@ -221,7 +227,7 @@ quickstart: setup
 	@echo "   make server-run-mcp-test"
 	@echo ""
 	@echo "2. In another terminal, test with Claude Code:"
-	@echo "   claude mcp add /path/to/mcp-agent-toolkit/server"
+	@echo "   claude mcp add /path/to/paiml-mcp-agent-toolkit/server"
 	@echo ""
 	@echo "3. Generate templates:"
 	@echo "   Use /mcp in Claude Code to see available tools"
@@ -238,13 +244,14 @@ help:
 	@echo "  quickstart  - Setup and show quick start guide"
 	@echo ""
 	@echo "Development (all projects):"
-	@echo "  format      - Format code in all projects"
-	@echo "  fix         - Auto-fix all formatting issues (alias for format)"
-	@echo "  lint        - Run linters in all projects (checks only)"
-	@echo "  check       - Type check all projects"
-	@echo "  test        - Run tests in all projects"
-	@echo "  build       - Build all projects (binaries only)"
-	@echo "  clean       - Clean all build artifacts"
+	@echo "  format       - Format code in all projects"
+	@echo "  fix          - Auto-fix all formatting issues (alias for format)"
+	@echo "  lint         - Run linters in all projects (checks only)"
+	@echo "  check        - Type check all projects"
+	@echo "  test         - Run tests in all projects"
+	@echo "  validate-docs - Check documentation naming consistency"
+	@echo "  build        - Build all projects (binaries only)"
+	@echo "  clean        - Clean all build artifacts"
 	@echo ""
 	@echo "Installation:"
 	@echo "  install        - Install MCP server binary (always builds first)"

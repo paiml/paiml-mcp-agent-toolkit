@@ -6,7 +6,7 @@ rust-version = "1.87.0"
 authors = ["Pragmatic AI Labs"]
 description = "MCP server for project scaffolding and template generation"
 homepage = "https://paiml.com"
-repository = "https://github.com/pragmatic-ai-labs/mcp-agent-toolkit"
+repository = "https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit"
 
 [dependencies]
 # Lambda runtime (optional - for Lambda deployment)
@@ -65,4 +65,4 @@ opt-level = "z"  # Optimize for binary size in Lambda environment
 
 [[bin]]
 name = "paiml-mcp-agent-toolkit"
-path = "src/bin/mcp_server_stateless.rs"
+path = "src/bin/paiml-mcp-agent-toolkit.rs"
