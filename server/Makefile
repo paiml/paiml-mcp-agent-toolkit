@@ -1,6 +1,6 @@
 
 # MCP Template Server - Build and Deployment Makefile
-.PHONY: all validate format lint check test coverage build build-all build-binary build-docker run run-test test-http test-mcp test-integration run-mcp run-mcp-test deploy-lambda deploy-docker clean install install-latest reinstall status check-rebuild uninstall setup audit docs help validate-docs
+.PHONY: all validate format lint check test coverage build build-binary run run-test test-http test-mcp test-integration run-mcp run-mcp-test clean install install-latest reinstall status check-rebuild uninstall setup audit docs help validate-docs
 
 # Default target: executes complete build pipeline
 all: format lint check test build validate
@@ -55,6 +55,8 @@ check:
 # Run tests with coverage (like deno test --coverage)
 # Note: Excludes integration tests that spawn processes to prevent system freezes
 test:
+	@echo "🔨 Building debug binary for tests..."
+	@cargo build --bin paiml-mcp-agent-toolkit
 	@if command -v cargo-llvm-cov >/dev/null 2>&1; then \
 		echo "Running tests with coverage (excluding integration tests)..."; \
 		cargo llvm-cov --summary-only -- --skip mcp_stdio_test; \
@@ -89,68 +91,19 @@ coverage:
 		exit 1; \
 	fi
 
-# Build Lambda function with Cargo Lambda (optional)
-build-lambda:
-	cargo lambda build --release
 
 # Build standalone binary (stateless MCP server)
 build-binary:
 	cargo build --release --bin paiml-mcp-agent-toolkit
 
-# Build Docker image
-build-docker:
-	@if command -v docker >/dev/null 2>&1; then \
-		echo "🐳 Building Docker image..."; \
-		docker build -t mcp-template-server:latest . || { \
-			echo "⚠️  Docker build failed. This may be due to:"; \
-			echo "   - Docker daemon not running"; \
-			echo "   - Insufficient permissions (try 'sudo make build-docker' or fix with scripts/docker-setup.ts)"; \
-			echo "   - Network issues downloading base images"; \
-			echo ""; \
-			echo "The binary build completed successfully and can be used without Docker."; \
-			exit 1; \
-		}; \
-	else \
-		echo "⚠️  Docker is not installed. Skipping Docker build."; \
-		echo "   The binary has been built and can be used directly."; \
-		echo "   To build Docker images, install Docker: https://docs.docker.com/get-docker/"; \
-		exit 1; \
-	fi
 
 # Default build target: binary only (no Docker)
 build: validate-docs build-binary
 	@echo ""
 	@echo "✅ Binary built successfully!"
 	@echo "   Location: ./target/release/paiml-mcp-agent-toolkit"
-	@echo ""
-	@echo "📝 Note: Docker image NOT built by default."
-	@echo "   To build Docker image: make build-docker"
-	@echo "   To build everything: make build-all"
 
-# Build all artifacts (binary + Docker + Lambda)
-build-all: build-binary
-	@echo ""
-	@echo "🔨 Building all artifacts..."
-	@if command -v docker >/dev/null 2>&1; then \
-		$(MAKE) build-docker && echo "✅ Docker image built"; \
-	else \
-		echo "⚠️  Docker not installed - skipping Docker build"; \
-	fi
-	@if command -v cargo-lambda >/dev/null 2>&1; then \
-		$(MAKE) build-lambda && echo "✅ Lambda function built"; \
-	else \
-		echo "⚠️  cargo-lambda not installed - skipping Lambda build"; \
-	fi
-	@echo ""
-	@echo "✅ All available artifacts built successfully!"
 
-# Run locally with Cargo Lambda (watches for changes)
-run:
-	cargo lambda watch
-
-# Run Lambda locally (stateless - no test mode needed)
-run-test:
-	cargo lambda watch
 
 # Run HTTP tests against local server
 test-http:
@@ -181,19 +134,6 @@ run-mcp:
 run-mcp-test:
 	cargo run --bin paiml-mcp-agent-toolkit
 
-# Deploy to AWS Lambda (optional)
-deploy-lambda: build-lambda
-	cargo lambda deploy
-
-# Push Docker image to registry
-deploy-docker: build-docker
-	@echo "To push to a registry:"
-	@echo "  docker tag mcp-template-server:latest <registry>/mcp-template-server:latest"
-	@echo "  docker push <registry>/mcp-template-server:latest"
-
-# Invoke function locally with test payload
-invoke:
-	cargo lambda invoke --data-file test/payload.json
 
 # Clean build artifacts
 clean:
@@ -331,7 +271,6 @@ uninstall:
 
 # Install development dependencies
 setup:
-	cargo install cargo-lambda
 	cargo install cargo-watch
 	cargo install cargo-audit
 	cargo install cargo-llvm-cov
@@ -364,14 +303,9 @@ help:
 	@echo "  test     - Run tests with coverage summary"
 	@echo "  coverage - Generate detailed plain text coverage report"
 	@echo "  build        - Build standalone binary only (default)"
-	@echo "  build-all    - Build all artifacts (binary + Docker + Lambda)"
 	@echo "  build-binary - Build standalone Rust binary"
-	@echo "  build-docker - Build Docker container"
-	@echo "  build-lambda - Build AWS Lambda function (optional)"
 	@echo ""
 	@echo "Running:"
-	@echo "  run      - Run HTTP Lambda locally with auto-reload"
-	@echo "  run-test - Run HTTP Lambda locally"
 	@echo "  run-mcp  - Run MCP server in STDIO mode (stateless)"
 	@echo "  run-mcp-test - Run MCP server in STDIO mode (same as run-mcp)"
 	@echo ""
@@ -381,10 +315,6 @@ help:
 	@echo "  test-integration - Run all integration tests (HTTP + MCP)"
 	@echo "  test-all - Run all tests including integration (use with caution)"
 	@echo ""
-	@echo "Deployment:"
-	@echo "  deploy-docker - Instructions for pushing Docker image"
-	@echo "  deploy-lambda - Deploy to AWS Lambda (optional)"
-	@echo "  invoke        - Test Lambda locally with sample payload"
 	@echo ""
 	@echo "Installation:"
 	@echo "  install        - Install MCP server binary (idempotent - removes old version first)"
