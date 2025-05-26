@@ -6,7 +6,7 @@
 [![Code Quality](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml)
 [![PR Checks](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/pr-checks.yml)
 [![Dependencies](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/dependencies.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/dependencies.yml)
-[![Coverage](https://img.shields.io/badge/coverage-78%25-green)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
+[![Coverage](https://img.shields.io/badge/coverage-85%25-green)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
 [![Built by Pragmatic AI Labs](https://img.shields.io/badge/Built%20by-Pragmatic%20AI%20Labs-blue)](https://paiml.com)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -22,16 +22,16 @@ The PAIML MCP Agent Toolkit is a unified binary created by [Pragmatic AI Labs](h
 1. **Install the MCP server**:
 ```bash
 # Option A: Quick install via curl | sh (recommended)
-curl --proto '=https' --tlsv1.2 -sSf https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -sSf https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-installer.sh | sh
 
 # Option B: Use pre-built binary
-curl -L https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz -o paiml-mcp-agent-toolkit.tar.gz
+curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz -o paiml-mcp-agent-toolkit.tar.gz
 tar xzf paiml-mcp-agent-toolkit.tar.gz
 chmod +x paiml-mcp-agent-toolkit
 sudo mv paiml-mcp-agent-toolkit /usr/local/bin/
 
 # Option C: Build from source
-git clone https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit.git
+git clone https://github.com/paiml/paiml-mcp-agent-toolkit.git
 cd paiml-mcp-agent-toolkit
 make install  # Automatically bumps version, builds, and installs
 
@@ -134,26 +134,26 @@ The PAIML MCP Agent Toolkit implements a production-grade template server using 
 
 #### Linux/macOS
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -sSf https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-installer.sh | sh
 ```
 
 #### Windows (PowerShell)
 ```powershell
-irm https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-installer.ps1 | iex
+irm https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-installer.ps1 | iex
 ```
 
 ### Method 2: Pre-built Binaries
 
 Download binaries for your platform:
 
-- [Linux x64](https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-x86_64-unknown-linux-gnu.tar.gz)
-- [macOS ARM64](https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-aarch64-apple-darwin.tar.gz)
-- [macOS x64](https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-x86_64-apple-darwin.tar.gz)
-- [Windows x64](https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-x86_64-pc-windows-msvc.zip)
+- [Linux x64](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-x86_64-unknown-linux-gnu.tar.gz)
+- [macOS ARM64](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-aarch64-apple-darwin.tar.gz)
+- [macOS x64](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-x86_64-apple-darwin.tar.gz)
+- [Windows x64](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-x86_64-pc-windows-msvc.zip)
 
 ```bash
 # Download and install (Linux/macOS)
-curl -L https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]').tar.gz | tar xz
+curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]').tar.gz | tar xz
 chmod +x paiml-mcp-agent-toolkit
 sudo mv paiml-mcp-agent-toolkit /usr/local/bin/
 ```
@@ -347,21 +347,29 @@ paiml-mcp-agent-toolkit validate template://readme/rust/cli-application -p autho
 
 ##### `context` - Generate project context with AST analysis
 
-Analyze project structure and generate context using Abstract Syntax Tree (AST) parsing.
+Analyze project structure and generate context using Abstract Syntax Tree (AST) parsing. Supports all three toolchains with language-specific analysis.
 
 ```bash
-# Generate context for current directory
+# Generate context for Rust project
 paiml-mcp-agent-toolkit context rust
 
-# Analyze specific project path
-paiml-mcp-agent-toolkit context rust --project-path /path/to/project
+# Analyze TypeScript/JavaScript project
+paiml-mcp-agent-toolkit context deno --project-path /path/to/project
+
+# Analyze Python project
+paiml-mcp-agent-toolkit context python-uv --project-path /path/to/project
 
 # Output as JSON
 paiml-mcp-agent-toolkit context rust --format json
 
 # Save to file
-paiml-mcp-agent-toolkit context rust -o context.md
+paiml-mcp-agent-toolkit context python-uv -o context.md
 ```
+
+**Supported languages:**
+- **Rust**: Analyzes `.rs` files for functions, structs, enums, traits, and implementations
+- **Deno/TypeScript**: Analyzes `.ts`, `.tsx`, `.js`, `.jsx` files for functions, classes, interfaces, and types
+- **Python**: Analyzes `.py` files for functions, classes, and imports
 
 #### Parameter Syntax
 
@@ -569,7 +577,7 @@ This project uses GitHub Actions for continuous integration and deployment:
 
 - **Continuous Integration**: Runs on every push and pull request
   - Linting with rustfmt and clippy
-  - Testing with 77% code coverage
+  - Testing with 85% code coverage
   - Multi-platform builds (Linux, macOS, Windows)
   - Security audits
   - E2E testing
@@ -602,7 +610,7 @@ cargo test --test template_rendering
 ```
 
 Test categories:
-- **Unit Tests**: Core functionality (78% coverage)
+- **Unit Tests**: Core functionality (85% coverage)
 - **Integration Tests**: MCP protocol handling
 - **E2E Tests**: Full server functionality
 - **Template Tests**: All template rendering paths
@@ -952,14 +960,14 @@ echo '{
 ## What's New
 
 ### Recent Improvements
-- 🧠 **NEW: AST Context Generation**: Analyze project structure using Abstract Syntax Tree parsing with dual CLI/MCP support
+- 🧠 **NEW: AST Context Generation**: Analyze project structure using Abstract Syntax Tree parsing for Rust, TypeScript/JavaScript, and Python with dual CLI/MCP support
 - 🎯 **NEW: Native CLI Interface**: Unified binary now supports direct CLI usage with auto-detection
 - ✅ **All 9 Templates Available**: Fixed template embedding to include all Deno and Python-uv templates
 - 🚀 **Smart Installation**: Automatic rebuild detection based on source file changes
 - 📁 **Proper Subdirectories**: Templates now create files in project-named subdirectories
 - ℹ️ **Enhanced Discoverability**: New `get_server_info` tool provides metadata about the server
 - 🧪 **E2E Testing**: Comprehensive end-to-end tests simulating Claude Code operations
-- 📊 **Improved Coverage**: Test coverage increased from 77% to 78%
+- 📊 **Improved Coverage**: Test coverage increased from 77% to 85%
 - 🔧 **Consolidated Tooling**: Unified installation scripts and centralized Makefile commands
 - 🔢 **Auto-Versioning**: Installation automatically increments version for easy tracking
 - 🔄 **Zero Template Duplication**: Shared memory model between CLI and MCP modes

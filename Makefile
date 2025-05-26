@@ -15,12 +15,13 @@ SCRIPTS_DIR = scripts
 all: format build
 
 # Validate everything passes across all projects
-validate: check lint test validate-docs
+validate: check lint test validate-docs validate-naming
 	@echo "✅ All projects validated! All checks passed:"
 	@echo "  ✓ Type checking (cargo check)"
 	@echo "  ✓ Linting (cargo clippy + deno lint)"
 	@echo "  ✓ Testing (cargo test)"
 	@echo "  ✓ Documentation naming consistency"
+	@echo "  ✓ Project naming conventions"
 	@echo "  ✓ Ready for build!"
 
 # Format code in all projects
@@ -75,7 +76,7 @@ test:
 
 
 # Build all projects (binaries only - no Docker)
-build: validate-docs
+build: validate-docs validate-naming
 	@build_success=true; \
 	for project in $(PROJECTS); do \
 		if [ -d "$$project" ] && [ -f "$$project/Makefile" ]; then \
@@ -151,7 +152,7 @@ ci-status:
 # Validate all naming conventions across the project
 validate-naming:
 	@echo "🔍 Validating naming conventions..."
-	@$(SCRIPTS_DIR)/validate-naming.ts
+	@deno run --allow-read --allow-run $(SCRIPTS_DIR)/validate-naming.ts
 
 # Generate deep context analysis of the project
 context:

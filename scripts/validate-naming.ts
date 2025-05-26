@@ -99,7 +99,7 @@ async function checkCargoToml(): Promise<ValidationResult> {
       category: "Cargo.toml",
       passed: false,
       message: "❌ Failed to read Cargo.toml",
-      details: [error.toString()],
+      details: [String(error)],
     };
   }
 }
@@ -108,9 +108,11 @@ async function checkSourceCode(): Promise<ValidationResult> {
   const issues: string[] = [];
 
   for (const oldName of OLD_NAMES) {
+    // Use word boundaries to match exact names, not parts of other identifiers
     const result = await runCommand([
       "grep",
       "-r",
+      "-w", // Match whole words only
       oldName,
       "server/src/",
       "--include=*.rs",
@@ -119,9 +121,22 @@ async function checkSourceCode(): Promise<ValidationResult> {
     ]);
 
     if (result.stdout.trim()) {
-      issues.push(
-        `Found references to '${oldName}' in source files:\n${result.stdout}`,
-      );
+      // Filter out legitimate uses like "run_mcp_server" function names
+      const lines = result.stdout.trim().split("\n");
+      const actualIssues = lines.filter((line) => {
+        // Check if this is a function/method name containing the old name
+        return !line.match(/fn\s+\w*mcp_server\w*/i) &&
+          !line.match(/async\s+fn\s+\w*mcp_server\w*/i) &&
+          !line.match(/::\w*mcp_server\w*/i);
+      });
+
+      if (actualIssues.length > 0) {
+        issues.push(
+          `Found references to '${oldName}' in source files:\n${
+            actualIssues.join("\n")
+          }`,
+        );
+      }
     }
   }
 

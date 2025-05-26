@@ -978,7 +978,7 @@ async function main() {
     verbose: args.verbose as boolean,
     help: args.help as boolean,
     version: args.version as boolean,
-    _: args._,
+    _: args._.map(String),
   };
 
   if (globalArgs.help) {
