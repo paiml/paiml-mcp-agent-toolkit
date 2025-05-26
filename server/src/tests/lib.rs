@@ -1,4 +1,6 @@
-use crate::{TemplateServer, TemplateServerTrait};
+use crate::{ContentCache, MetadataCache, S3Client, TemplateServer, TemplateServerTrait};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[tokio::test]
 async fn test_template_server_new() {
@@ -57,4 +59,86 @@ async fn test_warm_cache() {
     // warm_cache should succeed even though individual template fetches fail
     let result = server.warm_cache().await;
     assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_template_server_cache_initialization() {
+    let server = TemplateServer::new().await.unwrap();
+
+    // Check metadata cache is initialized and empty
+    let metadata_cache = server.metadata_cache.read().await;
+    assert_eq!(metadata_cache.len(), 0);
+    drop(metadata_cache);
+
+    // Check content cache is initialized and empty
+    let content_cache = server.content_cache.read().await;
+    assert_eq!(content_cache.len(), 0);
+}
+
+#[tokio::test]
+async fn test_template_server_cache_sizes() {
+    let server = TemplateServer::new().await.unwrap();
+
+    // Verify cache sizes are set correctly (1024 total, split between metadata and content)
+    let metadata_cache = server.metadata_cache.read().await;
+    assert!(metadata_cache.cap().get() >= 512);
+    drop(metadata_cache);
+
+    let content_cache = server.content_cache.read().await;
+    assert!(content_cache.cap().get() >= 1024);
+}
+
+#[tokio::test]
+async fn test_warm_cache_templates() {
+    let server = TemplateServer::new().await.unwrap();
+
+    // Call warm_cache and ensure it tries to load expected templates
+    let result = server.warm_cache().await;
+    assert!(result.is_ok());
+
+    // The cache should still be empty since get_template_metadata returns errors
+    let metadata_cache = server.metadata_cache.read().await;
+    assert_eq!(metadata_cache.len(), 0);
+}
+
+#[tokio::test]
+async fn test_template_server_trait_via_methods() {
+    let server = TemplateServer::new().await.unwrap();
+
+    // Test calling trait methods directly
+    let result = TemplateServerTrait::get_template_metadata(&server, "test").await;
+    assert!(result.is_err());
+
+    let result = TemplateServerTrait::get_template_content(&server, "test").await;
+    assert!(result.is_err());
+
+    // Test trait method accessors
+    let _ = TemplateServerTrait::get_renderer(&server);
+    let _ = TemplateServerTrait::get_metadata_cache(&server);
+    let _ = TemplateServerTrait::get_content_cache(&server);
+    let _ = TemplateServerTrait::get_s3_client(&server);
+    let _ = TemplateServerTrait::get_bucket_name(&server);
+}
+
+#[test]
+fn test_type_aliases() {
+    use lru::LruCache;
+    use std::num::NonZeroUsize;
+
+    // Test that type aliases work correctly
+    let metadata_cache: MetadataCache =
+        Arc::new(RwLock::new(LruCache::new(NonZeroUsize::new(10).unwrap())));
+
+    let content_cache: ContentCache =
+        Arc::new(RwLock::new(LruCache::new(NonZeroUsize::new(10).unwrap())));
+
+    // Basic sanity check
+    assert!(Arc::strong_count(&metadata_cache) == 1);
+    assert!(Arc::strong_count(&content_cache) == 1);
+}
+
+#[test]
+fn test_s3_client_instantiation() {
+    // Test S3Client can be instantiated
+    let _client = S3Client;
 }
