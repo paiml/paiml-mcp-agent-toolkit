@@ -1,6 +1,6 @@
 # PAIML MCP Agent Toolkit
 
-> **Professional project scaffolding toolkit for Claude Code - Generate Makefiles, READMEs, and .gitignore files with AI**
+> **Professional project scaffolding toolkit - Generate Makefiles, READMEs, and .gitignore files via CLI or Claude Code**
 
 [![CI](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/ci.yml)
 [![Code Quality](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml)
@@ -11,7 +11,7 @@
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The PAIML MCP Agent Toolkit is a stateless Model Context Protocol (MCP) server created by [Pragmatic AI Labs](https://paiml.com) that provides intelligent project scaffolding through Claude Code and other MCP-compatible clients. It generates production-ready Makefiles, README files, and .gitignore configurations optimized for Rust, Deno, and Python development.
+The PAIML MCP Agent Toolkit is a unified binary created by [Pragmatic AI Labs](https://paiml.com) that provides intelligent project scaffolding through both a powerful CLI interface and Model Context Protocol (MCP) integration with Claude Code. It generates production-ready Makefiles, README files, and .gitignore configurations optimized for Rust, Deno, and Python development.
 
 ![PAIML MCP Agent Toolkit Demo](assets/demo.gif)
 
@@ -60,18 +60,23 @@ claude mcp status
 - "What does the paiml-mcp-agent-toolkit do?"
 - "Who made this MCP server?"
 
-### For Developers
+### For CLI Users
 
 ```bash
-# Using pre-built binary
-curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-linux-x64 -o paiml-mcp-agent-toolkit
-chmod +x paiml-mcp-agent-toolkit
-./paiml-mcp-agent-toolkit
+# Quick start - show help
+paiml-mcp-agent-toolkit --help
 
-# Building from source
-cd server
-make build
-./target/release/paiml-mcp-agent-toolkit
+# List all available templates
+paiml-mcp-agent-toolkit list
+
+# Generate a Makefile
+paiml-mcp-agent-toolkit generate makefile rust/cli-binary -p project_name=my-project
+
+# Scaffold an entire project
+paiml-mcp-agent-toolkit scaffold rust --templates makefile,readme,gitignore -p project_name=my-project
+
+# Search for templates
+paiml-mcp-agent-toolkit search docker --toolchain rust
 ```
 
 ## 📋 Table of Contents
@@ -243,6 +248,192 @@ echo '{
     }
   }
 }' | paiml-mcp-agent-toolkit
+```
+
+### CLI Usage
+
+The PAIML MCP Agent Toolkit provides a comprehensive CLI interface for direct template generation without requiring Claude Code. The binary automatically detects whether it's being run as an MCP server or CLI tool.
+
+#### CLI Commands
+
+##### `generate` - Generate a single template
+
+Generate individual project files with customizable parameters.
+
+```bash
+# Generate a Makefile
+paiml-mcp-agent-toolkit generate makefile rust/cli-binary -p project_name=my-project -p has_tests=true
+
+# Short form using aliases
+paiml-mcp-agent-toolkit gen makefile rust/cli-binary -p project_name=my-project
+
+# Output to a specific file
+paiml-mcp-agent-toolkit generate readme deno/cli-application -p project_name=my-app -o README.md
+
+# Create parent directories if needed
+paiml-mcp-agent-toolkit generate makefile rust/cli-binary -p project_name=my-project -o build/Makefile --create-dirs
+```
+
+##### `scaffold` - Scaffold complete projects
+
+Generate multiple templates at once for a complete project setup.
+
+```bash
+# Scaffold a complete Rust project
+paiml-mcp-agent-toolkit scaffold rust --templates makefile,readme,gitignore -p project_name=my-project
+
+# Scaffold with custom parallelism
+paiml-mcp-agent-toolkit scaffold deno --templates makefile,readme -p project_name=my-app --parallel 4
+
+# Scaffold Python project with all files
+paiml-mcp-agent-toolkit scaffold python-uv --templates makefile,readme,gitignore -p project_name=my-lib -p has_tests=true
+```
+
+##### `list` - List available templates
+
+Display all available templates with filtering options.
+
+```bash
+# List all templates
+paiml-mcp-agent-toolkit list
+
+# Filter by toolchain
+paiml-mcp-agent-toolkit list --toolchain rust
+
+# Filter by category
+paiml-mcp-agent-toolkit list --category makefile
+
+# Output as JSON
+paiml-mcp-agent-toolkit list --format json
+
+# Output as YAML
+paiml-mcp-agent-toolkit list --format yaml
+```
+
+##### `search` - Search templates
+
+Find templates by searching in names, descriptions, and parameters.
+
+```bash
+# Search for docker-related templates
+paiml-mcp-agent-toolkit search docker
+
+# Search within a specific toolchain
+paiml-mcp-agent-toolkit search test --toolchain rust
+
+# Limit results
+paiml-mcp-agent-toolkit search build --limit 5
+```
+
+##### `validate` - Validate parameters
+
+Check if your parameters are valid before generating templates.
+
+```bash
+# Validate parameters for a template
+paiml-mcp-agent-toolkit validate template://makefile/rust/cli-binary -p project_name=my-project
+
+# Check for missing required parameters
+paiml-mcp-agent-toolkit validate template://readme/rust/cli-application -p author="John Doe"
+```
+
+#### Parameter Syntax
+
+Parameters are passed using `-p` or `--param` flags with `key=value` syntax:
+
+```bash
+# String parameters
+-p project_name=my-awesome-project
+
+# Boolean parameters
+-p has_tests=true
+-p include_benchmarks=false
+
+# Number parameters
+-p port=8080
+-p max_connections=100
+
+# Multiple parameters
+-p project_name=my-app -p has_tests=true -p author="Jane Doe"
+```
+
+#### Output Formats
+
+The `list` command supports multiple output formats:
+
+- **Table** (default): Human-readable table format
+- **JSON**: Machine-readable JSON format
+- **YAML**: YAML format for configuration files
+
+#### Mode Forcing
+
+By default, the tool auto-detects whether to run in CLI or MCP mode. You can force a specific mode:
+
+```bash
+# Force CLI mode (usually not needed)
+paiml-mcp-agent-toolkit --mode cli list
+
+# Force MCP mode (wait for JSON-RPC input)
+paiml-mcp-agent-toolkit --mode mcp
+```
+
+#### Examples
+
+**Complete workflow for a new Rust project:**
+
+```bash
+# Create project directory
+mkdir my-rust-cli && cd my-rust-cli
+
+# Initialize Cargo project
+cargo init --name my-rust-cli
+
+# Scaffold all project files
+paiml-mcp-agent-toolkit scaffold rust \
+  --templates makefile,readme,gitignore \
+  -p project_name=my-rust-cli \
+  -p author="Your Name" \
+  -p description="A blazing fast CLI tool" \
+  -p has_tests=true \
+  -p has_benchmarks=true
+
+# Files created:
+# - my-rust-cli/Makefile
+# - my-rust-cli/README.md
+# - my-rust-cli/.gitignore
+```
+
+**Search and generate specific templates:**
+
+```bash
+# Search for testing-related templates
+paiml-mcp-agent-toolkit search test
+
+# Find the template you want
+paiml-mcp-agent-toolkit list --toolchain rust --category makefile
+
+# Generate with specific parameters
+paiml-mcp-agent-toolkit generate makefile rust/cli-binary \
+  -p project_name=test-runner \
+  -p has_tests=true \
+  -p has_benchmarks=true \
+  -p has_coverage=true
+```
+
+**Validate before generating:**
+
+```bash
+# First, validate your parameters
+paiml-mcp-agent-toolkit validate template://readme/python-uv/cli-application \
+  -p project_name=my-python-cli \
+  -p author="Dev Team"
+
+# If validation passes, generate
+paiml-mcp-agent-toolkit generate readme python-uv/cli-application \
+  -p project_name=my-python-cli \
+  -p author="Dev Team" \
+  -p description="Fast Python CLI with UV" \
+  -p python_version="3.12"
 ```
 
 ### Template Parameters
@@ -735,6 +926,7 @@ echo '{
 ## What's New
 
 ### Recent Improvements
+- 🎯 **NEW: Native CLI Interface**: Unified binary now supports direct CLI usage with auto-detection
 - ✅ **All 9 Templates Available**: Fixed template embedding to include all Deno and Python-uv templates
 - 🚀 **Smart Installation**: Automatic rebuild detection based on source file changes
 - 📁 **Proper Subdirectories**: Templates now create files in project-named subdirectories
@@ -743,6 +935,7 @@ echo '{
 - 📊 **Improved Coverage**: Test coverage increased from 77% to 78%
 - 🔧 **Consolidated Tooling**: Unified installation scripts and centralized Makefile commands
 - 🔢 **Auto-Versioning**: Installation automatically increments version for easy tracking
+- 🔄 **Zero Template Duplication**: Shared memory model between CLI and MCP modes
 
 ## Contributing
 

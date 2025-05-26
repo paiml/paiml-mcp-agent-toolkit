@@ -173,3 +173,235 @@ fn validate_parameters(
 
     Ok(())
 }
+
+// Additional functions for CLI support
+pub async fn scaffold_project<T: TemplateServerTrait>(
+    server: Arc<T>,
+    toolchain: &str,
+    templates: Vec<String>,
+    parameters: serde_json::Value,
+) -> Result<ScaffoldResult, TemplateError> {
+    let mut files = Vec::new();
+    let mut errors = Vec::new();
+
+    // Convert parameters to Map if it's an object
+    let params_map = if let serde_json::Value::Object(map) = parameters {
+        map
+    } else {
+        return Err(TemplateError::ValidationError {
+            parameter: "parameters".to_string(),
+            reason: "Parameters must be an object".to_string(),
+        });
+    };
+
+    // Generate each requested template
+    for template_type in &templates {
+        let variant = match template_type.as_str() {
+            "makefile" => {
+                if toolchain == "rust" {
+                    "cli-binary"
+                } else if toolchain == "deno" || toolchain == "python-uv" {
+                    "cli-application"
+                } else {
+                    continue;
+                }
+            }
+            "readme" => {
+                if toolchain == "rust" || toolchain == "deno" || toolchain == "python-uv" {
+                    "cli-application"
+                } else {
+                    continue;
+                }
+            }
+            "gitignore" => match toolchain {
+                "rust" => "embedded-target",
+                "deno" | "python-uv" => "cli-application",
+                _ => continue,
+            },
+            _ => continue,
+        };
+
+        let uri = format!("template://{}/{}/{}", template_type, toolchain, variant);
+
+        match generate_template(server.as_ref(), &uri, params_map.clone()).await {
+            Ok(generated) => {
+                files.push(GeneratedFile {
+                    path: generated.filename,
+                    content: generated.content,
+                    checksum: generated.checksum,
+                });
+            }
+            Err(e) => {
+                errors.push(ScaffoldError {
+                    template: template_type.clone(),
+                    error: e.to_string(),
+                });
+            }
+        }
+    }
+
+    Ok(ScaffoldResult { files, errors })
+}
+
+pub async fn search_templates<T: TemplateServerTrait>(
+    server: Arc<T>,
+    query: &str,
+    toolchain: Option<&str>,
+) -> Result<Vec<SearchResult>, TemplateError> {
+    let templates = list_templates(server.as_ref(), toolchain, None).await?;
+    let query_lower = query.to_lowercase();
+
+    let mut results: Vec<SearchResult> = templates
+        .into_iter()
+        .filter_map(|template| {
+            let mut matches = Vec::new();
+            let mut relevance = 0.0;
+
+            // Check name
+            if template.name.to_lowercase().contains(&query_lower) {
+                matches.push(format!("name: {}", template.name));
+                relevance += if template.name.to_lowercase() == query_lower {
+                    10.0
+                } else {
+                    5.0
+                };
+            }
+
+            // Check description
+            if template.description.to_lowercase().contains(&query_lower) {
+                matches.push("description".to_string());
+                relevance += 3.0;
+            }
+
+            // Check parameter names
+            for param in &template.parameters {
+                if param.name.to_lowercase().contains(&query_lower) {
+                    matches.push(format!("parameter: {}", param.name));
+                    relevance += 1.0;
+                }
+            }
+
+            if !matches.is_empty() {
+                Some(SearchResult {
+                    template: (*template).clone(),
+                    relevance,
+                    matches,
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Sort by relevance (highest first)
+    results.sort_by(|a, b| b.relevance.partial_cmp(&a.relevance).unwrap());
+
+    Ok(results)
+}
+
+pub async fn validate_template<T: TemplateServerTrait>(
+    server: Arc<T>,
+    uri: &str,
+    parameters: &serde_json::Value,
+) -> Result<ValidationResult, TemplateError> {
+    let metadata =
+        server
+            .get_template_metadata(uri)
+            .await
+            .map_err(|_| TemplateError::TemplateNotFound {
+                uri: uri.to_string(),
+            })?;
+
+    let mut errors = Vec::new();
+
+    // Convert parameters to Map if it's an object
+    let params_map = if let serde_json::Value::Object(map) = parameters {
+        map
+    } else {
+        errors.push(ValidationError {
+            field: "parameters".to_string(),
+            message: "Parameters must be an object".to_string(),
+        });
+        return Ok(ValidationResult {
+            valid: false,
+            errors,
+        });
+    };
+
+    // Check required parameters
+    for param in &metadata.parameters {
+        if param.required && !params_map.contains_key(&param.name) {
+            errors.push(ValidationError {
+                field: param.name.clone(),
+                message: "Required parameter missing".to_string(),
+            });
+        }
+    }
+
+    // Validate parameter values
+    for (key, value) in params_map {
+        if let Some(param_spec) = metadata.parameters.iter().find(|p| p.name == *key) {
+            if let Some(pattern) = &param_spec.validation_pattern {
+                if let Ok(regex) = regex::Regex::new(pattern) {
+                    if let Some(str_val) = value.as_str() {
+                        if !regex.is_match(str_val) {
+                            errors.push(ValidationError {
+                                field: key.clone(),
+                                message: format!("Does not match pattern: {}", pattern),
+                            });
+                        }
+                    }
+                }
+            }
+        } else {
+            errors.push(ValidationError {
+                field: key.clone(),
+                message: "Unknown parameter".to_string(),
+            });
+        }
+    }
+
+    Ok(ValidationResult {
+        valid: errors.is_empty(),
+        errors,
+    })
+}
+
+// Result types for CLI
+#[derive(Debug)]
+pub struct ScaffoldResult {
+    pub files: Vec<GeneratedFile>,
+    pub errors: Vec<ScaffoldError>,
+}
+
+#[derive(Debug)]
+pub struct GeneratedFile {
+    pub path: String,
+    pub content: String,
+    pub checksum: String,
+}
+
+#[derive(Debug)]
+pub struct ScaffoldError {
+    pub template: String,
+    pub error: String,
+}
+
+#[derive(Debug)]
+pub struct SearchResult {
+    pub template: crate::models::template::TemplateResource,
+    pub relevance: f32,
+    pub matches: Vec<String>,
+}
+
+#[derive(Debug)]
+pub struct ValidationResult {
+    pub valid: bool,
+    pub errors: Vec<ValidationError>,
+}
+
+#[derive(Debug)]
+pub struct ValidationError {
+    pub field: String,
+    pub message: String,
+}

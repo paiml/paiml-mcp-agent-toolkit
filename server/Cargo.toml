@@ -10,7 +10,7 @@ repository = "https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit"
 
 [dependencies]
 # Async runtime
-tokio = { version = "1.44", features = ["rt-multi-thread", "macros", "net", "io-util", "sync"] }
+tokio = { version = "1.44", features = ["rt-multi-thread", "macros", "net", "io-util", "io-std", "fs", "sync"] }
 async-trait = "0.1"
 
 # Serialization
@@ -41,6 +41,11 @@ hex = "0.4"
 
 # Async utilities
 futures = "0.3"
+
+# CLI support
+clap = { version = "4.5", features = ["derive", "env"] }
+num_cpus = "1.16"
+serde_yaml = "0.9"
 
 [dev-dependencies]
 mockall = "0.13"

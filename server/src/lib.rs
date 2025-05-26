@@ -1,3 +1,4 @@
+pub mod cli;
 pub mod handlers;
 pub mod models;
 pub mod services;
@@ -139,6 +140,69 @@ impl TemplateServerTrait for TemplateServer {
     fn get_bucket_name(&self) -> Option<&str> {
         Some(&self.bucket_name)
     }
+}
+
+// Public exports for CLI consumption
+pub use models::error::TemplateError;
+pub use models::template::{ParameterSpec, ParameterType};
+pub use services::template_service::{
+    generate_template, list_templates, scaffold_project, search_templates, validate_template,
+};
+
+// MCP server runner function
+pub async fn run_mcp_server<T: TemplateServerTrait + 'static>(server: Arc<T>) -> Result<()> {
+    use crate::models::mcp::{McpRequest, McpResponse};
+    use std::io::{self, BufRead, Write};
+    use tracing::{error, info};
+
+    info!("MCP server ready, waiting for requests on stdin...");
+
+    // Read JSON-RPC requests from stdin
+    let stdin = io::stdin();
+    let mut stdout = io::stdout();
+
+    for line in stdin.lock().lines() {
+        let line = line?;
+
+        // Skip empty lines
+        if line.trim().is_empty() {
+            continue;
+        }
+
+        // Parse the JSON-RPC request
+        match serde_json::from_str::<McpRequest>(&line) {
+            Ok(request) => {
+                info!(
+                    "Received request: method={}, id={:?}",
+                    request.method, request.id
+                );
+
+                // Handle the request using the existing handler
+                let response = handlers::handle_request(Arc::clone(&server), request).await;
+
+                // Write response to stdout
+                let response_json = serde_json::to_string(&response)?;
+                writeln!(stdout, "{}", response_json)?;
+                stdout.flush()?;
+            }
+            Err(e) => {
+                error!("Failed to parse JSON-RPC request: {}", e);
+
+                // Send error response
+                let error_response = McpResponse::error(
+                    serde_json::Value::Null,
+                    -32700,
+                    format!("Parse error: {}", e),
+                );
+
+                let response_json = serde_json::to_string(&error_response)?;
+                writeln!(stdout, "{}", response_json)?;
+                stdout.flush()?;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
