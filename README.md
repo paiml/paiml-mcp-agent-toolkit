@@ -5,7 +5,7 @@
 [![CI](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/ci.yml)
 [![Code Quality](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml)
 [![Release](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/release.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/release.yml)
-[![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
+[![Coverage](https://img.shields.io/badge/coverage-67%25-yellow)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
 [![Built by Pragmatic AI Labs](https://img.shields.io/badge/Built%20by-Pragmatic%20AI%20Labs-blue)](https://paiml.com)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -582,7 +582,7 @@ This project uses GitHub Actions for continuous integration and deployment:
 
 - **Continuous Integration**: Runs on every push and pull request
   - Linting with rustfmt and clippy
-  - Testing with 85% code coverage
+  - Testing with code coverage tracking
   - Multi-platform builds (Linux, macOS, Windows)
   - Security audits
   - E2E testing
@@ -593,10 +593,16 @@ This project uses GitHub Actions for continuous integration and deployment:
   - Creates GitHub releases with attached binaries
 
 - **Code Quality**: Enforced standards
-  - Minimum 70% test coverage
+  - Minimum 60% test coverage (currently at 67%)
   - No clippy warnings
   - Proper formatting
   - Documentation checks
+
+- **Dependency Management**: Automated updates
+  - Weekly Dependabot checks with smart grouping
+  - Binary size impact monitoring (5% threshold)
+  - Security audits with auto-fix
+  - Performance regression detection via benchmarks
 
 ### Testing
 
@@ -615,10 +621,11 @@ cargo test --test template_rendering
 ```
 
 Test categories:
-- **Unit Tests**: Core functionality (85% coverage)
+- **Unit Tests**: Core functionality (67% coverage)
 - **Integration Tests**: MCP protocol handling
 - **E2E Tests**: Full server functionality
 - **Template Tests**: All template rendering paths
+- **Performance Benchmarks**: Critical path benchmarking
 
 ### Project Structure
 
@@ -765,15 +772,21 @@ make server-help # Show all server commands
 make server-*    # Run any server Makefile target
 
 # Run benchmarks  
-make bench
+cd server && cargo bench
 
 # Check CI/GitHub Actions status
 make ci-status
 
+# Dependency management
+make server-deps-check     # Check for outdated dependencies
+make server-deps-update    # Update dependencies conservatively
+make server-deps-audit     # Run security audit with auto-fix
+make server-deps-rollback  # Rollback to previous Cargo.lock
+
 # Installer generation (requires installer-gen feature)
-make generate-installer    # Generate deterministic shell installer
-make verify-installer      # Complete verification pipeline
-make audit-installer       # Security audit with shellcheck
+make server-generate-installer    # Generate deterministic shell installer
+make server-verify-installer      # Complete verification pipeline
+make server-audit-installer       # Security audit with shellcheck
 ```
 
 ## API Reference
@@ -1107,7 +1120,7 @@ echo '{
 - 📁 **Proper Subdirectories**: Templates now create files in project-named subdirectories
 - ℹ️ **Enhanced Discoverability**: New `get_server_info` tool provides metadata about the server
 - 🧪 **E2E Testing**: Comprehensive end-to-end tests simulating Claude Code operations
-- 📊 **Improved Coverage**: Test coverage increased from 77% to 85%
+- 📊 **Current Coverage**: Test coverage at 67% with comprehensive E2E tests
 - 🔧 **Consolidated Tooling**: Unified installation scripts and centralized Makefile commands
 - 🔢 **Auto-Versioning**: Installation automatically increments version for easy tracking
 - 🔄 **Zero Template Duplication**: Shared memory model between CLI and MCP modes
@@ -1146,5 +1159,5 @@ This project is licensed under the MIT License.
 
 <div style="text-align: center">
   <strong>Built with ❤️ by PAIML</strong><br>
-  <sub>Empowering developers with AI-powered tools</sub>
+  <sub>Empowering developers with deterministic Narrow AI-powered tools</sub>
 </div>

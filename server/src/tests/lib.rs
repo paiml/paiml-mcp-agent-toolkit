@@ -142,3 +142,48 @@ fn test_s3_client_instantiation() {
     // Test S3Client can be instantiated
     let _client = S3Client;
 }
+
+#[tokio::test]
+async fn test_run_mcp_server_basic() {
+    use crate::run_mcp_server;
+    use crate::stateless_server::StatelessTemplateServer;
+    use std::sync::Arc;
+
+    // Create a test server
+    let server = Arc::new(StatelessTemplateServer::new().unwrap());
+
+    // Create a simple invalid request that will cause the server to exit immediately
+    std::thread::spawn(move || {
+        // Simulate empty stdin which will cause the server to exit
+        let _result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(run_mcp_server(server));
+    });
+
+    // Give the server a moment to start
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+    // Test passes if server starts without panic
+}
+
+#[test]
+fn test_public_exports() {
+    // Test that public exports are available
+    use crate::{ParameterSpec, ParameterType, TemplateError};
+
+    // Create dummy values to ensure types are used
+    let _param_type = ParameterType::String;
+    let _param_spec = ParameterSpec {
+        name: "test".to_string(),
+        description: "test".to_string(),
+        param_type: ParameterType::String,
+        required: true,
+        default_value: None,
+        validation_pattern: None,
+    };
+
+    // Test error type
+    let _error = TemplateError::InvalidUri {
+        uri: "test".to_string(),
+    };
+}

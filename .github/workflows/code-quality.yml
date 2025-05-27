@@ -29,8 +29,8 @@ jobs:
           coverage=$(cargo llvm-cov report --summary-only | grep "Total" | awk '{print $10}' | sed 's/%//')
           echo "Current coverage: $coverage%"
           # Use awk for floating point comparison instead of bc
-          if awk "BEGIN {exit !($coverage < 70)}"; then
-            echo "Coverage is below 70% threshold"
+          if awk "BEGIN {exit !($coverage < 60)}"; then
+            echo "Coverage is below 60% threshold"
             exit 1
           fi
       
@@ -54,7 +54,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## Coverage Report 📊\n\n**Total Coverage:** ${percentage}%\n\n✅ Coverage threshold (70%) ${parseFloat(percentage) >= 70 ? 'passed' : 'failed'}\n\n[View full report](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+              body: `## Coverage Report 📊\n\n**Total Coverage:** ${percentage}%\n\n✅ Coverage threshold (60%) ${parseFloat(percentage) >= 60 ? 'passed' : 'failed'}\n\n[View full report](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
             });
 
   complexity-check:

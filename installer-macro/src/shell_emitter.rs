@@ -12,10 +12,10 @@ pub fn emit_deterministic(ast: &ShellAst) -> String {
     writeln!(output, "# Build: {}", env!("CARGO_PKG_VERSION")).unwrap();
 
     let hash = ast.compute_hash();
-    let hash_hex = hash
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect::<String>();
+    let hash_hex = hash.iter().fold(String::new(), |mut acc, b| {
+        write!(acc, "{:02x}", b).unwrap();
+        acc
+    });
     writeln!(output, "# SHA256: {}", hash_hex).unwrap();
     writeln!(output, "set -euf").unwrap();
     writeln!(output).unwrap();

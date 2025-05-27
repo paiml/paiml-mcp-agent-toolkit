@@ -1,4 +1,5 @@
 use crate::models::error::TemplateError;
+use std::io;
 
 #[test]
 fn test_template_not_found_error() {
@@ -95,5 +96,14 @@ fn test_json_error() {
     let error = TemplateError::JsonError(json_error);
 
     assert!(error.to_string().contains("JSON serialization error"));
+    assert_eq!(error.to_mcp_code(), -32000); // Generic error code
+}
+
+#[test]
+fn test_io_error() {
+    let io_err = io::Error::new(io::ErrorKind::NotFound, "file not found");
+    let error = TemplateError::Io(io_err);
+
+    assert!(error.to_string().contains("IO operation failed"));
     assert_eq!(error.to_mcp_code(), -32000); // Generic error code
 }
