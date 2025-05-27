@@ -5,11 +5,10 @@ name: CI
 # DO NOT use 'cd server && make ...' patterns - use 'make server-...' instead.
 # See .github/CONTRIBUTING.md for details.
 
+# This workflow is now orchestrated by main.yml
+# To run manually, use workflow_dispatch
 on:
-  push:
-    branches: [ main, master, develop ]
-  pull_request:
-    branches: [ main, master, develop ]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always

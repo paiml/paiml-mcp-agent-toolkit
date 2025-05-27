@@ -5,7 +5,6 @@ pub mod services;
 pub mod stateless_server;
 pub mod utils;
 
-#[cfg(feature = "installer-gen")]
 pub mod installer;
 
 use anyhow::Result;
@@ -259,16 +258,8 @@ mod tests {
     #[path = "../tests/churn.rs"]
     mod churn;
 
-    #[cfg(feature = "installer-gen")]
-    #[path = "../tests/installer_tests.rs"]
-    mod installer_tests;
-
     #[path = "../tests/installer_module_tests.rs"]
     mod installer_module_tests;
-
-    #[cfg(feature = "installer-gen")]
-    #[path = "../tests/installer_macro_integration_test.rs"]
-    mod installer_macro_integration_test;
 
     #[path = "../tests/cli_simple_tests.rs"]
     mod cli_simple_tests;

@@ -33,54 +33,6 @@ mod tests {
 }
 
 #[cfg(test)]
-#[cfg(feature = "installer-gen")]
-mod installer_simple_tests {
-    use crate::installer::{Error as InstallerError, ShellContext};
-
-    #[test]
-    fn test_shell_context_basic() {
-        let ctx = ShellContext;
-
-        // Test simple command
-        let result = ctx.command("echo", &["hello"]);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().trim(), "hello");
-    }
-
-    #[test]
-    fn test_shell_context_test_dir() {
-        let ctx = ShellContext;
-
-        // Test current directory exists
-        assert!(ctx.test_dir("."));
-
-        // Test non-existent directory
-        assert!(!ctx.test_dir("/nonexistent/path/12345"));
-    }
-
-    #[test]
-    fn test_installer_error_display() {
-        let err = InstallerError::UnsupportedPlatform("test".to_string());
-        assert_eq!(err.to_string(), "Unsupported platform: test");
-
-        let err = InstallerError::DownloadFailed("test".to_string());
-        assert_eq!(err.to_string(), "Download failed: test");
-
-        let err = InstallerError::ChecksumMismatch {
-            expected: "abc".to_string(),
-            actual: "def".to_string(),
-        };
-        assert_eq!(err.to_string(), "Checksum mismatch: expected abc, got def");
-
-        let err = InstallerError::InstallFailed("test".to_string());
-        assert_eq!(err.to_string(), "Installation failed: test");
-
-        let err = InstallerError::CommandFailed("test".to_string());
-        assert_eq!(err.to_string(), "Command failed: test");
-    }
-}
-
-#[cfg(test)]
 mod cli_command_enums {
     use crate::cli::{Commands, ContextFormat, OutputFormat};
 

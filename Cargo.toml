@@ -1,5 +1,5 @@
 [workspace]
-members = ["server", "installer-macro"]
+members = ["server"]
 resolver = "2"
 
 [workspace.package]

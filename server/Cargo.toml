@@ -62,7 +62,7 @@ swc_ecma_visit = "0.98"
 rustpython-parser = "0.3"
 
 # Installer generation
-installer-macro = { path = "../installer-macro" }
+# installer-macro = { path = "../installer-macro" } # Removed - using simple include_str! instead
 blake3 = "1.5"
 
 [dev-dependencies]
@@ -74,7 +74,7 @@ criterion = { version = "0.5", features = ["html_reports"] }
 
 [features]
 default = []
-installer-gen = ["installer-macro/installer-gen"]
+# installer-gen = ["installer-macro/installer-gen"] # Removed - no longer needed
 
 [profile.release]
 lto = "fat"
@@ -92,10 +92,10 @@ lto = "thin"
 name = "paiml-mcp-agent-toolkit"
 path = "src/bin/paiml-mcp-agent-toolkit.rs"
 
-[[bin]]
-name = "generate-installer"
-path = "src/bin/generate-installer.rs"
-required-features = ["installer-gen"]
+# [[bin]]
+# name = "generate-installer"
+# path = "src/bin/generate-installer.rs"
+# required-features = ["installer-gen"]
 
 [[bench]]
 name = "critical_path"
