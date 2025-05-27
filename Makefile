@@ -318,6 +318,122 @@ client-%:
 		exit 1; \
 	fi
 
+# Build for specific target (for cross-compilation in CI)
+build-target:
+	@if [ -z "$(TARGET)" ]; then \
+		echo "Error: TARGET not specified"; \
+		echo "Usage: make build-target TARGET=x86_64-unknown-linux-gnu"; \
+		exit 1; \
+	fi
+	@echo "🔨 Building for target: $(TARGET)"
+	cargo build --release --target $(TARGET) --manifest-path server/Cargo.toml
+
+
+# Run cargo doc
+cargo-doc:
+	cargo doc --all-features --no-deps --manifest-path server/Cargo.toml
+
+# Run cargo geiger for security audit
+cargo-geiger:
+	cargo geiger --all-features --manifest-path server/Cargo.toml
+
+# Update dependencies
+update-deps:
+	cargo update --manifest-path server/Cargo.toml
+
+# Update dependencies aggressively
+update-deps-aggressive:
+	cargo update --aggressive --manifest-path server/Cargo.toml
+	cargo upgrade --workspace --to-lockfile --manifest-path server/Cargo.toml
+
+# Update only security dependencies
+update-deps-security:
+	cargo audit fix --manifest-path server/Cargo.toml
+
+# Upgrade dependencies
+upgrade-deps:
+	cargo upgrade --workspace --to-lockfile
+
+# Fix audit issues
+audit-fix:
+	cargo audit fix --manifest-path server/Cargo.toml
+
+# Run benchmarks
+benchmark:
+	@$(MAKE) server-benchmark
+
+
+# Generate coverage summary (for CI)
+coverage-summary:
+	cargo llvm-cov report --summary-only --manifest-path server/Cargo.toml
+
+# Check outdated dependencies
+outdated:
+	cargo outdated --format json --manifest-path server/Cargo.toml
+
+# Server outdated (alias for CI)
+server-outdated:
+	cargo outdated --format json --manifest-path server/Cargo.toml
+
+# Run cargo test with all features
+test-all-features:
+	cargo test --all-features --manifest-path server/Cargo.toml
+
+# Server test all (alias for CI)
+server-test-all:
+	cargo test --all-features --manifest-path server/Cargo.toml
+
+# Run cargo clippy with warnings as errors
+clippy-strict:
+	cargo clippy --manifest-path server/Cargo.toml -- -D warnings
+
+# Server build release (for CI)
+server-build-release:
+	cargo build --release --manifest-path server/Cargo.toml
+
+# Generate installer script
+generate-installer:
+	@$(MAKE) server-generate-installer
+
+# Check documentation with rustdoc
+cargo-rustdoc:
+	cargo rustdoc --all-features --manifest-path server/Cargo.toml -- -D missing_docs || true
+
+# Install development tools
+install-dev-tools:
+	@if ! command -v tokei &> /dev/null; then \
+		echo "Installing tokei..."; \
+		cargo install tokei; \
+	fi
+	@if ! command -v cargo-geiger &> /dev/null; then \
+		echo "Installing cargo-geiger..."; \
+		cargo install cargo-geiger; \
+	fi
+	@if ! command -v cargo-outdated &> /dev/null; then \
+		echo "Installing cargo-outdated..."; \
+		cargo install cargo-outdated; \
+	fi
+	@if ! command -v cargo-edit &> /dev/null; then \
+		echo "Installing cargo-edit..."; \
+		cargo install cargo-edit; \
+	fi
+	@if ! command -v cargo-audit &> /dev/null; then \
+		echo "Installing cargo-audit..."; \
+		cargo install cargo-audit; \
+	fi
+	@if ! command -v cargo-llvm-cov &> /dev/null; then \
+		echo "Installing cargo-llvm-cov..."; \
+		cargo install cargo-llvm-cov; \
+	fi
+
+# Count lines of code with tokei
+tokei:
+	tokei server/src --exclude "*.json"
+
+# Count lines of code for server
+server-tokei:
+	tokei server/src --exclude "*.json"
+
 # Setup development environment
 # NOTE: This does NOT install Docker - Docker is optional for this project
 setup:

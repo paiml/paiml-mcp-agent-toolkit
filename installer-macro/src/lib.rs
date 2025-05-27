@@ -41,7 +41,16 @@ pub fn shell_installer(_args: TokenStream, input: TokenStream) -> TokenStream {
     {
         match verify_posix_compliance(&shell_script) {
             Ok(_) => {}
-            Err(e) => panic!("Generated shell is not POSIX compliant: {}", e),
+            Err(e) => {
+                // Print the generated script for debugging
+                eprintln!("Generated shell script:");
+                eprintln!("======================");
+                for (i, line) in shell_script.lines().enumerate() {
+                    eprintln!("{:4}: {}", i + 1, line);
+                }
+                eprintln!("======================");
+                panic!("Generated shell is not POSIX compliant: {}", e);
+            }
         }
     }
 

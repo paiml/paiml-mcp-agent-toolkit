@@ -43,8 +43,13 @@ pub fn emit_deterministic(ast: &ShellAst) -> String {
     writeln!(output, "# Main").unwrap();
     writeln!(output, "main() {{").unwrap();
 
-    for stmt in main {
-        emit_statement(&mut output, stmt, 1);
+    if main.is_empty() {
+        // Add a no-op command to ensure the function isn't empty
+        writeln!(output, "    :").unwrap();
+    } else {
+        for stmt in main {
+            emit_statement(&mut output, stmt, 1);
+        }
     }
 
     writeln!(output, "}}").unwrap();
@@ -56,8 +61,13 @@ pub fn emit_deterministic(ast: &ShellAst) -> String {
 
 fn emit_function(output: &mut String, func: &Function) {
     writeln!(output, "{}() {{", func.name).unwrap();
-    for stmt in &func.body {
-        emit_statement(output, stmt, 1);
+    if func.body.is_empty() {
+        // Add a no-op command to ensure the function isn't empty
+        writeln!(output, "    :").unwrap();
+    } else {
+        for stmt in &func.body {
+            emit_statement(output, stmt, 1);
+        }
     }
     writeln!(output, "}}").unwrap();
     writeln!(output).unwrap();
