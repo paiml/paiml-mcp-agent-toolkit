@@ -281,7 +281,7 @@ setup:
 
 # Security audit
 audit:
-	cargo audit
+	cd .. && cargo audit
 
 # Validate documentation naming consistency
 validate-docs:
@@ -304,29 +304,29 @@ ci-status:
 # Dependency management targets
 deps-check: ## Check for outdated dependencies
 	@echo "🔍 Checking for outdated dependencies..."
-	@cargo outdated --exit-code 1 || \
+	@cd .. && cargo outdated --exit-code 1 || \
 		(echo "⚠️  Outdated dependencies found. Run 'make deps-update' to update."; exit 0)
 
 deps-update: ## Update dependencies conservatively
 	@echo "📦 Updating dependencies..."
-	@cargo update
-	@cargo outdated --format json > outdated-deps.json
+	@cd .. && cargo update
+	@cd .. && cargo outdated --format json > server/outdated-deps.json
 	@echo "✅ Dependencies updated. Run tests to verify."
 
 deps-update-aggressive: ## Update dependencies to latest compatible versions
 	@echo "🚀 Aggressively updating dependencies..."
-	@cargo update --aggressive
-	@cargo upgrade --workspace --to-lockfile
+	@cd .. && cargo update --aggressive
+	@cd .. && cargo upgrade --workspace --to-lockfile
 	@echo "✅ Dependencies updated to latest versions."
 
 deps-audit: ## Run security audit with auto-fix
 	@echo "🔒 Running security audit..."
-	@cargo audit fix || cargo audit
+	@cd .. && cargo audit fix || cd .. && cargo audit
 
 deps-canary-test: ## Test dependency updates in isolated environment
 	@echo "🐤 Running canary tests for dependency updates..."
-	@docker run --rm -v $(PWD):/workspace -w /workspace rust:latest bash -c "\
-		cargo update && \
+	@docker run --rm -v $(PWD)/..:/workspace -w /workspace/server rust:latest bash -c "\
+		cd .. && cargo update && \
 		cargo test --all-features && \
 		cargo bench --no-run"
 

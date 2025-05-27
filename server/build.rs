@@ -11,7 +11,13 @@ fn main() {
 }
 
 fn verify_dependency_versions() {
-    let lock_content = std::fs::read_to_string("Cargo.lock").expect("Cargo.lock must exist");
+    // In a workspace, Cargo.lock is in the parent directory
+    let lock_path = if std::path::Path::new("../Cargo.lock").exists() {
+        "../Cargo.lock"
+    } else {
+        "Cargo.lock"
+    };
+    let lock_content = std::fs::read_to_string(lock_path).expect("Cargo.lock must exist");
 
     // Critical dependencies for your MCP server
     let critical_deps = [

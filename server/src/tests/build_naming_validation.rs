@@ -162,4 +162,102 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_workspace_aware_cargo_commands_in_makefile() {
+        // Read the server/Makefile
+        let makefile_content =
+            std::fs::read_to_string("Makefile").expect("Failed to read server/Makefile");
+
+        // Define cargo commands that need workspace awareness
+        let workspace_sensitive_commands = vec![
+            "cargo audit",
+            "cargo outdated",
+            "cargo update",
+            "cargo upgrade",
+        ];
+
+        // Check each line for problematic cargo commands
+        for (line_num, line) in makefile_content.lines().enumerate() {
+            let trimmed = line.trim();
+
+            // Skip comments and empty lines
+            if trimmed.starts_with('#') || trimmed.is_empty() {
+                continue;
+            }
+
+            // Check for workspace-sensitive cargo commands
+            for cmd in &workspace_sensitive_commands {
+                if trimmed.contains(cmd)
+                    && !trimmed.contains("cd ..")
+                    && !trimmed.contains("--manifest-path")
+                {
+                    // Check if this is part of a shell command that changes directory
+                    let is_workspace_aware = line.contains("cd ..")
+                        || line.contains("$(PWD)/..")
+                        || line.contains("--manifest-path");
+
+                    assert!(
+                        is_workspace_aware,
+                        "Line {} in server/Makefile contains '{}' without workspace context.\n\
+                         This command needs to run from workspace root.\n\
+                         Found: {}\n\
+                         Fix: Prepend with 'cd .. &&' or use '--manifest-path'",
+                        line_num + 1,
+                        cmd,
+                        line.trim()
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_cargo_lock_only_in_root() {
+        use std::env;
+
+        // Get the current directory to handle different test contexts
+        let current_dir = env::current_dir().expect("Failed to get current directory");
+
+        // Check if we're in the server directory or root
+        if current_dir.ends_with("server") {
+            // Running from server directory
+            assert!(
+                !std::path::Path::new("Cargo.lock").exists(),
+                "Cargo.lock found in server/ directory. It should only exist in the workspace root!"
+            );
+            assert!(
+                std::path::Path::new("../Cargo.lock").exists(),
+                "Cargo.lock not found in workspace root directory!"
+            );
+        } else {
+            // Running from root directory
+            assert!(
+                !std::path::Path::new("server/Cargo.lock").exists(),
+                "Cargo.lock found in server/ directory. It should only exist in the workspace root!"
+            );
+            assert!(
+                std::path::Path::new("Cargo.lock").exists(),
+                "Cargo.lock not found in workspace root directory!"
+            );
+        }
+    }
+
+    #[test]
+    fn test_build_script_workspace_aware() {
+        // Read the build.rs file
+        let build_script = std::fs::read_to_string("build.rs")
+            .expect("Failed to read build.rs");
+
+        // Ensure build script doesn't hardcode Cargo.lock path
+        if build_script.contains("\"Cargo.lock\"") {
+            // Make sure it checks for workspace structure
+            assert!(
+                build_script.contains("../Cargo.lock") || 
+                build_script.contains("Path::new(\"../Cargo.lock\")"),
+                "build.rs references Cargo.lock but doesn't handle workspace structure.\n\
+                 The build script should check if ../Cargo.lock exists for workspace builds."
+            );
+        }
+    }
 }

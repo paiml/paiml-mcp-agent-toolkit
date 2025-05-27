@@ -1,0 +1,23 @@
+# Workspace member - Cargo.lock should only exist in root
+Cargo.lock
+
+# Build artifacts
+/target/
+
+# Coverage reports
+/coverage/
+/lcov.info
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
