@@ -50,8 +50,7 @@ jobs:
       
       - name: Run CI pipeline (without Docker)
         run: |
-          cd server
-          make format lint check test build-binary
+          make server-format server-lint server-check server-test server-build-binary
       
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
@@ -80,5 +79,4 @@ jobs:
       
       - name: Run security audit via Makefile
         run: |
-          cd server
-          make audit
+          make server-audit

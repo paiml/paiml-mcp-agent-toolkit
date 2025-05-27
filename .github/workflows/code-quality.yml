@@ -26,7 +26,7 @@ jobs:
       - name: Check coverage threshold
         run: |
           cd server
-          coverage=$(cargo llvm-cov report --summary-only | grep "Total" | awk '{print $10}' | sed 's/%//')
+          coverage=$(cargo llvm-cov report --summary-only | grep "TOTAL" | awk '{print $10}' | sed 's/%//')
           echo "Current coverage: $coverage%"
           # Use awk for floating point comparison instead of bc
           if awk "BEGIN {exit !($coverage < 60)}"; then
