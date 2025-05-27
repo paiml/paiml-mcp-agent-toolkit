@@ -1,6 +1,22 @@
 # MCP Agent Toolkit - Root Makefile
 # Pragmatic AI Labs
 # https://paiml.com
+#
+# ⚠️  IMPORTANT: This is the PRIMARY Makefile for the entire project!
+# 
+# This root Makefile should be used for 80% of all operations, including:
+# - All CI/CD operations (GitHub Actions should use this Makefile)
+# - Development commands (format, lint, test, build)
+# - Installation and deployment
+# - Cross-project operations
+#
+# The individual project Makefiles (e.g., server/Makefile) should ONLY be used
+# when you need project-specific operations while working directly in that directory.
+#
+# Use `make server-<target>` to run server-specific targets from the root.
+# Example: `make server-test` instead of `cd server && make test`
+#
+# This design prevents workspace-related issues and ensures consistent behavior.
 
 .PHONY: all validate format lint check test coverage build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate
 

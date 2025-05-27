@@ -44,36 +44,75 @@ The server is designed as a stateless MCP server:
 - Easy distribution
 - All templates compiled into the binary
 
-## Common Commands
+## Workspace Structure
 
-### Server Development
-```bash
-# Build options
-cd server && make build          # Build binary
+⚠️ **CRITICAL**: This is a Cargo workspace project with the root Makefile as the primary control point.
 
-# Running locally
-cd server && make run-mcp        # Run MCP server (STDIO mode)
-cd server && make run-mcp-test   # Run with embedded test templates
+**Always use the root Makefile for:**
+- All CI/CD operations
+- Cross-project commands
+- Development workflows (format, lint, test, build)
+- Installation and deployment
 
-# Testing
-cd server && make test           # Run tests with coverage
-cd server && make lint           # Lint Rust and TypeScript code
-cd server && make test-mcp       # Test MCP STDIO protocol
-
-# Run the binary directly
-./target/release/paiml-mcp-agent-toolkit
+**Workspace layout:**
+```
+paiml-mcp-agent-toolkit/          # Root workspace
+├── Makefile                      # PRIMARY Makefile - use this!
+├── Cargo.toml                    # Workspace definition
+├── server/                       # Server project (workspace member)
+│   ├── Makefile                 # Project-specific targets only
+│   └── Cargo.toml               # Server package
+└── installer-macro/              # Macro crate (workspace member)
+    └── Cargo.toml               # Macro package
 ```
 
-### Client Development (Rust CLI)
+## Common Commands
+
+### ⚠️ IMPORTANT: Use root-level commands for 80% of operations!
+
 ```bash
-# Build the client
-cd client && cargo build --release
+# From the ROOT directory (preferred):
+make server-build           # Build server binary
+make server-test            # Run server tests
+make server-lint            # Lint server code
+make server-run-mcp         # Run MCP server
+make validate               # Run all validation checks
+make install                # Install the binary
 
-# Run the client
-cd client && cargo run -- --project-path /path/to/project
+# DO NOT use these patterns in CI/CD:
+# ❌ cd server && make test
+# ❌ cd server && cargo build
 
-# Run tests
-cd client && cargo test
+# ✅ Instead use:
+# make server-test
+# make server-build-binary
+```
+
+### When to use project-specific Makefiles
+
+Only use `cd server && make ...` when:
+- You're actively developing within that directory
+- You need project-specific targets not exposed at root
+- You're debugging specific to that project
+
+### CI/CD Guidelines
+
+All GitHub Actions workflows MUST:
+1. Run commands from the repository root
+2. Use `make server-*` targets instead of `cd server && make`
+3. Use `--manifest-path` for direct cargo commands when needed
+
+Example:
+```yaml
+# ✅ CORRECT:
+- name: Run tests
+  run: make server-test
+
+# ❌ WRONG:
+- name: Run tests
+  run: |
+    cd server
+    make test
 ```
 
 ## Template URI Schema

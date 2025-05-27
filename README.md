@@ -646,19 +646,22 @@ paiml-mcp-agent-toolkit/
 
 ### Building and Installing
 
-```bash
-# From root directory
-make install     # Bumps version, builds, and installs (recommended)
-make build       # Just builds without installing
-make test        # Run all tests
-make validate    # Run all validation checks
+⚠️ **IMPORTANT**: This is a Cargo workspace project. Always use the root Makefile for builds and CI/CD operations.
 
-# Or from server directory
-cd server
-make build-binary   # Build binary only
-make install        # Install with version bump
-make test           # Run tests
-make test-mcp       # Run E2E MCP tests
+```bash
+# ✅ RECOMMENDED: From root directory (use this 80% of the time)
+make install          # Bumps version, builds, and installs
+make build            # Just builds without installing
+make test             # Run all tests
+make validate         # Run all validation checks
+make server-test      # Run server tests specifically
+make server-build     # Build server specifically
+
+# ❌ AVOID in CI/CD (only for local development when needed)
+cd server && make test    # Can cause workspace issues
+cd server && cargo build  # May not resolve dependencies correctly
+
+# For more details, see .github/CONTRIBUTING.md
 ```
 
 ### Adding New Templates

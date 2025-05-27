@@ -27,11 +27,11 @@ jobs:
             build
             revert
           requireScope: false
-          subjectPattern: ^[A-Z].*[^.]$
+          subjectPattern: ^[a-zA-Z].*[^.]$
           subjectPatternError: |
             The subject "{subject}" found in the pull request title "{title}"
             doesn't match the configured pattern. Please ensure that the subject
-            starts with an uppercase letter and doesn't end with a period.
+            starts with a letter and doesn't end with a period.
 
   pr-size:
     name: PR Size Check
@@ -72,22 +72,30 @@ jobs:
             
             for (const label of labels.data) {
               if (label.name.startsWith('size/')) {
-                await github.rest.issues.removeLabel({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: pr.number,
-                  name: label.name
-                });
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                    name: label.name
+                  });
+                } catch (error) {
+                  // Ignore errors when removing labels
+                }
               }
             }
             
             // Add new size label
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr.number,
-              labels: [label]
-            });
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                labels: [label]
+              });
+            } catch (error) {
+              console.log(`Note: Could not add label '${label}'. Labels may need to be created in the repository.`);
+            }
 
   conflicts-check:
     name: Merge Conflicts Check
@@ -104,12 +112,16 @@ jobs:
             if (pr.mergeable_state === 'dirty') {
               core.setFailed('This PR has merge conflicts. Please resolve them.');
               
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number,
-                labels: ['has-conflicts']
-              });
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  labels: ['has-conflicts']
+                });
+              } catch (error) {
+                console.log("Note: Could not add 'has-conflicts' label. Labels may need to be created in the repository.");
+              }
             } else {
               // Remove conflict label if it exists
               try {
