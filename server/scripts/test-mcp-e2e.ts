@@ -115,9 +115,23 @@ class McpClient {
 async function runE2ETests() {
   console.log("🧪 Running MCP Server E2E Tests");
 
+  // The binary should be in the workspace root target directory
+  // This is the ONE way - all builds go through root Makefile which uses workspace target
+  const binaryPath = "../target/debug/paiml-mcp-agent-toolkit";
+
+  try {
+    await Deno.stat(binaryPath);
+  } catch {
+    throw new Error(
+      `Binary not found at: ${binaryPath}. Make sure to run 'make server-build' from the repository root.`,
+    );
+  }
+
+  console.log(`Using binary at: ${binaryPath}`);
+
   // Test 1: Initialize handshake
   console.log("\n📋 Test 1: Initialize handshake");
-  const client = new McpClient(["./target/debug/paiml-mcp-agent-toolkit"]);
+  const client = new McpClient([binaryPath]);
 
   try {
     const initResponse = await client.sendRequest("initialize", {

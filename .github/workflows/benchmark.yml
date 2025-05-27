@@ -31,6 +31,11 @@ jobs:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
       
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+      
       - name: Install hyperfine
         run: |
           wget https://github.com/sharkdp/hyperfine/releases/download/v1.18.0/hyperfine_1.18.0_amd64.deb
@@ -38,7 +43,7 @@ jobs:
       
       - name: Build release binary
         run: |
-          make server-build-binary
+          make server-build-release
       
       - name: Run benchmarks
         run: |
@@ -68,12 +73,11 @@ jobs:
         run: |
           # Run benchmarks through root Makefile
           make benchmark | tee bench.txt
-            
-            echo "### Cargo Bench Results" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -n 20 bench.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          fi
+          
+          echo "### Cargo Bench Results" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 20 bench.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
       
       - name: Compare with base branch
         if: github.event_name == 'pull_request'
