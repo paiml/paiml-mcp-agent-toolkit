@@ -193,12 +193,24 @@ async function validateGitHubActionsStatus() {
       }
 
       console.log("\n💡 Common Fixes:");
-      console.log("   - CI failures: Check for build, test, or coverage issues");
-      console.log("   - Code Quality failures: Check coverage threshold (70%) or complexity tools");
-      console.log("   - PR Checks failures: Verify PR has proper labels and descriptions");
-      console.log("   - Dependencies failures: Update or pin problematic dependencies");
-      console.log("   - Security Audit failures: Run 'cargo audit fix' or update dependencies");
-      console.log("   - Benchmark failures: Check benchmark thresholds and performance");
+      console.log(
+        "   - CI failures: Check for build, test, or coverage issues",
+      );
+      console.log(
+        "   - Code Quality failures: Check coverage threshold (70%) or complexity tools",
+      );
+      console.log(
+        "   - PR Checks failures: Verify PR has proper labels and descriptions",
+      );
+      console.log(
+        "   - Dependencies failures: Update or pin problematic dependencies",
+      );
+      console.log(
+        "   - Security Audit failures: Run 'cargo audit fix' or update dependencies",
+      );
+      console.log(
+        "   - Benchmark failures: Check benchmark thresholds and performance",
+      );
     }
 
     // Summary

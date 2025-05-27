@@ -232,6 +232,12 @@ mod tests {
     #[path = "../tests/tools.rs"]
     mod tools;
 
+    #[path = "../tests/analyze_cli_tests.rs"]
+    mod analyze_cli_tests;
+
+    #[path = "../tests/cli_integration_full.rs"]
+    mod cli_integration_full;
+
     #[path = "../tests/resources.rs"]
     mod resources;
 
@@ -246,4 +252,7 @@ mod tests {
 
     #[path = "../tests/cli_tests.rs"]
     mod cli_tests;
+
+    #[path = "../tests/churn.rs"]
+    mod churn;
 }

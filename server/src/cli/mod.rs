@@ -1,7 +1,9 @@
 pub mod args;
 
 use crate::{
-    models::template::*, services::template_service::*, stateless_server::StatelessTemplateServer,
+    models::{churn::ChurnOutputFormat, template::*},
+    services::template_service::*,
+    stateless_server::StatelessTemplateServer,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use serde_json::Value;
@@ -15,23 +17,25 @@ use tokio::io::AsyncWriteExt;
     version,
     long_about = None
 )]
-struct Cli {
+#[cfg_attr(test, derive(Debug))]
+pub(crate) struct Cli {
     /// Force specific mode (auto-detected by default)
     #[arg(long, value_enum, global = true)]
     mode: Option<Mode>,
 
     #[command(subcommand)]
-    command: Commands,
+    pub(crate) command: Commands,
 }
 
-#[derive(Clone, ValueEnum)]
+#[derive(Clone, Debug, ValueEnum)]
 enum Mode {
     Cli,
     Mcp,
 }
 
 #[derive(Subcommand)]
-enum Commands {
+#[cfg_attr(test, derive(Debug))]
+pub(crate) enum Commands {
     /// Generate a single template
     #[command(visible_aliases = &["gen", "g"])]
     Generate {
@@ -128,16 +132,43 @@ enum Commands {
         #[arg(long, value_enum, default_value = "markdown")]
         format: ContextFormat,
     },
+
+    /// Analyze code metrics and patterns
+    #[command(subcommand)]
+    Analyze(AnalyzeCommands),
 }
 
-#[derive(Clone, ValueEnum)]
-enum ContextFormat {
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub(crate) enum AnalyzeCommands {
+    /// Analyze code churn (change frequency)
+    Churn {
+        /// Project path to analyze
+        #[arg(short = 'p', long, default_value = ".")]
+        project_path: PathBuf,
+
+        /// Number of days to analyze
+        #[arg(short = 'd', long, default_value_t = 30)]
+        days: u32,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "summary")]
+        format: ChurnOutputFormat,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+pub(crate) enum ContextFormat {
     Markdown,
     Json,
 }
 
-#[derive(Clone, ValueEnum)]
-enum OutputFormat {
+#[derive(Clone, Debug, ValueEnum)]
+pub(crate) enum OutputFormat {
     Table,
     Json,
     Yaml,
@@ -300,6 +331,36 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
                 println!("{}", content);
             }
         }
+
+        Commands::Analyze(analyze_cmd) => match analyze_cmd {
+            AnalyzeCommands::Churn {
+                project_path,
+                days,
+                format,
+                output,
+            } => {
+                use crate::handlers::tools::{
+                    format_churn_as_csv, format_churn_as_markdown, format_churn_summary,
+                };
+                use crate::services::git_analysis::GitAnalysisService;
+
+                let analysis = GitAnalysisService::analyze_code_churn(&project_path, days)?;
+
+                let content = match format {
+                    ChurnOutputFormat::Summary => format_churn_summary(&analysis),
+                    ChurnOutputFormat::Markdown => format_churn_as_markdown(&analysis),
+                    ChurnOutputFormat::Json => serde_json::to_string_pretty(&analysis)?,
+                    ChurnOutputFormat::Csv => format_churn_as_csv(&analysis),
+                };
+
+                if let Some(path) = output {
+                    tokio::fs::write(&path, &content).await?;
+                    eprintln!("✅ Code churn analysis written to: {}", path.display());
+                } else {
+                    println!("{}", content);
+                }
+            }
+        },
     }
 
     Ok(())

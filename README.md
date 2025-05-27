@@ -110,6 +110,7 @@ The PAIML MCP Agent Toolkit implements a production-grade template server using 
 - 📁 **Smart Directory Creation**: Files are created in project subdirectories
 - ℹ️ **Discoverable**: Built-in server info tool for metadata access
 - 🧠 **AST Context Generation**: Analyze project structure using Abstract Syntax Tree parsing
+- 📊 **Code Churn Analysis**: Identify maintenance hotspots and frequently changed files
 
 ### Supported Toolchains
 
@@ -370,6 +371,40 @@ paiml-mcp-agent-toolkit context python-uv -o context.md
 - **Rust**: Analyzes `.rs` files for functions, structs, enums, traits, and implementations
 - **Deno/TypeScript**: Analyzes `.ts`, `.tsx`, `.js`, `.jsx` files for functions, classes, interfaces, and types
 - **Python**: Analyzes `.py` files for functions, classes, and imports
+
+##### `analyze` - Analyze code metrics and patterns
+
+Perform various code analysis operations to understand code quality and maintenance patterns.
+
+###### `analyze churn` - Code churn analysis
+
+Analyze git history to identify frequently changed files and maintenance hotspots. This helps identify areas of the codebase that may need refactoring or have quality issues.
+
+```bash
+# Analyze code churn for last 30 days (default)
+paiml-mcp-agent-toolkit analyze churn
+
+# Analyze for a specific time period
+paiml-mcp-agent-toolkit analyze churn --days 90
+
+# Specify project path
+paiml-mcp-agent-toolkit analyze churn --project-path /path/to/project --days 7
+
+# Output formats
+paiml-mcp-agent-toolkit analyze churn --format summary  # Default: concise summary
+paiml-mcp-agent-toolkit analyze churn --format markdown # Detailed markdown report
+paiml-mcp-agent-toolkit analyze churn --format json     # Machine-readable JSON
+paiml-mcp-agent-toolkit analyze churn --format csv      # CSV for spreadsheet analysis
+
+# Save to file
+paiml-mcp-agent-toolkit analyze churn --days 30 --format markdown -o churn-report.md
+```
+
+**Output includes:**
+- **Hotspot Files**: Files with high churn scores that change frequently
+- **Stable Files**: Files that rarely change
+- **Churn Metrics**: Commit count, additions/deletions, unique authors
+- **Author Contributions**: Who has modified which files
 
 #### Parameter Syntax
 
@@ -756,6 +791,7 @@ List all available tools.
 - `scaffold_project` - Generate multiple templates at once
 - `search_templates` - Search templates by keyword
 - `get_server_info` - Get server metadata and capabilities
+- `analyze_code_churn` - Analyze code change frequency and patterns
 
 ### Available Tools
 
@@ -847,6 +883,38 @@ Search templates by keyword in names, descriptions, and parameters.
   }
 }
 ```
+
+#### `analyze_code_churn`
+
+Analyze code change frequency and patterns to identify maintenance hotspots. Uses git history to find frequently changed files that may need refactoring.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_code_churn",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "period_days": 30,
+      "format": "summary"
+    }
+  }
+}
+```
+
+**Parameters:**
+- `project_path` (optional): Path to analyze (defaults to current directory)
+- `period_days` (optional): Number of days to analyze (default: 30)
+- `format` (optional): Output format - "json", "markdown", "csv", or "summary" (default: "summary")
+
+**Response includes:**
+- Hotspot files with high churn scores
+- Stable files that rarely change
+- File metrics (commits, additions/deletions, authors)
+- Author contribution statistics
 
 ## Performance
 

@@ -1,10 +1,14 @@
+use crate::models::churn::ChurnOutputFormat;
 use crate::models::mcp::{
     GenerateTemplateArgs, ListTemplatesArgs, McpRequest, McpResponse, ScaffoldProjectArgs,
     SearchTemplatesArgs, ToolCallParams, ValidateTemplateArgs,
 };
+use crate::services::git_analysis::GitAnalysisService;
 use crate::services::template_service;
 use crate::TemplateServerTrait;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{error, info};
 
@@ -45,6 +49,7 @@ pub async fn handle_tool_call<T: TemplateServerTrait>(
         "search_templates" => {
             handle_search_templates(server, request.id, tool_params.arguments).await
         }
+        "analyze_code_churn" => handle_analyze_code_churn(request.id, tool_params.arguments).await,
         _ => McpResponse::error(
             request.id,
             -32602,
@@ -390,6 +395,176 @@ async fn handle_get_server_info(request_id: serde_json::Value) -> McpResponse {
     });
 
     McpResponse::success(request_id, result)
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AnalyzeCodeChurnArgs {
+    project_path: Option<String>,
+    period_days: Option<u32>,
+    format: Option<String>,
+}
+
+async fn handle_analyze_code_churn(
+    request_id: serde_json::Value,
+    arguments: serde_json::Value,
+) -> McpResponse {
+    let args: AnalyzeCodeChurnArgs = match serde_json::from_value(arguments) {
+        Ok(a) => a,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32602,
+                format!("Invalid analyze_code_churn arguments: {}", e),
+            );
+        }
+    };
+
+    let project_path = args
+        .project_path
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+    let period_days = args.period_days.unwrap_or(30);
+    let format = args
+        .format
+        .as_deref()
+        .and_then(|f| f.parse::<ChurnOutputFormat>().ok())
+        .unwrap_or(ChurnOutputFormat::Summary);
+
+    info!(
+        "Analyzing code churn for {:?} over {} days",
+        project_path, period_days
+    );
+
+    match GitAnalysisService::analyze_code_churn(&project_path, period_days) {
+        Ok(analysis) => {
+            let content_text = match format {
+                ChurnOutputFormat::Json => {
+                    serde_json::to_string_pretty(&analysis).unwrap_or_default()
+                }
+                ChurnOutputFormat::Markdown => format_churn_as_markdown(&analysis),
+                ChurnOutputFormat::Csv => format_churn_as_csv(&analysis),
+                ChurnOutputFormat::Summary => format_churn_summary(&analysis),
+            };
+
+            let result = json!({
+                "content": [{
+                    "type": "text",
+                    "text": content_text
+                }],
+                "analysis": analysis,
+                "format": format!("{:?}", format),
+            });
+
+            McpResponse::success(request_id, result)
+        }
+        Err(e) => {
+            error!("Code churn analysis failed: {}", e);
+            McpResponse::error(request_id, -32000, e.to_string())
+        }
+    }
+}
+
+pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
+    let mut output = String::new();
+
+    output.push_str("# Code Churn Analysis\n\n");
+    output.push_str(&format!("Period: {} days\n", analysis.period_days));
+    output.push_str(&format!(
+        "Total files changed: {}\n",
+        analysis.summary.total_files_changed
+    ));
+    output.push_str(&format!(
+        "Total commits: {}\n\n",
+        analysis.summary.total_commits
+    ));
+
+    if !analysis.summary.hotspot_files.is_empty() {
+        output.push_str("## Hotspot Files (High Churn)\n");
+        for (i, file) in analysis.summary.hotspot_files.iter().take(5).enumerate() {
+            output.push_str(&format!("{}. {}\n", i + 1, file.display()));
+        }
+        output.push('\n');
+    }
+
+    if !analysis.summary.stable_files.is_empty() {
+        output.push_str("## Stable Files (Low Churn)\n");
+        for (i, file) in analysis.summary.stable_files.iter().take(5).enumerate() {
+            output.push_str(&format!("{}. {}\n", i + 1, file.display()));
+        }
+    }
+
+    output
+}
+
+pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
+    let mut output = String::new();
+
+    output.push_str("# Code Churn Analysis Report\n\n");
+    output.push_str(&format!(
+        "**Generated:** {}\n",
+        analysis.generated_at.format("%Y-%m-%d %H:%M:%S UTC")
+    ));
+    output.push_str(&format!(
+        "**Repository:** {}\n",
+        analysis.repository_root.display()
+    ));
+    output.push_str(&format!("**Period:** {} days\n\n", analysis.period_days));
+
+    output.push_str("## Summary\n\n");
+    output.push_str(&format!(
+        "- Total files changed: {}\n",
+        analysis.summary.total_files_changed
+    ));
+    output.push_str(&format!(
+        "- Total commits: {}\n",
+        analysis.summary.total_commits
+    ));
+    output.push_str(&format!(
+        "- Unique contributors: {}\n\n",
+        analysis.summary.author_contributions.len()
+    ));
+
+    output.push_str("## Top 10 Files by Churn Score\n\n");
+    output.push_str("| File | Commits | Changes | Churn Score | Authors |\n");
+    output.push_str("|------|---------|---------|-------------|----------|\n");
+
+    for file in analysis.files.iter().take(10) {
+        output.push_str(&format!(
+            "| {} | {} | +{} -{}  | {:.2} | {} |\n",
+            file.relative_path,
+            file.commit_count,
+            file.additions,
+            file.deletions,
+            file.churn_score,
+            file.unique_authors.len()
+        ));
+    }
+
+    output
+}
+
+pub fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
+    let mut output = String::new();
+
+    output.push_str(
+        "file_path,commits,additions,deletions,churn_score,unique_authors,last_modified\n",
+    );
+
+    for file in &analysis.files {
+        output.push_str(&format!(
+            "{},{},{},{},{:.3},{},{}\n",
+            file.relative_path,
+            file.commit_count,
+            file.additions,
+            file.deletions,
+            file.churn_score,
+            file.unique_authors.len(),
+            file.last_modified.format("%Y-%m-%d")
+        ));
+    }
+
+    output
 }
 
 fn calculate_relevance(template: &crate::models::template::TemplateResource, query: &str) -> f32 {
