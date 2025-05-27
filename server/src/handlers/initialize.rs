@@ -161,6 +161,28 @@ pub async fn handle_tools_list<T: TemplateServerTrait>(
                         },
                         "required": ["query"]
                     }
+                },
+                {
+                    "name": "analyze_code_churn",
+                    "description": "Analyze code change frequency and patterns to identify maintenance hotspots. Uses git history to find frequently changed files.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "project_path": {
+                                "type": "string",
+                                "description": "Path to analyze (defaults to current directory)"
+                            },
+                            "period_days": {
+                                "type": "integer",
+                                "description": "Number of days to analyze (default: 30)"
+                            },
+                            "format": {
+                                "type": "string",
+                                "enum": ["json", "markdown", "csv", "summary"],
+                                "description": "Output format (default: summary)"
+                            }
+                        }
+                    }
                 }
             ]
         }),

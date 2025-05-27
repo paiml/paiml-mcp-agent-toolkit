@@ -1,6 +1,6 @@
 [package]
 name = "paiml-mcp-agent-toolkit"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 rust-version = "1.87.0"
 authors = ["Pragmatic AI Labs"]
