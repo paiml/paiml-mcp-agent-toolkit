@@ -19,9 +19,8 @@ jobs:
       
       - name: Generate coverage report
         run: |
-          cd server
-          cargo llvm-cov --all-features --workspace --html --output-dir coverage
-          cargo llvm-cov report --summary-only > coverage-summary.txt
+          make server-test
+          cd server && cargo llvm-cov report --summary-only > coverage-summary.txt
       
       - name: Check coverage threshold
         run: |
@@ -90,10 +89,9 @@ jobs:
       
       - name: Check for unsafe code
         run: |
-          cd server
           echo "## Unsafe Code Report" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          cargo geiger --all-features >> $GITHUB_STEP_SUMMARY || true
+          make cargo-geiger >> $GITHUB_STEP_SUMMARY || true
           echo '```' >> $GITHUB_STEP_SUMMARY
 
   documentation-check:
@@ -107,13 +105,11 @@ jobs:
       
       - name: Check documentation
         run: |
-          cd server
-          cargo doc --all-features --no-deps
+          make cargo-doc
       
       - name: Check for missing docs
         run: |
-          cd server
-          cargo rustdoc --all-features -- -D missing_docs || true
+          cd server && cargo rustdoc --all-features -- -D missing_docs || true
       
       - name: Upload documentation
         uses: actions/upload-artifact@v4

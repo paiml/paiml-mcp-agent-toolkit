@@ -42,8 +42,6 @@ jobs:
       
       - name: Run benchmarks
         run: |
-          cd server
-          
           # Create a test input file
           echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"1.0"}}' > test_input.json
           
@@ -68,10 +66,8 @@ jobs:
       
       - name: Run cargo bench
         run: |
-          cd server
-          # Add benchmarks to Cargo.toml if they exist
-          if grep -q "bench" Cargo.toml; then
-            cargo bench --no-fail-fast | tee bench.txt
+          # Run benchmarks through root Makefile
+          make benchmark | tee bench.txt
             
             echo "### Cargo Bench Results" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY

@@ -132,11 +132,11 @@ jobs:
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
           fi
-          cargo build --release --target ${{ matrix.target }} --manifest-path server/Cargo.toml
+          make build-target TARGET=${{ matrix.target }}
       
       - name: Create archive
         run: |
-          cd server/target/${{ matrix.target }}/release
+          cd target/${{ matrix.target }}/release
           tar -czf paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz paiml-mcp-agent-toolkit
           sha256sum paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz > paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz.sha256
       
@@ -145,8 +145,8 @@ jobs:
         with:
           name: binary-${{ matrix.target }}
           path: |
-            server/target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz
-            server/target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz.sha256
+            target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz
+            target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz.sha256
 
   # Create GitHub release
   create-release:
