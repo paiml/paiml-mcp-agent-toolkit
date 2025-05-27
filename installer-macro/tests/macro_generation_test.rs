@@ -25,7 +25,7 @@ mod unit_tests {
             .unwrap()
             .join("server")
             .join("installer.sh");
-        
+
         assert!(installer_path.exists(), "installer.sh should exist");
     }
 
@@ -72,7 +72,7 @@ mod unit_tests {
             .parent()
             .unwrap()
             .join("server");
-        
+
         // Check if the installer module is properly generated
         assert!(server_path.exists(), "Server directory should exist");
     }

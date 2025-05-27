@@ -26,7 +26,7 @@ mod tests {
     fn test_security_properties() {
         // Verify security properties
         assert!(INSTALL_PAIML_MCP_AGENT_TOOLKIT_SHELL.contains("set -euf"));
-        
+
         // Note: The current AST generator is minimal and doesn't translate all Rust constructs
         // including trap and readonly commands. This is expected behavior for now.
         // Once the AST generator is more complete, these assertions can be re-enabled:

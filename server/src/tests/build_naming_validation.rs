@@ -246,15 +246,14 @@ mod tests {
     #[test]
     fn test_build_script_workspace_aware() {
         // Read the build.rs file
-        let build_script = std::fs::read_to_string("build.rs")
-            .expect("Failed to read build.rs");
+        let build_script = std::fs::read_to_string("build.rs").expect("Failed to read build.rs");
 
         // Ensure build script doesn't hardcode Cargo.lock path
         if build_script.contains("\"Cargo.lock\"") {
             // Make sure it checks for workspace structure
             assert!(
-                build_script.contains("../Cargo.lock") || 
-                build_script.contains("Path::new(\"../Cargo.lock\")"),
+                build_script.contains("../Cargo.lock")
+                    || build_script.contains("Path::new(\"../Cargo.lock\")"),
                 "build.rs references Cargo.lock but doesn't handle workspace structure.\n\
                  The build script should check if ../Cargo.lock exists for workspace builds."
             );
