@@ -39,6 +39,7 @@ jobs:
         run: |
           cd server
           make test
+          cd ..
       
       - name: Check if should release
         id: check
@@ -65,8 +66,39 @@ jobs:
         id: version
         if: steps.check.outputs.should_release == 'true'
         run: |
+          # Debug: Show current directory and check if Cargo.toml exists
+          echo "Current directory: $(pwd)"
+          echo "Contents: $(ls -la)"
+          
           # Get current version from workspace Cargo.toml
-          CURRENT_VERSION=$(awk -F'"' '/^\[workspace\.package\]/{ws=1} ws && /^version = /{print $2; exit}' Cargo.toml)
+          if [ ! -f "Cargo.toml" ]; then
+            echo "Error: Cargo.toml not found in $(pwd)"
+            exit 1
+          fi
+          
+          # Try different methods to extract version
+          echo "Method 1: Using awk"
+          CURRENT_VERSION=$(awk -F'"' '/^\[workspace\.package\]/{ws=1} ws && /^version = /{print $2; exit}' Cargo.toml || echo "")
+          echo "Awk result: '$CURRENT_VERSION'"
+          
+          if [ -z "$CURRENT_VERSION" ]; then
+            echo "Method 2: Using grep and sed"
+            CURRENT_VERSION=$(grep -A10 '^\[workspace\.package\]' Cargo.toml | grep '^version = ' | head -1 | sed 's/version = "\(.*\)"/\1/' || echo "")
+            echo "Grep/sed result: '$CURRENT_VERSION'"
+          fi
+          
+          if [ -z "$CURRENT_VERSION" ]; then
+            echo "Method 3: Using simple grep"
+            CURRENT_VERSION=$(grep '^version = ' Cargo.toml | head -1 | cut -d'"' -f2 || echo "")
+            echo "Simple grep result: '$CURRENT_VERSION'"
+          fi
+          
+          if [ -z "$CURRENT_VERSION" ]; then
+            echo "Error: Could not extract version from Cargo.toml"
+            cat Cargo.toml | head -20
+            exit 1
+          fi
+          
           echo "Current version: $CURRENT_VERSION"
           
           # Determine bump type

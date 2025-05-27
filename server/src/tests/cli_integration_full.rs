@@ -121,13 +121,15 @@ mod tests {
         let server = Arc::new(StatelessTemplateServer::new().unwrap());
         let templates = vec!["makefile".to_string(), "readme".to_string()];
         let params = serde_json::json!({
-            "project_name": "test-scaffold"
+            "project_name": "test-scaffold",
+            "description": "A test project for scaffolding"
         });
 
         let result = scaffold_project(server.clone(), "rust", templates, params).await;
 
         assert!(result.is_ok());
         let scaffold_result = result.unwrap();
+        assert_eq!(scaffold_result.errors.len(), 0, "Should have no errors");
         assert_eq!(scaffold_result.files.len(), 2);
         assert!(scaffold_result
             .files

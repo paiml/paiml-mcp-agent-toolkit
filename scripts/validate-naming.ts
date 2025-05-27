@@ -5,6 +5,10 @@
  * Checks for consistency in binary names, package names, and repository references
  */
 
+// Load project state from central source of truth
+const projectStateJson = await Deno.readTextFile("assets/project-state.json");
+const projectState = JSON.parse(projectStateJson);
+
 interface ValidationResult {
   category: string;
   passed: boolean;
@@ -12,23 +16,13 @@ interface ValidationResult {
   details?: string[];
 }
 
-const CORRECT_BINARY_NAME = "paiml-mcp-agent-toolkit";
-const CORRECT_PACKAGE_NAME = "paiml-mcp-agent-toolkit";
-const _CORRECT_REPO_URL = "paiml/paiml-mcp-agent-toolkit";
+const CORRECT_BINARY_NAME = projectState.package.binary.main;
+const CORRECT_PACKAGE_NAME = projectState.package.name;
+const ALLOWED_ADDITIONAL_BINARIES =
+  projectState.package.binary.allowed_additional;
 
-const OLD_NAMES = [
-  "mcp_server_stateless",
-  "mcp-template-server",
-  "mcp_template_server",
-  "mcp-server",
-  "mcp_server",
-];
-
-const OLD_REPO_URLS = [
-  "pragmatic-ai-labs/paiml-mcp-agent-toolkit",
-  "paiml/mcp-template-server",
-  "pragmatic-ai-labs/mcp-template-server",
-];
+const OLD_NAMES = projectState.deprecated.binaryNames;
+const OLD_REPO_URLS = projectState.deprecated.repositoryUrls;
 
 async function runCommand(
   cmd: string[],
@@ -76,14 +70,26 @@ async function checkCargoToml(): Promise<ValidationResult> {
 
     if (binaryNames.length === 0) {
       issues.push("No binary targets found");
-    } else if (binaryNames.length > 1) {
-      issues.push(`Multiple binary targets found: ${binaryNames.join(", ")}`);
-    } else if (binaryNames[0] !== CORRECT_BINARY_NAME) {
-      issues.push(
-        `Binary name is '${
-          binaryNames[0]
-        }', should be '${CORRECT_BINARY_NAME}'`,
+    } else {
+      // Check if the main binary is present
+      if (!binaryNames.includes(CORRECT_BINARY_NAME)) {
+        issues.push(
+          `Main binary '${CORRECT_BINARY_NAME}' not found. Found: ${
+            binaryNames.join(", ")
+          }`,
+        );
+      }
+      // Allow additional binaries from the allowed list
+      const unexpectedBinaries = binaryNames.filter(
+        (name) =>
+          name !== CORRECT_BINARY_NAME &&
+          !ALLOWED_ADDITIONAL_BINARIES.includes(name),
       );
+      if (unexpectedBinaries.length > 0) {
+        issues.push(
+          `Unexpected binary targets found: ${unexpectedBinaries.join(", ")}`,
+        );
+      }
     }
 
     return {

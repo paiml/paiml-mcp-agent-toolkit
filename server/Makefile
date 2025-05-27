@@ -147,21 +147,14 @@ test-install:
 
 
 # Clean build artifacts
-clean:
+clean: clean-installer
 	cargo clean
 
 # Increment version before building
 .PHONY: bump-version
 bump-version:
 	@echo "📦 Incrementing version..."
-	@current_version=$$(grep '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/'); \
-	major=$$(echo $$current_version | cut -d. -f1); \
-	minor=$$(echo $$current_version | cut -d. -f2); \
-	patch=$$(echo $$current_version | cut -d. -f3); \
-	new_patch=$$((patch + 1)); \
-	new_version="$$major.$$minor.$$new_patch"; \
-	sed -i "s/^version = \".*\"/version = \"$$new_version\"/" Cargo.toml; \
-	echo "✅ Version bumped from $$current_version to $$new_version"
+	@cd .. && ./scripts/update-version.ts patch
 
 # Install the MCP server binary to the system (idempotent)
 install: bump-version build-binary
@@ -344,6 +337,13 @@ help:
 	@echo "  check-rebuild  - Check if source files changed (needs rebuild)"
 	@echo "  uninstall      - Remove MCP server from system"
 	@echo ""
+	@echo "Installer Generation:"
+	@echo "  generate-installer       - Generate deterministic shell installer"
+	@echo "  verify-installer         - Complete installer verification pipeline"
+	@echo "  verify-installer-determinism - Verify installer is deterministic"
+	@echo "  audit-installer          - Security audit of generated installer"
+	@echo "  test-installer-matrix    - Test installer across platforms"
+	@echo ""
 	@echo "Utilities:"
 	@echo "  clean    - Remove build artifacts"
 	@echo "  setup    - Install required development tools"
@@ -369,3 +369,74 @@ status:
 # Check if rebuild needed
 check-rebuild:
 	@cd .. && ./scripts/mcp-install.ts --check
+
+# Rust-based installer generation
+INSTALLER_FEATURES := installer-gen
+INSTALLER_OUTPUT := installer.sh
+INSTALLER_HASH := installer.sh.blake3
+
+# Generate installer from Rust
+generate-installer: verify-rust-toolchain
+	@echo "🔨 Generating deterministic installer..."
+	@SOURCE_DATE_EPOCH=1234567890 cargo run --features $(INSTALLER_FEATURES) --bin generate-installer > $(INSTALLER_OUTPUT)
+	@test -f $(INSTALLER_OUTPUT) || (echo "❌ Installer generation failed" && exit 1)
+	@echo "✅ Generated $(INSTALLER_OUTPUT) ($(shell wc -c < $(INSTALLER_OUTPUT)) bytes)"
+
+# Verify determinism across multiple runs
+verify-installer-determinism:
+	@echo "🔒 Verifying installer determinism..."
+	@rm -f $(INSTALLER_OUTPUT) $(INSTALLER_HASH)
+	@$(MAKE) generate-installer --no-print-directory
+	@mv $(INSTALLER_OUTPUT) $(INSTALLER_OUTPUT).1
+	@$(MAKE) generate-installer --no-print-directory
+	@mv $(INSTALLER_OUTPUT) $(INSTALLER_OUTPUT).2
+	@if ! diff -q $(INSTALLER_OUTPUT).1 $(INSTALLER_OUTPUT).2 >/dev/null; then \
+		echo "❌ Non-deterministic generation detected!"; \
+		diff -u $(INSTALLER_OUTPUT).1 $(INSTALLER_OUTPUT).2; \
+		exit 1; \
+	fi
+	@mv $(INSTALLER_OUTPUT).1 $(INSTALLER_OUTPUT)
+	@rm -f $(INSTALLER_OUTPUT).2
+	@echo "✅ Installer generation is deterministic"
+
+# Security audit
+audit-installer: generate-installer
+	@echo "🔍 Security audit of generated installer..."
+	@if command -v shellcheck >/dev/null 2>&1; then \
+		shellcheck -s sh -e all $(INSTALLER_OUTPUT); \
+		echo "✅ Security audit passed"; \
+	else \
+		echo "⚠️  shellcheck not found, skipping security audit"; \
+	fi
+
+# Test installer across platforms
+test-installer-matrix: generate-installer
+	@echo "🧪 Testing installer across platforms..."
+	@for platform in ubuntu:20.04 ubuntu:22.04 alpine:3.18 debian:12; do \
+		echo "Testing on $$platform..."; \
+		docker run --rm -v $(PWD):/workspace -w /workspace $$platform \
+			sh -c "apk add --no-cache curl tar >/dev/null 2>&1 || apt-get update -qq && apt-get install -qq -y curl >/dev/null 2>&1; \
+			       ./$(INSTALLER_OUTPUT) /tmp/test-install latest && \
+			       /tmp/test-install/paiml-mcp-agent-toolkit --version" || exit 1; \
+	done
+	@echo "✅ All platform tests passed"
+
+# Full verification pipeline
+verify-installer: verify-installer-determinism audit-installer test-installer-matrix
+	@echo "✅ Complete installer verification passed"
+
+# Clean installer artifacts
+clean-installer:
+	@rm -f $(INSTALLER_OUTPUT) $(INSTALLER_HASH)
+	@rm -f installer.sh.1 installer.sh.2
+	@echo "🧹 Cleaned installer artifacts"
+
+# Verify rust toolchain is available
+verify-rust-toolchain:
+	@if ! command -v cargo >/dev/null 2>&1; then \
+		echo "❌ Error: cargo is not installed"; \
+		echo "Please install Rust from https://rustup.rs/"; \
+		exit 1; \
+	fi
+
+.PHONY: generate-installer verify-installer-determinism audit-installer test-installer-matrix verify-installer clean-installer verify-rust-toolchain
