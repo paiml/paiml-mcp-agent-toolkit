@@ -103,13 +103,21 @@ fn emit_statement(output: &mut String, stmt: &Statement, indent: usize) {
             else_block,
         } => {
             writeln!(output, "{}if {}; then", indent_str, emit_test(test)).unwrap();
-            for stmt in then_block {
-                emit_statement(output, stmt, indent + 1);
+            if then_block.is_empty() {
+                writeln!(output, "{}    :", indent_str).unwrap();
+            } else {
+                for stmt in then_block {
+                    emit_statement(output, stmt, indent + 1);
+                }
             }
             if let Some(else_stmts) = else_block {
                 writeln!(output, "{}else", indent_str).unwrap();
-                for stmt in else_stmts {
-                    emit_statement(output, stmt, indent + 1);
+                if else_stmts.is_empty() {
+                    writeln!(output, "{}    :", indent_str).unwrap();
+                } else {
+                    for stmt in else_stmts {
+                        emit_statement(output, stmt, indent + 1);
+                    }
                 }
             }
             writeln!(output, "{}fi", indent_str).unwrap();
@@ -118,8 +126,12 @@ fn emit_statement(output: &mut String, stmt: &Statement, indent: usize) {
             writeln!(output, "{}case {} in", indent_str, emit_expression(expr)).unwrap();
             for (pattern, stmts) in patterns {
                 writeln!(output, "{}    {})", indent_str, pattern).unwrap();
-                for stmt in stmts {
-                    emit_statement(output, stmt, indent + 2);
+                if stmts.is_empty() {
+                    writeln!(output, "{}        :", indent_str).unwrap();
+                } else {
+                    for stmt in stmts {
+                        emit_statement(output, stmt, indent + 2);
+                    }
                 }
                 writeln!(output, "{}        ;;", indent_str).unwrap();
             }
@@ -140,13 +152,21 @@ fn emit_statement(output: &mut String, stmt: &Statement, indent: usize) {
             else_block,
         } => {
             writeln!(output, "{}if {}; then", indent_str, condition).unwrap();
-            for stmt in then_block {
-                emit_statement(output, stmt, indent + 1);
+            if then_block.is_empty() {
+                writeln!(output, "{}    :", indent_str).unwrap();
+            } else {
+                for stmt in then_block {
+                    emit_statement(output, stmt, indent + 1);
+                }
             }
             if let Some(else_stmts) = else_block {
                 writeln!(output, "{}else", indent_str).unwrap();
-                for stmt in else_stmts {
-                    emit_statement(output, stmt, indent + 1);
+                if else_stmts.is_empty() {
+                    writeln!(output, "{}    :", indent_str).unwrap();
+                } else {
+                    for stmt in else_stmts {
+                        emit_statement(output, stmt, indent + 1);
+                    }
                 }
             }
             writeln!(output, "{}fi", indent_str).unwrap();
