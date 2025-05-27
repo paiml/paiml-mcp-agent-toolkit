@@ -81,9 +81,12 @@ fn emit_statement(output: &mut String, stmt: &Statement, indent: usize) {
             writeln!(output, "{}{}={}", indent_str, var, emit_expression(value)).unwrap();
         }
         Statement::LocalAssignment { var, value } => {
+            // In POSIX sh, there's no 'local' keyword
+            // Variables in functions are global by default
+            // We use a naming convention to avoid conflicts
             writeln!(
                 output,
-                "{}local {}={}",
+                "{}{}={}",
                 indent_str,
                 var,
                 emit_expression(value)
