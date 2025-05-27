@@ -1,6 +1,6 @@
 
 # MCP Template Server - Build and Deployment Makefile
-.PHONY: all validate format lint check test coverage build build-binary run run-test test-http test-mcp test-integration run-mcp run-mcp-test clean install install-latest reinstall status check-rebuild uninstall setup audit docs help validate-docs ci-status
+.PHONY: all validate format lint check test coverage build build-binary run run-test test-http test-mcp test-integration run-mcp run-mcp-test clean install install-latest reinstall status check-rebuild uninstall setup audit docs help validate-docs ci-status benchmark
 
 # Default target: executes complete build pipeline
 all: format lint check test build validate
@@ -301,6 +301,11 @@ ci-status:
 	@echo "🔍 Checking CI status..."
 	@cd .. && deno run --allow-net --allow-env scripts/validate-github-actions-status.ts
 
+# Run performance benchmarks
+benchmark:
+	@echo "🏃 Running performance benchmarks..."
+	cargo bench
+
 # Dependency management targets
 deps-check: ## Check for outdated dependencies
 	@echo "🔍 Checking for outdated dependencies..."
@@ -392,6 +397,7 @@ help:
 	@echo "  audit    - Run security audit"
 	@echo "  docs     - Generate and open documentation"
 	@echo "  ci-status - Check CI/GitHub Actions workflow status"
+	@echo "  benchmark - Run performance benchmarks"
 	@echo "  help     - Show this help message"
 
 # Install latest (check for changes and rebuild if needed)
