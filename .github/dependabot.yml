@@ -1,36 +1,50 @@
 version: 2
 updates:
-  # Enable version updates for Rust dependencies
   - package-ecosystem: "cargo"
     directory: "/server"
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "08:00"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "pragmaticlabs/maintainers"
+      time: "03:00"
+    open-pull-requests-limit: 5
+    groups:
+      # Group all patch updates together
+      patch-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+      # Group tokio ecosystem updates
+      tokio-ecosystem:
+        patterns:
+          - "tokio*"
+          - "tower*"
+          - "hyper*"
+      # Group testing dependencies
+      test-dependencies:
+        patterns:
+          - "tempfile"
+          - "criterion"
+          - "proptest"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
     labels:
       - "dependencies"
       - "rust"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
+    reviewers:
+      - "pragmaticlabs/maintainers"
     
-  # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "08:00"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "pragmaticlabs/maintainers"
-    labels:
-      - "dependencies"
-      - "github-actions"
+      interval: "monthly"
     commit-message:
       prefix: "ci"
       include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    reviewers:
+      - "pragmaticlabs/maintainers"
     

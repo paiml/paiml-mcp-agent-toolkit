@@ -268,4 +268,13 @@ mod tests {
 
     #[path = "../tests/cli_simple_tests.rs"]
     mod cli_simple_tests;
+
+    #[path = "../tests/models.rs"]
+    mod models_tests;
+
+    #[path = "../tests/e2e_full_coverage.rs"]
+    mod e2e_full_coverage;
+
+    #[path = "../tests/additional_coverage.rs"]
+    mod additional_coverage;
 }

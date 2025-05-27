@@ -210,7 +210,9 @@ async function main() {
     console.log("   3. Tag: git tag v" + newVersion);
     console.log("   4. Push: git push && git push --tags");
   } catch (error) {
-    console.error(`\n❌ Error: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      `\n❌ Error: ${error instanceof Error ? error.message : String(error)}`,
+    );
     Deno.exit(1);
   }
 }

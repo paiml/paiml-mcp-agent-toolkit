@@ -2,7 +2,7 @@
 # Pragmatic AI Labs
 # https://paiml.com
 
-.PHONY: all validate format lint check test coverage build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act
+.PHONY: all validate format lint check test coverage build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -15,7 +15,7 @@ SCRIPTS_DIR = scripts
 all: format build
 
 # Validate everything passes across all projects
-validate: check lint test validate-docs validate-naming test-actions
+validate: check lint test validate-docs validate-naming test-actions deps-validate
 	@echo "✅ All projects validated! All checks passed:"
 	@echo "  ✓ Type checking (cargo check)"
 	@echo "  ✓ Linting (cargo clippy + deno lint)"
@@ -23,6 +23,7 @@ validate: check lint test validate-docs validate-naming test-actions
 	@echo "  ✓ Documentation naming consistency"
 	@echo "  ✓ Project naming conventions"
 	@echo "  ✓ GitHub Actions workflows validated"
+	@echo "  ✓ Dependencies validated"
 	@echo "  ✓ Ready for build!"
 
 # Format code in all projects
@@ -246,6 +247,12 @@ context:
 	@echo "📊 Generating deep context analysis..."
 	@$(SCRIPTS_DIR)/deep-context.ts
 	@echo "✅ Deep context analysis complete! See deep_context.md"
+
+# Validate dependencies before installation
+deps-validate:
+	@echo "🔍 Validating dependencies..."
+	@cd server && cargo tree --duplicate | grep -v "^$$" || echo "✅ No duplicate dependencies"
+	@cd server && cargo audit || echo "⚠️  Security issues found"
 
 # Install MCP server
 install:

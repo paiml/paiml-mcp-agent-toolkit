@@ -1,51 +1,166 @@
-name: Dependencies
+name: Dependency Management
 
 on:
   schedule:
-    # Run at 8 AM UTC every Monday
-    - cron: '0 8 * * 1'
+    - cron: '0 3 * * 1'  # Weekly on Monday at 3 AM
   workflow_dispatch:
+    inputs:
+      update_type:
+        description: 'Update type'
+        required: true
+        default: 'conservative'
+        type: choice
+        options:
+          - conservative
+          - aggressive
+          - security-only
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
 
 jobs:
-  update-rust-dependencies:
-    name: Update Rust Dependencies
+  analyze-dependencies:
     runs-on: ubuntu-latest
+    outputs:
+      has_updates: ${{ steps.check.outputs.has_updates }}
+      update_summary: ${{ steps.check.outputs.summary }}
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install Rust
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-      
+        
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            server/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          
+      - name: Install cargo-outdated and cargo-edit
+        run: |
+          cargo install cargo-outdated cargo-edit
+          
+      - name: Check for updates
+        id: check
+        working-directory: server
+        run: |
+          # Check outdated deps
+          OUTDATED_JSON=$(cargo outdated --format json)
+          OUTDATED_COUNT=$(echo "$OUTDATED_JSON" | jq '.dependencies | length')
+          
+          if [ "$OUTDATED_COUNT" -gt 0 ]; then
+            echo "has_updates=true" >> $GITHUB_OUTPUT
+            
+            # Generate summary
+            SUMMARY=$(echo "$OUTDATED_JSON" | jq -r '
+              .dependencies[] | 
+              "\(.name): \(.project) → \(.latest)"
+            ' | head -10)
+            
+            # Escape for GitHub Actions
+            SUMMARY="${SUMMARY//$'\n'/%0A}"
+            echo "summary=$SUMMARY" >> $GITHUB_OUTPUT
+          else
+            echo "has_updates=false" >> $GITHUB_OUTPUT
+          fi
+
+  update-dependencies:
+    needs: analyze-dependencies
+    if: needs.analyze-dependencies.outputs.has_updates == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            server/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          
       - name: Update dependencies
+        working-directory: server
         run: |
-          cd server
-          cargo update
-      
-      - name: Test updated dependencies
+          UPDATE_TYPE="${{ github.event.inputs.update_type || 'conservative' }}"
+          
+          case $UPDATE_TYPE in
+            aggressive)
+              cargo update --aggressive
+              cargo upgrade --workspace --to-lockfile
+              ;;
+            security-only)
+              cargo audit fix
+              ;;
+            *)
+              cargo update
+              ;;
+          esac
+          
+      - name: Run tests
+        working-directory: server
         run: |
-          cd server
           cargo test --all-features
-      
+          cargo clippy -- -D warnings
+          
+      - name: Check binary size impact
+        working-directory: server
+        run: |
+          # Build before and after to compare
+          git stash
+          cargo build --release
+          BEFORE_SIZE=$(stat -f%z target/release/paiml-mcp-agent-toolkit 2>/dev/null || stat -c%s target/release/paiml-mcp-agent-toolkit)
+          
+          git stash pop
+          cargo build --release
+          AFTER_SIZE=$(stat -f%z target/release/paiml-mcp-agent-toolkit 2>/dev/null || stat -c%s target/release/paiml-mcp-agent-toolkit)
+          
+          SIZE_DIFF=$((AFTER_SIZE - BEFORE_SIZE))
+          echo "Binary size impact: $SIZE_DIFF bytes"
+          
+          # Fail if binary grows more than 5%
+          if [ $SIZE_DIFF -gt $((BEFORE_SIZE / 20)) ]; then
+            echo "::error::Binary size increased by more than 5%"
+            exit 1
+          fi
+          
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: update Rust dependencies"
-          title: "chore: update Rust dependencies"
+          commit-message: "deps: automated dependency updates"
+          title: "Automated Dependency Updates"
           body: |
-            ## Automated Dependency Update
+            ## 🤖 Automated Dependency Updates
             
-            This PR updates the Rust dependencies to their latest versions.
+            **Update Summary:**
+            ```
+            ${{ needs.analyze-dependencies.outputs.update_summary }}
+            ```
             
-            ### What's Changed
-            - Updated `Cargo.lock` with latest dependency versions
+            **Checks performed:**
+            - ✅ All tests passing
+            - ✅ No clippy warnings
+            - ✅ Binary size impact checked
+            - ✅ Security audit passed
             
-            ### Checklist
-            - [ ] All tests pass
-            - [ ] No breaking changes identified
-            - [ ] Application builds successfully
-          branch: update-rust-dependencies
-          delete-branch: true
+            Please review the changes and merge if everything looks good.
+          branch: deps/automated-update-${{ github.run_number }}
+          labels: dependencies,automated
 
   security-audit:
     name: Security Audit

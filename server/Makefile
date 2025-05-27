@@ -301,6 +301,40 @@ ci-status:
 	@echo "🔍 Checking CI status..."
 	@cd .. && deno run --allow-net --allow-env scripts/validate-github-actions-status.ts
 
+# Dependency management targets
+deps-check: ## Check for outdated dependencies
+	@echo "🔍 Checking for outdated dependencies..."
+	@cargo outdated --exit-code 1 || \
+		(echo "⚠️  Outdated dependencies found. Run 'make deps-update' to update."; exit 0)
+
+deps-update: ## Update dependencies conservatively
+	@echo "📦 Updating dependencies..."
+	@cargo update
+	@cargo outdated --format json > outdated-deps.json
+	@echo "✅ Dependencies updated. Run tests to verify."
+
+deps-update-aggressive: ## Update dependencies to latest compatible versions
+	@echo "🚀 Aggressively updating dependencies..."
+	@cargo update --aggressive
+	@cargo upgrade --workspace --to-lockfile
+	@echo "✅ Dependencies updated to latest versions."
+
+deps-audit: ## Run security audit with auto-fix
+	@echo "🔒 Running security audit..."
+	@cargo audit fix || cargo audit
+
+deps-canary-test: ## Test dependency updates in isolated environment
+	@echo "🐤 Running canary tests for dependency updates..."
+	@docker run --rm -v $(PWD):/workspace -w /workspace rust:latest bash -c "\
+		cargo update && \
+		cargo test --all-features && \
+		cargo bench --no-run"
+
+deps-rollback: ## Rollback to previous Cargo.lock
+	@echo "⏪ Rolling back dependencies..."
+	@git checkout HEAD -- Cargo.lock
+	@cargo fetch
+
 # Help command
 help:
 	@echo "MCP Template Server - Flexible Deployment Options"
@@ -343,6 +377,14 @@ help:
 	@echo "  verify-installer-determinism - Verify installer is deterministic"
 	@echo "  audit-installer          - Security audit of generated installer"
 	@echo "  test-installer-matrix    - Test installer across platforms"
+	@echo ""
+	@echo "Dependency Management:"
+	@echo "  deps-check   - Check for outdated dependencies"
+	@echo "  deps-update  - Update dependencies conservatively"
+	@echo "  deps-update-aggressive - Update to latest compatible versions"
+	@echo "  deps-audit   - Run security audit with auto-fix"
+	@echo "  deps-canary-test - Test updates in isolated environment"
+	@echo "  deps-rollback - Rollback to previous Cargo.lock"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  clean    - Remove build artifacts"

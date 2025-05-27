@@ -2,7 +2,7 @@
 name = "paiml-mcp-agent-toolkit"
 version = "0.1.4"
 edition = "2021"
-rust-version = "1.87.0"
+rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
 description = "MCP server for project scaffolding and template generation"
 homepage = "https://paiml.com"
@@ -70,6 +70,7 @@ mockall = "0.13"
 tokio-test = "0.4"
 pretty_assertions = "1.4"
 tempfile = "3.14"
+criterion = { version = "0.5", features = ["html_reports"] }
 
 [features]
 default = []
@@ -95,4 +96,8 @@ path = "src/bin/paiml-mcp-agent-toolkit.rs"
 name = "generate-installer"
 path = "src/bin/generate-installer.rs"
 required-features = ["installer-gen"]
+
+[[bench]]
+name = "critical_path"
+harness = false
 
