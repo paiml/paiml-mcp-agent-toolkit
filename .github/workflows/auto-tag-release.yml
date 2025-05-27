@@ -1,0 +1,137 @@
+name: Auto Tag Release
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  auto-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      
+      - name: Run tests
+        run: |
+          cd server
+          make test
+      
+      - name: Check if should release
+        id: check
+        run: |
+          # Get last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          # Check for changes since last tag
+          if [ -z "$LAST_TAG" ]; then
+            echo "No tags found, will create first release"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            CHANGES=$(git log $LAST_TAG..HEAD --oneline | wc -l)
+            if [ "$CHANGES" -gt 0 ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "Found $CHANGES commits since $LAST_TAG"
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "No changes since $LAST_TAG"
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+      
+      - name: Determine version bump
+        id: version
+        if: steps.check.outputs.should_release == 'true'
+        run: |
+          # Get current version
+          CURRENT_VERSION=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Determine bump type
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BUMP_TYPE="${{ github.event.inputs.version_bump }}"
+          else
+            # Auto-detect from commits
+            LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [ -n "$LAST_TAG" ]; then
+              if git log $LAST_TAG..HEAD --pretty=format:"%s" | grep -qE "(BREAKING CHANGE|!:)"; then
+                BUMP_TYPE="major"
+              elif git log $LAST_TAG..HEAD --pretty=format:"%s" | grep -q "feat:"; then
+                BUMP_TYPE="minor"
+              else
+                BUMP_TYPE="patch"
+              fi
+            else
+              BUMP_TYPE="patch"
+            fi
+          fi
+          
+          echo "Bump type: $BUMP_TYPE"
+          
+          # Calculate new version
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          case $BUMP_TYPE in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          
+          echo "New version: $NEW_VERSION"
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+      
+      - name: Update version files
+        if: steps.check.outputs.should_release == 'true'
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new_version }}"
+          
+          # Update all Cargo.toml files
+          find . -name "Cargo.toml" -type f -exec sed -i "s/^version = \"[0-9.]*\"/version = \"$NEW_VERSION\"/" {} \;
+          
+          # Update Cargo.lock
+          cd server && cargo update -p paiml-mcp-agent-toolkit && cd ..
+          
+          # Generate installer with new version
+          cd server && make generate-installer && cd ..
+      
+      - name: Commit and tag
+        if: steps.check.outputs.should_release == 'true'
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          # Commit version updates
+          git add -A
+          git commit -m "chore: release v${{ steps.version.outputs.new_version }}"
+          
+          # Create and push tag
+          git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
+          git push origin main
+          git push origin "v${{ steps.version.outputs.new_version }}"
+      
+      - name: Trigger release workflow
+        if: steps.check.outputs.should_release == 'true'
+        run: |
+          echo "Tag pushed. The release workflow will now handle building and publishing the release."
