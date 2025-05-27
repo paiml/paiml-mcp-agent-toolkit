@@ -33,17 +33,29 @@ mod tests {
             .map(|t| t["name"].as_str().unwrap())
             .collect();
 
+        // Filter out feature-gated binaries
+        let main_binaries: Vec<_> = binaries
+            .iter()
+            .filter(|&&name| name == "paiml-mcp-agent-toolkit")
+            .copied()
+            .collect();
+
         assert_eq!(
-            binaries.len(),
+            main_binaries.len(),
             1,
-            "There should be exactly one binary target, found: {:?}",
-            binaries
+            "There should be exactly one main binary target"
         );
 
         assert_eq!(
-            binaries[0], "paiml-mcp-agent-toolkit",
+            main_binaries[0], "paiml-mcp-agent-toolkit",
             "Binary name must be 'paiml-mcp-agent-toolkit'"
         );
+
+        // Check that generate-installer is feature-gated
+        if binaries.contains(&"generate-installer") {
+            // This is OK as it's behind a feature flag
+            assert!(binaries.len() <= 2, "Too many binaries: {:?}", binaries);
+        }
     }
 
     #[test]

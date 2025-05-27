@@ -1,0 +1,76 @@
+{
+  "project": {
+    "name": "PAIML MCP Agent Toolkit",
+    "description": "Deterministic tooling for AI-assisted development - Generate project scaffolding, analyze code structure with AST, track code churn metrics, and provide reliable context for AI agents via CLI or Claude Code",
+    "tagline": "Deterministic tooling for AI-assisted development",
+    "version": "0.1.4"
+  },
+  "package": {
+    "name": "paiml-mcp-agent-toolkit",
+    "binary": {
+      "main": "paiml-mcp-agent-toolkit",
+      "allowed_additional": ["generate-installer"]
+    }
+  },
+  "organization": {
+    "name": "Pragmatic AI Labs",
+    "shortName": "PAIML",
+    "website": "https://paiml.com",
+    "email": "contact@paiml.com"
+  },
+  "repository": {
+    "owner": "paiml",
+    "name": "paiml-mcp-agent-toolkit",
+    "url": "https://github.com/paiml/paiml-mcp-agent-toolkit",
+    "issues": "https://github.com/paiml/paiml-mcp-agent-toolkit/issues",
+    "discussions": "https://github.com/paiml/paiml-mcp-agent-toolkit/discussions"
+  },
+  "deprecated": {
+    "binaryNames": [
+      "mcp_server_stateless",
+      "mcp-template-server",
+      "mcp_template_server",
+      "mcp-server",
+      "mcp_server"
+    ],
+    "repositoryUrls": [
+      "pragmatic-ai-labs/paiml-mcp-agent-toolkit",
+      "paiml/mcp-template-server",
+      "pragmatic-ai-labs/mcp-template-server"
+    ]
+  },
+  "badges": {
+    "ci": {
+      "label": "CI",
+      "workflow": "ci.yml"
+    },
+    "coverage": {
+      "label": "Coverage",
+      "percentage": 85,
+      "color": "green"
+    },
+    "license": {
+      "type": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "installation": {
+    "paths": {
+      "global": "/usr/local/bin",
+      "local": "~/.local/bin"
+    },
+    "installer": {
+      "script": "scripts/install.sh",
+      "url": "https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/main/scripts/install.sh"
+    }
+  },
+  "mcp": {
+    "serverName": "paiml-toolkit",
+    "protocol": "STDIO",
+    "configPath": {
+      "macOS": "~/Library/Application Support/Claude/claude_desktop_config.json",
+      "linux": "~/.config/Claude/claude_desktop_config.json",
+      "windows": "%APPDATA%\\Claude\\claude_desktop_config.json"
+    }
+  }
+}

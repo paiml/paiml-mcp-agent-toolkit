@@ -2,7 +2,7 @@
 # Pragmatic AI Labs
 # https://paiml.com
 
-.PHONY: all validate format lint check test coverage build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test
+.PHONY: all validate format lint check test coverage build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -15,13 +15,14 @@ SCRIPTS_DIR = scripts
 all: format build
 
 # Validate everything passes across all projects
-validate: check lint test validate-docs validate-naming
+validate: check lint test validate-docs validate-naming test-actions
 	@echo "✅ All projects validated! All checks passed:"
 	@echo "  ✓ Type checking (cargo check)"
 	@echo "  ✓ Linting (cargo clippy + deno lint)"
 	@echo "  ✓ Testing (cargo test)"
 	@echo "  ✓ Documentation naming consistency"
 	@echo "  ✓ Project naming conventions"
+	@echo "  ✓ GitHub Actions workflows validated"
 	@echo "  ✓ Ready for build!"
 
 # Format code in all projects
@@ -183,6 +184,58 @@ ci-status:
 	@echo "🔍 Checking GitHub Actions CI status..."
 	@$(SCRIPTS_DIR)/validate-github-actions-status.ts
 
+# Test GitHub Actions workflows locally
+test-actions:
+	@echo "🧪 Testing GitHub Actions workflows locally..."
+	@if command -v act >/dev/null 2>&1; then \
+		ACT_CMD=act; \
+	elif [ -x "/tmp/act" ]; then \
+		ACT_CMD=/tmp/act; \
+	elif [ -x "$$HOME/.local/bin/act" ]; then \
+		ACT_CMD=$$HOME/.local/bin/act; \
+	else \
+		echo "❌ act is not installed or not in PATH"; \
+		echo "   Run 'make install-act' to install it"; \
+		exit 1; \
+	fi; \
+	echo "Testing auto-tag-release workflow..."; \
+	$$ACT_CMD -W .github/workflows/auto-tag-release.yml workflow_dispatch -P ubuntu-latest=node:20-bullseye --dryrun; \
+	echo ""; \
+	echo "Testing ci workflow..."; \
+	$$ACT_CMD -W .github/workflows/ci.yml push -P ubuntu-latest=node:20-bullseye --dryrun; \
+	echo ""; \
+	echo "✅ Workflow syntax validation complete!"
+
+# Install act if not present
+install-act:
+	@if ! command -v act >/dev/null 2>&1; then \
+		echo "📦 Installing act..."; \
+		mkdir -p ~/.local/bin; \
+		curl -sL https://github.com/nektos/act/releases/latest/download/act_Linux_x86_64.tar.gz | tar xz -C ~/.local/bin; \
+		echo "✅ act installed successfully to ~/.local/bin!"; \
+		echo "📝 Make sure ~/.local/bin is in your PATH"; \
+		echo "   You can add it with: export PATH=\$$HOME/.local/bin:\$$PATH"; \
+	else \
+		echo "✓ act is already installed"; \
+	fi
+
+# Check if act is installed
+check-act:
+	@if ! command -v act >/dev/null 2>&1; then \
+		if [ -x "/tmp/act" ]; then \
+			echo "ℹ️  Found act in /tmp/act but it's not in PATH"; \
+			echo "   You can use it directly: /tmp/act"; \
+			echo "   Or add to PATH: export PATH=/tmp:\$$PATH"; \
+		elif [ -x "$$HOME/.local/bin/act" ]; then \
+			echo "ℹ️  Found act in ~/.local/bin/act but it's not in PATH"; \
+			echo "   Add to PATH: export PATH=\$$HOME/.local/bin:\$$PATH"; \
+		else \
+			echo "❌ act is not installed. Run 'make install-act' to install it."; \
+			echo "   Or install manually from: https://github.com/nektos/act"; \
+		fi; \
+		exit 1; \
+	fi
+
 # Validate all naming conventions across the project
 validate-naming:
 	@echo "🔍 Validating naming conventions..."
@@ -306,6 +359,7 @@ help:
 	@echo "  validate-docs - Check documentation naming consistency"
 	@echo "  validate-naming - Validate naming conventions across the project"
 	@echo "  ci-status    - Check GitHub Actions workflow status"
+	@echo "  test-actions - Test GitHub Actions workflows locally with act"
 	@echo "  context      - Generate deep context analysis (AST, tree, docs)"
 	@echo "  build        - Build all projects (binaries only)"
 	@echo "  clean        - Clean all build artifacts"
@@ -334,6 +388,7 @@ help:
 	@echo ""
 	@echo "Setup:"
 	@echo "  setup       - Install all development dependencies"
+	@echo "  install-act - Install act for local GitHub Actions testing"
 	@echo "  help        - Show this help message"
 	@echo ""
 	@echo "Projects included:"
