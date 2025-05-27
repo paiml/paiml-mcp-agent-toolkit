@@ -161,7 +161,7 @@ mod tests {
 
         for platform in platforms {
             let base_url =
-                "https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit/releases/download";
+                "https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download";
             let binary_url = format!(
                 "{}/v{}/paiml-mcp-agent-toolkit-{}.tar.gz",
                 base_url, version, platform

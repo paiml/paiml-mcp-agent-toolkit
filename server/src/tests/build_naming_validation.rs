@@ -135,22 +135,31 @@ mod tests {
     #[test]
     fn test_no_wrong_repo_urls_in_workflows() {
         // Check for incorrect repository URLs in workflows
-        let output = Command::new("grep")
-            .args([
-                "-r",
-                "pragmatic-ai-labs/paiml-mcp-agent-toolkit",
-                "../.github/workflows/",
-                "--include=*.yml",
-                "--include=*.yaml",
-            ])
-            .output()
-            .expect("Failed to run grep");
+        let wrong_urls = vec![
+            "pragmatic-ai-labs/paiml-mcp-agent-toolkit",
+            "paiml/mcp-template-server",
+            "pragmatic-ai-labs/mcp-template-server",
+        ];
 
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(
-            stdout.is_empty(),
-            "Found references to incorrect repository URL 'pragmatic-ai-labs/paiml-mcp-agent-toolkit' in workflows:\n{}\nShould be 'paiml/paiml-mcp-agent-toolkit'",
-            stdout
-        );
+        for wrong_url in &wrong_urls {
+            let output = Command::new("grep")
+                .args([
+                    "-r",
+                    wrong_url,
+                    "../.github/workflows/",
+                    "--include=*.yml",
+                    "--include=*.yaml",
+                ])
+                .output()
+                .expect("Failed to run grep");
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            assert!(
+                stdout.is_empty(),
+                "Found references to incorrect repository URL '{}' in workflows:\n{}\nShould be 'paiml/paiml-mcp-agent-toolkit'",
+                wrong_url,
+                stdout
+            );
+        }
     }
 }

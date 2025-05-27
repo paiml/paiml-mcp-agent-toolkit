@@ -7,7 +7,7 @@ version = "0.1.4"
 edition = "2021"
 authors = ["Pragmatic AI Labs"]
 homepage = "https://paiml.com"
-repository = "https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit"
+repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
 
 # Config for 'cargo dist'
 [workspace.metadata.dist]

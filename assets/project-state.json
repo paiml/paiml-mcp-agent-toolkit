@@ -34,7 +34,7 @@
       "mcp_server"
     ],
     "repositoryUrls": [
-      "pragmatic-ai-labs/paiml-mcp-agent-toolkit",
+      "paiml/mcp-agent-toolkit",
       "paiml/mcp-template-server",
       "pragmatic-ai-labs/mcp-template-server"
     ]
@@ -46,8 +46,8 @@
     },
     "coverage": {
       "label": "Coverage",
-      "percentage": 85,
-      "color": "green"
+      "percentage": 67,
+      "color": "yellow"
     },
     "license": {
       "type": "MIT",
