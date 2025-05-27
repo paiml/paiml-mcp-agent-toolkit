@@ -1,5 +1,10 @@
 name: CI
 
+# ⚠️ IMPORTANT: This project uses a Cargo workspace structure.
+# All commands MUST be run from the repository root using the root Makefile.
+# DO NOT use 'cd server && make ...' patterns - use 'make server-...' instead.
+# See .github/CONTRIBUTING.md for details.
+
 on:
   push:
     branches: [ main, master, develop ]
@@ -50,7 +55,11 @@ jobs:
       
       - name: Run CI pipeline (without Docker)
         run: |
-          make server-format server-lint server-check server-test server-build-binary
+          make server-format
+          make server-lint
+          make server-check
+          make server-test
+          make server-build-binary
       
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4

@@ -75,7 +75,10 @@ pub fn install_paiml_mcp_agent_toolkit(ctx: &ShellContext, args: &[String]) -> R
     };
 
     // Construct URLs (readonly for security)
-    ctx.command("readonly", &["BASE_URL=https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download"])?;
+    ctx.command(
+        "readonly",
+        &["BASE_URL=https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download"],
+    )?;
     let base_url = "https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download";
     let binary_url = format!(
         "{}/v{}/paiml-mcp-agent-toolkit-{}.tar.gz",

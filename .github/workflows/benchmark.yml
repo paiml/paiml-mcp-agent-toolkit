@@ -38,7 +38,7 @@ jobs:
       
       - name: Build release binary
         run: |
-          cargo build --release --bin paiml-mcp-agent-toolkit --manifest-path server/Cargo.toml
+          make server-build-binary
       
       - name: Run benchmarks
         run: |
