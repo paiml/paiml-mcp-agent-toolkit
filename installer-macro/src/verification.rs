@@ -6,7 +6,7 @@ use std::process::{Command, Stdio};
 pub fn verify_posix_compliance(shell: &str) -> Result<(), String> {
     // Run shellcheck with strict POSIX mode
     let mut child = Command::new("shellcheck")
-        .args(["-s", "sh", "-e", "all", "-"])
+        .args(["-s", "sh", "-"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
