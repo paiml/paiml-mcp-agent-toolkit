@@ -28,9 +28,9 @@ pub fn shell_installer(_args: TokenStream, input: TokenStream) -> TokenStream {
         _ => panic!("Shell installer must have explicit return type"),
     }
 
-    // For proof of concept, generate a static shell script
-    // In a real implementation, this would analyze the function AST
-    let shell_script = include_str!("../../scripts/install.sh");
+    // Generate shell script from the function AST
+    let ast = mir_lowering::analyze_function(&func);
+    let shell_script = shell_emitter::emit_deterministic(&ast);
 
     // Verify at compile time (only if shellcheck is available)
     if std::process::Command::new("which")
@@ -39,13 +39,13 @@ pub fn shell_installer(_args: TokenStream, input: TokenStream) -> TokenStream {
         .map(|o| o.status.success())
         .unwrap_or(false)
     {
-        match verify_posix_compliance(shell_script) {
+        match verify_posix_compliance(&shell_script) {
             Ok(_) => {}
             Err(e) => panic!("Generated shell is not POSIX compliant: {}", e),
         }
     }
 
-    match verify_determinism(shell_script) {
+    match verify_determinism(&shell_script) {
         Ok(_) => {}
         Err(e) => panic!("Shell generation is non-deterministic: {}", e),
     }
