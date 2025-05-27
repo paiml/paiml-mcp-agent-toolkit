@@ -41,23 +41,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y shellcheck
       
-      - name: Cache cargo registry
-        uses: actions/cache@v4
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-      
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-      
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          workspaces: ". -> target"
+          cache-on-failure: true
+          shared-key: "ci"
       
       - name: Run CI pipeline
         id: tests
@@ -144,11 +133,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y shellcheck
       
-      - name: Cache cargo registry
-        uses: actions/cache@v4
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          workspaces: ". -> target"
+          cache-on-failure: true
+          shared-key: "ci"
       
       - name: Run benchmarks
         run: make benchmark
@@ -171,8 +161,24 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          cache-on-failure: true
+          shared-key: "ci"
+      
+      - name: Cache cargo tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-outdated
+          key: ${{ runner.os }}-cargo-outdated-${{ hashFiles('**/Cargo.lock') }}
+      
       - name: Install cargo-outdated
-        run: cargo install cargo-outdated
+        run: |
+          if ! command -v cargo-outdated &> /dev/null; then
+            cargo install cargo-outdated
+          fi
       
       - name: Check for outdated dependencies
         run: make server-outdated > outdated.json || true
