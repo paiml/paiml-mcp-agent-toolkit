@@ -1,0 +1,277 @@
+name: Automated Release
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      bump_version:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # First, run all tests and checks
+  test-and-check:
+    name: Test and Check
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      current_version: ${{ steps.version.outputs.current_version }}
+      new_version: ${{ steps.version.outputs.new_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      
+      - name: Run tests and checks
+        run: |
+          cd server
+          make format lint check test
+      
+      - name: Check for release conditions
+        id: check
+        run: |
+          # Check if there have been any changes since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          CHANGES=$(git log $LAST_TAG..HEAD --oneline | wc -l)
+          
+          if [ "$CHANGES" -gt 0 ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          fi
+      
+      - name: Determine version
+        id: version
+        if: steps.check.outputs.should_release == 'true'
+        run: |
+          # Get current version from Cargo.toml
+          CURRENT_VERSION=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          echo "current_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          
+          # Determine bump type
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BUMP_TYPE="${{ github.event.inputs.bump_version }}"
+          else
+            # Auto-detect bump type from commit messages
+            if git log $LAST_TAG..HEAD --pretty=format:"%s" | grep -q "BREAKING CHANGE\|!:"; then
+              BUMP_TYPE="major"
+            elif git log $LAST_TAG..HEAD --pretty=format:"%s" | grep -q "feat:"; then
+              BUMP_TYPE="minor"
+            else
+              BUMP_TYPE="patch"
+            fi
+          fi
+          
+          # Calculate new version
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          case $BUMP_TYPE in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+
+  # Build binaries for all platforms
+  build-binaries:
+    name: Build ${{ matrix.target }}
+    needs: test-and-check
+    if: needs.test-and-check.outputs.should_release == 'true'
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      
+      - name: Install cross-compilation tools
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+      
+      - name: Build binary
+        run: |
+          cd server
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          fi
+          cargo build --release --target ${{ matrix.target }}
+      
+      - name: Create archive
+        run: |
+          cd server/target/${{ matrix.target }}/release
+          tar -czf paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz paiml-mcp-agent-toolkit
+          sha256sum paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz > paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz.sha256
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.target }}
+          path: |
+            server/target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz
+            server/target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz.sha256
+
+  # Create GitHub release
+  create-release:
+    name: Create Release
+    needs: [test-and-check, build-binaries]
+    if: needs.test-and-check.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Prepare release files
+        run: |
+          mkdir release-files
+          find artifacts -name "*.tar.gz*" -exec cp {} release-files/ \;
+          ls -la release-files/
+      
+      - name: Update version in files
+        run: |
+          NEW_VERSION="${{ needs.test-and-check.outputs.new_version }}"
+          
+          # Use centralized version update script
+          ./scripts/update-version.ts "$NEW_VERSION"
+      
+      - name: Generate installer script
+        run: |
+          cd server
+          make generate-installer
+          cp ../scripts/install.sh ../release-files/
+      
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get commit messages since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s" | head -20)
+          else
+            COMMITS=$(git log $LAST_TAG..HEAD --pretty=format:"- %s")
+          fi
+          
+          # Create changelog
+          cat > CHANGELOG.md << EOF
+          ## What's Changed
+          
+          $COMMITS
+          
+          ## Installation
+          
+          ### Using curl (recommended)
+          \`\`\`bash
+          curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/v${{ needs.test-and-check.outputs.new_version }}/scripts/install.sh | sh
+          \`\`\`
+          
+          ### Manual installation
+          Download the appropriate binary for your platform from the assets below.
+          
+          **Full Changelog**: https://github.com/paiml/paiml-mcp-agent-toolkit/compare/$LAST_TAG...v${{ needs.test-and-check.outputs.new_version }}
+          EOF
+          
+          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
+          cat CHANGELOG.md >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+      
+      - name: Commit version updates
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add Cargo.toml server/Cargo.toml installer-macro/Cargo.toml server/Cargo.lock assets/project-state.json
+          git commit -m "chore: bump version to ${{ needs.test-and-check.outputs.new_version }}"
+          git push
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.test-and-check.outputs.new_version }}
+          name: v${{ needs.test-and-check.outputs.new_version }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+          files: release-files/*
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Update installer script in main branch
+  update-installer:
+    name: Update Installer Script
+    needs: create-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Pull latest changes
+        run: git pull
+      
+      - name: Verify installer works
+        run: |
+          # Test the installer script
+          bash scripts/install.sh --help || true
+          
+      - name: Create PR if installer needs updates
+        run: |
+          # Check if installer references the correct URLs
+          if ! grep -q "paiml/paiml-mcp-agent-toolkit" scripts/install.sh; then
+            echo "Installer script needs updating"
+            # Create a branch and PR for manual review
+            git checkout -b update-installer-urls
+            # ... make changes ...
+            git push origin update-installer-urls
+            gh pr create --title "Update installer URLs" --body "Automated update of installer script URLs"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
