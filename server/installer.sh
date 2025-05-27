@@ -4,7 +4,7 @@
 set -euf
 
 # Constants
-readonly REPO_URL="https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit"
+readonly REPO_URL="https://github.com/paiml/paiml-mcp-agent-toolkit"
 readonly DEFAULT_INSTALL_DIR="${HOME}/.local/bin"
 
 # Error handling

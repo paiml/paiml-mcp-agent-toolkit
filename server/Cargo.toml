@@ -6,7 +6,7 @@ rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
 description = "MCP server for project scaffolding and template generation"
 homepage = "https://paiml.com"
-repository = "https://github.com/pragmatic-ai-labs/paiml-mcp-agent-toolkit"
+repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
 
 [dependencies]
 # Async runtime
