@@ -452,6 +452,14 @@ setup:
 		curl -fsSL https://deno.land/install.sh | sh; \
 		echo "Please add Deno to your PATH as instructed above"; \
 	fi
+	@if command -v shellcheck >/dev/null 2>&1; then \
+		echo "✅ Shellcheck is already installed"; \
+	else \
+		echo "⚠️  Shellcheck is not installed. Install it with:"; \
+		echo "    Ubuntu/Debian: sudo apt-get install shellcheck"; \
+		echo "    macOS: brew install shellcheck"; \
+		echo "    Or visit: https://github.com/koalaman/shellcheck#installing"; \
+	fi
 	@echo ""
 	@echo "✅ Development environment setup complete!"
 	@echo ""
