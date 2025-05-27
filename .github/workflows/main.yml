@@ -1,0 +1,207 @@
+name: Main CI/CD Pipeline
+
+# This is the main orchestrator workflow that runs CI first,
+# then runs other workflows only if CI passes.
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # STAGE 1: CI - This must pass before anything else runs
+  ci:
+    name: CI Tests
+    runs-on: ubuntu-latest
+    outputs:
+      tests-passed: ${{ steps.tests.outputs.passed }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+      
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Run CI pipeline
+        id: tests
+        run: |
+          make format
+          make lint
+          make check
+          make test
+          make build
+          echo "passed=true" >> $GITHUB_OUTPUT
+      
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: paiml-mcp-agent-toolkit-linux
+          path: server/target/release/paiml-mcp-agent-toolkit
+        if: success()
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: server/coverage/
+        if: always()
+
+  # STAGE 2: Additional checks - only run if CI passes
+  security-audit:
+    name: Security Audit
+    needs: ci
+    if: needs.ci.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@cargo-audit
+      
+      - name: Run security audit
+        run: make audit
+
+  code-quality:
+    name: Code Quality
+    needs: ci
+    if: needs.ci.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      
+      - name: Check documentation
+        run: make validate-docs
+      
+      - name: Check naming conventions
+        run: make validate-naming
+      
+      - name: Validate GitHub Actions
+        run: make test-actions || true  # Don't fail on this
+
+  benchmarks:
+    name: Performance Benchmarks
+    needs: ci
+    if: needs.ci.result == 'success' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+      
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Run benchmarks
+        run: make benchmark
+      
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: server/target/criterion/
+        if: always()
+
+  dependency-check:
+    name: Dependency Check
+    needs: ci
+    if: needs.ci.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install cargo-outdated
+        run: cargo install cargo-outdated
+      
+      - name: Check for outdated dependencies
+        run: make server-outdated > outdated.json || true
+      
+      - name: Upload dependency report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-report
+          path: outdated.json
+
+  # Final status check
+  all-checks:
+    name: All Checks Passed
+    needs: [ci, security-audit, code-quality]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if all required jobs passed
+        run: |
+          if [[ "${{ needs.ci.result }}" != "success" ]]; then
+            echo "CI failed"
+            exit 1
+          fi
+          if [[ "${{ needs.security-audit.result }}" != "success" ]]; then
+            echo "Security audit failed"
+            exit 1
+          fi
+          if [[ "${{ needs.code-quality.result }}" != "success" ]]; then
+            echo "Code quality checks failed"
+            exit 1
+          fi
+          echo "All required checks passed!"

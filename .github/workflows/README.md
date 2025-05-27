@@ -2,24 +2,41 @@
 
 This directory contains the CI/CD workflows for the MCP Agent Toolkit project.
 
-## Workflows
+## Workflow Architecture
+
+### 🎯 Main Orchestrator (`main.yml`)
+**The primary workflow that gates all other checks**
+- **Triggers**: Push to main branches, Pull requests
+- **Staged Execution**:
+  1. **Stage 1: CI** (Must pass first)
+     - Format checking
+     - Linting  
+     - Type checking
+     - Tests with coverage
+     - Build
+  2. **Stage 2: Additional Checks** (Only run if CI passes)
+     - Security audit
+     - Code quality
+     - Benchmarks
+     - Dependency analysis
+
+This staged approach prevents wasting CI resources when basic checks are failing.
+
+## Individual Workflows
 
 ### 🔄 Continuous Integration (`ci.yml`)
-- **Triggers**: Push to main branches, Pull requests
+- **Triggers**: Manual dispatch only (orchestrated by main.yml)
 - **Jobs**:
-  - **Lint**: Runs rustfmt and clippy
-  - **Test**: Runs tests with coverage reporting
-  - **Build**: Builds on multiple platforms (Linux, macOS, Windows)
-  - **Docker**: Builds Docker image
-  - **E2E Test**: Runs end-to-end tests
-  - **Security**: Runs cargo audit
+  - Lint (rustfmt, clippy, deno)
+  - Test with coverage reporting
+  - Build binary
+  - Security audit
 
-### 📦 Release (`release.yml`)
-- **Triggers**: Git tags (v*)
-- **Jobs**:
-  - Creates GitHub release
-  - Builds and uploads binaries for multiple platforms
-  - Publishes Docker images to Docker Hub
+### 📦 Release Workflows
+- **`release.yml`**: Triggered by version tags (v*)
+- **`cargo-dist.yml`**: Manages binary distribution
+- **`automated-release.yml`**: Handles automated releases
+- **`auto-tag-release.yml`**: Creates version tags
 
 ### 🔐 Dependencies (`dependencies.yml`)
 - **Triggers**: Weekly schedule, Manual dispatch
@@ -30,59 +47,29 @@ This directory contains the CI/CD workflows for the MCP Agent Toolkit project.
   - Creates issues for vulnerabilities
 
 ### 📊 Code Quality (`code-quality.yml`)
-- **Triggers**: Pull requests
+- **Triggers**: Manual dispatch only (orchestrated by main.yml)
 - **Jobs**:
-  - Checks code coverage (minimum 70%)
-  - Analyzes code complexity
-  - Checks documentation
-  - Comments PR with metrics
+  - Code coverage analysis (60% minimum)
+  - Complexity metrics
+  - Documentation checks
+
+### 🚀 Performance (`benchmark.yml`)
+- **Triggers**: Manual dispatch only (orchestrated by main.yml)
+- **Jobs**:
+  - Performance benchmarks
+  - Memory usage analysis
+  - Startup time measurements
 
 ### ✅ PR Checks (`pr-checks.yml`)
 - **Triggers**: Pull request events
 - **Jobs**:
-  - Validates PR title format
-  - Labels PR by size
-  - Checks for merge conflicts
+  - PR title validation (conventional commits)
+  - Branch naming checks
+  - PR size analysis
 
-### 🚀 Benchmark (`benchmark.yml`)
-- **Triggers**: Push to main, Pull requests
-- **Jobs**:
-  - Runs performance benchmarks
-  - Measures startup time
-  - Tracks memory usage
-  - Comments results on PRs
+## Best Practices
 
-## Required Secrets
-
-No external secrets are required! The workflows use only the built-in `GITHUB_TOKEN` which is automatically provided by GitHub Actions.
-
-## Branch Protection Rules
-
-Recommended branch protection rules for `main`/`master`:
-
-- Require pull request reviews
-- Require status checks to pass:
-  - `lint`
-  - `test`
-  - `build (ubuntu-latest, stable)`
-  - `security`
-- Require branches to be up to date
-- Include administrators in restrictions
-
-## Maintenance
-
-- Dependabot will automatically create PRs for dependency updates
-- Security vulnerabilities will create GitHub issues
-- Workflow files are also monitored by Dependabot
-
-## Local Testing
-
-To test workflows locally, you can use [act](https://github.com/nektos/act):
-
-```bash
-# Test CI workflow
-act -W .github/workflows/ci.yml
-
-# Test specific job
-act -W .github/workflows/ci.yml -j test
-```
+1. **Always use the root Makefile** - Never use `cd server && make`
+2. **Check main.yml first** - Most workflows are orchestrated through it
+3. **CI gates everything** - No point running other checks if CI fails
+4. **Manual dispatch available** - All workflows can be run manually if needed

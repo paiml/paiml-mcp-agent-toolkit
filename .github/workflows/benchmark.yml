@@ -1,10 +1,9 @@
 name: Benchmark
 
+# This workflow is now orchestrated by main.yml
+# To run manually, use workflow_dispatch
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
