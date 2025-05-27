@@ -65,8 +65,8 @@ jobs:
         id: version
         if: steps.check.outputs.should_release == 'true'
         run: |
-          # Get current version
-          CURRENT_VERSION=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          # Get current version from workspace Cargo.toml
+          CURRENT_VERSION=$(awk -F'"' '/^\[workspace\.package\]/{ws=1} ws && /^version = /{print $2; exit}' Cargo.toml)
           echo "Current version: $CURRENT_VERSION"
           
           # Determine bump type
@@ -107,11 +107,8 @@ jobs:
         run: |
           NEW_VERSION="${{ steps.version.outputs.new_version }}"
           
-          # Update all Cargo.toml files
-          find . -name "Cargo.toml" -type f -exec sed -i "s/^version = \"[0-9.]*\"/version = \"$NEW_VERSION\"/" {} \;
-          
-          # Update Cargo.lock
-          cd server && cargo update -p paiml-mcp-agent-toolkit && cd ..
+          # Use the update-version script to update all files
+          deno run --allow-read --allow-write --allow-run scripts/update-version.ts "$NEW_VERSION"
           
           # Generate installer with new version
           cd server && make generate-installer && cd ..
