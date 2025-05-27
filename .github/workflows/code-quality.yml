@@ -17,15 +17,19 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+      
       - name: Generate coverage report
         run: |
           make server-test
-          cd server && cargo llvm-cov report --summary-only > coverage-summary.txt
+          make coverage-summary > coverage-summary.txt
       
       - name: Check coverage threshold
         run: |
-          cd server
-          coverage=$(cargo llvm-cov report --summary-only | grep "TOTAL" | awk '{print $10}' | sed 's/%//')
+          coverage=$(make coverage-summary | grep "TOTAL" | awk '{print $10}' | sed 's/%//')
           echo "Current coverage: $coverage%"
           # Use awk for floating point comparison instead of bc
           if awk "BEGIN {exit !($coverage < 60)}"; then
@@ -45,7 +49,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const coverageSummary = fs.readFileSync('server/coverage-summary.txt', 'utf8');
+            const coverageSummary = fs.readFileSync('coverage-summary.txt', 'utf8');
             const match = coverageSummary.match(/Total.*?(\d+\.\d+)%/);
             const percentage = match ? match[1] : 'Unknown';
             
@@ -73,18 +77,13 @@ jobs:
       
       - name: Install complexity tools
         run: |
-          if ! command -v tokei &> /dev/null; then
-            cargo install tokei
-          fi
-          if ! command -v cargo-geiger &> /dev/null; then
-            cargo install cargo-geiger
-          fi
+          make install-dev-tools
       
       - name: Count lines of code
         run: |
           echo "## Lines of Code Report" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          tokei server/src --exclude "*.json" >> $GITHUB_STEP_SUMMARY
+          make server-tokei >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
       
       - name: Check for unsafe code
@@ -109,7 +108,7 @@ jobs:
       
       - name: Check for missing docs
         run: |
-          cd server && cargo rustdoc --all-features -- -D missing_docs || true
+          make cargo-rustdoc
       
       - name: Upload documentation
         uses: actions/upload-artifact@v4
