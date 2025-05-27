@@ -378,6 +378,36 @@ paiml-mcp-agent-toolkit context python-uv -o context.md
 - **Deno/TypeScript**: Analyzes `.ts`, `.tsx`, `.js`, `.jsx` files for functions, classes, interfaces, and types
 - **Python**: Analyzes `.py` files for functions, classes, and imports
 
+##### `churn` - Analyze code change patterns
+
+Analyze code change frequency and patterns to identify maintenance hotspots. Uses git history to find frequently changed files that may need refactoring.
+
+```bash
+# Analyze code churn for current directory
+paiml-mcp-agent-toolkit churn
+
+# Analyze specific project path
+paiml-mcp-agent-toolkit churn --project-path /path/to/project
+
+# Analyze last 90 days
+paiml-mcp-agent-toolkit churn --period-days 90
+
+# Output as JSON
+paiml-mcp-agent-toolkit churn --format json
+
+# Output as CSV
+paiml-mcp-agent-toolkit churn --format csv
+
+# Save to file
+paiml-mcp-agent-toolkit churn -o churn-report.md
+```
+
+**Output includes:**
+- Hotspot files with high churn scores
+- Stable files that rarely change
+- File metrics (commits, additions/deletions, authors)
+- Author contribution statistics
+
 
 #### Parameter Syntax
 
@@ -775,7 +805,7 @@ make server-help # Show all server commands
 make server-*    # Run any server Makefile target
 
 # Run benchmarks  
-cd server && cargo bench
+make benchmark
 
 # Check CI/GitHub Actions status
 make ci-status
