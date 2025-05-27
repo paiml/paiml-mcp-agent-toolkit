@@ -48,17 +48,17 @@ jobs:
           
       - name: Check for updates
         id: check
-        working-directory: server
         run: |
-          # Check outdated deps
-          OUTDATED_JSON=$(cargo outdated --format json)
-          OUTDATED_COUNT=$(echo "$OUTDATED_JSON" | jq '.dependencies | length')
+          # Save outdated deps to a file
+          make server-outdated > outdated.json
+          
+          OUTDATED_COUNT=$(cat outdated.json | jq '.dependencies | length')
           
           if [ "$OUTDATED_COUNT" -gt 0 ]; then
             echo "has_updates=true" >> $GITHUB_OUTPUT
             
             # Generate summary
-            SUMMARY=$(echo "$OUTDATED_JSON" | jq -r '
+            SUMMARY=$(cat outdated.json | jq -r '
               .dependencies[] | 
               "\(.name): \(.project) → \(.latest)"
             ' | head -10)
@@ -94,39 +94,35 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           
       - name: Update dependencies
-        working-directory: server
         run: |
           UPDATE_TYPE="${{ github.event.inputs.update_type || 'conservative' }}"
           
           case $UPDATE_TYPE in
             aggressive)
-              cargo update --aggressive
-              cargo upgrade --workspace --to-lockfile
+              make update-deps-aggressive
               ;;
             security-only)
-              cargo audit fix
+              make update-deps-security
               ;;
             *)
-              cargo update
+              make update-deps
               ;;
           esac
           
       - name: Run tests
-        working-directory: server
         run: |
-          cargo test --all-features
-          cargo clippy -- -D warnings
+          make server-test-all
+          make server-lint
           
       - name: Check binary size impact
-        working-directory: server
         run: |
           # Build before and after to compare
           git stash
-          cargo build --release
+          make server-build-release
           BEFORE_SIZE=$(stat -f%z target/release/paiml-mcp-agent-toolkit 2>/dev/null || stat -c%s target/release/paiml-mcp-agent-toolkit)
           
           git stash pop
-          cargo build --release
+          make server-build-release
           AFTER_SIZE=$(stat -f%z target/release/paiml-mcp-agent-toolkit 2>/dev/null || stat -c%s target/release/paiml-mcp-agent-toolkit)
           
           SIZE_DIFF=$((AFTER_SIZE - BEFORE_SIZE))
@@ -176,8 +172,7 @@ jobs:
       
       - name: Run security audit
         run: |
-          cd server
-          cargo audit
+          make server-audit
       
       - name: Create issue if vulnerabilities found
         if: failure()

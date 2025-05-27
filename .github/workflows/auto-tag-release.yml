@@ -141,7 +141,7 @@ jobs:
           deno run --allow-read --allow-write --allow-run scripts/update-version.ts "$NEW_VERSION"
           
           # Generate installer with new version
-          cd server && make generate-installer && cd ..
+          make server-generate-installer
       
       - name: Commit and tag
         if: steps.check.outputs.should_release == 'true'
