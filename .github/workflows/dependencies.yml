@@ -44,7 +44,7 @@ jobs:
           
       - name: Install cargo-outdated and cargo-edit
         run: |
-          cargo install cargo-outdated cargo-edit
+          make install-dev-tools
           
       - name: Check for updates
         id: check
@@ -168,7 +168,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       
       - name: Install cargo-audit
-        run: cargo install cargo-audit
+        run: make install-dev-tools
       
       - name: Run security audit
         run: |

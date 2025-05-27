@@ -47,6 +47,11 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+      
       - name: Run tests and checks
         run: |
           make server-format server-lint server-check server-test
@@ -182,9 +187,8 @@ jobs:
       
       - name: Generate installer script
         run: |
-          cd server
-          make generate-installer
-          cp ../scripts/install.sh ../release-files/
+          make server-generate-installer
+          cp scripts/install.sh release-files/
       
       - name: Generate changelog
         id: changelog
