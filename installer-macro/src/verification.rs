@@ -26,16 +26,19 @@ pub fn verify_posix_compliance(shell: &str) -> Result<(), String> {
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
-        
+
         // Combine both stderr and stdout for better error reporting
         let error_output = if !stderr.is_empty() {
             stderr.to_string()
         } else if !stdout.is_empty() {
             stdout.to_string()
         } else {
-            format!("Shellcheck failed with exit code: {}", output.status.code().unwrap_or(-1))
+            format!(
+                "Shellcheck failed with exit code: {}",
+                output.status.code().unwrap_or(-1)
+            )
         };
-        
+
         return Err(format!("Shell validation failed:\n{}", error_output));
     }
 

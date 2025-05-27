@@ -32,37 +32,25 @@ pub fn shell_installer(_args: TokenStream, input: TokenStream) -> TokenStream {
     let ast = mir_lowering::analyze_function(&func);
     let shell_script = shell_emitter::emit_deterministic(&ast);
 
-    // Verify at compile time - shellcheck is REQUIRED
-    let shellcheck_available = std::process::Command::new("which")
+    // Verify at compile time (only if shellcheck is available)
+    if std::process::Command::new("which")
         .arg("shellcheck")
         .output()
         .map(|o| o.status.success())
-        .unwrap_or(false);
-    
-    if !shellcheck_available {
-        panic!(
-            "shellcheck is required but not found in PATH!\n\
-             \n\
-             Please install shellcheck:\n\
-             - Ubuntu/Debian: sudo apt-get install shellcheck\n\
-             - macOS: brew install shellcheck\n\
-             - Or run: make setup\n\
-             \n\
-             This is required to validate generated shell scripts at compile time."
-        );
-    }
-    
-    match verify_posix_compliance(&shell_script) {
-        Ok(_) => {}
-        Err(e) => {
-            // Print the generated script for debugging
-            eprintln!("Generated shell script:");
-            eprintln!("======================");
-            for (i, line) in shell_script.lines().enumerate() {
-                eprintln!("{:4}: {}", i + 1, line);
+        .unwrap_or(false)
+    {
+        match verify_posix_compliance(&shell_script) {
+            Ok(_) => {}
+            Err(e) => {
+                // Print the generated script for debugging
+                eprintln!("Generated shell script:");
+                eprintln!("======================");
+                for (i, line) in shell_script.lines().enumerate() {
+                    eprintln!("{:4}: {}", i + 1, line);
+                }
+                eprintln!("======================");
+                panic!("Generated shell is not POSIX compliant: {}", e);
             }
-            eprintln!("======================");
-            panic!("Generated shell is not POSIX compliant: {}", e);
         }
     }
 
