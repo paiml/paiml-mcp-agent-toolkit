@@ -49,8 +49,7 @@ jobs:
       
       - name: Run tests and checks
         run: |
-          cd server
-          make format lint check test
+          make server-format server-lint server-check server-test
       
       - name: Check for release conditions
         id: check
@@ -130,11 +129,10 @@ jobs:
       
       - name: Build binary
         run: |
-          cd server
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
           fi
-          cargo build --release --target ${{ matrix.target }}
+          cargo build --release --target ${{ matrix.target }} --manifest-path server/Cargo.toml
       
       - name: Create archive
         run: |

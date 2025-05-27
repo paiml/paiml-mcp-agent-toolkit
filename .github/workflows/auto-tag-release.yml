@@ -37,9 +37,7 @@ jobs:
       
       - name: Run tests
         run: |
-          cd server
-          make test
-          cd ..
+          make server-test
       
       - name: Check if should release
         id: check
