@@ -152,7 +152,7 @@ jobs:
           
           # Create and push tag
           git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
-          git push origin main
+          git push origin HEAD:${GITHUB_REF_NAME}
           git push origin "v${{ steps.version.outputs.new_version }}"
       
       - name: Trigger release workflow
