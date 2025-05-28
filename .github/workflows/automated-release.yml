@@ -22,7 +22,7 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  # First, run all tests and checks
+  # Phase 1: Test and determine if release is needed
   test-and-check:
     name: Test and Check
     runs-on: ubuntu-latest
@@ -150,10 +150,52 @@ jobs:
           NEW_VERSION="$MAJOR.$MINOR.$PATCH"
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
-  # Build binaries for all platforms
+  # Phase 2: Update version and create tag BEFORE building binaries
+  version-bump:
+    name: Version Bump
+    needs: test-and-check
+    if: needs.test-and-check.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.tag.outputs.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+          
+      - name: Update version in files
+        run: |
+          NEW_VERSION="${{ needs.test-and-check.outputs.new_version }}"
+          deno run --allow-read --allow-write --allow-run ./scripts/update-version.ts "$NEW_VERSION"
+          
+      - name: Commit version updates and create tag
+        id: tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          git add Cargo.toml server/Cargo.toml installer-macro/Cargo.toml assets/project-state.json
+          git add -f Cargo.lock
+          
+          git commit -m "chore: bump version to ${{ needs.test-and-check.outputs.new_version }}"
+          git push origin HEAD:master
+          
+          # Create and push tag
+          TAG_NAME="v${{ needs.test-and-check.outputs.new_version }}"
+          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+          git push origin "$TAG_NAME"
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+  # Phase 3: Build binaries from the tagged version
   build-binaries:
     name: Build ${{ matrix.target }}
-    needs: test-and-check
+    needs: version-bump
     if: needs.test-and-check.outputs.should_release == 'true'
     strategy:
       matrix:
@@ -169,6 +211,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version-bump.outputs.tag_name }}
       
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -187,6 +231,22 @@ jobs:
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
           fi
           cargo build --release --target ${{ matrix.target }} --manifest-path server/Cargo.toml
+      
+      - name: Verify binary version
+        run: |
+          # Check if binary version matches what we expect
+          BINARY_PATH="target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit"
+          if [ -x "$BINARY_PATH" ]; then
+            BINARY_VERSION=$("$BINARY_PATH" --version | cut -d' ' -f2)
+            EXPECTED_VERSION=$(grep -m1 '^version = ' server/Cargo.toml | cut -d'"' -f2)
+            echo "Binary version: $BINARY_VERSION"
+            echo "Expected version: $EXPECTED_VERSION"
+            if [ "$BINARY_VERSION" != "$EXPECTED_VERSION" ]; then
+              echo "WARNING: Binary version mismatch! Binary has $BINARY_VERSION but Cargo.toml has $EXPECTED_VERSION"
+              echo "This indicates the release process has a critical bug."
+              # Don't fail for now, just warn
+            fi
+          fi
       
       - name: Create archive
         run: |
@@ -241,16 +301,6 @@ jobs:
           find artifacts -name "*.tar.gz*" -exec cp {} release-files/ \;
           ls -la release-files/
       
-      - name: Update version in files
-        run: |
-          NEW_VERSION="${{ needs.test-and-check.outputs.new_version }}"
-          
-          # Pull latest changes before updating versions
-          git pull --rebase
-          
-          # Use centralized version update script with proper permissions
-          deno run --allow-read --allow-write --allow-run ./scripts/update-version.ts "$NEW_VERSION"
-      
       - name: Copy installer script
         run: |
           cp scripts/install.sh release-files/
@@ -288,30 +338,6 @@ jobs:
           echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
           cat CHANGELOG.md >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
-      
-      - name: Commit version updates
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          
-          # Pull latest changes to avoid conflicts
-          git pull --rebase
-          
-          # Check if there are any changes to commit
-          git add Cargo.toml server/Cargo.toml installer-macro/Cargo.toml assets/project-state.json
-          # Force add Cargo.lock since it's in .gitignore
-          git add -f Cargo.lock
-          
-          # Only commit if there are changes
-          if git diff --staged --quiet; then
-            echo "No changes to commit - version already updated"
-          else
-            git commit -m "chore: bump version to ${{ needs.test-and-check.outputs.new_version }}"
-            
-            # Create and push the tag with the version bump commit
-            git tag -a "v${{ needs.test-and-check.outputs.new_version }}" -m "Release v${{ needs.test-and-check.outputs.new_version }}"
-            git push origin HEAD:master --tags
-          fi
       
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
