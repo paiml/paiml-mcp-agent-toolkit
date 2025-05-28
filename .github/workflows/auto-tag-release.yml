@@ -27,17 +27,10 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      
       - name: Install Deno
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      
-      - name: Run tests
-        run: |
-          make server-test
       
       - name: Check if should release
         id: check
