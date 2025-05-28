@@ -222,6 +222,9 @@ mod tests {
     #[path = "../tests/template_resources.rs"]
     mod template_resources;
 
+    #[path = "../tests/helpers.rs"]
+    mod helpers;
+
     #[path = "../tests/prompts.rs"]
     mod prompts;
 
@@ -272,4 +275,7 @@ mod tests {
 
     #[path = "../tests/additional_coverage.rs"]
     mod additional_coverage;
+
+    #[path = "../tests/error_handling.rs"]
+    mod error_handling;
 }

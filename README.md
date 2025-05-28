@@ -2,10 +2,10 @@
 
 > **Deterministic tooling for AI-assisted development - Generate project scaffolding, analyze code churn metrics, and provide reliable context for AI agents via CLI or Claude Code**
 
-[![CI](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/ci.yml)
-[![Code Quality](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml)
+[![CI/CD](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml)
+[![Tests](https://img.shields.io/badge/tests-passing-green)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
 [![Release](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/automated-release.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/automated-release.yml)
-[![Coverage](https://img.shields.io/badge/coverage-71%25-yellow)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
+[![Coverage](https://img.shields.io/badge/coverage-81%25-green)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
 [![Built by Pragmatic AI Labs](https://img.shields.io/badge/Built%20by-Pragmatic%20AI%20Labs-blue)](https://paiml.com)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -346,28 +346,28 @@ paiml-mcp-agent-toolkit context python-uv -o context.md
 - **Deno/TypeScript**: Analyzes `.ts`, `.tsx`, `.js`, `.jsx` files for functions, classes, interfaces, and types
 - **Python**: Analyzes `.py` files for functions, classes, and imports
 
-##### `churn` - Analyze code change patterns
+##### `analyze churn` - Analyze code change patterns
 
 Analyze code change frequency and patterns to identify maintenance hotspots. Uses git history to find frequently changed files that may need refactoring.
 
 ```bash
 # Analyze code churn for current directory
-paiml-mcp-agent-toolkit churn
+paiml-mcp-agent-toolkit analyze churn
 
 # Analyze specific project path
-paiml-mcp-agent-toolkit churn --project-path /path/to/project
+paiml-mcp-agent-toolkit analyze churn --project-path /path/to/project
 
 # Analyze last 90 days
-paiml-mcp-agent-toolkit churn --period-days 90
+paiml-mcp-agent-toolkit analyze churn --period-days 90
 
 # Output as JSON
-paiml-mcp-agent-toolkit churn --format json
+paiml-mcp-agent-toolkit analyze churn --format json
 
 # Output as CSV
-paiml-mcp-agent-toolkit churn --format csv
+paiml-mcp-agent-toolkit analyze churn --format csv
 
 # Save to file
-paiml-mcp-agent-toolkit churn -o churn-report.md
+paiml-mcp-agent-toolkit analyze churn -o churn-report.md
 ```
 
 **Output includes:**
@@ -591,7 +591,7 @@ This project uses GitHub Actions for continuous integration and deployment:
   - Creates GitHub releases with attached binaries
 
 - **Code Quality**: Enforced standards
-  - Minimum 60% test coverage (currently at 71%)
+  - Minimum 60% test coverage (currently at 81%)
   - No clippy warnings
   - Proper formatting
   - Documentation checks
@@ -619,7 +619,7 @@ cargo test --test template_rendering
 ```
 
 Test categories:
-- **Unit Tests**: Core functionality (71% coverage)
+- **Unit Tests**: Core functionality (81% coverage)
 - **Integration Tests**: MCP protocol handling
 - **E2E Tests**: Full server functionality
 - **Template Tests**: All template rendering paths
@@ -980,7 +980,7 @@ ls -la /usr/local/bin/paiml-mcp-agent-toolkit
 echo '{"jsonrpc":"2.0","id":1,"method":"resources/list"}' | paiml-mcp-agent-toolkit
 
 # Check the installed version
-grep '^version' /path/to/paiml-mcp-agent-toolkit/server/Cargo.toml
+paiml-mcp-agent-toolkit --version
 ```
 
 #### Claude Code Integration Issues
@@ -1092,7 +1092,7 @@ echo '{
 - 📁 **Proper Subdirectories**: Templates now create files in project-named subdirectories
 - ℹ️ **Enhanced Discoverability**: New `get_server_info` tool provides metadata about the server
 - 🧪 **E2E Testing**: Comprehensive end-to-end tests simulating Claude Code operations
-- 📊 **Current Coverage**: Test coverage at 71% with comprehensive E2E tests
+- 📊 **Current Coverage**: Test coverage at 81% with comprehensive E2E tests
 - 🔧 **Consolidated Tooling**: Unified installation scripts and centralized Makefile commands
 - 🔢 **Auto-Versioning**: Installation automatically increments version for easy tracking
 - 🔄 **Zero Template Duplication**: Shared memory model between CLI and MCP modes
