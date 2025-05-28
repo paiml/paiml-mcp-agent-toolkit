@@ -37,29 +37,33 @@ function warn(message: string): void {
   console.log(`${YELLOW}${message}${NC}`);
 }
 
-// Detect OS
-function detectOS(): string {
-  switch (Deno.build.os) {
-    case "linux":
-      return "linux";
-    case "darwin":
-      return "macos";
-    case "windows":
-      return "windows";
-    default:
-      error(`Unsupported operating system: ${Deno.build.os}`);
-  }
-}
-
-// Detect architecture
-function detectArch(): string {
-  switch (Deno.build.arch) {
-    case "x86_64":
-      return "x86_64";
-    case "aarch64":
-      return "aarch64";
-    default:
-      error(`Unsupported architecture: ${Deno.build.arch}`);
+// Detect platform (returns full Rust target triple)
+function detectPlatform(): string {
+  const os = Deno.build.os;
+  const arch = Deno.build.arch;
+  
+  if (os === "linux") {
+    switch (arch) {
+      case "x86_64":
+        return "x86_64-unknown-linux-gnu";
+      case "aarch64":
+        return "aarch64-unknown-linux-gnu";
+      default:
+        error(`Unsupported Linux architecture: ${arch}`);
+    }
+  } else if (os === "darwin") {
+    switch (arch) {
+      case "x86_64":
+        return "x86_64-apple-darwin";
+      case "aarch64":
+        return "aarch64-apple-darwin";
+      default:
+        error(`Unsupported macOS architecture: ${arch}`);
+    }
+  } else if (os === "windows") {
+    return "x86_64-pc-windows-msvc";
+  } else {
+    error(`Unsupported operating system: ${os}`);
   }
 }
 
@@ -111,8 +115,7 @@ async function extractTarGz(
 
 // Main installation function
 async function install(version?: string): Promise<void> {
-  const os = detectOS();
-  const arch = detectArch();
+  const platform = detectPlatform();
 
   // Get version
   if (!version) {
@@ -122,11 +125,11 @@ async function install(version?: string): Promise<void> {
   // Remove 'v' prefix if present
   version = version.replace(/^v/, "");
 
-  info(`Installing ${BINARY_NAME} v${version} for ${os}-${arch}...`);
+  info(`Installing ${BINARY_NAME} v${version} for ${platform}...`);
 
   // Construct download URL
   const downloadUrl =
-    `https://github.com/${REPO}/releases/download/v${version}/${BINARY_NAME}-${os}-${arch}.tar.gz`;
+    `https://github.com/${REPO}/releases/download/v${version}/${BINARY_NAME}-${platform}.tar.gz`;
 
   // Create temp directory
   const tmpDir = await Deno.makeTempDir();
@@ -140,7 +143,7 @@ async function install(version?: string): Promise<void> {
       await downloadFile(downloadUrl, archivePath);
     } catch (_e) {
       error(
-        `Failed to download binary. Please check if version ${version} exists for ${os}-${arch}.`,
+        `Failed to download binary. Please check if version ${version} exists for ${platform}.`,
       );
     }
 

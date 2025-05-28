@@ -62,7 +62,7 @@ jobs:
           make server-format
           make server-lint
           make server-check
-          make server-test
+          make test  # This runs both script tests and server tests
           make server-build-binary
       
       - name: Upload binary artifact

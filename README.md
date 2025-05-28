@@ -14,58 +14,97 @@ The PAIML MCP Agent Toolkit is a unified binary created by [Pragmatic AI Labs](h
 
 ![PAIML MCP Agent Toolkit Demo](assets/demo.gif)
 
-## 🚀 Quick Start
+## 🚀 Installation
+
+### Quick Install (Recommended)
+
+> **Linux/macOS** - Install with a single command:
+
+```sh
+curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+```
+
+This installer automatically:
+- Detects your platform and architecture
+- Downloads the correct binary
+- Installs to `~/.local/bin` (or `/usr/local/bin` with sudo)
+- Adds the binary to your PATH if needed
+
+### Other Installation Methods
+
+<details>
+<summary><b>Pre-built Binaries</b></summary>
+
+Download the appropriate binary for your platform:
+
+- [Linux x64](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-x86_64-unknown-linux-gnu.tar.gz)
+- [Linux ARM64](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-aarch64-unknown-linux-gnu.tar.gz)
+- [macOS ARM64 (Apple Silicon)](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-aarch64-apple-darwin.tar.gz)
+- [macOS x64 (Intel)](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-x86_64-apple-darwin.tar.gz)
+
+```bash
+# Example: Manual installation for Linux/macOS
+curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]').tar.gz | tar xz
+chmod +x paiml-mcp-agent-toolkit
+sudo mv paiml-mcp-agent-toolkit /usr/local/bin/
+```
+</details>
+
+<details>
+<summary><b>Build from Source</b></summary>
+
+```bash
+# Clone the repository
+git clone https://github.com/paiml/paiml-mcp-agent-toolkit.git
+cd paiml-mcp-agent-toolkit
+
+# Install (automatically bumps version, builds, and installs)
+make install
+
+# Or build without installing
+make build
+```
+</details>
+
+<details>
+<summary><b>Windows Installation</b></summary>
+
+```powershell
+# PowerShell (Coming Soon)
+irm https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.ps1 | iex
+
+# Or download the Windows binary manually:
+# https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-x86_64-pc-windows-msvc.zip
+```
+</details>
+
+## 🎯 Getting Started
 
 ### For Claude Code Users
 
-1. **Install the MCP server**:
+After installation, add the toolkit to Claude Code:
+
 ```bash
-# Option A: Quick install via curl | sh (recommended)
-curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/main/scripts/install.sh | sh
-
-# Option B: Use pre-built binary
-curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz -o paiml-mcp-agent-toolkit.tar.gz
-tar xzf paiml-mcp-agent-toolkit.tar.gz
-chmod +x paiml-mcp-agent-toolkit
-sudo mv paiml-mcp-agent-toolkit /usr/local/bin/
-
-# Option C: Build from source
-git clone https://github.com/paiml/paiml-mcp-agent-toolkit.git
-cd paiml-mcp-agent-toolkit
-make install  # Automatically bumps version, builds, and installs
-
-# Add to Claude Code (with a name)
-claude mcp add paiml-toolkit /usr/local/bin/paiml-mcp-agent-toolkit
-# Or if installed to ~/.local/bin:
+# Add to Claude Code
 claude mcp add paiml-toolkit ~/.local/bin/paiml-mcp-agent-toolkit
-```
 
-2. **Verify installation**:
-```bash
-# Check MCP status
+# Verify installation
 claude mcp status
-
-# Or use the /mcp command in Claude Code
-/mcp
 ```
 
-3. **Ask Claude to generate project files**:
+Then ask Claude to generate project files:
 - "Generate a Makefile for my Rust project"
 - "Create a professional README for this TypeScript library"
 - "Set up a .gitignore for Python development"
-- "Validate my template parameters"
-- "Search for Docker-related templates"
 - "Scaffold a complete Rust project"
-- "What does the paiml-mcp-agent-toolkit do?"
-- "Who made this MCP server?"
 
 ### For CLI Users
 
 ```bash
-# Quick start - show help
+# Show available commands
 paiml-mcp-agent-toolkit --help
 
-# List all available templates
+# List all templates
 paiml-mcp-agent-toolkit list
 
 # Generate a Makefile
@@ -73,16 +112,12 @@ paiml-mcp-agent-toolkit generate makefile rust/cli -p project_name=my-project
 
 # Scaffold an entire project
 paiml-mcp-agent-toolkit scaffold rust --templates makefile,readme,gitignore -p project_name=my-project
-
-# Search for templates
-paiml-mcp-agent-toolkit search docker --toolchain rust
 ```
 
 ## 📋 Table of Contents
 
 - [Overview](#overview)
 - [Key Features](#key-features)
-- [Installation](#installation)
 - [Usage Guide](#usage-guide)
 - [Architecture](#architecture)
 - [Available Templates](#available-templates)
@@ -127,73 +162,6 @@ The PAIML MCP Agent Toolkit implements a production-grade template server using 
    - Library packages
    - Data science projects
 
-## Installation
-
-### Method 1: Quick Install (Recommended)
-
-Our installer provides a simple and reliable installation experience with automatic platform detection and smart fallback handling.
-
-#### Linux/macOS
-```bash
-curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/main/scripts/install.sh | sh
-```
-
-#### Windows (PowerShell)
-```powershell
-irm https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-installer.ps1 | iex
-```
-
-**Features:**
-- 🔒 **Secure**: No eval, no dynamic code execution
-- 🛡️ **Smart Fallback**: Uses TypeScript installer with Deno when available, falls back to shell
-- ✅ **Reliable**: Automatic platform detection and error handling
-- 🚀 **Fast**: Atomic installation with automatic cleanup
-
-### Method 2: Pre-built Binaries
-
-Download binaries for your platform:
-
-- [Linux x64](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-x86_64-unknown-linux-gnu.tar.gz)
-- [macOS ARM64](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-aarch64-apple-darwin.tar.gz)
-- [macOS x64](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-x86_64-apple-darwin.tar.gz)
-- [Windows x64](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-x86_64-pc-windows-msvc.zip)
-
-```bash
-# Download and install (Linux/macOS)
-curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]').tar.gz | tar xz
-chmod +x paiml-mcp-agent-toolkit
-sudo mv paiml-mcp-agent-toolkit /usr/local/bin/
-```
-
-### Method 3: Build from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/paiml/paiml-mcp-agent-toolkit.git
-cd paiml-mcp-agent-toolkit
-
-# Install (automatically bumps version, builds, and installs)
-make install
-
-# Or build without installing
-make build
-```
-
-### Claude Code Integration
-
-Add to your Claude Code configuration (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
-
-```json
-{
-  "mcpServers": {
-    "paiml-toolkit": {
-      "command": "/usr/local/bin/paiml-mcp-agent-toolkit",
-      "args": [],
-      "env": {}
-    }
-  }
-}
-```
 
 ## Usage Guide
 
@@ -708,7 +676,7 @@ The project uses automated release workflows to ensure consistent and reliable r
 
 #### Automatic Release Process
 
-1. **Continuous Deployment**: Every push to `main` that passes tests triggers an automatic release
+1. **Continuous Deployment**: Every push to `master` that passes tests triggers an automatic release
 2. **Semantic Versioning**: Version bumps are determined by commit messages:
    - `feat:` commits trigger minor version bumps
    - `fix:` commits trigger patch version bumps  

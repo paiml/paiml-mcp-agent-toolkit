@@ -1,6 +1,6 @@
 #!/bin/sh
 # MCP Agent Toolkit Installation Script - Shell wrapper for Deno installer
-# 
+#
 # This script checks for Deno and runs the TypeScript installer.
 # If Deno is not available, it falls back to a simple shell implementation.
 # 
@@ -47,23 +47,32 @@ warn() {
     printf "${YELLOW}%s${NC}\n" "$1"
 }
 
-# Detect OS
-detect_os() {
-    case "$(uname -s)" in
-        Linux*)     echo "linux";;
-        Darwin*)    echo "macos";;
-        MINGW*|CYGWIN*|MSYS*) echo "windows";;
-        *)          error "Unsupported operating system: $(uname -s)";;
-    esac
-}
-
-# Detect architecture
-detect_arch() {
-    case "$(uname -m)" in
-        x86_64|amd64)   echo "x86_64";;
-        aarch64|arm64)  echo "aarch64";;
-        armv7l)         echo "armv7";;
-        *)              error "Unsupported architecture: $(uname -m)";;
+# Detect platform (returns full Rust target triple)
+detect_platform() {
+    local os=$(uname -s)
+    local arch=$(uname -m)
+    
+    case "$os" in
+        Linux*)
+            case "$arch" in
+                x86_64)  echo "x86_64-unknown-linux-gnu";;
+                aarch64) echo "aarch64-unknown-linux-gnu";;
+                *)       error "Unsupported Linux architecture: $arch";;
+            esac
+            ;;
+        Darwin*)
+            case "$arch" in
+                x86_64)  echo "x86_64-apple-darwin";;
+                arm64)   echo "aarch64-apple-darwin";;
+                *)       error "Unsupported macOS architecture: $arch";;
+            esac
+            ;;
+        MINGW*|CYGWIN*|MSYS*)
+            echo "x86_64-pc-windows-msvc"
+            ;;
+        *)
+            error "Unsupported operating system: $os"
+            ;;
     esac
 }
 
@@ -76,17 +85,16 @@ get_latest_version() {
 
 # Download and install
 install() {
-    OS=$(detect_os)
-    ARCH=$(detect_arch)
+    PLATFORM=$(detect_platform)
     VERSION="${1:-$(get_latest_version)}"
     
     # Remove 'v' prefix if present
     VERSION="${VERSION#v}"
     
-    info "Installing ${BINARY_NAME} v${VERSION} for ${OS}-${ARCH}..."
+    info "Installing ${BINARY_NAME} v${VERSION} for ${PLATFORM}..."
     
     # Construct download URL
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${BINARY_NAME}-${OS}-${ARCH}.tar.gz"
+    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${BINARY_NAME}-${PLATFORM}.tar.gz"
     
     # Create temp directory
     TMP_DIR=$(mktemp -d)

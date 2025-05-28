@@ -20,8 +20,7 @@ mod tests {
         let script = INSTALL_PAIML_MCP_AGENT_TOOLKIT_SHELL;
 
         // Check for essential functions
-        assert!(script.contains("detect_os()"));
-        assert!(script.contains("detect_arch()"));
+        assert!(script.contains("detect_platform()"));
         assert!(script.contains("get_latest_version()"));
         assert!(script.contains("install()"));
 
@@ -34,5 +33,9 @@ mod tests {
         assert!(script.contains("Darwin*)"));
         assert!(script.contains("x86_64"));
         assert!(script.contains("aarch64"));
+        
+        // Check for Rust target triple formats
+        assert!(script.contains("x86_64-unknown-linux-gnu"));
+        assert!(script.contains("x86_64-apple-darwin"));
     }
 }

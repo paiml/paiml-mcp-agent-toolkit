@@ -54,11 +54,22 @@ jobs:
       
       - name: Run tests and checks
         run: |
-          make server-format server-lint server-check server-test
+          make server-format server-lint server-check
+          make test  # This runs both script tests and server tests
       
       - name: Check for release conditions
         id: check
         run: |
+          # Get current version from Cargo.toml
+          CURRENT_VERSION=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          
+          # Check if a tag already exists for this version
+          if git tag -l "v$CURRENT_VERSION" | grep -q .; then
+            echo "Tag v$CURRENT_VERSION already exists, skipping release"
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
           # Get last tag
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           
@@ -256,11 +267,18 @@ jobs:
           # Pull latest changes to avoid conflicts
           git pull --rebase
           
+          # Check if there are any changes to commit
           git add Cargo.toml server/Cargo.toml installer-macro/Cargo.toml assets/project-state.json
           # Force add Cargo.lock since it's in .gitignore
           git add -f Cargo.lock
-          git commit -m "chore: bump version to ${{ needs.test-and-check.outputs.new_version }}"
-          git push
+          
+          # Only commit if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit - version already updated"
+          else
+            git commit -m "chore: bump version to ${{ needs.test-and-check.outputs.new_version }}"
+            git push
+          fi
       
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -285,6 +303,11 @@ jobs:
         with:
           ref: master
           token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
       
       - name: Pull latest changes
         run: git pull

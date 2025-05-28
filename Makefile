@@ -18,7 +18,7 @@
 #
 # This design prevents workspace-related issues and ensures consistent behavior.
 
-.PHONY: all validate format lint check test coverage build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate
+.PHONY: all validate format lint check test coverage build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -81,7 +81,7 @@ check: check-scripts
 	done
 
 # Run tests in all projects
-test:
+test: test-scripts
 	@for project in $(PROJECTS); do \
 		if [ -d "$$project" ] && [ -f "$$project/Makefile" ]; then \
 			echo "🧪 Testing $$project..."; \
@@ -191,6 +191,19 @@ check-scripts:
 		deno check $(SCRIPTS_DIR)/*.ts; \
 	else \
 		echo "✓ No TypeScript scripts to check"; \
+	fi
+
+# Test TypeScript scripts
+test-scripts:
+	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.test.ts' -not -name '*.integration.test.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
+		echo "🧪 Testing TypeScript scripts..."; \
+		find $(SCRIPTS_DIR) -name '*.test.ts' -not -name '*.integration.test.ts' -type f | xargs deno test; \
+	fi
+	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.integration.test.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
+		echo "🧪 Running integration tests..."; \
+		deno test --allow-net $(SCRIPTS_DIR)/*.integration.test.ts; \
+	else \
+		echo "✓ No TypeScript script tests found"; \
 	fi
 
 # Validate documentation naming consistency
