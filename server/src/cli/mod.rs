@@ -160,6 +160,41 @@ pub(crate) enum AnalyzeCommands {
         output: Option<PathBuf>,
     },
 
+    /// Analyze code complexity
+    Complexity {
+        /// Project path to analyze
+        #[arg(short = 'p', long, default_value = ".")]
+        project_path: PathBuf,
+
+        /// Filter by toolchain (rust, deno, python-uv)
+        #[arg(long)]
+        toolchain: Option<String>,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "summary")]
+        format: ComplexityOutputFormat,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Custom cyclomatic complexity threshold
+        #[arg(long)]
+        max_cyclomatic: Option<u16>,
+
+        /// Custom cognitive complexity threshold
+        #[arg(long)]
+        max_cognitive: Option<u16>,
+
+        /// Include file patterns (e.g., "**/*.rs")
+        #[arg(long)]
+        include: Vec<String>,
+
+        /// Watch mode for continuous analysis
+        #[arg(long)]
+        watch: bool,
+    },
+
     /// Generate dependency graphs using Mermaid
     Dag {
         /// Type of dependency graph to generate
@@ -199,6 +234,18 @@ pub(crate) enum OutputFormat {
     Table,
     Json,
     Yaml,
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+pub(crate) enum ComplexityOutputFormat {
+    /// Summary statistics only
+    Summary,
+    /// Full report with violations
+    Full,
+    /// JSON format for tools
+    Json,
+    /// SARIF format for IDE integration
+    Sarif,
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq, Eq, Hash)]
@@ -490,6 +537,166 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
                     eprintln!("✅ Dependency graph written to: {}", path.display());
                 } else {
                     println!("{}", output_with_stats);
+                }
+            }
+
+            AnalyzeCommands::Complexity {
+                project_path,
+                toolchain,
+                format,
+                output,
+                max_cyclomatic,
+                max_cognitive,
+                include,
+                watch,
+            } => {
+                use crate::services::complexity::*;
+                use walkdir::WalkDir;
+
+                if watch {
+                    eprintln!("❌ Watch mode not yet implemented");
+                    return Ok(());
+                }
+
+                // Detect toolchain if not specified
+                let detected_toolchain = if let Some(t) = toolchain {
+                    t
+                } else if project_path.join("Cargo.toml").exists() {
+                    "rust".to_string()
+                } else if project_path.join("package.json").exists()
+                    || project_path.join("deno.json").exists()
+                {
+                    "deno".to_string()
+                } else if project_path.join("pyproject.toml").exists()
+                    || project_path.join("requirements.txt").exists()
+                {
+                    "python-uv".to_string()
+                } else {
+                    eprintln!("⚠️  Could not detect toolchain, defaulting to rust");
+                    "rust".to_string()
+                };
+
+                eprintln!("🔍 Analyzing {} project complexity...", detected_toolchain);
+
+                // Custom thresholds
+                let mut thresholds = ComplexityThresholds::default();
+                if let Some(max) = max_cyclomatic {
+                    thresholds.cyclomatic_error = max;
+                    thresholds.cyclomatic_warn = (max * 3 / 4).max(1);
+                }
+                if let Some(max) = max_cognitive {
+                    thresholds.cognitive_error = max;
+                    thresholds.cognitive_warn = (max * 3 / 4).max(1);
+                }
+
+                // Analyze files
+                let mut file_metrics = Vec::new();
+                let mut file_count = 0;
+
+                for entry in WalkDir::new(&project_path)
+                    .follow_links(false)
+                    .into_iter()
+                    .filter_map(|e| e.ok())
+                {
+                    let path = entry.path();
+
+                    // Skip directories and non-source files
+                    if path.is_dir() {
+                        continue;
+                    }
+
+                    // Check file extension based on toolchain
+                    let should_analyze = match detected_toolchain.as_str() {
+                        "rust" => path.extension().and_then(|s| s.to_str()) == Some("rs"),
+                        "deno" => matches!(
+                            path.extension().and_then(|s| s.to_str()),
+                            Some("ts") | Some("tsx") | Some("js") | Some("jsx")
+                        ),
+                        "python-uv" => path.extension().and_then(|s| s.to_str()) == Some("py"),
+                        _ => false,
+                    };
+
+                    if !should_analyze {
+                        continue;
+                    }
+
+                    // Apply include filters if specified (simple pattern matching)
+                    if !include.is_empty() {
+                        let path_str = path.to_string_lossy();
+                        let matches_filter = include.iter().any(|pattern| {
+                            // Simple glob-like matching
+                            if pattern.contains("**") {
+                                // Match any path containing the pattern after **
+                                let parts: Vec<&str> = pattern.split("**").collect();
+                                if parts.len() == 2 {
+                                    path_str.contains(parts[1].trim_start_matches('/'))
+                                } else {
+                                    false
+                                }
+                            } else if pattern.starts_with("*.") {
+                                // Match by extension
+                                path_str.ends_with(&pattern[1..])
+                            } else {
+                                // Direct substring match
+                                path_str.contains(pattern)
+                            }
+                        });
+                        if !matches_filter {
+                            continue;
+                        }
+                    }
+
+                    file_count += 1;
+
+                    // Analyze file complexity
+                    match detected_toolchain.as_str() {
+                        "rust" => {
+                            use crate::services::ast_rust;
+                            if let Ok(metrics) =
+                                ast_rust::analyze_rust_file_with_complexity(path).await
+                            {
+                                file_metrics.push(metrics);
+                            }
+                        }
+                        "deno" => {
+                            use crate::services::ast_typescript;
+                            if let Ok(metrics) =
+                                ast_typescript::analyze_typescript_file_with_complexity(path).await
+                            {
+                                file_metrics.push(metrics);
+                            }
+                        }
+                        "python-uv" => {
+                            use crate::services::ast_python;
+                            if let Ok(metrics) =
+                                ast_python::analyze_python_file_with_complexity(path).await
+                            {
+                                file_metrics.push(metrics);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                eprintln!("📊 Analyzed {} files", file_count);
+
+                // Aggregate results
+                let report = aggregate_results(file_metrics);
+
+                // Format output
+                let content = match format {
+                    ComplexityOutputFormat::Summary => format_complexity_summary(&report),
+                    ComplexityOutputFormat::Full => format_complexity_report(&report),
+                    ComplexityOutputFormat::Json => serde_json::to_string_pretty(&report)?,
+                    ComplexityOutputFormat::Sarif => format_as_sarif(&report)?,
+                };
+
+                // Write output
+                if let Some(path) = output {
+                    tokio::fs::write(&path, &content).await?;
+                    eprintln!("✅ Complexity analysis written to: {}", path.display());
+                } else {
+                    println!("{}", content);
                 }
             }
         },

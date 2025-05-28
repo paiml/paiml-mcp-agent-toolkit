@@ -28,6 +28,9 @@ mod tests {
                     AnalyzeCommands::Dag { .. } => {
                         panic!("Expected Churn command, got Dag");
                     }
+                    AnalyzeCommands::Complexity { .. } => {
+                        panic!("Expected Churn command, got Complexity");
+                    }
                 }
             }
             _ => panic!("Expected Analyze command"),
@@ -66,6 +69,9 @@ mod tests {
                 }
                 AnalyzeCommands::Dag { .. } => {
                     panic!("Expected Churn command, got Dag");
+                }
+                AnalyzeCommands::Complexity { .. } => {
+                    panic!("Expected Churn command, got Complexity");
                 }
             },
             _ => panic!("Expected Analyze command"),

@@ -183,6 +183,32 @@ pub async fn handle_tools_list<T: TemplateServerTrait>(
                             }
                         }
                     }
+                },
+                {
+                    "name": "analyze_complexity",
+                    "description": "Analyze code complexity and detect maintainability issues",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "project_path": {
+                                "type": "string",
+                                "description": "Path to the project to analyze"
+                            },
+                            "include_patterns": {
+                                "type": "array",
+                                "items": { "type": "string" },
+                                "description": "File patterns to include in analysis"
+                            },
+                            "thresholds": {
+                                "type": "object",
+                                "properties": {
+                                    "cyclomatic": { "type": "integer" },
+                                    "cognitive": { "type": "integer" }
+                                },
+                                "description": "Custom complexity thresholds"
+                            }
+                        }
+                    }
                 }
             ]
         }),

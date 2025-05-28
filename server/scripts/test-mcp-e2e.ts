@@ -181,10 +181,11 @@ async function runE2ETests() {
     assertEquals(toolsResponse.error, undefined);
     const tools = toolsResponse.result as { tools: Array<{ name: string }> };
     assertExists(tools.tools);
-    assertEquals(tools.tools.length, 7);
+    assertEquals(tools.tools.length, 8);
     const toolNames = tools.tools.map((t) => t.name).sort();
     assertEquals(toolNames, [
       "analyze_code_churn",
+      "analyze_complexity",
       "generate_template",
       "get_server_info",
       "list_templates",

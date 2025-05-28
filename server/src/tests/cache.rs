@@ -64,6 +64,7 @@ async fn test_ast_cache() {
             is_async: false,
             line: 1,
         }],
+        complexity_metrics: None,
     };
 
     let key = PathBuf::from("/test/file.rs");
@@ -307,18 +308,21 @@ async fn test_cache_eviction() {
         path: "/test/file1.rs".to_string(),
         language: "rust".to_string(),
         items: vec![],
+        complexity_metrics: None,
     };
 
     let file2 = FileContext {
         path: "/test/file2.rs".to_string(),
         language: "rust".to_string(),
         items: vec![],
+        complexity_metrics: None,
     };
 
     let file3 = FileContext {
         path: "/test/file3.rs".to_string(),
         language: "rust".to_string(),
         items: vec![],
+        complexity_metrics: None,
     };
 
     // Add first two files
@@ -375,6 +379,7 @@ async fn test_cache_clear() {
             path: format!("/test/file{}.rs", i),
             language: "rust".to_string(),
             items: vec![],
+            complexity_metrics: None,
         };
         cache.put(PathBuf::from(format!("/test/file{}.rs", i)), file);
     }
