@@ -145,6 +145,7 @@ The PAIML MCP Agent Toolkit implements a production-grade template server using 
 - ℹ️ **Discoverable**: Built-in server info tool for metadata access
 - 📊 **Code Churn Analysis**: Identify maintenance hotspots and frequently changed files
 - 🔍 **Complexity Analysis**: McCabe Cyclomatic and Sonar Cognitive complexity metrics with SARIF support
+- 🔀 **DAG Generation**: Visualize code dependencies with Mermaid graphs (call graphs, imports, inheritance)
 - ⚡ **Persistent Caching**: Cross-session AST analysis cache with 5-minute TTL for faster repeated operations
 
 ### Supported Toolchains
@@ -434,6 +435,44 @@ paiml-mcp-agent-toolkit analyze complexity -o complexity-report.json --format js
 - Threshold violation reports with severity levels
 - Summary statistics and recommendations
 - SARIF format for IDE/CI integration
+
+### Analyze DAG (Dependency Graphs)
+
+Generate visual dependency graphs using Mermaid for better understanding of code structure:
+
+```bash
+# Generate a function call graph
+paiml-mcp-agent-toolkit analyze dag
+
+# Generate an import/dependency graph
+paiml-mcp-agent-toolkit analyze dag --dag-type import-graph
+
+# Generate class inheritance hierarchy
+paiml-mcp-agent-toolkit analyze dag --dag-type inheritance
+
+# Generate complete dependency graph
+paiml-mcp-agent-toolkit analyze dag --dag-type full-dependency
+
+# Save output to file
+paiml-mcp-agent-toolkit analyze dag -o dependency-graph.mmd
+
+# Filter external dependencies and limit depth
+paiml-mcp-agent-toolkit analyze dag --filter-external --max-depth 3
+
+# Include complexity metrics in the graph
+paiml-mcp-agent-toolkit analyze dag --show-complexity
+```
+
+**Supported DAG types:**
+- **call-graph**: Function call relationships (default)
+- **import-graph**: Module import dependencies
+- **inheritance**: Class inheritance hierarchies
+- **full-dependency**: Complete dependency analysis
+
+**Output formats:**
+- Mermaid diagram format (.mmd)
+- Can be rendered in GitHub, VS Code, and other Mermaid-compatible tools
+- Includes optional complexity metrics when `--show-complexity` is used
 
 #### Parameter Syntax
 
@@ -906,6 +945,7 @@ List all available tools.
 - `get_server_info` - Get server metadata and capabilities
 - `analyze_code_churn` - Analyze code change frequency and patterns
 - `analyze_complexity` - Analyze code complexity with McCabe and Sonar algorithms
+- `analyze_dag` - Generate dependency graphs in Mermaid format
 
 ### Available Tools
 
@@ -1029,6 +1069,78 @@ Analyze code change frequency and patterns to identify maintenance hotspots. Use
 - Stable files that rarely change
 - File metrics (commits, additions/deletions, authors)
 - Author contribution statistics
+
+#### `analyze_complexity`
+
+Analyze code complexity using McCabe Cyclomatic and Sonar Cognitive complexity algorithms. Supports TypeScript, Python, and Rust files.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_complexity",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "format": "json",
+      "algorithm": "both",
+      "include_threshold_violations": true
+    }
+  }
+}
+```
+
+**Parameters:**
+- `project_path` (optional): Path to analyze (defaults to current directory)
+- `format` (optional): Output format - "json", "markdown", "sarif", or "summary" (default: "summary")
+- `algorithm` (optional): "mccabe", "sonar", or "both" (default: "both")
+- `include_threshold_violations` (optional): Include threshold violation details (default: true)
+
+**Response includes:**
+- File-level complexity metrics and violations
+- Function-level complexity breakdown
+- Threshold violation reports with severity levels
+- Summary statistics and recommendations
+- SARIF format for IDE/CI integration
+
+#### `analyze_dag`
+
+Generate dependency graphs in Mermaid format for visualizing code structure and dependencies.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_dag",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "dag_type": "call-graph",
+      "output": "dependencies.mmd",
+      "filter_external": true,
+      "show_complexity": true
+    }
+  }
+}
+```
+
+**Parameters:**
+- `project_path` (optional): Path to analyze (defaults to current directory)
+- `dag_type` (optional): Type of graph - "call-graph", "import-graph", "inheritance", or "full-dependency" (default: "call-graph")
+- `output` (optional): Output file path for the Mermaid diagram
+- `max_depth` (optional): Maximum depth for graph traversal
+- `filter_external` (optional): Filter out external dependencies (default: false)
+- `show_complexity` (optional): Include complexity metrics in the graph (default: false)
+
+**Response includes:**
+- Mermaid diagram content
+- Graph statistics (nodes, edges, depth)
+- Complexity metrics per node (if enabled)
+- Can be rendered in GitHub, VS Code, and other Mermaid-compatible tools
 
 ## Performance
 
@@ -1163,6 +1275,15 @@ echo '{
 ## What's New
 
 ### Recent Improvements
+- 🔍 **NEW: Code Complexity Analysis**: McCabe Cyclomatic and Sonar Cognitive complexity metrics
+  - Support for Rust, TypeScript/JavaScript, and Python
+  - Multiple output formats including SARIF for IDE integration
+  - Customizable complexity thresholds
+  - Zero-overhead implementation with <1ms per KLOC performance
+- 🔀 **NEW: Dependency Graph Generation**: Visualize code structure with Mermaid diagrams
+  - Call graphs, import dependencies, and inheritance hierarchies
+  - Configurable depth and external dependency filtering
+  - Optional complexity metrics in visualizations
 - ⚡ **NEW: Persistent AST Caching**: Cross-session cache with 5-minute TTL dramatically speeds up repeated context generation
   - Cache persists between CLI invocations in `~/.cache/paiml-mcp-agent-toolkit/`
   - Automatic cleanup of expired entries
