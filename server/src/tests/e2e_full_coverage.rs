@@ -177,7 +177,15 @@ fn test_cli_main_binary_version() {
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("paiml-mcp-agent-toolkit"));
-    assert!(stdout.contains("0.2.0"));
+
+    // Read the actual version from Cargo.toml instead of hardcoding
+    let expected_version = env!("CARGO_PKG_VERSION");
+    assert!(
+        stdout.contains(expected_version),
+        "Binary version output '{}' should contain expected version '{}'",
+        stdout.trim(),
+        expected_version
+    );
 }
 
 #[test]
