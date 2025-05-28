@@ -3,7 +3,7 @@
     "name": "PAIML MCP Agent Toolkit",
     "description": "Deterministic tooling for AI-assisted development - Generate project scaffolding, analyze code structure with AST, track code churn metrics, and provide reliable context for AI agents via CLI or Claude Code",
     "tagline": "Deterministic tooling for AI-assisted development",
-    "version": "0.1.16"
+    "version": "0.1.17"
   },
   "package": {
     "name": "paiml-mcp-agent-toolkit",
