@@ -654,11 +654,16 @@ paiml-mcp-agent-toolkit/
 ⚠️ **IMPORTANT**: This is a Cargo workspace project. Always use the root Makefile for builds and CI/CD operations.
 
 ```bash
-# ✅ RECOMMENDED: From root directory (use this 80% of the time)
-make install          # Bumps version, builds, and installs
+# ✅ RECOMMENDED: For local development
+make local-install    # Build and install WITHOUT version bump
 make build            # Just builds without installing
 make test             # Run all tests
 make validate         # Run all validation checks
+
+# ⚠️ FOR RELEASES ONLY (bumps version!)
+make install          # Bumps version, builds, and installs
+
+# Other useful commands
 make server-test      # Run server tests specifically
 make server-build     # Build server specifically
 
@@ -668,6 +673,24 @@ cd server && cargo build  # May not resolve dependencies correctly
 
 # For more details, see .github/CONTRIBUTING.md
 ```
+
+#### Installation Methods
+
+1. **`make local-install`** (RECOMMENDED for development)
+   - Builds and installs the binary
+   - Does NOT bump the version
+   - Safe to run multiple times
+   - No risk of version conflicts
+
+2. **`make install`** (FOR RELEASES ONLY)
+   - Increments the patch version
+   - Builds and installs the binary
+   - Should only be used when creating a release
+   - Can cause conflicts with automated release process
+
+3. **`make install-latest`**
+   - Smart install that checks if rebuild is needed
+   - Only rebuilds if source files have changed
 
 ### Adding New Templates
 

@@ -1,6 +1,6 @@
 
 # MCP Template Server - Build and Deployment Makefile
-.PHONY: all validate format lint check test coverage build build-binary run run-test test-http test-mcp test-integration run-mcp run-mcp-test clean install install-latest reinstall status check-rebuild uninstall setup audit docs help validate-docs ci-status benchmark
+.PHONY: all validate format lint check test coverage build build-binary run run-test test-http test-mcp test-integration run-mcp run-mcp-test clean install local-install install-latest reinstall status check-rebuild uninstall setup audit docs help validate-docs ci-status benchmark
 
 # Default target: executes complete build pipeline
 all: format lint check test build validate
@@ -156,7 +156,8 @@ bump-version:
 	@echo "📦 Incrementing version..."
 	@cd .. && ./scripts/update-version.ts patch
 
-# Install the MCP server binary to the system (idempotent)
+# Install the MCP server binary to the system (idempotent) - FOR RELEASES ONLY
+# WARNING: This bumps the version! Use 'make local-install' for development
 install: bump-version build-binary
 	@echo "🚀 Installing MCP server..."
 	@# First, remove any existing installation
@@ -252,6 +253,95 @@ install: bump-version build-binary
 			echo "   1. Install Claude CLI: npm install -g @anthropic-ai/claude-cli"; \
 			echo "   2. Run: claude mcp add paiml-toolkit paiml-mcp-agent-toolkit"; \
 		fi \
+	else \
+		echo "⚠️  Binary not found in PATH!"; \
+		echo "   Installation completed but binary is not accessible."; \
+		echo "   You may need to:"; \
+		echo "   1. Restart your terminal"; \
+		echo "   2. Source your shell config (source ~/.bashrc or source ~/.zshrc)"; \
+		echo "   3. Add the installation directory to your PATH"; \
+		exit 1; \
+	fi
+
+# Local install for development (NO VERSION BUMP)
+# This is the safe target for local development
+local-install: build-binary
+	@echo "🚀 Installing MCP server (local development mode - no version bump)..."
+	@# First, remove any existing installation
+	@if [ -f "/usr/local/bin/paiml-mcp-agent-toolkit" ]; then \
+		echo "📦 Found existing system installation, removing..."; \
+		rm -f /usr/local/bin/paiml-mcp-agent-toolkit 2>/dev/null || \
+		sudo rm -f /usr/local/bin/paiml-mcp-agent-toolkit 2>/dev/null || true; \
+	fi
+	@if [ -f "$(HOME)/.local/bin/paiml-mcp-agent-toolkit" ]; then \
+		echo "📦 Found existing user installation, removing..."; \
+		rm -f $(HOME)/.local/bin/paiml-mcp-agent-toolkit; \
+	fi
+	@# Now do fresh install
+	@if [ -z "$(DESTDIR)" ]; then \
+		if [ -w "/usr/local/bin" ]; then \
+			install -m 755 target/release/paiml-mcp-agent-toolkit /usr/local/bin/paiml-mcp-agent-toolkit; \
+			echo "✅ Installed to /usr/local/bin/paiml-mcp-agent-toolkit"; \
+		else \
+			echo "⚠️  Cannot write to /usr/local/bin. Trying user install..."; \
+			mkdir -p $(HOME)/.local/bin; \
+			install -m 755 target/release/paiml-mcp-agent-toolkit $(HOME)/.local/bin/paiml-mcp-agent-toolkit; \
+			echo "✅ Installed to $(HOME)/.local/bin/paiml-mcp-agent-toolkit"; \
+			echo ""; \
+			if echo "$$PATH" | grep -q "$(HOME)/.local/bin"; then \
+				echo "✅ $(HOME)/.local/bin is already in your PATH"; \
+			else \
+				echo "💡 Add $(HOME)/.local/bin to your PATH:"; \
+				echo ""; \
+				current_shell=$$(basename "$$SHELL"); \
+				if [ "$$current_shell" = "zsh" ] || [ -f "$$HOME/.zshrc" ]; then \
+					echo "   For zsh (your shell):"; \
+					echo '   echo "export PATH=$$HOME/.local/bin:$$PATH" >> ~/.zshrc'; \
+					echo "   source ~/.zshrc"; \
+				elif [ "$$current_shell" = "bash" ] || [ -f "$$HOME/.bashrc" ]; then \
+					echo "   For bash (your shell):"; \
+					echo '   echo "export PATH=$$HOME/.local/bin:$$PATH" >> ~/.bashrc'; \
+					echo "   source ~/.bashrc"; \
+				else \
+					echo "   Detected shell: $$SHELL"; \
+					echo ""; \
+					echo "   For bash:"; \
+					echo '   echo "export PATH=$$HOME/.local/bin:$$PATH" >> ~/.bashrc'; \
+					echo "   source ~/.bashrc"; \
+					echo ""; \
+					echo "   For zsh:"; \
+					echo '   echo "export PATH=$$HOME/.local/bin:$$PATH" >> ~/.zshrc'; \
+					echo "   source ~/.zshrc"; \
+				fi; \
+			fi \
+		fi \
+	else \
+		install -D -m 755 target/release/paiml-mcp-agent-toolkit $(DESTDIR)/usr/local/bin/paiml-mcp-agent-toolkit; \
+		echo "✅ Installed to $(DESTDIR)/usr/local/bin/paiml-mcp-agent-toolkit"; \
+	fi
+	@# Verify installation
+	@echo ""
+	@echo "🔍 Verifying installation..."
+	@if command -v paiml-mcp-agent-toolkit >/dev/null 2>&1; then \
+		echo "✅ Binary is accessible in PATH"; \
+		echo "📍 Location: $$(which paiml-mcp-agent-toolkit)"; \
+		echo "📌 Version: $$(grep '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')"; \
+		echo ""; \
+		echo "🧪 Testing server startup..."; \
+		if timeout 2s paiml-mcp-agent-toolkit < /dev/null >/dev/null 2>&1; then \
+			echo "✅ Server starts successfully"; \
+		else \
+			exit_code=$$?; \
+			if [ $$exit_code -eq 124 ]; then \
+				echo "✅ Server starts successfully (timeout expected for STDIO server)"; \
+			else \
+				echo "⚠️  Server may have issues starting. Exit code: $$exit_code"; \
+				echo "   Try running manually: paiml-mcp-agent-toolkit"; \
+			fi \
+		fi; \
+		echo ""; \
+		echo "💡 Tip: This is a local development install (no version bump)"; \
+		echo "   For releases, use 'make install' which bumps the version"; \
 	else \
 		echo "⚠️  Binary not found in PATH!"; \
 		echo "   Installation completed but binary is not accessible."; \
@@ -369,7 +459,8 @@ help:
 	@echo ""
 	@echo ""
 	@echo "Installation:"
-	@echo "  install        - Install MCP server binary (idempotent - removes old version first)"
+	@echo "  local-install  - Install for development (NO VERSION BUMP) - RECOMMENDED"
+	@echo "  install        - Install with version bump (FOR RELEASES ONLY)"
 	@echo "  install-latest - Check for changes and rebuild/install if needed"
 	@echo "  reinstall      - Force complete uninstall and reinstall"
 	@echo "  status         - Check installation and build status"
