@@ -59,14 +59,22 @@ jobs:
       - name: Check for release conditions
         id: check
         run: |
-          # Check if there have been any changes since last tag
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          CHANGES=$(git log $LAST_TAG..HEAD --oneline | wc -l)
+          # Get last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           
-          if [ "$CHANGES" -gt 0 ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          # Check for changes since last tag
+          if [ -z "$LAST_TAG" ]; then
+            echo "No tags found, will create first release"
             echo "should_release=true" >> "$GITHUB_OUTPUT"
           else
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            CHANGES=$(git log $LAST_TAG..HEAD --oneline | wc -l)
+            if [ "$CHANGES" -gt 0 ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "Found $CHANGES commits since $LAST_TAG"
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "No changes since $LAST_TAG"
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+            fi
           fi
       
       - name: Determine version
@@ -185,9 +193,8 @@ jobs:
           # Use centralized version update script
           ./scripts/update-version.ts "$NEW_VERSION"
       
-      - name: Generate installer script
+      - name: Copy installer script
         run: |
-          make server-generate-installer
           cp scripts/install.sh release-files/
       
       - name: Generate changelog
