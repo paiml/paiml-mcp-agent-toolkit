@@ -204,6 +204,9 @@ jobs:
         run: |
           NEW_VERSION="${{ needs.test-and-check.outputs.new_version }}"
           
+          # Pull latest changes before updating versions
+          git pull --rebase
+          
           # Use centralized version update script with proper permissions
           deno run --allow-read --allow-write --allow-run ./scripts/update-version.ts "$NEW_VERSION"
       
@@ -249,6 +252,10 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          
+          # Pull latest changes to avoid conflicts
+          git pull --rebase
+          
           git add Cargo.toml server/Cargo.toml installer-macro/Cargo.toml assets/project-state.json
           # Force add Cargo.lock since it's in .gitignore
           git add -f Cargo.lock
