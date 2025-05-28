@@ -149,7 +149,7 @@ jobs:
       
       - name: Create archive
         run: |
-          cd server/target/${{ matrix.target }}/release
+          cd target/${{ matrix.target }}/release
           tar -czf paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz paiml-mcp-agent-toolkit
           
           # Use sha256sum on Linux, shasum on macOS
@@ -164,8 +164,8 @@ jobs:
         with:
           name: binary-${{ matrix.target }}
           path: |
-            server/target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz
-            server/target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz.sha256
+            target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz
+            target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz.sha256
 
   # Create GitHub release
   create-release:
