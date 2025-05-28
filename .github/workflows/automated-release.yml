@@ -186,6 +186,9 @@ jobs:
         with:
           deno-version: v2.x
       
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -201,8 +204,8 @@ jobs:
         run: |
           NEW_VERSION="${{ needs.test-and-check.outputs.new_version }}"
           
-          # Use centralized version update script
-          ./scripts/update-version.ts "$NEW_VERSION"
+          # Use centralized version update script with proper permissions
+          deno run --allow-read --allow-write --allow-run ./scripts/update-version.ts "$NEW_VERSION"
       
       - name: Copy installer script
         run: |
