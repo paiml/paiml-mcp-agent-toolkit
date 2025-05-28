@@ -1,0 +1,58 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.4)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          cache-on-failure: true
+          shared-key: "release"
+          
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+          
+      - name: Verify version matches Cargo.toml
+        run: |
+          CARGO_VERSION=$(grep -E '^version = "' server/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          INPUT_VERSION="${{ github.event.inputs.version }}"
+          
+          if [ "$CARGO_VERSION" != "$INPUT_VERSION" ]; then
+            echo "❌ Version mismatch!"
+            echo "   Cargo.toml: $CARGO_VERSION"
+            echo "   Input: $INPUT_VERSION"
+            echo ""
+            echo "Please update server/Cargo.toml to match the release version."
+            exit 1
+          fi
+          
+          echo "✅ Version verified: $INPUT_VERSION"
+          
+      - name: Create release using ONE way
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Follow the ONE way principle - use Makefile
+          make create-release

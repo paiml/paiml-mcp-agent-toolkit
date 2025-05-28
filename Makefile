@@ -395,6 +395,28 @@ server-build-release:
 generate-installer:
 	@$(MAKE) server-generate-installer
 
+# Create GitHub release with binary artifacts
+create-release:
+	@echo "📦 Creating GitHub release..."
+	@if command -v deno >/dev/null 2>&1; then \
+		./scripts/create-release.ts; \
+	else \
+		echo "❌ Error: Deno is required to create releases"; \
+		echo "Install Deno from: https://deno.land/"; \
+		exit 1; \
+	fi
+
+# Test curl installation
+test-curl-install:
+	@echo "🧪 Testing curl installation..."
+	@if command -v deno >/dev/null 2>&1; then \
+		./scripts/test-curl-install.ts; \
+	else \
+		echo "❌ Error: Deno is required to run tests"; \
+		echo "Install Deno from: https://deno.land/"; \
+		exit 1; \
+	fi
+
 # Check documentation with rustdoc
 cargo-rustdoc:
 	cargo rustdoc --all-features --manifest-path server/Cargo.toml -- -D missing_docs || true
