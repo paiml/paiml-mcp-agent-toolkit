@@ -158,6 +158,14 @@ Example URIs:
 4. ~~Implement MCP STDIO transport layer~~
 5. Deploy MVP with three template types per toolchain
 
+## Git Commit Policy
+
+**NEVER commit changes unless explicitly asked by the user.** The user will commit when they are ready. This ensures:
+- User maintains control over git history
+- Changes can be reviewed before committing
+- Commit messages can be customized
+- Work can be staged incrementally
+
 ## Using MCP Agent Toolkit for Project Scaffolding
 
 When users ask about generating project files (Makefile, README, .gitignore), you should:

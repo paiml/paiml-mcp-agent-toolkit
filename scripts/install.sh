@@ -1,15 +1,26 @@
 #!/bin/sh
-# MCP Agent Toolkit Installation Script
+# MCP Agent Toolkit Installation Script - Shell wrapper for Deno installer
 # 
-# This script installs the paiml-mcp-agent-toolkit binary from GitHub releases.
+# This script checks for Deno and runs the TypeScript installer.
+# If Deno is not available, it falls back to a simple shell implementation.
 # 
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/main/scripts/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
 #   
 # Or to install a specific version:
-#   curl -fsSL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/main/scripts/install.sh | sh -s v0.1.0
+#   curl -fsSL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh -s v0.1.0
 
 set -euf
+
+# Check if Deno is installed
+if command -v deno >/dev/null 2>&1; then
+    # Use the Deno installer
+    exec deno run --allow-net --allow-read --allow-write --allow-env --allow-run \
+        https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.ts "$@"
+fi
+
+# Fallback to shell implementation if Deno is not available
+echo "Deno not found, using shell installer..."
 
 # Configuration
 REPO="paiml/paiml-mcp-agent-toolkit"
