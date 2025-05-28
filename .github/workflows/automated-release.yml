@@ -249,7 +249,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add Cargo.toml server/Cargo.toml installer-macro/Cargo.toml server/Cargo.lock assets/project-state.json
+          git add Cargo.toml server/Cargo.toml installer-macro/Cargo.toml Cargo.lock assets/project-state.json
           git commit -m "chore: bump version to ${{ needs.test-and-check.outputs.new_version }}"
           git push
       
