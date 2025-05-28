@@ -391,9 +391,6 @@ clippy-strict:
 server-build-release:
 	cargo build --release --manifest-path server/Cargo.toml
 
-# Generate installer script
-generate-installer:
-	@$(MAKE) server-generate-installer
 
 # Create GitHub release with binary artifacts
 create-release:

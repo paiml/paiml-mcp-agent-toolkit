@@ -5,7 +5,7 @@
 [![CI](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/ci.yml)
 [![Code Quality](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml)
 [![Release](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/release.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/release.yml)
-[![Coverage](https://img.shields.io/badge/coverage-67%25-yellow)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
+[![Coverage](https://img.shields.io/badge/coverage-71%25-yellow)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
 [![Built by Pragmatic AI Labs](https://img.shields.io/badge/Built%20by-Pragmatic%20AI%20Labs-blue)](https://paiml.com)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -131,7 +131,7 @@ The PAIML MCP Agent Toolkit implements a production-grade template server using 
 
 ### Method 1: Quick Install (Recommended)
 
-Our installer uses a unique **deterministic shell generation** system that guarantees identical installation behavior across all environments. Unlike traditional shell installers that can change without notice, our installer is generated at compile-time from Rust code, ensuring 100% reproducibility and security.
+Our installer provides a simple and reliable installation experience with automatic platform detection and smart fallback handling.
 
 #### Linux/macOS
 ```bash
@@ -143,10 +143,10 @@ curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/main/
 irm https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/paiml-mcp-agent-toolkit-installer.ps1 | iex
 ```
 
-**Why our installer is different:**
-- 🔒 **Deterministic**: SHA-256 identical across all builds
-- 🛡️ **Secure**: No eval, no dynamic code execution
-- ✅ **Reliable**: 83.5% reduction in installation failures
+**Features:**
+- 🔒 **Secure**: No eval, no dynamic code execution
+- 🛡️ **Smart Fallback**: Uses TypeScript installer with Deno when available, falls back to shell
+- ✅ **Reliable**: Automatic platform detection and error handling
 - 🚀 **Fast**: Atomic installation with automatic cleanup
 
 ### Method 2: Pre-built Binaries
@@ -623,7 +623,7 @@ This project uses GitHub Actions for continuous integration and deployment:
   - Creates GitHub releases with attached binaries
 
 - **Code Quality**: Enforced standards
-  - Minimum 60% test coverage (currently at 67%)
+  - Minimum 60% test coverage (currently at 71%)
   - No clippy warnings
   - Proper formatting
   - Documentation checks
@@ -651,7 +651,7 @@ cargo test --test template_rendering
 ```
 
 Test categories:
-- **Unit Tests**: Core functionality (67% coverage)
+- **Unit Tests**: Core functionality (71% coverage)
 - **Integration Tests**: MCP protocol handling
 - **E2E Tests**: Full server functionality
 - **Template Tests**: All template rendering paths
@@ -701,35 +701,6 @@ cd server && cargo build  # May not resolve dependencies correctly
 3. Add metadata to the template registry
 4. Write tests for the new template
 
-### Deterministic Installer Generation
-
-The project includes a unique system for generating deterministic shell installers from Rust code:
-
-1. **Procedural Macro**: The `installer-macro` crate provides a `#[shell_installer]` attribute
-2. **MIR Analysis**: Converts Rust functions to shell AST at compile time
-3. **Security Guarantees**: No eval, proper quoting, path sanitization
-4. **POSIX Compliance**: Pure sh, no bashisms, works everywhere
-
-To generate the installer:
-```bash
-# Generate installer.sh
-make generate-installer
-
-# Verify determinism (runs twice and compares)
-make verify-installer-determinism
-
-# Run security audit
-make audit-installer
-
-# Test across platforms (requires Docker)
-make test-installer-matrix
-```
-
-The installer guarantees:
-- **100% Reproducible**: Same SHA-256 hash every build
-- **Compile-time Generation**: ~48ms overhead, no runtime dependencies
-- **Security by Design**: Command injection impossible
-- **Platform Support**: Linux/macOS on x86_64/aarch64
 
 ### Automated Releases
 
@@ -1153,7 +1124,7 @@ echo '{
 - 📁 **Proper Subdirectories**: Templates now create files in project-named subdirectories
 - ℹ️ **Enhanced Discoverability**: New `get_server_info` tool provides metadata about the server
 - 🧪 **E2E Testing**: Comprehensive end-to-end tests simulating Claude Code operations
-- 📊 **Current Coverage**: Test coverage at 67% with comprehensive E2E tests
+- 📊 **Current Coverage**: Test coverage at 71% with comprehensive E2E tests
 - 🔧 **Consolidated Tooling**: Unified installation scripts and centralized Makefile commands
 - 🔢 **Auto-Versioning**: Installation automatically increments version for easy tracking
 - 🔄 **Zero Template Duplication**: Shared memory model between CLI and MCP modes
