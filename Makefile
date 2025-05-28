@@ -286,8 +286,14 @@ deps-validate:
 	@cd server && cargo audit || echo "⚠️  Security issues found"
 
 # Install MCP server
+# Local install for development (NO VERSION BUMP) - RECOMMENDED
+local-install:
+	@echo "🚀 Installing MCP Agent Toolkit (local development - no version bump)..."
+	@$(MAKE) -C server local-install
+
+# Install with version bump (FOR RELEASES ONLY)
 install:
-	@echo "🚀 Installing MCP Agent Toolkit..."
+	@echo "🚀 Installing MCP Agent Toolkit (WARNING: This bumps version!)..."
 	@$(MAKE) -C server install
 
 # Install latest (check for changes and rebuild if needed)
@@ -550,7 +556,8 @@ help:
 	@echo "  run-mcp-test - Run MCP server in test mode"
 	@echo ""
 	@echo "Installation:"
-	@echo "  install        - Install MCP server binary (always builds first)"
+	@echo "  local-install  - Install for development (NO VERSION BUMP) - RECOMMENDED"
+	@echo "  install        - Install with version bump (FOR RELEASES ONLY)"
 	@echo "  install-latest - Smart install (rebuild only if source changed)"
 	@echo "  reinstall      - Force complete uninstall and reinstall"
 	@echo "  status         - Check installation and build status"
