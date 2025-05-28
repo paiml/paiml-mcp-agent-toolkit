@@ -139,9 +139,6 @@ jobs:
           
           # Use the update-version script to update all files
           deno run --allow-read --allow-write --allow-run scripts/update-version.ts "$NEW_VERSION"
-          
-          # Generate installer with new version
-          make server-generate-installer
       
       - name: Commit and tag
         if: steps.check.outputs.should_release == 'true'
