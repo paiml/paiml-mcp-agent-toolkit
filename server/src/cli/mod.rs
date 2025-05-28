@@ -159,6 +159,33 @@ pub(crate) enum AnalyzeCommands {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+
+    /// Generate dependency graphs using Mermaid
+    Dag {
+        /// Type of dependency graph to generate
+        #[arg(long, value_enum, default_value = "call-graph")]
+        dag_type: DagType,
+
+        /// Project path to analyze
+        #[arg(short = 'p', long, default_value = ".")]
+        project_path: PathBuf,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Maximum depth for graph traversal
+        #[arg(long)]
+        max_depth: Option<usize>,
+
+        /// Filter out external dependencies
+        #[arg(long)]
+        filter_external: bool,
+
+        /// Show complexity metrics in the graph
+        #[arg(long)]
+        show_complexity: bool,
+    },
 }
 
 #[derive(Clone, Debug, ValueEnum)]
@@ -172,6 +199,25 @@ pub(crate) enum OutputFormat {
     Table,
     Json,
     Yaml,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq, Eq, Hash)]
+pub enum DagType {
+    /// Function call graph
+    #[value(name = "call-graph")]
+    CallGraph,
+
+    /// Import/dependency graph
+    #[value(name = "import-graph")]
+    ImportGraph,
+
+    /// Class inheritance hierarchy
+    #[value(name = "inheritance")]
+    Inheritance,
+
+    /// Complete dependency graph
+    #[value(name = "full-dependency")]
+    FullDependency,
 }
 
 pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
@@ -312,10 +358,37 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
             output,
             format,
         } => {
-            use crate::services::context::{analyze_project, format_context_as_markdown};
+            use crate::services::cache::{
+                config::CacheConfig, persistent_manager::PersistentCacheManager,
+            };
+            use crate::services::context::{
+                analyze_project_with_persistent_cache, format_context_as_markdown,
+            };
+            use std::sync::Arc;
 
-            // Analyze the project
-            let context = analyze_project(&project_path, &toolchain).await?;
+            // Create a persistent cache manager for cross-session caching
+            let cache_config = CacheConfig::default();
+            let cache_manager = Arc::new(
+                PersistentCacheManager::with_default_dir(cache_config)
+                    .map_err(|e| anyhow::anyhow!("Failed to create cache manager: {}", e))?,
+            );
+
+            // Analyze the project with caching
+            let context = analyze_project_with_persistent_cache(
+                &project_path,
+                &toolchain,
+                Some(cache_manager.clone()),
+            )
+            .await?;
+
+            // Print cache diagnostics
+            let diagnostics = cache_manager.get_diagnostics();
+            eprintln!(
+                "Cache hit rate: {:.1}%, memory efficiency: {:.1}%, time saved: {}ms",
+                diagnostics.effectiveness.overall_hit_rate * 100.0,
+                diagnostics.effectiveness.memory_efficiency * 100.0,
+                diagnostics.effectiveness.time_saved_ms
+            );
 
             // Format the output
             let content = match format {
@@ -358,6 +431,65 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
                     eprintln!("✅ Code churn analysis written to: {}", path.display());
                 } else {
                     println!("{}", content);
+                }
+            }
+
+            AnalyzeCommands::Dag {
+                dag_type,
+                project_path,
+                output,
+                max_depth,
+                filter_external,
+                show_complexity,
+            } => {
+                use crate::services::{
+                    context::analyze_project,
+                    dag_builder::{
+                        filter_call_edges, filter_import_edges, filter_inheritance_edges,
+                        DagBuilder,
+                    },
+                    mermaid_generator::{MermaidGenerator, MermaidOptions},
+                };
+
+                // Analyze the project to get AST information
+                // We'll analyze as Rust by default, but could be enhanced
+                let project_context = analyze_project(&project_path, "rust").await?;
+
+                // Build the dependency graph
+                let graph = DagBuilder::build_from_project(&project_context);
+
+                // Apply filters based on DAG type
+                let filtered_graph = match dag_type {
+                    DagType::CallGraph => filter_call_edges(graph),
+                    DagType::ImportGraph => filter_import_edges(graph),
+                    DagType::Inheritance => filter_inheritance_edges(graph),
+                    DagType::FullDependency => graph,
+                };
+
+                // Generate Mermaid output
+                let generator = MermaidGenerator::new(MermaidOptions {
+                    max_depth,
+                    filter_external,
+                    show_complexity,
+                    ..Default::default()
+                });
+
+                let mermaid_output = generator.generate(&filtered_graph);
+
+                // Add stats as comments
+                let output_with_stats = format!(
+                    "{}\n%% Graph Statistics:\n%% Nodes: {}\n%% Edges: {}\n",
+                    mermaid_output,
+                    filtered_graph.nodes.len(),
+                    filtered_graph.edges.len()
+                );
+
+                // Write output
+                if let Some(path) = output {
+                    tokio::fs::write(&path, &output_with_stats).await?;
+                    eprintln!("✅ Dependency graph written to: {}", path.display());
+                } else {
+                    println!("{}", output_with_stats);
                 }
             }
         },

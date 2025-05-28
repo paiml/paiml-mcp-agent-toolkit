@@ -25,6 +25,9 @@ mod tests {
                         assert_eq!(format, ChurnOutputFormat::Summary); // Default
                         assert!(output.is_none());
                     }
+                    AnalyzeCommands::Dag { .. } => {
+                        panic!("Expected Churn command, got Dag");
+                    }
                 }
             }
             _ => panic!("Expected Analyze command"),
@@ -60,6 +63,9 @@ mod tests {
                     assert_eq!(project_path, PathBuf::from("/tmp/test"));
                     assert_eq!(format, ChurnOutputFormat::Markdown);
                     assert_eq!(output, Some(PathBuf::from("report.md")));
+                }
+                AnalyzeCommands::Dag { .. } => {
+                    panic!("Expected Churn command, got Dag");
                 }
             },
             _ => panic!("Expected Analyze command"),
