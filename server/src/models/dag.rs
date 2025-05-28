@@ -1,0 +1,91 @@
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DependencyGraph {
+    pub nodes: HashMap<String, NodeInfo>,
+    pub edges: Vec<Edge>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NodeInfo {
+    pub id: String,
+    pub label: String,
+    pub node_type: NodeType,
+    pub file_path: String,
+    pub line_number: usize,
+    pub complexity: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Edge {
+    pub from: String,
+    pub to: String,
+    pub edge_type: EdgeType,
+    pub weight: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum NodeType {
+    Function,
+    Class,
+    Module,
+    Trait,
+    Interface,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EdgeType {
+    Calls,
+    Imports,
+    Inherits,
+    Implements,
+    Uses,
+}
+
+impl DependencyGraph {
+    pub fn new() -> Self {
+        Self {
+            nodes: HashMap::new(),
+            edges: Vec::new(),
+        }
+    }
+
+    pub fn add_node(&mut self, node: NodeInfo) {
+        self.nodes.insert(node.id.clone(), node);
+    }
+
+    pub fn add_edge(&mut self, edge: Edge) {
+        self.edges.push(edge);
+    }
+
+    pub fn filter_by_edge_type(&self, edge_type: EdgeType) -> Self {
+        let filtered_edges: Vec<Edge> = self.edges.iter()
+            .filter(|e| matches!(&e.edge_type, t if std::mem::discriminant(t) == std::mem::discriminant(&edge_type)))
+            .cloned()
+            .collect();
+
+        let used_nodes: std::collections::HashSet<String> = filtered_edges
+            .iter()
+            .flat_map(|e| vec![e.from.clone(), e.to.clone()])
+            .collect();
+
+        let filtered_nodes: HashMap<String, NodeInfo> = self
+            .nodes
+            .iter()
+            .filter(|(id, _)| used_nodes.contains(*id))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+
+        Self {
+            nodes: filtered_nodes,
+            edges: filtered_edges,
+        }
+    }
+}
+
+impl Default for DependencyGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}

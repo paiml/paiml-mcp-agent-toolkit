@@ -38,6 +38,9 @@ semver = { version = "1.0", features = ["serde"] }
 regex = { version = "1.11", features = ["perf"] }
 chrono = { version = "0.4", features = ["serde"] }
 hex = "0.4"
+uuid = { version = "1.10", features = ["v4", "serde"] }
+parking_lot = "0.12"
+dirs = "5.0"
 
 # Async utilities
 futures = "0.3"

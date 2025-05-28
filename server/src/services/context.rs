@@ -1,8 +1,12 @@
 use crate::models::error::TemplateError;
+use crate::services::cache::{
+    manager::SessionCacheManager, persistent_manager::PersistentCacheManager,
+};
 use crate::services::{ast_python, ast_typescript};
 use ignore::gitignore::GitignoreBuilder;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::sync::Arc;
 use syn::visit::Visit;
 use syn::{ItemEnum, ItemFn, ItemImpl, ItemMod, ItemStruct, ItemTrait, ItemUse};
 use walkdir::WalkDir;
@@ -210,26 +214,115 @@ impl<'ast> Visit<'ast> for RustVisitor {
 }
 
 pub async fn analyze_rust_file(path: &Path) -> Result<FileContext, TemplateError> {
-    let content = tokio::fs::read_to_string(path)
-        .await
-        .map_err(TemplateError::Io)?;
+    analyze_rust_file_with_cache(path, None).await
+}
 
-    let syntax =
-        syn::parse_file(&content).map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
+pub async fn analyze_rust_file_with_cache(
+    path: &Path,
+    cache_manager: Option<Arc<SessionCacheManager>>,
+) -> Result<FileContext, TemplateError> {
+    if let Some(cache) = cache_manager {
+        cache
+            .get_or_compute_ast(path, || async {
+                // Parse the file
+                let content = tokio::fs::read_to_string(path)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Failed to read file: {}", e))?;
 
-    let mut visitor = RustVisitor::new(content);
-    visitor.visit_file(&syntax);
+                let syntax = syn::parse_file(&content)
+                    .map_err(|e| anyhow::anyhow!("Failed to parse Rust file: {}", e))?;
 
-    Ok(FileContext {
-        path: path.display().to_string(),
-        language: "rust".to_string(),
-        items: visitor.items,
-    })
+                let mut visitor = RustVisitor::new(content);
+                visitor.visit_file(&syntax);
+
+                Ok(FileContext {
+                    path: path.display().to_string(),
+                    language: "rust".to_string(),
+                    items: visitor.items,
+                })
+            })
+            .await
+            .map(|arc| (*arc).clone())
+            .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))
+    } else {
+        // No cache, compute directly
+        let content = tokio::fs::read_to_string(path)
+            .await
+            .map_err(TemplateError::Io)?;
+
+        let syntax =
+            syn::parse_file(&content).map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
+
+        let mut visitor = RustVisitor::new(content);
+        visitor.visit_file(&syntax);
+
+        Ok(FileContext {
+            path: path.display().to_string(),
+            language: "rust".to_string(),
+            items: visitor.items,
+        })
+    }
 }
 
 pub async fn analyze_project(
     root_path: &Path,
     toolchain: &str,
+) -> Result<ProjectContext, TemplateError> {
+    analyze_project_with_cache(root_path, toolchain, None).await
+}
+
+// Persistent cache version
+pub async fn analyze_rust_file_with_persistent_cache(
+    path: &Path,
+    cache_manager: Option<Arc<PersistentCacheManager>>,
+) -> Result<FileContext, TemplateError> {
+    if let Some(cache) = cache_manager {
+        cache
+            .get_or_compute_ast(path, || async {
+                // Parse the file
+                let content = tokio::fs::read_to_string(path)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Failed to read file: {}", e))?;
+
+                let syntax = syn::parse_file(&content)
+                    .map_err(|e| anyhow::anyhow!("Failed to parse Rust file: {}", e))?;
+
+                let mut visitor = RustVisitor::new(content);
+                visitor.visit_file(&syntax);
+
+                Ok(FileContext {
+                    path: path.display().to_string(),
+                    language: "rust".to_string(),
+                    items: visitor.items,
+                })
+            })
+            .await
+            .map(|arc| (*arc).clone())
+            .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))
+    } else {
+        // No cache, compute directly
+        let content = tokio::fs::read_to_string(path)
+            .await
+            .map_err(TemplateError::Io)?;
+
+        let syntax =
+            syn::parse_file(&content).map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
+
+        let mut visitor = RustVisitor::new(content);
+        visitor.visit_file(&syntax);
+
+        Ok(FileContext {
+            path: path.display().to_string(),
+            language: "rust".to_string(),
+            items: visitor.items,
+        })
+    }
+}
+
+pub async fn analyze_project_with_cache(
+    root_path: &Path,
+    toolchain: &str,
+    cache_manager: Option<Arc<SessionCacheManager>>,
 ) -> Result<ProjectContext, TemplateError> {
     let mut files = Vec::new();
     let mut gitignore = GitignoreBuilder::new(root_path);
@@ -263,7 +356,186 @@ pub async fn analyze_project(
         match toolchain {
             "rust" => {
                 if path.extension().and_then(|s| s.to_str()) == Some("rs") {
-                    if let Ok(file_context) = analyze_rust_file(path).await {
+                    if let Ok(file_context) =
+                        analyze_rust_file_with_cache(path, cache_manager.clone()).await
+                    {
+                        files.push(file_context);
+                    }
+                }
+            }
+            "deno" => {
+                let ext = path.extension().and_then(|s| s.to_str());
+                match ext {
+                    Some("ts") | Some("tsx") => {
+                        if let Ok(file_context) =
+                            ast_typescript::analyze_typescript_file(path).await
+                        {
+                            files.push(file_context);
+                        }
+                    }
+                    Some("js") | Some("jsx") => {
+                        if let Ok(file_context) =
+                            ast_typescript::analyze_javascript_file(path).await
+                        {
+                            files.push(file_context);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            "python-uv" => {
+                if path.extension().and_then(|s| s.to_str()) == Some("py") {
+                    if let Ok(file_context) = ast_python::analyze_python_file(path).await {
+                        files.push(file_context);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // Calculate summary
+    let mut summary = ProjectSummary {
+        total_files: files.len(),
+        total_functions: 0,
+        total_structs: 0,
+        total_enums: 0,
+        total_traits: 0,
+        total_impls: 0,
+        dependencies: Vec::new(),
+    };
+
+    for file in &files {
+        for item in &file.items {
+            match item {
+                AstItem::Function { .. } => summary.total_functions += 1,
+                AstItem::Struct { .. } => summary.total_structs += 1,
+                AstItem::Enum { .. } => summary.total_enums += 1,
+                AstItem::Trait { .. } => summary.total_traits += 1,
+                AstItem::Impl { .. } => summary.total_impls += 1,
+                _ => {}
+            }
+        }
+    }
+
+    // Read dependencies based on toolchain
+    match toolchain {
+        "rust" => {
+            if let Ok(cargo_content) = tokio::fs::read_to_string(root_path.join("Cargo.toml")).await
+            {
+                if let Ok(cargo_toml) = cargo_content.parse::<toml::Value>() {
+                    if let Some(deps) = cargo_toml.get("dependencies").and_then(|d| d.as_table()) {
+                        summary.dependencies = deps.keys().cloned().collect();
+                    }
+                }
+            }
+        }
+        "deno" => {
+            // Check for deno.json or import_map.json
+            if let Ok(deno_json) = tokio::fs::read_to_string(root_path.join("deno.json")).await {
+                if let Ok(deno_config) = serde_json::from_str::<serde_json::Value>(&deno_json) {
+                    if let Some(imports) = deno_config.get("imports").and_then(|i| i.as_object()) {
+                        summary.dependencies = imports.keys().cloned().collect();
+                    }
+                }
+            }
+            // Also check package.json for Node/npm dependencies
+            if let Ok(package_json) =
+                tokio::fs::read_to_string(root_path.join("package.json")).await
+            {
+                if let Ok(package) = serde_json::from_str::<serde_json::Value>(&package_json) {
+                    if let Some(deps) = package.get("dependencies").and_then(|d| d.as_object()) {
+                        summary.dependencies.extend(deps.keys().cloned());
+                    }
+                }
+            }
+        }
+        "python-uv" => {
+            // Check for pyproject.toml (UV uses this)
+            if let Ok(pyproject_content) =
+                tokio::fs::read_to_string(root_path.join("pyproject.toml")).await
+            {
+                if let Ok(pyproject) = pyproject_content.parse::<toml::Value>() {
+                    if let Some(deps) = pyproject
+                        .get("project")
+                        .and_then(|p| p.get("dependencies"))
+                        .and_then(|d| d.as_array())
+                    {
+                        summary.dependencies = deps
+                            .iter()
+                            .filter_map(|d| d.as_str())
+                            .map(|s| s.split_whitespace().next().unwrap_or(s).to_string())
+                            .collect();
+                    }
+                }
+            }
+            // Also check requirements.txt
+            if let Ok(requirements) =
+                tokio::fs::read_to_string(root_path.join("requirements.txt")).await
+            {
+                for line in requirements.lines() {
+                    let line = line.trim();
+                    if !line.is_empty() && !line.starts_with('#') {
+                        let dep_name = line
+                            .split(['=', '>', '<', '~'])
+                            .next()
+                            .unwrap_or(line)
+                            .trim();
+                        summary.dependencies.push(dep_name.to_string());
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+
+    Ok(ProjectContext {
+        project_type: toolchain.to_string(),
+        files,
+        summary,
+    })
+}
+
+pub async fn analyze_project_with_persistent_cache(
+    root_path: &Path,
+    toolchain: &str,
+    cache_manager: Option<Arc<PersistentCacheManager>>,
+) -> Result<ProjectContext, TemplateError> {
+    let mut files = Vec::new();
+    let mut gitignore = GitignoreBuilder::new(root_path);
+
+    // Add default ignores
+    let default_ignores = [".git", "target", "node_modules", ".venv", "__pycache__"];
+    for pattern in &default_ignores {
+        gitignore.add_line(None, pattern).ok();
+    }
+
+    if let Ok(gi_path) = root_path.join(".gitignore").canonicalize() {
+        gitignore.add(&gi_path);
+    }
+
+    let gitignore = gitignore.build().unwrap();
+
+    // Walk the directory tree
+    for entry in WalkDir::new(root_path)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+
+        // Skip if gitignored
+        if gitignore.matched(path, path.is_dir()).is_ignore() {
+            continue;
+        }
+
+        // Process based on toolchain
+        match toolchain {
+            "rust" => {
+                if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+                    if let Ok(file_context) =
+                        analyze_rust_file_with_persistent_cache(path, cache_manager.clone()).await
+                    {
                         files.push(file_context);
                     }
                 }
