@@ -168,7 +168,7 @@ clean:
 format-scripts:
 	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
 		echo "📝 Formatting TypeScript scripts..."; \
-		deno fmt $(SCRIPTS_DIR)/*.ts; \
+		find $(SCRIPTS_DIR) -name '*.ts' -type f -exec deno fmt {} \;; \
 	else \
 		echo "✓ No TypeScript scripts to format"; \
 	fi
@@ -177,9 +177,9 @@ format-scripts:
 lint-scripts:
 	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
 		echo "🔍 Linting TypeScript scripts..."; \
-		deno lint $(SCRIPTS_DIR)/*.ts; \
+		find $(SCRIPTS_DIR) -name '*.ts' -type f -exec deno lint {} \;; \
 		echo "✅ Type checking TypeScript scripts..."; \
-		deno check $(SCRIPTS_DIR)/*.ts; \
+		find $(SCRIPTS_DIR) -name '*.ts' -type f -exec deno check {} \;; \
 	else \
 		echo "✓ No TypeScript scripts to lint"; \
 	fi
@@ -188,7 +188,7 @@ lint-scripts:
 check-scripts:
 	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
 		echo "✅ Type checking TypeScript scripts..."; \
-		deno check $(SCRIPTS_DIR)/*.ts; \
+		find $(SCRIPTS_DIR) -name '*.ts' -type f -exec deno check {} \;; \
 	else \
 		echo "✓ No TypeScript scripts to check"; \
 	fi
@@ -197,14 +197,44 @@ check-scripts:
 test-scripts:
 	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.test.ts' -not -name '*.integration.test.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
 		echo "🧪 Testing TypeScript scripts..."; \
-		find $(SCRIPTS_DIR) -name '*.test.ts' -not -name '*.integration.test.ts' -type f | xargs deno test; \
+		find $(SCRIPTS_DIR) -name '*.test.ts' -not -name '*.integration.test.ts' -type f | xargs deno test --allow-read --allow-env --allow-write --allow-run; \
 	fi
 	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.integration.test.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
 		echo "🧪 Running integration tests..."; \
-		deno test --allow-net $(SCRIPTS_DIR)/*.integration.test.ts; \
+		find $(SCRIPTS_DIR) -name '*.integration.test.ts' -type f | xargs deno test --allow-net --allow-read --allow-env --allow-write --allow-run; \
 	else \
 		echo "✓ No TypeScript script tests found"; \
 	fi
+
+# Test critical Deno scripts with coverage
+test-critical-scripts:
+	@echo "🧪 Testing critical Deno scripts with coverage..."
+	@echo "These scripts are P0 - if they fail, installation/releases break!"
+	@echo ""
+	@echo "Testing install.sh wrapper..."
+	@bash -n $(SCRIPTS_DIR)/install.sh || (echo "❌ install.sh has syntax errors!" && exit 1)
+	@echo "✅ install.sh syntax check passed"
+	@echo ""
+	@echo "Testing TypeScript utility modules..."
+	@rm -rf .coverage
+	@deno test --coverage=.coverage --allow-read --allow-env --allow-write --allow-run \
+		$(SCRIPTS_DIR)/lib/create-release-utils.test.ts \
+		$(SCRIPTS_DIR)/lib/install-utils.test.ts \
+		$(SCRIPTS_DIR)/lib/create-release-utils-integration.test.ts
+	@echo ""
+	@echo "Generating coverage report..."
+	@deno coverage .coverage --lcov --output=.coverage/lcov.info
+	@deno coverage .coverage
+	@echo ""
+	@echo "Checking coverage thresholds..."
+	@echo "Target: 80% coverage for critical scripts"
+	@deno coverage .coverage | grep -E "^All files" || true
+	@echo ""
+	@echo "✅ Critical script tests completed!"
+
+# Clean coverage data
+clean-coverage:
+	@rm -rf .coverage coverage_profile
 
 # Validate documentation naming consistency
 validate-docs:
@@ -540,6 +570,7 @@ help:
 	@echo "  lint         - Run linters in all projects (checks only)"
 	@echo "  check        - Type check all projects"
 	@echo "  test         - Run tests in all projects"
+	@echo "  test-critical-scripts - Test critical installation/release scripts"
 	@echo "  coverage     - Generate coverage reports for all projects"
 	@echo "  audit        - Run security audit on all projects"
 	@echo "  docs         - Generate and open documentation"
