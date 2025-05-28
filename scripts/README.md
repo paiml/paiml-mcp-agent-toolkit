@@ -2,6 +2,61 @@
 
 This directory contains utility scripts for the MCP Agent Toolkit project.
 
+## Installation Scripts
+
+### install.sh
+Shell script for installing the MCP Agent Toolkit binary from GitHub releases.
+- Detects platform (Linux, macOS, Windows via WSL)
+- Downloads appropriate binary for the platform using Rust target triples
+- Installs to `~/.local/bin`
+- Validates installation
+
+**Usage:**
+```bash
+curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+```
+
+### install.ts
+TypeScript/Deno version of the installer with the same functionality.
+- Cross-platform support
+- Better error handling
+- Progress indicators
+
+**Usage:**
+```bash
+deno run --allow-net --allow-read --allow-write --allow-env --allow-run \
+  https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.ts
+```
+
+## Testing
+
+The installation scripts have comprehensive test coverage:
+
+### Unit Tests (`install.test.ts`)
+- Platform detection logic
+- URL construction
+- Version handling
+- Error cases
+
+### Integration Tests (`install.integration.test.ts`)
+- Verifies GitHub releases exist
+- Checks asset naming conventions
+- Tests download URLs are accessible
+
+Run tests with:
+```bash
+make test-scripts
+```
+
+## Platform Support
+
+Both installers support the following Rust target triples:
+- `x86_64-unknown-linux-gnu` (Linux x64)
+- `aarch64-unknown-linux-gnu` (Linux ARM64)
+- `x86_64-apple-darwin` (macOS Intel)
+- `aarch64-apple-darwin` (macOS Apple Silicon)
+- `x86_64-pc-windows-msvc` (Windows x64)
+
 ## Available Scripts
 
 ### mcp-install.ts / mcp-reinstall.ts / mcp-install-deterministic.ts
