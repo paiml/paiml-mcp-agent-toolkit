@@ -2,9 +2,9 @@
 
 > **Deterministic tooling for AI-assisted development - Generate project scaffolding, analyze code churn metrics, and provide reliable context for AI agents via CLI or Claude Code**
 
-[![CI](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/ci.yml)
-[![Code Quality](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml)
-[![Release](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/release.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/release.yml)
+[![CI](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/ci.yml)
+[![Code Quality](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/code-quality.yml)
+[![Release](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/automated-release.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/automated-release.yml)
 [![Coverage](https://img.shields.io/badge/coverage-71%25-yellow)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
 [![Built by Pragmatic AI Labs](https://img.shields.io/badge/Built%20by-Pragmatic%20AI%20Labs-blue)](https://paiml.com)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
