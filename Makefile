@@ -33,7 +33,7 @@ all: format build
 # Validate everything passes across all projects
 validate: check lint test validate-docs validate-naming test-actions deps-validate
 	@echo "✅ All projects validated! All checks passed:"
-	@echo "  ✓ Type checking (cargo check)"
+	@echo "  ✓ Type checking (cargo check + deno check)"
 	@echo "  ✓ Linting (cargo clippy + deno lint)"
 	@echo "  ✓ Testing (cargo test)"
 	@echo "  ✓ Documentation naming consistency"
@@ -173,11 +173,13 @@ format-scripts:
 		echo "✓ No TypeScript scripts to format"; \
 	fi
 
-# Lint TypeScript scripts
+# Lint TypeScript scripts (includes type checking)
 lint-scripts:
 	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
 		echo "🔍 Linting TypeScript scripts..."; \
 		deno lint $(SCRIPTS_DIR)/*.ts; \
+		echo "✅ Type checking TypeScript scripts..."; \
+		deno check $(SCRIPTS_DIR)/*.ts; \
 	else \
 		echo "✓ No TypeScript scripts to lint"; \
 	fi
