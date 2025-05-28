@@ -11,7 +11,7 @@ fn test_binary_version_flag() {
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("paiml-mcp-agent-toolkit"));
-    assert!(stdout.contains("0.1.")); // Version should start with 0.1
+    assert!(stdout.contains("0.2.")); // Version should start with 0.2
 }
 
 #[test]

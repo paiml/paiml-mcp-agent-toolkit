@@ -4,7 +4,7 @@
 **/*.rs.bk
 *.pdb
 Cargo.lock
-
+coverage_profile/
 # Cargo Lambda
 .aws-sam/
 samconfig.toml
@@ -49,6 +49,11 @@ build/
 __pycache__/
 *.pyc
 *.pyo
+
+# Release artifacts
+*.tar.gz
+*.tar
+*.gz
 
 # Temporary files
 *.tmp
