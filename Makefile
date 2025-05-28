@@ -31,13 +31,14 @@ SCRIPTS_DIR = scripts
 all: format build
 
 # Validate everything passes across all projects
-validate: check lint test validate-docs validate-naming test-actions deps-validate
+validate: check lint test validate-docs validate-naming test-workflow-dag test-actions deps-validate
 	@echo "✅ All projects validated! All checks passed:"
 	@echo "  ✓ Type checking (cargo check + deno check)"
 	@echo "  ✓ Linting (cargo clippy + deno lint)"
 	@echo "  ✓ Testing (cargo test)"
 	@echo "  ✓ Documentation naming consistency"
 	@echo "  ✓ Project naming conventions"
+	@echo "  ✓ GitHub Actions workflow DAG (no version mismatches)"
 	@echo "  ✓ GitHub Actions workflows validated"
 	@echo "  ✓ Dependencies validated"
 	@echo "  ✓ Ready for build!"
@@ -240,6 +241,18 @@ clean-coverage:
 validate-docs:
 	@echo "📖 Validating documentation naming consistency..."
 	@deno run --allow-read --allow-env $(SCRIPTS_DIR)/validate-docs.ts
+
+# Test GitHub Actions workflow DAG for version mismatches
+test-workflow-dag:
+	@echo "🔍 Testing GitHub Actions workflow DAG for version mismatches..."
+	@deno run --allow-read --allow-write --allow-run --allow-env $(SCRIPTS_DIR)/test-workflow-dag.ts
+	@echo ""
+
+# Test workflow DAG with verbose output
+test-workflow-dag-verbose:
+	@echo "🔍 Testing GitHub Actions workflow DAG (verbose)..."
+	@deno run --allow-read --allow-write --allow-run --allow-env $(SCRIPTS_DIR)/test-workflow-dag.ts --verbose --scenarios
+	@echo ""
 
 # Check GitHub Actions CI status
 ci-status:
