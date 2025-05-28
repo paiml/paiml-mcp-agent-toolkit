@@ -145,21 +145,27 @@ jobs:
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
           fi
-          make build-target TARGET=${{ matrix.target }}
+          cargo build --release --target ${{ matrix.target }} --manifest-path server/Cargo.toml
       
       - name: Create archive
         run: |
-          cd target/${{ matrix.target }}/release
+          cd server/target/${{ matrix.target }}/release
           tar -czf paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz paiml-mcp-agent-toolkit
-          sha256sum paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz > paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz.sha256
+          
+          # Use sha256sum on Linux, shasum on macOS
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz > paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz.sha256
+          else
+            shasum -a 256 paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz > paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz.sha256
+          fi
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.target }}
           path: |
-            target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz
-            target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz.sha256
+            server/target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz
+            server/target/${{ matrix.target }}/release/paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz.sha256
 
   # Create GitHub release
   create-release:
