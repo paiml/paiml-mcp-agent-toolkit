@@ -33,7 +33,7 @@ mod tests {
         assert!(script.contains("Darwin*)"));
         assert!(script.contains("x86_64"));
         assert!(script.contains("aarch64"));
-        
+
         // Check for Rust target triple formats
         assert!(script.contains("x86_64-unknown-linux-gnu"));
         assert!(script.contains("x86_64-apple-darwin"));

@@ -33,7 +33,7 @@ mod tests {
         assert!(script.contains("DOWNLOAD_URL="));
         assert!(script.contains("github.com"));
         assert!(script.contains("releases/download"));
-        
+
         // Check for Rust target triple formats
         assert!(script.contains("x86_64-unknown-linux-gnu"));
         assert!(script.contains("x86_64-apple-darwin"));

@@ -41,7 +41,7 @@ function warn(message: string): void {
 function detectPlatform(): string {
   const os = Deno.build.os;
   const arch = Deno.build.arch;
-  
+
   if (os === "linux") {
     switch (arch) {
       case "x86_64":
