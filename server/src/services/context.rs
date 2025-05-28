@@ -34,6 +34,8 @@ pub struct FileContext {
     pub path: String,
     pub language: String,
     pub items: Vec<AstItem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub complexity_metrics: Option<crate::services::complexity::FileComplexityMetrics>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -239,6 +241,7 @@ pub async fn analyze_rust_file_with_cache(
                     path: path.display().to_string(),
                     language: "rust".to_string(),
                     items: visitor.items,
+                    complexity_metrics: None,
                 })
             })
             .await
@@ -260,6 +263,7 @@ pub async fn analyze_rust_file_with_cache(
             path: path.display().to_string(),
             language: "rust".to_string(),
             items: visitor.items,
+            complexity_metrics: None,
         })
     }
 }
@@ -294,6 +298,7 @@ pub async fn analyze_rust_file_with_persistent_cache(
                     path: path.display().to_string(),
                     language: "rust".to_string(),
                     items: visitor.items,
+                    complexity_metrics: None,
                 })
             })
             .await
@@ -315,6 +320,7 @@ pub async fn analyze_rust_file_with_persistent_cache(
             path: path.display().to_string(),
             language: "rust".to_string(),
             items: visitor.items,
+            complexity_metrics: None,
         })
     }
 }

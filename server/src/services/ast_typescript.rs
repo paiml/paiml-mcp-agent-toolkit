@@ -1,10 +1,96 @@
 use crate::models::error::TemplateError;
+use crate::services::complexity::{
+    ClassComplexity, ComplexityMetrics, FileComplexityMetrics, FunctionComplexity,
+};
 use crate::services::context::{AstItem, FileContext};
 use std::path::Path;
 use swc_common::{sync::Lrc, FileName, SourceMap};
 use swc_ecma_ast::*;
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsConfig};
 use swc_ecma_visit::{Visit, VisitWith};
+
+pub async fn analyze_typescript_file_with_complexity(
+    path: &Path,
+) -> Result<FileComplexityMetrics, TemplateError> {
+    analyze_typescript_file_with_complexity_cached(path, None).await
+}
+
+pub async fn analyze_typescript_file_with_complexity_cached(
+    path: &Path,
+    _cache_manager: Option<
+        std::sync::Arc<crate::services::cache::persistent_manager::PersistentCacheManager>,
+    >,
+) -> Result<FileComplexityMetrics, TemplateError> {
+    // For now, we'll skip caching until the cache interfaces are updated for complexity metrics
+    // This is a placeholder for future cache integration
+    let content = tokio::fs::read_to_string(path)
+        .await
+        .map_err(TemplateError::Io)?;
+
+    let cm: Lrc<SourceMap> = Default::default();
+    let fm = cm.new_source_file(FileName::Custom(path.display().to_string()), content);
+
+    let lexer = Lexer::new(
+        Syntax::Typescript(TsConfig {
+            tsx: path.extension().and_then(|s| s.to_str()) == Some("tsx"),
+            decorators: true,
+            ..Default::default()
+        }),
+        Default::default(),
+        StringInput::from(&*fm),
+        None,
+    );
+
+    let mut parser = Parser::new_from(lexer);
+    let module = parser
+        .parse_module()
+        .map_err(|e| TemplateError::InvalidUtf8(format!("TypeScript parse error: {:?}", e)))?;
+
+    let mut visitor = TypeScriptVisitor::new();
+    visitor.enable_complexity = true;
+    module.visit_with(&mut visitor);
+
+    Ok(FileComplexityMetrics {
+        path: path.display().to_string(),
+        total_complexity: visitor.file_complexity,
+        functions: visitor.functions,
+        classes: visitor.classes,
+    })
+}
+
+pub async fn analyze_javascript_file_with_complexity(
+    path: &Path,
+) -> Result<FileComplexityMetrics, TemplateError> {
+    let content = tokio::fs::read_to_string(path)
+        .await
+        .map_err(TemplateError::Io)?;
+
+    let cm: Lrc<SourceMap> = Default::default();
+    let fm = cm.new_source_file(FileName::Custom(path.display().to_string()), content);
+
+    let lexer = Lexer::new(
+        Syntax::Es(Default::default()),
+        Default::default(),
+        StringInput::from(&*fm),
+        None,
+    );
+
+    let mut parser = Parser::new_from(lexer);
+    let module = parser
+        .parse_module()
+        .map_err(|e| TemplateError::InvalidUtf8(format!("JavaScript parse error: {:?}", e)))?;
+
+    let mut visitor = TypeScriptVisitor::new();
+    visitor.enable_complexity = true;
+    module.visit_with(&mut visitor);
+
+    Ok(FileComplexityMetrics {
+        path: path.display().to_string(),
+        total_complexity: visitor.file_complexity,
+        functions: visitor.functions,
+        classes: visitor.classes,
+    })
+}
 
 pub async fn analyze_typescript_file(path: &Path) -> Result<FileContext, TemplateError> {
     let content = tokio::fs::read_to_string(path)
@@ -33,6 +119,17 @@ pub async fn analyze_typescript_file(path: &Path) -> Result<FileContext, Templat
     let mut visitor = TypeScriptVisitor::new();
     module.visit_with(&mut visitor);
 
+    let complexity_metrics = if visitor.enable_complexity {
+        Some(FileComplexityMetrics {
+            path: path.display().to_string(),
+            total_complexity: visitor.file_complexity,
+            functions: visitor.functions,
+            classes: visitor.classes,
+        })
+    } else {
+        None
+    };
+
     Ok(FileContext {
         path: path.display().to_string(),
         language: if path.extension().and_then(|s| s.to_str()) == Some("tsx") {
@@ -41,6 +138,7 @@ pub async fn analyze_typescript_file(path: &Path) -> Result<FileContext, Templat
             "typescript".to_string()
         },
         items: visitor.items,
+        complexity_metrics,
     })
 }
 
@@ -67,6 +165,17 @@ pub async fn analyze_javascript_file(path: &Path) -> Result<FileContext, Templat
     let mut visitor = TypeScriptVisitor::new();
     module.visit_with(&mut visitor);
 
+    let complexity_metrics = if visitor.enable_complexity {
+        Some(FileComplexityMetrics {
+            path: path.display().to_string(),
+            total_complexity: visitor.file_complexity,
+            functions: visitor.functions,
+            classes: visitor.classes,
+        })
+    } else {
+        None
+    };
+
     Ok(FileContext {
         path: path.display().to_string(),
         language: if path.extension().and_then(|s| s.to_str()) == Some("jsx") {
@@ -75,30 +184,118 @@ pub async fn analyze_javascript_file(path: &Path) -> Result<FileContext, Templat
             "javascript".to_string()
         },
         items: visitor.items,
+        complexity_metrics,
     })
 }
 
 struct TypeScriptVisitor {
     items: Vec<AstItem>,
+    enable_complexity: bool,
+    file_complexity: ComplexityMetrics,
+    functions: Vec<FunctionComplexity>,
+    classes: Vec<ClassComplexity>,
+    current_function_complexity: Option<ComplexityMetrics>,
+    current_function_name: Option<String>,
+    current_function_start: u32,
+    current_class: Option<ClassComplexity>,
+    nesting_level: u8,
 }
 
 impl TypeScriptVisitor {
     fn new() -> Self {
-        Self { items: Vec::new() }
+        Self {
+            items: Vec::new(),
+            enable_complexity: true,
+            file_complexity: ComplexityMetrics::default(),
+            functions: Vec::new(),
+            classes: Vec::new(),
+            current_function_complexity: None,
+            current_function_name: None,
+            current_function_start: 0,
+            current_class: None,
+            nesting_level: 0,
+        }
+    }
+
+    #[allow(dead_code)]
+    fn count_lines(&mut self) {
+        if let Some(ref mut func) = self.current_function_complexity {
+            func.lines = func.lines.saturating_add(1);
+        }
+        self.file_complexity.lines = self.file_complexity.lines.saturating_add(1);
+    }
+
+    fn enter_nesting(&mut self) {
+        self.nesting_level = self.nesting_level.saturating_add(1);
+        if self.nesting_level > self.file_complexity.nesting_max {
+            self.file_complexity.nesting_max = self.nesting_level;
+        }
+        if let Some(ref mut func) = self.current_function_complexity {
+            if self.nesting_level > func.nesting_max {
+                func.nesting_max = self.nesting_level;
+            }
+        }
+    }
+
+    fn exit_nesting(&mut self) {
+        self.nesting_level = self.nesting_level.saturating_sub(1);
+    }
+
+    fn add_complexity(&mut self, cyclomatic: u16, cognitive_base: u16) {
+        // Add to file complexity
+        self.file_complexity.cyclomatic =
+            self.file_complexity.cyclomatic.saturating_add(cyclomatic);
+
+        // Calculate cognitive complexity based on nesting
+        let cognitive = if self.nesting_level > 0 {
+            cognitive_base + self.nesting_level.saturating_sub(1) as u16
+        } else {
+            cognitive_base
+        };
+        self.file_complexity.cognitive = self.file_complexity.cognitive.saturating_add(cognitive);
+
+        // Add to current function if we're in one
+        if let Some(ref mut func) = self.current_function_complexity {
+            func.cyclomatic = func.cyclomatic.saturating_add(cyclomatic);
+            func.cognitive = func.cognitive.saturating_add(cognitive);
+        }
     }
 }
 
 impl Visit for TypeScriptVisitor {
     fn visit_fn_decl(&mut self, node: &FnDecl) {
+        let name = node.ident.sym.to_string();
         self.items.push(AstItem::Function {
-            name: node.ident.sym.to_string(),
+            name: name.clone(),
             visibility: "public".to_string(), // JS/TS doesn't have visibility modifiers like Rust
             is_async: node.function.is_async,
             line: 1, // SWC doesn't provide line numbers easily
         });
+
+        if self.enable_complexity {
+            self.current_function_complexity = Some(ComplexityMetrics::default());
+            self.current_function_name = Some(name);
+            self.current_function_start = 1; // Would need source map for real line numbers
+
+            // Visit function body to calculate complexity
+            node.function.visit_children_with(self);
+
+            // Save function complexity
+            if let Some(complexity) = self.current_function_complexity.take() {
+                if let Some(name) = self.current_function_name.take() {
+                    self.functions.push(FunctionComplexity {
+                        name,
+                        line_start: self.current_function_start,
+                        line_end: self.current_function_start + 10, // Estimate
+                        metrics: complexity,
+                    });
+                }
+            }
+        }
     }
 
     fn visit_class_decl(&mut self, node: &ClassDecl) {
+        let class_name = node.ident.sym.to_string();
         let mut fields_count = 0;
         let mut _methods_count = 0;
 
@@ -114,12 +311,83 @@ impl Visit for TypeScriptVisitor {
         }
 
         self.items.push(AstItem::Struct {
-            name: node.ident.sym.to_string(),
+            name: class_name.clone(),
             visibility: "public".to_string(),
             fields_count,
             derives: vec![], // TypeScript uses decorators, not derives
             line: 1,
         });
+
+        if self.enable_complexity {
+            let class_complexity = ClassComplexity {
+                name: class_name,
+                line_start: 1,
+                line_end: 100, // Estimate
+                metrics: ComplexityMetrics::default(),
+                methods: Vec::new(),
+            };
+
+            self.current_class = Some(class_complexity.clone());
+
+            // Visit class members to calculate method complexities
+            for member in &node.class.body {
+                match member {
+                    ClassMember::Method(method) => {
+                        let method_name = match &method.key {
+                            PropName::Ident(ident) => ident.sym.to_string(),
+                            PropName::Str(s) => s.value.to_string(),
+                            _ => "anonymous".to_string(),
+                        };
+
+                        self.current_function_complexity = Some(ComplexityMetrics::default());
+                        self.current_function_name = Some(method_name.clone());
+                        self.current_function_start = 1;
+
+                        method.function.visit_children_with(self);
+
+                        if let Some(complexity) = self.current_function_complexity.take() {
+                            if let Some(ref mut current_class) = self.current_class {
+                                current_class.methods.push(FunctionComplexity {
+                                    name: method_name,
+                                    line_start: self.current_function_start,
+                                    line_end: self.current_function_start + 10,
+                                    metrics: complexity,
+                                });
+                                // Add method complexity to class total
+                                current_class.metrics.cyclomatic += complexity.cyclomatic;
+                                current_class.metrics.cognitive += complexity.cognitive;
+                            }
+                        }
+                    }
+                    ClassMember::Constructor(constructor) => {
+                        self.current_function_complexity = Some(ComplexityMetrics::default());
+                        self.current_function_name = Some("constructor".to_string());
+                        self.current_function_start = 1;
+
+                        constructor.visit_children_with(self);
+
+                        if let Some(complexity) = self.current_function_complexity.take() {
+                            if let Some(ref mut current_class) = self.current_class {
+                                current_class.methods.push(FunctionComplexity {
+                                    name: "constructor".to_string(),
+                                    line_start: self.current_function_start,
+                                    line_end: self.current_function_start + 10,
+                                    metrics: complexity,
+                                });
+                                // Add constructor complexity to class total
+                                current_class.metrics.cyclomatic += complexity.cyclomatic;
+                                current_class.metrics.cognitive += complexity.cognitive;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            if let Some(class_complexity) = self.current_class.take() {
+                self.classes.push(class_complexity);
+            }
+        }
     }
 
     fn visit_var_decl(&mut self, node: &VarDecl) {
@@ -128,20 +396,61 @@ impl Visit for TypeScriptVisitor {
             if let Pat::Ident(ident) = &decl.name {
                 if let Some(init) = &decl.init {
                     if let Expr::Arrow(arrow) = &**init {
+                        let name = ident.id.sym.to_string();
                         self.items.push(AstItem::Function {
-                            name: ident.id.sym.to_string(),
+                            name: name.clone(),
                             visibility: "public".to_string(),
                             is_async: arrow.is_async,
                             line: 1,
                         });
+
+                        if self.enable_complexity {
+                            self.current_function_complexity = Some(ComplexityMetrics::default());
+                            self.current_function_name = Some(name);
+                            self.current_function_start = 1;
+
+                            arrow.visit_children_with(self);
+
+                            if let Some(complexity) = self.current_function_complexity.take() {
+                                if let Some(name) = self.current_function_name.take() {
+                                    self.functions.push(FunctionComplexity {
+                                        name,
+                                        line_start: self.current_function_start,
+                                        line_end: self.current_function_start + 10,
+                                        metrics: complexity,
+                                    });
+                                }
+                            }
+                        }
                     } else if let Expr::Fn(fn_expr) = &**init {
                         if let Some(ident) = &fn_expr.ident {
+                            let name = ident.sym.to_string();
                             self.items.push(AstItem::Function {
-                                name: ident.sym.to_string(),
+                                name: name.clone(),
                                 visibility: "public".to_string(),
                                 is_async: fn_expr.function.is_async,
                                 line: 1,
                             });
+
+                            if self.enable_complexity {
+                                self.current_function_complexity =
+                                    Some(ComplexityMetrics::default());
+                                self.current_function_name = Some(name);
+                                self.current_function_start = 1;
+
+                                fn_expr.function.visit_children_with(self);
+
+                                if let Some(complexity) = self.current_function_complexity.take() {
+                                    if let Some(name) = self.current_function_name.take() {
+                                        self.functions.push(FunctionComplexity {
+                                            name,
+                                            line_start: self.current_function_start,
+                                            line_end: self.current_function_start + 10,
+                                            metrics: complexity,
+                                        });
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -196,5 +505,159 @@ impl Visit for TypeScriptVisitor {
             Decl::TsEnum(enum_decl) => self.visit_ts_enum_decl(enum_decl),
             _ => {}
         }
+    }
+
+    // Control flow statements for complexity calculation
+    fn visit_if_stmt(&mut self, node: &IfStmt) {
+        if self.enable_complexity {
+            self.add_complexity(1, 1);
+            self.enter_nesting();
+        }
+
+        node.test.visit_with(self);
+        node.cons.visit_with(self);
+
+        if let Some(alt) = &node.alt {
+            if self.enable_complexity {
+                // else adds complexity but not nesting
+                self.add_complexity(1, 1);
+            }
+            alt.visit_with(self);
+        }
+
+        if self.enable_complexity {
+            self.exit_nesting();
+        }
+    }
+
+    fn visit_switch_stmt(&mut self, node: &SwitchStmt) {
+        if self.enable_complexity {
+            self.add_complexity(1, 1);
+            self.enter_nesting();
+        }
+
+        node.discriminant.visit_with(self);
+
+        for case in &node.cases {
+            if self.enable_complexity && case.test.is_some() {
+                self.add_complexity(1, 1);
+            }
+            case.visit_with(self);
+        }
+
+        if self.enable_complexity {
+            self.exit_nesting();
+        }
+    }
+
+    fn visit_for_stmt(&mut self, node: &ForStmt) {
+        if self.enable_complexity {
+            self.add_complexity(1, 1);
+            self.enter_nesting();
+        }
+
+        node.visit_children_with(self);
+
+        if self.enable_complexity {
+            self.exit_nesting();
+        }
+    }
+
+    fn visit_for_in_stmt(&mut self, node: &ForInStmt) {
+        if self.enable_complexity {
+            self.add_complexity(1, 1);
+            self.enter_nesting();
+        }
+
+        node.visit_children_with(self);
+
+        if self.enable_complexity {
+            self.exit_nesting();
+        }
+    }
+
+    fn visit_for_of_stmt(&mut self, node: &ForOfStmt) {
+        if self.enable_complexity {
+            self.add_complexity(1, 1);
+            self.enter_nesting();
+        }
+
+        node.visit_children_with(self);
+
+        if self.enable_complexity {
+            self.exit_nesting();
+        }
+    }
+
+    fn visit_while_stmt(&mut self, node: &WhileStmt) {
+        if self.enable_complexity {
+            self.add_complexity(1, 1);
+            self.enter_nesting();
+        }
+
+        node.visit_children_with(self);
+
+        if self.enable_complexity {
+            self.exit_nesting();
+        }
+    }
+
+    fn visit_do_while_stmt(&mut self, node: &DoWhileStmt) {
+        if self.enable_complexity {
+            self.add_complexity(1, 1);
+            self.enter_nesting();
+        }
+
+        node.visit_children_with(self);
+
+        if self.enable_complexity {
+            self.exit_nesting();
+        }
+    }
+
+    fn visit_try_stmt(&mut self, node: &TryStmt) {
+        if self.enable_complexity {
+            self.enter_nesting();
+        }
+
+        node.block.visit_with(self);
+
+        if let Some(handler) = &node.handler {
+            if self.enable_complexity {
+                self.add_complexity(1, 1);
+            }
+            handler.visit_with(self);
+        }
+
+        if let Some(finalizer) = &node.finalizer {
+            finalizer.visit_with(self);
+        }
+
+        if self.enable_complexity {
+            self.exit_nesting();
+        }
+    }
+
+    fn visit_bin_expr(&mut self, node: &BinExpr) {
+        // Logical operators add complexity
+        if self.enable_complexity {
+            match node.op {
+                BinaryOp::LogicalAnd | BinaryOp::LogicalOr => {
+                    self.add_complexity(1, 1);
+                }
+                _ => {}
+            }
+        }
+
+        node.visit_children_with(self);
+    }
+
+    fn visit_cond_expr(&mut self, node: &CondExpr) {
+        // Ternary operator adds complexity
+        if self.enable_complexity {
+            self.add_complexity(1, 1);
+        }
+
+        node.visit_children_with(self);
     }
 }

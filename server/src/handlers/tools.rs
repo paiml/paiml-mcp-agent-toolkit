@@ -50,6 +50,7 @@ pub async fn handle_tool_call<T: TemplateServerTrait>(
             handle_search_templates(server, request.id, tool_params.arguments).await
         }
         "analyze_code_churn" => handle_analyze_code_churn(request.id, tool_params.arguments).await,
+        "analyze_complexity" => handle_analyze_complexity(request.id, tool_params.arguments).await,
         _ => McpResponse::error(
             request.id,
             -32602,
@@ -590,4 +591,186 @@ fn calculate_relevance(template: &crate::models::template::TemplateResource, que
     }
 
     score
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AnalyzeComplexityArgs {
+    project_path: Option<String>,
+    toolchain: Option<String>,
+    format: Option<String>,
+    max_cyclomatic: Option<u16>,
+    max_cognitive: Option<u16>,
+    include: Option<Vec<String>>,
+}
+
+async fn handle_analyze_complexity(
+    request_id: serde_json::Value,
+    arguments: serde_json::Value,
+) -> McpResponse {
+    let args: AnalyzeComplexityArgs = match serde_json::from_value(arguments) {
+        Ok(a) => a,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32602,
+                format!("Invalid analyze_complexity arguments: {}", e),
+            );
+        }
+    };
+
+    let project_path = args
+        .project_path
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+    // Detect toolchain if not specified
+    let detected_toolchain = if let Some(t) = args.toolchain {
+        t
+    } else if project_path.join("Cargo.toml").exists() {
+        "rust".to_string()
+    } else if project_path.join("package.json").exists() || project_path.join("deno.json").exists()
+    {
+        "deno".to_string()
+    } else if project_path.join("pyproject.toml").exists()
+        || project_path.join("requirements.txt").exists()
+    {
+        "python-uv".to_string()
+    } else {
+        "rust".to_string() // default
+    };
+
+    info!(
+        "Analyzing complexity for {:?} using {} toolchain",
+        project_path, detected_toolchain
+    );
+
+    // Import complexity analysis functionality
+    use crate::services::complexity::*;
+    use walkdir::WalkDir;
+
+    // Custom thresholds
+    let mut thresholds = ComplexityThresholds::default();
+    if let Some(max) = args.max_cyclomatic {
+        thresholds.cyclomatic_error = max;
+        thresholds.cyclomatic_warn = (max * 3 / 4).max(1);
+    }
+    if let Some(max) = args.max_cognitive {
+        thresholds.cognitive_error = max;
+        thresholds.cognitive_warn = (max * 3 / 4).max(1);
+    }
+
+    // Analyze files
+    let mut file_metrics = Vec::new();
+    let mut file_count = 0;
+
+    for entry in WalkDir::new(&project_path)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+
+        // Skip directories and non-source files
+        if path.is_dir() {
+            continue;
+        }
+
+        // Check file extension based on toolchain
+        let should_analyze = match detected_toolchain.as_str() {
+            "rust" => path.extension().and_then(|s| s.to_str()) == Some("rs"),
+            "deno" => matches!(
+                path.extension().and_then(|s| s.to_str()),
+                Some("ts") | Some("tsx") | Some("js") | Some("jsx")
+            ),
+            "python-uv" => path.extension().and_then(|s| s.to_str()) == Some("py"),
+            _ => false,
+        };
+
+        if !should_analyze {
+            continue;
+        }
+
+        // Apply include filters if specified (simple pattern matching)
+        if let Some(ref include_patterns) = args.include {
+            if !include_patterns.is_empty() {
+                let path_str = path.to_string_lossy();
+                let matches_filter = include_patterns.iter().any(|pattern| {
+                    // Simple glob-like matching
+                    if pattern.contains("**") {
+                        // Match any path containing the pattern after **
+                        let parts: Vec<&str> = pattern.split("**").collect();
+                        if parts.len() == 2 {
+                            path_str.contains(parts[1].trim_start_matches('/'))
+                        } else {
+                            false
+                        }
+                    } else if pattern.starts_with("*.") {
+                        // Match by extension
+                        path_str.ends_with(&pattern[1..])
+                    } else {
+                        // Direct substring match
+                        path_str.contains(pattern)
+                    }
+                });
+                if !matches_filter {
+                    continue;
+                }
+            }
+        }
+
+        file_count += 1;
+
+        // Analyze file complexity
+        match detected_toolchain.as_str() {
+            "rust" => {
+                use crate::services::ast_rust;
+                if let Ok(metrics) = ast_rust::analyze_rust_file_with_complexity(path).await {
+                    file_metrics.push(metrics);
+                }
+            }
+            "deno" => {
+                use crate::services::ast_typescript;
+                if let Ok(metrics) =
+                    ast_typescript::analyze_typescript_file_with_complexity(path).await
+                {
+                    file_metrics.push(metrics);
+                }
+            }
+            "python-uv" => {
+                use crate::services::ast_python;
+                if let Ok(metrics) = ast_python::analyze_python_file_with_complexity(path).await {
+                    file_metrics.push(metrics);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // Aggregate results
+    let report = aggregate_results(file_metrics);
+
+    // Format output based on requested format
+    let format = args.format.as_deref().unwrap_or("summary");
+    let content_text = match format {
+        "full" => format_complexity_report(&report),
+        "json" => serde_json::to_string_pretty(&report).unwrap_or_default(),
+        "sarif" => match format_as_sarif(&report) {
+            Ok(sarif) => sarif,
+            Err(_) => "Error generating SARIF format".to_string(),
+        },
+        _ => format_complexity_summary(&report), // default to summary
+    };
+
+    let result = json!({
+        "content": [{
+            "type": "text",
+            "text": content_text
+        }],
+        "report": report,
+        "toolchain": detected_toolchain,
+        "files_analyzed": file_count,
+        "format": format,
+    });
+
+    McpResponse::success(request_id, result)
 }

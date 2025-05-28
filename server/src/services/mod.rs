@@ -1,6 +1,8 @@
 pub mod ast_python;
+pub mod ast_rust;
 pub mod ast_typescript;
 pub mod cache;
+pub mod complexity;
 pub mod context;
 pub mod dag_builder;
 pub mod embedded_templates;

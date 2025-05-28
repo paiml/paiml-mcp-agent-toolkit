@@ -1465,6 +1465,7 @@ dependencies = [
  "parking_lot",
  "pretty_assertions",
  "proc-macro2",
+ "quote",
  "regex",
  "rustpython-parser",
  "semver",
