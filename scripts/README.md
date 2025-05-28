@@ -5,28 +5,43 @@ This directory contains utility scripts for the MCP Agent Toolkit project.
 ## Installation Scripts
 
 ### install.sh
-Shell script for installing the MCP Agent Toolkit binary from GitHub releases.
-- Detects platform (Linux, macOS, Windows via WSL)
+Standalone POSIX-compliant shell script for installing the MCP Agent Toolkit binary from GitHub releases.
+- **No dependencies** - works with just sh and curl
+- Detects platform automatically (Linux, macOS, Windows via WSL)
 - Downloads appropriate binary for the platform using Rust target triples
 - Installs to `~/.local/bin`
 - Validates installation
 
 **Usage:**
 ```bash
+# Install latest version
 curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+
+# Install specific version
+curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh -s v0.1.0
 ```
 
 ### install.ts
-TypeScript/Deno version of the installer with the same functionality.
-- Cross-platform support
-- Better error handling
-- Progress indicators
+TypeScript/Deno version of the installer for users who prefer Deno.
+- Same functionality as the shell script
+- Requires Deno runtime
+- TypeScript type safety
+- Enhanced error messages
 
 **Usage:**
 ```bash
+# Install latest version
 deno run --allow-net --allow-read --allow-write --allow-env --allow-run \
   https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.ts
+
+# Install specific version
+deno run --allow-net --allow-read --allow-write --allow-env --allow-run \
+  https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.ts v0.1.0
 ```
+
+**Which installer should I use?**
+- Use `install.sh` for maximum compatibility - it only requires sh and curl
+- Use `install.ts` if you already have Deno installed and prefer TypeScript
 
 ## Testing
 

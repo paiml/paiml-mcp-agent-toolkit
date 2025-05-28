@@ -3,6 +3,8 @@ name: Automated Release
 on:
   push:
     branches: [ main, master ]
+    tags-ignore:
+      - 'v*'  # Ignore tag pushes to prevent duplicate runs
   workflow_dispatch:
     inputs:
       bump_version:
@@ -34,31 +36,59 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
+      - name: Check if triggered by version bump
+        id: check_skip
+        run: |
+          # Skip if this is a push event and the last commit is a version bump
+          if [ "${{ github.event_name }}" = "push" ]; then
+            LAST_COMMIT_MSG=$(git log -1 --pretty=%s)
+            if echo "$LAST_COMMIT_MSG" | grep -q "^chore: bump version to\|^chore: release"; then
+              echo "Skipping workflow - triggered by automated version bump"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "skip=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      
+      
       - name: Install Rust
+        if: steps.check_skip.outputs.skip != 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
       
       - name: Install Deno
+        if: steps.check_skip.outputs.skip != 'true'
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
       
       - name: Install cargo-llvm-cov
+        if: steps.check_skip.outputs.skip != 'true'
         uses: taiki-e/install-action@cargo-llvm-cov
       
       - name: Install shellcheck
+        if: steps.check_skip.outputs.skip != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck
       
       - name: Run tests and checks
+        if: steps.check_skip.outputs.skip != 'true'
         run: |
           make server-format server-lint server-check
           make test  # This runs both script tests and server tests
       
+      - name: Set default outputs when skipping
+        if: steps.check_skip.outputs.skip == 'true'
+        run: |
+          echo "should_release=false" >> "$GITHUB_OUTPUT"
+      
       - name: Check for release conditions
         id: check
+        if: steps.check_skip.outputs.skip != 'true'
         run: |
           # Get current version from Cargo.toml
           CURRENT_VERSION=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
@@ -277,7 +307,10 @@ jobs:
             echo "No changes to commit - version already updated"
           else
             git commit -m "chore: bump version to ${{ needs.test-and-check.outputs.new_version }}"
-            git push
+            
+            # Create and push the tag with the version bump commit
+            git tag -a "v${{ needs.test-and-check.outputs.new_version }}" -m "Release v${{ needs.test-and-check.outputs.new_version }}"
+            git push origin HEAD:master --tags
           fi
       
       - name: Create GitHub Release

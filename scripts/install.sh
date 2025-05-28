@@ -1,8 +1,8 @@
 #!/bin/sh
-# MCP Agent Toolkit Installation Script - Shell wrapper for Deno installer
+# MCP Agent Toolkit Installation Script
 #
-# This script checks for Deno and runs the TypeScript installer.
-# If Deno is not available, it falls back to a simple shell implementation.
+# This is a standalone POSIX-compliant shell installer that works on Linux, macOS, and Windows (via WSL).
+# A TypeScript/Deno version is also available at scripts/install.ts for those who prefer it.
 # 
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
@@ -11,16 +11,6 @@
 #   curl -fsSL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh -s v0.1.0
 
 set -euf
-
-# Check if Deno is installed
-if command -v deno >/dev/null 2>&1; then
-    # Use the Deno installer
-    exec deno run --allow-net --allow-read --allow-write --allow-env --allow-run \
-        https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.ts "$@"
-fi
-
-# Fallback to shell implementation if Deno is not available
-echo "Deno not found, using shell installer..."
 
 # Configuration
 REPO="paiml/paiml-mcp-agent-toolkit"
@@ -103,7 +93,7 @@ install() {
     # Download binary
     info "Downloading from ${DOWNLOAD_URL}..."
     if ! curl -fsSL "$DOWNLOAD_URL" -o "$TMP_DIR/archive.tar.gz"; then
-        error "Failed to download binary. Please check if version ${VERSION} exists for ${OS}-${ARCH}."
+        error "Failed to download binary. Please check if version ${VERSION} exists for ${PLATFORM}."
     fi
     
     # Extract binary
