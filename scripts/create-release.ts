@@ -204,7 +204,7 @@ Or download the binary directly from the assets below.
       "curl -fsSL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh",
     );
   } catch (e) {
-    console.error(`${RED}Error: ${e.message}${NC}`);
+    console.error(`${RED}Error: ${e instanceof Error ? e.message : String(e)}${NC}`);
     Deno.exit(1);
   }
 }
