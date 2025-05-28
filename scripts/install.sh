@@ -131,8 +131,37 @@ install() {
     fi
 }
 
+# Show help
+show_help() {
+    echo "MCP Agent Toolkit Installer"
+    echo ""
+    echo "Usage: $0 [OPTIONS] [VERSION]"
+    echo ""
+    echo "Options:"
+    echo "  --help, -h    Show this help message"
+    echo ""
+    echo "Arguments:"
+    echo "  VERSION       Specific version to install (e.g., v0.1.0)"
+    echo "                If not specified, installs the latest version"
+    echo ""
+    echo "Examples:"
+    echo "  $0                    # Install latest version"
+    echo "  $0 v0.1.0            # Install specific version"
+    echo ""
+    echo "Environment variables:"
+    echo "  INSTALL_DIR   Installation directory (default: ~/.local/bin)"
+}
+
 # Main
 main() {
+    # Check for help flag
+    case "${1:-}" in
+        --help|-h)
+            show_help
+            exit 0
+            ;;
+    esac
+    
     info "MCP Agent Toolkit Installer"
     install "$@"
 }
