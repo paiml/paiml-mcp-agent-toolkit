@@ -136,7 +136,7 @@ fn test_cli_examples_are_valid() {
                 ];
 
                 assert!(
-                    valid_commands.iter().any(|&cmd| first_arg == cmd),
+                    valid_commands.contains(&first_arg),
                     "Example uses unknown command: {} in line: {}",
                     first_arg,
                     line

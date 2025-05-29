@@ -8,7 +8,7 @@ on:
 jobs:
   coverage-check:
     name: Coverage Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       
@@ -63,7 +63,7 @@ jobs:
 
   complexity-check:
     name: Code Complexity Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       
@@ -96,7 +96,7 @@ jobs:
 
   documentation-check:
     name: Documentation Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       
