@@ -68,7 +68,10 @@ jobs:
           cd server
           cargo build --release --target x86_64-unknown-linux-gnu
           cd ..
-          cp target/x86_64-unknown-linux-gnu/release/paiml-mcp-agent-toolkit paiml-mcp-linux-x64
+          # Create archive with proper naming
+          cd target/x86_64-unknown-linux-gnu/release
+          tar -czf ../../../paiml-mcp-agent-toolkit-x86_64-unknown-linux-gnu.tar.gz paiml-mcp-agent-toolkit
+          cd ../../..
       
       - name: Commit and tag
         run: |
@@ -85,5 +88,5 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: v${{ steps.version.outputs.version }}
-          files: paiml-mcp-linux-x64
+          files: paiml-mcp-agent-toolkit-x86_64-unknown-linux-gnu.tar.gz
           generate_release_notes: true
