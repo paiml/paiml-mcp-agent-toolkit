@@ -1,0 +1,28 @@
+{
+  "tasks": {
+    "test": "deno test --allow-all tests/",
+    "test:e2e": "deno test --allow-all tests/e2e/",
+    "test:unit": "deno test --allow-all tests/unit/",
+    "test:watch": "deno test --allow-all --watch tests/",
+    "test:coverage": "deno test --allow-all --coverage=coverage tests/",
+    "coverage": "deno coverage coverage"
+  },
+  "test": {
+    "include": ["tests/"],
+    "exclude": ["tests/fixtures/"]
+  },
+  "fmt": {
+    "include": ["tests/", "scripts/"],
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "singleQuote": false,
+    "proseWrap": "preserve"
+  },
+  "lint": {
+    "include": ["tests/", "scripts/"],
+    "rules": {
+      "tags": ["recommended"],
+      "exclude": ["no-explicit-any"]
+    }
+  }
+}
