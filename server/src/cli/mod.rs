@@ -24,14 +24,14 @@ use tokio::io::AsyncWriteExt;
 pub(crate) struct Cli {
     /// Force specific mode (auto-detected by default)
     #[arg(long, value_enum, global = true)]
-    mode: Option<Mode>,
+    pub(crate) mode: Option<Mode>,
 
     #[command(subcommand)]
     pub(crate) command: Commands,
 }
 
 #[derive(Clone, Debug, ValueEnum)]
-enum Mode {
+pub(crate) enum Mode {
     Cli,
     Mcp,
 }
@@ -49,7 +49,7 @@ pub(crate) enum Commands {
         template: String,
 
         /// Parameters as key=value pairs
-        #[arg(short = 'p', long = "param", value_parser = parse_key_val)]
+        #[arg(short = 'p', long = "param", value_parser = args::parse_key_val)]
         params: Vec<(String, Value)>,
 
         /// Output file path
@@ -71,7 +71,7 @@ pub(crate) enum Commands {
         templates: Vec<String>,
 
         /// Parameters
-        #[arg(short = 'p', long = "param", value_parser = parse_key_val)]
+        #[arg(short = 'p', long = "param", value_parser = args::parse_key_val)]
         params: Vec<(String, Value)>,
 
         /// Parallelism level
@@ -114,7 +114,7 @@ pub(crate) enum Commands {
         uri: String,
 
         /// Parameters to validate
-        #[arg(short = 'p', long = "param", value_parser = parse_key_val)]
+        #[arg(short = 'p', long = "param", value_parser = args::parse_key_val)]
         params: Vec<(String, Value)>,
     },
 
@@ -226,20 +226,20 @@ pub(crate) enum AnalyzeCommands {
     },
 }
 
-#[derive(Clone, Debug, ValueEnum)]
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
 pub(crate) enum ContextFormat {
     Markdown,
     Json,
 }
 
-#[derive(Clone, Debug, ValueEnum)]
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
 pub(crate) enum OutputFormat {
     Table,
     Json,
     Yaml,
 }
 
-#[derive(Clone, Debug, ValueEnum)]
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
 pub(crate) enum ComplexityOutputFormat {
     /// Summary statistics only
     Summary,
@@ -841,30 +841,6 @@ async fn analyze_file_by_toolchain(
     }
 }
 
-// Zero-allocation parameter parsing for common types
-fn parse_key_val(s: &str) -> Result<(String, Value), String> {
-    let pos = s
-        .find('=')
-        .ok_or_else(|| format!("invalid KEY=value: no `=` found in `{s}`"))?;
-
-    let key = &s[..pos];
-    let val = &s[pos + 1..];
-
-    // Type inference with fast paths
-    let value = if val.is_empty() {
-        Value::Bool(true) // Treat bare flags as true
-    } else if val == "true" || val == "false" {
-        Value::Bool(val.parse().unwrap())
-    } else if let Ok(n) = val.parse::<i64>() {
-        Value::Number(n.into())
-    } else if let Ok(f) = val.parse::<f64>() {
-        Value::Number(serde_json::Number::from_f64(f).unwrap())
-    } else {
-        Value::String(val.to_string())
-    };
-
-    Ok((key.to_string(), value))
-}
 
 fn params_to_json(params: Vec<(String, Value)>) -> serde_json::Map<String, Value> {
     let mut map = serde_json::Map::new();

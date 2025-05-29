@@ -273,4 +273,10 @@ mod tests {
 
     #[path = "../tests/error_handling.rs"]
     mod error_handling;
+
+    #[path = "../tests/cli_comprehensive_tests.rs"]
+    mod cli_comprehensive_tests;
+
+    #[path = "../tests/cli_property_tests.rs"]
+    mod cli_property_tests;
 }
