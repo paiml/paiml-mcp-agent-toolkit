@@ -113,27 +113,36 @@ All GitHub Actions workflows MUST:
 
 #### Required Ubuntu Versions
 
-**NEVER use `ubuntu-latest`** - always pin to specific versions for reproducibility:
+**NEVER use `ubuntu-latest` or `ubuntu-20.04`** - always pin to specific versions for reproducibility:
 
 ```yaml
 # ✅ CORRECT - Use specific versions:
 jobs:
   release:
-    runs-on: ubuntu-20.04  # For release workflows and compatibility
+    runs-on: ubuntu-22.04  # For all workflows - standard version
   
   ci:
     runs-on: ubuntu-22.04  # For general CI/development workflows
+    
+  # For future-proofing, consider ubuntu-24.04 for new workflows
+  future_workflow:
+    runs-on: ubuntu-24.04  # When available and tested
 
-# ❌ WRONG - Never use latest:
+# ❌ WRONG - Never use these:
 jobs:
-  bad_example:
+  bad_example_1:
     runs-on: ubuntu-latest  # This can break builds unexpectedly
+  
+  bad_example_2:
+    runs-on: ubuntu-20.04  # RETIRED on 2025-04-15, will cause CI failures
 ```
 
 **Version Guidelines:**
-- **`ubuntu-20.04`**: Use for release workflows, cross-compilation, and maximum compatibility
-- **`ubuntu-22.04`**: Use for general CI, testing, and development workflows
-- **Rationale**: Pinned versions ensure reproducible builds and prevent surprise breakage from OS updates
+- **`ubuntu-22.04`**: Use for ALL workflows (releases, CI, testing, development)
+- **`ubuntu-24.04`**: Consider for new workflows when stability is confirmed
+- **NEVER `ubuntu-20.04`**: Retired on 2025-04-15, will cause workflow failures
+- **NEVER `ubuntu-latest`**: Can change unexpectedly and break reproducible builds
+- **Rationale**: Pinned versions ensure reproducible builds and prevent surprise breakage from OS updates or platform retirement
 
 #### Command Patterns
 

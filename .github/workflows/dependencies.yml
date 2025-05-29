@@ -21,7 +21,7 @@ env:
 
 jobs:
   analyze-dependencies:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       has_updates: ${{ steps.check.outputs.has_updates }}
       update_summary: ${{ steps.check.outputs.summary }}
@@ -73,7 +73,7 @@ jobs:
   update-dependencies:
     needs: analyze-dependencies
     if: needs.analyze-dependencies.outputs.has_updates == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -160,7 +160,7 @@ jobs:
 
   security-audit:
     name: Security Audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       

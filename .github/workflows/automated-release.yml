@@ -24,7 +24,7 @@ jobs:
   # Phase 1: Test and determine if release is needed
   test-and-check:
     name: Test and Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       should_release: ${{ steps.check.outputs.should_release }}
       current_version: ${{ steps.version.outputs.current_version }}
@@ -154,7 +154,7 @@ jobs:
     name: Version Bump
     needs: test-and-check
     if: needs.test-and-check.outputs.should_release == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       tag_name: ${{ steps.tag.outputs.tag_name }}
     steps:
@@ -200,9 +200,9 @@ jobs:
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
-            os: ubuntu-20.04
+            os: ubuntu-22.04
           - target: aarch64-unknown-linux-gnu
-            os: ubuntu-20.04
+            os: ubuntu-22.04
           - target: x86_64-apple-darwin
             os: macos-latest
           - target: aarch64-apple-darwin
@@ -272,7 +272,7 @@ jobs:
     name: Create Release
     needs: [test-and-check, build-binaries]
     if: needs.test-and-check.outputs.should_release == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
@@ -353,7 +353,7 @@ jobs:
   update-installer:
     name: Update Installer Script
     needs: create-release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
