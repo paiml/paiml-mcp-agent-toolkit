@@ -12,7 +12,10 @@ fn test_binary_version_flag() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("paiml-mcp-agent-toolkit"));
     // Just verify it outputs a version number in semver format
-    assert!(stdout.contains("."), "Output should contain a version number with dots");
+    assert!(
+        stdout.contains("."),
+        "Output should contain a version number with dots"
+    );
 }
 
 #[test]

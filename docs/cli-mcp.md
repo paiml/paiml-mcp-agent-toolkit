@@ -1,0 +1,911 @@
+# PAIML MCP Agent Toolkit CLI & MCP Protocol Reference
+
+This document provides comprehensive documentation for the PAIML MCP Agent Toolkit's dual-mode binary that supports both command-line interface (CLI) usage and Model Context Protocol (MCP) integration.
+
+## Table of Contents
+
+- [Binary Architecture](#binary-architecture)
+- [Installation](#installation)
+- [Usage Modes](#usage-modes)
+- [CLI Command Reference](#cli-command-reference)
+- [MCP Protocol Implementation](#mcp-protocol-implementation)
+- [Performance Characteristics](#performance-characteristics)
+- [Caching Architecture](#caching-architecture)
+- [Template System](#template-system)
+- [Integration Examples](#integration-examples)
+- [Troubleshooting](#troubleshooting)
+
+## Binary Architecture
+
+The `paiml-mcp-agent-toolkit` binary implements a dual-mode execution model:
+
+- **CLI Mode**: Direct command execution with POSIX-compliant argument parsing
+- **MCP Mode**: JSON-RPC 2.0 over STDIO for Model Context Protocol integration
+
+Mode detection occurs at runtime via terminal detection:
+
+```rust
+fn detect_execution_mode() -> ExecutionMode {
+    let is_mcp = !std::io::stdin().is_terminal() 
+        && std::env::args().len() == 1
+        || std::env::var("MCP_VERSION").is_ok();
+    
+    if is_mcp {
+        ExecutionMode::Mcp
+    } else {
+        ExecutionMode::Cli
+    }
+}
+```
+
+## Installation
+
+### Quick Install (Linux/macOS)
+
+```bash
+curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+```
+
+### Manual Installation
+
+Download the appropriate binary for your platform from the [releases page](https://github.com/paiml/paiml-mcp-agent-toolkit/releases) and add it to your PATH.
+
+### Build from Source
+
+```bash
+git clone https://github.com/paiml/paiml-mcp-agent-toolkit.git
+cd paiml-mcp-agent-toolkit
+make install
+```
+
+## Usage Modes
+
+### CLI Mode
+
+Direct command execution from terminal:
+
+```bash
+paiml-mcp-agent-toolkit generate makefile rust/cli -p project_name=my-project
+```
+
+### MCP Mode
+
+Automatic activation when used as MCP server (e.g., with Claude Code):
+
+```bash
+# Add to Claude Code
+claude mcp add paiml-toolkit ~/.local/bin/paiml-mcp-agent-toolkit
+```
+
+### Force Mode
+
+Override auto-detection:
+
+```bash
+# Force CLI mode
+paiml-mcp-agent-toolkit --mode cli list
+
+# Force MCP mode (waits for JSON-RPC input)
+paiml-mcp-agent-toolkit --mode mcp
+```
+
+## CLI Command Reference
+
+### Command: `generate`
+
+Generate a single template with parameter substitution.
+
+#### Synopsis
+
+```bash
+paiml-mcp-agent-toolkit generate <CATEGORY> <PATH> [OPTIONS]
+```
+
+#### Arguments
+
+- `<CATEGORY>` - Template category: `makefile`, `readme`, `gitignore`
+- `<PATH>` - Toolchain path: `rust/cli`, `deno/cli`, `python-uv/cli`
+
+#### Options
+
+- `-p, --param <KEY=VALUE>` - Template parameters (repeatable)
+- `-o, --output <PATH>` - Output file path (default: stdout)
+- `--create-dirs` - Create parent directories if needed
+
+#### Parameter Type Inference
+
+The CLI implements automatic type inference for parameters:
+
+- `"true"` / `"false"` → Boolean
+- Valid integers → Number
+- Valid floats → Number
+- Everything else → String
+- Empty value → `true` (for flags)
+
+#### Examples
+
+```bash
+# Basic generation with typed parameters
+paiml-mcp-agent-toolkit generate makefile rust/cli \
+  -p project_name=servo \
+  -p has_tests=true \
+  -p max_jobs=8
+
+# Output to specific path with directory creation
+paiml-mcp-agent-toolkit generate readme deno/cli \
+  -p project_name=fresh \
+  -o docs/README.md \
+  --create-dirs
+```
+
+#### MCP Equivalent
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "generate_template",
+    "arguments": {
+      "resource_uri": "template://makefile/rust/cli",
+      "parameters": {
+        "project_name": "servo",
+        "has_tests": true,
+        "max_jobs": 8
+      }
+    }
+  }
+}
+```
+
+### Command: `scaffold`
+
+Generate multiple templates at once for a complete project setup.
+
+#### Synopsis
+
+```bash
+paiml-mcp-agent-toolkit scaffold <TOOLCHAIN> [OPTIONS]
+```
+
+#### Arguments
+
+- `<TOOLCHAIN>` - Target toolchain: `rust`, `deno`, `python-uv`
+
+#### Options
+
+- `-t, --templates <TEMPLATES>` - Comma-separated list of templates
+- `-p, --param <KEY=VALUE>` - Template parameters (repeatable)
+- `--parallel <N>` - Number of parallel file writes (default: CPU count)
+
+#### Examples
+
+```bash
+# Scaffold a complete Rust project
+paiml-mcp-agent-toolkit scaffold rust \
+  --templates makefile,readme,gitignore \
+  -p project_name=my-project \
+  -p author="John Doe"
+
+# Scaffold with custom parallelism
+paiml-mcp-agent-toolkit scaffold deno \
+  --templates makefile,readme \
+  -p project_name=my-app \
+  --parallel 4
+```
+
+### Command: `list`
+
+Display all available templates with filtering options.
+
+#### Synopsis
+
+```bash
+paiml-mcp-agent-toolkit list [OPTIONS]
+```
+
+#### Options
+
+- `--toolchain <TOOLCHAIN>` - Filter by toolchain
+- `--category <CATEGORY>` - Filter by category
+- `--format <FORMAT>` - Output format: `table`, `json`, `yaml` (default: table)
+
+#### Examples
+
+```bash
+# List all templates
+paiml-mcp-agent-toolkit list
+
+# Filter by toolchain with JSON output
+paiml-mcp-agent-toolkit list --toolchain rust --format json
+```
+
+### Command: `search`
+
+Find templates by searching in names, descriptions, and parameters.
+
+#### Synopsis
+
+```bash
+paiml-mcp-agent-toolkit search <QUERY> [OPTIONS]
+```
+
+#### Arguments
+
+- `<QUERY>` - Search query string
+
+#### Options
+
+- `--toolchain <TOOLCHAIN>` - Filter results by toolchain
+- `--limit <N>` - Maximum number of results (default: 20)
+
+### Command: `validate`
+
+Validate template parameters before generation.
+
+#### Synopsis
+
+```bash
+paiml-mcp-agent-toolkit validate <URI> [OPTIONS]
+```
+
+#### Arguments
+
+- `<URI>` - Template URI (e.g., `template://makefile/rust/cli`)
+
+#### Options
+
+- `-p, --param <KEY=VALUE>` - Parameters to validate
+
+### Command: `context`
+
+Generate project context using Abstract Syntax Tree (AST) analysis.
+
+#### Synopsis
+
+```bash
+paiml-mcp-agent-toolkit context <TOOLCHAIN> [OPTIONS]
+```
+
+#### Arguments
+
+- `<TOOLCHAIN>` - Target toolchain: `rust`, `deno`, `python-uv`
+
+#### Options
+
+- `-p, --project-path <PATH>` - Project path to analyze (default: .)
+- `-o, --output <PATH>` - Output file path
+- `--format <FORMAT>` - Output format: `markdown`, `json` (default: markdown)
+
+#### Features
+
+- **Language Support**:
+  - Rust: Functions, structs, enums, traits, implementations
+  - TypeScript/JavaScript: Functions, classes, interfaces, types
+  - Python: Functions, classes, imports
+
+- **Performance**:
+  - Persistent cache with 5-minute TTL
+  - Cross-session caching in `~/.cache/paiml-mcp-agent-toolkit/`
+  - Cache hit rates typically exceed 70%
+
+### Command: `analyze complexity`
+
+Performs static complexity analysis using dual algorithms:
+- **McCabe Cyclomatic Complexity**: M = E - N + 2P (graph-theoretic)
+- **Sonar Cognitive Complexity**: Context-aware nesting analysis
+
+#### Synopsis
+
+```bash
+paiml-mcp-agent-toolkit analyze complexity [OPTIONS]
+```
+
+#### Options
+
+- `-p, --project-path <PATH>` - Project path to analyze (default: .)
+- `--toolchain <TOOLCHAIN>` - Force specific toolchain (auto-detected by default)
+- `--format <FORMAT>` - Output format: `summary`, `full`, `json`, `sarif`
+- `-o, --output <PATH>` - Output file path
+- `--max-cyclomatic <N>` - Custom cyclomatic complexity threshold
+- `--max-cognitive <N>` - Custom cognitive complexity threshold
+- `--include <PATTERN>` - Include file patterns (e.g., "**/*.rs")
+
+#### Performance Profile
+
+- **Parsing**: Reuses AST cache (5-minute TTL)
+- **Analysis**: <1ms per KLOC
+- **Memory**: O(n) where n = AST nodes
+- **Cache Key**: SHA-256(file_path + mtime + size)
+
+### Command: `analyze churn`
+
+Analyze code change frequency and patterns to identify maintenance hotspots.
+
+#### Synopsis
+
+```bash
+paiml-mcp-agent-toolkit analyze churn [OPTIONS]
+```
+
+#### Options
+
+- `-p, --project-path <PATH>` - Project path to analyze (default: .)
+- `-d, --days <N>` - Number of days to analyze (default: 30)
+- `--format <FORMAT>` - Output format: `summary`, `markdown`, `json`, `csv`
+- `-o, --output <PATH>` - Output file path
+
+### Command: `analyze dag`
+
+Generate dependency graphs in Mermaid format for visualizing code structure.
+
+#### Synopsis
+
+```bash
+paiml-mcp-agent-toolkit analyze dag [OPTIONS]
+```
+
+#### Options
+
+- `--dag-type <TYPE>` - Type of graph to generate:
+  - `call-graph` - Function call relationships (default)
+  - `import-graph` - Module import dependencies
+  - `inheritance` - Class inheritance hierarchies
+  - `full-dependency` - Complete dependency analysis
+- `-p, --project-path <PATH>` - Project path to analyze (default: .)
+- `-o, --output <PATH>` - Output file path
+- `--max-depth <N>` - Maximum depth for graph traversal
+- `--filter-external` - Filter out external dependencies
+- `--show-complexity` - Include complexity metrics in the graph
+
+## MCP Protocol Implementation
+
+### Transport Layer
+
+- Protocol: JSON-RPC 2.0
+- Transport: STDIO (stdin/stdout)
+- Encoding: UTF-8
+- Message Framing: Newline-delimited
+
+### Message Flow
+
+```
+Client                    Server
+|                         |
+|-- initialize -->        |
+|                         |
+|<-- capabilities --      |
+|                         |
+|-- tools/call -->        |
+|                         |
+|<-- result/error --      |
+```
+
+### Available MCP Methods
+
+- `initialize` - Initialize connection and get capabilities
+- `tools/list` - List available tools
+- `tools/call` - Execute a tool
+- `resources/list` - List available templates
+- `resources/read` - Read template metadata
+- `prompts/list` - List available prompts
+
+### Error Codes
+
+| Code    | Constant            | Description                      |
+|---------|---------------------|----------------------------------|
+| -32700  | PARSE_ERROR         | Invalid JSON                     |
+| -32600  | INVALID_REQUEST     | Invalid method                   |
+| -32601  | METHOD_NOT_FOUND    | Unknown method                   |
+| -32602  | INVALID_PARAMS      | Invalid parameters               |
+| -32001  | TEMPLATE_NOT_FOUND  | Template URI not found           |
+| -32002  | VALIDATION_ERROR    | Parameter validation failed      |
+| -32003  | RENDER_ERROR        | Template rendering failed        |
+
+### Available MCP Tools
+
+The MCP server exposes the following tools via the `tools/call` method:
+
+#### `generate_template`
+Generate templates with parameter substitution for project files.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "generate_template",
+    "arguments": {
+      "resource_uri": "template://makefile/rust/cli",
+      "parameters": {
+        "project_name": "my-project",
+        "has_tests": true
+      }
+    }
+  }
+}
+```
+
+#### `analyze_complexity`
+Analyze code complexity using McCabe Cyclomatic and Sonar Cognitive algorithms.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_complexity",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "toolchain": "rust",
+      "format": "summary"
+    }
+  }
+}
+```
+
+#### `analyze_code_churn`
+Analyze git history for code churn patterns and maintenance hotspots.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_code_churn",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "period_days": 30,
+      "format": "summary"
+    }
+  }
+}
+```
+
+#### `analyze_dag`
+Generate dependency graphs in Mermaid format for code visualization.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_dag",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "dag_type": "call-graph",
+      "show_complexity": true
+    }
+  }
+}
+```
+
+#### `generate_context`
+Generate project context using AST analysis with persistent caching.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "generate_context",
+    "arguments": {
+      "toolchain": "rust",
+      "project_path": "/path/to/project",
+      "format": "markdown"
+    }
+  }
+}
+```
+
+#### `get_server_info`
+Get information about the PAIML MCP Agent Toolkit server.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "get_server_info",
+    "arguments": {}
+  }
+}
+```
+
+#### `list_templates`
+List available templates with optional filtering.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "list_templates",
+    "arguments": {
+      "toolchain": "rust",
+      "category": "makefile"
+    }
+  }
+}
+```
+
+#### `scaffold_project`
+Scaffold a complete project with multiple templates.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "scaffold_project",
+    "arguments": {
+      "toolchain": "rust",
+      "templates": ["makefile", "readme", "gitignore"],
+      "parameters": {
+        "project_name": "my-project"
+      }
+    }
+  }
+}
+```
+
+#### `search_templates`
+Search for templates by query string.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "search_templates",
+    "arguments": {
+      "query": "rust",
+      "toolchain": "rust"
+    }
+  }
+}
+```
+
+#### `validate_template`
+Validate template parameters before generation.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "validate_template",
+    "arguments": {
+      "resource_uri": "template://makefile/rust/cli",
+      "parameters": {
+        "project_name": "my-project"
+      }
+    }
+  }
+}
+```
+
+### Batch Request Support
+
+```json
+[
+  {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+  {"jsonrpc": "2.0", "id": 2, "method": "resources/list"}
+]
+```
+
+## Performance Characteristics
+
+| Operation                | Latency          | Memory      | Cache Hit      |
+|--------------------------|------------------|-------------|----------------|
+| Template Rendering       | <3ms             | 512KB       | N/A            |
+| AST Analysis (cold)      | 50-200ms/file    | 2MB/KLOC    | 0%             |
+| AST Analysis (warm)      | <10ms            | 128KB       | >70%           |
+| Complexity Analysis      | <1ms/KLOC        | 1MB         | Inherits AST   |
+| DAG Generation           | 5-50ms           | 4MB         | Inherits AST   |
+| Mode Detection           | 13ns             | 0           | N/A            |
+| Startup Time             | 7-8ms            | 15MB        | N/A            |
+
+## Caching Architecture
+
+### Cache Hierarchy
+
+1. **Session Cache** (in-memory LRU)
+   - Capacity: 100 entries per type
+   - TTL: Configurable per strategy
+   - Eviction: LRU with memory pressure threshold
+
+2. **Persistent Cache** (disk-based)
+   - Location: `~/.cache/paiml-mcp-agent-toolkit/`
+   - Format: MessagePack serialization
+   - Compression: LZ4 for entries >4KB
+
+### Cache Strategies
+
+| Strategy  | TTL     | Max Size | Key Components               |
+|-----------|---------|----------|------------------------------|
+| AST       | 5 min   | 100      | path + mtime + size          |
+| Template  | 30 min  | 50       | URI + version                |
+| DAG       | 2 min   | 20       | project + type + commit      |
+| Churn     | 10 min  | 10       | path + branch + HEAD         |
+
+## Template System
+
+### Embedded Template System
+
+Templates are compiled into the binary using `include_str!` at build time, ensuring:
+- Zero runtime dependencies
+- Fast startup (<10ms)
+- Single binary distribution
+
+### Template URI Scheme
+
+```
+template://[category]/[toolchain]/[variant]
+         │      │           │          │
+         │      │           │          └─> Currently always "cli"
+         │      │           └─> rust, deno, python-uv
+         │      └─> makefile, readme, gitignore  
+         └─> URI scheme identifier
+```
+
+### Available Templates
+
+- **Makefile Templates**: Build automation for all toolchains
+- **README Templates**: Professional documentation
+- **Gitignore Templates**: Language-specific ignore patterns
+
+Each template supports customizable parameters with validation.
+
+## Integration Examples
+
+### Shell Pipeline Integration
+
+```bash
+# Generate multiple files with parameter reuse
+PARAMS="-p project_name=tokio -p has_tests=true"
+paiml-mcp-agent-toolkit generate makefile rust/cli $PARAMS > Makefile
+paiml-mcp-agent-toolkit generate readme rust/cli $PARAMS > README.md
+
+# Complexity analysis with jq processing
+paiml-mcp-agent-toolkit analyze complexity --format json | \
+  jq '.files[] | select(.complexity.cyclomatic > 10)'
+```
+
+### CI/CD Integration
+
+```yaml
+# GitHub Actions
+- name: Analyze Complexity
+  run: |
+    paiml-mcp-agent-toolkit analyze complexity \
+      --format sarif \
+      --output complexity.sarif
+    
+- name: Upload SARIF
+  uses: github/codeql-action/upload-sarif@v2
+  with:
+    sarif_file: complexity.sarif
+```
+
+### IDE Integration
+
+```jsonc
+// VS Code tasks.json
+{
+  "label": "Generate Project Context",
+  "type": "shell",
+  "command": "paiml-mcp-agent-toolkit",
+  "args": ["context", "rust", "--format", "json"],
+  "problemMatcher": []
+}
+```
+
+### Claude Code Integration
+
+```bash
+# Add MCP server
+claude mcp add paiml-toolkit ~/.local/bin/paiml-mcp-agent-toolkit
+
+# Use in Claude Code
+# "Generate a Makefile for my Rust project"
+# "Analyze complexity of this codebase"
+# "Show me code hotspots from the last month"
+```
+
+## Troubleshooting
+
+### Debug Mode
+
+Enable detailed logging with trace-level output:
+
+```bash
+RUST_LOG=paiml_mcp_agent_toolkit=trace paiml-mcp-agent-toolkit generate makefile rust/cli
+```
+
+### Cache Diagnostics
+
+```bash
+# View cache statistics (shown during context generation)
+paiml-mcp-agent-toolkit context rust
+
+# Clear cache manually
+rm -rf ~/.cache/paiml-mcp-agent-toolkit/
+
+# Inspect cache entries
+ls -la ~/.cache/paiml-mcp-agent-toolkit/
+```
+
+### Common Issues
+
+#### Mode Detection Problems
+
+If the tool runs in the wrong mode:
+
+```bash
+# Force CLI mode
+paiml-mcp-agent-toolkit --mode cli list
+
+# Check detection
+echo "test" | paiml-mcp-agent-toolkit  # Should wait for JSON-RPC
+paiml-mcp-agent-toolkit list           # Should show CLI output
+```
+
+#### Performance Issues
+
+For slow performance:
+
+1. Check cache effectiveness during context generation
+2. Use `--include` patterns to limit file analysis
+3. Ensure sufficient disk space for cache
+
+#### Template Not Found
+
+```bash
+# List all available templates
+paiml-mcp-agent-toolkit list
+
+# Verify template URI format
+paiml-mcp-agent-toolkit validate template://makefile/rust/cli
+```
+
+### Performance Profiling
+
+```bash
+# Time command execution
+time paiml-mcp-agent-toolkit analyze complexity
+
+# Memory usage
+/usr/bin/time -v paiml-mcp-agent-toolkit context rust
+
+# CPU profiling with perf (Linux)
+perf record -g paiml-mcp-agent-toolkit analyze complexity
+perf report
+```
+
+## Environment Variables
+
+- `RUST_LOG` - Set logging level (e.g., `RUST_LOG=debug`)
+- `MCP_VERSION` - Forces MCP mode when set
+- `NO_COLOR` - Disable colored output
+
+## Documentation Synchronization
+
+This documentation is kept in sync with the implementation through integration tests that verify all documented features exist and work as described.
+
+### Implementation Details
+
+The project uses integration tests to ensure this documentation stays accurate:
+
+1. **CLI Documentation Verification** (`server/tests/cli_documentation_sync.rs`)
+   - Parses this file to extract all documented CLI commands
+   - Runs `paiml-mcp-agent-toolkit --help` and verifies all commands are present
+   - Runs each command with `--help` to verify subcommand documentation
+   - Compares documented parameters with actual CLI argument parsing
+
+2. **MCP Tools Documentation Verification** (`server/tests/mcp_documentation_sync.rs`)
+   - Parses this file to extract all documented MCP tools
+   - Starts MCP server and sends `tools/list` request
+   - Verifies all documented tools exist in the response
+   - Checks tool descriptions and parameter schemas match
+
+3. **Example Verification** (`server/tests/documentation_examples.rs`)
+   - Extracts code examples from this documentation
+   - Validates CLI command structure
+   - Verifies JSON-RPC examples are well-formed
+   - Checks template URIs follow the correct format
+
+### Test Data Structures
+
+The tests use these structures to parse documentation:
+
+```rust
+#[derive(Debug, PartialEq)]
+struct DocumentedCommand {
+    name: String,
+    description: String,
+    subcommands: Vec<String>,
+    arguments: Vec<String>,
+    options: Vec<String>,
+}
+
+#[derive(Debug, PartialEq)]
+struct DocumentedTool {
+    name: String,
+    description: String,
+    required_params: Vec<String>,
+    optional_params: Vec<String>,
+}
+```
+
+### Running Documentation Sync Tests
+
+```bash
+# Run only documentation sync tests
+cargo test --test cli_documentation_sync
+cargo test --test mcp_documentation_sync
+cargo test --test documentation_examples
+
+# Run all documentation tests
+cargo test doc_sync
+```
+
+### CI Integration
+
+The CI workflow fails if documentation is out of sync:
+
+```yaml
+# .github/workflows/ci.yml
+- name: Verify Documentation Sync
+  run: |
+    cargo test doc_sync
+    if [ $? -ne 0 ]; then
+      echo "Documentation is out of sync with implementation!"
+      echo "Please update docs/cli-mcp.md to match the current implementation"
+      exit 1
+    fi
+```
+
+### Updating Documentation
+
+When tests fail due to documentation drift:
+
+1. **Review the test output** - It will show exactly what's missing or incorrect
+2. **Update this file** - Add/modify the documentation to match implementation
+3. **Run tests again** - Verify the documentation now matches
+4. **Commit both changes** - Include implementation and documentation updates together
+
+### Documentation Parsing Rules
+
+The tests parse this markdown file with these rules:
+
+1. **CLI Commands**: Extracted from the "CLI Command Reference" section
+   - Command names from `### Command: \`command-name\`` headers
+   - Descriptions from the first paragraph after the header
+   - Parameters from code blocks after "Options:" or "Arguments:"
+
+2. **MCP Tools**: Extracted from documentation and verified against actual implementation
+   - Tool names from MCP-related sections
+   - The tests run the MCP server and compare with documented tools
+
+3. **Code Examples**: Extracted from fenced code blocks
+   - Blocks marked with ` ```bash` are validated for command structure
+   - Blocks containing `jsonrpc` are validated as proper JSON-RPC
+   - Template URIs are validated for correct format
+
+## See Also
+
+- [Main README](../README.md) - Project overview and quick start
+- [CLAUDE.md](../CLAUDE.md) - Development guidelines
+- [GitHub Issues](https://github.com/paiml/paiml-mcp-agent-toolkit/issues) - Report bugs or request features

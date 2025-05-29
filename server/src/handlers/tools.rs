@@ -51,6 +51,8 @@ pub async fn handle_tool_call<T: TemplateServerTrait>(
         }
         "analyze_code_churn" => handle_analyze_code_churn(request.id, tool_params.arguments).await,
         "analyze_complexity" => handle_analyze_complexity(request.id, tool_params.arguments).await,
+        "analyze_dag" => handle_analyze_dag(request.id, tool_params.arguments).await,
+        "generate_context" => handle_generate_context(request.id, tool_params.arguments).await,
         _ => McpResponse::error(
             request.id,
             -32602,
@@ -770,6 +772,202 @@ async fn handle_analyze_complexity(
         "toolchain": detected_toolchain,
         "files_analyzed": file_count,
         "format": format,
+    });
+
+    McpResponse::success(request_id, result)
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AnalyzeDagArgs {
+    project_path: Option<String>,
+    dag_type: Option<String>,
+    max_depth: Option<usize>,
+    filter_external: Option<bool>,
+    show_complexity: Option<bool>,
+}
+
+async fn handle_analyze_dag(
+    request_id: serde_json::Value,
+    arguments: serde_json::Value,
+) -> McpResponse {
+    let args: AnalyzeDagArgs = match serde_json::from_value(arguments) {
+        Ok(a) => a,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32602,
+                format!("Invalid analyze_dag arguments: {}", e),
+            );
+        }
+    };
+
+    let project_path = args
+        .project_path
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+    // Analyze the project to get AST information
+    use crate::cli::DagType;
+    use crate::services::{
+        context::analyze_project,
+        dag_builder::{
+            filter_call_edges, filter_import_edges, filter_inheritance_edges, DagBuilder,
+        },
+        mermaid_generator::{MermaidGenerator, MermaidOptions},
+    };
+
+    // We'll analyze as Rust by default, but could be enhanced to detect toolchain
+    let project_context = match analyze_project(&project_path, "rust").await {
+        Ok(context) => context,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32000,
+                format!("Failed to analyze project: {}", e),
+            );
+        }
+    };
+
+    // Build the dependency graph
+    let graph = DagBuilder::build_from_project(&project_context);
+
+    // Parse dag type
+    let dag_type = args
+        .dag_type
+        .as_deref()
+        .and_then(|t| match t {
+            "call-graph" => Some(DagType::CallGraph),
+            "import-graph" => Some(DagType::ImportGraph),
+            "inheritance" => Some(DagType::Inheritance),
+            "full-dependency" => Some(DagType::FullDependency),
+            _ => None,
+        })
+        .unwrap_or(DagType::CallGraph);
+
+    // Apply filters based on DAG type
+    let filtered_graph = match dag_type {
+        DagType::CallGraph => filter_call_edges(graph),
+        DagType::ImportGraph => filter_import_edges(graph),
+        DagType::Inheritance => filter_inheritance_edges(graph),
+        DagType::FullDependency => graph,
+    };
+
+    // Generate Mermaid output
+    let generator = MermaidGenerator::new(MermaidOptions {
+        max_depth: args.max_depth,
+        filter_external: args.filter_external.unwrap_or(false),
+        show_complexity: args.show_complexity.unwrap_or(false),
+        ..Default::default()
+    });
+
+    let mermaid_output = generator.generate(&filtered_graph);
+
+    // Add stats as comments
+    let output_with_stats = format!(
+        "{}\n%% Graph Statistics:\n%% Nodes: {}\n%% Edges: {}\n",
+        mermaid_output,
+        filtered_graph.nodes.len(),
+        filtered_graph.edges.len()
+    );
+
+    let result = json!({
+        "content": [{
+            "type": "text",
+            "text": output_with_stats
+        }],
+        "graph_type": format!("{:?}", dag_type),
+        "nodes": filtered_graph.nodes.len(),
+        "edges": filtered_graph.edges.len(),
+    });
+
+    McpResponse::success(request_id, result)
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct GenerateContextArgs {
+    toolchain: String,
+    project_path: Option<String>,
+    format: Option<String>,
+}
+
+async fn handle_generate_context(
+    request_id: serde_json::Value,
+    arguments: serde_json::Value,
+) -> McpResponse {
+    let args: GenerateContextArgs = match serde_json::from_value(arguments) {
+        Ok(a) => a,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32602,
+                format!("Invalid generate_context arguments: {}", e),
+            );
+        }
+    };
+
+    let project_path = args
+        .project_path
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+    use crate::services::cache::{config::CacheConfig, persistent_manager::PersistentCacheManager};
+    use crate::services::context::{
+        analyze_project_with_persistent_cache, format_context_as_markdown,
+    };
+
+    // Create a persistent cache manager for cross-session caching
+    let cache_config = CacheConfig::default();
+    let cache_manager = match PersistentCacheManager::with_default_dir(cache_config) {
+        Ok(manager) => Arc::new(manager),
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32000,
+                format!("Failed to create cache manager: {}", e),
+            );
+        }
+    };
+
+    // Analyze the project with caching
+    let context = match analyze_project_with_persistent_cache(
+        &project_path,
+        &args.toolchain,
+        Some(cache_manager.clone()),
+    )
+    .await
+    {
+        Ok(ctx) => ctx,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32000,
+                format!("Failed to analyze project: {}", e),
+            );
+        }
+    };
+
+    // Get cache diagnostics
+    let diagnostics = cache_manager.get_diagnostics();
+
+    // Format the output
+    let format = args.format.as_deref().unwrap_or("markdown");
+    let content = match format {
+        "json" => serde_json::to_string_pretty(&context).unwrap_or_default(),
+        _ => format_context_as_markdown(&context), // default to markdown
+    };
+
+    let result = json!({
+        "content": [{
+            "type": "text",
+            "text": content
+        }],
+        "toolchain": args.toolchain,
+        "format": format,
+        "cache_diagnostics": {
+            "hit_rate": diagnostics.effectiveness.overall_hit_rate,
+            "memory_efficiency": diagnostics.effectiveness.memory_efficiency,
+            "time_saved_ms": diagnostics.effectiveness.time_saved_ms,
+        }
     });
 
     McpResponse::success(request_id, result)

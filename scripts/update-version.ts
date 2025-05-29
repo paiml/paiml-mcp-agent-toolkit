@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-run
 
 /**
  * Centralized version management script
@@ -20,11 +20,6 @@ const VERSION_UPDATES: VersionUpdate[] = [
   },
   {
     file: "server/Cargo.toml",
-    pattern: /^version = ".*"$/m,
-    replacement: (v) => `version = "${v}"`,
-  },
-  {
-    file: "installer-macro/Cargo.toml",
     pattern: /^version = ".*"$/m,
     replacement: (v) => `version = "${v}"`,
   },

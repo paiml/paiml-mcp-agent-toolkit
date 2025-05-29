@@ -17,7 +17,7 @@ env:
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       
@@ -78,9 +78,101 @@ jobs:
           path: server/coverage/
         if: always()
 
+  documentation-sync:
+    name: Documentation Sync Tests
+    runs-on: ubuntu-22.04
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Download binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: paiml-mcp-agent-toolkit-linux
+          path: server/target/release/
+      
+      - name: Make binary executable
+        run: chmod +x server/target/release/paiml-mcp-agent-toolkit
+      
+      - name: Run documentation sync tests
+        run: |
+          echo "📚 Running documentation synchronization tests..."
+          cd server
+          cargo test --test cli_documentation_sync
+          cargo test --test mcp_documentation_sync
+          cargo test --test documentation_examples
+      
+      - name: Verify all documentation tests pass
+        run: |
+          cd server
+          cargo test doc_sync 2>&1 | tee doc_sync_results.txt
+          if grep -q "test result: FAILED" doc_sync_results.txt; then
+            echo "❌ Documentation is out of sync with implementation!"
+            echo "Please update docs/cli-mcp.md to match the current implementation"
+            exit 1
+          else
+            echo "✅ Documentation is in sync with implementation"
+          fi
+
+  dogfooding:
+    name: Dogfooding - Test Our Own Tools
+    runs-on: ubuntu-22.04
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Deno for dogfooding script
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      
+      - name: Download binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: paiml-mcp-agent-toolkit-linux
+          path: server/target/release/
+      
+      - name: Make binary executable
+        run: chmod +x server/target/release/paiml-mcp-agent-toolkit
+      
+      - name: Dogfood - Use our own tools for CI metrics
+        run: |
+          echo "🐕 Running dogfooding: Using our own MCP toolkit to analyze our codebase"
+          make dogfood-ci
+      
+      - name: Upload dogfooding metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: dogfooding-metrics
+          path: artifacts/dogfooding/
+        if: always()
+      
+      - name: Display metrics summary
+        run: |
+          echo "📊 Dogfooding Results:"
+          echo "====================="
+          if [ -f artifacts/dogfooding/complexity-latest.txt ]; then
+            echo "🔍 Complexity Analysis:"
+            head -20 artifacts/dogfooding/complexity-latest.txt
+          fi
+          echo ""
+          if [ -f artifacts/dogfooding/churn-latest.txt ]; then
+            echo "🔄 Code Churn (Last 7 Days):"
+            head -10 artifacts/dogfooding/churn-latest.txt
+          fi
+          echo ""
+          if [ -f artifacts/dogfooding/dag-latest.mmd ]; then
+            echo "🔀 Dependency Graph Generated:"
+            wc -l artifacts/dogfooding/dag-latest.mmd
+          fi
+        if: always()
+
   security:
     name: Security Audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       

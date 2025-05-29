@@ -186,28 +186,91 @@ pub async fn handle_tools_list<T: TemplateServerTrait>(
                 },
                 {
                     "name": "analyze_complexity",
-                    "description": "Analyze code complexity and detect maintainability issues",
+                    "description": "Analyze code complexity using McCabe Cyclomatic and Sonar Cognitive algorithms. Supports multiple output formats including SARIF for IDE integration.",
                     "inputSchema": {
                         "type": "object",
                         "properties": {
                             "project_path": {
                                 "type": "string",
-                                "description": "Path to the project to analyze"
+                                "description": "Path to the project to analyze (defaults to current directory)"
                             },
-                            "include_patterns": {
+                            "toolchain": {
+                                "type": "string",
+                                "description": "Toolchain to use (rust, deno, python-uv). Auto-detected if not specified"
+                            },
+                            "format": {
+                                "type": "string",
+                                "enum": ["summary", "full", "json", "sarif"],
+                                "description": "Output format (default: summary)"
+                            },
+                            "max_cyclomatic": {
+                                "type": "integer",
+                                "description": "Custom cyclomatic complexity threshold"
+                            },
+                            "max_cognitive": {
+                                "type": "integer",
+                                "description": "Custom cognitive complexity threshold"
+                            },
+                            "include": {
                                 "type": "array",
                                 "items": { "type": "string" },
                                 "description": "File patterns to include in analysis"
-                            },
-                            "thresholds": {
-                                "type": "object",
-                                "properties": {
-                                    "cyclomatic": { "type": "integer" },
-                                    "cognitive": { "type": "integer" }
-                                },
-                                "description": "Custom complexity thresholds"
                             }
                         }
+                    }
+                },
+                {
+                    "name": "analyze_dag",
+                    "description": "Generate dependency graphs in Mermaid format for visualizing code structure and dependencies",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "project_path": {
+                                "type": "string",
+                                "description": "Path to analyze (defaults to current directory)"
+                            },
+                            "dag_type": {
+                                "type": "string",
+                                "enum": ["call-graph", "import-graph", "inheritance", "full-dependency"],
+                                "description": "Type of graph to generate (default: call-graph)"
+                            },
+                            "max_depth": {
+                                "type": "integer",
+                                "description": "Maximum depth for graph traversal"
+                            },
+                            "filter_external": {
+                                "type": "boolean",
+                                "description": "Filter out external dependencies"
+                            },
+                            "show_complexity": {
+                                "type": "boolean",
+                                "description": "Include complexity metrics in the graph"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "generate_context",
+                    "description": "Generate project context using Abstract Syntax Tree (AST) analysis. Features persistent caching for improved performance.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "toolchain": {
+                                "type": "string",
+                                "enum": ["rust", "deno", "python-uv"],
+                                "description": "Target toolchain for analysis"
+                            },
+                            "project_path": {
+                                "type": "string",
+                                "description": "Path to analyze (defaults to current directory)"
+                            },
+                            "format": {
+                                "type": "string",
+                                "enum": ["markdown", "json"],
+                                "description": "Output format (default: markdown)"
+                            }
+                        },
+                        "required": ["toolchain"]
                     }
                 }
             ]

@@ -1,28 +1,41 @@
 use crate::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
 use crate::services::context::{AstItem, FileContext, ProjectContext};
+use std::collections::HashMap;
 
 pub struct DagBuilder {
     graph: DependencyGraph,
+    // Track functions by name for call resolution
+    function_map: HashMap<String, String>, // function_name -> full_id
+    // Track types for inheritance resolution
+    type_map: HashMap<String, String>, // type_name -> full_id
 }
 
 impl DagBuilder {
     pub fn new() -> Self {
         Self {
             graph: DependencyGraph::new(),
+            function_map: HashMap::new(),
+            type_map: HashMap::new(),
         }
     }
 
     pub fn build_from_project(project: &ProjectContext) -> DependencyGraph {
         let mut builder = Self::new();
 
+        // First pass: collect all nodes and build lookup maps
         for file in &project.files {
-            builder.process_file_context(file);
+            builder.collect_nodes(file);
+        }
+
+        // Second pass: create edges based on relationships
+        for file in &project.files {
+            builder.process_relationships(file);
         }
 
         builder.graph
     }
 
-    fn process_file_context(&mut self, file: &FileContext) {
+    fn collect_nodes(&mut self, file: &FileContext) {
         for item in &file.items {
             match item {
                 AstItem::Function {
@@ -31,14 +44,16 @@ impl DagBuilder {
                     visibility: _,
                     is_async: _,
                 } => {
+                    let id = format!("{}::{}", self.normalize_path(&file.path), name);
                     self.add_node(NodeInfo {
-                        id: format!("{}::{}", file.path, name),
+                        id: id.clone(),
                         label: name.clone(),
                         node_type: NodeType::Function,
                         file_path: file.path.clone(),
                         line_number: *line,
                         complexity: self.calculate_complexity(item),
                     });
+                    self.function_map.insert(name.clone(), id);
                 }
                 AstItem::Struct {
                     name,
@@ -47,36 +62,41 @@ impl DagBuilder {
                     derives: _,
                     visibility: _,
                 } => {
+                    let id = format!("{}::{}", self.normalize_path(&file.path), name);
                     self.add_node(NodeInfo {
-                        id: format!("{}::{}", file.path, name),
+                        id: id.clone(),
                         label: name.clone(),
                         node_type: NodeType::Class,
                         file_path: file.path.clone(),
                         line_number: *line,
                         complexity: self.calculate_complexity(item),
                     });
+                    self.type_map.insert(name.clone(), id);
                 }
                 AstItem::Trait {
                     name,
                     line,
                     visibility: _,
                 } => {
+                    let id = format!("{}::{}", self.normalize_path(&file.path), name);
                     self.add_node(NodeInfo {
-                        id: format!("{}::{}", file.path, name),
+                        id: id.clone(),
                         label: name.clone(),
                         node_type: NodeType::Trait,
                         file_path: file.path.clone(),
                         line_number: *line,
                         complexity: 1,
                     });
+                    self.type_map.insert(name.clone(), id);
                 }
                 AstItem::Module {
                     name,
                     line,
                     visibility: _,
                 } => {
+                    let id = format!("{}::{}", self.normalize_path(&file.path), name);
                     self.add_node(NodeInfo {
-                        id: format!("{}::{}", file.path, name),
+                        id: id.clone(),
                         label: name.clone(),
                         node_type: NodeType::Module,
                         file_path: file.path.clone(),
@@ -84,22 +104,58 @@ impl DagBuilder {
                         complexity: 1,
                     });
                 }
+                _ => {}
+            }
+        }
+    }
+
+    fn process_relationships(&mut self, file: &FileContext) {
+        // Create module node for the file itself
+        let file_module_id = self.normalize_path(&file.path);
+        self.add_node(NodeInfo {
+            id: file_module_id.clone(),
+            label: self.extract_module_name(&file.path),
+            node_type: NodeType::Module,
+            file_path: file.path.clone(),
+            line_number: 0,
+            complexity: 1,
+        });
+
+        for item in &file.items {
+            match item {
                 AstItem::Use { path, line: _ } => {
-                    // Create edges for imports
-                    let from_module = self.get_current_module(&file.path);
-                    self.add_edge(Edge {
-                        from: from_module.clone(),
-                        to: path.clone(),
-                        edge_type: EdgeType::Imports,
-                        weight: 1,
-                    });
+                    // Create import edges from the file module to imported items
+                    if let Some(target_id) = self.resolve_import_path(path) {
+                        self.add_edge(Edge {
+                            from: file_module_id.clone(),
+                            to: target_id,
+                            edge_type: EdgeType::Imports,
+                            weight: 1,
+                        });
+                    }
+                }
+                AstItem::Impl {
+                    type_name,
+                    trait_name,
+                    ..
+                } => {
+                    // Create inheritance edges for trait implementations
+                    if let (Some(trait_name), Some(struct_id)) =
+                        (trait_name.as_ref(), self.type_map.get(type_name))
+                    {
+                        if let Some(trait_id) = self.type_map.get(trait_name) {
+                            self.add_edge(Edge {
+                                from: struct_id.clone(),
+                                to: trait_id.clone(),
+                                edge_type: EdgeType::Inherits,
+                                weight: 1,
+                            });
+                        }
+                    }
                 }
                 _ => {}
             }
         }
-
-        // Process function calls within the file
-        self.process_function_calls(file);
     }
 
     fn add_node(&mut self, node: NodeInfo) {
@@ -121,14 +177,55 @@ impl DagBuilder {
         }
     }
 
-    fn get_current_module(&self, file_path: &str) -> String {
-        // Extract module name from file path
-        file_path.to_string()
+    fn normalize_path(&self, path: &str) -> String {
+        // Convert file path to a module-like identifier
+        path.trim_start_matches("./")
+            .trim_start_matches("/")
+            .trim_end_matches(".rs")
+            .trim_end_matches(".ts")
+            .trim_end_matches(".py")
+            .trim_end_matches(".js")
+            .trim_end_matches(".tsx")
+            .trim_end_matches(".jsx")
+            .replace(['/', '.', '-'], "_")
     }
 
-    fn process_function_calls(&mut self, _file: &FileContext) {
-        // This would require deeper AST analysis to track function calls
-        // For now, we'll leave this as a placeholder
+    fn extract_module_name(&self, path: &str) -> String {
+        // Extract just the file name without extension
+        std::path::Path::new(path)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or(path)
+            .to_string()
+    }
+
+    fn resolve_import_path(&self, import_path: &str) -> Option<String> {
+        // Try to resolve the import to a known node
+        // First check if it's a direct type reference
+        if let Some(type_id) = self.type_map.get(import_path) {
+            return Some(type_id.clone());
+        }
+
+        // Check if it's a function reference
+        if let Some(func_id) = self.function_map.get(import_path) {
+            return Some(func_id.clone());
+        }
+
+        // For module paths like "crate::models::dag", try to find a matching module
+        let parts: Vec<&str> = import_path.split("::").collect();
+        if let Some(last_part) = parts.last() {
+            // Try as type
+            if let Some(type_id) = self.type_map.get(*last_part) {
+                return Some(type_id.clone());
+            }
+            // Try as function
+            if let Some(func_id) = self.function_map.get(*last_part) {
+                return Some(func_id.clone());
+            }
+        }
+
+        // If nothing found, create a module node for the import
+        Some(import_path.replace("::", "_"))
     }
 }
 
