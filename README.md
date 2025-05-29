@@ -1,16 +1,16 @@
 # PAIML MCP Agent Toolkit
 
-> **Deterministic tooling for AI-assisted development - Generate project scaffolding, analyze code churn metrics, and provide reliable context for AI agents via CLI or Claude Code**
+> **Deterministic tooling for AI-assisted development - Generate project scaffolding, analyze code complexity, track code churn metrics, and provide reliable context for AI agents via CLI or Claude Code**
 
 [![CI/CD](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml)
 [![Tests](https://img.shields.io/badge/tests-passing-green)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
-[![Release](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/automated-release.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/automated-release.yml)
+[![Release](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/simple-release.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/simple-release.yml)
 [![Coverage](https://img.shields.io/badge/coverage-81%25-green)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
 [![Built by Pragmatic AI Labs](https://img.shields.io/badge/Built%20by-Pragmatic%20AI%20Labs-blue)](https://paiml.com)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The PAIML MCP Agent Toolkit is a unified binary created by [Pragmatic AI Labs](https://paiml.com) that provides intelligent project scaffolding through both a powerful CLI interface and Model Context Protocol (MCP) integration with Claude Code. It generates production-ready Makefiles, README files, and .gitignore configurations optimized for Rust, Deno, and Python development.
+The PAIML MCP Agent Toolkit is a unified binary created by [Pragmatic AI Labs](https://paiml.com) that provides intelligent project scaffolding, code complexity analysis, and maintenance insights through both a powerful CLI interface and Model Context Protocol (MCP) integration with Claude Code. It generates production-ready Makefiles, README files, and .gitignore configurations optimized for Rust, Deno, and Python development.
 
 ![PAIML MCP Agent Toolkit Demo](assets/demo.gif)
 
@@ -790,44 +790,50 @@ cd server && cargo build  # May not resolve dependencies correctly
 4. Write tests for the new template
 
 
-### Automated Releases
+### Release Process
 
-The project uses automated release workflows to ensure consistent and reliable releases:
+The project uses a manual release workflow to ensure controlled and reliable releases:
 
-#### Automatic Release Process
+#### How Releases Work
 
-1. **Continuous Deployment**: Every push to `master` that passes tests triggers an automatic release
-2. **Semantic Versioning**: Version bumps are determined by commit messages:
-   - `feat:` commits trigger minor version bumps
-   - `fix:` commits trigger patch version bumps  
-   - `BREAKING CHANGE:` or `!:` triggers major version bumps
-3. **Platform Binaries**: Automatically builds for all supported platforms:
-   - `x86_64-unknown-linux-gnu`
-   - `aarch64-unknown-linux-gnu`
-   - `x86_64-apple-darwin`
-   - `aarch64-apple-darwin`
+1. **Manual Trigger Only**: Releases are created through GitHub Actions workflow dispatch
+2. **Version Bump Options**: Choose between patch, minor, or major version bumps
+3. **Multi-Platform Builds**: Automatically builds for all supported platforms:
+   - `x86_64-unknown-linux-gnu` (Ubuntu 20.04 for glibc compatibility)
+   - `aarch64-unknown-linux-gnu` (Cross-compiled on Ubuntu 20.04)
+   - `x86_64-apple-darwin` (macOS Intel)
+   - `aarch64-apple-darwin` (macOS Apple Silicon)
 
-#### Manual Release Trigger
-
-You can also trigger a release manually:
+#### Creating a Release
 
 ```bash
-# Trigger via GitHub UI
-# Go to Actions → Auto Tag Release → Run workflow
+# Via GitHub UI:
+# 1. Go to Actions → "Simple Release" workflow
+# 2. Click "Run workflow"
+# 3. Choose version bump type (patch/minor/major)
+# 4. Click "Run workflow"
 
-# Or use GitHub CLI
-gh workflow run auto-tag-release.yml -f version_bump=minor
+# Via GitHub CLI:
+gh workflow run simple-release.yml -f version_bump=patch
+gh workflow run simple-release.yml -f version_bump=minor
+gh workflow run simple-release.yml -f version_bump=major
 ```
+
+#### Release Process Steps
+
+1. **Version Bump**: Updates all Cargo.toml files with new version
+2. **Git Operations**: Commits changes and creates version tag
+3. **Parallel Builds**: Builds binaries for all platforms simultaneously
+4. **Release Creation**: Creates GitHub release with all binaries attached
 
 #### Release Artifacts
 
 Each release includes:
-- Pre-built binaries for all platforms
-- SHA256 checksums for verification
-- Updated installer script
-- Comprehensive changelog
+- Pre-built binaries for all platforms as `.tar.gz` archives
+- Auto-generated release notes from commit history
+- Version-tagged source code
 
-The installer script at `scripts/install.sh` is automatically updated to reference the latest release.
+The installer script at `scripts/install.sh` automatically detects and downloads the latest release.
 
 ### Development Commands
 
