@@ -77,7 +77,7 @@ jobs:
           git add -A
           git commit -m "chore: release v${{ steps.version.outputs.version }}"
           git tag "v${{ steps.version.outputs.version }}"
-          git push origin main
+          git push origin master
           git push origin "v${{ steps.version.outputs.version }}"
       
       - name: Create release
