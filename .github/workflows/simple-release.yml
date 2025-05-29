@@ -13,17 +13,14 @@ on:
           - major
 
 jobs:
-  release:
+  bump-version:
     runs-on: ubuntu-20.04
-    permissions:
-      contents: write
-    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      
-      - uses: dtolnay/rust-toolchain@stable
       
       - name: Bump version
         id: version
@@ -63,16 +60,6 @@ jobs:
           sed -i "0,/^version = /s/^version = .*/version = \"$NEW_VERSION\"/" server/Cargo.toml
           sed -i "0,/^version = /s/^version = .*/version = \"$NEW_VERSION\"/" installer-macro/Cargo.toml
       
-      - name: Build binary
-        run: |
-          cd server
-          cargo build --release --target x86_64-unknown-linux-gnu
-          cd ..
-          # Create archive with proper naming
-          cd target/x86_64-unknown-linux-gnu/release
-          tar -czf ../../../paiml-mcp-agent-toolkit-x86_64-unknown-linux-gnu.tar.gz paiml-mcp-agent-toolkit
-          cd ../../..
-      
       - name: Commit and tag
         run: |
           git config user.name "GitHub Actions"
@@ -82,11 +69,80 @@ jobs:
           git tag "v${{ steps.version.outputs.version }}"
           git push origin master
           git push origin "v${{ steps.version.outputs.version }}"
+
+  build-binaries:
+    needs: bump-version
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-20.04
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-20.04
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.bump-version.outputs.version }}
+      
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      
+      - name: Install cross-compilation tools
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+      
+      - name: Build binary
+        run: |
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          fi
+          cd server
+          cargo build --release --target ${{ matrix.target }}
+          cd ..
+          
+      - name: Create archive
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar -czf ../../../paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz paiml-mcp-agent-toolkit
+          cd ../../..
+          
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.target }}
+          path: paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz
+
+  create-release:
+    needs: [bump-version, build-binaries]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Prepare release files
+        run: |
+          mkdir release-files
+          find artifacts -name "*.tar.gz" -exec cp {} release-files/ \;
+          ls -la release-files/
       
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: v${{ steps.version.outputs.version }}
-          files: paiml-mcp-agent-toolkit-x86_64-unknown-linux-gnu.tar.gz
+          tag_name: v${{ needs.bump-version.outputs.version }}
+          name: v${{ needs.bump-version.outputs.version }}
+          files: release-files/*
           generate_release_notes: true
