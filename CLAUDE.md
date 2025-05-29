@@ -1,14 +1,22 @@
-# CLAUDE.md
+check# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Important Context
 
+**IMPORTANT**: Always check `docs/bugs/` directory for active bugs before making changes. Archived bugs are in `docs/bugs/archived/`. Current active bugs may affect your work.
+
 **This is a frequently accessed project** - assume familiarity with the codebase structure, development patterns, and ongoing work. This is the MCP Agent Toolkit project that provides template generation services for project scaffolding.
 
 ## Project Overview
 
-MCP Agent Toolkit is a production-grade MCP (Model Context Protocol) template server implementing project scaffolding for three core file types: Makefile, README.md, and .gitignore. The system is built in Rust with embedded templates for instant, stateless template generation - no external dependencies required.
+MCP Agent Toolkit is a production-grade MCP (Model Context Protocol) server that provides:
+1. **Template Generation** - Project scaffolding for Makefile, README.md, and .gitignore files
+2. **AST-Based Code Analysis** - Full AST parsing and analysis for Rust, TypeScript/JavaScript, and Python
+3. **Code Complexity Metrics** - Cyclomatic complexity, cognitive complexity, nesting depth analysis
+4. **Code Churn Tracking** - Git-based code change analysis and hotspot detection
+
+The system is built in Rust as a stateless binary with all capabilities compiled in - no external dependencies required.
 
 ## Architecture
 
@@ -166,35 +174,174 @@ Example URIs:
 - Commit messages can be customized
 - Work can be staged incrementally
 
-## Using MCP Agent Toolkit for Project Scaffolding
+## Dogfooding During Development
 
-When users ask about generating project files (Makefile, README, .gitignore), you should:
+**ALWAYS use this project's own tools while developing it!** This ensures we catch issues early and understand the developer experience.
+
+### Continuous Code Quality Monitoring
+
+1. **Check complexity before commits**:
+   ```bash
+   make server-build-binary
+   ./target/release/paiml-mcp analyze complexity --toolchain rust --max-cyclomatic 15
+   ```
+
+2. **Monitor code churn weekly**:
+   ```bash
+   ./target/release/paiml-mcp analyze churn --period 7 --format markdown
+   ```
+
+3. **Use in CI/CD**:
+   ```yaml
+   - name: Check Code Complexity
+     run: |
+       make server-build-binary
+       ./target/release/paiml-mcp analyze complexity --format sarif > complexity.sarif
+   ```
+
+### Available MCP Tools
+
+The server exposes these tools via MCP protocol:
+
+1. **`generate_template`** - Generate project files
+   ```json
+   {
+     "resource_uri": "template://makefile/rust/cli",
+     "parameters": {
+       "project_name": "my-project",
+       "has_tests": true
+     }
+   }
+   ```
+
+2. **`analyze_complexity`** - Analyze code complexity
+   ```json
+   {
+     "project_path": "/path/to/project",
+     "toolchain": "rust|deno|python-uv",
+     "format": "summary|full|json|sarif",
+     "max_cyclomatic": 20,
+     "max_cognitive": 30
+   }
+   ```
+
+3. **`analyze_code_churn`** - Analyze git history
+   ```json
+   {
+     "project_path": "/path/to/project",
+     "period_days": 30,
+     "format": "summary|json|markdown|csv"
+   }
+   ```
+
+### AST Analysis Capabilities
+
+The project provides deep AST analysis for:
+
+**Rust**:
+- Functions (including async detection)
+- Structs/Enums with field/variant counts
+- Traits and implementations
+- Module structure
+- Visibility modifiers
+
+**TypeScript/JavaScript**:
+- Functions/Methods
+- Classes with member counts
+- Interfaces
+- Import/Export analysis
+- Async/Generator detection
+
+**Python**:
+- Functions/Methods (including async)
+- Classes with attribute counts
+- Decorators
+- Import analysis
+- Type annotations
+
+### Complexity Metrics Explained
+
+1. **Cyclomatic Complexity**: Number of independent paths through code
+   - Threshold: 10 (warning), 20 (error)
+   - Measures: if/else, loops, match/switch statements
+
+2. **Cognitive Complexity**: How hard code is to understand
+   - Threshold: 15 (warning), 30 (error)
+   - Measures: nesting, breaks in linear flow, recursion
+
+3. **Nesting Depth**: Maximum level of nested blocks
+   - Threshold: 4 (warning), 6 (error)
+
+### Example: Analyzing This Project
+
+```bash
+# Full analysis of the server codebase
+./target/release/paiml-mcp analyze complexity \
+  --toolchain rust \
+  --format full \
+  --include "server/src/**/*.rs"
+
+# Check for complex functions
+./target/release/paiml-mcp analyze complexity \
+  --toolchain rust \
+  --max-cyclomatic 10 \
+  --max-cognitive 15
+
+# Track hotspots over the last month
+./target/release/paiml-mcp analyze churn \
+  --period 30 \
+  --format markdown > HOTSPOTS.md
+```
+
+## Using MCP Agent Toolkit Features
+
+### Template Generation
+
+When users ask about generating project files:
 
 1. **Detect Project Type**: Look for language-specific files (Cargo.toml, package.json, etc.)
-2. **Use MCP Server**: The MCP Agent Toolkit server provides templates for:
-   - Makefiles with language-specific build commands
-   - README files with project structure
-   - .gitignore files with appropriate patterns
-
-3. **Common User Requests**:
+2. **Generate Templates**: Use the appropriate template URI
+3. **Common Requests**:
    - "Generate a Makefile for my Rust project"
    - "Create a .gitignore for Rust development"
    - "Set up build automation"
 
-4. **Template Parameters**: Each template accepts specific parameters:
-   - Always provide `project_name`
-   - Ask for clarification on optional parameters if needed
-   - Use sensible defaults when appropriate
+### Code Analysis
 
-5. **Example Workflow**:
-   ```typescript
-   // When user asks for a Makefile
-   await mcp.call("generate_template", {
-     resource_uri: "template://makefile/rust/cli",
-     parameters: {
-       project_name: "detected_from_cargo_toml",
-       has_tests: true,
-       has_benchmarks: false
-     }
-   });
-   ```
+When users ask about code quality or complexity:
+
+1. **Run Complexity Analysis**: Use `analyze_complexity` with appropriate thresholds
+2. **Check Code Churn**: Use `analyze_code_churn` to find frequently changed files
+3. **Common Requests**:
+   - "What are the most complex functions in my codebase?"
+   - "Show me code hotspots from the last month"
+   - "Check if any functions exceed complexity thresholds"
+
+### Integration Examples
+
+```typescript
+// Generate a Makefile
+await mcp.call("generate_template", {
+  resource_uri: "template://makefile/rust/cli",
+  parameters: {
+    project_name: "my-project",
+    has_tests: true,
+    has_benchmarks: false
+  }
+});
+
+// Analyze complexity
+const complexity = await mcp.call("analyze_complexity", {
+  project_path: process.cwd(),
+  toolchain: "rust",
+  format: "json",
+  max_cyclomatic: 15
+});
+
+// Check code churn
+const churn = await mcp.call("analyze_code_churn", {
+  project_path: process.cwd(),
+  period_days: 30,
+  format: "json"
+});
+```

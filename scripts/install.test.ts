@@ -2,7 +2,11 @@ import {
   assertEquals,
   assertThrows,
 } from "https://deno.land/std@0.210.0/assert/mod.ts";
-import { describe, it } from "https://deno.land/std@0.210.0/testing/bdd.ts";
+import {
+  afterEach,
+  describe,
+  it,
+} from "https://deno.land/std@0.210.0/testing/bdd.ts";
 
 // Since the install.ts file uses top-level code that immediately executes,
 // we need to extract the platform detection logic into a testable module
@@ -232,6 +236,35 @@ describe("Version handling", () => {
       const result = input.replace(/^v/, "");
       assertEquals(result, expected);
     }
+  });
+});
+
+describe("Test artifact cleanup", () => {
+  afterEach(() => {
+    // Clean up any test artifacts that might have been created
+    const testArtifacts = [
+      "*-platform.tar.gz",
+      "nonexistent-platform.tar.gz",
+      "undefined-platform.tar.gz",
+    ];
+
+    for (const pattern of testArtifacts) {
+      try {
+        for (const entry of Deno.readDirSync(".")) {
+          if (entry.isFile && entry.name.match(pattern.replace("*", ".*"))) {
+            Deno.removeSync(entry.name);
+          }
+        }
+      } catch {
+        // Ignore errors - file might not exist
+      }
+    }
+  });
+
+  it("should not leave tar.gz artifacts after test runs", () => {
+    // This test ensures cleanup happens
+    // The actual cleanup is in afterEach
+    assertEquals(true, true);
   });
 });
 

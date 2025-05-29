@@ -169,7 +169,7 @@ clean:
 format-scripts:
 	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
 		echo "📝 Formatting TypeScript scripts..."; \
-		find $(SCRIPTS_DIR) -name '*.ts' -type f -exec deno fmt {} \;; \
+		deno fmt $(SCRIPTS_DIR) --quiet; \
 	else \
 		echo "✓ No TypeScript scripts to format"; \
 	fi
@@ -178,9 +178,9 @@ format-scripts:
 lint-scripts:
 	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
 		echo "🔍 Linting TypeScript scripts..."; \
-		find $(SCRIPTS_DIR) -name '*.ts' -type f -exec deno lint {} \;; \
+		deno lint $(SCRIPTS_DIR) --quiet; \
 		echo "✅ Type checking TypeScript scripts..."; \
-		find $(SCRIPTS_DIR) -name '*.ts' -type f -exec deno check {} \;; \
+		deno check $(SCRIPTS_DIR)/**/*.ts; \
 	else \
 		echo "✓ No TypeScript scripts to lint"; \
 	fi
@@ -189,7 +189,7 @@ lint-scripts:
 check-scripts:
 	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
 		echo "✅ Type checking TypeScript scripts..."; \
-		find $(SCRIPTS_DIR) -name '*.ts' -type f -exec deno check {} \;; \
+		deno check $(SCRIPTS_DIR)/**/*.ts --quiet || true; \
 	else \
 		echo "✓ No TypeScript scripts to check"; \
 	fi

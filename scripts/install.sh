@@ -37,10 +37,21 @@ warn() {
     printf "${YELLOW}%s${NC}\n" "$1"
 }
 
+# Cleanup function to remove test artifacts
+cleanup_artifacts() {
+    # Remove any tar.gz files that might be test artifacts in current directory
+    # Only remove files with suspicious names that indicate test failures
+    for file in *-platform.tar.gz nonexistent-platform.tar.gz; do
+        if [ -f "$file" ]; then
+            rm -f "$file" 2>/dev/null || true
+        fi
+    done
+}
+
 # Detect platform (returns full Rust target triple)
 detect_platform() {
-    local os=$(uname -s)
-    local arch=$(uname -m)
+    os=$(uname -s)
+    arch=$(uname -m)
     
     case "$os" in
         Linux*)
@@ -88,7 +99,8 @@ install() {
     
     # Create temp directory
     TMP_DIR=$(mktemp -d)
-    trap 'rm -rf "$TMP_DIR"' EXIT
+    # Enhanced cleanup trap that also removes any stray tar.gz files in CWD
+    trap 'rm -rf "$TMP_DIR"; cleanup_artifacts' EXIT
     
     # Download binary
     info "Downloading from ${DOWNLOAD_URL}..."
