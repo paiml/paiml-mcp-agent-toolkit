@@ -704,23 +704,29 @@ This project uses GitHub Actions for continuous integration and deployment:
 The project maintains comprehensive test coverage:
 
 ```bash
-# Run all tests
+# Run all tests (stops on first failure)
 make test
 
 # Run tests with coverage report
-cargo llvm-cov --all-features --workspace --html --output-dir coverage
+make coverage
 
-# Run specific test modules
-cargo test --test mcp_protocol
-cargo test --test template_rendering
+# Run specific test categories from server directory
+cd server
+deno test --allow-all tests/e2e/        # E2E tests with Deno test runner
+cargo test --test mcp_protocol          # MCP protocol tests
+cargo test --test template_rendering    # Template rendering tests
 ```
 
 Test categories:
 - **Unit Tests**: Core functionality (81% coverage)
 - **Integration Tests**: MCP protocol handling
-- **E2E Tests**: Full server functionality
+- **E2E Tests**: Deno-based tests for full server functionality
+  - `tests/e2e/mcp_protocol.test.ts` - MCP protocol E2E tests
+  - `tests/e2e/installation.test.ts` - Installation validation tests
 - **Template Tests**: All template rendering paths
 - **Performance Benchmarks**: Critical path benchmarking
+
+The E2E tests use Deno's built-in test runner for better test organization, parallel execution, and coverage integration.
 
 ### Project Structure
 

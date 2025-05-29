@@ -5,8 +5,6 @@ pub mod services;
 pub mod stateless_server;
 pub mod utils;
 
-pub mod installer;
-
 use anyhow::Result;
 use lru::LruCache;
 use std::num::NonZeroUsize;
@@ -260,9 +258,6 @@ mod tests {
 
     #[path = "../tests/churn.rs"]
     mod churn;
-
-    #[path = "../tests/installer_module_tests.rs"]
-    mod installer_module_tests;
 
     #[path = "../tests/cli_simple_tests.rs"]
     mod cli_simple_tests;

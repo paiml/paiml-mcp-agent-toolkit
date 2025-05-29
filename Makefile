@@ -45,14 +45,20 @@ validate: check lint test validate-docs validate-naming test-workflow-dag test-a
 
 # Format code in all projects
 format: format-scripts
-	@for project in $(PROJECTS); do \
+	@format_success=true; \
+	for project in $(PROJECTS); do \
 		if [ -d "$$project" ] && [ -f "$$project/Makefile" ]; then \
 			echo "📝 Formatting $$project..."; \
-			$(MAKE) -C $$project format; \
+			$(MAKE) -C $$project format || format_success=false; \
 		else \
 			echo "⚠️  Skipping $$project (no Makefile found)"; \
 		fi \
-	done
+	done; \
+	if [ "$$format_success" = "false" ]; then \
+		echo ""; \
+		echo "❌ Formatting failed for one or more projects"; \
+		exit 1; \
+	fi
 
 # Fix all formatting and linting issues automatically
 fix: format
@@ -61,58 +67,97 @@ fix: format
 
 # Run linting in all projects
 lint: lint-scripts
-	@for project in $(PROJECTS); do \
+	@lint_success=true; \
+	for project in $(PROJECTS); do \
 		if [ -d "$$project" ] && [ -f "$$project/Makefile" ]; then \
 			echo "🔍 Linting $$project..."; \
-			$(MAKE) -C $$project lint; \
+			$(MAKE) -C $$project lint || lint_success=false; \
 		else \
 			echo "⚠️  Skipping $$project (no Makefile found)"; \
 		fi \
-	done
+	done; \
+	if [ "$$lint_success" = "true" ]; then \
+		echo ""; \
+		echo "✅ All linting checks passed!"; \
+	else \
+		echo ""; \
+		echo "❌ Linting failed for one or more projects"; \
+		exit 1; \
+	fi
 
 # Type check all projects
 check: check-scripts
-	@for project in $(PROJECTS); do \
+	@check_success=true; \
+	for project in $(PROJECTS); do \
 		if [ -d "$$project" ] && [ -f "$$project/Makefile" ]; then \
 			echo "✅ Checking $$project..."; \
-			$(MAKE) -C $$project check; \
+			$(MAKE) -C $$project check || check_success=false; \
 		else \
 			echo "⚠️  Skipping $$project (no Makefile found)"; \
 		fi \
-	done
+	done; \
+	if [ "$$check_success" = "true" ]; then \
+		echo ""; \
+		echo "✅ All type checks passed!"; \
+	else \
+		echo ""; \
+		echo "❌ Type checking failed for one or more projects"; \
+		exit 1; \
+	fi
 
 # Run tests in all projects
 test: test-scripts
-	@for project in $(PROJECTS); do \
+	@test_success=true; \
+	for project in $(PROJECTS); do \
 		if [ -d "$$project" ] && [ -f "$$project/Makefile" ]; then \
 			echo "🧪 Testing $$project..."; \
-			$(MAKE) -C $$project test; \
+			$(MAKE) -C $$project test || test_success=false; \
 		else \
 			echo "⚠️  Skipping $$project (no Makefile found)"; \
 		fi \
-	done
+	done; \
+	if [ "$$test_success" = "true" ]; then \
+		echo ""; \
+		echo "✅ All tests passed!"; \
+	else \
+		echo ""; \
+		echo "❌ Tests failed for one or more projects"; \
+		exit 1; \
+	fi
 
 # Generate coverage reports for all projects
 coverage:
-	@for project in $(PROJECTS); do \
+	@coverage_success=true; \
+	for project in $(PROJECTS); do \
 		if [ -d "$$project" ] && [ -f "$$project/Makefile" ]; then \
 			echo "📊 Coverage report for $$project..."; \
-			$(MAKE) -C $$project coverage; \
+			$(MAKE) -C $$project coverage || coverage_success=false; \
 		else \
 			echo "⚠️  Skipping $$project (no Makefile found)"; \
 		fi \
-	done
+	done; \
+	if [ "$$coverage_success" = "false" ]; then \
+		echo ""; \
+		echo "❌ Coverage generation failed for one or more projects"; \
+		exit 1; \
+	fi
 
 # Run security audit on all projects
 audit:
-	@for project in $(PROJECTS); do \
+	@audit_success=true; \
+	for project in $(PROJECTS); do \
 		if [ -d "$$project" ] && [ -f "$$project/Makefile" ]; then \
 			echo "🔒 Security audit for $$project..."; \
-			$(MAKE) -C $$project audit; \
+			$(MAKE) -C $$project audit || audit_success=false; \
 		else \
 			echo "⚠️  Skipping $$project (no Makefile found)"; \
 		fi \
-	done
+	done; \
+	if [ "$$audit_success" = "false" ]; then \
+		echo ""; \
+		echo "⚠️  Security audit found issues in one or more projects"; \
+		exit 1; \
+	fi
 
 # Generate documentation
 docs:
@@ -156,14 +201,20 @@ build: validate-docs validate-naming
 
 # Clean all projects
 clean:
-	@for project in $(PROJECTS); do \
+	@clean_success=true; \
+	for project in $(PROJECTS); do \
 		if [ -d "$$project" ] && [ -f "$$project/Makefile" ]; then \
 			echo "🧹 Cleaning $$project..."; \
-			$(MAKE) -C $$project clean; \
+			$(MAKE) -C $$project clean || clean_success=false; \
 		else \
 			echo "⚠️  Skipping $$project (no Makefile found)"; \
 		fi \
-	done
+	done; \
+	if [ "$$clean_success" = "false" ]; then \
+		echo ""; \
+		echo "❌ Clean failed for one or more projects"; \
+		exit 1; \
+	fi
 
 # Format TypeScript scripts
 format-scripts:

@@ -67,11 +67,10 @@ test:
 		echo "💡 Tip: Install cargo-llvm-cov for test coverage:"; \
 		echo "   cargo install cargo-llvm-cov"; \
 	fi
-	@if [ -f "./scripts/test-mcp-e2e.ts" ] && command -v deno >/dev/null 2>&1; then \
+	@if [ -d "./tests/e2e" ] && command -v deno >/dev/null 2>&1; then \
 		echo ""; \
 		echo "Running E2E tests..."; \
-		chmod +x ./scripts/test-mcp-e2e.ts; \
-		./scripts/test-mcp-e2e.ts || exit 1; \
+		deno test --allow-all tests/e2e/ || exit 1; \
 	fi
 	@echo ""
 	@echo "🔍 Running critical naming convention tests..."
@@ -81,10 +80,10 @@ test:
 		echo "Ensure all references use 'paiml-mcp-agent-toolkit' consistently."; \
 		exit 1; \
 	}
-	@if [ -f "./scripts/test-installation.ts" ] && command -v deno >/dev/null 2>&1; then \
+	@if [ -d "./tests/e2e" ] && command -v deno >/dev/null 2>&1; then \
 		echo ""; \
 		echo "🧪 Running installation validation tests..."; \
-		./scripts/test-installation.ts || exit 1; \
+		deno test --allow-all tests/e2e/installation.test.ts || exit 1; \
 	fi
 
 # Generate detailed coverage report in plain text
