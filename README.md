@@ -958,6 +958,7 @@ List all available tools.
 - `analyze_code_churn` - Analyze code change frequency and patterns
 - `analyze_complexity` - Analyze code complexity with McCabe and Sonar algorithms
 - `analyze_dag` - Generate dependency graphs in Mermaid format
+- `generate_context` - Generate project context using AST analysis with persistent caching
 
 ### Available Tools
 
@@ -1287,23 +1288,28 @@ echo '{
 ## What's New
 
 ### Recent Improvements
-- 🔍 **NEW: Code Complexity Analysis**: McCabe Cyclomatic and Sonar Cognitive complexity metrics
+- 📚 **NEW: Documentation Synchronization Tests**: Automated tests ensure documentation stays accurate
+  - CLI documentation verification tests validate all commands match implementation
+  - MCP tools documentation tests verify all 10 tools are properly documented
+  - Code examples validation tests check all snippets are syntactically correct
+  - Integrated into build process via Makefile to catch documentation drift
+- 🔍 **Code Complexity Analysis**: McCabe Cyclomatic and Sonar Cognitive complexity metrics
   - Support for Rust, TypeScript/JavaScript, and Python
   - Multiple output formats including SARIF for IDE integration
   - Customizable complexity thresholds
   - Zero-overhead implementation with <1ms per KLOC performance
-- 🔀 **NEW: Dependency Graph Generation**: Visualize code structure with Mermaid diagrams
+- 🔀 **Dependency Graph Generation**: Visualize code structure with Mermaid diagrams
   - Call graphs, import dependencies, and inheritance hierarchies
   - Configurable depth and external dependency filtering
   - Optional complexity metrics in visualizations
-- ⚡ **NEW: Persistent AST Caching**: Cross-session cache with 5-minute TTL dramatically speeds up repeated context generation
+- ⚡ **Persistent AST Caching**: Cross-session cache with 5-minute TTL dramatically speeds up repeated context generation
   - Cache persists between CLI invocations in `~/.cache/paiml-mcp-agent-toolkit/`
   - Automatic cleanup of expired entries
   - Cache hit rates typically exceed 70% for repeated analyses
   - Sub-10ms response time for cached AST analysis
-- 📊 **NEW: Code Churn Analysis**: Identify maintenance hotspots using git history analysis
-- 🎨 **NEW: Simplified Variants**: All templates now use a single `cli` variant for consistency
-- 🎯 **NEW: Native CLI Interface**: Unified binary now supports direct CLI usage with auto-detection
+- 📊 **Code Churn Analysis**: Identify maintenance hotspots using git history analysis
+- 🎨 **Simplified Variants**: All templates now use a single `cli` variant for consistency
+- 🎯 **Native CLI Interface**: Unified binary now supports direct CLI usage with auto-detection
 - ✅ **All 9 Templates Available**: Fixed template embedding to include all Deno and Python-uv templates
 - 🚀 **Smart Installation**: Automatic rebuild detection based on source file changes
 - 📁 **Proper Subdirectories**: Templates now create files in project-named subdirectories
