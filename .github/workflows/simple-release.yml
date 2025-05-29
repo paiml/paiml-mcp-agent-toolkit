@@ -68,7 +68,7 @@ jobs:
           cd server
           cargo build --release --target x86_64-unknown-linux-gnu
           cd ..
-          cp target/x86_64-unknown-linux-gnu/release/paiml-mcp paiml-mcp-linux-x64
+          cp target/x86_64-unknown-linux-gnu/release/paiml-mcp-agent-toolkit paiml-mcp-linux-x64
       
       - name: Commit and tag
         run: |
