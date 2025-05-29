@@ -65,6 +65,25 @@ impl DependencyGraph {
             .cloned()
             .collect();
 
+        // If filtering results in no edges but we originally had edges,
+        // only include nodes that were connected by the filtered edge type
+        if filtered_edges.is_empty() && !self.edges.is_empty() {
+            // Return empty nodes since no nodes are connected by this edge type
+            return Self {
+                nodes: HashMap::new(),
+                edges: filtered_edges,
+            };
+        }
+
+        // If we have no edges at all, return all nodes
+        if self.edges.is_empty() {
+            return Self {
+                nodes: self.nodes.clone(),
+                edges: Vec::new(),
+            };
+        }
+
+        // Otherwise, filter nodes to only those connected by the filtered edges
         let used_nodes: std::collections::HashSet<String> = filtered_edges
             .iter()
             .flat_map(|e| vec![e.from.clone(), e.to.clone()])
