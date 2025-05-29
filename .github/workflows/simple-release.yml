@@ -64,6 +64,13 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
+          
+          # Check if tag already exists
+          if git ls-remote --tags origin | grep -q "refs/tags/v${{ steps.version.outputs.version }}$"; then
+            echo "Tag v${{ steps.version.outputs.version }} already exists, skipping..."
+            exit 0
+          fi
+          
           git add -A
           git commit -m "chore: release v${{ steps.version.outputs.version }}"
           git pull --rebase origin master
