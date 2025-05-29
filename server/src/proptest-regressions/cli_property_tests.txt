@@ -1,0 +1,14 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 7e58e53bfffec38b2199994dadb34b7baec4526c22fcddd0079beaf1eb9362f6 # shrinks to key = "_", int_val = 0, float_val = 0.0
+cc b1bb1898bef2cdbfddd15444bf4db96386efe57eb660e22d3e77f00589f47451 # shrinks to key = "_", str_val = "", bool_val = false, num_val = 0.0
+cc fc17143f7dcf2b7fd7415be1e3e574b979ab9114b2fdac5b59eed59312171bec # shrinks to key = "A"
+cc a363d53ecc75cf1214e30c7c6b76cbeef13767f75e2dab78ce71b99b5e9dd786 # shrinks to key = "a", value = ""
+cc 1652898b80fffbc4fd7994dd727575209ef789cbab22e4bed13ebab1a1a67596 # shrinks to param_name = "a", valid_value = "a", invalid_value = "A"
+cc 9db37efc1700804786ffeb04470718c345a904f1df357dc81dec05067043f6e8 # shrinks to key = "a", str_val = "", bool_val = false, num_val = 0.0
+cc 930f1fc6ccb3050d8a962e0c8f7e5ba4cfe3031482fbe8d02e22c31d528c1415 # shrinks to key = "_", int_val = 0, float_val = -0.0
+cc 975f020b0960081e508fab0a1de0c0b28fb80c811973fe9aefe049d29d3e0184 # shrinks to key = "a", int_val = 0, float_val = -4.62771836536844e18

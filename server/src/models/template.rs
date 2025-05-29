@@ -15,7 +15,7 @@ pub struct TemplateResource {
     pub dependency_graph: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum Toolchain {
     #[serde(rename = "rust")]
@@ -44,7 +44,7 @@ impl Toolchain {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum TemplateCategory {
     Makefile,
@@ -63,7 +63,7 @@ pub struct ParameterSpec {
     pub description: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ParameterType {
     ProjectName,

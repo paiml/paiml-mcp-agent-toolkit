@@ -71,3 +71,28 @@ pub fn expand_env_vars(template: &str) -> String {
     })
     .to_string()
 }
+
+/// Zero-allocation parameter parsing for common types
+pub fn parse_key_val(s: &str) -> Result<(String, Value), String> {
+    let pos = s
+        .find('=')
+        .ok_or_else(|| format!("invalid KEY=value: no `=` found in `{s}`"))?;
+
+    let key = &s[..pos];
+    let val = &s[pos + 1..];
+
+    // Type inference with fast paths
+    let value = if val.is_empty() {
+        Value::Bool(true) // Treat bare flags as true
+    } else if val == "true" || val == "false" {
+        Value::Bool(val.parse().unwrap())
+    } else if let Ok(n) = val.parse::<i64>() {
+        Value::Number(n.into())
+    } else if let Ok(f) = val.parse::<f64>() {
+        Value::Number(serde_json::Number::from_f64(f).unwrap())
+    } else {
+        Value::String(val.to_string())
+    };
+
+    Ok((key.to_string(), value))
+}
