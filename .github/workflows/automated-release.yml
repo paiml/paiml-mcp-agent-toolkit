@@ -1,10 +1,9 @@
-name: Automated Release
+name: Automated Release (Disabled)
+
+# DISABLED: This workflow has never worked correctly due to self-triggering issues
+# Use simple-release.yml instead for manual releases
 
 on:
-  push:
-    branches: [ main, master ]
-    tags-ignore:
-      - 'v*'  # Ignore tag pushes to prevent duplicate runs
   workflow_dispatch:
     inputs:
       bump_version:

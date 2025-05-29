@@ -40,11 +40,11 @@ lint:
 			echo "Type checking TypeScript files..."; \
 			deno check scripts/*.ts; \
 			echo "Linting TypeScript files..."; \
-			deno lint scripts/*.ts; \
+			deno lint scripts --quiet; \
 		fi; \
 		if [ "$$(find . -maxdepth 1 -name '*.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
 			deno check *.ts 2>/dev/null || true; \
-			deno lint *.ts 2>/dev/null || true; \
+			deno lint . --quiet 2>/dev/null || true; \
 		fi; \
 	fi
 

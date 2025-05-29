@@ -7,7 +7,10 @@ use crate::{
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use serde_json::Value;
-use std::{path::PathBuf, sync::Arc};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use tokio::io::AsyncWriteExt;
 
 #[derive(Parser)]
@@ -282,175 +285,35 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
             params,
             output,
             create_dirs,
-        } => {
-            let uri = format!("template://{}/{}", category, template);
-            let params_json = params_to_json(params);
-
-            let result = generate_template(server.as_ref(), &uri, params_json).await?;
-
-            if let Some(path) = output {
-                if create_dirs {
-                    tokio::fs::create_dir_all(path.parent().unwrap()).await?;
-                }
-                tokio::fs::write(&path, &result.content).await?;
-                eprintln!("✅ Generated: {}", path.display());
-            } else {
-                tokio::io::stdout()
-                    .write_all(result.content.as_bytes())
-                    .await?;
-            }
-        }
+        } => handle_generate(server, category, template, params, output, create_dirs).await?,
 
         Commands::Scaffold {
             toolchain,
             templates,
             params,
             parallel,
-        } => {
-            use futures::stream::{self, StreamExt};
-
-            let params_json = params_to_json(params);
-            let results = scaffold_project(
-                server.clone(),
-                &toolchain,
-                templates,
-                serde_json::Value::Object(params_json),
-            )
-            .await?;
-
-            // Parallel file writing with bounded concurrency
-            stream::iter(results.files)
-                .map(|file| async move {
-                    let path = PathBuf::from(&file.path);
-                    if let Some(parent) = path.parent() {
-                        tokio::fs::create_dir_all(parent).await?;
-                    }
-                    tokio::fs::write(&path, &file.content).await?;
-                    eprintln!("✅ {}", file.path);
-                    Ok::<_, anyhow::Error>(())
-                })
-                .buffer_unordered(parallel)
-                .collect::<Vec<_>>()
-                .await;
-
-            eprintln!("\n🚀 Project scaffolded successfully!");
-        }
+        } => handle_scaffold(server, toolchain, templates, params, parallel).await?,
 
         Commands::List {
             toolchain,
             category,
             format,
-        } => {
-            let templates =
-                list_templates(server.as_ref(), toolchain.as_deref(), category.as_deref()).await?;
-
-            match format {
-                OutputFormat::Table => print_table(&templates),
-                OutputFormat::Json => {
-                    let templates_deref: Vec<&TemplateResource> =
-                        templates.iter().map(|t| t.as_ref()).collect();
-                    println!("{}", serde_json::to_string_pretty(&templates_deref)?);
-                }
-                OutputFormat::Yaml => {
-                    let templates_deref: Vec<&TemplateResource> =
-                        templates.iter().map(|t| t.as_ref()).collect();
-                    println!("{}", serde_yaml::to_string(&templates_deref)?);
-                }
-            }
-        }
+        } => handle_list(server, toolchain, category, format).await?,
 
         Commands::Search {
             query,
             toolchain,
             limit,
-        } => {
-            let results = search_templates(server.clone(), &query, toolchain.as_deref()).await?;
+        } => handle_search(server, query, toolchain, limit).await?,
 
-            for (i, result) in results.iter().take(limit).enumerate() {
-                println!(
-                    "{:2}. {} (score: {:.2})",
-                    i + 1,
-                    result.template.uri,
-                    result.relevance
-                );
-                if !result.matches.is_empty() {
-                    println!("    Matches: {}", result.matches.join(", "));
-                }
-            }
-        }
-
-        Commands::Validate { uri, params } => {
-            let params_json = params_to_json(params);
-            let result = validate_template(
-                server.clone(),
-                &uri,
-                &serde_json::Value::Object(params_json),
-            )
-            .await?;
-
-            if result.valid {
-                eprintln!("✅ All parameters valid");
-            } else {
-                eprintln!("❌ Validation errors:");
-                for error in result.errors {
-                    eprintln!("  - {}: {}", error.field, error.message);
-                }
-                std::process::exit(1);
-            }
-        }
+        Commands::Validate { uri, params } => handle_validate(server, uri, params).await?,
 
         Commands::Context {
             toolchain,
             project_path,
             output,
             format,
-        } => {
-            use crate::services::cache::{
-                config::CacheConfig, persistent_manager::PersistentCacheManager,
-            };
-            use crate::services::context::{
-                analyze_project_with_persistent_cache, format_context_as_markdown,
-            };
-            use std::sync::Arc;
-
-            // Create a persistent cache manager for cross-session caching
-            let cache_config = CacheConfig::default();
-            let cache_manager = Arc::new(
-                PersistentCacheManager::with_default_dir(cache_config)
-                    .map_err(|e| anyhow::anyhow!("Failed to create cache manager: {}", e))?,
-            );
-
-            // Analyze the project with caching
-            let context = analyze_project_with_persistent_cache(
-                &project_path,
-                &toolchain,
-                Some(cache_manager.clone()),
-            )
-            .await?;
-
-            // Print cache diagnostics
-            let diagnostics = cache_manager.get_diagnostics();
-            eprintln!(
-                "Cache hit rate: {:.1}%, memory efficiency: {:.1}%, time saved: {}ms",
-                diagnostics.effectiveness.overall_hit_rate * 100.0,
-                diagnostics.effectiveness.memory_efficiency * 100.0,
-                diagnostics.effectiveness.time_saved_ms
-            );
-
-            // Format the output
-            let content = match format {
-                ContextFormat::Markdown => format_context_as_markdown(&context),
-                ContextFormat::Json => serde_json::to_string_pretty(&context)?,
-            };
-
-            // Write output
-            if let Some(path) = output {
-                tokio::fs::write(&path, &content).await?;
-                eprintln!("✅ Context written to: {}", path.display());
-            } else {
-                println!("{}", content);
-            }
-        }
+        } => handle_context(toolchain, project_path, output, format).await?,
 
         Commands::Analyze(analyze_cmd) => match analyze_cmd {
             AnalyzeCommands::Churn {
@@ -458,28 +321,7 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
                 days,
                 format,
                 output,
-            } => {
-                use crate::handlers::tools::{
-                    format_churn_as_csv, format_churn_as_markdown, format_churn_summary,
-                };
-                use crate::services::git_analysis::GitAnalysisService;
-
-                let analysis = GitAnalysisService::analyze_code_churn(&project_path, days)?;
-
-                let content = match format {
-                    ChurnOutputFormat::Summary => format_churn_summary(&analysis),
-                    ChurnOutputFormat::Markdown => format_churn_as_markdown(&analysis),
-                    ChurnOutputFormat::Json => serde_json::to_string_pretty(&analysis)?,
-                    ChurnOutputFormat::Csv => format_churn_as_csv(&analysis),
-                };
-
-                if let Some(path) = output {
-                    tokio::fs::write(&path, &content).await?;
-                    eprintln!("✅ Code churn analysis written to: {}", path.display());
-                } else {
-                    println!("{}", content);
-                }
-            }
+            } => handle_analyze_churn(project_path, days, format, output).await?,
 
             AnalyzeCommands::Dag {
                 dag_type,
@@ -489,55 +331,15 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
                 filter_external,
                 show_complexity,
             } => {
-                use crate::services::{
-                    context::analyze_project,
-                    dag_builder::{
-                        filter_call_edges, filter_import_edges, filter_inheritance_edges,
-                        DagBuilder,
-                    },
-                    mermaid_generator::{MermaidGenerator, MermaidOptions},
-                };
-
-                // Analyze the project to get AST information
-                // We'll analyze as Rust by default, but could be enhanced
-                let project_context = analyze_project(&project_path, "rust").await?;
-
-                // Build the dependency graph
-                let graph = DagBuilder::build_from_project(&project_context);
-
-                // Apply filters based on DAG type
-                let filtered_graph = match dag_type {
-                    DagType::CallGraph => filter_call_edges(graph),
-                    DagType::ImportGraph => filter_import_edges(graph),
-                    DagType::Inheritance => filter_inheritance_edges(graph),
-                    DagType::FullDependency => graph,
-                };
-
-                // Generate Mermaid output
-                let generator = MermaidGenerator::new(MermaidOptions {
+                handle_analyze_dag(
+                    dag_type,
+                    project_path,
+                    output,
                     max_depth,
                     filter_external,
                     show_complexity,
-                    ..Default::default()
-                });
-
-                let mermaid_output = generator.generate(&filtered_graph);
-
-                // Add stats as comments
-                let output_with_stats = format!(
-                    "{}\n%% Graph Statistics:\n%% Nodes: {}\n%% Edges: {}\n",
-                    mermaid_output,
-                    filtered_graph.nodes.len(),
-                    filtered_graph.edges.len()
-                );
-
-                // Write output
-                if let Some(path) = output {
-                    tokio::fs::write(&path, &output_with_stats).await?;
-                    eprintln!("✅ Dependency graph written to: {}", path.display());
-                } else {
-                    println!("{}", output_with_stats);
-                }
+                )
+                .await?
             }
 
             AnalyzeCommands::Complexity {
@@ -550,159 +352,493 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
                 include,
                 watch,
             } => {
-                use crate::services::complexity::*;
-                use walkdir::WalkDir;
-
-                if watch {
-                    eprintln!("❌ Watch mode not yet implemented");
-                    return Ok(());
-                }
-
-                // Detect toolchain if not specified
-                let detected_toolchain = if let Some(t) = toolchain {
-                    t
-                } else if project_path.join("Cargo.toml").exists() {
-                    "rust".to_string()
-                } else if project_path.join("package.json").exists()
-                    || project_path.join("deno.json").exists()
-                {
-                    "deno".to_string()
-                } else if project_path.join("pyproject.toml").exists()
-                    || project_path.join("requirements.txt").exists()
-                {
-                    "python-uv".to_string()
-                } else {
-                    eprintln!("⚠️  Could not detect toolchain, defaulting to rust");
-                    "rust".to_string()
-                };
-
-                eprintln!("🔍 Analyzing {} project complexity...", detected_toolchain);
-
-                // Custom thresholds
-                let mut thresholds = ComplexityThresholds::default();
-                if let Some(max) = max_cyclomatic {
-                    thresholds.cyclomatic_error = max;
-                    thresholds.cyclomatic_warn = (max * 3 / 4).max(1);
-                }
-                if let Some(max) = max_cognitive {
-                    thresholds.cognitive_error = max;
-                    thresholds.cognitive_warn = (max * 3 / 4).max(1);
-                }
-
-                // Analyze files
-                let mut file_metrics = Vec::new();
-                let mut file_count = 0;
-
-                for entry in WalkDir::new(&project_path)
-                    .follow_links(false)
-                    .into_iter()
-                    .filter_map(|e| e.ok())
-                {
-                    let path = entry.path();
-
-                    // Skip directories and non-source files
-                    if path.is_dir() {
-                        continue;
-                    }
-
-                    // Check file extension based on toolchain
-                    let should_analyze = match detected_toolchain.as_str() {
-                        "rust" => path.extension().and_then(|s| s.to_str()) == Some("rs"),
-                        "deno" => matches!(
-                            path.extension().and_then(|s| s.to_str()),
-                            Some("ts") | Some("tsx") | Some("js") | Some("jsx")
-                        ),
-                        "python-uv" => path.extension().and_then(|s| s.to_str()) == Some("py"),
-                        _ => false,
-                    };
-
-                    if !should_analyze {
-                        continue;
-                    }
-
-                    // Apply include filters if specified (simple pattern matching)
-                    if !include.is_empty() {
-                        let path_str = path.to_string_lossy();
-                        let matches_filter = include.iter().any(|pattern| {
-                            // Simple glob-like matching
-                            if pattern.contains("**") {
-                                // Match any path containing the pattern after **
-                                let parts: Vec<&str> = pattern.split("**").collect();
-                                if parts.len() == 2 {
-                                    path_str.contains(parts[1].trim_start_matches('/'))
-                                } else {
-                                    false
-                                }
-                            } else if pattern.starts_with("*.") {
-                                // Match by extension
-                                path_str.ends_with(&pattern[1..])
-                            } else {
-                                // Direct substring match
-                                path_str.contains(pattern)
-                            }
-                        });
-                        if !matches_filter {
-                            continue;
-                        }
-                    }
-
-                    file_count += 1;
-
-                    // Analyze file complexity
-                    match detected_toolchain.as_str() {
-                        "rust" => {
-                            use crate::services::ast_rust;
-                            if let Ok(metrics) =
-                                ast_rust::analyze_rust_file_with_complexity(path).await
-                            {
-                                file_metrics.push(metrics);
-                            }
-                        }
-                        "deno" => {
-                            use crate::services::ast_typescript;
-                            if let Ok(metrics) =
-                                ast_typescript::analyze_typescript_file_with_complexity(path).await
-                            {
-                                file_metrics.push(metrics);
-                            }
-                        }
-                        "python-uv" => {
-                            use crate::services::ast_python;
-                            if let Ok(metrics) =
-                                ast_python::analyze_python_file_with_complexity(path).await
-                            {
-                                file_metrics.push(metrics);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-
-                eprintln!("📊 Analyzed {} files", file_count);
-
-                // Aggregate results
-                let report = aggregate_results(file_metrics);
-
-                // Format output
-                let content = match format {
-                    ComplexityOutputFormat::Summary => format_complexity_summary(&report),
-                    ComplexityOutputFormat::Full => format_complexity_report(&report),
-                    ComplexityOutputFormat::Json => serde_json::to_string_pretty(&report)?,
-                    ComplexityOutputFormat::Sarif => format_as_sarif(&report)?,
-                };
-
-                // Write output
-                if let Some(path) = output {
-                    tokio::fs::write(&path, &content).await?;
-                    eprintln!("✅ Complexity analysis written to: {}", path.display());
-                } else {
-                    println!("{}", content);
-                }
+                handle_analyze_complexity(
+                    project_path,
+                    toolchain,
+                    format,
+                    output,
+                    max_cyclomatic,
+                    max_cognitive,
+                    include,
+                    watch,
+                )
+                .await?
             }
         },
     }
 
     Ok(())
+}
+
+// Command handlers - extracted from the main run function for better organization
+
+async fn handle_generate(
+    server: Arc<StatelessTemplateServer>,
+    category: String,
+    template: String,
+    params: Vec<(String, Value)>,
+    output: Option<PathBuf>,
+    create_dirs: bool,
+) -> anyhow::Result<()> {
+    let uri = format!("template://{}/{}", category, template);
+    let params_json = params_to_json(params);
+
+    let result = generate_template(server.as_ref(), &uri, params_json).await?;
+
+    if let Some(path) = output {
+        if create_dirs {
+            tokio::fs::create_dir_all(path.parent().unwrap()).await?;
+        }
+        tokio::fs::write(&path, &result.content).await?;
+        eprintln!("✅ Generated: {}", path.display());
+    } else {
+        tokio::io::stdout()
+            .write_all(result.content.as_bytes())
+            .await?;
+    }
+    Ok(())
+}
+
+async fn handle_scaffold(
+    server: Arc<StatelessTemplateServer>,
+    toolchain: String,
+    templates: Vec<String>,
+    params: Vec<(String, Value)>,
+    parallel: usize,
+) -> anyhow::Result<()> {
+    use futures::stream::{self, StreamExt};
+
+    let params_json = params_to_json(params);
+    let results = scaffold_project(
+        server.clone(),
+        &toolchain,
+        templates,
+        serde_json::Value::Object(params_json),
+    )
+    .await?;
+
+    // Parallel file writing with bounded concurrency
+    stream::iter(results.files)
+        .map(|file| async move {
+            let path = PathBuf::from(&file.path);
+            if let Some(parent) = path.parent() {
+                tokio::fs::create_dir_all(parent).await?;
+            }
+            tokio::fs::write(&path, &file.content).await?;
+            eprintln!("✅ {}", file.path);
+            Ok::<_, anyhow::Error>(())
+        })
+        .buffer_unordered(parallel)
+        .collect::<Vec<_>>()
+        .await;
+
+    eprintln!("\n🚀 Project scaffolded successfully!");
+    Ok(())
+}
+
+async fn handle_list(
+    server: Arc<StatelessTemplateServer>,
+    toolchain: Option<String>,
+    category: Option<String>,
+    format: OutputFormat,
+) -> anyhow::Result<()> {
+    let templates =
+        list_templates(server.as_ref(), toolchain.as_deref(), category.as_deref()).await?;
+
+    match format {
+        OutputFormat::Table => print_table(&templates),
+        OutputFormat::Json => {
+            let templates_deref: Vec<&TemplateResource> =
+                templates.iter().map(|t| t.as_ref()).collect();
+            println!("{}", serde_json::to_string_pretty(&templates_deref)?);
+        }
+        OutputFormat::Yaml => {
+            let templates_deref: Vec<&TemplateResource> =
+                templates.iter().map(|t| t.as_ref()).collect();
+            println!("{}", serde_yaml::to_string(&templates_deref)?);
+        }
+    }
+    Ok(())
+}
+
+async fn handle_search(
+    server: Arc<StatelessTemplateServer>,
+    query: String,
+    toolchain: Option<String>,
+    limit: usize,
+) -> anyhow::Result<()> {
+    let results = search_templates(server.clone(), &query, toolchain.as_deref()).await?;
+
+    for (i, result) in results.iter().take(limit).enumerate() {
+        println!(
+            "{:2}. {} (score: {:.2})",
+            i + 1,
+            result.template.uri,
+            result.relevance
+        );
+        if !result.matches.is_empty() {
+            println!("    Matches: {}", result.matches.join(", "));
+        }
+    }
+    Ok(())
+}
+
+async fn handle_validate(
+    server: Arc<StatelessTemplateServer>,
+    uri: String,
+    params: Vec<(String, Value)>,
+) -> anyhow::Result<()> {
+    let params_json = params_to_json(params);
+    let result = validate_template(
+        server.clone(),
+        &uri,
+        &serde_json::Value::Object(params_json),
+    )
+    .await?;
+
+    if result.valid {
+        eprintln!("✅ All parameters valid");
+    } else {
+        eprintln!("❌ Validation errors:");
+        for error in result.errors {
+            eprintln!("  - {}: {}", error.field, error.message);
+        }
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+async fn handle_context(
+    toolchain: String,
+    project_path: PathBuf,
+    output: Option<PathBuf>,
+    format: ContextFormat,
+) -> anyhow::Result<()> {
+    use crate::services::cache::{config::CacheConfig, persistent_manager::PersistentCacheManager};
+    use crate::services::context::{
+        analyze_project_with_persistent_cache, format_context_as_markdown,
+    };
+    use std::sync::Arc;
+
+    // Create a persistent cache manager for cross-session caching
+    let cache_config = CacheConfig::default();
+    let cache_manager = Arc::new(
+        PersistentCacheManager::with_default_dir(cache_config)
+            .map_err(|e| anyhow::anyhow!("Failed to create cache manager: {}", e))?,
+    );
+
+    // Analyze the project with caching
+    let context = analyze_project_with_persistent_cache(
+        &project_path,
+        &toolchain,
+        Some(cache_manager.clone()),
+    )
+    .await?;
+
+    // Print cache diagnostics
+    let diagnostics = cache_manager.get_diagnostics();
+    eprintln!(
+        "Cache hit rate: {:.1}%, memory efficiency: {:.1}%, time saved: {}ms",
+        diagnostics.effectiveness.overall_hit_rate * 100.0,
+        diagnostics.effectiveness.memory_efficiency * 100.0,
+        diagnostics.effectiveness.time_saved_ms
+    );
+
+    // Format the output
+    let content = match format {
+        ContextFormat::Markdown => format_context_as_markdown(&context),
+        ContextFormat::Json => serde_json::to_string_pretty(&context)?,
+    };
+
+    // Write output
+    if let Some(path) = output {
+        tokio::fs::write(&path, &content).await?;
+        eprintln!("✅ Context written to: {}", path.display());
+    } else {
+        println!("{}", content);
+    }
+    Ok(())
+}
+
+async fn handle_analyze_churn(
+    project_path: PathBuf,
+    days: u32,
+    format: ChurnOutputFormat,
+    output: Option<PathBuf>,
+) -> anyhow::Result<()> {
+    use crate::handlers::tools::{
+        format_churn_as_csv, format_churn_as_markdown, format_churn_summary,
+    };
+    use crate::services::git_analysis::GitAnalysisService;
+
+    let analysis = GitAnalysisService::analyze_code_churn(&project_path, days)?;
+
+    let content = match format {
+        ChurnOutputFormat::Summary => format_churn_summary(&analysis),
+        ChurnOutputFormat::Markdown => format_churn_as_markdown(&analysis),
+        ChurnOutputFormat::Json => serde_json::to_string_pretty(&analysis)?,
+        ChurnOutputFormat::Csv => format_churn_as_csv(&analysis),
+    };
+
+    if let Some(path) = output {
+        tokio::fs::write(&path, &content).await?;
+        eprintln!("✅ Code churn analysis written to: {}", path.display());
+    } else {
+        println!("{}", content);
+    }
+    Ok(())
+}
+
+async fn handle_analyze_dag(
+    dag_type: DagType,
+    project_path: PathBuf,
+    output: Option<PathBuf>,
+    max_depth: Option<usize>,
+    filter_external: bool,
+    show_complexity: bool,
+) -> anyhow::Result<()> {
+    use crate::services::{
+        context::analyze_project,
+        dag_builder::{
+            filter_call_edges, filter_import_edges, filter_inheritance_edges, DagBuilder,
+        },
+        mermaid_generator::{MermaidGenerator, MermaidOptions},
+    };
+
+    // Analyze the project to get AST information
+    // We'll analyze as Rust by default, but could be enhanced
+    let project_context = analyze_project(&project_path, "rust").await?;
+
+    // Build the dependency graph
+    let graph = DagBuilder::build_from_project(&project_context);
+
+    // Apply filters based on DAG type
+    let filtered_graph = match dag_type {
+        DagType::CallGraph => filter_call_edges(graph),
+        DagType::ImportGraph => filter_import_edges(graph),
+        DagType::Inheritance => filter_inheritance_edges(graph),
+        DagType::FullDependency => graph,
+    };
+
+    // Generate Mermaid output
+    let generator = MermaidGenerator::new(MermaidOptions {
+        max_depth,
+        filter_external,
+        show_complexity,
+        ..Default::default()
+    });
+
+    let mermaid_output = generator.generate(&filtered_graph);
+
+    // Add stats as comments
+    let output_with_stats = format!(
+        "{}\n%% Graph Statistics:\n%% Nodes: {}\n%% Edges: {}\n",
+        mermaid_output,
+        filtered_graph.nodes.len(),
+        filtered_graph.edges.len()
+    );
+
+    // Write output
+    if let Some(path) = output {
+        tokio::fs::write(&path, &output_with_stats).await?;
+        eprintln!("✅ Dependency graph written to: {}", path.display());
+    } else {
+        println!("{}", output_with_stats);
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn handle_analyze_complexity(
+    project_path: PathBuf,
+    toolchain: Option<String>,
+    format: ComplexityOutputFormat,
+    output: Option<PathBuf>,
+    max_cyclomatic: Option<u16>,
+    max_cognitive: Option<u16>,
+    include: Vec<String>,
+    watch: bool,
+) -> anyhow::Result<()> {
+    use crate::services::complexity::{
+        aggregate_results, format_as_sarif, format_complexity_report, format_complexity_summary,
+    };
+
+    if watch {
+        eprintln!("❌ Watch mode not yet implemented");
+        return Ok(());
+    }
+
+    // Detect toolchain if not specified
+    let detected_toolchain = detect_toolchain(&project_path, toolchain)?;
+
+    eprintln!("🔍 Analyzing {} project complexity...", detected_toolchain);
+
+    // Custom thresholds
+    let _thresholds = build_complexity_thresholds(max_cyclomatic, max_cognitive);
+
+    // Analyze files
+    let file_metrics = analyze_project_files(&project_path, &detected_toolchain, &include).await?;
+
+    eprintln!("📊 Analyzed {} files", file_metrics.len());
+
+    // Aggregate results
+    let report = aggregate_results(file_metrics);
+
+    // Format output
+    let content = match format {
+        ComplexityOutputFormat::Summary => format_complexity_summary(&report),
+        ComplexityOutputFormat::Full => format_complexity_report(&report),
+        ComplexityOutputFormat::Json => serde_json::to_string_pretty(&report)?,
+        ComplexityOutputFormat::Sarif => format_as_sarif(&report)?,
+    };
+
+    // Write output
+    if let Some(path) = output {
+        tokio::fs::write(&path, &content).await?;
+        eprintln!("✅ Complexity analysis written to: {}", path.display());
+    } else {
+        println!("{}", content);
+    }
+    Ok(())
+}
+
+// Helper functions for complexity analysis
+
+fn detect_toolchain(project_path: &Path, toolchain: Option<String>) -> anyhow::Result<String> {
+    if let Some(t) = toolchain {
+        return Ok(t);
+    }
+
+    if project_path.join("Cargo.toml").exists() {
+        Ok("rust".to_string())
+    } else if project_path.join("package.json").exists() || project_path.join("deno.json").exists()
+    {
+        Ok("deno".to_string())
+    } else if project_path.join("pyproject.toml").exists()
+        || project_path.join("requirements.txt").exists()
+    {
+        Ok("python-uv".to_string())
+    } else {
+        eprintln!("⚠️  Could not detect toolchain, defaulting to rust");
+        Ok("rust".to_string())
+    }
+}
+
+fn build_complexity_thresholds(
+    max_cyclomatic: Option<u16>,
+    max_cognitive: Option<u16>,
+) -> crate::services::complexity::ComplexityThresholds {
+    use crate::services::complexity::ComplexityThresholds;
+
+    let mut thresholds = ComplexityThresholds::default();
+    if let Some(max) = max_cyclomatic {
+        thresholds.cyclomatic_error = max;
+        thresholds.cyclomatic_warn = (max * 3 / 4).max(1);
+    }
+    if let Some(max) = max_cognitive {
+        thresholds.cognitive_error = max;
+        thresholds.cognitive_warn = (max * 3 / 4).max(1);
+    }
+    thresholds
+}
+
+async fn analyze_project_files(
+    project_path: &PathBuf,
+    toolchain: &str,
+    include_patterns: &[String],
+) -> anyhow::Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
+    use walkdir::WalkDir;
+
+    let mut file_metrics = Vec::new();
+
+    for entry in WalkDir::new(project_path)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+
+        // Skip directories and non-source files
+        if path.is_dir() {
+            continue;
+        }
+
+        // Check file extension based on toolchain
+        if !should_analyze_file(path, toolchain) {
+            continue;
+        }
+
+        // Apply include filters if specified
+        if !include_patterns.is_empty() && !matches_include_patterns(path, include_patterns) {
+            continue;
+        }
+
+        // Analyze file complexity
+        if let Some(metrics) = analyze_file_by_toolchain(path, toolchain).await {
+            file_metrics.push(metrics);
+        }
+    }
+
+    Ok(file_metrics)
+}
+
+fn should_analyze_file(path: &std::path::Path, toolchain: &str) -> bool {
+    match toolchain {
+        "rust" => path.extension().and_then(|s| s.to_str()) == Some("rs"),
+        "deno" => matches!(
+            path.extension().and_then(|s| s.to_str()),
+            Some("ts") | Some("tsx") | Some("js") | Some("jsx")
+        ),
+        "python-uv" => path.extension().and_then(|s| s.to_str()) == Some("py"),
+        _ => false,
+    }
+}
+
+fn matches_include_patterns(path: &std::path::Path, patterns: &[String]) -> bool {
+    let path_str = path.to_string_lossy();
+    patterns.iter().any(|pattern| {
+        // Simple glob-like matching
+        if pattern.contains("**") {
+            // Match any path containing the pattern after **
+            let parts: Vec<&str> = pattern.split("**").collect();
+            if parts.len() == 2 {
+                path_str.contains(parts[1].trim_start_matches('/'))
+            } else {
+                false
+            }
+        } else if pattern.starts_with("*.") {
+            // Match by extension
+            path_str.ends_with(&pattern[1..])
+        } else {
+            // Direct substring match
+            path_str.contains(pattern)
+        }
+    })
+}
+
+async fn analyze_file_by_toolchain(
+    path: &std::path::Path,
+    toolchain: &str,
+) -> Option<crate::services::complexity::FileComplexityMetrics> {
+    match toolchain {
+        "rust" => {
+            use crate::services::ast_rust;
+            ast_rust::analyze_rust_file_with_complexity(path).await.ok()
+        }
+        "deno" => {
+            use crate::services::ast_typescript;
+            ast_typescript::analyze_typescript_file_with_complexity(path)
+                .await
+                .ok()
+        }
+        "python-uv" => {
+            use crate::services::ast_python;
+            ast_python::analyze_python_file_with_complexity(path)
+                .await
+                .ok()
+        }
+        _ => None,
+    }
 }
 
 // Zero-allocation parameter parsing for common types

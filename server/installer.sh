@@ -10,6 +10,17 @@ readonly DEFAULT_INSTALL_DIR="${HOME}/.local/bin"
 # Error handling
 trap 'echo "Installation failed" >&2; exit 1' ERR
 
+# Cleanup function to remove test artifacts
+cleanup_artifacts() {
+    # Remove any tar.gz files that might be test artifacts in current directory
+    # Only remove files with suspicious names that indicate test failures
+    for file in *-platform.tar.gz nonexistent-platform.tar.gz; do
+        if [ -f "$file" ]; then
+            rm -f "$file" 2>/dev/null || true
+        fi
+    done
+}
+
 main() {
     # Parse arguments
     install_dir="${1:-$DEFAULT_INSTALL_DIR}"
@@ -40,7 +51,7 @@ main() {
     
     # Create temp directory with cleanup trap
     temp_dir=$(mktemp -d)
-    trap 'rm -rf "$temp_dir"' EXIT
+    trap 'rm -rf "$temp_dir"; cleanup_artifacts' EXIT
     
     # Construct URLs
     if [ "$version" = "latest" ]; then

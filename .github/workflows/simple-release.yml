@@ -1,0 +1,89 @@
+name: Simple Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - uses: dtolnay/rust-toolchain@stable
+      
+      - name: Bump version
+        id: version
+        run: |
+          # Get current version
+          CURRENT=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          echo "Current version: $CURRENT"
+          
+          # Parse version components
+          IFS='.' read -ra PARTS <<< "$CURRENT"
+          MAJOR="${PARTS[0]}"
+          MINOR="${PARTS[1]}"
+          PATCH="${PARTS[2]}"
+          
+          # Bump based on input
+          case "${{ inputs.version_bump }}" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "New version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          
+          # Update all Cargo.toml files
+          sed -i "0,/^version = /s/^version = .*/version = \"$NEW_VERSION\"/" Cargo.toml
+          sed -i "0,/^version = /s/^version = .*/version = \"$NEW_VERSION\"/" server/Cargo.toml
+          sed -i "0,/^version = /s/^version = .*/version = \"$NEW_VERSION\"/" installer-macro/Cargo.toml
+      
+      - name: Build binary
+        run: |
+          cd server
+          cargo build --release --target x86_64-unknown-linux-gnu
+          cd ..
+          cp target/x86_64-unknown-linux-gnu/release/paiml-mcp paiml-mcp-linux-x64
+      
+      - name: Commit and tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "chore: release v${{ steps.version.outputs.version }}"
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin main
+          git push origin "v${{ steps.version.outputs.version }}"
+      
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          files: paiml-mcp-linux-x64
+          generate_release_notes: true
