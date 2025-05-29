@@ -18,7 +18,7 @@
 #
 # This design prevents workspace-related issues and ensures consistent behavior.
 
-.PHONY: all validate format lint check test coverage build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate
+.PHONY: all validate format lint check test coverage build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -162,6 +162,24 @@ audit:
 # Generate documentation
 docs:
 	@$(MAKE) -C server docs
+
+# Dogfood our own tools to keep README.md updated
+dogfood: server-build-binary
+	@echo "🐕 Dogfooding: Using our own MCP toolkit to analyze and update documentation..."
+	@deno run --allow-all scripts/dogfood-readme.ts
+	@echo ""
+	@echo "✅ Dogfooding complete! README.md updated with fresh metrics from our own tools."
+	@echo "📁 Check artifacts/dogfooding/ for detailed reports"
+	@echo "💡 Tip: Run 'git diff README.md' to see what changed"
+
+# Quick dogfood for CI - just gather metrics without updating README
+dogfood-ci: server-build-binary
+	@echo "🐕 CI Dogfooding: Gathering metrics using our own tools..."
+	@mkdir -p artifacts/dogfooding
+	@./target/release/paiml-mcp-agent-toolkit analyze complexity --toolchain rust --format summary > artifacts/dogfooding/complexity-latest.txt
+	@./target/release/paiml-mcp-agent-toolkit analyze churn --days 7 --format summary > artifacts/dogfooding/churn-latest.txt
+	@./target/release/paiml-mcp-agent-toolkit analyze dag --show-complexity -o artifacts/dogfooding/dag-latest.mmd
+	@echo "✅ CI dogfooding complete! Metrics saved to artifacts/dogfooding/"
 
 # Run MCP server
 run-mcp:
@@ -423,6 +441,24 @@ server-%:
 		echo "Error: server/Makefile not found"; \
 		exit 1; \
 	fi
+
+## Fuzzing targets
+.PHONY: fuzz fuzz-all fuzz-coverage fuzz-corpus
+
+fuzz: ## Run fuzzing for Mermaid generation (default 5 minutes)
+	@deno run --allow-run --allow-read --allow-write --allow-env scripts/run-fuzzing.ts
+
+fuzz-all: ## Run all fuzzers
+	@deno run --allow-run --allow-read --allow-write --allow-env scripts/run-fuzzing.ts --fuzzer=all
+
+fuzz-coverage: ## Generate fuzzing coverage report
+	@deno run --allow-run --allow-read --allow-write --allow-env scripts/run-fuzzing.ts --fuzzer=coverage
+
+fuzz-corpus: ## Generate fuzzing corpus
+	@deno run --allow-write --allow-read scripts/generate-fuzz-corpus.ts
+
+fuzz-%: ## Run specific fuzzer (e.g., make fuzz-mermaid_generation)
+	@deno run --allow-run --allow-read --allow-write --allow-env scripts/run-fuzzing.ts --fuzzer=fuzz_$*
 
 # Client-specific commands
 client-%:

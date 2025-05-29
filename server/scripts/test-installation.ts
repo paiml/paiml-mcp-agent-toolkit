@@ -5,10 +5,7 @@
  * Tests the installation process and verifies the binary works correctly
  */
 
-import {
-  assertEquals,
-  assertExists,
-} from "https://deno.land/std@0.210.0/assert/mod.ts";
+import { assertEquals, assertExists } from "https://deno.land/std@0.210.0/assert/mod.ts";
 import { join } from "https://deno.land/std@0.210.0/path/mod.ts";
 
 const BINARY_NAME = "paiml-mcp-agent-toolkit";

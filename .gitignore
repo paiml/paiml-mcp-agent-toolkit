@@ -106,3 +106,7 @@ scratch/
 
 # Generated analysis files
 deep_context.md
+/*.mmd
+/test-dag*.mmd
+/server/dependency_graph.mmd
+/artifacts/mermaid/test_output/

@@ -85,6 +85,23 @@ test:
 		echo "🧪 Running installation validation tests..."; \
 		deno test --allow-all tests/e2e/installation.test.ts || exit 1; \
 	fi
+	@echo ""
+	@echo "📚 Running documentation synchronization tests..."
+	@cargo test --test cli_documentation_sync || { \
+		echo "❌ CLI documentation is out of sync!"; \
+		echo "Please update docs/cli-mcp.md to match the current implementation"; \
+		exit 1; \
+	}
+	@cargo test --test mcp_documentation_sync || { \
+		echo "❌ MCP documentation is out of sync!"; \
+		echo "Please update docs/cli-mcp.md to match the current implementation"; \
+		exit 1; \
+	}
+	@cargo test --test documentation_examples || { \
+		echo "❌ Documentation examples are invalid!"; \
+		echo "Please fix the code examples in docs/cli-mcp.md"; \
+		exit 1; \
+	}
 
 # Generate detailed coverage report in plain text
 coverage:

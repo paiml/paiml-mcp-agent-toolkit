@@ -34,7 +34,7 @@ pub enum NodeType {
     Interface,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum EdgeType {
     Calls,
     Imports,
@@ -60,8 +60,10 @@ impl DependencyGraph {
     }
 
     pub fn filter_by_edge_type(&self, edge_type: EdgeType) -> Self {
-        let filtered_edges: Vec<Edge> = self.edges.iter()
-            .filter(|e| matches!(&e.edge_type, t if std::mem::discriminant(t) == std::mem::discriminant(&edge_type)))
+        let filtered_edges: Vec<Edge> = self
+            .edges
+            .iter()
+            .filter(|e| e.edge_type == edge_type)
             .cloned()
             .collect();
 

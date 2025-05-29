@@ -106,15 +106,44 @@ Only use `cd server && make ...` when:
 ### CI/CD Guidelines
 
 All GitHub Actions workflows MUST:
-1. Run commands from the repository root
-2. Use `make server-*` targets instead of `cd server && make`
-3. Use `--manifest-path` for direct cargo commands when needed
+1. **Run commands from the repository root** - Never use `cd` patterns
+2. **Use `make server-*` targets** instead of `cd server && make`
+3. **Use specific Ubuntu versions** - Never use `ubuntu-latest`
+4. **Use `--manifest-path`** for direct cargo commands when needed
 
-Example:
+#### Required Ubuntu Versions
+
+**NEVER use `ubuntu-latest`** - always pin to specific versions for reproducibility:
+
+```yaml
+# ✅ CORRECT - Use specific versions:
+jobs:
+  release:
+    runs-on: ubuntu-20.04  # For release workflows and compatibility
+  
+  ci:
+    runs-on: ubuntu-22.04  # For general CI/development workflows
+
+# ❌ WRONG - Never use latest:
+jobs:
+  bad_example:
+    runs-on: ubuntu-latest  # This can break builds unexpectedly
+```
+
+**Version Guidelines:**
+- **`ubuntu-20.04`**: Use for release workflows, cross-compilation, and maximum compatibility
+- **`ubuntu-22.04`**: Use for general CI, testing, and development workflows
+- **Rationale**: Pinned versions ensure reproducible builds and prevent surprise breakage from OS updates
+
+#### Command Patterns
+
 ```yaml
 # ✅ CORRECT:
 - name: Run tests
   run: make server-test
+
+- name: Build binary
+  run: make server-build-binary
 
 # ❌ WRONG:
 - name: Run tests
@@ -175,6 +204,12 @@ Example URIs:
 - Work can be staged incrementally
 
 ## Dogfooding During Development
+
+**MANDATORY: Every development session MUST include dogfooding!** This means:
+
+1. **At Session Start**: Run `make dogfood` to analyze the current state
+2. **During Development**: Use our own tools for analysis and generation
+3. **Before Session End**: Run `make dogfood` again to update documentation with changes
 
 **ALWAYS use this project's own tools while developing it!** This ensures we catch issues early and understand the developer experience.
 
@@ -292,6 +327,44 @@ The project provides deep AST analysis for:
   --period 30 \
   --format markdown > HOTSPOTS.md
 ```
+
+### Dogfooding Workflow (REQUIRED)
+
+**Every development session MUST follow this workflow:**
+
+1. **Session Start Dogfooding**:
+   ```bash
+   # Analyze current state and update documentation
+   make dogfood
+   ```
+
+2. **During Development**:
+   ```bash
+   # After significant changes, analyze complexity
+   make server-build-binary
+   ./target/release/paiml-mcp-agent-toolkit analyze complexity --toolchain rust
+   
+   # Check for code churn hotspots
+   ./target/release/paiml-mcp-agent-toolkit analyze churn --period-days 7
+   
+   # Generate dependency graphs
+   ./target/release/paiml-mcp-agent-toolkit analyze dag --show-complexity
+   ```
+
+3. **Session End Dogfooding** (MANDATORY):
+   ```bash
+   # Update README with fresh metrics
+   make dogfood
+   
+   # Verify artifacts were created
+   ls -la artifacts/dogfooding/
+   ```
+
+**Why Dogfooding Matters:**
+- Ensures our tools work correctly on real projects
+- Keeps documentation up-to-date with actual metrics
+- Identifies issues before users encounter them
+- Demonstrates real-world usage patterns
 
 ## Using MCP Agent Toolkit Features
 

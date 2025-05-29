@@ -192,11 +192,13 @@ describe("MCP Server E2E Tests", () => {
     assertEquals(toolsResponse.error, undefined);
     const tools = toolsResponse.result as { tools: Array<{ name: string }> };
     assertExists(tools.tools);
-    assertEquals(tools.tools.length, 8);
+    assertEquals(tools.tools.length, 10);
     const toolNames = tools.tools.map((t) => t.name).sort();
     assertEquals(toolNames, [
       "analyze_code_churn",
       "analyze_complexity",
+      "analyze_dag",
+      "generate_context",
       "generate_template",
       "get_server_info",
       "list_templates",

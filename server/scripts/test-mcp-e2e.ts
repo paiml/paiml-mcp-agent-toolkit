@@ -5,10 +5,7 @@
  * Tests core MCP protocol functionality via STDIO transport
  */
 
-import {
-  assertEquals,
-  assertExists,
-} from "https://deno.land/std@0.208.0/assert/mod.ts";
+import { assertEquals, assertExists } from "https://deno.land/std@0.208.0/assert/mod.ts";
 
 interface JsonRpcRequest {
   jsonrpc: "2.0";
