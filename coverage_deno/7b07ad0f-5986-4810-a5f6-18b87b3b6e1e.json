@@ -1,0 +1,70 @@
+{
+  "scriptId": "336",
+  "url": "file:///home/noah/src/paiml-mcp-agent-toolkit/scripts/lib/create-release-utils.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 3937, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "getVersion",
+      "ranges": [
+        { "startOffset": 220, "endOffset": 472, "count": 1 },
+        { "startOffset": 451, "endOffset": 471, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "runCommand",
+      "ranges": [
+        { "startOffset": 480, "endOffset": 841, "count": 2 },
+        { "startOffset": 596, "endOffset": 601, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "checkGhCli",
+      "ranges": [{ "startOffset": 849, "endOffset": 1018, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isRunningInGitHubActions",
+      "ranges": [{ "startOffset": 1026, "endOffset": 1117, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "detectPlatform",
+      "ranges": [{ "startOffset": 1125, "endOffset": 1699, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "createTarball",
+      "ranges": [{ "startOffset": 1707, "endOffset": 2066, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "generateReleaseNotes",
+      "ranges": [{ "startOffset": 2074, "endOffset": 2920, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "checkProjectStructure",
+      "ranges": [{ "startOffset": 2928, "endOffset": 3091, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "buildReleaseBinary",
+      "ranges": [{ "startOffset": 3099, "endOffset": 3354, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "createGitHubRelease",
+      "ranges": [
+        { "startOffset": 3362, "endOffset": 3936, "count": 1 },
+        { "startOffset": 3757, "endOffset": 3935, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

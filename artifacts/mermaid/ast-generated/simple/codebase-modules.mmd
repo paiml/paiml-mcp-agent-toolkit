@@ -1,0 +1,13 @@
+graph TD
+    cli[cli]
+    lib[lib]
+    handlers[handlers]
+    utils[utils]
+    models[models]
+    services[services]
+
+    lib --- handlers
+    handlers --- services
+    services --- models
+    cli --- services
+    services --- utils

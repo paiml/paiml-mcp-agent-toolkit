@@ -10,7 +10,7 @@ repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
 
 [dependencies]
 # Async runtime
-tokio = { version = "1.44", features = ["rt-multi-thread", "macros", "net", "io-util", "io-std", "fs", "sync"] }
+tokio = { version = "1.44", features = ["rt-multi-thread", "macros", "net", "io-util", "io-std", "fs", "sync", "signal"] }
 async-trait = "0.1"
 
 # Serialization
@@ -73,9 +73,21 @@ rustpython-parser = "0.3"
 # installer-macro = { path = "../installer-macro" } # Removed - using simple include_str! instead
 blake3 = "1.5"
 
+# Demo/reporting mode dependencies (included by default)
+webbrowser = "0.8"
+bytes = "1.5"
+http = "1.0"
+httparse = "1.8"
+dashmap = "5.5"
+flate2 = "1.0"
+
+# Graph analysis
+petgraph = "0.6"
+
 [dev-dependencies]
 mockall = "0.13"
 tokio-test = "0.4"
+reqwest = { version = "0.11", features = ["json"] }
 pretty_assertions = "1.4"
 tempfile = "3.14"
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -83,9 +95,14 @@ proptest = "1.4"
 assert_cmd = "2.0"
 predicates = "3.1"
 
+[build-dependencies]
+ureq = "2.9"
+flate2 = "1.0"
+
 [features]
 default = []
-# installer-gen = ["installer-macro/installer-gen"] # Removed - no longer needed
+# Feature to exclude demo/reporting functionality for minimal builds
+no-demo = []
 
 [profile.release]
 lto = "fat"

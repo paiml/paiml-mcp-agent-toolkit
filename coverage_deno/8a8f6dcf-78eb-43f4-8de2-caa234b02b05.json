@@ -1,0 +1,91 @@
+{
+  "scriptId": "336",
+  "url": "file:///home/noah/src/paiml-mcp-agent-toolkit/scripts/lib/install-utils.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 2791, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "detectPlatform",
+      "ranges": [
+        { "startOffset": 244, "endOffset": 818, "count": 2 },
+        { "startOffset": 449, "endOffset": 513, "count": 0 },
+        { "startOffset": 517, "endOffset": 817, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "getLatestVersion",
+      "ranges": [
+        { "startOffset": 826, "endOffset": 1122, "count": 3 },
+        { "startOffset": 974, "endOffset": 1058, "count": 1 },
+        { "startOffset": 1058, "endOffset": 1121, "count": 2 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "constructDownloadUrl",
+      "ranges": [
+        { "startOffset": 1130, "endOffset": 1425, "count": 4 },
+        { "startOffset": 1286, "endOffset": 1295, "count": 1 },
+        { "startOffset": 1296, "endOffset": 1311, "count": 3 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "downloadFile",
+      "ranges": [
+        { "startOffset": 1433, "endOffset": 1716, "count": 2 },
+        { "startOffset": 1517, "endOffset": 1538, "count": 1 },
+        { "startOffset": 1538, "endOffset": 1610, "count": 0 },
+        { "startOffset": 1610, "endOffset": 1715, "count": 1 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "extractTarball",
+      "ranges": [
+        { "startOffset": 1724, "endOffset": 2101, "count": 2 },
+        { "startOffset": 1982, "endOffset": 2099, "count": 1 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "ensureDirectoryExists",
+      "ranges": [
+        { "startOffset": 2109, "endOffset": 2380, "count": 9 },
+        { "startOffset": 2220, "endOffset": 2225, "count": 8 },
+        { "startOffset": 2225, "endOffset": 2378, "count": 1 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "isInPath",
+      "ranges": [
+        { "startOffset": 2388, "endOffset": 2509, "count": 5 },
+        { "startOffset": 2455, "endOffset": 2460, "count": 1 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "verifyInstallation",
+      "ranges": [
+        { "startOffset": 2517, "endOffset": 2679, "count": 3 },
+        { "startOffset": 2618, "endOffset": 2647, "count": 2 },
+        { "startOffset": 2647, "endOffset": 2677, "count": 1 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "stripVersionPrefix",
+      "ranges": [
+        { "startOffset": 2687, "endOffset": 2790, "count": 4 },
+        { "startOffset": 2759, "endOffset": 2777, "count": 2 },
+        { "startOffset": 2778, "endOffset": 2787, "count": 2 }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

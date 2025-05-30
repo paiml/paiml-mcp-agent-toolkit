@@ -1,0 +1,110 @@
+{
+  "scriptId": "366",
+  "url": "file:///home/noah/src/paiml-mcp-agent-toolkit/scripts/validate-demo-assets.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        { "startOffset": 0, "endOffset": 6480, "count": 1 },
+        { "startOffset": 6300, "endOffset": 6319, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "extractHtmlFromRust",
+      "ranges": [
+        { "startOffset": 384, "endOffset": 703, "count": 3 },
+        { "startOffset": 666, "endOffset": 681, "count": 1 },
+        { "startOffset": 686, "endOffset": 702, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "extractJavaScriptFromHtml",
+      "ranges": [
+        { "startOffset": 744, "endOffset": 1004, "count": 2 },
+        { "startOffset": 951, "endOffset": 984, "count": 3 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "extractCssFromHtml",
+      "ranges": [
+        { "startOffset": 1038, "endOffset": 1260, "count": 2 },
+        { "startOffset": 1209, "endOffset": 1241, "count": 3 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "validateJavaScript",
+      "ranges": [
+        { "startOffset": 1295, "endOffset": 2564, "count": 4 },
+        { "startOffset": 1625, "endOffset": 1629, "count": 1 },
+        { "startOffset": 1630, "endOffset": 1647, "count": 3 },
+        { "startOffset": 1682, "endOffset": 1686, "count": 1 },
+        { "startOffset": 1687, "endOffset": 1696, "count": 3 },
+        { "startOffset": 2042, "endOffset": 2160, "count": 3 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "validateCss",
+      "ranges": [
+        { "startOffset": 2581, "endOffset": 3061, "count": 5 },
+        { "startOffset": 2964, "endOffset": 3042, "count": 15 },
+        { "startOffset": 2998, "endOffset": 3038, "count": 4 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "validateHtml",
+      "ranges": [
+        { "startOffset": 3079, "endOffset": 3865, "count": 7 },
+        { "startOffset": 3217, "endOffset": 3266, "count": 1 },
+        { "startOffset": 3341, "endOffset": 3391, "count": 4 },
+        { "startOffset": 3439, "endOffset": 3490, "count": 5 },
+        { "startOffset": 3557, "endOffset": 3585, "count": 6 },
+        { "startOffset": 3587, "endOffset": 3632, "count": 1 },
+        { "startOffset": 3664, "endOffset": 3692, "count": 6 },
+        { "startOffset": 3694, "endOffset": 3739, "count": 1 },
+        { "startOffset": 3771, "endOffset": 3799, "count": 6 },
+        { "startOffset": 3801, "endOffset": 3846, "count": 1 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "formatWebAssets",
+      "ranges": [{ "startOffset": 3917, "endOffset": 4069, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "processRustFile",
+      "ranges": [
+        { "startOffset": 4124, "endOffset": 5126, "count": 1 },
+        { "startOffset": 4355, "endOffset": 4379, "count": 0 },
+        { "startOffset": 5056, "endOffset": 5107, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 4489, "endOffset": 4506, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 4752, "endOffset": 4767, "count": 2 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 4961, "endOffset": 4977, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "main",
+      "ranges": [{ "startOffset": 5144, "endOffset": 6277, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}
