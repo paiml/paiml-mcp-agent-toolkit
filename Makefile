@@ -18,7 +18,7 @@
 #
 # This design prevents workspace-related issues and ensures consistent behavior.
 
-.PHONY: all validate format lint check test coverage build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci
+.PHONY: all validate format lint check test coverage build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -181,6 +181,12 @@ dogfood-ci: server-build-binary
 	@./target/release/paiml-mcp-agent-toolkit analyze dag --show-complexity -o artifacts/dogfooding/dag-latest.mmd
 	@echo "✅ CI dogfooding complete! Metrics saved to artifacts/dogfooding/"
 
+# Update rust-docs with current metrics
+update-rust-docs: server-build-binary
+	@echo "📝 Updating rust-docs with current metrics..."
+	@deno run --allow-all scripts/update-rust-docs.ts
+	@echo "✅ rust-docs updated successfully!"
+
 # Run MCP server
 run-mcp:
 	@$(MAKE) -C server run-mcp
@@ -208,8 +214,15 @@ build: validate-docs validate-naming
 	done; \
 	if [ "$$build_success" = "true" ]; then \
 		echo ""; \
+		echo "📝 Updating documentation with current metrics..."; \
+		echo "   - Updating rust-docs..."; \
+		$(MAKE) update-rust-docs || true; \
+		echo "   - Updating README.md..."; \
+		$(MAKE) dogfood || true; \
+		echo ""; \
 		echo "✅ Build completed successfully!"; \
 		echo "   Binaries built for all projects (Docker NOT built)."; \
+		echo "   Documentation updated with latest metrics."; \
 		echo "   To build Docker: make server-build-docker"; \
 	else \
 		echo ""; \
@@ -681,6 +694,11 @@ help:
 	@echo "  context      - Generate deep context analysis (AST, tree, docs)"
 	@echo "  build        - Build all projects (binaries only)"
 	@echo "  clean        - Clean all build artifacts"
+	@echo ""
+	@echo "Documentation:"
+	@echo "  dogfood      - Update README.md with current project metrics"
+	@echo "  dogfood-ci   - Gather metrics without updating files (for CI)"
+	@echo "  update-rust-docs - Update rust-docs with current performance metrics"
 	@echo ""
 	@echo "Running:"
 	@echo "  run-mcp      - Run MCP server in STDIO mode"
