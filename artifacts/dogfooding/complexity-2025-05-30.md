@@ -1,7 +1,7 @@
 # Complexity Analysis Summary
 
-📊 **Files analyzed**: 118
-🔧 **Total functions**: 16500
+📊 **Files analyzed**: 147
+🔧 **Total functions**: 27081
 
 ## Complexity Metrics
 
@@ -10,12 +10,12 @@
 - **90th Percentile Cyclomatic**: 0
 - **90th Percentile Cognitive**: 0
 
-⏱️  **Estimated Technical Debt**: 287.5 hours
+⏱️  **Estimated Technical Debt**: 291.0 hours
 
 ## Issues Found
 
 ❌ **Errors**: 21
-⚠️  **Warnings**: 58
+⚠️  **Warnings**: 61
 
 ## Top Complexity Hotspots
 

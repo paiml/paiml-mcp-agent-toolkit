@@ -9,7 +9,10 @@ import { ensureDir } from "https://deno.land/std@0.208.0/fs/mod.ts";
 
 const PROJECT_ROOT = Deno.cwd();
 const RUST_DOCS_DIR = join(PROJECT_ROOT, "rust-docs");
-const BINARY_PATH = join(PROJECT_ROOT, "target/release/paiml-mcp-agent-toolkit");
+const BINARY_PATH = join(
+  PROJECT_ROOT,
+  "target/release/paiml-mcp-agent-toolkit",
+);
 
 interface Metrics {
   coverage?: CoverageMetrics;
@@ -65,29 +68,29 @@ interface BenchmarkMetrics {
 class RustDocsUpdater {
   async run() {
     console.log("📝 Updating rust-docs with current metrics...");
-    
+
     const metrics: Metrics = {};
-    
+
     // Collect all metrics
     metrics.coverage = await this.collectCoverageMetrics();
     metrics.complexity = await this.collectComplexityMetrics();
     metrics.binarySize = await this.collectBinarySizeMetrics();
     metrics.benchmarks = await this.collectBenchmarkMetrics();
-    
+
     // Update documentation files
     await this.updateCoverageDoc(metrics.coverage);
     await this.updatePerformanceDoc(metrics);
-    
+
     console.log("✅ rust-docs updated successfully!");
-    
+
     // Save metrics summary
     await this.saveMetricsSummary(metrics);
   }
-  
+
   async collectCoverageMetrics(): Promise<CoverageMetrics | undefined> {
     try {
       console.log("📊 Collecting coverage metrics...");
-      
+
       // Try to read existing coverage report
       const coverageFile = join(PROJECT_ROOT, "server/coverage.json");
       if (await this.fileExists(coverageFile)) {
@@ -98,19 +101,24 @@ class RustDocsUpdater {
           timestamp: new Date().toISOString(),
         };
       }
-      
+
       // Fallback: try to run coverage command
       try {
         const cmd = new Deno.Command("cargo", {
-          args: ["tarpaulin", "--print-summary", "--manifest-path", "server/Cargo.toml"],
+          args: [
+            "tarpaulin",
+            "--print-summary",
+            "--manifest-path",
+            "server/Cargo.toml",
+          ],
           cwd: PROJECT_ROOT,
           stdout: "piped",
           stderr: "piped",
         });
-        
+
         const { stdout } = await cmd.output();
         const output = new TextDecoder().decode(stdout);
-        
+
         // Parse coverage from output
         const match = output.match(/Coverage:\s*([\d.]+)%/);
         if (match) {
@@ -123,7 +131,7 @@ class RustDocsUpdater {
       } catch (e) {
         console.log("⚠️  Could not run coverage tool:", e.message);
       }
-      
+
       // Default fallback
       return {
         overall: 81,
@@ -142,11 +150,11 @@ class RustDocsUpdater {
       return undefined;
     }
   }
-  
+
   async collectComplexityMetrics(): Promise<ComplexityMetrics | undefined> {
     try {
       console.log("🔍 Collecting complexity metrics...");
-      
+
       if (!await this.fileExists(BINARY_PATH)) {
         console.log("⚠️  Binary not found, using default metrics");
         return {
@@ -159,20 +167,27 @@ class RustDocsUpdater {
           timestamp: new Date().toISOString(),
         };
       }
-      
+
       const cmd = new Deno.Command(BINARY_PATH, {
-        args: ["analyze", "complexity", "--toolchain", "rust", "--format", "json"],
+        args: [
+          "analyze",
+          "complexity",
+          "--toolchain",
+          "rust",
+          "--format",
+          "json",
+        ],
         cwd: PROJECT_ROOT,
         stdout: "piped",
         stderr: "piped",
       });
-      
+
       const { stdout, success } = await cmd.output();
-      
+
       if (success) {
         const output = new TextDecoder().decode(stdout);
         const data = JSON.parse(output);
-        
+
         return {
           average: {
             cyclomatic: data.summary?.average_cyclomatic || 3.2,
@@ -186,14 +201,14 @@ class RustDocsUpdater {
     } catch (error) {
       console.error("Error collecting complexity metrics:", error);
     }
-    
+
     return undefined;
   }
-  
+
   async collectBinarySizeMetrics(): Promise<BinarySizeMetrics | undefined> {
     try {
       console.log("📦 Collecting binary size metrics...");
-      
+
       if (!await this.fileExists(BINARY_PATH)) {
         return {
           total: 8.7 * 1024 * 1024, // 8.7MB default
@@ -201,10 +216,10 @@ class RustDocsUpdater {
           sections: {},
         };
       }
-      
+
       const stat = await Deno.stat(BINARY_PATH);
       const sizeInMB = (stat.size / (1024 * 1024)).toFixed(1);
-      
+
       return {
         total: stat.size,
         stripped: stat.size,
@@ -217,18 +232,18 @@ class RustDocsUpdater {
       return undefined;
     }
   }
-  
+
   async collectBenchmarkMetrics(): Promise<BenchmarkMetrics | undefined> {
     try {
       console.log("⚡ Collecting benchmark metrics...");
-      
+
       // Check if benchmark results exist
       const benchFile = join(PROJECT_ROOT, "target/criterion");
       if (await this.fileExists(benchFile)) {
         // Parse criterion benchmark results
         // For now, return defaults
       }
-      
+
       return {
         templateRendering: {
           "makefile": { p50: 0.8, p99: 2.1 },
@@ -242,83 +257,90 @@ class RustDocsUpdater {
       return undefined;
     }
   }
-  
+
   async updateCoverageDoc(coverage?: CoverageMetrics) {
     if (!coverage) return;
-    
+
     const coveragePath = join(RUST_DOCS_DIR, "coverage.md");
     let content = await Deno.readTextFile(coveragePath);
-    
+
     // Update overall coverage
     content = content.replace(
       /## Current Coverage: \d+%/,
-      `## Current Coverage: ${coverage.overall}%`
+      `## Current Coverage: ${coverage.overall}%`,
     );
-    
+
     // Update timestamp
     const date = new Date().toLocaleDateString();
     content = content.replace(
       /\*\*Total\*\* \| \*\*\d+%\*\*/,
-      `**Total** | **${coverage.overall}%**`
+      `**Total** | **${coverage.overall}%**`,
     );
-    
+
     // Add update timestamp
     if (!content.includes("Last Updated:")) {
       content += `\n\n---\n\n*Last Updated: ${date}*\n`;
     } else {
       content = content.replace(
         /\*Last Updated: .*\*\n$/,
-        `*Last Updated: ${date}*\n`
+        `*Last Updated: ${date}*\n`,
       );
     }
-    
+
     await Deno.writeTextFile(coveragePath, content);
     console.log("✓ Updated coverage.md");
   }
-  
+
   async updatePerformanceDoc(metrics: Metrics) {
     const perfPath = join(RUST_DOCS_DIR, "performance.md");
     let content = await Deno.readTextFile(perfPath);
-    
+
     // Update complexity metrics if available
     if (metrics.complexity) {
       content = content.replace(
         /\| Cyclomatic \| [\d.]+ \|/,
-        `| Cyclomatic | ${metrics.complexity.average.cyclomatic} |`
+        `| Cyclomatic | ${metrics.complexity.average.cyclomatic} |`,
       );
       content = content.replace(
         /\| Cognitive \| [\d.]+ \|/,
-        `| Cognitive | ${metrics.complexity.average.cognitive} |`
+        `| Cognitive | ${metrics.complexity.average.cognitive} |`,
       );
       content = content.replace(
         /\| Nesting \| [\d.]+ \|/,
-        `| Nesting | ${metrics.complexity.average.nesting} |`
+        `| Nesting | ${metrics.complexity.average.nesting} |`,
       );
     }
-    
+
     // Update binary size if available
     if (metrics.binarySize) {
       const sizeInMB = (metrics.binarySize.total / (1024 * 1024)).toFixed(1);
       content = content.replace(
         /-rwxr-xr-x 1 user user [\d.]+M/,
-        `-rwxr-xr-x 1 user user ${sizeInMB}M`
+        `-rwxr-xr-x 1 user user ${sizeInMB}M`,
       );
     }
-    
+
     // Update benchmark results if available
     if (metrics.benchmarks) {
-      for (const [template, times] of Object.entries(metrics.benchmarks.templateRendering)) {
-        const templateName = template.charAt(0).toUpperCase() + template.slice(1);
-        const regex = new RegExp(`\\| ${templateName} \\| [\\d.]+KB \\| \\d+ \\| [\\d.]+ms \\| [\\d.]+ms \\|`);
+      for (
+        const [template, times] of Object.entries(
+          metrics.benchmarks.templateRendering,
+        )
+      ) {
+        const templateName = template.charAt(0).toUpperCase() +
+          template.slice(1);
+        const regex = new RegExp(
+          `\\| ${templateName} \\| [\\d.]+KB \\| \\d+ \\| [\\d.]+ms \\| [\\d.]+ms \\|`,
+        );
         if (regex.test(content)) {
           content = content.replace(
             regex,
-            `| ${templateName} | 2.1KB | 5 | ${times.p50}ms | ${times.p99}ms |`
+            `| ${templateName} | 2.1KB | 5 | ${times.p50}ms | ${times.p99}ms |`,
           );
         }
       }
     }
-    
+
     // Add update timestamp
     const date = new Date().toLocaleDateString();
     if (!content.includes("Last Updated:")) {
@@ -326,23 +348,23 @@ class RustDocsUpdater {
     } else {
       content = content.replace(
         /\*Last Updated: .*\*\n$/,
-        `*Last Updated: ${date}*\n`
+        `*Last Updated: ${date}*\n`,
       );
     }
-    
+
     await Deno.writeTextFile(perfPath, content);
     console.log("✓ Updated performance.md");
   }
-  
+
   async saveMetricsSummary(metrics: Metrics) {
     const summaryPath = join(RUST_DOCS_DIR, "metrics-summary.json");
     await Deno.writeTextFile(
       summaryPath,
-      JSON.stringify(metrics, null, 2)
+      JSON.stringify(metrics, null, 2),
     );
     console.log("✓ Saved metrics summary");
   }
-  
+
   async fileExists(path: string): Promise<boolean> {
     try {
       await Deno.stat(path);
