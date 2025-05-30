@@ -223,6 +223,18 @@ pub(crate) enum AnalyzeCommands {
         /// Show complexity metrics in the graph
         #[arg(long)]
         show_complexity: bool,
+
+        /// Include duplicate detection analysis
+        #[arg(long)]
+        include_duplicates: bool,
+
+        /// Include dead code analysis
+        #[arg(long)]
+        include_dead_code: bool,
+
+        /// Use enhanced vectorized analysis engine
+        #[arg(long)]
+        enhanced: bool,
     },
 }
 
@@ -330,6 +342,9 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
                 max_depth,
                 filter_external,
                 show_complexity,
+                include_duplicates,
+                include_dead_code,
+                enhanced,
             } => {
                 handle_analyze_dag(
                     dag_type,
@@ -338,6 +353,9 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
                     max_depth,
                     filter_external,
                     show_complexity,
+                    include_duplicates,
+                    include_dead_code,
+                    enhanced,
                 )
                 .await?
             }
@@ -589,6 +607,7 @@ async fn handle_analyze_churn(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_analyze_dag(
     dag_type: DagType,
     project_path: PathBuf,
@@ -596,7 +615,40 @@ async fn handle_analyze_dag(
     max_depth: Option<usize>,
     filter_external: bool,
     show_complexity: bool,
+    include_duplicates: bool,
+    include_dead_code: bool,
+    enhanced: bool,
 ) -> anyhow::Result<()> {
+    // If enhanced mode is requested, use the new vectorized architecture
+    if enhanced {
+        use crate::services::code_intelligence::analyze_dag_enhanced;
+
+        let result = analyze_dag_enhanced(
+            project_path.to_str().unwrap(),
+            dag_type,
+            max_depth,
+            filter_external,
+            show_complexity,
+            include_duplicates,
+            include_dead_code,
+        )
+        .await?;
+
+        // Write output
+        if let Some(path) = output {
+            tokio::fs::write(&path, &result).await?;
+            eprintln!(
+                "✅ Enhanced dependency graph written to: {}",
+                path.display()
+            );
+        } else {
+            println!("{}", result);
+        }
+
+        return Ok(());
+    }
+
+    // Otherwise, use the existing implementation
     use crate::services::{
         context::analyze_project,
         dag_builder::{
@@ -631,12 +683,19 @@ async fn handle_analyze_dag(
     let mermaid_output = generator.generate(&filtered_graph);
 
     // Add stats as comments
-    let output_with_stats = format!(
+    let mut output_with_stats = format!(
         "{}\n%% Graph Statistics:\n%% Nodes: {}\n%% Edges: {}\n",
         mermaid_output,
         filtered_graph.nodes.len(),
         filtered_graph.edges.len()
     );
+
+    // Add warnings if enhanced features were requested but not used
+    if include_duplicates || include_dead_code {
+        output_with_stats.push_str(
+            "\n%% Note: Use --enhanced flag to enable duplicate detection and dead code analysis\n",
+        );
+    }
 
     // Write output
     if let Some(path) = output {
@@ -840,7 +899,6 @@ async fn analyze_file_by_toolchain(
         _ => None,
     }
 }
-
 
 fn params_to_json(params: Vec<(String, Value)>) -> serde_json::Map<String, Value> {
     let mut map = serde_json::Map::new();

@@ -10,9 +10,10 @@ fn benchmark_cli_parsing(c: &mut Criterion) {
             "generate",
             "makefile",
             "rust/cli",
-            "-p", "project_name=bench",
+            "-p",
+            "project_name=bench",
         ];
-        
+
         b.iter(|| {
             // Simulate CLI parsing by checking argument validity
             let _ = black_box(args.clone());
@@ -22,15 +23,22 @@ fn benchmark_cli_parsing(c: &mut Criterion) {
     c.bench_function("cli_parse_complex_scaffold", |b| {
         let args = vec![
             "paiml-mcp-agent-toolkit",
-            "scaffold", "rust",
-            "--templates", "makefile,readme,gitignore",
-            "-p", "project_name=bench",
-            "-p", "has_tests=true",
-            "-p", "has_benchmarks=false",
-            "-p", "author=Benchmark Test",
-            "--parallel", "4",
+            "scaffold",
+            "rust",
+            "--templates",
+            "makefile,readme,gitignore",
+            "-p",
+            "project_name=bench",
+            "-p",
+            "has_tests=true",
+            "-p",
+            "has_benchmarks=false",
+            "-p",
+            "author=Benchmark Test",
+            "--parallel",
+            "4",
         ];
-        
+
         b.iter(|| {
             // Simulate CLI parsing by checking argument validity
             let _ = black_box(args.clone());
@@ -40,13 +48,18 @@ fn benchmark_cli_parsing(c: &mut Criterion) {
     c.bench_function("cli_parse_analyze_complexity", |b| {
         let args = vec![
             "paiml-mcp-agent-toolkit",
-            "analyze", "complexity",
-            "--toolchain", "rust",
-            "--format", "json",
-            "--max-cyclomatic", "15",
-            "--max-cognitive", "20",
+            "analyze",
+            "complexity",
+            "--toolchain",
+            "rust",
+            "--format",
+            "json",
+            "--max-cyclomatic",
+            "15",
+            "--max-cognitive",
+            "20",
         ];
-        
+
         b.iter(|| {
             // Simulate CLI parsing by checking argument validity
             let _ = black_box(args.clone());
@@ -208,12 +221,12 @@ pub fn process_data(data: Vec<i32>) -> i32 {
     c.bench_function("context_cache_lookup", |b| {
         use std::collections::HashMap;
         let mut cache = HashMap::new();
-        
+
         // Pre-populate cache
         for i in 0..100 {
             cache.insert(format!("file_{}.rs", i), format!("content_{}", i));
         }
-        
+
         b.iter(|| {
             let key = "file_42.rs";
             let _ = black_box(cache.get(key));

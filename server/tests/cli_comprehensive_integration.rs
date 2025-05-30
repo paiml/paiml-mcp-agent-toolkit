@@ -52,16 +52,10 @@ fn test_generate_missing_required_params() {
 #[test]
 fn test_generate_invalid_template_uri() {
     let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
-    cmd.args([
-        "generate",
-        "invalid",
-        "category",
-        "-p",
-        "project_name=test",
-    ])
-    .assert()
-    .failure()
-    .code(1);
+    cmd.args(["generate", "invalid", "category", "-p", "project_name=test"])
+        .assert()
+        .failure()
+        .code(1);
 }
 
 #[test]
@@ -509,7 +503,9 @@ fn test_help_output() {
     cmd.arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Professional project scaffolding toolkit"))
+        .stdout(predicate::str::contains(
+            "Professional project scaffolding toolkit",
+        ))
         .stdout(predicate::str::contains("Commands:"));
 }
 
@@ -524,7 +520,9 @@ fn test_version_output() {
 
 #[test]
 fn test_subcommand_help() {
-    let subcommands = vec!["generate", "scaffold", "list", "search", "validate", "context"];
+    let subcommands = vec![
+        "generate", "scaffold", "list", "search", "validate", "context",
+    ];
 
     for subcmd in subcommands {
         let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
