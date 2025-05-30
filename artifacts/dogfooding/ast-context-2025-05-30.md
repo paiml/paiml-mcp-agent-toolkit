@@ -1,15 +1,15 @@
 # Project Context: rust Project
 
-Generated: 2025-05-30 01:26:03 UTC
+Generated: 2025-05-30 04:43:05 UTC
 
 ## Summary
 
-- Files analyzed: 147
-- Functions: 26492
-- Structs: 131
-- Enums: 35
+- Files analyzed: 150
+- Functions: 26495
+- Structs: 135
+- Enums: 36
 - Traits: 4
-- Implementations: 77
+- Implementations: 79
 
 ## Files
 
@@ -21,6 +21,32 @@ Generated: 2025-05-30 01:26:03 UTC
 **Functions:**
 - `private fn detect_execution_mode` (line 1)
 - `private async fn main` (line 1)
+
+### ./server/src/demo/mod.rs
+
+**Modules:**
+- `pub mod runner` (line 1)
+
+**Structs:**
+- `pub struct DemoArgs` (2 fields) (line 1)
+
+**Functions:**
+- `pub fn run_demo` (line 1)
+- `pub async fn run_demo` (line 1)
+
+### ./server/src/demo/runner.rs
+
+**Structs:**
+- `pub struct DemoRunner` (2 fields) (line 1)
+- `pub struct DemoStep` (4 fields) (line 1)
+- `pub struct DemoReport` (3 fields) (line 1)
+
+**Functions:**
+- `pub fn detect_repository` (line 1)
+
+**Implementations:**
+- `impl DemoRunner` (line 1)
+- `impl DemoReport` (line 1)
 
 ### ./server/src/tests/prompts.rs
 
@@ -294,10 +320,11 @@ Generated: 2025-05-30 01:26:03 UTC
 
 **Enums:**
 - `pub(crate) enum Mode` (2 variants) (line 1)
-- `pub(crate) enum Commands` (7 variants) (line 1)
+- `pub enum ExecutionMode` (2 variants) (line 1)
+- `pub(crate) enum Commands` (8 variants) (line 1)
 - `pub(crate) enum AnalyzeCommands` (3 variants) (line 1)
 - `pub(crate) enum ContextFormat` (2 variants) (line 1)
-- `pub(crate) enum OutputFormat` (3 variants) (line 1)
+- `pub enum OutputFormat` (3 variants) (line 1)
 - `pub(crate) enum ComplexityOutputFormat` (4 variants) (line 1)
 - `pub enum DagType` (4 variants) (line 1)
 
@@ -451,6 +478,7 @@ Generated: 2025-05-30 01:26:03 UTC
 
 **Modules:**
 - `pub mod cli` (line 1)
+- `pub mod demo` (line 1)
 - `pub mod handlers` (line 1)
 - `pub mod models` (line 1)
 - `pub mod services` (line 1)
@@ -987,6 +1015,11 @@ Generated: 2025-05-30 01:26:03 UTC
 **Functions:**
 - `private fn main` (line 1)
 - `private fn verify_dependency_versions` (line 1)
+
+### ./server/tests/demo_integration.rs
+
+**Modules:**
+- `private mod demo_tests` (line 1)
 
 ### ./server/tests/enhanced_dag_integration.rs
 

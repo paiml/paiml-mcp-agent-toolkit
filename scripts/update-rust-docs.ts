@@ -5,7 +5,6 @@
  */
 
 import { join } from "https://deno.land/std@0.208.0/path/mod.ts";
-import { ensureDir } from "https://deno.land/std@0.208.0/fs/mod.ts";
 
 const PROJECT_ROOT = Deno.cwd();
 const RUST_DOCS_DIR = join(PROJECT_ROOT, "rust-docs");
@@ -218,7 +217,7 @@ class RustDocsUpdater {
       }
 
       const stat = await Deno.stat(BINARY_PATH);
-      const sizeInMB = (stat.size / (1024 * 1024)).toFixed(1);
+      const _sizeInMB = (stat.size / (1024 * 1024)).toFixed(1);
 
       return {
         total: stat.size,

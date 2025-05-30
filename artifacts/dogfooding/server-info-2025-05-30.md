@@ -1,7 +1,7 @@
 ## Server Information
 
 **Name:** paiml-mcp-agent-toolkit
-**Version:** 0.5.3
+**Version:** 0.7.0
 **Description:** Professional project scaffolding toolkit that generates Makefiles, README.md files, and .gitignore files for Rust, Deno, and Python projects. Created by Pragmatic AI Labs to streamline project setup with best practices.
 
 **Capabilities:**

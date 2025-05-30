@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpRequest {
     pub jsonrpc: String,
     pub id: Value,
@@ -9,7 +9,7 @@ pub struct McpRequest {
     pub params: Option<Value>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpResponse {
     pub jsonrpc: String,
     pub id: Value,
@@ -19,7 +19,7 @@ pub struct McpResponse {
     pub error: Option<McpError>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpError {
     pub code: i32,
     pub message: String,
