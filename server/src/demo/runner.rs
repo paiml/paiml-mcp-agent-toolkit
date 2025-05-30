@@ -145,7 +145,7 @@ impl DemoRunner {
             "analyze_dag",
             json!({
                 "project_path": path.to_str().unwrap(),
-                "dag_type": "call-graph",
+                "dag_type": "import-graph",
                 "filter_external": true,
                 "show_complexity": true,
                 "format": "mermaid"
@@ -341,6 +341,12 @@ impl DemoReport {
         writeln!(
             &mut output,
             "   - Create DAGs: paiml-mcp-agent-toolkit analyze dag"
+        )
+        .unwrap();
+        writeln!(&mut output).unwrap();
+        writeln!(
+            &mut output,
+            "📊 To view Mermaid diagrams: https://mermaid.live"
         )
         .unwrap();
 

@@ -141,6 +141,9 @@ mod demo_tests {
             let args = DemoArgs {
                 path: Some(repo_path.clone()),
                 format: OutputFormat::Json,
+                no_browser: true,
+                port: None,
+                web: false,
             };
 
             // This should complete without panicking

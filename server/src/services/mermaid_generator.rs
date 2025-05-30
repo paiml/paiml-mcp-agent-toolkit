@@ -40,9 +40,30 @@ impl MermaidGenerator {
     }
 
     fn generate_nodes(&self, graph: &DependencyGraph, output: &mut String) {
-        for id in graph.nodes.keys() {
-            // Just output the node ID - no labels to avoid parse errors
-            writeln!(output, "    {}", self.sanitize_id(id)).unwrap();
+        for (id, node) in &graph.nodes {
+            let sanitized_id = self.sanitize_id(id);
+            let escaped_label = self.escape_mermaid_label(&node.label);
+
+            // Generate node with proper shape based on type
+            let node_def = match node.node_type {
+                NodeType::Module => {
+                    format!("{}[{}]", sanitized_id, escaped_label)
+                }
+                NodeType::Function => {
+                    format!("{}[{}]", sanitized_id, escaped_label)
+                }
+                NodeType::Class => {
+                    format!("{}[{}]", sanitized_id, escaped_label)
+                }
+                NodeType::Trait => {
+                    format!("{}(({}))", sanitized_id, escaped_label)
+                }
+                NodeType::Interface => {
+                    format!("{}(({}))", sanitized_id, escaped_label)
+                }
+            };
+
+            writeln!(output, "    {}", node_def).unwrap();
         }
     }
 
@@ -687,6 +708,73 @@ mod tests {
 
         // Check that styling is present when show_complexity is true
         assert!(output.contains("style test fill:#90EE90"));
+    }
+
+    #[test]
+    fn test_regression_empty_nodes_bug() {
+        // This specific test ensures we never regress to empty nodes
+        let mut graph = DependencyGraph::new();
+
+        // Add problematic node labels from real-world cases
+        let test_cases = vec![
+            ("fn|process", "Function with pipe"),
+            ("struct <T>", "Generic struct"),
+            ("impl Display for &'a str", "Complex impl"),
+            ("async fn handle_request()", "Async function"),
+            ("mod tests { #[test] }", "Module with attributes"),
+            ("trait Iterator<Item=T>", "Associated type"),
+            ("use std::io::{Read, Write}", "Multiple imports"),
+        ];
+
+        for (id, label) in test_cases.iter() {
+            graph.add_node(NodeInfo {
+                id: id.to_string(),
+                label: label.to_string(),
+                node_type: NodeType::Function,
+                file_path: "test.rs".to_string(),
+                line_number: 1,
+                complexity: 5,
+            });
+        }
+
+        let generator = MermaidGenerator::new(MermaidOptions::default());
+        let output = generator.generate(&graph);
+
+        // Verify each label appears in output (escaped)
+        for (id, _label) in test_cases {
+            let sanitized_id = generator.sanitize_id(id);
+            // Verify the node has a label (not just a bare ID)
+            assert!(
+                output.contains(&format!("{}[", sanitized_id)),
+                "Node '{}' is missing its label brackets in output",
+                id
+            );
+        }
+
+        // Verify no bare IDs (nodes without labels)
+        let lines: Vec<&str> = output.lines().collect();
+        for line in lines {
+            let trimmed = line.trim();
+            // Skip empty lines, the graph directive, edges, and style lines
+            if trimmed.is_empty()
+                || trimmed.starts_with("graph")
+                || trimmed.contains("-->")
+                || trimmed.contains("-.->")
+                || trimmed.contains("---")
+                || trimmed.starts_with("style")
+            {
+                continue;
+            }
+
+            // Node lines should have brackets or parentheses
+            if !trimmed.contains("graph") {
+                assert!(
+                    trimmed.contains('[') || trimmed.contains("(("),
+                    "Found bare node ID without label: {}",
+                    trimmed
+                );
+            }
+        }
     }
 
     #[test]

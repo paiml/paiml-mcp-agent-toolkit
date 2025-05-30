@@ -62,21 +62,27 @@ async function main() {
 
   console.log("\n📊 Results:");
   console.log(`   Binary size: ${(binarySize / 1024 / 1024).toFixed(2)} MB`);
-  
+
   // Warn if binary is too large
   const maxSizeMB = 20; // 20MB threshold
   if (binarySize > maxSizeMB * 1024 * 1024) {
     console.error(`\n⚠️  Binary size exceeds ${maxSizeMB}MB threshold!`);
-    console.error("   Consider optimizing dependencies or build configuration.");
+    console.error(
+      "   Consider optimizing dependencies or build configuration.",
+    );
   } else {
-    console.log(`\n✅ Binary size is within acceptable limits (<${maxSizeMB}MB).`);
+    console.log(
+      `\n✅ Binary size is within acceptable limits (<${maxSizeMB}MB).`,
+    );
   }
 
   // Check for demo functionality
   console.log("\n🔍 Verifying demo command is available...");
   try {
     const helpOutput = await runCommand([binaryPath, "--help"]);
-    if (helpOutput.includes("demo") && helpOutput.includes("Run interactive demo")) {
+    if (
+      helpOutput.includes("demo") && helpOutput.includes("Run interactive demo")
+    ) {
       console.log("✅ Demo command is available in release binary.");
     } else {
       console.error("❌ Demo command not found in help output!");

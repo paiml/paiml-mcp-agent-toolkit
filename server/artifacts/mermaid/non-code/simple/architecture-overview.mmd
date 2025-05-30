@@ -1,0 +1,11 @@
+graph TD
+    handlers[Protocol Handlers]
+    analyzer[Code Analyzer]
+    templates[Template Engine]
+    cache[Cache Layer]
+    mcp_server[MCP Server]
+
+    mcp_server --- handlers
+    handlers --> analyzer
+    handlers --> templates
+    analyzer --- cache

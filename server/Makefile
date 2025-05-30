@@ -1,4 +1,3 @@
-
 # MCP Template Server - Build and Deployment Makefile
 .PHONY: all validate format lint check test coverage build build-binary run run-test test-http test-mcp test-integration run-mcp run-mcp-test clean install local-install install-latest reinstall status check-rebuild uninstall setup audit docs help validate-docs ci-status benchmark
 
@@ -8,7 +7,7 @@ all: format lint check test build validate
 	@echo "✅ All tasks completed successfully!"
 
 # Validate everything passes (comprehensive check)
-validate: validate-docs
+validate: validate-docs validate-demo-assets
 	@echo ""
 	@echo "=== Project Validation Checklist ==="
 	@echo "✓ Format: Code formatting compliance (rustfmt + deno fmt)"
@@ -16,6 +15,7 @@ validate: validate-docs
 	@echo "✓ Compile: Type checking and compilation (cargo check)"
 	@echo "✓ Test: Unit tests and coverage requirements (cargo test)"
 	@echo "✓ Docs: Documentation naming consistency"
+	@echo "✓ Demo: Web assets validated (HTML/CSS/JS with Deno)"
 	@echo ""
 	@echo "✅ All validation checks passed!"
 
@@ -396,6 +396,15 @@ validate-docs:
 		cd .. && deno run --allow-read --allow-env scripts/validate-docs.ts; \
 	else \
 		echo "⚠️  Validation script not found, skipping..."; \
+	fi
+
+# Validate demo HTML/CSS/JS assets with Deno
+validate-demo-assets:
+	@echo "🎨 Validating demo web assets (HTML/CSS/JS)..."
+	@if [ -f "../scripts/validate-demo-assets.ts" ]; then \
+		cd .. && deno run --allow-read --allow-write --allow-run scripts/validate-demo-assets.ts; \
+	else \
+		echo "⚠️  Demo asset validation script not found, skipping..."; \
 	fi
 
 # Generate documentation

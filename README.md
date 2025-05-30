@@ -792,6 +792,27 @@ This diagram shows the current code dependency structure of the PAIML MCP Agent 
 - Module boundaries and interfaces
 - External dependency filtering
 
+### Current Project Dependency Graph
+
+*Auto-generated on 2025-05-30 using our own MCP toolkit*
+
+```mermaid
+graph TD
+
+
+
+%% Graph Statistics:
+%% Nodes: 0
+%% Edges: 0
+
+```
+
+This diagram shows the current code dependency structure of the PAIML MCP Agent Toolkit itself, generated using our own `analyze dag` command. The graph includes:
+- Function call relationships
+- Complexity color coding (green=low, yellow=medium, orange=high, red=very high)
+- Module boundaries and interfaces
+- External dependency filtering
+
 ### Technical Architecture
 
 The PAIML MCP Agent Toolkit uses a stateless architecture with several key components:
@@ -1510,6 +1531,85 @@ Generate dependency graphs in Mermaid format for visualizing code structure and 
 
 📊 **Files analyzed**: 150
 🔧 **Total functions**: 27102
+
+### Dogfooding Metrics
+
+*These metrics are generated using our own toolkit on our own codebase*
+
+#### Code Complexity Analysis
+# Complexity Analysis Summary
+
+📊 **Files analyzed**: 124
+🔧 **Total functions**: 13183
+
+## Complexity Metrics
+
+- **Average Cyclomatic**: 0.1
+- **Average Cognitive**: 0.2
+- **90th Percentile Cyclomatic**: 0
+- **90th Percentile Cognitive**: 0
+
+⏱️  **Estimated Technical Debt**: 300.0 hours
+
+## Issues Found
+
+❌ **Errors**: 22
+⚠️  **Warnings**: 66
+
+## Top Complexity Hotspots
+
+1. `analyze_project_with_cache` - cyclomatic complexity: 49
+   📁 ./server/src/services/context.rs:1
+2. `analyze_project_with_persistent_cache` - cyclomatic complexity: 49
+   📁 ./server/src/services/context.rs:1
+3. `handle_analyze_complexity` - cyclomatic complexity: 41
+   📁 ./server/src/handlers/tools.rs:1
+4. `format_context_as_markdown` - cyclomatic complexity: 32
+   📁 ./server/src/services/context.rs:1
+5. `validate_mermaid_syntax` - cyclomatic complexity: 25
+   📁 ./server/src/services/mermaid_generator.rs:1
+
+
+
+#### Code Churn Analysis (Last 30 Days)
+[2m2025-05-30T16:28:26.386571Z[0m [32m INFO[0m [2mpaiml_mcp_agent_toolkit::services::git_analysis[0m[2m:[0m Analyzing code churn for last 30 days
+# Code Churn Analysis Report
+
+**Generated:** 2025-05-30 16:28:26 UTC
+**Repository:** .
+**Period:** 30 days
+
+## Summary
+
+- Total files changed: 280
+- Total commits: 896
+- Unique contributors: 3
+
+## Top 10 Files by Churn Score
+
+| File | Commits | Changes | Churn Score | Authors |
+|------|---------|---------|-------------|----------|
+| server/Cargo.toml | 69 | +202 -88  | 0.60 | 2 |
+| Cargo.toml | 54 | +78 -52  | 0.47 | 2 |
+| Cargo.lock | 44 | +3449 -56  | 0.43 | 3 |
+| artifacts/dogfooding/ast-context-2025-05-30.md | 3 | +27623 -70  | 0.43 | 1 |
+| assets/project-state.json | 46 | +123 -47  | 0.40 | 2 |
+| installer-macro/Cargo.toml | 42 | +60 -60  | 0.37 | 2 |
+| README.md | 30 | +2503 -380  | 0.30 | 1 |
+| Makefile | 22 | +798 -64  | 0.20 | 1 |
+| .github/workflows/automated-release.yml | 19 | +475 -85  | 0.17 | 1 |
+| server/Makefile | 14 | +713 -192  | 0.13 | 1 |
+
+
+
+#### AST Analysis Summary
+```
+Generated on: 2025-05-30T16:28:29.063Z
+Tool used: paiml-mcp-agent-toolkit context rust
+Cache status: HIT
+```
+
+*Analysis generated with: `paiml-mcp-agent-toolkit analyze complexity --toolchain rust`*
 
 ## Complexity Metrics
 

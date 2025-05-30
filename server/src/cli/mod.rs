@@ -155,6 +155,18 @@ pub(crate) enum Commands {
         /// Output format
         #[arg(short, long, value_enum, default_value = "table")]
         format: OutputFormat,
+
+        /// Skip opening browser (web mode only)
+        #[arg(long)]
+        no_browser: bool,
+
+        /// Port for demo server (default: random)
+        #[arg(long)]
+        port: Option<u16>,
+
+        /// Run CLI output mode instead of web-based interactive demo
+        #[arg(long)]
+        cli: bool,
     },
 }
 
@@ -401,8 +413,20 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
             }
         },
 
-        Commands::Demo { path, format } => {
-            let demo_args = crate::demo::DemoArgs { path, format };
+        Commands::Demo {
+            path,
+            format,
+            no_browser,
+            port,
+            cli,
+        } => {
+            let demo_args = crate::demo::DemoArgs {
+                path,
+                format,
+                no_browser,
+                port,
+                web: !cli,  // Invert the flag - web is default unless --cli is specified
+            };
             crate::demo::run_demo(demo_args, server).await?;
         }
     }

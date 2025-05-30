@@ -276,15 +276,15 @@ check-scripts:
 		echo "✓ No TypeScript scripts to check"; \
 	fi
 
-# Test TypeScript scripts
+# Test TypeScript scripts with coverage
 test-scripts:
-	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.test.ts' -not -name '*.integration.test.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
-		echo "🧪 Testing TypeScript scripts..."; \
-		find $(SCRIPTS_DIR) -name '*.test.ts' -not -name '*.integration.test.ts' -type f | xargs deno test --allow-read --allow-env --allow-write --allow-run; \
-	fi
-	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.integration.test.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
-		echo "🧪 Running integration tests..."; \
-		find $(SCRIPTS_DIR) -name '*.integration.test.ts' -type f | xargs deno test --allow-net --allow-read --allow-env --allow-write --allow-run; \
+	@rm -rf coverage_deno
+	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.test.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
+		echo "🧪 Testing TypeScript scripts with coverage..."; \
+		deno test --allow-all --coverage=coverage_deno $(SCRIPTS_DIR)/**/*.test.ts; \
+		echo ""; \
+		echo "📊 Coverage Report:"; \
+		deno coverage coverage_deno; \
 	else \
 		echo "✓ No TypeScript script tests found"; \
 	fi
@@ -315,9 +315,25 @@ test-critical-scripts:
 	@echo ""
 	@echo "✅ Critical script tests completed!"
 
+# Generate Deno coverage report
+coverage-scripts:
+	@rm -rf coverage_deno
+	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.test.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
+		echo "📊 Generating TypeScript coverage report..."; \
+		deno test --allow-all --coverage=coverage_deno $(SCRIPTS_DIR)/**/*.test.ts --quiet; \
+		echo ""; \
+		deno coverage coverage_deno; \
+		echo ""; \
+		echo "📄 Detailed reports available at:"; \
+		echo "   - LCOV: coverage_deno/lcov.info"; \
+		echo "   - HTML: coverage_deno/html/index.html"; \
+	else \
+		echo "✓ No TypeScript script tests found"; \
+	fi
+
 # Clean coverage data
 clean-coverage:
-	@rm -rf .coverage coverage_profile
+	@rm -rf .coverage coverage_profile coverage_deno
 
 # Validate documentation naming consistency
 validate-docs:
@@ -685,6 +701,7 @@ help:
 	@echo "  test         - Run tests in all projects"
 	@echo "  test-critical-scripts - Test critical installation/release scripts"
 	@echo "  coverage     - Generate coverage reports for all projects"
+	@echo "  coverage-scripts - Generate coverage report for TypeScript tests"
 	@echo "  audit        - Run security audit on all projects"
 	@echo "  docs         - Generate and open documentation"
 	@echo "  validate-docs - Check documentation naming consistency"

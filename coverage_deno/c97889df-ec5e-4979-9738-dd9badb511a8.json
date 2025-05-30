@@ -1,0 +1,65 @@
+{
+  "scriptId": "333",
+  "url": "file:///home/noah/src/paiml-mcp-agent-toolkit/scripts/lib/create-release-utils-integration.test.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 2422, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 307, "endOffset": 2419, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 349, "endOffset": 1057, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 419, "endOffset": 1051, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 835, "endOffset": 863, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 1105, "endOffset": 1587, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 1158, "endOffset": 1581, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 1397, "endOffset": 1433, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 1636, "endOffset": 2415, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        { "startOffset": 1693, "endOffset": 2409, "count": 1 },
+        { "startOffset": 2249, "endOffset": 2289, "count": 0 },
+        { "startOffset": 2323, "endOffset": 2395, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 2089, "endOffset": 2169, "count": 1 }],
+      "isBlockCoverage": true
+    }
+  ]
+}
