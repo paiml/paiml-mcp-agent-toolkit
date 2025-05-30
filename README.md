@@ -750,6 +750,48 @@ This diagram shows the current code dependency structure of the PAIML MCP Agent 
 - Module boundaries and interfaces
 - External dependency filtering
 
+### Current Project Dependency Graph
+
+*Auto-generated on 2025-05-30 using our own MCP toolkit*
+
+```mermaid
+graph TD
+
+
+
+%% Graph Statistics:
+%% Nodes: 0
+%% Edges: 0
+
+```
+
+This diagram shows the current code dependency structure of the PAIML MCP Agent Toolkit itself, generated using our own `analyze dag` command. The graph includes:
+- Function call relationships
+- Complexity color coding (green=low, yellow=medium, orange=high, red=very high)
+- Module boundaries and interfaces
+- External dependency filtering
+
+### Current Project Dependency Graph
+
+*Auto-generated on 2025-05-30 using our own MCP toolkit*
+
+```mermaid
+graph TD
+
+
+
+%% Graph Statistics:
+%% Nodes: 0
+%% Edges: 0
+
+```
+
+This diagram shows the current code dependency structure of the PAIML MCP Agent Toolkit itself, generated using our own `analyze dag` command. The graph includes:
+- Function call relationships
+- Complexity color coding (green=low, yellow=medium, orange=high, red=very high)
+- Module boundaries and interfaces
+- External dependency filtering
+
 ### Technical Architecture
 
 The PAIML MCP Agent Toolkit uses a stateless architecture with several key components:
@@ -804,6 +846,65 @@ paiml-mcp-agent-toolkit analyze churn \
   --period 30 \
   --format markdown > HOTSPOTS.md
 ```
+
+## Demo Mode
+
+The PAIML MCP Agent Toolkit includes a powerful demo mode that showcases all capabilities in a single command. This is perfect for quickly understanding what the toolkit can do for your projects.
+
+### Running the Demo
+
+```bash
+# Run demo in your current git repository
+paiml-mcp-agent-toolkit demo
+
+# Run demo on a specific repository
+paiml-mcp-agent-toolkit demo --path /path/to/repo
+
+# Get JSON output for integration
+paiml-mcp-agent-toolkit demo --format json
+```
+
+### What the Demo Shows
+
+The demo executes five key capabilities in sequence:
+
+1. **🧬 AST Context Analysis** - Analyzes your project structure and code
+2. **📊 Code Complexity Analysis** - Measures cyclomatic and cognitive complexity
+3. **🔀 DAG Visualization** - Generates dependency graphs
+4. **📈 Code Churn Analysis** - Analyzes git history for change patterns
+5. **📝 Template Generation** - Demonstrates scaffolding capabilities
+
+Each step shows real-time execution metrics and key insights from your codebase.
+
+### Example Output
+
+```
+🎯 Starting PAIML MCP Agent Toolkit Demo
+📁 Repository: /home/user/my-project
+
+1️⃣  Generating AST Context...
+   ✅ Context generated in 245 ms
+
+2️⃣  Analyzing Code Complexity...
+   ✅ Complexity analyzed in 189 ms
+   📊 Analyzed 42 functions
+
+3️⃣  Generating Dependency Graph...
+   ✅ DAG generated in 156 ms
+   📈 Graph: 28 nodes, 45 edges
+
+4️⃣  Analyzing Code Churn...
+   ✅ Churn analyzed in 312 ms
+   📈 Analyzed 156 files
+
+5️⃣  Generating Template...
+   ✅ Template generated in 12 ms
+
+🎯 PAIML MCP Agent Toolkit Demo Complete
+⏱️  Total execution time: 914 ms
+```
+
+> **Note**: Demo mode is only available in development builds. It has zero impact on release binary size.
 
 ## Available Templates
 
@@ -1390,6 +1491,164 @@ Generate dependency graphs in Mermaid format for visualizing code structure and 
 📊 **Files analyzed**: 147
 🔧 **Total functions**: 27081
 
+### Dogfooding Metrics
+
+*These metrics are generated using our own toolkit on our own codebase*
+
+#### Code Complexity Analysis
+# Complexity Analysis Summary
+
+📊 **Files analyzed**: 150
+🔧 **Total functions**: 27102
+
+### Dogfooding Metrics
+
+*These metrics are generated using our own toolkit on our own codebase*
+
+#### Code Complexity Analysis
+# Complexity Analysis Summary
+
+📊 **Files analyzed**: 150
+🔧 **Total functions**: 27102
+
+## Complexity Metrics
+
+- **Average Cyclomatic**: 0.1
+- **Average Cognitive**: 0.1
+- **90th Percentile Cyclomatic**: 0
+- **90th Percentile Cognitive**: 0
+
+⏱️  **Estimated Technical Debt**: 293.5 hours
+
+## Issues Found
+
+❌ **Errors**: 21
+⚠️  **Warnings**: 63
+
+## Top Complexity Hotspots
+
+1. `analyze_project_with_cache` - cyclomatic complexity: 49
+   📁 ./server/src/services/context.rs:1
+2. `analyze_project_with_persistent_cache` - cyclomatic complexity: 49
+   📁 ./server/src/services/context.rs:1
+3. `handle_analyze_complexity` - cyclomatic complexity: 41
+   📁 ./server/src/handlers/tools.rs:1
+4. `format_context_as_markdown` - cyclomatic complexity: 32
+   📁 ./server/src/services/context.rs:1
+5. `validate_mermaid_syntax` - cyclomatic complexity: 25
+   📁 ./server/src/services/mermaid_generator.rs:1
+
+
+
+#### Code Churn Analysis (Last 30 Days)
+[2m2025-05-30T04:43:00.100721Z[0m [32m INFO[0m [2mpaiml_mcp_agent_toolkit::services::git_analysis[0m[2m:[0m Analyzing code churn for last 30 days
+# Code Churn Analysis Report
+
+**Generated:** 2025-05-30 04:43:00 UTC
+**Repository:** .
+**Period:** 30 days
+
+## Summary
+
+- Total files changed: 273
+- Total commits: 854
+- Unique contributors: 3
+
+## Top 10 Files by Churn Score
+
+| File | Commits | Changes | Churn Score | Authors |
+|------|---------|---------|-------------|----------|
+| server/Cargo.toml | 64 | +197 -84  | 0.60 | 2 |
+| Cargo.toml | 51 | +75 -49  | 0.48 | 2 |
+| Cargo.lock | 41 | +3426 -54  | 0.43 | 3 |
+| artifacts/dogfooding/ast-context-2025-05-30.md | 2 | +27582 -62  | 0.42 | 1 |
+| assets/project-state.json | 44 | +121 -45  | 0.41 | 2 |
+| installer-macro/Cargo.toml | 42 | +60 -60  | 0.40 | 2 |
+| README.md | 28 | +2237 -378  | 0.30 | 1 |
+| Makefile | 22 | +798 -64  | 0.22 | 1 |
+| .github/workflows/automated-release.yml | 19 | +475 -85  | 0.19 | 1 |
+| server/Makefile | 14 | +713 -192  | 0.14 | 1 |
+
+
+
+#### AST Analysis Summary
+```
+Generated on: 2025-05-30T04:43:05.623Z
+Tool used: paiml-mcp-agent-toolkit context rust
+Cache status: HIT
+```
+
+*Analysis generated with: `paiml-mcp-agent-toolkit analyze complexity --toolchain rust`*
+
+## Complexity Metrics
+
+- **Average Cyclomatic**: 0.1
+- **Average Cognitive**: 0.1
+- **90th Percentile Cyclomatic**: 0
+- **90th Percentile Cognitive**: 0
+
+⏱️  **Estimated Technical Debt**: 293.5 hours
+
+## Issues Found
+
+❌ **Errors**: 21
+⚠️  **Warnings**: 63
+
+## Top Complexity Hotspots
+
+1. `analyze_project_with_cache` - cyclomatic complexity: 49
+   📁 ./server/src/services/context.rs:1
+2. `analyze_project_with_persistent_cache` - cyclomatic complexity: 49
+   📁 ./server/src/services/context.rs:1
+3. `handle_analyze_complexity` - cyclomatic complexity: 41
+   📁 ./server/src/handlers/tools.rs:1
+4. `format_context_as_markdown` - cyclomatic complexity: 32
+   📁 ./server/src/services/context.rs:1
+5. `validate_mermaid_syntax` - cyclomatic complexity: 25
+   📁 ./server/src/services/mermaid_generator.rs:1
+
+
+
+#### Code Churn Analysis (Last 30 Days)
+[2m2025-05-30T04:30:14.828663Z[0m [32m INFO[0m [2mpaiml_mcp_agent_toolkit::services::git_analysis[0m[2m:[0m Analyzing code churn for last 30 days
+# Code Churn Analysis Report
+
+**Generated:** 2025-05-30 04:30:15 UTC
+**Repository:** .
+**Period:** 30 days
+
+## Summary
+
+- Total files changed: 273
+- Total commits: 854
+- Unique contributors: 3
+
+## Top 10 Files by Churn Score
+
+| File | Commits | Changes | Churn Score | Authors |
+|------|---------|---------|-------------|----------|
+| server/Cargo.toml | 64 | +197 -84  | 0.60 | 2 |
+| Cargo.toml | 51 | +75 -49  | 0.48 | 2 |
+| Cargo.lock | 41 | +3426 -54  | 0.43 | 3 |
+| artifacts/dogfooding/ast-context-2025-05-30.md | 2 | +27582 -62  | 0.42 | 1 |
+| assets/project-state.json | 44 | +121 -45  | 0.41 | 2 |
+| installer-macro/Cargo.toml | 42 | +60 -60  | 0.40 | 2 |
+| README.md | 28 | +2237 -378  | 0.30 | 1 |
+| Makefile | 22 | +798 -64  | 0.22 | 1 |
+| .github/workflows/automated-release.yml | 19 | +475 -85  | 0.19 | 1 |
+| server/Makefile | 14 | +713 -192  | 0.14 | 1 |
+
+
+
+#### AST Analysis Summary
+```
+Generated on: 2025-05-30T04:30:20.177Z
+Tool used: paiml-mcp-agent-toolkit context rust
+Cache status: HIT
+```
+
+*Analysis generated with: `paiml-mcp-agent-toolkit analyze complexity --toolchain rust`*
+
 ## Complexity Metrics
 
 - **Average Cyclomatic**: 0.1
@@ -1778,6 +2037,13 @@ echo '{
 ## What's New
 
 ### Recent Improvements
+- 🎯 **NEW: Demo Mode**: Interactive demonstration of all toolkit capabilities in a single command
+  - **Zero-overhead design**: Conditionally compiled feature with no impact on release binary size
+  - **Comprehensive showcase**: Demonstrates AST Context, Complexity Analysis, DAG Generation, Code Churn, and Template Generation
+  - **Real-time metrics**: Shows execution time for each capability
+  - **Repository detection**: Automatically finds git repositories with upward traversal
+  - **Dual output modes**: Human-readable CLI output or JSON format for integration
+  - **Development-only feature**: Available with `--features demo-dev` flag
 - 🧬 **NEW: Enhanced DAG Analysis with Vectorized Code Intelligence**: Revolutionary analysis engine with advanced features
   - **Vectorized Analysis Engine**: SIMD-optimized code intelligence with 64-byte cache-aligned nodes
   - **Advanced Clone Detection**: Type-1/2/3/4 duplicate detection using LSH and semantic embeddings

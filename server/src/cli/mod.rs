@@ -36,6 +36,12 @@ pub(crate) enum Mode {
     Mcp,
 }
 
+#[derive(Clone, Debug)]
+pub enum ExecutionMode {
+    Cli,
+    Mcp,
+}
+
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
 pub(crate) enum Commands {
@@ -139,6 +145,18 @@ pub(crate) enum Commands {
     /// Analyze code metrics and patterns
     #[command(subcommand)]
     Analyze(AnalyzeCommands),
+
+    /// Run interactive demo of all capabilities
+    #[cfg(any(test, feature = "demo-dev"))]
+    Demo {
+        /// Repository path (defaults to current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+
+        /// Output format
+        #[arg(short, long, value_enum, default_value = "table")]
+        format: OutputFormat,
+    },
 }
 
 #[derive(Subcommand)]
@@ -245,7 +263,7 @@ pub(crate) enum ContextFormat {
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
-pub(crate) enum OutputFormat {
+pub enum OutputFormat {
     Table,
     Json,
     Yaml,
@@ -383,6 +401,12 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
                 .await?
             }
         },
+
+        #[cfg(any(test, feature = "demo-dev"))]
+        Commands::Demo { path, format } => {
+            let demo_args = crate::demo::DemoArgs { path, format };
+            crate::demo::run_demo(demo_args, server).await?;
+        }
     }
 
     Ok(())
