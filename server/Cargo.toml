@@ -41,6 +41,9 @@ hex = "0.4"
 uuid = { version = "1.10", features = ["v4", "serde"] }
 parking_lot = "0.12"
 dirs = "5.0"
+roaring = "0.10"
+rand = "0.8"
+rayon = "1.10"
 
 # Async utilities
 futures = "0.3"
