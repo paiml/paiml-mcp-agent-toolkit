@@ -250,7 +250,7 @@ Performance metrics:
 
 ```
 $ ls -lh target/release/paiml-mcp-agent-toolkit
--rwxr-xr-x 1 user user 11.0M Jan 1 00:00 paiml-mcp-agent-toolkit
+-rwxr-xr-x 1 user user 11.1M Jan 1 00:00 paiml-mcp-agent-toolkit
 ```
 
 Size breakdown:

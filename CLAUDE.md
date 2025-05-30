@@ -1,4 +1,4 @@
-check# CLAUDE.md
+# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **This is a frequently accessed project** - assume familiarity with the codebase structure, development patterns, and ongoing work. This is the MCP Agent Toolkit project that provides template generation services for project scaffolding.
 
+**MANDATORY DOGFOODING**: This project MUST use its own tools continuously throughout development. Every coding session MUST demonstrate eating our own dogfood by using the toolkit's analysis capabilities to guide decisions.
+
 ## Project Overview
 
 MCP Agent Toolkit is a production-grade MCP (Model Context Protocol) server that provides:
@@ -15,6 +17,7 @@ MCP Agent Toolkit is a production-grade MCP (Model Context Protocol) server that
 2. **AST-Based Code Analysis** - Full AST parsing and analysis for Rust, TypeScript/JavaScript, and Python
 3. **Code Complexity Metrics** - Cyclomatic complexity, cognitive complexity, nesting depth analysis
 4. **Code Churn Tracking** - Git-based code change analysis and hotspot detection
+5. **Dependency Graph Generation** - Visual code structure analysis with Mermaid
 
 The system is built in Rust as a stateless binary with all capabilities compiled in - no external dependencies required.
 
@@ -212,36 +215,107 @@ Example URIs:
 - Commit messages can be customized
 - Work can be staged incrementally
 
-## Dogfooding During Development
+## Deep Dogfooding Integration (MANDATORY)
 
-**MANDATORY: Every development session MUST include dogfooding!** This means:
+**EVERY development session MUST extensively use our own tools!** This is not optional - it's how we ensure quality and understand the developer experience.
 
-1. **At Session Start**: Run `make dogfood` to analyze the current state
-2. **During Development**: Use our own tools for analysis and generation
-3. **Before Session End**: Run `make dogfood` again to update documentation with changes
+### Session Start Ritual (REQUIRED)
 
-**ALWAYS use this project's own tools while developing it!** This ensures we catch issues early and understand the developer experience.
+```bash
+# 1. Analyze current project state
+make dogfood
 
-### Continuous Code Quality Monitoring
+# 2. Check complexity metrics before starting
+./target/release/paiml-mcp-agent-toolkit analyze complexity --toolchain rust --format full
 
-1. **Check complexity before commits**:
-   ```bash
-   make server-build-binary
-   ./target/release/paiml-mcp analyze complexity --toolchain rust --max-cyclomatic 15
-   ```
+# 3. Identify code hotspots from last week
+./target/release/paiml-mcp-agent-toolkit analyze churn --period 7 --format markdown
 
-2. **Monitor code churn weekly**:
-   ```bash
-   ./target/release/paiml-mcp analyze churn --period 7 --format markdown
-   ```
+# 4. Generate dependency graph to understand structure
+./target/release/paiml-mcp-agent-toolkit analyze dag --show-complexity -o current-dag.mmd
 
-3. **Use in CI/CD**:
-   ```yaml
-   - name: Check Code Complexity
-     run: |
-       make server-build-binary
-       ./target/release/paiml-mcp analyze complexity --format sarif > complexity.sarif
-   ```
+# 5. Generate context for AI assistance
+./target/release/paiml-mcp-agent-toolkit context rust --format markdown -o context.md
+```
+
+### During Development (CONTINUOUS)
+
+#### After Writing New Functions
+```bash
+# Check complexity of new code immediately
+./target/release/paiml-mcp-agent-toolkit analyze complexity \
+  --toolchain rust \
+  --include "**/*.rs" \
+  --max-cyclomatic 10 \
+  --max-cognitive 15
+
+# If complexity is too high, refactor immediately
+```
+
+#### Before Major Changes
+```bash
+# Generate "before" snapshot
+./target/release/paiml-mcp-agent-toolkit analyze dag \
+  --dag-type full-dependency \
+  --show-complexity \
+  -o before-change.mmd
+
+# Make changes...
+
+# Generate "after" snapshot
+./target/release/paiml-mcp-agent-toolkit analyze dag \
+  --dag-type full-dependency \
+  --show-complexity \
+  -o after-change.mmd
+
+# Compare visually to ensure architectural integrity
+```
+
+#### Using MCP Mode in Claude Code
+```
+# Ask Claude to analyze using MCP tools:
+"What are the complexity hotspots in this codebase?"
+"Show me the code churn analysis for the last month"
+"Generate a dependency graph for the services module"
+"Which files should I refactor based on churn and complexity?"
+```
+
+### Session End Ritual (MANDATORY)
+
+```bash
+# 1. Final complexity check
+./target/release/paiml-mcp-agent-toolkit analyze complexity \
+  --format sarif > complexity-report.sarif
+
+# 2. Update churn metrics
+./target/release/paiml-mcp-agent-toolkit analyze churn \
+  --period 30 \
+  --format json > churn-metrics.json
+
+# 3. Regenerate all documentation
+make dogfood
+
+# 4. Verify all artifacts were created
+ls -la artifacts/dogfooding/
+```
+
+### CI/CD Dogfooding
+
+```yaml
+# In GitHub Actions workflows:
+- name: Dogfood Analysis
+  run: |
+    make server-build-binary
+    ./target/release/paiml-mcp-agent-toolkit analyze complexity \
+      --format sarif > complexity.sarif
+    ./target/release/paiml-mcp-agent-toolkit analyze churn \
+      --period 30 --format json > churn.json
+    
+- name: Upload Analysis Results
+  uses: github/codeql-action/upload-sarif@v2
+  with:
+    sarif_file: complexity.sarif
+```
 
 ### Available MCP Tools
 
@@ -277,6 +351,38 @@ The server exposes these tools via MCP protocol:
      "format": "summary|json|markdown|csv"
    }
    ```
+
+4. **`analyze_dag`** - Generate dependency graphs
+   ```json
+   {
+     "project_path": "/path/to/project",
+     "dag_type": "call-graph|import-graph|inheritance|full-dependency",
+     "filter_external": true,
+     "show_complexity": true,
+     "format": "mermaid"
+   }
+   ```
+
+5. **`generate_context`** - Generate project context with AST
+   ```json
+   {
+     "toolchain": "rust|deno|python-uv",
+     "project_path": "/path/to/project",
+     "format": "markdown|json"
+   }
+   ```
+
+### Dogfooding Decision Matrix
+
+| Scenario | Tool to Use | Command Example |
+|----------|-------------|-----------------|
+| Starting new feature | `analyze dag` + `context` | `./target/release/paiml-mcp-agent-toolkit analyze dag --dag-type call-graph` |
+| Code review prep | `analyze complexity` + `churn` | `make dogfood` |
+| Refactoring decision | `analyze churn` | `./target/release/paiml-mcp-agent-toolkit analyze churn --period 90` |
+| Architecture review | `analyze dag --show-complexity` | Full dependency analysis |
+| Performance investigation | `analyze complexity --format sarif` | IDE integration |
+| Before commits | `analyze complexity` | Check threshold violations |
+| Weekly planning | `analyze churn --period 7` | Identify unstable areas |
 
 ### AST Analysis Capabilities
 
@@ -316,64 +422,97 @@ The project provides deep AST analysis for:
 3. **Nesting Depth**: Maximum level of nested blocks
    - Threshold: 4 (warning), 6 (error)
 
-### Example: Analyzing This Project
+### Real-World Dogfooding Examples
 
+#### Example 1: Refactoring High-Complexity Functions
 ```bash
-# Full analysis of the server codebase
-./target/release/paiml-mcp analyze complexity \
-  --toolchain rust \
-  --format full \
-  --include "server/src/**/*.rs"
-
-# Check for complex functions
-./target/release/paiml-mcp analyze complexity \
+# Find complex functions
+./target/release/paiml-mcp-agent-toolkit analyze complexity \
   --toolchain rust \
   --max-cyclomatic 10 \
-  --max-cognitive 15
+  --format full | grep "ERROR"
 
-# Track hotspots over the last month
-./target/release/paiml-mcp analyze churn \
-  --period 30 \
-  --format markdown > HOTSPOTS.md
+# Generate context for specific file
+./target/release/paiml-mcp-agent-toolkit context rust \
+  --include "**/handlers/tools.rs"
+
+# After refactoring, verify improvement
+./target/release/paiml-mcp-agent-toolkit analyze complexity \
+  --toolchain rust \
+  --include "**/handlers/tools.rs"
 ```
 
-### Dogfooding Workflow (REQUIRED)
+#### Example 2: Architecture Planning
+```bash
+# Analyze current architecture
+./target/release/paiml-mcp-agent-toolkit analyze dag \
+  --dag-type full-dependency \
+  --filter-external \
+  --show-complexity \
+  -o architecture.mmd
 
-**Every development session MUST follow this workflow:**
+# Identify circular dependencies
+./target/release/paiml-mcp-agent-toolkit analyze dag \
+  --dag-type import-graph | grep -A5 -B5 "circular"
 
-1. **Session Start Dogfooding**:
-   ```bash
-   # Analyze current state and update documentation
-   make dogfood
-   ```
+# Check for god objects
+./target/release/paiml-mcp-agent-toolkit analyze complexity \
+  --format json | jq '.files | map(select(.metrics.functions > 20))'
+```
 
-2. **During Development**:
-   ```bash
-   # After significant changes, analyze complexity
-   make server-build-binary
-   ./target/release/paiml-mcp-agent-toolkit analyze complexity --toolchain rust
-   
-   # Check for code churn hotspots
-   ./target/release/paiml-mcp-agent-toolkit analyze churn --period-days 7
-   
-   # Generate dependency graphs
-   ./target/release/paiml-mcp-agent-toolkit analyze dag --show-complexity
-   ```
+#### Example 3: Code Review Automation
+```bash
+#!/bin/bash
+# pre-commit hook using our tools
 
-3. **Session End Dogfooding** (MANDATORY):
-   ```bash
-   # Update README with fresh metrics
-   make dogfood
-   
-   # Verify artifacts were created
-   ls -la artifacts/dogfooding/
-   ```
+# Check complexity thresholds
+if ! ./target/release/paiml-mcp-agent-toolkit analyze complexity \
+  --max-cyclomatic 15 --max-cognitive 20 --format json | \
+  jq -e '.summary.total_errors == 0'; then
+  echo "❌ Complexity threshold exceeded. Please refactor."
+  exit 1
+fi
 
-**Why Dogfooding Matters:**
-- Ensures our tools work correctly on real projects
-- Keeps documentation up-to-date with actual metrics
-- Identifies issues before users encounter them
-- Demonstrates real-world usage patterns
+# Check for high-churn files being modified
+CHANGED_FILES=$(git diff --cached --name-only)
+HIGH_CHURN=$(./target/release/paiml-mcp-agent-toolkit analyze churn \
+  --period 30 --format json | jq -r '.hotspots[].file')
+
+for file in $CHANGED_FILES; do
+  if echo "$HIGH_CHURN" | grep -q "$file"; then
+    echo "⚠️  Warning: $file is a high-churn file. Extra review recommended."
+  fi
+done
+```
+
+### Performance Monitoring with Dogfooding
+
+```bash
+# Benchmark before optimization
+hyperfine --warmup 3 \
+  './target/release/paiml-mcp-agent-toolkit analyze complexity --toolchain rust'
+
+# Profile with perf
+perf record --call-graph=dwarf \
+  ./target/release/paiml-mcp-agent-toolkit analyze dag --dag-type full-dependency
+
+# Check binary size impact
+ls -lh target/release/paiml-mcp-agent-toolkit
+```
+
+### Integration Testing with Our Own Tools
+
+```bash
+# Test template generation
+./target/release/paiml-mcp-agent-toolkit scaffold rust \
+  --templates makefile,readme,gitignore \
+  -p project_name=test-project
+
+# Analyze the generated project
+cd test-project
+../target/release/paiml-mcp-agent-toolkit analyze complexity --toolchain rust
+../target/release/paiml-mcp-agent-toolkit context rust
+```
 
 ## Using MCP Agent Toolkit Features
 
@@ -426,4 +565,36 @@ const churn = await mcp.call("analyze_code_churn", {
   period_days: 30,
   format: "json"
 });
+
+// Generate dependency graph
+const dag = await mcp.call("analyze_dag", {
+  project_path: process.cwd(),
+  dag_type: "full-dependency",
+  show_complexity: true,
+  format: "mermaid"
+});
 ```
+
+## Why Dogfooding Matters
+
+1. **Quality Assurance**: We find bugs before users do
+2. **UX Understanding**: We experience the same friction as users
+3. **Feature Validation**: We know if features actually solve problems
+4. **Performance Reality**: We feel the real-world performance
+5. **Documentation Accuracy**: Our docs reflect actual usage patterns
+
+## Dogfooding Metrics to Track
+
+```bash
+# Weekly metrics collection
+./scripts/collect-dogfood-metrics.ts
+
+# Metrics tracked:
+# - How often each tool is used internally
+# - Which features are most valuable
+# - Performance in real-world scenarios
+# - Pain points and friction
+# - Feature requests from our own usage
+```
+
+Remember: **If we don't use our own tools constantly, we can't expect others to find them valuable.**
