@@ -6,7 +6,7 @@ This specification defines a zero-overhead demonstration mode that orchestrates 
 
 ## Design Constraints
 
-1. **Binary Size**: Zero bytes in release builds via `#[cfg(test)]` gating
+1. **Binary Size**: Minimal impact in release builds (demo functionality always available)
 2. **Code Reuse**: 100% existing capability invocation, no new analysis logic
 3. **Repository Detection**: Git repository autodiscovery with fallback prompt
 4. **Dual Mode**: Unified execution path for CLI and MCP with mode-specific I/O
@@ -18,12 +18,29 @@ This specification defines a zero-overhead demonstration mode that orchestrates 
 
 ```rust
 // server/src/demo/mod.rs
-#[cfg(any(test, feature = "demo-dev"))]
 pub mod runner;
 
-#[cfg(not(any(test, feature = "demo-dev")))]
-pub fn run_demo(_: DemoArgs) -> Result<()> {
-    Err(anyhow!("Demo mode not available in release builds"))
+pub use runner::{detect_repository, DemoReport, DemoRunner, DemoStep};
+
+use anyhow::Result;
+
+pub async fn run_demo(
+    args: DemoArgs,
+    server: std::sync::Arc<crate::stateless_server::StatelessTemplateServer>,
+) -> Result<()> {
+    use crate::cli::{ExecutionMode, OutputFormat};
+
+    let repo = detect_repository(args.path)?;
+    let mut runner = DemoRunner::new(server);
+    let report = runner.execute(repo).await?;
+
+    let output = match args.format {
+        OutputFormat::Table | OutputFormat::Yaml => report.render(ExecutionMode::Cli),
+        OutputFormat::Json => report.render(ExecutionMode::Mcp),
+    };
+
+    println!("{}", output);
+    Ok(())
 }
 ```
 

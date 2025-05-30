@@ -130,6 +130,7 @@ fn test_cli_examples_are_valid() {
                     "validate",
                     "context",
                     "analyze",
+                    "demo",
                     "--help",
                     "--version",
                     "--mode",

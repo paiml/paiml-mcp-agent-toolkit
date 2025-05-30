@@ -147,7 +147,6 @@ pub(crate) enum Commands {
     Analyze(AnalyzeCommands),
 
     /// Run interactive demo of all capabilities
-    #[cfg(any(test, feature = "demo-dev"))]
     Demo {
         /// Repository path (defaults to current directory)
         #[arg(short, long)]
@@ -402,7 +401,6 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
             }
         },
 
-        #[cfg(any(test, feature = "demo-dev"))]
         Commands::Demo { path, format } => {
             let demo_args = crate::demo::DemoArgs { path, format };
             crate::demo::run_demo(demo_args, server).await?;
