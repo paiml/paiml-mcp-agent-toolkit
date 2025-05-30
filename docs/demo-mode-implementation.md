@@ -8,7 +8,7 @@ The demo mode has been successfully implemented for the PAIML MCP Agent Toolkit 
 
 ### 1. Module Structure (`server/src/demo/`)
 
-- **`mod.rs`**: Main module with conditional compilation using `#[cfg(any(test, feature = "demo-dev"))]`
+- **`mod.rs`**: Main module implementing demo functionality
 - **`runner.rs`**: Core execution engine that orchestrates all toolkit capabilities
 
 ### 2. Key Features Implemented
@@ -32,9 +32,8 @@ The demo executes five key capabilities in sequence:
 
 ### 3. CLI Integration
 
-Added demo command to CLI with conditional compilation:
+Added demo command to CLI:
 ```rust
-#[cfg(any(test, feature = "demo-dev"))]
 Demo {
     /// Repository path (defaults to current directory)
     #[arg(short, long)]
@@ -46,11 +45,10 @@ Demo {
 }
 ```
 
-### 4. Zero Binary Size Impact
+### 4. Binary Size Impact
 
-Achieved through:
-- Conditional compilation with `#[cfg()]` attributes
-- Feature flag `demo-dev` for development builds only
+Demo mode is now always included in the binary to provide a better developer experience.
+- Minimal size increase due to efficient implementation
 - Verification script at `scripts/verify-demo-binary-size.ts`
 
 ### 5. Test Coverage
@@ -63,16 +61,16 @@ Created comprehensive integration tests at `server/tests/demo_integration.rs`:
 
 ## Usage
 
-### Development Build (with demo mode)
+### Build and Run
 ```bash
-cargo build --features demo-dev
+cargo build
 ./target/debug/paiml-mcp-agent-toolkit demo
 ```
 
-### Release Build (no demo mode)
+### Release Build
 ```bash
 cargo build --release
-# Demo command not available
+./target/release/paiml-mcp-agent-toolkit demo
 ```
 
 ### Running Demo

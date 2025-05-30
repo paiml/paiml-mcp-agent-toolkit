@@ -359,6 +359,46 @@ paiml-mcp-agent-toolkit analyze dag [OPTIONS]
 - `--filter-external` - Filter out external dependencies
 - `--show-complexity` - Include complexity metrics in the graph
 
+### Command: `demo`
+
+Run an interactive demonstration of all PAIML MCP Agent Toolkit capabilities.
+
+#### Synopsis
+
+```bash
+paiml-mcp-agent-toolkit demo [OPTIONS]
+```
+
+#### Options
+
+- `-p, --path <PATH>` - Repository path to analyze (defaults to current directory)
+- `-f, --format <FORMAT>` - Output format: `table`, `json`, `yaml` (default: table)
+
+#### Description
+
+The demo command provides a comprehensive showcase of all toolkit capabilities in a single execution:
+
+1. **AST Context Analysis** - Analyzes project structure and generates context
+2. **Code Complexity Analysis** - Measures cyclomatic and cognitive complexity
+3. **DAG Visualization** - Generates dependency graphs
+4. **Code Churn Analysis** - Analyzes git history for change patterns
+5. **Template Generation** - Demonstrates project scaffolding
+
+Each capability is executed with timing information, demonstrating real-world performance. The command automatically detects git repositories and provides execution metrics for each step.
+
+#### Examples
+
+```bash
+# Run demo in current directory
+paiml-mcp-agent-toolkit demo
+
+# Run demo on specific repository
+paiml-mcp-agent-toolkit demo --path /path/to/repo
+
+# Get JSON output for integration
+paiml-mcp-agent-toolkit demo --format json
+```
+
 ## MCP Protocol Implementation
 
 ### Transport Layer

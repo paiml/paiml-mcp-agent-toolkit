@@ -6,7 +6,6 @@ mod demo_tests {
     use tempfile::TempDir;
 
     #[test]
-    #[cfg(any(test, feature = "demo-dev"))]
     fn test_demo_mode_in_current_directory() -> Result<()> {
         // Run demo in current directory
         let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
@@ -26,7 +25,6 @@ mod demo_tests {
     }
 
     #[test]
-    #[cfg(any(test, feature = "demo-dev"))]
     fn test_demo_mode_with_json_output() -> Result<()> {
         let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
         cmd.arg("demo").arg("--format").arg("json");
@@ -42,7 +40,6 @@ mod demo_tests {
     }
 
     #[test]
-    #[cfg(any(test, feature = "demo-dev"))]
     fn test_demo_mode_with_specific_path() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_path = temp.path().join("test-repo");
@@ -74,22 +71,9 @@ mod demo_tests {
         Ok(())
     }
 
-    #[test]
-    #[cfg(not(any(test, feature = "demo-dev")))]
-    fn test_demo_mode_not_available_in_release() -> Result<()> {
-        let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
-        cmd.arg("demo");
-
-        // In release builds without demo-dev feature, demo command should not exist
-        cmd.assert()
-            .failure()
-            .stderr(predicate::str::contains("unrecognized subcommand"));
-
-        Ok(())
-    }
+    // Removed test - demo mode is now always available
 
     #[test]
-    #[cfg(any(test, feature = "demo-dev"))]
     #[ignore = "JSON parsing fails due to stderr output mixing with stdout"]
     fn test_demo_increases_test_coverage() -> Result<()> {
         // This test verifies that running demo mode exercises various code paths
@@ -145,7 +129,6 @@ mod demo_tests {
         use std::sync::Arc;
 
         #[tokio::test]
-        #[cfg(any(test, feature = "demo-dev"))]
         async fn test_demo_runner_execution() -> Result<()> {
             let server = Arc::new(StatelessTemplateServer::new()?);
             let temp = TempDir::new()?;
@@ -167,7 +150,6 @@ mod demo_tests {
         }
 
         #[test]
-        #[cfg(any(test, feature = "demo-dev"))]
         fn test_repository_detection() -> Result<()> {
             // This test is moved to integration test because detect_repository
             // is only available when demo-dev feature is enabled

@@ -2038,12 +2038,10 @@ echo '{
 
 ### Recent Improvements
 - 🎯 **NEW: Demo Mode**: Interactive demonstration of all toolkit capabilities in a single command
-  - **Zero-overhead design**: Conditionally compiled feature with no impact on release binary size
   - **Comprehensive showcase**: Demonstrates AST Context, Complexity Analysis, DAG Generation, Code Churn, and Template Generation
   - **Real-time metrics**: Shows execution time for each capability
   - **Repository detection**: Automatically finds git repositories with upward traversal
   - **Dual output modes**: Human-readable CLI output or JSON format for integration
-  - **Development-only feature**: Available with `--features demo-dev` flag
 - 🧬 **NEW: Enhanced DAG Analysis with Vectorized Code Intelligence**: Revolutionary analysis engine with advanced features
   - **Vectorized Analysis Engine**: SIMD-optimized code intelligence with 64-byte cache-aligned nodes
   - **Advanced Clone Detection**: Type-1/2/3/4 duplicate detection using LSH and semantic embeddings

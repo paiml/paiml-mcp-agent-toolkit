@@ -85,7 +85,6 @@ predicates = "3.1"
 
 [features]
 default = []
-demo-dev = []  # Development mode for demo functionality
 # installer-gen = ["installer-macro/installer-gen"] # Removed - no longer needed
 
 [profile.release]
