@@ -363,6 +363,216 @@ async fn bench_top_files_interfaces() {
 - Performance regressions can be caught
 - All three interfaces are validated
 
+## Release Process
+
+### Release Workflow (MANDATORY STEPS)
+
+When the user requests to "prepare a new release", follow this exact sequence:
+
+#### 1. Pre-Release Validation
+```bash
+# Verify all tests pass before release
+make lint && make test
+
+# Ensure clean git state
+git status  # Should show clean working directory
+```
+
+#### 2. Documentation Updates
+
+**Update README.md:**
+- Add new features to the feature list sections
+- Update MCP tools table with any new tools
+- Add new CLI usage examples 
+- Update performance metrics if applicable
+
+**Update RELEASE_NOTES.md:**
+- Add new version section at the top (e.g., `# Release Notes for v0.15.0`)
+- Include comprehensive feature descriptions with technical details
+- Add usage examples for new features
+- Document breaking changes, bug fixes, and improvements
+- Include performance characteristics and test coverage improvements
+
+**Key Release Notes Sections:**
+```markdown
+# Release Notes for vX.Y.Z
+
+## 🎯 Major Feature Release: [Feature Name]
+
+## ✨ New Features
+### [Feature Name] (`command-name`)
+- **NEW**: [Feature description]
+- **FIXED**: [Bug fixes] 
+- **IMPROVED**: [Enhancements]
+
+## 🔧 Technical Implementation
+### [Module Name] (`path/to/file.rs`)
+- [Implementation details]
+
+## 📊 Usage Examples
+```bash
+# CLI Usage
+command --param value
+```
+
+## 🧪 Test Coverage Improvements
+- **NEW**: [Number] new tests for [feature]
+- **VERIFIED**: All interface consistency checks passing
+
+## 🚀 Performance Characteristics
+- **Startup**: <Xms
+- **Analysis**: [Performance details]
+```
+
+#### 3. Commit Changes
+```bash
+# Stage documentation files first
+git add README.md RELEASE_NOTES.md
+
+# Stage all implementation files
+git add server/src/
+
+# Create comprehensive commit message
+git commit -m "$(cat <<'EOF'
+feat: [feature description]
+
+[Detailed implementation description]
+
+Core Implementation:
+- [Technical detail 1]
+- [Technical detail 2]
+
+Interface Support:
+- CLI: [CLI details]
+- MCP: [MCP details] 
+- HTTP: [HTTP details]
+
+Technical Fixes:
+- [Fix 1]
+- [Fix 2]
+
+Documentation Updates:
+- [Doc update 1]
+- [Doc update 2]
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+```
+
+#### 4. Push and Release
+```bash
+# Push changes to trigger automated version bumping
+git push origin master
+
+# Create GitHub release using gh CLI with version from RELEASE_NOTES.md
+gh release create v[X.Y.Z] \
+  --title "v[X.Y.Z]: [Feature Title]" \
+  --notes "$(cat <<'EOF'
+## 🎯 [Release Type]: [Feature Name]
+
+[Copy the main sections from RELEASE_NOTES.md]
+
+**Full release notes**: https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/RELEASE_NOTES.md
+EOF
+)"
+```
+
+### Version Numbering Policy
+
+**DO NOT manually update Cargo.toml version numbers.** The GitHub Actions automatically handle version bumping when changes are pushed.
+
+**Version Scheme:**
+- **Major (X.0.0)**: Breaking changes, major architecture changes
+- **Minor (0.X.0)**: New features, new analysis tools, significant enhancements  
+- **Patch (0.0.X)**: Bug fixes, documentation updates, minor improvements
+
+**Examples:**
+- `v0.15.0`: Dead code analysis feature (new analysis tool = minor)
+- `v0.14.1`: Bug fixes and documentation (patch)
+- `v1.0.0`: Major API breaking changes (major)
+
+### Release Notes Quality Standards
+
+**MANDATORY elements for each release:**
+1. **🎯 Clear feature title** - What the release accomplishes
+2. **✨ New Features** - Bullet points with **NEW**/**FIXED**/**IMPROVED** tags
+3. **📊 Usage Examples** - Copy-pasteable CLI, MCP, and HTTP examples
+4. **🔧 Technical Implementation** - File paths and implementation details
+5. **🧪 Test Coverage** - Number of new tests and validation improvements
+6. **🚀 Performance** - Startup times, memory usage, scaling characteristics
+
+**Release Notes Template:**
+```markdown
+# Release Notes for v[X.Y.Z]
+
+## 🎯 [Major|Feature|Patch] Release: [Feature Name]
+
+[1-2 sentence summary of what this release accomplishes]
+
+## ✨ New Features
+
+### [Feature Name] (`cli-command-name`)
+- **NEW**: [Specific capability 1]
+- **NEW**: [Specific capability 2]  
+- **FIXED**: [Bug fix]
+- **IMPROVED**: [Enhancement]
+
+### [Integration Type] Integration
+- **NEW**: [MCP/CLI/HTTP details]
+- **UPDATED**: [Changes to existing functionality]
+
+## 🔧 Technical Implementation
+
+### [Module Name] (`server/src/path/file.rs`)
+- [Implementation detail 1]
+- [Implementation detail 2]
+
+## 📊 Usage Examples
+
+```bash
+# CLI Usage
+paiml-mcp-agent-toolkit command --param value
+
+# MCP Tool Call  
+{"method": "tool_name", "params": {"param": "value"}}
+
+# HTTP API
+GET /api/v1/endpoint?param=value
+```
+
+## 🧪 Test Coverage Improvements
+- **NEW**: [X] new tests for [feature]
+- **VERIFIED**: All interface consistency checks passing
+
+## 🚀 Performance Characteristics
+- **Startup**: <[X]ms
+- **Analysis**: [Performance details]
+- **Memory**: [Memory usage]
+- **Scaling**: [Scaling behavior]
+```
+
+### Common Release Mistakes to Avoid
+
+1. **❌ Don't manually edit Cargo.toml version** - Let GitHub Actions handle it
+2. **❌ Don't commit without updating documentation** - Always update README.md and RELEASE_NOTES.md
+3. **❌ Don't create releases without gh CLI** - Use the documented gh release create command
+4. **❌ Don't skip usage examples** - Every feature needs CLI, MCP, and HTTP examples
+5. **❌ Don't forget performance metrics** - Include startup times and scaling characteristics
+6. **❌ Don't rush the commit message** - Use the comprehensive template with technical details
+
+### Post-Release Verification
+
+After creating a release:
+1. **Verify release page**: Check https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v[X.Y.Z]
+2. **Test installation**: Verify the install script works with the new version
+3. **Update project metrics**: Re-run complexity analysis to update README dogfooding section
+4. **Monitor CI/CD**: Ensure all automated builds complete successfully
+
+Remember: **Releases are permanent and public. Take time to ensure quality and completeness.**
+
 ## Why Triple-Interface Testing Matters
 
 1. **Protocol Bugs**: Interface-specific bugs are common (parameter parsing, serialization)
