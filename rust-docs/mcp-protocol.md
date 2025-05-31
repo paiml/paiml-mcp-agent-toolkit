@@ -386,7 +386,7 @@ Search templates by query string.
 
 ### `analyze_complexity`
 
-Analyze code complexity metrics.
+Analyze code complexity metrics with optional file ranking.
 
 **Arguments:**
 - `project_path` (string, required): Path to analyze
@@ -394,9 +394,52 @@ Analyze code complexity metrics.
 - `format` (string, optional): Output format
 - `max_cyclomatic` (number, optional): Cyclomatic threshold
 - `max_cognitive` (number, optional): Cognitive threshold
+- `top_files` (number, optional): Number of top complex files to show (0 = all violations)
 
 **Returns:**
-- Complexity analysis report
+- Complexity analysis report with optional file rankings
+
+**Example with file ranking:**
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "analyze_complexity",
+    "params": {
+        "project_path": "./",
+        "toolchain": "rust",
+        "format": "json",
+        "top_files": 5
+    },
+    "id": 1
+}
+```
+
+**Response includes `top_files` section when requested:**
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+        "summary": {},
+        "violations": [],
+        "top_files": {
+            "requested": 5,
+            "returned": 5,
+            "rankings": [
+                {
+                    "rank": 1,
+                    "file": "./server/src/services/context.rs",
+                    "function_count": 30,
+                    "max_cyclomatic": 32,
+                    "avg_cognitive": 5.8,
+                    "halstead_effort": 1950.0,
+                    "total_score": 30.92
+                }
+            ]
+        }
+    }
+}
+```
 
 ### `analyze_code_churn`
 

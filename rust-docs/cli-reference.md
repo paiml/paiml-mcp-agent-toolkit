@@ -253,7 +253,7 @@ paiml-mcp-agent-toolkit analyze churn \
 
 ##### `analyze complexity`
 
-Analyze code complexity metrics with configurable thresholds.
+Analyze code complexity metrics with configurable thresholds and file ranking.
 
 **Arguments:**
 - **-p, --project-path**: Project path (default: current directory)
@@ -264,11 +264,30 @@ Analyze code complexity metrics with configurable thresholds.
 - **--max-cognitive**: Custom cognitive complexity threshold
 - **--include**: Include file patterns (e.g., `**/*.rs`)
 - **--watch**: Watch mode for continuous analysis (not yet implemented)
+- **--top-files**: Number of top complex files to show (0 = show all violations)
+
+**File Ranking System:**
+
+The `--top-files` flag enables a sophisticated ranking system that identifies the most complex files using a composite scoring algorithm:
+
+- **Cyclomatic Complexity** (40% weight): Number of linearly independent paths
+- **Cognitive Complexity** (40% weight): How difficult code is to understand  
+- **Function Count** (20% weight): Number of functions/methods in the file
+
+The ranking table includes:
+- Function count per file
+- Maximum cyclomatic complexity
+- Average cognitive complexity
+- Halstead effort estimate
+- Total composite score (0-100 scale)
 
 **Examples:**
 ```bash
 # Analyze with default thresholds
 paiml-mcp-agent-toolkit analyze complexity
+
+# Show top 5 most complex files
+paiml-mcp-agent-toolkit analyze complexity --top-files 5
 
 # Generate SARIF report for IDE integration
 paiml-mcp-agent-toolkit analyze complexity \
@@ -277,10 +296,17 @@ paiml-mcp-agent-toolkit analyze complexity \
   --max-cognitive 20 \
   -o complexity.sarif
 
-# Analyze specific files
+# Analyze specific files with top 3 ranking
 paiml-mcp-agent-toolkit analyze complexity \
   --include "src/**/*.rs" \
-  --include "tests/**/*.rs"
+  --include "tests/**/*.rs" \
+  --top-files 3
+
+# JSON output with ranking data
+paiml-mcp-agent-toolkit analyze complexity \
+  --top-files 10 \
+  --format json \
+  -o complexity-report.json
 ```
 
 ##### `analyze dag`

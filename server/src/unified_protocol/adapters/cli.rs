@@ -179,6 +179,7 @@ impl ProtocolAdapter for CliAdapter {
                         max_cognitive,
                         include,
                         watch,
+                        top_files,
                     } => {
                         let body = json!({
                             "project_path": project_path.to_string_lossy(),
@@ -188,7 +189,8 @@ impl ProtocolAdapter for CliAdapter {
                             "max_cyclomatic": max_cyclomatic,
                             "max_cognitive": max_cognitive,
                             "include_patterns": include,
-                            "watch": watch
+                            "watch": watch,
+                            "top_files": top_files
                         });
                         (
                             Method::POST,
@@ -573,6 +575,7 @@ mod tests {
             max_cognitive: Some(15),
             include: vec!["**/*.rs".to_string()],
             watch: false,
+            top_files: 0,
         });
 
         let input = CliInput::from_commands(command);

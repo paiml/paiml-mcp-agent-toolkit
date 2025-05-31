@@ -519,6 +519,613 @@ fn test_graph_reduction() {
 4. **Export Formats**: SVG, PNG, PDF generation
 5. **Metrics Dashboard**: Web-based visualization
 
+# Unified Demo Mode Specification with Top-Files Ranking Integration
+
+## Abstract
+
+This specification enhances the demo mode for the PAIML MCP Agent Toolkit by integrating the unified `--top-files` ranking system to generate more insightful system architecture diagrams. The demo leverages cross-metric ranking (complexity, churn, duplication, defect probability) to identify and visualize the most critical components, while maintaining robust fallback behavior for rapid prototyping.
+
+## 1. Core Architecture with Ranking Integration
+
+### 1.1 Enhanced Complexity Reduction Pipeline
+
+The demo now uses multi-metric ranking to identify architecturally significant components:
+
+```rust
+pub struct RankedDemoGraphReducer {
+    /// Target node count for reduced graph
+    target_nodes: usize,
+    /// Ranking engine for multi-metric analysis
+    ranking_engine: Arc<CompositeRankingEngine>,
+    /// Fallback reducer for when ranking unavailable
+    fallback_reducer: DemoGraphReducer,
+}
+
+impl RankedDemoGraphReducer {
+    pub async fn reduce(&self, full_dag: &DependencyGraph, project_path: &Path) -> ReducedGraph {
+        // Attempt ranked reduction first
+        match self.ranked_reduction(full_dag, project_path).await {
+            Ok(reduced) => reduced,
+            Err(e) => {
+                tracing::warn!("Ranked reduction failed, using fallback: {}", e);
+                self.fallback_reducer.reduce(full_dag)
+            }
+        }
+    }
+    
+    async fn ranked_reduction(&self, full_dag: &DependencyGraph, project_path: &Path) -> Result<ReducedGraph> {
+        // 1. Collect all files for ranking
+        let files: Vec<PathBuf> = full_dag.nodes.values()
+            .filter_map(|node| match &node.node_type {
+                NodeType::File(path) => Some(PathBuf::from(path)),
+                _ => None,
+            })
+            .collect();
+        
+        // 2. Get composite rankings across all metrics
+        let rankings = self.ranking_engine.rank_files_composite(
+            &files,
+            self.target_nodes * 2, // Over-sample for clustering
+            &CompositeWeights {
+                complexity: 0.35,
+                churn: 0.30,
+                duplication: 0.20,
+                coupling: 0.15,
+            }
+        ).await?;
+        
+        // 3. Extract highly-ranked nodes and their immediate dependencies
+        let critical_nodes: HashSet<_> = rankings.iter()
+            .map(|(file, _)| self.file_to_node_key(full_dag, file))
+            .collect();
+        
+        // 4. Build subgraph including critical nodes + 1-hop neighbors
+        let expanded_nodes = self.expand_critical_nodes(full_dag, &critical_nodes);
+        
+        // 5. Apply spectral clustering on the ranked subgraph
+        let subgraph = self.extract_subgraph(full_dag, &expanded_nodes);
+        let components = self.spectral_clustering(&subgraph, self.target_nodes);
+        
+        // 6. Enhance with ranking-based coloring
+        self.apply_ranked_coloring(&mut components, &rankings)
+    }
+    
+    fn apply_ranked_coloring(&self, components: &mut [Component], rankings: &[(String, DefectProbabilityScore)]) -> Result<()> {
+        // Create score lookup for O(1) access
+        let score_map: HashMap<&str, f64> = rankings.iter()
+            .map(|(file, score)| (file.as_str(), score.composite))
+            .collect();
+        
+        for component in components {
+            // Aggregate scores for all files in component
+            let component_score = component.files.iter()
+                .filter_map(|f| score_map.get(f.as_str()))
+                .sum::<f64>() / component.files.len().max(1) as f64;
+            
+            // Map score to color gradient
+            component.color = match component_score {
+                s if s >= 0.8 => "#FF6347", // Tomato - Critical
+                s if s >= 0.6 => "#FFA500", // Orange - High  
+                s if s >= 0.4 => "#FFD700", // Gold - Medium
+                s if s >= 0.2 => "#90EE90", // Light Green - Low
+                _ => "#87CEEB",             // Sky Blue - Minimal
+            };
+            
+            // Add ranking metadata
+            component.metadata.insert("defect_score", component_score);
+            component.metadata.insert("rank", 
+                rankings.iter().position(|(f, _)| component.files.contains(f))
+                    .map(|p| p + 1)
+                    .unwrap_or(999)
+            );
+        }
+        
+        Ok(())
+    }
+}
+```
+
+### 1.2 Enhanced Demo Runner with Top-Files Integration
+
+```rust
+impl DemoRunner {
+    pub async fn execute_with_ranking(&mut self, args: &DemoArgs) -> Result<DemoReport> {
+        let start = Instant::now();
+        
+        // Clone if remote URL provided
+        let working_path = if let Some(url) = &args.url {
+            self.clone_and_prepare(url).await?
+        } else {
+            args.project_path.clone().unwrap_or_else(|| PathBuf::from("."))
+        };
+        
+        // Initialize ranking engines with configurable limits
+        let ranking_config = RankingConfig {
+            complexity_top: args.complexity_top.unwrap_or(10),
+            churn_top: args.churn_top.unwrap_or(10),
+            duplicate_top: args.duplicate_top.unwrap_or(5),
+            composite_top: args.top_files.unwrap_or(15),
+        };
+        
+        // Execute analysis pipeline with ranking
+        let mut steps = Vec::new();
+        
+        // Context generation remains unchanged
+        steps.push(self.demo_context_generation(&working_path).await?);
+        
+        // Enhanced complexity analysis with top-files
+        steps.push(self.demo_complexity_with_ranking(&working_path, ranking_config.complexity_top).await?);
+        
+        // Enhanced churn analysis with top-files
+        steps.push(self.demo_churn_with_ranking(&working_path, ranking_config.churn_top).await?);
+        
+        // New: Duplication analysis with ranking
+        steps.push(self.demo_duplication_with_ranking(&working_path, ranking_config.duplicate_top).await?);
+        
+        // Enhanced DAG generation focusing on top files
+        steps.push(self.demo_dag_with_focus(&working_path, &ranking_config).await?);
+        
+        // Generate ranked system diagram
+        let system_diagram = self.generate_ranked_system_diagram(&steps, &ranking_config)?;
+        
+        Ok(DemoReport {
+            repository: working_path.display().to_string(),
+            total_time_ms: start.elapsed().as_millis() as u64,
+            steps,
+            system_diagram: Some(system_diagram),
+            top_files_summary: Some(self.generate_top_files_summary(&steps)),
+        })
+    }
+    
+    async fn demo_complexity_with_ranking(&mut self, path: &Path, top_n: usize) -> Result<DemoStep> {
+        let start = Instant::now();
+        
+        // Use the unified ranking engine
+        let ranker = ComplexityRanker::default();
+        let engine = RankingEngine::new(ranker);
+        
+        // Get all source files
+        let files = self.discover_files(path)?;
+        
+        // Rank by complexity
+        let rankings = engine.rank_files(&files, top_n).await;
+        
+        // Generate both full report and top-files summary
+        let full_report = self.analyze_all_complexity(&files).await?;
+        let top_files_report = self.format_top_complexity(&rankings);
+        
+        Ok(DemoStep {
+            name: "Code Complexity Analysis".to_string(),
+            duration_ms: start.elapsed().as_millis() as u64,
+            success: true,
+            output: Some(json!({
+                "total_files": files.len(),
+                "top_files": rankings,
+                "summary": {
+                    "max_cyclomatic": rankings.first().map(|(_, s)| s.cyclomatic_max).unwrap_or(0),
+                    "avg_cognitive": rankings.iter().map(|(_, s)| s.cognitive_avg).sum::<f64>() / rankings.len().max(1) as f64,
+                },
+                "full_report": full_report,
+            })),
+        })
+    }
+    
+    fn generate_ranked_system_diagram(&self, steps: &[DemoStep], config: &RankingConfig) -> Result<String> {
+        // Extract top-ranked components from analysis results
+        let top_complexity_files = self.extract_top_files(steps, "Code Complexity Analysis")?;
+        let top_churn_files = self.extract_top_files(steps, "Code Churn Analysis")?;
+        let top_duplicate_files = self.extract_top_files(steps, "Code Duplication Analysis")?;
+        
+        // Build component graph with ranking metadata
+        let mut graph = MermaidBuilder::new();
+        
+        // Use fallback structure but enhance with ranking data
+        graph.add_node("A", "AST Context Analysis", Some("#90EE90"));
+        graph.add_node("B", "File Parser", None);
+        
+        // Language-specific AST nodes - highlight if they contain top-ranked files
+        let rust_critical = top_complexity_files.iter().any(|f| f.ends_with(".rs"));
+        let ts_critical = top_complexity_files.iter().any(|f| f.ends_with(".ts") || f.ends_with(".js"));
+        let py_critical = top_complexity_files.iter().any(|f| f.ends_with(".py"));
+        
+        graph.add_node("C", "Rust AST", if rust_critical { Some("#FFD700") } else { None });
+        graph.add_node("D", "TypeScript AST", if ts_critical { Some("#FFD700") } else { None });
+        graph.add_node("E", "Python AST", if py_critical { Some("#FFD700") } else { None });
+        
+        // Add edges with ranking annotations
+        graph.add_edge("A", "B", Some("uses"));
+        graph.add_edge("B", "C", None);
+        graph.add_edge("B", "D", None);
+        graph.add_edge("B", "E", None);
+        
+        // Analysis components with intensity based on findings
+        let complexity_intensity = self.calculate_intensity(&top_complexity_files, config.complexity_top);
+        graph.add_node("F", &format!("Code Complexity ({})", top_complexity_files.len()), 
+                      Some(&self.intensity_to_color(complexity_intensity)));
+        
+        // Add ranking badge to high-intensity nodes
+        if complexity_intensity > 0.7 {
+            graph.add_annotation("F", &format!("Top {} hotspots", config.complexity_top));
+        }
+        
+        Ok(graph.render())
+    }
+}
+```
+
+### 1.3 CLI Interface with Ranking Controls
+
+```bash
+# Basic demo with automatic top-files detection
+paiml-mcp-agent-toolkit demo
+
+# Explicitly control ranking limits
+paiml-mcp-agent-toolkit demo --top-files 20
+paiml-mcp-agent-toolkit demo --complexity-top 10 --churn-top 5
+
+# Remote repository with focused analysis
+paiml-mcp-agent-toolkit demo --url https://github.com/rust-lang/cargo --top-files 15
+
+# Output formats with ranking data
+paiml-mcp-agent-toolkit demo --format json --include-rankings
+paiml-mcp-agent-toolkit demo --format markdown --top-files 10
+
+# Composite ranking with custom weights
+paiml-mcp-agent-toolkit demo --top-files 10 --weights complexity=0.4,churn=0.4,duplicate=0.2
+```
+
+### 1.4 Enhanced Output with Rankings
+
+```
+🎯 PAIML MCP Agent Toolkit Demo
+📁 Repository: https://github.com/user/repo
+⏱️  Analyzing with multi-metric ranking...
+
+Analysis Pipeline                             Time      Status    Top Files
+───────────────────────────────────────────────────────────────────────────
+AST Context Analysis                         245ms        ✓         147
+Code Complexity Analysis                     189ms        ✓          10
+Code Churn Analysis                         312ms        ✓          10
+Code Duplication Analysis                   156ms        ✓           5
+DAG Generation (ranked)                     234ms        ✓          15
+System Architecture                          89ms        ✓           -
+───────────────────────────────────────────────────────────────────────────
+Total                                      1225ms
+
+🏆 Top 5 Critical Files (Composite Score):
+┌─────┬────────────────────────────────────┬────────┬───────┬──────────┬────────┐
+│ Rank│ File                               │ Complex│ Churn │ Duplicate│ Score  │
+├─────┼────────────────────────────────────┼────────┼───────┼──────────┼────────┤
+│  1  │ src/services/context.rs            │  15.2  │  45   │   12.3%  │  0.89  │
+│  2  │ src/cli/mod.rs                     │  12.8  │  38   │   8.7%   │  0.82  │
+│  3  │ src/handlers/tools.rs              │  11.3  │  52   │   15.2%  │  0.79  │
+│  4  │ src/services/dag_builder.rs        │  14.1  │  23   │   6.4%   │  0.71  │
+│  5  │ src/unified_protocol/service.rs    │  10.7  │  31   │   9.1%   │  0.68  │
+└─────┴────────────────────────────────────┴────────┴───────┴──────────┴────────┘
+
+System Architecture (Ranked Components):
+┌─────────────────────────────────────────────────────────┐
+│  Legend: 🔴 Critical  🟠 High  🟡 Medium  🟢 Low       │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  [AST Context] ──uses──> [File Parser]                │
+│       │                      │                          │
+│       │                ┌─────┼─────┐                   │
+│       │                ↓     ↓     ↓                   │
+│       │           [Rust]🟠 [TS] [Python]               │
+│       │                ↑     ↑     ↑                   │
+│       │          ┌─────┴─────┴─────┴─────┐            │
+│       │          │                       │             │
+│  [Complexity]🔴──┤    [DAG Generation]🟠 │            │
+│    (10 files)    │                       │             │
+│                  └───────────────────────┘             │
+│                                                         │
+│  [Code Churn]🟠──git──> [Git Analysis]                │
+│   (10 files)                                           │
+│                                                         │
+│  [Duplication]🟡──scan──> [AST Matcher]               │
+│    (5 files)                                           │
+│                                                         │
+│  [Templates] ──renders──> [Handlebars]                │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+
+📊 Actionable Insights:
+• Refactoring Priority: Focus on top 5 files (71% of technical debt)
+• Churn Hotspots: 3 files changed >50 times in last 30 days
+• Duplication Issues: 2 files with >15% duplicate code
+• Complexity Violations: 4 functions exceed cognitive threshold
+```
+
+## 2. Implementation Architecture
+
+### 2.1 Ranking Integration Points
+
+```rust
+pub struct DemoArgs {
+    // Existing fields...
+    
+    /// Number of top files to highlight (composite ranking)
+    #[arg(long, value_name = "N")]
+    pub top_files: Option<usize>,
+    
+    /// Top files for complexity analysis
+    #[arg(long, value_name = "N")]
+    pub complexity_top: Option<usize>,
+    
+    /// Top files for churn analysis
+    #[arg(long, value_name = "N")]
+    pub churn_top: Option<usize>,
+    
+    /// Top files for duplication analysis
+    #[arg(long, value_name = "N")]
+    pub duplicate_top: Option<usize>,
+    
+    /// Custom weights for composite ranking
+    #[arg(long, value_parser = parse_weights)]
+    pub weights: Option<HashMap<String, f64>>,
+    
+    /// Include detailed rankings in output
+    #[arg(long)]
+    pub include_rankings: bool,
+}
+```
+
+### 2.2 Fallback Behavior Preservation
+
+```rust
+impl DemoRunner {
+    fn ensure_fallback_diagram(&self, result: Result<String>) -> String {
+        match result {
+            Ok(diagram) if !diagram.is_empty() => diagram,
+            _ => {
+                tracing::warn!("Using fallback diagram");
+                include_str!("../assets/fallback-system-diagram.mmd").to_string()
+            }
+        }
+    }
+    
+    async fn with_ranking_or_fallback<T, F, Fut>(&self, 
+        ranking_fn: F, 
+        fallback: T
+    ) -> T 
+    where
+        F: FnOnce() -> Fut,
+        Fut: Future<Output = Result<T>>,
+        T: Clone,
+    {
+        match ranking_fn().await {
+            Ok(result) => result,
+            Err(e) => {
+                tracing::debug!("Ranking failed, using fallback: {}", e);
+                fallback
+            }
+        }
+    }
+}
+```
+
+## 3. MCP and HTTP Interface Extensions
+
+### 3.1 MCP Protocol Support
+
+```json
+{
+  "method": "demo_analyze",
+  "params": {
+    "project_path": "./",
+    "url": "https://github.com/user/repo",
+    "top_files": 15,
+    "complexity_top": 10,
+    "churn_top": 10,
+    "weights": {
+      "complexity": 0.35,
+      "churn": 0.35,
+      "duplication": 0.20,
+      "coupling": 0.10
+    },
+    "include_rankings": true
+  }
+}
+```
+
+### 3.2 HTTP REST Endpoints
+
+```http
+# Demo with rankings
+GET /api/v1/demo?top_files=15&include_rankings=true
+
+# Specific ranking configurations
+GET /api/v1/demo?complexity_top=5&churn_top=10&duplicate_top=3
+
+# Custom weights
+GET /api/v1/demo?weights=complexity:0.4,churn:0.4,duplicate:0.2
+```
+
+## 4. Performance Optimizations
+
+### 4.1 Parallel Ranking Computation
+
+```rust
+impl DemoRunner {
+    async fn parallel_ranking_analysis(&self, path: &Path, config: &RankingConfig) -> RankingResults {
+        let files = Arc::new(self.discover_files(path)?);
+        
+        // Spawn parallel ranking tasks
+        let (complexity_fut, churn_fut, duplicate_fut) = tokio::join!(
+            tokio::spawn({
+                let files = files.clone();
+                async move {
+                    ComplexityRanker::default()
+                        .rank_files(&files, config.complexity_top)
+                }
+            }),
+            tokio::spawn({
+                let files = files.clone();
+                async move {
+                    ChurnRanker::new(30)
+                        .rank_files(&files, config.churn_top)
+                }
+            }),
+            tokio::spawn({
+                let files = files.clone();
+                async move {
+                    DuplicateRanker::default()
+                        .rank_files(&files, config.duplicate_top)
+                }
+            })
+        );
+        
+        RankingResults {
+            complexity: complexity_fut.await?,
+            churn: churn_fut.await?,
+            duplication: duplicate_fut.await?,
+        }
+    }
+}
+```
+
+### 4.2 Incremental Ranking Cache
+
+```rust
+pub struct RankingCache {
+    complexity: Arc<RwLock<LruCache<PathBuf, CompositeComplexityScore>>>,
+    churn: Arc<RwLock<LruCache<PathBuf, ChurnScore>>>,
+    composite: Arc<RwLock<HashMap<String, DefectProbabilityScore>>>,
+}
+
+impl RankingCache {
+    pub async fn get_or_compute<T, F>(&self, 
+        key: &Path, 
+        compute: F
+    ) -> Result<T>
+    where
+        F: FnOnce() -> Future<Output = Result<T>>,
+        T: Clone + 'static,
+    {
+        // Check cache with read lock
+        if let Some(cached) = self.get(key).await {
+            return Ok(cached);
+        }
+        
+        // Compute and cache with write lock
+        let result = compute().await?;
+        self.put(key, result.clone()).await;
+        Ok(result)
+    }
+}
+```
+
+## 5. Testing Strategy with Rankings
+
+### 5.1 Ranking-Aware Integration Tests
+
+```rust
+#[tokio::test]
+async fn test_demo_with_top_files_ranking() {
+    let runner = DemoRunner::new(ExecutionMode::Cli);
+    let args = DemoArgs {
+        top_files: Some(10),
+        complexity_top: Some(5),
+        churn_top: Some(5),
+        ..Default::default()
+    };
+    
+    let report = runner.execute_with_ranking(&args).await.unwrap();
+    
+    // Verify ranking data is present
+    assert!(report.top_files_summary.is_some());
+    let summary = report.top_files_summary.unwrap();
+    assert!(summary.composite_rankings.len() <= 10);
+    assert!(summary.complexity_rankings.len() <= 5);
+    
+    // Verify diagram reflects rankings
+    assert!(report.system_diagram.unwrap().contains("🔴")); // Critical markers
+}
+
+#[test]
+fn test_fallback_behavior() {
+    let runner = DemoRunner::new(ExecutionMode::Cli);
+    
+    // Simulate ranking failure
+    let result = runner.with_ranking_or_fallback(
+        || async { Err(anyhow!("Ranking failed")) },
+        "fallback_value"
+    ).await;
+    
+    assert_eq!(result, "fallback_value");
+}
+```
+
+### 5.2 Performance Benchmarks
+
+```rust
+#[bench]
+fn bench_demo_with_rankings(b: &mut Bencher) {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let runner = DemoRunner::new(ExecutionMode::Cli);
+    
+    b.iter(|| {
+        runtime.block_on(async {
+            runner.execute_with_ranking(&DemoArgs {
+                top_files: Some(20),
+                ..Default::default()
+            }).await
+        })
+    });
+}
+```
+
+## 6. Graceful Degradation Scenarios
+
+1. **No Git History**: Churn ranking falls back to file size
+2. **Large Repositories**: Progressive loading with early termination
+3. **Unsupported Languages**: Exclude from language-specific rankings
+4. **Missing Dependencies**: Use cached or default rankings
+
+```rust
+impl ChurnRanker {
+    fn compute_score(&self, file_path: &Path) -> ChurnScore {
+        match GitAnalysisService::get_file_history(file_path, self.lookback_days) {
+            Ok(history) => self.calculate_from_history(history),
+            Err(_) => {
+                // Fallback: use file metadata
+                let metadata = std::fs::metadata(file_path).ok();
+                ChurnScore {
+                    commit_count: 0,
+                    unique_authors: 1,
+                    lines_changed: 0,
+                    recency_weight: 0.1,
+                    score: metadata.map(|m| m.len() as f64 / 1000.0).unwrap_or(0.0),
+                }
+            }
+        }
+    }
+}
+```
+
+## 7. Implementation Status
+
+### ✅ Completed
+- CLI argument parsing for ranking parameters
+- Basic ranking infrastructure
+- Fallback diagram generation
+- Integration with existing demo pipeline
+
+### 🔄 In Progress
+- Full ranking engine integration
+- Parallel ranking computation
+- Enhanced diagram generation with ranking visualization
+
+### ❌ Not Yet Implemented
+- Ranking cache persistence
+- Custom weight validation
+- Progressive loading for large repositories
+- Web UI ranking controls
+
+
+
+
 ## 9. Implementation Status
 
 ### ✅ **Completed Features**

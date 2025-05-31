@@ -152,6 +152,7 @@ Each toolchain supports `makefile`, `readme`, and `gitignore` templates followin
 
 ### Complexity Analysis
 - **McCabe Cyclomatic** and **Sonar Cognitive** complexity metrics
+- **File Ranking System**: Composite scoring with `--top-files` flag
 - Multi-language support (Rust, TypeScript/JavaScript, Python)
 - SARIF output for IDE integration
 - Zero-overhead implementation (<1ms per KLOC)
@@ -232,6 +233,7 @@ paiml-mcp-agent-toolkit scaffold rust --templates makefile,readme,gitignore
 
 # Code analysis
 paiml-mcp-agent-toolkit analyze complexity --format sarif
+paiml-mcp-agent-toolkit analyze complexity --top-files 5
 paiml-mcp-agent-toolkit analyze churn --days 30 --format json
 paiml-mcp-agent-toolkit analyze dag --enhanced --show-complexity
 

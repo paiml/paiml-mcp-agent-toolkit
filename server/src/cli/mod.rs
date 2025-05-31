@@ -259,6 +259,10 @@ pub enum AnalyzeCommands {
         /// Watch mode for continuous analysis
         #[arg(long)]
         watch: bool,
+
+        /// Number of top complex files to show (0 = show all violations)
+        #[arg(long, default_value_t = 0)]
+        top_files: usize,
     },
 
     /// Generate dependency graphs using Mermaid
@@ -467,6 +471,7 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
                 max_cognitive,
                 include,
                 watch,
+                top_files,
             } => {
                 handle_analyze_complexity(
                     project_path,
@@ -477,6 +482,7 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
                     max_cognitive,
                     include,
                     watch,
+                    top_files,
                 )
                 .await?
             }
@@ -843,6 +849,7 @@ async fn handle_analyze_complexity(
     max_cognitive: Option<u16>,
     include: Vec<String>,
     watch: bool,
+    top_files: usize,
 ) -> anyhow::Result<()> {
     use crate::services::complexity::{
         aggregate_results, format_as_sarif, format_complexity_report, format_complexity_summary,
@@ -867,15 +874,57 @@ async fn handle_analyze_complexity(
     eprintln!("📊 Analyzed {} files", file_metrics.len());
 
     // Aggregate results
-    let report = aggregate_results(file_metrics);
+    let report = aggregate_results(file_metrics.clone());
 
-    // Format output
-    let content = match format {
+    // Handle top-files ranking if requested
+    let mut content = match format {
         ComplexityOutputFormat::Summary => format_complexity_summary(&report),
         ComplexityOutputFormat::Full => format_complexity_report(&report),
         ComplexityOutputFormat::Json => serde_json::to_string_pretty(&report)?,
         ComplexityOutputFormat::Sarif => format_as_sarif(&report)?,
     };
+
+    // Add top files ranking if requested
+    if top_files > 0 {
+        use crate::services::ranking::{rank_files_by_complexity, ComplexityRanker};
+
+        let ranker = ComplexityRanker::default();
+        let rankings = rank_files_by_complexity(&file_metrics, top_files, &ranker);
+
+        let ranking_content = format_top_files_ranking(&rankings);
+
+        // Prepend ranking to existing content for non-JSON formats
+        match format {
+            ComplexityOutputFormat::Json => {
+                // For JSON, we need to merge the ranking data
+                let mut report_json: serde_json::Value = serde_json::from_str(&content)?;
+                if let Some(obj) = report_json.as_object_mut() {
+                    obj.insert(
+                        "top_files".to_string(),
+                        serde_json::json!({
+                            "requested": top_files,
+                            "returned": rankings.len(),
+                            "rankings": rankings.iter().enumerate().map(|(i, (file, score))| {
+                                serde_json::json!({
+                                    "rank": i + 1,
+                                    "file": file,
+                                    "function_count": score.function_count,
+                                    "max_cyclomatic": score.cyclomatic_max,
+                                    "avg_cognitive": score.cognitive_avg,
+                                    "halstead_effort": score.halstead_effort,
+                                    "total_score": score.total_score
+                                })
+                            }).collect::<Vec<_>>()
+                        }),
+                    );
+                }
+                content = serde_json::to_string_pretty(&report_json)?;
+            }
+            _ => {
+                content = format!("{}\n{}", ranking_content, content);
+            }
+        }
+    }
 
     // Write output
     if let Some(path) = output {
@@ -1032,6 +1081,42 @@ fn params_to_json(params: Vec<(String, Value)>) -> serde_json::Map<String, Value
         map.insert(k, v);
     }
     map
+}
+
+/// Format top files ranking table
+fn format_top_files_ranking(
+    rankings: &[(String, crate::services::ranking::CompositeComplexityScore)],
+) -> String {
+    if rankings.is_empty() {
+        return "## Top Complex Files\n\nNo files found.\n".to_string();
+    }
+
+    let mut output = format!("## Top {} Most Complex Files\n\n", rankings.len());
+
+    // Add table header
+    output.push_str(
+        "| Rank | File | Functions | Max Cyclomatic | Avg Cognitive | Halstead | Score |\n",
+    );
+    output.push_str(
+        "|------|------|-----------|----------------|---------------|----------|-------|\n",
+    );
+
+    // Add table rows
+    for (i, (file, score)) in rankings.iter().enumerate() {
+        output.push_str(&format!(
+            "| {:>4} | {:<50} | {:>9} | {:>14} | {:>13.1} | {:>8.1} | {:>5.1} |\n",
+            i + 1,
+            file,
+            score.function_count,
+            score.cyclomatic_max,
+            score.cognitive_avg,
+            score.halstead_effort,
+            score.total_score
+        ));
+    }
+
+    output.push('\n');
+    output
 }
 
 fn print_table(templates: &[Arc<TemplateResource>]) {

@@ -13,5 +13,6 @@ pub mod duplicate_detector;
 pub mod embedded_templates;
 pub mod git_analysis;
 pub mod mermaid_generator;
+pub mod ranking;
 pub mod renderer;
 pub mod template_service;
