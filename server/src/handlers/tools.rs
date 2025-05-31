@@ -60,6 +60,7 @@ pub async fn handle_tool_call<T: TemplateServerTrait>(
         "analyze_defect_probability" => {
             handle_analyze_defect_probability(request.id, tool_params.arguments).await
         }
+        "analyze_dead_code" => handle_analyze_dead_code(request.id, tool_params.arguments).await,
         _ => McpResponse::error(
             request.id,
             -32602,
@@ -1326,4 +1327,337 @@ async fn handle_analyze_defect_probability(
     });
 
     McpResponse::success(request_id, result)
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AnalyzeDeadCodeArgs {
+    project_path: Option<String>,
+    format: Option<String>,
+    top_files: Option<usize>,
+    include_unreachable: Option<bool>,
+    min_dead_lines: Option<usize>,
+    include_tests: Option<bool>,
+}
+
+async fn handle_analyze_dead_code(
+    request_id: serde_json::Value,
+    arguments: serde_json::Value,
+) -> McpResponse {
+    let args: AnalyzeDeadCodeArgs = match serde_json::from_value(arguments) {
+        Ok(a) => a,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32602,
+                format!("Invalid analyze_dead_code arguments: {}", e),
+            );
+        }
+    };
+
+    let project_path = args
+        .project_path
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+    info!("Analyzing dead code for {:?}", project_path);
+
+    use crate::models::dead_code::DeadCodeAnalysisConfig;
+    use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
+
+    // Create analyzer with a reasonable capacity
+    let mut analyzer = DeadCodeAnalyzer::new(10000);
+
+    // Configure analysis
+    let config = DeadCodeAnalysisConfig {
+        include_unreachable: args.include_unreachable.unwrap_or(false),
+        include_tests: args.include_tests.unwrap_or(false),
+        min_dead_lines: args.min_dead_lines.unwrap_or(10),
+    };
+
+    // Run analysis with ranking
+    let mut result = match analyzer.analyze_with_ranking(&project_path, config).await {
+        Ok(r) => r,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32000,
+                format!("Dead code analysis failed: {}", e),
+            );
+        }
+    };
+
+    // Apply top_files limit if specified
+    if let Some(limit) = args.top_files {
+        result.ranked_files.truncate(limit);
+    }
+
+    // Format output based on requested format
+    let format = args.format.as_deref().unwrap_or("summary");
+    let content_text = match format_dead_code_output(&result, format) {
+        Ok(content) => content,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32000,
+                format!("Failed to format output: {}", e),
+            );
+        }
+    };
+
+    let response = json!({
+        "content": [{
+            "type": "text",
+            "text": content_text
+        }],
+        "result": result,
+        "format": format,
+        "files_analyzed": result.summary.total_files_analyzed,
+        "files_with_dead_code": result.summary.files_with_dead_code,
+        "total_dead_lines": result.summary.total_dead_lines,
+        "dead_percentage": result.summary.dead_percentage,
+    });
+
+    McpResponse::success(request_id, response)
+}
+
+/// Format dead code analysis output for MCP response
+fn format_dead_code_output(
+    result: &crate::models::dead_code::DeadCodeRankingResult,
+    format: &str,
+) -> anyhow::Result<String> {
+    use crate::cli::DeadCodeOutputFormat;
+
+    let output_format = match format {
+        "summary" => DeadCodeOutputFormat::Summary,
+        "json" => DeadCodeOutputFormat::Json,
+        "sarif" => DeadCodeOutputFormat::Sarif,
+        "markdown" => DeadCodeOutputFormat::Markdown,
+        _ => DeadCodeOutputFormat::Summary,
+    };
+
+    // Use the existing formatting functions from CLI module
+    match output_format {
+        DeadCodeOutputFormat::Summary => {
+            // Import the function from the CLI module
+            format_dead_code_summary_mcp(result)
+        }
+        DeadCodeOutputFormat::Json => Ok(serde_json::to_string_pretty(result)?),
+        DeadCodeOutputFormat::Sarif => format_dead_code_as_sarif_mcp(result),
+        DeadCodeOutputFormat::Markdown => format_dead_code_as_markdown_mcp(result),
+    }
+}
+
+/// Format dead code analysis as summary text for MCP
+fn format_dead_code_summary_mcp(
+    result: &crate::models::dead_code::DeadCodeRankingResult,
+) -> anyhow::Result<String> {
+    let mut output = String::new();
+
+    output.push_str("# Dead Code Analysis Summary\n\n");
+    output.push_str(&format!(
+        "**Total files analyzed:** {}\n",
+        result.summary.total_files_analyzed
+    ));
+    output.push_str(&format!(
+        "**Files with dead code:** {} ({:.1}%)\n",
+        result.summary.files_with_dead_code,
+        if result.summary.total_files_analyzed > 0 {
+            (result.summary.files_with_dead_code as f32
+                / result.summary.total_files_analyzed as f32)
+                * 100.0
+        } else {
+            0.0
+        }
+    ));
+    output.push_str(&format!(
+        "**Total dead lines:** {} ({:.1}% of codebase)\n",
+        result.summary.total_dead_lines, result.summary.dead_percentage
+    ));
+    output.push_str(&format!(
+        "**Dead functions:** {}\n",
+        result.summary.dead_functions
+    ));
+    output.push_str(&format!(
+        "**Dead classes:** {}\n",
+        result.summary.dead_classes
+    ));
+    output.push_str(&format!(
+        "**Dead modules:** {}\n",
+        result.summary.dead_modules
+    ));
+    output.push_str(&format!(
+        "**Unreachable blocks:** {}\n\n",
+        result.summary.unreachable_blocks
+    ));
+
+    // Show top files if available
+    if !result.ranked_files.is_empty() {
+        let top_count = result.ranked_files.len().min(5);
+        output.push_str(&format!(
+            "## Top {} Files with Most Dead Code\n\n",
+            top_count
+        ));
+
+        for (i, file_metrics) in result.ranked_files.iter().take(top_count).enumerate() {
+            let confidence_text = match file_metrics.confidence {
+                crate::models::dead_code::ConfidenceLevel::High => "HIGH",
+                crate::models::dead_code::ConfidenceLevel::Medium => "MEDIUM",
+                crate::models::dead_code::ConfidenceLevel::Low => "LOW",
+            };
+
+            output.push_str(&format!(
+                "{}. **{}** (Score: {:.1}) [{}confidence]\n",
+                i + 1,
+                file_metrics.path,
+                file_metrics.dead_score,
+                confidence_text
+            ));
+            output.push_str(&format!(
+                "   - {} dead lines ({:.1}% of file)\n",
+                file_metrics.dead_lines, file_metrics.dead_percentage
+            ));
+            if file_metrics.dead_functions > 0 || file_metrics.dead_classes > 0 {
+                output.push_str(&format!(
+                    "   - {} functions, {} classes\n",
+                    file_metrics.dead_functions, file_metrics.dead_classes
+                ));
+            }
+            output.push('\n');
+        }
+    }
+
+    Ok(output)
+}
+
+/// Format dead code analysis as SARIF for MCP
+fn format_dead_code_as_sarif_mcp(
+    result: &crate::models::dead_code::DeadCodeRankingResult,
+) -> anyhow::Result<String> {
+    use serde_json::json;
+
+    let mut results = Vec::new();
+
+    for file_metrics in &result.ranked_files {
+        for item in &file_metrics.items {
+            results.push(json!({
+                "ruleId": format!("dead-code-{}", format!("{:?}", item.item_type).to_lowercase()),
+                "level": "info",
+                "message": {
+                    "text": format!("Dead {} '{}': {}",
+                        format!("{:?}", item.item_type).to_lowercase(),
+                        item.name,
+                        item.reason
+                    )
+                },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": file_metrics.path
+                        },
+                        "region": {
+                            "startLine": item.line
+                        }
+                    }
+                }]
+            }));
+        }
+    }
+
+    let sarif = json!({
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "paiml-mcp-agent-toolkit",
+                    "version": "0.1.0",
+                    "informationUri": "https://github.com/paiml/mcp-agent-toolkit"
+                }
+            },
+            "results": results
+        }]
+    });
+
+    Ok(serde_json::to_string_pretty(&sarif)?)
+}
+
+/// Format dead code analysis as Markdown for MCP
+fn format_dead_code_as_markdown_mcp(
+    result: &crate::models::dead_code::DeadCodeRankingResult,
+) -> anyhow::Result<String> {
+    let mut output = String::new();
+
+    output.push_str("# Dead Code Analysis Report\n\n");
+    output.push_str(&format!(
+        "**Analysis Date:** {}\n\n",
+        result.analysis_timestamp.format("%Y-%m-%d %H:%M:%S UTC")
+    ));
+
+    // Summary section
+    output.push_str("## Summary\n\n");
+    output.push_str(&format!(
+        "- **Total files analyzed:** {}\n",
+        result.summary.total_files_analyzed
+    ));
+    output.push_str(&format!(
+        "- **Files with dead code:** {} ({:.1}%)\n",
+        result.summary.files_with_dead_code,
+        if result.summary.total_files_analyzed > 0 {
+            (result.summary.files_with_dead_code as f32
+                / result.summary.total_files_analyzed as f32)
+                * 100.0
+        } else {
+            0.0
+        }
+    ));
+    output.push_str(&format!(
+        "- **Total dead lines:** {} ({:.1}% of codebase)\n",
+        result.summary.total_dead_lines, result.summary.dead_percentage
+    ));
+    output.push_str(&format!(
+        "- **Dead functions:** {}\n",
+        result.summary.dead_functions
+    ));
+    output.push_str(&format!(
+        "- **Dead classes:** {}\n",
+        result.summary.dead_classes
+    ));
+    output.push_str(&format!(
+        "- **Dead modules:** {}\n",
+        result.summary.dead_modules
+    ));
+    output.push_str(&format!(
+        "- **Unreachable blocks:** {}\n\n",
+        result.summary.unreachable_blocks
+    ));
+
+    // Top files section
+    if !result.ranked_files.is_empty() {
+        output.push_str("## Top Files with Dead Code\n\n");
+        output.push_str("| Rank | File | Dead Lines | Percentage | Functions | Classes | Score | Confidence |\n");
+        output.push_str("|------|------|------------|------------|-----------|---------|-------|------------|\n");
+
+        for (i, file_metrics) in result.ranked_files.iter().enumerate() {
+            let confidence_text = match file_metrics.confidence {
+                crate::models::dead_code::ConfidenceLevel::High => "🔴 High",
+                crate::models::dead_code::ConfidenceLevel::Medium => "🟡 Medium",
+                crate::models::dead_code::ConfidenceLevel::Low => "🟢 Low",
+            };
+
+            output.push_str(&format!(
+                "| {:>4} | `{}` | {:>10} | {:>9.1}% | {:>9} | {:>7} | {:>5.1} | {} |\n",
+                i + 1,
+                file_metrics.path,
+                file_metrics.dead_lines,
+                file_metrics.dead_percentage,
+                file_metrics.dead_functions,
+                file_metrics.dead_classes,
+                file_metrics.dead_score,
+                confidence_text
+            ));
+        }
+        output.push('\n');
+    }
+
+    Ok(output)
 }

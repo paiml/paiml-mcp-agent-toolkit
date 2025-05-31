@@ -74,6 +74,10 @@ impl UnifiedService {
             .route("/api/v1/analyze/churn", post(handlers::analyze_churn))
             .route("/api/v1/analyze/dag", post(handlers::analyze_dag))
             .route("/api/v1/analyze/context", post(handlers::generate_context))
+            .route(
+                "/api/v1/analyze/dead-code",
+                post(handlers::analyze_dead_code),
+            )
             // MCP protocol endpoint
             .route("/mcp/{method}", post(handlers::mcp_endpoint))
             // Health and status endpoints
@@ -272,6 +276,10 @@ pub trait AnalysisService: Send + Sync {
     async fn analyze_churn(&self, params: &ChurnParams) -> Result<ChurnAnalysis, AppError>;
     async fn analyze_dag(&self, params: &DagParams) -> Result<DagAnalysis, AppError>;
     async fn generate_context(&self, params: &ContextParams) -> Result<ProjectContext, AppError>;
+    async fn analyze_dead_code(
+        &self,
+        params: &DeadCodeParams,
+    ) -> Result<DeadCodeAnalysis, AppError>;
 }
 
 /// Default implementations for testing
@@ -387,6 +395,21 @@ impl AnalysisService for DefaultAnalysisService {
             },
         })
     }
+
+    async fn analyze_dead_code(
+        &self,
+        _params: &DeadCodeParams,
+    ) -> Result<DeadCodeAnalysis, AppError> {
+        Ok(DeadCodeAnalysis {
+            summary: DeadCodeSummary {
+                total_files_analyzed: 0,
+                files_with_dead_code: 0,
+                total_dead_lines: 0,
+                dead_percentage: 0.0,
+            },
+            files: vec![],
+        })
+    }
 }
 
 /// Handler modules containing the actual endpoint implementations
@@ -475,6 +498,15 @@ pub mod handlers {
         Ok(Json(context))
     }
 
+    /// Analyze dead code
+    pub async fn analyze_dead_code(
+        Extension(state): Extension<Arc<AppState>>,
+        Json(params): Json<DeadCodeParams>,
+    ) -> Result<Json<DeadCodeAnalysis>, AppError> {
+        let analysis = state.analysis_service.analyze_dead_code(&params).await?;
+        Ok(Json(analysis))
+    }
+
     /// MCP protocol endpoint
     pub async fn mcp_endpoint(
         Extension(state): Extension<Arc<AppState>>,
@@ -503,6 +535,14 @@ pub mod handlers {
                 let result = state
                     .analysis_service
                     .analyze_complexity(&complexity_params)
+                    .await?;
+                Ok(Json(serde_json::to_value(result)?))
+            }
+            "analyze_dead_code" => {
+                let dead_code_params: DeadCodeParams = serde_json::from_value(params)?;
+                let result = state
+                    .analysis_service
+                    .analyze_dead_code(&dead_code_params)
                     .await?;
                 Ok(Json(serde_json::to_value(result)?))
             }
@@ -720,6 +760,45 @@ pub struct ContextMetrics {
     pub total_files: usize,
     pub total_lines: usize,
     pub complexity_score: f64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeadCodeParams {
+    pub project_path: String,
+    #[serde(default)]
+    pub format: String,
+    #[serde(default)]
+    pub top_files: Option<usize>,
+    #[serde(default)]
+    pub include_unreachable: bool,
+    #[serde(default)]
+    pub min_dead_lines: usize,
+    #[serde(default)]
+    pub include_tests: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DeadCodeAnalysis {
+    pub summary: DeadCodeSummary,
+    pub files: Vec<FileDeadCode>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DeadCodeSummary {
+    pub total_files_analyzed: usize,
+    pub files_with_dead_code: usize,
+    pub total_dead_lines: usize,
+    pub dead_percentage: f64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FileDeadCode {
+    pub path: String,
+    pub dead_lines: usize,
+    pub dead_percentage: f64,
+    pub dead_functions: usize,
+    pub dead_classes: usize,
+    pub confidence: String,
 }
 
 #[cfg(test)]

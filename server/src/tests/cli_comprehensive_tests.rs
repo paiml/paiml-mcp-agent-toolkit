@@ -852,6 +852,7 @@ fn test_nested_subcommand_parsing() {
                 ("churn", AnalyzeCommands::Churn { .. }) => {}
                 ("complexity", AnalyzeCommands::Complexity { .. }) => {}
                 ("dag", AnalyzeCommands::Dag { .. }) => {}
+                ("dead-code", AnalyzeCommands::DeadCode { .. }) => {}
                 _ => panic!("Unexpected analyze subcommand"),
             },
             _ => panic!("Expected Analyze command"),

@@ -272,6 +272,40 @@ pub async fn handle_tools_list<T: TemplateServerTrait>(
                         },
                         "required": ["toolchain"]
                     }
+                },
+                {
+                    "name": "analyze_dead_code",
+                    "description": "Analyze dead and unreachable code with ranking support. Identifies unused functions, classes, variables, and unreachable code blocks using cross-reference analysis.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "project_path": {
+                                "type": "string",
+                                "description": "Path to analyze (defaults to current directory)"
+                            },
+                            "format": {
+                                "type": "string",
+                                "enum": ["summary", "json", "sarif", "markdown"],
+                                "description": "Output format (default: summary)"
+                            },
+                            "top_files": {
+                                "type": "integer",
+                                "description": "Show top N files with most dead code (0 = show all files)"
+                            },
+                            "include_unreachable": {
+                                "type": "boolean",
+                                "description": "Include unreachable code blocks in analysis (default: false)"
+                            },
+                            "min_dead_lines": {
+                                "type": "integer",
+                                "description": "Minimum dead lines to report a file (default: 10)"
+                            },
+                            "include_tests": {
+                                "type": "boolean",
+                                "description": "Include test files in analysis (default: false)"
+                            }
+                        }
+                    }
                 }
             ]
         }),

@@ -242,6 +242,23 @@ impl CliAdapter {
                 *include_dead_code,
                 *enhanced,
             ),
+            AnalyzeCommands::DeadCode {
+                path,
+                format,
+                top_files,
+                include_unreachable,
+                min_dead_lines,
+                include_tests,
+                output,
+            } => Self::decode_analyze_dead_code(
+                path,
+                format,
+                top_files,
+                *include_unreachable,
+                *min_dead_lines,
+                *include_tests,
+                output,
+            ),
         }
     }
 
@@ -322,6 +339,33 @@ impl CliAdapter {
         Ok((
             Method::POST,
             "/api/v1/analyze/dag".to_string(),
+            body,
+            Some(OutputFormat::Json),
+        ))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_dead_code(
+        path: &std::path::Path,
+        format: &crate::cli::DeadCodeOutputFormat,
+        top_files: &Option<usize>,
+        include_unreachable: bool,
+        min_dead_lines: usize,
+        include_tests: bool,
+        output: &Option<std::path::PathBuf>,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let body = json!({
+            "project_path": path.to_string_lossy(),
+            "format": dead_code_format_to_string(format),
+            "top_files": top_files,
+            "include_unreachable": &include_unreachable,
+            "min_dead_lines": &min_dead_lines,
+            "include_tests": &include_tests,
+            "output_path": output
+        });
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/dead-code".to_string(),
             body,
             Some(OutputFormat::Json),
         ))
@@ -485,6 +529,7 @@ impl CliInput {
                 AnalyzeCommands::Churn { .. } => "analyze-churn",
                 AnalyzeCommands::Complexity { .. } => "analyze-complexity",
                 AnalyzeCommands::Dag { .. } => "analyze-dag",
+                AnalyzeCommands::DeadCode { .. } => "analyze-dead-code",
             },
             Commands::Demo { .. } => "demo",
         }
@@ -570,6 +615,15 @@ fn dag_type_to_string(dag_type: &DagType) -> String {
         DagType::ImportGraph => "import-graph".to_string(),
         DagType::Inheritance => "inheritance".to_string(),
         DagType::FullDependency => "full-dependency".to_string(),
+    }
+}
+
+fn dead_code_format_to_string(format: &crate::cli::DeadCodeOutputFormat) -> String {
+    match format {
+        crate::cli::DeadCodeOutputFormat::Summary => "summary".to_string(),
+        crate::cli::DeadCodeOutputFormat::Json => "json".to_string(),
+        crate::cli::DeadCodeOutputFormat::Sarif => "sarif".to_string(),
+        crate::cli::DeadCodeOutputFormat::Markdown => "markdown".to_string(),
     }
 }
 
