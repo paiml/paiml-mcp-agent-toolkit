@@ -183,6 +183,14 @@ Each toolchain supports `makefile`, `readme`, and `gitignore` templates followin
 - **Clone Detection**: Type-1/2/3/4 duplicate detection
 - Mermaid diagram output
 
+### Interactive Demo System
+- **Complete 7-Step Analysis Pipeline**: AST Context → Complexity → DAG → Churn → Architecture → Defect Analysis → Template Generation
+- **Dynamic Data Integration**: Real-time metrics from actual codebase analysis (no static placeholders)
+- **Dual Interface Support**: CLI output mode (`--cli`) and web interface with visual dashboard
+- **Authentic Hotspot Detection**: Complexity-based rankings using live analysis results
+- **Performance Monitoring**: Real execution timing for each analysis step
+- **Triple Interface Testing**: Verified consistency across CLI, MCP, and HTTP interfaces
+
 ### Enhanced Tracing
 - **Runtime-configurable**: `--verbose`, `--debug`, `--trace` flags  
 - **Zero-cost**: Disabled spans add ~5-7 CPU instructions

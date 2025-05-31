@@ -36,7 +36,7 @@ mod demo_tests {
             .success()
             .stdout(predicate::str::contains(r#""repository""#))
             .stdout(predicate::str::contains(r#""steps""#))
-            .stdout(predicate::str::contains(r#""total_elapsed_ms""#));
+            .stdout(predicate::str::contains(r#""total_time_ms""#));
 
         Ok(())
     }

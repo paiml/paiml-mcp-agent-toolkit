@@ -259,6 +259,27 @@ impl CliAdapter {
                 *include_tests,
                 output,
             ),
+            AnalyzeCommands::Satd {
+                path,
+                format,
+                severity,
+                critical_only,
+                include_tests,
+                evolution,
+                days,
+                metrics,
+                output,
+            } => Self::decode_analyze_satd(
+                path,
+                format,
+                severity,
+                *critical_only,
+                *include_tests,
+                *evolution,
+                *days,
+                *metrics,
+                output,
+            ),
         }
     }
 
@@ -366,6 +387,37 @@ impl CliAdapter {
         Ok((
             Method::POST,
             "/api/v1/analyze/dead-code".to_string(),
+            body,
+            Some(OutputFormat::Json),
+        ))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_satd(
+        path: &std::path::Path,
+        format: &crate::cli::SatdOutputFormat,
+        severity: &Option<crate::cli::SatdSeverity>,
+        critical_only: bool,
+        include_tests: bool,
+        evolution: bool,
+        days: u32,
+        metrics: bool,
+        output: &Option<std::path::PathBuf>,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let body = json!({
+            "project_path": path.to_string_lossy(),
+            "format": satd_format_to_string(format),
+            "severity": severity.as_ref().map(satd_severity_to_string),
+            "critical_only": &critical_only,
+            "include_tests": &include_tests,
+            "evolution": &evolution,
+            "days": &days,
+            "metrics": &metrics,
+            "output_path": output
+        });
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/satd".to_string(),
             body,
             Some(OutputFormat::Json),
         ))
@@ -530,6 +582,7 @@ impl CliInput {
                 AnalyzeCommands::Complexity { .. } => "analyze-complexity",
                 AnalyzeCommands::Dag { .. } => "analyze-dag",
                 AnalyzeCommands::DeadCode { .. } => "analyze-dead-code",
+                AnalyzeCommands::Satd { .. } => "analyze-satd",
             },
             Commands::Demo { .. } => "demo",
         }
@@ -624,6 +677,24 @@ fn dead_code_format_to_string(format: &crate::cli::DeadCodeOutputFormat) -> Stri
         crate::cli::DeadCodeOutputFormat::Json => "json".to_string(),
         crate::cli::DeadCodeOutputFormat::Sarif => "sarif".to_string(),
         crate::cli::DeadCodeOutputFormat::Markdown => "markdown".to_string(),
+    }
+}
+
+fn satd_format_to_string(format: &crate::cli::SatdOutputFormat) -> String {
+    match format {
+        crate::cli::SatdOutputFormat::Summary => "summary".to_string(),
+        crate::cli::SatdOutputFormat::Json => "json".to_string(),
+        crate::cli::SatdOutputFormat::Sarif => "sarif".to_string(),
+        crate::cli::SatdOutputFormat::Markdown => "markdown".to_string(),
+    }
+}
+
+fn satd_severity_to_string(severity: &crate::cli::SatdSeverity) -> String {
+    match severity {
+        crate::cli::SatdSeverity::Critical => "critical".to_string(),
+        crate::cli::SatdSeverity::High => "high".to_string(),
+        crate::cli::SatdSeverity::Medium => "medium".to_string(),
+        crate::cli::SatdSeverity::Low => "low".to_string(),
     }
 }
 

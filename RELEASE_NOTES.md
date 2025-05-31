@@ -1,3 +1,75 @@
+# Release Notes for v0.16.0
+
+## 🎯 Feature Release: Enhanced Demo System with Dynamic Components
+
+This release transforms the demo system from static placeholder data to a fully dynamic system that showcases actual working functionality, completing the comprehensive analysis pipeline and fixing critical interface consistency issues.
+
+## ✨ New Features
+
+### Demo System Enhancements (`demo`)
+- **NEW**: Complete 7-step analysis pipeline (previously missing Defect Probability Analysis)
+- **NEW**: Dynamic data integration replacing all static placeholder values
+- **NEW**: Real-time complexity metrics extracted from actual codebase analysis
+- **NEW**: Authentic hotspot detection based on live complexity calculations
+- **NEW**: Enhanced web interface displaying genuine analysis results
+- **FIXED**: JSON field naming consistency (`total_time_ms` vs `total_elapsed_ms`)
+- **IMPROVED**: Execution timing calculations using actual step measurements
+
+### Enhanced Analysis Integration
+- **NEW**: `demo_defect_analysis` method completing the analysis pipeline
+- **NEW**: `extract_analysis_from_demo_report` for dynamic data extraction
+- **NEW**: Real complexity report and DAG result parsing
+- **IMPROVED**: Web dashboard now displays actual project metrics and timing data
+- **IMPROVED**: Hotspots derived from genuine complexity analysis instead of churn data
+
+### Interface Consistency Improvements
+- **FIXED**: Demo integration tests now expect correct JSON structure
+- **VERIFIED**: All three interfaces (CLI, MCP, HTTP) operational with dynamic data
+- **VERIFIED**: Triple-interface testing protocol compliance per CLAUDE.md requirements
+
+## 🔧 Technical Implementation
+
+### Demo Runner (`server/src/demo/runner.rs`)
+- Added complete `demo_defect_analysis` method (lines 532-575)
+- Enhanced execution sequence to include all 7 analysis steps
+- Fixed step numbering for Template Generation (now 7️⃣)
+
+### Demo Orchestration (`server/src/demo/mod.rs`)
+- Implemented `extract_analysis_from_demo_report` for data extraction
+- Added helper functions: `parse_complexity_summary`, `parse_dag_data`
+- Enhanced `run_web_demo` to use actual analysis results
+- Resolved compilation errors from duplicate function definitions
+
+### Web Interface (`server/src/demo/server.rs`)
+- Updated dashboard rendering with real metrics instead of hardcoded values
+- Enhanced timing calculations using actual demo step execution data
+- Improved data source indicators for authentic user experience
+
+## 📊 Usage Examples
+
+```bash
+# CLI Demo with Dynamic Data
+paiml-mcp-agent-toolkit demo --cli --format json
+
+# Web Demo with Real Analysis
+paiml-mcp-agent-toolkit demo --port 8080 --no-browser
+
+# MCP Tool Integration
+{"method": "analyze_defect_probability", "params": {"project_path": "./", "format": "summary"}}
+```
+
+## 🧪 Test Coverage Improvements
+- **FIXED**: Demo integration test JSON field expectations
+- **VERIFIED**: All 7 analysis steps execute successfully
+- **VERIFIED**: Triple-interface consistency across CLI, MCP, and HTTP
+
+## 🚀 Performance Characteristics
+- **Analysis Pipeline**: Complete 7-step execution with real timing measurements
+- **Memory Usage**: Dynamic data extraction with minimal overhead
+- **Interface Consistency**: Verified operational across all three interfaces
+
+---
+
 # Release Notes for v0.15.0
 
 ## 🎯 Major Feature Release: Dead Code Analysis with Cross-Reference Tracking

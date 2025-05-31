@@ -296,6 +296,7 @@ impl DemoRunner {
         steps.push(self.demo_dag_generation(&working_path).await?);
         steps.push(self.demo_churn_analysis(&working_path).await?);
         steps.push(self.demo_system_architecture(&working_path).await?);
+        steps.push(self.demo_defect_analysis(&working_path).await?);
         steps.push(self.demo_template_generation(&working_path).await?);
 
         // Generate high-level system diagram
@@ -528,6 +529,51 @@ impl DemoRunner {
         Ok(step)
     }
 
+    async fn demo_defect_analysis(&mut self, path: &Path) -> Result<DemoStep> {
+        let request = self.build_mcp_request(
+            "analyze_defect_probability",
+            json!({
+                "project_path": path.to_str().unwrap(),
+                "toolchain": "rust",
+                "format": "summary"
+            }),
+        );
+
+        println!("\n6️⃣  Analyzing Defect Probability...");
+
+        let start = Instant::now();
+        let response = handle_tool_call(self.server.clone(), request.clone()).await;
+        let elapsed = start.elapsed().as_millis() as u64;
+
+        let step = self.create_demo_step(
+            "Defect Probability Analysis",
+            "Defect Probability Analysis",
+            request.clone(),
+            response.clone(),
+            elapsed,
+        );
+
+        self.execution_log.push(step.clone());
+
+        if response.error.is_none() {
+            println!("   ✅ Defect analysis completed in {} ms", elapsed);
+            if let Some(result) = &response.result {
+                if let Ok(defect_result) = serde_json::from_value::<Value>(result.clone()) {
+                    if let Some(avg_prob) = defect_result.get("average_probability") {
+                        println!(
+                            "   🔍 Average defect probability: {:.2}",
+                            avg_prob.as_f64().unwrap_or(0.0)
+                        );
+                    }
+                }
+            }
+        } else {
+            println!("   ❌ Failed: {:?}", response.error);
+        }
+
+        Ok(step)
+    }
+
     async fn demo_template_generation(&mut self, path: &Path) -> Result<DemoStep> {
         let request = self.build_mcp_request(
             "generate_template",
@@ -544,7 +590,7 @@ impl DemoRunner {
             }),
         );
 
-        println!("\n6️⃣  Generating Template...");
+        println!("\n7️⃣  Generating Template...");
 
         let start = Instant::now();
         let response = handle_tool_call(self.server.clone(), request.clone()).await;
