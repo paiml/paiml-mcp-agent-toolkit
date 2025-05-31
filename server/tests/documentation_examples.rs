@@ -27,124 +27,137 @@ fn test_cli_examples_are_valid() {
         .join("docs/cli-mcp.md");
 
     let content = fs::read_to_string(&doc_path).expect("Failed to read cli-mcp.md");
-
-    // Extract bash code blocks
     let code_block_regex = Regex::new(r"```bash\n((?:[^`]|`[^`]|``[^`])+)\n```").unwrap();
     let binary_path = get_binary_path();
 
     for cap in code_block_regex.captures_iter(&content) {
-        let code_block = &cap[1];
+        process_bash_code_block(&cap[1], &binary_path);
+    }
+}
 
-        // Process each line in the code block
-        for line in code_block.lines() {
-            let line = line.trim();
+fn process_bash_code_block(code_block: &str, binary_path: &str) {
+    for line in code_block.lines() {
+        let line = line.trim();
 
-            // Skip comments, empty lines, and non-command lines
-            if line.starts_with('#') || line.is_empty() || !line.contains("paiml-mcp-agent-toolkit")
-            {
-                continue;
-            }
+        if should_skip_line(line) {
+            continue;
+        }
 
-            // Check if paiml-mcp-agent-toolkit is actually the command (not just in a path)
-            let first_word = line.split_whitespace().next().unwrap_or("");
-            if !first_word.contains("paiml-mcp-agent-toolkit") && !first_word.contains("=") {
-                // paiml-mcp-agent-toolkit is not the command, skip this line
-                continue;
-            }
+        let full_command = handle_multiline_command(line, code_block);
+        let test_command = full_command.replace("paiml-mcp-agent-toolkit", binary_path);
 
-            // Skip complex examples with pipes, redirects, or shell variables
-            if line.contains("|")
-                || line.contains(">")
-                || line.contains("$")
-                || line.contains("curl")
-            {
-                continue;
-            }
+        validate_command(&test_command, binary_path, line);
+    }
+}
 
-            // Skip git commands and other non-toolkit commands
-            if line.starts_with("git ")
-                || line.starts_with("cd ")
-                || line.starts_with("make ")
-                || line.starts_with("claude ")
-            {
-                continue;
-            }
+fn should_skip_line(line: &str) -> bool {
+    // Skip comments, empty lines, and non-command lines
+    if line.starts_with('#') || line.is_empty() || !line.contains("paiml-mcp-agent-toolkit") {
+        return true;
+    }
 
-            // Skip lines with environment variable settings (e.g., RUST_LOG=...)
-            if line.contains("=") && line.split_whitespace().next().unwrap_or("").contains("=") {
-                continue;
-            }
+    // Check if paiml-mcp-agent-toolkit is actually the command
+    let first_word = line.split_whitespace().next().unwrap_or("");
+    if !first_word.contains("paiml-mcp-agent-toolkit") && !first_word.contains("=") {
+        return true;
+    }
 
-            // Handle multi-line commands (with backslash continuation)
-            let full_command = if line.ends_with('\\') {
-                // Collect all continuation lines
-                let mut cmd = line.trim_end_matches('\\').to_string();
-                let mut lines_iter = code_block.lines().skip_while(|l| !l.contains(line));
-                lines_iter.next(); // Skip current line
+    // Skip complex examples
+    if has_complex_shell_features(line) {
+        return true;
+    }
 
-                for next_line in lines_iter {
-                    let next_line = next_line.trim();
-                    if next_line.ends_with('\\') {
-                        cmd.push(' ');
-                        cmd.push_str(next_line.trim_end_matches('\\'));
-                    } else {
-                        cmd.push(' ');
-                        cmd.push_str(next_line);
-                        break;
-                    }
-                }
-                cmd
-            } else {
-                line.to_string()
-            };
+    // Skip non-toolkit commands
+    if is_non_toolkit_command(line) {
+        return true;
+    }
 
-            // Replace the binary name with our test binary path
-            let test_command = full_command.replace("paiml-mcp-agent-toolkit", &binary_path);
+    // Skip environment variable settings
+    line.contains("=") && line.split_whitespace().next().unwrap_or("").contains("=")
+}
 
-            // Parse the command
-            let parts: Vec<&str> = test_command.split_whitespace().collect();
-            if parts.is_empty() {
-                continue;
-            }
+fn has_complex_shell_features(line: &str) -> bool {
+    line.contains("|") || line.contains(">") || line.contains("$") || line.contains("curl")
+}
 
-            // Validate the command structure by checking if it would parse
-            // The command has been replaced with our test binary path,
-            // so we check if it's either the actual binary path or ends with the expected name
-            let is_valid_binary =
-                parts[0] == binary_path || parts[0].ends_with("paiml-mcp-agent-toolkit");
-            assert!(
-                is_valid_binary,
-                "Example command doesn't use the expected binary: {} (expected {} or ending with paiml-mcp-agent-toolkit)",
-                parts[0],
-                binary_path
-            );
+fn is_non_toolkit_command(line: &str) -> bool {
+    line.starts_with("git ")
+        || line.starts_with("cd ")
+        || line.starts_with("make ")
+        || line.starts_with("claude ")
+}
 
-            // Verify it's a known command or starts with valid flags
-            if parts.len() > 1 {
-                let first_arg = parts[1];
-                let valid_commands = [
-                    "generate",
-                    "scaffold",
-                    "list",
-                    "search",
-                    "validate",
-                    "context",
-                    "analyze",
-                    "demo",
-                    "--help",
-                    "--version",
-                    "--mode",
-                ];
+fn handle_multiline_command(line: &str, code_block: &str) -> String {
+    if !line.ends_with('\\') {
+        return line.to_string();
+    }
 
-                assert!(
-                    valid_commands.contains(&first_arg),
-                    "Example uses unknown command: {} in line: {}",
-                    first_arg,
-                    line
-                );
-            }
+    let mut cmd = line.trim_end_matches('\\').to_string();
+    let mut lines_iter = code_block.lines().skip_while(|l| !l.contains(line));
+    lines_iter.next(); // Skip current line
+
+    for next_line in lines_iter {
+        let next_line = next_line.trim();
+        cmd.push(' ');
+
+        if next_line.ends_with('\\') {
+            cmd.push_str(next_line.trim_end_matches('\\'));
+        } else {
+            cmd.push_str(next_line);
+            break;
         }
     }
+
+    cmd
+}
+
+fn validate_command(test_command: &str, binary_path: &str, original_line: &str) {
+    let parts: Vec<&str> = test_command.split_whitespace().collect();
+    if parts.is_empty() {
+        return;
+    }
+
+    validate_binary_path(parts[0], binary_path);
+    validate_command_arguments(&parts, original_line);
+}
+
+fn validate_binary_path(command: &str, expected_binary_path: &str) {
+    let is_valid_binary =
+        command == expected_binary_path || command.ends_with("paiml-mcp-agent-toolkit");
+    assert!(
+        is_valid_binary,
+        "Example command doesn't use the expected binary: {} (expected {} or ending with paiml-mcp-agent-toolkit)",
+        command,
+        expected_binary_path
+    );
+}
+
+fn validate_command_arguments(parts: &[&str], original_line: &str) {
+    if parts.len() <= 1 {
+        return;
+    }
+
+    let valid_commands = [
+        "generate",
+        "scaffold",
+        "list",
+        "search",
+        "validate",
+        "context",
+        "analyze",
+        "demo",
+        "--help",
+        "--version",
+        "--mode",
+    ];
+
+    let first_arg = parts[1];
+    assert!(
+        valid_commands.contains(&first_arg),
+        "Example uses unknown command: {} in line: {}",
+        first_arg,
+        original_line
+    );
 }
 
 #[test]
@@ -155,67 +168,70 @@ fn test_mcp_json_examples_are_valid() {
         .join("docs/cli-mcp.md");
 
     let content = fs::read_to_string(&doc_path).expect("Failed to read cli-mcp.md");
-
-    // Extract JSON code blocks
     let json_block_regex = Regex::new(r"```json\n((?:[^`]|`[^`]|``[^`])+)\n```").unwrap();
 
     for cap in json_block_regex.captures_iter(&content) {
-        let json_block = &cap[1];
+        validate_json_block(&cap[1]);
+    }
+}
 
-        // Try to parse as JSON
-        match serde_json::from_str::<Value>(json_block) {
-            Ok(json) => {
-                // Verify it looks like a JSON-RPC request
-                if json.is_object() {
-                    let obj = json.as_object().unwrap();
+fn validate_json_block(json_block: &str) {
+    match serde_json::from_str::<Value>(json_block) {
+        Ok(json) => validate_parsed_json(&json),
+        Err(_) => validate_json_array_fallback(json_block),
+    }
+}
 
-                    // Check for JSON-RPC structure
-                    if obj.contains_key("jsonrpc") {
-                        assert_eq!(
-                            obj["jsonrpc"].as_str(),
-                            Some("2.0"),
-                            "JSON-RPC version should be 2.0"
-                        );
+fn validate_parsed_json(json: &Value) {
+    if let Some(obj) = json.as_object() {
+        validate_json_rpc_object(obj);
+    }
+}
 
-                        assert!(
-                            obj.contains_key("method"),
-                            "JSON-RPC request should have a method"
-                        );
+fn validate_json_rpc_object(obj: &serde_json::Map<String, Value>) {
+    if !obj.contains_key("jsonrpc") {
+        return;
+    }
 
-                        assert!(obj.contains_key("id"), "JSON-RPC request should have an id");
-                    }
-                }
-            }
-            Err(_) => {
-                // It might be a JSON array (batch request)
-                if json_block.trim().starts_with('[') {
-                    match serde_json::from_str::<Vec<Value>>(json_block) {
-                        Ok(array) => {
-                            assert!(!array.is_empty(), "JSON array example should not be empty");
+    assert_eq!(
+        obj["jsonrpc"].as_str(),
+        Some("2.0"),
+        "JSON-RPC version should be 2.0"
+    );
 
-                            // Each element should be a valid JSON-RPC request
-                            for item in &array {
-                                assert!(item.is_object(), "Batch request items should be objects");
-                                let obj = item.as_object().unwrap();
-                                assert_eq!(
-                                    obj.get("jsonrpc").and_then(|v| v.as_str()),
-                                    Some("2.0"),
-                                    "Each batch item should have jsonrpc: 2.0"
-                                );
-                            }
-                        }
-                        Err(e) => {
-                            panic!(
-                                "Invalid JSON example in documentation: {}\nError: {}",
-                                json_block, e
-                            );
-                        }
-                    }
-                } else {
-                    panic!("Invalid JSON example in documentation: {}", json_block);
-                }
-            }
-        }
+    assert!(
+        obj.contains_key("method"),
+        "JSON-RPC request should have a method"
+    );
+
+    assert!(obj.contains_key("id"), "JSON-RPC request should have an id");
+}
+
+fn validate_json_array_fallback(json_block: &str) {
+    if !json_block.trim().starts_with('[') {
+        panic!("Invalid JSON example in documentation: {}", json_block);
+    }
+
+    match serde_json::from_str::<Vec<Value>>(json_block) {
+        Ok(array) => validate_batch_request_array(&array),
+        Err(e) => panic!(
+            "Invalid JSON example in documentation: {}\nError: {}",
+            json_block, e
+        ),
+    }
+}
+
+fn validate_batch_request_array(array: &[Value]) {
+    assert!(!array.is_empty(), "JSON array example should not be empty");
+
+    for item in array {
+        assert!(item.is_object(), "Batch request items should be objects");
+        let obj = item.as_object().unwrap();
+        assert_eq!(
+            obj.get("jsonrpc").and_then(|v| v.as_str()),
+            Some("2.0"),
+            "Each batch item should have jsonrpc: 2.0"
+        );
     }
 }
 

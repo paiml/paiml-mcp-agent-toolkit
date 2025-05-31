@@ -443,7 +443,7 @@ pub mod handlers {
             max_cognitive: query.max_cognitive,
             top_files: query.top_files,
         };
-        
+
         let analysis = state.analysis_service.analyze_complexity(&params).await?;
         Ok(Json(analysis))
     }

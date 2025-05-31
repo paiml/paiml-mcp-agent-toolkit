@@ -205,15 +205,26 @@ mod tests {
 
     /// Validate basic syntax patterns that must be present in any valid Mermaid
     fn validate_mermaid_syntax(content: &str) {
+        validate_mermaid_directive(content);
+        validate_content_not_empty(content);
+        validate_no_raw_angle_brackets(content);
+        validate_node_definitions(content);
+    }
+
+    fn validate_mermaid_directive(content: &str) {
         // Must start with flowchart or graph directive
         assert!(
             content.trim_start().starts_with("flowchart")
                 || content.trim_start().starts_with("graph")
         );
+    }
 
+    fn validate_content_not_empty(content: &str) {
         // Must contain at least one line with content
         assert!(content.lines().any(|line| !line.trim().is_empty()));
+    }
 
+    fn validate_no_raw_angle_brackets(content: &str) {
         // Should not contain raw angle brackets or problematic characters outside of valid contexts
         let has_raw_brackets = content.lines().any(|line| {
             let line = line.trim();
@@ -228,7 +239,9 @@ mod tests {
             !has_raw_brackets,
             "Found raw angle brackets outside valid contexts"
         );
+    }
 
+    fn validate_node_definitions(content: &str) {
         // Check for invalid node definition pattern: raw text after node ID without proper brackets
         // Valid: node_id[Label], node_id{Label}, node_id(Label)
         // Invalid: node_id Label (raw text directly after ID)

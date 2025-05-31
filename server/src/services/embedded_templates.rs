@@ -64,66 +64,11 @@ const GITIGNORE_PYTHON_UV_CLI_HBS: &str =
 fn convert_to_template_resource(
     embedded: EmbeddedTemplateMetadata,
 ) -> Result<TemplateResource, TemplateError> {
-    let category_str = embedded.category.clone();
-    let toolchain_str = embedded.toolchain.clone();
-    let variant = embedded.variant.clone();
+    let category = parse_template_category(&embedded.category)?;
+    let toolchain = parse_toolchain(&embedded.toolchain)?;
+    let parameters = convert_embedded_parameters(embedded.parameters);
 
-    let category = match category_str.as_str() {
-        "makefile" => TemplateCategory::Makefile,
-        "readme" => TemplateCategory::Readme,
-        "gitignore" => TemplateCategory::Gitignore,
-        _ => {
-            return Err(TemplateError::InvalidUri {
-                uri: format!("Unknown category: {}", category_str),
-            })
-        }
-    };
-
-    let toolchain = match toolchain_str.as_str() {
-        "rust" => Toolchain::RustCli {
-            cargo_features: vec![],
-        },
-        "deno" => Toolchain::DenoTypescript {
-            deno_version: "1.46".to_string(),
-        },
-        "python-uv" => Toolchain::PythonUv {
-            python_version: "3.12".to_string(),
-        },
-        _ => {
-            return Err(TemplateError::InvalidUri {
-                uri: format!("Unknown toolchain: {}", toolchain_str),
-            })
-        }
-    };
-
-    let parameters = embedded
-        .parameters
-        .into_iter()
-        .map(|p| {
-            let param_type = match p.param_type.as_str() {
-                "project_name" => ParameterType::ProjectName,
-                "boolean" => ParameterType::Boolean,
-                "string" => ParameterType::String,
-                "array" => ParameterType::String, // Arrays handled as strings for now
-                _ => ParameterType::String,
-            };
-
-            ParameterSpec {
-                name: p.name,
-                param_type,
-                required: p.required,
-                default_value: p.default_value.map(|v| match v {
-                    serde_json::Value::String(s) => s,
-                    serde_json::Value::Bool(b) => b.to_string(),
-                    serde_json::Value::Number(n) => n.to_string(),
-                    serde_json::Value::Array(_) => "[]".to_string(),
-                    _ => v.to_string(),
-                }),
-                validation_pattern: None,
-                description: p.description,
-            }
-        })
-        .collect();
+    let s3_object_key = build_s3_object_key(&category, &toolchain, &embedded.variant);
 
     Ok(TemplateResource {
         uri: embedded.uri,
@@ -132,21 +77,103 @@ fn convert_to_template_resource(
         toolchain: toolchain.clone(),
         category: category.clone(),
         parameters,
-        s3_object_key: format!(
-            "templates/{}/{}/{}.hbs",
-            match &category {
-                TemplateCategory::Makefile => "makefile",
-                TemplateCategory::Readme => "readme",
-                TemplateCategory::Gitignore => "gitignore",
-                TemplateCategory::Context => "context",
-            },
-            toolchain.as_str(),
-            variant
-        ),
+        s3_object_key,
         content_hash: "embedded".to_string(),
         semantic_version: Version::new(1, 0, 0),
         dependency_graph: vec![],
     })
+}
+
+fn parse_template_category(category_str: &str) -> Result<TemplateCategory, TemplateError> {
+    match category_str {
+        "makefile" => Ok(TemplateCategory::Makefile),
+        "readme" => Ok(TemplateCategory::Readme),
+        "gitignore" => Ok(TemplateCategory::Gitignore),
+        _ => Err(TemplateError::InvalidUri {
+            uri: format!("Unknown category: {}", category_str),
+        }),
+    }
+}
+
+fn parse_toolchain(toolchain_str: &str) -> Result<Toolchain, TemplateError> {
+    match toolchain_str {
+        "rust" => Ok(Toolchain::RustCli {
+            cargo_features: vec![],
+        }),
+        "deno" => Ok(Toolchain::DenoTypescript {
+            deno_version: "1.46".to_string(),
+        }),
+        "python-uv" => Ok(Toolchain::PythonUv {
+            python_version: "3.12".to_string(),
+        }),
+        _ => Err(TemplateError::InvalidUri {
+            uri: format!("Unknown toolchain: {}", toolchain_str),
+        }),
+    }
+}
+
+fn convert_embedded_parameters(embedded_params: Vec<EmbeddedParameter>) -> Vec<ParameterSpec> {
+    embedded_params
+        .into_iter()
+        .map(convert_embedded_parameter)
+        .collect()
+}
+
+fn convert_embedded_parameter(p: EmbeddedParameter) -> ParameterSpec {
+    let param_type = parse_parameter_type(&p.param_type);
+    let default_value = p.default_value.map(convert_json_value_to_string);
+
+    ParameterSpec {
+        name: p.name,
+        param_type,
+        required: p.required,
+        default_value,
+        validation_pattern: None,
+        description: p.description,
+    }
+}
+
+fn parse_parameter_type(param_type_str: &str) -> ParameterType {
+    match param_type_str {
+        "project_name" => ParameterType::ProjectName,
+        "boolean" => ParameterType::Boolean,
+        "string" => ParameterType::String,
+        "array" => ParameterType::String, // Arrays handled as strings for now
+        _ => ParameterType::String,
+    }
+}
+
+fn convert_json_value_to_string(value: serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(s) => s,
+        serde_json::Value::Bool(b) => b.to_string(),
+        serde_json::Value::Number(n) => n.to_string(),
+        serde_json::Value::Array(_) => "[]".to_string(),
+        _ => value.to_string(),
+    }
+}
+
+fn build_s3_object_key(
+    category: &TemplateCategory,
+    toolchain: &Toolchain,
+    variant: &str,
+) -> String {
+    let category_path = get_category_path(category);
+    format!(
+        "templates/{}/{}/{}.hbs",
+        category_path,
+        toolchain.as_str(),
+        variant
+    )
+}
+
+fn get_category_path(category: &TemplateCategory) -> &'static str {
+    match category {
+        TemplateCategory::Makefile => "makefile",
+        TemplateCategory::Readme => "readme",
+        TemplateCategory::Gitignore => "gitignore",
+        TemplateCategory::Context => "context",
+    }
 }
 
 pub async fn list_templates(prefix: &str) -> Result<Vec<Arc<TemplateResource>>, TemplateError> {
