@@ -152,7 +152,11 @@ Each toolchain supports `makefile`, `readme`, and `gitignore` templates followin
 
 ### Complexity Analysis
 - **McCabe Cyclomatic** and **Sonar Cognitive** complexity metrics
-- **File Ranking System**: Composite scoring with `--top-files` flag
+- **Advanced File Ranking System**: Composite scoring with `--top-files` flag
+  - Parallel processing with caching for large codebases
+  - Support for Rust, TypeScript/JavaScript, Python file analysis
+  - Vectorized ranking for datasets >1024 files (SIMD-optimized)
+  - 95% test coverage with comprehensive edge case handling
 - Multi-language support (Rust, TypeScript/JavaScript, Python)
 - SARIF output for IDE integration
 - Zero-overhead implementation (<1ms per KLOC)

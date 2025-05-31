@@ -253,6 +253,47 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
 }
 ```
 
+### File Ranking System
+
+Generic ranking engine with pluggable metrics:
+
+```rust
+pub trait FileRanker: Send + Sync {
+    type Metric: PartialOrd + Clone + Send + Sync;
+    
+    fn compute_score(&self, file_path: &Path) -> Self::Metric;
+    fn format_ranking_entry(&self, file: &str, metric: &Self::Metric, rank: usize) -> String;
+    fn ranking_type(&self) -> &'static str;
+}
+
+pub struct RankingEngine<R: FileRanker> {
+    ranker: R,
+    cache: Arc<RwLock<HashMap<String, R::Metric>>>,
+}
+
+impl<R: FileRanker> RankingEngine<R> {
+    pub async fn rank_files(&self, files: &[PathBuf], limit: usize) -> Vec<(String, R::Metric)> {
+        // Parallel computation with caching
+        let scores: Vec<_> = files
+            .par_iter()
+            .filter_map(|f| self.compute_with_cache(f))
+            .collect();
+        
+        // Sort and apply limit
+        scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
+        scores.truncate(limit);
+        scores
+    }
+}
+```
+
+#### Built-in Ranking Metrics
+
+- **ComplexityRanker**: Composite scoring based on cyclomatic, cognitive, and function count
+- **ChurnScore**: Git-based change frequency analysis
+- **DuplicationScore**: Code clone detection metrics
+- **Vectorized Ranking**: SIMD-optimized for large datasets (>1024 files)
+
 ## Cache Architecture
 
 ### Hierarchical Cache Design
