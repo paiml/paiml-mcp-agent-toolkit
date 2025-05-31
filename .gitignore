@@ -33,6 +33,7 @@ yarn-error.log*
 
 # Testing
 coverage/
+coverage*.json
 *.lcov
 lcov.info
 .coverage
