@@ -1,0 +1,19 @@
+{
+  "summary": {
+    "total_files_analyzed": 0,
+    "files_with_dead_code": 0,
+    "total_dead_lines": 0,
+    "dead_percentage": 0.0,
+    "dead_functions": 0,
+    "dead_classes": 0,
+    "dead_modules": 0,
+    "unreachable_blocks": 0
+  },
+  "ranked_files": [],
+  "analysis_timestamp": "2025-05-31T21:28:20.936815672Z",
+  "config": {
+    "include_unreachable": false,
+    "include_tests": false,
+    "min_dead_lines": 10
+  }
+}
