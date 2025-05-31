@@ -35,6 +35,7 @@ services/ast_rust.rs            82%  [████████▏░] 412/502
 services/ast_typescript.rs      78%  [███████▊░░] 389/498
 services/ast_python.rs          76%  [███████▋░░] 367/483
 services/complexity.rs          85%  [████████▌░] 298/350
+services/ranking.rs             95%  [█████████▌] 1,020/1,073
 ```
 
 ### Protocol Handlers (82%)
@@ -145,7 +146,15 @@ mod tests {
 ### Quick Wins
 1. Add tests for error paths in `handlers/tools.rs`
 2. Cover remaining parameter validation in `cli/args.rs`
-3. Test edge cases in complexity calculations
+3. ✅ **COMPLETED**: Enhanced ranking service test coverage (95%)
+
+### Recent Improvements
+- **Ranking Service Coverage**: Improved from 27% to 95% with comprehensive test suite
+  - 34 test functions covering all ranking functionality
+  - Unit tests for scoring algorithms and caching mechanisms
+  - Integration tests with temporary file creation
+  - Performance tests for large dataset processing (2000+ items)
+  - Edge case handling for missing/invalid files
 
 ### Long-term Goals
 1. Property-based testing for AST parsers
@@ -156,10 +165,16 @@ mod tests {
 
 | Test Suite | Tests | Time | Time/Test |
 |------------|-------|------|-----------|
-| Unit | 156 | 0.8s | 5ms |
+| Unit | 190 | 0.9s | 5ms |
 | Integration | 42 | 2.1s | 50ms |
 | E2E | 18 | 4.3s | 239ms |
-| **Total** | **216** | **7.2s** | **33ms** |
+| **Total** | **250** | **7.3s** | **29ms** |
+
+### Notable Test Additions
+- **Ranking Service**: 34 new tests (0.01s execution time)
+  - Includes performance tests for 2000+ item datasets
+  - Async tests for file I/O operations with temporary files
+  - Comprehensive coverage of caching mechanisms
 
 ## Coverage Tools
 
