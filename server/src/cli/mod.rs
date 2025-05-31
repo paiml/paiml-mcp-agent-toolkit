@@ -392,102 +392,46 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
         return crate::run_mcp_server(server).await;
     }
 
-    match cli.command {
+    execute_command(cli.command, server).await
+}
+
+#[instrument(level = "debug", skip(command, server))]
+async fn execute_command(
+    command: Commands,
+    server: Arc<StatelessTemplateServer>,
+) -> anyhow::Result<()> {
+    match command {
         Commands::Generate {
             category,
             template,
             params,
             output,
             create_dirs,
-        } => handle_generate(server, category, template, params, output, create_dirs).await?,
-
+        } => handle_generate(server, category, template, params, output, create_dirs).await,
         Commands::Scaffold {
             toolchain,
             templates,
             params,
             parallel,
-        } => handle_scaffold(server, toolchain, templates, params, parallel).await?,
-
+        } => handle_scaffold(server, toolchain, templates, params, parallel).await,
         Commands::List {
             toolchain,
             category,
             format,
-        } => handle_list(server, toolchain, category, format).await?,
-
+        } => handle_list(server, toolchain, category, format).await,
         Commands::Search {
             query,
             toolchain,
             limit,
-        } => handle_search(server, query, toolchain, limit).await?,
-
-        Commands::Validate { uri, params } => handle_validate(server, uri, params).await?,
-
+        } => handle_search(server, query, toolchain, limit).await,
+        Commands::Validate { uri, params } => handle_validate(server, uri, params).await,
         Commands::Context {
             toolchain,
             project_path,
             output,
             format,
-        } => handle_context(toolchain, project_path, output, format).await?,
-
-        Commands::Analyze(analyze_cmd) => match analyze_cmd {
-            AnalyzeCommands::Churn {
-                project_path,
-                days,
-                format,
-                output,
-            } => handle_analyze_churn(project_path, days, format, output).await?,
-
-            AnalyzeCommands::Dag {
-                dag_type,
-                project_path,
-                output,
-                max_depth,
-                filter_external,
-                show_complexity,
-                include_duplicates,
-                include_dead_code,
-                enhanced,
-            } => {
-                handle_analyze_dag(
-                    dag_type,
-                    project_path,
-                    output,
-                    max_depth,
-                    filter_external,
-                    show_complexity,
-                    include_duplicates,
-                    include_dead_code,
-                    enhanced,
-                )
-                .await?
-            }
-
-            AnalyzeCommands::Complexity {
-                project_path,
-                toolchain,
-                format,
-                output,
-                max_cyclomatic,
-                max_cognitive,
-                include,
-                watch,
-                top_files,
-            } => {
-                handle_analyze_complexity(
-                    project_path,
-                    toolchain,
-                    format,
-                    output,
-                    max_cyclomatic,
-                    max_cognitive,
-                    include,
-                    watch,
-                    top_files,
-                )
-                .await?
-            }
-        },
-
+        } => handle_context(toolchain, project_path, output, format).await,
+        Commands::Analyze(analyze_cmd) => execute_analyze_command(analyze_cmd).await,
         Commands::Demo {
             path,
             url,
@@ -499,22 +443,107 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
             centrality_threshold,
             merge_threshold,
         } => {
-            let demo_args = crate::demo::DemoArgs {
+            execute_demo_command(
                 path,
                 url,
                 format,
                 no_browser,
                 port,
-                web: !cli, // Invert the flag - web is default unless --cli is specified
+                cli,
                 target_nodes,
                 centrality_threshold,
                 merge_threshold,
-            };
-            crate::demo::run_demo(demo_args, server).await?;
+                server,
+            )
+            .await
         }
     }
+}
 
-    Ok(())
+async fn execute_analyze_command(analyze_cmd: AnalyzeCommands) -> anyhow::Result<()> {
+    match analyze_cmd {
+        AnalyzeCommands::Churn {
+            project_path,
+            days,
+            format,
+            output,
+        } => handle_analyze_churn(project_path, days, format, output).await,
+        AnalyzeCommands::Dag {
+            dag_type,
+            project_path,
+            output,
+            max_depth,
+            filter_external,
+            show_complexity,
+            include_duplicates,
+            include_dead_code,
+            enhanced,
+        } => {
+            handle_analyze_dag(
+                dag_type,
+                project_path,
+                output,
+                max_depth,
+                filter_external,
+                show_complexity,
+                include_duplicates,
+                include_dead_code,
+                enhanced,
+            )
+            .await
+        }
+        AnalyzeCommands::Complexity {
+            project_path,
+            toolchain,
+            format,
+            output,
+            max_cyclomatic,
+            max_cognitive,
+            include,
+            watch,
+            top_files,
+        } => {
+            handle_analyze_complexity(
+                project_path,
+                toolchain,
+                format,
+                output,
+                max_cyclomatic,
+                max_cognitive,
+                include,
+                watch,
+                top_files,
+            )
+            .await
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn execute_demo_command(
+    path: Option<PathBuf>,
+    url: Option<String>,
+    format: OutputFormat,
+    no_browser: bool,
+    port: Option<u16>,
+    cli: bool,
+    target_nodes: usize,
+    centrality_threshold: f64,
+    merge_threshold: usize,
+    server: Arc<StatelessTemplateServer>,
+) -> anyhow::Result<()> {
+    let demo_args = crate::demo::DemoArgs {
+        path,
+        url,
+        format,
+        no_browser,
+        port,
+        web: !cli, // Invert the flag - web is default unless --cli is specified
+        target_nodes,
+        centrality_threshold,
+        merge_threshold,
+    };
+    crate::demo::run_demo(demo_args, server).await
 }
 
 // Command handlers - extracted from the main run function for better organization

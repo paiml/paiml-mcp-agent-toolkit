@@ -3,6 +3,7 @@ use crate::models::mcp::{
     GenerateTemplateArgs, ListTemplatesArgs, McpRequest, McpResponse, ScaffoldProjectArgs,
     SearchTemplatesArgs, ToolCallParams, ValidateTemplateArgs,
 };
+use crate::models::template::{ParameterSpec, TemplateResource};
 use crate::services::git_analysis::GitAnalysisService;
 use crate::services::template_service;
 use crate::TemplateServerTrait;
@@ -168,69 +169,22 @@ async fn handle_validate_template<T: TemplateServerTrait>(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    let args: ValidateTemplateArgs = match serde_json::from_value(arguments) {
-        Ok(a) => a,
+    let args = match parse_validate_template_args(arguments) {
+        Ok(args) => args,
         Err(e) => {
             return McpResponse::error(
                 request_id,
                 -32602,
                 format!("Invalid validate_template arguments: {}", e),
-            );
+            )
         }
     };
 
-    // Get template metadata to validate parameters
     match server.get_template_metadata(&args.resource_uri).await {
-        Ok(metadata) => {
-            let mut validation_errors = Vec::new();
-            let mut missing_required = Vec::new();
-
-            // Check required parameters
-            for param in &metadata.parameters {
-                if param.required && !args.parameters.contains_key(&param.name) {
-                    missing_required.push(&param.name);
-                }
-            }
-
-            // Validate parameter values
-            for (key, value) in &args.parameters {
-                if let Some(param_spec) = metadata.parameters.iter().find(|p| p.name == *key) {
-                    if let Some(pattern) = &param_spec.validation_pattern {
-                        if let Ok(regex) = regex::Regex::new(pattern) {
-                            if let Some(str_val) = value.as_str() {
-                                if !regex.is_match(str_val) {
-                                    validation_errors.push(format!(
-                                        "Parameter '{}' does not match pattern: {}",
-                                        key, pattern
-                                    ));
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    validation_errors.push(format!("Unknown parameter: {}", key));
-                }
-            }
-
-            let is_valid = missing_required.is_empty() && validation_errors.is_empty();
-
-            let result = json!({
-                "content": [{
-                    "type": "text",
-                    "text": if is_valid {
-                        "Template parameters are valid".to_string()
-                    } else {
-                        format!("Validation failed: {} errors",
-                            missing_required.len() + validation_errors.len())
-                    }
-                }],
-                "valid": is_valid,
-                "missing_required": missing_required,
-                "validation_errors": validation_errors,
-                "template_uri": args.resource_uri,
-            });
-
-            McpResponse::success(request_id, result)
+        Ok(template_resource) => {
+            let validation_result =
+                validate_template_parameters(&args.parameters, &template_resource);
+            create_validation_response(request_id, validation_result, &args.resource_uri)
         }
         Err(_) => McpResponse::error(
             request_id,
@@ -238,6 +192,108 @@ async fn handle_validate_template<T: TemplateServerTrait>(
             format!("Template not found: {}", args.resource_uri),
         ),
     }
+}
+
+fn parse_validate_template_args(
+    arguments: serde_json::Value,
+) -> Result<ValidateTemplateArgs, serde_json::Error> {
+    serde_json::from_value(arguments)
+}
+
+struct ValidationResult {
+    missing_required: Vec<String>,
+    validation_errors: Vec<String>,
+}
+
+fn validate_template_parameters(
+    parameters: &serde_json::Map<String, serde_json::Value>,
+    template_resource: &TemplateResource,
+) -> ValidationResult {
+    let missing_required =
+        find_missing_required_parameters(parameters, &template_resource.parameters);
+    let validation_errors = validate_parameter_values(parameters, &template_resource.parameters);
+
+    ValidationResult {
+        missing_required,
+        validation_errors,
+    }
+}
+
+fn find_missing_required_parameters(
+    parameters: &serde_json::Map<String, serde_json::Value>,
+    parameter_specs: &[ParameterSpec],
+) -> Vec<String> {
+    parameter_specs
+        .iter()
+        .filter(|param| param.required && !parameters.contains_key(&param.name))
+        .map(|param| param.name.clone())
+        .collect()
+}
+
+fn validate_parameter_values(
+    parameters: &serde_json::Map<String, serde_json::Value>,
+    parameter_specs: &[ParameterSpec],
+) -> Vec<String> {
+    let mut validation_errors = Vec::new();
+
+    for (key, value) in parameters {
+        if let Some(param_spec) = parameter_specs.iter().find(|p| p.name == *key) {
+            if let Some(error) = validate_single_parameter(key, value, param_spec) {
+                validation_errors.push(error);
+            }
+        } else {
+            validation_errors.push(format!("Unknown parameter: {}", key));
+        }
+    }
+
+    validation_errors
+}
+
+fn validate_single_parameter(
+    key: &str,
+    value: &serde_json::Value,
+    param_spec: &ParameterSpec,
+) -> Option<String> {
+    if let Some(pattern) = &param_spec.validation_pattern {
+        if let Ok(regex) = regex::Regex::new(pattern) {
+            if let Some(str_val) = value.as_str() {
+                if !regex.is_match(str_val) {
+                    return Some(format!(
+                        "Parameter '{}' does not match pattern: {}",
+                        key, pattern
+                    ));
+                }
+            }
+        }
+    }
+    None
+}
+
+fn create_validation_response(
+    request_id: serde_json::Value,
+    validation_result: ValidationResult,
+    resource_uri: &str,
+) -> McpResponse {
+    let is_valid = validation_result.missing_required.is_empty()
+        && validation_result.validation_errors.is_empty();
+
+    let result = json!({
+        "content": [{
+            "type": "text",
+            "text": if is_valid {
+                "Template parameters are valid".to_string()
+            } else {
+                format!("Validation failed: {} errors",
+                    validation_result.missing_required.len() + validation_result.validation_errors.len())
+            }
+        }],
+        "valid": is_valid,
+        "missing_required": validation_result.missing_required,
+        "validation_errors": validation_result.validation_errors,
+        "template_uri": resource_uri,
+    });
+
+    McpResponse::success(request_id, result)
 }
 
 async fn handle_scaffold_project<T: TemplateServerTrait>(
@@ -644,7 +700,7 @@ async fn handle_analyze_complexity(
     use crate::services::ranking::{rank_files_by_complexity, ComplexityRanker};
 
     let report = aggregate_results(file_metrics.clone());
-    
+
     // Handle top_files ranking if requested
     let content_text = if let Some(top_files_count) = args.top_files {
         if top_files_count > 0 {
@@ -844,7 +900,7 @@ fn format_complexity_rankings(
     args: &AnalyzeComplexityArgs,
 ) -> String {
     use crate::services::ranking::{ComplexityRanker, FileRanker};
-    
+
     let format = args.format.as_deref().unwrap_or("summary");
     match format {
         "json" => {
@@ -878,7 +934,7 @@ fn format_complexity_rankings(
             output.push_str(&format!("## Top {} Complexity Files\n\n", rankings.len()));
             output.push_str("| Rank | File                               | Functions | Max Cyclomatic | Avg Cognitive | Halstead | Score |\n");
             output.push_str("|------|------------------------------------|-----------|--------------  |---------------|----------|-------|\n");
-            
+
             for (i, (file, score)) in rankings.iter().enumerate() {
                 output.push_str(&format!(
                     "| {:>4} | {:<50} | {:>9} | {:>14} | {:>13.1} | {:>11.1} | {:>11.1} |\n",

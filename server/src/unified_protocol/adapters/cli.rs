@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use async_trait::async_trait;
 use axum::body::Body;
@@ -21,6 +21,345 @@ impl CliAdapter {
     pub fn new() -> Self {
         Self
     }
+
+    fn decode_command(
+        &self,
+        command: &Commands,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        match command {
+            Commands::Generate {
+                category,
+                template,
+                params,
+                output,
+                create_dirs,
+            } => Self::decode_generate(category, template, params, output, create_dirs),
+            Commands::Scaffold {
+                toolchain,
+                templates,
+                params,
+                parallel,
+            } => Self::decode_scaffold(toolchain, templates, params, *parallel),
+            Commands::List {
+                toolchain,
+                category,
+                format,
+            } => Self::decode_list(toolchain, category, format),
+            Commands::Search {
+                query,
+                toolchain,
+                limit,
+            } => Self::decode_search(query, toolchain, *limit),
+            Commands::Validate { uri, params } => Self::decode_validate(uri, params),
+            Commands::Context {
+                toolchain,
+                project_path,
+                output,
+                format,
+            } => Self::decode_context(toolchain, project_path, output, format),
+            Commands::Analyze(analyze_cmd) => Self::decode_analyze_command(analyze_cmd),
+            Commands::Demo {
+                path,
+                url,
+                format,
+                no_browser,
+                port,
+                cli,
+                target_nodes,
+                centrality_threshold,
+                merge_threshold,
+            } => Self::decode_demo(
+                path,
+                url,
+                format,
+                *no_browser,
+                port,
+                *cli,
+                *target_nodes,
+                *centrality_threshold,
+                *merge_threshold,
+            ),
+        }
+    }
+
+    fn decode_generate(
+        category: &str,
+        template: &str,
+        params: &[(String, Value)],
+        output: &Option<std::path::PathBuf>,
+        create_dirs: &bool,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let params_map: HashMap<String, Value> = params.iter().cloned().collect();
+        let body = json!({
+            "template_uri": format!("template://{}/{}", category, template),
+            "parameters": params_map,
+            "output_path": output,
+            "create_dirs": create_dirs
+        });
+        Ok((Method::POST, "/api/v1/generate".to_string(), body, None))
+    }
+
+    fn decode_scaffold(
+        toolchain: &str,
+        templates: &[String],
+        params: &[(String, Value)],
+        parallel: usize,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let params_map: HashMap<String, Value> = params.iter().cloned().collect();
+        let body = json!({
+            "toolchain": toolchain,
+            "templates": templates,
+            "parameters": params_map,
+            "parallel": &parallel
+        });
+        Ok((Method::POST, "/api/v1/scaffold".to_string(), body, None))
+    }
+
+    fn decode_list(
+        toolchain: &Option<String>,
+        category: &Option<String>,
+        format: &OutputFormat,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let mut query_params = Vec::new();
+        if let Some(tc) = toolchain {
+            query_params.push(format!("toolchain={}", tc));
+        }
+        if let Some(cat) = category {
+            query_params.push(format!("category={}", cat));
+        }
+        if !query_params.is_empty() {
+            query_params.push(format!("format={:?}", format).to_lowercase());
+        }
+
+        let query_string = if query_params.is_empty() {
+            String::new()
+        } else {
+            format!("?{}", query_params.join("&"))
+        };
+
+        Ok((
+            Method::GET,
+            format!("/api/v1/templates{}", query_string),
+            json!({}),
+            Some(format.clone()),
+        ))
+    }
+
+    fn decode_search(
+        query: &str,
+        toolchain: &Option<String>,
+        limit: usize,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let body = json!({
+            "query": query,
+            "toolchain": toolchain,
+            "limit": &limit
+        });
+        Ok((Method::POST, "/api/v1/search".to_string(), body, None))
+    }
+
+    fn decode_validate(
+        uri: &str,
+        params: &[(String, Value)],
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let params_map: HashMap<String, Value> = params.iter().cloned().collect();
+        let body = json!({
+            "template_uri": uri,
+            "parameters": params_map
+        });
+        Ok((Method::POST, "/api/v1/validate".to_string(), body, None))
+    }
+
+    fn decode_context(
+        toolchain: &str,
+        project_path: &std::path::Path,
+        output: &Option<std::path::PathBuf>,
+        format: &ContextFormat,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let body = json!({
+            "toolchain": toolchain,
+            "project_path": project_path.to_string_lossy(),
+            "output_path": output,
+            "format": format_to_string(format)
+        });
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/context".to_string(),
+            body,
+            Some(OutputFormat::Json),
+        ))
+    }
+
+    fn decode_analyze_command(
+        analyze_cmd: &AnalyzeCommands,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        match analyze_cmd {
+            AnalyzeCommands::Churn {
+                project_path,
+                days,
+                format,
+                output,
+            } => Self::decode_analyze_churn(project_path, *days, format, output),
+            AnalyzeCommands::Complexity {
+                project_path,
+                toolchain,
+                format,
+                output,
+                max_cyclomatic,
+                max_cognitive,
+                include,
+                watch,
+                top_files,
+            } => Self::decode_analyze_complexity(
+                project_path,
+                toolchain,
+                format,
+                output,
+                max_cyclomatic,
+                max_cognitive,
+                include,
+                *watch,
+                *top_files,
+            ),
+            AnalyzeCommands::Dag {
+                dag_type,
+                project_path,
+                output,
+                max_depth,
+                filter_external,
+                show_complexity,
+                include_duplicates,
+                include_dead_code,
+                enhanced,
+            } => Self::decode_analyze_dag(
+                dag_type,
+                project_path,
+                output,
+                max_depth,
+                *filter_external,
+                *show_complexity,
+                *include_duplicates,
+                *include_dead_code,
+                *enhanced,
+            ),
+        }
+    }
+
+    fn decode_analyze_churn(
+        project_path: &std::path::Path,
+        days: u32,
+        format: &ChurnOutputFormat,
+        output: &Option<std::path::PathBuf>,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let body = json!({
+            "project_path": project_path.to_string_lossy(),
+            "period_days": &days,
+            "format": churn_format_to_string(format),
+            "output_path": output
+        });
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/churn".to_string(),
+            body,
+            Some(OutputFormat::Json),
+        ))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_complexity(
+        project_path: &std::path::Path,
+        toolchain: &Option<String>,
+        format: &ComplexityOutputFormat,
+        output: &Option<std::path::PathBuf>,
+        max_cyclomatic: &Option<u16>,
+        max_cognitive: &Option<u16>,
+        include: &[String],
+        watch: bool,
+        top_files: usize,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let body = json!({
+            "project_path": project_path.to_string_lossy(),
+            "toolchain": toolchain,
+            "format": complexity_format_to_string(format),
+            "output_path": output,
+            "max_cyclomatic": max_cyclomatic,
+            "max_cognitive": max_cognitive,
+            "include_patterns": include,
+            "watch": &watch,
+            "top_files": &top_files
+        });
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/complexity".to_string(),
+            body,
+            Some(OutputFormat::Json),
+        ))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_dag(
+        dag_type: &DagType,
+        project_path: &std::path::Path,
+        output: &Option<std::path::PathBuf>,
+        max_depth: &Option<usize>,
+        filter_external: bool,
+        show_complexity: bool,
+        include_duplicates: bool,
+        include_dead_code: bool,
+        enhanced: bool,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let body = json!({
+            "project_path": project_path.to_string_lossy(),
+            "dag_type": dag_type_to_string(dag_type),
+            "output_path": output,
+            "max_depth": max_depth,
+            "filter_external": &filter_external,
+            "show_complexity": &show_complexity,
+            "include_duplicates": &include_duplicates,
+            "include_dead_code": &include_dead_code,
+            "enhanced": &enhanced
+        });
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/dag".to_string(),
+            body,
+            Some(OutputFormat::Json),
+        ))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_demo(
+        path: &Option<PathBuf>,
+        url: &Option<String>,
+        format: &OutputFormat,
+        no_browser: bool,
+        port: &Option<u16>,
+        cli: bool,
+        target_nodes: usize,
+        centrality_threshold: f64,
+        merge_threshold: usize,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let body = json!({
+            "path": path.as_ref().map(|p| p.to_string_lossy().to_string()),
+            "url": url,
+            "format": format!("{:?}", format).to_lowercase(),
+            "no_browser": &no_browser,
+            "port": port,
+            "cli_mode": &cli,
+            "target_nodes": &target_nodes,
+            "centrality_threshold": &centrality_threshold,
+            "merge_threshold": &merge_threshold
+        });
+        Ok((Method::POST, "/api/v1/demo".to_string(), body, None))
+    }
+
+    fn format_to_extension_string(format: &OutputFormat) -> &'static str {
+        match format {
+            OutputFormat::Json => "json",
+            OutputFormat::Table => "table",
+            OutputFormat::Yaml => "yaml",
+        }
+    }
 }
 
 impl Default for CliAdapter {
@@ -42,220 +381,7 @@ impl ProtocolAdapter for CliAdapter {
     async fn decode(&self, input: Self::Input) -> Result<UnifiedRequest, ProtocolError> {
         debug!("Decoding CLI input: {:?}", input.command_name);
 
-        let (method, path, body, output_format): (Method, String, Value, Option<OutputFormat>) =
-            match &input.command {
-                Commands::Generate {
-                    category,
-                    template,
-                    params,
-                    output,
-                    create_dirs,
-                } => {
-                    let params_map: HashMap<String, Value> = params.iter().cloned().collect();
-                    let body = json!({
-                        "template_uri": format!("template://{}/{}", category, template),
-                        "parameters": params_map,
-                        "output_path": output,
-                        "create_dirs": create_dirs
-                    });
-                    (Method::POST, "/api/v1/generate".to_string(), body, None)
-                }
-
-                Commands::Scaffold {
-                    toolchain,
-                    templates,
-                    params,
-                    parallel,
-                } => {
-                    let params_map: HashMap<String, Value> = params.iter().cloned().collect();
-                    let body = json!({
-                        "toolchain": toolchain,
-                        "templates": templates,
-                        "parameters": params_map,
-                        "parallel": parallel
-                    });
-                    (Method::POST, "/api/v1/scaffold".to_string(), body, None)
-                }
-
-                Commands::List {
-                    toolchain,
-                    category,
-                    format,
-                } => {
-                    let mut query_params = Vec::new();
-                    if let Some(tc) = toolchain {
-                        query_params.push(format!("toolchain={}", tc));
-                    }
-                    if let Some(cat) = category {
-                        query_params.push(format!("category={}", cat));
-                    }
-                    if !query_params.is_empty() {
-                        query_params.push(format!("format={:?}", format).to_lowercase());
-                    }
-
-                    let query_string = if query_params.is_empty() {
-                        String::new()
-                    } else {
-                        format!("?{}", query_params.join("&"))
-                    };
-
-                    (
-                        Method::GET,
-                        format!("/api/v1/templates{}", query_string),
-                        json!({}),
-                        Some(format.clone()),
-                    )
-                }
-
-                Commands::Search {
-                    query,
-                    toolchain,
-                    limit,
-                } => {
-                    let body = json!({
-                        "query": query,
-                        "toolchain": toolchain,
-                        "limit": limit
-                    });
-                    (Method::POST, "/api/v1/search".to_string(), body, None)
-                }
-
-                Commands::Validate { uri, params } => {
-                    let params_map: HashMap<String, Value> = params.iter().cloned().collect();
-                    let body = json!({
-                        "template_uri": uri,
-                        "parameters": params_map
-                    });
-                    (Method::POST, "/api/v1/validate".to_string(), body, None)
-                }
-
-                Commands::Context {
-                    toolchain,
-                    project_path,
-                    output,
-                    format,
-                } => {
-                    let body = json!({
-                        "toolchain": toolchain,
-                        "project_path": project_path.to_string_lossy(),
-                        "output_path": output,
-                        "format": format_to_string(format)
-                    });
-                    (
-                        Method::POST,
-                        "/api/v1/analyze/context".to_string(),
-                        body,
-                        Some(OutputFormat::Json),
-                    )
-                }
-
-                Commands::Analyze(analyze_cmd) => match analyze_cmd {
-                    AnalyzeCommands::Churn {
-                        project_path,
-                        days,
-                        format,
-                        output,
-                    } => {
-                        let body = json!({
-                            "project_path": project_path.to_string_lossy(),
-                            "period_days": days,
-                            "format": churn_format_to_string(format),
-                            "output_path": output
-                        });
-                        (
-                            Method::POST,
-                            "/api/v1/analyze/churn".to_string(),
-                            body,
-                            Some(OutputFormat::Json),
-                        )
-                    }
-
-                    AnalyzeCommands::Complexity {
-                        project_path,
-                        toolchain,
-                        format,
-                        output,
-                        max_cyclomatic,
-                        max_cognitive,
-                        include,
-                        watch,
-                        top_files,
-                    } => {
-                        let body = json!({
-                            "project_path": project_path.to_string_lossy(),
-                            "toolchain": toolchain,
-                            "format": complexity_format_to_string(format),
-                            "output_path": output,
-                            "max_cyclomatic": max_cyclomatic,
-                            "max_cognitive": max_cognitive,
-                            "include_patterns": include,
-                            "watch": watch,
-                            "top_files": top_files
-                        });
-                        (
-                            Method::POST,
-                            "/api/v1/analyze/complexity".to_string(),
-                            body,
-                            Some(OutputFormat::Json),
-                        )
-                    }
-
-                    AnalyzeCommands::Dag {
-                        dag_type,
-                        project_path,
-                        output,
-                        max_depth,
-                        filter_external,
-                        show_complexity,
-                        include_duplicates,
-                        include_dead_code,
-                        enhanced,
-                    } => {
-                        let body = json!({
-                            "project_path": project_path.to_string_lossy(),
-                            "dag_type": dag_type_to_string(dag_type),
-                            "output_path": output,
-                            "max_depth": max_depth,
-                            "filter_external": filter_external,
-                            "show_complexity": show_complexity,
-                            "include_duplicates": include_duplicates,
-                            "include_dead_code": include_dead_code,
-                            "enhanced": enhanced
-                        });
-                        (
-                            Method::POST,
-                            "/api/v1/analyze/dag".to_string(),
-                            body,
-                            Some(OutputFormat::Json),
-                        )
-                    }
-                },
-
-                Commands::Demo {
-                    path,
-                    url,
-                    format,
-                    no_browser,
-                    port,
-                    cli,
-                    target_nodes,
-                    centrality_threshold,
-                    merge_threshold,
-                } => {
-                    let body = json!({
-                        "path": path,
-                        "url": url,
-                        "format": format!("{:?}", format).to_lowercase(),
-                        "no_browser": no_browser,
-                        "port": port,
-                        "cli_mode": cli,
-                        "target_nodes": target_nodes,
-                        "centrality_threshold": centrality_threshold,
-                        "merge_threshold": merge_threshold
-                    });
-                    (Method::POST, "/api/v1/demo".to_string(), body, None)
-                }
-            };
+        let (method, path, body, output_format) = self.decode_command(&input.command)?;
 
         let cli_context = CliContext {
             command: input.command_name.clone(),
@@ -270,11 +396,7 @@ impl ProtocolAdapter for CliAdapter {
 
         // Add output format if specified
         if let Some(format) = output_format {
-            let format_string = match format {
-                OutputFormat::Json => "json",
-                OutputFormat::Table => "table",
-                OutputFormat::Yaml => "yaml",
-            };
+            let format_string = Self::format_to_extension_string(&format);
             unified_request = unified_request.with_extension("output_format", format_string);
         }
 
