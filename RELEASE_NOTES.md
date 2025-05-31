@@ -1,4 +1,77 @@
-when# Release Notes for v0.12.0
+# Release Notes for v0.12.2
+
+## 🎯 Feature Release: Advanced File Ranking System
+
+This release introduces a comprehensive file ranking system with `--top-files` parameter, providing intelligent complexity analysis across all interfaces.
+
+## ✨ New Features
+
+### File Ranking System
+- **NEW**: `--top-files` parameter for complexity analysis across CLI, MCP, and HTTP interfaces
+- **NEW**: Composite complexity scoring algorithm (40% cyclomatic, 40% cognitive, 20% function count)
+- **NEW**: Intelligent file ranking with parallel processing and caching using rayon
+- **NEW**: Table and JSON output formats with detailed complexity metrics
+- **NEW**: Cross-interface consistency ensuring identical results across CLI, MCP, and HTTP
+
+### Enhanced Analysis Capabilities
+- **IMPROVED**: Complexity analysis now includes file ranking and prioritization
+- **NEW**: `FileRanker` trait system for extensible ranking algorithms
+- **NEW**: `RankingEngine` with performance optimization and result caching
+- **NEW**: Actionable complexity insights showing top files needing attention
+
+### Interface Improvements
+- **CLI**: Added `--top-files` parameter to `analyze complexity` command
+- **MCP**: Extended `analyze_complexity` tool with `top_files` parameter support
+- **HTTP**: Added support for `top_files` in both POST (JSON body) and GET (query params) requests
+
+## 🔧 Implementation Details
+
+### Core Ranking System (`server/src/services/ranking.rs`)
+- Implemented `FileRanker` trait for pluggable ranking algorithms
+- Added `ComplexityRanker` with composite scoring methodology
+- Created `RankingEngine` with parallel processing capabilities
+- Integrated caching system for performance optimization
+
+### Cross-Interface Support
+- **CLI Interface**: Full integration with existing complexity analysis workflow
+- **MCP Interface**: JSON-RPC compatible parameter handling and response formatting
+- **HTTP Interface**: RESTful API support with query parameter and JSON body options
+
+## 📊 Dogfooding Results
+
+Using our own `--top-files` system on this codebase:
+- **146 files analyzed** with 15,239 total functions
+- **158 hours estimated technical debt** identified
+- **Top 5 complexity hotspots** ranked and prioritized:
+  1. `./server/src/services/context.rs` (Score: 30.9) - 32 max cyclomatic complexity
+  2. `./server/tests/documentation_examples.rs` (Score: 25.3) - 23 max cyclomatic complexity
+  3. `./server/src/services/mermaid_generator.rs` (Score: 24.6) - 25 max cyclomatic complexity
+  4. `./server/src/cli/mod.rs` (Score: 24.1) - 24 max cyclomatic complexity
+  5. `./server/src/services/embedded_templates.rs` (Score: 23.3) - 22 max cyclomatic complexity
+
+## 🚀 Usage Examples
+
+```bash
+# CLI Usage
+paiml-mcp-agent-toolkit analyze complexity --top-files 5 --format json
+
+# MCP Tool Call
+{"method": "analyze_complexity", "params": {"top_files": 5, "format": "json"}}
+
+# HTTP API
+GET /api/v1/analyze/complexity?top_files=5&format=json
+POST /api/v1/analyze/complexity {"top_files": 5, "format": "json"}
+```
+
+## 📚 Documentation Updates
+- Updated README.md with latest complexity metrics using our own ranking system
+- Enhanced CLI examples to showcase `--top-files` functionality
+- Updated rust-docs with current performance benchmarks
+- Comprehensive enhancement documentation in `docs/enhancement-top-files-flag.md`
+
+---
+
+# Release Notes for v0.12.0
 
 ## 🎯 Major Release: Unified Protocol Architecture
 
