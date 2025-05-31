@@ -1,0 +1,4743 @@
+{
+  "generated_at": "2025-05-31T21:28:16.915218889Z",
+  "period_days": 30,
+  "repository_root": ".",
+  "files": [
+    {
+      "path": "./server/Cargo.toml",
+      "relative_path": "server/Cargo.toml",
+      "commit_count": 86,
+      "unique_authors": [
+        "Noah Gift",
+        "GitHub Actions"
+      ],
+      "additions": 269,
+      "deletions": 130,
+      "churn_score": 0.603643,
+      "last_modified": "2025-05-31T16:16:56Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./Cargo.toml",
+      "relative_path": "Cargo.toml",
+      "commit_count": 69,
+      "unique_authors": [
+        "Noah Gift",
+        "GitHub Actions"
+      ],
+      "additions": 93,
+      "deletions": 67,
+      "churn_score": 0.48285624,
+      "last_modified": "2025-05-31T16:16:56Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./Cargo.lock",
+      "relative_path": "Cargo.lock",
+      "commit_count": 58,
+      "unique_authors": [
+        "GitHub Actions",
+        "GitHub Action",
+        "Noah Gift"
+      ],
+      "additions": 4846,
+      "deletions": 348,
+      "churn_score": 0.45207417,
+      "last_modified": "2025-05-31T16:16:56Z",
+      "first_seen": "2025-05-28T04:37:44Z"
+    },
+    {
+      "path": "./artifacts/dogfooding/ast-context-2025-05-30.md",
+      "relative_path": "artifacts/dogfooding/ast-context-2025-05-30.md",
+      "commit_count": 5,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 27877,
+      "deletions": 15933,
+      "churn_score": 0.4348837,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T00:11:17Z"
+    },
+    {
+      "path": "./assets/project-state.json",
+      "relative_path": "assets/project-state.json",
+      "commit_count": 55,
+      "unique_authors": [
+        "GitHub Actions",
+        "Noah Gift"
+      ],
+      "additions": 132,
+      "deletions": 56,
+      "churn_score": 0.38543746,
+      "last_modified": "2025-05-31T16:16:56Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./README.md",
+      "relative_path": "README.md",
+      "commit_count": 36,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 2846,
+      "deletions": 2522,
+      "churn_score": 0.30017444,
+      "last_modified": "2025-05-31T16:16:23Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./installer-macro/Cargo.toml",
+      "relative_path": "installer-macro/Cargo.toml",
+      "commit_count": 42,
+      "unique_authors": [
+        "Noah Gift",
+        "GitHub Actions"
+      ],
+      "additions": 60,
+      "deletions": 60,
+      "churn_score": 0.2941189,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./Makefile",
+      "relative_path": "Makefile",
+      "commit_count": 24,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 847,
+      "deletions": 89,
+      "churn_score": 0.17598787,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./.github/workflows/automated-release.yml",
+      "relative_path": ".github/workflows/automated-release.yml",
+      "commit_count": 19,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 475,
+      "deletions": 85,
+      "churn_score": 0.13767114,
+      "last_modified": "2025-05-29T19:41:48Z",
+      "first_seen": "2025-05-27T16:45:40Z"
+    },
+    {
+      "path": "./server/src/cli/mod.rs",
+      "relative_path": "server/src/cli/mod.rs",
+      "commit_count": 16,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 2052,
+      "deletions": 499,
+      "churn_score": 0.1349194,
+      "last_modified": "2025-05-31T16:16:23Z",
+      "first_seen": "2025-05-26T17:09:44Z"
+    },
+    {
+      "path": "./server/Makefile",
+      "relative_path": "server/Makefile",
+      "commit_count": 15,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 724,
+      "deletions": 194,
+      "churn_score": 0.11303281,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/lib.rs",
+      "relative_path": "server/src/lib.rs",
+      "commit_count": 15,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 303,
+      "deletions": 19,
+      "churn_score": 0.10759113,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./CLAUDE.md",
+      "relative_path": "CLAUDE.md",
+      "commit_count": 11,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1274,
+      "deletions": 689,
+      "churn_score": 0.09466704,
+      "last_modified": "2025-05-31T16:20:12Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./.github/workflows/simple-release.yml",
+      "relative_path": ".github/workflows/simple-release.yml",
+      "commit_count": 12,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 189,
+      "deletions": 34,
+      "churn_score": 0.085757,
+      "last_modified": "2025-05-29T20:01:27Z",
+      "first_seen": "2025-05-29T00:04:15Z"
+    },
+    {
+      "path": "./server/src/handlers/tools.rs",
+      "relative_path": "server/src/handlers/tools.rs",
+      "commit_count": 9,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1854,
+      "deletions": 191,
+      "churn_score": 0.081462234,
+      "last_modified": "2025-05-31T16:16:23Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./.github/workflows/ci.yml",
+      "relative_path": ".github/workflows/ci.yml",
+      "commit_count": 11,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 346,
+      "deletions": 159,
+      "churn_score": 0.08135501,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./docs/demo-mode-spec.md",
+      "relative_path": "docs/demo-mode-spec.md",
+      "commit_count": 5,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 2385,
+      "deletions": 1083,
+      "churn_score": 0.06654773,
+      "last_modified": "2025-05-31T03:57:23Z",
+      "first_seen": "2025-05-30T05:02:14Z"
+    },
+    {
+      "path": "./.github/workflows/auto-tag-release.yml",
+      "relative_path": ".github/workflows/auto-tag-release.yml",
+      "commit_count": 9,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 178,
+      "deletions": 24,
+      "churn_score": 0.06463502,
+      "last_modified": "2025-05-29T19:41:48Z",
+      "first_seen": "2025-05-27T16:45:40Z"
+    },
+    {
+      "path": "./server/src/services/mod.rs",
+      "relative_path": "server/src/services/mod.rs",
+      "commit_count": 9,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 18,
+      "deletions": 0,
+      "churn_score": 0.062955044,
+      "last_modified": "2025-05-31T03:57:23Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/installer/mod.rs",
+      "relative_path": "server/src/installer/mod.rs",
+      "commit_count": 8,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 214,
+      "deletions": 214,
+      "churn_score": 0.05972174,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./scripts/install.sh",
+      "relative_path": "scripts/install.sh",
+      "commit_count": 8,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 296,
+      "deletions": 115,
+      "churn_score": 0.059566524,
+      "last_modified": "2025-05-29T00:04:15Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./.github/workflows/code-quality.yml",
+      "relative_path": ".github/workflows/code-quality.yml",
+      "commit_count": 8,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 151,
+      "deletions": 33,
+      "churn_score": 0.05749394,
+      "last_modified": "2025-05-29T19:41:48Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./.github/workflows/benchmark.yml",
+      "relative_path": ".github/workflows/benchmark.yml",
+      "commit_count": 8,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 131,
+      "deletions": 24,
+      "churn_score": 0.057229158,
+      "last_modified": "2025-05-29T19:41:48Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/services/context.rs",
+      "relative_path": "server/src/services/context.rs",
+      "commit_count": 6,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1256,
+      "deletions": 418,
+      "churn_score": 0.05714465,
+      "last_modified": "2025-05-31T14:02:02Z",
+      "first_seen": "2025-05-26T17:39:48Z"
+    },
+    {
+      "path": "./server/src/tests/installer_module_tests.rs",
+      "relative_path": "server/src/tests/installer_module_tests.rs",
+      "commit_count": 7,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 290,
+      "deletions": 290,
+      "churn_score": 0.054132804,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./server/src/services/mermaid_generator.rs",
+      "relative_path": "server/src/services/mermaid_generator.rs",
+      "commit_count": 6,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1154,
+      "deletions": 157,
+      "churn_score": 0.05383034,
+      "last_modified": "2025-05-31T14:02:02Z",
+      "first_seen": "2025-05-28T17:32:12Z"
+    },
+    {
+      "path": "./server/scripts/test-mcp-e2e.ts",
+      "relative_path": "server/scripts/test-mcp-e2e.ts",
+      "commit_count": 7,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 327,
+      "deletions": 9,
+      "churn_score": 0.051905002,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/tests/cli_comprehensive_tests.rs",
+      "relative_path": "server/src/tests/cli_comprehensive_tests.rs",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1603,
+      "deletions": 742,
+      "churn_score": 0.049317613,
+      "last_modified": "2025-05-31T16:16:23Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./installer-macro/src/shell_emitter.rs",
+      "relative_path": "installer-macro/src/shell_emitter.rs",
+      "commit_count": 6,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 280,
+      "deletions": 280,
+      "churn_score": 0.046973456,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./coverage_deno/html/create-release-utils.ts.html",
+      "relative_path": "coverage_deno/html/create-release-utils.ts.html",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1348,
+      "deletions": 1348,
+      "churn_score": 0.04554562,
+      "last_modified": "2025-05-31T03:57:23Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/build.rs",
+      "relative_path": "server/build.rs",
+      "commit_count": 6,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 273,
+      "deletions": 84,
+      "churn_score": 0.045119997,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./server/src/handlers/initialize.rs",
+      "relative_path": "server/src/handlers/initialize.rs",
+      "commit_count": 6,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 325,
+      "deletions": 12,
+      "churn_score": 0.04493739,
+      "last_modified": "2025-05-31T16:16:23Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./rust-docs/performance.md",
+      "relative_path": "rust-docs/performance.md",
+      "commit_count": 6,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 307,
+      "deletions": 6,
+      "churn_score": 0.044718266,
+      "last_modified": "2025-05-31T04:22:56Z",
+      "first_seen": "2025-05-30T00:11:17Z"
+    },
+    {
+      "path": "./server/src/tests/build_naming_validation.rs",
+      "relative_path": "server/src/tests/build_naming_validation.rs",
+      "commit_count": 6,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 286,
+      "deletions": 24,
+      "churn_score": 0.044690873,
+      "last_modified": "2025-05-27T21:46:48Z",
+      "first_seen": "2025-05-26T14:36:28Z"
+    },
+    {
+      "path": "./installer-macro/src/lib.rs",
+      "relative_path": "installer-macro/src/lib.rs",
+      "commit_count": 6,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 119,
+      "deletions": 119,
+      "churn_score": 0.04403349,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./installer-macro/src/verification.rs",
+      "relative_path": "installer-macro/src/verification.rs",
+      "commit_count": 6,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 118,
+      "deletions": 118,
+      "churn_score": 0.04401523,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./scripts/README.md",
+      "relative_path": "scripts/README.md",
+      "commit_count": 6,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 199,
+      "deletions": 35,
+      "churn_score": 0.043996967,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/tests/claude_code_e2e.rs",
+      "relative_path": "server/src/tests/claude_code_e2e.rs",
+      "commit_count": 5,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 821,
+      "deletions": 101,
+      "churn_score": 0.04330189,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./.gitignore",
+      "relative_path": ".gitignore",
+      "commit_count": 6,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 118,
+      "deletions": 4,
+      "churn_score": 0.042974368,
+      "last_modified": "2025-05-31T14:07:27Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./rust-docs/metrics-summary.json",
+      "relative_path": "rust-docs/metrics-summary.json",
+      "commit_count": 6,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 82,
+      "deletions": 35,
+      "churn_score": 0.042928718,
+      "last_modified": "2025-05-31T04:22:56Z",
+      "first_seen": "2025-05-30T00:11:17Z"
+    },
+    {
+      "path": "./docs/curl-install-spec.md",
+      "relative_path": "docs/curl-install-spec.md",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1663,
+      "deletions": 1358,
+      "churn_score": 0.041536234,
+      "last_modified": "2025-05-28T00:02:51Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./coverage_deno/html/install-utils.ts.html",
+      "relative_path": "coverage_deno/html/install-utils.ts.html",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1066,
+      "deletions": 1066,
+      "churn_score": 0.04039611,
+      "last_modified": "2025-05-31T03:57:23Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/src/unified_protocol/adapters/cli.rs",
+      "relative_path": "server/src/unified_protocol/adapters/cli.rs",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1068,
+      "deletions": 221,
+      "churn_score": 0.03967598,
+      "last_modified": "2025-05-31T16:16:23Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./.github/workflows/release.yml",
+      "relative_path": ".github/workflows/release.yml",
+      "commit_count": 5,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 381,
+      "deletions": 98,
+      "churn_score": 0.039257154,
+      "last_modified": "2025-05-29T19:41:48Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./.github/workflows/dependencies.yml",
+      "relative_path": ".github/workflows/dependencies.yml",
+      "commit_count": 5,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 243,
+      "deletions": 48,
+      "churn_score": 0.03754065,
+      "last_modified": "2025-05-29T19:41:48Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/benches/critical_path.rs",
+      "relative_path": "server/benches/critical_path.rs",
+      "commit_count": 5,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 268,
+      "deletions": 23,
+      "churn_score": 0.03754065,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-27T18:52:12Z"
+    },
+    {
+      "path": "./artifacts/dogfooding/churn-2025-05-30.md",
+      "relative_path": "artifacts/dogfooding/churn-2025-05-30.md",
+      "commit_count": 5,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 83,
+      "deletions": 56,
+      "churn_score": 0.03615284,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T00:11:17Z"
+    },
+    {
+      "path": "./artifacts/dogfooding/combined-metrics-2025-05-30.json",
+      "relative_path": "artifacts/dogfooding/combined-metrics-2025-05-30.json",
+      "commit_count": 5,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 77,
+      "deletions": 39,
+      "churn_score": 0.03594284,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T00:11:17Z"
+    },
+    {
+      "path": "./server/src/unified_protocol/service.rs",
+      "relative_path": "server/src/unified_protocol/service.rs",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 847,
+      "deletions": 3,
+      "churn_score": 0.035667762,
+      "last_modified": "2025-05-31T16:16:23Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./artifacts/dogfooding/complexity-2025-05-30.md",
+      "relative_path": "artifacts/dogfooding/complexity-2025-05-30.md",
+      "commit_count": 5,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 52,
+      "deletions": 20,
+      "churn_score": 0.035541106,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T00:11:17Z"
+    },
+    {
+      "path": "./server/src/models/mod.rs",
+      "relative_path": "server/src/models/mod.rs",
+      "commit_count": 5,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 7,
+      "deletions": 0,
+      "churn_score": 0.034947634,
+      "last_modified": "2025-05-31T16:16:23Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./docs/dag-vec-report-spec.md",
+      "relative_path": "docs/dag-vec-report-spec.md",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 767,
+      "deletions": 767,
+      "churn_score": 0.03493617,
+      "last_modified": "2025-05-30T01:30:02Z",
+      "first_seen": "2025-05-29T00:04:15Z"
+    },
+    {
+      "path": "./scripts/deep-context.ts",
+      "relative_path": "scripts/deep-context.ts",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1309,
+      "deletions": 195,
+      "churn_score": 0.03466226,
+      "last_modified": "2025-05-26T18:53:36Z",
+      "first_seen": "2025-05-26T16:32:54Z"
+    },
+    {
+      "path": "./server/tests/documentation_examples.rs",
+      "relative_path": "server/tests/documentation_examples.rs",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 550,
+      "deletions": 158,
+      "churn_score": 0.034371257,
+      "last_modified": "2025-05-31T14:02:02Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/src/services/embedded_templates.rs",
+      "relative_path": "server/src/services/embedded_templates.rs",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 410,
+      "deletions": 149,
+      "churn_score": 0.033010837,
+      "last_modified": "2025-05-31T14:02:02Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/tests/installer_security_test.rs",
+      "relative_path": "server/tests/installer_security_test.rs",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 260,
+      "deletions": 260,
+      "churn_score": 0.032654755,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./scripts/update-rust-docs.ts",
+      "relative_path": "scripts/update-rust-docs.ts",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 448,
+      "deletions": 59,
+      "churn_score": 0.03253606,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T00:11:17Z"
+    },
+    {
+      "path": "./server/src/services/template_service.rs",
+      "relative_path": "server/src/services/template_service.rs",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 464,
+      "deletions": 20,
+      "churn_score": 0.03232606,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/demo/mod.rs",
+      "relative_path": "server/src/demo/mod.rs",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 404,
+      "deletions": 41,
+      "churn_score": 0.03196998,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T05:02:14Z"
+    },
+    {
+      "path": "./scripts/create-release.ts",
+      "relative_path": "scripts/create-release.ts",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 241,
+      "deletions": 166,
+      "churn_score": 0.031623024,
+      "last_modified": "2025-05-28T18:47:21Z",
+      "first_seen": "2025-05-28T00:02:51Z"
+    },
+    {
+      "path": "./RELEASE_NOTES.md",
+      "relative_path": "RELEASE_NOTES.md",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 296,
+      "deletions": 37,
+      "churn_score": 0.03094738,
+      "last_modified": "2025-05-31T16:16:23Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/src/services/ast_typescript.rs",
+      "relative_path": "server/src/services/ast_typescript.rs",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 852,
+      "deletions": 162,
+      "churn_score": 0.030188395,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-26T18:53:36Z"
+    },
+    {
+      "path": "./server/tests/demo_integration.rs",
+      "relative_path": "server/tests/demo_integration.rs",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 204,
+      "deletions": 25,
+      "churn_score": 0.029997826,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T05:02:14Z"
+    },
+    {
+      "path": "./rust-docs/coverage.md",
+      "relative_path": "rust-docs/coverage.md",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 206,
+      "deletions": 5,
+      "churn_score": 0.029833479,
+      "last_modified": "2025-05-31T14:00:17Z",
+      "first_seen": "2025-05-30T00:11:17Z"
+    },
+    {
+      "path": "./server/src/tests/installer_tests.rs",
+      "relative_path": "server/src/tests/installer_tests.rs",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 104,
+      "deletions": 104,
+      "churn_score": 0.029806089,
+      "last_modified": "2025-05-27T23:16:31Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./server/src/tests/analyze_cli_tests.rs",
+      "relative_path": "server/src/tests/analyze_cli_tests.rs",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 181,
+      "deletions": 0,
+      "churn_score": 0.02955957,
+      "last_modified": "2025-05-31T16:16:23Z",
+      "first_seen": "2025-05-27T13:32:33Z"
+    },
+    {
+      "path": "./coverage_deno/html/index.html",
+      "relative_path": "coverage_deno/html/index.html",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 460,
+      "deletions": 460,
+      "churn_score": 0.029330144,
+      "last_modified": "2025-05-31T03:57:23Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/src/demo/runner.rs",
+      "relative_path": "server/src/demo/runner.rs",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 841,
+      "deletions": 49,
+      "churn_score": 0.029056232,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T05:02:14Z"
+    },
+    {
+      "path": "./server/src/models/dag.rs",
+      "relative_path": "server/src/models/dag.rs",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 116,
+      "deletions": 4,
+      "churn_score": 0.029002618,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-28T17:32:12Z"
+    },
+    {
+      "path": "./server/tests/bin_integration.rs",
+      "relative_path": "server/tests/bin_integration.rs",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 113,
+      "deletions": 3,
+      "churn_score": 0.028966097,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-26T16:13:32Z"
+    },
+    {
+      "path": "./artifacts/dogfooding/server-info-2025-05-30.md",
+      "relative_path": "artifacts/dogfooding/server-info-2025-05-30.md",
+      "commit_count": 4,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 16,
+      "deletions": 3,
+      "churn_score": 0.028080454,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T00:11:17Z"
+    },
+    {
+      "path": "./server/src/tests/cache.rs",
+      "relative_path": "server/src/tests/cache.rs",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 554,
+      "deletions": 111,
+      "churn_score": 0.027001908,
+      "last_modified": "2025-05-28T22:22:50Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./docs/archive/SPEC.md",
+      "relative_path": "docs/archive/SPEC.md",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1216,
+      "deletions": 2,
+      "churn_score": 0.025074238,
+      "last_modified": "2025-05-26T14:08:45Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./docs/self-documenting-enhanced-mermaid-testing-spec.md",
+      "relative_path": "docs/self-documenting-enhanced-mermaid-testing-spec.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1978,
+      "deletions": 0,
+      "churn_score": 0.025036547,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./scripts/validate-naming.ts",
+      "relative_path": "scripts/validate-naming.ts",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 367,
+      "deletions": 27,
+      "churn_score": 0.024527587,
+      "last_modified": "2025-05-27T17:27:44Z",
+      "first_seen": "2025-05-26T15:16:51Z"
+    },
+    {
+      "path": "./server/src/tests/e2e_full_coverage.rs",
+      "relative_path": "server/src/tests/e2e_full_coverage.rs",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 359,
+      "deletions": 2,
+      "churn_score": 0.024226286,
+      "last_modified": "2025-05-28T21:07:13Z",
+      "first_seen": "2025-05-27T18:52:12Z"
+    },
+    {
+      "path": "./scripts/install.test.ts",
+      "relative_path": "scripts/install.test.ts",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 303,
+      "deletions": 32,
+      "churn_score": 0.023988897,
+      "last_modified": "2025-05-29T00:04:15Z",
+      "first_seen": "2025-05-28T05:07:38Z"
+    },
+    {
+      "path": "./server/src/tests/cli_property_tests.rs",
+      "relative_path": "server/src/tests/cli_property_tests.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 740,
+      "deletions": 352,
+      "churn_score": 0.023923816,
+      "last_modified": "2025-05-30T01:30:02Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./server/tests/e2e/mcp_protocol.test.ts",
+      "relative_path": "server/tests/e2e/mcp_protocol.test.ts",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 325,
+      "deletions": 2,
+      "churn_score": 0.023915853,
+      "last_modified": "2025-05-31T16:16:23Z",
+      "first_seen": "2025-05-29T14:13:15Z"
+    },
+    {
+      "path": "./server/src/services/ranking.rs",
+      "relative_path": "server/src/services/ranking.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1068,
+      "deletions": 0,
+      "churn_score": 0.023704689,
+      "last_modified": "2025-05-31T14:00:17Z",
+      "first_seen": "2025-05-31T03:57:23Z"
+    },
+    {
+      "path": "./scripts/validate-github-actions-status.ts",
+      "relative_path": "scripts/validate-github-actions-status.ts",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 264,
+      "deletions": 16,
+      "churn_score": 0.023486728,
+      "last_modified": "2025-05-27T13:32:33Z",
+      "first_seen": "2025-05-26T15:16:51Z"
+    },
+    {
+      "path": "./.github/workflows/main.yml",
+      "relative_path": ".github/workflows/main.yml",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 240,
+      "deletions": 27,
+      "churn_score": 0.023368035,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-27T23:16:31Z"
+    },
+    {
+      "path": "./scripts/install.ts",
+      "relative_path": "scripts/install.ts",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 238,
+      "deletions": 29,
+      "churn_score": 0.023368035,
+      "last_modified": "2025-05-28T12:33:40Z",
+      "first_seen": "2025-05-28T00:02:51Z"
+    },
+    {
+      "path": "./docs/demo-mode-implementation.md",
+      "relative_path": "docs/demo-mode-implementation.md",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 121,
+      "deletions": 121,
+      "churn_score": 0.023139775,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T05:02:14Z"
+    },
+    {
+      "path": "./artifacts/mermaid/README.md",
+      "relative_path": "artifacts/mermaid/README.md",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 190,
+      "deletions": 42,
+      "churn_score": 0.023048472,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./scripts/update-version.ts",
+      "relative_path": "scripts/update-version.ts",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 224,
+      "deletions": 7,
+      "churn_score": 0.023039341,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./scripts/verify-demo-binary-size.ts",
+      "relative_path": "scripts/verify-demo-binary-size.ts",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 165,
+      "deletions": 66,
+      "churn_score": 0.023039341,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T05:02:14Z"
+    },
+    {
+      "path": "./server/src/tests/lib.rs",
+      "relative_path": "server/src/tests/lib.rs",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 190,
+      "deletions": 1,
+      "churn_score": 0.022674128,
+      "last_modified": "2025-05-27T18:52:12Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/services/dead_code_analyzer.rs",
+      "relative_path": "server/src/services/dead_code_analyzer.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 942,
+      "deletions": 10,
+      "churn_score": 0.02264557,
+      "last_modified": "2025-05-31T16:16:23Z",
+      "first_seen": "2025-05-30T01:30:02Z"
+    },
+    {
+      "path": "./docs/cli-mcp.md",
+      "relative_path": "docs/cli-mcp.md",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 951,
+      "deletions": 0,
+      "churn_score": 0.02263644,
+      "last_modified": "2025-05-30T05:29:16Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./.github/workflows/pr-checks.yml",
+      "relative_path": ".github/workflows/pr-checks.yml",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 161,
+      "deletions": 23,
+      "churn_score": 0.022610215,
+      "last_modified": "2025-05-29T19:41:48Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/tests/installer_macro_integration_test.rs",
+      "relative_path": "server/src/tests/installer_macro_integration_test.rs",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 90,
+      "deletions": 90,
+      "churn_score": 0.022573695,
+      "last_modified": "2025-05-27T23:16:31Z",
+      "first_seen": "2025-05-27T21:25:17Z"
+    },
+    {
+      "path": "./server/src/bin/paiml-mcp-agent-toolkit.rs",
+      "relative_path": "server/src/bin/paiml-mcp-agent-toolkit.rs",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 86,
+      "deletions": 81,
+      "churn_score": 0.022455001,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-26T14:36:28Z"
+    },
+    {
+      "path": "./installer-macro/tests/macro_generation_test.rs",
+      "relative_path": "installer-macro/tests/macro_generation_test.rs",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 82,
+      "deletions": 82,
+      "churn_score": 0.02242761,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-27T21:25:17Z"
+    },
+    {
+      "path": "./assets/vendor/mermaid-10.6.1.min.js",
+      "relative_path": "assets/vendor/mermaid-10.6.1.min.js",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1646,
+      "deletions": 0,
+      "churn_score": 0.022005277,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/src/tests/error.rs",
+      "relative_path": "server/src/tests/error.rs",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 112,
+      "deletions": 3,
+      "churn_score": 0.021980222,
+      "last_modified": "2025-05-27T18:52:12Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/installer.sh",
+      "relative_path": "server/installer.sh",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 105,
+      "deletions": 2,
+      "churn_score": 0.02190718,
+      "last_modified": "2025-05-29T00:04:15Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./server/src/demo/server.rs",
+      "relative_path": "server/src/demo/server.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 845,
+      "deletions": 14,
+      "churn_score": 0.021796446,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/src/models/template.rs",
+      "relative_path": "server/src/models/template.rs",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 86,
+      "deletions": 3,
+      "churn_score": 0.021742834,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./installer-macro/src/mir_lowering.rs",
+      "relative_path": "installer-macro/src/mir_lowering.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 426,
+      "deletions": 426,
+      "churn_score": 0.021732535,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./docs/enhancement-top-files-flag.md",
+      "relative_path": "docs/enhancement-top-files-flag.md",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 825,
+      "deletions": 1,
+      "churn_score": 0.021495147,
+      "last_modified": "2025-05-31T04:22:56Z",
+      "first_seen": "2025-05-31T03:57:23Z"
+    },
+    {
+      "path": "./installer-macro/tests/simple_shell_test.rs",
+      "relative_path": "installer-macro/tests/simple_shell_test.rs",
+      "commit_count": 3,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 28,
+      "deletions": 28,
+      "churn_score": 0.021441532,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-27T22:37:45Z"
+    },
+    {
+      "path": "./coverage_demo_final/html/validate-demo-assets.ts.html",
+      "relative_path": "coverage_demo_final/html/validate-demo-assets.ts.html",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1483,
+      "deletions": 0,
+      "churn_score": 0.020517033,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/tests/cli_comprehensive_integration.rs",
+      "relative_path": "server/tests/cli_comprehensive_integration.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 595,
+      "deletions": 13,
+      "churn_score": 0.019504733,
+      "last_modified": "2025-05-30T01:30:02Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./server/src/demo/templates.rs",
+      "relative_path": "server/src/demo/templates.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 561,
+      "deletions": 12,
+      "churn_score": 0.01918517,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/src/tests/cli_tests.rs",
+      "relative_path": "server/src/tests/cli_tests.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 543,
+      "deletions": 13,
+      "churn_score": 0.019029956,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T18:53:36Z"
+    },
+    {
+      "path": "./server/src/services/ast_python.rs",
+      "relative_path": "server/src/services/ast_python.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 517,
+      "deletions": 0,
+      "churn_score": 0.018673873,
+      "last_modified": "2025-05-28T22:22:50Z",
+      "first_seen": "2025-05-26T18:53:36Z"
+    },
+    {
+      "path": "./rust-docs/architecture.md",
+      "relative_path": "rust-docs/architecture.md",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 515,
+      "deletions": 0,
+      "churn_score": 0.018655613,
+      "last_modified": "2025-05-31T14:00:17Z",
+      "first_seen": "2025-05-30T00:11:17Z"
+    },
+    {
+      "path": "./scripts/mcp-install-deterministic.ts",
+      "relative_path": "scripts/mcp-install-deterministic.ts",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 505,
+      "deletions": 2,
+      "churn_score": 0.01858257,
+      "last_modified": "2025-05-26T14:08:45Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./rust-docs/mcp-protocol.md",
+      "relative_path": "rust-docs/mcp-protocol.md",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 491,
+      "deletions": 2,
+      "churn_score": 0.018454745,
+      "last_modified": "2025-05-31T03:57:23Z",
+      "first_seen": "2025-05-30T00:11:17Z"
+    },
+    {
+      "path": "./server/tests/demo_web_integration.rs",
+      "relative_path": "server/tests/demo_web_integration.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 414,
+      "deletions": 4,
+      "churn_score": 0.01776997,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/src/tests/tools.rs",
+      "relative_path": "server/src/tests/tools.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 401,
+      "deletions": 3,
+      "churn_score": 0.017642144,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./rust-docs/cli-reference.md",
+      "relative_path": "rust-docs/cli-reference.md",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 384,
+      "deletions": 3,
+      "churn_score": 0.01748693,
+      "last_modified": "2025-05-31T03:57:23Z",
+      "first_seen": "2025-05-30T00:11:17Z"
+    },
+    {
+      "path": "./scripts/validate-demo-assets.ts",
+      "relative_path": "scripts/validate-demo-assets.ts",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 330,
+      "deletions": 53,
+      "churn_score": 0.017450407,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./scripts/run-fuzzing.ts",
+      "relative_path": "scripts/run-fuzzing.ts",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 371,
+      "deletions": 1,
+      "churn_score": 0.017349973,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./docs/cli-spec.md",
+      "relative_path": "docs/cli-spec.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1114,
+      "deletions": 0,
+      "churn_score": 0.017147938,
+      "last_modified": "2025-05-26T17:09:44Z",
+      "first_seen": "2025-05-26T17:09:44Z"
+    },
+    {
+      "path": "./scripts/validate-demo-assets.test.ts",
+      "relative_path": "scripts/validate-demo-assets.test.ts",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 309,
+      "deletions": 23,
+      "churn_score": 0.01698476,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/src/services/dag_builder.rs",
+      "relative_path": "server/src/services/dag_builder.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 272,
+      "deletions": 23,
+      "churn_score": 0.016646938,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-28T17:32:12Z"
+    },
+    {
+      "path": "./.github/workflows/cargo-dist.yml",
+      "relative_path": ".github/workflows/cargo-dist.yml",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 289,
+      "deletions": 4,
+      "churn_score": 0.016628677,
+      "last_modified": "2025-05-29T19:41:48Z",
+      "first_seen": "2025-05-26T15:36:13Z"
+    },
+    {
+      "path": "./docs/bugs/mermaid-bug.md",
+      "relative_path": "docs/bugs/mermaid-bug.md",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 138,
+      "deletions": 138,
+      "churn_score": 0.016473461,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-29T01:24:09Z"
+    },
+    {
+      "path": "./server/src/utils/helpers.rs",
+      "relative_path": "server/src/utils/helpers.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 244,
+      "deletions": 0,
+      "churn_score": 0.01618129,
+      "last_modified": "2025-05-26T16:13:32Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/tests/mcp_protocol.rs",
+      "relative_path": "server/src/tests/mcp_protocol.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 225,
+      "deletions": 2,
+      "churn_score": 0.016026076,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/handlers/prompts.rs",
+      "relative_path": "server/src/handlers/prompts.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 210,
+      "deletions": 14,
+      "churn_score": 0.015998684,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/scripts/test-installation.ts",
+      "relative_path": "server/scripts/test-installation.ts",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 217,
+      "deletions": 4,
+      "churn_score": 0.015971294,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-26T16:13:32Z"
+    },
+    {
+      "path": "./server/src/tests/template_resources.rs",
+      "relative_path": "server/src/tests/template_resources.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 203,
+      "deletions": 4,
+      "churn_score": 0.01584347,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./scripts/install.integration.test.ts",
+      "relative_path": "scripts/install.integration.test.ts",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 166,
+      "deletions": 40,
+      "churn_score": 0.015834339,
+      "last_modified": "2025-05-28T12:33:40Z",
+      "first_seen": "2025-05-28T05:07:38Z"
+    },
+    {
+      "path": "./.github/workflows/README.md",
+      "relative_path": ".github/workflows/README.md",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 138,
+      "deletions": 63,
+      "churn_score": 0.015788687,
+      "last_modified": "2025-05-27T23:16:31Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./installer-macro/src/shell_ast.rs",
+      "relative_path": "installer-macro/src/shell_ast.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 96,
+      "deletions": 96,
+      "churn_score": 0.015706513,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./server/src/tests/cli_integration_full.rs",
+      "relative_path": "server/src/tests/cli_integration_full.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 190,
+      "deletions": 1,
+      "churn_score": 0.015697382,
+      "last_modified": "2025-05-27T17:27:44Z",
+      "first_seen": "2025-05-27T13:32:33Z"
+    },
+    {
+      "path": "./server/src/main.rs",
+      "relative_path": "server/src/main.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 93,
+      "deletions": 93,
+      "churn_score": 0.015651733,
+      "last_modified": "2025-05-26T14:36:28Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/tests/resources.rs",
+      "relative_path": "server/src/tests/resources.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 171,
+      "deletions": 11,
+      "churn_score": 0.01561521,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/services/renderer.rs",
+      "relative_path": "server/src/services/renderer.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 169,
+      "deletions": 0,
+      "churn_score": 0.015496516,
+      "last_modified": "2025-05-26T16:13:32Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/tests/cli_simple_tests.rs",
+      "relative_path": "server/src/tests/cli_simple_tests.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 117,
+      "deletions": 48,
+      "churn_score": 0.015459995,
+      "last_modified": "2025-05-27T23:16:31Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./server/src/models/mcp.rs",
+      "relative_path": "server/src/models/mcp.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 116,
+      "deletions": 3,
+      "churn_score": 0.015039999,
+      "last_modified": "2025-05-30T05:02:14Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/cli/args.rs",
+      "relative_path": "server/src/cli/args.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 98,
+      "deletions": 0,
+      "churn_score": 0.014848262,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-26T17:09:44Z"
+    },
+    {
+      "path": "./lint_results.txt",
+      "relative_path": "lint_results.txt",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 49,
+      "deletions": 49,
+      "churn_score": 0.014848262,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-29T14:13:15Z"
+    },
+    {
+      "path": "./.github/dependabot.yml",
+      "relative_path": ".github/dependabot.yml",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 68,
+      "deletions": 18,
+      "churn_score": 0.0147386985,
+      "last_modified": "2025-05-27T18:52:12Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./.github/workflows/create-release.yml",
+      "relative_path": ".github/workflows/create-release.yml",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 59,
+      "deletions": 1,
+      "churn_score": 0.014501309,
+      "last_modified": "2025-05-29T19:41:48Z",
+      "first_seen": "2025-05-28T00:02:51Z"
+    },
+    {
+      "path": "./server/src/models/error.rs",
+      "relative_path": "server/src/models/error.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 51,
+      "deletions": 1,
+      "churn_score": 0.014428266,
+      "last_modified": "2025-05-26T17:39:48Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/mcp.json",
+      "relative_path": "server/mcp.json",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 45,
+      "deletions": 3,
+      "churn_score": 0.014391745,
+      "last_modified": "2025-05-26T14:08:45Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/bin/generate-installer.rs",
+      "relative_path": "server/src/bin/generate-installer.rs",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 18,
+      "deletions": 18,
+      "churn_score": 0.014282181,
+      "last_modified": "2025-05-27T23:16:31Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./artifacts/mermaid/complex_example_diagram.mmd",
+      "relative_path": "artifacts/mermaid/complex_example_diagram.mmd",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 18,
+      "deletions": 18,
+      "churn_score": 0.014282181,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./artifacts/mermaid/non-code/styled/workflow-styled.mmd",
+      "relative_path": "artifacts/mermaid/non-code/styled/workflow-styled.mmd",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 25,
+      "deletions": 4,
+      "churn_score": 0.014218269,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./artifacts/mermaid/ast-generated/styled/service-interactions.mmd",
+      "relative_path": "artifacts/mermaid/ast-generated/styled/service-interactions.mmd",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 24,
+      "deletions": 4,
+      "churn_score": 0.014209138,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./artifacts/mermaid/ast-generated/simple/codebase-modules.mmd",
+      "relative_path": "artifacts/mermaid/ast-generated/simple/codebase-modules.mmd",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 15,
+      "deletions": 2,
+      "churn_score": 0.014108705,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./artifacts/mermaid/non-code/simple/architecture-overview.mmd",
+      "relative_path": "artifacts/mermaid/non-code/simple/architecture-overview.mmd",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 13,
+      "deletions": 2,
+      "churn_score": 0.014090444,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./artifacts/mermaid/simple_example_diagram.mmd",
+      "relative_path": "artifacts/mermaid/simple_example_diagram.mmd",
+      "commit_count": 2,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 4,
+      "deletions": 4,
+      "churn_score": 0.014026532,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/get-docker.sh",
+      "relative_path": "server/get-docker.sh",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 694,
+      "deletions": 0,
+      "churn_score": 0.0133131975,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/services/complexity.rs",
+      "relative_path": "server/src/services/complexity.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 673,
+      "deletions": 0,
+      "churn_score": 0.013121461,
+      "last_modified": "2025-05-28T22:22:50Z",
+      "first_seen": "2025-05-28T22:22:50Z"
+    },
+    {
+      "path": "./docs/readme-dogfood-spec.md",
+      "relative_path": "docs/readme-dogfood-spec.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 661,
+      "deletions": 0,
+      "churn_score": 0.013011897,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./docs/comprehensive-cli-tests-spec.md",
+      "relative_path": "docs/comprehensive-cli-tests-spec.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 657,
+      "deletions": 0,
+      "churn_score": 0.012975375,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./docs/extend-web-protocol-spec.md",
+      "relative_path": "docs/extend-web-protocol-spec.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 644,
+      "deletions": 0,
+      "churn_score": 0.012856681,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./docs/mcp-tests-spec.md",
+      "relative_path": "docs/mcp-tests-spec.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 633,
+      "deletions": 0,
+      "churn_score": 0.012756247,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./server/tests/mermaid_artifact_tests.rs",
+      "relative_path": "server/tests/mermaid_artifact_tests.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 598,
+      "deletions": 0,
+      "churn_score": 0.012436686,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./docs/dead-code-metrics-spec.md",
+      "relative_path": "docs/dead-code-metrics-spec.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 593,
+      "deletions": 0,
+      "churn_score": 0.012391034,
+      "last_modified": "2025-05-31T14:07:27Z",
+      "first_seen": "2025-05-31T14:07:27Z"
+    },
+    {
+      "path": "./docs/bugs/mermaid-empty-bug.md",
+      "relative_path": "docs/bugs/mermaid-empty-bug.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 589,
+      "deletions": 0,
+      "churn_score": 0.012354512,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/src/tests/ast_e2e.rs",
+      "relative_path": "server/src/tests/ast_e2e.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 587,
+      "deletions": 0,
+      "churn_score": 0.012336252,
+      "last_modified": "2025-05-26T18:53:36Z",
+      "first_seen": "2025-05-26T18:53:36Z"
+    },
+    {
+      "path": "./scripts/generate-fuzz-corpus.ts",
+      "relative_path": "scripts/generate-fuzz-corpus.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 581,
+      "deletions": 0,
+      "churn_score": 0.01228147,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./scripts/mcp-install.ts",
+      "relative_path": "scripts/mcp-install.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 571,
+      "deletions": 0,
+      "churn_score": 0.012190167,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./docs/dag-vec-v2-spec.md",
+      "relative_path": "docs/dag-vec-v2-spec.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 546,
+      "deletions": 0,
+      "churn_score": 0.011961908,
+      "last_modified": "2025-05-30T01:30:02Z",
+      "first_seen": "2025-05-30T01:30:02Z"
+    },
+    {
+      "path": "./docs/v2-spec.md",
+      "relative_path": "docs/v2-spec.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 531,
+      "deletions": 0,
+      "churn_score": 0.011824952,
+      "last_modified": "2025-05-27T12:20:49Z",
+      "first_seen": "2025-05-27T12:20:49Z"
+    },
+    {
+      "path": "./server/src/tests/template_rendering.rs",
+      "relative_path": "server/src/tests/template_rendering.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 509,
+      "deletions": 0,
+      "churn_score": 0.011624085,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/services/code_intelligence.rs",
+      "relative_path": "server/src/services/code_intelligence.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 508,
+      "deletions": 0,
+      "churn_score": 0.011614955,
+      "last_modified": "2025-05-30T01:30:02Z",
+      "first_seen": "2025-05-30T01:30:02Z"
+    },
+    {
+      "path": "./server/src/unified_protocol/test_harness.rs",
+      "relative_path": "server/src/unified_protocol/test_harness.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 503,
+      "deletions": 0,
+      "churn_score": 0.011569303,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./server/full-project-dag.mmd",
+      "relative_path": "server/full-project-dag.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 493,
+      "deletions": 0,
+      "churn_score": 0.011478,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./scripts/lib/create-release-utils.test.ts",
+      "relative_path": "scripts/lib/create-release-utils.test.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 479,
+      "deletions": 0,
+      "churn_score": 0.011350175,
+      "last_modified": "2025-05-28T18:47:21Z",
+      "first_seen": "2025-05-28T18:47:21Z"
+    },
+    {
+      "path": "./server/src/services/duplicate_detector.rs",
+      "relative_path": "server/src/services/duplicate_detector.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 478,
+      "deletions": 0,
+      "churn_score": 0.011341045,
+      "last_modified": "2025-05-30T01:30:02Z",
+      "first_seen": "2025-05-30T01:30:02Z"
+    },
+    {
+      "path": "./scripts/lib/install-utils.test.ts",
+      "relative_path": "scripts/lib/install-utils.test.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 478,
+      "deletions": 0,
+      "churn_score": 0.011341045,
+      "last_modified": "2025-05-28T18:47:21Z",
+      "first_seen": "2025-05-28T18:47:21Z"
+    },
+    {
+      "path": "./scripts/test-workflow-dag.ts",
+      "relative_path": "scripts/test-workflow-dag.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 450,
+      "deletions": 0,
+      "churn_score": 0.011085396,
+      "last_modified": "2025-05-28T21:07:13Z",
+      "first_seen": "2025-05-28T21:07:13Z"
+    },
+    {
+      "path": "./server/src/services/defect_probability.rs",
+      "relative_path": "server/src/services/defect_probability.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 450,
+      "deletions": 0,
+      "churn_score": 0.011085396,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./scripts/dogfood-readme.ts",
+      "relative_path": "scripts/dogfood-readme.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 449,
+      "deletions": 0,
+      "churn_score": 0.011076266,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./coverage_demo_final/html/index.html",
+      "relative_path": "coverage_demo_final/html/index.html",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 443,
+      "deletions": 0,
+      "churn_score": 0.011021484,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/tests/mcp_documentation_sync.rs",
+      "relative_path": "server/tests/mcp_documentation_sync.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 437,
+      "deletions": 0,
+      "churn_score": 0.010966701,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/src/services/canonical_query.rs",
+      "relative_path": "server/src/services/canonical_query.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 432,
+      "deletions": 0,
+      "churn_score": 0.01092105,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./docs/binary-size-improvement-spec.md",
+      "relative_path": "docs/binary-size-improvement-spec.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 425,
+      "deletions": 0,
+      "churn_score": 0.010857137,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./docs/dag-spec.md",
+      "relative_path": "docs/dag-spec.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 425,
+      "deletions": 0,
+      "churn_score": 0.010857137,
+      "last_modified": "2025-05-28T04:39:50Z",
+      "first_seen": "2025-05-28T04:39:50Z"
+    },
+    {
+      "path": "./docs/mermaid-graph-spec.md",
+      "relative_path": "docs/mermaid-graph-spec.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 423,
+      "deletions": 0,
+      "churn_score": 0.0108388765,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-29T14:13:15Z"
+    },
+    {
+      "path": "./server/tests/services_integration.rs",
+      "relative_path": "server/tests/services_integration.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 419,
+      "deletions": 0,
+      "churn_score": 0.010802355,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./docs/deep-context.md",
+      "relative_path": "docs/deep-context.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 416,
+      "deletions": 0,
+      "churn_score": 0.0107749645,
+      "last_modified": "2025-05-30T05:02:14Z",
+      "first_seen": "2025-05-30T05:02:14Z"
+    },
+    {
+      "path": "./server/src/models/unified_ast.rs",
+      "relative_path": "server/src/models/unified_ast.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 413,
+      "deletions": 0,
+      "churn_score": 0.010747573,
+      "last_modified": "2025-05-30T01:30:02Z",
+      "first_seen": "2025-05-30T01:30:02Z"
+    },
+    {
+      "path": "./server/src/unified_protocol/adapters/http.rs",
+      "relative_path": "server/src/unified_protocol/adapters/http.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 411,
+      "deletions": 0,
+      "churn_score": 0.010729313,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./docs/complexity-spec.md",
+      "relative_path": "docs/complexity-spec.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 407,
+      "deletions": 0,
+      "churn_score": 0.010692791,
+      "last_modified": "2025-05-28T22:22:50Z",
+      "first_seen": "2025-05-28T22:22:50Z"
+    },
+    {
+      "path": "./server/src/unified_protocol/adapters/mcp.rs",
+      "relative_path": "server/src/unified_protocol/adapters/mcp.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 400,
+      "deletions": 0,
+      "churn_score": 0.010628879,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./server/src/models/dead_code.rs",
+      "relative_path": "server/src/models/dead_code.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 400,
+      "deletions": 0,
+      "churn_score": 0.010628879,
+      "last_modified": "2025-05-31T16:16:23Z",
+      "first_seen": "2025-05-31T16:16:23Z"
+    },
+    {
+      "path": "./coverage_deno/29720936-4ea8-403c-ac93-5692b6365902.json",
+      "relative_path": "coverage_deno/29720936-4ea8-403c-ac93-5692b6365902.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 384,
+      "churn_score": 0.010482794,
+      "last_modified": "2025-05-31T03:57:23Z",
+      "first_seen": "2025-05-31T03:57:23Z"
+    },
+    {
+      "path": "./coverage_deno/5a5bf67d-46e2-44df-86be-001e252619d8.json",
+      "relative_path": "coverage_deno/5a5bf67d-46e2-44df-86be-001e252619d8.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 384,
+      "deletions": 0,
+      "churn_score": 0.010482794,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/tests/cli_documentation_sync.rs",
+      "relative_path": "server/tests/cli_documentation_sync.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 381,
+      "deletions": 0,
+      "churn_score": 0.010455403,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./docs/rust-docs-spec.md",
+      "relative_path": "docs/rust-docs-spec.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 375,
+      "deletions": 0,
+      "churn_score": 0.01040062,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/src/services/cache/persistent.rs",
+      "relative_path": "server/src/services/cache/persistent.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 371,
+      "deletions": 0,
+      "churn_score": 0.0103640985,
+      "last_modified": "2025-05-28T17:32:12Z",
+      "first_seen": "2025-05-28T17:32:12Z"
+    },
+    {
+      "path": "./server/src/services/ast_rust.rs",
+      "relative_path": "server/src/services/ast_rust.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 367,
+      "deletions": 0,
+      "churn_score": 0.010327578,
+      "last_modified": "2025-05-28T22:22:50Z",
+      "first_seen": "2025-05-28T22:22:50Z"
+    },
+    {
+      "path": "./server/src/tests/churn.rs",
+      "relative_path": "server/src/tests/churn.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 344,
+      "deletions": 0,
+      "churn_score": 0.01011758,
+      "last_modified": "2025-05-27T13:32:33Z",
+      "first_seen": "2025-05-27T13:32:33Z"
+    },
+    {
+      "path": "./server/scripts/docker-setup.ts",
+      "relative_path": "server/scripts/docker-setup.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 339,
+      "deletions": 0,
+      "churn_score": 0.010071929,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./scripts/docker-setup.ts",
+      "relative_path": "scripts/docker-setup.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 338,
+      "deletions": 0,
+      "churn_score": 0.010062798,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/services/cache/manager.rs",
+      "relative_path": "server/src/services/cache/manager.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 334,
+      "deletions": 0,
+      "churn_score": 0.010026277,
+      "last_modified": "2025-05-28T17:32:12Z",
+      "first_seen": "2025-05-28T17:32:12Z"
+    },
+    {
+      "path": "./server/src/unified_protocol/error.rs",
+      "relative_path": "server/src/unified_protocol/error.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 319,
+      "deletions": 0,
+      "churn_score": 0.009889321,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./server/src/unified_protocol/mod.rs",
+      "relative_path": "server/src/unified_protocol/mod.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 318,
+      "deletions": 0,
+      "churn_score": 0.009880192,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./server/tests/complexity_metrics.rs",
+      "relative_path": "server/tests/complexity_metrics.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 312,
+      "deletions": 0,
+      "churn_score": 0.009825409,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./.github/CONTRIBUTING.md",
+      "relative_path": ".github/CONTRIBUTING.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 298,
+      "deletions": 0,
+      "churn_score": 0.009697584,
+      "last_modified": "2025-05-27T20:39:34Z",
+      "first_seen": "2025-05-27T20:39:34Z"
+    },
+    {
+      "path": "./coverage_deno/65a7df7c-1d79-4771-b3c0-8f1fbc6c753a.json",
+      "relative_path": "coverage_deno/65a7df7c-1d79-4771-b3c0-8f1fbc6c753a.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 296,
+      "churn_score": 0.009679324,
+      "last_modified": "2025-05-31T03:57:23Z",
+      "first_seen": "2025-05-31T03:57:23Z"
+    },
+    {
+      "path": "./coverage_deno/7561ab10-d560-4ff1-8178-d2b7e440ce31.json",
+      "relative_path": "coverage_deno/7561ab10-d560-4ff1-8178-d2b7e440ce31.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 296,
+      "deletions": 0,
+      "churn_score": 0.009679324,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./fuzz/fuzz_targets/fuzz_dag_builder.rs",
+      "relative_path": "fuzz/fuzz_targets/fuzz_dag_builder.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 255,
+      "deletions": 0,
+      "churn_score": 0.00930498,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/deno.lock",
+      "relative_path": "server/deno.lock",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 243,
+      "deletions": 0,
+      "churn_score": 0.009195416,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-29T14:13:15Z"
+    },
+    {
+      "path": "./fuzz/fuzz_targets/fuzz_mermaid_generation.rs",
+      "relative_path": "fuzz/fuzz_targets/fuzz_mermaid_generation.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 243,
+      "deletions": 0,
+      "churn_score": 0.009195416,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/tests/mermaid_empty_bug_fix_test.rs",
+      "relative_path": "server/tests/mermaid_empty_bug_fix_test.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 236,
+      "deletions": 0,
+      "churn_score": 0.009131504,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/src/tests/prompts.rs",
+      "relative_path": "server/src/tests/prompts.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 233,
+      "deletions": 0,
+      "churn_score": 0.009104113,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/services/mermaid_property_tests.rs",
+      "relative_path": "server/src/services/mermaid_property_tests.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 228,
+      "deletions": 0,
+      "churn_score": 0.009058461,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/src/tests/error_handling.rs",
+      "relative_path": "server/src/tests/error_handling.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 220,
+      "deletions": 0,
+      "churn_score": 0.008985419,
+      "last_modified": "2025-05-28T14:39:43Z",
+      "first_seen": "2025-05-28T14:39:43Z"
+    },
+    {
+      "path": "./server/src/services/cache/content_cache.rs",
+      "relative_path": "server/src/services/cache/content_cache.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 219,
+      "deletions": 0,
+      "churn_score": 0.008976288,
+      "last_modified": "2025-05-28T17:32:12Z",
+      "first_seen": "2025-05-28T17:32:12Z"
+    },
+    {
+      "path": "./server/src/services/git_analysis.rs",
+      "relative_path": "server/src/services/git_analysis.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 217,
+      "deletions": 0,
+      "churn_score": 0.008958028,
+      "last_modified": "2025-05-27T13:32:33Z",
+      "first_seen": "2025-05-27T13:32:33Z"
+    },
+    {
+      "path": "./server/src/services/cache/strategies.rs",
+      "relative_path": "server/src/services/cache/strategies.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 203,
+      "deletions": 0,
+      "churn_score": 0.008830203,
+      "last_modified": "2025-05-28T17:32:12Z",
+      "first_seen": "2025-05-28T17:32:12Z"
+    },
+    {
+      "path": "./server/tests/e2e/installation.test.ts",
+      "relative_path": "server/tests/e2e/installation.test.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 198,
+      "deletions": 0,
+      "churn_score": 0.008784551,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-29T14:13:15Z"
+    },
+    {
+      "path": "./scripts/cleanup-releases.ts",
+      "relative_path": "scripts/cleanup-releases.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 197,
+      "deletions": 0,
+      "churn_score": 0.0087754205,
+      "last_modified": "2025-05-28T12:33:40Z",
+      "first_seen": "2025-05-28T12:33:40Z"
+    },
+    {
+      "path": "./assets/demo/style.css",
+      "relative_path": "assets/demo/style.css",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 192,
+      "deletions": 0,
+      "churn_score": 0.008729769,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/src/tests/helpers.rs",
+      "relative_path": "server/src/tests/helpers.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 190,
+      "deletions": 0,
+      "churn_score": 0.0087115085,
+      "last_modified": "2025-05-28T14:39:43Z",
+      "first_seen": "2025-05-28T14:39:43Z"
+    },
+    {
+      "path": "./fuzz/fuzz_targets/fuzz_mermaid_escaping.rs",
+      "relative_path": "fuzz/fuzz_targets/fuzz_mermaid_escaping.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 189,
+      "deletions": 0,
+      "churn_score": 0.008702378,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./assets/demo/app.js",
+      "relative_path": "assets/demo/app.js",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 178,
+      "deletions": 0,
+      "churn_score": 0.008601945,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/services-only-dag.mmd",
+      "relative_path": "server/services-only-dag.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 172,
+      "deletions": 0,
+      "churn_score": 0.008547163,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./scripts/lib/create-release-utils.ts",
+      "relative_path": "scripts/lib/create-release-utils.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 171,
+      "deletions": 0,
+      "churn_score": 0.008538032,
+      "last_modified": "2025-05-28T18:47:21Z",
+      "first_seen": "2025-05-28T18:47:21Z"
+    },
+    {
+      "path": "./scripts/create-release.test.ts",
+      "relative_path": "scripts/create-release.test.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 168,
+      "deletions": 0,
+      "churn_score": 0.008510641,
+      "last_modified": "2025-05-28T18:47:21Z",
+      "first_seen": "2025-05-28T18:47:21Z"
+    },
+    {
+      "path": "./server/tests/e2e/README.md",
+      "relative_path": "server/tests/e2e/README.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 166,
+      "deletions": 0,
+      "churn_score": 0.00849238,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-29T14:13:15Z"
+    },
+    {
+      "path": "./docs/bugs/archived/github-actions-release.md",
+      "relative_path": "docs/bugs/archived/github-actions-release.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 165,
+      "deletions": 0,
+      "churn_score": 0.00848325,
+      "last_modified": "2025-05-29T00:04:15Z",
+      "first_seen": "2025-05-29T00:04:15Z"
+    },
+    {
+      "path": "./server/src/services/cache/diagnostics.rs",
+      "relative_path": "server/src/services/cache/diagnostics.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 165,
+      "deletions": 0,
+      "churn_score": 0.00848325,
+      "last_modified": "2025-05-28T17:32:12Z",
+      "first_seen": "2025-05-28T17:32:12Z"
+    },
+    {
+      "path": "./scripts/validate-docs.ts",
+      "relative_path": "scripts/validate-docs.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 159,
+      "deletions": 0,
+      "churn_score": 0.008428468,
+      "last_modified": "2025-05-26T14:08:45Z",
+      "first_seen": "2025-05-26T14:08:45Z"
+    },
+    {
+      "path": "./scripts/test-curl-install.ts",
+      "relative_path": "scripts/test-curl-install.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 158,
+      "deletions": 0,
+      "churn_score": 0.008419338,
+      "last_modified": "2025-05-28T00:02:51Z",
+      "first_seen": "2025-05-28T00:02:51Z"
+    },
+    {
+      "path": "./server/tests/generate_mermaid_example.rs",
+      "relative_path": "server/tests/generate_mermaid_example.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 156,
+      "deletions": 0,
+      "churn_score": 0.008401077,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/src/services/cache/persistent_manager.rs",
+      "relative_path": "server/src/services/cache/persistent_manager.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 152,
+      "deletions": 0,
+      "churn_score": 0.008364555,
+      "last_modified": "2025-05-28T17:32:12Z",
+      "first_seen": "2025-05-28T17:32:12Z"
+    },
+    {
+      "path": "./scripts/generate-from-project-state.ts",
+      "relative_path": "scripts/generate-from-project-state.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 148,
+      "deletions": 0,
+      "churn_score": 0.008328035,
+      "last_modified": "2025-05-27T17:27:44Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./server/artifacts/mermaid/README.md",
+      "relative_path": "server/artifacts/mermaid/README.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 148,
+      "deletions": 0,
+      "churn_score": 0.008328035,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/tests/execution_mode.rs",
+      "relative_path": "server/tests/execution_mode.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 145,
+      "deletions": 0,
+      "churn_score": 0.008300643,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./fuzz/fuzz_targets/fuzz_mermaid_performance.rs",
+      "relative_path": "fuzz/fuzz_targets/fuzz_mermaid_performance.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 138,
+      "deletions": 0,
+      "churn_score": 0.0082367305,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./coverage_demo/506f3db1-ef95-4a94-acf0-c3591f03d9d9.json",
+      "relative_path": "coverage_demo/506f3db1-ef95-4a94-acf0-c3591f03d9d9.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 131,
+      "deletions": 0,
+      "churn_score": 0.008172818,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./coverage_demo_final/42d91553-72f1-465f-adb5-579f019e2234.json",
+      "relative_path": "coverage_demo_final/42d91553-72f1-465f-adb5-579f019e2234.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 126,
+      "deletions": 0,
+      "churn_score": 0.008127167,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/tests/enhanced_dag_integration.rs",
+      "relative_path": "server/tests/enhanced_dag_integration.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 125,
+      "deletions": 0,
+      "churn_score": 0.008118036,
+      "last_modified": "2025-05-30T01:30:02Z",
+      "first_seen": "2025-05-30T01:30:02Z"
+    },
+    {
+      "path": "./server/src/services/cache/config.rs",
+      "relative_path": "server/src/services/cache/config.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 122,
+      "deletions": 0,
+      "churn_score": 0.008090645,
+      "last_modified": "2025-05-28T17:32:12Z",
+      "first_seen": "2025-05-28T17:32:12Z"
+    },
+    {
+      "path": "./server/src/services/cache/base.rs",
+      "relative_path": "server/src/services/cache/base.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 121,
+      "deletions": 0,
+      "churn_score": 0.008081515,
+      "last_modified": "2025-05-28T17:32:12Z",
+      "first_seen": "2025-05-28T17:32:12Z"
+    },
+    {
+      "path": "./scripts/lib/install-utils.ts",
+      "relative_path": "scripts/lib/install-utils.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 119,
+      "deletions": 0,
+      "churn_score": 0.008063255,
+      "last_modified": "2025-05-28T18:47:21Z",
+      "first_seen": "2025-05-28T18:47:21Z"
+    },
+    {
+      "path": "./docs/implementation-summary.md",
+      "relative_path": "docs/implementation-summary.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 117,
+      "deletions": 0,
+      "churn_score": 0.0080449935,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/src/demo/assets.rs",
+      "relative_path": "server/src/demo/assets.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 115,
+      "deletions": 0,
+      "churn_score": 0.008026733,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./coverage_demo_final/31b6e2e0-a694-4020-9daa-5174d534d26a.json",
+      "relative_path": "coverage_demo_final/31b6e2e0-a694-4020-9daa-5174d534d26a.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 114,
+      "deletions": 0,
+      "churn_score": 0.008017603,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./docs/grid-js-implementation-summary.md",
+      "relative_path": "docs/grid-js-implementation-summary.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 110,
+      "deletions": 0,
+      "churn_score": 0.0079810815,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./coverage_demo/a6e54cc5-5652-4587-ae7e-dabc836dafce.json",
+      "relative_path": "coverage_demo/a6e54cc5-5652-4587-ae7e-dabc836dafce.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 110,
+      "deletions": 0,
+      "churn_score": 0.0079810815,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/tests/generate_mermaid_test.rs",
+      "relative_path": "server/tests/generate_mermaid_test.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 105,
+      "deletions": 0,
+      "churn_score": 0.00793543,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/templates/readme/rust/cli-application.hbs",
+      "relative_path": "server/templates/readme/rust/cli-application.hbs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 102,
+      "deletions": 0,
+      "churn_score": 0.007908039,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/tests/additional_coverage.rs",
+      "relative_path": "server/src/tests/additional_coverage.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 100,
+      "deletions": 0,
+      "churn_score": 0.007889778,
+      "last_modified": "2025-05-27T18:52:12Z",
+      "first_seen": "2025-05-27T18:52:12Z"
+    },
+    {
+      "path": "./scripts/{dogfood-readme.ts => archive/dogfood-readme-deprecated.ts}",
+      "relative_path": "scripts/{dogfood-readme.ts => archive/dogfood-readme-deprecated.ts}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 27,
+      "deletions": 72,
+      "churn_score": 0.007880648,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./server/setup_localstack.sh",
+      "relative_path": "server/setup_localstack.sh",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 95,
+      "deletions": 0,
+      "churn_score": 0.007844127,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/tests/fixtures/sample.ts",
+      "relative_path": "server/src/tests/fixtures/sample.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 93,
+      "deletions": 0,
+      "churn_score": 0.007825866,
+      "last_modified": "2025-05-26T18:53:36Z",
+      "first_seen": "2025-05-26T18:53:36Z"
+    },
+    {
+      "path": "./coverage_deno/eaa9400f-c800-4dc8-8fef-f090b01b8386.json",
+      "relative_path": "coverage_deno/eaa9400f-c800-4dc8-8fef-f090b01b8386.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 91,
+      "churn_score": 0.007807605,
+      "last_modified": "2025-05-31T03:57:23Z",
+      "first_seen": "2025-05-31T03:57:23Z"
+    },
+    {
+      "path": "./coverage_deno/8a8f6dcf-78eb-43f4-8de2-caa234b02b05.json",
+      "relative_path": "coverage_deno/8a8f6dcf-78eb-43f4-8de2-caa234b02b05.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 91,
+      "deletions": 0,
+      "churn_score": 0.007807605,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/templates/readme/rust/cli-application.json",
+      "relative_path": "server/templates/readme/rust/cli-application.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 89,
+      "deletions": 0,
+      "churn_score": 0.0077893445,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./scripts/lib/create-release-utils-integration.test.ts",
+      "relative_path": "scripts/lib/create-release-utils-integration.test.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 89,
+      "deletions": 0,
+      "churn_score": 0.0077893445,
+      "last_modified": "2025-05-28T18:47:21Z",
+      "first_seen": "2025-05-28T18:47:21Z"
+    },
+    {
+      "path": "./docs/bugs/archived/mermaid-bug-fixed.md",
+      "relative_path": "docs/bugs/archived/mermaid-bug-fixed.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 89,
+      "deletions": 0,
+      "churn_score": 0.0077893445,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-29T14:13:15Z"
+    },
+    {
+      "path": "./server/src/stateless_server.rs",
+      "relative_path": "server/src/stateless_server.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 86,
+      "deletions": 0,
+      "churn_score": 0.0077619534,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/templates/makefile/python-uv/cli-application.hbs",
+      "relative_path": "server/templates/makefile/python-uv/cli-application.hbs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 85,
+      "deletions": 0,
+      "churn_score": 0.007752823,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/handlers/resources.rs",
+      "relative_path": "server/src/handlers/resources.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 85,
+      "deletions": 0,
+      "churn_score": 0.007752823,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/bin/mcp_server_stateless.rs",
+      "relative_path": "server/src/bin/mcp_server_stateless.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 82,
+      "deletions": 0,
+      "churn_score": 0.007725432,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./coverage_deno/994bf973-fa5e-4171-a8ce-0c1c902bbce0.json",
+      "relative_path": "coverage_deno/994bf973-fa5e-4171-a8ce-0c1c902bbce0.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 81,
+      "deletions": 0,
+      "churn_score": 0.007716302,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./coverage_deno/87745106-1f44-423d-bd5e-6a71cba1f987.json",
+      "relative_path": "coverage_deno/87745106-1f44-423d-bd5e-6a71cba1f987.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 81,
+      "churn_score": 0.007716302,
+      "last_modified": "2025-05-31T03:57:23Z",
+      "first_seen": "2025-05-31T03:57:23Z"
+    },
+    {
+      "path": "./server/templates/makefile/deno/cli-application.hbs",
+      "relative_path": "server/templates/makefile/deno/cli-application.hbs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 80,
+      "deletions": 0,
+      "churn_score": 0.0077071716,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/tests/fixtures/sample.js",
+      "relative_path": "server/src/tests/fixtures/sample.js",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 80,
+      "deletions": 0,
+      "churn_score": 0.0077071716,
+      "last_modified": "2025-05-26T18:53:36Z",
+      "first_seen": "2025-05-26T18:53:36Z"
+    },
+    {
+      "path": "./docs/bugs/archived/mermaid-bug-test-report.md",
+      "relative_path": "docs/bugs/archived/mermaid-bug-test-report.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 79,
+      "deletions": 0,
+      "churn_score": 0.0076980414,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-29T14:13:15Z"
+    },
+    {
+      "path": "./server/src/tests/models.rs",
+      "relative_path": "server/src/tests/models.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 78,
+      "deletions": 0,
+      "churn_score": 0.0076889107,
+      "last_modified": "2025-05-27T18:52:12Z",
+      "first_seen": "2025-05-27T18:52:12Z"
+    },
+    {
+      "path": "./server/src/tests/fixtures/sample.py",
+      "relative_path": "server/src/tests/fixtures/sample.py",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 75,
+      "deletions": 0,
+      "churn_score": 0.0076615196,
+      "last_modified": "2025-05-26T18:53:36Z",
+      "first_seen": "2025-05-26T18:53:36Z"
+    },
+    {
+      "path": "./server/src/models/churn.rs",
+      "relative_path": "server/src/models/churn.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 75,
+      "deletions": 0,
+      "churn_score": 0.0076615196,
+      "last_modified": "2025-05-27T13:32:33Z",
+      "first_seen": "2025-05-27T13:32:33Z"
+    },
+    {
+      "path": "./scripts/archive/README.md",
+      "relative_path": "scripts/archive/README.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 71,
+      "deletions": 0,
+      "churn_score": 0.0076249987,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./coverage_deno/e519a67f-f6d3-4394-b323-f54b365cd777.json",
+      "relative_path": "coverage_deno/e519a67f-f6d3-4394-b323-f54b365cd777.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 70,
+      "churn_score": 0.007615868,
+      "last_modified": "2025-05-31T03:57:23Z",
+      "first_seen": "2025-05-31T03:57:23Z"
+    },
+    {
+      "path": "./assets/project-state.d.ts",
+      "relative_path": "assets/project-state.d.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 70,
+      "deletions": 0,
+      "churn_score": 0.007615868,
+      "last_modified": "2025-05-27T17:27:44Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./coverage_deno/7b07ad0f-5986-4810-a5f6-18b87b3b6e1e.json",
+      "relative_path": "coverage_deno/7b07ad0f-5986-4810-a5f6-18b87b3b6e1e.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 70,
+      "deletions": 0,
+      "churn_score": 0.007615868,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/templates/gitignore/rust/embedded-target.json",
+      "relative_path": "server/templates/gitignore/rust/embedded-target.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 69,
+      "deletions": 0,
+      "churn_score": 0.007606738,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/templates/gitignore/rust/embedded-target.hbs",
+      "relative_path": "server/templates/gitignore/rust/embedded-target.hbs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 69,
+      "deletions": 0,
+      "churn_score": 0.007606738,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./artifacts/mermaid/src-architecture.mmd",
+      "relative_path": "artifacts/mermaid/src-architecture.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 67,
+      "deletions": 0,
+      "churn_score": 0.007588477,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./coverage_deno/83b0590f-7dd2-46a7-9cd3-fedead610486.json",
+      "relative_path": "coverage_deno/83b0590f-7dd2-46a7-9cd3-fedead610486.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 65,
+      "churn_score": 0.0075702164,
+      "last_modified": "2025-05-31T03:57:23Z",
+      "first_seen": "2025-05-31T03:57:23Z"
+    },
+    {
+      "path": "./coverage_deno/c97889df-ec5e-4979-9738-dd9badb511a8.json",
+      "relative_path": "coverage_deno/c97889df-ec5e-4979-9738-dd9badb511a8.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 65,
+      "deletions": 0,
+      "churn_score": 0.0075702164,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/templates/makefile/rust/cli-binary.hbs",
+      "relative_path": "server/templates/makefile/rust/cli-binary.hbs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 63,
+      "deletions": 0,
+      "churn_score": 0.007551956,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/templates/gitignore/python-uv/cli-application.hbs",
+      "relative_path": "server/templates/gitignore/python-uv/cli-application.hbs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 61,
+      "deletions": 0,
+      "churn_score": 0.007533695,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./docs/bugs/github-actions-release-fixed.md",
+      "relative_path": "docs/bugs/github-actions-release-fixed.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 60,
+      "deletions": 0,
+      "churn_score": 0.007524565,
+      "last_modified": "2025-05-29T00:04:15Z",
+      "first_seen": "2025-05-29T00:04:15Z"
+    },
+    {
+      "path": "./assets/README.md",
+      "relative_path": "assets/README.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 55,
+      "deletions": 0,
+      "churn_score": 0.0074789133,
+      "last_modified": "2025-05-27T17:27:44Z",
+      "first_seen": "2025-05-27T17:27:44Z"
+    },
+    {
+      "path": "./server/templates/makefile/rust/cli-binary.json",
+      "relative_path": "server/templates/makefile/rust/cli-binary.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 54,
+      "deletions": 0,
+      "churn_score": 0.0074697826,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/services/cache.rs",
+      "relative_path": "server/src/services/cache.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 52,
+      "deletions": 0,
+      "churn_score": 0.007451522,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./scripts/lib/cleanup-test-artifacts.ts",
+      "relative_path": "scripts/lib/cleanup-test-artifacts.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 47,
+      "deletions": 0,
+      "churn_score": 0.0074058706,
+      "last_modified": "2025-05-29T00:04:15Z",
+      "first_seen": "2025-05-29T00:04:15Z"
+    },
+    {
+      "path": "./docs/wip-current-code-smells-dogfood.md",
+      "relative_path": "docs/wip-current-code-smells-dogfood.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 42,
+      "deletions": 0,
+      "churn_score": 0.0073602186,
+      "last_modified": "2025-05-31T03:57:23Z",
+      "first_seen": "2025-05-31T03:57:23Z"
+    },
+    {
+      "path": "./fuzz/Cargo.toml",
+      "relative_path": "fuzz/Cargo.toml",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 41,
+      "deletions": 0,
+      "churn_score": 0.0073510883,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/Dockerfile",
+      "relative_path": "server/Dockerfile",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 41,
+      "deletions": 0,
+      "churn_score": 0.0073510883,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/templates/makefile/python-uv/cli-application.json",
+      "relative_path": "server/templates/makefile/python-uv/cli-application.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 41,
+      "deletions": 0,
+      "churn_score": 0.0073510883,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/templates/makefile/deno/cli-application.json",
+      "relative_path": "server/templates/makefile/deno/cli-application.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 41,
+      "deletions": 0,
+      "churn_score": 0.0073510883,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./artifacts/templates/rust-makefile-example.mk",
+      "relative_path": "artifacts/templates/rust-makefile-example.mk",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 39,
+      "deletions": 0,
+      "churn_score": 0.007332828,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./scripts/download-mermaid.ts",
+      "relative_path": "scripts/download-mermaid.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 38,
+      "deletions": 0,
+      "churn_score": 0.007323697,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./artifacts/templates/README.md",
+      "relative_path": "artifacts/templates/README.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 36,
+      "deletions": 0,
+      "churn_score": 0.007305437,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/templates/readme/python-uv/cli-application.hbs",
+      "relative_path": "server/templates/readme/python-uv/cli-application.hbs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 32,
+      "deletions": 0,
+      "churn_score": 0.0072689154,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/templates/readme/deno/cli-application.hbs",
+      "relative_path": "server/templates/readme/deno/cli-application.hbs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 29,
+      "deletions": 0,
+      "churn_score": 0.0072415243,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/templates/readme/deno/cli-application.json",
+      "relative_path": "server/templates/readme/deno/cli-application.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 28,
+      "deletions": 0,
+      "churn_score": 0.007232394,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/templates/readme/python-uv/cli-application.json",
+      "relative_path": "server/templates/readme/python-uv/cli-application.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 28,
+      "deletions": 0,
+      "churn_score": 0.007232394,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/handlers/mod.rs",
+      "relative_path": "server/src/handlers/mod.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 28,
+      "deletions": 0,
+      "churn_score": 0.007232394,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/deno.json",
+      "relative_path": "server/deno.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 28,
+      "deletions": 0,
+      "churn_score": 0.007232394,
+      "last_modified": "2025-05-29T14:13:15Z",
+      "first_seen": "2025-05-29T14:13:15Z"
+    },
+    {
+      "path": "./server/.gitignore",
+      "relative_path": "server/.gitignore",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 23,
+      "deletions": 0,
+      "churn_score": 0.0071867425,
+      "last_modified": "2025-05-27T20:51:54Z",
+      "first_seen": "2025-05-27T20:51:54Z"
+    },
+    {
+      "path": "./artifacts/mermaid/fixtures/actual-paiml-high-level-system-diagram.mmd",
+      "relative_path": "artifacts/mermaid/fixtures/actual-paiml-high-level-system-diagram.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 23,
+      "deletions": 0,
+      "churn_score": 0.0071867425,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/artifacts/mermaid/non-code/styled/workflow-styled.mmd",
+      "relative_path": "server/artifacts/mermaid/non-code/styled/workflow-styled.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 21,
+      "deletions": 0,
+      "churn_score": 0.0071684816,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/templates/gitignore/deno/cli-application.hbs",
+      "relative_path": "server/templates/gitignore/deno/cli-application.hbs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 21,
+      "deletions": 0,
+      "churn_score": 0.0071684816,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/src/services/cache/mod.rs",
+      "relative_path": "server/src/services/cache/mod.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 20,
+      "deletions": 0,
+      "churn_score": 0.0071593514,
+      "last_modified": "2025-05-28T17:32:12Z",
+      "first_seen": "2025-05-28T17:32:12Z"
+    },
+    {
+      "path": "./server/artifacts/mermaid/ast-generated/styled/service-interactions.mmd",
+      "relative_path": "server/artifacts/mermaid/ast-generated/styled/service-interactions.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 20,
+      "deletions": 0,
+      "churn_score": 0.0071593514,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./artifacts/README.md",
+      "relative_path": "artifacts/README.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 18,
+      "deletions": 0,
+      "churn_score": 0.0071410905,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./artifacts/mermaid/fixtures/INVALID_example_diagram.mmd",
+      "relative_path": "artifacts/mermaid/fixtures/INVALID_example_diagram.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 18,
+      "deletions": 0,
+      "churn_score": 0.0071410905,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/.cargo/config.toml",
+      "relative_path": "server/.cargo/config.toml",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 16,
+      "deletions": 0,
+      "churn_score": 0.00712283,
+      "last_modified": "2025-05-27T18:52:12Z",
+      "first_seen": "2025-05-27T18:52:12Z"
+    },
+    {
+      "path": "./server/src/proptest-regressions/cli_property_tests.txt",
+      "relative_path": "server/src/proptest-regressions/cli_property_tests.txt",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 14,
+      "deletions": 0,
+      "churn_score": 0.007104569,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./server/src/services/cache/cache_trait.rs",
+      "relative_path": "server/src/services/cache/cache_trait.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 14,
+      "deletions": 0,
+      "churn_score": 0.007104569,
+      "last_modified": "2025-05-28T17:32:12Z",
+      "first_seen": "2025-05-28T17:32:12Z"
+    },
+    {
+      "path": "./server/artifacts/mermaid/ast-generated/simple/codebase-modules.mmd",
+      "relative_path": "server/artifacts/mermaid/ast-generated/simple/codebase-modules.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 13,
+      "deletions": 0,
+      "churn_score": 0.007095439,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./artifacts/mermaid/fixtures/complex_styled_standard.mmd",
+      "relative_path": "artifacts/mermaid/fixtures/complex_styled_standard.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 12,
+      "deletions": 0,
+      "churn_score": 0.0070863087,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/templates/gitignore/rust/{embedded-target.json => cli.json}",
+      "relative_path": "server/templates/gitignore/rust/{embedded-target.json => cli.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 6,
+      "deletions": 6,
+      "churn_score": 0.0070863087,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./server/artifacts/mermaid/non-code/simple/architecture-overview.mmd",
+      "relative_path": "server/artifacts/mermaid/non-code/simple/architecture-overview.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 11,
+      "deletions": 0,
+      "churn_score": 0.0070771785,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/templates/gitignore/deno/cli-application.json",
+      "relative_path": "server/templates/gitignore/deno/cli-application.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 9,
+      "deletions": 0,
+      "churn_score": 0.0070589175,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/templates/gitignore/python-uv/cli-application.json",
+      "relative_path": "server/templates/gitignore/python-uv/cli-application.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 9,
+      "deletions": 0,
+      "churn_score": 0.0070589175,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/templates/makefile/rust/{cli-binary.json => cli.json}",
+      "relative_path": "server/templates/makefile/rust/{cli-binary.json => cli.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 4,
+      "deletions": 4,
+      "churn_score": 0.0070497873,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./server/proptest-regressions/services/mermaid_property_tests.txt",
+      "relative_path": "server/proptest-regressions/services/mermaid_property_tests.txt",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 8,
+      "deletions": 0,
+      "churn_score": 0.0070497873,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/templates/readme/rust/{cli-application.json => cli.json}",
+      "relative_path": "server/templates/readme/rust/{cli-application.json => cli.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 4,
+      "deletions": 4,
+      "churn_score": 0.0070497873,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./server/src/unified_protocol/adapters/mod.rs",
+      "relative_path": "server/src/unified_protocol/adapters/mod.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 7,
+      "deletions": 0,
+      "churn_score": 0.007040657,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./artifacts/mermaid/current_project_dag.mmd",
+      "relative_path": "artifacts/mermaid/current_project_dag.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 7,
+      "deletions": 0,
+      "churn_score": 0.007040657,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./artifacts/dogfooding/dag-2025-05-30.mmd",
+      "relative_path": "artifacts/dogfooding/dag-2025-05-30.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 7,
+      "deletions": 0,
+      "churn_score": 0.007040657,
+      "last_modified": "2025-05-30T00:11:17Z",
+      "first_seen": "2025-05-30T00:11:17Z"
+    },
+    {
+      "path": "./artifacts/mermaid/fixtures/reference_standard.mmd",
+      "relative_path": "artifacts/mermaid/fixtures/reference_standard.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 7,
+      "deletions": 0,
+      "churn_score": 0.007040657,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/server-dag.mmd",
+      "relative_path": "server/server-dag.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 7,
+      "deletions": 0,
+      "churn_score": 0.007040657,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./server/services-call-dag.mmd",
+      "relative_path": "server/services-call-dag.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 7,
+      "deletions": 0,
+      "churn_score": 0.007040657,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./server/templates/makefile/deno/{cli-application.json => cli.json}",
+      "relative_path": "server/templates/makefile/deno/{cli-application.json => cli.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 3,
+      "deletions": 3,
+      "churn_score": 0.0070315264,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./server/services-import-dag.mmd",
+      "relative_path": "server/services-import-dag.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 6,
+      "deletions": 0,
+      "churn_score": 0.0070315264,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./server/templates/makefile/python-uv/{cli-application.json => cli.json}",
+      "relative_path": "server/templates/makefile/python-uv/{cli-application.json => cli.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 3,
+      "deletions": 3,
+      "churn_score": 0.0070315264,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./server/services-dag.mmd",
+      "relative_path": "server/services-dag.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 6,
+      "deletions": 0,
+      "churn_score": 0.0070315264,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./server/import-dag.mmd",
+      "relative_path": "server/import-dag.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 6,
+      "deletions": 0,
+      "churn_score": 0.0070315264,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./server/codebase-dag.mmd",
+      "relative_path": "server/codebase-dag.mmd",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 6,
+      "deletions": 0,
+      "churn_score": 0.0070315264,
+      "last_modified": "2025-05-29T23:42:07Z",
+      "first_seen": "2025-05-29T23:42:07Z"
+    },
+    {
+      "path": "./server/templates/gitignore/python-uv/{cli-application.json => cli.json}",
+      "relative_path": "server/templates/gitignore/python-uv/{cli-application.json => cli.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 2,
+      "deletions": 2,
+      "churn_score": 0.007013266,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./server/templates/readme/deno/{cli-application.json => cli.json}",
+      "relative_path": "server/templates/readme/deno/{cli-application.json => cli.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 2,
+      "deletions": 2,
+      "churn_score": 0.007013266,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./server/templates/gitignore/deno/{cli-application.json => cli.json}",
+      "relative_path": "server/templates/gitignore/deno/{cli-application.json => cli.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 2,
+      "deletions": 2,
+      "churn_score": 0.007013266,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./server/templates/readme/python-uv/{cli-application.json => cli.json}",
+      "relative_path": "server/templates/readme/python-uv/{cli-application.json => cli.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 2,
+      "deletions": 2,
+      "churn_score": 0.007013266,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./server/.build-info.json",
+      "relative_path": "server/.build-info.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 4,
+      "deletions": 0,
+      "churn_score": 0.007013266,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./coverage_deno/{8a8f6dcf-78eb-43f4-8de2-caa234b02b05.json => eaa9400f-c800-4dc8-8fef-f090b01b8386.json}",
+      "relative_path": "coverage_deno/{8a8f6dcf-78eb-43f4-8de2-caa234b02b05.json => eaa9400f-c800-4dc8-8fef-f090b01b8386.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1,
+      "deletions": 1,
+      "churn_score": 0.006995005,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./coverage_deno/{c97889df-ec5e-4979-9738-dd9badb511a8.json => 83b0590f-7dd2-46a7-9cd3-fedead610486.json}",
+      "relative_path": "coverage_deno/{c97889df-ec5e-4979-9738-dd9badb511a8.json => 83b0590f-7dd2-46a7-9cd3-fedead610486.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1,
+      "deletions": 1,
+      "churn_score": 0.006995005,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./coverage_deno/{994bf973-fa5e-4171-a8ce-0c1c902bbce0.json => 87745106-1f44-423d-bd5e-6a71cba1f987.json}",
+      "relative_path": "coverage_deno/{994bf973-fa5e-4171-a8ce-0c1c902bbce0.json => 87745106-1f44-423d-bd5e-6a71cba1f987.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1,
+      "deletions": 1,
+      "churn_score": 0.006995005,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./server/templates/readme/rust/cli.hbs",
+      "relative_path": "server/templates/readme/rust/cli.hbs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1,
+      "deletions": 1,
+      "churn_score": 0.006995005,
+      "last_modified": "2025-05-27T19:07:13Z",
+      "first_seen": "2025-05-27T19:07:13Z"
+    },
+    {
+      "path": "./server/assets/vendor/gridjs.min.js",
+      "relative_path": "server/assets/vendor/gridjs.min.js",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 2,
+      "deletions": 0,
+      "churn_score": 0.006995005,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./coverage_deno/{7b07ad0f-5986-4810-a5f6-18b87b3b6e1e.json => e519a67f-f6d3-4394-b323-f54b365cd777.json}",
+      "relative_path": "coverage_deno/{7b07ad0f-5986-4810-a5f6-18b87b3b6e1e.json => e519a67f-f6d3-4394-b323-f54b365cd777.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1,
+      "deletions": 1,
+      "churn_score": 0.006995005,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./coverage_deno/{5a5bf67d-46e2-44df-86be-001e252619d8.json => 29720936-4ea8-403c-ac93-5692b6365902.json}",
+      "relative_path": "coverage_deno/{5a5bf67d-46e2-44df-86be-001e252619d8.json => 29720936-4ea8-403c-ac93-5692b6365902.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1,
+      "deletions": 1,
+      "churn_score": 0.006995005,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./coverage_deno/{7561ab10-d560-4ff1-8178-d2b7e440ce31.json => 65a7df7c-1d79-4771-b3c0-8f1fbc6c753a.json}",
+      "relative_path": "coverage_deno/{7561ab10-d560-4ff1-8178-d2b7e440ce31.json => 65a7df7c-1d79-4771-b3c0-8f1fbc6c753a.json}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1,
+      "deletions": 1,
+      "churn_score": 0.006995005,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./server/assets/vendor/gridjs-mermaid.min.css",
+      "relative_path": "server/assets/vendor/gridjs-mermaid.min.css",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1,
+      "deletions": 0,
+      "churn_score": 0.006985875,
+      "last_modified": "2025-05-30T16:38:00Z",
+      "first_seen": "2025-05-30T16:38:00Z"
+    },
+    {
+      "path": "./server/src/utils/mod.rs",
+      "relative_path": "server/src/utils/mod.rs",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1,
+      "deletions": 0,
+      "churn_score": 0.006985875,
+      "last_modified": "2025-05-26T02:29:36Z",
+      "first_seen": "2025-05-26T02:29:36Z"
+    },
+    {
+      "path": "./server/outdated-deps.json",
+      "relative_path": "server/outdated-deps.json",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 1,
+      "deletions": 0,
+      "churn_score": 0.006985875,
+      "last_modified": "2025-05-27T18:52:12Z",
+      "first_seen": "2025-05-27T18:52:12Z"
+    },
+    {
+      "path": "./server/templates/makefile/deno/{cli-application.hbs => cli.hbs}",
+      "relative_path": "server/templates/makefile/deno/{cli-application.hbs => cli.hbs}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./scripts/{ => archive}/verify-demo-binary-size.ts",
+      "relative_path": "scripts/{ => archive}/verify-demo-binary-size.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./server/templates/readme/python-uv/{cli-application.hbs => cli.hbs}",
+      "relative_path": "server/templates/readme/python-uv/{cli-application.hbs => cli.hbs}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./server/templates/gitignore/rust/{embedded-target.hbs => cli.hbs}",
+      "relative_path": "server/templates/gitignore/rust/{embedded-target.hbs => cli.hbs}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./server/src/bin/{mcp_server_stateless.rs => paiml-mcp-agent-toolkit.rs}",
+      "relative_path": "server/src/bin/{mcp_server_stateless.rs => paiml-mcp-agent-toolkit.rs}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-26T14:08:45Z",
+      "first_seen": "2025-05-26T14:08:45Z"
+    },
+    {
+      "path": "./scripts/{ => archive}/cleanup-releases.ts",
+      "relative_path": "scripts/{ => archive}/cleanup-releases.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./server/templates/makefile/python-uv/{cli-application.hbs => cli.hbs}",
+      "relative_path": "server/templates/makefile/python-uv/{cli-application.hbs => cli.hbs}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./scripts/{ => archive}/generate-from-project-state.ts",
+      "relative_path": "scripts/{ => archive}/generate-from-project-state.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./server/templates/readme/rust/{cli-application.hbs => cli.hbs}",
+      "relative_path": "server/templates/readme/rust/{cli-application.hbs => cli.hbs}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./scripts/{ => archive/dead-scripts}/download-mermaid.ts",
+      "relative_path": "scripts/{ => archive/dead-scripts}/download-mermaid.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./server/templates/readme/deno/{cli-application.hbs => cli.hbs}",
+      "relative_path": "server/templates/readme/deno/{cli-application.hbs => cli.hbs}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./docs/bugs/{ => archived}/github-actions-release-fixed.md",
+      "relative_path": "docs/bugs/{ => archived}/github-actions-release-fixed.md",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-29T19:12:47Z",
+      "first_seen": "2025-05-29T19:12:47Z"
+    },
+    {
+      "path": "./server/templates/gitignore/python-uv/{cli-application.hbs => cli.hbs}",
+      "relative_path": "server/templates/gitignore/python-uv/{cli-application.hbs => cli.hbs}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./scripts/{lib => archive}/cleanup-test-artifacts.ts",
+      "relative_path": "scripts/{lib => archive}/cleanup-test-artifacts.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./scripts/{ => archive/dead-scripts}/mcp-install-deterministic.ts",
+      "relative_path": "scripts/{ => archive/dead-scripts}/mcp-install-deterministic.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./scripts/{ => archive/dead-scripts}/docker-setup.ts",
+      "relative_path": "scripts/{ => archive/dead-scripts}/docker-setup.ts",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-31T03:09:36Z",
+      "first_seen": "2025-05-31T03:09:36Z"
+    },
+    {
+      "path": "./server/src/services/{cache.rs => old_cache.rs}",
+      "relative_path": "server/src/services/{cache.rs => old_cache.rs}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-28T17:32:12Z",
+      "first_seen": "2025-05-28T17:32:12Z"
+    },
+    {
+      "path": "./server/templates/gitignore/deno/{cli-application.hbs => cli.hbs}",
+      "relative_path": "server/templates/gitignore/deno/{cli-application.hbs => cli.hbs}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./server/templates/makefile/rust/{cli-binary.hbs => cli.hbs}",
+      "relative_path": "server/templates/makefile/rust/{cli-binary.hbs => cli.hbs}",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-26T19:18:14Z",
+      "first_seen": "2025-05-26T19:18:14Z"
+    },
+    {
+      "path": "./docs/bugs/archived/github-actions-release.doc",
+      "relative_path": "docs/bugs/archived/github-actions-release.doc",
+      "commit_count": 1,
+      "unique_authors": [
+        "Noah Gift"
+      ],
+      "additions": 0,
+      "deletions": 0,
+      "churn_score": 0.0069767446,
+      "last_modified": "2025-05-29T00:04:15Z",
+      "first_seen": "2025-05-29T00:04:15Z"
+    }
+  ],
+  "summary": {
+    "total_commits": 1143,
+    "total_files_changed": 362,
+    "hotspot_files": [
+      "./server/Cargo.toml"
+    ],
+    "stable_files": [
+      "./docs/bugs/archived/github-actions-release.doc",
+      "./server/templates/makefile/rust/{cli-binary.hbs => cli.hbs}",
+      "./server/templates/gitignore/deno/{cli-application.hbs => cli.hbs}",
+      "./server/src/services/{cache.rs => old_cache.rs}",
+      "./scripts/{ => archive/dead-scripts}/docker-setup.ts",
+      "./scripts/{ => archive/dead-scripts}/mcp-install-deterministic.ts",
+      "./scripts/{lib => archive}/cleanup-test-artifacts.ts",
+      "./server/templates/gitignore/python-uv/{cli-application.hbs => cli.hbs}",
+      "./docs/bugs/{ => archived}/github-actions-release-fixed.md",
+      "./server/templates/readme/deno/{cli-application.hbs => cli.hbs}"
+    ],
+    "author_contributions": {
+      "Noah Gift": 362,
+      "GitHub Action": 1,
+      "GitHub Actions": 5
+    }
+  }
+}

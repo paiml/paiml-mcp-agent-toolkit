@@ -1,14 +1,19 @@
-# MCP Agent Toolkit - Root Makefile
+# MCP Agent Toolkit - Root Workspace Makefile
 # Pragmatic AI Labs
 # https://paiml.com
 #
-# ⚠️  IMPORTANT: This is the PRIMARY Makefile for the entire project!
+# ⚠️  IMPORTANT: This is a RUST WORKSPACE PROJECT with a PRIMARY root Makefile!
 # 
+# WORKSPACE STRUCTURE:
+# - Root workspace: Cargo.toml (workspace configuration)
+# - Server project: server/Cargo.toml (main binary crate)
+# - Future projects: client/, shared/ (when implemented)
+#
 # This root Makefile should be used for 80% of all operations, including:
 # - All CI/CD operations (GitHub Actions should use this Makefile)
 # - Development commands (format, lint, test, build)
 # - Installation and deployment
-# - Cross-project operations
+# - Cross-workspace operations
 #
 # The individual project Makefiles (e.g., server/Makefile) should ONLY be used
 # when you need project-specific operations while working directly in that directory.
@@ -18,7 +23,7 @@
 #
 # This design prevents workspace-related issues and ensures consistent behavior.
 
-.PHONY: all validate format lint check test coverage build clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs
+.PHONY: all validate format lint check test coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -281,13 +286,24 @@ test-scripts:
 	@rm -rf coverage_deno
 	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.test.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
 		echo "🧪 Testing TypeScript scripts with coverage..."; \
-		deno test --allow-all --coverage=coverage_deno $(SCRIPTS_DIR)/**/*.test.ts; \
+		deno test --allow-all --coverage=coverage_deno \
+			$(SCRIPTS_DIR)/lib/*.test.ts \
+			$(SCRIPTS_DIR)/*.test.ts; \
 		echo ""; \
 		echo "📊 Coverage Report:"; \
 		deno coverage coverage_deno; \
 	else \
 		echo "✓ No TypeScript script tests found"; \
 	fi
+
+# Test dogfood integration (requires built binary)
+test-dogfood: server-build-binary
+	@echo "🐕 Testing dogfood integration (self-analysis capabilities)..."
+	@echo "This test verifies our tool can analyze itself and generate valid Mermaid diagrams"
+	@echo ""
+	@deno test --allow-all scripts/dogfood-readme-integration.test.ts
+	@echo ""
+	@echo "✅ Dogfood integration tests complete!"
 
 # Test critical Deno scripts with coverage
 test-critical-scripts:
@@ -578,6 +594,25 @@ clippy-strict:
 server-build-release:
 	cargo build --release --manifest-path server/Cargo.toml
 
+# Build optimized release binary (workspace-wide)
+release:
+	@echo "🚀 Building optimized release binary for Rust workspace..."
+	@echo "📁 Workspace structure:"
+	@echo "   - Root workspace: Cargo.toml (workspace configuration)"
+	@echo "   - Server project: server/Cargo.toml (main binary crate)"
+	@echo ""
+	@echo "🔨 Building release binary with workspace optimizations..."
+	cargo build --release --manifest-path server/Cargo.toml
+	@echo ""
+	@echo "✅ Release binary built successfully!"
+	@echo "📍 Binary location: ./target/release/paiml-mcp-agent-toolkit"
+	@echo "📊 Binary size: $$(du -h ./target/release/paiml-mcp-agent-toolkit | cut -f1)"
+	@echo ""
+	@echo "💡 Tips for binary size optimization (future improvements):"
+	@echo "   - Strip debug symbols: cargo build --release --config 'profile.release.strip=true'"
+	@echo "   - Enable LTO: cargo build --release --config 'profile.release.lto=true'"
+	@echo "   - Optimize for size: cargo build --release --config 'profile.release.opt-level=\"s\"'"
+
 
 # Create GitHub release with binary artifacts
 create-release:
@@ -717,6 +752,7 @@ help:
 	@echo "  test-actions - Test GitHub Actions workflows locally with act"
 	@echo "  context      - Generate deep context analysis (AST, tree, docs)"
 	@echo "  build        - Build all projects (binaries only)"
+	@echo "  release      - Build optimized release binary (workspace-wide)"
 	@echo "  clean        - Clean all build artifacts"
 	@echo ""
 	@echo "Documentation:"
@@ -756,3 +792,92 @@ help:
 	@for project in $(PROJECTS); do \
 		echo "  - $$project"; \
 	done
+
+# =============================================================================
+# Specification Implementation Targets
+# =============================================================================
+
+# Mermaid Specification Testing Targets
+setup-mermaid-validator:
+	@echo "🔧 Setting up Mermaid specification validator..."
+	@if ! command -v deno &> /dev/null; then \
+		echo "Error: Deno is required but not installed"; \
+		echo "Install with: curl -fsSL https://deno.land/install.sh | sh"; \
+		exit 1; \
+	fi
+	@echo "✅ Deno validator ready"
+
+# Run Mermaid specification compliance tests
+test-mermaid-spec: setup-mermaid-validator
+	@echo "🧪 Running Mermaid specification compliance tests..."
+	cd server && cargo test mermaid_spec_compliance --features mermaid-spec-tests -- --nocapture
+
+# Validate all generated Mermaid artifacts
+validate-mermaid-artifacts: setup-mermaid-validator
+	@echo "🔍 Validating all Mermaid artifacts against spec..."
+	@if [ -d "artifacts/mermaid" ]; then \
+		deno run --allow-read scripts/mermaid-validator.ts artifacts/mermaid/; \
+	else \
+		echo "⚠️  No artifacts/mermaid directory found. Run 'make generate-artifacts' first."; \
+	fi
+
+# Generate compliance report for Mermaid diagrams
+mermaid-compliance-report: setup-mermaid-validator
+	@echo "📊 Generating Mermaid compliance report..."
+	cd server && cargo test mermaid_spec_compliance --features mermaid-spec-tests -- --nocapture > ../mermaid-compliance.txt 2>&1 || true
+	@echo "Report saved to mermaid-compliance.txt"
+
+# Deterministic Artifact Generation Targets
+generate-artifacts:
+	@echo "🎯 Generating deterministic artifacts..."
+	cd server && cargo run --release -- generate-artifacts --output ../artifacts/ --deterministic
+
+# Test deterministic generation (multiple runs should be identical)
+test-determinism: 
+	@echo "🔬 Testing artifact generation determinism..."
+	cd server && cargo test determinism_tests -- --nocapture
+
+# Verify artifact integrity using stored hashes
+verify-artifacts:
+	@echo "🔐 Verifying artifact integrity..."
+	cd server && cargo run --release -- verify-artifacts --path ../artifacts/
+
+# SATD (Self-Admitted Technical Debt) Analysis Targets  
+analyze-satd:
+	@echo "🔍 Analyzing Self-Admitted Technical Debt..."
+	cd server && cargo run --release -- analyze satd --format json --output ../satd-analysis.json
+
+# Analyze SATD with evolution tracking
+analyze-satd-evolution:
+	@echo "📈 Analyzing SATD evolution over time..."
+	cd server && cargo run --release -- analyze satd --evolution --days 90 --format json
+
+# Export critical SATD items in SARIF format
+export-critical-satd:
+	@echo "⚠️  Exporting critical technical debt items..."
+	cd server && cargo run --release -- analyze satd --severity critical --format sarif --output ../critical-debt.sarif
+
+# Generate comprehensive SATD metrics
+satd-metrics:
+	@echo "📊 Generating SATD metrics..."
+	cd server && cargo run --release -- analyze satd --metrics --format json --output ../satd-metrics.json
+
+# Clean up validation artifacts
+clean-mermaid-validator:
+	@echo "🧹 Cleaning Mermaid validator artifacts..."
+	@rm -f mermaid-compliance.txt
+
+# Comprehensive validation of all specifications
+validate-all-specs: test-mermaid-spec test-determinism analyze-satd
+	@echo "✅ All specification implementations validated!"
+	@echo "  ✓ Mermaid specification compliance"
+	@echo "  ✓ Deterministic artifact generation" 
+	@echo "  ✓ SATD detection and classification"
+
+# Performance testing for all specifications
+benchmark-specs:
+	@echo "⚡ Running specification performance benchmarks..."
+	cd server && cargo test --release test_validation_performance --ignored -- --nocapture
+	cd server && cargo test --release test_artifact_generation_determinism --ignored -- --nocapture
+
+.PHONY: setup-mermaid-validator test-mermaid-spec validate-mermaid-artifacts mermaid-compliance-report generate-artifacts test-determinism verify-artifacts analyze-satd analyze-satd-evolution export-critical-satd satd-metrics clean-mermaid-validator validate-all-specs benchmark-specs

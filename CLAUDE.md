@@ -10,6 +10,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **MANDATORY TRIPLE-INTERFACE TESTING**: This project MUST test ALL THREE interfaces (CLI, MCP, HTTP) continuously throughout development. Every coding session MUST demonstrate comprehensive interface coverage to ensure protocol consistency and identify interface-specific bugs.
 
+## Project Architecture
+
+**This is a Rust Workspace Project** with the following structure:
+- **Root workspace**: `Cargo.toml` (workspace configuration)
+- **Server project**: `server/Cargo.toml` (main binary crate)
+- **Future projects**: `client/`, `shared/` (when implemented)
+
+The workspace design ensures consistent dependency management and enables workspace-wide optimizations for release builds.
+
 ## Project Overview
 
 MCP Agent Toolkit is a production-grade unified protocol server that provides:
@@ -45,8 +54,11 @@ pub trait ProtocolAdapter: Send + Sync {
 ### Session Start Ritual (ALL INTERFACES REQUIRED)
 
 ```bash
-# 1. Build the binary with interface validation
-make server-build-binary
+# 1. Build the binary with workspace optimization
+make release  # Preferred workspace-wide optimized build
+# OR
+make server-build-binary  # Individual project build
+
 export BINARY_PATH="./target/release/paiml-mcp-agent-toolkit"
 
 # 2. Start HTTP server in background
@@ -268,7 +280,65 @@ fn test_error_consistency() {
 | MCP | <5ms | <20ms | 1000 req/s | <30MB |
 | HTTP | <2ms | <10ms | 5000 req/s | <50MB |
 
+## Deno/TypeScript Test Coverage 
+
+**MANDATORY: All production Deno scripts in `scripts/` MUST have comprehensive test coverage.**
+
+For the Mermaid validator specifically:
+- **Test File**: `scripts/mermaid-validator.test.ts`
+- **Coverage**: 34 test cases covering syntax validation, error handling, file I/O, and performance
+- **Test Results**: 76% pass rate (26/34 tests passing)
+- **Function Coverage**: All 14 functions tested with high call frequency (34-612 calls per function)
+
+### Running Deno Tests with Coverage
+
+```bash
+# Run tests with coverage analysis
+deno test --allow-read --allow-write scripts/mermaid-validator.test.ts --coverage=./coverage_profile
+
+# Generate coverage report
+deno coverage ./coverage_profile --lcov > coverage_report.lcov
+
+# View coverage summary
+head -50 coverage_report.lcov
+```
+
+### Key Test Categories Covered
+
+1. **Basic Validation** - Syntax validation, diagram type detection
+2. **Error Handling** - Invalid diagrams, malformed syntax, edge cases  
+3. **File I/O Operations** - Single file validation, batch directory validation
+4. **Complex Scenarios** - Edge labels, multiple arrow types, mixed syntax
+5. **Performance Testing** - Large diagram validation (target: <1 second)
+
 ## Development Workflow Commands
+
+### Workspace Build Commands
+
+**This is a Rust workspace project.** Use these commands for building:
+
+```bash
+# Workspace-wide optimized release build (RECOMMENDED)
+make release
+
+# Build outputs:
+# - Binary location: ./target/release/paiml-mcp-agent-toolkit
+# - Workspace optimizations: LTO, codegen-units=1, opt-level=3
+# - Binary size display and optimization tips
+
+# Individual project builds (when needed)
+make server-build-binary  # Server project only
+make build               # All workspace projects
+
+# Development builds
+make server-build        # Debug build (faster compilation)
+```
+
+**Key workspace benefits:**
+- Consistent dependency versions across all crates
+- Workspace-wide optimizations (LTO, strip symbols)
+- Shared build cache for faster incremental builds
+- Future extensibility for client/, shared/ crates
 
 ### Quick Interface Tests
 ```bash

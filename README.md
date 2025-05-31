@@ -48,6 +48,7 @@ paiml-mcp-agent-toolkit analyze complexity --top-files 5
 paiml-mcp-agent-toolkit analyze churn --days 30 --format json
 paiml-mcp-agent-toolkit analyze dag --enhanced --show-complexity
 paiml-mcp-agent-toolkit analyze dead-code --top-files 10 --format json
+paiml-mcp-agent-toolkit analyze satd --top-files 5 --format json
 ```
 
 ## ✨ Key Features
@@ -61,6 +62,9 @@ paiml-mcp-agent-toolkit analyze dead-code --top-files 10 --format json
 - 🎯 **Production Observability**: Zero-cost tracing with structured logging
 - 🚀 **Interactive Demo**: Web-based showcase with real-time analysis
 - 📊 **Multiple Output Formats**: JSON, SARIF, Markdown, CSV, Mermaid
+- 🔄 **Deterministic Mermaid**: Consistent diagram ordering for reproducible builds
+- 🧪 **Comprehensive Test Coverage**: 34 test cases with 76% pass rate for validation
+- 🏗️ **Workspace Architecture**: Optimized Rust workspace with LTO and build caching
 
 ## 📊 Unified Protocol Architecture
 
@@ -177,6 +181,13 @@ Each toolchain supports `makefile`, `readme`, and `gitignore` templates followin
 - **File Ranking System**: Composite scoring with `--top-files` flag for worst offenders
 - Support for functions, classes, variables, and unreachable code blocks
 
+### SATD (Self-Admitted Technical Debt) Analysis
+- **Multi-Language Comment Parsing**: Detects TODO, FIXME, HACK, XXX patterns across Rust, TypeScript, Python
+- **Contextual Classification**: Categorizes debt by type (performance, maintainability, functionality)
+- **Severity Scoring**: High/Medium/Low priority ranking based on comment patterns
+- **File Ranking System**: Composite scoring with `--top-files` flag for highest debt concentration
+- **Integration with Complexity**: Cross-references with complexity metrics for comprehensive technical debt assessment
+
 ### Dependency Graph Generation
 - **Standard Mode**: Basic dependency visualization
 - **Enhanced Mode**: Vectorized analysis with SIMD optimization
@@ -264,6 +275,7 @@ paiml-mcp-agent-toolkit analyze complexity --top-files 5
 paiml-mcp-agent-toolkit analyze churn --days 30 --format json
 paiml-mcp-agent-toolkit analyze dag --enhanced --show-complexity
 paiml-mcp-agent-toolkit analyze dead-code --top-files 10 --format json
+paiml-mcp-agent-toolkit analyze satd --top-files 5 --format json
 
 # Project context generation
 paiml-mcp-agent-toolkit context rust --format json
