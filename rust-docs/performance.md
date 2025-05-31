@@ -250,7 +250,7 @@ Performance metrics:
 
 ```
 $ ls -lh target/release/paiml-mcp-agent-toolkit
--rwxr-xr-x 1 user user 14.9M Jan 1 00:00 paiml-mcp-agent-toolkit
+-rwxr-xr-x 1 user user 15.0M Jan 1 00:00 paiml-mcp-agent-toolkit
 ```
 
 Size breakdown:
@@ -298,4 +298,4 @@ panic = "abort"
 
 ---
 
-*Last Updated: 5/30/2025*
+*Last Updated: 5/31/2025*

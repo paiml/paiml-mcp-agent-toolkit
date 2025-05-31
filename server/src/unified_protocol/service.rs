@@ -69,7 +69,7 @@ impl UnifiedService {
             // Analysis API endpoints
             .route(
                 "/api/v1/analyze/complexity",
-                post(handlers::analyze_complexity),
+                post(handlers::analyze_complexity).get(handlers::analyze_complexity_get),
             )
             .route("/api/v1/analyze/churn", post(handlers::analyze_churn))
             .route("/api/v1/analyze/dag", post(handlers::analyze_dag))
@@ -420,11 +420,30 @@ pub mod handlers {
         Ok(Json(result))
     }
 
-    /// Analyze code complexity
+    /// Analyze code complexity (POST)
     pub async fn analyze_complexity(
         Extension(state): Extension<Arc<AppState>>,
         Json(params): Json<ComplexityParams>,
     ) -> Result<Json<ComplexityAnalysis>, AppError> {
+        let analysis = state.analysis_service.analyze_complexity(&params).await?;
+        Ok(Json(analysis))
+    }
+
+    /// Analyze code complexity (GET with query parameters)
+    pub async fn analyze_complexity_get(
+        Extension(state): Extension<Arc<AppState>>,
+        Query(query): Query<ComplexityQueryParams>,
+    ) -> Result<Json<ComplexityAnalysis>, AppError> {
+        // Convert query parameters to ComplexityParams
+        let params = ComplexityParams {
+            project_path: query.project_path.unwrap_or_else(|| ".".to_string()),
+            toolchain: query.toolchain.unwrap_or_else(|| "rust".to_string()),
+            format: query.format.unwrap_or_else(|| "json".to_string()),
+            max_cyclomatic: query.max_cyclomatic,
+            max_cognitive: query.max_cognitive,
+            top_files: query.top_files,
+        };
+        
         let analysis = state.analysis_service.analyze_complexity(&params).await?;
         Ok(Json(analysis))
     }
@@ -578,6 +597,24 @@ pub struct ComplexityParams {
     pub max_cyclomatic: Option<u32>,
     #[serde(default)]
     pub max_cognitive: Option<u32>,
+    #[serde(default)]
+    pub top_files: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ComplexityQueryParams {
+    #[serde(default)]
+    pub project_path: Option<String>,
+    #[serde(default)]
+    pub toolchain: Option<String>,
+    #[serde(default)]
+    pub format: Option<String>,
+    #[serde(default)]
+    pub max_cyclomatic: Option<u32>,
+    #[serde(default)]
+    pub max_cognitive: Option<u32>,
+    #[serde(default)]
+    pub top_files: Option<usize>,
 }
 
 #[derive(Debug, Serialize)]
