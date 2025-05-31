@@ -31,6 +31,9 @@ mod tests {
                     AnalyzeCommands::Complexity { .. } => {
                         panic!("Expected Churn command, got Complexity");
                     }
+                    AnalyzeCommands::DeadCode { .. } => {
+                        panic!("Expected Churn command, got DeadCode");
+                    }
                 }
             }
             _ => panic!("Expected Analyze command"),
@@ -72,6 +75,9 @@ mod tests {
                 }
                 AnalyzeCommands::Complexity { .. } => {
                     panic!("Expected Churn command, got Complexity");
+                }
+                AnalyzeCommands::DeadCode { .. } => {
+                    panic!("Expected Churn command, got DeadCode");
                 }
             },
             _ => panic!("Expected Analyze command"),

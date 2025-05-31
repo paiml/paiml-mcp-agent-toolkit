@@ -47,6 +47,7 @@ paiml-mcp-agent-toolkit scaffold rust --templates makefile,readme,gitignore
 paiml-mcp-agent-toolkit analyze complexity --top-files 5
 paiml-mcp-agent-toolkit analyze churn --days 30 --format json
 paiml-mcp-agent-toolkit analyze dag --enhanced --show-complexity
+paiml-mcp-agent-toolkit analyze dead-code --top-files 10 --format json
 ```
 
 ## ✨ Key Features
@@ -167,11 +168,19 @@ Each toolchain supports `makefile`, `readme`, and `gitignore` templates followin
 - Configurable time periods
 - Multiple output formats (JSON, Markdown, CSV)
 
+### Dead Code Analysis
+- **Cross-Reference Tracking**: Multi-level reachability analysis
+- **Entry Point Detection**: Automatic detection of main functions, public APIs, exported items
+- **Dynamic Dispatch Resolution**: Handles virtual method calls and trait implementations
+- **Hierarchical Bitset**: SIMD-optimized reachability tracking with RoaringBitmap
+- **Confidence Scoring**: High/Medium/Low confidence levels for detected dead code
+- **File Ranking System**: Composite scoring with `--top-files` flag for worst offenders
+- Support for functions, classes, variables, and unreachable code blocks
+
 ### Dependency Graph Generation
 - **Standard Mode**: Basic dependency visualization
 - **Enhanced Mode**: Vectorized analysis with SIMD optimization
 - **Clone Detection**: Type-1/2/3/4 duplicate detection
-- **Dead Code Analysis**: Multi-level reachability tracking
 - Mermaid diagram output
 
 ### Enhanced Tracing
@@ -191,9 +200,8 @@ When used with Claude Code, the following tools are available:
 | `analyze_complexity` | Analyze code complexity metrics | `project_path`, `toolchain`, `format` |
 | `analyze_code_churn` | Analyze git history for hotspots | `project_path`, `period_days`, `format` |
 | `analyze_dag` | Generate dependency graphs | `project_path`, `dag_type`, `enhanced` |
+| `analyze_dead_code` | Analyze dead and unreachable code | `project_path`, `format`, `top_files`, `include_tests` |
 | `generate_context` | Generate project context with AST | `toolchain`, `project_path`, `format` |
-| `analyze_system_architecture` | High-level architecture analysis | `project_path` |
-| `analyze_defect_probability` | Predict defect-prone areas | `project_path` |
 
 <!-- DOGFOODING_METRICS_START -->
 ### Current Project Metrics
@@ -247,6 +255,7 @@ paiml-mcp-agent-toolkit analyze complexity --format sarif
 paiml-mcp-agent-toolkit analyze complexity --top-files 5
 paiml-mcp-agent-toolkit analyze churn --days 30 --format json
 paiml-mcp-agent-toolkit analyze dag --enhanced --show-complexity
+paiml-mcp-agent-toolkit analyze dead-code --top-files 10 --format json
 
 # Project context generation
 paiml-mcp-agent-toolkit context rust --format json
