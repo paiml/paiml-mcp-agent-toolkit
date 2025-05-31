@@ -1,4 +1,4 @@
-# Release Notes for v0.10.0
+when# Release Notes for v0.12.0
 
 ## 🎯 Major Release: Unified Protocol Architecture
 
@@ -119,6 +119,10 @@ claude mcp add paiml-toolkit ~/.local/bin/paiml-mcp-agent-toolkit
 *This release represents a major step forward in providing a unified, production-ready toolkit for AI-assisted development workflows.*
 
 ## Previous Releases
+
+### v0.10.x Series
+- **v0.10.1**: Release process improvements and bug fixes
+- **v0.10.0**: Initial unified protocol groundwork and enhanced demo validation
 
 ### v0.9.x Series
 - Enhanced demo functionality and validation
