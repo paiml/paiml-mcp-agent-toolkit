@@ -9,7 +9,7 @@
       "cli": 76,
       "utils": 91
     },
-    "timestamp": "2025-05-31T02:55:46.626Z"
+    "timestamp": "2025-05-31T04:20:33.002Z"
   },
   "complexity": {
     "average": {
@@ -17,14 +17,14 @@
       "cognitive": 2.8,
       "nesting": 1.4
     },
-    "files": 144,
-    "timestamp": "2025-05-31T02:55:49.948Z"
+    "files": 146,
+    "timestamp": "2025-05-31T04:20:36.210Z"
   },
   "binarySize": {
-    "total": 15664072,
-    "stripped": 15664072,
+    "total": 15699696,
+    "stripped": 15699696,
     "sections": {
-      ".text": 5764378
+      ".text": 5777488
     }
   },
   "benchmarks": {
@@ -42,6 +42,6 @@
         "p99": 0.8
       }
     },
-    "timestamp": "2025-05-31T02:55:49.948Z"
+    "timestamp": "2025-05-31T04:20:36.210Z"
   }
 }

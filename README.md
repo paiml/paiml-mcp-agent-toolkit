@@ -43,10 +43,10 @@ paiml-mcp-agent-toolkit demo
 # Generate templates
 paiml-mcp-agent-toolkit scaffold rust --templates makefile,readme,gitignore
 
-# Analyze your code
-paiml-mcp-agent-toolkit analyze complexity
-paiml-mcp-agent-toolkit analyze churn --days 30
-paiml-mcp-agent-toolkit analyze dag --show-complexity
+# Analyze your code  
+paiml-mcp-agent-toolkit analyze complexity --top-files 5
+paiml-mcp-agent-toolkit analyze churn --days 30 --format json
+paiml-mcp-agent-toolkit analyze dag --enhanced --show-complexity
 ```
 
 ## ✨ Key Features
@@ -194,21 +194,28 @@ When used with Claude Code, the following tools are available:
 <!-- DOGFOODING_METRICS_START -->
 ### Current Project Metrics
 
-*Auto-generated metrics using our own toolkit*
+*Auto-generated metrics using our own `--top-files` ranking system*
 
-**Dependency Graph:**
-```mermaid
-graph TD
+**📊 Complexity Analysis:**
+- **Files analyzed**: 146 
+- **Total functions**: 15,239
+- **Estimated Technical Debt**: 158.0 hours
+- **Average Cyclomatic Complexity**: 0.2
+- **Issues Found**: 12 errors, 82 warnings
 
+**🏆 Top 5 Most Complex Files (by our own ranking):**
+1. `./server/src/services/context.rs` (Score: 30.9) - 32 max cyclomatic complexity
+2. `./server/tests/documentation_examples.rs` (Score: 25.3) - 23 max cyclomatic complexity  
+3. `./server/src/services/mermaid_generator.rs` (Score: 24.6) - 25 max cyclomatic complexity
+4. `./server/src/cli/mod.rs` (Score: 24.1) - 24 max cyclomatic complexity
+5. `./server/src/services/embedded_templates.rs` (Score: 23.3) - 22 max cyclomatic complexity
 
+**🔥 Recent Code Churn (7 days):**
+- **Files changed**: 360
+- **Total commits**: 1,090
+- **Hotspot**: `./server/Cargo.toml` (high development activity)
 
-%% Graph Statistics:
-%% Nodes: 0
-%% Edges: 0
-
-```
-
-**Latest Analysis:** *Generated on 2025-05-30*
+**Latest Analysis:** *Generated on 2025-05-31 using paiml-mcp-agent-toolkit analyze complexity --top-files 5*
 <!-- DOGFOODING_METRICS_END -->
 
 ## 📚 Documentation

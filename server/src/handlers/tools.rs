@@ -609,6 +609,7 @@ struct AnalyzeComplexityArgs {
     max_cyclomatic: Option<u16>,
     max_cognitive: Option<u16>,
     include: Option<Vec<String>>,
+    top_files: Option<usize>,
 }
 
 async fn handle_analyze_complexity(
@@ -640,9 +641,22 @@ async fn handle_analyze_complexity(
 
     // Import complexity analysis functionality
     use crate::services::complexity::*;
+    use crate::services::ranking::{rank_files_by_complexity, ComplexityRanker};
 
-    let report = aggregate_results(file_metrics);
-    let content_text = format_complexity_output(&report, &args);
+    let report = aggregate_results(file_metrics.clone());
+    
+    // Handle top_files ranking if requested
+    let content_text = if let Some(top_files_count) = args.top_files {
+        if top_files_count > 0 {
+            let ranker = ComplexityRanker::default();
+            let rankings = rank_files_by_complexity(&file_metrics, top_files_count, &ranker);
+            format_complexity_rankings(&rankings, &args)
+        } else {
+            format_complexity_output(&report, &args)
+        }
+    } else {
+        format_complexity_output(&report, &args)
+    };
 
     let result = json!({
         "content": [{
@@ -653,6 +667,7 @@ async fn handle_analyze_complexity(
         "toolchain": detected_toolchain,
         "files_analyzed": file_count,
         "format": args.format.as_deref().unwrap_or("summary"),
+        "top_files": args.top_files,
     });
 
     McpResponse::success(request_id, result)
@@ -821,6 +836,64 @@ fn format_complexity_output(
             Err(_) => "Error generating SARIF format".to_string(),
         },
         _ => format_complexity_summary(report), // default to summary
+    }
+}
+
+fn format_complexity_rankings(
+    rankings: &[(String, crate::services::ranking::CompositeComplexityScore)],
+    args: &AnalyzeComplexityArgs,
+) -> String {
+    use crate::services::ranking::{ComplexityRanker, FileRanker};
+    
+    let format = args.format.as_deref().unwrap_or("summary");
+    match format {
+        "json" => {
+            let ranker = ComplexityRanker::default();
+            let rankings_json = serde_json::json!({
+                "analysis_type": ranker.ranking_type(),
+                "timestamp": chrono::Utc::now().to_rfc3339(),
+                "top_files": {
+                    "requested": rankings.len(),
+                    "returned": rankings.len()
+                },
+                "rankings": rankings.iter().enumerate().map(|(i, (file, score))| {
+                    serde_json::json!({
+                        "rank": i + 1,
+                        "file": file,
+                        "metrics": {
+                            "functions": score.function_count,
+                            "max_cyclomatic": score.cyclomatic_max,
+                            "avg_cognitive": score.cognitive_avg,
+                            "halstead_effort": score.halstead_effort,
+                            "total_score": score.total_score
+                        }
+                    })
+                }).collect::<Vec<_>>()
+            });
+            serde_json::to_string_pretty(&rankings_json).unwrap_or_default()
+        }
+        _ => {
+            // Table format (default)
+            let mut output = String::new();
+            output.push_str(&format!("## Top {} Complexity Files\n\n", rankings.len()));
+            output.push_str("| Rank | File                               | Functions | Max Cyclomatic | Avg Cognitive | Halstead | Score |\n");
+            output.push_str("|------|------------------------------------|-----------|--------------  |---------------|----------|-------|\n");
+            
+            for (i, (file, score)) in rankings.iter().enumerate() {
+                output.push_str(&format!(
+                    "| {:>4} | {:<50} | {:>9} | {:>14} | {:>13.1} | {:>11.1} | {:>11.1} |\n",
+                    i + 1,
+                    file,
+                    score.function_count,
+                    score.cyclomatic_max,
+                    score.cognitive_avg,
+                    score.halstead_effort,
+                    score.total_score
+                ));
+            }
+            output.push('\n');
+            output
+        }
     }
 }
 
