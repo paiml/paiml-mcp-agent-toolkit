@@ -86,9 +86,9 @@ Both installers support the following Rust target triples:
 
 ## Available Scripts
 
-### mcp-install.ts / mcp-reinstall.ts / mcp-install-deterministic.ts
+### mcp-install.ts
 
-Installation and management scripts for the MCP server that provide smart
+Installation and management script for the MCP server that provides smart
 rebuild detection and idempotent installation.
 
 **Usage:**
@@ -140,19 +140,6 @@ GITHUB_TOKEN=your_token make ci-status
 - Lists specific steps that failed
 - Offers common fixes for typical failures
 - Exits with non-zero code if any workflows are failing
-
-### docker-setup.ts
-
-Docker installation and permission management script (Docker is optional for
-this project).
-
-**Usage:**
-
-```bash
-./scripts/docker-setup.ts --status   # Check Docker installation status
-./scripts/docker-setup.ts --install  # Install Docker if not present
-./scripts/docker-setup.ts --repair   # Fix Docker permission issues
-```
 
 ## Installation Methods
 

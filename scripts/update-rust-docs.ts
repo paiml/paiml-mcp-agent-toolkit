@@ -128,7 +128,10 @@ class RustDocsUpdater {
           };
         }
       } catch (e) {
-        console.log("⚠️  Could not run coverage tool:", e.message);
+        console.log(
+          "⚠️  Could not run coverage tool:",
+          e instanceof Error ? e.message : String(e),
+        );
       }
 
       // Default fallback

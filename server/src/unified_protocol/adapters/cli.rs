@@ -1,0 +1,668 @@
+use std::collections::HashMap;
+
+use async_trait::async_trait;
+use axum::body::Body;
+use axum::http::Method;
+use serde_json::{json, Value};
+use tracing::{debug, instrument};
+
+use crate::cli::{
+    AnalyzeCommands, Commands, ComplexityOutputFormat, ContextFormat, DagType, OutputFormat,
+};
+use crate::models::churn::ChurnOutputFormat;
+use crate::unified_protocol::{
+    CliContext, Protocol, ProtocolAdapter, ProtocolError, UnifiedRequest, UnifiedResponse,
+};
+
+/// CLI adapter that converts command line arguments to unified requests
+pub struct CliAdapter;
+
+impl CliAdapter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for CliAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait]
+impl ProtocolAdapter for CliAdapter {
+    type Input = CliInput;
+    type Output = CliOutput;
+
+    fn protocol(&self) -> Protocol {
+        Protocol::Cli
+    }
+
+    #[instrument(skip_all)]
+    async fn decode(&self, input: Self::Input) -> Result<UnifiedRequest, ProtocolError> {
+        debug!("Decoding CLI input: {:?}", input.command_name);
+
+        let (method, path, body, output_format): (Method, String, Value, Option<OutputFormat>) =
+            match &input.command {
+                Commands::Generate {
+                    category,
+                    template,
+                    params,
+                    output,
+                    create_dirs,
+                } => {
+                    let params_map: HashMap<String, Value> = params.iter().cloned().collect();
+                    let body = json!({
+                        "template_uri": format!("template://{}/{}", category, template),
+                        "parameters": params_map,
+                        "output_path": output,
+                        "create_dirs": create_dirs
+                    });
+                    (Method::POST, "/api/v1/generate".to_string(), body, None)
+                }
+
+                Commands::Scaffold {
+                    toolchain,
+                    templates,
+                    params,
+                    parallel,
+                } => {
+                    let params_map: HashMap<String, Value> = params.iter().cloned().collect();
+                    let body = json!({
+                        "toolchain": toolchain,
+                        "templates": templates,
+                        "parameters": params_map,
+                        "parallel": parallel
+                    });
+                    (Method::POST, "/api/v1/scaffold".to_string(), body, None)
+                }
+
+                Commands::List {
+                    toolchain,
+                    category,
+                    format,
+                } => {
+                    let mut query_params = Vec::new();
+                    if let Some(tc) = toolchain {
+                        query_params.push(format!("toolchain={}", tc));
+                    }
+                    if let Some(cat) = category {
+                        query_params.push(format!("category={}", cat));
+                    }
+                    if !query_params.is_empty() {
+                        query_params.push(format!("format={:?}", format).to_lowercase());
+                    }
+
+                    let query_string = if query_params.is_empty() {
+                        String::new()
+                    } else {
+                        format!("?{}", query_params.join("&"))
+                    };
+
+                    (
+                        Method::GET,
+                        format!("/api/v1/templates{}", query_string),
+                        json!({}),
+                        Some(format.clone()),
+                    )
+                }
+
+                Commands::Search {
+                    query,
+                    toolchain,
+                    limit,
+                } => {
+                    let body = json!({
+                        "query": query,
+                        "toolchain": toolchain,
+                        "limit": limit
+                    });
+                    (Method::POST, "/api/v1/search".to_string(), body, None)
+                }
+
+                Commands::Validate { uri, params } => {
+                    let params_map: HashMap<String, Value> = params.iter().cloned().collect();
+                    let body = json!({
+                        "template_uri": uri,
+                        "parameters": params_map
+                    });
+                    (Method::POST, "/api/v1/validate".to_string(), body, None)
+                }
+
+                Commands::Context {
+                    toolchain,
+                    project_path,
+                    output,
+                    format,
+                } => {
+                    let body = json!({
+                        "toolchain": toolchain,
+                        "project_path": project_path.to_string_lossy(),
+                        "output_path": output,
+                        "format": format_to_string(format)
+                    });
+                    (
+                        Method::POST,
+                        "/api/v1/analyze/context".to_string(),
+                        body,
+                        Some(OutputFormat::Json),
+                    )
+                }
+
+                Commands::Analyze(analyze_cmd) => match analyze_cmd {
+                    AnalyzeCommands::Churn {
+                        project_path,
+                        days,
+                        format,
+                        output,
+                    } => {
+                        let body = json!({
+                            "project_path": project_path.to_string_lossy(),
+                            "period_days": days,
+                            "format": churn_format_to_string(format),
+                            "output_path": output
+                        });
+                        (
+                            Method::POST,
+                            "/api/v1/analyze/churn".to_string(),
+                            body,
+                            Some(OutputFormat::Json),
+                        )
+                    }
+
+                    AnalyzeCommands::Complexity {
+                        project_path,
+                        toolchain,
+                        format,
+                        output,
+                        max_cyclomatic,
+                        max_cognitive,
+                        include,
+                        watch,
+                    } => {
+                        let body = json!({
+                            "project_path": project_path.to_string_lossy(),
+                            "toolchain": toolchain,
+                            "format": complexity_format_to_string(format),
+                            "output_path": output,
+                            "max_cyclomatic": max_cyclomatic,
+                            "max_cognitive": max_cognitive,
+                            "include_patterns": include,
+                            "watch": watch
+                        });
+                        (
+                            Method::POST,
+                            "/api/v1/analyze/complexity".to_string(),
+                            body,
+                            Some(OutputFormat::Json),
+                        )
+                    }
+
+                    AnalyzeCommands::Dag {
+                        dag_type,
+                        project_path,
+                        output,
+                        max_depth,
+                        filter_external,
+                        show_complexity,
+                        include_duplicates,
+                        include_dead_code,
+                        enhanced,
+                    } => {
+                        let body = json!({
+                            "project_path": project_path.to_string_lossy(),
+                            "dag_type": dag_type_to_string(dag_type),
+                            "output_path": output,
+                            "max_depth": max_depth,
+                            "filter_external": filter_external,
+                            "show_complexity": show_complexity,
+                            "include_duplicates": include_duplicates,
+                            "include_dead_code": include_dead_code,
+                            "enhanced": enhanced
+                        });
+                        (
+                            Method::POST,
+                            "/api/v1/analyze/dag".to_string(),
+                            body,
+                            Some(OutputFormat::Json),
+                        )
+                    }
+                },
+
+                Commands::Demo {
+                    path,
+                    url,
+                    format,
+                    no_browser,
+                    port,
+                    cli,
+                    target_nodes,
+                    centrality_threshold,
+                    merge_threshold,
+                } => {
+                    let body = json!({
+                        "path": path,
+                        "url": url,
+                        "format": format!("{:?}", format).to_lowercase(),
+                        "no_browser": no_browser,
+                        "port": port,
+                        "cli_mode": cli,
+                        "target_nodes": target_nodes,
+                        "centrality_threshold": centrality_threshold,
+                        "merge_threshold": merge_threshold
+                    });
+                    (Method::POST, "/api/v1/demo".to_string(), body, None)
+                }
+            };
+
+        let cli_context = CliContext {
+            command: input.command_name.clone(),
+            args: input.raw_args.clone(),
+        };
+
+        let mut unified_request = UnifiedRequest::new(method, path.to_string())
+            .with_body(Body::from(serde_json::to_vec(&body)?))
+            .with_header("content-type", "application/json")
+            .with_extension("protocol", Protocol::Cli)
+            .with_extension("cli_context", cli_context);
+
+        // Add output format if specified
+        if let Some(format) = output_format {
+            let format_string = match format {
+                OutputFormat::Json => "json",
+                OutputFormat::Table => "table",
+                OutputFormat::Yaml => "yaml",
+            };
+            unified_request = unified_request.with_extension("output_format", format_string);
+        }
+
+        debug!(
+            command = %input.command_name,
+            path = %path,
+            "Decoded CLI request"
+        );
+
+        Ok(unified_request)
+    }
+
+    #[instrument(skip_all)]
+    async fn encode(&self, response: UnifiedResponse) -> Result<Self::Output, ProtocolError> {
+        debug!(status = %response.status, "Encoding CLI response");
+
+        let body_bytes = axum::body::to_bytes(response.body, usize::MAX)
+            .await
+            .map_err(|e| {
+                ProtocolError::EncodeError(format!("Failed to read response body: {}", e))
+            })?;
+
+        // For CLI, we typically want to output to stdout/stderr
+        if response.status.is_success() {
+            let content = String::from_utf8(body_bytes.to_vec()).map_err(|e| {
+                ProtocolError::EncodeError(format!("Invalid UTF-8 in response: {}", e))
+            })?;
+
+            Ok(CliOutput::Success {
+                content,
+                exit_code: 0,
+            })
+        } else {
+            // Try to parse error information
+            let error_data: Result<Value, _> = serde_json::from_slice(&body_bytes);
+            let error_message = match error_data {
+                Ok(json) => json
+                    .get("error")
+                    .and_then(|e| e.as_str())
+                    .unwrap_or("Unknown error")
+                    .to_string(),
+                Err(_) => String::from_utf8_lossy(&body_bytes).to_string(),
+            };
+
+            let exit_code = match response.status.as_u16() {
+                400..=499 => 1, // Client errors
+                500..=599 => 2, // Server errors
+                _ => 1,
+            };
+
+            Ok(CliOutput::Error {
+                message: error_message,
+                exit_code,
+            })
+        }
+    }
+}
+
+/// Input for CLI adapter
+// Note: Debug omitted because Commands doesn't implement Debug in non-test builds
+pub struct CliInput {
+    pub command: Commands,
+    pub command_name: String,
+    pub raw_args: Vec<String>,
+}
+
+impl CliInput {
+    pub fn new(command: Commands, command_name: String, raw_args: Vec<String>) -> Self {
+        Self {
+            command,
+            command_name,
+            raw_args,
+        }
+    }
+
+    /// Create from the parsed CLI arguments
+    pub fn from_commands(command: Commands) -> Self {
+        let command_name = match &command {
+            Commands::Generate { .. } => "generate",
+            Commands::Scaffold { .. } => "scaffold",
+            Commands::List { .. } => "list",
+            Commands::Search { .. } => "search",
+            Commands::Validate { .. } => "validate",
+            Commands::Context { .. } => "context",
+            Commands::Analyze(analyze_cmd) => match analyze_cmd {
+                AnalyzeCommands::Churn { .. } => "analyze-churn",
+                AnalyzeCommands::Complexity { .. } => "analyze-complexity",
+                AnalyzeCommands::Dag { .. } => "analyze-dag",
+            },
+            Commands::Demo { .. } => "demo",
+        }
+        .to_string();
+
+        Self {
+            command,
+            command_name,
+            raw_args: std::env::args().collect(),
+        }
+    }
+}
+
+/// Output for CLI adapter
+#[derive(Debug)]
+pub enum CliOutput {
+    Success { content: String, exit_code: i32 },
+    Error { message: String, exit_code: i32 },
+}
+
+impl CliOutput {
+    /// Write the output to stdout/stderr and exit with appropriate code
+    pub fn write_and_exit(self) -> ! {
+        match self {
+            CliOutput::Success { content, exit_code } => {
+                print!("{}", content);
+                std::process::exit(exit_code);
+            }
+            CliOutput::Error { message, exit_code } => {
+                eprintln!("Error: {}", message);
+                std::process::exit(exit_code);
+            }
+        }
+    }
+
+    /// Get the exit code without exiting
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            CliOutput::Success { exit_code, .. } => *exit_code,
+            CliOutput::Error { exit_code, .. } => *exit_code,
+        }
+    }
+
+    /// Get the content/message
+    pub fn content(&self) -> &str {
+        match self {
+            CliOutput::Success { content, .. } => content,
+            CliOutput::Error { message, .. } => message,
+        }
+    }
+}
+
+// Helper functions for format conversion
+
+fn format_to_string(format: &ContextFormat) -> String {
+    match format {
+        ContextFormat::Markdown => "markdown".to_string(),
+        ContextFormat::Json => "json".to_string(),
+    }
+}
+
+fn churn_format_to_string(format: &ChurnOutputFormat) -> String {
+    match format {
+        ChurnOutputFormat::Summary => "summary".to_string(),
+        ChurnOutputFormat::Markdown => "markdown".to_string(),
+        ChurnOutputFormat::Json => "json".to_string(),
+        ChurnOutputFormat::Csv => "csv".to_string(),
+    }
+}
+
+fn complexity_format_to_string(format: &ComplexityOutputFormat) -> String {
+    match format {
+        ComplexityOutputFormat::Summary => "summary".to_string(),
+        ComplexityOutputFormat::Full => "full".to_string(),
+        ComplexityOutputFormat::Json => "json".to_string(),
+        ComplexityOutputFormat::Sarif => "sarif".to_string(),
+    }
+}
+
+fn dag_type_to_string(dag_type: &DagType) -> String {
+    match dag_type {
+        DagType::CallGraph => "call-graph".to_string(),
+        DagType::ImportGraph => "import-graph".to_string(),
+        DagType::Inheritance => "inheritance".to_string(),
+        DagType::FullDependency => "full-dependency".to_string(),
+    }
+}
+
+/// CLI runner that integrates with the unified protocol system
+pub struct CliRunner {
+    adapter: CliAdapter,
+}
+
+impl CliRunner {
+    pub fn new() -> Self {
+        Self {
+            adapter: CliAdapter::new(),
+        }
+    }
+
+    /// Run a CLI command through the unified protocol system
+    pub async fn run_command<H>(
+        &self,
+        command: Commands,
+        handler: H,
+    ) -> Result<CliOutput, ProtocolError>
+    where
+        H: Fn(
+            UnifiedRequest,
+        ) -> std::pin::Pin<
+            Box<dyn std::future::Future<Output = Result<UnifiedResponse, ProtocolError>> + Send>,
+        >,
+    {
+        let input = CliInput::from_commands(command);
+        let unified_request = self.adapter.decode(input).await?;
+        let unified_response = handler(unified_request).await?;
+        self.adapter.encode(unified_response).await
+    }
+}
+
+impl Default for CliRunner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_cli_input_creation() {
+        let params = vec![
+            (
+                "project_name".to_string(),
+                Value::String("test".to_string()),
+            ),
+            ("version".to_string(), Value::String("1.0.0".to_string())),
+        ];
+
+        let command = Commands::Generate {
+            category: "makefile".to_string(),
+            template: "rust/cli".to_string(),
+            params,
+            output: Some(PathBuf::from("Makefile")),
+            create_dirs: true,
+        };
+
+        let input = CliInput::from_commands(command);
+        assert_eq!(input.command_name, "generate");
+    }
+
+    #[tokio::test]
+    async fn test_cli_adapter_decode_generate() {
+        let adapter = CliAdapter::new();
+        let params = vec![(
+            "project_name".to_string(),
+            Value::String("test".to_string()),
+        )];
+
+        let command = Commands::Generate {
+            category: "makefile".to_string(),
+            template: "rust/cli".to_string(),
+            params,
+            output: None,
+            create_dirs: false,
+        };
+
+        let input = CliInput::from_commands(command);
+        let unified_request = adapter.decode(input).await.unwrap();
+
+        assert_eq!(unified_request.method, Method::POST);
+        assert_eq!(unified_request.path, "/api/v1/generate");
+        assert_eq!(
+            unified_request.get_extension::<Protocol>("protocol"),
+            Some(Protocol::Cli)
+        );
+
+        let cli_context: CliContext = unified_request.get_extension("cli_context").unwrap();
+        assert_eq!(cli_context.command, "generate");
+    }
+
+    #[tokio::test]
+    async fn test_cli_adapter_decode_list() {
+        let adapter = CliAdapter::new();
+        let command = Commands::List {
+            toolchain: Some("rust".to_string()),
+            category: None,
+            format: OutputFormat::Json,
+        };
+
+        let input = CliInput::from_commands(command);
+        let unified_request = adapter.decode(input).await.unwrap();
+
+        assert_eq!(unified_request.method, Method::GET);
+        assert!(unified_request.path.starts_with("/api/v1/templates"));
+        assert!(unified_request.path.contains("toolchain=rust"));
+    }
+
+    #[tokio::test]
+    async fn test_cli_adapter_decode_analyze_complexity() {
+        let adapter = CliAdapter::new();
+        let command = Commands::Analyze(AnalyzeCommands::Complexity {
+            project_path: PathBuf::from("."),
+            toolchain: Some("rust".to_string()),
+            format: ComplexityOutputFormat::Json,
+            output: None,
+            max_cyclomatic: Some(10),
+            max_cognitive: Some(15),
+            include: vec!["**/*.rs".to_string()],
+            watch: false,
+        });
+
+        let input = CliInput::from_commands(command);
+        let unified_request = adapter.decode(input).await.unwrap();
+
+        assert_eq!(unified_request.method, Method::POST);
+        assert_eq!(unified_request.path, "/api/v1/analyze/complexity");
+
+        // Verify body contains expected fields
+        let body_bytes = axum::body::to_bytes(unified_request.body, usize::MAX)
+            .await
+            .unwrap();
+        let body_json: Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["toolchain"], "rust");
+        assert_eq!(body_json["max_cyclomatic"], 10);
+        assert_eq!(body_json["max_cognitive"], 15);
+    }
+
+    #[tokio::test]
+    async fn test_cli_adapter_encode_success() {
+        let adapter = CliAdapter::new();
+        let response = UnifiedResponse::ok()
+            .with_json(&json!({"message": "success"}))
+            .unwrap();
+
+        let output = adapter.encode(response).await.unwrap();
+        match output {
+            CliOutput::Success { content, exit_code } => {
+                assert_eq!(exit_code, 0);
+                assert!(content.contains("success"));
+            }
+            _ => panic!("Expected success output"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cli_adapter_encode_error() {
+        let adapter = CliAdapter::new();
+        let response = UnifiedResponse::new(axum::http::StatusCode::BAD_REQUEST)
+            .with_json(&json!({"error": "Invalid request"}))
+            .unwrap();
+
+        let output = adapter.encode(response).await.unwrap();
+        match output {
+            CliOutput::Error { message, exit_code } => {
+                assert_eq!(exit_code, 1);
+                assert!(message.contains("Invalid request"));
+            }
+            _ => panic!("Expected error output"),
+        }
+    }
+
+    #[test]
+    fn test_format_conversions() {
+        assert_eq!(format_to_string(&ContextFormat::Markdown), "markdown");
+        assert_eq!(format_to_string(&ContextFormat::Json), "json");
+
+        assert_eq!(
+            churn_format_to_string(&ChurnOutputFormat::Summary),
+            "summary"
+        );
+        assert_eq!(churn_format_to_string(&ChurnOutputFormat::Json), "json");
+
+        assert_eq!(
+            complexity_format_to_string(&ComplexityOutputFormat::Sarif),
+            "sarif"
+        );
+
+        assert_eq!(dag_type_to_string(&DagType::CallGraph), "call-graph");
+        assert_eq!(
+            dag_type_to_string(&DagType::FullDependency),
+            "full-dependency"
+        );
+    }
+
+    #[test]
+    fn test_cli_output_methods() {
+        let success = CliOutput::Success {
+            content: "test content".to_string(),
+            exit_code: 0,
+        };
+        assert_eq!(success.exit_code(), 0);
+        assert_eq!(success.content(), "test content");
+
+        let error = CliOutput::Error {
+            message: "test error".to_string(),
+            exit_code: 1,
+        };
+        assert_eq!(error.exit_code(), 1);
+        assert_eq!(error.content(), "test error");
+    }
+}

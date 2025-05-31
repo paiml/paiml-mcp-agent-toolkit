@@ -247,31 +247,31 @@ clean:
 		exit 1; \
 	fi
 
-# Format TypeScript scripts
+# Format TypeScript scripts (excluding archived scripts)
 format-scripts:
-	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
-		echo "📝 Formatting TypeScript scripts..."; \
-		deno fmt $(SCRIPTS_DIR) --quiet; \
+	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' 2>/dev/null | wc -l)" -gt 0 ]; then \
+		echo "📝 Formatting TypeScript scripts (excluding archive)..."; \
+		find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno fmt --quiet {} +; \
 	else \
 		echo "✓ No TypeScript scripts to format"; \
 	fi
 
-# Lint TypeScript scripts (includes type checking)
+# Lint TypeScript scripts (includes type checking, excluding archived scripts)
 lint-scripts:
-	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
-		echo "🔍 Linting TypeScript scripts..."; \
-		deno lint $(SCRIPTS_DIR) --quiet; \
-		echo "✅ Type checking TypeScript scripts..."; \
-		deno check $(SCRIPTS_DIR)/**/*.ts; \
+	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' 2>/dev/null | wc -l)" -gt 0 ]; then \
+		echo "🔍 Linting TypeScript scripts (excluding archive)..."; \
+		find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno lint --quiet {} +; \
+		echo "✅ Type checking TypeScript scripts (excluding archive)..."; \
+		find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno check {} +; \
 	else \
 		echo "✓ No TypeScript scripts to lint"; \
 	fi
 
-# Type check TypeScript scripts
+# Type check TypeScript scripts (excluding archived scripts)
 check-scripts:
-	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f 2>/dev/null | wc -l)" -gt 0 ]; then \
-		echo "✅ Type checking TypeScript scripts..."; \
-		deno check $(SCRIPTS_DIR)/**/*.ts --quiet || true; \
+	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' 2>/dev/null | wc -l)" -gt 0 ]; then \
+		echo "✅ Type checking TypeScript scripts (excluding archive)..."; \
+		find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno check {} + || true; \
 	else \
 		echo "✓ No TypeScript scripts to check"; \
 	fi
@@ -521,10 +521,17 @@ cargo-geiger:
 update-deps:
 	cargo update --manifest-path server/Cargo.toml
 
-# Update dependencies aggressively
+# Update dependencies aggressively beyond semver constraints
 update-deps-aggressive:
+	@echo "🔄 Updating dependencies aggressively (requires cargo-edit)..."
+	@if ! command -v cargo-upgrade &> /dev/null; then \
+		echo "Installing cargo-edit for cargo upgrade command..."; \
+		cargo install cargo-edit; \
+	fi
+	@echo "Step 1: Updating within semver-compatible ranges..."
 	cargo update --aggressive --manifest-path server/Cargo.toml
-	cargo upgrade --workspace --to-lockfile --manifest-path server/Cargo.toml
+	@echo "Step 2: Upgrading to latest incompatible versions (major bumps)..."
+	cd server && cargo upgrade --incompatible
 
 # Update only security dependencies
 update-deps-security:

@@ -117,105 +117,179 @@ async fn test_claude_code_rust_cli_workflow() {
 async fn test_claude_code_all_languages_scaffold() {
     let server = create_test_server();
 
-    let test_cases = vec![
+    let test_cases = create_scaffold_test_cases();
+
+    for (toolchain, project_name, description) in test_cases {
+        test_toolchain_scaffolding(&server, toolchain, project_name, description).await;
+    }
+}
+
+fn create_scaffold_test_cases() -> Vec<(&'static str, &'static str, &'static str)> {
+    vec![
         ("rust", "my-rust-project", "A Rust project"),
         ("deno", "my-deno-project", "A Deno TypeScript project"),
         ("python-uv", "my-python-project", "A Python UV project"),
-    ];
+    ]
+}
 
-    for (toolchain, project_name, description) in test_cases {
-        // Test scaffolding for each language
-        let request = create_tool_request(
-            "scaffold_project",
-            json!({
-                "toolchain": toolchain,
-                "templates": ["makefile", "readme", "gitignore"],
-                "parameters": {
-                    "project_name": project_name,
-                    "description": description,
-                    "author_name": "Test Author"
-                }
-            }),
-        );
+async fn test_toolchain_scaffolding(
+    server: &Arc<StatelessTemplateServer>,
+    toolchain: &str,
+    project_name: &str,
+    description: &str,
+) {
+    let request = create_scaffold_request(toolchain, project_name, description);
+    let response = handle_tool_call(server.clone(), request).await;
 
-        let response = handle_tool_call(server.clone(), request).await;
-        assert!(
-            response.result.is_some(),
-            "Failed for toolchain: {}",
-            toolchain
-        );
-        assert!(
-            response.error.is_none(),
-            "Error for toolchain: {}",
-            toolchain
-        );
+    validate_scaffold_response(&response, toolchain);
 
-        let result = response.result.unwrap();
-        let generated = result["generated"].as_array().unwrap();
-        assert_eq!(
-            generated.len(),
-            3,
-            "Wrong number of files for {}",
-            toolchain
-        );
+    let result = response.result.unwrap();
+    let generated = result["generated"].as_array().unwrap();
 
-        // Verify all three files were generated
-        let mut has_makefile = false;
-        let mut has_readme = false;
-        let mut has_gitignore = false;
+    assert_eq!(
+        generated.len(),
+        3,
+        "Wrong number of files for {}",
+        toolchain
+    );
+    verify_generated_files(generated, toolchain, project_name, description);
+}
 
-        for file in generated {
-            match file["template"].as_str().unwrap() {
-                "makefile" => {
-                    has_makefile = true;
-                    assert_eq!(
-                        file["filename"].as_str().unwrap(),
-                        &format!("{}/Makefile", project_name)
-                    );
-                    let content = file["content"].as_str().unwrap();
-                    assert!(content.contains(project_name));
-
-                    // Language-specific checks
-                    match toolchain {
-                        "rust" => assert!(content.contains("cargo")),
-                        "deno" => assert!(content.contains("deno")),
-                        "python-uv" => assert!(content.contains("uv")),
-                        _ => {}
-                    }
-                }
-                "readme" => {
-                    has_readme = true;
-                    assert_eq!(
-                        file["filename"].as_str().unwrap(),
-                        &format!("{}/README.md", project_name)
-                    );
-                    let content = file["content"].as_str().unwrap();
-                    assert!(content.contains(project_name));
-                    assert!(content.contains(description));
-                }
-                "gitignore" => {
-                    has_gitignore = true;
-                    assert_eq!(
-                        file["filename"].as_str().unwrap(),
-                        &format!("{}/.gitignore", project_name)
-                    );
-                    let content = file["content"].as_str().unwrap();
-
-                    // Language-specific gitignore patterns
-                    match toolchain {
-                        "rust" => assert!(content.contains("/target/")),
-                        "deno" => assert!(content.contains("deno.lock")),
-                        "python-uv" => assert!(content.contains("__pycache__")),
-                        _ => {}
-                    }
-                }
-                _ => {}
+fn create_scaffold_request(toolchain: &str, project_name: &str, description: &str) -> McpRequest {
+    create_tool_request(
+        "scaffold_project",
+        json!({
+            "toolchain": toolchain,
+            "templates": ["makefile", "readme", "gitignore"],
+            "parameters": {
+                "project_name": project_name,
+                "description": description,
+                "author_name": "Test Author"
             }
-        }
+        }),
+    )
+}
 
-        assert!(has_makefile, "Missing Makefile for {}", toolchain);
-        assert!(has_readme, "Missing README for {}", toolchain);
-        assert!(has_gitignore, "Missing .gitignore for {}", toolchain);
+fn validate_scaffold_response(response: &crate::models::mcp::McpResponse, toolchain: &str) {
+    assert!(
+        response.result.is_some(),
+        "Failed for toolchain: {}",
+        toolchain
+    );
+    assert!(
+        response.error.is_none(),
+        "Error for toolchain: {}",
+        toolchain
+    );
+}
+
+fn verify_generated_files(
+    generated: &[Value],
+    toolchain: &str,
+    project_name: &str,
+    description: &str,
+) {
+    let mut file_flags = GeneratedFileFlags::new();
+
+    for file in generated {
+        process_generated_file(file, &mut file_flags, toolchain, project_name, description);
+    }
+
+    file_flags.assert_all_files_present(toolchain);
+}
+
+struct GeneratedFileFlags {
+    has_makefile: bool,
+    has_readme: bool,
+    has_gitignore: bool,
+}
+
+impl GeneratedFileFlags {
+    fn new() -> Self {
+        Self {
+            has_makefile: false,
+            has_readme: false,
+            has_gitignore: false,
+        }
+    }
+
+    fn assert_all_files_present(&self, toolchain: &str) {
+        assert!(self.has_makefile, "Missing Makefile for {}", toolchain);
+        assert!(self.has_readme, "Missing README for {}", toolchain);
+        assert!(self.has_gitignore, "Missing .gitignore for {}", toolchain);
+    }
+}
+
+fn process_generated_file(
+    file: &Value,
+    flags: &mut GeneratedFileFlags,
+    toolchain: &str,
+    project_name: &str,
+    description: &str,
+) {
+    match file["template"].as_str().unwrap() {
+        "makefile" => {
+            flags.has_makefile = true;
+            verify_makefile(file, toolchain, project_name);
+        }
+        "readme" => {
+            flags.has_readme = true;
+            verify_readme(file, project_name, description);
+        }
+        "gitignore" => {
+            flags.has_gitignore = true;
+            verify_gitignore(file, toolchain, project_name);
+        }
+        _ => {}
+    }
+}
+
+fn verify_makefile(file: &Value, toolchain: &str, project_name: &str) {
+    assert_eq!(
+        file["filename"].as_str().unwrap(),
+        &format!("{}/Makefile", project_name)
+    );
+    let content = file["content"].as_str().unwrap();
+    assert!(content.contains(project_name));
+
+    verify_makefile_toolchain_specific(content, toolchain);
+}
+
+fn verify_makefile_toolchain_specific(content: &str, toolchain: &str) {
+    match toolchain {
+        "rust" => assert!(content.contains("cargo")),
+        "deno" => assert!(content.contains("deno")),
+        "python-uv" => assert!(content.contains("uv")),
+        _ => {}
+    }
+}
+
+fn verify_readme(file: &Value, project_name: &str, description: &str) {
+    assert_eq!(
+        file["filename"].as_str().unwrap(),
+        &format!("{}/README.md", project_name)
+    );
+    let content = file["content"].as_str().unwrap();
+    assert!(content.contains(project_name));
+    assert!(content.contains(description));
+}
+
+fn verify_gitignore(file: &Value, toolchain: &str, project_name: &str) {
+    assert_eq!(
+        file["filename"].as_str().unwrap(),
+        &format!("{}/.gitignore", project_name)
+    );
+    let content = file["content"].as_str().unwrap();
+
+    verify_gitignore_patterns(content, toolchain);
+}
+
+fn verify_gitignore_patterns(content: &str, toolchain: &str) {
+    match toolchain {
+        "rust" => assert!(content.contains("/target/")),
+        "deno" => assert!(content.contains("deno.lock")),
+        "python-uv" => assert!(content.contains("__pycache__")),
+        _ => {}
     }
 }
 

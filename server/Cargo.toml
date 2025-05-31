@@ -10,7 +10,7 @@ repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
 
 [dependencies]
 # Async runtime
-tokio = { version = "1.44", features = ["rt-multi-thread", "macros", "net", "io-util", "io-std", "fs", "sync", "signal"] }
+tokio = { version = "1.45", features = ["rt-multi-thread", "macros", "net", "io-util", "io-std", "fs", "sync", "signal"] }
 async-trait = "0.1"
 
 # Serialization
@@ -21,7 +21,7 @@ serde_json = { version = "1.0", features = ["preserve_order"] }
 handlebars = { version = "6.3", features = ["string_helpers"] }
 
 # Caching
-lru = { version = "0.12", features = ["hashbrown"] }
+lru = { version = "0.14", features = ["hashbrown"] }
 
 # Error handling
 thiserror = "2.0"
@@ -38,11 +38,11 @@ semver = { version = "1.0", features = ["serde"] }
 regex = { version = "1.11", features = ["perf"] }
 chrono = { version = "0.4", features = ["serde"] }
 hex = "0.4"
-uuid = { version = "1.10", features = ["v4", "serde"] }
+uuid = { version = "1.17", features = ["v4", "serde"] }
 parking_lot = "0.12"
-dirs = "5.0"
+dirs = "6.0"
 roaring = "0.10"
-rand = "0.8"
+rand = "0.9"
 rayon = "1.10"
 
 # Async utilities
@@ -50,7 +50,7 @@ futures = "0.3"
 
 # CLI support
 clap = { version = "4.5", features = ["derive", "env"] }
-num_cpus = "1.16"
+num_cpus = "1.17"
 serde_yaml = "0.9"
 atty = "0.2"
 
@@ -62,42 +62,50 @@ walkdir = "2.5"
 ignore = "0.4"
 toml = "0.8"
 # For TypeScript/JavaScript parsing
-swc_ecma_parser = "0.143"
-swc_common = "0.33"
-swc_ecma_ast = "0.112"
-swc_ecma_visit = "0.98"
+swc_ecma_parser = "14.0"
+swc_common = "11.0"
+swc_ecma_ast = "11.0"
+swc_ecma_visit = "11.0"
 # For Python parsing
-rustpython-parser = "0.3"
+rustpython-parser = "0.4"
 
 # Installer generation
 # installer-macro = { path = "../installer-macro" } # Removed - using simple include_str! instead
-blake3 = "1.5"
+blake3 = "1.8"
 
 # Demo/reporting mode dependencies (included by default)
-webbrowser = "0.8"
-bytes = "1.5"
-http = "1.0"
-httparse = "1.8"
-dashmap = "5.5"
-flate2 = "1.0"
+webbrowser = "1.0"
+bytes = "1.10"
+http = "1.3"
+httparse = "1.10"
+dashmap = "6.1"
+flate2 = "1.1"
+
+# Unified protocol support
+axum = { version = "0.8", features = ["json", "original-uri", "tokio", "http1", "http2"] }
+tower = { version = "0.5", features = ["full"] }
+tower-http = { version = "0.6", features = ["fs", "trace", "compression-gzip", "timeout"] }
+hyper = { version = "1.6", features = ["full"] }
+hyper-util = { version = "0.1", features = ["full"] }
+http-body-util = "0.1"
 
 # Graph analysis
-petgraph = "0.6"
+petgraph = "0.8"
 
 [dev-dependencies]
 mockall = "0.13"
 tokio-test = "0.4"
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.12", features = ["json"] }
 pretty_assertions = "1.4"
-tempfile = "3.14"
-criterion = { version = "0.5", features = ["html_reports"] }
-proptest = "1.4"
+tempfile = "3.20"
+criterion = { version = "0.6", features = ["html_reports"] }
+proptest = "1.6"
 assert_cmd = "2.0"
 predicates = "3.1"
 
 [build-dependencies]
-ureq = "2.9"
-flate2 = "1.0"
+ureq = "3.0"
+flate2 = "1.1"
 
 [features]
 default = []

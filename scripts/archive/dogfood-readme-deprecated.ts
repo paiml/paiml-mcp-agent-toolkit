@@ -278,87 +278,42 @@ class MCPAgentToolkitDogfooder {
     let readme = await Deno.readTextFile(README_PATH);
     const timestamp = new Date().toISOString().split("T")[0];
 
-    // Update the Architecture section with current DAG
-    const dagSection = `
-### Current Project Dependency Graph
+    // Create the metrics section content
+    const metricsSection = `### Current Project Metrics
 
-*Auto-generated on ${timestamp} using our own MCP toolkit*
+*Auto-generated metrics using our own toolkit*
 
+**Dependency Graph:**
 \`\`\`mermaid
 ${metrics.dag.content}
 \`\`\`
 
-This diagram shows the current code dependency structure of the PAIML MCP Agent Toolkit itself, generated using our own \`analyze dag\` command. The graph includes:
-- Function call relationships
-- Complexity color coding (green=low, yellow=medium, orange=high, red=very high)
-- Module boundaries and interfaces
-- External dependency filtering
-`;
+**Latest Analysis:** *Generated on ${timestamp}*`;
 
-    // Update or add Performance section with real metrics
-    const performanceSection = `
-### Dogfooding Metrics
+    // Find the dogfooding metrics section using HTML comment markers
+    const startMarker = "<!-- DOGFOODING_METRICS_START -->";
+    const endMarker = "<!-- DOGFOODING_METRICS_END -->";
 
-*These metrics are generated using our own toolkit on our own codebase*
+    const startIndex = readme.indexOf(startMarker);
+    const endIndex = readme.indexOf(endMarker);
 
-#### Code Complexity Analysis
-${metrics.complexity.content}
+    if (startIndex !== -1 && endIndex !== -1) {
+      // Replace the existing metrics section
+      const beforeSection = readme.slice(0, startIndex + startMarker.length);
+      const afterSection = readme.slice(endIndex);
 
-#### Code Churn Analysis (Last 30 Days)
-${metrics.churn.content}
-
-#### AST Analysis Summary
-\`\`\`
-Generated on: ${metrics.ast_context.timestamp}
-Tool used: paiml-mcp-agent-toolkit context rust
-Cache status: ${metrics.ast_context.content.includes("cache") ? "HIT" : "MISS"}
-\`\`\`
-
-*Analysis generated with: \`paiml-mcp-agent-toolkit analyze complexity --toolchain rust\`*
-`;
-
-    // Insert dogfooding section after Performance section
-    const performanceIndex = readme.indexOf("## Performance");
-    if (performanceIndex !== -1) {
-      const nextSectionIndex = readme.indexOf("\n## ", performanceIndex + 1);
-      const insertPoint = nextSectionIndex !== -1
-        ? nextSectionIndex
-        : readme.length;
-
-      readme = readme.slice(0, insertPoint) + performanceSection +
-        readme.slice(insertPoint);
-    }
-
-    // Update the architecture section if it exists, or add it
-    const archIndex = readme.indexOf("### System Overview");
-    if (archIndex !== -1) {
-      const nextSectionIndex = readme.indexOf("\n### ", archIndex + 1);
-      const insertPoint = nextSectionIndex !== -1
-        ? nextSectionIndex
-        : readme.indexOf("\n## ", archIndex);
-
-      readme = readme.slice(0, insertPoint) + dagSection +
-        readme.slice(insertPoint);
-    }
-
-    // Add footer with generation info
-    const footer = `
----
-
-*This README.md is kept up-to-date using our own PAIML MCP Agent Toolkit*  
-*Last updated: ${timestamp} • Generated with: \`deno run scripts/dogfood-readme.ts\`*
-`;
-
-    if (
-      !readme.includes(
-        "*This README.md is kept up-to-date using our own PAIML MCP Agent Toolkit*",
-      )
-    ) {
-      readme += footer;
+      readme = beforeSection + "\n" + metricsSection + "\n" + afterSection;
+      console.log("✅ README.md metrics section updated!");
+    } else {
+      console.log(
+        "⚠️  Could not find dogfooding metrics section markers in README.md",
+      );
+      console.log(
+        "   Expected <!-- DOGFOODING_METRICS_START --> and <!-- DOGFOODING_METRICS_END -->",
+      );
     }
 
     await Deno.writeTextFile(README_PATH, readme);
-    console.log("✅ README.md updated with fresh dogfooding metrics!");
   }
 
   async saveMetricsArtifacts(metrics: ProjectMetrics): Promise<void> {

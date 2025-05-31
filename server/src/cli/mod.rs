@@ -12,6 +12,7 @@ use std::{
     sync::Arc,
 };
 use tokio::io::AsyncWriteExt;
+use tracing::{debug, info, instrument};
 
 #[derive(Parser)]
 #[command(
@@ -25,6 +26,23 @@ pub(crate) struct Cli {
     /// Force specific mode (auto-detected by default)
     #[arg(long, value_enum, global = true)]
     pub(crate) mode: Option<Mode>,
+
+    /// Enable verbose output (info level)
+    #[arg(short, long, global = true)]
+    pub(crate) verbose: bool,
+
+    /// Enable debug output (debug level)
+    #[arg(long, global = true)]
+    pub(crate) debug: bool,
+
+    /// Enable trace output (trace level)
+    #[arg(long, global = true)]
+    pub(crate) trace: bool,
+
+    /// Custom trace filter (overrides other flags)
+    /// Example: --trace-filter="paiml=debug,cache=trace"
+    #[arg(long, global = true, env = "RUST_LOG")]
+    pub(crate) trace_filter: Option<String>,
 
     #[command(subcommand)]
     pub(crate) command: Commands,
@@ -44,7 +62,7 @@ pub enum ExecutionMode {
 
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
-pub(crate) enum Commands {
+pub enum Commands {
     /// Generate a single template
     #[command(visible_aliases = &["gen", "g"])]
     Generate {
@@ -152,6 +170,10 @@ pub(crate) enum Commands {
         #[arg(short, long)]
         path: Option<PathBuf>,
 
+        /// Remote repository URL to clone and analyze
+        #[arg(long)]
+        url: Option<String>,
+
         /// Output format
         #[arg(short, long, value_enum, default_value = "table")]
         format: OutputFormat,
@@ -167,12 +189,24 @@ pub(crate) enum Commands {
         /// Run CLI output mode instead of web-based interactive demo
         #[arg(long)]
         cli: bool,
+
+        /// Target node count for graph complexity reduction
+        #[arg(long, default_value_t = 15)]
+        target_nodes: usize,
+
+        /// Minimum betweenness centrality threshold for graph reduction
+        #[arg(long, default_value_t = 0.1)]
+        centrality_threshold: f64,
+
+        /// Component size threshold for merging in graph reduction
+        #[arg(long, default_value_t = 3)]
+        merge_threshold: usize,
     },
 }
 
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
-pub(crate) enum AnalyzeCommands {
+pub enum AnalyzeCommands {
     /// Analyze code churn (change frequency)
     Churn {
         /// Project path to analyze
@@ -268,7 +302,7 @@ pub(crate) enum AnalyzeCommands {
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
-pub(crate) enum ContextFormat {
+pub enum ContextFormat {
     Markdown,
     Json,
 }
@@ -281,7 +315,7 @@ pub enum OutputFormat {
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
-pub(crate) enum ComplexityOutputFormat {
+pub enum ComplexityOutputFormat {
     /// Summary statistics only
     Summary,
     /// Full report with violations
@@ -311,11 +345,46 @@ pub enum DagType {
     FullDependency,
 }
 
+/// Early CLI args struct for tracing initialization
+#[derive(Debug, Clone)]
+pub struct EarlyCliArgs {
+    pub verbose: bool,
+    pub debug: bool,
+    pub trace: bool,
+    pub trace_filter: Option<String>,
+}
+
+/// Parse CLI early to extract tracing configuration
+pub fn parse_early_for_tracing() -> EarlyCliArgs {
+    let args: Vec<String> = std::env::args().collect();
+
+    let verbose = args.iter().any(|arg| arg == "-v" || arg == "--verbose");
+    let debug = args.iter().any(|arg| arg == "--debug");
+    let trace = args.iter().any(|arg| arg == "--trace");
+
+    let trace_filter = args
+        .iter()
+        .position(|arg| arg == "--trace-filter")
+        .and_then(|pos| args.get(pos + 1))
+        .cloned()
+        .or_else(|| std::env::var("RUST_LOG").ok());
+
+    EarlyCliArgs {
+        verbose,
+        debug,
+        trace,
+        trace_filter,
+    }
+}
+
+#[instrument(level = "debug", skip(server))]
 pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
     let cli = Cli::parse();
+    debug!("CLI arguments parsed");
 
     // Handle forced mode
     if let Some(Mode::Mcp) = cli.mode {
+        info!("Forced MCP mode detected");
         return crate::run_mcp_server(server).await;
     }
 
@@ -415,17 +484,25 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
 
         Commands::Demo {
             path,
+            url,
             format,
             no_browser,
             port,
             cli,
+            target_nodes,
+            centrality_threshold,
+            merge_threshold,
         } => {
             let demo_args = crate::demo::DemoArgs {
                 path,
+                url,
                 format,
                 no_browser,
                 port,
-                web: !cli,  // Invert the flag - web is default unless --cli is specified
+                web: !cli, // Invert the flag - web is default unless --cli is specified
+                target_nodes,
+                centrality_threshold,
+                merge_threshold,
             };
             crate::demo::run_demo(demo_args, server).await?;
         }
@@ -436,6 +513,7 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
 
 // Command handlers - extracted from the main run function for better organization
 
+#[instrument(level = "debug", skip(server))]
 async fn handle_generate(
     server: Arc<StatelessTemplateServer>,
     category: String,
@@ -463,6 +541,7 @@ async fn handle_generate(
     Ok(())
 }
 
+#[instrument(level = "debug", skip(server))]
 async fn handle_scaffold(
     server: Arc<StatelessTemplateServer>,
     toolchain: String,
@@ -572,6 +651,7 @@ async fn handle_validate(
     Ok(())
 }
 
+#[instrument(level = "debug")]
 async fn handle_context(
     toolchain: String,
     project_path: PathBuf,

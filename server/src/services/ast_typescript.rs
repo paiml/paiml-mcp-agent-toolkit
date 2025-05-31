@@ -6,7 +6,7 @@ use crate::services::context::{AstItem, FileContext};
 use std::path::Path;
 use swc_common::{sync::Lrc, FileName, SourceMap};
 use swc_ecma_ast::*;
-use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsConfig};
+use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 use swc_ecma_visit::{Visit, VisitWith};
 
 pub async fn analyze_typescript_file_with_complexity(
@@ -28,10 +28,13 @@ pub async fn analyze_typescript_file_with_complexity_cached(
         .map_err(TemplateError::Io)?;
 
     let cm: Lrc<SourceMap> = Default::default();
-    let fm = cm.new_source_file(FileName::Custom(path.display().to_string()), content);
+    let fm = cm.new_source_file(
+        Lrc::new(FileName::Custom(path.display().to_string())),
+        content,
+    );
 
     let lexer = Lexer::new(
-        Syntax::Typescript(TsConfig {
+        Syntax::Typescript(TsSyntax {
             tsx: path.extension().and_then(|s| s.to_str()) == Some("tsx"),
             decorators: true,
             ..Default::default()
@@ -66,7 +69,10 @@ pub async fn analyze_javascript_file_with_complexity(
         .map_err(TemplateError::Io)?;
 
     let cm: Lrc<SourceMap> = Default::default();
-    let fm = cm.new_source_file(FileName::Custom(path.display().to_string()), content);
+    let fm = cm.new_source_file(
+        Lrc::new(FileName::Custom(path.display().to_string())),
+        content,
+    );
 
     let lexer = Lexer::new(
         Syntax::Es(Default::default()),
@@ -98,10 +104,13 @@ pub async fn analyze_typescript_file(path: &Path) -> Result<FileContext, Templat
         .map_err(TemplateError::Io)?;
 
     let cm: Lrc<SourceMap> = Default::default();
-    let fm = cm.new_source_file(FileName::Custom(path.display().to_string()), content);
+    let fm = cm.new_source_file(
+        Lrc::new(FileName::Custom(path.display().to_string())),
+        content,
+    );
 
     let lexer = Lexer::new(
-        Syntax::Typescript(TsConfig {
+        Syntax::Typescript(TsSyntax {
             tsx: path.extension().and_then(|s| s.to_str()) == Some("tsx"),
             decorators: true,
             ..Default::default()
@@ -148,7 +157,10 @@ pub async fn analyze_javascript_file(path: &Path) -> Result<FileContext, Templat
         .map_err(TemplateError::Io)?;
 
     let cm: Lrc<SourceMap> = Default::default();
-    let fm = cm.new_source_file(FileName::Custom(path.display().to_string()), content);
+    let fm = cm.new_source_file(
+        Lrc::new(FileName::Custom(path.display().to_string())),
+        content,
+    );
 
     let lexer = Lexer::new(
         Syntax::Es(Default::default()),
@@ -214,6 +226,167 @@ impl TypeScriptVisitor {
             current_function_start: 0,
             current_class: None,
             nesting_level: 0,
+        }
+    }
+
+    fn count_class_fields(&self, class_body: &[ClassMember]) -> usize {
+        let mut fields_count = 0;
+        for member in class_body {
+            match member {
+                ClassMember::ClassProp(_) | ClassMember::PrivateProp(_) => fields_count += 1,
+                _ => {}
+            }
+        }
+        fields_count
+    }
+
+    fn add_class_to_items(&mut self, class_name: &str, fields_count: usize) {
+        self.items.push(AstItem::Struct {
+            name: class_name.to_string(),
+            visibility: "public".to_string(),
+            fields_count,
+            derives: vec![], // TypeScript uses decorators, not derives
+            line: 1,
+        });
+    }
+
+    fn process_class_complexity(&mut self, class_name: &str, class_body: &[ClassMember]) {
+        let class_complexity = ClassComplexity {
+            name: class_name.to_string(),
+            line_start: 1,
+            line_end: 100, // Estimate
+            metrics: ComplexityMetrics::default(),
+            methods: Vec::new(),
+        };
+
+        self.current_class = Some(class_complexity.clone());
+        self.process_class_members(class_body);
+
+        if let Some(class_complexity) = self.current_class.take() {
+            self.classes.push(class_complexity);
+        }
+    }
+
+    fn process_class_members(&mut self, class_body: &[ClassMember]) {
+        for member in class_body {
+            match member {
+                ClassMember::Method(method) => self.process_method(method),
+                ClassMember::Constructor(constructor) => self.process_constructor(constructor),
+                _ => {}
+            }
+        }
+    }
+
+    fn process_method(&mut self, method: &ClassMethod) {
+        let method_name = self.extract_method_name(&method.key);
+        self.analyze_function_complexity(&method_name, |visitor| {
+            method.function.visit_children_with(visitor);
+        });
+    }
+
+    fn process_constructor(&mut self, constructor: &Constructor) {
+        self.analyze_function_complexity("constructor", |visitor| {
+            constructor.visit_children_with(visitor);
+        });
+    }
+
+    fn extract_method_name(&self, key: &PropName) -> String {
+        match key {
+            PropName::Ident(ident) => ident.sym.to_string(),
+            PropName::Str(s) => s.value.to_string(),
+            _ => "anonymous".to_string(),
+        }
+    }
+
+    fn analyze_function_complexity<F>(&mut self, function_name: &str, visit_fn: F)
+    where
+        F: FnOnce(&mut Self),
+    {
+        self.current_function_complexity = Some(ComplexityMetrics::default());
+        self.current_function_name = Some(function_name.to_string());
+        self.current_function_start = 1;
+
+        visit_fn(self);
+
+        if let Some(complexity) = self.current_function_complexity.take() {
+            if let Some(ref mut current_class) = self.current_class {
+                current_class.methods.push(FunctionComplexity {
+                    name: function_name.to_string(),
+                    line_start: self.current_function_start,
+                    line_end: self.current_function_start + 10,
+                    metrics: complexity,
+                });
+                // Add method complexity to class total
+                current_class.metrics.cyclomatic += complexity.cyclomatic;
+                current_class.metrics.cognitive += complexity.cognitive;
+            }
+        }
+    }
+
+    fn process_variable_declaration(&mut self, decl: &VarDeclarator) {
+        if let Pat::Ident(ident) = &decl.name {
+            if let Some(init) = &decl.init {
+                match &**init {
+                    Expr::Arrow(arrow) => self.process_arrow_function(ident, arrow),
+                    Expr::Fn(fn_expr) => self.process_function_expression(fn_expr),
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    fn process_arrow_function(&mut self, ident: &BindingIdent, arrow: &ArrowExpr) {
+        let name = ident.id.sym.to_string();
+        self.add_function_to_items(&name, arrow.is_async);
+
+        if self.enable_complexity {
+            self.analyze_standalone_function(&name, |visitor| {
+                arrow.visit_children_with(visitor);
+            });
+        }
+    }
+
+    fn process_function_expression(&mut self, fn_expr: &FnExpr) {
+        if let Some(ident) = &fn_expr.ident {
+            let name = ident.sym.to_string();
+            self.add_function_to_items(&name, fn_expr.function.is_async);
+
+            if self.enable_complexity {
+                self.analyze_standalone_function(&name, |visitor| {
+                    fn_expr.function.visit_children_with(visitor);
+                });
+            }
+        }
+    }
+
+    fn add_function_to_items(&mut self, name: &str, is_async: bool) {
+        self.items.push(AstItem::Function {
+            name: name.to_string(),
+            visibility: "public".to_string(),
+            is_async,
+            line: 1,
+        });
+    }
+
+    fn analyze_standalone_function<F>(&mut self, function_name: &str, visit_fn: F)
+    where
+        F: FnOnce(&mut Self),
+    {
+        self.current_function_complexity = Some(ComplexityMetrics::default());
+        self.current_function_name = Some(function_name.to_string());
+        self.current_function_start = 1;
+
+        visit_fn(self);
+
+        if let Some(complexity) = self.current_function_complexity.take() {
+            if let Some(name) = self.current_function_name.take() {
+                self.functions.push(FunctionComplexity {
+                    name,
+                    line_start: self.current_function_start,
+                    line_end: self.current_function_start + 10,
+                    metrics: complexity,
+                });
+            }
         }
     }
 
@@ -296,165 +469,19 @@ impl Visit for TypeScriptVisitor {
 
     fn visit_class_decl(&mut self, node: &ClassDecl) {
         let class_name = node.ident.sym.to_string();
-        let mut fields_count = 0;
-        let mut _methods_count = 0;
+        let fields_count = self.count_class_fields(&node.class.body);
 
-        for member in &node.class.body {
-            match member {
-                ClassMember::Constructor(_) => _methods_count += 1,
-                ClassMember::Method(_) => _methods_count += 1,
-                ClassMember::PrivateMethod(_) => _methods_count += 1,
-                ClassMember::ClassProp(_) => fields_count += 1,
-                ClassMember::PrivateProp(_) => fields_count += 1,
-                _ => {}
-            }
-        }
-
-        self.items.push(AstItem::Struct {
-            name: class_name.clone(),
-            visibility: "public".to_string(),
-            fields_count,
-            derives: vec![], // TypeScript uses decorators, not derives
-            line: 1,
-        });
+        self.add_class_to_items(&class_name, fields_count);
 
         if self.enable_complexity {
-            let class_complexity = ClassComplexity {
-                name: class_name,
-                line_start: 1,
-                line_end: 100, // Estimate
-                metrics: ComplexityMetrics::default(),
-                methods: Vec::new(),
-            };
-
-            self.current_class = Some(class_complexity.clone());
-
-            // Visit class members to calculate method complexities
-            for member in &node.class.body {
-                match member {
-                    ClassMember::Method(method) => {
-                        let method_name = match &method.key {
-                            PropName::Ident(ident) => ident.sym.to_string(),
-                            PropName::Str(s) => s.value.to_string(),
-                            _ => "anonymous".to_string(),
-                        };
-
-                        self.current_function_complexity = Some(ComplexityMetrics::default());
-                        self.current_function_name = Some(method_name.clone());
-                        self.current_function_start = 1;
-
-                        method.function.visit_children_with(self);
-
-                        if let Some(complexity) = self.current_function_complexity.take() {
-                            if let Some(ref mut current_class) = self.current_class {
-                                current_class.methods.push(FunctionComplexity {
-                                    name: method_name,
-                                    line_start: self.current_function_start,
-                                    line_end: self.current_function_start + 10,
-                                    metrics: complexity,
-                                });
-                                // Add method complexity to class total
-                                current_class.metrics.cyclomatic += complexity.cyclomatic;
-                                current_class.metrics.cognitive += complexity.cognitive;
-                            }
-                        }
-                    }
-                    ClassMember::Constructor(constructor) => {
-                        self.current_function_complexity = Some(ComplexityMetrics::default());
-                        self.current_function_name = Some("constructor".to_string());
-                        self.current_function_start = 1;
-
-                        constructor.visit_children_with(self);
-
-                        if let Some(complexity) = self.current_function_complexity.take() {
-                            if let Some(ref mut current_class) = self.current_class {
-                                current_class.methods.push(FunctionComplexity {
-                                    name: "constructor".to_string(),
-                                    line_start: self.current_function_start,
-                                    line_end: self.current_function_start + 10,
-                                    metrics: complexity,
-                                });
-                                // Add constructor complexity to class total
-                                current_class.metrics.cyclomatic += complexity.cyclomatic;
-                                current_class.metrics.cognitive += complexity.cognitive;
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-
-            if let Some(class_complexity) = self.current_class.take() {
-                self.classes.push(class_complexity);
-            }
+            self.process_class_complexity(&class_name, &node.class.body);
         }
     }
 
     fn visit_var_decl(&mut self, node: &VarDecl) {
         // Track exported const functions (common pattern in JS/TS)
         for decl in &node.decls {
-            if let Pat::Ident(ident) = &decl.name {
-                if let Some(init) = &decl.init {
-                    if let Expr::Arrow(arrow) = &**init {
-                        let name = ident.id.sym.to_string();
-                        self.items.push(AstItem::Function {
-                            name: name.clone(),
-                            visibility: "public".to_string(),
-                            is_async: arrow.is_async,
-                            line: 1,
-                        });
-
-                        if self.enable_complexity {
-                            self.current_function_complexity = Some(ComplexityMetrics::default());
-                            self.current_function_name = Some(name);
-                            self.current_function_start = 1;
-
-                            arrow.visit_children_with(self);
-
-                            if let Some(complexity) = self.current_function_complexity.take() {
-                                if let Some(name) = self.current_function_name.take() {
-                                    self.functions.push(FunctionComplexity {
-                                        name,
-                                        line_start: self.current_function_start,
-                                        line_end: self.current_function_start + 10,
-                                        metrics: complexity,
-                                    });
-                                }
-                            }
-                        }
-                    } else if let Expr::Fn(fn_expr) = &**init {
-                        if let Some(ident) = &fn_expr.ident {
-                            let name = ident.sym.to_string();
-                            self.items.push(AstItem::Function {
-                                name: name.clone(),
-                                visibility: "public".to_string(),
-                                is_async: fn_expr.function.is_async,
-                                line: 1,
-                            });
-
-                            if self.enable_complexity {
-                                self.current_function_complexity =
-                                    Some(ComplexityMetrics::default());
-                                self.current_function_name = Some(name);
-                                self.current_function_start = 1;
-
-                                fn_expr.function.visit_children_with(self);
-
-                                if let Some(complexity) = self.current_function_complexity.take() {
-                                    if let Some(name) = self.current_function_name.take() {
-                                        self.functions.push(FunctionComplexity {
-                                            name,
-                                            line_start: self.current_function_start,
-                                            line_end: self.current_function_start + 10,
-                                            metrics: complexity,
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            self.process_variable_declaration(decl);
         }
     }
 

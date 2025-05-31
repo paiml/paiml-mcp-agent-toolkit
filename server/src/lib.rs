@@ -4,6 +4,7 @@ pub mod handlers;
 pub mod models;
 pub mod services;
 pub mod stateless_server;
+pub mod unified_protocol;
 pub mod utils;
 
 use anyhow::Result;
