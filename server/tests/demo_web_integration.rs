@@ -10,6 +10,7 @@ async fn test_demo_server_startup_and_shutdown() {
     // Create test content
     let content = DemoContent {
         mermaid_diagram: "graph TD\n  A --> B".to_string(),
+        system_diagram: None,
         files_analyzed: 10,
         avg_complexity: 5.5,
         tech_debt_hours: 20,
@@ -60,6 +61,7 @@ async fn test_demo_server_api_endpoints() {
     // Create test content with hotspots
     let content = DemoContent {
         mermaid_diagram: "graph TD\n  A[Main] --> B[Utils]\n  A --> C[Helpers]".to_string(),
+        system_diagram: None,
         files_analyzed: 25,
         avg_complexity: 8.3,
         tech_debt_hours: 45,
@@ -153,6 +155,7 @@ async fn test_demo_server_api_endpoints() {
 async fn test_demo_server_static_assets() {
     let content = DemoContent {
         mermaid_diagram: "graph TD".to_string(),
+        system_diagram: None,
         files_analyzed: 1,
         avg_complexity: 1.0,
         tech_debt_hours: 0,
@@ -192,6 +195,7 @@ async fn test_demo_server_static_assets() {
 async fn test_demo_server_concurrent_requests() {
     let content = DemoContent {
         mermaid_diagram: "graph TD\n  A --> B".to_string(),
+        system_diagram: None,
         files_analyzed: 100,
         avg_complexity: 3.14,
         tech_debt_hours: 8,
@@ -239,6 +243,7 @@ async fn test_demo_server_concurrent_requests() {
 async fn test_demo_server_response_headers() {
     let content = DemoContent {
         mermaid_diagram: "graph TD".to_string(),
+        system_diagram: None,
         files_analyzed: 1,
         avg_complexity: 1.0,
         tech_debt_hours: 0,
@@ -278,7 +283,10 @@ async fn test_demo_server_response_headers() {
         .send()
         .await
         .unwrap();
-    assert_eq!(response.headers().get("content-type").unwrap(), "text/plain");
+    assert_eq!(
+        response.headers().get("content-type").unwrap(),
+        "text/plain"
+    );
 
     server.shutdown();
 }
@@ -287,8 +295,9 @@ async fn test_demo_server_response_headers() {
 async fn test_demo_content_rendering() {
     // Test with specific values to ensure proper rendering
     let content = DemoContent {
-        mermaid_diagram: "graph TD\n  API[API Server] --> DB[Database]\n  API --> Cache[Redis Cache]"
-            .to_string(),
+        mermaid_diagram:
+            "graph TD\n  API[API Server] --> DB[Database]\n  API --> Cache[Redis Cache]".to_string(),
+        system_diagram: None,
         files_analyzed: 42,
         avg_complexity: 6.78,
         tech_debt_hours: 123,
@@ -350,6 +359,7 @@ mod demo_web_tests {
     async fn test_demo_server_starts() {
         let content = DemoContent {
             mermaid_diagram: String::from("graph TD\n    A[Test] --> B[Demo]"),
+            system_diagram: None,
             files_analyzed: 10,
             avg_complexity: 5.5,
             tech_debt_hours: 12,

@@ -63,6 +63,15 @@ pub const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
             color: var(--primary);
         }
 
+        .logo .version {
+            font-size: 0.875rem;
+            font-weight: 400;
+            color: var(--text-light);
+            background: var(--border);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -108,15 +117,61 @@ pub const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
             padding: 2rem;
             margin-bottom: 2rem;
             border: 1px solid var(--border);
+            border-top: 3px solid var(--primary);
         }
 
         .section-title {
             font-size: 1.5rem;
             font-weight: 600;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }
+
+        .section-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+
+        .endpoint-url {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            background: var(--background);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            border: 1px solid var(--border);
+            text-decoration: none;
+            color: var(--text);
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .endpoint-url:hover {
+            background: var(--border);
+            border-color: var(--primary);
+        }
+
+        .data-source {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .data-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .data-indicator.dynamic {
+            background-color: var(--success);
+        }
+
+        .data-indicator.default {
+            background-color: var(--danger);
         }
 
         .timing-chart {
@@ -166,7 +221,7 @@ pub const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
             overflow: hidden;
         }
 
-        #mermaid-container {
+        #mermaid-container, #system-diagram-container {
             background: var(--background);
             border-radius: 0.5rem;
             padding: 2rem;
@@ -213,6 +268,7 @@ pub const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
             <div class="header-content">
                 <div class="logo">
                     🚀 PAIML MCP Agent Toolkit Demo
+                    <span class="version">v{version}</span>
                 </div>
                 <div id="analysis-time" class="stat-unit"></div>
             </div>
@@ -255,6 +311,13 @@ pub const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
             <h2 class="section-title">
                 ⚡ Performance Breakdown
             </h2>
+            <div class="section-meta">
+                <a href="/api/summary" target="_blank" class="endpoint-url">/api/summary</a>
+                <div class="data-source">
+                    <div class="data-indicator dynamic"></div>
+                    <span>Dynamic</span>
+                </div>
+            </div>
             <div class="timing-chart">
                 <div class="timing-bar">
                     <div class="timing-label">Context Analysis</div>
@@ -291,6 +354,13 @@ pub const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
             <h2 class="section-title">
                 🔥 Complexity Hotspots
             </h2>
+            <div class="section-meta">
+                <a href="/api/hotspots" target="_blank" class="endpoint-url">/api/hotspots</a>
+                <div class="data-source">
+                    <div class="data-indicator default"></div>
+                    <span>Default</span>
+                </div>
+            </div>
             <div id="hotspots-table"></div>
         </section>
 
@@ -298,8 +368,31 @@ pub const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
             <h2 class="section-title">
                 📊 Dependency Graph
             </h2>
+            <div class="section-meta">
+                <a href="/api/dag" target="_blank" class="endpoint-url">/api/dag</a>
+                <div class="data-source">
+                    <div class="data-indicator default"></div>
+                    <span>Default</span>
+                </div>
+            </div>
             <div id="mermaid-container">
                 <div class="loading">Loading dependency graph...</div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">
+                🏗️ System Architecture
+            </h2>
+            <div class="section-meta">
+                <a href="/api/system-diagram" target="_blank" class="endpoint-url">/api/system-diagram</a>
+                <div class="data-source">
+                    <div class="data-indicator dynamic"></div>
+                    <span>Dynamic</span>
+                </div>
+            </div>
+            <div id="system-diagram-container">
+                <div class="loading">Loading system architecture...</div>
             </div>
         </section>
     </main>
@@ -337,24 +430,25 @@ pub const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
                 new gridjs.Grid({
                     columns: [
                         { 
-                            name: 'File',
-                            formatter: (cell) => gridjs.html(`<code>${cell}</code>`)
+                            name: 'Function',
+                            data: (row) => row.function
                         },
                         { 
                             name: 'Complexity',
+                            data: (row) => row.complexity,
                             formatter: (cell) => {
                                 const colorClass = cell > 10 ? 'danger' : cell > 5 ? 'warning' : 'success';
                                 return gridjs.html(`<span style="color: var(--${colorClass}); font-weight: 600">${cell}</span>`);
                             }
                         },
                         { 
-                            name: 'Churn Score',
-                            formatter: (cell) => gridjs.html(`<div style="display: flex; align-items: center; gap: 0.5rem">
-                                <div style="flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden">
-                                    <div style="width: ${cell}%; height: 100%; background: var(--primary)"></div>
-                                </div>
-                                <span style="font-size: 0.875rem; color: var(--text-light)">${cell}%</span>
-                            </div>`)
+                            name: 'Lines of Code',
+                            data: (row) => row.loc
+                        },
+                        { 
+                            name: 'Path',
+                            data: (row) => row.path,
+                            formatter: (cell) => gridjs.html(`<code style="font-size: 0.75rem">${cell}</code>`)
                         }
                     ],
                     data: hotspots,
@@ -393,9 +487,39 @@ pub const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
                     document.getElementById('mermaid-container').innerHTML = '<div class="error">No dependency graph available</div>';
                 }
 
+                // Load and render System Architecture
+                const systemResponse = await fetch('/api/system-diagram');
+                const systemText = await systemResponse.text();
+                
+                if (systemText && systemText.trim()) {
+                    const systemContainer = document.getElementById('system-diagram-container');
+                    systemContainer.innerHTML = `<pre class="mermaid">${systemText}</pre>`;
+                    await mermaid.run();
+                    
+                    // Update data source indicator based on whether we have dynamic content
+                    // Check if it's the hardcoded fallback diagram
+                    const isHardcoded = systemText.includes('AST Context Analysis') && 
+                                       systemText.includes('File Parser') && 
+                                       systemText.includes('Handlebars');
+                    
+                    const indicator = document.querySelector('.section:last-of-type .data-indicator');
+                    const statusText = document.querySelector('.section:last-of-type .data-source span');
+                    
+                    if (isHardcoded) {
+                        indicator.className = 'data-indicator default';
+                        statusText.textContent = 'Default';
+                    } else {
+                        indicator.className = 'data-indicator dynamic';
+                        statusText.textContent = 'Dynamic';
+                    }
+                } else {
+                    document.getElementById('system-diagram-container').innerHTML = '<div class="error">No system architecture available</div>';
+                }
+
             } catch (error) {
                 console.error('Error loading demo data:', error);
                 document.getElementById('mermaid-container').innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                document.getElementById('system-diagram-container').innerHTML = `<div class="error">Error: ${error.message}</div>`;
             }
         }
 

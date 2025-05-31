@@ -7,9 +7,9 @@ mod demo_tests {
 
     #[test]
     fn test_demo_mode_in_current_directory() -> Result<()> {
-        // Run demo in current directory
+        // Run demo in current directory with CLI mode
         let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
-        cmd.arg("demo");
+        cmd.arg("demo").arg("--cli");
 
         // Verify it runs successfully
         cmd.assert()
@@ -19,6 +19,8 @@ mod demo_tests {
             .stdout(predicate::str::contains("Code Complexity Analysis"))
             .stdout(predicate::str::contains("DAG Visualization"))
             .stdout(predicate::str::contains("Code Churn Analysis"))
+            .stdout(predicate::str::contains("System Architecture Analysis"))
+            .stdout(predicate::str::contains("Defect Probability Analysis"))
             .stdout(predicate::str::contains("Template Generation"));
 
         Ok(())
@@ -27,7 +29,7 @@ mod demo_tests {
     #[test]
     fn test_demo_mode_with_json_output() -> Result<()> {
         let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
-        cmd.arg("demo").arg("--format").arg("json");
+        cmd.arg("demo").arg("--cli").arg("--format").arg("json");
 
         // Verify JSON output
         cmd.assert()
@@ -60,6 +62,7 @@ mod demo_tests {
 
         let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
         cmd.arg("demo")
+            .arg("--cli")
             .arg("--path")
             .arg(repo_path.to_str().unwrap());
 
@@ -79,7 +82,7 @@ mod demo_tests {
         // This test verifies that running demo mode exercises various code paths
         // We'll check this by running demo and verifying it completes all steps
         let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
-        cmd.arg("demo").arg("--format").arg("json");
+        cmd.arg("demo").arg("--cli").arg("--format").arg("json");
 
         let output = cmd.output()?;
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -98,8 +101,8 @@ mod demo_tests {
         let report: serde_json::Value = serde_json::from_str(&stdout)?;
         let steps = report["steps"].as_array().expect("steps should be array");
 
-        // Verify we have all 5 expected demo steps
-        assert_eq!(steps.len(), 5);
+        // Verify we have all 7 expected demo steps (with enhanced analyses)
+        assert_eq!(steps.len(), 7);
 
         // Verify each step completed (note: code churn may fail without git history)
         for (idx, step) in steps.iter().enumerate() {
@@ -140,10 +143,14 @@ mod demo_tests {
 
             let args = DemoArgs {
                 path: Some(repo_path.clone()),
+                url: None,
                 format: OutputFormat::Json,
                 no_browser: true,
                 port: None,
                 web: false,
+                target_nodes: 15,
+                centrality_threshold: 0.1,
+                merge_threshold: 3,
             };
 
             // This should complete without panicking

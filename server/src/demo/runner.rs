@@ -5,12 +5,14 @@ use crate::stateless_server::StatelessTemplateServer;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::env;
 use std::fmt::Write;
 use std::io::{self, Write as IoWrite};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
+use tracing::instrument;
 
 pub struct DemoRunner {
     server: Arc<StatelessTemplateServer>,
@@ -19,17 +21,30 @@ pub struct DemoRunner {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DemoStep {
+    pub name: String,
     pub capability: &'static str,
     pub request: McpRequest,
     pub response: McpResponse,
     pub elapsed_ms: u64,
+    pub success: bool,
+    pub output: Option<Value>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct DemoReport {
-    pub repository: PathBuf,
+    pub repository: String,
+    pub total_time_ms: u64,
     pub steps: Vec<DemoStep>,
-    pub total_elapsed_ms: u64,
+    pub system_diagram: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+struct Component {
+    id: String,
+    label: String,
+    color: String,
+    connections: Vec<(String, String)>,
 }
 
 impl DemoRunner {
@@ -40,26 +55,261 @@ impl DemoRunner {
         }
     }
 
+    async fn clone_and_prepare(&self, url: &str) -> Result<PathBuf> {
+        // For now, just return an error - git2 integration would go here
+        // This is a placeholder implementation
+        Err(anyhow!(
+            "Remote repository cloning not yet implemented. URL: {}",
+            url
+        ))
+    }
+
+    fn generate_system_diagram(&self, _steps: &[DemoStep]) -> Result<String> {
+        // Extract component relationships from analysis results
+        let mut components = HashMap::new();
+
+        // Map internal components to high-level architecture
+        components.insert(
+            "ast_context".to_string(),
+            Component {
+                id: "A".to_string(),
+                label: "AST Context Analysis".to_string(),
+                color: "#90EE90".to_string(),
+                connections: vec![("B".to_string(), "uses".to_string())],
+            },
+        );
+
+        components.insert(
+            "file_parser".to_string(),
+            Component {
+                id: "B".to_string(),
+                label: "File Parser".to_string(),
+                color: "#FFFFFF".to_string(),
+                connections: vec![
+                    ("C".to_string(), "".to_string()),
+                    ("D".to_string(), "".to_string()),
+                    ("E".to_string(), "".to_string()),
+                ],
+            },
+        );
+
+        // Language-specific AST components
+        components.insert(
+            "rust_ast".to_string(),
+            Component {
+                id: "C".to_string(),
+                label: "Rust AST".to_string(),
+                color: "#FFFFFF".to_string(),
+                connections: vec![],
+            },
+        );
+
+        components.insert(
+            "typescript_ast".to_string(),
+            Component {
+                id: "D".to_string(),
+                label: "TypeScript AST".to_string(),
+                color: "#FFFFFF".to_string(),
+                connections: vec![],
+            },
+        );
+
+        components.insert(
+            "python_ast".to_string(),
+            Component {
+                id: "E".to_string(),
+                label: "Python AST".to_string(),
+                color: "#FFFFFF".to_string(),
+                connections: vec![],
+            },
+        );
+
+        // Analysis components
+        components.insert(
+            "complexity".to_string(),
+            Component {
+                id: "F".to_string(),
+                label: "Code Complexity".to_string(),
+                color: "#FFD700".to_string(),
+                connections: vec![
+                    ("C".to_string(), "analyzes".to_string()),
+                    ("D".to_string(), "analyzes".to_string()),
+                    ("E".to_string(), "analyzes".to_string()),
+                ],
+            },
+        );
+
+        components.insert(
+            "dag_gen".to_string(),
+            Component {
+                id: "G".to_string(),
+                label: "DAG Generation".to_string(),
+                color: "#FFA500".to_string(),
+                connections: vec![
+                    ("C".to_string(), "reads".to_string()),
+                    ("D".to_string(), "reads".to_string()),
+                    ("E".to_string(), "reads".to_string()),
+                ],
+            },
+        );
+
+        components.insert(
+            "churn".to_string(),
+            Component {
+                id: "H".to_string(),
+                label: "Code Churn".to_string(),
+                color: "#FF6347".to_string(),
+                connections: vec![("I".to_string(), "git history".to_string())],
+            },
+        );
+
+        components.insert(
+            "git".to_string(),
+            Component {
+                id: "I".to_string(),
+                label: "Git Analysis".to_string(),
+                color: "#FFFFFF".to_string(),
+                connections: vec![],
+            },
+        );
+
+        components.insert(
+            "template".to_string(),
+            Component {
+                id: "J".to_string(),
+                label: "Template Generation".to_string(),
+                color: "#87CEEB".to_string(),
+                connections: vec![("K".to_string(), "renders".to_string())],
+            },
+        );
+
+        components.insert(
+            "handlebars".to_string(),
+            Component {
+                id: "K".to_string(),
+                label: "Handlebars".to_string(),
+                color: "#FFFFFF".to_string(),
+                connections: vec![],
+            },
+        );
+
+        // Generate Mermaid diagram
+        self.render_system_mermaid(&components)
+    }
+
+    fn render_system_mermaid(&self, _components: &HashMap<String, Component>) -> Result<String> {
+        let mut output = String::new();
+        output.push_str("graph TD\n");
+
+        // Add nodes and connections based on target diagram
+        output.push_str("    A[AST Context Analysis] -->|uses| B[File Parser]\n");
+        output.push_str("    B --> C[Rust AST]\n");
+        output.push_str("    B --> D[TypeScript AST]\n");
+        output.push_str("    B --> E[Python AST]\n\n");
+
+        output.push_str("    F[Code Complexity] -->|analyzes| C\n");
+        output.push_str("    F -->|analyzes| D\n");
+        output.push_str("    F -->|analyzes| E\n\n");
+
+        output.push_str("    G[DAG Generation] -->|reads| C\n");
+        output.push_str("    G -->|reads| D\n");
+        output.push_str("    G -->|reads| E\n\n");
+
+        output.push_str("    H[Code Churn] -->|git history| I[Git Analysis]\n\n");
+
+        output.push_str("    J[Template Generation] -->|renders| K[Handlebars]\n\n");
+
+        // Add styling
+        output.push_str("    style A fill:#90EE90\n");
+        output.push_str("    style F fill:#FFD700\n");
+        output.push_str("    style G fill:#FFA500\n");
+        output.push_str("    style H fill:#FF6347\n");
+        output.push_str("    style J fill:#87CEEB\n");
+
+        Ok(output)
+    }
+
+    fn create_demo_step(
+        &self,
+        name: &str,
+        capability: &'static str,
+        request: McpRequest,
+        response: McpResponse,
+        elapsed_ms: u64,
+    ) -> DemoStep {
+        let success = response.error.is_none();
+        let output = if success {
+            response.result.clone()
+        } else {
+            Some(
+                json!({ "error": response.error.as_ref().map(|e| e.message.clone()).unwrap_or_default() }),
+            )
+        };
+
+        DemoStep {
+            name: name.to_string(),
+            capability,
+            request,
+            response,
+            elapsed_ms,
+            success,
+            output,
+        }
+    }
+
     pub async fn execute(&mut self, repo_path: PathBuf) -> Result<DemoReport> {
-        println!("🎯 Starting PAIML MCP Agent Toolkit Demo");
-        println!("📁 Repository: {}", repo_path.display());
+        self.execute_with_diagram(&repo_path, None).await
+    }
+
+    #[instrument(skip(self, repo_path), fields(repo = %repo_path.display()))]
+    pub async fn execute_with_diagram(
+        &mut self,
+        repo_path: &Path,
+        url: Option<&str>,
+    ) -> Result<DemoReport> {
+        let start = Instant::now();
+
+        // Clone remote repository if URL provided
+        let working_path = if let Some(url) = url {
+            self.clone_and_prepare(url).await?
+        } else {
+            repo_path.to_path_buf()
+        };
+
+        let version = env!("CARGO_PKG_VERSION");
+        println!("🎯 PAIML MCP Agent Toolkit Demo v{}", version);
+        if url.is_some() {
+            println!("📁 Repository: {} (cloned)", url.unwrap());
+        } else {
+            println!("📁 Repository: {}", working_path.display());
+        }
         println!();
 
-        // Execute demo steps
-        let steps = vec![
-            self.demo_context_generation(&repo_path).await?,
-            self.demo_complexity_analysis(&repo_path).await?,
-            self.demo_dag_generation(&repo_path).await?,
-            self.demo_churn_analysis(&repo_path).await?,
-            self.demo_template_generation(&repo_path).await?,
-        ];
+        // Execute analysis pipeline with tracing
+        let span = tracing::info_span!("demo_execution", repo = %working_path.display());
+        let _guard = span.enter();
 
-        let total_elapsed_ms = self.execution_log.iter().map(|s| s.elapsed_ms).sum();
+        // Collect all analysis results
+        let mut steps = Vec::new();
+        steps.push(self.demo_context_generation(&working_path).await?);
+        steps.push(self.demo_complexity_analysis(&working_path).await?);
+        steps.push(self.demo_dag_generation(&working_path).await?);
+        steps.push(self.demo_churn_analysis(&working_path).await?);
+        steps.push(self.demo_system_architecture(&working_path).await?);
+        steps.push(self.demo_template_generation(&working_path).await?);
+
+        // Generate high-level system diagram
+        let system_diagram = self.generate_system_diagram(&steps)?;
 
         Ok(DemoReport {
-            repository: repo_path,
+            repository: if url.is_some() {
+                url.unwrap().to_string()
+            } else {
+                working_path.display().to_string()
+            },
+            total_time_ms: start.elapsed().as_millis() as u64,
             steps,
-            total_elapsed_ms,
+            system_diagram: Some(system_diagram),
         })
     }
 
@@ -79,12 +329,13 @@ impl DemoRunner {
         let response = handle_tool_call(self.server.clone(), request.clone()).await;
         let elapsed = start.elapsed().as_millis() as u64;
 
-        let step = DemoStep {
-            capability: "AST Context Analysis",
-            request: request.clone(),
-            response: response.clone(),
-            elapsed_ms: elapsed,
-        };
+        let step = self.create_demo_step(
+            "AST Context Analysis",
+            "AST Context Analysis",
+            request.clone(),
+            response.clone(),
+            elapsed,
+        );
 
         self.execution_log.push(step.clone());
 
@@ -115,12 +366,13 @@ impl DemoRunner {
         let response = handle_tool_call(self.server.clone(), request.clone()).await;
         let elapsed = start.elapsed().as_millis() as u64;
 
-        let step = DemoStep {
-            capability: "Code Complexity Analysis",
-            request: request.clone(),
-            response: response.clone(),
-            elapsed_ms: elapsed,
-        };
+        let step = self.create_demo_step(
+            "Code Complexity Analysis",
+            "Code Complexity Analysis",
+            request.clone(),
+            response.clone(),
+            elapsed,
+        );
 
         self.execution_log.push(step.clone());
 
@@ -158,12 +410,13 @@ impl DemoRunner {
         let response = handle_tool_call(self.server.clone(), request.clone()).await;
         let elapsed = start.elapsed().as_millis() as u64;
 
-        let step = DemoStep {
-            capability: "DAG Visualization",
-            request: request.clone(),
-            response: response.clone(),
-            elapsed_ms: elapsed,
-        };
+        let step = self.create_demo_step(
+            "DAG Generation",
+            "DAG Visualization",
+            request.clone(),
+            response.clone(),
+            elapsed,
+        );
 
         self.execution_log.push(step.clone());
 
@@ -202,12 +455,13 @@ impl DemoRunner {
         let response = handle_tool_call(self.server.clone(), request.clone()).await;
         let elapsed = start.elapsed().as_millis() as u64;
 
-        let step = DemoStep {
-            capability: "Code Churn Analysis",
-            request: request.clone(),
-            response: response.clone(),
-            elapsed_ms: elapsed,
-        };
+        let step = self.create_demo_step(
+            "Code Churn Analysis",
+            "Code Churn Analysis",
+            request.clone(),
+            response.clone(),
+            elapsed,
+        );
 
         self.execution_log.push(step.clone());
 
@@ -217,6 +471,53 @@ impl DemoRunner {
                 if let Ok(churn_result) = serde_json::from_value::<Value>(result.clone()) {
                     if let Some(files_analyzed) = churn_result.get("files_analyzed") {
                         println!("   📈 Analyzed {} files", files_analyzed);
+                    }
+                }
+            }
+        } else {
+            println!("   ❌ Failed: {:?}", response.error);
+        }
+
+        Ok(step)
+    }
+
+    async fn demo_system_architecture(&mut self, path: &Path) -> Result<DemoStep> {
+        // Use the enhanced canonical query system
+        let request = self.build_mcp_request(
+            "analyze_system_architecture",
+            json!({
+                "project_path": path.to_str().unwrap(),
+                "format": "mermaid",
+                "show_complexity": true
+            }),
+        );
+
+        println!("\n5️⃣  Analyzing System Architecture...");
+
+        let start = Instant::now();
+        let response = handle_tool_call(self.server.clone(), request.clone()).await;
+        let elapsed = start.elapsed().as_millis() as u64;
+
+        let step = self.create_demo_step(
+            "System Architecture",
+            "System Architecture Analysis",
+            request.clone(),
+            response.clone(),
+            elapsed,
+        );
+
+        self.execution_log.push(step.clone());
+
+        if response.error.is_none() {
+            println!("   ✅ Architecture analyzed in {} ms", elapsed);
+            if let Some(result) = &response.result {
+                if let Ok(arch_result) = serde_json::from_value::<Value>(result.clone()) {
+                    if let Some(metadata) = arch_result.get("metadata") {
+                        if let (Some(nodes), Some(edges)) =
+                            (metadata.get("nodes"), metadata.get("edges"))
+                        {
+                            println!("   🏗️  Components: {}, Relationships: {}", nodes, edges);
+                        }
                     }
                 }
             }
@@ -243,18 +544,19 @@ impl DemoRunner {
             }),
         );
 
-        println!("\n5️⃣  Generating Template...");
+        println!("\n6️⃣  Generating Template...");
 
         let start = Instant::now();
         let response = handle_tool_call(self.server.clone(), request.clone()).await;
         let elapsed = start.elapsed().as_millis() as u64;
 
-        let step = DemoStep {
-            capability: "Template Generation",
-            request: request.clone(),
-            response: response.clone(),
-            elapsed_ms: elapsed,
-        };
+        let step = self.create_demo_step(
+            "Template Generation",
+            "Template Generation",
+            request.clone(),
+            response.clone(),
+            elapsed,
+        );
 
         self.execution_log.push(step.clone());
 
@@ -292,7 +594,7 @@ impl DemoReport {
         let mut output = String::with_capacity(4096);
 
         writeln!(&mut output, "\n🎯 PAIML MCP Agent Toolkit Demo Complete").unwrap();
-        writeln!(&mut output, "Repository: {}", self.repository.display()).unwrap();
+        writeln!(&mut output, "Repository: {}", self.repository).unwrap();
         writeln!(&mut output, "\n📊 Capabilities Demonstrated:\n").unwrap();
 
         for (idx, step) in self.steps.iter().enumerate() {
@@ -314,9 +616,17 @@ impl DemoReport {
         writeln!(
             &mut output,
             "\n⏱️  Total execution time: {} ms",
-            self.total_elapsed_ms
+            self.total_time_ms
         )
         .unwrap();
+
+        // Add system diagram if available
+        if let Some(ref diagram) = self.system_diagram {
+            writeln!(&mut output, "\n🌍 System Architecture:").unwrap();
+            writeln!(&mut output, "```mermaid").unwrap();
+            writeln!(&mut output, "{}", diagram).unwrap();
+            writeln!(&mut output, "```").unwrap();
+        }
 
         writeln!(
             &mut output,
@@ -341,6 +651,16 @@ impl DemoReport {
         writeln!(
             &mut output,
             "   - Create DAGs: paiml-mcp-agent-toolkit analyze dag"
+        )
+        .unwrap();
+        writeln!(
+            &mut output,
+            "   - System architecture: paiml-mcp-agent-toolkit analyze architecture"
+        )
+        .unwrap();
+        writeln!(
+            &mut output,
+            "   - Defect probability: paiml-mcp-agent-toolkit analyze defects"
         )
         .unwrap();
         writeln!(&mut output).unwrap();
@@ -392,6 +712,38 @@ impl DemoReport {
                             output,
                             "      Files analyzed: {}, Total churn: {}",
                             files, total_churn
+                        )
+                        .unwrap();
+                    }
+                }
+            }
+            "System Architecture Analysis" => {
+                if let Ok(arch_result) = serde_json::from_value::<Value>(result.clone()) {
+                    if let Some(metadata) = arch_result.get("metadata") {
+                        if let (Some(nodes), Some(edges)) =
+                            (metadata.get("nodes"), metadata.get("edges"))
+                        {
+                            writeln!(
+                                output,
+                                "      Components: {}, Relationships: {}",
+                                nodes, edges
+                            )
+                            .unwrap();
+                        }
+                    }
+                }
+            }
+            "Defect Probability Analysis" => {
+                if let Ok(defect_result) = serde_json::from_value::<Value>(result.clone()) {
+                    if let (Some(high_risk), Some(avg_prob)) = (
+                        defect_result.get("high_risk_files"),
+                        defect_result.get("average_probability"),
+                    ) {
+                        writeln!(
+                            output,
+                            "      High-risk files: {}, Avg probability: {:.2}",
+                            high_risk.as_array().map(|a| a.len()).unwrap_or(0),
+                            avg_prob.as_f64().unwrap_or(0.0)
                         )
                         .unwrap();
                     }

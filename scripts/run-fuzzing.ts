@@ -362,7 +362,9 @@ if (import.meta.main) {
   try {
     await main();
   } catch (error) {
-    console.error(red(`Error: ${error.message}`));
+    console.error(
+      red(`Error: ${error instanceof Error ? error.message : String(error)}`),
+    );
     Deno.exit(1);
   }
 }

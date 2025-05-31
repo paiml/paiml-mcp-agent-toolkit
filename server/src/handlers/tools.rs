@@ -8,7 +8,7 @@ use crate::services::template_service;
 use crate::TemplateServerTrait;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{error, info};
 
@@ -53,6 +53,12 @@ pub async fn handle_tool_call<T: TemplateServerTrait>(
         "analyze_complexity" => handle_analyze_complexity(request.id, tool_params.arguments).await,
         "analyze_dag" => handle_analyze_dag(request.id, tool_params.arguments).await,
         "generate_context" => handle_generate_context(request.id, tool_params.arguments).await,
+        "analyze_system_architecture" => {
+            handle_analyze_system_architecture(request.id, tool_params.arguments).await
+        }
+        "analyze_defect_probability" => {
+            handle_analyze_defect_probability(request.id, tool_params.arguments).await
+        }
         _ => McpResponse::error(
             request.id,
             -32602,
@@ -620,14 +626,47 @@ async fn handle_analyze_complexity(
         }
     };
 
-    let project_path = args
-        .project_path
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    let project_path = resolve_project_path(args.project_path.clone());
+    let detected_toolchain = detect_toolchain(&args.toolchain, &project_path);
 
-    // Detect toolchain if not specified
-    let detected_toolchain = if let Some(t) = args.toolchain {
-        t
+    info!(
+        "Analyzing complexity for {:?} using {} toolchain",
+        project_path, detected_toolchain
+    );
+
+    let _thresholds = build_complexity_thresholds(&args);
+    let (file_metrics, file_count) =
+        analyze_project_files(&project_path, &detected_toolchain, &args).await;
+
+    // Import complexity analysis functionality
+    use crate::services::complexity::*;
+
+    let report = aggregate_results(file_metrics);
+    let content_text = format_complexity_output(&report, &args);
+
+    let result = json!({
+        "content": [{
+            "type": "text",
+            "text": content_text
+        }],
+        "report": report,
+        "toolchain": detected_toolchain,
+        "files_analyzed": file_count,
+        "format": args.format.as_deref().unwrap_or("summary"),
+    });
+
+    McpResponse::success(request_id, result)
+}
+
+fn resolve_project_path(project_path_arg: Option<String>) -> PathBuf {
+    project_path_arg
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+}
+
+fn detect_toolchain(toolchain_arg: &Option<String>, project_path: &Path) -> String {
+    if let Some(t) = toolchain_arg {
+        t.clone()
     } else if project_path.join("Cargo.toml").exists() {
         "rust".to_string()
     } else if project_path.join("package.json").exists() || project_path.join("deno.json").exists()
@@ -639,18 +678,14 @@ async fn handle_analyze_complexity(
         "python-uv".to_string()
     } else {
         "rust".to_string() // default
-    };
+    }
+}
 
-    info!(
-        "Analyzing complexity for {:?} using {} toolchain",
-        project_path, detected_toolchain
-    );
+fn build_complexity_thresholds(
+    args: &AnalyzeComplexityArgs,
+) -> crate::services::complexity::ComplexityThresholds {
+    use crate::services::complexity::ComplexityThresholds;
 
-    // Import complexity analysis functionality
-    use crate::services::complexity::*;
-    use walkdir::WalkDir;
-
-    // Custom thresholds
     let mut thresholds = ComplexityThresholds::default();
     if let Some(max) = args.max_cyclomatic {
         thresholds.cyclomatic_error = max;
@@ -660,121 +695,133 @@ async fn handle_analyze_complexity(
         thresholds.cognitive_error = max;
         thresholds.cognitive_warn = (max * 3 / 4).max(1);
     }
+    thresholds
+}
 
-    // Analyze files
+async fn analyze_project_files(
+    project_path: &Path,
+    toolchain: &str,
+    args: &AnalyzeComplexityArgs,
+) -> (
+    Vec<crate::services::complexity::FileComplexityMetrics>,
+    usize,
+) {
+    use walkdir::WalkDir;
+
     let mut file_metrics = Vec::new();
     let mut file_count = 0;
 
-    for entry in WalkDir::new(&project_path)
+    for entry in WalkDir::new(project_path)
         .follow_links(false)
         .into_iter()
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
 
-        // Skip directories and non-source files
-        if path.is_dir() {
+        if path.is_dir() || !should_analyze_file(path, toolchain) {
             continue;
         }
 
-        // Check file extension based on toolchain
-        let should_analyze = match detected_toolchain.as_str() {
-            "rust" => path.extension().and_then(|s| s.to_str()) == Some("rs"),
-            "deno" => matches!(
-                path.extension().and_then(|s| s.to_str()),
-                Some("ts") | Some("tsx") | Some("js") | Some("jsx")
-            ),
-            "python-uv" => path.extension().and_then(|s| s.to_str()) == Some("py"),
-            _ => false,
-        };
-
-        if !should_analyze {
+        if !matches_include_filters(path, &args.include) {
             continue;
-        }
-
-        // Apply include filters if specified (simple pattern matching)
-        if let Some(ref include_patterns) = args.include {
-            if !include_patterns.is_empty() {
-                let path_str = path.to_string_lossy();
-                let matches_filter = include_patterns.iter().any(|pattern| {
-                    // Simple glob-like matching
-                    if pattern.contains("**") {
-                        // Match any path containing the pattern after **
-                        let parts: Vec<&str> = pattern.split("**").collect();
-                        if parts.len() == 2 {
-                            path_str.contains(parts[1].trim_start_matches('/'))
-                        } else {
-                            false
-                        }
-                    } else if pattern.starts_with("*.") {
-                        // Match by extension
-                        path_str.ends_with(&pattern[1..])
-                    } else {
-                        // Direct substring match
-                        path_str.contains(pattern)
-                    }
-                });
-                if !matches_filter {
-                    continue;
-                }
-            }
         }
 
         file_count += 1;
 
-        // Analyze file complexity
-        match detected_toolchain.as_str() {
-            "rust" => {
-                use crate::services::ast_rust;
-                if let Ok(metrics) = ast_rust::analyze_rust_file_with_complexity(path).await {
-                    file_metrics.push(metrics);
-                }
-            }
-            "deno" => {
-                use crate::services::ast_typescript;
-                if let Ok(metrics) =
-                    ast_typescript::analyze_typescript_file_with_complexity(path).await
-                {
-                    file_metrics.push(metrics);
-                }
-            }
-            "python-uv" => {
-                use crate::services::ast_python;
-                if let Ok(metrics) = ast_python::analyze_python_file_with_complexity(path).await {
-                    file_metrics.push(metrics);
-                }
-            }
-            _ => {}
+        if let Some(metrics) = analyze_file_complexity(path, toolchain).await {
+            file_metrics.push(metrics);
         }
     }
 
-    // Aggregate results
-    let report = aggregate_results(file_metrics);
+    (file_metrics, file_count)
+}
 
-    // Format output based on requested format
+fn should_analyze_file(path: &Path, toolchain: &str) -> bool {
+    match toolchain {
+        "rust" => path.extension().and_then(|s| s.to_str()) == Some("rs"),
+        "deno" => matches!(
+            path.extension().and_then(|s| s.to_str()),
+            Some("ts") | Some("tsx") | Some("js") | Some("jsx")
+        ),
+        "python-uv" => path.extension().and_then(|s| s.to_str()) == Some("py"),
+        _ => false,
+    }
+}
+
+fn matches_include_filters(path: &Path, include_patterns: &Option<Vec<String>>) -> bool {
+    let Some(ref patterns) = include_patterns else {
+        return true;
+    };
+
+    if patterns.is_empty() {
+        return true;
+    }
+
+    let path_str = path.to_string_lossy();
+    patterns
+        .iter()
+        .any(|pattern| matches_pattern(&path_str, pattern))
+}
+
+fn matches_pattern(path_str: &str, pattern: &str) -> bool {
+    if pattern.contains("**") {
+        // Match any path containing the pattern after **
+        let parts: Vec<&str> = pattern.split("**").collect();
+        if parts.len() == 2 {
+            path_str.contains(parts[1].trim_start_matches('/'))
+        } else {
+            false
+        }
+    } else if pattern.starts_with("*.") {
+        // Match by extension
+        path_str.ends_with(&pattern[1..])
+    } else {
+        // Direct substring match
+        path_str.contains(pattern)
+    }
+}
+
+async fn analyze_file_complexity(
+    path: &Path,
+    toolchain: &str,
+) -> Option<crate::services::complexity::FileComplexityMetrics> {
+    match toolchain {
+        "rust" => {
+            use crate::services::ast_rust;
+            ast_rust::analyze_rust_file_with_complexity(path).await.ok()
+        }
+        "deno" => {
+            use crate::services::ast_typescript;
+            ast_typescript::analyze_typescript_file_with_complexity(path)
+                .await
+                .ok()
+        }
+        "python-uv" => {
+            use crate::services::ast_python;
+            ast_python::analyze_python_file_with_complexity(path)
+                .await
+                .ok()
+        }
+        _ => None,
+    }
+}
+
+fn format_complexity_output(
+    report: &crate::services::complexity::ComplexityReport,
+    args: &AnalyzeComplexityArgs,
+) -> String {
+    use crate::services::complexity::*;
+
     let format = args.format.as_deref().unwrap_or("summary");
-    let content_text = match format {
-        "full" => format_complexity_report(&report),
-        "json" => serde_json::to_string_pretty(&report).unwrap_or_default(),
-        "sarif" => match format_as_sarif(&report) {
+    match format {
+        "full" => format_complexity_report(report),
+        "json" => serde_json::to_string_pretty(report).unwrap_or_default(),
+        "sarif" => match format_as_sarif(report) {
             Ok(sarif) => sarif,
             Err(_) => "Error generating SARIF format".to_string(),
         },
-        _ => format_complexity_summary(&report), // default to summary
-    };
-
-    let result = json!({
-        "content": [{
-            "type": "text",
-            "text": content_text
-        }],
-        "report": report,
-        "toolchain": detected_toolchain,
-        "files_analyzed": file_count,
-        "format": format,
-    });
-
-    McpResponse::success(request_id, result)
+        _ => format_complexity_summary(report), // default to summary
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -968,6 +1015,185 @@ async fn handle_generate_context(
             "memory_efficiency": diagnostics.effectiveness.memory_efficiency,
             "time_saved_ms": diagnostics.effectiveness.time_saved_ms,
         }
+    });
+
+    McpResponse::success(request_id, result)
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AnalyzeSystemArchitectureArgs {
+    project_path: Option<String>,
+    format: Option<String>,
+    show_complexity: Option<bool>,
+}
+
+async fn handle_analyze_system_architecture(
+    request_id: serde_json::Value,
+    arguments: serde_json::Value,
+) -> McpResponse {
+    let args: AnalyzeSystemArchitectureArgs = match serde_json::from_value(arguments) {
+        Ok(a) => a,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32602,
+                format!("Invalid analyze_system_architecture arguments: {}", e),
+            );
+        }
+    };
+
+    let project_path = args
+        .project_path
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+    info!("Analyzing system architecture for {:?}", project_path);
+
+    use crate::services::canonical_query::{
+        AnalysisContext, CallGraph, CanonicalQuery, SystemArchitectureQuery,
+    };
+    use crate::services::context::analyze_project;
+    use crate::services::dag_builder::DagBuilder;
+    use std::collections::HashMap;
+
+    // Build analysis context
+    let context_result = match analyze_project(&project_path, "rust").await {
+        Ok(ctx) => ctx,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32000,
+                format!("Failed to analyze project: {}", e),
+            );
+        }
+    };
+
+    let dag_result = DagBuilder::build_from_project(&context_result);
+
+    // Convert to analysis context
+    let context = AnalysisContext {
+        project_path: project_path.clone(),
+        ast_dag: dag_result,
+        call_graph: CallGraph::default(), // TODO: Build actual call graph
+        complexity_map: HashMap::new(),
+        churn_analysis: None, // Optional
+    };
+
+    let query = SystemArchitectureQuery;
+    match query.execute(&context) {
+        Ok(result) => {
+            let content_text = match args.format.as_deref() {
+                Some("json") => serde_json::to_string_pretty(&result).unwrap_or_default(),
+                _ => format!("# System Architecture Analysis\n\n{}", result.diagram),
+            };
+
+            let response = json!({
+                "content": [{
+                    "type": "text",
+                    "text": content_text
+                }],
+                "result": result,
+                "format": args.format.unwrap_or_else(|| "mermaid".to_string()),
+            });
+
+            McpResponse::success(request_id, response)
+        }
+        Err(e) => {
+            error!("System architecture analysis failed: {}", e);
+            McpResponse::error(request_id, -32000, e.to_string())
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AnalyzeDefectProbabilityArgs {
+    project_path: Option<String>,
+    format: Option<String>,
+}
+
+async fn handle_analyze_defect_probability(
+    request_id: serde_json::Value,
+    arguments: serde_json::Value,
+) -> McpResponse {
+    let args: AnalyzeDefectProbabilityArgs = match serde_json::from_value(arguments) {
+        Ok(a) => a,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32602,
+                format!("Invalid analyze_defect_probability arguments: {}", e),
+            );
+        }
+    };
+
+    let project_path = args
+        .project_path
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+    info!("Analyzing defect probability for {:?}", project_path);
+
+    use crate::services::defect_probability::{
+        DefectProbabilityCalculator, FileMetrics, ProjectDefectAnalysis,
+    };
+    use walkdir::WalkDir;
+
+    let calculator = DefectProbabilityCalculator::new();
+    let mut file_metrics = Vec::new();
+
+    // Get complexity data for better defect probability calculation
+    // (This is simplified - in real implementation we'd get complexity and churn data)
+    for entry in WalkDir::new(&project_path)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("rs") {
+            let relative_path = path
+                .strip_prefix(&project_path)
+                .unwrap_or(path)
+                .to_string_lossy()
+                .to_string();
+
+            // Simple metrics for demonstration
+            let metrics = FileMetrics {
+                file_path: relative_path,
+                churn_score: 0.1, // Placeholder
+                complexity: 5.0,  // Placeholder
+                duplicate_ratio: 0.0,
+                afferent_coupling: 1.0,
+                efferent_coupling: 2.0,
+                lines_of_code: 100, // Placeholder
+                cyclomatic_complexity: 5,
+                cognitive_complexity: 8,
+            };
+
+            file_metrics.push(metrics);
+        }
+    }
+
+    let scores = calculator.calculate_batch(&file_metrics);
+    let analysis = ProjectDefectAnalysis::from_scores(scores);
+
+    let content_text = match args.format.as_deref() {
+        Some("json") => serde_json::to_string_pretty(&analysis).unwrap_or_default(),
+        _ => format!(
+            "# Defect Probability Analysis\n\nTotal files: {}\nHigh-risk files: {}\nMedium-risk files: {}\nAverage probability: {:.2}",
+            analysis.total_files,
+            analysis.high_risk_files.len(),
+            analysis.medium_risk_files.len(),
+            analysis.average_probability
+        ),
+    };
+
+    let result = json!({
+        "content": [{
+            "type": "text",
+            "text": content_text
+        }],
+        "analysis": analysis,
+        "format": args.format.unwrap_or_else(|| "summary".to_string()),
     });
 
     McpResponse::success(request_id, result)

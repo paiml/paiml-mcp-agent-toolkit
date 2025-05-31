@@ -1,9 +1,9 @@
 graph TD
-    mermaid_generator[MermaidGenerator]
     complexity[ComplexityAnalyzer]
-    code_intelligence[CodeIntelligence]
     ast_rust[RustAST]
     dag_builder[DagBuilder]
+    code_intelligence[CodeIntelligence]
+    mermaid_generator[MermaidGenerator]
     template_service[TemplateService]
 
     code_intelligence --> dag_builder
@@ -12,9 +12,9 @@ graph TD
     code_intelligence --> complexity
     template_service --- ast_rust
 
-    style mermaid_generator fill:#FFA500,stroke-width:2px
     style complexity fill:#FF6347,stroke-width:2px
-    style code_intelligence fill:#FF6347,stroke-width:2px
     style ast_rust fill:#FF6347,stroke-width:2px
     style dag_builder fill:#FF6347,stroke-width:2px
+    style code_intelligence fill:#FF6347,stroke-width:2px
+    style mermaid_generator fill:#FFA500,stroke-width:2px
     style template_service fill:#FFA500,stroke-width:2px

@@ -1,15 +1,18 @@
 #!/usr/bin/env -S deno test --allow-read --allow-write --allow-run
 
-import { assertEquals, assertStringIncludes } from "https://deno.land/std@0.208.0/assert/mod.ts";
 import {
-  extractHtmlFromRust,
-  validateJavaScript,
-  validateCss,
-  validateHtml,
-  extractJavaScriptFromHtml,
+  assertEquals,
+  assertStringIncludes,
+} from "https://deno.land/std@0.208.0/assert/mod.ts";
+import {
   extractCssFromHtml,
+  extractHtmlFromRust,
+  extractJavaScriptFromHtml,
   formatWebAssets,
   processRustFile,
+  validateCss,
+  validateHtml,
+  validateJavaScript,
 } from "./validate-demo-assets.ts";
 
 Deno.test("extractHtmlFromRust - extracts HTML from const string", () => {
@@ -20,7 +23,7 @@ const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
 <body>Hello</body>
 </html>"#;
 `;
-  
+
   const html = extractHtmlFromRust(rustCode);
   assertEquals(html?.includes("<!DOCTYPE html>"), true);
   assertEquals(html?.includes("<title>Test</title>"), true);
@@ -32,7 +35,7 @@ let html = format!(r#"
 <div>{}</div>
 "#, content);
 `;
-  
+
   const html = extractHtmlFromRust(rustCode);
   assertEquals(html?.trim(), "<div>{}</div>");
 });
@@ -90,7 +93,7 @@ console.log(x + y);
 `;
   const issues = await validateJavaScript(js);
   // Should pass without issues for valid code
-  assertEquals(issues.filter(i => i.includes("error")).length, 0);
+  assertEquals(issues.filter((i) => i.includes("error")).length, 0);
 });
 
 Deno.test("validateJavaScript - detects lint issues", async () => {
@@ -119,7 +122,7 @@ Deno.test("extractJavaScriptFromHtml - extracts inline scripts", () => {
   </script>
 </body>
 </html>`;
-  
+
   const scripts = extractJavaScriptFromHtml(html);
   assertEquals(scripts.length, 2);
   assertStringIncludes(scripts[0], "console.log('inline script 1')");
@@ -140,7 +143,7 @@ Deno.test("extractCssFromHtml - extracts inline styles", () => {
   </style>
 </head>
 </html>`;
-  
+
   const styles = extractCssFromHtml(html);
   assertEquals(styles.length, 2);
   assertStringIncludes(styles[0], "body { margin: 0; }");
@@ -175,17 +178,17 @@ pub const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
 <body>Test</body>
 </html>"#;
 `;
-  
+
   await Deno.writeTextFile(tempFile, rustContent);
-  
+
   try {
     const result = await processRustFile(tempFile);
     assertEquals(result.file, tempFile);
     // Should have CSS double semicolon issue
-    const cssIssue = result.issues.find(i => i.includes("Double semicolon"));
+    const cssIssue = result.issues.find((i) => i.includes("Double semicolon"));
     assertEquals(cssIssue !== undefined, true);
     // Should have JS var issue
-    const jsIssue = result.issues.find(i => i.includes("var"));
+    const jsIssue = result.issues.find((i) => i.includes("var"));
     assertEquals(jsIssue !== undefined, true);
   } finally {
     await Deno.remove(tempFile);
@@ -255,25 +258,25 @@ Deno.test("main function - handles file argument", async () => {
   // Create a test file
   const tempFile = await Deno.makeTempFile({ suffix: ".rs" });
   await Deno.writeTextFile(tempFile, `const TEST: &str = "test";`);
-  
+
   try {
     // Save original args
     const originalArgs = Deno.args;
-    
+
     // Mock Deno.args
-    Object.defineProperty(Deno, 'args', {
-      value: ['--file', tempFile, '--quiet'],
-      configurable: true
+    Object.defineProperty(Deno, "args", {
+      value: ["--file", tempFile, "--quiet"],
+      configurable: true,
     });
-    
+
     // Import and run main
     const _module = await import("./validate-demo-assets.ts");
     // The main function would be called if this was the main module
-    
+
     // Restore args
-    Object.defineProperty(Deno, 'args', {
+    Object.defineProperty(Deno, "args", {
       value: originalArgs,
-      configurable: true
+      configurable: true,
     });
   } finally {
     await Deno.remove(tempFile);
