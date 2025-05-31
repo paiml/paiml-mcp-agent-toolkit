@@ -5,8 +5,11 @@
 
 use crate::models::unified_ast::AstDag;
 use crate::services::{
+    context::analyze_project,
+    dag_builder::DagBuilder,
     dead_code_analyzer::{DeadCodeAnalyzer, DeadCodeReport},
     duplicate_detector::{CloneReport, DuplicateDetector},
+    mermaid_generator::{MermaidGenerator, MermaidOptions},
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -179,7 +182,36 @@ impl CodeIntelligence {
         // First, analyze the project and build the AST DAG
         self.analyze_project(&req.project_path).await?;
 
-        // Run requested analyses in parallel
+        // Handle dependency graph analysis directly
+        if req.analysis_types.contains(&AnalysisType::DependencyGraph) {
+            // Create project context for dependency graph generation
+            if let Ok(project_context) =
+                analyze_project(std::path::Path::new(&req.project_path), "rust").await
+            {
+                // Build dependency graph using DagBuilder
+                let dependency_graph = DagBuilder::build_from_project(&project_context);
+
+                // Generate Mermaid diagram
+                let mermaid_options = MermaidOptions {
+                    max_depth: req.max_depth,
+                    filter_external: false,
+                    group_by_module: true,
+                    show_complexity: true,
+                };
+                let mermaid_generator = MermaidGenerator::new(mermaid_options);
+                let mermaid_diagram = mermaid_generator.generate(&dependency_graph);
+
+                // Store results in report
+                report.dependency_graph = Some(DependencyGraphReport {
+                    nodes: dependency_graph.nodes.len(),
+                    edges: dependency_graph.edges.len(),
+                    circular_dependencies: Vec::new(), // TODO: Implement cycle detection
+                    mermaid_diagram,
+                });
+            }
+        }
+
+        // Run other requested analyses in parallel
         let futures = self.build_analysis_futures(&req, &mut report);
 
         // Wait for all analyses to complete
@@ -353,6 +385,11 @@ impl CodeIntelligence {
                         // TODO: Store in report
                     })
                         as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>);
+                }
+
+                AnalysisType::DependencyGraph => {
+                    // Dependency graph is handled synchronously in analyze_comprehensive
+                    // No future needed here
                 }
 
                 // TODO: Implement other analysis types

@@ -34,6 +34,9 @@ mod tests {
                     AnalyzeCommands::DeadCode { .. } => {
                         panic!("Expected Churn command, got DeadCode");
                     }
+                    AnalyzeCommands::Satd { .. } => {
+                        panic!("Expected Churn command, got Satd");
+                    }
                 }
             }
             _ => panic!("Expected Analyze command"),
@@ -78,6 +81,9 @@ mod tests {
                 }
                 AnalyzeCommands::DeadCode { .. } => {
                     panic!("Expected Churn command, got DeadCode");
+                }
+                AnalyzeCommands::Satd { .. } => {
+                    panic!("Expected Churn command, got Satd");
                 }
             },
             _ => panic!("Expected Analyze command"),

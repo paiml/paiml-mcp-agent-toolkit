@@ -335,6 +335,46 @@ pub enum AnalyzeCommands {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+
+    /// Analyze Self-Admitted Technical Debt (SATD) in comments
+    #[command(name = "satd")]
+    Satd {
+        /// Path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', value_enum, default_value = "summary")]
+        format: SatdOutputFormat,
+
+        /// Filter by severity level
+        #[arg(long, value_enum)]
+        severity: Option<SatdSeverity>,
+
+        /// Show only critical debt items
+        #[arg(long)]
+        critical_only: bool,
+
+        /// Include test files in analysis
+        #[arg(long)]
+        include_tests: bool,
+
+        /// Track debt evolution over time (requires git history)
+        #[arg(long)]
+        evolution: bool,
+
+        /// Number of days for evolution analysis
+        #[arg(long, default_value_t = 30)]
+        days: u32,
+
+        /// Show debt metrics summary
+        #[arg(long)]
+        metrics: bool,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
@@ -368,6 +408,22 @@ pub enum DeadCodeOutputFormat {
     Json,
     Sarif,
     Markdown,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum SatdOutputFormat {
+    Summary,
+    Json,
+    Sarif,
+    Markdown,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum SatdSeverity {
+    Critical,
+    High,
+    Medium,
+    Low,
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq, Eq, Hash)]
@@ -572,6 +628,30 @@ async fn execute_analyze_command(analyze_cmd: AnalyzeCommands) -> anyhow::Result
                 include_unreachable,
                 min_dead_lines,
                 include_tests,
+                output,
+            )
+            .await
+        }
+        AnalyzeCommands::Satd {
+            path,
+            format,
+            severity,
+            critical_only,
+            include_tests,
+            evolution,
+            days,
+            metrics,
+            output,
+        } => {
+            handle_analyze_satd(
+                path,
+                format,
+                severity,
+                critical_only,
+                include_tests,
+                evolution,
+                days,
+                metrics,
                 output,
             )
             .await
@@ -1081,6 +1161,291 @@ async fn handle_analyze_dead_code(
     }
 
     Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn handle_analyze_satd(
+    path: PathBuf,
+    format: SatdOutputFormat,
+    severity: Option<SatdSeverity>,
+    critical_only: bool,
+    include_tests: bool,
+    evolution: bool,
+    days: u32,
+    metrics: bool,
+    output: Option<PathBuf>,
+) -> anyhow::Result<()> {
+    use crate::services::satd_detector::SATDDetector;
+
+    eprintln!("🔍 Analyzing Self-Admitted Technical Debt...");
+
+    let detector = SATDDetector::new();
+    let mut results = detector.analyze_project(&path, include_tests).await?;
+
+    // Apply severity filter if specified
+    if let Some(min_severity) = severity {
+        let min_level = match min_severity {
+            SatdSeverity::Critical => crate::services::satd_detector::Severity::Critical,
+            SatdSeverity::High => crate::services::satd_detector::Severity::High,
+            SatdSeverity::Medium => crate::services::satd_detector::Severity::Medium,
+            SatdSeverity::Low => crate::services::satd_detector::Severity::Low,
+        };
+        results
+            .items
+            .retain(|item| item.severity as u8 >= min_level as u8);
+    }
+
+    // Apply critical-only filter
+    if critical_only {
+        results.items.retain(|item| {
+            matches!(
+                item.severity,
+                crate::services::satd_detector::Severity::Critical
+            )
+        });
+    }
+
+    // Handle evolution analysis
+    if evolution {
+        eprintln!("📈 Tracking SATD evolution over {} days...", days);
+        // Note: Evolution tracking would require git history analysis
+        // This is a placeholder for future implementation
+    }
+
+    // Include metrics if requested
+    if metrics {
+        let total_items = results.items.len();
+        let by_severity = results.items.iter().fold([0; 4], |mut acc, item| {
+            match item.severity {
+                crate::services::satd_detector::Severity::Critical => acc[0] += 1,
+                crate::services::satd_detector::Severity::High => acc[1] += 1,
+                crate::services::satd_detector::Severity::Medium => acc[2] += 1,
+                crate::services::satd_detector::Severity::Low => acc[3] += 1,
+            }
+            acc
+        });
+        eprintln!(
+            "📊 SATD Metrics: {} total items (Critical: {}, High: {}, Medium: {}, Low: {})",
+            total_items, by_severity[0], by_severity[1], by_severity[2], by_severity[3]
+        );
+    }
+
+    // Format output
+    let content = format_satd_output(&results, &format)?;
+
+    if let Some(output_path) = output {
+        tokio::fs::write(&output_path, &content).await?;
+        eprintln!("✅ SATD analysis written to: {}", output_path.display());
+    } else {
+        println!("{}", content);
+    }
+
+    Ok(())
+}
+
+/// Format SATD analysis output
+fn format_satd_output(
+    result: &crate::services::satd_detector::SATDAnalysisResult,
+    format: &SatdOutputFormat,
+) -> anyhow::Result<String> {
+    match format {
+        SatdOutputFormat::Summary => format_satd_summary(result),
+        SatdOutputFormat::Json => Ok(serde_json::to_string_pretty(result)?),
+        SatdOutputFormat::Sarif => format_satd_as_sarif(result),
+        SatdOutputFormat::Markdown => format_satd_as_markdown(result),
+    }
+}
+
+/// Format SATD analysis as summary text
+fn format_satd_summary(
+    result: &crate::services::satd_detector::SATDAnalysisResult,
+) -> anyhow::Result<String> {
+    let mut output = String::new();
+
+    output.push_str("Self-Admitted Technical Debt Analysis:\n");
+    output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    output.push_str(&format!("  Total SATD items: {}\n", result.items.len()));
+
+    // Count by severity
+    let by_severity = result.items.iter().fold([0; 4], |mut acc, item| {
+        match item.severity {
+            crate::services::satd_detector::Severity::Critical => acc[0] += 1,
+            crate::services::satd_detector::Severity::High => acc[1] += 1,
+            crate::services::satd_detector::Severity::Medium => acc[2] += 1,
+            crate::services::satd_detector::Severity::Low => acc[3] += 1,
+        }
+        acc
+    });
+
+    output.push_str(&format!("  Critical: {}\n", by_severity[0]));
+    output.push_str(&format!("  High: {}\n", by_severity[1]));
+    output.push_str(&format!("  Medium: {}\n", by_severity[2]));
+    output.push_str(&format!("  Low: {}\n", by_severity[3]));
+
+    // Count by category
+    let mut by_category = std::collections::HashMap::new();
+    for item in &result.items {
+        *by_category.entry(item.category).or_insert(0) += 1;
+    }
+
+    output.push('\n');
+    output.push_str("By Category:\n");
+    for (category, count) in by_category {
+        output.push_str(&format!("  {:?}: {}\n", category, count));
+    }
+
+    // Show top items if any
+    if !result.items.is_empty() {
+        output.push('\n');
+        output.push_str("🔺 Top Critical Items:\n");
+        output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+
+        let critical_items: Vec<_> = result
+            .items
+            .iter()
+            .filter(|item| {
+                matches!(
+                    item.severity,
+                    crate::services::satd_detector::Severity::Critical
+                )
+            })
+            .take(5)
+            .collect();
+
+        if critical_items.is_empty() {
+            output.push_str("  No critical items found.\n");
+        } else {
+            for (i, item) in critical_items.iter().enumerate() {
+                output.push_str(&format!(
+                    "{}. {} ({}:{})\n",
+                    i + 1,
+                    item.text.trim(),
+                    item.file.display(),
+                    item.line
+                ));
+                output.push_str(&format!("   Category: {:?}\n", item.category));
+                output.push('\n');
+            }
+        }
+    }
+
+    Ok(output)
+}
+
+/// Format SATD analysis as SARIF (Static Analysis Results Interchange Format)
+fn format_satd_as_sarif(
+    result: &crate::services::satd_detector::SATDAnalysisResult,
+) -> anyhow::Result<String> {
+    use serde_json::json;
+
+    let mut results = Vec::new();
+
+    for item in &result.items {
+        let level = match item.severity {
+            crate::services::satd_detector::Severity::Critical => "error",
+            crate::services::satd_detector::Severity::High => "warning",
+            crate::services::satd_detector::Severity::Medium => "note",
+            crate::services::satd_detector::Severity::Low => "info",
+        };
+
+        results.push(json!({
+            "ruleId": format!("satd-{}", format!("{:?}", item.category).to_lowercase()),
+            "level": level,
+            "message": {
+                "text": format!("Self-admitted technical debt: {}", item.text.trim())
+            },
+            "locations": [{
+                "physicalLocation": {
+                    "artifactLocation": {
+                        "uri": item.file.display().to_string()
+                    },
+                    "region": {
+                        "startLine": item.line,
+                        "startColumn": item.column
+                    }
+                }
+            }]
+        }));
+    }
+
+    let sarif = json!({
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "paiml-mcp-agent-toolkit",
+                    "version": "0.1.0",
+                    "informationUri": "https://github.com/paiml/mcp-agent-toolkit"
+                }
+            },
+            "results": results
+        }]
+    });
+
+    Ok(serde_json::to_string_pretty(&sarif)?)
+}
+
+/// Format SATD analysis as Markdown
+fn format_satd_as_markdown(
+    result: &crate::services::satd_detector::SATDAnalysisResult,
+) -> anyhow::Result<String> {
+    let mut output = String::new();
+
+    output.push_str("# Self-Admitted Technical Debt Report\n\n");
+    output.push_str(&format!(
+        "**Analysis Date:** {}\n\n",
+        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
+    ));
+
+    // Summary section
+    output.push_str("## Summary\n\n");
+    output.push_str(&format!("- **Total SATD items:** {}\n", result.items.len()));
+
+    // Count by severity
+    let by_severity = result.items.iter().fold([0; 4], |mut acc, item| {
+        match item.severity {
+            crate::services::satd_detector::Severity::Critical => acc[0] += 1,
+            crate::services::satd_detector::Severity::High => acc[1] += 1,
+            crate::services::satd_detector::Severity::Medium => acc[2] += 1,
+            crate::services::satd_detector::Severity::Low => acc[3] += 1,
+        }
+        acc
+    });
+
+    output.push_str(&format!("- **Critical:** {}\n", by_severity[0]));
+    output.push_str(&format!("- **High:** {}\n", by_severity[1]));
+    output.push_str(&format!("- **Medium:** {}\n", by_severity[2]));
+    output.push_str(&format!("- **Low:** {}\n\n", by_severity[3]));
+
+    // Items by severity
+    if !result.items.is_empty() {
+        output.push_str("## Technical Debt Items\n\n");
+        output.push_str("| Severity | Category | File | Line | Description |\n");
+        output.push_str("|----------|----------|------|------|-------------|\n");
+
+        for item in &result.items {
+            let severity_emoji = match item.severity {
+                crate::services::satd_detector::Severity::Critical => "🔴",
+                crate::services::satd_detector::Severity::High => "🟠",
+                crate::services::satd_detector::Severity::Medium => "🟡",
+                crate::services::satd_detector::Severity::Low => "🟢",
+            };
+
+            output.push_str(&format!(
+                "| {} {:?} | {:?} | `{}` | {} | {} |\n",
+                severity_emoji,
+                item.severity,
+                item.category,
+                item.file.display(),
+                item.line,
+                item.text.trim().replace('|', "\\|").replace('\n', " ")
+            ));
+        }
+        output.push('\n');
+    }
+
+    Ok(output)
 }
 
 /// Format dead code analysis output

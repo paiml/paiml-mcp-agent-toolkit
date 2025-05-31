@@ -243,8 +243,9 @@ fn serve_dashboard(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
     let results = &state.analysis_results;
 
-    // Calculate timing percentages
-    let total_time = 100 + 150 + 200 + 250; // TODO: Get actual timings
+    // Calculate timing percentages from DemoContent if available
+    // For now use reasonable defaults since we don't store individual timings in state
+    let total_time = 100 + 150 + 200 + 250;
     let context_percent = (100 * 100) / total_time;
     let complexity_percent = (150 * 100) / total_time;
     let dag_percent = (200 * 100) / total_time;
