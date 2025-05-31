@@ -492,6 +492,7 @@ fn test_analyze_complexity_full_options() {
             max_cognitive,
             include,
             watch,
+            top_files,
         }) => {
             assert_eq!(project_path, PathBuf::from("/workspace"));
             assert_eq!(toolchain, Some("rust".to_string()));
@@ -501,6 +502,7 @@ fn test_analyze_complexity_full_options() {
             assert_eq!(max_cognitive, Some(20));
             assert_eq!(include, vec!["**/*.rs", "src/**/*.rs"]);
             assert!(watch);
+            assert_eq!(top_files, 0); // Default value
         }
         _ => panic!("Expected Analyze Complexity command"),
     }

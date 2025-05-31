@@ -82,6 +82,7 @@ _site/
 node_modules/
 npm-debug.log
 yarn-error.log
+coverage_deno
 
 # Python
 *.py[cod]
