@@ -361,7 +361,7 @@ impl SATDDetector {
                 reason: "Line too long for comment extraction (>10000 chars)".to_string(),
             });
         }
-        
+
         let trimmed = line.trim();
 
         // Rust/C++/JavaScript style comments
@@ -450,7 +450,7 @@ impl SATDDetector {
                         );
                         continue;
                     }
-                    
+
                     match self.extract_from_content(&content, &file_path) {
                         Ok(debts) => {
                             if !debts.is_empty() {
@@ -506,7 +506,7 @@ impl SATDDetector {
                         );
                         continue;
                     }
-                    
+
                     match self.extract_from_content(&content, &file_path) {
                         Ok(debts) => {
                             all_debts.extend(debts);

@@ -521,23 +521,24 @@ pub mod handlers {
         Extension(_state): Extension<Arc<AppState>>,
         Json(params): Json<Value>,
     ) -> Result<Json<Value>, AppError> {
-        use crate::services::deep_context::{
-            DeepContextAnalyzer, DeepContextConfig, AnalysisType, DagType as InternalDagType, CacheStrategy as InternalCacheStrategy
-        };
+        use crate::services::deep_context::{AnalysisType, DeepContextAnalyzer, DeepContextConfig};
         use std::path::PathBuf;
 
         // Parse parameters from JSON
-        let project_path = params.get("project_path")
+        let project_path = params
+            .get("project_path")
             .and_then(|v| v.as_str())
             .unwrap_or(".")
             .parse::<PathBuf>()
             .map_err(|e| AppError::BadRequest(format!("Invalid project_path: {}", e)))?;
 
-        let period_days = params.get("period_days")
+        let period_days = params
+            .get("period_days")
             .and_then(|v| v.as_u64())
             .unwrap_or(30) as u32;
 
-        let parallel = params.get("parallel")
+        let parallel = params
+            .get("parallel")
             .and_then(|v| v.as_u64())
             .map(|v| v as usize);
 
@@ -546,33 +547,41 @@ pub mod handlers {
             period_days,
             ..DeepContextConfig::default()
         };
-        
+
         if let Some(p) = parallel {
             config.parallel = p;
         }
 
         // Parse include/exclude filters
         if let Some(include) = params.get("include").and_then(|v| v.as_array()) {
-            config.include_analyses = include.iter().filter_map(|v| v.as_str()).filter_map(|s| match s {
-                "ast" => Some(AnalysisType::Ast),
-                "complexity" => Some(AnalysisType::Complexity),
-                "churn" => Some(AnalysisType::Churn),
-                "dag" => Some(AnalysisType::Dag),
-                "dead-code" => Some(AnalysisType::DeadCode),
-                "satd" => Some(AnalysisType::Satd),
-                "defect-probability" => Some(AnalysisType::DefectProbability),
-                _ => None,
-            }).collect();
+            config.include_analyses = include
+                .iter()
+                .filter_map(|v| v.as_str())
+                .filter_map(|s| match s {
+                    "ast" => Some(AnalysisType::Ast),
+                    "complexity" => Some(AnalysisType::Complexity),
+                    "churn" => Some(AnalysisType::Churn),
+                    "dag" => Some(AnalysisType::Dag),
+                    "dead-code" => Some(AnalysisType::DeadCode),
+                    "satd" => Some(AnalysisType::Satd),
+                    "defect-probability" => Some(AnalysisType::DefectProbability),
+                    _ => None,
+                })
+                .collect();
         }
 
         // Create analyzer and run analysis
         let analyzer = DeepContextAnalyzer::new(config);
-        let deep_context = analyzer.analyze_project(&project_path).await
+        let deep_context = analyzer
+            .analyze_project(&project_path)
+            .await
             .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?;
 
         // Return JSON response
-        Ok(Json(serde_json::to_value(&deep_context).map_err(|e| 
-            AppError::Internal(anyhow::anyhow!(e)))?))
+        Ok(Json(
+            serde_json::to_value(&deep_context)
+                .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?,
+        ))
     }
 
     /// MCP protocol endpoint

@@ -1,13 +1,10 @@
-use crate::models::{
-    churn::CodeChurnAnalysis,
-    dag::DependencyGraph,
-};
+use crate::models::{churn::CodeChurnAnalysis, dag::DependencyGraph};
 use crate::services::context::FileContext;
 use crate::services::{
     complexity::{ComplexityReport, FileComplexityMetrics},
     dead_code_analyzer::DeadCodeAnalyzer,
     git_analysis::GitAnalysisService,
-    satd_detector::{SATDDetector, SATDAnalysisResult},
+    satd_detector::{SATDAnalysisResult, SATDDetector},
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -395,7 +392,10 @@ impl DeepContextAnalyzer {
     #[instrument(level = "info", skip(self))]
     pub async fn analyze_project(&self, project_path: &PathBuf) -> anyhow::Result<DeepContext> {
         let start_time = std::time::Instant::now();
-        info!("Starting deep context analysis for project: {:?}", project_path);
+        info!(
+            "Starting deep context analysis for project: {:?}",
+            project_path
+        );
 
         // Phase 1: Discovery
         let file_tree = self.discover_project_structure(project_path).await?;
@@ -418,7 +418,9 @@ impl DeepContextAnalyzer {
         debug!("Quality scoring completed");
 
         // Phase 6: Generate recommendations
-        let recommendations = self.generate_recommendations(&hotspots, &quality_scorecard).await?;
+        let recommendations = self
+            .generate_recommendations(&hotspots, &quality_scorecard)
+            .await?;
         debug!("Recommendations generated");
 
         // Phase 7: Template provenance (if available)
@@ -457,11 +459,15 @@ impl DeepContextAnalyzer {
         })
     }
 
-    async fn discover_project_structure(&self, project_path: &PathBuf) -> anyhow::Result<AnnotatedFileTree> {
+    async fn discover_project_structure(
+        &self,
+        project_path: &PathBuf,
+    ) -> anyhow::Result<AnnotatedFileTree> {
         let mut total_files = 0;
         let mut total_size_bytes = 0;
 
-        let root = self.build_file_tree_recursive(project_path, &mut total_files, &mut total_size_bytes)?;
+        let root =
+            self.build_file_tree_recursive(project_path, &mut total_files, &mut total_size_bytes)?;
 
         Ok(AnnotatedFileTree {
             root,
@@ -470,26 +476,34 @@ impl DeepContextAnalyzer {
         })
     }
 
-    fn build_file_tree_recursive(&self, path: &PathBuf, total_files: &mut usize, total_size: &mut u64) -> anyhow::Result<AnnotatedNode> {
+    fn build_file_tree_recursive(
+        &self,
+        path: &PathBuf,
+        total_files: &mut usize,
+        total_size: &mut u64,
+    ) -> anyhow::Result<AnnotatedNode> {
         let metadata = std::fs::metadata(path)?;
-        let name = path.file_name()
+        let name = path
+            .file_name()
             .unwrap_or_default()
             .to_string_lossy()
             .to_string();
 
         if metadata.is_dir() {
             let mut children = Vec::new();
-            
+
             if let Ok(entries) = std::fs::read_dir(path) {
                 for entry in entries.flatten() {
                     let child_path = entry.path();
-                    
+
                     // Apply exclude patterns
                     if self.should_exclude_path(&child_path) {
                         continue;
                     }
 
-                    if let Ok(child_node) = self.build_file_tree_recursive(&child_path, total_files, total_size) {
+                    if let Ok(child_node) =
+                        self.build_file_tree_recursive(&child_path, total_files, total_size)
+                    {
                         children.push(child_node);
                     }
                 }
@@ -530,17 +544,20 @@ impl DeepContextAnalyzer {
 
     fn should_exclude_path(&self, path: &std::path::Path) -> bool {
         let path_str = path.to_string_lossy();
-        
+
         for pattern in &self.config.exclude_patterns {
             if path_str.contains(pattern.trim_matches('*')) {
                 return true;
             }
         }
-        
+
         false
     }
 
-    async fn execute_parallel_analyses(&self, project_path: &std::path::Path) -> anyhow::Result<ParallelAnalysisResults> {
+    async fn execute_parallel_analyses(
+        &self,
+        project_path: &std::path::Path,
+    ) -> anyhow::Result<ParallelAnalysisResults> {
         use tokio::task::JoinSet;
 
         let mut join_set = JoinSet::new();
@@ -548,34 +565,35 @@ impl DeepContextAnalyzer {
         // AST Analysis
         if self.config.include_analyses.contains(&AnalysisType::Ast) {
             let path = project_path.to_path_buf();
-            join_set.spawn(async move {
-                AnalysisResult::Ast(analyze_ast_contexts(&path).await)
-            });
+            join_set.spawn(async move { AnalysisResult::Ast(analyze_ast_contexts(&path).await) });
         }
 
         // Complexity Analysis
-        if self.config.include_analyses.contains(&AnalysisType::Complexity) {
+        if self
+            .config
+            .include_analyses
+            .contains(&AnalysisType::Complexity)
+        {
             let path = project_path.to_path_buf();
-            join_set.spawn(async move {
-                AnalysisResult::Complexity(analyze_complexity(&path).await)
-            });
+            join_set
+                .spawn(async move { AnalysisResult::Complexity(analyze_complexity(&path).await) });
         }
 
         // Churn Analysis
         if self.config.include_analyses.contains(&AnalysisType::Churn) {
             let path = project_path.to_path_buf();
             let days = self.config.period_days;
-            join_set.spawn(async move {
-                AnalysisResult::Churn(analyze_churn(&path, days).await)
-            });
+            join_set.spawn(async move { AnalysisResult::Churn(analyze_churn(&path, days).await) });
         }
 
         // Dead Code Analysis
-        if self.config.include_analyses.contains(&AnalysisType::DeadCode) {
+        if self
+            .config
+            .include_analyses
+            .contains(&AnalysisType::DeadCode)
+        {
             let path = project_path.to_path_buf();
-            join_set.spawn(async move {
-                AnalysisResult::DeadCode(analyze_dead_code(&path).await)
-            });
+            join_set.spawn(async move { AnalysisResult::DeadCode(analyze_dead_code(&path).await) });
         }
 
         // SATD Analysis - TODO: Fix Send trait issue
@@ -588,13 +606,17 @@ impl DeepContextAnalyzer {
 
         // Collect results
         let mut results = ParallelAnalysisResults::default();
-        
+
         while let Some(result) = join_set.join_next().await {
             match result? {
                 AnalysisResult::Ast(Ok(ast_contexts)) => results.ast_contexts = Some(ast_contexts),
-                AnalysisResult::Complexity(Ok(complexity)) => results.complexity_report = Some(complexity),
+                AnalysisResult::Complexity(Ok(complexity)) => {
+                    results.complexity_report = Some(complexity)
+                }
                 AnalysisResult::Churn(Ok(churn)) => results.churn_analysis = Some(churn),
-                AnalysisResult::DeadCode(Ok(dead_code)) => results.dead_code_results = Some(dead_code),
+                AnalysisResult::DeadCode(Ok(dead_code)) => {
+                    results.dead_code_results = Some(dead_code)
+                }
                 AnalysisResult::Satd(Ok(satd)) => results.satd_results = Some(satd),
                 AnalysisResult::Ast(Err(e)) => debug!("AST analysis failed: {}", e),
                 AnalysisResult::Complexity(Err(e)) => debug!("Complexity analysis failed: {}", e),
@@ -607,13 +629,19 @@ impl DeepContextAnalyzer {
         Ok(results)
     }
 
-    async fn build_cross_language_references(&self, _analyses: &ParallelAnalysisResults) -> anyhow::Result<Vec<CrossLangReference>> {
+    async fn build_cross_language_references(
+        &self,
+        _analyses: &ParallelAnalysisResults,
+    ) -> anyhow::Result<Vec<CrossLangReference>> {
         // TODO: Implement cross-language reference detection
         // This would analyze FFI bindings, WASM exports, Python bindings, etc.
         Ok(Vec::new())
     }
 
-    async fn correlate_defects(&self, analyses: &ParallelAnalysisResults) -> anyhow::Result<(DefectSummary, Vec<DefectHotspot>)> {
+    async fn correlate_defects(
+        &self,
+        analyses: &ParallelAnalysisResults,
+    ) -> anyhow::Result<(DefectSummary, Vec<DefectHotspot>)> {
         let mut defect_summary = DefectSummary {
             total_defects: 0,
             by_severity: HashMap::new(),
@@ -626,22 +654,29 @@ impl DeepContextAnalyzer {
         // Count defects from dead code analysis
         if let Some(ref dead_code) = analyses.dead_code_results {
             defect_summary.total_defects += dead_code.summary.dead_functions;
-            defect_summary.by_type.insert("dead_code".to_string(), dead_code.summary.dead_functions);
+            defect_summary
+                .by_type
+                .insert("dead_code".to_string(), dead_code.summary.dead_functions);
         }
 
         // Count defects from SATD analysis
         if let Some(ref satd) = analyses.satd_results {
             defect_summary.total_defects += satd.items.len();
-            defect_summary.by_type.insert("technical_debt".to_string(), satd.items.len());
+            defect_summary
+                .by_type
+                .insert("technical_debt".to_string(), satd.items.len());
         }
 
         // Generate hotspots (simplified implementation)
         // TODO: Implement sophisticated defect correlation
-        
+
         Ok((defect_summary, hotspots))
     }
 
-    async fn calculate_quality_scores(&self, analyses: &ParallelAnalysisResults) -> anyhow::Result<QualityScorecard> {
+    async fn calculate_quality_scores(
+        &self,
+        analyses: &ParallelAnalysisResults,
+    ) -> anyhow::Result<QualityScorecard> {
         let mut complexity_score = 100.0;
         let mut maintainability_index = 100.0;
         let modularity_score = 100.0; // TODO: Calculate from DAG analysis
@@ -668,7 +703,11 @@ impl DeepContextAnalyzer {
             maintainability_index = 100.0 / (1.0 + avg_churn / 20.0);
         }
 
-        let overall_health = (complexity_score * 0.3 + maintainability_index * 0.3 + modularity_score * 0.2 + test_coverage * 0.2).min(100.0);
+        let overall_health = (complexity_score * 0.3
+            + maintainability_index * 0.3
+            + modularity_score * 0.2
+            + test_coverage * 0.2)
+            .min(100.0);
 
         Ok(QualityScorecard {
             overall_health,
@@ -680,7 +719,11 @@ impl DeepContextAnalyzer {
         })
     }
 
-    async fn generate_recommendations(&self, _hotspots: &[DefectHotspot], scorecard: &QualityScorecard) -> anyhow::Result<Vec<PrioritizedRecommendation>> {
+    async fn generate_recommendations(
+        &self,
+        _hotspots: &[DefectHotspot],
+        scorecard: &QualityScorecard,
+    ) -> anyhow::Result<Vec<PrioritizedRecommendation>> {
         let mut recommendations = Vec::new();
 
         // Generate recommendations based on quality scores
@@ -709,7 +752,9 @@ impl DeepContextAnalyzer {
         if scorecard.maintainability_index < 60.0 {
             recommendations.push(PrioritizedRecommendation {
                 title: "Improve Code Maintainability".to_string(),
-                description: "High churn rate detected. Consider stabilizing frequently changed code paths.".to_string(),
+                description:
+                    "High churn rate detected. Consider stabilizing frequently changed code paths."
+                        .to_string(),
                 priority: Priority::Medium,
                 estimated_effort: Duration::from_secs(16 * 3600), // 16 hours
                 impact: Impact::High,
@@ -720,9 +765,12 @@ impl DeepContextAnalyzer {
         Ok(recommendations)
     }
 
-    async fn analyze_template_provenance(&self, project_path: &std::path::Path) -> anyhow::Result<Option<TemplateProvenance>> {
+    async fn analyze_template_provenance(
+        &self,
+        project_path: &std::path::Path,
+    ) -> anyhow::Result<Option<TemplateProvenance>> {
         let scaffold_file = project_path.join(".paiml-scaffold.json");
-        
+
         if scaffold_file.exists() {
             // TODO: Implement template provenance analysis
             // This would parse the scaffold metadata and compare current state
@@ -754,7 +802,9 @@ enum AnalysisResult {
 
 // Analysis helper functions
 
-async fn analyze_ast_contexts(_project_path: &std::path::Path) -> anyhow::Result<Vec<EnhancedFileContext>> {
+async fn analyze_ast_contexts(
+    _project_path: &std::path::Path,
+) -> anyhow::Result<Vec<EnhancedFileContext>> {
     // TODO: Implement AST analysis with enhancement
     Ok(Vec::new())
 }
@@ -762,9 +812,9 @@ async fn analyze_ast_contexts(_project_path: &std::path::Path) -> anyhow::Result
 async fn analyze_complexity(project_path: &std::path::Path) -> anyhow::Result<ComplexityReport> {
     use crate::services::complexity::aggregate_results;
     use walkdir::WalkDir;
-    
+
     let mut file_metrics = Vec::new();
-    
+
     // Simple implementation - analyze Rust files
     for entry in WalkDir::new(project_path)
         .follow_links(false)
@@ -772,27 +822,29 @@ async fn analyze_complexity(project_path: &std::path::Path) -> anyhow::Result<Co
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-        
+
         if !path.is_file() || path.extension().and_then(|s| s.to_str()) != Some("rs") {
             continue;
         }
-        
+
         // Skip target and other excluded directories
         if path.to_string_lossy().contains("/target/") {
             continue;
         }
-        
+
         if let Ok(Some(metrics)) = analyze_rust_file_complexity(path).await {
             file_metrics.push(metrics);
         }
     }
-    
+
     Ok(aggregate_results(file_metrics))
 }
 
-async fn analyze_rust_file_complexity(path: &std::path::Path) -> anyhow::Result<Option<FileComplexityMetrics>> {
+async fn analyze_rust_file_complexity(
+    path: &std::path::Path,
+) -> anyhow::Result<Option<FileComplexityMetrics>> {
     use crate::services::ast_rust;
-    
+
     // Try to use existing complexity analysis
     match ast_rust::analyze_rust_file_with_complexity(path).await {
         Ok(metrics) => Ok(Some(metrics)),
@@ -808,27 +860,34 @@ async fn analyze_rust_file_complexity(path: &std::path::Path) -> anyhow::Result<
     }
 }
 
-async fn analyze_churn(project_path: &std::path::Path, days: u32) -> anyhow::Result<CodeChurnAnalysis> {
+async fn analyze_churn(
+    project_path: &std::path::Path,
+    days: u32,
+) -> anyhow::Result<CodeChurnAnalysis> {
     GitAnalysisService::analyze_code_churn(project_path, days)
         .map_err(|e| anyhow::anyhow!("Churn analysis failed: {}", e))
 }
 
-async fn analyze_dead_code(project_path: &std::path::Path) -> anyhow::Result<crate::models::dead_code::DeadCodeRankingResult> {
+async fn analyze_dead_code(
+    project_path: &std::path::Path,
+) -> anyhow::Result<crate::models::dead_code::DeadCodeRankingResult> {
     use crate::models::dead_code::DeadCodeAnalysisConfig;
-    
+
     let mut analyzer = DeadCodeAnalyzer::new(10000);
     let config = DeadCodeAnalysisConfig {
         include_unreachable: true,
         include_tests: false,
         min_dead_lines: 10,
     };
-    
+
     analyzer.analyze_with_ranking(project_path, config).await
 }
 
 #[allow(dead_code)] // Will be used when SATD analysis is re-enabled
 async fn analyze_satd(project_path: &std::path::Path) -> anyhow::Result<SATDAnalysisResult> {
     let detector = SATDDetector::new();
-    detector.analyze_project(project_path, false).await
+    detector
+        .analyze_project(project_path, false)
+        .await
         .map_err(|e| anyhow::anyhow!("SATD analysis failed: {}", e))
 }

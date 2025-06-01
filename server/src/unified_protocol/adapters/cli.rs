@@ -839,7 +839,9 @@ fn deep_context_dag_type_to_string(dag_type: &crate::cli::DeepContextDagType) ->
     }
 }
 
-fn deep_context_cache_strategy_to_string(strategy: &crate::cli::DeepContextCacheStrategy) -> String {
+fn deep_context_cache_strategy_to_string(
+    strategy: &crate::cli::DeepContextCacheStrategy,
+) -> String {
     match strategy {
         crate::cli::DeepContextCacheStrategy::Normal => "normal".to_string(),
         crate::cli::DeepContextCacheStrategy::ForceRefresh => "force-refresh".to_string(),

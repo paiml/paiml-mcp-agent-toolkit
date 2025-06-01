@@ -399,6 +399,51 @@ paiml-mcp-agent-toolkit demo --path /path/to/repo
 paiml-mcp-agent-toolkit demo --format json
 ```
 
+### Command: `serve`
+
+Start the HTTP REST API server for programmatic access to all toolkit capabilities.
+
+#### Synopsis
+
+```bash
+paiml-mcp-agent-toolkit serve [OPTIONS]
+```
+
+#### Options
+
+- `--host <HOST>` - Host address to bind to (default: 127.0.0.1)
+- `--port <PORT>` - Port to bind the HTTP server to (default: 8080)
+- `--cors` - Enable CORS for cross-origin requests
+
+#### Description
+
+The serve command starts an HTTP REST API server that provides programmatic access to all toolkit capabilities through standard HTTP endpoints. This enables integration with web applications, CI/CD pipelines, and other tools that can make HTTP requests.
+
+The server provides endpoints for:
+- Template generation and listing
+- Code analysis (complexity, churn, DAG, dead code, SATD)
+- Deep context analysis
+- Health checks and metrics
+
+All endpoints support both JSON request bodies and query parameters where appropriate.
+
+#### Examples
+
+```bash
+# Start server on default settings (localhost:8080)
+paiml-mcp-agent-toolkit serve
+
+# Start server with custom host and port
+paiml-mcp-agent-toolkit serve --host 0.0.0.0 --port 3000
+
+# Start server with CORS enabled for web apps
+paiml-mcp-agent-toolkit serve --port 8080 --cors
+
+# Use the REST API
+curl "http://localhost:8080/health"
+curl "http://localhost:8080/api/v1/analyze/complexity?top_files=5"
+```
+
 ## MCP Protocol Implementation
 
 ### Transport Layer
