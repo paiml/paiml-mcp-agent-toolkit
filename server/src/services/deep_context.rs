@@ -389,6 +389,666 @@ impl DeepContextAnalyzer {
         Self { config, semaphore }
     }
 
+    /// Format as comprehensive markdown output that matches TypeScript implementation
+    pub fn format_as_comprehensive_markdown(
+        &self,
+        context: &DeepContext,
+    ) -> anyhow::Result<String> {
+        use std::fmt::Write;
+        let mut output = String::new();
+
+        // Header with enhanced metadata
+        let project_name = context
+            .metadata
+            .project_root
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy();
+
+        writeln!(output, "# Deep Context: {}", project_name)?;
+        writeln!(output, "Generated: {}", context.metadata.generated_at)?;
+        writeln!(output, "Version: {}", context.metadata.tool_version)?;
+        writeln!(
+            output,
+            "Analysis Time: {:.2}s",
+            context.metadata.analysis_duration.as_secs_f64()
+        )?;
+        writeln!(
+            output,
+            "Cache Hit Rate: {:.1}%",
+            context.metadata.cache_stats.hit_rate * 100.0
+        )?;
+
+        // Quality scorecard summary
+        writeln!(output, "\n## Quality Scorecard\n")?;
+        writeln!(
+            output,
+            "- **Overall Health**: {} ({:.1}/100)",
+            self.overall_health_emoji(context.quality_scorecard.overall_health),
+            context.quality_scorecard.overall_health
+        )?;
+        writeln!(
+            output,
+            "- **Maintainability Index**: {:.1}",
+            context.quality_scorecard.maintainability_index
+        )?;
+        writeln!(
+            output,
+            "- **Technical Debt**: {:.1} hours estimated",
+            context.quality_scorecard.technical_debt_hours
+        )?;
+
+        // Project structure with annotations
+        writeln!(output, "\n## Project Structure\n")?;
+        writeln!(output, "```")?;
+        self.format_annotated_tree(&mut output, &context.file_tree)?;
+        writeln!(output, "```\n")?;
+
+        // Enhanced AST with complexity indicators
+        if !context.analyses.ast_contexts.is_empty() {
+            self.format_enhanced_ast_section(&mut output, &context.analyses.ast_contexts)?;
+        }
+
+        // Code quality metrics
+        self.format_complexity_hotspots(&mut output, context)?;
+        self.format_churn_analysis(&mut output, context)?;
+        self.format_technical_debt(&mut output, context)?;
+        self.format_dead_code_analysis(&mut output, context)?;
+
+        // Cross-language references
+        self.format_cross_references(&mut output, &context.analyses.cross_language_refs)?;
+
+        // Defect probability analysis
+        self.format_defect_predictions(&mut output, context)?;
+
+        // Actionable recommendations
+        self.format_prioritized_recommendations(&mut output, &context.recommendations)?;
+
+        Ok(output)
+    }
+
+    /// Format as JSON output for machine consumption and API responses
+    pub fn format_as_json(&self, context: &DeepContext) -> anyhow::Result<String> {
+        serde_json::to_string_pretty(context)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize to JSON: {}", e))
+    }
+
+    /// Format as SARIF (Static Analysis Results Interchange Format) for tool integration
+    pub fn format_as_sarif(&self, context: &DeepContext) -> anyhow::Result<String> {
+        use serde_json::json;
+
+        let mut results = Vec::new();
+        let mut rules = Vec::new();
+
+        // Add complexity violations as SARIF results
+        if let Some(ref complexity) = context.analyses.complexity_report {
+            // Define complexity rules
+            rules.push(json!({
+                "id": "complexity/high-cyclomatic",
+                "shortDescription": {"text": "High cyclomatic complexity"},
+                "fullDescription": {"text": "Function has cyclomatic complexity above recommended threshold"},
+                "defaultConfiguration": {"level": "warning"},
+                "properties": {
+                    "tags": ["complexity", "maintainability"]
+                }
+            }));
+
+            rules.push(json!({
+                "id": "complexity/high-cognitive",
+                "shortDescription": {"text": "High cognitive complexity"},
+                "fullDescription": {"text": "Function has cognitive complexity above recommended threshold"},
+                "defaultConfiguration": {"level": "warning"},
+                "properties": {
+                    "tags": ["complexity", "maintainability"]
+                }
+            }));
+
+            // Add results for high complexity functions
+            for file in &complexity.files {
+                for func in &file.functions {
+                    if func.metrics.cyclomatic > 10 {
+                        results.push(json!({
+                            "ruleId": "complexity/high-cyclomatic",
+                            "level": if func.metrics.cyclomatic > 20 { "error" } else { "warning" },
+                            "message": {
+                                "text": format!("Function '{}' has cyclomatic complexity of {}", func.name, func.metrics.cyclomatic)
+                            },
+                            "locations": [{
+                                "physicalLocation": {
+                                    "artifactLocation": {"uri": file.path.clone()},
+                                    "region": {
+                                        "startLine": func.line_start,
+                                        "startColumn": 1,
+                                        "endLine": func.line_end
+                                    }
+                                }
+                            }],
+                            "properties": {
+                                "cyclomatic_complexity": func.metrics.cyclomatic,
+                                "cognitive_complexity": func.metrics.cognitive
+                            }
+                        }));
+                    }
+
+                    if func.metrics.cognitive > 15 {
+                        results.push(json!({
+                            "ruleId": "complexity/high-cognitive",
+                            "level": if func.metrics.cognitive > 25 { "error" } else { "warning" },
+                            "message": {
+                                "text": format!("Function '{}' has cognitive complexity of {}", func.name, func.metrics.cognitive)
+                            },
+                            "locations": [{
+                                "physicalLocation": {
+                                    "artifactLocation": {"uri": file.path.clone()},
+                                    "region": {
+                                        "startLine": func.line_start,
+                                        "startColumn": 1,
+                                        "endLine": func.line_end
+                                    }
+                                }
+                            }],
+                            "properties": {
+                                "cyclomatic_complexity": func.metrics.cyclomatic,
+                                "cognitive_complexity": func.metrics.cognitive
+                            }
+                        }));
+                    }
+                }
+            }
+        }
+
+        // Add SATD items as SARIF results
+        if let Some(ref satd) = context.analyses.satd_results {
+            rules.push(json!({
+                "id": "debt/technical-debt",
+                "shortDescription": {"text": "Technical debt item"},
+                "fullDescription": {"text": "Self-admitted technical debt requiring attention"},
+                "defaultConfiguration": {"level": "note"},
+                "properties": {
+                    "tags": ["debt", "maintainability"]
+                }
+            }));
+
+            for item in &satd.items {
+                let level = match item.severity {
+                    crate::services::satd_detector::Severity::Critical => "error",
+                    crate::services::satd_detector::Severity::High => "warning",
+                    crate::services::satd_detector::Severity::Medium => "note",
+                    crate::services::satd_detector::Severity::Low => "note",
+                };
+
+                results.push(json!({
+                    "ruleId": "debt/technical-debt",
+                    "level": level,
+                    "message": {
+                        "text": format!("{}: {}", item.category, item.text.trim())
+                    },
+                    "locations": [{
+                        "physicalLocation": {
+                            "artifactLocation": {"uri": item.file.to_string_lossy()},
+                            "region": {
+                                "startLine": item.line,
+                                "startColumn": 1
+                            }
+                        }
+                    }],
+                    "properties": {
+                        "category": format!("{:?}", item.category),
+                        "severity": format!("{:?}", item.severity),
+                        "debt_type": "self_admitted"
+                    }
+                }));
+            }
+        }
+
+        // Add dead code as SARIF results
+        if let Some(ref dead_code) = context.analyses.dead_code_results {
+            rules.push(json!({
+                "id": "dead-code/unused-code",
+                "shortDescription": {"text": "Dead code detected"},
+                "fullDescription": {"text": "Code that appears to be unused and can potentially be removed"},
+                "defaultConfiguration": {"level": "warning"},
+                "properties": {
+                    "tags": ["dead-code", "maintainability"]
+                }
+            }));
+
+            for file in &dead_code.ranked_files {
+                if file.dead_functions > 0 {
+                    results.push(json!({
+                        "ruleId": "dead-code/unused-code",
+                        "level": "warning",
+                        "message": {
+                            "text": format!("File contains {} dead functions and {} dead lines", 
+                                file.dead_functions, file.dead_lines)
+                        },
+                        "locations": [{
+                            "physicalLocation": {
+                                "artifactLocation": {"uri": file.path.clone()},
+                                "region": {"startLine": 1, "startColumn": 1}
+                            }
+                        }],
+                        "properties": {
+                            "dead_functions": file.dead_functions,
+                            "dead_lines": file.dead_lines,
+                            "dead_code_percentage": file.dead_lines as f64 / file.total_lines.max(1) as f64 * 100.0
+                        }
+                    }));
+                }
+            }
+        }
+
+        let sarif = json!({
+            "version": "2.1.0",
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "runs": [{
+                "tool": {
+                    "driver": {
+                        "name": "paiml-mcp-agent-toolkit",
+                        "version": context.metadata.tool_version,
+                        "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
+                        "shortDescription": {"text": "Professional project scaffolding and analysis toolkit"},
+                        "rules": rules
+                    }
+                },
+                "results": results,
+                "properties": {
+                    "analysis_duration_seconds": context.metadata.analysis_duration.as_secs_f64(),
+                    "cache_hit_rate": context.metadata.cache_stats.hit_rate,
+                    "overall_health_score": context.quality_scorecard.overall_health,
+                    "technical_debt_hours": context.quality_scorecard.technical_debt_hours
+                }
+            }]
+        });
+
+        serde_json::to_string_pretty(&sarif)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize to SARIF: {}", e))
+    }
+
+    fn overall_health_emoji(&self, health: f64) -> &'static str {
+        if health >= 80.0 {
+            "✅"
+        } else if health >= 60.0 {
+            "⚠️"
+        } else {
+            "❌"
+        }
+    }
+
+    fn format_annotated_tree(
+        &self,
+        output: &mut String,
+        tree: &AnnotatedFileTree,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        self.format_tree_node(output, &tree.root, "", true)?;
+        writeln!(
+            output,
+            "\n📊 Total Files: {}, Total Size: {} bytes",
+            tree.total_files, tree.total_size_bytes
+        )?;
+        Ok(())
+    }
+
+    #[allow(clippy::only_used_in_recursion)]
+    fn format_tree_node(
+        &self,
+        output: &mut String,
+        node: &AnnotatedNode,
+        prefix: &str,
+        is_last: bool,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        let connector = if is_last { "└── " } else { "├── " };
+        let extension = if is_last { "    " } else { "│   " };
+
+        // Format node with annotations
+        let mut node_display = node.name.clone();
+        if matches!(node.node_type, NodeType::Directory) {
+            node_display.push('/');
+        }
+
+        // Add annotations if present
+        let mut annotations = Vec::new();
+        if let Some(score) = node.annotations.defect_score {
+            if score > 0.7 {
+                annotations.push(format!("🔴{:.1}", score));
+            } else if score > 0.4 {
+                annotations.push(format!("🟡{:.1}", score));
+            }
+        }
+        if node.annotations.satd_items > 0 {
+            annotations.push(format!("📝{}", node.annotations.satd_items));
+        }
+        if node.annotations.dead_code_items > 0 {
+            annotations.push(format!("💀{}", node.annotations.dead_code_items));
+        }
+
+        if !annotations.is_empty() {
+            node_display.push_str(&format!(" [{}]", annotations.join(" ")));
+        }
+
+        writeln!(output, "{}{}{}", prefix, connector, node_display)?;
+
+        // Process children
+        for (i, child) in node.children.iter().enumerate() {
+            let is_last_child = i == node.children.len() - 1;
+            self.format_tree_node(
+                output,
+                child,
+                &format!("{}{}", prefix, extension),
+                is_last_child,
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn format_enhanced_ast_section(
+        &self,
+        output: &mut String,
+        ast_contexts: &[EnhancedFileContext],
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        writeln!(output, "## Enhanced AST Analysis\n")?;
+
+        for context in ast_contexts {
+            writeln!(output, "### {}\n", context.base.path)?;
+
+            // Language-specific AST details
+            writeln!(output, "**Language:** {}", context.base.language)?;
+            writeln!(output, "**Symbols:** {}", context.base.items.len())?;
+
+            if let Some(ref complexity) = context.complexity_metrics {
+                writeln!(
+                    output,
+                    "**Complexity Score:** {:.1}",
+                    complexity.total_complexity.cyclomatic
+                )?;
+            }
+
+            if let Some(ref churn) = context.churn_metrics {
+                writeln!(
+                    output,
+                    "**Churn:** {} commits by {} authors",
+                    churn.commits, churn.authors
+                )?;
+            }
+
+            writeln!(
+                output,
+                "**Defect Probability:** {:.1}%\n",
+                context.defects.defect_probability * 100.0
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn format_complexity_hotspots(
+        &self,
+        output: &mut String,
+        context: &DeepContext,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        if let Some(ref complexity) = context.analyses.complexity_report {
+            writeln!(output, "## Complexity Hotspots\n")?;
+
+            // Find top 10 most complex functions
+            let mut all_functions: Vec<_> = complexity
+                .files
+                .iter()
+                .flat_map(|f| f.functions.iter().map(move |func| (f, func)))
+                .collect();
+            all_functions.sort_by_key(|(_, func)| std::cmp::Reverse(func.metrics.cyclomatic));
+
+            writeln!(output, "| Function | File | Cyclomatic | Cognitive |")?;
+            writeln!(output, "|----------|------|------------|-----------|")?;
+
+            for (file, func) in all_functions.iter().take(10) {
+                writeln!(
+                    output,
+                    "| `{}` | `{}` | {} | {} |",
+                    func.name, file.path, func.metrics.cyclomatic, func.metrics.cognitive
+                )?;
+            }
+            writeln!(output)?;
+        }
+
+        Ok(())
+    }
+
+    fn format_churn_analysis(
+        &self,
+        output: &mut String,
+        context: &DeepContext,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        if let Some(ref churn) = context.analyses.churn_analysis {
+            writeln!(output, "## Code Churn Analysis\n")?;
+
+            writeln!(output, "**Summary:**")?;
+            writeln!(output, "- Total Commits: {}", churn.summary.total_commits)?;
+            writeln!(output, "- Files Changed: {}", churn.files.len())?;
+
+            // Top churned files
+            let mut sorted_files = churn.files.clone();
+            sorted_files.sort_by_key(|f| std::cmp::Reverse(f.commit_count));
+
+            writeln!(output, "\n**Top Changed Files:**")?;
+            writeln!(output, "| File | Commits | Authors |")?;
+            writeln!(output, "|------|---------|---------|")?;
+
+            for file in sorted_files.iter().take(10) {
+                writeln!(
+                    output,
+                    "| `{}` | {} | {} |",
+                    file.relative_path,
+                    file.commit_count,
+                    file.unique_authors.len()
+                )?;
+            }
+            writeln!(output)?;
+        }
+
+        Ok(())
+    }
+
+    fn format_technical_debt(
+        &self,
+        output: &mut String,
+        context: &DeepContext,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        if let Some(ref satd) = context.analyses.satd_results {
+            writeln!(output, "## Technical Debt Analysis\n")?;
+
+            let mut by_severity = std::collections::HashMap::new();
+            for item in &satd.items {
+                *by_severity.entry(&item.severity).or_insert(0) += 1;
+            }
+
+            writeln!(output, "**SATD Summary:**")?;
+            for (severity, count) in by_severity {
+                writeln!(output, "- {:?}: {}", severity, count)?;
+            }
+
+            // Top critical debt items
+            let critical_items: Vec<_> = satd
+                .items
+                .iter()
+                .filter(|item| {
+                    matches!(
+                        item.severity,
+                        crate::services::satd_detector::Severity::Critical
+                    )
+                })
+                .take(5)
+                .collect();
+
+            if !critical_items.is_empty() {
+                writeln!(output, "\n**Critical Items:**")?;
+                for item in critical_items {
+                    writeln!(
+                        output,
+                        "- `{}:{} {}`: {}",
+                        item.file.display(),
+                        item.line,
+                        item.category,
+                        item.text.trim()
+                    )?;
+                }
+            }
+            writeln!(output)?;
+        }
+
+        Ok(())
+    }
+
+    fn format_dead_code_analysis(
+        &self,
+        output: &mut String,
+        context: &DeepContext,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        if let Some(ref dead_code) = context.analyses.dead_code_results {
+            writeln!(output, "## Dead Code Analysis\n")?;
+
+            writeln!(output, "**Summary:**")?;
+            writeln!(
+                output,
+                "- Dead Functions: {}",
+                dead_code.summary.dead_functions
+            )?;
+            writeln!(
+                output,
+                "- Total Dead Lines: {}",
+                dead_code.summary.total_dead_lines
+            )?;
+
+            if !dead_code.ranked_files.is_empty() {
+                writeln!(output, "\n**Top Files with Dead Code:**")?;
+                writeln!(output, "| File | Dead Lines | Dead Functions |")?;
+                writeln!(output, "|------|------------|----------------|")?;
+
+                for file in dead_code.ranked_files.iter().take(10) {
+                    writeln!(
+                        output,
+                        "| `{}` | {} | {} |",
+                        file.path, file.dead_lines, file.dead_functions
+                    )?;
+                }
+            }
+            writeln!(output)?;
+        }
+
+        Ok(())
+    }
+
+    fn format_cross_references(
+        &self,
+        output: &mut String,
+        cross_refs: &[CrossLangReference],
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        if !cross_refs.is_empty() {
+            writeln!(output, "## Cross-Language References\n")?;
+
+            writeln!(output, "| Source | Target | Type | Confidence |")?;
+            writeln!(output, "|--------|--------|------|------------|")?;
+
+            for cross_ref in cross_refs {
+                writeln!(
+                    output,
+                    "| `{}` | `{}` | {:?} | {:.1}% |",
+                    cross_ref.source_file.display(),
+                    cross_ref.target_file.display(),
+                    cross_ref.reference_type,
+                    cross_ref.confidence * 100.0
+                )?;
+            }
+            writeln!(output)?;
+        }
+
+        Ok(())
+    }
+
+    fn format_defect_predictions(
+        &self,
+        output: &mut String,
+        context: &DeepContext,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        writeln!(output, "## Defect Probability Analysis\n")?;
+
+        writeln!(output, "**Risk Assessment:**")?;
+        writeln!(
+            output,
+            "- Total Defects Predicted: {}",
+            context.defect_summary.total_defects
+        )?;
+        writeln!(
+            output,
+            "- Defect Density: {:.2} defects per 1000 lines",
+            context.defect_summary.defect_density
+        )?;
+
+        if !context.hotspots.is_empty() {
+            writeln!(output, "\n**High-Risk Hotspots:**")?;
+            writeln!(output, "| File:Line | Risk Score | Effort (hours) |")?;
+            writeln!(output, "|-----------|------------|----------------|")?;
+
+            for hotspot in context.hotspots.iter().take(10) {
+                writeln!(
+                    output,
+                    "| `{}:{}` | {:.1} | {:.1} |",
+                    hotspot.location.file.display(),
+                    hotspot.location.line,
+                    hotspot.composite_score,
+                    hotspot.refactoring_effort.estimated_hours
+                )?;
+            }
+        }
+        writeln!(output)?;
+
+        Ok(())
+    }
+
+    fn format_prioritized_recommendations(
+        &self,
+        output: &mut String,
+        recommendations: &[PrioritizedRecommendation],
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        if !recommendations.is_empty() {
+            writeln!(output, "## Prioritized Recommendations\n")?;
+
+            for (i, rec) in recommendations.iter().enumerate() {
+                let priority_emoji = match rec.priority {
+                    Priority::Critical => "🔴",
+                    Priority::High => "🟡",
+                    Priority::Medium => "🔵",
+                    Priority::Low => "⚪",
+                };
+
+                writeln!(output, "### {} {} {}", priority_emoji, i + 1, rec.title)?;
+                writeln!(output, "**Description:** {}", rec.description)?;
+                writeln!(output, "**Effort:** {:?}", rec.estimated_effort)?;
+                writeln!(output, "**Impact:** {:?}", rec.impact)?;
+
+                if !rec.prerequisites.is_empty() {
+                    writeln!(output, "**Prerequisites:**")?;
+                    for prereq in &rec.prerequisites {
+                        writeln!(output, "- {}", prereq)?;
+                    }
+                }
+                writeln!(output)?;
+            }
+        }
+
+        Ok(())
+    }
+
     #[instrument(level = "info", skip(self))]
     pub async fn analyze_project(&self, project_path: &PathBuf) -> anyhow::Result<DeepContext> {
         let start_time = std::time::Instant::now();

@@ -453,6 +453,95 @@ Analyze git history for code churn metrics.
 **Returns:**
 - Code churn analysis report
 
+### `analyze_deep_context` ✨ **NEW**
+
+**NEW**: Generate comprehensive deep context analysis combining multiple analysis types into unified quality assessment.
+
+**Arguments:**
+- `project_path` (string, required): Path to analyze (default: current directory)
+- `include_analyses` (array, optional): List of analyses to include. Available options:
+  - `"ast"`: Abstract syntax tree parsing and symbol extraction
+  - `"complexity"`: McCabe Cyclomatic and Cognitive complexity metrics
+  - `"churn"`: Git history and change frequency tracking
+  - `"dag"`: Dependency graph generation and visualization
+  - `"dead-code"`: Unused code detection with confidence scoring
+  - `"satd"`: Self-Admitted Technical Debt detection from comments
+  - `"defect-probability"`: ML-based defect prediction and hotspot identification
+- `exclude_analyses` (array, optional): List of analyses to exclude
+- `period_days` (number, optional): Period for churn analysis (default: 30 days)
+- `dag_type` (string, optional): DAG type for dependency analysis ("call-graph", "import-graph", "inheritance", "full-dependency")
+- `max_depth` (number, optional): Maximum directory traversal depth
+- `include_patterns` (array, optional): Include file patterns (e.g., ["src/**/*.rs", "tests/**/*.rs"])
+- `exclude_patterns` (array, optional): Exclude file patterns (e.g., ["**/target/**", "**/node_modules/**"])
+- `cache_strategy` (string, optional): Cache usage strategy ("normal", "force-refresh", "offline")
+- `parallel` (number, optional): Parallelism level for analysis
+- `format` (string, optional): Output format ("markdown", "json", "sarif")
+
+**Returns:**
+Comprehensive deep context analysis with:
+- **Quality Scorecard**: Overall health score (0-100), maintainability index, technical debt estimation
+- **Multi-Analysis Pipeline**: Combined results from all requested analysis types
+- **Defect Correlation**: Cross-analysis insights and risk prediction  
+- **Prioritized Recommendations**: AI-generated actionable improvement suggestions
+- **Enhanced File Tree**: Annotated project structure with defect scores and metrics
+- **Template Provenance**: Project scaffolding drift analysis (if applicable)
+- **Cross-Language References**: FFI bindings, WASM exports, inter-language dependencies
+
+**Example Request:**
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+        "name": "analyze_deep_context",
+        "arguments": {
+            "project_path": "./",
+            "include_analyses": ["ast", "complexity", "churn", "satd"],
+            "period_days": 30,
+            "cache_strategy": "normal",
+            "format": "json",
+            "include_patterns": ["src/**/*.rs", "tests/**/*.rs"],
+            "exclude_patterns": ["**/target/**"],
+            "parallel": 8
+        }
+    },
+    "id": 1
+}
+```
+
+**Example Response Structure:**
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+        "content": [
+            {
+                "type": "text",
+                "text": "{\"metadata\":{\"generated_at\":\"2025-06-01T...\",\"tool_version\":\"0.18.5\",\"analysis_duration\":{\"secs\":8,\"nanos\":245000000}},\"quality_scorecard\":{\"overall_health\":78.5,\"complexity_score\":65.2,\"maintainability_index\":82.1,\"technical_debt_hours\":45.2},\"file_tree\":{\"root\":{\"name\":\"project\",\"children\":[...]},\"total_files\":146,\"total_size_bytes\":1250000},\"analyses\":{\"ast_contexts\":[...],\"complexity_report\":{...},\"churn_analysis\":{...},\"satd_results\":{...}},\"hotspots\":[{\"location\":{\"file\":\"src/complex.rs\",\"line\":42},\"composite_score\":0.85,\"refactoring_effort\":{\"estimated_hours\":4.5,\"priority\":\"High\"}}],\"recommendations\":[{\"title\":\"Reduce Code Complexity\",\"description\":\"Several functions exceed complexity thresholds...\",\"priority\":\"High\",\"estimated_effort\":{\"secs\":28800},\"impact\":\"High\"}]}"
+            }
+        ]
+    }
+}
+```
+
+**Quality Scorecard Features:**
+- **Overall Health Score** (0-100): Composite quality assessment
+- **Maintainability Index**: Code maintainability metrics based on complexity and churn
+- **Technical Debt Hours**: Estimated effort to address identified debt items
+- **Defect Correlation**: Cross-analysis insights for risk prediction
+
+**Performance Characteristics:**
+- **Parallel Execution**: Tokio-based concurrent analysis using JoinSet
+- **Cache Integration**: Smart caching strategies for incremental analysis
+- **Memory Efficiency**: Optimized data structures with streaming output
+- **Analysis Time**: ~2.5ms for focused analysis, ~8 seconds for full project
+
+**Output Format Support:**
+- **JSON**: Structured data for API consumption and tool integration
+- **Markdown**: Human-readable comprehensive reports with annotated file trees
+- **SARIF**: Static Analysis Results Interchange Format for IDE integration and CI/CD pipelines
+
 ## Connection Management
 
 ### Heartbeat

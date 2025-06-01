@@ -211,13 +211,27 @@ Each toolchain supports `makefile`, `readme`, and `gitignore` templates followin
 - Mermaid diagram output
 
 ### Deep Context Analysis ✨ **NEW**
-- **Comprehensive Multi-Analysis Pipeline**: Combines AST, complexity, churn, dead code, and SATD analysis
-- **Quality Scorecard**: Overall health scoring with maintainability index and technical debt estimation
-- **Defect Correlation**: Cross-references different analysis types to identify high-risk areas
-- **Multiple Output Formats**: Markdown reports, JSON data, and SARIF for IDE integration
-- **Configurable Analysis**: Include/exclude specific analysis types with fine-grained control
-- **Caching Strategy Support**: Normal, force-refresh, and offline modes for performance optimization
-- **Triple Interface Support**: Available through CLI, HTTP REST API, and MCP JSON-RPC protocols
+- **Comprehensive Multi-Analysis Pipeline**: Combines AST, complexity, churn, dead code, and SATD analysis into unified quality assessment
+- **Quality Scorecard**: Overall health scoring (0-100) with maintainability index, complexity score, and technical debt estimation
+- **Defect Correlation**: Cross-references different analysis types to identify high-risk hotspots and predict defect probability
+- **Prioritized Recommendations**: AI-generated actionable recommendations with effort estimation and priority ranking
+- **Multiple Output Formats**: 
+  - **Markdown**: Human-readable comprehensive reports with annotated file trees
+  - **JSON**: Structured data for API consumption and tool integration
+  - **SARIF**: Static Analysis Results Interchange Format for IDE integration and CI/CD pipelines
+- **Configurable Analysis**: Fine-grained control with `--include`/`--exclude` flags for specific analysis types:
+  - `ast`: Abstract Syntax Tree analysis
+  - `complexity`: McCabe Cyclomatic and Cognitive complexity
+  - `churn`: Git history and change frequency analysis
+  - `dag`: Dependency graph generation
+  - `dead-code`: Unused code detection with confidence scoring
+  - `satd`: Self-Admitted Technical Debt detection
+  - `defect-probability`: ML-based defect prediction
+- **Performance Optimized**: Parallel execution with tokio JoinSet, cache-aware incremental analysis
+- **Cache Strategy Support**: Normal, force-refresh, and offline modes for optimal performance
+- **Template Provenance Analysis**: Tracks project scaffolding drift and evolution from original templates
+- **Cross-Language Reference Detection**: Identifies FFI bindings, WASM exports, and inter-language dependencies
+- **Triple Interface Support**: Consistent behavior across CLI, HTTP REST API, and MCP JSON-RPC protocols
 
 ### Interactive Demo System
 - **Complete 7-Step Analysis Pipeline**: AST Context → Complexity → DAG → Churn → Architecture → Defect Analysis → Template Generation

@@ -504,7 +504,7 @@ fn test_help_output() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "Professional project scaffolding toolkit",
+            "Professional project quantitative scaffolding and analysis toolkit",
         ))
         .stdout(predicate::str::contains("Commands:"));
 }

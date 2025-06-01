@@ -436,11 +436,47 @@ validate-naming:
 	@echo "🔍 Validating naming conventions..."
 	@deno run --allow-read --allow-run $(SCRIPTS_DIR)/validate-naming.ts
 
-# Generate deep context analysis of the project
-context:
-	@echo "📊 Generating deep context analysis..."
-	@$(SCRIPTS_DIR)/deep-context.ts
+# Generate deep context analysis of the project (dogfooding our own tool)
+context: server-build-binary
+	@echo "📊 Generating deep context analysis (dogfooding our own tool)..."
+	@./target/release/paiml-mcp-agent-toolkit analyze deep-context \
+		--project-path . \
+		--include "ast,complexity,churn,satd,dead-code" \
+		--format markdown \
+		--output deep_context.md \
+		--cache-strategy normal
 	@echo "✅ Deep context analysis complete! See deep_context.md"
+
+# Additional targets for different formats
+context-json: server-build-binary
+	@./target/release/paiml-mcp-agent-toolkit analyze deep-context \
+		--project-path . \
+		--include "ast,complexity,churn,satd,dead-code" \
+		--format json \
+		--output deep_context.json
+
+context-sarif: server-build-binary
+	@./target/release/paiml-mcp-agent-toolkit analyze deep-context \
+		--project-path . \
+		--include "complexity,satd,dead-code" \
+		--format sarif \
+		--output deep_context.sarif
+
+# Temporary parallel implementation for migration testing
+context-ts:
+	@$(SCRIPTS_DIR)/deep-context.ts
+
+context-rust: server-build-binary
+	@./target/release/paiml-mcp-agent-toolkit analyze deep-context \
+		--project-path . --format markdown --output deep_context_rust.md
+
+context-compare: context-ts context-rust
+	@echo "Comparing outputs..."
+	@diff -u deep_context.md deep_context_rust.md || true
+	@echo ""
+	@echo "Performance comparison:"
+	@time -p make context-ts 2>&1 | grep real || echo "TypeScript timing unavailable"
+	@time -p make context-rust 2>&1 | grep real || echo "Rust timing unavailable"
 
 # Validate dependencies before installation
 deps-validate:

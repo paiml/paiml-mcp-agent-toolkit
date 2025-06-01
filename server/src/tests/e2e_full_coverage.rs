@@ -197,7 +197,7 @@ fn test_cli_main_binary_help() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Professional project scaffolding toolkit"));
+    assert!(stdout.contains("Professional project quantitative scaffolding and analysis toolkit"));
     assert!(stdout.contains("Commands:"));
     assert!(stdout.contains("generate"));
     assert!(stdout.contains("scaffold"));
