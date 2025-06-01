@@ -435,119 +435,74 @@ async fn bench_top_files_interfaces() {
 
 ## Release Process
 
-### Release Workflow (MANDATORY STEPS)
+### Simple Release Workflow (RECOMMENDED)
 
-When the user requests to "prepare a new release", follow this exact sequence:
+This project uses an automated GitHub Actions workflow for creating releases. Follow this streamlined process:
 
-#### 1. Pre-Release Validation
+#### 1. Prepare for Release
 ```bash
-# Verify all tests pass before release
-make lint && make test
-
-# Ensure clean git state
+# Ensure all changes are committed and pushed
 git status  # Should show clean working directory
+git push origin master
+
+# Verify all tests pass
+make lint && make test
 ```
 
-#### 2. Documentation Updates
-
-**Update README.md:**
-- Add new features to the feature list sections
-- Update MCP tools table with any new tools
-- Add new CLI usage examples 
-- Update performance metrics if applicable
-
-**Update RELEASE_NOTES.md:**
-- Add new version section at the top (e.g., `# Release Notes for v0.15.0`)
-- Include comprehensive feature descriptions with technical details
-- Add usage examples for new features
-- Document breaking changes, bug fixes, and improvements
-- Include performance characteristics and test coverage improvements
-
-**Key Release Notes Sections:**
-```markdown
-# Release Notes for vX.Y.Z
-
-## 🎯 Major Feature Release: [Feature Name]
-
-## ✨ New Features
-### [Feature Name] (`command-name`)
-- **NEW**: [Feature description]
-- **FIXED**: [Bug fixes] 
-- **IMPROVED**: [Enhancements]
-
-## 🔧 Technical Implementation
-### [Module Name] (`path/to/file.rs`)
-- [Implementation details]
-
-## 📊 Usage Examples
+#### 2. Trigger Automated Release
 ```bash
-# CLI Usage
-command --param value
+# Use GitHub CLI to trigger the Simple Release workflow
+gh workflow run "Simple Release" --field version_bump=[patch|minor|major]
+
+# Monitor the release progress
+gh run list --limit 5
 ```
 
-## 🧪 Test Coverage Improvements
-- **NEW**: [Number] new tests for [feature]
-- **VERIFIED**: All interface consistency checks passing
+The automated workflow will:
+- ✅ **Bump version numbers** in both `Cargo.toml` files automatically
+- ✅ **Build optimized binaries** for all supported platforms:
+  - `x86_64-unknown-linux-gnu` (Linux x86-64)
+  - `aarch64-unknown-linux-gnu` (Linux ARM64)
+  - `x86_64-apple-darwin` (Intel Mac)
+  - `aarch64-apple-darwin` (Apple Silicon Mac)
+- ✅ **Create GitHub release** with auto-generated release notes
+- ✅ **Attach binary artifacts** to the release
+- ✅ **Tag the repository** with the new version
 
-## 🚀 Performance Characteristics
-- **Startup**: <Xms
-- **Analysis**: [Performance details]
-```
+#### 3. Version Bump Guidelines
+Choose the appropriate bump type:
 
-#### 3. Commit Changes
+| Change Type | Version Bump | Example | Use Cases |
+|-------------|--------------|---------|-----------|
+| **patch** | 0.18.2 → 0.18.3 | Bug fixes, documentation, minor improvements | HTTP interface fixes, documentation updates |
+| **minor** | 0.18.2 → 0.19.0 | New features, new analysis tools | Deep context analysis, new CLI commands |
+| **major** | 0.18.2 → 1.0.0 | Breaking changes, API changes | Protocol breaking changes, major refactoring |
+
+#### 4. Manual Release (Advanced)
+
+If you need to create a release manually for specific reasons:
+
 ```bash
-# Stage documentation files first
-git add README.md RELEASE_NOTES.md
+# 1. Update documentation first
+# Update README.md and RELEASE_NOTES.md with new features
 
-# Stage all implementation files
-git add server/src/
-
-# Create comprehensive commit message
-git commit -m "$(cat <<'EOF'
-feat: [feature description]
+# 2. Commit all changes
+git add README.md RELEASE_NOTES.md server/src/
+git commit -m "feat: [feature description]
 
 [Detailed implementation description]
 
-Core Implementation:
-- [Technical detail 1]
-- [Technical detail 2]
-
-Interface Support:
-- CLI: [CLI details]
-- MCP: [MCP details] 
-- HTTP: [HTTP details]
-
-Technical Fixes:
-- [Fix 1]
-- [Fix 2]
-
-Documentation Updates:
-- [Doc update 1]
-- [Doc update 2]
-
 🤖 Generated with [Claude Code](https://claude.ai/code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>
-EOF
-)"
-```
+Co-Authored-By: Claude <noreply@anthropic.com>"
 
-#### 4. Push and Release
-```bash
-# Push changes to trigger automated version bumping
+# 3. Push changes
 git push origin master
 
-# Create GitHub release using gh CLI with version from RELEASE_NOTES.md
+# 4. Create release manually
 gh release create v[X.Y.Z] \
   --title "v[X.Y.Z]: [Feature Title]" \
-  --notes "$(cat <<'EOF'
-## 🎯 [Release Type]: [Feature Name]
-
-[Copy the main sections from RELEASE_NOTES.md]
-
-**Full release notes**: https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/RELEASE_NOTES.md
-EOF
-)"
+  --notes "Release description"
 ```
 
 ### Version Numbering Policy
