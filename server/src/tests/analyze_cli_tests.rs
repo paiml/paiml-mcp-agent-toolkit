@@ -37,6 +37,9 @@ mod tests {
                     AnalyzeCommands::Satd { .. } => {
                         panic!("Expected Churn command, got Satd");
                     }
+                    AnalyzeCommands::DeepContext { .. } => {
+                        panic!("Expected Churn command, got DeepContext");
+                    }
                 }
             }
             _ => panic!("Expected Analyze command"),
@@ -84,6 +87,9 @@ mod tests {
                 }
                 AnalyzeCommands::Satd { .. } => {
                     panic!("Expected Churn command, got Satd");
+                }
+                AnalyzeCommands::DeepContext { .. } => {
+                    panic!("Expected Churn command, got DeepContext");
                 }
             },
             _ => panic!("Expected Analyze command"),

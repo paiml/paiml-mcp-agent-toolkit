@@ -79,6 +79,7 @@ impl CliAdapter {
                 *centrality_threshold,
                 *merge_threshold,
             ),
+            Commands::Serve { host, port, cors } => Self::decode_serve(host, *port, *cors),
         }
     }
 
@@ -280,6 +281,35 @@ impl CliAdapter {
                 *metrics,
                 output,
             ),
+            AnalyzeCommands::DeepContext {
+                project_path,
+                output,
+                format,
+                include,
+                exclude,
+                period_days,
+                dag_type,
+                max_depth,
+                include_patterns,
+                exclude_patterns,
+                cache_strategy,
+                parallel,
+                verbose,
+            } => Self::decode_analyze_deep_context(
+                project_path,
+                output,
+                format,
+                include,
+                exclude,
+                *period_days,
+                dag_type,
+                max_depth,
+                include_patterns,
+                exclude_patterns,
+                cache_strategy,
+                parallel,
+                *verbose,
+            ),
         }
     }
 
@@ -421,6 +451,58 @@ impl CliAdapter {
             body,
             Some(OutputFormat::Json),
         ))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_deep_context(
+        project_path: &std::path::Path,
+        output: &Option<std::path::PathBuf>,
+        format: &crate::cli::DeepContextOutputFormat,
+        include: &[String],
+        exclude: &[String],
+        period_days: u32,
+        dag_type: &crate::cli::DeepContextDagType,
+        max_depth: &Option<usize>,
+        include_patterns: &[String],
+        exclude_patterns: &[String],
+        cache_strategy: &crate::cli::DeepContextCacheStrategy,
+        parallel: &Option<usize>,
+        verbose: bool,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let body = json!({
+            "project_path": project_path.to_string_lossy(),
+            "output_path": output,
+            "format": deep_context_format_to_string(format),
+            "include": include,
+            "exclude": exclude,
+            "period_days": &period_days,
+            "dag_type": deep_context_dag_type_to_string(dag_type),
+            "max_depth": max_depth,
+            "include_patterns": include_patterns,
+            "exclude_patterns": exclude_patterns,
+            "cache_strategy": deep_context_cache_strategy_to_string(cache_strategy),
+            "parallel": parallel,
+            "verbose": &verbose
+        });
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/deep-context".to_string(),
+            body,
+            Some(OutputFormat::Json),
+        ))
+    }
+
+    fn decode_serve(
+        host: &str,
+        port: u16,
+        cors: bool,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let body = json!({
+            "host": host,
+            "port": port,
+            "cors": cors
+        });
+        Ok((Method::POST, "/api/v1/serve".to_string(), body, None))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -583,8 +665,10 @@ impl CliInput {
                 AnalyzeCommands::Dag { .. } => "analyze-dag",
                 AnalyzeCommands::DeadCode { .. } => "analyze-dead-code",
                 AnalyzeCommands::Satd { .. } => "analyze-satd",
+                AnalyzeCommands::DeepContext { .. } => "analyze-deep-context",
             },
             Commands::Demo { .. } => "demo",
+            Commands::Serve { .. } => "serve",
         }
         .to_string();
 
@@ -733,6 +817,33 @@ impl CliRunner {
 impl Default for CliRunner {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Helper functions for deep context format conversion
+
+fn deep_context_format_to_string(format: &crate::cli::DeepContextOutputFormat) -> String {
+    match format {
+        crate::cli::DeepContextOutputFormat::Markdown => "markdown".to_string(),
+        crate::cli::DeepContextOutputFormat::Json => "json".to_string(),
+        crate::cli::DeepContextOutputFormat::Sarif => "sarif".to_string(),
+    }
+}
+
+fn deep_context_dag_type_to_string(dag_type: &crate::cli::DeepContextDagType) -> String {
+    match dag_type {
+        crate::cli::DeepContextDagType::CallGraph => "call-graph".to_string(),
+        crate::cli::DeepContextDagType::ImportGraph => "import-graph".to_string(),
+        crate::cli::DeepContextDagType::Inheritance => "inheritance".to_string(),
+        crate::cli::DeepContextDagType::FullDependency => "full-dependency".to_string(),
+    }
+}
+
+fn deep_context_cache_strategy_to_string(strategy: &crate::cli::DeepContextCacheStrategy) -> String {
+    match strategy {
+        crate::cli::DeepContextCacheStrategy::Normal => "normal".to_string(),
+        crate::cli::DeepContextCacheStrategy::ForceRefresh => "force-refresh".to_string(),
+        crate::cli::DeepContextCacheStrategy::Offline => "offline".to_string(),
     }
 }
 

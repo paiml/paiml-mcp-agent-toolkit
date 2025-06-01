@@ -84,7 +84,7 @@ flate2 = "1.1"
 # Unified protocol support
 axum = { version = "0.8", features = ["json", "original-uri", "tokio", "http1", "http2"] }
 tower = { version = "0.5", features = ["full"] }
-tower-http = { version = "0.6", features = ["fs", "trace", "compression-gzip", "timeout"] }
+tower-http = { version = "0.6", features = ["fs", "trace", "compression-gzip", "timeout", "cors"] }
 hyper = { version = "1.6", features = ["full"] }
 hyper-util = { version = "0.1", features = ["full"] }
 http-body-util = "0.1"

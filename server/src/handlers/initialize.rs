@@ -306,6 +306,72 @@ pub async fn handle_tools_list<T: TemplateServerTrait>(
                             }
                         }
                     }
+                },
+                {
+                    "name": "analyze_deep_context",
+                    "description": "Comprehensive deep context analysis combining AST analysis, complexity metrics, code churn detection, dead code analysis, and SATD detection into a unified quality assessment with defect correlation and prioritized recommendations.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "project_path": {
+                                "type": "string",
+                                "description": "Path to analyze (defaults to current directory)"
+                            },
+                            "format": {
+                                "type": "string",
+                                "enum": ["markdown", "json", "sarif"],
+                                "description": "Output format (default: markdown)"
+                            },
+                            "include_analyses": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "enum": ["ast", "complexity", "churn", "dag", "dead_code", "satd", "defect_probability"]
+                                },
+                                "description": "Which analyses to include (default: ast, complexity, churn)"
+                            },
+                            "exclude_analyses": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "enum": ["ast", "complexity", "churn", "dag", "dead_code", "satd", "defect_probability"]
+                                },
+                                "description": "Which analyses to exclude"
+                            },
+                            "period_days": {
+                                "type": "integer",
+                                "description": "Number of days for churn analysis (default: 30)"
+                            },
+                            "dag_type": {
+                                "type": "string",
+                                "enum": ["call-graph", "import-graph", "inheritance", "full-dependency"],
+                                "description": "Type of dependency graph to generate (default: call-graph)"
+                            },
+                            "max_depth": {
+                                "type": "integer",
+                                "description": "Maximum depth for graph traversal"
+                            },
+                            "include_pattern": {
+                                "type": "array",
+                                "items": { "type": "string" },
+                                "description": "File patterns to include in analysis"
+                            },
+                            "exclude_pattern": {
+                                "type": "array",
+                                "items": { "type": "string" },
+                                "description": "File patterns to exclude from analysis"
+                            },
+                            "cache_strategy": {
+                                "type": "string",
+                                "enum": ["normal", "force-refresh", "offline"],
+                                "description": "Cache strategy for analysis (default: normal)"
+                            },
+                            "parallel": {
+                                "type": "integer",
+                                "description": "Number of parallel analysis workers (default: 4)"
+                            }
+                        }
+                    }
                 }
             ]
         }),

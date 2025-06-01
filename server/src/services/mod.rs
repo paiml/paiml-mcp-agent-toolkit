@@ -9,6 +9,7 @@ pub mod complexity;
 pub mod context;
 pub mod dag_builder;
 pub mod dead_code_analyzer;
+pub mod deep_context;
 pub mod defect_probability;
 pub mod deterministic_mermaid_engine;
 pub mod dogfooding_engine;
