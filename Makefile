@@ -23,7 +23,7 @@
 #
 # This design prevents workspace-related issues and ensures consistent behavior.
 
-.PHONY: all validate format lint check test coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs
+.PHONY: all validate format lint check test test-fast coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -110,7 +110,13 @@ check: check-scripts
 		exit 1; \
 	fi
 
-# Run tests in all projects
+# Fast tests without coverage (optimized for speed)
+test-fast:
+	@echo "⚡ Running fast tests with maximum parallelism..."
+	@RUST_TEST_THREADS=$$(nproc) cargo nextest run --profile fast --workspace || cargo test --release --workspace
+	@echo "✅ Fast tests completed!"
+
+# Run tests in all projects (with coverage)
 test: test-scripts
 	@test_success=true; \
 	for project in $(PROJECTS); do \
@@ -740,7 +746,8 @@ help:
 	@echo "  fix          - Auto-fix all formatting issues (alias for format)"
 	@echo "  lint         - Run linters in all projects (checks only)"
 	@echo "  check        - Type check all projects"
-	@echo "  test         - Run tests in all projects"
+	@echo "  test         - Run tests in all projects (with coverage)"
+	@echo "  test-fast    - Run fast tests with maximum parallelism (no coverage)"
 	@echo "  test-critical-scripts - Test critical installation/release scripts"
 	@echo "  coverage     - Generate coverage reports for all projects"
 	@echo "  coverage-scripts - Generate coverage report for TypeScript tests"

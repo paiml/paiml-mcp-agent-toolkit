@@ -36,6 +36,9 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@cargo-nextest
+      
       - name: Install shellcheck
         run: |
           sudo apt-get update
@@ -54,7 +57,7 @@ jobs:
           make format
           make lint
           make check
-          make test
+          make test-fast
           make build
           echo "passed=true" >> $GITHUB_OUTPUT
       

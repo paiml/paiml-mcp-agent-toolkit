@@ -358,8 +358,11 @@ cd paiml-mcp-agent-toolkit
 # Development install (recommended)
 make local-install
 
-# Run tests
+# Run tests (with coverage)
 make test
+
+# Fast tests (optimized for speed)
+make test-fast
 
 # Full validation
 make validate
@@ -369,6 +372,8 @@ make validate
 
 - **Coverage**: 85%+ test coverage with comprehensive E2E tests
 - **Tests**: 343 passing tests with unified protocol validation
+- **Fast Testing**: cargo-nextest with maximum parallelism (48 threads)
+- **Performance Optimized**: Incremental compilation, optimized test profiles
 - **CI/CD**: GitHub Actions with multi-platform builds
 - **Quality Gates**: Zero lint warnings, formatting, security audits
 - **Performance**: <10ms startup, <5ms template rendering
@@ -381,7 +386,7 @@ We welcome contributions! See our development setup:
 1. Fork the repository
 2. Create a feature branch  
 3. Make your changes
-4. Run `make test` and `make validate`
+4. Run `make test-fast` (for quick feedback) or `make test` and `make validate`
 5. Submit a pull request
 
 ## 📄 License

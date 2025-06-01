@@ -146,6 +146,7 @@ fn validate_command_arguments(parts: &[&str], original_line: &str) {
         "context",
         "analyze",
         "demo",
+        "serve",
         "--help",
         "--version",
         "--mode",

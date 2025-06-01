@@ -1,0 +1,7 @@
+[build]
+incremental = true
+
+[profile.test]
+incremental = true
+opt-level = 0
+debug = 1  # Reduce debug info for faster compilation

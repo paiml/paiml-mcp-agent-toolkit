@@ -1,0 +1,9 @@
+[profile.default]
+# Default test configuration - runs all tests including ignored ones
+slow-timeout = { period = "60s", grace-period = "10s" }
+retries = 0
+
+[profile.fast]
+# Fast profile - excludes ignored tests (marked as slow)
+slow-timeout = { period = "30s", grace-period = "5s" }
+retries = 0

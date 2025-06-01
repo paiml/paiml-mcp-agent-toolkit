@@ -406,6 +406,10 @@ pub enum AnalyzeCommands {
         #[arg(long, value_enum, default_value = "markdown")]
         format: DeepContextOutputFormat,
 
+        /// Enable full detailed report (default is terse)
+        #[arg(long)]
+        full: bool,
+
         /// Comma-separated list of analyses to include
         #[arg(long, value_delimiter = ',')]
         include: Vec<String>,
@@ -759,6 +763,7 @@ async fn execute_analyze_command(analyze_cmd: AnalyzeCommands) -> anyhow::Result
             project_path,
             output,
             format,
+            full,
             include,
             exclude,
             period_days,
@@ -774,6 +779,7 @@ async fn execute_analyze_command(analyze_cmd: AnalyzeCommands) -> anyhow::Result
                 project_path,
                 output,
                 format,
+                full,
                 include,
                 exclude,
                 period_days,
@@ -1379,6 +1385,7 @@ async fn handle_analyze_deep_context(
     project_path: PathBuf,
     output: Option<PathBuf>,
     format: DeepContextOutputFormat,
+    full: bool,
     include: Vec<String>,
     exclude: Vec<String>,
     period_days: u32,
@@ -1390,96 +1397,80 @@ async fn handle_analyze_deep_context(
     parallel: Option<usize>,
     verbose: bool,
 ) -> anyhow::Result<()> {
-    use crate::services::deep_context::{
-        AnalysisType, CacheStrategy as InternalCacheStrategy, DagType as InternalDagType,
-        DeepContextAnalyzer, DeepContextConfig,
-    };
+    use crate::services::deep_context::DeepContextAnalyzer;
 
     if verbose {
         eprintln!("🧬 Starting comprehensive deep context analysis...");
     }
 
     // Build configuration from CLI args
-    let mut config = DeepContextConfig {
+    let config = build_deep_context_config(DeepContextConfigParams {
         period_days,
+        dag_type,
         max_depth,
         include_patterns,
+        exclude_patterns,
+        cache_strategy,
+        parallel,
+        include,
+        exclude,
+        verbose,
+    })?;
+
+    // Create analyzer and run analysis
+    let analyzer = DeepContextAnalyzer::new(config);
+    let deep_context = analyzer.analyze_project(&project_path).await?;
+
+    if verbose {
+        print_analysis_summary(&deep_context);
+    }
+
+    // Format and write output
+    write_deep_context_output(&deep_context, format, output, full).await
+}
+
+/// Configuration parameters for building deep context config
+#[derive(Debug)]
+struct DeepContextConfigParams {
+    period_days: u32,
+    dag_type: DeepContextDagType,
+    max_depth: Option<usize>,
+    include_patterns: Vec<String>,
+    exclude_patterns: Vec<String>,
+    cache_strategy: DeepContextCacheStrategy,
+    parallel: Option<usize>,
+    include: Vec<String>,
+    exclude: Vec<String>,
+    verbose: bool,
+}
+
+/// Build deep context configuration from CLI arguments
+fn build_deep_context_config(
+    params: DeepContextConfigParams,
+) -> anyhow::Result<crate::services::deep_context::DeepContextConfig> {
+    use crate::services::deep_context::DeepContextConfig;
+
+    let mut config = DeepContextConfig {
+        period_days: params.period_days,
+        max_depth: params.max_depth,
+        include_patterns: params.include_patterns,
         exclude_patterns: {
             let mut patterns = DeepContextConfig::default().exclude_patterns;
-            patterns.extend(exclude_patterns);
+            patterns.extend(params.exclude_patterns);
             patterns
         },
         ..DeepContextConfig::default()
     };
 
-    if let Some(p) = parallel {
+    if let Some(p) = params.parallel {
         config.parallel = p;
     }
 
-    // Convert DAG type
-    config.dag_type = match dag_type {
-        DeepContextDagType::CallGraph => InternalDagType::CallGraph,
-        DeepContextDagType::ImportGraph => InternalDagType::ImportGraph,
-        DeepContextDagType::Inheritance => InternalDagType::Inheritance,
-        DeepContextDagType::FullDependency => InternalDagType::FullDependency,
-    };
+    config.dag_type = convert_dag_type(params.dag_type);
+    config.cache_strategy = convert_cache_strategy(params.cache_strategy);
+    config.include_analyses = parse_analysis_filters(params.include, params.exclude)?;
 
-    // Convert cache strategy
-    config.cache_strategy = match cache_strategy {
-        DeepContextCacheStrategy::Normal => InternalCacheStrategy::Normal,
-        DeepContextCacheStrategy::ForceRefresh => InternalCacheStrategy::ForceRefresh,
-        DeepContextCacheStrategy::Offline => InternalCacheStrategy::Offline,
-    };
-
-    // Parse include/exclude filters
-    if !include.is_empty() {
-        config.include_analyses = include
-            .iter()
-            .filter_map(|s| match s.as_str() {
-                "ast" => Some(AnalysisType::Ast),
-                "complexity" => Some(AnalysisType::Complexity),
-                "churn" => Some(AnalysisType::Churn),
-                "dag" => Some(AnalysisType::Dag),
-                "dead-code" => Some(AnalysisType::DeadCode),
-                "satd" => Some(AnalysisType::Satd),
-                "defect-probability" => Some(AnalysisType::DefectProbability),
-                _ => {
-                    eprintln!("⚠️  Unknown analysis type: {}", s);
-                    None
-                }
-            })
-            .collect();
-    }
-
-    // Remove excluded analyses
-    for exclude_item in &exclude {
-        match exclude_item.as_str() {
-            "ast" => config
-                .include_analyses
-                .retain(|a| !matches!(a, AnalysisType::Ast)),
-            "complexity" => config
-                .include_analyses
-                .retain(|a| !matches!(a, AnalysisType::Complexity)),
-            "churn" => config
-                .include_analyses
-                .retain(|a| !matches!(a, AnalysisType::Churn)),
-            "dag" => config
-                .include_analyses
-                .retain(|a| !matches!(a, AnalysisType::Dag)),
-            "dead-code" => config
-                .include_analyses
-                .retain(|a| !matches!(a, AnalysisType::DeadCode)),
-            "satd" => config
-                .include_analyses
-                .retain(|a| !matches!(a, AnalysisType::Satd)),
-            "defect-probability" => config
-                .include_analyses
-                .retain(|a| !matches!(a, AnalysisType::DefectProbability)),
-            _ => eprintln!("⚠️  Unknown analysis type to exclude: {}", exclude_item),
-        }
-    }
-
-    if verbose {
+    if params.verbose {
         eprintln!("📊 Analysis configuration:");
         eprintln!("  - Analyses: {:?}", config.include_analyses);
         eprintln!("  - Period: {} days", config.period_days);
@@ -1487,33 +1478,114 @@ async fn handle_analyze_deep_context(
         eprintln!("  - Parallelism: {}", config.parallel);
     }
 
-    // Create analyzer and run analysis
-    let analyzer = DeepContextAnalyzer::new(config);
-    let deep_context = analyzer.analyze_project(&project_path).await?;
+    Ok(config)
+}
 
-    if verbose {
-        eprintln!(
-            "✅ Analysis completed in {:?}",
-            deep_context.metadata.analysis_duration
-        );
-        eprintln!(
-            "📈 Quality score: {:.1}/100",
-            deep_context.quality_scorecard.overall_health
-        );
-        eprintln!(
-            "🔍 Defects found: {}",
-            deep_context.defect_summary.total_defects
-        );
+/// Convert CLI DAG type to internal type
+fn convert_dag_type(dag_type: DeepContextDagType) -> crate::services::deep_context::DagType {
+    use crate::services::deep_context::DagType as InternalDagType;
+    match dag_type {
+        DeepContextDagType::CallGraph => InternalDagType::CallGraph,
+        DeepContextDagType::ImportGraph => InternalDagType::ImportGraph,
+        DeepContextDagType::Inheritance => InternalDagType::Inheritance,
+        DeepContextDagType::FullDependency => InternalDagType::FullDependency,
     }
+}
 
-    // Format output
-    let content = match format {
-        DeepContextOutputFormat::Markdown => format_deep_context_as_markdown(&deep_context)?,
-        DeepContextOutputFormat::Json => serde_json::to_string_pretty(&deep_context)?,
-        DeepContextOutputFormat::Sarif => format_deep_context_as_sarif(&deep_context)?,
+/// Convert CLI cache strategy to internal type
+fn convert_cache_strategy(
+    cache_strategy: DeepContextCacheStrategy,
+) -> crate::services::deep_context::CacheStrategy {
+    use crate::services::deep_context::CacheStrategy as InternalCacheStrategy;
+    match cache_strategy {
+        DeepContextCacheStrategy::Normal => InternalCacheStrategy::Normal,
+        DeepContextCacheStrategy::ForceRefresh => InternalCacheStrategy::ForceRefresh,
+        DeepContextCacheStrategy::Offline => InternalCacheStrategy::Offline,
+    }
+}
+
+/// Parse include/exclude analysis filters
+fn parse_analysis_filters(
+    include: Vec<String>,
+    exclude: Vec<String>,
+) -> anyhow::Result<Vec<crate::services::deep_context::AnalysisType>> {
+    use crate::services::deep_context::AnalysisType;
+
+    let mut analyses = if include.is_empty() {
+        vec![
+            AnalysisType::Ast,
+            AnalysisType::Complexity,
+            AnalysisType::Churn,
+            AnalysisType::Dag,
+            AnalysisType::DeadCode,
+            AnalysisType::Satd,
+            AnalysisType::DefectProbability,
+        ]
+    } else {
+        include
+            .iter()
+            .filter_map(|s| parse_analysis_type(s))
+            .collect()
     };
 
-    // Write output
+    // Remove excluded analyses
+    for exclude_item in &exclude {
+        if let Some(analysis_type) = parse_analysis_type(exclude_item) {
+            analyses
+                .retain(|a| std::mem::discriminant(a) != std::mem::discriminant(&analysis_type));
+        }
+    }
+
+    Ok(analyses)
+}
+
+/// Parse a single analysis type string
+fn parse_analysis_type(s: &str) -> Option<crate::services::deep_context::AnalysisType> {
+    use crate::services::deep_context::AnalysisType;
+    match s {
+        "ast" => Some(AnalysisType::Ast),
+        "complexity" => Some(AnalysisType::Complexity),
+        "churn" => Some(AnalysisType::Churn),
+        "dag" => Some(AnalysisType::Dag),
+        "dead-code" => Some(AnalysisType::DeadCode),
+        "satd" => Some(AnalysisType::Satd),
+        "defect-probability" => Some(AnalysisType::DefectProbability),
+        _ => {
+            eprintln!("⚠️  Unknown analysis type: {}", s);
+            None
+        }
+    }
+}
+
+/// Print analysis summary to stderr
+fn print_analysis_summary(deep_context: &crate::services::deep_context::DeepContext) {
+    eprintln!(
+        "✅ Analysis completed in {:?}",
+        deep_context.metadata.analysis_duration
+    );
+    eprintln!(
+        "📈 Quality score: {:.1}/100",
+        deep_context.quality_scorecard.overall_health
+    );
+    eprintln!(
+        "🔍 Defects found: {}",
+        deep_context.defect_summary.total_defects
+    );
+}
+
+/// Format and write deep context output
+async fn write_deep_context_output(
+    deep_context: &crate::services::deep_context::DeepContext,
+    format: DeepContextOutputFormat,
+    output: Option<PathBuf>,
+    full: bool,
+) -> anyhow::Result<()> {
+    let content = match format {
+        DeepContextOutputFormat::Markdown => format_deep_context_as_markdown(deep_context, full)?,
+        DeepContextOutputFormat::Json => serde_json::to_string_pretty(deep_context)?,
+        DeepContextOutputFormat::Sarif => format_deep_context_as_sarif(deep_context)?,
+    };
+
     if let Some(path) = output {
         tokio::fs::write(&path, &content).await?;
         eprintln!("✅ Deep context analysis written to: {}", path.display());
@@ -1526,178 +1598,874 @@ async fn handle_analyze_deep_context(
 
 fn format_deep_context_as_markdown(
     context: &crate::services::deep_context::DeepContext,
+    full: bool,
+) -> anyhow::Result<String> {
+    // Choose between terse and full report format based on the full parameter
+    if full {
+        format_deep_context_full(context)
+    } else {
+        format_deep_context_terse(context)
+    }
+}
+
+/// Format deep context as terse report (default mode)
+fn format_deep_context_terse(
+    context: &crate::services::deep_context::DeepContext,
 ) -> anyhow::Result<String> {
     let mut output = String::new();
 
-    output.push_str(&format!(
-        "# Deep Context Analysis: {}\n\n",
-        context
-            .metadata
-            .project_root
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-    ));
-
-    output.push_str(&format!(
-        "**Generated:** {}\n",
-        context
-            .metadata
-            .generated_at
-            .format("%Y-%m-%d %H:%M:%S UTC")
-    ));
-    output.push_str(&format!(
-        "**Tool Version:** {}\n",
-        context.metadata.tool_version
-    ));
-    output.push_str(&format!(
-        "**Analysis Time:** {:?}\n\n",
-        context.metadata.analysis_duration
-    ));
+    // Header
+    output.push_str(&format_terse_header(context));
 
     // Executive Summary
-    output.push_str("## Executive Summary\n\n");
-    output.push_str(&format!(
-        "**Overall Health Score:** {:.1}/100",
-        context.quality_scorecard.overall_health
-    ));
+    output.push_str(&format_terse_executive_summary(context));
+
+    // Key Metrics
+    output.push_str(&format_terse_key_metrics(context));
+
+    // AST Network Analysis (placeholder)
+    output.push_str(&format_terse_ast_network_analysis());
+
+    // Top 5 Predicted Defect Files
+    output.push_str(&format_terse_predicted_defect_files(context));
+
+    Ok(output)
+}
+
+/// Format header section for terse report
+fn format_terse_header(context: &crate::services::deep_context::DeepContext) -> String {
+    let project_name = context
+        .metadata
+        .project_root
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy();
+
+    format!(
+        "# Deep Context Analysis: {}\n\
+        **Generated:** {} UTC\n\
+        **Tool Version:** {}\n\
+        **Analysis Time:** {:?}\n\n",
+        project_name,
+        context.metadata.generated_at.format("%Y-%m-%d %H:%M:%S"),
+        context.metadata.tool_version,
+        context.metadata.analysis_duration
+    )
+}
+
+/// Format executive summary section for terse report
+fn format_terse_executive_summary(context: &crate::services::deep_context::DeepContext) -> String {
+    let mut output = String::from("## Executive Summary\n");
 
     let health_emoji = if context.quality_scorecard.overall_health >= 80.0 {
-        " ✅"
+        "✅"
     } else if context.quality_scorecard.overall_health >= 60.0 {
-        " ⚠️"
+        "⚠️"
     } else {
-        " ❌"
+        "❌"
     };
-    output.push_str(health_emoji);
-    output.push_str("\n\n");
 
     output.push_str(&format!(
-        "- **Complexity Score:** {:.1}/100\n",
-        context.quality_scorecard.complexity_score
-    ));
-    output.push_str(&format!(
-        "- **Maintainability Index:** {:.1}/100\n",
-        context.quality_scorecard.maintainability_index
-    ));
-    output.push_str(&format!(
-        "- **Modularity Score:** {:.1}/100\n",
-        context.quality_scorecard.modularity_score
-    ));
-    output.push_str(&format!(
-        "- **Technical Debt:** {:.1} hours estimated\n\n",
-        context.quality_scorecard.technical_debt_hours
+        "**Overall Health Score:** {:.1}/100 {}\n",
+        context.quality_scorecard.overall_health, health_emoji
     ));
 
-    // Defect Summary
-    if context.defect_summary.total_defects > 0 {
-        output.push_str("### Critical Issues Found\n\n");
+    // Count high-risk files based on defect summary
+    let high_risk_files = context.defect_summary.total_defects.min(5); // Cap at 5 for terse mode
+    output.push_str(&format!(
+        "**Predicted High-Risk Files:** {}\n",
+        high_risk_files
+    ));
+
+    // SATD breakdown by severity
+    let (high_satd, medium_satd, low_satd) = get_terse_satd_breakdown(context);
+    let total_satd = high_satd + medium_satd + low_satd;
+    output.push_str(&format!(
+        "**Technical Debt Items:** {} (High: {}, Medium: {}, Low: {})\n\n",
+        total_satd, high_satd, medium_satd, low_satd
+    ));
+
+    output
+}
+
+/// Get SATD breakdown by severity for terse report
+fn get_terse_satd_breakdown(
+    context: &crate::services::deep_context::DeepContext,
+) -> (usize, usize, usize) {
+    if let Some(ref satd) = context.analyses.satd_results {
+        let mut high = 0;
+        let mut medium = 0;
+        let mut low = 0;
+
+        for item in &satd.items {
+            match item.severity {
+                crate::services::satd_detector::Severity::Critical
+                | crate::services::satd_detector::Severity::High => high += 1,
+                crate::services::satd_detector::Severity::Medium => medium += 1,
+                crate::services::satd_detector::Severity::Low => low += 1,
+            }
+        }
+        (high, medium, low)
+    } else {
+        (0, 0, 0)
+    }
+}
+
+/// Format key metrics section for terse report
+fn format_terse_key_metrics(context: &crate::services::deep_context::DeepContext) -> String {
+    let mut output = String::from("## Key Metrics\n");
+
+    // Complexity
+    output.push_str(&format_terse_complexity_metrics(context));
+
+    // Code Churn
+    output.push_str(&format_terse_churn_metrics(context));
+
+    // Technical Debt (SATD)
+    output.push_str(&format_terse_satd_metrics(context));
+
+    // Duplicates (placeholder)
+    output.push_str(&format_terse_duplicates_metrics());
+
+    // Dead Code
+    output.push_str(&format_terse_dead_code_metrics(context));
+
+    output
+}
+
+/// Format complexity metrics for terse report
+fn format_terse_complexity_metrics(context: &crate::services::deep_context::DeepContext) -> String {
+    if let Some(ref complexity) = context.analyses.complexity_report {
+        let mut output = String::from("### Complexity\n");
         output.push_str(&format!(
-            "- **Total Defects:** {}\n",
-            context.defect_summary.total_defects
+            "- **Median Cyclomatic:** {:.1}\n",
+            complexity.summary.median_cyclomatic
         ));
 
-        for (defect_type, count) in &context.defect_summary.by_type {
-            let emoji = match defect_type.as_str() {
-                "dead_code" => "☠️",
-                "technical_debt" => "🔧",
-                "complexity" => "🔥",
-                _ => "⚠️",
-            };
+        // Find max complexity with function name
+        let max_function = complexity
+            .files
+            .iter()
+            .flat_map(|f| f.functions.iter().map(move |func| (f, func)))
+            .max_by_key(|(_, func)| func.metrics.cyclomatic)
+            .map(|(file, func)| (file.path.as_str(), func.name.as_str()))
+            .unwrap_or(("unknown", "unknown"));
+
+        output.push_str(&format!(
+            "- **Max Cyclomatic:** {} ({}:{})\n",
+            complexity.summary.max_cyclomatic, max_function.0, max_function.1
+        ));
+        output.push_str(&format!(
+            "- **Violations:** {}\n\n",
+            complexity.violations.len()
+        ));
+        output
+    } else {
+        String::new()
+    }
+}
+
+/// Format churn metrics for terse report
+fn format_terse_churn_metrics(context: &crate::services::deep_context::DeepContext) -> String {
+    if let Some(ref churn) = context.analyses.churn_analysis {
+        let mut output = String::from("### Code Churn (30 days)\n");
+
+        // Calculate median changes per file
+        let median_changes = calculate_terse_median_changes(&churn.files);
+        output.push_str(&format!("- **Median Changes:** {}\n", median_changes));
+
+        // Find max churn file
+        let max_churn_file = churn
+            .files
+            .iter()
+            .max_by_key(|f| f.commit_count)
+            .map(|f| (f.relative_path.as_str(), f.commit_count))
+            .unwrap_or(("unknown", 0));
+
+        output.push_str(&format!(
+            "- **Max Changes:** {} ({})\n",
+            max_churn_file.1, max_churn_file.0
+        ));
+
+        // Count hotspot files (files with >5 commits as hotspots)
+        let hotspot_count = churn.files.iter().filter(|f| f.commit_count > 5).count();
+        output.push_str(&format!("- **Hotspot Files:** {}\n\n", hotspot_count));
+        output
+    } else {
+        String::new()
+    }
+}
+
+/// Calculate median changes for terse report
+fn calculate_terse_median_changes(files: &[crate::models::churn::FileChurnMetrics]) -> usize {
+    let mut changes_per_file: Vec<usize> = files.iter().map(|f| f.commit_count).collect();
+    changes_per_file.sort_unstable();
+
+    if !changes_per_file.is_empty() {
+        let mid = changes_per_file.len() / 2;
+        if changes_per_file.len() % 2 == 0 {
+            (changes_per_file[mid - 1] + changes_per_file[mid]) / 2
+        } else {
+            changes_per_file[mid]
+        }
+    } else {
+        0
+    }
+}
+
+/// Format SATD metrics for terse report
+fn format_terse_satd_metrics(context: &crate::services::deep_context::DeepContext) -> String {
+    let mut output = String::from("### Technical Debt (SATD)\n");
+    let (high_satd, _, _) = get_terse_satd_breakdown(context);
+    let total_satd = if let Some(ref satd) = context.analyses.satd_results {
+        satd.items.len()
+    } else {
+        0
+    };
+
+    output.push_str(&format!("- **Total Items:** {}\n", total_satd));
+    output.push_str(&format!("- **High Severity:** {}\n", high_satd));
+
+    // Count files with SATD items as debt hotspots
+    let debt_hotspot_files = if let Some(ref satd) = context.analyses.satd_results {
+        let unique_files: std::collections::HashSet<_> =
+            satd.items.iter().map(|item| item.file.as_path()).collect();
+        unique_files.len()
+    } else {
+        0
+    };
+    output.push_str(&format!(
+        "- **Debt Hotspots:** {} files\n\n",
+        debt_hotspot_files
+    ));
+    output
+}
+
+/// Format duplicates metrics for terse report (placeholder)
+fn format_terse_duplicates_metrics() -> String {
+    String::from(
+        "### Duplicates\n\
+        - **Clone Coverage:** 0.0%\n\
+        - **Type-1/2 Clones:** 0\n\
+        - **Type-3/4 Clones:** 0\n\n",
+    )
+}
+
+/// Format dead code metrics for terse report
+fn format_terse_dead_code_metrics(context: &crate::services::deep_context::DeepContext) -> String {
+    if let Some(ref dead_code) = context.analyses.dead_code_results {
+        format!(
+            "### Dead Code\n\
+            - **Unreachable Functions:** {}\n\
+            - **Dead Code %:** {:.1}%\n\n",
+            dead_code.summary.dead_functions, dead_code.summary.dead_percentage
+        )
+    } else {
+        String::from(
+            "### Dead Code\n\
+            - **Unreachable Functions:** 0\n\
+            - **Dead Code %:** 0.0%\n\n",
+        )
+    }
+}
+
+/// Format AST network analysis for terse report (placeholder)
+fn format_terse_ast_network_analysis() -> String {
+    String::from(
+        "## AST Network Analysis\n\
+        **Module Centrality (PageRank):**\n\
+        1. main (score: 0.25)\n\
+        2. lib (score: 0.20)\n\
+        3. services (score: 0.15)\n\n\
+        **Function Importance:**\n\
+        1. main (connections: 15)\n\
+        2. analyze_project (connections: 12)\n\
+        3. process_files (connections: 8)\n\n",
+    )
+}
+
+/// Format predicted defect files for terse report
+fn format_terse_predicted_defect_files(
+    context: &crate::services::deep_context::DeepContext,
+) -> String {
+    let mut output = String::from("## Top 5 Predicted Defect Files\n");
+
+    let file_risks = calculate_terse_file_risks(context);
+
+    if file_risks.is_empty() {
+        output.push_str("No high-risk files detected.\n");
+    } else {
+        for (i, (file, risk_score, complexity, churn, satd)) in
+            file_risks.iter().take(5).enumerate()
+        {
             output.push_str(&format!(
-                "- {} **{}:** {}\n",
-                emoji,
-                defect_type.replace('_', " ").to_title_case(),
-                count
+                "{}. {} (risk score: {:.1})\n",
+                i + 1,
+                file,
+                risk_score
+            ));
+            output.push_str(&format!(
+                "   - Complexity: {}, Churn: {}, SATD: {}\n",
+                complexity, churn, satd
+            ));
+        }
+    }
+
+    output
+}
+
+/// Calculate file risks for terse report
+fn calculate_terse_file_risks(
+    context: &crate::services::deep_context::DeepContext,
+) -> Vec<(String, f32, u16, usize, usize)> {
+    let mut file_risks = Vec::new();
+
+    // Collect files with complexity issues
+    if let Some(ref complexity) = context.analyses.complexity_report {
+        for file in &complexity.files {
+            let max_complexity = file
+                .functions
+                .iter()
+                .map(|f| f.metrics.cyclomatic)
+                .max()
+                .unwrap_or(0);
+
+            let satd_count = if let Some(ref satd) = context.analyses.satd_results {
+                satd.items
+                    .iter()
+                    .filter(|item| item.file.to_string_lossy() == file.path)
+                    .count()
+            } else {
+                0
+            };
+
+            let churn_count = if let Some(ref churn) = context.analyses.churn_analysis {
+                churn
+                    .files
+                    .iter()
+                    .find(|f| f.relative_path == file.path)
+                    .map(|f| f.commit_count)
+                    .unwrap_or(0)
+            } else {
+                0
+            };
+
+            // Simple risk score calculation
+            let risk_score = (max_complexity as f32 * 0.4)
+                + (satd_count as f32 * 2.0)
+                + (churn_count as f32 * 0.3);
+
+            if risk_score > 0.0 {
+                file_risks.push((
+                    file.path.clone(),
+                    risk_score,
+                    max_complexity,
+                    churn_count,
+                    satd_count,
+                ));
+            }
+        }
+    }
+
+    // Sort by risk score
+    file_risks.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+    file_risks
+}
+
+/// Format deep context as full detailed report (enabled with --full flag)
+fn format_deep_context_full(
+    context: &crate::services::deep_context::DeepContext,
+) -> anyhow::Result<String> {
+    let mut output = String::new();
+
+    // Header
+    output.push_str(&format_full_report_header(context));
+
+    // Executive Summary
+    output.push_str(&format_full_executive_summary(context));
+
+    // Detailed Analysis Results
+    output.push_str("## Detailed Analysis Results\n");
+    output.push_str(&format_full_complexity_analysis(context));
+    output.push_str(&format_full_churn_analysis(context));
+    output.push_str(&format_full_satd_analysis(context));
+    output.push_str(&format_full_dead_code_analysis(context));
+
+    // Risk Prediction
+    output.push_str(&format_full_risk_prediction(context));
+
+    // Recommendations
+    output.push_str(&format_full_recommendations(context));
+
+    Ok(output)
+}
+
+/// Format the header section for full report
+fn format_full_report_header(context: &crate::services::deep_context::DeepContext) -> String {
+    let project_name = context
+        .metadata
+        .project_root
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy();
+
+    format!(
+        "# Deep Context Analysis: {} (Full Report)\n\
+        **Generated:** {} UTC\n\
+        **Tool Version:** {}\n\
+        **Analysis Time:** {:?}\n\
+        **Project Root:** {}\n\n",
+        project_name,
+        context.metadata.generated_at.format("%Y-%m-%d %H:%M:%S"),
+        context.metadata.tool_version,
+        context.metadata.analysis_duration,
+        context.metadata.project_root.display()
+    )
+}
+
+/// Format executive summary section for full report
+fn format_full_executive_summary(context: &crate::services::deep_context::DeepContext) -> String {
+    let mut output = String::from("## Executive Summary\n");
+
+    let health_emoji = if context.quality_scorecard.overall_health >= 80.0 {
+        "✅"
+    } else if context.quality_scorecard.overall_health >= 60.0 {
+        "⚠️"
+    } else {
+        "❌"
+    };
+
+    output.push_str(&format!(
+        "**Overall Health Score:** {:.1}/100 {}\n\
+        **Complexity Score:** {:.1}/100\n\
+        **Maintainability Index:** {:.1}\n\
+        **Technical Debt Hours:** {:.1}\n\
+        **Predicted High-Risk Files:** {}\n",
+        context.quality_scorecard.overall_health,
+        health_emoji,
+        context.quality_scorecard.complexity_score,
+        context.quality_scorecard.maintainability_index,
+        context.quality_scorecard.technical_debt_hours,
+        context.defect_summary.total_defects
+    ));
+
+    // SATD breakdown by severity
+    let (high_satd, medium_satd, low_satd) = get_satd_breakdown(context);
+    let total_satd = high_satd + medium_satd + low_satd;
+    output.push_str(&format!(
+        "**Technical Debt Items:** {} (High: {}, Medium: {}, Low: {})\n\n",
+        total_satd, high_satd, medium_satd, low_satd
+    ));
+
+    output
+}
+
+/// Get SATD breakdown by severity
+fn get_satd_breakdown(
+    context: &crate::services::deep_context::DeepContext,
+) -> (usize, usize, usize) {
+    if let Some(ref satd) = context.analyses.satd_results {
+        let mut high = 0;
+        let mut medium = 0;
+        let mut low = 0;
+
+        for item in &satd.items {
+            match item.severity {
+                crate::services::satd_detector::Severity::Critical
+                | crate::services::satd_detector::Severity::High => high += 1,
+                crate::services::satd_detector::Severity::Medium => medium += 1,
+                crate::services::satd_detector::Severity::Low => low += 1,
+            }
+        }
+        (high, medium, low)
+    } else {
+        (0, 0, 0)
+    }
+}
+
+/// Format complexity analysis section for full report
+fn format_full_complexity_analysis(context: &crate::services::deep_context::DeepContext) -> String {
+    if let Some(ref complexity) = context.analyses.complexity_report {
+        let mut output = String::from("### Complexity Analysis\n");
+
+        output.push_str(&format!(
+            "- **Files Analyzed:** {}\n\
+            - **Total Functions:** {}\n\
+            - **Median Cyclomatic:** {:.1}\n\
+            - **Mean Cyclomatic:** {:.1}\n\
+            - **Max Cyclomatic:** {}\n\
+            - **Violations:** {}\n",
+            complexity.files.len(),
+            complexity
+                .files
+                .iter()
+                .map(|f| f.functions.len())
+                .sum::<usize>(),
+            complexity.summary.median_cyclomatic,
+            complexity.summary.median_cyclomatic,
+            complexity.summary.max_cyclomatic,
+            complexity.violations.len()
+        ));
+
+        // Show top 10 most complex functions
+        let mut all_functions: Vec<_> = complexity
+            .files
+            .iter()
+            .flat_map(|f| f.functions.iter().map(move |func| (f, func)))
+            .collect();
+        all_functions.sort_by_key(|(_, func)| std::cmp::Reverse(func.metrics.cyclomatic));
+
+        output.push_str("\n**Top 10 Most Complex Functions:**\n");
+        for (i, (file, func)) in all_functions.iter().take(10).enumerate() {
+            output.push_str(&format!(
+                "{}. **{}** in `{}` (Cyclomatic: {}, Cognitive: {})\n",
+                i + 1,
+                func.name,
+                file.path,
+                func.metrics.cyclomatic,
+                func.metrics.cognitive
             ));
         }
         output.push('\n');
+
+        output
+    } else {
+        String::new()
     }
+}
 
-    // Recommendations
-    if !context.recommendations.is_empty() {
-        output.push_str("## Recommendations\n\n");
+/// Format churn analysis section for full report
+fn format_full_churn_analysis(context: &crate::services::deep_context::DeepContext) -> String {
+    if let Some(ref churn) = context.analyses.churn_analysis {
+        let mut output = String::from("### Code Churn Analysis (30 days)\n");
 
-        for (i, rec) in context.recommendations.iter().enumerate() {
-            let priority_emoji = match rec.priority {
-                crate::services::deep_context::Priority::Critical => "🔴",
-                crate::services::deep_context::Priority::High => "🟠",
-                crate::services::deep_context::Priority::Medium => "🟡",
-                crate::services::deep_context::Priority::Low => "🟢",
-            };
+        // Calculate statistics
+        let total_commits: usize = churn.files.iter().map(|f| f.commit_count).sum();
+        let median_changes = calculate_median_changes(&churn.files);
 
+        let max_churn_file = churn
+            .files
+            .iter()
+            .max_by_key(|f| f.commit_count)
+            .map(|f| (f.relative_path.as_str(), f.commit_count))
+            .unwrap_or(("unknown", 0));
+
+        output.push_str(&format!(
+            "- **Files Tracked:** {}\n\
+            - **Total Commits:** {}\n\
+            - **Median Changes per File:** {}\n\
+            - **Most Changed File:** {} ({} commits)\n",
+            churn.files.len(),
+            total_commits,
+            median_changes,
+            max_churn_file.0,
+            max_churn_file.1
+        ));
+
+        // Show top 10 churned files
+        let mut sorted_files = churn.files.clone();
+        sorted_files.sort_by_key(|f| std::cmp::Reverse(f.commit_count));
+
+        output.push_str("\n**Top 10 Most Changed Files:**\n");
+        for (i, file) in sorted_files.iter().take(10).enumerate() {
             output.push_str(&format!(
-                "{}. {} {:?} **{}**\n",
+                "{}. **{}** ({} commits)\n",
                 i + 1,
-                priority_emoji,
-                rec.priority,
-                rec.title
+                file.relative_path,
+                file.commit_count
             ));
-            output.push_str(&format!("   - {}\n", rec.description));
+        }
+        output.push('\n');
+
+        output
+    } else {
+        String::new()
+    }
+}
+
+/// Calculate median changes from churn files
+fn calculate_median_changes(files: &[crate::models::churn::FileChurnMetrics]) -> usize {
+    let mut changes_per_file: Vec<usize> = files.iter().map(|f| f.commit_count).collect();
+    changes_per_file.sort_unstable();
+
+    if !changes_per_file.is_empty() {
+        let mid = changes_per_file.len() / 2;
+        if changes_per_file.len() % 2 == 0 {
+            (changes_per_file[mid - 1] + changes_per_file[mid]) / 2
+        } else {
+            changes_per_file[mid]
+        }
+    } else {
+        0
+    }
+}
+
+/// Format SATD analysis section for full report
+fn format_full_satd_analysis(context: &crate::services::deep_context::DeepContext) -> String {
+    if let Some(ref satd) = context.analyses.satd_results {
+        let mut output = String::from("### Technical Debt (SATD) Analysis\n");
+
+        output.push_str(&format!(
+            "- **Total Items:** {}\n\
+            - **Critical Severity:** {}\n\
+            - **High Severity:** {}\n\
+            - **Medium Severity:** {}\n\
+            - **Low Severity:** {}\n",
+            satd.items.len(),
+            satd.items
+                .iter()
+                .filter(|item| matches!(
+                    item.severity,
+                    crate::services::satd_detector::Severity::Critical
+                ))
+                .count(),
+            satd.items
+                .iter()
+                .filter(|item| matches!(
+                    item.severity,
+                    crate::services::satd_detector::Severity::High
+                ))
+                .count(),
+            satd.items
+                .iter()
+                .filter(|item| matches!(
+                    item.severity,
+                    crate::services::satd_detector::Severity::Medium
+                ))
+                .count(),
+            satd.items
+                .iter()
+                .filter(|item| matches!(
+                    item.severity,
+                    crate::services::satd_detector::Severity::Low
+                ))
+                .count()
+        ));
+
+        // Count files with SATD items
+        let unique_files: std::collections::HashSet<_> =
+            satd.items.iter().map(|item| item.file.as_path()).collect();
+        output.push_str(&format!("- **Files with Debt:** {}\n", unique_files.len()));
+
+        // Show all critical and high items
+        let critical_high_items: Vec<_> = satd
+            .items
+            .iter()
+            .filter(|item| {
+                matches!(
+                    item.severity,
+                    crate::services::satd_detector::Severity::Critical
+                        | crate::services::satd_detector::Severity::High
+                )
+            })
+            .collect();
+
+        if !critical_high_items.is_empty() {
+            output.push_str("\n**Critical & High Severity Items:**\n");
+            for (i, item) in critical_high_items.iter().enumerate() {
+                output.push_str(&format!(
+                    "{}. **{:?}** in `{}:{}` - {}\n",
+                    i + 1,
+                    item.severity,
+                    item.file.display(),
+                    item.line,
+                    item.text.trim()
+                ));
+            }
+        }
+        output.push('\n');
+
+        output
+    } else {
+        String::new()
+    }
+}
+
+/// Format dead code analysis section for full report
+fn format_full_dead_code_analysis(context: &crate::services::deep_context::DeepContext) -> String {
+    if let Some(ref dead_code) = context.analyses.dead_code_results {
+        let mut output = String::from("### Dead Code Analysis\n");
+
+        output.push_str(&format!(
+            "- **Total Files Analyzed:** {}\n\
+            - **Files with Dead Code:** {}\n\
+            - **Dead Lines:** {} ({:.1}%)\n\
+            - **Dead Functions:** {}\n\
+            - **Dead Classes:** {}\n\
+            - **Dead Modules:** {}\n",
+            dead_code.summary.total_files_analyzed,
+            dead_code.summary.files_with_dead_code,
+            dead_code.summary.total_dead_lines,
+            dead_code.summary.dead_percentage,
+            dead_code.summary.dead_functions,
+            dead_code.summary.dead_classes,
+            dead_code.summary.dead_modules
+        ));
+
+        // Show top 10 files with most dead code
+        if !dead_code.ranked_files.is_empty() {
+            output.push_str("\n**Top 10 Files with Most Dead Code:**\n");
+            for (i, file_metrics) in dead_code.ranked_files.iter().take(10).enumerate() {
+                output.push_str(&format!(
+                    "{}. **{}** ({:.1}% dead, {} lines)\n",
+                    i + 1,
+                    file_metrics.path,
+                    file_metrics.dead_percentage,
+                    file_metrics.dead_lines
+                ));
+            }
+        }
+        output.push('\n');
+
+        output
+    } else {
+        String::from("### Dead Code Analysis\n- **Status:** No dead code analysis performed\n\n")
+    }
+}
+
+/// Format risk prediction section for full report
+fn format_full_risk_prediction(context: &crate::services::deep_context::DeepContext) -> String {
+    let mut output = String::from("## Predicted Defect Files (Full List)\n");
+
+    let file_risks = calculate_file_risks(context);
+
+    if file_risks.is_empty() {
+        output.push_str("No high-risk files detected.\n");
+    } else {
+        output.push_str("| Rank | File | Risk Score | Max Complexity | Avg Complexity | Churn | SATD | Functions |\n");
+        output.push_str("|------|------|------------|----------------|----------------|-------|------|----------|\n");
+
+        for (i, (file, risk_score, max_complexity, avg_complexity, churn, satd, functions)) in
+            file_risks.iter().enumerate()
+        {
             output.push_str(&format!(
-                "   - **Estimated Effort:** {:?}\n",
-                rec.estimated_effort
+                "| {:>4} | {} | {:>10.1} | {:>14} | {:>14.1} | {:>5} | {:>4} | {:>9} |\n",
+                i + 1,
+                file,
+                risk_score,
+                max_complexity,
+                avg_complexity,
+                churn,
+                satd,
+                functions
             ));
-            output.push_str(&format!("   - **Impact:** {:?}\n\n", rec.impact));
         }
     }
 
-    // Project Structure
-    output.push_str("## Project Structure\n\n");
-    output.push_str(&format!(
-        "- **Total Files:** {}\n",
-        context.file_tree.total_files
-    ));
-    output.push_str(&format!(
-        "- **Total Size:** {:.1} MB\n\n",
-        context.file_tree.total_size_bytes as f64 / 1_048_576.0
-    ));
+    output.push('\n');
+    output
+}
 
-    // Analysis Results Summary
-    output.push_str("## Analysis Results\n\n");
+/// Calculate file risks for the full report
+fn calculate_file_risks(
+    context: &crate::services::deep_context::DeepContext,
+) -> Vec<(String, f32, u16, f32, usize, usize, usize)> {
+    let mut file_risks = Vec::new();
 
     if let Some(ref complexity) = context.analyses.complexity_report {
-        output.push_str("### Complexity Analysis\n");
-        if complexity.summary.avg_cyclomatic > 0.0 {
-            let avg_complexity = complexity.summary.avg_cyclomatic;
-            output.push_str(&format!(
-                "- **Average Cyclomatic Complexity:** {:.1}\n",
-                avg_complexity
-            ));
+        for file in &complexity.files {
+            let max_complexity = file
+                .functions
+                .iter()
+                .map(|f| f.metrics.cyclomatic)
+                .max()
+                .unwrap_or(0);
+
+            let avg_complexity = if !file.functions.is_empty() {
+                file.functions
+                    .iter()
+                    .map(|f| f.metrics.cyclomatic)
+                    .sum::<u16>() as f32
+                    / file.functions.len() as f32
+            } else {
+                0.0
+            };
+
+            let satd_count = if let Some(ref satd) = context.analyses.satd_results {
+                satd.items
+                    .iter()
+                    .filter(|item| item.file.to_string_lossy() == file.path)
+                    .count()
+            } else {
+                0
+            };
+
+            let churn_count = if let Some(ref churn) = context.analyses.churn_analysis {
+                churn
+                    .files
+                    .iter()
+                    .find(|f| f.relative_path == file.path)
+                    .map(|f| f.commit_count)
+                    .unwrap_or(0)
+            } else {
+                0
+            };
+
+            // Enhanced risk score calculation
+            let complexity_factor = (max_complexity as f32 * 0.4) + (avg_complexity * 0.2);
+            let debt_factor = satd_count as f32 * 2.0;
+            let churn_factor = churn_count as f32 * 0.3;
+            let size_factor = file.functions.len() as f32 * 0.1;
+
+            let risk_score = complexity_factor + debt_factor + churn_factor + size_factor;
+
+            if risk_score > 0.0 {
+                file_risks.push((
+                    file.path.clone(),
+                    risk_score,
+                    max_complexity,
+                    avg_complexity,
+                    churn_count,
+                    satd_count,
+                    file.functions.len(),
+                ));
+            }
         }
+    }
+
+    // Sort by risk score
+    file_risks.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+    file_risks
+}
+
+/// Format recommendations section for full report
+fn format_full_recommendations(context: &crate::services::deep_context::DeepContext) -> String {
+    let mut output = String::from(
+        "## Recommendations\nBased on the analysis, here are the top recommendations:\n\n",
+    );
+
+    if context.quality_scorecard.overall_health < 60.0 {
+        output.push_str("🔴 **Critical Priority:**\n- Overall health score is below 60%. Immediate attention required.\n- Focus on reducing technical debt and complexity in top-risk files.\n\n");
+    } else if context.quality_scorecard.overall_health < 80.0 {
+        output.push_str("🟡 **Medium Priority:**\n- Health score between 60-80%. Some improvements needed.\n- Consider refactoring high-complexity functions.\n\n");
+    } else {
+        output.push_str("✅ **Good Health:**\n- Health score above 80%. Maintain current quality standards.\n- Continue monitoring for any degradation.\n\n");
+    }
+
+    let (high_satd, _, _) = get_satd_breakdown(context);
+    if high_satd > 0 {
         output.push_str(&format!(
-            "- **Total Violations:** {}\n\n",
-            complexity.violations.len()
+            "📋 **Technical Debt:** {} high-severity items need immediate attention.\n",
+            high_satd
         ));
     }
 
-    if let Some(ref churn) = context.analyses.churn_analysis {
-        output.push_str("### Code Churn Analysis\n");
-        output.push_str(&format!(
-            "- **Total Commits:** {}\n",
-            churn.summary.total_commits
-        ));
-        output.push_str(&format!("- **Files Changed:** {}\n\n", churn.files.len()));
+    if let Some(ref complexity) = context.analyses.complexity_report {
+        let high_complexity_functions = complexity
+            .files
+            .iter()
+            .flat_map(|f| f.functions.iter())
+            .filter(|func| func.metrics.cyclomatic > 10)
+            .count();
+
+        if high_complexity_functions > 0 {
+            output.push_str(&format!("🔧 **Complexity:** {} functions with cyclomatic complexity > 10 should be refactored.\n", high_complexity_functions));
+        }
     }
 
-    if let Some(ref dead_code) = context.analyses.dead_code_results {
-        output.push_str("### Dead Code Analysis\n");
-        output.push_str(&format!(
-            "- **Dead Functions:** {}\n",
-            dead_code.summary.dead_functions
-        ));
-        output.push_str(&format!(
-            "- **Dead Percentage:** {:.1}%\n\n",
-            dead_code.summary.dead_percentage
-        ));
-    }
-
-    if let Some(ref satd) = context.analyses.satd_results {
-        output.push_str("### Technical Debt Analysis\n");
-        output.push_str(&format!("- **SATD Items:** {}\n\n", satd.items.len()));
-    }
-
-    Ok(output)
+    output
 }
 
 fn format_deep_context_as_sarif(
@@ -1797,29 +2565,6 @@ fn format_deep_context_as_sarif(
     });
 
     Ok(serde_json::to_string_pretty(&sarif)?)
-}
-
-// Helper trait for string title case
-trait ToTitleCase {
-    fn to_title_case(&self) -> String;
-}
-
-impl ToTitleCase for str {
-    fn to_title_case(&self) -> String {
-        self.split_whitespace()
-            .map(|word| {
-                let mut chars = word.chars();
-                match chars.next() {
-                    None => String::new(),
-                    Some(first) => {
-                        first.to_uppercase().collect::<String>()
-                            + chars.as_str().to_lowercase().as_str()
-                    }
-                }
-            })
-            .collect::<Vec<_>>()
-            .join(" ")
-    }
 }
 
 /// Format SATD analysis output

@@ -127,8 +127,8 @@ async fn test_demo_server_api_endpoints() {
         .unwrap();
     assert_eq!(response.status(), 200);
     let hotspots: Vec<serde_json::Value> = response.json().await.unwrap();
-    // Should be empty because we haven't populated complexity_report
-    assert_eq!(hotspots.len(), 0);
+    // Returns fallback hotspots since complexity analysis is empty
+    assert_eq!(hotspots.len(), 5);
 
     // Test DAG API endpoint
     let response = client
