@@ -228,6 +228,9 @@ mod tests {
     #[path = "../tests/prompts.rs"]
     mod prompts;
 
+    #[path = "../tests/binary_size.rs"]
+    mod binary_size;
+
     #[path = "../tests/error.rs"]
     mod error;
 
@@ -263,6 +266,21 @@ mod tests {
 
     #[path = "../tests/cli_simple_tests.rs"]
     mod cli_simple_tests;
+
+    #[path = "../tests/deep_context_simplified_tests.rs"]
+    mod deep_context_simplified_tests;
+
+    #[path = "../tests/demo_comprehensive_tests.rs"]
+    mod demo_comprehensive_tests;
+
+    #[path = "../tests/http_adapter_tests.rs"]
+    mod http_adapter_tests;
+
+    #[path = "../tests/cache_comprehensive_tests.rs"]
+    mod cache_comprehensive_tests;
+
+    #[path = "../tests/unified_protocol_tests.rs"]
+    mod unified_protocol_tests;
 
     #[path = "../tests/models.rs"]
     mod models_tests;

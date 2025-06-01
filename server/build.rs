@@ -8,13 +8,19 @@ fn main() {
     println!("cargo:rerun-if-changed=../scripts/install.sh");
     println!("cargo:rerun-if-changed=assets/vendor/");
     println!("cargo:rerun-if-changed=assets/demo/");
+    println!("cargo:rerun-if-changed=../assets/demo/");
+    println!("cargo:rerun-if-changed=templates/");
 
     // Verify critical dependencies at build time
     verify_dependency_versions();
 
+    // Compress templates at build time
+    compress_templates();
+
     // Download and compress assets for demo mode
     if env::var("CARGO_FEATURE_NO_DEMO").is_err() {
         download_and_compress_assets();
+        minify_demo_assets();
     }
 }
 
@@ -55,7 +61,7 @@ fn setup_asset_directories() {
     let _ = fs::create_dir_all(demo_dir);
 }
 
-fn get_asset_definitions() -> [(&'static str, &'static str); 2] {
+fn get_asset_definitions() -> [(&'static str, &'static str); 4] {
     [
         (
             "https://unpkg.com/gridjs@6.0.6/dist/gridjs.umd.js",
@@ -65,7 +71,11 @@ fn get_asset_definitions() -> [(&'static str, &'static str); 2] {
             "https://unpkg.com/gridjs@6.0.6/dist/theme/mermaid.min.css",
             "gridjs-mermaid.min.css",
         ),
-        // Mermaid.js already exists from previous implementation
+        (
+            "https://unpkg.com/mermaid@latest/dist/mermaid.min.js",
+            "mermaid.min.js",
+        ),
+        ("https://unpkg.com/d3@latest/dist/d3.min.js", "d3.min.js"),
     ]
 }
 
@@ -170,6 +180,248 @@ fn set_asset_hash_env() {
     println!("cargo:rustc-env=ASSET_HASH={}", hash);
 }
 
+fn compress_templates() {
+    use std::collections::HashMap;
+
+    let templates_dir = Path::new("templates");
+    if !templates_dir.exists() {
+        println!("cargo:warning=Templates directory not found, skipping compression");
+        return;
+    }
+
+    let mut templates = HashMap::new();
+    let mut total_original = 0usize;
+
+    // Recursively collect all template files
+    if let Ok(entries) = collect_template_files(templates_dir) {
+        for entry in entries {
+            if let Some((name, content)) = read_template_file(&entry) {
+                total_original += content.len();
+                templates.insert(name, content);
+            }
+        }
+    }
+
+    if templates.is_empty() {
+        println!("cargo:warning=No templates found for compression");
+        return;
+    }
+
+    // Compress all templates together
+    let serialized = serde_json_to_string(&templates);
+    if let Some(compressed) = create_compressed_data(serialized.as_bytes()) {
+        let total_compressed = compressed.len();
+
+        // Generate compressed template constants
+        let compressed_hex = generate_hex_string(&compressed);
+        let template_code = generate_template_code(&compressed_hex, templates.len());
+
+        // Write to output file
+        let out_dir = env::var("OUT_DIR").unwrap();
+        let dest_path = Path::new(&out_dir).join("compressed_templates.rs");
+        if fs::write(dest_path, template_code).is_ok() {
+            println!(
+                "cargo:warning=Compressed {} templates ({} -> {} bytes, {:.1}% reduction)",
+                templates.len(),
+                total_original,
+                total_compressed,
+                (1.0 - total_compressed as f64 / total_original as f64) * 100.0
+            );
+        }
+    }
+}
+
+fn collect_template_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::Error> {
+    let mut files = Vec::new();
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            files.extend(collect_template_files(&path)?);
+        } else if path
+            .extension()
+            .is_some_and(|ext| ext == "hbs" || ext == "json")
+        {
+            files.push(path);
+        }
+    }
+    Ok(files)
+}
+
+fn read_template_file(path: &Path) -> Option<(String, String)> {
+    let name = path
+        .strip_prefix("templates")
+        .ok()?
+        .to_string_lossy()
+        .to_string();
+    let content = fs::read_to_string(path).ok()?;
+    Some((name, content))
+}
+
+fn serde_json_to_string<T: serde::Serialize>(value: &T) -> String {
+    serde_json::to_string(value).unwrap_or_else(|_| "{}".to_string())
+}
+
+fn generate_hex_string(data: &[u8]) -> String {
+    data.iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<String>()
+}
+
+fn generate_template_code(hex: &str, count: usize) -> String {
+    format!(
+        r#"// Auto-generated compressed templates
+use std::collections::HashMap;
+use once_cell::sync::Lazy;
+
+const COMPRESSED_TEMPLATES: &str = "{}";
+
+pub static TEMPLATES: Lazy<HashMap<String, String>> = Lazy::new(|| {{
+    use flate2::read::GzDecoder;
+    use std::io::Read;
+    
+    let compressed = hex::decode(COMPRESSED_TEMPLATES).expect("Valid hex");
+    let mut decoder = GzDecoder::new(&compressed[..]);
+    let mut decompressed = String::new();
+    decoder.read_to_string(&mut decompressed).expect("Decompression failed");
+    
+    serde_json::from_str(&decompressed).expect("Valid JSON")
+}});
+
+// Template count: {}
+"#,
+        hex, count
+    )
+}
+
+fn minify_demo_assets() {
+    println!("cargo:warning=Minifying demo assets...");
+
+    let demo_dir = Path::new("../assets/demo");
+    let output_dir = Path::new("assets/demo");
+    let _ = fs::create_dir_all(output_dir);
+
+    // Minify JavaScript
+    minify_js_file(&demo_dir.join("app.js"), &output_dir.join("app.min.js"));
+
+    // Minify CSS
+    minify_css_file(
+        &demo_dir.join("style.css"),
+        &output_dir.join("style.min.css"),
+    );
+
+    // Copy other demo assets as-is
+    copy_demo_asset(
+        &demo_dir.join("favicon.ico"),
+        &output_dir.join("favicon.ico"),
+    );
+}
+
+fn minify_js_file(input_path: &Path, output_path: &Path) {
+    if !input_path.exists() {
+        println!("cargo:warning=JavaScript file not found: {:?}", input_path);
+        return;
+    }
+
+    let content = match fs::read_to_string(input_path) {
+        Ok(content) => content,
+        Err(e) => {
+            println!("cargo:warning=Failed to read JS file: {}", e);
+            return;
+        }
+    };
+
+    let minified = simple_js_minify(&content);
+
+    if let Err(e) = fs::write(output_path, &minified) {
+        println!("cargo:warning=Failed to write minified JS: {}", e);
+        return;
+    }
+
+    println!(
+        "cargo:warning=Minified JavaScript: {} -> {} bytes ({:.1}% reduction)",
+        content.len(),
+        minified.len(),
+        (1.0 - minified.len() as f64 / content.len() as f64) * 100.0
+    );
+}
+
+fn minify_css_file(input_path: &Path, output_path: &Path) {
+    if !input_path.exists() {
+        println!("cargo:warning=CSS file not found: {:?}", input_path);
+        return;
+    }
+
+    let content = match fs::read_to_string(input_path) {
+        Ok(content) => content,
+        Err(e) => {
+            println!("cargo:warning=Failed to read CSS file: {}", e);
+            return;
+        }
+    };
+
+    let minified = simple_css_minify(&content);
+
+    if let Err(e) = fs::write(output_path, &minified) {
+        println!("cargo:warning=Failed to write minified CSS: {}", e);
+        return;
+    }
+
+    println!(
+        "cargo:warning=Minified CSS: {} -> {} bytes ({:.1}% reduction)",
+        content.len(),
+        minified.len(),
+        (1.0 - minified.len() as f64 / content.len() as f64) * 100.0
+    );
+}
+
+fn copy_demo_asset(input_path: &Path, output_path: &Path) {
+    if input_path.exists() {
+        let _ = fs::copy(input_path, output_path);
+    }
+}
+
+fn simple_js_minify(content: &str) -> String {
+    content
+        .lines()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty() && !line.starts_with("//"))
+        .collect::<Vec<_>>()
+        .join(" ")
+        .replace("; ", ";")
+        .replace(", ", ",")
+        .replace(" = ", "=")
+        .replace(" + ", "+")
+        .replace(" { ", "{")
+        .replace(" } ", "}")
+        .replace("{ ", "{")
+        .replace(" }", "}")
+}
+
+fn simple_css_minify(content: &str) -> String {
+    content
+        .lines()
+        .map(|line| {
+            let line = line.trim();
+            // Remove CSS comments
+            if line.starts_with("/*") && line.ends_with("*/") {
+                ""
+            } else {
+                line
+            }
+        })
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join("")
+        .replace("; ", ";")
+        .replace(": ", ":")
+        .replace(", ", ",")
+        .replace(" { ", "{")
+        .replace(" } ", "}")
+        .replace("{ ", "{")
+        .replace(" }", "}")
+}
+
 fn calculate_asset_hash() -> String {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -178,6 +430,15 @@ fn calculate_asset_hash() -> String {
 
     // Hash all asset files
     if let Ok(entries) = fs::read_dir("assets/vendor") {
+        for entry in entries.filter_map(Result::ok) {
+            if let Ok(content) = fs::read(entry.path()) {
+                content.hash(&mut hasher);
+            }
+        }
+    }
+
+    // Also hash demo assets
+    if let Ok(entries) = fs::read_dir("assets/demo") {
         for entry in entries.filter_map(Result::ok) {
             if let Ok(content) = fs::read(entry.path()) {
                 content.hash(&mut hasher);

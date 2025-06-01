@@ -14,11 +14,11 @@ tokio = { version = "1.45", features = ["rt-multi-thread", "macros", "net", "io-
 async-trait = "0.1"
 
 # Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0", features = ["preserve_order"] }
+serde = { version = "1.0", default-features = false, features = ["derive", "std"] }
+serde_json = { version = "1.0", default-features = false, features = ["std"] }
 
 # Template engine
-handlebars = { version = "6.3", features = ["string_helpers"] }
+handlebars = { version = "6.3", default-features = false, features = ["string_helpers"] }
 
 # Caching
 lru = { version = "0.14", features = ["hashbrown"] }
@@ -28,8 +28,8 @@ thiserror = "2.0"
 anyhow = "1.0"
 
 # Logging
-tracing = { version = "0.1", features = ["log"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing = { version = "0.1", default-features = false, features = ["std"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "std"] }
 
 # Utilities
 sha2 = "0.10"
@@ -49,25 +49,25 @@ rayon = "1.10"
 futures = "0.3"
 
 # CLI support
-clap = { version = "4.5", features = ["derive", "env"] }
+clap = { version = "4.5", default-features = false, features = ["std", "derive", "help", "env"] }
 num_cpus = "1.17"
 serde_yaml = "0.9"
 atty = "0.2"
 
-# AST parsing
-syn = { version = "2.0", features = ["full", "parsing", "visit"] }
-quote = "1.0"
-proc-macro2 = "1.0"
+# AST parsing (conditional compilation)
+syn = { version = "2.0", features = ["full", "parsing", "visit"], optional = true }
+quote = { version = "1.0", optional = true }
+proc-macro2 = { version = "1.0", optional = true }
 walkdir = "2.5"
 ignore = "0.4"
 toml = "0.8"
-# For TypeScript/JavaScript parsing
-swc_ecma_parser = "14.0"
-swc_common = "11.0"
-swc_ecma_ast = "11.0"
-swc_ecma_visit = "11.0"
-# For Python parsing
-rustpython-parser = "0.4"
+# For TypeScript/JavaScript parsing (conditional)
+swc_ecma_parser = { version = "14.0", optional = true }
+swc_common = { version = "11.0", optional = true }
+swc_ecma_ast = { version = "11.0", optional = true }
+swc_ecma_visit = { version = "11.0", optional = true }
+# For Python parsing (conditional)
+rustpython-parser = { version = "0.4", optional = true }
 
 # Installer generation
 # installer-macro = { path = "../installer-macro" } # Removed - using simple include_str! instead
@@ -82,11 +82,11 @@ dashmap = "6.1"
 flate2 = "1.1"
 
 # Unified protocol support
-axum = { version = "0.8", features = ["json", "original-uri", "tokio", "http1", "http2"] }
-tower = { version = "0.5", features = ["full"] }
-tower-http = { version = "0.6", features = ["fs", "trace", "compression-gzip", "timeout", "cors"] }
-hyper = { version = "1.6", features = ["full"] }
-hyper-util = { version = "0.1", features = ["full"] }
+axum = { version = "0.8", default-features = false, features = ["json", "tokio", "http1", "query"] }
+tower = { version = "0.5", default-features = false, features = ["util", "timeout"] }
+tower-http = { version = "0.6", default-features = false, features = ["fs", "trace", "compression-gzip", "timeout", "cors"] }
+hyper = { version = "1.6", default-features = false, features = ["http1", "server", "client"] }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio", "server", "client"] }
 http-body-util = "0.1"
 
 # Graph analysis
@@ -106,9 +106,17 @@ predicates = "3.1"
 [build-dependencies]
 ureq = "3.0"
 flate2 = "1.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+hex = "0.4"
 
 [features]
-default = []
+default = ["all-languages"]
+all-languages = ["rust-ast", "typescript-ast", "python-ast"]
+rust-only = ["rust-ast"]
+rust-ast = ["syn", "quote", "proc-macro2"]
+typescript-ast = ["swc_ecma_parser", "swc_common", "swc_ecma_ast", "swc_ecma_visit"]
+python-ast = ["rustpython-parser"]
 # Feature to exclude demo/reporting functionality for minimal builds
 no-demo = []
 

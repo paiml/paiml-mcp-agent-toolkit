@@ -26,11 +26,12 @@ pr-run-mode = "plan"
 install-updater = false
 
 [profile.release]
-lto = "fat"
-codegen-units = 1
-# panic = "abort"  # Disabled to prevent terminal crashes during testing
-strip = "symbols"
-opt-level = 3
+opt-level = "z"          # Optimize for size (-Os equivalent)
+lto = "fat"              # Enable Link Time Optimization
+codegen-units = 1        # Single codegen unit for maximum optimization
+panic = "abort"          # Remove unwinding machinery (~200KB savings)
+strip = "symbols"        # Strip symbols (60-80% reduction)
+overflow-checks = false  # Disable overflow checks in release
 
 # The profile that 'cargo dist' will build with
 # Workspace-level test optimization
