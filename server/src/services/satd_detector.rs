@@ -69,7 +69,7 @@ impl std::fmt::Display for DebtCategory {
 }
 
 /// Severity levels for technical debt
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Severity {
     Critical, // Security vulnerabilities, data loss risks
     High,     // Defects, broken functionality

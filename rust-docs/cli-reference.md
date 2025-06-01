@@ -8,7 +8,7 @@ binary-name ::= "paiml-mcp-agent-toolkit"
 global-opts ::= "--mode" mode-value
 mode-value  ::= "cli" | "mcp"
 subcommand  ::= "generate" | "scaffold" | "list" | "search" | "validate" | "context" | "analyze"
-analyze     ::= "analyze" ("churn" | "complexity" | "dag")
+analyze     ::= "analyze" ("churn" | "complexity" | "dag" | "dead-code" | "deep-context")
 ```
 
 ## Memory Model
@@ -334,6 +334,90 @@ paiml-mcp-agent-toolkit analyze dag \
   --show-complexity \
   --max-depth 3 \
   --filter-external
+```
+
+##### `analyze deep-context`
+
+**NEW**: Generate comprehensive deep context analysis combining multiple analysis types into unified quality assessment.
+
+**Arguments:**
+- **-p, --project-path**: Project path to analyze (default: current directory)
+- **--format**: Output format (`markdown`, `json`, `sarif`)
+- **-o, --output**: Output file path
+- **--include**: Comma-separated list of analyses to include (`ast`, `complexity`, `churn`, `dag`, `dead-code`, `satd`, `defect-probability`)
+- **--exclude**: Comma-separated list of analyses to exclude
+- **--period-days**: Period for churn analysis (default: 30 days)
+- **--dag-type**: DAG type for dependency analysis (`call-graph`, `import-graph`, `inheritance`, `full-dependency`)
+- **--max-depth**: Maximum directory traversal depth
+- **--include-pattern**: Include file patterns (can be specified multiple times)
+- **--exclude-pattern**: Exclude file patterns (can be specified multiple times)
+- **--cache-strategy**: Cache usage strategy (`normal`, `force-refresh`, `offline`)
+- **--parallel**: Parallelism level for analysis
+- **--full**: Enable full detailed report (default is terse)
+
+**Multi-Analysis Pipeline:**
+
+Deep context analysis combines multiple analysis types:
+
+1. **AST Analysis**: Abstract syntax tree parsing and symbol extraction
+2. **Complexity Analysis**: McCabe Cyclomatic and Cognitive complexity metrics
+3. **Churn Analysis**: Git history and change frequency tracking
+4. **DAG Analysis**: Dependency graph generation and visualization
+5. **Dead Code Analysis**: Unused code detection with confidence scoring
+6. **SATD Analysis**: Self-Admitted Technical Debt detection from comments
+7. **Defect Probability**: ML-based defect prediction and hotspot identification
+
+**Quality Scorecard Features:**
+
+- **Overall Health Score** (0-100): Composite quality assessment
+- **Maintainability Index**: Code maintainability metrics
+- **Technical Debt Hours**: Estimated effort to address debt
+- **Defect Correlation**: Cross-analysis insights and risk prediction
+- **Prioritized Recommendations**: AI-generated actionable improvement suggestions
+
+**Performance Characteristics:**
+
+- **Parallel Execution**: Tokio-based concurrent analysis using JoinSet
+- **Cache Integration**: Smart caching strategies for incremental analysis
+- **Memory Efficiency**: Optimized data structures with streaming output
+- **Analysis Time**: ~2.5ms for focused analysis, ~8 seconds for full project
+
+**Examples:**
+```bash
+# Basic deep context analysis with markdown output
+paiml-mcp-agent-toolkit analyze deep-context
+
+# Targeted analysis with specific components
+paiml-mcp-agent-toolkit analyze deep-context \
+  --include "complexity,churn,satd" \
+  --format json \
+  -o deep-context.json
+
+# Full analysis with all components and SARIF output
+paiml-mcp-agent-toolkit analyze deep-context \
+  --include "ast,complexity,churn,dag,dead-code,satd,defect-probability" \
+  --format sarif \
+  --period-days 90 \
+  --cache-strategy force-refresh \
+  -o analysis.sarif
+
+# Comprehensive analysis with custom patterns
+paiml-mcp-agent-toolkit analyze deep-context \
+  --include "complexity,dead-code,satd" \
+  --include-pattern "src/**/*.rs" \
+  --include-pattern "tests/**/*.rs" \
+  --exclude-pattern "**/target/**" \
+  --parallel 8 \
+  --full \
+  --format markdown \
+  -o DEEP_CONTEXT.md
+
+# Performance-optimized analysis with offline cache
+paiml-mcp-agent-toolkit analyze deep-context \
+  --include "complexity,churn" \
+  --cache-strategy offline \
+  --max-depth 5 \
+  --format json
 ```
 
 ## Environment Variable Expansion
