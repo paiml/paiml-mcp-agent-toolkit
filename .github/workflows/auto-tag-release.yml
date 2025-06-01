@@ -1,8 +1,9 @@
-name: Auto Tag Release
+name: Auto Tag Release (DISABLED)
+
+# DISABLED: Auto-tagging interferes with manual release process
+# Use simple-release.yml instead for controlled releases
 
 on:
-  push:
-    branches: [ main, master ]
   workflow_dispatch:
     inputs:
       version_bump:
