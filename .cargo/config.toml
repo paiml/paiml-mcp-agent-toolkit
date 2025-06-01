@@ -1,5 +1,14 @@
 [build]
 incremental = true
+rustflags = [
+    "-C", "link-arg=-s",       # Strip symbols during linking
+]
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = [
+    "-C", "link-arg=-Wl,--gc-sections",  # Remove unused sections
+    "-C", "link-arg=-Wl,--strip-all",    # Strip all symbols
+]
 
 [profile.test]
 incremental = true

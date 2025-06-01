@@ -23,7 +23,7 @@
 #
 # This design prevents workspace-related issues and ensures consistent behavior.
 
-.PHONY: all validate format lint check test test-fast coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs
+.PHONY: all validate format lint check test test-fast coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -618,6 +618,82 @@ release:
 	@echo "   - Strip debug symbols: cargo build --release --config 'profile.release.strip=true'"
 	@echo "   - Enable LTO: cargo build --release --config 'profile.release.lto=true'"
 	@echo "   - Optimize for size: cargo build --release --config 'profile.release.opt-level=\"s\"'"
+
+# Binary size analysis and monitoring
+size-report: release ## Generate comprehensive binary size report
+	@echo "=== Binary Size Report ==="
+	@ls -lh target/release/paiml-mcp-agent-toolkit
+	@echo ""
+	@echo "=== Asset Optimization Status ==="
+	@if [ -f "server/assets/vendor/mermaid.min.js.gz" ]; then \
+		MERMAID_ORIGINAL=$$(curl -sI "https://unpkg.com/mermaid@latest/dist/mermaid.min.js" | grep -i content-length | cut -d' ' -f2 | tr -d '\r'); \
+		MERMAID_COMPRESSED=$$(stat -f%z server/assets/vendor/mermaid.min.js.gz 2>/dev/null || stat -c%s server/assets/vendor/mermaid.min.js.gz); \
+		if [ -n "$$MERMAID_ORIGINAL" ] && [ "$$MERMAID_ORIGINAL" -gt 0 ]; then \
+			REDUCTION=$$(echo "scale=1; ($$MERMAID_ORIGINAL - $$MERMAID_COMPRESSED) * 100 / $$MERMAID_ORIGINAL" | bc -l 2>/dev/null || echo "N/A"); \
+			echo "Mermaid.js: $$MERMAID_ORIGINAL -> $$MERMAID_COMPRESSED bytes ($$REDUCTION% reduction)"; \
+		else \
+			echo "Mermaid.js: Compressed to $$MERMAID_COMPRESSED bytes"; \
+		fi; \
+	else \
+		echo "❌ Mermaid.js not compressed (run 'make release' to rebuild)"; \
+	fi
+	@if [ -f "server/assets/demo/app.min.js" ]; then \
+		if [ -f "../assets/demo/app.js" ]; then \
+			DEMO_JS_ORIGINAL=$$(stat -f%z ../assets/demo/app.js 2>/dev/null || stat -c%s ../assets/demo/app.js); \
+			DEMO_JS_MINIFIED=$$(stat -f%z server/assets/demo/app.min.js 2>/dev/null || stat -c%s server/assets/demo/app.min.js); \
+			REDUCTION=$$(echo "scale=1; ($$DEMO_JS_ORIGINAL - $$DEMO_JS_MINIFIED) * 100 / $$DEMO_JS_ORIGINAL" | bc -l 2>/dev/null || echo "N/A"); \
+			echo "Demo JS: $$DEMO_JS_ORIGINAL -> $$DEMO_JS_MINIFIED bytes ($$REDUCTION% reduction)"; \
+		else \
+			echo "Demo JS: Minified"; \
+		fi; \
+	else \
+		echo "❌ Demo JS not minified (run 'make release' to rebuild)"; \
+	fi
+	@echo ""
+	@echo "=== Size by Crate ==="
+	@if command -v cargo-bloat >/dev/null 2>&1; then \
+		cargo bloat --release --crates -n 10 --manifest-path server/Cargo.toml; \
+	else \
+		echo "Install cargo-bloat for detailed analysis: cargo install cargo-bloat"; \
+	fi
+	@echo ""
+	@echo "=== Largest Functions ==="
+	@if command -v cargo-bloat >/dev/null 2>&1; then \
+		cargo bloat --release -n 10 --manifest-path server/Cargo.toml; \
+	else \
+		echo "Install cargo-bloat for detailed analysis: cargo install cargo-bloat"; \
+	fi
+
+size-track: release ## Track binary size over time
+	@SIZE=$$(stat -f%z target/release/paiml-mcp-agent-toolkit 2>/dev/null || stat -c%s target/release/paiml-mcp-agent-toolkit); \
+	echo "$$(date +%Y-%m-%d),$${SIZE}" >> size-history.csv; \
+	echo "Binary size: $${SIZE} bytes"; \
+	echo "History logged to size-history.csv"
+
+size-check: release ## Check if binary size exceeds threshold
+	@SIZE=$$(stat -f%z target/release/paiml-mcp-agent-toolkit 2>/dev/null || stat -c%s target/release/paiml-mcp-agent-toolkit); \
+	THRESHOLD=20971520; \
+	echo "Binary size: $${SIZE} bytes"; \
+	echo "Threshold: $${THRESHOLD} bytes (20MB)"; \
+	if [ $${SIZE} -gt $${THRESHOLD} ]; then \
+		echo "❌ Binary size exceeds 20MB threshold"; \
+		exit 1; \
+	else \
+		echo "✅ Binary size within acceptable limits"; \
+	fi
+
+size-compare: ## Compare binary size with minimal build
+	@echo "=== Building with minimal features ==="
+	@cargo build --release --no-default-features --features rust-only --manifest-path server/Cargo.toml
+	@SIZE_MINIMAL=$$(stat -f%z target/release/paiml-mcp-agent-toolkit 2>/dev/null || stat -c%s target/release/paiml-mcp-agent-toolkit); \
+	echo "Minimal build size: $${SIZE_MINIMAL} bytes"
+	@echo ""
+	@echo "=== Building with all features ==="
+	@$(MAKE) release
+	@SIZE_FULL=$$(stat -f%z target/release/paiml-mcp-agent-toolkit 2>/dev/null || stat -c%s target/release/paiml-mcp-agent-toolkit); \
+	echo "Full build size: $${SIZE_FULL} bytes"; \
+	REDUCTION=$$(echo "scale=1; ($${SIZE_FULL} - $${SIZE_MINIMAL}) * 100 / $${SIZE_FULL}" | bc -l 2>/dev/null || echo "N/A"); \
+	echo "Feature overhead: $${REDUCTION}%"
 
 
 # Create GitHub release with binary artifacts
