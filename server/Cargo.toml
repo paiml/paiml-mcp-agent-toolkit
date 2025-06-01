@@ -112,17 +112,6 @@ default = []
 # Feature to exclude demo/reporting functionality for minimal builds
 no-demo = []
 
-[profile.release]
-lto = "fat"
-codegen-units = 1
-# panic = "abort"  # Disabled to prevent terminal crashes during testing
-strip = "symbols"
-opt-level = 3
-
-# The profile that 'cargo dist' will build with
-[profile.dist]
-inherits = "release"
-lto = "thin"
 
 [[bin]]
 name = "paiml-mcp-agent-toolkit"

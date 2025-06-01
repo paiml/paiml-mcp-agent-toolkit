@@ -24,3 +24,26 @@ targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-
 pr-run-mode = "plan"
 # Hosting provider for our installers
 install-updater = false
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+# panic = "abort"  # Disabled to prevent terminal crashes during testing
+strip = "symbols"
+opt-level = 3
+
+# The profile that 'cargo dist' will build with
+# Workspace-level test optimization
+[profile.test]
+opt-level = 0
+lto = false
+codegen-units = 256
+incremental = true
+
+[profile.test.package."*"]
+opt-level = 0
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"

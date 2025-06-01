@@ -1,10 +1,10 @@
 graph TD
-    cache_check[Cache Check]
     validate[Validate Input]
-    request[Client Request]
-    generate[Generate Output]
-    response[Send Response]
     analyze[Analyze Code]
+    generate[Generate Output]
+    request[Client Request]
+    cache_check[Cache Check]
+    response[Send Response]
 
     request --> validate
     validate --> cache_check
@@ -13,9 +13,9 @@ graph TD
     analyze --> generate
     generate --> response
 
-    style cache_check fill:#90EE90,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
     style validate fill:#FFD700,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
-    style request fill:#90EE90,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
-    style generate fill:#FFA500,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
-    style response fill:#90EE90,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
     style analyze fill:#FF6347,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
+    style generate fill:#FFA500,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
+    style request fill:#90EE90,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
+    style cache_check fill:#90EE90,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
+    style response fill:#90EE90,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px

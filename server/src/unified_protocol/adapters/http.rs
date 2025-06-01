@@ -272,54 +272,93 @@ async fn handle_connection(
         let service = service.clone_boxed();
         let adapter = HttpAdapter::new(adapter.bind_addr);
 
-        async move {
-            // Convert Hyper request to our format
-            let (parts, body) = req.into_parts();
-            let body_bytes = body
-                .collect()
-                .await
-                .map_err(|e| format!("Body read error: {}", e))?
-                .to_bytes();
-
-            let axum_request = Request::from_parts(parts, Body::from(body_bytes.to_vec()));
-
-            let input = HttpInput::Request {
-                request: axum_request,
-                remote_addr,
-            };
-
-            // Decode to unified request
-            let unified_request = adapter
-                .decode(input)
-                .await
-                .map_err(|e| format!("Decode error: {}", e))?;
-
-            // Process request
-            let unified_response = service
-                .handle(unified_request)
-                .await
-                .map_err(|e| format!("Service error: {}", e))?;
-
-            // Encode response
-            let http_output = adapter
-                .encode(unified_response)
-                .await
-                .map_err(|e| format!("Encode error: {}", e))?;
-
-            match http_output {
-                HttpOutput::Response(response) => {
-                    Ok::<Response<axum::body::Body>, String>(response)
-                }
-            }
-        }
+        async move { process_http_request(req, service, adapter, remote_addr).await }
     });
 
-    http1::Builder::new()
-        .serve_connection(io, service_fn)
-        .await
-        .map_err(|e| ProtocolError::HttpError(format!("Connection error: {}", e)))?;
+    serve_http_connection(io, service_fn).await
+}
 
-    Ok(())
+async fn process_http_request(
+    req: Request<hyper::body::Incoming>,
+    service: Box<dyn HttpServiceHandler>,
+    adapter: HttpAdapter,
+    remote_addr: SocketAddr,
+) -> Result<Response<axum::body::Body>, String> {
+    let input = convert_hyper_to_http_input(req, remote_addr).await?;
+    let unified_request = decode_http_input(&adapter, input).await?;
+    let unified_response = handle_unified_request(service, unified_request).await?;
+    encode_unified_response(&adapter, unified_response).await
+}
+
+async fn convert_hyper_to_http_input(
+    req: Request<hyper::body::Incoming>,
+    remote_addr: SocketAddr,
+) -> Result<HttpInput, String> {
+    let (parts, body) = req.into_parts();
+    let body_bytes = collect_request_body(body).await?;
+    let axum_request = Request::from_parts(parts, Body::from(body_bytes.to_vec()));
+
+    Ok(HttpInput::Request {
+        request: axum_request,
+        remote_addr,
+    })
+}
+
+async fn collect_request_body(body: hyper::body::Incoming) -> Result<bytes::Bytes, String> {
+    Ok(body
+        .collect()
+        .await
+        .map_err(|e| format!("Body read error: {}", e))?
+        .to_bytes())
+}
+
+async fn decode_http_input(
+    adapter: &HttpAdapter,
+    input: HttpInput,
+) -> Result<UnifiedRequest, String> {
+    adapter
+        .decode(input)
+        .await
+        .map_err(|e| format!("Decode error: {}", e))
+}
+
+async fn handle_unified_request(
+    service: Box<dyn HttpServiceHandler>,
+    unified_request: UnifiedRequest,
+) -> Result<UnifiedResponse, String> {
+    service
+        .handle(unified_request)
+        .await
+        .map_err(|e| format!("Service error: {}", e))
+}
+
+async fn encode_unified_response(
+    adapter: &HttpAdapter,
+    unified_response: UnifiedResponse,
+) -> Result<Response<axum::body::Body>, String> {
+    let http_output = adapter
+        .encode(unified_response)
+        .await
+        .map_err(|e| format!("Encode error: {}", e))?;
+
+    match http_output {
+        HttpOutput::Response(response) => Ok(response),
+    }
+}
+
+async fn serve_http_connection<S>(io: TokioIo<TcpStream>, service: S) -> Result<(), ProtocolError>
+where
+    S: hyper::service::Service<
+            Request<hyper::body::Incoming>,
+            Response = Response<axum::body::Body>,
+            Error = String,
+        > + 'static,
+    S::Future: Send + 'static,
+{
+    http1::Builder::new()
+        .serve_connection(io, service)
+        .await
+        .map_err(|e| ProtocolError::HttpError(format!("Connection error: {}", e)))
 }
 
 /// Helper to create HTTP responses with common patterns

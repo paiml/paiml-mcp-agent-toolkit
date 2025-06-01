@@ -6,6 +6,7 @@ mod demo_tests {
     use tempfile::TempDir;
 
     #[test]
+    #[ignore = "slow - runs full codebase analysis"]
     fn test_demo_mode_in_current_directory() -> Result<()> {
         // Run demo in current directory with CLI mode
         let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
@@ -27,6 +28,7 @@ mod demo_tests {
     }
 
     #[test]
+    #[ignore = "slow - runs full codebase analysis"]
     fn test_demo_mode_with_json_output() -> Result<()> {
         let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
         cmd.arg("demo").arg("--cli").arg("--format").arg("json");

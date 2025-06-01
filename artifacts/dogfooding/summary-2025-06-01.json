@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-06-01",
+  "overall_health": 80.98410760054769,
+  "complexity_score": 83.67422856765869,
+  "maintainability_index": 86.27279676750027,
+  "technical_debt_hours": 0,
+  "total_defects": 0,
+  "analysis_duration": {
+    "secs": 3,
+    "nanos": 280156845
+  }
+}

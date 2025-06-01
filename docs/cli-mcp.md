@@ -937,13 +937,13 @@ struct DocumentedTool {
 ### Running Documentation Sync Tests
 
 ```bash
-# Run only documentation sync tests
-cargo test --test cli_documentation_sync
-cargo test --test mcp_documentation_sync
-cargo test --test documentation_examples
+# Run only documentation sync tests (with nextest for speed)
+cargo nextest run --test cli_documentation_sync || cargo test --test cli_documentation_sync
+cargo nextest run --test mcp_documentation_sync || cargo test --test mcp_documentation_sync
+cargo nextest run --test documentation_examples || cargo test --test documentation_examples
 
 # Run all documentation tests
-cargo test doc_sync
+cargo nextest run doc_sync || cargo test doc_sync
 ```
 
 ### CI Integration
@@ -954,7 +954,7 @@ The CI workflow fails if documentation is out of sync:
 # .github/workflows/ci.yml
 - name: Verify Documentation Sync
   run: |
-    cargo test doc_sync
+    (cargo nextest run doc_sync || cargo test doc_sync)
     if [ $? -ne 0 ]; then
       echo "Documentation is out of sync with implementation!"
       echo "Please update docs/cli-mcp.md to match the current implementation"

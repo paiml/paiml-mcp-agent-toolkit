@@ -17,57 +17,135 @@ pub async fn handle_tool_call<T: TemplateServerTrait>(
     server: Arc<T>,
     request: McpRequest,
 ) -> McpResponse {
-    let params = match request.params {
+    let tool_params = match parse_tool_call_params(request.params, &request.id) {
+        Ok(params) => params,
+        Err(response) => return *response,
+    };
+
+    dispatch_tool_call(server, request.id, tool_params).await
+}
+
+fn parse_tool_call_params(
+    params: Option<serde_json::Value>,
+    request_id: &serde_json::Value,
+) -> Result<ToolCallParams, Box<McpResponse>> {
+    let params = match params {
         Some(p) => p,
         None => {
-            return McpResponse::error(
-                request.id,
+            return Err(Box::new(McpResponse::error(
+                request_id.clone(),
                 -32602,
                 "Invalid params: missing tool call parameters".to_string(),
-            );
+            )));
         }
     };
 
-    let tool_params: ToolCallParams = match serde_json::from_value(params) {
-        Ok(p) => p,
-        Err(e) => {
-            return McpResponse::error(request.id, -32602, format!("Invalid params: {}", e));
-        }
-    };
+    match serde_json::from_value(params) {
+        Ok(p) => Ok(p),
+        Err(e) => Err(Box::new(McpResponse::error(
+            request_id.clone(),
+            -32602,
+            format!("Invalid params: {}", e),
+        ))),
+    }
+}
 
+async fn dispatch_tool_call<T: TemplateServerTrait>(
+    server: Arc<T>,
+    request_id: serde_json::Value,
+    tool_params: ToolCallParams,
+) -> McpResponse {
     match tool_params.name.as_str() {
-        "get_server_info" => handle_get_server_info(request.id).await,
-        "generate_template" => {
-            handle_generate_template(server, request.id, tool_params.arguments).await
+        "get_server_info" => handle_get_server_info(request_id).await,
+        tool_name if is_template_tool(tool_name) => {
+            handle_template_tools(server, request_id, tool_params).await
         }
-        "list_templates" => handle_list_templates(server, request.id, tool_params.arguments).await,
-        "validate_template" => {
-            handle_validate_template(server, request.id, tool_params.arguments).await
-        }
-        "scaffold_project" => {
-            handle_scaffold_project(server, request.id, tool_params.arguments).await
-        }
-        "search_templates" => {
-            handle_search_templates(server, request.id, tool_params.arguments).await
-        }
-        "analyze_code_churn" => handle_analyze_code_churn(request.id, tool_params.arguments).await,
-        "analyze_complexity" => handle_analyze_complexity(request.id, tool_params.arguments).await,
-        "analyze_dag" => handle_analyze_dag(request.id, tool_params.arguments).await,
-        "generate_context" => handle_generate_context(request.id, tool_params.arguments).await,
-        "analyze_system_architecture" => {
-            handle_analyze_system_architecture(request.id, tool_params.arguments).await
-        }
-        "analyze_defect_probability" => {
-            handle_analyze_defect_probability(request.id, tool_params.arguments).await
-        }
-        "analyze_dead_code" => handle_analyze_dead_code(request.id, tool_params.arguments).await,
-        "analyze_deep_context" => {
-            handle_analyze_deep_context(request.id, tool_params.arguments).await
+        tool_name if is_analysis_tool(tool_name) => {
+            handle_analysis_tools(request_id, tool_params).await
         }
         _ => McpResponse::error(
-            request.id,
+            request_id,
             -32602,
             format!("Unknown tool: {}", tool_params.name),
+        ),
+    }
+}
+
+fn is_template_tool(tool_name: &str) -> bool {
+    matches!(
+        tool_name,
+        "generate_template"
+            | "list_templates"
+            | "validate_template"
+            | "scaffold_project"
+            | "search_templates"
+    )
+}
+
+fn is_analysis_tool(tool_name: &str) -> bool {
+    matches!(
+        tool_name,
+        "analyze_code_churn"
+            | "analyze_complexity"
+            | "analyze_dag"
+            | "generate_context"
+            | "analyze_system_architecture"
+            | "analyze_defect_probability"
+            | "analyze_dead_code"
+            | "analyze_deep_context"
+    )
+}
+
+async fn handle_template_tools<T: TemplateServerTrait>(
+    server: Arc<T>,
+    request_id: serde_json::Value,
+    tool_params: ToolCallParams,
+) -> McpResponse {
+    match tool_params.name.as_str() {
+        "generate_template" => {
+            handle_generate_template(server, request_id, tool_params.arguments).await
+        }
+        "list_templates" => handle_list_templates(server, request_id, tool_params.arguments).await,
+        "validate_template" => {
+            handle_validate_template(server, request_id, tool_params.arguments).await
+        }
+        "scaffold_project" => {
+            handle_scaffold_project(server, request_id, tool_params.arguments).await
+        }
+        "search_templates" => {
+            handle_search_templates(server, request_id, tool_params.arguments).await
+        }
+        _ => McpResponse::error(
+            request_id,
+            -32602,
+            format!("Unsupported template tool: {}", tool_params.name),
+        ),
+    }
+}
+
+async fn handle_analysis_tools(
+    request_id: serde_json::Value,
+    tool_params: ToolCallParams,
+) -> McpResponse {
+    match tool_params.name.as_str() {
+        "analyze_code_churn" => handle_analyze_code_churn(request_id, tool_params.arguments).await,
+        "analyze_complexity" => handle_analyze_complexity(request_id, tool_params.arguments).await,
+        "analyze_dag" => handle_analyze_dag(request_id, tool_params.arguments).await,
+        "generate_context" => handle_generate_context(request_id, tool_params.arguments).await,
+        "analyze_system_architecture" => {
+            handle_analyze_system_architecture(request_id, tool_params.arguments).await
+        }
+        "analyze_defect_probability" => {
+            handle_analyze_defect_probability(request_id, tool_params.arguments).await
+        }
+        "analyze_dead_code" => handle_analyze_dead_code(request_id, tool_params.arguments).await,
+        "analyze_deep_context" => {
+            handle_analyze_deep_context(request_id, tool_params.arguments).await
+        }
+        _ => McpResponse::error(
+            request_id,
+            -32602,
+            format!("Unsupported analysis tool: {}", tool_params.name),
         ),
     }
 }
@@ -687,7 +765,7 @@ async fn handle_analyze_complexity(
         }
     };
 
-    let project_path = resolve_project_path(args.project_path.clone());
+    let project_path = resolve_project_path_complexity(args.project_path.clone());
     let detected_toolchain = detect_toolchain(&args.toolchain, &project_path);
 
     info!(
@@ -733,7 +811,7 @@ async fn handle_analyze_complexity(
     McpResponse::success(request_id, result)
 }
 
-fn resolve_project_path(project_path_arg: Option<String>) -> PathBuf {
+fn resolve_project_path_complexity(project_path_arg: Option<String>) -> PathBuf {
     project_path_arg
         .map(PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
@@ -1684,34 +1762,46 @@ async fn handle_analyze_deep_context(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    let args: AnalyzeDeepContextArgs = match serde_json::from_value(arguments) {
-        Ok(a) => a,
-        Err(e) => {
-            return McpResponse::error(
-                request_id,
-                -32602,
-                format!("Invalid analyze_deep_context arguments: {}", e),
-            );
-        }
+    let args = match parse_deep_context_args(arguments) {
+        Ok(args) => args,
+        Err(e) => return McpResponse::error(request_id, -32602, e),
     };
 
-    let project_path = args
-        .project_path
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-
+    let project_path = resolve_project_path(args.project_path.clone());
     info!("Running deep context analysis for {:?}", project_path);
 
-    use crate::services::deep_context::{
-        AnalysisType, CacheStrategy, ComplexityThresholds, DagType, DeepContextAnalyzer,
-        DeepContextConfig,
-    };
+    let config = build_deep_context_config(&args);
+    let analyzer = create_deep_context_analyzer(config);
 
-    // Parse format
-    let format = args.format.as_deref().unwrap_or("markdown");
+    match analyzer.analyze_project(&project_path).await {
+        Ok(context) => {
+            let result = format_deep_context_response(&context, &args);
+            McpResponse::success(request_id, result)
+        }
+        Err(e) => {
+            error!("Deep context analysis failed: {}", e);
+            McpResponse::error(request_id, -32000, e.to_string())
+        }
+    }
+}
 
-    // Parse analysis types
-    let include_analyses = if let Some(analyses) = args.include_analyses {
+fn parse_deep_context_args(arguments: serde_json::Value) -> Result<AnalyzeDeepContextArgs, String> {
+    serde_json::from_value(arguments)
+        .map_err(|e| format!("Invalid analyze_deep_context arguments: {}", e))
+}
+
+fn resolve_project_path(project_path: Option<String>) -> PathBuf {
+    project_path
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+}
+
+fn parse_analysis_types(
+    include_analyses: Option<Vec<String>>,
+) -> Vec<crate::services::deep_context::AnalysisType> {
+    use crate::services::deep_context::AnalysisType;
+
+    if let Some(analyses) = include_analyses {
         analyses
             .into_iter()
             .filter_map(|s| match s.as_str() {
@@ -1731,69 +1821,81 @@ async fn handle_analyze_deep_context(
             AnalysisType::Complexity,
             AnalysisType::Churn,
         ]
-    };
+    }
+}
 
-    // Parse DAG type
-    let dag_type = match args.dag_type.as_deref() {
+fn parse_dag_type(dag_type: Option<String>) -> crate::services::deep_context::DagType {
+    use crate::services::deep_context::DagType;
+
+    match dag_type.as_deref() {
         Some("import-graph") => DagType::ImportGraph,
         Some("inheritance") => DagType::Inheritance,
         Some("full-dependency") => DagType::FullDependency,
         Some("call-graph") | None => DagType::CallGraph,
         _ => DagType::CallGraph,
-    };
+    }
+}
 
-    // Parse cache strategy
-    let cache_strategy = match args.cache_strategy.as_deref() {
+fn parse_cache_strategy(
+    cache_strategy: Option<String>,
+) -> crate::services::deep_context::CacheStrategy {
+    use crate::services::deep_context::CacheStrategy;
+
+    match cache_strategy.as_deref() {
         Some("force-refresh") => CacheStrategy::ForceRefresh,
         Some("offline") => CacheStrategy::Offline,
         Some("normal") | None => CacheStrategy::Normal,
         _ => CacheStrategy::Normal,
-    };
+    }
+}
 
-    // Create configuration
-    let config = DeepContextConfig {
-        include_analyses,
+fn build_deep_context_config(
+    args: &AnalyzeDeepContextArgs,
+) -> crate::services::deep_context::DeepContextConfig {
+    use crate::services::deep_context::{ComplexityThresholds, DeepContextConfig};
+
+    DeepContextConfig {
+        include_analyses: parse_analysis_types(args.include_analyses.clone()),
         period_days: args.period_days.unwrap_or(30),
-        dag_type,
+        dag_type: parse_dag_type(args.dag_type.clone()),
         complexity_thresholds: Some(ComplexityThresholds {
             max_cyclomatic: 10,
             max_cognitive: 15,
         }),
         max_depth: args.max_depth,
-        include_patterns: args.include_pattern.unwrap_or_default(),
-        exclude_patterns: args.exclude_pattern.unwrap_or_default(),
-        cache_strategy,
+        include_patterns: args.include_pattern.clone().unwrap_or_default(),
+        exclude_patterns: args.exclude_pattern.clone().unwrap_or_default(),
+        cache_strategy: parse_cache_strategy(args.cache_strategy.clone()),
         parallel: args.parallel.unwrap_or(4),
+    }
+}
+
+fn create_deep_context_analyzer(
+    config: crate::services::deep_context::DeepContextConfig,
+) -> crate::services::deep_context::DeepContextAnalyzer {
+    crate::services::deep_context::DeepContextAnalyzer::new(config)
+}
+
+fn format_deep_context_response(
+    context: &crate::services::deep_context::DeepContext,
+    args: &AnalyzeDeepContextArgs,
+) -> serde_json::Value {
+    let format = args.format.as_deref().unwrap_or("markdown");
+    let content_text = match format {
+        "json" => serde_json::to_string_pretty(context).unwrap_or_default(),
+        "sarif" => format_deep_context_as_sarif(context),
+        _ => format_deep_context_as_markdown(context),
     };
 
-    // Create analyzer and run analysis
-    let analyzer = DeepContextAnalyzer::new(config);
-
-    match analyzer.analyze_project(&project_path).await {
-        Ok(context) => {
-            let content_text = match format {
-                "json" => serde_json::to_string_pretty(&context).unwrap_or_default(),
-                "sarif" => format_deep_context_as_sarif(&context),
-                _ => format_deep_context_as_markdown(&context),
-            };
-
-            let result = json!({
-                "content": [{
-                    "type": "text",
-                    "text": content_text
-                }],
-                "context": context,
-                "format": format!("{:?}", format),
-                "analysis_duration_ms": context.metadata.analysis_duration.as_millis(),
-            });
-
-            McpResponse::success(request_id, result)
-        }
-        Err(e) => {
-            error!("Deep context analysis failed: {}", e);
-            McpResponse::error(request_id, -32000, e.to_string())
-        }
-    }
+    json!({
+        "content": [{
+            "type": "text",
+            "text": content_text
+        }],
+        "context": context,
+        "format": format!("{:?}", format),
+        "analysis_duration_ms": context.metadata.analysis_duration.as_millis(),
+    })
 }
 
 fn format_deep_context_as_sarif(_context: &crate::services::deep_context::DeepContext) -> String {

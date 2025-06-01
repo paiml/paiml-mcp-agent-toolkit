@@ -104,6 +104,9 @@ When creating new GitHub Actions workflows:
 # Run all tests across the workspace
 make test
 
+# Fast tests (optimized for CI/quick feedback)
+make test-fast
+
 # Run specific project tests
 make server-test
 

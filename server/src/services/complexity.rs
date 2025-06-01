@@ -100,8 +100,10 @@ pub enum Violation {
 pub struct ComplexitySummary {
     pub total_files: usize,
     pub total_functions: usize,
-    pub avg_cyclomatic: f32,
-    pub avg_cognitive: f32,
+    pub median_cyclomatic: f32,
+    pub median_cognitive: f32,
+    pub max_cyclomatic: u16,
+    pub max_cognitive: u16,
     pub p90_cyclomatic: u16,
     pub p90_cognitive: u16,
     pub technical_debt_hours: f32,
@@ -393,18 +395,32 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
     let p90_cyclomatic = all_cyclomatic.get(p90_index).copied().unwrap_or(0);
     let p90_cognitive = all_cognitive.get(p90_index).copied().unwrap_or(0);
 
-    // Calculate averages
-    let avg_cyclomatic = if !all_cyclomatic.is_empty() {
-        all_cyclomatic.iter().sum::<u16>() as f32 / all_cyclomatic.len() as f32
+    // Calculate medians (NO AVERAGES per spec)
+    let median_cyclomatic = if !all_cyclomatic.is_empty() {
+        let mid = all_cyclomatic.len() / 2;
+        if all_cyclomatic.len() % 2 == 0 {
+            (all_cyclomatic[mid - 1] + all_cyclomatic[mid]) as f32 / 2.0
+        } else {
+            all_cyclomatic[mid] as f32
+        }
     } else {
         0.0
     };
 
-    let avg_cognitive = if !all_cognitive.is_empty() {
-        all_cognitive.iter().sum::<u16>() as f32 / all_cognitive.len() as f32
+    let median_cognitive = if !all_cognitive.is_empty() {
+        let mid = all_cognitive.len() / 2;
+        if all_cognitive.len() % 2 == 0 {
+            (all_cognitive[mid - 1] + all_cognitive[mid]) as f32 / 2.0
+        } else {
+            all_cognitive[mid] as f32
+        }
     } else {
         0.0
     };
+
+    // Calculate max values
+    let max_cyclomatic = all_cyclomatic.iter().max().copied().unwrap_or(0);
+    let max_cognitive = all_cognitive.iter().max().copied().unwrap_or(0);
 
     // Sort hotspots by complexity
     hotspots.sort_by(|a, b| b.complexity.cmp(&a.complexity));
@@ -428,8 +444,10 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
         summary: ComplexitySummary {
             total_files: file_metrics.len(),
             total_functions,
-            avg_cyclomatic,
-            avg_cognitive,
+            median_cyclomatic,
+            median_cognitive,
+            max_cyclomatic,
+            max_cognitive,
             p90_cyclomatic,
             p90_cognitive,
             technical_debt_hours,
@@ -457,12 +475,20 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
 
     output.push_str("## Complexity Metrics\n\n");
     output.push_str(&format!(
-        "- **Average Cyclomatic**: {:.1}\n",
-        report.summary.avg_cyclomatic
+        "- **Median Cyclomatic**: {:.1}\n",
+        report.summary.median_cyclomatic
     ));
     output.push_str(&format!(
-        "- **Average Cognitive**: {:.1}\n",
-        report.summary.avg_cognitive
+        "- **Median Cognitive**: {:.1}\n",
+        report.summary.median_cognitive
+    ));
+    output.push_str(&format!(
+        "- **Max Cyclomatic**: {}\n",
+        report.summary.max_cyclomatic
+    ));
+    output.push_str(&format!(
+        "- **Max Cognitive**: {}\n",
+        report.summary.max_cognitive
     ));
     output.push_str(&format!(
         "- **90th Percentile Cyclomatic**: {}\n",

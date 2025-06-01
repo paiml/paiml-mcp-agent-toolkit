@@ -34,6 +34,9 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@cargo-nextest
+      
       - name: Install shellcheck
         run: |
           sudo apt-get update
@@ -62,7 +65,7 @@ jobs:
           make server-format
           make server-lint
           make server-check
-          make test  # This runs both script tests and server tests
+          make test-fast  # Fast tests with nextest for better CI performance
           make server-build-binary
       
       - name: Upload binary artifact
@@ -88,6 +91,9 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@cargo-nextest
+      
       - name: Download binary artifact
         uses: actions/download-artifact@v4
         with:
@@ -101,14 +107,14 @@ jobs:
         run: |
           echo "📚 Running documentation synchronization tests..."
           cd server
-          cargo test --test cli_documentation_sync
-          cargo test --test mcp_documentation_sync
-          cargo test --test documentation_examples
+          cargo nextest run --test cli_documentation_sync || cargo test --test cli_documentation_sync
+          cargo nextest run --test mcp_documentation_sync || cargo test --test mcp_documentation_sync
+          cargo nextest run --test documentation_examples || cargo test --test documentation_examples
       
       - name: Verify all documentation tests pass
         run: |
           cd server
-          cargo test doc_sync 2>&1 | tee doc_sync_results.txt
+          (cargo nextest run doc_sync || cargo test doc_sync) 2>&1 | tee doc_sync_results.txt
           if grep -q "test result: FAILED" doc_sync_results.txt; then
             echo "❌ Documentation is out of sync with implementation!"
             echo "Please update docs/cli-mcp.md to match the current implementation"

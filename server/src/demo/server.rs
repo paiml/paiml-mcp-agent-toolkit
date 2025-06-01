@@ -688,7 +688,7 @@ fn serve_statistics_analysis(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> 
         "code_metrics": {
             "total_files": state.analysis_results.complexity_report.summary.total_files,
             "total_functions": state.analysis_results.complexity_report.summary.total_functions,
-            "avg_complexity": state.analysis_results.complexity_report.summary.avg_cyclomatic,
+            "median_complexity": state.analysis_results.complexity_report.summary.median_cyclomatic,
             "complexity_p90": state.analysis_results.complexity_report.summary.p90_cyclomatic,
             "tech_debt_hours": state.analysis_results.complexity_report.summary.technical_debt_hours,
         },
@@ -800,8 +800,10 @@ impl Default for crate::services::complexity::ComplexityReport {
             summary: crate::services::complexity::ComplexitySummary {
                 total_files: 0,
                 total_functions: 0,
-                avg_cyclomatic: 0.0,
-                avg_cognitive: 0.0,
+                median_cyclomatic: 0.0,
+                median_cognitive: 0.0,
+                max_cyclomatic: 0,
+                max_cognitive: 0,
                 p90_cyclomatic: 0,
                 p90_cognitive: 0,
                 technical_debt_hours: 0.0,

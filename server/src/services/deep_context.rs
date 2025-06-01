@@ -596,13 +596,19 @@ impl DeepContextAnalyzer {
             join_set.spawn(async move { AnalysisResult::DeadCode(analyze_dead_code(&path).await) });
         }
 
-        // SATD Analysis - TODO: Fix Send trait issue
-        // if self.config.include_analyses.contains(&AnalysisType::Satd) {
-        //     let path = project_path.clone();
-        //     join_set.spawn(async move {
-        //         AnalysisResult::Satd(analyze_satd(&path).await)
-        //     });
-        // }
+        // SATD Analysis
+        if self.config.include_analyses.contains(&AnalysisType::Satd) {
+            let path = project_path.to_path_buf();
+            join_set.spawn(async move {
+                // Use spawn_blocking to avoid Send issues with SATD detector
+                let result = tokio::task::spawn_blocking(move || {
+                    tokio::runtime::Handle::current().block_on(async { analyze_satd(&path).await })
+                })
+                .await
+                .unwrap_or_else(|_| Err(anyhow::anyhow!("SATD analysis failed")));
+                AnalysisResult::Satd(result)
+            });
+        }
 
         // Collect results
         let mut results = ParallelAnalysisResults::default();
@@ -685,9 +691,9 @@ impl DeepContextAnalyzer {
 
         // Calculate complexity score
         if let Some(ref complexity) = analyses.complexity_report {
-            // Simplified scoring: inverse of average complexity
-            let avg_complexity = complexity.summary.avg_cyclomatic as f64;
-            complexity_score = 100.0 / (1.0 + avg_complexity / 10.0);
+            // Simplified scoring: inverse of median complexity (NO AVERAGES per spec)
+            let median_complexity = complexity.summary.median_cyclomatic as f64;
+            complexity_score = 100.0 / (1.0 + median_complexity / 10.0);
         }
 
         // Calculate technical debt hours

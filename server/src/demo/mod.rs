@@ -104,8 +104,10 @@ fn parse_complexity_summary(
         summary: crate::services::complexity::ComplexitySummary {
             total_files,
             total_functions,
-            avg_cyclomatic: avg_cyclomatic as f32,
-            avg_cognitive: (avg_cyclomatic * 1.2) as f32, // Estimate
+            median_cyclomatic: avg_cyclomatic as f32,
+            median_cognitive: (avg_cyclomatic * 1.2) as f32, // Estimate
+            max_cyclomatic: (avg_cyclomatic * 3.0) as u16,
+            max_cognitive: (avg_cyclomatic * 3.5) as u16,
             p90_cyclomatic: (avg_cyclomatic * 2.0) as u16,
             p90_cognitive: (avg_cyclomatic * 2.4) as u16,
             technical_debt_hours: tech_debt_hours as f32,
@@ -189,7 +191,7 @@ async fn run_web_demo(
         .unwrap_or(demo_report.steps.len() * 10); // Better fallback based on actual analysis
     let avg_complexity = complexity_result
         .as_ref()
-        .map(|c| c.summary.avg_cyclomatic as f64)
+        .map(|c| c.summary.median_cyclomatic as f64)
         .unwrap_or(2.5); // More realistic fallback
     let tech_debt_hours = complexity_result
         .as_ref()

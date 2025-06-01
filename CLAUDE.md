@@ -54,6 +54,9 @@ pub trait ProtocolAdapter: Send + Sync {
 ### Session Start Ritual (ALL INTERFACES REQUIRED)
 
 ```bash
+# 0. Quick validation with fast tests (optional)
+make test-fast  # Rapid feedback with cargo-nextest (30-45% faster)
+
 # 1. Build the binary with workspace optimization
 make release  # Preferred workspace-wide optimized build
 # OR
@@ -339,6 +342,27 @@ make server-build        # Debug build (faster compilation)
 - Workspace-wide optimizations (LTO, strip symbols)
 - Shared build cache for faster incremental builds
 - Future extensibility for client/, shared/ crates
+
+### Fast Testing with cargo-nextest
+
+**For optimal test performance, use cargo-nextest:**
+
+```bash
+# Install nextest (one-time setup)
+cargo install cargo-nextest
+
+# Run tests with superior parallelism and output
+cargo nextest run
+
+# Fast unit tests only
+cargo nextest run --lib
+
+# Run tests with maximum thread utilization
+RUST_TEST_THREADS=$(nproc) cargo nextest run
+
+# Fast incremental testing
+cargo nextest run --workspace --changed
+```
 
 ### Quick Interface Tests
 ```bash

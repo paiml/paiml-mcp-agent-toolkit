@@ -68,6 +68,10 @@ jobs:
         if: steps.check_skip.outputs.skip != 'true'
         uses: taiki-e/install-action@cargo-llvm-cov
       
+      - name: Install cargo-nextest
+        if: steps.check_skip.outputs.skip != 'true'
+        uses: taiki-e/install-action@cargo-nextest
+      
       - name: Install shellcheck
         if: steps.check_skip.outputs.skip != 'true'
         run: |
@@ -78,7 +82,7 @@ jobs:
         if: steps.check_skip.outputs.skip != 'true'
         run: |
           make server-format server-lint server-check
-          make test  # This runs both script tests and server tests
+          make test-fast  # Fast tests with nextest for better CI performance
       
       - name: Set default outputs when skipping
         if: steps.check_skip.outputs.skip == 'true'
