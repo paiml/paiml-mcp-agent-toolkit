@@ -354,6 +354,14 @@ impl SATDDetector {
 
     /// Extract comment content from various comment styles
     fn extract_comment_content(&self, line: &str) -> Result<Option<String>, TemplateError> {
+        // Input validation
+        if line.len() > 10000 {
+            return Err(TemplateError::ValidationError {
+                parameter: "line".to_string(),
+                reason: "Line too long for comment extraction (>10000 chars)".to_string(),
+            });
+        }
+        
         let trimmed = line.trim();
 
         // Rust/C++/JavaScript style comments
@@ -433,11 +441,31 @@ impl SATDDetector {
 
             match tokio::fs::read_to_string(&file_path).await {
                 Ok(content) => {
-                    let debts = self.extract_from_content(&content, &file_path)?;
-                    if !debts.is_empty() {
-                        files_with_debt += 1;
+                    // Validate file size before processing
+                    if content.len() > 10_000_000 {
+                        eprintln!(
+                            "Warning: Skipping large file {}: {} bytes",
+                            file_path.display(),
+                            content.len()
+                        );
+                        continue;
                     }
-                    all_debts.extend(debts);
+                    
+                    match self.extract_from_content(&content, &file_path) {
+                        Ok(debts) => {
+                            if !debts.is_empty() {
+                                files_with_debt += 1;
+                            }
+                            all_debts.extend(debts);
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "Warning: Error processing file {}: {}",
+                                file_path.display(),
+                                e
+                            );
+                        }
+                    }
                 }
                 Err(e) => {
                     eprintln!(
@@ -469,8 +497,28 @@ impl SATDDetector {
         for file_path in files {
             match tokio::fs::read_to_string(&file_path).await {
                 Ok(content) => {
-                    let debts = self.extract_from_content(&content, &file_path)?;
-                    all_debts.extend(debts);
+                    // Validate file size before processing
+                    if content.len() > 10_000_000 {
+                        eprintln!(
+                            "Warning: Skipping large file {}: {} bytes",
+                            file_path.display(),
+                            content.len()
+                        );
+                        continue;
+                    }
+                    
+                    match self.extract_from_content(&content, &file_path) {
+                        Ok(debts) => {
+                            all_debts.extend(debts);
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "Warning: Error processing file {}: {}",
+                                file_path.display(),
+                                e
+                            );
+                        }
+                    }
                 }
                 Err(e) => {
                     eprintln!(

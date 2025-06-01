@@ -49,6 +49,20 @@ paiml-mcp-agent-toolkit analyze churn --days 30 --format json
 paiml-mcp-agent-toolkit analyze dag --enhanced --show-complexity
 paiml-mcp-agent-toolkit analyze dead-code --top-files 10 --format json
 paiml-mcp-agent-toolkit analyze satd --top-files 5 --format json
+paiml-mcp-agent-toolkit analyze deep-context --include "ast,complexity,churn" --format json
+```
+
+**HTTP API Usage:**
+```bash
+# Start HTTP server with CORS support
+paiml-mcp-agent-toolkit serve --port 8080 --cors
+
+# Use the REST API
+curl "http://localhost:8080/health"
+curl "http://localhost:8080/api/v1/analyze/complexity?top_files=5"
+curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
+  -H "Content-Type: application/json" \
+  -d '{"project_path":"./","include":["ast","complexity","churn"]}'
 ```
 
 ## ✨ Key Features
@@ -194,6 +208,15 @@ Each toolchain supports `makefile`, `readme`, and `gitignore` templates followin
 - **Clone Detection**: Type-1/2/3/4 duplicate detection
 - Mermaid diagram output
 
+### Deep Context Analysis ✨ **NEW**
+- **Comprehensive Multi-Analysis Pipeline**: Combines AST, complexity, churn, dead code, and SATD analysis
+- **Quality Scorecard**: Overall health scoring with maintainability index and technical debt estimation
+- **Defect Correlation**: Cross-references different analysis types to identify high-risk areas
+- **Multiple Output Formats**: Markdown reports, JSON data, and SARIF for IDE integration
+- **Configurable Analysis**: Include/exclude specific analysis types with fine-grained control
+- **Caching Strategy Support**: Normal, force-refresh, and offline modes for performance optimization
+- **Triple Interface Support**: Available through CLI, HTTP REST API, and MCP JSON-RPC protocols
+
 ### Interactive Demo System
 - **Complete 7-Step Analysis Pipeline**: AST Context → Complexity → DAG → Churn → Architecture → Defect Analysis → Template Generation
 - **Dynamic Data Integration**: Real-time metrics from actual codebase analysis (no static placeholders)
@@ -220,7 +243,46 @@ When used with Claude Code, the following tools are available:
 | `analyze_code_churn` | Analyze git history for hotspots | `project_path`, `period_days`, `format` |
 | `analyze_dag` | Generate dependency graphs | `project_path`, `dag_type`, `enhanced` |
 | `analyze_dead_code` | Analyze dead and unreachable code | `project_path`, `format`, `top_files`, `include_tests` |
+| `analyze_deep_context` | **NEW**: Comprehensive deep context analysis | `project_path`, `include`, `exclude`, `period_days`, `format` |
 | `generate_context` | Generate project context with AST | `toolchain`, `project_path`, `format` |
+
+### HTTP REST API Endpoints
+
+Start the HTTP server: `paiml-mcp-agent-toolkit serve --port 8080 --cors`
+
+| Endpoint | Method | Description | Parameters |
+|----------|---------|-------------|------------|
+| `/health` | GET | Health check and server status | - |
+| `/metrics` | GET | Service metrics and performance data | - |
+| `/api/v1/templates` | GET | List available templates | `toolchain`, `category` |
+| `/api/v1/templates/{id}` | GET | Get specific template details | - |
+| `/api/v1/generate` | POST | Generate template content | `template_uri`, `parameters` |
+| `/api/v1/analyze/complexity` | GET/POST | Code complexity analysis | `project_path`, `top_files`, `format` |
+| `/api/v1/analyze/churn` | POST | Git history churn analysis | `project_path`, `period_days`, `format` |
+| `/api/v1/analyze/dag` | POST | Dependency graph generation | `project_path`, `dag_type`, `enhanced` |
+| `/api/v1/analyze/context` | POST | Project context generation | `toolchain`, `project_path`, `format` |
+| `/api/v1/analyze/dead-code` | POST | Dead code analysis | `project_path`, `format`, `top_files` |
+| `/api/v1/analyze/deep-context` | POST | **NEW**: Comprehensive deep context analysis | `project_path`, `include`, `exclude`, `period_days` |
+| `/mcp/{method}` | POST | MCP protocol proxy endpoint | JSON-RPC 2.0 format |
+
+**Example Usage:**
+```bash
+# Health check
+curl http://localhost:8080/health
+
+# Complexity analysis with query parameters
+curl "http://localhost:8080/api/v1/analyze/complexity?project_path=./&top_files=5"
+
+# Deep context analysis with JSON body
+curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_path": "./",
+    "include": ["ast", "complexity", "churn"],
+    "period_days": 30,
+    "format": "json"
+  }'
+```
 
 <!-- DOGFOODING_METRICS_START -->
 ### Current Project Metrics

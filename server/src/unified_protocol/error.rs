@@ -16,6 +16,9 @@ pub enum AppError {
     #[error("Validation failed: {0}")]
     Validation(String),
 
+    #[error("Bad request: {0}")]
+    BadRequest(String),
+
     #[error("Authentication required")]
     Unauthorized,
 
@@ -55,7 +58,7 @@ impl AppError {
     pub fn status_code(&self) -> StatusCode {
         match self {
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
-            AppError::Validation(_) => StatusCode::BAD_REQUEST,
+            AppError::Validation(_) | AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
             AppError::Unauthorized => StatusCode::UNAUTHORIZED,
             AppError::Forbidden(_) => StatusCode::FORBIDDEN,
             AppError::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
@@ -74,7 +77,7 @@ impl AppError {
     pub fn mcp_error_code(&self) -> i32 {
         match self {
             AppError::NotFound(_) => -32001,
-            AppError::Validation(_) => -32602,
+            AppError::Validation(_) | AppError::BadRequest(_) => -32602,
             AppError::Unauthorized => -32600,
             AppError::Forbidden(_) => -32600,
             AppError::PayloadTooLarge => -32600,
@@ -94,6 +97,7 @@ impl AppError {
         match self {
             AppError::NotFound(_) => "NOT_FOUND",
             AppError::Validation(_) => "VALIDATION_ERROR",
+            AppError::BadRequest(_) => "BAD_REQUEST",
             AppError::Unauthorized => "UNAUTHORIZED",
             AppError::Forbidden(_) => "FORBIDDEN",
             AppError::PayloadTooLarge => "PAYLOAD_TOO_LARGE",
@@ -155,7 +159,7 @@ impl AppError {
             error_type: self.error_type().to_string(),
             exit_code: match self {
                 AppError::NotFound(_) => 2,
-                AppError::Validation(_) => 1,
+                AppError::Validation(_) | AppError::BadRequest(_) => 1,
                 AppError::Unauthorized | AppError::Forbidden(_) => 3,
                 _ => 1,
             },

@@ -22,11 +22,11 @@ Simple 5-component system architecture
 
 ```mermaid
 graph TD
-    templates[Template Engine]
-    mcp_server[MCP Server]
+    analyzer[Code Analyzer]
     cache[Cache Layer]
     handlers[Protocol Handlers]
-    analyzer[Code Analyzer]
+    mcp_server[MCP Server]
+    templates[Template Engine]
 
     mcp_server --- handlers
     handlers --> analyzer
@@ -47,12 +47,12 @@ Request processing workflow with complexity styling
 
 ```mermaid
 graph TD
-    analyze[Analyze Code]
+    cache_check[Cache Check]
     validate[Validate Input]
     request[Client Request]
     generate[Generate Output]
-    cache_check[Cache Check]
     response[Send Response]
+    analyze[Analyze Code]
 
     request --> validate
     validate --> cache_check
@@ -61,12 +61,12 @@ graph TD
     analyze --> generate
     generate --> response
 
-    style analyze fill:#FF6347,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
+    style cache_check fill:#90EE90,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
     style validate fill:#FFD700,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
     style request fill:#90EE90,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
     style generate fill:#FFA500,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
-    style cache_check fill:#90EE90,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
     style response fill:#90EE90,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
+    style analyze fill:#FF6347,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
 ```
 
 **Metrics:**
@@ -83,12 +83,12 @@ Top-level module structure from AST analysis
 
 ```mermaid
 graph TD
-    handlers[handlers]
-    models[models]
-    services[services]
     cli[cli]
     utils[utils]
+    services[services]
     lib[lib]
+    handlers[handlers]
+    models[models]
 
     lib --- handlers
     handlers --- services
@@ -112,10 +112,10 @@ Core service interactions with complexity indicators
 graph TD
     ast_rust[RustAST]
     dag_builder[DagBuilder]
-    complexity[ComplexityAnalyzer]
     code_intelligence[CodeIntelligence]
-    template_service[TemplateService]
     mermaid_generator[MermaidGenerator]
+    complexity[ComplexityAnalyzer]
+    template_service[TemplateService]
 
     code_intelligence --> dag_builder
     dag_builder --> ast_rust
@@ -125,10 +125,10 @@ graph TD
 
     style ast_rust fill:#FF6347,stroke-width:2px
     style dag_builder fill:#FF6347,stroke-width:2px
-    style complexity fill:#FF6347,stroke-width:2px
     style code_intelligence fill:#FF6347,stroke-width:2px
-    style template_service fill:#FFA500,stroke-width:2px
     style mermaid_generator fill:#FFA500,stroke-width:2px
+    style complexity fill:#FF6347,stroke-width:2px
+    style template_service fill:#FFA500,stroke-width:2px
 ```
 
 **Metrics:**
@@ -145,4 +145,4 @@ All diagrams are automatically validated for:
 - ✓ Proper labeling (no empty nodes)
 - ✓ Category-appropriate styling
 
-Last validated: 2025-05-31 23:42:58 UTC
+Last validated: 2025-06-01 03:16:21 UTC

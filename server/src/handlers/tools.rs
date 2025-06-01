@@ -61,6 +61,7 @@ pub async fn handle_tool_call<T: TemplateServerTrait>(
             handle_analyze_defect_probability(request.id, tool_params.arguments).await
         }
         "analyze_dead_code" => handle_analyze_dead_code(request.id, tool_params.arguments).await,
+        "analyze_deep_context" => handle_analyze_deep_context(request.id, tool_params.arguments).await,
         _ => McpResponse::error(
             request.id,
             -32602,
@@ -1660,4 +1661,207 @@ fn format_dead_code_as_markdown_mcp(
     }
 
     Ok(output)
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AnalyzeDeepContextArgs {
+    project_path: Option<String>,
+    format: Option<String>,
+    include_analyses: Option<Vec<String>>,
+    exclude_analyses: Option<Vec<String>>,
+    period_days: Option<u32>,
+    dag_type: Option<String>,
+    max_depth: Option<usize>,
+    include_pattern: Option<Vec<String>>,
+    exclude_pattern: Option<Vec<String>>,
+    cache_strategy: Option<String>,
+    parallel: Option<usize>,
+}
+
+async fn handle_analyze_deep_context(
+    request_id: serde_json::Value,
+    arguments: serde_json::Value,
+) -> McpResponse {
+    let args: AnalyzeDeepContextArgs = match serde_json::from_value(arguments) {
+        Ok(a) => a,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32602,
+                format!("Invalid analyze_deep_context arguments: {}", e),
+            );
+        }
+    };
+
+    let project_path = args
+        .project_path
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+    info!("Running deep context analysis for {:?}", project_path);
+
+    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig, AnalysisType, DagType, CacheStrategy, ComplexityThresholds};
+
+    // Parse format
+    let format = args.format.as_deref().unwrap_or("markdown");
+
+    // Parse analysis types
+    let include_analyses = if let Some(analyses) = args.include_analyses {
+        analyses.into_iter().filter_map(|s| match s.as_str() {
+            "ast" => Some(AnalysisType::Ast),
+            "complexity" => Some(AnalysisType::Complexity),
+            "churn" => Some(AnalysisType::Churn),
+            "dag" => Some(AnalysisType::Dag),
+            "dead_code" => Some(AnalysisType::DeadCode),
+            "satd" => Some(AnalysisType::Satd),
+            "defect_probability" => Some(AnalysisType::DefectProbability),
+            _ => None,
+        }).collect()
+    } else {
+        vec![AnalysisType::Ast, AnalysisType::Complexity, AnalysisType::Churn]
+    };
+
+    // Parse DAG type
+    let dag_type = match args.dag_type.as_deref() {
+        Some("import-graph") => DagType::ImportGraph,
+        Some("inheritance") => DagType::Inheritance,
+        Some("full-dependency") => DagType::FullDependency,
+        Some("call-graph") | None => DagType::CallGraph,
+        _ => DagType::CallGraph,
+    };
+
+    // Parse cache strategy
+    let cache_strategy = match args.cache_strategy.as_deref() {
+        Some("force-refresh") => CacheStrategy::ForceRefresh,
+        Some("offline") => CacheStrategy::Offline,
+        Some("normal") | None => CacheStrategy::Normal,
+        _ => CacheStrategy::Normal,
+    };
+
+    // Create configuration
+    let config = DeepContextConfig {
+        include_analyses,
+        period_days: args.period_days.unwrap_or(30),
+        dag_type,
+        complexity_thresholds: Some(ComplexityThresholds {
+            max_cyclomatic: 10,
+            max_cognitive: 15,
+        }),
+        max_depth: args.max_depth,
+        include_patterns: args.include_pattern.unwrap_or_default(),
+        exclude_patterns: args.exclude_pattern.unwrap_or_default(),
+        cache_strategy,
+        parallel: args.parallel.unwrap_or(4),
+    };
+
+    // Create analyzer and run analysis
+    let analyzer = DeepContextAnalyzer::new(config);
+    
+    match analyzer.analyze_project(&project_path).await {
+        Ok(context) => {
+            let content_text = match format {
+                "json" => {
+                    serde_json::to_string_pretty(&context).unwrap_or_default()
+                }
+                "sarif" => {
+                    format_deep_context_as_sarif(&context)
+                }
+                _ => {
+                    format_deep_context_as_markdown(&context)
+                }
+            };
+
+            let result = json!({
+                "content": [{
+                    "type": "text",
+                    "text": content_text
+                }],
+                "context": context,
+                "format": format!("{:?}", format),
+                "analysis_duration_ms": context.metadata.analysis_duration.as_millis(),
+            });
+
+            McpResponse::success(request_id, result)
+        }
+        Err(e) => {
+            error!("Deep context analysis failed: {}", e);
+            McpResponse::error(request_id, -32000, e.to_string())
+        }
+    }
+}
+
+fn format_deep_context_as_sarif(_context: &crate::services::deep_context::DeepContext) -> String {
+    // Simple SARIF implementation for MCP
+    use serde_json::json;
+    
+    let sarif = json!({
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "paiml-mcp-agent-toolkit",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "informationUri": "https://github.com/paiml/mcp-agent-toolkit"
+                }
+            },
+            "results": []
+        }]
+    });
+    
+    serde_json::to_string_pretty(&sarif).unwrap_or_default()
+}
+
+fn format_deep_context_as_markdown(context: &crate::services::deep_context::DeepContext) -> String {
+    // Simple Markdown implementation for MCP
+    let mut output = String::new();
+    
+    output.push_str("# Deep Context Analysis\n\n");
+    output.push_str(&format!("**Generated:** {}\n", context.metadata.generated_at.format("%Y-%m-%d %H:%M:%S UTC")));
+    output.push_str(&format!("**Tool Version:** {}\n", context.metadata.tool_version));
+    output.push_str(&format!("**Analysis Time:** {:?}\n\n", context.metadata.analysis_duration));
+    
+    // Quality Scorecard
+    output.push_str("## Quality Scorecard\n\n");
+    output.push_str(&format!("**Overall Health:** {:.1}/100\n", context.quality_scorecard.overall_health));
+    output.push_str(&format!("**Complexity Score:** {:.1}\n", context.quality_scorecard.complexity_score));
+    output.push_str(&format!("**Maintainability Index:** {:.1}\n", context.quality_scorecard.maintainability_index));
+    output.push_str(&format!("**Modularity Score:** {:.1}\n", context.quality_scorecard.modularity_score));
+    if let Some(coverage) = context.quality_scorecard.test_coverage {
+        output.push_str(&format!("**Test Coverage:** {:.1}%\n", coverage));
+    }
+    output.push_str(&format!("**Technical Debt Hours:** {:.1}\n\n", context.quality_scorecard.technical_debt_hours));
+    
+    // Defect Summary
+    output.push_str("## Defect Summary\n\n");
+    output.push_str(&format!("**Total Defects:** {}\n", context.defect_summary.total_defects));
+    output.push_str(&format!("**Defect Density:** {:.2}\n", context.defect_summary.defect_density));
+    
+    // Show defects by type
+    if !context.defect_summary.by_type.is_empty() {
+        output.push_str("**By Type:**\n");
+        for (defect_type, count) in &context.defect_summary.by_type {
+            output.push_str(&format!("- {}: {}\n", defect_type, count));
+        }
+    }
+    
+    // Show defects by severity
+    if !context.defect_summary.by_severity.is_empty() {
+        output.push_str("**By Severity:**\n");
+        for (severity, count) in &context.defect_summary.by_severity {
+            output.push_str(&format!("- {}: {}\n", severity, count));
+        }
+    }
+    output.push_str(&format!("**Total Files:** {}\n\n", context.file_tree.total_files));
+    
+    // Recommendations
+    if !context.recommendations.is_empty() {
+        output.push_str("## Recommendations\n\n");
+        for (i, rec) in context.recommendations.iter().take(5).enumerate() {
+            output.push_str(&format!("{}. **{}** (Priority: {:?})\n", i + 1, rec.title, rec.priority));
+            output.push_str(&format!("   {}\n\n", rec.description));
+        }
+    }
+    
+    output
 }

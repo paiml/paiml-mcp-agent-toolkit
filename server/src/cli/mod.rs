@@ -202,6 +202,21 @@ pub enum Commands {
         #[arg(long, default_value_t = 3)]
         merge_threshold: usize,
     },
+
+    /// Start HTTP API server
+    Serve {
+        /// Port to bind the HTTP server to
+        #[arg(long, default_value_t = 8080)]
+        port: u16,
+
+        /// Host address to bind to
+        #[arg(long, default_value = "127.0.0.1")]
+        host: String,
+
+        /// Enable CORS for cross-origin requests
+        #[arg(long)]
+        cors: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -375,6 +390,62 @@ pub enum AnalyzeCommands {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+
+    /// Generate comprehensive deep context analysis with defect detection
+    #[command(name = "deep-context")]
+    DeepContext {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "markdown")]
+        format: DeepContextOutputFormat,
+
+        /// Comma-separated list of analyses to include
+        #[arg(long, value_delimiter = ',')]
+        include: Vec<String>,
+
+        /// Comma-separated list of analyses to exclude
+        #[arg(long, value_delimiter = ',')]
+        exclude: Vec<String>,
+
+        /// Period for churn analysis (default: 30 days)
+        #[arg(long, default_value_t = 30)]
+        period_days: u32,
+
+        /// DAG type for dependency analysis
+        #[arg(long, value_enum, default_value = "call-graph")]
+        dag_type: DeepContextDagType,
+
+        /// Maximum directory traversal depth
+        #[arg(long)]
+        max_depth: Option<usize>,
+
+        /// Include file patterns (can be specified multiple times)
+        #[arg(long = "include-pattern")]
+        include_patterns: Vec<String>,
+
+        /// Exclude file patterns (can be specified multiple times)  
+        #[arg(long = "exclude-pattern")]
+        exclude_patterns: Vec<String>,
+
+        /// Cache usage strategy
+        #[arg(long, value_enum, default_value = "normal")]
+        cache_strategy: DeepContextCacheStrategy,
+
+        /// Parallelism level for analysis
+        #[arg(long)]
+        parallel: Option<usize>,
+
+        /// Enable verbose logging
+        #[arg(long)]
+        verbose: bool,
+    },
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
@@ -443,6 +514,33 @@ pub enum DagType {
     /// Complete dependency graph
     #[value(name = "full-dependency")]
     FullDependency,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum DeepContextOutputFormat {
+    Markdown,
+    Json,
+    Sarif,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum DeepContextDagType {
+    #[value(name = "call-graph")]
+    CallGraph,
+    #[value(name = "import-graph")]
+    ImportGraph,
+    #[value(name = "inheritance")]
+    Inheritance,
+    #[value(name = "full-dependency")]
+    FullDependency,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum DeepContextCacheStrategy {
+    Normal,
+    #[value(name = "force-refresh")]
+    ForceRefresh,
+    Offline,
 }
 
 /// Early CLI args struct for tracing initialization
@@ -553,6 +651,7 @@ async fn execute_command(
             )
             .await
         }
+        Commands::Serve { port, host, cors } => handle_serve(host, port, cors).await,
     }
 }
 
@@ -653,6 +752,38 @@ async fn execute_analyze_command(analyze_cmd: AnalyzeCommands) -> anyhow::Result
                 days,
                 metrics,
                 output,
+            )
+            .await
+        }
+        AnalyzeCommands::DeepContext {
+            project_path,
+            output,
+            format,
+            include,
+            exclude,
+            period_days,
+            dag_type,
+            max_depth,
+            include_patterns,
+            exclude_patterns,
+            cache_strategy,
+            parallel,
+            verbose,
+        } => {
+            handle_analyze_deep_context(
+                project_path,
+                output,
+                format,
+                include,
+                exclude,
+                period_days,
+                dag_type,
+                max_depth,
+                include_patterns,
+                exclude_patterns,
+                cache_strategy,
+                parallel,
+                verbose,
             )
             .await
         }
@@ -1241,6 +1372,352 @@ async fn handle_analyze_satd(
     }
 
     Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn handle_analyze_deep_context(
+    project_path: PathBuf,
+    output: Option<PathBuf>,
+    format: DeepContextOutputFormat,
+    include: Vec<String>,
+    exclude: Vec<String>,
+    period_days: u32,
+    dag_type: DeepContextDagType,
+    max_depth: Option<usize>,
+    include_patterns: Vec<String>,
+    exclude_patterns: Vec<String>,
+    cache_strategy: DeepContextCacheStrategy,
+    parallel: Option<usize>,
+    verbose: bool,
+) -> anyhow::Result<()> {
+    use crate::services::deep_context::{
+        DeepContextAnalyzer, DeepContextConfig, AnalysisType, DagType as InternalDagType, CacheStrategy as InternalCacheStrategy
+    };
+
+    if verbose {
+        eprintln!("🧬 Starting comprehensive deep context analysis...");
+    }
+
+    // Build configuration from CLI args
+    let mut config = DeepContextConfig {
+        period_days,
+        max_depth,
+        include_patterns,
+        exclude_patterns: {
+            let mut patterns = DeepContextConfig::default().exclude_patterns;
+            patterns.extend(exclude_patterns);
+            patterns
+        },
+        ..DeepContextConfig::default()
+    };
+    
+    if let Some(p) = parallel {
+        config.parallel = p;
+    }
+
+    // Convert DAG type
+    config.dag_type = match dag_type {
+        DeepContextDagType::CallGraph => InternalDagType::CallGraph,
+        DeepContextDagType::ImportGraph => InternalDagType::ImportGraph,
+        DeepContextDagType::Inheritance => InternalDagType::Inheritance,
+        DeepContextDagType::FullDependency => InternalDagType::FullDependency,
+    };
+
+    // Convert cache strategy
+    config.cache_strategy = match cache_strategy {
+        DeepContextCacheStrategy::Normal => InternalCacheStrategy::Normal,
+        DeepContextCacheStrategy::ForceRefresh => InternalCacheStrategy::ForceRefresh,
+        DeepContextCacheStrategy::Offline => InternalCacheStrategy::Offline,
+    };
+
+    // Parse include/exclude filters
+    if !include.is_empty() {
+        config.include_analyses = include.iter().filter_map(|s| match s.as_str() {
+            "ast" => Some(AnalysisType::Ast),
+            "complexity" => Some(AnalysisType::Complexity),
+            "churn" => Some(AnalysisType::Churn),
+            "dag" => Some(AnalysisType::Dag),
+            "dead-code" => Some(AnalysisType::DeadCode),
+            "satd" => Some(AnalysisType::Satd),
+            "defect-probability" => Some(AnalysisType::DefectProbability),
+            _ => {
+                eprintln!("⚠️  Unknown analysis type: {}", s);
+                None
+            }
+        }).collect();
+    }
+
+    // Remove excluded analyses
+    for exclude_item in &exclude {
+        match exclude_item.as_str() {
+            "ast" => config.include_analyses.retain(|a| !matches!(a, AnalysisType::Ast)),
+            "complexity" => config.include_analyses.retain(|a| !matches!(a, AnalysisType::Complexity)),
+            "churn" => config.include_analyses.retain(|a| !matches!(a, AnalysisType::Churn)),
+            "dag" => config.include_analyses.retain(|a| !matches!(a, AnalysisType::Dag)),
+            "dead-code" => config.include_analyses.retain(|a| !matches!(a, AnalysisType::DeadCode)),
+            "satd" => config.include_analyses.retain(|a| !matches!(a, AnalysisType::Satd)),
+            "defect-probability" => config.include_analyses.retain(|a| !matches!(a, AnalysisType::DefectProbability)),
+            _ => eprintln!("⚠️  Unknown analysis type to exclude: {}", exclude_item),
+        }
+    }
+
+    if verbose {
+        eprintln!("📊 Analysis configuration:");
+        eprintln!("  - Analyses: {:?}", config.include_analyses);
+        eprintln!("  - Period: {} days", config.period_days);
+        eprintln!("  - DAG type: {:?}", config.dag_type);
+        eprintln!("  - Parallelism: {}", config.parallel);
+    }
+
+    // Create analyzer and run analysis
+    let analyzer = DeepContextAnalyzer::new(config);
+    let deep_context = analyzer.analyze_project(&project_path).await?;
+
+    if verbose {
+        eprintln!("✅ Analysis completed in {:?}", deep_context.metadata.analysis_duration);
+        eprintln!("📈 Quality score: {:.1}/100", deep_context.quality_scorecard.overall_health);
+        eprintln!("🔍 Defects found: {}", deep_context.defect_summary.total_defects);
+    }
+
+    // Format output
+    let content = match format {
+        DeepContextOutputFormat::Markdown => format_deep_context_as_markdown(&deep_context)?,
+        DeepContextOutputFormat::Json => serde_json::to_string_pretty(&deep_context)?,
+        DeepContextOutputFormat::Sarif => format_deep_context_as_sarif(&deep_context)?,
+    };
+
+    // Write output
+    if let Some(path) = output {
+        tokio::fs::write(&path, &content).await?;
+        eprintln!("✅ Deep context analysis written to: {}", path.display());
+    } else {
+        println!("{}", content);
+    }
+
+    Ok(())
+}
+
+fn format_deep_context_as_markdown(context: &crate::services::deep_context::DeepContext) -> anyhow::Result<String> {
+    let mut output = String::new();
+    
+    output.push_str(&format!("# Deep Context Analysis: {}\n\n", 
+        context.metadata.project_root.file_name()
+            .unwrap_or_default()
+            .to_string_lossy()));
+    
+    output.push_str(&format!("**Generated:** {}\n", context.metadata.generated_at.format("%Y-%m-%d %H:%M:%S UTC")));
+    output.push_str(&format!("**Tool Version:** {}\n", context.metadata.tool_version));
+    output.push_str(&format!("**Analysis Time:** {:?}\n\n", context.metadata.analysis_duration));
+    
+    // Executive Summary
+    output.push_str("## Executive Summary\n\n");
+    output.push_str(&format!("**Overall Health Score:** {:.1}/100", context.quality_scorecard.overall_health));
+    
+    let health_emoji = if context.quality_scorecard.overall_health >= 80.0 {
+        " ✅"
+    } else if context.quality_scorecard.overall_health >= 60.0 {
+        " ⚠️"
+    } else {
+        " ❌"
+    };
+    output.push_str(health_emoji);
+    output.push_str("\n\n");
+    
+    output.push_str(&format!("- **Complexity Score:** {:.1}/100\n", context.quality_scorecard.complexity_score));
+    output.push_str(&format!("- **Maintainability Index:** {:.1}/100\n", context.quality_scorecard.maintainability_index));
+    output.push_str(&format!("- **Modularity Score:** {:.1}/100\n", context.quality_scorecard.modularity_score));
+    output.push_str(&format!("- **Technical Debt:** {:.1} hours estimated\n\n", context.quality_scorecard.technical_debt_hours));
+    
+    // Defect Summary
+    if context.defect_summary.total_defects > 0 {
+        output.push_str("### Critical Issues Found\n\n");
+        output.push_str(&format!("- **Total Defects:** {}\n", context.defect_summary.total_defects));
+        
+        for (defect_type, count) in &context.defect_summary.by_type {
+            let emoji = match defect_type.as_str() {
+                "dead_code" => "☠️",
+                "technical_debt" => "🔧",
+                "complexity" => "🔥",
+                _ => "⚠️",
+            };
+            output.push_str(&format!("- {} **{}:** {}\n", emoji, 
+                defect_type.replace('_', " ").to_title_case(), count));
+        }
+        output.push('\n');
+    }
+    
+    // Recommendations
+    if !context.recommendations.is_empty() {
+        output.push_str("## Recommendations\n\n");
+        
+        for (i, rec) in context.recommendations.iter().enumerate() {
+            let priority_emoji = match rec.priority {
+                crate::services::deep_context::Priority::Critical => "🔴",
+                crate::services::deep_context::Priority::High => "🟠", 
+                crate::services::deep_context::Priority::Medium => "🟡",
+                crate::services::deep_context::Priority::Low => "🟢",
+            };
+            
+            output.push_str(&format!("{}. {} {:?} **{}**\n", 
+                i + 1, priority_emoji, rec.priority, rec.title));
+            output.push_str(&format!("   - {}\n", rec.description));
+            output.push_str(&format!("   - **Estimated Effort:** {:?}\n", rec.estimated_effort));
+            output.push_str(&format!("   - **Impact:** {:?}\n\n", rec.impact));
+        }
+    }
+    
+    // Project Structure
+    output.push_str("## Project Structure\n\n");
+    output.push_str(&format!("- **Total Files:** {}\n", context.file_tree.total_files));
+    output.push_str(&format!("- **Total Size:** {:.1} MB\n\n", context.file_tree.total_size_bytes as f64 / 1_048_576.0));
+    
+    // Analysis Results Summary
+    output.push_str("## Analysis Results\n\n");
+    
+    if let Some(ref complexity) = context.analyses.complexity_report {
+        output.push_str("### Complexity Analysis\n");
+        if complexity.summary.avg_cyclomatic > 0.0 {
+            let avg_complexity = complexity.summary.avg_cyclomatic;
+            output.push_str(&format!("- **Average Cyclomatic Complexity:** {:.1}\n", avg_complexity));
+        }
+        output.push_str(&format!("- **Total Violations:** {}\n\n", complexity.violations.len()));
+    }
+    
+    if let Some(ref churn) = context.analyses.churn_analysis {
+        output.push_str("### Code Churn Analysis\n");
+        output.push_str(&format!("- **Total Commits:** {}\n", churn.summary.total_commits));
+        output.push_str(&format!("- **Files Changed:** {}\n\n", churn.files.len()));
+    }
+    
+    if let Some(ref dead_code) = context.analyses.dead_code_results {
+        output.push_str("### Dead Code Analysis\n");
+        output.push_str(&format!("- **Dead Functions:** {}\n", dead_code.summary.dead_functions));
+        output.push_str(&format!("- **Dead Percentage:** {:.1}%\n\n", dead_code.summary.dead_percentage));
+    }
+    
+    if let Some(ref satd) = context.analyses.satd_results {
+        output.push_str("### Technical Debt Analysis\n");
+        output.push_str(&format!("- **SATD Items:** {}\n\n", satd.items.len()));
+    }
+    
+    Ok(output)
+}
+
+fn format_deep_context_as_sarif(context: &crate::services::deep_context::DeepContext) -> anyhow::Result<String> {
+    use serde_json::json;
+    
+    let mut results = Vec::new();
+    
+    // Add results from different analyses
+    if let Some(ref dead_code) = context.analyses.dead_code_results {
+        for file_metrics in &dead_code.ranked_files {
+            for item in &file_metrics.items {
+                results.push(json!({
+                    "ruleId": "deep-context-dead-code",
+                    "level": "warning",
+                    "message": {
+                        "text": format!("Dead {}: {}", 
+                            format!("{:?}", item.item_type).to_lowercase(), 
+                            item.reason)
+                    },
+                    "locations": [{
+                        "physicalLocation": {
+                            "artifactLocation": {
+                                "uri": file_metrics.path
+                            },
+                            "region": {
+                                "startLine": item.line
+                            }
+                        }
+                    }],
+                    "properties": {
+                        "confidence": format!("{:?}", file_metrics.confidence),
+                        "analysisType": "dead-code"
+                    }
+                }));
+            }
+        }
+    }
+    
+    if let Some(ref satd) = context.analyses.satd_results {
+        for item in &satd.items {
+            let level = match item.severity {
+                crate::services::satd_detector::Severity::Critical => "error",
+                crate::services::satd_detector::Severity::High => "warning", 
+                crate::services::satd_detector::Severity::Medium => "note",
+                crate::services::satd_detector::Severity::Low => "info",
+            };
+            
+            results.push(json!({
+                "ruleId": "deep-context-technical-debt",
+                "level": level,
+                "message": {
+                    "text": format!("Technical debt: {}", item.text.trim())
+                },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": item.file.display().to_string()
+                        },
+                        "region": {
+                            "startLine": item.line,
+                            "startColumn": item.column
+                        }
+                    }
+                }],
+                "properties": {
+                    "category": format!("{:?}", item.category),
+                    "severity": format!("{:?}", item.severity),
+                    "analysisType": "technical-debt"
+                }
+            }));
+        }
+    }
+    
+    let sarif = json!({
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "paiml-mcp-agent-toolkit",
+                    "version": context.metadata.tool_version,
+                    "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit"
+                }
+            },
+            "results": results,
+            "properties": {
+                "overallHealthScore": context.quality_scorecard.overall_health,
+                "complexityScore": context.quality_scorecard.complexity_score,
+                "maintainabilityIndex": context.quality_scorecard.maintainability_index,
+                "technicalDebtHours": context.quality_scorecard.technical_debt_hours,
+                "analysisTimestamp": context.metadata.generated_at.to_rfc3339(),
+                "analysisDuration": format!("{:?}", context.metadata.analysis_duration)
+            }
+        }]
+    });
+    
+    Ok(serde_json::to_string_pretty(&sarif)?)
+}
+
+// Helper trait for string title case
+trait ToTitleCase {
+    fn to_title_case(&self) -> String;
+}
+
+impl ToTitleCase for str {
+    fn to_title_case(&self) -> String {
+        self.split_whitespace()
+            .map(|word| {
+                let mut chars = word.chars();
+                match chars.next() {
+                    None => String::new(),
+                    Some(first) => first.to_uppercase().collect::<String>() + chars.as_str().to_lowercase().as_str(),
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
 }
 
 /// Format SATD analysis output
@@ -1887,6 +2364,61 @@ fn format_top_files_ranking(
 
     output.push('\n');
     output
+}
+
+
+/// Handle the serve command to start HTTP API server
+async fn handle_serve(host: String, port: u16, cors: bool) -> anyhow::Result<()> {
+    info!("🚀 Starting HTTP API server on {}:{}", host, port);
+    
+    use crate::unified_protocol::service::UnifiedService;
+    use std::net::SocketAddr;
+    
+    // Create UnifiedService which contains the router
+    let service = UnifiedService::new();
+    
+    // Get the router from the service (it already has all middleware and extensions)
+    let mut app = service.router();
+    
+    // Add CORS if enabled (this is the only additional middleware we need)
+    if cors {
+        use tower_http::cors::CorsLayer;
+        info!("🌐 CORS enabled for cross-origin requests");
+        app = app.layer(CorsLayer::permissive());
+    }
+    
+    // Parse bind address
+    let addr: SocketAddr = format!("{}:{}", host, port).parse()?;
+    
+    // Create TCP listener
+    let listener = tokio::net::TcpListener::bind(&addr).await?;
+    info!("✅ HTTP API server listening on http://{}", addr);
+    
+    // Display available endpoints
+    eprintln!("📡 Available endpoints:");
+    eprintln!("  • GET  /health                          - Health check");
+    eprintln!("  • GET  /metrics                         - Service metrics");
+    eprintln!("  • GET  /api/v1/templates                - List templates");
+    eprintln!("  • GET  /api/v1/templates/{{id}}           - Get template details");
+    eprintln!("  • POST /api/v1/generate                 - Generate template");
+    eprintln!("  • GET  /api/v1/analyze/complexity       - Complexity analysis (with query params)");
+    eprintln!("  • POST /api/v1/analyze/complexity       - Complexity analysis (with JSON body)");
+    eprintln!("  • POST /api/v1/analyze/churn            - Code churn analysis");
+    eprintln!("  • POST /api/v1/analyze/dag              - Dependency graph analysis");
+    eprintln!("  • POST /api/v1/analyze/context          - Generate project context");
+    eprintln!("  • POST /api/v1/analyze/dead-code        - Dead code analysis");
+    eprintln!("  • POST /api/v1/analyze/deep-context     - Deep context analysis");
+    eprintln!("  • POST /mcp/{{method}}                    - MCP protocol endpoint");
+    eprintln!();
+    eprintln!("💡 Example: curl http://{}:{}/api/v1/analyze/complexity?top_files=5", host, port);
+    eprintln!("💡 Example: curl http://{}:{}/health", host, port);
+    eprintln!();
+    eprintln!("🛑 Press Ctrl+C to stop the server");
+    
+    // Start the server
+    axum::serve(listener, app).await?;
+    
+    Ok(())
 }
 
 fn print_table(templates: &[Arc<TemplateResource>]) {

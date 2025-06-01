@@ -78,6 +78,10 @@ impl UnifiedService {
                 "/api/v1/analyze/dead-code",
                 post(handlers::analyze_dead_code),
             )
+            .route(
+                "/api/v1/analyze/deep-context",
+                post(handlers::analyze_deep_context),
+            )
             // MCP protocol endpoint
             .route("/mcp/{method}", post(handlers::mcp_endpoint))
             // Health and status endpoints
@@ -109,6 +113,11 @@ impl UnifiedService {
         let state = Arc::make_mut(&mut self.state);
         state.analysis_service = Arc::new(service);
         self
+    }
+
+    /// Get the router for HTTP server usage
+    pub fn router(&self) -> Router {
+        self.router.clone()
     }
 
     /// Process a unified request through the router
@@ -505,6 +514,65 @@ pub mod handlers {
     ) -> Result<Json<DeadCodeAnalysis>, AppError> {
         let analysis = state.analysis_service.analyze_dead_code(&params).await?;
         Ok(Json(analysis))
+    }
+
+    /// Analyze deep context
+    pub async fn analyze_deep_context(
+        Extension(_state): Extension<Arc<AppState>>,
+        Json(params): Json<Value>,
+    ) -> Result<Json<Value>, AppError> {
+        use crate::services::deep_context::{
+            DeepContextAnalyzer, DeepContextConfig, AnalysisType, DagType as InternalDagType, CacheStrategy as InternalCacheStrategy
+        };
+        use std::path::PathBuf;
+
+        // Parse parameters from JSON
+        let project_path = params.get("project_path")
+            .and_then(|v| v.as_str())
+            .unwrap_or(".")
+            .parse::<PathBuf>()
+            .map_err(|e| AppError::BadRequest(format!("Invalid project_path: {}", e)))?;
+
+        let period_days = params.get("period_days")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(30) as u32;
+
+        let parallel = params.get("parallel")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as usize);
+
+        // Build configuration from HTTP params
+        let mut config = DeepContextConfig {
+            period_days,
+            ..DeepContextConfig::default()
+        };
+        
+        if let Some(p) = parallel {
+            config.parallel = p;
+        }
+
+        // Parse include/exclude filters
+        if let Some(include) = params.get("include").and_then(|v| v.as_array()) {
+            config.include_analyses = include.iter().filter_map(|v| v.as_str()).filter_map(|s| match s {
+                "ast" => Some(AnalysisType::Ast),
+                "complexity" => Some(AnalysisType::Complexity),
+                "churn" => Some(AnalysisType::Churn),
+                "dag" => Some(AnalysisType::Dag),
+                "dead-code" => Some(AnalysisType::DeadCode),
+                "satd" => Some(AnalysisType::Satd),
+                "defect-probability" => Some(AnalysisType::DefectProbability),
+                _ => None,
+            }).collect();
+        }
+
+        // Create analyzer and run analysis
+        let analyzer = DeepContextAnalyzer::new(config);
+        let deep_context = analyzer.analyze_project(&project_path).await
+            .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?;
+
+        // Return JSON response
+        Ok(Json(serde_json::to_value(&deep_context).map_err(|e| 
+            AppError::Internal(anyhow::anyhow!(e)))?))
     }
 
     /// MCP protocol endpoint
