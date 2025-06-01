@@ -61,7 +61,9 @@ pub async fn handle_tool_call<T: TemplateServerTrait>(
             handle_analyze_defect_probability(request.id, tool_params.arguments).await
         }
         "analyze_dead_code" => handle_analyze_dead_code(request.id, tool_params.arguments).await,
-        "analyze_deep_context" => handle_analyze_deep_context(request.id, tool_params.arguments).await,
+        "analyze_deep_context" => {
+            handle_analyze_deep_context(request.id, tool_params.arguments).await
+        }
         _ => McpResponse::error(
             request.id,
             -32602,
@@ -1700,25 +1702,35 @@ async fn handle_analyze_deep_context(
 
     info!("Running deep context analysis for {:?}", project_path);
 
-    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig, AnalysisType, DagType, CacheStrategy, ComplexityThresholds};
+    use crate::services::deep_context::{
+        AnalysisType, CacheStrategy, ComplexityThresholds, DagType, DeepContextAnalyzer,
+        DeepContextConfig,
+    };
 
     // Parse format
     let format = args.format.as_deref().unwrap_or("markdown");
 
     // Parse analysis types
     let include_analyses = if let Some(analyses) = args.include_analyses {
-        analyses.into_iter().filter_map(|s| match s.as_str() {
-            "ast" => Some(AnalysisType::Ast),
-            "complexity" => Some(AnalysisType::Complexity),
-            "churn" => Some(AnalysisType::Churn),
-            "dag" => Some(AnalysisType::Dag),
-            "dead_code" => Some(AnalysisType::DeadCode),
-            "satd" => Some(AnalysisType::Satd),
-            "defect_probability" => Some(AnalysisType::DefectProbability),
-            _ => None,
-        }).collect()
+        analyses
+            .into_iter()
+            .filter_map(|s| match s.as_str() {
+                "ast" => Some(AnalysisType::Ast),
+                "complexity" => Some(AnalysisType::Complexity),
+                "churn" => Some(AnalysisType::Churn),
+                "dag" => Some(AnalysisType::Dag),
+                "dead_code" => Some(AnalysisType::DeadCode),
+                "satd" => Some(AnalysisType::Satd),
+                "defect_probability" => Some(AnalysisType::DefectProbability),
+                _ => None,
+            })
+            .collect()
     } else {
-        vec![AnalysisType::Ast, AnalysisType::Complexity, AnalysisType::Churn]
+        vec![
+            AnalysisType::Ast,
+            AnalysisType::Complexity,
+            AnalysisType::Churn,
+        ]
     };
 
     // Parse DAG type
@@ -1756,19 +1768,13 @@ async fn handle_analyze_deep_context(
 
     // Create analyzer and run analysis
     let analyzer = DeepContextAnalyzer::new(config);
-    
+
     match analyzer.analyze_project(&project_path).await {
         Ok(context) => {
             let content_text = match format {
-                "json" => {
-                    serde_json::to_string_pretty(&context).unwrap_or_default()
-                }
-                "sarif" => {
-                    format_deep_context_as_sarif(&context)
-                }
-                _ => {
-                    format_deep_context_as_markdown(&context)
-                }
+                "json" => serde_json::to_string_pretty(&context).unwrap_or_default(),
+                "sarif" => format_deep_context_as_sarif(&context),
+                _ => format_deep_context_as_markdown(&context),
             };
 
             let result = json!({
@@ -1793,7 +1799,7 @@ async fn handle_analyze_deep_context(
 fn format_deep_context_as_sarif(_context: &crate::services::deep_context::DeepContext) -> String {
     // Simple SARIF implementation for MCP
     use serde_json::json;
-    
+
     let sarif = json!({
         "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
         "version": "2.1.0",
@@ -1808,35 +1814,68 @@ fn format_deep_context_as_sarif(_context: &crate::services::deep_context::DeepCo
             "results": []
         }]
     });
-    
+
     serde_json::to_string_pretty(&sarif).unwrap_or_default()
 }
 
 fn format_deep_context_as_markdown(context: &crate::services::deep_context::DeepContext) -> String {
     // Simple Markdown implementation for MCP
     let mut output = String::new();
-    
+
     output.push_str("# Deep Context Analysis\n\n");
-    output.push_str(&format!("**Generated:** {}\n", context.metadata.generated_at.format("%Y-%m-%d %H:%M:%S UTC")));
-    output.push_str(&format!("**Tool Version:** {}\n", context.metadata.tool_version));
-    output.push_str(&format!("**Analysis Time:** {:?}\n\n", context.metadata.analysis_duration));
-    
+    output.push_str(&format!(
+        "**Generated:** {}\n",
+        context
+            .metadata
+            .generated_at
+            .format("%Y-%m-%d %H:%M:%S UTC")
+    ));
+    output.push_str(&format!(
+        "**Tool Version:** {}\n",
+        context.metadata.tool_version
+    ));
+    output.push_str(&format!(
+        "**Analysis Time:** {:?}\n\n",
+        context.metadata.analysis_duration
+    ));
+
     // Quality Scorecard
     output.push_str("## Quality Scorecard\n\n");
-    output.push_str(&format!("**Overall Health:** {:.1}/100\n", context.quality_scorecard.overall_health));
-    output.push_str(&format!("**Complexity Score:** {:.1}\n", context.quality_scorecard.complexity_score));
-    output.push_str(&format!("**Maintainability Index:** {:.1}\n", context.quality_scorecard.maintainability_index));
-    output.push_str(&format!("**Modularity Score:** {:.1}\n", context.quality_scorecard.modularity_score));
+    output.push_str(&format!(
+        "**Overall Health:** {:.1}/100\n",
+        context.quality_scorecard.overall_health
+    ));
+    output.push_str(&format!(
+        "**Complexity Score:** {:.1}\n",
+        context.quality_scorecard.complexity_score
+    ));
+    output.push_str(&format!(
+        "**Maintainability Index:** {:.1}\n",
+        context.quality_scorecard.maintainability_index
+    ));
+    output.push_str(&format!(
+        "**Modularity Score:** {:.1}\n",
+        context.quality_scorecard.modularity_score
+    ));
     if let Some(coverage) = context.quality_scorecard.test_coverage {
         output.push_str(&format!("**Test Coverage:** {:.1}%\n", coverage));
     }
-    output.push_str(&format!("**Technical Debt Hours:** {:.1}\n\n", context.quality_scorecard.technical_debt_hours));
-    
+    output.push_str(&format!(
+        "**Technical Debt Hours:** {:.1}\n\n",
+        context.quality_scorecard.technical_debt_hours
+    ));
+
     // Defect Summary
     output.push_str("## Defect Summary\n\n");
-    output.push_str(&format!("**Total Defects:** {}\n", context.defect_summary.total_defects));
-    output.push_str(&format!("**Defect Density:** {:.2}\n", context.defect_summary.defect_density));
-    
+    output.push_str(&format!(
+        "**Total Defects:** {}\n",
+        context.defect_summary.total_defects
+    ));
+    output.push_str(&format!(
+        "**Defect Density:** {:.2}\n",
+        context.defect_summary.defect_density
+    ));
+
     // Show defects by type
     if !context.defect_summary.by_type.is_empty() {
         output.push_str("**By Type:**\n");
@@ -1844,7 +1883,7 @@ fn format_deep_context_as_markdown(context: &crate::services::deep_context::Deep
             output.push_str(&format!("- {}: {}\n", defect_type, count));
         }
     }
-    
+
     // Show defects by severity
     if !context.defect_summary.by_severity.is_empty() {
         output.push_str("**By Severity:**\n");
@@ -1852,16 +1891,24 @@ fn format_deep_context_as_markdown(context: &crate::services::deep_context::Deep
             output.push_str(&format!("- {}: {}\n", severity, count));
         }
     }
-    output.push_str(&format!("**Total Files:** {}\n\n", context.file_tree.total_files));
-    
+    output.push_str(&format!(
+        "**Total Files:** {}\n\n",
+        context.file_tree.total_files
+    ));
+
     // Recommendations
     if !context.recommendations.is_empty() {
         output.push_str("## Recommendations\n\n");
         for (i, rec) in context.recommendations.iter().take(5).enumerate() {
-            output.push_str(&format!("{}. **{}** (Priority: {:?})\n", i + 1, rec.title, rec.priority));
+            output.push_str(&format!(
+                "{}. **{}** (Priority: {:?})\n",
+                i + 1,
+                rec.title,
+                rec.priority
+            ));
             output.push_str(&format!("   {}\n\n", rec.description));
         }
     }
-    
+
     output
 }
