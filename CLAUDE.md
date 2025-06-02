@@ -262,3 +262,89 @@ fn validate_input<T: Validate>(input: T) -> Result<ValidatedInput<T>> {
 ```
 
 **Remember**: This codebase optimizes for deterministic correctness across three protocols. Performance optimizations are secondary to maintaining behavioral equivalence. When analyzing complexity, focus on cognitive load reduction rather than pure cyclomatic metrics—the goal is maintainable code that junior engineers can modify safely.
+
+## Release Process
+
+### Simple Release Workflow (RECOMMENDED)
+
+This project uses an automated GitHub Actions workflow for creating releases. Follow this streamlined process:
+
+#### 1. Prepare for Release
+```bash
+# Ensure all changes are committed and pushed
+git status  # Should show clean working directory
+git push origin master
+
+# Verify all tests pass
+make lint && make test
+```
+
+#### 2. Trigger Automated Release
+```bash
+# Use GitHub CLI to trigger the Simple Release workflow
+gh workflow run "Simple Release" --field version_bump=[patch|minor|major]
+
+# Monitor the release progress
+gh run list --limit 5
+```
+
+The automated workflow will:
+- ✅ **Bump version numbers** in both `Cargo.toml` files automatically
+- ✅ **Build optimized binaries** for all supported platforms:
+  - `x86_64-unknown-linux-gnu` (Linux x86-64)
+  - `aarch64-unknown-linux-gnu` (Linux ARM64)
+  - `x86_64-apple-darwin` (Intel Mac)
+  - `aarch64-apple-darwin` (Apple Silicon Mac)
+- ✅ **Create GitHub release** with auto-generated release notes
+- ✅ **Attach binary artifacts** to the release
+- ✅ **Tag the repository** with the new version
+
+#### 3. Version Bump Guidelines
+Choose the appropriate bump type:
+
+| Change Type | Version Bump | Example | Use Cases |
+|-------------|--------------|---------|-----------|
+| **patch** | 0.18.2 → 0.18.3 | Bug fixes, documentation, minor improvements | HTTP interface fixes, documentation updates |
+| **minor** | 0.18.2 → 0.19.0 | New features, new analysis tools | Deep context analysis, new CLI commands |
+| **major** | 0.18.2 → 1.0.0 | Breaking changes, API changes | Protocol breaking changes, major refactoring |
+
+#### 4. Manual Release (Advanced)
+
+If you need to create a release manually for specific reasons:
+
+```bash
+# 1. Update documentation first
+# Update README.md and RELEASE_NOTES.md with new features
+
+# 2. Commit all changes
+git add README.md RELEASE_NOTES.md server/src/
+git commit -m "feat: [feature description]
+
+[Detailed implementation description]
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# 3. Push changes
+git push origin master
+
+# 4. Create release manually
+gh release create v[X.Y.Z] \
+  --title "v[X.Y.Z]: [Feature Title]" \
+  --notes "Release description"
+```
+
+### Version Numbering Policy
+
+**DO NOT manually update Cargo.toml version numbers.** The GitHub Actions automatically handle version bumping when changes are pushed.
+
+**Version Scheme:**
+- **Major (X.0.0)**: Breaking changes, major architecture changes
+- **Minor (0.X.0)**: New features, new analysis tools, significant enhancements  
+- **Patch (0.0.X)**: Bug fixes, documentation updates, minor improvements
+
+**Examples:**
+- `v0.15.0`: Dead code analysis feature (new analysis tool = minor)
+- `v0.14.1`: Bug fixes and documentation (patch)
+- `v1.0.0`: Major API breaking changes (major)
