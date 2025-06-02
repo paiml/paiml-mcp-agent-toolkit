@@ -15,6 +15,7 @@ pub mod deterministic_mermaid_engine;
 pub mod dogfooding_engine;
 pub mod duplicate_detector;
 pub mod embedded_templates;
+pub mod formatting_pipeline;
 pub mod git_analysis;
 pub mod mermaid_generator;
 pub mod ranking;

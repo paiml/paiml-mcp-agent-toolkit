@@ -37,8 +37,10 @@ claude mcp add paiml-toolkit ~/.local/bin/paiml-mcp-agent-toolkit
 
 **CLI Usage:**
 ```bash
-# Show all capabilities
-paiml-mcp-agent-toolkit demo
+# Unified demo system - analyze any repository
+paiml-mcp-agent-toolkit demo --format table  # CLI output
+paiml-mcp-agent-toolkit demo --web           # Web interface
+paiml-mcp-agent-toolkit demo --url https://github.com/user/repo --format json
 
 # Generate templates
 paiml-mcp-agent-toolkit scaffold rust --templates makefile,readme,gitignore
@@ -233,13 +235,17 @@ Each toolchain supports `makefile`, `readme`, and `gitignore` templates followin
 - **Cross-Language Reference Detection**: Identifies FFI bindings, WASM exports, and inter-language dependencies
 - **Triple Interface Support**: Consistent behavior across CLI, HTTP REST API, and MCP JSON-RPC protocols
 
-### Interactive Demo System
-- **Complete 7-Step Analysis Pipeline**: AST Context → Complexity → DAG → Churn → Architecture → Defect Analysis → Template Generation
-- **Dynamic Data Integration**: Real-time metrics from actual codebase analysis (no static placeholders)
-- **Dual Interface Support**: CLI output mode (`--cli`) and web interface with visual dashboard
-- **Authentic Hotspot Detection**: Complexity-based rankings using live analysis results
-- **Performance Monitoring**: Real execution timing for each analysis step
-- **Triple Interface Testing**: Verified consistency across CLI, MCP, and HTTP interfaces
+### Unified Demo System ✨ **NEW**
+- **Multi-Modal Architecture**: Four distinct demonstration interfaces (CLI, MCP JSON-RPC, HTTP/Web, Interactive Terminal)
+- **Live Repository Analysis**: Clone and analyze arbitrary GitHub repositories in real-time with progress tracking
+- **Deep Context Integration**: Unified demo engine leveraging the comprehensive deep context analysis pipeline
+- **Adaptive Graph Reduction**: Intelligent graph reduction algorithms for optimal visualization of large codebases
+- **Progressive Analysis Pipeline**: Repository discovery → AST analysis → Complexity metrics → Churn tracking → DAG generation → Visualization
+- **Multiple Output Formats**: JSON, YAML, and formatted table output with Unicode tables and ASCII diagrams
+- **Repository Management**: Temporary workspace with git cloning, caching, and automatic cleanup
+- **Performance Optimized**: Sub-second response times with parallel analysis execution and intelligent caching
+- **Insight Generation**: AI-powered insights with confidence scoring for architecture, quality, and maintainability
+- **Streaming Capabilities**: Real-time progress notifications and live analysis updates across all interfaces
 
 ### Enhanced Tracing
 - **Runtime-configurable**: `--verbose`, `--debug`, `--trace` flags  

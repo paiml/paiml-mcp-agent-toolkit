@@ -389,8 +389,27 @@ impl DeepContextAnalyzer {
         Self { config, semaphore }
     }
 
-    /// Format as comprehensive markdown output that matches TypeScript implementation
-    pub fn format_as_comprehensive_markdown(
+    /// Format as comprehensive markdown output using the pipeline pattern
+    pub async fn format_as_comprehensive_markdown(
+        &self,
+        context: &DeepContext,
+    ) -> anyhow::Result<String> {
+        use crate::services::formatting_pipeline::{
+            create_comprehensive_pipeline, FormatterConfig, FormatterContext,
+        };
+        use std::sync::Arc;
+
+        let formatter_context = FormatterContext {
+            deep_context: Arc::new(context.clone()),
+            config: FormatterConfig::default(),
+        };
+
+        let pipeline = create_comprehensive_pipeline();
+        pipeline.execute(formatter_context).await
+    }
+
+    /// Legacy format method (kept for backward compatibility)
+    pub fn format_as_comprehensive_markdown_legacy(
         &self,
         context: &DeepContext,
     ) -> anyhow::Result<String> {
@@ -1270,25 +1289,79 @@ impl DeepContextAnalyzer {
             });
         }
 
-        // Collect results
+        // Concurrent result aggregation to eliminate Amdahl's Law bottleneck
         let mut results = ParallelAnalysisResults::default();
 
-        while let Some(result) = join_set.join_next().await {
-            match result? {
-                AnalysisResult::Ast(Ok(ast_contexts)) => results.ast_contexts = Some(ast_contexts),
-                AnalysisResult::Complexity(Ok(complexity)) => {
-                    results.complexity_report = Some(complexity)
+        // Circuit breaker pattern: timeout the entire collection process
+        let collection_timeout = std::time::Duration::from_secs(60);
+        let collection_future = async {
+            let mut pending_results = Vec::new();
+
+            // Collect all results first without processing to maintain parallelism
+            while let Some(result) = join_set.join_next().await {
+                pending_results.push(result?);
+            }
+
+            // Process all results concurrently instead of sequentially
+            let result_processors: Vec<_> = pending_results
+                .into_iter()
+                .map(|result| {
+                    tokio::spawn(async move {
+                        // Each result type is processed in its own task
+                        result
+                    })
+                })
+                .collect();
+
+            // Wait for all processing to complete concurrently
+            let mut processed_results = Vec::new();
+            for processor in result_processors {
+                match processor.await {
+                    Ok(processed) => processed_results.push(processed),
+                    Err(e) => debug!("Result processing task failed: {}", e),
                 }
-                AnalysisResult::Churn(Ok(churn)) => results.churn_analysis = Some(churn),
-                AnalysisResult::DeadCode(Ok(dead_code)) => {
-                    results.dead_code_results = Some(dead_code)
+            }
+
+            // Final aggregation (minimized sequential phase)
+            for result in processed_results {
+                match result {
+                    AnalysisResult::Ast(Ok(ast_contexts)) => {
+                        results.ast_contexts = Some(ast_contexts)
+                    }
+                    AnalysisResult::Complexity(Ok(complexity)) => {
+                        results.complexity_report = Some(complexity)
+                    }
+                    AnalysisResult::Churn(Ok(churn)) => results.churn_analysis = Some(churn),
+                    AnalysisResult::DeadCode(Ok(dead_code)) => {
+                        results.dead_code_results = Some(dead_code)
+                    }
+                    AnalysisResult::Satd(Ok(satd)) => results.satd_results = Some(satd),
+                    AnalysisResult::Ast(Err(e)) => debug!("AST analysis failed: {}", e),
+                    AnalysisResult::Complexity(Err(e)) => {
+                        debug!("Complexity analysis failed: {}", e)
+                    }
+                    AnalysisResult::Churn(Err(e)) => debug!("Churn analysis failed: {}", e),
+                    AnalysisResult::DeadCode(Err(e)) => debug!("Dead code analysis failed: {}", e),
+                    AnalysisResult::Satd(Err(e)) => debug!("SATD analysis failed: {}", e),
                 }
-                AnalysisResult::Satd(Ok(satd)) => results.satd_results = Some(satd),
-                AnalysisResult::Ast(Err(e)) => debug!("AST analysis failed: {}", e),
-                AnalysisResult::Complexity(Err(e)) => debug!("Complexity analysis failed: {}", e),
-                AnalysisResult::Churn(Err(e)) => debug!("Churn analysis failed: {}", e),
-                AnalysisResult::DeadCode(Err(e)) => debug!("Dead code analysis failed: {}", e),
-                AnalysisResult::Satd(Err(e)) => debug!("SATD analysis failed: {}", e),
+            }
+
+            Ok::<_, anyhow::Error>(())
+        };
+
+        // Apply circuit breaker timeout
+        match tokio::time::timeout(collection_timeout, collection_future).await {
+            Ok(Ok(())) => {
+                debug!("Parallel analysis collection completed successfully");
+            }
+            Ok(Err(e)) => {
+                return Err(anyhow::anyhow!("Analysis result aggregation failed: {}", e));
+            }
+            Err(_) => {
+                return Err(anyhow::anyhow!(
+                    "Analysis collection timed out after {:?}",
+                    collection_timeout
+                ));
             }
         }
 

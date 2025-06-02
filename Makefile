@@ -438,14 +438,27 @@ validate-naming:
 
 # Generate deep context analysis of the project (dogfooding our own tool)
 context: server-build-binary
-	@echo "📊 Generating deep context analysis (dogfooding our own tool)..."
+	@echo "📊 Generating comprehensive deep context analysis (combining TypeScript + Rust)..."
+	@echo "🔍 Phase 1: Generating project structure & AST analysis..."
+	@deno run --allow-read --allow-write --allow-run --allow-env scripts/deep-context.ts -o deep_context_structure
+	@echo "🔍 Phase 2: Generating code quality & risk analysis..."
 	@./target/release/paiml-mcp-agent-toolkit analyze deep-context \
 		--project-path . \
 		--include "ast,complexity,churn,satd,dead-code" \
 		--format markdown \
-		--output deep_context.md \
+		--output deep_context_metrics.md \
 		--cache-strategy normal
-	@echo "✅ Deep context analysis complete! See deep_context.md"
+	@echo "🔗 Phase 3: Combining both analyses into unified report..."
+	@cat deep_context_structure.md > deep_context.md
+	@echo "" >> deep_context.md
+	@echo "---" >> deep_context.md
+	@echo "" >> deep_context.md
+	@echo "# Code Quality & Risk Analysis" >> deep_context.md
+	@tail -n +2 deep_context_metrics.md >> deep_context.md
+	@echo "🧹 Cleaning up intermediate files..."
+	@rm -f deep_context_structure.md deep_context_metrics.md
+	@echo "✅ Comprehensive deep context analysis complete! See deep_context.md"
+	@echo "📁 Combined: Project structure (TypeScript) + Code metrics (Rust)"
 
 # Additional targets for different formats
 context-json: server-build-binary

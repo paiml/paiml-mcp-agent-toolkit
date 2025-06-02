@@ -4,7 +4,6 @@
 **/*.rs.bk
 *.pdb
 Cargo.lock
-coverage_profile/
 # Cargo Lambda
 .aws-sam/
 samconfig.toml
@@ -108,7 +107,21 @@ scratch/
 
 # Generated analysis files
 deep_context.md
+deep_context_*.md
 /*.mmd
 /test-dag*.mmd
 /server/dependency_graph.mmd
 /artifacts/mermaid/test_output/
+
+# Coverage artifacts
+coverage_demo/
+coverage_profile/
+coverage_deno/
+
+# Temporary installation testing
+test-install/
+
+# JSON artifacts from analysis
+dogfood-*.json
+*-analysis.json
+*-dead-code*.json
