@@ -299,8 +299,36 @@ impl SATDDetector {
         file_path: &Path,
     ) -> Result<Vec<TechnicalDebt>, TemplateError> {
         let mut debts = Vec::new();
+        let mut in_test_block = false;
+        let mut test_block_depth = 0;
 
         for (line_num, line) in content.lines().enumerate() {
+            let trimmed = line.trim();
+
+            // Track test blocks in Rust files
+            if file_path.extension().and_then(|s| s.to_str()) == Some("rs") {
+                if trimmed.starts_with("#[cfg(test)]") {
+                    in_test_block = true;
+                    test_block_depth = 0;
+                } else if in_test_block {
+                    if trimmed.contains('{') {
+                        test_block_depth += trimmed.matches('{').count();
+                    }
+                    if trimmed.contains('}') {
+                        test_block_depth =
+                            test_block_depth.saturating_sub(trimmed.matches('}').count());
+                        if test_block_depth == 0 && trimmed.ends_with('}') {
+                            in_test_block = false;
+                        }
+                    }
+                }
+            }
+
+            // Skip lines inside test blocks
+            if in_test_block {
+                continue;
+            }
+
             if let Some(debt) = self.extract_from_line(line, file_path, line_num as u32 + 1)? {
                 debts.push(debt);
             }
@@ -485,16 +513,29 @@ impl SATDDetector {
         })
     }
 
-    /// Analyze debt in a directory recursively
+    /// Analyze debt in a directory recursively (excluding test files by default)
     pub async fn analyze_directory(
         &self,
         root: &Path,
+    ) -> Result<Vec<TechnicalDebt>, TemplateError> {
+        self.analyze_directory_with_tests(root, false).await
+    }
+
+    /// Analyze debt in a directory recursively with test file inclusion control
+    pub async fn analyze_directory_with_tests(
+        &self,
+        root: &Path,
+        include_tests: bool,
     ) -> Result<Vec<TechnicalDebt>, TemplateError> {
         let mut all_debts = Vec::new();
 
         let files = self.find_source_files(root).await?;
 
         for file_path in files {
+            // Skip test files unless explicitly requested
+            if !include_tests && self.is_test_file(&file_path) {
+                continue;
+            }
             match tokio::fs::read_to_string(&file_path).await {
                 Ok(content) => {
                     // Validate file size before processing
@@ -545,7 +586,8 @@ impl SATDDetector {
         &'a self,
         dir: &'a Path,
         files: &'a mut Vec<PathBuf>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), TemplateError>> + 'a>> {
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), TemplateError>> + Send + 'a>>
+    {
         Box::pin(async move {
             if !dir.is_dir() {
                 return Ok(());
@@ -567,7 +609,7 @@ impl SATDDetector {
                         }
                     }
                     self.collect_files_recursive(&path, files).await?;
-                } else if self.is_source_file(&path) {
+                } else if self.is_source_file(&path) && !self.is_test_file(&path) {
                     files.push(path);
                 }
             }

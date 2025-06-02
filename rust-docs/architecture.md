@@ -42,6 +42,112 @@ impl Server {
 }
 ```
 
+## Single-Shot Context Generation with Auto-Detection ✨ **NEW**
+
+### Zero-Configuration Architecture
+
+The v0.20.0 release introduces a revolutionary single-shot context generation system with intelligent language auto-detection, eliminating the need for manual toolchain specification while maintaining full backward compatibility.
+
+```rust
+// Progressive Enhancement Pipeline
+pub struct ProgressiveAnalyzer {
+    stages: Vec<AnalysisStage>,           // 9-stage pipeline
+    failure_mode: FailureMode,            // BestEffort/FailFast/Diagnostic
+}
+
+// Multi-Strategy Language Detection
+pub struct PolyglotDetector {
+    significance_weights: HashMap<Language, LanguageWeight>,
+    detection_strategies: Vec<Box<dyn DetectionStrategy + Send + Sync>>,
+}
+
+// Three detection strategies with confidence scoring:
+// 1. BuildFileDetector (Cargo.toml → Rust, package.json → TS/JS)
+// 2. ExtensionBasedDetector (.rs/.ts/.py files with LOC weighting)
+// 3. ContentBasedDetector (shebangs, imports, language constructs)
+```
+
+### Auto-Detection Flow
+
+```mermaid
+graph TB
+    A[User: paiml-mcp-agent-toolkit context] --> B[PolyglotDetector::new]
+    B --> C[BuildFileDetector]
+    B --> D[ExtensionBasedDetector]
+    B --> E[ContentBasedDetector]
+    
+    C --> F[Score: Cargo.toml=2.0, package.json=1.8]
+    D --> G[Score: .rs files + LOC weighting]
+    E --> H[Score: 'use std::' patterns, shebangs]
+    
+    F --> I[Confidence Aggregation]
+    G --> I
+    H --> I
+    
+    I --> J{Primary Language?}
+    J -->|Rust 85.2%| K[ProgressiveAnalyzer::analyze_with_fallbacks]
+    J -->|TypeScript 72.1%| K
+    J -->|Python 68.4%| K
+    
+    K --> L[9-Stage Pipeline]
+    L --> M[Context Generation]
+```
+
+### Progressive Enhancement Architecture
+
+**Performance Guarantees:**
+- **<50ms** Language detection startup time
+- **<100MB** Memory usage with smart defaults
+- **60-second** Total timeout budget with graceful degradation
+
+**9-Stage Analysis Pipeline:**
+1. **Language Detection** (100ms) - Multi-strategy polyglot detection
+2. **Project Structure** (200ms) - File tree analysis with annotations
+3. **Quick Metrics** (500ms) - LOC counting and project size estimation
+4. **AST Analysis** (5s) - Language-specific syntax tree parsing
+5. **Git Analysis** (2s) - Code churn and author tracking with fallback
+6. **Complexity Analysis** (3s) - McCabe and cognitive complexity
+7. **Dependency Graph** (2s) - Import/export relationship mapping
+8. **Dead Code Detection** (3s) - Unreachable code analysis
+9. **SATD Detection** (1s) - Technical debt pattern matching
+
+### Smart Context Pruning System
+
+```rust
+pub struct RelevanceScorer {
+    project_idf: HashMap<String, f64>,         // Term frequency analysis
+    centrality_scores: HashMap<NodeKey, f64>,  // PageRank-style importance
+    complexity_scores: HashMap<PathBuf, f64>,  // From complexity analysis
+}
+
+// Context Item Scoring (higher = more relevant)
+// 🔌 Public APIs: 10.0     🚪 Entry Points: 9.0
+// 🏗️ Core Types: 8.0       ⚡ Complex Functions: 5.0+
+// 🧪 Test Functions: 3.0   📚 Documentation: 1.0-8.0
+// ⚙️ Configuration: 3.0-7.0
+```
+
+**Intelligent Pruning Algorithm:**
+1. **TF-IDF Scoring** - Identify unique and significant code patterns
+2. **Centrality Analysis** - PageRank-style importance based on code relationships
+3. **Quality Adjustments** - Penalties for technical debt, bonuses for test coverage
+4. **Size Management** - Intelligent pruning to target KB limits while preserving critical items
+
+### Universal Output Adaptation
+
+```rust
+pub struct UniversalOutputAdapter {
+    format_detectors: Vec<Box<dyn FormatDetector + Send + Sync>>,
+    quality_enhancers: Vec<Box<dyn QualityEnhancer + Send + Sync>>,
+}
+
+// Environment-based format auto-detection:
+// CLI Environment → Markdown (human readable)
+// IDE Integration → JSON (structured data)
+// CI/CD Pipelines → SARIF (static analysis)
+// LLM Consumption → Token-optimized formatting
+```
+
 ## Zero-Copy I/O Pipeline
 
 ```
@@ -297,6 +403,105 @@ impl<R: FileRanker> RankingEngine<R> {
 - **ChurnScore**: Git-based change frequency analysis
 - **DuplicationScore**: Code clone detection metrics
 - **Vectorized Ranking**: SIMD-optimized for large datasets (>1024 files)
+
+## Deep Context Analysis Architecture ✨ **ENHANCED**
+
+### Multi-Analysis Pipeline Design
+
+The deep context analysis system combines multiple analysis engines into a unified quality assessment pipeline:
+
+```rust
+pub struct DeepContextAnalyzer {
+    config: DeepContextConfig,
+    semaphore: Semaphore,
+}
+
+impl DeepContextAnalyzer {
+    pub async fn analyze_project(&self, project_path: &PathBuf) -> anyhow::Result<DeepContext> {
+        // Phase 1: Discovery
+        let file_tree = self.discover_project_structure(project_path).await?;
+        
+        // Phase 2: Parallel analysis execution (ENHANCED)
+        let analyses = self.execute_parallel_analyses(project_path).await?;
+        
+        // Phase 3: Cross-language reference resolution
+        let cross_refs = self.build_cross_language_references(&analyses).await?;
+        
+        // Phase 4: Defect correlation (NEW)
+        let (defect_summary, hotspots) = self.correlate_defects(&analyses).await?;
+        
+        // Phase 5: Quality scoring
+        let quality_scorecard = self.calculate_quality_scores(&analyses).await?;
+        
+        // Phase 6: Generate recommendations
+        let recommendations = self.generate_recommendations(&hotspots, &quality_scorecard).await?;
+        
+        // Phase 7: Template provenance (if available)
+        let template_provenance = self.analyze_template_provenance(project_path).await?;
+    }
+}
+```
+
+### Cross-Analysis Correlation Engine
+
+Sophisticated defect correlation using ML-based risk assessment:
+
+```rust
+async fn correlate_defects(
+    &self, 
+    analyses: &ParallelAnalysisResults
+) -> anyhow::Result<(DefectSummary, Vec<DefectHotspot>)> {
+    
+    // Initialize defect probability calculator
+    let calculator = DefectProbabilityCalculator::new();
+    
+    // Build file metrics from all available analyses
+    let file_metrics_map = self.build_file_metrics(analyses).await?;
+    
+    // Calculate defect probabilities using weighted ensemble
+    let file_scores = file_metrics_map.values()
+        .map(|metrics| (metrics.file_path.clone(), calculator.calculate(metrics)))
+        .collect();
+    
+    // Generate project-level defect analysis
+    let project_analysis = ProjectDefectAnalysis::from_scores(file_scores);
+    
+    // Create defect hotspots with contributing factors
+    let hotspots = self.generate_defect_hotspots(&project_analysis, analyses).await?;
+    
+    Ok((defect_summary, hotspots))
+}
+```
+
+### Enhanced Parallel Execution
+
+The analysis pipeline now executes all engines concurrently:
+
+```rust
+async fn execute_parallel_analyses(&self, project_path: &std::path::Path) 
+    -> anyhow::Result<ParallelAnalysisResults> {
+    
+    let mut join_set = JoinSet::new();
+    
+    // Spawn all analysis tasks concurrently
+    if self.config.include_analyses.contains(&AnalysisType::Ast) {
+        join_set.spawn(async move { AnalysisResult::Ast(analyze_ast_contexts(&path).await) });
+    }
+    
+    if self.config.include_analyses.contains(&AnalysisType::Complexity) {
+        join_set.spawn(async move { AnalysisResult::Complexity(analyze_complexity(&path).await) });
+    }
+    
+    if self.config.include_analyses.contains(&AnalysisType::Dag) {
+        join_set.spawn(async move { AnalysisResult::Dag(analyze_dag(&path, dag_type).await) });
+    }
+    
+    // Circuit breaker pattern with 60-second timeout
+    // Concurrent result aggregation to eliminate Amdahl's Law bottleneck
+    let collection_timeout = std::time::Duration::from_secs(60);
+    // ... parallel collection and processing
+}
+```
 
 ## Unified Demo System Architecture
 
@@ -743,6 +948,194 @@ impl Default for ResourceLimits {
     }
 }
 ```
+
+## Why This is a Symbolic AI Architecture
+
+The PAIML MCP Agent Toolkit exemplifies a **symbolic AI system** through its fundamental design principles: explicit knowledge representation, formal reasoning, and deterministic computation. Here's the technical analysis:
+
+### 1. **Explicit Symbolic Representation**
+
+The system transforms source code into formal symbolic structures rather than statistical embeddings:
+
+```rust
+// From server/src/models/unified_ast.rs
+pub struct UnifiedAstNode {
+    pub kind: AstKind,        // Symbolic node type
+    pub name: String,         // Explicit identifier
+    pub span: Range<usize>,   // Precise location
+    pub children: Vec<NodeKey>, // Graph structure
+    pub metadata: NodeMetadata, // Formal properties
+}
+
+// Symbolic enumeration, not learned features
+pub enum AstKind {
+    Function(FunctionKind),
+    Class(ClassKind),
+    Variable(VarKind),
+    Import(ImportKind),
+    // ... exhaustive symbolic categories
+}
+```
+
+This contrasts with neural approaches that would encode code as continuous vectors. Each code element has an explicit symbolic identity with formal properties.
+
+### 2. **Rule-Based Formal Analysis**
+
+The complexity analysis uses mathematically-defined rules, not learned patterns:
+
+```rust
+// From server/src/services/complexity.rs
+impl CyclomaticComplexityRule {
+    fn compute(&self, ast: &AstNode) -> u32 {
+        // McCabe's theorem: V(G) = E - N + 2P
+        let edges = self.count_decision_points(ast);
+        let nodes = self.count_statements(ast);
+        let components = self.connected_components(ast);
+        
+        edges - nodes + 2 * components  // Formal graph theory
+    }
+}
+```
+
+Each metric is a **closed-form formula** with mathematical foundations, not a statistical approximation.
+
+### 3. **Compositional Graph Algorithms**
+
+The dependency analysis employs classical graph algorithms with provable properties:
+
+```rust
+// From server/src/services/dag_builder.rs
+impl DagBuilder {
+    fn detect_cycles(&self) -> Vec<Vec<NodeId>> {
+        // Tarjan's strongly connected components - O(V + E)
+        let mut index_counter = 0;
+        let mut stack = Vec::new();
+        let mut lowlinks = HashMap::new();
+        let mut index = HashMap::new();
+        let mut on_stack = HashSet::new();
+        
+        // Deterministic cycle detection with proof of correctness
+        self.tarjan_scc(&mut index_counter, &mut stack, /*...*/)
+    }
+}
+```
+
+### 4. **Deterministic Memoization**
+
+The caching system ensures **referential transparency** - a core property of symbolic systems:
+
+```rust
+// From server/src/services/cache/strategies.rs
+impl AstCacheStrategy {
+    fn cache_key(&self, path: &Path) -> String {
+        // Content-addressed storage
+        let content = fs::read(path)?;
+        let ast_hash = blake3::hash(&content);
+        
+        format!("ast:{}:{}", path.display(), ast_hash)
+    }
+}
+```
+
+Given identical input, the system **always** produces identical output - a hallmark of symbolic computation.
+
+### 5. **Formal Pattern Matching**
+
+Technical debt detection uses explicit symbolic patterns, not probabilistic classifiers:
+
+```rust
+// From server/src/services/satd_detector.rs
+impl DebtClassifier {
+    fn classify_comment(&self, text: &str) -> Option<(DebtCategory, Severity)> {
+        // Symbolic pattern matching with formal categories
+        match self.pattern_set.matches(text).into_iter().next() {
+            Some(0..=3) => Some((DebtCategory::Defect, Severity::High)),
+            Some(4..=7) => Some((DebtCategory::Design, Severity::Medium)),
+            Some(8..=11) => Some((DebtCategory::Debt, Severity::Low)),
+            _ => None
+        }
+    }
+}
+```
+
+### 6. **Type-Theoretic Correctness**
+
+The Rust type system provides **formal verification** of symbolic transformations:
+
+```rust
+// From server/src/services/mermaid_generator.rs
+impl MermaidGenerator {
+    fn generate(&self, graph: &DependencyGraph) -> String {
+        // Type system ensures well-formed output
+        let nodes: BTreeMap<&str, &NodeInfo> = self.collect_nodes(graph);
+        let edges: Vec<&Edge> = self.topological_sort(graph);
+        
+        // Exhaustive pattern matching - total function
+        match self.options.style {
+            DiagramStyle::Simple => self.render_simple(&nodes, &edges),
+            DiagramStyle::Styled => self.render_styled(&nodes, &edges),
+        }
+    }
+}
+```
+
+### 7. **Symbolic Reasoning Chain**
+
+The system composes symbolic transformations without information loss:
+
+```
+Source Code → Lexical Tokens → AST → Control Flow Graph → Dependency Graph → Complexity Metrics
+     ↓             ↓              ↓            ↓                ↓                  ↓
+  Symbols      Symbols       Symbols     Symbols          Symbols           Numbers
+  (text)      (tokens)      (nodes)      (edges)          (DAG)           (exact)
+```
+
+Each transformation preserves symbolic meaning and is **reversible** up to the metric computation.
+
+### 8. **Proof-Carrying Analysis**
+
+Results include verifiable proofs of correctness:
+
+```rust
+pub struct DefectScore {
+    pub probability: f32,
+    pub confidence: f32,
+    pub factors: HashMap<DefectFactor, f32>,
+    pub proof: AnalysisProof,  // Symbolic derivation
+}
+
+pub struct AnalysisProof {
+    pub ast_hash: Blake3Hash,      // Input identity
+    pub algorithm: &'static str,   // Formal method
+    pub theorems: Vec<Theorem>,    // Applied rules
+}
+```
+
+### Contrast with Statistical AI
+
+| **Symbolic (This System)** | **Statistical/Neural** |
+|---------------------------|----------------------|
+| `if branches > 10 then complex` | `P(complex|features) = 0.87` |
+| `V(G) = E - N + 2P` (exact) | `complexity ≈ f(embeddings)` |
+| Deterministic AST parsing | Probabilistic token prediction |
+| Rule: "TODO = tech debt" | Learned pattern from corpus |
+| Graph isomorphism (NP-complete) | Graph neural network (approximate) |
+
+### Performance Characteristics of Symbolic AI
+
+The symbolic approach enables specific optimizations:
+
+```rust
+// Parallel symbolic computation - no gradient dependencies
+let chunks: Vec<_> = files.par_chunks(128)
+    .map(|chunk| analyze_symbolic(chunk))  // Embarrassingly parallel
+    .collect();
+
+// Exact complexity: O(n) parsing, O(V+E) graph algorithms
+// No training time, no model loading, no GPU requirements
+```
+
+This architecture represents **GOFAI** (Good Old-Fashioned AI) principles applied to modern software engineering: formal methods, provable correctness, and deterministic reasoning. It's symbolic AI because it manipulates symbols according to formal rules rather than learning statistical patterns from data.
 
 ## Testing Architecture
 

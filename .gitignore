@@ -1,3 +1,12 @@
+# Vendor assets (minified libraries)
+assets/vendor/
+server/assets/vendor/
+*.min.js
+*.min.css
+*.min.mjs
+*-min.js
+*-min.css
+
 # Rust
 /target/
 **/target/
@@ -125,3 +134,8 @@ test-install/
 dogfood-*.json
 *-analysis.json
 *-dead-code*.json
+
+# Dogfooding artifacts with potential naming issues
+artifacts/dogfooding/deep-context-*.json
+artifacts/dogfooding/summary-*.json
+artifacts/dogfooding/combined-metrics-*.json

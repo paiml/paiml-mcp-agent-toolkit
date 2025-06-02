@@ -56,7 +56,7 @@ impl CliAdapter {
                 project_path,
                 output,
                 format,
-            } => Self::decode_context(toolchain, project_path, output, format),
+            } => Self::decode_context(toolchain.as_deref(), project_path, output, format),
             Commands::Analyze(analyze_cmd) => Self::decode_analyze_command(analyze_cmd),
             Commands::Demo {
                 path,
@@ -172,7 +172,7 @@ impl CliAdapter {
     }
 
     fn decode_context(
-        toolchain: &str,
+        toolchain: Option<&str>,
         project_path: &std::path::Path,
         output: &Option<std::path::PathBuf>,
         format: &ContextFormat,

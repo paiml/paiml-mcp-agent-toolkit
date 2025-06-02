@@ -1,8 +1,10 @@
 use crate::models::{churn::CodeChurnAnalysis, dag::DependencyGraph};
 use crate::services::context::FileContext;
 use crate::services::{
+    ast_python, ast_typescript,
     complexity::{ComplexityReport, FileComplexityMetrics},
     dead_code_analyzer::DeadCodeAnalyzer,
+    defect_probability::{DefectProbabilityCalculator, FileMetrics, ProjectDefectAnalysis},
     git_analysis::GitAnalysisService,
     satd_detector::{SATDAnalysisResult, SATDDetector},
 };
@@ -348,6 +350,84 @@ pub struct PrioritizedRecommendation {
     pub prerequisites: Vec<String>,
 }
 
+// Helper structs for organizing AST items
+#[derive(Debug, Clone)]
+struct CategorizedAstItems {
+    functions: Vec<AstFunction>,
+    structs: Vec<AstStruct>,
+    enums: Vec<AstEnum>,
+    traits: Vec<AstTrait>,
+    impls: Vec<AstImpl>,
+    modules: Vec<AstModule>,
+    uses: Vec<AstUse>,
+}
+
+impl CategorizedAstItems {
+    fn new() -> Self {
+        Self {
+            functions: Vec::new(),
+            structs: Vec::new(),
+            enums: Vec::new(),
+            traits: Vec::new(),
+            impls: Vec::new(),
+            modules: Vec::new(),
+            uses: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct AstFunction {
+    name: String,
+    visibility: String,
+    is_async: bool,
+    line: usize,
+}
+
+#[derive(Debug, Clone)]
+struct AstStruct {
+    name: String,
+    visibility: String,
+    fields_count: usize,
+    derives: Vec<String>,
+    line: usize,
+}
+
+#[derive(Debug, Clone)]
+struct AstEnum {
+    name: String,
+    visibility: String,
+    variants_count: usize,
+    line: usize,
+}
+
+#[derive(Debug, Clone)]
+struct AstTrait {
+    name: String,
+    visibility: String,
+    line: usize,
+}
+
+#[derive(Debug, Clone)]
+struct AstImpl {
+    type_name: String,
+    trait_name: Option<String>,
+    line: usize,
+}
+
+#[derive(Debug, Clone)]
+struct AstModule {
+    name: String,
+    visibility: String,
+    line: usize,
+}
+
+#[derive(Debug, Clone)]
+struct AstUse {
+    path: String,
+    line: usize,
+}
+
 impl Default for DeepContextConfig {
     fn default() -> Self {
         Self {
@@ -389,23 +469,84 @@ impl DeepContextAnalyzer {
         Self { config, semaphore }
     }
 
-    /// Format as comprehensive markdown output using the pipeline pattern
+    /// Format as comprehensive markdown output using simple formatting
     pub async fn format_as_comprehensive_markdown(
         &self,
         context: &DeepContext,
     ) -> anyhow::Result<String> {
-        use crate::services::formatting_pipeline::{
-            create_comprehensive_pipeline, FormatterConfig, FormatterContext,
-        };
-        use std::sync::Arc;
+        // Simplified markdown formatting without formatting_pipeline
+        let mut output = String::new();
 
-        let formatter_context = FormatterContext {
-            deep_context: Arc::new(context.clone()),
-            config: FormatterConfig::default(),
-        };
+        output.push_str("# Deep Context Analysis Report\n\n");
 
-        let pipeline = create_comprehensive_pipeline();
-        pipeline.execute(formatter_context).await
+        // Quality scorecard
+        output.push_str("## Quality Scorecard\n\n");
+        output.push_str(&format!(
+            "- Overall Health: {:.1}%\n",
+            context.quality_scorecard.overall_health
+        ));
+        output.push_str(&format!(
+            "- Maintainability Index: {:.1}%\n",
+            context.quality_scorecard.maintainability_index
+        ));
+        output.push_str(&format!(
+            "- Technical Debt: {:.1} hours\n",
+            context.quality_scorecard.technical_debt_hours
+        ));
+        output.push_str(&format!(
+            "- Complexity Score: {:.1}%\n",
+            context.quality_scorecard.complexity_score
+        ));
+        output.push('\n');
+
+        // File tree
+        output.push_str("## Project Structure\n\n");
+        output.push_str("```\n");
+        output.push_str(&format!(
+            "Total Files: {}\nTotal Size: {} bytes\n",
+            context.file_tree.total_files, context.file_tree.total_size_bytes
+        ));
+        output.push_str("\n```\n\n");
+
+        // Analysis results
+        output.push_str("## Analysis Results\n\n");
+
+        if !context.analyses.ast_contexts.is_empty() {
+            output.push_str(&format!(
+                "### AST Analysis\n- Files analyzed: {}\n\n",
+                context.analyses.ast_contexts.len()
+            ));
+        }
+
+        if let Some(ref complexity) = context.analyses.complexity_report {
+            output.push_str(&format!("### Complexity Analysis\n- Total files: {}\n- Total functions: {}\n- Median cyclomatic complexity: {:.1}\n\n",
+                complexity.summary.total_files, complexity.summary.total_functions, complexity.summary.median_cyclomatic));
+        }
+
+        if let Some(ref churn) = context.analyses.churn_analysis {
+            output.push_str(&format!(
+                "### Code Churn\n- Files analyzed: {}\n- Total commits: {}\n\n",
+                churn.files.len(),
+                churn.summary.total_commits
+            ));
+        }
+
+        // Recommendations
+        if !context.recommendations.is_empty() {
+            output.push_str("## Recommendations\n\n");
+            for (i, rec) in context.recommendations.iter().enumerate() {
+                output.push_str(&format!(
+                    "{}. **{}** (Priority: {:?})\n   {}\n   Effort: {:?}\n\n",
+                    i + 1,
+                    rec.title,
+                    rec.priority,
+                    rec.description,
+                    rec.estimated_effort
+                ));
+            }
+        }
+
+        Ok(output)
     }
 
     /// Legacy format method (kept for backward compatibility)
@@ -413,10 +554,28 @@ impl DeepContextAnalyzer {
         &self,
         context: &DeepContext,
     ) -> anyhow::Result<String> {
-        use std::fmt::Write;
         let mut output = String::new();
 
-        // Header with enhanced metadata
+        // Step 1: Format header and metadata
+        self.format_legacy_header(&mut output, context)?;
+
+        // Step 2: Format main content sections
+        self.format_legacy_main_sections(&mut output, context)?;
+
+        // Step 3: Format analysis sections
+        self.format_legacy_analysis_sections(&mut output, context)?;
+
+        Ok(output)
+    }
+
+    /// Format header and metadata for legacy markdown
+    fn format_legacy_header(
+        &self,
+        output: &mut String,
+        context: &DeepContext,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        
         let project_name = context
             .metadata
             .project_root
@@ -438,6 +597,17 @@ impl DeepContextAnalyzer {
             context.metadata.cache_stats.hit_rate * 100.0
         )?;
 
+        Ok(())
+    }
+
+    /// Format main content sections for legacy markdown
+    fn format_legacy_main_sections(
+        &self,
+        output: &mut String,
+        context: &DeepContext,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        
         // Quality scorecard summary
         writeln!(output, "\n## Quality Scorecard\n")?;
         writeln!(
@@ -460,30 +630,39 @@ impl DeepContextAnalyzer {
         // Project structure with annotations
         writeln!(output, "\n## Project Structure\n")?;
         writeln!(output, "```")?;
-        self.format_annotated_tree(&mut output, &context.file_tree)?;
+        self.format_annotated_tree(output, &context.file_tree)?;
         writeln!(output, "```\n")?;
 
         // Enhanced AST with complexity indicators
         if !context.analyses.ast_contexts.is_empty() {
-            self.format_enhanced_ast_section(&mut output, &context.analyses.ast_contexts)?;
+            self.format_enhanced_ast_section(output, &context.analyses.ast_contexts)?;
         }
 
+        Ok(())
+    }
+
+    /// Format analysis sections for legacy markdown
+    fn format_legacy_analysis_sections(
+        &self,
+        output: &mut String,
+        context: &DeepContext,
+    ) -> anyhow::Result<()> {
         // Code quality metrics
-        self.format_complexity_hotspots(&mut output, context)?;
-        self.format_churn_analysis(&mut output, context)?;
-        self.format_technical_debt(&mut output, context)?;
-        self.format_dead_code_analysis(&mut output, context)?;
+        self.format_complexity_hotspots(output, context)?;
+        self.format_churn_analysis(output, context)?;
+        self.format_technical_debt(output, context)?;
+        self.format_dead_code_analysis(output, context)?;
 
         // Cross-language references
-        self.format_cross_references(&mut output, &context.analyses.cross_language_refs)?;
+        self.format_cross_references(output, &context.analyses.cross_language_refs)?;
 
         // Defect probability analysis
-        self.format_defect_predictions(&mut output, context)?;
+        self.format_defect_predictions(output, context)?;
 
         // Actionable recommendations
-        self.format_prioritized_recommendations(&mut output, &context.recommendations)?;
+        self.format_prioritized_recommendations(output, &context.recommendations)?;
 
-        Ok(output)
+        Ok(())
     }
 
     /// Format as JSON output for machine consumption and API responses
@@ -763,7 +942,7 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
-    fn format_enhanced_ast_section(
+    pub fn format_enhanced_ast_section(
         &self,
         output: &mut String,
         ast_contexts: &[EnhancedFileContext],
@@ -772,34 +951,404 @@ impl DeepContextAnalyzer {
         writeln!(output, "## Enhanced AST Analysis\n")?;
 
         for context in ast_contexts {
-            writeln!(output, "### {}\n", context.base.path)?;
+            self.format_single_file_ast(output, context)?;
+        }
 
-            // Language-specific AST details
-            writeln!(output, "**Language:** {}", context.base.language)?;
-            writeln!(output, "**Symbols:** {}", context.base.items.len())?;
+        Ok(())
+    }
 
-            if let Some(ref complexity) = context.complexity_metrics {
-                writeln!(
-                    output,
-                    "**Complexity Score:** {:.1}",
-                    complexity.total_complexity.cyclomatic
-                )?;
+    fn format_single_file_ast(
+        &self,
+        output: &mut String,
+        context: &EnhancedFileContext,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+
+        writeln!(output, "### {}\n", context.base.path)?;
+        writeln!(output, "**Language:** {}", context.base.language)?;
+        writeln!(output, "**Total Symbols:** {}", context.base.items.len())?;
+
+        // Categorize AST items
+        let categorized_items = self.categorize_ast_items(&context.base.items);
+
+        // Write summary counts
+        self.write_ast_summary(output, &categorized_items)?;
+
+        // Write detailed breakdowns
+        self.write_ast_details(output, &categorized_items)?;
+
+        // Write metrics
+        self.write_file_metrics(output, context)?;
+
+        Ok(())
+    }
+
+    fn categorize_ast_items(
+        &self,
+        items: &[crate::services::context::AstItem],
+    ) -> CategorizedAstItems {
+        let mut categorized = CategorizedAstItems::new();
+
+        for item in items {
+            match item {
+                crate::services::context::AstItem::Function {
+                    name,
+                    visibility,
+                    is_async,
+                    line,
+                } => {
+                    categorized.functions.push(AstFunction {
+                        name: name.clone(),
+                        visibility: visibility.clone(),
+                        is_async: *is_async,
+                        line: *line,
+                    });
+                }
+                crate::services::context::AstItem::Struct {
+                    name,
+                    visibility,
+                    fields_count,
+                    derives,
+                    line,
+                } => {
+                    categorized.structs.push(AstStruct {
+                        name: name.clone(),
+                        visibility: visibility.clone(),
+                        fields_count: *fields_count,
+                        derives: derives.clone(),
+                        line: *line,
+                    });
+                }
+                crate::services::context::AstItem::Enum {
+                    name,
+                    visibility,
+                    variants_count,
+                    line,
+                } => {
+                    categorized.enums.push(AstEnum {
+                        name: name.clone(),
+                        visibility: visibility.clone(),
+                        variants_count: *variants_count,
+                        line: *line,
+                    });
+                }
+                crate::services::context::AstItem::Trait {
+                    name,
+                    visibility,
+                    line,
+                } => {
+                    categorized.traits.push(AstTrait {
+                        name: name.clone(),
+                        visibility: visibility.clone(),
+                        line: *line,
+                    });
+                }
+                crate::services::context::AstItem::Impl {
+                    type_name,
+                    trait_name,
+                    line,
+                } => {
+                    categorized.impls.push(AstImpl {
+                        type_name: type_name.clone(),
+                        trait_name: trait_name.clone(),
+                        line: *line,
+                    });
+                }
+                crate::services::context::AstItem::Module {
+                    name,
+                    visibility,
+                    line,
+                } => {
+                    categorized.modules.push(AstModule {
+                        name: name.clone(),
+                        visibility: visibility.clone(),
+                        line: *line,
+                    });
+                }
+                crate::services::context::AstItem::Use { path, line } => {
+                    categorized.uses.push(AstUse {
+                        path: path.clone(),
+                        line: *line,
+                    });
+                }
             }
+        }
 
-            if let Some(ref churn) = context.churn_metrics {
-                writeln!(
-                    output,
-                    "**Churn:** {} commits by {} authors",
-                    churn.commits, churn.authors
-                )?;
-            }
+        categorized
+    }
 
+    fn write_ast_summary(
+        &self,
+        output: &mut String,
+        items: &CategorizedAstItems,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        writeln!(output, "**Functions:** {} | **Structs:** {} | **Enums:** {} | **Traits:** {} | **Impls:** {} | **Modules:** {} | **Imports:** {}",
+            items.functions.len(), items.structs.len(), items.enums.len(),
+            items.traits.len(), items.impls.len(), items.modules.len(), items.uses.len())?;
+        Ok(())
+    }
+
+    fn write_ast_details(
+        &self,
+        output: &mut String,
+        items: &CategorizedAstItems,
+    ) -> anyhow::Result<()> {
+        self.write_functions_section(output, &items.functions)?;
+        self.write_structs_section(output, &items.structs)?;
+        self.write_enums_section(output, &items.enums)?;
+        self.write_traits_section(output, &items.traits)?;
+        self.write_impls_section(output, &items.impls)?;
+        self.write_modules_section(output, &items.modules)?;
+        self.write_imports_section(output, &items.uses)?;
+        Ok(())
+    }
+
+    fn write_functions_section(
+        &self,
+        output: &mut String,
+        functions: &[AstFunction],
+    ) -> anyhow::Result<()> {
+        if functions.is_empty() {
+            return Ok(());
+        }
+
+        use std::fmt::Write;
+        writeln!(output, "\n**Functions:**")?;
+
+        for func in functions.iter().take(10) {
+            let async_marker = if func.is_async { " (async)" } else { "" };
             writeln!(
                 output,
-                "**Defect Probability:** {:.1}%\n",
-                context.defects.defect_probability * 100.0
+                "  - `{}{}` ({}) at line {}",
+                func.name, async_marker, func.visibility, func.line
             )?;
         }
+
+        if functions.len() > 10 {
+            writeln!(
+                output,
+                "  - ... and {} more functions",
+                functions.len() - 10
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn write_structs_section(
+        &self,
+        output: &mut String,
+        structs: &[AstStruct],
+    ) -> anyhow::Result<()> {
+        if structs.is_empty() {
+            return Ok(());
+        }
+
+        use std::fmt::Write;
+        writeln!(output, "\n**Structs:**")?;
+
+        for struct_item in structs.iter().take(5) {
+            let derives_str = if struct_item.derives.is_empty() {
+                String::new()
+            } else {
+                format!(" (derives: {})", struct_item.derives.join(", "))
+            };
+            let field_plural = if struct_item.fields_count == 1 {
+                ""
+            } else {
+                "s"
+            };
+            writeln!(
+                output,
+                "  - `{}` ({}) with {} field{}{} at line {}",
+                struct_item.name,
+                struct_item.visibility,
+                struct_item.fields_count,
+                field_plural,
+                derives_str,
+                struct_item.line
+            )?;
+        }
+
+        if structs.len() > 5 {
+            writeln!(output, "  - ... and {} more structs", structs.len() - 5)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_enums_section(&self, output: &mut String, enums: &[AstEnum]) -> anyhow::Result<()> {
+        if enums.is_empty() {
+            return Ok(());
+        }
+
+        use std::fmt::Write;
+        writeln!(output, "\n**Enums:**")?;
+
+        for enum_item in enums.iter().take(5) {
+            let variant_plural = if enum_item.variants_count == 1 {
+                ""
+            } else {
+                "s"
+            };
+            writeln!(
+                output,
+                "  - `{}` ({}) with {} variant{} at line {}",
+                enum_item.name,
+                enum_item.visibility,
+                enum_item.variants_count,
+                variant_plural,
+                enum_item.line
+            )?;
+        }
+
+        if enums.len() > 5 {
+            writeln!(output, "  - ... and {} more enums", enums.len() - 5)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_traits_section(&self, output: &mut String, traits: &[AstTrait]) -> anyhow::Result<()> {
+        if traits.is_empty() {
+            return Ok(());
+        }
+
+        use std::fmt::Write;
+        writeln!(output, "\n**Traits:**")?;
+
+        for trait_item in traits.iter().take(5) {
+            writeln!(
+                output,
+                "  - `{}` ({}) at line {}",
+                trait_item.name, trait_item.visibility, trait_item.line
+            )?;
+        }
+
+        if traits.len() > 5 {
+            writeln!(output, "  - ... and {} more traits", traits.len() - 5)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_impls_section(&self, output: &mut String, impls: &[AstImpl]) -> anyhow::Result<()> {
+        if impls.is_empty() {
+            return Ok(());
+        }
+
+        use std::fmt::Write;
+        writeln!(output, "\n**Implementations:**")?;
+
+        for impl_item in impls.iter().take(5) {
+            if let Some(trait_name) = &impl_item.trait_name {
+                writeln!(
+                    output,
+                    "  - `{} for {}` at line {}",
+                    trait_name, impl_item.type_name, impl_item.line
+                )?;
+            } else {
+                writeln!(
+                    output,
+                    "  - `impl {}` at line {}",
+                    impl_item.type_name, impl_item.line
+                )?;
+            }
+        }
+
+        if impls.len() > 5 {
+            writeln!(
+                output,
+                "  - ... and {} more implementations",
+                impls.len() - 5
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn write_modules_section(
+        &self,
+        output: &mut String,
+        modules: &[AstModule],
+    ) -> anyhow::Result<()> {
+        if modules.is_empty() {
+            return Ok(());
+        }
+
+        use std::fmt::Write;
+        writeln!(output, "\n**Modules:**")?;
+
+        for module_item in modules.iter().take(5) {
+            writeln!(
+                output,
+                "  - `{}` ({}) at line {}",
+                module_item.name, module_item.visibility, module_item.line
+            )?;
+        }
+
+        if modules.len() > 5 {
+            writeln!(output, "  - ... and {} more modules", modules.len() - 5)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_imports_section(&self, output: &mut String, uses: &[AstUse]) -> anyhow::Result<()> {
+        if uses.is_empty() {
+            return Ok(());
+        }
+
+        use std::fmt::Write;
+
+        if uses.len() <= 8 {
+            writeln!(output, "\n**Key Imports:**")?;
+            for use_item in uses.iter().take(8) {
+                writeln!(output, "  - `{}` at line {}", use_item.path, use_item.line)?;
+            }
+        } else {
+            writeln!(output, "\n**Imports:** {} import statements", uses.len())?;
+        }
+
+        Ok(())
+    }
+
+    fn write_file_metrics(
+        &self,
+        output: &mut String,
+        context: &EnhancedFileContext,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+
+        // Complexity metrics if available
+        if let Some(ref complexity) = context.complexity_metrics {
+            writeln!(output, "\n**Complexity Metrics:**")?;
+            writeln!(
+                output,
+                "  - Cyclomatic: {:.1} | Cognitive: {:.1} | Lines: {}",
+                complexity.total_complexity.cyclomatic,
+                complexity.total_complexity.cognitive,
+                complexity.total_complexity.lines
+            )?;
+        }
+
+        // Churn metrics if available
+        if let Some(ref churn) = context.churn_metrics {
+            writeln!(output, "\n**Code Churn:**")?;
+            writeln!(
+                output,
+                "  - {} commits by {} authors",
+                churn.commits, churn.authors
+            )?;
+        }
+
+        // Defect probability
+        writeln!(
+            output,
+            "\n**Defect Probability:** {:.1}%\n",
+            context.defects.defect_probability * 100.0
+        )?;
 
         Ok(())
     }
@@ -1237,135 +1786,156 @@ impl DeepContextAnalyzer {
         &self,
         project_path: &std::path::Path,
     ) -> anyhow::Result<ParallelAnalysisResults> {
-        use tokio::task::JoinSet;
+        // Step 1: Spawn all analysis tasks
+        let mut join_set = self.spawn_analysis_tasks(project_path)?;
 
-        let mut join_set = JoinSet::new();
-
-        // AST Analysis
-        if self.config.include_analyses.contains(&AnalysisType::Ast) {
-            let path = project_path.to_path_buf();
-            join_set.spawn(async move { AnalysisResult::Ast(analyze_ast_contexts(&path).await) });
-        }
-
-        // Complexity Analysis
-        if self
-            .config
-            .include_analyses
-            .contains(&AnalysisType::Complexity)
-        {
-            let path = project_path.to_path_buf();
-            join_set
-                .spawn(async move { AnalysisResult::Complexity(analyze_complexity(&path).await) });
-        }
-
-        // Churn Analysis
-        if self.config.include_analyses.contains(&AnalysisType::Churn) {
-            let path = project_path.to_path_buf();
-            let days = self.config.period_days;
-            join_set.spawn(async move { AnalysisResult::Churn(analyze_churn(&path, days).await) });
-        }
-
-        // Dead Code Analysis
-        if self
-            .config
-            .include_analyses
-            .contains(&AnalysisType::DeadCode)
-        {
-            let path = project_path.to_path_buf();
-            join_set.spawn(async move { AnalysisResult::DeadCode(analyze_dead_code(&path).await) });
-        }
-
-        // SATD Analysis
-        if self.config.include_analyses.contains(&AnalysisType::Satd) {
-            let path = project_path.to_path_buf();
-            join_set.spawn(async move {
-                // Use spawn_blocking to avoid Send issues with SATD detector
-                let result = tokio::task::spawn_blocking(move || {
-                    tokio::runtime::Handle::current().block_on(async { analyze_satd(&path).await })
-                })
-                .await
-                .unwrap_or_else(|_| Err(anyhow::anyhow!("SATD analysis failed")));
-                AnalysisResult::Satd(result)
-            });
-        }
-
-        // Concurrent result aggregation to eliminate Amdahl's Law bottleneck
-        let mut results = ParallelAnalysisResults::default();
-
-        // Circuit breaker pattern: timeout the entire collection process
+        // Step 2: Collect and process results with timeout
         let collection_timeout = std::time::Duration::from_secs(60);
-        let collection_future = async {
-            let mut pending_results = Vec::new();
+        let results = self.collect_analysis_results(&mut join_set, collection_timeout).await?;
 
-            // Collect all results first without processing to maintain parallelism
-            while let Some(result) = join_set.join_next().await {
-                pending_results.push(result?);
+        Ok(results)
+    }
+
+    /// Spawn all configured analysis tasks
+    fn spawn_analysis_tasks(
+        &self,
+        project_path: &std::path::Path,
+    ) -> anyhow::Result<tokio::task::JoinSet<AnalysisResult>> {
+        let mut join_set = tokio::task::JoinSet::new();
+
+        for analysis_type in &self.config.include_analyses {
+            self.spawn_analysis_task(&mut join_set, project_path, analysis_type)?;
+        }
+
+        Ok(join_set)
+    }
+
+    /// Spawn a single analysis task based on type
+    fn spawn_analysis_task(
+        &self,
+        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
+        project_path: &std::path::Path,
+        analysis_type: &AnalysisType,
+    ) -> anyhow::Result<()> {
+        let path = project_path.to_path_buf();
+
+        match analysis_type {
+            AnalysisType::Ast => {
+                join_set.spawn(async move { AnalysisResult::Ast(analyze_ast_contexts(&path).await) });
             }
-
-            // Process all results concurrently instead of sequentially
-            let result_processors: Vec<_> = pending_results
-                .into_iter()
-                .map(|result| {
-                    tokio::spawn(async move {
-                        // Each result type is processed in its own task
-                        result
+            AnalysisType::Complexity => {
+                join_set.spawn(async move { AnalysisResult::Complexity(analyze_complexity(&path).await) });
+            }
+            AnalysisType::Churn => {
+                let days = self.config.period_days;
+                join_set.spawn(async move { AnalysisResult::Churn(analyze_churn(&path, days).await) });
+            }
+            AnalysisType::DeadCode => {
+                join_set.spawn(async move { AnalysisResult::DeadCode(analyze_dead_code(&path).await) });
+            }
+            AnalysisType::Satd => {
+                join_set.spawn(async move {
+                    let result = tokio::task::spawn_blocking(move || {
+                        tokio::runtime::Handle::current().block_on(async { analyze_satd(&path).await })
                     })
-                })
-                .collect();
-
-            // Wait for all processing to complete concurrently
-            let mut processed_results = Vec::new();
-            for processor in result_processors {
-                match processor.await {
-                    Ok(processed) => processed_results.push(processed),
-                    Err(e) => debug!("Result processing task failed: {}", e),
-                }
+                    .await
+                    .unwrap_or_else(|_| Err(anyhow::anyhow!("SATD analysis failed")));
+                    AnalysisResult::Satd(result)
+                });
             }
-
-            // Final aggregation (minimized sequential phase)
-            for result in processed_results {
-                match result {
-                    AnalysisResult::Ast(Ok(ast_contexts)) => {
-                        results.ast_contexts = Some(ast_contexts)
-                    }
-                    AnalysisResult::Complexity(Ok(complexity)) => {
-                        results.complexity_report = Some(complexity)
-                    }
-                    AnalysisResult::Churn(Ok(churn)) => results.churn_analysis = Some(churn),
-                    AnalysisResult::DeadCode(Ok(dead_code)) => {
-                        results.dead_code_results = Some(dead_code)
-                    }
-                    AnalysisResult::Satd(Ok(satd)) => results.satd_results = Some(satd),
-                    AnalysisResult::Ast(Err(e)) => debug!("AST analysis failed: {}", e),
-                    AnalysisResult::Complexity(Err(e)) => {
-                        debug!("Complexity analysis failed: {}", e)
-                    }
-                    AnalysisResult::Churn(Err(e)) => debug!("Churn analysis failed: {}", e),
-                    AnalysisResult::DeadCode(Err(e)) => debug!("Dead code analysis failed: {}", e),
-                    AnalysisResult::Satd(Err(e)) => debug!("SATD analysis failed: {}", e),
-                }
+            AnalysisType::Dag => {
+                let dag_type = self.config.dag_type.clone();
+                join_set.spawn(async move { AnalysisResult::Dag(analyze_dag(&path, dag_type).await) });
             }
+            AnalysisType::DefectProbability => {
+                // DefectProbability is computed in correlate_defects, not as a separate analysis
+            }
+        }
 
-            Ok::<_, anyhow::Error>(())
-        };
+        Ok(())
+    }
 
-        // Apply circuit breaker timeout
-        match tokio::time::timeout(collection_timeout, collection_future).await {
-            Ok(Ok(())) => {
+    /// Collect and process analysis results with timeout
+    async fn collect_analysis_results(
+        &self,
+        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
+        timeout: std::time::Duration,
+    ) -> anyhow::Result<ParallelAnalysisResults> {
+        let collection_future = self.process_analysis_results(join_set);
+
+        match tokio::time::timeout(timeout, collection_future).await {
+            Ok(Ok(results)) => {
                 debug!("Parallel analysis collection completed successfully");
+                Ok(results)
             }
-            Ok(Err(e)) => {
-                return Err(anyhow::anyhow!("Analysis result aggregation failed: {}", e));
-            }
-            Err(_) => {
-                return Err(anyhow::anyhow!(
-                    "Analysis collection timed out after {:?}",
-                    collection_timeout
-                ));
+            Ok(Err(e)) => Err(anyhow::anyhow!("Analysis result aggregation failed: {}", e)),
+            Err(_) => Err(anyhow::anyhow!(
+                "Analysis collection timed out after {:?}",
+                timeout
+            )),
+        }
+    }
+
+    /// Process all analysis results concurrently
+    async fn process_analysis_results(
+        &self,
+        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
+    ) -> anyhow::Result<ParallelAnalysisResults> {
+        // Collect all results first
+        let mut pending_results = Vec::new();
+        while let Some(result) = join_set.join_next().await {
+            pending_results.push(result?);
+        }
+
+        // Process results concurrently
+        let result_processors: Vec<_> = pending_results
+            .into_iter()
+            .map(|result| tokio::spawn(async move { result }))
+            .collect();
+
+        // Aggregate processed results
+        let mut results = ParallelAnalysisResults::default();
+        for processor in result_processors {
+            if let Ok(processed) = processor.await {
+                self.integrate_analysis_result(&mut results, processed);
             }
         }
 
         Ok(results)
+    }
+
+    /// Integrate a single analysis result into the final results
+    fn integrate_analysis_result(
+        &self,
+        results: &mut ParallelAnalysisResults,
+        result: AnalysisResult,
+    ) {
+        match result {
+            AnalysisResult::Ast(Ok(ast_contexts)) => {
+                results.ast_contexts = Some(ast_contexts);
+            }
+            AnalysisResult::Complexity(Ok(complexity)) => {
+                results.complexity_report = Some(complexity);
+            }
+            AnalysisResult::Churn(Ok(churn)) => {
+                results.churn_analysis = Some(churn);
+            }
+            AnalysisResult::DeadCode(Ok(dead_code)) => {
+                results.dead_code_results = Some(dead_code);
+            }
+            AnalysisResult::Satd(Ok(satd)) => {
+                results.satd_results = Some(satd);
+            }
+            AnalysisResult::Dag(Ok(dag)) => {
+                results.dependency_graph = Some(dag);
+            }
+            AnalysisResult::Ast(Err(e)) => debug!("AST analysis failed: {}", e),
+            AnalysisResult::Complexity(Err(e)) => debug!("Complexity analysis failed: {}", e),
+            AnalysisResult::Churn(Err(e)) => debug!("Churn analysis failed: {}", e),
+            AnalysisResult::DeadCode(Err(e)) => debug!("Dead code analysis failed: {}", e),
+            AnalysisResult::Satd(Err(e)) => debug!("SATD analysis failed: {}", e),
+            AnalysisResult::Dag(Err(e)) => debug!("DAG analysis failed: {}", e),
+        }
     }
 
     async fn build_cross_language_references(
@@ -1381,35 +1951,363 @@ impl DeepContextAnalyzer {
         &self,
         analyses: &ParallelAnalysisResults,
     ) -> anyhow::Result<(DefectSummary, Vec<DefectHotspot>)> {
+        // Step 1: Collect file metrics from all analyses
+        let file_metrics_map = self.collect_file_metrics(analyses)?;
+
+        // Step 2: Calculate defect probabilities
+        let calculator = DefectProbabilityCalculator::new();
+        let project_analysis =
+            self.calculate_defect_probabilities(&file_metrics_map, &calculator)?;
+
+        // Step 3: Build defect summary
+        let defect_summary =
+            self.build_defect_summary(&project_analysis, analyses, &file_metrics_map)?;
+
+        // Step 4: Generate hotspots
+        let hotspots =
+            self.generate_defect_hotspots(&project_analysis, analyses, &file_metrics_map)?;
+
+        Ok((defect_summary, hotspots))
+    }
+
+    /// Collect file metrics from all available analyses
+    fn collect_file_metrics(
+        &self,
+        analyses: &ParallelAnalysisResults,
+    ) -> anyhow::Result<std::collections::HashMap<String, FileMetrics>> {
+        use std::collections::HashMap;
+        let mut file_metrics_map = HashMap::new();
+
+        if let Some(ref ast_contexts) = analyses.ast_contexts {
+            for enhanced_context in ast_contexts {
+                let file_path = enhanced_context.base.path.clone();
+
+                // Extract complexity metrics for this file
+                let (complexity_score, cyclomatic, cognitive) =
+                    self.extract_complexity_metrics(&file_path, analyses)?;
+
+                // Extract churn metrics for this file
+                let churn_score = self.extract_churn_metrics(&file_path, analyses)?;
+
+                // Build file metrics
+                let file_metrics = self.build_file_metrics(
+                    &file_path,
+                    complexity_score,
+                    cyclomatic,
+                    cognitive,
+                    churn_score,
+                    enhanced_context,
+                )?;
+
+                file_metrics_map.insert(file_path, file_metrics);
+            }
+        }
+
+        Ok(file_metrics_map)
+    }
+
+    /// Extract complexity metrics for a specific file
+    fn extract_complexity_metrics(
+        &self,
+        file_path: &str,
+        analyses: &ParallelAnalysisResults,
+    ) -> anyhow::Result<(f32, u32, u32)> {
+        if let Some(ref complexity_report) = analyses.complexity_report {
+            let file_complexity = complexity_report
+                .files
+                .iter()
+                .find(|f| f.path == file_path)
+                .map(|f| {
+                    let avg_cyclomatic = if f.functions.is_empty() {
+                        1.0
+                    } else {
+                        f.functions
+                            .iter()
+                            .map(|func| func.metrics.cyclomatic as f32)
+                            .sum::<f32>()
+                            / f.functions.len() as f32
+                    };
+                    let max_cyclomatic = f
+                        .functions
+                        .iter()
+                        .map(|func| func.metrics.cyclomatic as u32)
+                        .max()
+                        .unwrap_or(1);
+                    let max_cognitive = f
+                        .functions
+                        .iter()
+                        .map(|func| func.metrics.cognitive as u32)
+                        .max()
+                        .unwrap_or(1);
+                    (avg_cyclomatic, max_cyclomatic, max_cognitive)
+                });
+
+            if let Some((avg_complexity, max_cyclomatic, max_cognitive)) = file_complexity {
+                Ok((avg_complexity, max_cyclomatic, max_cognitive))
+            } else {
+                Ok((1.0, 1, 1))
+            }
+        } else {
+            Ok((1.0, 1, 1))
+        }
+    }
+
+    /// Extract churn metrics for a specific file
+    fn extract_churn_metrics(
+        &self,
+        file_path: &str,
+        analyses: &ParallelAnalysisResults,
+    ) -> anyhow::Result<f32> {
+        if let Some(ref churn_analysis) = analyses.churn_analysis {
+            let churn_score = churn_analysis
+                .files
+                .iter()
+                .find(|f| f.relative_path == file_path || f.relative_path.ends_with(file_path))
+                .map(|f| {
+                    // Normalize churn score based on commit count and recency
+                    let max_commits = churn_analysis
+                        .files
+                        .iter()
+                        .map(|file| file.commit_count)
+                        .max()
+                        .unwrap_or(1) as f32;
+                    f.commit_count as f32 / max_commits
+                })
+                .unwrap_or(0.0);
+            Ok(churn_score)
+        } else {
+            Ok(0.0)
+        }
+    }
+
+    /// Build FileMetrics struct from collected data
+    fn build_file_metrics(
+        &self,
+        file_path: &str,
+        complexity_score: f32,
+        cyclomatic: u32,
+        cognitive: u32,
+        churn_score: f32,
+        enhanced_context: &EnhancedFileContext,
+    ) -> anyhow::Result<FileMetrics> {
+        // Estimate lines of code from AST items
+        let estimated_loc = enhanced_context.base.items.len() * 10;
+
+        // Calculate efferent coupling from imports
+        let efferent_coupling = enhanced_context
+            .base
+            .items
+            .iter()
+            .filter_map(|item| match item {
+                crate::services::context::AstItem::Use { .. } => Some(1.0),
+                _ => None,
+            })
+            .sum::<f32>()
+            .max(1.0);
+
+        Ok(FileMetrics {
+            file_path: file_path.to_string(),
+            churn_score,
+            complexity: complexity_score,
+            duplicate_ratio: 0.1, // Default assumption - would need actual duplication analysis
+            afferent_coupling: 1.0, // Default - would come from DAG analysis
+            efferent_coupling,
+            lines_of_code: estimated_loc,
+            cyclomatic_complexity: cyclomatic,
+            cognitive_complexity: cognitive,
+        })
+    }
+
+    /// Calculate defect probabilities for all files
+    fn calculate_defect_probabilities(
+        &self,
+        file_metrics_map: &std::collections::HashMap<String, FileMetrics>,
+        calculator: &DefectProbabilityCalculator,
+    ) -> anyhow::Result<ProjectDefectAnalysis> {
+        let file_scores: Vec<_> = file_metrics_map
+            .values()
+            .map(|metrics| (metrics.file_path.clone(), calculator.calculate(metrics)))
+            .collect();
+
+        Ok(ProjectDefectAnalysis::from_scores(file_scores))
+    }
+
+    /// Build defect summary from project analysis
+    fn build_defect_summary(
+        &self,
+        project_analysis: &ProjectDefectAnalysis,
+        analyses: &ParallelAnalysisResults,
+        file_metrics_map: &std::collections::HashMap<String, FileMetrics>,
+    ) -> anyhow::Result<DefectSummary> {
+        use std::collections::HashMap;
+
         let mut defect_summary = DefectSummary {
-            total_defects: 0,
+            total_defects: project_analysis.high_risk_files.len()
+                + project_analysis.medium_risk_files.len(),
             by_severity: HashMap::new(),
             by_type: HashMap::new(),
             defect_density: 0.0,
         };
 
-        let hotspots = Vec::new();
+        // Populate severity breakdown
+        defect_summary
+            .by_severity
+            .insert("high".to_string(), project_analysis.high_risk_files.len());
+        defect_summary.by_severity.insert(
+            "medium".to_string(),
+            project_analysis.medium_risk_files.len(),
+        );
+        defect_summary.by_severity.insert(
+            "low".to_string(),
+            project_analysis.total_files
+                - project_analysis.high_risk_files.len()
+                - project_analysis.medium_risk_files.len(),
+        );
 
-        // Count defects from dead code analysis
+        // Count defects by type from specific analyses
         if let Some(ref dead_code) = analyses.dead_code_results {
-            defect_summary.total_defects += dead_code.summary.dead_functions;
             defect_summary
                 .by_type
                 .insert("dead_code".to_string(), dead_code.summary.dead_functions);
         }
 
-        // Count defects from SATD analysis
         if let Some(ref satd) = analyses.satd_results {
-            defect_summary.total_defects += satd.items.len();
             defect_summary
                 .by_type
                 .insert("technical_debt".to_string(), satd.items.len());
         }
 
-        // Generate hotspots (simplified implementation)
-        // TODO: Implement sophisticated defect correlation
+        // Calculate defect density (defects per 1000 lines of code)
+        let total_loc: usize = file_metrics_map.values().map(|m| m.lines_of_code).sum();
+        defect_summary.defect_density = if total_loc > 0 {
+            (defect_summary.total_defects as f64 / total_loc as f64) * 1000.0
+        } else {
+            0.0
+        };
 
-        Ok((defect_summary, hotspots))
+        Ok(defect_summary)
+    }
+
+    /// Generate defect hotspots from high-risk files
+    fn generate_defect_hotspots(
+        &self,
+        project_analysis: &ProjectDefectAnalysis,
+        analyses: &ParallelAnalysisResults,
+        file_metrics_map: &std::collections::HashMap<String, FileMetrics>,
+    ) -> anyhow::Result<Vec<DefectHotspot>> {
+        let mut hotspots = Vec::new();
+
+        for (file_path, defect_score) in project_analysis.get_top_risk_files(20) {
+            // Create contributing factors
+            let contributing_factors = self.create_contributing_factors(
+                file_path,
+                defect_score,
+                analyses,
+                file_metrics_map,
+            )?;
+
+            // Calculate refactoring effort and priority
+            let (estimated_hours, priority, impact) =
+                self.calculate_refactoring_estimates(defect_score);
+
+            hotspots.push(DefectHotspot {
+                location: FileLocation {
+                    file: std::path::PathBuf::from(file_path),
+                    line: 1, // Would need more sophisticated line-level analysis
+                    column: 1,
+                },
+                composite_score: defect_score.probability,
+                contributing_factors,
+                refactoring_effort: RefactoringEstimate {
+                    estimated_hours,
+                    priority,
+                    impact,
+                    suggested_actions: defect_score.recommendations.clone(),
+                },
+            });
+        }
+
+        // Sort hotspots by composite score (highest risk first)
+        hotspots.sort_by(|a, b| b.composite_score.partial_cmp(&a.composite_score).unwrap());
+
+        Ok(hotspots)
+    }
+
+    /// Create contributing factors for a defect hotspot
+    fn create_contributing_factors(
+        &self,
+        file_path: &str,
+        defect_score: &crate::services::defect_probability::DefectScore,
+        analyses: &ParallelAnalysisResults,
+        file_metrics_map: &std::collections::HashMap<String, FileMetrics>,
+    ) -> anyhow::Result<Vec<DefectFactor>> {
+        let mut contributing_factors = Vec::new();
+
+        for (factor_name, contribution) in &defect_score.contributing_factors {
+            match factor_name.as_str() {
+                "complexity" => {
+                    if let Some(file_metrics) = file_metrics_map.get(file_path) {
+                        contributing_factors.push(DefectFactor::Complexity {
+                            cyclomatic: file_metrics.cyclomatic_complexity,
+                            cognitive: file_metrics.cognitive_complexity,
+                            violations: defect_score.recommendations.clone(),
+                        });
+                    }
+                }
+                "churn" => {
+                    if let Some(ref churn_analysis) = analyses.churn_analysis {
+                        if let Some(churn_file) = churn_analysis.files.iter().find(|f| {
+                            f.relative_path == file_path || f.relative_path.ends_with(file_path)
+                        }) {
+                            contributing_factors.push(DefectFactor::ChurnRisk {
+                                commits: churn_file.commit_count as u32,
+                                authors: churn_file.unique_authors.len() as u32,
+                                defect_correlation: *contribution,
+                            });
+                        }
+                    }
+                }
+                "dead_code" => {
+                    contributing_factors.push(DefectFactor::DeadCode {
+                        confidence: ConfidenceLevel::Medium,
+                        reason: "Detected through static analysis".to_string(),
+                    });
+                }
+                _ => {}
+            }
+        }
+
+        Ok(contributing_factors)
+    }
+
+    /// Calculate refactoring effort estimates
+    fn calculate_refactoring_estimates(
+        &self,
+        defect_score: &crate::services::defect_probability::DefectScore,
+    ) -> (f32, Priority, Impact) {
+        let estimated_hours = match defect_score.risk_level {
+            crate::services::defect_probability::RiskLevel::High => defect_score.probability * 8.0,
+            crate::services::defect_probability::RiskLevel::Medium => {
+                defect_score.probability * 4.0
+            }
+            crate::services::defect_probability::RiskLevel::Low => defect_score.probability * 2.0,
+        };
+
+        let priority = match defect_score.risk_level {
+            crate::services::defect_probability::RiskLevel::High => Priority::High,
+            crate::services::defect_probability::RiskLevel::Medium => Priority::Medium,
+            crate::services::defect_probability::RiskLevel::Low => Priority::Low,
+        };
+
+        let impact = if defect_score.probability > 0.8 {
+            Impact::High
+        } else if defect_score.probability > 0.5 {
+            Impact::Medium
+        } else {
+            Impact::Low
+        };
+
+        (estimated_hours, priority, impact)
     }
 
     async fn calculate_quality_scores(
@@ -1537,15 +2435,121 @@ enum AnalysisResult {
     DeadCode(anyhow::Result<crate::models::dead_code::DeadCodeRankingResult>),
     #[allow(dead_code)] // Will be used when SATD analysis is re-enabled
     Satd(anyhow::Result<SATDAnalysisResult>),
+    Dag(anyhow::Result<DependencyGraph>),
 }
 
 // Analysis helper functions
 
 async fn analyze_ast_contexts(
-    _project_path: &std::path::Path,
+    project_path: &std::path::Path,
 ) -> anyhow::Result<Vec<EnhancedFileContext>> {
-    // TODO: Implement AST analysis with enhancement
-    Ok(Vec::new())
+    use crate::services::context::analyze_rust_file;
+    use walkdir::WalkDir;
+
+    let mut enhanced_contexts = Vec::new();
+
+    // Analyze all Rust files in the project
+    for entry in WalkDir::new(project_path)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+
+        // Skip non-Rust files and target directory
+        if !path.is_file() || path.extension().and_then(|s| s.to_str()) != Some("rs") {
+            continue;
+        }
+
+        if path.to_string_lossy().contains("/target/") {
+            continue;
+        }
+
+        // Analyze the file
+        match analyze_rust_file(path).await {
+            Ok(file_context) => {
+                enhanced_contexts.push(EnhancedFileContext {
+                    base: file_context,
+                    complexity_metrics: None, // Will be filled by complexity analysis
+                    churn_metrics: None,      // Will be filled by churn analysis
+                    defects: DefectAnnotations {
+                        dead_code: None,
+                        technical_debt: Vec::new(),
+                        complexity_violations: Vec::new(),
+                        defect_probability: 0.0,
+                    },
+                    symbol_id: format!("rust::{}", path.to_string_lossy()),
+                });
+            }
+            Err(e) => {
+                debug!("Failed to analyze Rust file {:?}: {}", path, e);
+            }
+        }
+    }
+
+    // Also analyze TypeScript and Python files
+    for entry in WalkDir::new(project_path)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+
+        if !path.is_file() {
+            continue;
+        }
+
+        let extension = path.extension().and_then(|s| s.to_str());
+        match extension {
+            Some("ts") | Some("js") | Some("tsx") | Some("jsx") => {
+                if let Ok(file_context) = analyze_typescript_file(path).await {
+                    enhanced_contexts.push(EnhancedFileContext {
+                        base: file_context,
+                        complexity_metrics: None,
+                        churn_metrics: None,
+                        defects: DefectAnnotations {
+                            dead_code: None,
+                            technical_debt: Vec::new(),
+                            complexity_violations: Vec::new(),
+                            defect_probability: 0.0,
+                        },
+                        symbol_id: format!("typescript::{}", path.to_string_lossy()),
+                    });
+                }
+            }
+            Some("py") => {
+                if let Ok(file_context) = analyze_python_file(path).await {
+                    enhanced_contexts.push(EnhancedFileContext {
+                        base: file_context,
+                        complexity_metrics: None,
+                        churn_metrics: None,
+                        defects: DefectAnnotations {
+                            dead_code: None,
+                            technical_debt: Vec::new(),
+                            complexity_violations: Vec::new(),
+                            defect_probability: 0.0,
+                        },
+                        symbol_id: format!("python::{}", path.to_string_lossy()),
+                    });
+                }
+            }
+            _ => continue,
+        }
+    }
+
+    Ok(enhanced_contexts)
+}
+
+async fn analyze_typescript_file(path: &std::path::Path) -> anyhow::Result<FileContext> {
+    ast_typescript::analyze_typescript_file(path)
+        .await
+        .map_err(|e| anyhow::anyhow!("TypeScript analysis failed: {}", e))
+}
+
+async fn analyze_python_file(path: &std::path::Path) -> anyhow::Result<FileContext> {
+    ast_python::analyze_python_file(path)
+        .await
+        .map_err(|e| anyhow::anyhow!("Python analysis failed: {}", e))
 }
 
 async fn analyze_complexity(project_path: &std::path::Path) -> anyhow::Result<ComplexityReport> {
@@ -1629,4 +2633,47 @@ async fn analyze_satd(project_path: &std::path::Path) -> anyhow::Result<SATDAnal
         .analyze_project(project_path, false)
         .await
         .map_err(|e| anyhow::anyhow!("SATD analysis failed: {}", e))
+}
+
+async fn analyze_dag(
+    project_path: &std::path::Path,
+    dag_type: DagType,
+) -> anyhow::Result<DependencyGraph> {
+    use crate::services::dag_builder::DagBuilder;
+
+    match dag_type {
+        DagType::CallGraph => {
+            // Use existing context analysis and filter for call relationships
+            let context = crate::services::context::analyze_project(project_path, "rust")
+                .await
+                .map_err(|e| anyhow::anyhow!("Context analysis failed: {}", e))?;
+            let graph = DagBuilder::build_from_project(&context);
+            Ok(crate::services::dag_builder::filter_call_edges(graph))
+        }
+        DagType::ImportGraph => {
+            // Use existing context analysis and filter for import relationships
+            let context = crate::services::context::analyze_project(project_path, "rust")
+                .await
+                .map_err(|e| anyhow::anyhow!("Context analysis failed: {}", e))?;
+            let graph = DagBuilder::build_from_project(&context);
+            Ok(crate::services::dag_builder::filter_import_edges(graph))
+        }
+        DagType::Inheritance => {
+            // Use existing context analysis and filter for inheritance relationships
+            let context = crate::services::context::analyze_project(project_path, "rust")
+                .await
+                .map_err(|e| anyhow::anyhow!("Context analysis failed: {}", e))?;
+            let graph = DagBuilder::build_from_project(&context);
+            Ok(crate::services::dag_builder::filter_inheritance_edges(
+                graph,
+            ))
+        }
+        DagType::FullDependency => {
+            // Use existing context analysis for full dependency graph
+            let context = crate::services::context::analyze_project(project_path, "rust")
+                .await
+                .map_err(|e| anyhow::anyhow!("Context analysis failed: {}", e))?;
+            Ok(DagBuilder::build_from_project(&context))
+        }
+    }
 }
