@@ -1,6 +1,6 @@
 # PAIML MCP Agent Toolkit
 
-> **Hybrid Symbolic AI Enhancement for Deterministic Agent Augmentation**
+> **Zero-Configuration AI Context Generation with Symbolic Reasoning**
 
 [![CI/CD](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml)
 [![Tests](https://img.shields.io/badge/tests-passing-green)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
@@ -10,7 +10,7 @@
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The PAIML MCP Agent Toolkit is a production-ready unified binary created by [Pragmatic AI Labs](https://paiml.com) that transforms probabilistic language models into **hybrid neuro-symbolic agents** through deterministic code analysis and project scaffolding. By implementing the Model Context Protocol (MCP), this toolkit provides symbolic reasoning capabilities that enhance AI agents like Claude with guaranteed deterministic outputs, creating a true hybrid AI system where neural flexibility meets symbolic precision.
+The PAIML MCP Agent Toolkit is a **zero-configuration AI context generation system** created by [Pragmatic AI Labs](https://paiml.com) that instantly analyzes any codebase with a single command: `paiml-mcp-agent-toolkit context`. By combining intelligent language auto-detection with symbolic reasoning, this toolkit transforms probabilistic language models into **hybrid neuro-symbolic agents** with guaranteed deterministic outputs. Through the Model Context Protocol (MCP), it provides AI agents like Claude with comprehensive project understanding in seconds, creating the perfect bridge between neural flexibility and symbolic precision.
 
 ![PAIML MCP Agent Toolkit Demo](assets/demo.gif)
 
@@ -113,6 +113,36 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
   -H "Content-Type: application/json" \
   -d '{"project_path":"./","include":["ast","complexity","churn"]}'
 ```
+
+## 🎯 The Killer Feature: Single-Shot Context Generation
+
+**One command. Any codebase. Complete understanding.**
+
+```bash
+# The magic happens here - zero configuration required!
+paiml-mcp-agent-toolkit context
+
+# Output in seconds:
+# 🔍 Auto-detecting project language...
+# ✅ Detected: rust (confidence: 85.2%)
+# 📊 Analyzing 47 files (15,239 functions)
+# ⚡ Generated 2.4MB context in 3.2s
+```
+
+**What makes this special:**
+- **🧠 Intelligent Auto-Detection**: Automatically identifies your project's primary language using build files, extensions, and content analysis
+- **⚡ Lightning Fast**: Sub-second startup, complete analysis in under 10 seconds for most projects
+- **🎯 Smart Context Pruning**: Uses PageRank-style algorithms to identify the most important code
+- **📊 Multi-Format Output**: Markdown for humans, JSON for tools, optimized formatting for LLMs
+- **🔍 Zero Configuration**: Works on any project without setup - just run and go
+
+**Perfect for:**
+- **AI Agent Enhancement**: Give Claude/GPT perfect project understanding instantly
+- **Code Reviews**: Generate comprehensive project context for reviewers
+- **Documentation**: Auto-generate technical overviews with actual code metrics
+- **Onboarding**: Help new team members understand codebases quickly
+
+**Why this matters:** Traditional context generation requires manual configuration, tool-specific setups, and deep knowledge of the codebase. Our single-shot approach combines symbolic AI with intelligent detection to provide comprehensive project understanding in one command.
 
 ## ✨ Key Features
 

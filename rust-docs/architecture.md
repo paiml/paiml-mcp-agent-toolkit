@@ -42,11 +42,13 @@ impl Server {
 }
 ```
 
-## Single-Shot Context Generation with Auto-Detection ✨ **NEW**
+## Single-Shot Context Generation: The Killer Feature ✨ **NEW**
 
-### Zero-Configuration Architecture
+### Revolutionary Zero-Configuration Architecture
 
-The v0.20.0 release introduces a revolutionary single-shot context generation system with intelligent language auto-detection, eliminating the need for manual toolchain specification while maintaining full backward compatibility.
+**One command. Any codebase. Complete understanding.**
+
+The single-shot context generation system represents a breakthrough in AI-assisted code analysis by completely eliminating configuration barriers. This killer feature instantly analyzes any codebase with `paiml-mcp-agent-toolkit context`, combining intelligent language auto-detection with symbolic reasoning to provide comprehensive project understanding in seconds.
 
 ```rust
 // Progressive Enhancement Pipeline
