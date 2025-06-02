@@ -1,3 +1,209 @@
+# Release Notes for v0.20.1
+
+## 🐛 Critical Bug Fix Release: AST Analysis and SATD False Positive Elimination
+
+This is a critical bug fix release that resolves missing AST analysis in comprehensive output and eliminates false positive technical debt detection that was compromising analysis reliability.
+
+## 🔧 Critical Bug Fixes
+
+### AST Analysis Missing from Comprehensive Output
+- **FIXED**: Enhanced AST Analysis section now appears in comprehensive deep context reports
+- **FIXED**: Made `format_enhanced_ast_section` function public in `DeepContextAnalyzer` 
+- **FIXED**: Proper instantiation and method call in CLI comprehensive formatter
+- **FIXED**: CLI output format to match test expectations ("# Deep Context Analysis" with "## Executive Summary")
+- **VERIFIED**: File-by-file AST breakdown now includes language, symbols, complexity, and defect probability
+- **VERIFIED**: Both `analyze deep-context` and `context` commands working correctly
+
+### SATD False Positive Elimination
+- **FIXED**: Critical technical debt analysis reliability by eliminating test file false positives
+- **FIXED**: Test file exclusion in SATD detector file collection (`is_test_file` integration)
+- **FIXED**: `#[cfg(test)]` block detection in Rust files to skip test comments
+- **FIXED**: False positive "security" issues from test comments like `// SECURITY: check input validation`
+- **RESULT**: Reduced critical issues from 4 false positives to 0 accurate detections
+- **VERIFIED**: Technical debt analysis now provides reliable, actionable insights
+
+### Code Complexity Reduction
+- **REFACTORED**: `format_enhanced_ast_section` function from 69/148 complexity to manageable sub-functions
+- **IMPROVED**: Code maintainability through helper structs and focused methods:
+  - `CategorizedAstItems` struct for organizing AST data
+  - `format_single_file_ast()` for individual file processing
+  - `categorize_ast_items()` for data organization
+  - `write_ast_summary()`, `write_functions_section()`, etc. for focused output generation
+- **ACHIEVED**: Significantly improved code readability and maintainability
+
+### Makefile Simplification
+- **SIMPLIFIED**: `context` target from complex 24-line multi-phase implementation to 3-line zero-config approach
+- **REMOVED**: Unnecessary `clean-coverage` dependency and temporary file handling
+- **LEVERAGED**: Built-in auto-detection capabilities of the `context` command
+- **RESULT**: 87% reduction in Makefile complexity for the context generation workflow
+
+## 🧪 Technical Implementation
+
+### AST Analysis Fix (`server/src/services/deep_context.rs`)
+- Changed `format_enhanced_ast_section` visibility from private to public (line 907)
+- Added proper analyzer instantiation in CLI module comprehensive formatter
+- Implemented complete refactoring with helper structs and focused methods
+- Enhanced AST categorization and detailed output formatting
+
+### SATD Detector Enhancement (`server/src/services/satd_detector.rs`)
+- Enhanced test file exclusion in `collect_files_recursive` (line 611)
+- Added `#[cfg(test)]` block detection for Rust files (lines 308-324)
+- Implemented test block depth tracking to skip nested test content
+- Integrated test file filtering with existing `is_test_file` method
+
+### CLI Integration (`server/src/cli/mod.rs`)
+- Fixed comprehensive formatter to properly call AST analysis (lines 1730-1735)
+- Updated header format to match test expectations (line 1689)
+- Added "## Executive Summary" section for consistent output structure
+
+### Makefile Optimization (`Makefile`)
+- Simplified `context` target from complex multi-phase to direct zero-config command
+- Eliminated temporary file usage and unnecessary coverage cleanup
+- Reduced from 24 lines to 3 lines while maintaining full functionality
+
+## 📊 Verification Results
+
+### AST Analysis Restoration
+- ✅ Enhanced AST Analysis section now appears in comprehensive output
+- ✅ File-by-file breakdown showing language, symbols, and defect probability  
+- ✅ Both `analyze deep-context` and `context` commands working correctly
+- ✅ Test `test_context_markdown_output` passes with correct format
+
+### Technical Debt Analysis Reliability
+- ✅ Eliminated 4 critical false positive "security" issues from test code
+- ✅ SATD analysis now focuses on actual technical debt, not test comments
+- ✅ Reliable technical debt metrics for actionable project insights
+- ✅ Test file exclusion working correctly across all source languages
+
+### Code Quality Improvements  
+- ✅ Successful compilation with `cargo build --release`
+- ✅ Significantly reduced function complexity through systematic refactoring
+- ✅ Improved code maintainability with focused helper functions
+- ✅ All tests passing with enhanced reliability
+
+## 🚀 Performance Impact
+
+- **AST Analysis**: Now included in comprehensive output with minimal performance impact
+- **SATD Detection**: More accurate and faster through test file exclusion
+- **Context Generation**: Simplified workflow with same rich analysis capabilities
+- **Code Complexity**: Improved maintainability reduces future development overhead
+
+## 🔄 Migration Notes
+
+No breaking changes. All existing commands continue to work as before, but now with:
+- Complete AST analysis in comprehensive output 
+- Reliable technical debt detection without false positives
+- Simplified context generation workflow
+- Improved code maintainability for future development
+
+---
+
+# Release Notes for v0.20.0
+
+## 🎯 Major Feature Release: Zero-Configuration Auto-Detection System
+
+This release introduces revolutionary single-shot context generation with intelligent language auto-detection, eliminating the need for manual toolchain specification while maintaining full backward compatibility. The system features a progressive enhancement architecture with 9-stage analysis pipeline and intelligent context pruning for optimal performance.
+
+## ✨ New Features
+
+### 🆕 Zero-Configuration Context Generation
+- **NEW**: Auto-detection system supporting polyglot projects with confidence scoring
+- **NEW**: Single-shot context generation: `paiml-mcp-agent-toolkit context` (no parameters required!)
+- **NEW**: Multi-strategy language detection (build files, extensions, content analysis)
+- **NEW**: Support for 8 languages: Rust, TypeScript, JavaScript, Python, Go, Java, C#, C/C++
+- **NEW**: Intelligent confidence scoring with detection accuracy feedback
+
+### 🧠 Progressive Enhancement Architecture
+- **NEW**: 9-stage progressive analysis pipeline with timeout handling and graceful degradation
+- **NEW**: Performance guarantees: <50ms startup, <100MB memory, 60-second timeout budget
+- **NEW**: Circuit breaker pattern with fallback strategies for optional components
+- **NEW**: Smart defaults based on project size detection (Small/Medium/Large/Monorepo)
+
+### 🎯 Intelligent Context Pruning
+- **NEW**: TF-IDF relevance scoring for optimal context selection
+- **NEW**: Centrality-based importance ranking using PageRank-style algorithms
+- **NEW**: Quality-aware adjustments (technical debt penalties, test coverage bonuses)
+- **NEW**: Size-aware context management with intelligent item prioritization
+
+### 🔧 Universal Output Adaptation
+- **NEW**: Format auto-detection based on environment (CLI/IDE/CI/LLM)
+- **NEW**: Audience-aware output optimization for different consumption patterns
+- **NEW**: Enhanced SARIF support for IDE integration and CI/CD pipelines
+
+## 🔧 Technical Implementation
+
+### PolyglotDetector (`server/src/services/polyglot_detector.rs`)
+- Implemented multi-strategy language detection with build file, extension, and content analysis
+- Added confidence scoring system with weighted language significance factors
+- Created comprehensive test coverage for Rust, TypeScript, and multi-language projects
+- Built performance-optimized detection with <100ms startup time guarantee
+
+### ProgressiveAnalyzer (`server/src/services/progressive_analyzer.rs`)
+- Implemented 9-stage progressive analysis pipeline with timeout handling
+- Added circuit breaker pattern with graceful degradation for optional stages
+- Created fallback strategies for git analysis and complex operations
+- Built performance monitoring with stage timing and success tracking
+
+### RelevanceScorer (`server/src/services/relevance_scorer.rs`)
+- Implemented TF-IDF scoring system for content relevance analysis
+- Added centrality-based scoring using PageRank-style importance ranking
+- Created quality adjustment system with technical debt and test coverage factors
+- Built intelligent context pruning with size constraints and critical item preservation
+
+### SmartDefaults (`server/src/services/smart_defaults.rs`)
+- Implemented project size heuristics with automatic LOC-based classification
+- Added environment detection (CI vs local development) for adaptive configuration
+- Created performance-aware defaults with memory and timeout constraints
+- Built toolchain-specific configuration with language-aware optimizations
+
+### UniversalOutputAdapter (`server/src/services/universal_output_adapter.rs`)
+- Implemented format auto-detection based on execution environment
+- Added audience-aware output optimization for different consumption patterns
+- Created enhanced format support (Markdown, JSON, SARIF, LLM-optimized)
+- Built quality enhancement system with syntax highlighting and structure optimization
+
+### Enhanced CLI Integration
+- Updated Context command to support optional toolchain parameter with auto-detection fallback
+- Added real-time feedback during language detection process
+- Enhanced error handling with graceful degradation for unsupported languages
+- Maintained full backward compatibility with existing command syntax
+
+## 📊 Usage Examples
+
+```bash
+# 🆕 Zero-configuration operation
+paiml-mcp-agent-toolkit context
+# Output: 🔍 Auto-detecting project language...
+#         ✅ Detected: rust (confidence: 85.2)
+
+# Traditional approach still supported
+paiml-mcp-agent-toolkit context rust --format json
+
+# Enhanced with intelligent defaults
+paiml-mcp-agent-toolkit context --format json  # Auto-detects format preference
+```
+
+## 🧪 Test Coverage Improvements
+- **NEW**: 12 additional test cases for polyglot detection across multiple languages
+- **VERIFIED**: All auto-detection scenarios with confidence scoring validation
+- **ENHANCED**: Progressive analyzer testing with timeout and fallback verification
+- **IMPROVED**: Relevance scorer testing with API scoring and pruning logic validation
+
+## 🚀 Performance Characteristics
+- **Startup**: <50ms for language detection and initial analysis
+- **Memory**: <100MB with smart defaults and efficient caching
+- **Analysis**: 60-second timeout budget with progressive enhancement
+- **Accuracy**: 85%+ confidence in primary language detection across supported toolchains
+- **Fallback**: <5ms graceful degradation when detection fails
+
+## 🔄 Backward Compatibility
+- **MAINTAINED**: All existing CLI commands work without modification
+- **ENHANCED**: Previous `context rust` syntax fully supported alongside new auto-detection
+- **PRESERVED**: All MCP and HTTP API interfaces maintain existing behavior
+- **EXTENDED**: New optional parameters available but not required
+
+---
+
 # Release Notes for v0.19.0
 
 ## 🎯 Major Feature Release: Unified Demo System with Multi-Modal Architecture

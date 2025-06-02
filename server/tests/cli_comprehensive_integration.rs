@@ -268,7 +268,7 @@ fn helper() -> i32 {
 
     let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
     cmd.current_dir(&temp_dir)
-        .args(["context", "rust", "--format", "json"])
+        .args(["context", "--toolchain", "rust", "--format", "json"])
         .assert()
         .success();
 }
@@ -291,11 +291,17 @@ class Calculator:
 
     let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
     cmd.current_dir(&temp_dir)
-        .args(["context", "python-uv", "--format", "markdown"])
+        .args([
+            "context",
+            "--toolchain",
+            "python-uv",
+            "--format",
+            "markdown",
+        ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("# Project Context"))
-        .stdout(predicate::str::contains("## Summary"));
+        .stdout(predicate::str::contains("# Deep Context Analysis"))
+        .stdout(predicate::str::contains("## Executive Summary"));
 }
 
 #[test]

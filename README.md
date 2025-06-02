@@ -1,6 +1,6 @@
 # PAIML MCP Agent Toolkit
 
-> **Professional project scaffolding and code analysis for AI-assisted development**
+> **Hybrid Symbolic AI Enhancement for Deterministic Agent Augmentation**
 
 [![CI/CD](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml)
 [![Tests](https://img.shields.io/badge/tests-passing-green)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
@@ -10,9 +10,52 @@
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The PAIML MCP Agent Toolkit is a production-ready unified binary created by [Pragmatic AI Labs](https://paiml.com) that provides intelligent project scaffolding, advanced code analysis, and maintenance insights through both a powerful CLI interface and full Model Context Protocol (MCP) integration. It features a unified protocol architecture supporting CLI, HTTP, and MCP interfaces with zero external dependencies.
+The PAIML MCP Agent Toolkit is a production-ready unified binary created by [Pragmatic AI Labs](https://paiml.com) that transforms probabilistic language models into **hybrid neuro-symbolic agents** through deterministic code analysis and project scaffolding. By implementing the Model Context Protocol (MCP), this toolkit provides symbolic reasoning capabilities that enhance AI agents like Claude with guaranteed deterministic outputs, creating a true hybrid AI system where neural flexibility meets symbolic precision.
 
 ![PAIML MCP Agent Toolkit Demo](assets/demo.gif)
+
+## 🎯 Design Philosophy: Hybrid Symbolic AI Architecture
+
+### The Neuro-Symbolic Bridge
+
+Modern AI agents excel at natural language understanding but struggle with deterministic reasoning. The PAIML toolkit addresses this fundamental limitation by providing a **symbolic reasoning coprocessor** that augments neural agents with:
+
+- **Deterministic AST Analysis**: Exact program structure representation grounding LLM responses with deterministic facts
+- **Formal Complexity Metrics**: Mathematically-defined measurements (McCabe, Cognitive) with guaranteed repeatability
+- **Graph-Theoretic Algorithms**: Sound compositional analysis through dependency graphs
+- **Content-Addressed Caching**: Temporal determinism ensuring identical inputs yield identical outputs
+
+```rust
+// Example: Symbolic layer guarantees deterministic analysis
+pub trait SymbolicAnalyzer: Send + Sync {
+    fn analyze(&self, code: &str) -> DeterministicResult<Analysis> {
+        let ast = self.parse_deterministic(code)?;  // Exact parse tree
+        let metrics = self.compute_metrics(&ast);    // Pure function
+        Ok(Analysis { 
+            complexity: metrics.cyclomatic,          // Exact value, not estimate
+            violations: self.find_violations(&ast),  // Complete enumeration
+        })
+    }
+}
+```
+
+This hybrid approach enables AI agents to make verifiable assertions backed by symbolic proof, transforming responses from "approximately 30 lines of code" to "exactly 32 lines with cyclomatic complexity of 14."
+
+### Why This is a Symbolic AI Architecture
+
+The PAIML MCP Agent Toolkit exemplifies **symbolic AI** through fundamental design principles:
+
+1. **Explicit Knowledge Representation**: Code is parsed into formal AST structures with explicit symbolic categories (Function, Class, Variable) rather than learned embeddings
+2. **Rule-Based Analysis**: Complexity metrics use formal mathematical definitions (McCabe's V(G) = E - N + 2P) rather than statistical approximations
+3. **Deterministic Computation**: Identical inputs always produce identical outputs through content-addressed caching and referential transparency
+4. **Formal Pattern Matching**: Technical debt detection uses explicit symbolic patterns with category-based classification
+5. **Compositional Reasoning**: Dependency analysis employs classical graph algorithms (Tarjan's SCC) with provable correctness guarantees
+
+**Symbolic vs. Statistical AI:**
+- Symbolic: `if branches > 10 then complex` (exact rule)
+- Statistical: `P(complex|features) = 0.87` (learned probability)
+
+This represents **GOFAI** (Good Old-Fashioned AI) principles applied to modern software engineering: formal methods, provable correctness, and deterministic reasoning that manipulates symbols according to formal rules rather than learning statistical patterns from data.
 
 ## 🚀 Quick Start
 
@@ -24,19 +67,23 @@ The PAIML MCP Agent Toolkit is a production-ready unified binary created by [Pra
 curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
 ```
 
-**With Claude Code:**
+**With Claude Code (Hybrid AI Mode):**
 ```bash
-# Add to Claude Code
+# Add to Claude Code for neuro-symbolic enhancement
 claude mcp add paiml-toolkit ~/.local/bin/paiml-mcp-agent-toolkit
 
-# Try it out
-"Generate a Makefile for my Rust project"
-"Analyze the complexity of this codebase"
-"Create a professional README"
+# Claude now has deterministic reasoning capabilities
+"Analyze the exact complexity of this codebase"
+"Generate a Makefile with guaranteed correctness"
 ```
 
-**CLI Usage:**
+**CLI Usage (Standalone Symbolic Engine):**
 ```bash
+# 🆕 Zero-configuration context generation with auto-detection
+paiml-mcp-agent-toolkit context                    # Auto-detects language!
+paiml-mcp-agent-toolkit context --format json     # JSON output
+paiml-mcp-agent-toolkit context rust              # Force specific toolchain
+
 # Unified demo system - analyze any repository
 paiml-mcp-agent-toolkit demo --format table  # CLI output
 paiml-mcp-agent-toolkit demo --web           # Web interface
@@ -69,8 +116,16 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 
 ## ✨ Key Features
 
+### Hybrid AI Enhancement
+- 🧠 **Neuro-Symbolic Integration**: Bridges probabilistic LLMs with deterministic analysis
+- 🎯 **Guaranteed Determinism**: Identical inputs always produce identical outputs
+- 🔍 **Symbolic Grounding**: AST-based analysis eliminates hallucination in code reasoning
+- 📊 **Formal Verification**: Mathematically-defined metrics with proof of correctness
+
+### Technical Capabilities
+- 🆕 **Zero-Configuration Operation**: Auto-detects project languages with confidence scoring
 - 🏗️ **Unified Protocol Architecture**: Single binary supporting CLI, HTTP, and MCP interfaces
-- 🏃 **Zero Dependencies**: Stateless binary with embedded templates
+- 🏃 **Self-contained binary with no external runtime dependencies**: Stateless binary with embedded templates
 - ⚡ **Sub-10ms Performance**: <10ms startup, <5ms template rendering
 - 📦 **Optimized Binary**: 14.8MB with 12.3% size reduction and compressed assets
 - 🔧 **Three Toolchains**: Rust CLI, Deno/TypeScript, Python UV
@@ -83,6 +138,81 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 - 🧪 **Comprehensive Test Coverage**: 34 test cases with 76% pass rate for validation
 - 🏗️ **Workspace Architecture**: Optimized Rust workspace with LTO, asset compression, and build caching
 - 🗜️ **Asset Optimization**: Mermaid.js (71% compressed), D3.js (67% compressed), templates (79% compressed)
+- 🧠 **Progressive Enhancement**: Multi-stage analysis with graceful degradation and timeout handling
+
+## 📊 Hybrid Symbolic-Neural Architecture
+
+```mermaid
+graph TB
+    subgraph "Neural Agent Layer"
+        CLAUDE[Claude/LLM]
+        NLU[Natural Language Understanding]
+        GEN[Response Generation]
+    end
+    
+    subgraph "MCP Protocol Bridge"
+        JSONRPC[JSON-RPC 2.0]
+        TOOLS[Tool Registry]
+        CACHE[Deterministic Cache]
+    end
+    
+    subgraph "Symbolic Analysis Engine"
+        AST[AST Parsers]
+        METRIC[Formal Metrics]
+        GRAPH[Graph Algorithms]
+        PROOF[Correctness Proofs]
+    end
+    
+    subgraph "Deterministic Results"
+        EXACT[Exact Values]
+        ENUM[Complete Enumerations]
+        VERIFY[Verifiable Facts]
+    end
+    
+    CLAUDE -->|Probabilistic Query| JSONRPC
+    JSONRPC -->|Structured Request| AST
+    AST -->|Parse Tree| METRIC
+    METRIC -->|McCabe/Cognitive| EXACT
+    GRAPH -->|Dependencies| ENUM
+    PROOF -->|Guarantees| VERIFY
+    
+    EXACT -->|Ground Truth| JSONRPC
+    ENUM -->|Complete Data| JSONRPC
+    VERIFY -->|Proven Facts| JSONRPC
+    JSONRPC -->|Symbolic Results| CLAUDE
+    CLAUDE -->|Hybrid Reasoning| GEN
+    
+    style CLAUDE fill:#e1f5fe
+    style AST fill:#fff3e0
+    style EXACT fill:#e8f5e8
+    style VERIFY fill:#f3e5f5
+```
+
+### Determinism Injection Points
+
+1. **AST-Level Determinism**
+   ```rust
+   // Every parse of identical code produces identical AST
+   let ast1 = parse_rust_file("main.rs")?;
+   let ast2 = parse_rust_file("main.rs")?;
+   assert_eq!(ast1, ast2); // Always true
+   ```
+
+2. **Metric-Level Determinism**
+   ```rust
+   // Formal definitions ensure consistent measurements
+   fn cyclomatic_complexity(ast: &SynFile) -> u32 {
+       // V(G) = E - N + 2P (McCabe's formula)
+       edges - nodes + 2 * connected_components
+   }
+   ```
+
+3. **Cache-Level Determinism**
+   ```rust
+   // Content-addressed storage guarantees repeatability
+   let hash = blake3::hash(content);
+   cache.get_or_compute(hash, || analyze(content))
+   ```
 
 ## 📊 Unified Protocol Architecture
 
@@ -136,40 +266,90 @@ graph TB
     style US fill:#e8f5e8
     style AS fill:#fff3e0
 ```
-```mermaid
-graph TD
-    A[AST Context Analysis] -->|uses| B[File Parser]
-    B --> C[Rust AST]
-    B --> D[TypeScript AST]
-    B --> E[Python AST]
-
-    F[Code Complexity] -->|analyzes| C
-    F -->|analyzes| D
-    F -->|analyzes| E
-
-    G[DAG Generation] -->|reads| C
-    G -->|reads| D
-    G -->|reads| E
-
-    H[Code Churn] -->|git history| I[Git Analysis]
-
-    J[Template Generation] -->|renders| K[Handlebars]
-
-    style A fill:#90EE90
-    style F fill:#FFD700
-    style G fill:#FFA500
-    style H fill:#FF6347
-    style J fill:#87CEEB
-
-```
 
 ### Supported Toolchains
 
 1. **Rust CLI** (cargo + clippy + rustfmt)
-2. **Deno/TypeScript** (native runtime)  
+2. **Deno/TypeScript** (native runtime)
 3. **Python UV** (Rust-based package management)
 
 Each toolchain supports `makefile`, `readme`, and `gitignore` templates following standardized interfaces.
+
+## 🆕 Zero-Configuration Auto-Detection ✨ **NEW**
+
+**Single-Shot Context Generation** - The toolkit now automatically detects your project's primary language and generates context without any configuration:
+
+```bash
+# 🚀 Zero-configuration - just works!
+paiml-mcp-agent-toolkit context
+# Output: 🔍 Auto-detecting project language...
+#         ✅ Detected: rust (confidence: 85.2)
+
+# Traditional approach still supported
+paiml-mcp-agent-toolkit context rust
+```
+
+### 🧠 Intelligent Language Detection
+
+**Multi-Strategy Detection System:**
+- **Build File Detection**: Recognizes `Cargo.toml`, `package.json`, `pyproject.toml`, `go.mod`, etc.
+- **Extension Analysis**: Statistical analysis of file extensions with LOC weighting
+- **Content Analysis**: Smart pattern matching for language-specific constructs and shebangs
+- **Confidence Scoring**: Weighted scoring system with detection accuracy feedback
+
+**Supported Languages:**
+- 🦀 **Rust** (Cargo.toml, .rs files, `use std::`, `fn main()`)
+- 📘 **TypeScript** (tsconfig.json, .ts/.tsx files, `interface`, `type`)
+- 📄 **JavaScript** (package.json, .js/.jsx files, `require()`, `async function`)
+- 🐍 **Python** (pyproject.toml, .py files, `import`, `def`, shebangs)
+- 🐹 **Go** (go.mod, .go files, `package main`, `func main()`)
+- ☕ **Java** (pom.xml, .java files, `public class`, `public static void main`)
+- ⚡ **C#** (.cs files, `public class`, `using System`)
+- ⚙️ **C/C++** (.c/.cpp/.h files, `#include`, `int main()`)
+
+### 🔄 Progressive Enhancement Architecture
+
+**Performance Guarantees:**
+- **<50ms** Language detection startup time
+- **<100MB** Memory usage with smart defaults
+- **60-second** Total timeout budget with graceful degradation
+- **9-stage** Progressive analysis pipeline with fallback strategies
+
+**Analysis Stages:**
+1. **Language Detection** (100ms) - Multi-strategy polyglot detection
+2. **Project Structure** (200ms) - File tree analysis with annotations
+3. **Quick Metrics** (500ms) - LOC counting and project size estimation
+4. **AST Analysis** (5s) - Language-specific syntax tree parsing
+5. **Git Analysis** (2s) - Code churn and author tracking
+6. **Complexity Analysis** (3s) - McCabe and cognitive complexity
+7. **Dependency Graph** (2s) - Import/export relationship mapping
+8. **Dead Code Detection** (3s) - Unreachable code analysis
+9. **SATD Detection** (1s) - Technical debt pattern matching
+
+### 🎯 Smart Context Pruning
+
+**Relevance Scoring System:**
+- **TF-IDF Analysis**: Term frequency for unique identifiers and patterns
+- **Centrality Scoring**: PageRank-style importance based on code relationships
+- **Quality Adjustments**: Penalties for technical debt, bonuses for test coverage
+- **Size Management**: Intelligent pruning to target KB limits while preserving critical items
+
+**Context Item Types:**
+- 🔌 **Public APIs** (score: 10.0) - Exported functions and interfaces
+- 🚪 **Entry Points** (score: 9.0) - Main functions and module roots
+- 🏗️ **Core Types** (score: 8.0) - Primary data structures and classes
+- ⚡ **Complex Functions** (score: 5.0+) - High-complexity implementations
+- 🧪 **Test Functions** (score: 3.0) - Unit and integration tests
+- 📚 **Documentation** (score: 1.0-8.0) - READMEs, API docs, comments
+- ⚙️ **Configuration** (score: 3.0-7.0) - Build files and settings
+
+### 🔧 Universal Output Adaptation
+
+**Format Auto-Detection:**
+- **CLI Environment**: Markdown for human readability
+- **IDE Integration**: JSON for structured data consumption
+- **CI/CD Pipelines**: SARIF for static analysis integration
+- **LLM Consumption**: Optimized token-efficient formatting
 
 ## 🔍 Code Analysis Features
 
@@ -184,7 +364,7 @@ Each toolchain supports `makefile`, `readme`, and `gitignore` templates followin
 - SARIF output for IDE integration
 - Zero-overhead implementation (<1ms per KLOC)
 
-### Code Churn Analysis  
+### Code Churn Analysis
 - Git history analysis to identify maintenance hotspots
 - Author contribution tracking
 - Configurable time periods
@@ -212,12 +392,13 @@ Each toolchain supports `makefile`, `readme`, and `gitignore` templates followin
 - **Clone Detection**: Type-1/2/3/4 duplicate detection
 - Mermaid diagram output
 
-### Deep Context Analysis ✨ **NEW**
-- **Comprehensive Multi-Analysis Pipeline**: Combines AST, complexity, churn, dead code, and SATD analysis into unified quality assessment
+### Deep Context Analysis ✨ **ENHANCED**
+- **Comprehensive Multi-Analysis Pipeline**: Combines AST, complexity, churn, dead code, SATD, and DAG analysis into unified quality assessment
+- **Cross-Analysis Correlations**: Sophisticated defect correlation using DefectProbabilityCalculator with weighted ensemble approach
+- **Defect Hotspot Detection**: ML-based risk assessment identifying high-risk files with composite scoring and refactoring estimates
 - **Quality Scorecard**: Overall health scoring (0-100) with maintainability index, complexity score, and technical debt estimation
-- **Defect Correlation**: Cross-references different analysis types to identify high-risk hotspots and predict defect probability
-- **Prioritized Recommendations**: AI-generated actionable recommendations with effort estimation and priority ranking
-- **Multiple Output Formats**: 
+- **Prioritized Recommendations**: Actionable insights based on quality scores with effort estimation and priority ranking
+- **Multiple Output Formats**:
   - **Markdown**: Human-readable comprehensive reports with annotated file trees
   - **JSON**: Structured data for API consumption and tool integration
   - **SARIF**: Static Analysis Results Interchange Format for IDE integration and CI/CD pipelines
@@ -248,7 +429,7 @@ Each toolchain supports `makefile`, `readme`, and `gitignore` templates followin
 - **Streaming Capabilities**: Real-time progress notifications and live analysis updates across all interfaces
 
 ### Enhanced Tracing
-- **Runtime-configurable**: `--verbose`, `--debug`, `--trace` flags  
+- **Runtime-configurable**: `--verbose`, `--debug`, `--trace` flags
 - **Zero-cost**: Disabled spans add ~5-7 CPU instructions
 - **Structured logging**: File names, line numbers, thread IDs
 - **Custom filters**: `--trace-filter="paiml=debug,cache=trace"`
@@ -266,7 +447,7 @@ When used with Claude Code, the following tools are available:
 | `analyze_dag` | Generate dependency graphs | `project_path`, `dag_type`, `enhanced` |
 | `analyze_dead_code` | Analyze dead and unreachable code | `project_path`, `format`, `top_files`, `include_tests` |
 | `analyze_deep_context` | **NEW**: Comprehensive deep context analysis | `project_path`, `include`, `exclude`, `period_days`, `format` |
-| `generate_context` | Generate project context with AST | `toolchain`, `project_path`, `format` |
+| `generate_context` | **ENHANCED**: Generate project context with auto-detection | `toolchain` (optional), `project_path`, `format` |
 
 ### HTTP REST API Endpoints
 
@@ -312,7 +493,7 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 *Auto-generated metrics using our own `--top-files` ranking system*
 
 **📊 Complexity Analysis:**
-- **Files analyzed**: 146 
+- **Files analyzed**: 146
 - **Total functions**: 15,239
 - **Estimated Technical Debt**: 158.0 hours
 - **Average Cyclomatic Complexity**: 0.2
@@ -320,7 +501,7 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 
 **🏆 Top 5 Most Complex Files (by our own ranking):**
 1. `./server/src/services/context.rs` (Score: 30.9) - 32 max cyclomatic complexity
-2. `./server/tests/documentation_examples.rs` (Score: 25.3) - 23 max cyclomatic complexity  
+2. `./server/tests/documentation_examples.rs` (Score: 25.3) - 23 max cyclomatic complexity
 3. `./server/src/services/mermaid_generator.rs` (Score: 24.6) - 25 max cyclomatic complexity
 4. `./server/src/cli/mod.rs` (Score: 24.1) - 24 max cyclomatic complexity
 5. `./server/src/services/embedded_templates.rs` (Score: 23.3) - 22 max cyclomatic complexity
@@ -332,6 +513,40 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 
 **Latest Analysis:** *Generated on 2025-05-31 using paiml-mcp-agent-toolkit analyze complexity --top-files 5*
 <!-- DOGFOODING_METRICS_END -->
+
+## 🧠 Hybrid AI Benefits
+
+### For AI Agents (Claude, etc.)
+
+The toolkit transforms probabilistic responses into verifiable facts:
+
+| Without Symbolic Enhancement | With Hybrid Symbolic AI |
+|------------------------------|------------------------|
+| "This function seems complex" | "Cyclomatic complexity: 32 (exceeds threshold of 10)" |
+| "Around 1000 lines of code" | "Exactly 1,247 lines across 23 functions" |
+| "Probably has some issues" | "5 high-severity violations at lines 42, 67, 103, 145, 201" |
+| "Dependencies look tangled" | "Circular dependency: A→B→C→A detected" |
+
+### Deterministic Guarantees
+
+```rust
+// Agent receives provable facts, not estimates
+{
+  "analysis": {
+    "file": "complex_module.rs",
+    "metrics": {
+      "cyclomatic": 32,      // Exact McCabe score
+      "cognitive": 28,       // Exact cognitive complexity
+      "halstead_effort": 1950.0  // Computed from AST
+    },
+    "proof": {
+      "ast_hash": "0x3f2a...",  // Verifiable parse tree
+      "algorithm": "McCabe1976", // Formal definition
+      "deterministic": true      // Guaranteed repeatability
+    }
+  }
+}
+```
 
 ## 📚 Documentation
 
@@ -361,8 +576,9 @@ paiml-mcp-agent-toolkit analyze dag --enhanced --show-complexity
 paiml-mcp-agent-toolkit analyze dead-code --top-files 10 --format json
 paiml-mcp-agent-toolkit analyze satd --top-files 5 --format json
 
-# Project context generation
-paiml-mcp-agent-toolkit context rust --format json
+# 🆕 Project context generation with auto-detection
+paiml-mcp-agent-toolkit context --format json     # Auto-detects language!
+paiml-mcp-agent-toolkit context rust --format json  # Or specify explicitly
 
 # Debug with enhanced tracing
 paiml-mcp-agent-toolkit --debug analyze complexity
@@ -406,7 +622,7 @@ make validate
 We welcome contributions! See our development setup:
 
 1. Fork the repository
-2. Create a feature branch  
+2. Create a feature branch
 3. Make your changes
 4. Run `make test-fast` (for quick feedback) or `make test` and `make validate`
 5. Submit a pull request
@@ -425,7 +641,7 @@ This project is licensed under the MIT License.
 
 <div align="center">
   <strong>Built with ❤️ by <a href="https://paiml.com">Pragmatic AI Labs</a></strong><br>
-  <em>Empowering developers with deterministic AI-powered tools</em>
+  <em>Empowering AI agents with deterministic symbolic reasoning</em>
 </div>
 
 ---

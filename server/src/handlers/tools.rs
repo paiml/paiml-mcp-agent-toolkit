@@ -1143,7 +1143,7 @@ async fn handle_analyze_dag(
 
 #[derive(Debug, Deserialize, Serialize)]
 struct GenerateContextArgs {
-    toolchain: String,
+    toolchain: Option<String>,
     project_path: Option<String>,
     format: Option<String>,
 }
@@ -1168,32 +1168,16 @@ async fn handle_generate_context(
         .map(PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
-    use crate::services::cache::{config::CacheConfig, persistent_manager::PersistentCacheManager};
-    use crate::services::context::{
-        analyze_project_with_persistent_cache, format_context_as_markdown,
-    };
+    info!("Generating comprehensive context for {:?}", project_path);
 
-    // Create a persistent cache manager for cross-session caching
-    let cache_config = CacheConfig::default();
-    let cache_manager = match PersistentCacheManager::with_default_dir(cache_config) {
-        Ok(manager) => Arc::new(manager),
-        Err(e) => {
-            return McpResponse::error(
-                request_id,
-                -32000,
-                format!("Failed to create cache manager: {}", e),
-            );
-        }
-    };
+    // Use the proven deep context analyzer for comprehensive analysis
+    use crate::services::deep_context::DeepContextAnalyzer;
 
-    // Analyze the project with caching
-    let context = match analyze_project_with_persistent_cache(
-        &project_path,
-        &args.toolchain,
-        Some(cache_manager.clone()),
-    )
-    .await
-    {
+    // Create analyzer and run analysis using proven implementation
+    let config = crate::services::deep_context::DeepContextConfig::default();
+    let analyzer = DeepContextAnalyzer::new(config);
+
+    let deep_context = match analyzer.analyze_project(&project_path).await {
         Ok(ctx) => ctx,
         Err(e) => {
             return McpResponse::error(
@@ -1204,14 +1188,15 @@ async fn handle_generate_context(
         }
     };
 
-    // Get cache diagnostics
-    let diagnostics = cache_manager.get_diagnostics();
-
     // Format the output
     let format = args.format.as_deref().unwrap_or("markdown");
     let content = match format {
-        "json" => serde_json::to_string_pretty(&context).unwrap_or_default(),
-        _ => format_context_as_markdown(&context), // default to markdown
+        "json" => serde_json::to_string_pretty(&deep_context).unwrap_or_default(),
+        _ => {
+            // Use the context module's format function
+            use crate::services::context::format_deep_context_as_markdown;
+            format_deep_context_as_markdown(&deep_context)
+        }
     };
 
     let result = json!({
@@ -1219,12 +1204,20 @@ async fn handle_generate_context(
             "type": "text",
             "text": content
         }],
-        "toolchain": args.toolchain,
+        "toolchain": args.toolchain.as_deref().unwrap_or("auto-detected"),
         "format": format,
-        "cache_diagnostics": {
-            "hit_rate": diagnostics.effectiveness.overall_hit_rate,
-            "memory_efficiency": diagnostics.effectiveness.memory_efficiency,
-            "time_saved_ms": diagnostics.effectiveness.time_saved_ms,
+        "analysis_metadata": {
+            "generated_at": deep_context.metadata.generated_at,
+            "tool_version": deep_context.metadata.tool_version,
+            "analysis_duration_ms": deep_context.metadata.analysis_duration.as_millis(),
+            "total_files": deep_context.file_tree.total_files,
+            "total_size_bytes": deep_context.file_tree.total_size_bytes,
+        },
+        "quality_scorecard": {
+            "overall_health": deep_context.quality_scorecard.overall_health,
+            "complexity_score": deep_context.quality_scorecard.complexity_score,
+            "maintainability_index": deep_context.quality_scorecard.maintainability_index,
+            "technical_debt_hours": deep_context.quality_scorecard.technical_debt_hours,
         }
     });
 

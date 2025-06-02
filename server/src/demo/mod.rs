@@ -1,11 +1,8 @@
 pub mod assets;
-pub mod cli_renderer;
-pub mod engine;
 pub mod runner;
 pub mod server;
 pub mod templates;
 
-pub use engine::{DemoEngine, DemoAnalysis, DemoSource, ProgressEvent};
 pub use runner::{detect_repository, DemoReport, DemoRunner, DemoStep};
 pub use server::{DemoContent, Hotspot, LocalDemoServer};
 
@@ -16,143 +13,31 @@ pub async fn run_demo(
     args: DemoArgs,
     server: std::sync::Arc<crate::stateless_server::StatelessTemplateServer>,
 ) -> Result<()> {
-    // Determine source: local path, remote URL, or current directory
-    let source = if let Some(url) = args.url.as_ref() {
-        DemoSource::Remote(url.clone())
-    } else {
-        let repo = detect_repository(args.path)?;
-        DemoSource::Local(repo)
-    };
+    let repo_path = detect_repository(args.path)?;
 
     if args.web {
-        // Web server mode with unified engine
-        run_unified_web_demo(source, server, args.no_browser, args.port).await
+        // Web server mode
+        run_web_demo(repo_path, server, args.no_browser, args.port).await
     } else {
-        // CLI output mode with unified engine
-        run_unified_cli_demo(source, args.format).await
-    }
-}
+        // CLI output mode - just use the existing demo runner for now
+        println!("CLI demo mode - using existing demo runner");
+        let mut demo_runner = DemoRunner::new(server);
+        let demo_report = demo_runner.execute(repo_path).await?;
 
-// New unified CLI demo mode
-async fn run_unified_cli_demo(source: DemoSource, format: crate::cli::OutputFormat) -> Result<()> {
-    use crate::demo::cli_renderer::render_demo_cli;
-    
-    let engine = DemoEngine::new();
-    let analysis = engine.analyze(source).await?;
-    
-    match format {
-        crate::cli::OutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&analysis)?);
+        match args.format {
+            crate::cli::OutputFormat::Json => {
+                println!("{}", serde_json::to_string_pretty(&demo_report)?);
+            }
+            crate::cli::OutputFormat::Yaml => {
+                println!("{}", serde_yaml::to_string(&demo_report)?);
+            }
+            crate::cli::OutputFormat::Table => {
+                println!("{:#?}", demo_report);
+            }
         }
-        crate::cli::OutputFormat::Yaml => {
-            println!("{}", serde_yaml::to_string(&analysis)?);
-        }
-        crate::cli::OutputFormat::Table => {
-            println!("{}", render_demo_cli(&analysis)?);
-        }
-    }
-    
-    Ok(())
-}
 
-// New unified web demo mode  
-async fn run_unified_web_demo(
-    source: DemoSource,
-    _server: std::sync::Arc<crate::stateless_server::StatelessTemplateServer>,
-    no_browser: bool,
-    _port: Option<u16>,
-) -> Result<()> {
-    let version = env!("CARGO_PKG_VERSION");
-    println!("🎯 PAIML MCP Agent Toolkit Demo v{}", version);
-    
-    // Display source information
-    match &source {
-        DemoSource::Local(path) => {
-            println!("📁 Repository: {}", path.display());
-        }
-        DemoSource::Remote(url) => {
-            println!("🌐 Cloning: {}", url);
-        }
-        DemoSource::Cached(key) => {
-            println!("📦 Cached: {}", key);
-        }
+        Ok(())
     }
-    
-    println!("\n🔍 Analyzing codebase...");
-    info!("Starting unified demo analysis");
-    
-    let engine = DemoEngine::new();
-    let analysis = engine.analyze(source).await?;
-    
-    // Convert to legacy DemoContent format for web server compatibility
-    let content = convert_analysis_to_demo_content(&analysis);
-    
-    // Start web server
-    let (_demo_server, server_port) = LocalDemoServer::spawn(content).await?;
-    let url = format!("http://127.0.0.1:{}", server_port);
-    
-    println!("\n📊 Demo server running at: {}", url);
-    println!("   Analysis completed in {:.2}s", analysis.timings.total_duration.as_secs_f64());
-    
-    // Open browser unless disabled
-    #[cfg(not(feature = "no-demo"))]
-    if !no_browser {
-        if let Err(e) = webbrowser::open(&url) {
-            println!(
-                "   Please open {} in your browser (auto-open failed: {})",
-                url, e
-            );
-        }
-    }
-    
-    #[cfg(feature = "no-demo")]
-    let _ = no_browser; // Avoid unused variable warning when demo is disabled
-    
-    println!("\nPress Ctrl+C to stop the demo server");
-    
-    // Keep server running
-    tokio::signal::ctrl_c().await?;
-    println!("\n👋 Shutting down demo server...");
-    
-    Ok(())
-}
-
-// Convert DemoAnalysis to legacy DemoContent for web compatibility
-fn convert_analysis_to_demo_content(analysis: &DemoAnalysis) -> DemoContent {
-    
-    // Convert hotspots to legacy format
-    let hotspots: Vec<Hotspot> = analysis.metrics.hotspots
-        .iter()
-        .map(|h| Hotspot {
-            file: h.file.clone(),
-            complexity: h.complexity,
-            churn_score: h.churn,
-        })
-        .collect();
-    
-    // Use actual DAG or create default
-    let dag = analysis.metrics.dag.clone().unwrap_or_default();
-    
-    let mut content = DemoContent::from_analysis_results(
-        &dag,
-        analysis.repository.file_count,
-        analysis.metrics.complexity.as_ref()
-            .map(|c| c.summary.median_cyclomatic as f64)
-            .unwrap_or(1.0),
-        analysis.metrics.complexity.as_ref()
-            .map(|c| c.summary.technical_debt_hours as u32)
-            .unwrap_or(0),
-        hotspots,
-        analysis.timings.ast_analysis.as_millis() as u64,
-        analysis.timings.complexity_analysis.as_millis() as u64,
-        analysis.timings.dag_analysis.as_millis() as u64,
-        analysis.timings.churn_analysis.as_millis() as u64,
-    );
-    
-    // Add system diagram from analysis
-    content.system_diagram = Some(analysis.visualization.mermaid.clone());
-    
-    content
 }
 
 // Extract actual analysis results and timings from demo report

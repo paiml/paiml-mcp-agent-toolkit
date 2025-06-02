@@ -1,682 +1,264 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Updates are performed via `gh "Simple Release"`
 
-## Important Context
+## Dynamic Context Analysis Protocol
 
-**IMPORTANT**: Always check `docs/bugs/` directory for active bugs before making changes. Archived bugs are in `docs/bugs/archived/`. Current active bugs may affect your work.
+**MANDATORY INITIALIZATION SEQUENCE**:
+```bash
+# Extract current complexity distribution
+awk '/## Complexity Hotspots/,/^##/ {if(/^##/ && NR>1) exit; print}' deep_context.md | \
+  awk -F'|' 'NR>2 && $4~/[0-9]/ {print $4,$3}' | sort -rn | head -10
 
-**This is a frequently accessed project** - assume familiarity with the codebase structure, development patterns, and ongoing work. This is the MCP Agent Toolkit project that provides template generation services for project scaffolding.
+# Identify active technical debt vectors
+find docs/bugs -name "*.md" -not -path "*/archived/*" -exec basename {} \;
 
-**MANDATORY TRIPLE-INTERFACE TESTING**: This project MUST test ALL THREE interfaces (CLI, MCP, HTTP) continuously throughout development. Every coding session MUST demonstrate comprehensive interface coverage to ensure protocol consistency and identify interface-specific bugs.
+# Load current AST metrics
+grep -E "^\*\*Total Symbols:\*\*|^\*\*Functions:\*\*" deep_context.md | head -20
+```
 
-## Project Architecture
+## Architectural Invariants
 
-**This is a Rust Workspace Project** with the following structure:
-- **Root workspace**: `Cargo.toml` (workspace configuration)
-- **Server project**: `server/Cargo.toml` (main binary crate)
-- **Future projects**: `client/`, `shared/` (when implemented)
+**Rust Workspace Topology**:
+```
+workspace/
+├── Cargo.toml          # Workspace manifest - source of truth for deps
+├── server/             # Primary crate: unified protocol implementation
+│   ├── src/
+│   │   ├── services/   # Stateful business logic - highest complexity density
+│   │   ├── unified_protocol/  # Protocol adapters - thin translation layer
+│   │   └── handlers/   # Request routing - minimal logic
+│   └── build.rs        # Asset compression pipeline
+└── target/release/     # Single binary: all three protocols
+```
 
-The workspace design ensures consistent dependency management and enables workspace-wide optimizations for release builds.
-
-## Project Overview
-
-MCP Agent Toolkit is a production-grade unified protocol server that provides:
-1. **Template Generation** - Project scaffolding for Makefile, README.md, and .gitignore files
-2. **AST-Based Code Analysis** - Full AST parsing and analysis for Rust, TypeScript/JavaScript, and Python
-3. **Code Complexity Metrics** - Cyclomatic complexity, cognitive complexity, file ranking system
-4. **Code Churn Tracking** - Git-based code change analysis and hotspot detection
-5. **Dependency Graph Generation** - Visual code structure analysis with Mermaid
-6. **Unified Protocol Architecture** - Single binary serving CLI, MCP JSON-RPC, and HTTP REST interfaces
-
-The system is built in Rust with a unified protocol layer that ensures consistent behavior across all interfaces.
-
-## Architecture
-
-**Unified Protocol Layer**:
+**Protocol Unification Architecture**:
 ```rust
-pub trait ProtocolAdapter: Send + Sync {
-    type Input;
-    type Output;
+// Invariant: All protocols converge to unified service layer
+trait ProtocolAdapter: Send + Sync {
+    type Input: DeserializeOwned;
+    type Output: Serialize;
+    type Context: Send;
     
-    async fn decode(&self, input: Self::Input) -> Result<UnifiedRequest, ProtocolError>;
-    async fn encode(&self, response: UnifiedResponse) -> Result<Self::Output, ProtocolError>;
+    async fn decode(&self, raw: &[u8]) -> Result<Self::Input>;
+    async fn process(&self, req: UnifiedRequest) -> Result<UnifiedResponse>;
+    async fn encode(&self, resp: UnifiedResponse) -> Result<Self::Output>;
 }
 ```
 
-**Three Interface Adapters**:
-- **CLI Adapter**: Direct command parsing to UnifiedRequest
-- **MCP Adapter**: JSON-RPC 2.0 to UnifiedRequest translation
-- **HTTP Adapter**: REST endpoints to UnifiedRequest mapping
+**Concurrency Model** (Fixed architecture):
+- **Async Runtime**: Tokio multi-threaded, work-stealing scheduler
+- **Shared State**: `Arc<RwLock<T>>` for service layer, `DashMap` for caches
+- **CPU-Bound Tasks**: Rayon thread pool for AST parsing, DAG generation
+- **I/O Pattern**: Buffered stdio for MCP, HTTP/2 for web, epoll-based
 
-## Mandatory Triple-Interface Testing Protocol
+## Complexity Analysis Methodology
 
-### Session Start Ritual (ALL INTERFACES REQUIRED)
-
+**Dynamic Hotspot Detection**:
 ```bash
-# 0. Quick validation with fast tests (optional)
-make test-fast  # Rapid feedback with cargo-nextest (30-45% faster)
-
-# 1. Build the binary with workspace optimization
-make release  # Preferred workspace-wide optimized build
-# OR
-make server-build-binary  # Individual project build
-
-export BINARY_PATH="./target/release/paiml-mcp-agent-toolkit"
-
-# 2. Start HTTP server in background
-$BINARY_PATH serve --port 8080 &
-HTTP_PID=$!
-sleep 2  # Wait for startup
-
-# 3. Test complexity analysis through ALL interfaces
-echo "=== Testing Complexity Analysis ==="
-
-# CLI Interface
-time $BINARY_PATH analyze complexity --top-files 5 --format json > cli-complexity.json
-echo "CLI Response size: $(wc -c < cli-complexity.json) bytes"
-
-# MCP Interface
-echo '{"jsonrpc":"2.0","method":"analyze_complexity","params":{"project_path":"./","top_files":5,"format":"json"},"id":1}' | \
-  $BINARY_PATH --mode mcp > mcp-complexity.json
-echo "MCP Response size: $(wc -c < mcp-complexity.json) bytes"
-
-# HTTP Interface
-time curl -X GET "http://localhost:8080/api/v1/analyze/complexity?top_files=5&format=json" > http-complexity.json
-echo "HTTP Response size: $(wc -c < http-complexity.json) bytes"
-
-# 4. Verify consistency across interfaces
-./scripts/verify-interface-consistency.ts \
-  cli-complexity.json \
-  mcp-complexity.json \
-  http-complexity.json
-
-# 5. Performance comparison
-hyperfine --warmup 10 \
-  "$BINARY_PATH analyze complexity --top-files 5 --format json" \
-  "echo '{\"jsonrpc\":\"2.0\",\"method\":\"analyze_complexity\",\"params\":{\"project_path\":\"./\",\"top_files\":5},\"id\":1}' | $BINARY_PATH --mode mcp" \
-  "curl -s http://localhost:8080/api/v1/analyze/complexity?top_files=5"
+# Extract functions exceeding cognitive complexity threshold
+THRESHOLD=30
+awk -v t=$THRESHOLD '
+  /^[|].*[|].*[|].*[0-9]+.*[|].*[0-9]+.*[|]$/ {
+    cog = $(NF-1); 
+    if (cog > t) print $0
+  }' deep_context.md
 ```
 
-### During Development (CONTINUOUS TRIPLE TESTING)
-
-#### After Implementing New Features
-
-```bash
-# Example: Adding --top-files ranking feature
-
-# 1. Test through CLI
-$BINARY_PATH analyze churn --top-files 10 --format table
-$BINARY_PATH analyze complexity --top-files 5 --format json
-$BINARY_PATH analyze dag --top-files 10 --enhanced
-
-# 2. Test through MCP (using test harness)
-cat <<EOF | $BINARY_PATH --mode mcp
-{"jsonrpc":"2.0","method":"analyze_churn","params":{"project_path":"./","top_files":10},"id":1}
-{"jsonrpc":"2.0","method":"analyze_complexity","params":{"project_path":"./","top_files":5},"id":2}
-{"jsonrpc":"2.0","method":"analyze_dag","params":{"project_path":"./","top_files":10,"enhanced":true},"id":3}
-EOF
-
-# 3. Test through HTTP
-curl "http://localhost:8080/api/v1/analyze/churn?top_files=10"
-curl "http://localhost:8080/api/v1/analyze/complexity?top_files=5"
-curl "http://localhost:8080/api/v1/analyze/dag?top_files=10&enhanced=true"
-
-# 4. Load test all interfaces
-artillery quick \
-  --count 100 \
-  --num 10 \
-  "http://localhost:8080/api/v1/analyze/complexity?top_files=5"
-```
-
-#### Interface-Specific Test Patterns
-
-```bash
-# CLI-specific: Test argument parsing edge cases
-$BINARY_PATH analyze complexity --top-files 0  # Should show all
-$BINARY_PATH analyze complexity --top-files -1  # Should error
-$BINARY_PATH analyze complexity --top-files 999999  # Should handle gracefully
-
-# MCP-specific: Test JSON-RPC compliance
-# Test batch requests
-echo '[
-  {"jsonrpc":"2.0","method":"analyze_complexity","params":{"top_files":5},"id":1},
-  {"jsonrpc":"2.0","method":"analyze_churn","params":{"top_files":5},"id":2}
-]' | $BINARY_PATH --mode mcp
-
-# Test notifications (no id)
-echo '{"jsonrpc":"2.0","method":"analyze_complexity","params":{"top_files":5}}' | \
-  $BINARY_PATH --mode mcp
-
-# HTTP-specific: Test REST semantics
-# Test HEAD requests
-curl -I "http://localhost:8080/api/v1/analyze/complexity?top_files=5"
-
-# Test content negotiation
-curl -H "Accept: application/json" "http://localhost:8080/api/v1/analyze/complexity?top_files=5"
-curl -H "Accept: application/x-sarif+json" "http://localhost:8080/api/v1/analyze/complexity?top_files=5"
-```
-
-### Session End Ritual (MANDATORY INTERFACE VALIDATION)
-
-```bash
-# 1. Generate interface compatibility report
-./scripts/generate-interface-report.ts \
-  --test-all-endpoints \
-  --measure-latency \
-  --check-consistency \
-  > interface-report-$(date +%Y%m%d).json
-
-# 2. Run interface-specific benchmarks
-# CLI benchmark
-hyperfine --warmup 5 --min-runs 50 \
-  "$BINARY_PATH analyze complexity --top-files 10" \
-  --export-json cli-bench.json
-
-# MCP benchmark (with connection reuse)
-./scripts/bench-mcp-interface.ts --runs 50 --top-files 10
-
-# HTTP benchmark (with keep-alive)
-ab -n 1000 -c 10 -k "http://localhost:8080/api/v1/analyze/complexity?top_files=10"
-
-# 3. Verify memory usage across interfaces
-./scripts/measure-interface-memory.ts
-
-# 4. Kill HTTP server
-kill $HTTP_PID
-```
-
-## Interface Testing Matrix
-
-| Feature | CLI Test | MCP Test | HTTP Test | Consistency Check |
-|---------|----------|----------|-----------|-------------------|
-| `--top-files` | `analyze complexity --top-files 5` | `{"method":"analyze_complexity","params":{"top_files":5}}` | `GET /api/v1/analyze/complexity?top_files=5` | Compare JSON outputs |
-| Composite ranking | `analyze composite --weights complexity=0.3,churn=0.7` | `{"method":"analyze_composite","params":{"weights":{"complexity":0.3,"churn":0.7}}}` | `GET /api/v1/analyze/composite?weights=complexity:0.3,churn:0.7` | Verify same file order |
-| Error handling | `analyze complexity --top-files -1` | `{"params":{"top_files":-1}}` | `GET /api/v1/analyze/complexity?top_files=-1` | Same error code |
-| Streaming | `analyze dag --stream` | `{"params":{"stream":true}}` with chunked responses | `GET /api/v1/analyze/dag?stream=true` with SSE | Chunk boundaries |
-
-## Protocol-Specific Monitoring
-
-### CLI Interface Monitoring
-```bash
-# Trace syscalls to understand CLI overhead
-strace -c $BINARY_PATH analyze complexity --top-files 5
-
-# Profile with perf
-perf record -g $BINARY_PATH analyze complexity --top-files 5
-perf report
-```
-
-### MCP Interface Monitoring
-```bash
-# Monitor JSON-RPC message flow
-$BINARY_PATH --mode mcp --trace-protocol < requests.jsonl
-
-# Measure message parsing overhead
-./scripts/profile-json-parsing.ts
-```
-
-### HTTP Interface Monitoring
-```bash
-# Monitor with tcpdump
-sudo tcpdump -i lo -A 'tcp port 8080' -w http-trace.pcap
-
-# Analyze with Wireshark or tshark
-tshark -r http-trace.pcap -Y "http.request.method == GET"
-
-# Profile with async-profiler
-async-profiler -d 30 -f profile.html $HTTP_PID
-```
-
-## Common Interface Pitfalls
-
-### 1. Inconsistent Parameter Names
+**Complexity Decomposition Pattern**:
 ```rust
-// ❌ WRONG: Different parameter names per interface
-impl CliArgs {
-    top_files: Option<usize>,  // CLI uses snake_case
+// Universal refactoring pattern for high-complexity functions
+// FROM: Monolithic function with CC > 25
+impl Service {
+    fn process_complex(&mut self, input: Input) -> Result<Output> {
+        // Multiple nested loops, conditions, error paths
+    }
 }
 
-impl McpParams {
-    topFiles: Option<usize>,   // MCP uses camelCase
-}
-
-// ✅ CORRECT: Unified parameter handling
-impl UnifiedRequest {
-    pub fn top_files(&self) -> Option<usize> {
-        // Handle both snake_case and camelCase
+// TO: Pipeline architecture with composable stages
+impl Service {
+    fn process(&self, input: Input) -> Result<Output> {
+        Pipeline::new(input)
+            .validate(self.validators())
+            .transform(self.transformers())
+            .analyze(self.analyzers())
+            .aggregate(self.aggregators())
+            .execute()
     }
 }
 ```
 
-### 2. Format Negotiation Differences
+## Performance Profiling Framework
+
+**Memory Hierarchy** (Architectural constants):
 ```rust
-// Each interface handles format differently:
-// CLI: --format json
-// MCP: params.format = "json"  
-// HTTP: Accept: application/json
+// L1: Thread-local caches (nanosecond access)
+thread_local! {
+    static AST_CACHE: RefCell<LruCache<Blake3Hash, ParsedAst>> = 
+        RefCell::new(LruCache::new(NonZeroUsize::new(100).unwrap()));
+}
 
-// Test all variations:
-test_format_negotiation(&["json", "sarif", "markdown", "csv"])
-```
+// L2: Process-wide caches (microsecond access)
+lazy_static! {
+    static ref TEMPLATE_CACHE: DashMap<String, Arc<Template>> = 
+        DashMap::with_capacity(1000);
+}
 
-### 3. Error Response Variations
-```rust
-// Ensure consistent error codes across interfaces:
-// CLI: Exit code 1-255
-// MCP: JSON-RPC error codes
-// HTTP: HTTP status codes
-
-#[test]
-fn test_error_consistency() {
-    assert_eq!(cli_error_code(FileNotFound), 2);
-    assert_eq!(mcp_error_code(FileNotFound), -32000);
-    assert_eq!(http_status_code(FileNotFound), 404);
+// L3: Persistent cache (millisecond access)
+struct PersistentCache {
+    conn: Arc<Mutex<rusqlite::Connection>>, // WAL mode, mmap enabled
 }
 ```
 
-## Performance Targets by Interface
-
-| Interface | Startup | First Response | Throughput | Memory |
-|-----------|---------|----------------|------------|---------|
-| CLI | <10ms | <50ms | N/A | <20MB |
-| MCP | <5ms | <20ms | 1000 req/s | <30MB |
-| HTTP | <2ms | <10ms | 5000 req/s | <50MB |
-
-## Deno/TypeScript Test Coverage 
-
-**MANDATORY: All production Deno scripts in `scripts/` MUST have comprehensive test coverage.**
-
-For the Mermaid validator specifically:
-- **Test File**: `scripts/mermaid-validator.test.ts`
-- **Coverage**: 34 test cases covering syntax validation, error handling, file I/O, and performance
-- **Test Results**: 76% pass rate (26/34 tests passing)
-- **Function Coverage**: All 14 functions tested with high call frequency (34-612 calls per function)
-
-### Running Deno Tests with Coverage
-
+**Profiling Extraction Commands**:
 ```bash
-# Run tests with coverage analysis
-deno test --allow-read --allow-write scripts/mermaid-validator.test.ts --coverage=./coverage_profile
+# Current memory footprint analysis
+grep -A10 "Total Size:" deep_context.md | awk '/[0-9]+ bytes/ {sum+=$1} END {print sum/1048576 " MB"}'
 
-# Generate coverage report
-deno coverage ./coverage_profile --lcov > coverage_report.lcov
-
-# View coverage summary
-head -50 coverage_report.lcov
+# Concurrency bottleneck detection
+grep -B2 -A2 "RwLock\|Mutex\|parking_lot" deep_context.md | grep -v "^--$"
 ```
 
-### Key Test Categories Covered
+## Token-Efficient Navigation Strategies
 
-1. **Basic Validation** - Syntax validation, diagram type detection
-2. **Error Handling** - Invalid diagrams, malformed syntax, edge cases  
-3. **File I/O Operations** - Single file validation, batch directory validation
-4. **Complex Scenarios** - Edge labels, multiple arrow types, mixed syntax
-5. **Performance Testing** - Large diagram validation (target: <1 second)
-
-## Development Workflow Commands
-
-### Workspace Build Commands
-
-**This is a Rust workspace project.** Use these commands for building:
-
+**Semantic Chunking Protocol**:
 ```bash
-# Workspace-wide optimized release build (RECOMMENDED)
-make release
+# Extract service layer (business logic concentration)
+sed -n '/^### \.\/server\/src\/services\//,/^### \.\/[^s]/ {
+    /^### \.\/[^s]/d; p
+}' deep_context.md | head -8000
 
-# Build outputs:
-# - Binary location: ./target/release/paiml-mcp-agent-toolkit
-# - Workspace optimizations: LTO, codegen-units=1, opt-level=3
-# - Binary size display and optimization tips
+# Extract protocol adapters (thin layer, low complexity)
+awk '/unified_protocol\/adapters/,/^### / {print}' deep_context.md | head -3000
 
-# Individual project builds (when needed)
-make server-build-binary  # Server project only
-make build               # All workspace projects
-
-# Development builds
-make server-build        # Debug build (faster compilation)
+# High-value extraction (functions with complexity gradient)
+awk '/Cyclomatic/ && $NF > 15 {print; for(i=1;i<=5;i++) {getline; print}}' deep_context.md
 ```
 
-**Key workspace benefits:**
-- Consistent dependency versions across all crates
-- Workspace-wide optimizations (LTO, strip symbols)
-- Shared build cache for faster incremental builds
-- Future extensibility for client/, shared/ crates
-
-### Asset Optimization & Binary Size Reduction
-
-**The project implements comprehensive asset optimization automatically during builds:**
-
-#### Vendor Asset Compression (✅ IMPLEMENTED)
-```bash
-# Assets automatically downloaded and compressed during build:
-# - Mermaid.js: 2.7MB → 771KB (71.1% reduction)
-# - D3.js: 280KB → 93KB (66.8% reduction)  
-# - GridJS: 52KB → 16KB (68% reduction)
-```
-
-#### Template & Demo Asset Optimization (✅ IMPLEMENTED)
-```bash
-# Build-time optimizations in server/build.rs:
-# - Templates: 20KB → 4KB (78.7% compression)
-# - Demo JS: 5.2KB → 3.8KB (27.8% minification)
-# - Demo CSS: 3.1KB → 2.4KB (24.4% minification)
-```
-
-#### Binary Size Achievement
-```bash
-# Total binary size reduction: 12.3%
-# Before: 16.9 MB
-# After:  14.8 MB
-# Saved:  2.1 MB
-
-# Monitor with:
-make size-report  # Detailed analysis
-make size-track   # History tracking
-make size-check   # Regression testing
-```
-
-#### Adding New Vendor Assets
+**Subsystem Isolation Patterns**:
 ```rust
-// In server/build.rs, add to get_asset_definitions():
-(
-    "https://unpkg.com/library@latest/dist/library.min.js",
-    "library.min.js",
-),
+// Pattern 1: AST Analysis Subsystem
+ast_*() -> UnifiedAstNode -> Language-specific visitors
 
-// Assets are automatically:
-// 1. Downloaded from CDN
-// 2. Compressed with gzip
-// 3. Embedded as static bytes
-// 4. Available at runtime via decompression
+// Pattern 2: Cache Subsystem  
+cache::manager -> strategies -> persistent/session/content
+
+// Pattern 3: Template Subsystem
+template_service -> renderer -> embedded_templates
 ```
 
-### Fast Testing with cargo-nextest
+## Development Workflow Invariants
 
-**For optimal test performance, use cargo-nextest:**
-
+**Triple-Interface Validation** (Protocol correctness invariant):
 ```bash
-# Install nextest (one-time setup)
-cargo install cargo-nextest
-
-# Run tests with superior parallelism and output
-cargo nextest run
-
-# Fast unit tests only
-cargo nextest run --lib
-
-# Run tests with maximum thread utilization
-RUST_TEST_THREADS=$(nproc) cargo nextest run
-
-# Fast incremental testing
-cargo nextest run --workspace --changed
-```
-
-### Quick Interface Tests
-```bash
-# Test all interfaces with one command
-make test-all-interfaces
-
-# Test specific feature across interfaces
-./scripts/test-feature-all-interfaces.ts --feature top-files
-
-# Regression test interface consistency
-make test-interface-regression
-```
-
-### Debugging Interface Issues
-```bash
-# Debug CLI parsing
-RUST_LOG=paiml_mcp=trace $BINARY_PATH analyze complexity --top-files 5
-
-# Debug MCP protocol
-$BINARY_PATH --mode mcp --debug-protocol
-
-# Debug HTTP routing
-RUST_LOG=tower_http=debug,paiml_mcp=trace $BINARY_PATH serve
-```
-
-## Integration Test Examples
-
-### Testing New Ranking Features
-```rust
-#[tokio::test]
-async fn test_top_files_all_interfaces() {
-    let test_harness = TestHarness::new();
+# Semantic equivalence testing across all protocols
+test_equivalence() {
+    local input='{"method":"analyze_complexity","params":{"path":"."}}'
     
-    // Test CLI
-    let cli_result = test_harness.cli()
-        .args(&["analyze", "complexity", "--top-files", "5"])
-        .output()
-        .await?;
+    # CLI interface
+    local cli_hash=$(echo "$input" | \
+        cargo run -- analyze complexity . --format json | \
+        jq -S . | sha256sum)
     
-    // Test MCP
-    let mcp_result = test_harness.mcp()
-        .call("analyze_complexity", json!({
-            "top_files": 5
-        }))
-        .await?;
+    # MCP interface  
+    local mcp_hash=$(echo "$input" | \
+        cargo run -- | jq -S .result | sha256sum)
     
-    // Test HTTP
-    let http_result = test_harness.http()
-        .get("/api/v1/analyze/complexity?top_files=5")
-        .await?;
+    # HTTP interface
+    local http_hash=$(curl -s -X POST localhost:3000/api/v1/analyze \
+        -H "Content-Type: application/json" -d "$input" | \
+        jq -S . | sha256sum)
     
-    // Verify consistency
-    assert_interface_consistency![cli_result, mcp_result, http_result];
+    [[ "$cli_hash" == "$mcp_hash" && "$mcp_hash" == "$http_hash" ]]
 }
 ```
 
-### Load Testing Pattern
+**Incremental Refactoring Protocol**:
+1. **Measure**: Extract current complexity metrics dynamically
+2. **Identify**: Functions where `cognitive/cyclomatic > 2.5` (high branching)
+3. **Decompose**: Apply domain-specific patterns (visitor, pipeline, state machine)
+4. **Validate**: Ensure protocol equivalence via triple-interface tests
+5. **Benchmark**: Confirm no regression in p99 latency
+
+## Cache Coherency Protocol
+
+**Invalidation Strategy** (Deterministic):
 ```rust
-#[tokio::test]
-async fn bench_top_files_interfaces() {
-    let mut group = c.benchmark_group("top_files");
-    
-    group.bench_function("cli", |b| {
-        b.iter(|| {
-            Command::new(&binary)
-                .args(&["analyze", "complexity", "--top-files", "10"])
-                .output()
-        })
-    });
-    
-    group.bench_function("mcp", |b| {
-        let client = MpcClient::new(&binary);
-        b.iter(|| {
-            client.call("analyze_complexity", json!({"top_files": 10}))
-        })
-    });
-    
-    group.bench_function("http", |b| {
-        let client = HttpClient::new("localhost:8080");
-        b.iter(|| {
-            client.get("/api/v1/analyze/complexity?top_files=10")
-        })
-    });
+// Content-addressed caching with mtime validation
+fn cache_key(path: &Path, content: &[u8]) -> CacheKey {
+    let mtime = fs::metadata(path)?.modified()?;
+    let content_hash = blake3::hash(content);
+    CacheKey {
+        path_hash: blake3::hash(path.as_os_str().as_bytes()),
+        content_hash,
+        mtime_ns: mtime.duration_since(UNIX_EPOCH)?.as_nanos(),
+    }
 }
 ```
 
-## Git Commit Policy
+**Cache Hierarchy Traversal**:
+```rust
+async fn get_with_cache<T>(&self, key: &str) -> Result<T> {
+    // L1: Thread-local (fastest)
+    if let Some(v) = self.thread_cache.get(key) { return Ok(v); }
+    
+    // L2: Process-wide (fast)
+    if let Some(v) = self.shared_cache.get(key) { 
+        self.thread_cache.insert(key, v.clone());
+        return Ok(v);
+    }
+    
+    // L3: Persistent (slower)
+    if let Some(v) = self.persistent_cache.get(key).await? {
+        self.shared_cache.insert(key, v.clone());
+        self.thread_cache.insert(key, v.clone());
+        return Ok(v);
+    }
+    
+    // L4: Compute (slowest)
+    let v = self.compute(key).await?;
+    self.persist_through_hierarchy(key, &v).await?;
+    Ok(v)
+}
+```
 
-**NEVER commit changes unless explicitly asked by the user.** The user will commit when they are ready. This ensures:
-- User maintains control over git history
-- Interface tests can be run before committing
-- Performance regressions can be caught
-- All three interfaces are validated
+## Critical Path Analysis
 
-## Release Process
-
-### Simple Release Workflow (RECOMMENDED)
-
-This project uses an automated GitHub Actions workflow for creating releases. Follow this streamlined process:
-
-#### 1. Prepare for Release
+**Performance Bottleneck Detection**:
 ```bash
-# Ensure all changes are committed and pushed
-git status  # Should show clean working directory
-git push origin master
+# Extract I/O-bound operations
+grep -E "(tokio::fs|std::fs::read|AsyncRead|AsyncWrite)" deep_context.md | \
+    grep -B2 -A2 "async fn"
 
-# Verify all tests pass
-make lint && make test
+# Identify lock contention points
+grep -E "(\.write\(\)|\.lock\(\)|RwLock.*write|Mutex.*lock)" deep_context.md | \
+    awk -F: '{count[$1]++} END {for(f in count) if(count[f]>3) print f, count[f]}'
 ```
 
-#### 2. Trigger Automated Release
-```bash
-# Use GitHub CLI to trigger the Simple Release workflow
-gh workflow run "Simple Release" --field version_bump=[patch|minor|major]
+**Optimization Priorities** (Ordered by impact):
+1. **Reduce allocations**: Use `SmallVec`, arena allocators for AST nodes
+2. **Minimize syscalls**: Batch file operations, use memory-mapped I/O
+3. **Lock-free algorithms**: Replace `RwLock` with `ArcSwap` where possible
+4. **SIMD opportunities**: String scanning, hash computations
 
-# Monitor the release progress
-gh run list --limit 5
+## Correctness Invariants
+
+**Determinism Requirements**:
+- **File ordering**: Always sort by UTF-8 byte order
+- **Hash stability**: Use platform-independent hashers (blake3)
+- **Time handling**: UTC only, nanosecond precision truncated to seconds
+- **Floating point**: No float comparisons, use integer scoring
+
+**Safety Boundaries**:
+```rust
+// All external inputs must pass through validation layer
+#[must_use]
+fn validate_input<T: Validate>(input: T) -> Result<ValidatedInput<T>> {
+    input.validate_structure()?
+        .validate_semantics()?  
+        .validate_security()?
+        .seal()
+}
 ```
 
-The automated workflow will:
-- ✅ **Bump version numbers** in both `Cargo.toml` files automatically
-- ✅ **Build optimized binaries** for all supported platforms:
-  - `x86_64-unknown-linux-gnu` (Linux x86-64)
-  - `aarch64-unknown-linux-gnu` (Linux ARM64)
-  - `x86_64-apple-darwin` (Intel Mac)
-  - `aarch64-apple-darwin` (Apple Silicon Mac)
-- ✅ **Create GitHub release** with auto-generated release notes
-- ✅ **Attach binary artifacts** to the release
-- ✅ **Tag the repository** with the new version
-
-#### 3. Version Bump Guidelines
-Choose the appropriate bump type:
-
-| Change Type | Version Bump | Example | Use Cases |
-|-------------|--------------|---------|-----------|
-| **patch** | 0.18.2 → 0.18.3 | Bug fixes, documentation, minor improvements | HTTP interface fixes, documentation updates |
-| **minor** | 0.18.2 → 0.19.0 | New features, new analysis tools | Deep context analysis, new CLI commands |
-| **major** | 0.18.2 → 1.0.0 | Breaking changes, API changes | Protocol breaking changes, major refactoring |
-
-#### 4. Manual Release (Advanced)
-
-If you need to create a release manually for specific reasons:
-
-```bash
-# 1. Update documentation first
-# Update README.md and RELEASE_NOTES.md with new features
-
-# 2. Commit all changes
-git add README.md RELEASE_NOTES.md server/src/
-git commit -m "feat: [feature description]
-
-[Detailed implementation description]
-
-🤖 Generated with [Claude Code](https://claude.ai/code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-
-# 3. Push changes
-git push origin master
-
-# 4. Create release manually
-gh release create v[X.Y.Z] \
-  --title "v[X.Y.Z]: [Feature Title]" \
-  --notes "Release description"
-```
-
-### Version Numbering Policy
-
-**DO NOT manually update Cargo.toml version numbers.** The GitHub Actions automatically handle version bumping when changes are pushed.
-
-**Version Scheme:**
-- **Major (X.0.0)**: Breaking changes, major architecture changes
-- **Minor (0.X.0)**: New features, new analysis tools, significant enhancements  
-- **Patch (0.0.X)**: Bug fixes, documentation updates, minor improvements
-
-**Examples:**
-- `v0.15.0`: Dead code analysis feature (new analysis tool = minor)
-- `v0.14.1`: Bug fixes and documentation (patch)
-- `v1.0.0`: Major API breaking changes (major)
-
-### Release Notes Quality Standards
-
-**MANDATORY elements for each release:**
-1. **🎯 Clear feature title** - What the release accomplishes
-2. **✨ New Features** - Bullet points with **NEW**/**FIXED**/**IMPROVED** tags
-3. **📊 Usage Examples** - Copy-pasteable CLI, MCP, and HTTP examples
-4. **🔧 Technical Implementation** - File paths and implementation details
-5. **🧪 Test Coverage** - Number of new tests and validation improvements
-6. **🚀 Performance** - Startup times, memory usage, scaling characteristics
-
-**Release Notes Template:**
-```markdown
-# Release Notes for v[X.Y.Z]
-
-## 🎯 [Major|Feature|Patch] Release: [Feature Name]
-
-[1-2 sentence summary of what this release accomplishes]
-
-## ✨ New Features
-
-### [Feature Name] (`cli-command-name`)
-- **NEW**: [Specific capability 1]
-- **NEW**: [Specific capability 2]  
-- **FIXED**: [Bug fix]
-- **IMPROVED**: [Enhancement]
-
-### [Integration Type] Integration
-- **NEW**: [MCP/CLI/HTTP details]
-- **UPDATED**: [Changes to existing functionality]
-
-## 🔧 Technical Implementation
-
-### [Module Name] (`server/src/path/file.rs`)
-- [Implementation detail 1]
-- [Implementation detail 2]
-
-## 📊 Usage Examples
-
-```bash
-# CLI Usage
-paiml-mcp-agent-toolkit command --param value
-
-# MCP Tool Call  
-{"method": "tool_name", "params": {"param": "value"}}
-
-# HTTP API
-GET /api/v1/endpoint?param=value
-```
-
-## 🧪 Test Coverage Improvements
-- **NEW**: [X] new tests for [feature]
-- **VERIFIED**: All interface consistency checks passing
-
-## 🚀 Performance Characteristics
-- **Startup**: <[X]ms
-- **Analysis**: [Performance details]
-- **Memory**: [Memory usage]
-- **Scaling**: [Scaling behavior]
-```
-
-### Common Release Mistakes to Avoid
-
-1. **❌ Don't manually edit Cargo.toml version** - Let GitHub Actions handle it
-2. **❌ Don't commit without updating documentation** - Always update README.md and RELEASE_NOTES.md
-3. **❌ Don't create releases without gh CLI** - Use the documented gh release create command
-4. **❌ Don't skip usage examples** - Every feature needs CLI, MCP, and HTTP examples
-5. **❌ Don't forget performance metrics** - Include startup times and scaling characteristics
-6. **❌ Don't rush the commit message** - Use the comprehensive template with technical details
-
-### Post-Release Verification
-
-After creating a release:
-1. **Verify release page**: Check https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v[X.Y.Z]
-2. **Test installation**: Verify the install script works with the new version
-3. **Update project metrics**: Re-run complexity analysis to update README dogfooding section
-4. **Monitor CI/CD**: Ensure all automated builds complete successfully
-
-Remember: **Releases are permanent and public. Take time to ensure quality and completeness.**
-
-## Why Triple-Interface Testing Matters
-
-1. **Protocol Bugs**: Interface-specific bugs are common (parameter parsing, serialization)
-2. **Performance Gaps**: CLI might be 10x slower than HTTP due to startup overhead
-3. **Feature Parity**: Easy to forget implementing a feature in all interfaces
-4. **User Experience**: Different users prefer different interfaces
-5. **Integration Issues**: MCP clients expect exact JSON-RPC compliance
-
-Remember: **Every feature must work identically across CLI, MCP, and HTTP interfaces.**
-Remember: **If we don't use our own tools constantly, we can't expect others to find them valuable.**
+**Remember**: This codebase optimizes for deterministic correctness across three protocols. Performance optimizations are secondary to maintaining behavioral equivalence. When analyzing complexity, focus on cognitive load reduction rather than pure cyclomatic metrics—the goal is maintainable code that junior engineers can modify safely.

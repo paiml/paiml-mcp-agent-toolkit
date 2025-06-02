@@ -319,6 +319,7 @@ fn test_context_command_parsing() {
     let args = vec![
         "paiml-mcp-agent-toolkit",
         "context",
+        "--toolchain",
         "rust",
         "-p",
         "/tmp/project",
@@ -336,7 +337,7 @@ fn test_context_command_parsing() {
             output,
             format,
         } => {
-            assert_eq!(toolchain, "rust");
+            assert_eq!(toolchain, Some("rust".to_string()));
             assert_eq!(project_path, PathBuf::from("/tmp/project"));
             assert_eq!(output, Some(PathBuf::from("context.md")));
             assert_eq!(format, ContextFormat::Markdown);
@@ -356,6 +357,7 @@ fn test_context_formats() {
         let args = vec![
             "paiml-mcp-agent-toolkit",
             "context",
+            "--toolchain",
             "deno",
             "--format",
             format_str,
@@ -373,7 +375,7 @@ fn test_context_formats() {
 
 #[test]
 fn test_context_default_values() {
-    let args = vec!["paiml-mcp-agent-toolkit", "context", "python-uv"];
+    let args = vec!["paiml-mcp-agent-toolkit", "context"];
     let cli = Cli::try_parse_from(&args).unwrap();
 
     match cli.command {
