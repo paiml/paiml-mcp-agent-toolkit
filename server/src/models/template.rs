@@ -81,3 +81,8 @@ pub struct GeneratedTemplate {
     pub checksum: String,
     pub toolchain: Toolchain,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TemplateResponse {
+    pub content: String,
+}

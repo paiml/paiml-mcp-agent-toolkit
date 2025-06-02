@@ -1,4 +1,6 @@
 pub mod args;
+// TODO: Fix compilation errors in command pattern implementation
+// pub mod command_pattern;
 
 use crate::{
     models::{churn::ChurnOutputFormat, template::*},

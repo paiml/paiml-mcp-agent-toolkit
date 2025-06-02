@@ -1,3 +1,0 @@
-[2m2025-05-31T15:45:50.421918Z[0m [32m INFO[0m [2mpaiml_mcp_agent_toolkit[0m[2m:[0m MCP server ready, waiting for requests on stdin...
-[2m2025-05-31T15:45:50.421969Z[0m [32m INFO[0m [2mpaiml_mcp_agent_toolkit[0m[2m:[0m Received request: method=tools/call, id=Number(2)
-{"jsonrpc":"2.0","id":2,"error":{"code":-32602,"message":"Unknown tool: analyze_dead_code"}}
