@@ -322,7 +322,7 @@ paiml-mcp-agent-toolkit context rust
 ### 🧠 Intelligent Language Detection
 
 **Multi-Strategy Detection System:**
-- **Build File Detection**: Recognizes `Cargo.toml`, `package.json`, `pyproject.toml`, `go.mod`, etc.
+- **Build File Detection**: Recognizes `Cargo.toml`, `package.json`, `pyproject.toml`
 - **Extension Analysis**: Statistical analysis of file extensions with LOC weighting
 - **Content Analysis**: Smart pattern matching for language-specific constructs and shebangs
 - **Confidence Scoring**: Weighted scoring system with detection accuracy feedback
@@ -330,12 +330,7 @@ paiml-mcp-agent-toolkit context rust
 **Supported Languages:**
 - 🦀 **Rust** (Cargo.toml, .rs files, `use std::`, `fn main()`)
 - 📘 **TypeScript** (tsconfig.json, .ts/.tsx files, `interface`, `type`)
-- 📄 **JavaScript** (package.json, .js/.jsx files, `require()`, `async function`)
 - 🐍 **Python** (pyproject.toml, .py files, `import`, `def`, shebangs)
-- 🐹 **Go** (go.mod, .go files, `package main`, `func main()`)
-- ☕ **Java** (pom.xml, .java files, `public class`, `public static void main`)
-- ⚡ **C#** (.cs files, `public class`, `using System`)
-- ⚙️ **C/C++** (.c/.cpp/.h files, `#include`, `int main()`)
 
 ### 🔄 Progressive Enhancement Architecture
 
@@ -390,7 +385,7 @@ paiml-mcp-agent-toolkit context rust
   - Support for Rust, TypeScript/JavaScript, Python file analysis
   - Vectorized ranking for datasets >1024 files (SIMD-optimized)
   - 95% test coverage with comprehensive edge case handling
-- Multi-language support (Rust, TypeScript/JavaScript, Python)
+- Multi-language support (Rust, TypeScript, Python)
 - SARIF output for IDE integration
 - Zero-overhead implementation (<1ms per KLOC)
 
