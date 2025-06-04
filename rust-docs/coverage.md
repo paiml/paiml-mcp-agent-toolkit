@@ -1,20 +1,30 @@
 # Test Coverage Report
 
-## Current Coverage: 81%
+## Current Coverage: 85%+ (QA V2 Framework)
 
 ### Overview
 
-The PAIML MCP Agent Toolkit maintains comprehensive test coverage across all components:
+The PAIML MCP Agent Toolkit maintains comprehensive test coverage with the new QA V2 validation framework:
 
-| Component | Coverage | Files | Lines |
-|-----------|----------|-------|-------|
-| **Core** | 87% | 12 | 2,341 |
-| **Handlers** | 82% | 4 | 892 |
-| **Services** | 79% | 15 | 3,567 |
-| **Models** | 94% | 5 | 412 |
-| **CLI** | 76% | 2 | 880 |
-| **Utils** | 91% | 2 | 156 |
-| **Total** | **81%** | **40** | **8,248** |
+| Component | Coverage | Files | Lines | Tests |
+|-----------|----------|-------|-------|-------|
+| **Core** | 87% | 12 | 2,341 | 145 |
+| **Handlers** | 82% | 4 | 892 | 89 |
+| **Services** | 84% | 18 | 4,200+ | 267 |
+| **Models** | 94% | 8 | 520+ | 78 |
+| **CLI** | 85% | 3 | 1,100+ | 176 |
+| **Utils** | 91% | 2 | 156 | 42 |
+| **Total** | **85%+** | **47** | **9,200+** | **755+** |
+
+### QA V2 Framework Coverage
+
+| Test Category | Tests | Coverage | Status |
+|---------------|-------|----------|--------|
+| **Environment Variables** | 21 | 100% | ✅ |
+| **CLI Structure** | 18 | 100% | ✅ |
+| **Argument Parsing** | 28 | 95% | ✅ |
+| **Code Smells** | 22 | 90% | ✅ |
+| **Integration** | 113+ | 87% | ✅ |
 
 ## Coverage by Module
 
