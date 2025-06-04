@@ -10,6 +10,28 @@ This document serves as the operational guide for the paiml-mcp-agent-toolkit (p
 - Hansei (反省): Focus on fixing existing broken functionality rather than adding new features
 - Kaizen - Continuous Improvement
 
+## QA V2 Framework Integration
+
+### Validation Pipeline
+The system now incorporates a comprehensive QA v2 framework with 755+ tests validating:
+
+```bash
+# QA validation commands (run automatically in CI/CD)
+make lint          # Zero tolerance for linting warnings
+make format        # Consistent code formatting 
+make test-fast     # 755+ tests with maximum parallelism
+make release       # Optimized binary generation
+pmat context       # Self-analysis for validation
+```
+
+### Test Categories
+- **Environment Variable Integration**: 21 tests with global mutex pattern
+- **CLI Structure Validation**: 18 tests for command hierarchy
+- **Argument Parsing**: 28 tests for type coercion and edge cases
+- **Code Smell Detection**: 22 tests for comprehensive quality analysis
+- **Interface Consistency**: Triple-interface testing (CLI, MCP, HTTP)
+- **Performance Validation**: Sub-10ms response time guarantees
+
 ## Dynamic Context Analysis Protocol
 
 ### Initialization Sequence

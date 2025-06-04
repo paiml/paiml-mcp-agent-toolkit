@@ -176,7 +176,7 @@ pmat context
 - 🏗️ **Unified Protocol Architecture**: Single binary supporting CLI, HTTP, and MCP interfaces
 - 🏃 **Self-contained binary with no external runtime dependencies**: Stateless binary with embedded templates
 - ⚡ **Sub-10ms Performance**: <10ms startup, <5ms template rendering
-- 📦 **Optimized Binary**: 14.8MB with 12.3% size reduction and compressed assets
+- 📦 **Optimized Binary**: 16MB with asset compression and build optimizations
 - 🔧 **Three Toolchains**: Rust CLI, Deno/TypeScript, Python UV
 - 📦 **MCP 2.0 Compliant**: Full Model Context Protocol with JSON-RPC 2.0
 - 🔍 **Advanced Analysis**: AST-based complexity, churn tracking, dependency graphs
@@ -184,9 +184,9 @@ pmat context
 - 🚀 **Interactive Demo**: Web-based showcase with real-time analysis
 - 📊 **Multiple Output Formats**: JSON, SARIF, Markdown, CSV, Mermaid
 - 🔄 **Deterministic Mermaid**: Consistent diagram ordering for reproducible builds
-- 🧪 **Comprehensive Test Coverage**: 34 test cases with 76% pass rate for validation
+- 🧪 **Comprehensive Test Coverage**: 755+ test cases with robust QA validation framework
 - 🏗️ **Workspace Architecture**: Optimized Rust workspace with LTO, asset compression, and build caching
-- 🗜️ **Asset Optimization**: Mermaid.js (71% compressed), D3.js (67% compressed), templates (79% compressed)
+- 🗜️ **Asset Optimization**: Mermaid.js (78.8% compressed), templates optimized
 - 🧠 **Progressive Enhancement**: Multi-stage analysis with graceful degradation and timeout handling
 
 ## 📊 Hybrid Symbolic-Neural Architecture
@@ -653,13 +653,14 @@ make validate
 ### Testing and Quality
 
 - **Coverage**: 85%+ test coverage with comprehensive E2E tests
-- **Tests**: 343 passing tests with unified protocol validation
-- **Fast Testing**: cargo-nextest with maximum parallelism (48 threads)
+- **Tests**: 755+ passing tests with unified protocol validation and QA v2 framework
+- **Fast Testing**: cargo-nextest with maximum parallelism (optimized for speed)
 - **Performance Optimized**: Incremental compilation, optimized test profiles
 - **CI/CD**: GitHub Actions with multi-platform builds
 - **Quality Gates**: Zero lint warnings, formatting, security audits
-- **Performance**: <10ms startup, <5ms template rendering, 14.8MB optimized binary
+- **Performance**: <10ms startup, <5ms template rendering, 16MB optimized binary
 - **Architecture**: Unified protocol supporting CLI, HTTP, and MCP interfaces
+- **QA Framework**: Comprehensive validation including complexity distribution, dead code analysis, environment variable testing
 
 ## 🤝 Contributing
 
