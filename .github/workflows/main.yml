@@ -57,7 +57,7 @@ jobs:
           make format
           make lint
           make check
-          (cd server && cargo build --release --bin pmat)
+          cargo build --release --manifest-path server/Cargo.toml --bin pmat
           make test-fast
           echo "passed=true" >> $GITHUB_OUTPUT
       
