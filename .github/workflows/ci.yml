@@ -65,14 +65,14 @@ jobs:
           make server-format
           make server-lint
           make server-check
+          make release
           make test-fast  # Fast tests with nextest for better CI performance
-          make server-build-binary
       
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: paiml-mcp-agent-toolkit-linux
-          path: server/target/release/paiml-mcp-agent-toolkit
+          name: pmat-linux
+          path: target/release/pmat
       
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -97,7 +97,7 @@ jobs:
       - name: Download binary artifact
         uses: actions/download-artifact@v4
         with:
-          name: paiml-mcp-agent-toolkit-linux
+          name: pmat-linux
           path: server/target/release/
       
       - name: Make binary executable
@@ -138,7 +138,7 @@ jobs:
       - name: Download binary artifact
         uses: actions/download-artifact@v4
         with:
-          name: paiml-mcp-agent-toolkit-linux
+          name: pmat-linux
           path: server/target/release/
       
       - name: Make binary executable
