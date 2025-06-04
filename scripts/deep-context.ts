@@ -751,209 +751,312 @@ async function findProjectFiles(root: string, ignoreDirs: string[]): Promise<{
   return { rustFiles, tsFiles, makefiles, readmes };
 }
 
-// Generate output
+// Generate output - main orchestrator
 function generateOutput(context: ProjectContext): string {
+  let output = generateHeader(context);
+  output += generateProjectStructure(context);
+  output += generateRustFilesSection(context);
+  output += generateTypeScriptFilesSection(context);
+  output += generateMakefilesSection(context);
+  output += generateReadmeSection(context);
+  output += generateFooter();
+
+  return output;
+}
+
+// Generate document header
+function generateHeader(context: ProjectContext): string {
   let output = `# Deep Context: ${basename(context.rootPath)}\n\n`;
   output += `Generated: ${new Date().toISOString()}\n`;
   output += `Version: ${VERSION}\n\n`;
+  return output;
+}
 
-  // Project tree
-  output += `## Project Structure\n\n`;
+// Generate project structure section
+function generateProjectStructure(context: ProjectContext): string {
+  let output = `## Project Structure\n\n`;
   output += "```\n";
   output += context.tree;
   output += "```\n\n";
+  return output;
+}
 
-  // Rust files AST
-  if (context.rustFiles.length > 0) {
-    output += `## Rust Files (${context.rustFiles.length})\n\n`;
+// Generate Rust files documentation
+function generateRustFilesSection(context: ProjectContext): string {
+  if (context.rustFiles.length === 0) return "";
 
-    for (const rustFile of context.rustFiles) {
-      output += `### ${rustFile.filePath}\n\n`;
-
-      if (rustFile.uses.length > 0) {
-        output += `**Imports:**\n`;
-        for (const use of rustFile.uses) {
-          output += `- \`${use.path}\`${
-            use.alias ? ` as ${use.alias}` : ""
-          } (line ${use.lineNumber})\n`;
-        }
-        output += "\n";
-      }
-
-      if (rustFile.mods.length > 0) {
-        output += `**Modules:**\n`;
-        for (const mod of rustFile.mods) {
-          output += `- \`${mod.visibility} mod ${mod.name}\` ${
-            mod.isFile ? "(file)" : "(inline)"
-          } (line ${mod.lineNumber})\n`;
-        }
-        output += "\n";
-      }
-
-      if (rustFile.structs.length > 0) {
-        output += `**Structs:**\n`;
-        for (const struct of rustFile.structs) {
-          output += `- \`${struct.visibility} struct ${struct.name}\``;
-          if (struct.derives.length > 0) {
-            output += ` [derives: ${struct.derives.join(", ")}]`;
-          }
-          output += ` (line ${struct.lineNumber})\n`;
-        }
-        output += "\n";
-      }
-
-      if (rustFile.enums.length > 0) {
-        output += `**Enums:**\n`;
-        for (const enum_ of rustFile.enums) {
-          output +=
-            `- \`${enum_.visibility} enum ${enum_.name}\` (line ${enum_.lineNumber})\n`;
-        }
-        output += "\n";
-      }
-
-      if (rustFile.functions.length > 0) {
-        output += `**Functions:**\n`;
-        for (const fn of rustFile.functions) {
-          output += `- \`${fn.visibility} ${
-            fn.async ? "async " : ""
-          }fn ${fn.name}(...) -> ${fn.returnType}\` (line ${fn.lineNumber})\n`;
-        }
-        output += "\n";
-      }
-
-      if (rustFile.impls.length > 0) {
-        output += `**Implementations:**\n`;
-        for (const impl of rustFile.impls) {
-          output += `- \`impl ${
-            impl.traitName ? `${impl.traitName} for ` : ""
-          }${impl.structName}\` (line ${impl.lineNumber})\n`;
-        }
-        output += "\n";
-      }
-
-      if (rustFile.traits.length > 0) {
-        output += `**Traits:**\n`;
-        for (const trait of rustFile.traits) {
-          output +=
-            `- \`${trait.visibility} trait ${trait.name}\` (line ${trait.lineNumber})\n`;
-        }
-        output += "\n";
-      }
-    }
+  let output = `## Rust Files (${context.rustFiles.length})\n\n`;
+  
+  for (const rustFile of context.rustFiles) {
+    output += generateRustFileDetails(rustFile);
   }
+  
+  return output;
+}
 
-  // TypeScript files AST
-  if (context.tsFiles.length > 0) {
-    output += `## TypeScript Files (${context.tsFiles.length})\n\n`;
+// Generate details for a single Rust file
+function generateRustFileDetails(rustFile: RustFileAST): string {
+  let output = `### ${rustFile.filePath}\n\n`;
+  
+  output += generateRustImports(rustFile.uses);
+  output += generateRustModules(rustFile.mods);
+  output += generateRustStructs(rustFile.structs);
+  output += generateRustEnums(rustFile.enums);
+  output += generateRustFunctions(rustFile.functions);
+  output += generateRustImplementations(rustFile.impls);
+  output += generateRustTraits(rustFile.traits);
+  
+  return output;
+}
 
-    for (const tsFile of context.tsFiles) {
-      output += `### ${tsFile.filePath}\n\n`;
-
-      if (tsFile.imports.length > 0) {
-        output += `**Imports:**\n`;
-        for (const imp of tsFile.imports) {
-          output += `- from \`${imp.source}\`: ${
-            imp.specifiers.join(", ") || "*"
-          } (line ${imp.lineNumber})\n`;
-        }
-        output += "\n";
-      }
-
-      if (tsFile.exports.length > 0) {
-        output += `**Exports:**\n`;
-        for (const exp of tsFile.exports) {
-          output += `- \`${
-            exp.isDefault ? "default " : ""
-          }${exp.name}\` (line ${exp.lineNumber})\n`;
-        }
-        output += "\n";
-      }
-
-      if (tsFile.interfaces.length > 0) {
-        output += `**Interfaces:**\n`;
-        for (const iface of tsFile.interfaces) {
-          output += `- \`${
-            iface.exported ? "export " : ""
-          }interface ${iface.name}\` with ${iface.properties.length} properties (line ${iface.lineNumber})\n`;
-        }
-        output += "\n";
-      }
-
-      if (tsFile.functions.length > 0) {
-        output += `**Functions:**\n`;
-        for (const fn of tsFile.functions) {
-          output += `- \`${fn.exported ? "export " : ""}${
-            fn.async ? "async " : ""
-          }function ${fn.name}(${fn.params.map((p) => p.name).join(", ")})${
-            fn.returnType ? `: ${fn.returnType}` : ""
-          }\` (line ${fn.lineNumber})\n`;
-        }
-        output += "\n";
-      }
-
-      if (tsFile.classes.length > 0) {
-        output += `**Classes:**\n`;
-        for (const cls of tsFile.classes) {
-          output += `- \`${
-            cls.exported ? "export " : ""
-          }class ${cls.name}\` (line ${cls.lineNumber})\n`;
-        }
-        output += "\n";
-      }
-    }
+// Generate Rust imports section
+function generateRustImports(uses: RustUse[]): string {
+  if (uses.length === 0) return "";
+  
+  let output = `**Imports:**\n`;
+  for (const use of uses) {
+    output += `- \`${use.path}\`${use.alias ? ` as ${use.alias}` : ""} (line ${use.lineNumber})\n`;
   }
+  output += "\n";
+  return output;
+}
 
-  // Makefiles
-  if (context.makefiles.length > 0) {
-    output += `## Makefiles (${context.makefiles.length})\n\n`;
-
-    for (const makefile of context.makefiles) {
-      output += `### ${makefile.path}\n\n`;
-
-      if (Object.keys(makefile.variables).length > 0) {
-        output += `**Variables:**\n`;
-        for (const [name, value] of Object.entries(makefile.variables)) {
-          output += `- \`${name} = ${value}\`\n`;
-        }
-        output += "\n";
-      }
-
-      if (makefile.targets.length > 0) {
-        output += `**Targets:**\n\n`;
-        output += "| Target | Description | Dependencies | Commands |\n";
-        output += "|--------|-------------|--------------|----------|\n";
-
-        for (const target of makefile.targets) {
-          const commands = target.commands.length > 2
-            ? `${
-              target.commands.slice(0, 2).join("; ")
-            }... (${target.commands.length} total)`
-            : target.commands.join("; ");
-
-          output += `| \`${target.name}\` | ${target.description || "-"} | ${
-            target.dependencies.join(", ") || "-"
-          } | ${commands || "-"} |\n`;
-        }
-        output += "\n";
-      }
-    }
+// Generate Rust modules section
+function generateRustModules(mods: RustMod[]): string {
+  if (mods.length === 0) return "";
+  
+  let output = `**Modules:**\n`;
+  for (const mod of mods) {
+    output += `- \`${mod.visibility} mod ${mod.name}\` ${mod.isFile ? "(file)" : "(inline)"} (line ${mod.lineNumber})\n`;
   }
+  output += "\n";
+  return output;
+}
 
-  // READMEs
-  if (context.readmes.length > 0) {
-    output += `## README Files (${context.readmes.length})\n\n`;
-
-    for (const readme of context.readmes) {
-      output += `### ${readme.path}\n\n`;
-      output += "```markdown\n";
-      output += readme.content;
-      output += "\n```\n\n";
+// Generate Rust structs section
+function generateRustStructs(structs: RustStruct[]): string {
+  if (structs.length === 0) return "";
+  
+  let output = `**Structs:**\n`;
+  for (const struct of structs) {
+    output += `- \`${struct.visibility} struct ${struct.name}\``;
+    if (struct.derives.length > 0) {
+      output += ` [derives: ${struct.derives.join(", ")}]`;
     }
+    output += ` (line ${struct.lineNumber})\n`;
   }
+  output += "\n";
+  return output;
+}
 
-  output += "---\n";
+// Generate Rust enums section
+function generateRustEnums(enums: RustEnum[]): string {
+  if (enums.length === 0) return "";
+  
+  let output = `**Enums:**\n`;
+  for (const enum_ of enums) {
+    output += `- \`${enum_.visibility} enum ${enum_.name}\` (line ${enum_.lineNumber})\n`;
+  }
+  output += "\n";
+  return output;
+}
+
+// Generate Rust functions section
+function generateRustFunctions(functions: RustFunction[]): string {
+  if (functions.length === 0) return "";
+  
+  let output = `**Functions:**\n`;
+  for (const fn of functions) {
+    output += `- \`${fn.visibility} ${fn.async ? "async " : ""}fn ${fn.name}(...) -> ${fn.returnType}\` (line ${fn.lineNumber})\n`;
+  }
+  output += "\n";
+  return output;
+}
+
+// Generate Rust implementations section
+function generateRustImplementations(impls: RustImpl[]): string {
+  if (impls.length === 0) return "";
+  
+  let output = `**Implementations:**\n`;
+  for (const impl of impls) {
+    output += `- \`impl ${impl.traitName ? `${impl.traitName} for ` : ""}${impl.structName}\` (line ${impl.lineNumber})\n`;
+  }
+  output += "\n";
+  return output;
+}
+
+// Generate Rust traits section
+function generateRustTraits(traits: Array<{name: string; visibility: string; lineNumber: number}>): string {
+  if (traits.length === 0) return "";
+  
+  let output = `**Traits:**\n`;
+  for (const trait of traits) {
+    output += `- \`${trait.visibility} trait ${trait.name}\` (line ${trait.lineNumber})\n`;
+  }
+  output += "\n";
+  return output;
+}
+
+// Generate TypeScript files documentation
+function generateTypeScriptFilesSection(context: ProjectContext): string {
+  if (context.tsFiles.length === 0) return "";
+
+  let output = `## TypeScript Files (${context.tsFiles.length})\n\n`;
+  
+  for (const tsFile of context.tsFiles) {
+    output += generateTypeScriptFileDetails(tsFile);
+  }
+  
+  return output;
+}
+
+// Generate details for a single TypeScript file
+function generateTypeScriptFileDetails(tsFile: TypeScriptFileAST): string {
+  let output = `### ${tsFile.filePath}\n\n`;
+  
+  output += generateTypeScriptImports(tsFile.imports);
+  output += generateTypeScriptExports(tsFile.exports);
+  output += generateTypeScriptInterfaces(tsFile.interfaces);
+  output += generateTypeScriptFunctions(tsFile.functions);
+  output += generateTypeScriptClasses(tsFile.classes);
+  
+  return output;
+}
+
+// Generate TypeScript imports section
+function generateTypeScriptImports(imports: Array<{source: string; specifiers: string[]; lineNumber: number}>): string {
+  if (imports.length === 0) return "";
+  
+  let output = `**Imports:**\n`;
+  for (const imp of imports) {
+    output += `- from \`${imp.source}\`: ${imp.specifiers.join(", ") || "*"} (line ${imp.lineNumber})\n`;
+  }
+  output += "\n";
+  return output;
+}
+
+// Generate TypeScript exports section
+function generateTypeScriptExports(exports: Array<{name: string; isDefault: boolean; lineNumber: number}>): string {
+  if (exports.length === 0) return "";
+  
+  let output = `**Exports:**\n`;
+  for (const exp of exports) {
+    output += `- \`${exp.isDefault ? "default " : ""}${exp.name}\` (line ${exp.lineNumber})\n`;
+  }
+  output += "\n";
+  return output;
+}
+
+// Generate TypeScript interfaces section
+function generateTypeScriptInterfaces(interfaces: TypeScriptInterface[]): string {
+  if (interfaces.length === 0) return "";
+  
+  let output = `**Interfaces:**\n`;
+  for (const iface of interfaces) {
+    output += `- \`${iface.exported ? "export " : ""}interface ${iface.name}\` with ${iface.properties.length} properties (line ${iface.lineNumber})\n`;
+  }
+  output += "\n";
+  return output;
+}
+
+// Generate TypeScript functions section
+function generateTypeScriptFunctions(functions: TypeScriptFunction[]): string {
+  if (functions.length === 0) return "";
+  
+  let output = `**Functions:**\n`;
+  for (const fn of functions) {
+    output += `- \`${fn.exported ? "export " : ""}${fn.async ? "async " : ""}function ${fn.name}(${fn.params.map((p) => p.name).join(", ")})${fn.returnType ? `: ${fn.returnType}` : ""}\` (line ${fn.lineNumber})\n`;
+  }
+  output += "\n";
+  return output;
+}
+
+// Generate TypeScript classes section
+function generateTypeScriptClasses(classes: Array<{name: string; exported: boolean; lineNumber: number}>): string {
+  if (classes.length === 0) return "";
+  
+  let output = `**Classes:**\n`;
+  for (const cls of classes) {
+    output += `- \`${cls.exported ? "export " : ""}class ${cls.name}\` (line ${cls.lineNumber})\n`;
+  }
+  output += "\n";
+  return output;
+}
+
+// Generate Makefiles documentation
+function generateMakefilesSection(context: ProjectContext): string {
+  if (context.makefiles.length === 0) return "";
+
+  let output = `## Makefiles (${context.makefiles.length})\n\n`;
+  
+  for (const makefile of context.makefiles) {
+    output += generateMakefileDetails(makefile);
+  }
+  
+  return output;
+}
+
+// Generate details for a single Makefile
+function generateMakefileDetails(makefile: {path: string; targets: MakefileTarget[]; variables: Record<string, string>}): string {
+  let output = `### ${makefile.path}\n\n`;
+  
+  output += generateMakefileVariables(makefile.variables);
+  output += generateMakefileTargets(makefile.targets);
+  
+  return output;
+}
+
+// Generate Makefile variables section
+function generateMakefileVariables(variables: Record<string, string>): string {
+  if (Object.keys(variables).length === 0) return "";
+  
+  let output = `**Variables:**\n`;
+  for (const [name, value] of Object.entries(variables)) {
+    output += `- \`${name} = ${value}\`\n`;
+  }
+  output += "\n";
+  return output;
+}
+
+// Generate Makefile targets section
+function generateMakefileTargets(targets: MakefileTarget[]): string {
+  if (targets.length === 0) return "";
+  
+  let output = `**Targets:**\n\n`;
+  output += "| Target | Description | Dependencies | Commands |\n";
+  output += "|--------|-------------|--------------|----------|\n";
+
+  for (const target of targets) {
+    const commands = target.commands.length > 2
+      ? `${target.commands.slice(0, 2).join("; ")}... (${target.commands.length} total)`
+      : target.commands.join("; ");
+
+    output += `| \`${target.name}\` | ${target.description || "-"} | ${target.dependencies.join(", ") || "-"} | ${commands || "-"} |\n`;
+  }
+  output += "\n";
+  return output;
+}
+
+// Generate README files documentation
+function generateReadmeSection(context: ProjectContext): string {
+  if (context.readmes.length === 0) return "";
+
+  let output = `## README Files (${context.readmes.length})\n\n`;
+
+  for (const readme of context.readmes) {
+    output += `### ${readme.path}\n\n`;
+    output += "```markdown\n";
+    output += readme.content;
+    output += "\n```\n\n";
+  }
+  
+  return output;
+}
+
+// Generate document footer
+function generateFooter(): string {
+  let output = "---\n";
   output += `Generated by deep-context v${VERSION}\n`;
-
   return output;
 }
 

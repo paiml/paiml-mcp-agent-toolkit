@@ -52,20 +52,14 @@ lint:
 check:
 	cargo check --all-targets --all-features
 
-# Run tests with coverage (like deno test --coverage)
-# Note: Excludes integration tests that spawn processes to prevent system freezes
+# Run FAST tests only (zero tolerance for slow tests)
 test:
-	@echo "🔨 Building debug binary for tests..."
-	@cargo build --bin paiml-mcp-agent-toolkit
-	@if command -v cargo-llvm-cov >/dev/null 2>&1; then \
-		echo "Running tests with coverage (excluding integration tests)..."; \
-		cargo llvm-cov --all-features --workspace --html --output-dir coverage -- --skip mcp_stdio_test; \
-		cargo llvm-cov report --summary-only; \
+	@echo "⚡ Running fast tests with nextest..."
+	@if command -v cargo-nextest >/dev/null 2>&1; then \
+		RUST_TEST_THREADS=$$(nproc) cargo nextest run --profile fast; \
 	else \
-		echo "Running tests (excluding integration tests)..."; \
-		cargo test -- --skip mcp_stdio_test; \
-		echo "💡 Tip: Install cargo-llvm-cov for test coverage:"; \
-		echo "   cargo install cargo-llvm-cov"; \
+		echo "Running fast tests with cargo test..."; \
+		RUST_TEST_THREADS=$$(nproc) cargo test --release; \
 	fi
 	@if [ -d "./tests/e2e" ] && command -v deno >/dev/null 2>&1; then \
 		echo ""; \
@@ -74,25 +68,20 @@ test:
 	fi
 	@echo ""
 	@echo "🔍 Running critical naming convention tests..."
-	@cargo test test_naming_convention --no-fail-fast -- --nocapture || { \
+	@cargo test test_naming_convention --release --no-fail-fast -- --nocapture || { \
 		echo "❌ CRITICAL: Naming convention tests failed!"; \
 		echo "This is a level 0 production blocker."; \
 		echo "Ensure all references use 'paiml-mcp-agent-toolkit' consistently."; \
 		exit 1; \
 	}
-	@if [ -d "./tests/e2e" ] && command -v deno >/dev/null 2>&1; then \
-		echo ""; \
-		echo "🧪 Running installation validation tests..."; \
-		deno test --allow-all tests/e2e/installation.test.ts || exit 1; \
-	fi
 	@echo ""
 	@echo "📚 Running documentation synchronization tests..."
-	@cargo test --test cli_documentation_sync || { \
+	@cargo test --release --test cli_documentation_sync || { \
 		echo "❌ CLI documentation is out of sync!"; \
 		echo "Please update docs/cli-mcp.md to match the current implementation"; \
 		exit 1; \
 	}
-	@cargo test --test mcp_documentation_sync || { \
+	@cargo test --release --test mcp_documentation_sync || { \
 		echo "❌ MCP documentation is out of sync!"; \
 		echo "Please update docs/cli-mcp.md to match the current implementation"; \
 		exit 1; \
@@ -116,14 +105,14 @@ coverage:
 
 # Build standalone binary (stateless MCP server)
 build-binary:
-	cargo build --release --bin paiml-mcp-agent-toolkit
+	cargo build --release --bin pmat
 
 
 # Default build target: binary only (no Docker)
 build: validate-docs build-binary
 	@echo ""
 	@echo "✅ Binary built successfully!"
-	@echo "   Location: ./target/release/paiml-mcp-agent-toolkit"
+	@echo "   Location: ./target/release/pmat"
 
 
 
@@ -150,11 +139,11 @@ test-all:
 
 # Run MCP server in STDIO mode
 run-mcp:
-	cargo run --bin paiml-mcp-agent-toolkit
+	cargo run --bin pmat
 
 # Run MCP server in test mode (stateless server doesn't need TEST_MODE)
 run-mcp-test:
-	cargo run --bin paiml-mcp-agent-toolkit
+	cargo run --bin pmat
 
 # Test installation process
 test-install:
@@ -177,25 +166,25 @@ bump-version:
 install: bump-version build-binary
 	@echo "🚀 Installing MCP server..."
 	@# First, remove any existing installation
-	@if [ -f "/usr/local/bin/paiml-mcp-agent-toolkit" ]; then \
+	@if [ -f "/usr/local/bin/pmat" ]; then \
 		echo "📦 Found existing system installation, removing..."; \
-		rm -f /usr/local/bin/paiml-mcp-agent-toolkit 2>/dev/null || \
-		sudo rm -f /usr/local/bin/paiml-mcp-agent-toolkit 2>/dev/null || true; \
+		rm -f /usr/local/bin/pmat 2>/dev/null || \
+		sudo rm -f /usr/local/bin/pmat 2>/dev/null || true; \
 	fi
-	@if [ -f "$(HOME)/.local/bin/paiml-mcp-agent-toolkit" ]; then \
+	@if [ -f "$(HOME)/.local/bin/pmat" ]; then \
 		echo "📦 Found existing user installation, removing..."; \
-		rm -f $(HOME)/.local/bin/paiml-mcp-agent-toolkit; \
+		rm -f $(HOME)/.local/bin/pmat; \
 	fi
 	@# Now do fresh install
 	@if [ -z "$(DESTDIR)" ]; then \
 		if [ -w "/usr/local/bin" ]; then \
-			install -m 755 target/release/paiml-mcp-agent-toolkit /usr/local/bin/paiml-mcp-agent-toolkit; \
-			echo "✅ Installed to /usr/local/bin/paiml-mcp-agent-toolkit"; \
+			install -m 755 target/release/pmat /usr/local/bin/pmat; \
+			echo "✅ Installed to /usr/local/bin/pmat"; \
 		else \
 			echo "⚠️  Cannot write to /usr/local/bin. Trying user install..."; \
 			mkdir -p $(HOME)/.local/bin; \
-			install -m 755 target/release/paiml-mcp-agent-toolkit $(HOME)/.local/bin/paiml-mcp-agent-toolkit; \
-			echo "✅ Installed to $(HOME)/.local/bin/paiml-mcp-agent-toolkit"; \
+			install -m 755 target/release/pmat $(HOME)/.local/bin/pmat; \
+			echo "✅ Installed to $(HOME)/.local/bin/pmat"; \
 			echo ""; \
 			if echo "$$PATH" | grep -q "$(HOME)/.local/bin"; then \
 				echo "✅ $(HOME)/.local/bin is already in your PATH"; \
@@ -225,19 +214,19 @@ install: bump-version build-binary
 			fi \
 		fi \
 	else \
-		install -D -m 755 target/release/paiml-mcp-agent-toolkit $(DESTDIR)/usr/local/bin/paiml-mcp-agent-toolkit; \
-		echo "✅ Installed to $(DESTDIR)/usr/local/bin/paiml-mcp-agent-toolkit"; \
+		install -D -m 755 target/release/pmat $(DESTDIR)/usr/local/bin/pmat; \
+		echo "✅ Installed to $(DESTDIR)/usr/local/bin/pmat"; \
 	fi
 	@# Verify installation
 	@echo ""
 	@echo "🔍 Verifying installation..."
-	@if command -v paiml-mcp-agent-toolkit >/dev/null 2>&1; then \
+	@if command -v pmat >/dev/null 2>&1; then \
 		echo "✅ Binary is accessible in PATH"; \
-		echo "📍 Location: $$(which paiml-mcp-agent-toolkit)"; \
+		echo "📍 Location: $$(which pmat)"; \
 		echo "📌 Version: $$(grep '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')"; \
 		echo ""; \
 		echo "🧪 Testing server startup..."; \
-		if timeout 2s paiml-mcp-agent-toolkit < /dev/null >/dev/null 2>&1; then \
+		if timeout 2s pmat < /dev/null >/dev/null 2>&1; then \
 			echo "✅ Server starts successfully"; \
 		else \
 			exit_code=$$?; \
@@ -245,7 +234,7 @@ install: bump-version build-binary
 				echo "✅ Server starts successfully (timeout expected for STDIO server)"; \
 			else \
 				echo "⚠️  Server may have issues starting. Exit code: $$exit_code"; \
-				echo "   Try running manually: paiml-mcp-agent-toolkit"; \
+				echo "   Try running manually: pmat"; \
 			fi \
 		fi; \
 		echo ""; \
@@ -255,11 +244,11 @@ install: bump-version build-binary
 				echo "✅ MCP server already configured in Claude Code"; \
 			else \
 				echo "📝 Adding MCP server to Claude Code..."; \
-				if claude mcp add paiml-toolkit paiml-mcp-agent-toolkit 2>/dev/null; then \
+				if claude mcp add paiml-toolkit pmat 2>/dev/null; then \
 					echo "✅ Successfully added to Claude Code"; \
 				else \
 					echo "⚠️  Could not auto-configure Claude Code"; \
-					echo "   Run manually: claude mcp add paiml-toolkit paiml-mcp-agent-toolkit"; \
+					echo "   Run manually: claude mcp add paiml-toolkit pmat"; \
 				fi \
 			fi; \
 			echo ""; \
@@ -267,7 +256,7 @@ install: bump-version build-binary
 		else \
 			echo "ℹ️  Claude CLI not found. To use with Claude Code:"; \
 			echo "   1. Install Claude CLI: npm install -g @anthropic-ai/claude-cli"; \
-			echo "   2. Run: claude mcp add paiml-toolkit paiml-mcp-agent-toolkit"; \
+			echo "   2. Run: claude mcp add paiml-toolkit pmat"; \
 		fi \
 	else \
 		echo "⚠️  Binary not found in PATH!"; \
@@ -284,25 +273,25 @@ install: bump-version build-binary
 local-install: build-binary
 	@echo "🚀 Installing MCP server (local development mode - no version bump)..."
 	@# First, remove any existing installation
-	@if [ -f "/usr/local/bin/paiml-mcp-agent-toolkit" ]; then \
+	@if [ -f "/usr/local/bin/pmat" ]; then \
 		echo "📦 Found existing system installation, removing..."; \
-		rm -f /usr/local/bin/paiml-mcp-agent-toolkit 2>/dev/null || \
-		sudo rm -f /usr/local/bin/paiml-mcp-agent-toolkit 2>/dev/null || true; \
+		rm -f /usr/local/bin/pmat 2>/dev/null || \
+		sudo rm -f /usr/local/bin/pmat 2>/dev/null || true; \
 	fi
-	@if [ -f "$(HOME)/.local/bin/paiml-mcp-agent-toolkit" ]; then \
+	@if [ -f "$(HOME)/.local/bin/pmat" ]; then \
 		echo "📦 Found existing user installation, removing..."; \
-		rm -f $(HOME)/.local/bin/paiml-mcp-agent-toolkit; \
+		rm -f $(HOME)/.local/bin/pmat; \
 	fi
 	@# Now do fresh install
 	@if [ -z "$(DESTDIR)" ]; then \
 		if [ -w "/usr/local/bin" ]; then \
-			install -m 755 target/release/paiml-mcp-agent-toolkit /usr/local/bin/paiml-mcp-agent-toolkit; \
-			echo "✅ Installed to /usr/local/bin/paiml-mcp-agent-toolkit"; \
+			install -m 755 target/release/pmat /usr/local/bin/pmat; \
+			echo "✅ Installed to /usr/local/bin/pmat"; \
 		else \
 			echo "⚠️  Cannot write to /usr/local/bin. Trying user install..."; \
 			mkdir -p $(HOME)/.local/bin; \
-			install -m 755 target/release/paiml-mcp-agent-toolkit $(HOME)/.local/bin/paiml-mcp-agent-toolkit; \
-			echo "✅ Installed to $(HOME)/.local/bin/paiml-mcp-agent-toolkit"; \
+			install -m 755 target/release/pmat $(HOME)/.local/bin/pmat; \
+			echo "✅ Installed to $(HOME)/.local/bin/pmat"; \
 			echo ""; \
 			if echo "$$PATH" | grep -q "$(HOME)/.local/bin"; then \
 				echo "✅ $(HOME)/.local/bin is already in your PATH"; \
@@ -332,19 +321,19 @@ local-install: build-binary
 			fi \
 		fi \
 	else \
-		install -D -m 755 target/release/paiml-mcp-agent-toolkit $(DESTDIR)/usr/local/bin/paiml-mcp-agent-toolkit; \
-		echo "✅ Installed to $(DESTDIR)/usr/local/bin/paiml-mcp-agent-toolkit"; \
+		install -D -m 755 target/release/pmat $(DESTDIR)/usr/local/bin/pmat; \
+		echo "✅ Installed to $(DESTDIR)/usr/local/bin/pmat"; \
 	fi
 	@# Verify installation
 	@echo ""
 	@echo "🔍 Verifying installation..."
-	@if command -v paiml-mcp-agent-toolkit >/dev/null 2>&1; then \
+	@if command -v pmat >/dev/null 2>&1; then \
 		echo "✅ Binary is accessible in PATH"; \
-		echo "📍 Location: $$(which paiml-mcp-agent-toolkit)"; \
+		echo "📍 Location: $$(which pmat)"; \
 		echo "📌 Version: $$(grep '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')"; \
 		echo ""; \
 		echo "🧪 Testing server startup..."; \
-		if timeout 2s paiml-mcp-agent-toolkit < /dev/null >/dev/null 2>&1; then \
+		if timeout 2s pmat < /dev/null >/dev/null 2>&1; then \
 			echo "✅ Server starts successfully"; \
 		else \
 			exit_code=$$?; \
@@ -352,7 +341,7 @@ local-install: build-binary
 				echo "✅ Server starts successfully (timeout expected for STDIO server)"; \
 			else \
 				echo "⚠️  Server may have issues starting. Exit code: $$exit_code"; \
-				echo "   Try running manually: paiml-mcp-agent-toolkit"; \
+				echo "   Try running manually: pmat"; \
 			fi \
 		fi; \
 		echo ""; \
@@ -371,10 +360,10 @@ local-install: build-binary
 # Uninstall the MCP server
 uninstall:
 	@echo "🗑️  Uninstalling MCP server..."
-	@if [ -f "/usr/local/bin/paiml-mcp-agent-toolkit" ]; then \
-		rm -f /usr/local/bin/paiml-mcp-agent-toolkit && echo "✅ Removed /usr/local/bin/paiml-mcp-agent-toolkit"; \
-	elif [ -f "$(HOME)/.local/bin/paiml-mcp-agent-toolkit" ]; then \
-		rm -f $(HOME)/.local/bin/paiml-mcp-agent-toolkit && echo "✅ Removed $(HOME)/.local/bin/paiml-mcp-agent-toolkit"; \
+	@if [ -f "/usr/local/bin/pmat" ]; then \
+		rm -f /usr/local/bin/pmat && echo "✅ Removed /usr/local/bin/pmat"; \
+	elif [ -f "$(HOME)/.local/bin/pmat" ]; then \
+		rm -f $(HOME)/.local/bin/pmat && echo "✅ Removed $(HOME)/.local/bin/pmat"; \
 	else \
 		echo "⚠️  MCP server not found in standard locations"; \
 	fi

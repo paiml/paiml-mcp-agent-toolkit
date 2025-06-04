@@ -4,7 +4,7 @@ pub mod args;
 
 use crate::{
     models::{churn::ChurnOutputFormat, template::*},
-    services::template_service::*,
+    services::{makefile_linter, template_service::*},
     stateless_server::StatelessTemplateServer,
 };
 use clap::{Parser, Subcommand, ValueEnum};
@@ -50,7 +50,7 @@ pub(crate) struct Cli {
     pub(crate) command: Commands,
 }
 
-#[derive(Clone, Debug, ValueEnum)]
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
 pub(crate) enum Mode {
     Cli,
     Mcp,
@@ -177,9 +177,21 @@ pub enum Commands {
         #[arg(long)]
         url: Option<String>,
 
+        /// Repository to analyze (supports GitHub URLs, local paths, or shorthand like gh:owner/repo)
+        #[arg(long)]
+        repo: Option<String>,
+
         /// Output format
         #[arg(short, long, value_enum, default_value = "table")]
         format: OutputFormat,
+
+        /// Protocol to demonstrate (cli, http, mcp, all)
+        #[arg(long, value_enum, default_value = "http")]
+        protocol: DemoProtocol,
+
+        /// Show API introspection information
+        #[arg(long)]
+        show_api: bool,
 
         /// Skip opening browser (web mode only)
         #[arg(long)]
@@ -204,6 +216,26 @@ pub enum Commands {
         /// Component size threshold for merging in graph reduction
         #[arg(long, default_value_t = 3)]
         merge_threshold: usize,
+
+        /// Enable debug mode with detailed file classification logs
+        #[arg(long)]
+        debug: bool,
+
+        /// Output path for debug report (JSON format)
+        #[arg(long)]
+        debug_output: Option<PathBuf>,
+
+        /// Skip vendor files during analysis (enabled by default)
+        #[arg(long, default_value_t = true)]
+        skip_vendor: bool,
+
+        /// Disable vendor file skipping (process all files)
+        #[arg(long = "no-skip-vendor")]
+        no_skip_vendor: bool,
+
+        /// Maximum line length before considering file unparseable
+        #[arg(long)]
+        max_line_length: Option<usize>,
     },
 
     /// Start HTTP API server
@@ -286,7 +318,7 @@ pub enum AnalyzeCommands {
     /// Generate dependency graphs using Mermaid
     Dag {
         /// Type of dependency graph to generate
-        #[arg(long, value_enum, default_value = "call-graph")]
+        #[arg(long, value_enum, default_value = "full-dependency")]
         dag_type: DagType,
 
         /// Project path to analyze
@@ -453,12 +485,100 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         verbose: bool,
     },
+
+    /// Analyze Technical Debt Gradient (TDG) scores
+    #[command(name = "tdg")]
+    Tdg {
+        /// Path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+
+        /// TDG threshold for filtering results
+        #[arg(short, long, default_value = "1.5")]
+        threshold: f64,
+
+        /// Number of top files to show
+        #[arg(short = 'n', long, default_value = "20")]
+        top: usize,
+
+        /// Output format
+        #[arg(short, long, value_enum, default_value = "table")]
+        format: TdgOutputFormat,
+
+        /// Include TDG component breakdown
+        #[arg(long)]
+        include_components: bool,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Show only critical files (TDG > 2.5)
+        #[arg(long)]
+        critical_only: bool,
+
+        /// Enable verbose analysis output
+        #[arg(long)]
+        verbose: bool,
+    },
+
+    /// Analyze Makefile quality and compliance
+    Makefile {
+        /// Path to Makefile
+        #[arg(help = "Path to Makefile to analyze")]
+        path: PathBuf,
+
+        /// Lint rules to apply
+        #[arg(
+            long,
+            value_delimiter = ',',
+            default_value = "all",
+            help = "Comma-separated list of rules to apply"
+        )]
+        rules: Vec<String>,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "human")]
+        format: MakefileOutputFormat,
+
+        /// Fix auto-fixable issues
+        #[arg(long, help = "Automatically fix issues where possible")]
+        fix: bool,
+
+        /// Check GNU Make compatibility version
+        #[arg(
+            long,
+            default_value = "4.4",
+            help = "GNU Make version to check compatibility against"
+        )]
+        gnu_version: String,
+    },
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
 pub enum ContextFormat {
     Markdown,
     Json,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum TdgOutputFormat {
+    Table,
+    Json,
+    Markdown,
+    Sarif,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum MakefileOutputFormat {
+    /// Human-readable output
+    Human,
+    /// JSON output
+    Json,
+    /// GCC-style output for editor integration
+    Gcc,
+    /// SARIF format for CI/CD integration
+    Sarif,
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
@@ -550,6 +670,14 @@ pub enum DeepContextCacheStrategy {
     Offline,
 }
 
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum DemoProtocol {
+    Cli,
+    Http,
+    Mcp,
+    All,
+}
+
 /// Early CLI args struct for tracing initialization
 #[derive(Debug, Clone)]
 pub struct EarlyCliArgs {
@@ -636,24 +764,39 @@ async fn execute_command(
         Commands::Demo {
             path,
             url,
+            repo,
             format,
+            protocol,
+            show_api,
             no_browser,
             port,
             cli,
             target_nodes,
             centrality_threshold,
             merge_threshold,
+            debug,
+            debug_output,
+            skip_vendor,
+            no_skip_vendor,
+            max_line_length,
         } => {
             execute_demo_command(
                 path,
                 url,
+                repo,
                 format,
+                protocol,
+                show_api,
                 no_browser,
                 port,
                 cli,
                 target_nodes,
                 centrality_threshold,
                 merge_threshold,
+                debug,
+                debug_output,
+                skip_vendor && !no_skip_vendor,
+                max_line_length,
                 server,
             )
             .await
@@ -796,6 +939,35 @@ async fn execute_analyze_command(analyze_cmd: AnalyzeCommands) -> anyhow::Result
             )
             .await
         }
+        AnalyzeCommands::Tdg {
+            path,
+            threshold,
+            top,
+            format,
+            include_components,
+            output,
+            critical_only,
+            verbose,
+        } => {
+            handle_analyze_tdg(
+                path,
+                threshold,
+                top,
+                format,
+                include_components,
+                output,
+                critical_only,
+                verbose,
+            )
+            .await
+        }
+        AnalyzeCommands::Makefile {
+            path,
+            rules,
+            format,
+            fix,
+            gnu_version,
+        } => handle_analyze_makefile(path, rules, format, fix, gnu_version).await,
     }
 }
 
@@ -803,25 +975,56 @@ async fn execute_analyze_command(analyze_cmd: AnalyzeCommands) -> anyhow::Result
 async fn execute_demo_command(
     path: Option<PathBuf>,
     url: Option<String>,
+    repo: Option<String>,
     format: OutputFormat,
+    protocol: DemoProtocol,
+    show_api: bool,
     no_browser: bool,
     port: Option<u16>,
     cli: bool,
     target_nodes: usize,
     centrality_threshold: f64,
     merge_threshold: usize,
+    debug: bool,
+    debug_output: Option<PathBuf>,
+    skip_vendor: bool,
+    max_line_length: Option<usize>,
     server: Arc<StatelessTemplateServer>,
 ) -> anyhow::Result<()> {
+    // Convert CLI DemoProtocol to demo module Protocol
+    let demo_protocol = if cli {
+        // --cli flag overrides protocol to CLI
+        crate::demo::Protocol::Cli
+    } else {
+        match protocol {
+            DemoProtocol::Cli => crate::demo::Protocol::Cli,
+            DemoProtocol::Http => crate::demo::Protocol::Http,
+            DemoProtocol::Mcp => crate::demo::Protocol::Mcp,
+            DemoProtocol::All => crate::demo::Protocol::All,
+        }
+    };
+
+    // The demo now defaults to HTTP protocol with web server
+    // Users can override with --cli flag to get CLI output mode
+    let web_mode = !cli;
+
     let demo_args = crate::demo::DemoArgs {
         path,
         url,
+        repo,
         format,
+        protocol: demo_protocol,
+        show_api,
         no_browser,
         port,
-        web: !cli, // Invert the flag - web is default unless --cli is specified
+        web: web_mode,
         target_nodes,
         centrality_threshold,
         merge_threshold,
+        debug,
+        debug_output,
+        skip_vendor,
+        max_line_length,
     };
     crate::demo::run_demo(demo_args, server).await
 }
@@ -1161,9 +1364,29 @@ async fn handle_analyze_dag(
     // Analyze the project to get AST information
     // We'll analyze as Rust by default, but could be enhanced
     let project_context = analyze_project(&project_path, "rust").await?;
+    eprintln!(
+        "🔍 Project analysis complete: {} files found",
+        project_context.files.len()
+    );
 
     // Build the dependency graph
     let graph = DagBuilder::build_from_project(&project_context);
+    eprintln!(
+        "🔍 Initial graph: {} nodes, {} edges",
+        graph.nodes.len(),
+        graph.edges.len()
+    );
+
+    // Debug: Check what edge types we have
+    use std::collections::HashMap;
+    let mut edge_type_counts: HashMap<String, usize> = HashMap::new();
+    for edge in &graph.edges {
+        let count = edge_type_counts
+            .entry(format!("{:?}", edge.edge_type))
+            .or_insert(0);
+        *count += 1;
+    }
+    eprintln!("🔍 Edge types: {:?}", edge_type_counts);
 
     // Apply filters based on DAG type
     let filtered_graph = match dag_type {
@@ -1172,6 +1395,12 @@ async fn handle_analyze_dag(
         DagType::Inheritance => filter_inheritance_edges(graph),
         DagType::FullDependency => graph,
     };
+    eprintln!(
+        "🔍 After filtering ({:?}): {} nodes, {} edges",
+        dag_type,
+        filtered_graph.nodes.len(),
+        filtered_graph.edges.len()
+    );
 
     // Generate Mermaid output
     let generator = MermaidGenerator::new(MermaidOptions {
@@ -1582,7 +1811,7 @@ fn parse_analysis_filters(
             AnalysisType::Dag,
             AnalysisType::DeadCode,
             AnalysisType::Satd,
-            AnalysisType::DefectProbability,
+            AnalysisType::TechnicalDebtGradient,
         ]
     } else {
         include
@@ -1612,7 +1841,7 @@ fn parse_analysis_type(s: &str) -> Option<crate::services::deep_context::Analysi
         "dag" => Some(AnalysisType::Dag),
         "dead-code" => Some(AnalysisType::DeadCode),
         "satd" => Some(AnalysisType::Satd),
-        "defect-probability" => Some(AnalysisType::DefectProbability),
+        "tdg" => Some(AnalysisType::TechnicalDebtGradient),
         _ => {
             eprintln!("⚠️  Unknown analysis type: {}", s);
             None
@@ -2391,7 +2620,12 @@ fn calculate_terse_file_risks(
                 churn
                     .files
                     .iter()
-                    .find(|f| f.relative_path == file.path)
+                    .find(|f| {
+                        f.relative_path == file.path
+                            || f.relative_path.ends_with(&file.path)
+                            || file.path.ends_with(&f.relative_path)
+                            || f.path.to_string_lossy() == file.path
+                    })
                     .map(|f| f.commit_count)
                     .unwrap_or(0)
             } else {
@@ -2854,7 +3088,12 @@ fn calculate_file_risks(
                 churn
                     .files
                     .iter()
-                    .find(|f| f.relative_path == file.path)
+                    .find(|f| {
+                        f.relative_path == file.path
+                            || f.relative_path.ends_with(&file.path)
+                            || file.path.ends_with(&f.relative_path)
+                            || f.path.to_string_lossy() == file.path
+                    })
                     .map(|f| f.commit_count)
                     .unwrap_or(0)
             } else {
@@ -3758,4 +3997,538 @@ fn print_table(templates: &[Arc<TemplateResource>]) {
             width = uri_width
         );
     }
+}
+
+/// Handle TDG analysis command
+#[allow(clippy::too_many_arguments)]
+async fn handle_analyze_tdg(
+    path: PathBuf,
+    threshold: f64,
+    top: usize,
+    format: TdgOutputFormat,
+    include_components: bool,
+    output: Option<PathBuf>,
+    critical_only: bool,
+    verbose: bool,
+) -> anyhow::Result<()> {
+    use crate::services::tdg_calculator::TDGCalculator;
+
+    if verbose {
+        eprintln!(
+            "🔍 Analyzing Technical Debt Gradient for project at: {}",
+            path.display()
+        );
+    }
+
+    // Create TDG calculator
+    let calculator = TDGCalculator::new();
+
+    // Run analysis
+    let summary = calculator.analyze_directory(&path).await?;
+
+    // Filter files based on criteria
+    let mut filtered_files: Vec<_> = summary
+        .hotspots
+        .clone()
+        .into_iter()
+        .filter(|hotspot| {
+            if critical_only {
+                hotspot.tdg_score > 2.5
+            } else {
+                hotspot.tdg_score > threshold
+            }
+        })
+        .take(top)
+        .collect();
+
+    // Sort by TDG score descending
+    filtered_files.sort_by(|a, b| b.tdg_score.partial_cmp(&a.tdg_score).unwrap());
+
+    if verbose {
+        eprintln!(
+            "📊 Found {} files above threshold {:.2} (showing top {})",
+            filtered_files.len(),
+            threshold,
+            top
+        );
+    }
+
+    // Format output
+    let content = match format {
+        TdgOutputFormat::Table => format_tdg_table(&summary, &filtered_files, include_components),
+        TdgOutputFormat::Json => serde_json::to_string_pretty(&summary)?,
+        TdgOutputFormat::Markdown => {
+            format_tdg_markdown(&summary, &filtered_files, include_components)
+        }
+        TdgOutputFormat::Sarif => format_tdg_sarif(&summary, &filtered_files)?,
+    };
+
+    // Output results
+    if let Some(output_path) = output {
+        tokio::fs::write(&output_path, &content).await?;
+        if verbose {
+            eprintln!("💾 Results written to: {}", output_path.display());
+        }
+    } else {
+        println!("{}", content);
+    }
+
+    Ok(())
+}
+
+/// Format TDG results as a table
+fn format_tdg_table(
+    summary: &crate::models::tdg::TDGSummary,
+    hotspots: &[crate::models::tdg::TDGHotspot],
+    _include_components: bool,
+) -> String {
+    let mut output = String::new();
+
+    // Summary
+    output.push_str("Technical Debt Gradient Analysis Summary\n");
+    output.push_str("========================================\n");
+    output.push_str(&format!("Total files: {}\n", summary.total_files));
+    output.push_str(&format!(
+        "Critical files (>2.5): {}\n",
+        summary.critical_files
+    ));
+    output.push_str(&format!(
+        "Warning files (1.5-2.5): {}\n",
+        summary.warning_files
+    ));
+    output.push_str(&format!("Average TDG: {:.2}\n", summary.average_tdg));
+    output.push_str(&format!("95th percentile: {:.2}\n", summary.p95_tdg));
+    output.push_str(&format!(
+        "Estimated debt: {:.0} hours\n\n",
+        summary.estimated_debt_hours
+    ));
+
+    // Hotspots table
+    if !hotspots.is_empty() {
+        output.push_str("Top TDG Hotspots:\n");
+        output.push_str("┌─────────────────────────────────────────────────────┬───────────┬─────────────────┬──────────────┐\n");
+        output.push_str("│ File                                                │ TDG Score │ Primary Factor  │ Est. Hours   │\n");
+        output.push_str("├─────────────────────────────────────────────────────┼───────────┼─────────────────┼──────────────┤\n");
+
+        for hotspot in hotspots {
+            output.push_str(&format!(
+                "│ {:<51} │ {:>9.2} │ {:<15} │ {:>12.0} │\n",
+                truncate_path(&hotspot.path, 51),
+                hotspot.tdg_score,
+                hotspot.primary_factor,
+                hotspot.estimated_hours
+            ));
+        }
+
+        output.push_str("└─────────────────────────────────────────────────────┴───────────┴─────────────────┴──────────────┘\n");
+    }
+
+    output
+}
+
+/// Format TDG results as markdown
+fn format_tdg_markdown(
+    summary: &crate::models::tdg::TDGSummary,
+    hotspots: &[crate::models::tdg::TDGHotspot],
+    _include_components: bool,
+) -> String {
+    let mut output = String::new();
+
+    output.push_str("# Technical Debt Gradient Analysis\n\n");
+
+    // Summary
+    output.push_str("## Summary\n\n");
+    output.push_str(&format!("- **Total files:** {}\n", summary.total_files));
+    output.push_str(&format!(
+        "- **Critical files (>2.5):** {}\n",
+        summary.critical_files
+    ));
+    output.push_str(&format!(
+        "- **Warning files (1.5-2.5):** {}\n",
+        summary.warning_files
+    ));
+    output.push_str(&format!("- **Average TDG:** {:.2}\n", summary.average_tdg));
+    output.push_str(&format!("- **95th percentile:** {:.2}\n", summary.p95_tdg));
+    output.push_str(&format!(
+        "- **Estimated debt:** {:.0} hours\n\n",
+        summary.estimated_debt_hours
+    ));
+
+    // Hotspots
+    if !hotspots.is_empty() {
+        output.push_str("## Top Hotspots\n\n");
+        output.push_str("| File | TDG Score | Primary Factor | Est. Hours |\n");
+        output.push_str("|------|-----------|----------------|------------|\n");
+
+        for hotspot in hotspots {
+            output.push_str(&format!(
+                "| {} | {:.2} | {} | {:.0} |\n",
+                hotspot.path, hotspot.tdg_score, hotspot.primary_factor, hotspot.estimated_hours
+            ));
+        }
+        output.push('\n');
+    }
+
+    output
+}
+
+/// Format TDG results as SARIF
+fn format_tdg_sarif(
+    _summary: &crate::models::tdg::TDGSummary,
+    hotspots: &[crate::models::tdg::TDGHotspot],
+) -> anyhow::Result<String> {
+    use serde_json::json;
+
+    let results: Vec<_> = hotspots
+        .iter()
+        .map(|hotspot| {
+            json!({
+                "ruleId": "TDG_HIGH",
+                "message": {
+                    "text": format!("High Technical Debt Gradient: {:.2} (primary factor: {})",
+                        hotspot.tdg_score, hotspot.primary_factor)
+                },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": hotspot.path
+                        },
+                        "region": {
+                            "startLine": 1
+                        }
+                    }
+                }],
+                "level": if hotspot.tdg_score > 2.5 { "error" } else { "warning" },
+                "properties": {
+                    "tdg_score": hotspot.tdg_score,
+                    "primary_factor": hotspot.primary_factor,
+                    "estimated_hours": hotspot.estimated_hours
+                }
+            })
+        })
+        .collect();
+
+    let sarif = json!({
+        "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "paiml-mcp-agent-toolkit",
+                    "version": "0.21.0",
+                    "informationUri": "https://github.com/paiml/mcp-agent-toolkit"
+                }
+            },
+            "results": results
+        }]
+    });
+
+    Ok(serde_json::to_string_pretty(&sarif)?)
+}
+
+/// Truncate path for table display
+fn truncate_path(path: &str, max_len: usize) -> String {
+    if path.len() <= max_len {
+        path.to_string()
+    } else {
+        format!("...{}", &path[path.len() - (max_len - 3)..])
+    }
+}
+
+/// Handle Makefile analysis command
+async fn handle_analyze_makefile(
+    path: PathBuf,
+    _rules: Vec<String>,
+    format: MakefileOutputFormat,
+    fix: bool,
+    _gnu_version: String,
+) -> anyhow::Result<()> {
+    use crate::services::makefile_linter;
+
+    // Perform linting
+    let result = makefile_linter::lint_makefile(&path).await?;
+
+    // Apply fixes if requested
+    if fix && result.violations.iter().any(|v| v.fix_hint.is_some()) {
+        eprintln!("🔧 Auto-fix is not yet implemented. Fix hints are provided in the output.");
+    }
+
+    // Format output
+    let output = match format {
+        MakefileOutputFormat::Human => format_makefile_human(&result),
+        MakefileOutputFormat::Json => serde_json::to_string_pretty(&result)?,
+        MakefileOutputFormat::Gcc => format_makefile_gcc(&result),
+        MakefileOutputFormat::Sarif => format_makefile_sarif(&result)?,
+    };
+
+    println!("{}", output);
+
+    // Exit with error code if violations found
+    if result.has_errors() {
+        std::process::exit(1);
+    }
+
+    Ok(())
+}
+
+/// Format Makefile lint results in human-readable format
+fn format_makefile_human(result: &makefile_linter::LintResult) -> String {
+    use crate::services::makefile_linter::Severity;
+
+    let mut output = String::new();
+
+    output.push_str(&format!("Analyzing {}...\n\n", result.path.display()));
+
+    if result.violations.is_empty() {
+        output.push_str("✅ No issues found!\n");
+        output.push_str(&format!(
+            "Quality score: {:.0}%\n",
+            result.quality_score * 100.0
+        ));
+        return output;
+    }
+
+    // Group violations by severity
+    let errors: Vec<_> = result
+        .violations
+        .iter()
+        .filter(|v| v.severity == Severity::Error)
+        .collect();
+    let warnings: Vec<_> = result
+        .violations
+        .iter()
+        .filter(|v| v.severity == Severity::Warning)
+        .collect();
+    let info: Vec<_> = result
+        .violations
+        .iter()
+        .filter(|v| v.severity == Severity::Info)
+        .collect();
+    let perf: Vec<_> = result
+        .violations
+        .iter()
+        .filter(|v| v.severity == Severity::Performance)
+        .collect();
+
+    // Summary
+    output.push_str(&format!(
+        "Found {} issues ({} errors, {} warnings, {} info, {} performance)\n",
+        result.violations.len(),
+        errors.len(),
+        warnings.len(),
+        info.len(),
+        perf.len()
+    ));
+    output.push_str(&format!(
+        "Quality score: {:.0}%\n\n",
+        result.quality_score * 100.0
+    ));
+
+    // Print violations by severity
+    if !errors.is_empty() {
+        output.push_str("❌ Errors:\n");
+        for v in errors {
+            output.push_str(&format!(
+                "  {}:{} [{}] {}\n",
+                result.path.display(),
+                v.span.line,
+                v.rule,
+                v.message
+            ));
+            if let Some(hint) = &v.fix_hint {
+                output.push_str(&format!("    💡 {}\n", hint));
+            }
+        }
+        output.push('\n');
+    }
+
+    if !warnings.is_empty() {
+        output.push_str("⚠️  Warnings:\n");
+        for v in warnings {
+            output.push_str(&format!(
+                "  {}:{} [{}] {}\n",
+                result.path.display(),
+                v.span.line,
+                v.rule,
+                v.message
+            ));
+            if let Some(hint) = &v.fix_hint {
+                output.push_str(&format!("    💡 {}\n", hint));
+            }
+        }
+        output.push('\n');
+    }
+
+    if !info.is_empty() {
+        output.push_str("ℹ️  Info:\n");
+        for v in info {
+            output.push_str(&format!(
+                "  {}:{} [{}] {}\n",
+                result.path.display(),
+                v.span.line,
+                v.rule,
+                v.message
+            ));
+            if let Some(hint) = &v.fix_hint {
+                output.push_str(&format!("    💡 {}\n", hint));
+            }
+        }
+        output.push('\n');
+    }
+
+    if !perf.is_empty() {
+        output.push_str("⚡ Performance:\n");
+        for v in perf {
+            output.push_str(&format!(
+                "  {}:{} [{}] {}\n",
+                result.path.display(),
+                v.span.line,
+                v.rule,
+                v.message
+            ));
+            if let Some(hint) = &v.fix_hint {
+                output.push_str(&format!("    💡 {}\n", hint));
+            }
+        }
+    }
+
+    output
+}
+
+/// Format Makefile lint results in GCC-style format
+fn format_makefile_gcc(result: &makefile_linter::LintResult) -> String {
+    use crate::services::makefile_linter::Severity;
+
+    let mut output = String::new();
+
+    for v in &result.violations {
+        let severity = match v.severity {
+            Severity::Error => "error",
+            Severity::Warning => "warning",
+            Severity::Info => "note",
+            Severity::Performance => "note",
+        };
+
+        output.push_str(&format!(
+            "{}:{}:0: {}: [{}] {}\n",
+            result.path.display(),
+            v.span.line,
+            severity,
+            v.rule,
+            v.message
+        ));
+    }
+
+    output
+}
+
+/// Format Makefile lint results as SARIF
+fn format_makefile_sarif(result: &makefile_linter::LintResult) -> anyhow::Result<String> {
+    use crate::services::makefile_linter::Severity;
+    use serde_json::json;
+
+    let results: Vec<_> = result
+        .violations
+        .iter()
+        .map(|v| {
+            let level = match v.severity {
+                Severity::Error => "error",
+                Severity::Warning => "warning",
+                Severity::Info => "note",
+                Severity::Performance => "note",
+            };
+
+            json!({
+                "ruleId": v.rule,
+                "message": {
+                    "text": &v.message
+                },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": result.path.to_string_lossy()
+                        },
+                        "region": {
+                            "startLine": v.span.line as i64,
+                            "startColumn": v.span.column as i64
+                        }
+                    }
+                }],
+                "level": level,
+                "fixes": v.fix_hint.as_ref().map(|hint| vec![json!({
+                    "description": {
+                        "text": hint
+                    }
+                })]).unwrap_or_default()
+            })
+        })
+        .collect();
+
+    let sarif = json!({
+        "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "paiml-makefile-linter",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "informationUri": "https://github.com/paiml/mcp-agent-toolkit",
+                    "rules": [
+                        {
+                            "id": "minphony",
+                            "name": "MinimumPhonyTargets",
+                            "shortDescription": {
+                                "text": "Ensure required targets are declared .PHONY"
+                            }
+                        },
+                        {
+                            "id": "phonydeclared",
+                            "name": "PhonyDeclared",
+                            "shortDescription": {
+                                "text": "Non-file targets should be declared .PHONY"
+                            }
+                        },
+                        {
+                            "id": "maxbodylength",
+                            "name": "MaxBodyLength",
+                            "shortDescription": {
+                                "text": "Recipe complexity check"
+                            }
+                        },
+                        {
+                            "id": "timestampexpanded",
+                            "name": "TimestampExpanded",
+                            "shortDescription": {
+                                "text": "Timestamp evaluation timing"
+                            }
+                        },
+                        {
+                            "id": "undefinedvariable",
+                            "name": "UndefinedVariable",
+                            "shortDescription": {
+                                "text": "Check for undefined variable usage"
+                            }
+                        },
+                        {
+                            "id": "recursive-expansion",
+                            "name": "RecursiveExpansion",
+                            "shortDescription": {
+                                "text": "Expensive recursive variable expansion"
+                            }
+                        },
+                        {
+                            "id": "portability",
+                            "name": "Portability",
+                            "shortDescription": {
+                                "text": "GNU Make specific features"
+                            }
+                        }
+                    ]
+                }
+            },
+            "results": results
+        }]
+    });
+
+    Ok(serde_json::to_string_pretty(&sarif)?)
 }

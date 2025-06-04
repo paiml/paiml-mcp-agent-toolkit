@@ -293,8 +293,18 @@ paiml-mcp-agent-toolkit demo --url https://github.com/user/repo
 
 # Output formats
 paiml-mcp-agent-toolkit demo --format json
-paiml-mcp-agent-toolkit demo --format markdown
-paiml-mcp-agent-toolkit demo --format html
+paiml-mcp-agent-toolkit demo --format table
+paiml-mcp-agent-toolkit demo --format yaml
+
+# Protocol selection (NEW)
+paiml-mcp-agent-toolkit demo --protocol cli     # CLI interface (default)
+paiml-mcp-agent-toolkit demo --protocol mcp     # MCP JSON-RPC interface
+paiml-mcp-agent-toolkit demo --protocol http    # HTTP REST interface
+paiml-mcp-agent-toolkit demo --protocol all     # Compare all protocols
+
+# API introspection (NEW)
+paiml-mcp-agent-toolkit demo --protocol cli --show-api
+paiml-mcp-agent-toolkit demo --protocol mcp --show-api
 
 # Complexity reduction controls
 paiml-mcp-agent-toolkit demo --target-nodes 15
@@ -1145,6 +1155,7 @@ impl ChurnRanker {
 - [x] **Hotspots Table Rendering** - Fixed JavaScript column mapping to display actual function names, complexity, and file paths
 - [x] **Data Source Indicators** - Visual indicators showing Dynamic (green) vs Default (red) data sources with automatic detection
 - [x] **Clippy Warning Fixes** - Resolved useless `as_ref()` usage and dead code warnings
+- [x] **FileClassifier Integration** - Complete integration allowing debug settings (skip_vendor, max_line_length, max_file_size) to flow from demo command through to file analysis
 
 ### 🔄 **Partially Implemented (Ready for Enhancement)**
 

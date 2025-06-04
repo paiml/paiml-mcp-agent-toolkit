@@ -33,9 +33,20 @@ pub struct TechnicalDebt {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SATDAnalysisResult {
     pub items: Vec<TechnicalDebt>,
+    pub summary: SATDSummary,
     pub total_files_analyzed: usize,
     pub files_with_debt: usize,
     pub analysis_timestamp: chrono::DateTime<chrono::Utc>,
+}
+
+/// Summary statistics for SATD analysis
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SATDSummary {
+    pub total_items: usize,
+    pub by_severity: std::collections::HashMap<String, usize>,
+    pub by_category: std::collections::HashMap<String, usize>,
+    pub files_with_satd: usize,
+    pub avg_age_days: f64,
 }
 
 /// Categories of technical debt
@@ -506,7 +517,26 @@ impl SATDDetector {
         }
 
         Ok(SATDAnalysisResult {
-            items: all_debts,
+            items: all_debts.clone(),
+            summary: SATDSummary {
+                total_items: all_debts.len(),
+                by_severity: {
+                    let mut map = std::collections::HashMap::new();
+                    for debt in &all_debts {
+                        *map.entry(format!("{:?}", debt.severity)).or_insert(0) += 1;
+                    }
+                    map
+                },
+                by_category: {
+                    let mut map = std::collections::HashMap::new();
+                    for debt in &all_debts {
+                        *map.entry(format!("{:?}", debt.category)).or_insert(0) += 1;
+                    }
+                    map
+                },
+                files_with_satd: files_with_debt,
+                avg_age_days: 0.0, // TODO: Calculate based on git history
+            },
             total_files_analyzed,
             files_with_debt,
             analysis_timestamp: chrono::Utc::now(),

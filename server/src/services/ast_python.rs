@@ -3,86 +3,94 @@ use crate::services::complexity::{
     ClassComplexity, ComplexityMetrics, FileComplexityMetrics, FunctionComplexity,
 };
 use crate::services::context::{AstItem, FileContext};
+use crate::services::file_classifier::{FileClassifier, ParseDecision};
 use rustpython_parser::ast;
 use std::path::Path;
 
-pub async fn analyze_python_file_with_complexity(
-    path: &Path,
-) -> Result<FileComplexityMetrics, TemplateError> {
-    let content = tokio::fs::read_to_string(path)
+// Helper functions to reduce code duplication
+async fn read_file_content(path: &Path) -> Result<String, TemplateError> {
+    tokio::fs::read_to_string(path)
         .await
-        .map_err(TemplateError::Io)?;
+        .map_err(TemplateError::Io)
+}
 
-    let ast = rustpython_parser::parse(
-        &content,
+fn parse_python_content(content: &str, path: &Path) -> Result<ast::Mod, TemplateError> {
+    rustpython_parser::parse(
+        content,
         rustpython_parser::Mode::Module,
         path.to_str().unwrap_or("<unknown>"),
     )
-    .map_err(|e| TemplateError::InvalidUtf8(format!("Python parse error: {:?}", e)))?;
+    .map_err(|e| TemplateError::InvalidUtf8(format!("Python parse error: {:?}", e)))
+}
 
+fn calculate_complexity_metrics(ast: &ast::Mod, path: &Path) -> FileComplexityMetrics {
     let mut visitor = PythonComplexityVisitor::new();
 
     if let ast::Mod::Module(module) = ast {
-        for stmt in module.body {
-            visitor.visit_stmt(&stmt);
+        for stmt in &module.body {
+            visitor.visit_stmt(stmt);
         }
     }
 
-    Ok(FileComplexityMetrics {
+    FileComplexityMetrics {
         path: path.display().to_string(),
         total_complexity: visitor.file_complexity,
         functions: visitor.functions,
         classes: visitor.classes,
-    })
+    }
+}
+
+fn check_file_classification(
+    classifier: &FileClassifier,
+    path: &Path,
+    content: &str,
+) -> Result<(), TemplateError> {
+    match classifier.should_parse(path, content.as_bytes()) {
+        ParseDecision::Skip(reason) => Err(TemplateError::InvalidUtf8(format!(
+            "Skipping file due to {:?}",
+            reason
+        ))),
+        ParseDecision::Parse => Ok(()),
+    }
+}
+
+fn extract_ast_items(ast: &ast::Mod) -> Vec<AstItem> {
+    let mut items = Vec::new();
+    if let ast::Mod::Module(module) = ast {
+        for stmt in &module.body {
+            extract_python_items(stmt, &mut items);
+        }
+    }
+    items
+}
+
+pub async fn analyze_python_file_with_complexity(
+    path: &Path,
+) -> Result<FileComplexityMetrics, TemplateError> {
+    let content = read_file_content(path).await?;
+    let ast = parse_python_content(&content, path)?;
+    let complexity_metrics = calculate_complexity_metrics(&ast, path);
+    Ok(complexity_metrics)
 }
 
 pub async fn analyze_python_file(path: &Path) -> Result<FileContext, TemplateError> {
-    let content = tokio::fs::read_to_string(path)
-        .await
-        .map_err(TemplateError::Io)?;
+    analyze_python_file_with_classifier(path, None).await
+}
 
-    let ast = rustpython_parser::parse(
-        &content,
-        rustpython_parser::Mode::Module,
-        path.to_str().unwrap_or("<unknown>"),
-    )
-    .map_err(|e| TemplateError::InvalidUtf8(format!("Python parse error: {:?}", e)))?;
+pub async fn analyze_python_file_with_classifier(
+    path: &Path,
+    classifier: Option<&FileClassifier>,
+) -> Result<FileContext, TemplateError> {
+    let content = read_file_content(path).await?;
 
-    let mut items = Vec::new();
-
-    if let ast::Mod::Module(module) = ast {
-        for stmt in module.body {
-            extract_python_items(&stmt, &mut items);
-        }
+    // Check if we should skip this file based on content
+    if let Some(classifier) = classifier {
+        check_file_classification(classifier, path, &content)?;
     }
 
-    // Also calculate complexity if needed
-    let complexity_metrics = if true {
-        // Always enable for now
-        let ast = rustpython_parser::parse(
-            &content,
-            rustpython_parser::Mode::Module,
-            path.to_str().unwrap_or("<unknown>"),
-        )
-        .map_err(|e| TemplateError::InvalidUtf8(format!("Python parse error: {:?}", e)))?;
-
-        let mut visitor = PythonComplexityVisitor::new();
-
-        if let ast::Mod::Module(module) = ast {
-            for stmt in module.body {
-                visitor.visit_stmt(&stmt);
-            }
-        }
-
-        Some(FileComplexityMetrics {
-            path: path.display().to_string(),
-            total_complexity: visitor.file_complexity,
-            functions: visitor.functions,
-            classes: visitor.classes,
-        })
-    } else {
-        None
-    };
+    let ast = parse_python_content(&content, path)?;
+    let items = extract_ast_items(&ast);
+    let complexity_metrics = Some(calculate_complexity_metrics(&ast, path));
 
     Ok(FileContext {
         path: path.display().to_string(),
@@ -95,43 +103,13 @@ pub async fn analyze_python_file(path: &Path) -> Result<FileContext, TemplateErr
 fn extract_python_items(stmt: &ast::Stmt, items: &mut Vec<AstItem>) {
     match stmt {
         ast::Stmt::FunctionDef(func) => {
-            items.push(AstItem::Function {
-                name: func.name.to_string(),
-                visibility: if func.name.starts_with('_') {
-                    "private".to_string()
-                } else {
-                    "public".to_string()
-                },
-                is_async: matches!(stmt, ast::Stmt::AsyncFunctionDef(_)),
-                line: 1, // rustpython-parser doesn't provide line numbers easily
-            });
+            items.push(create_function_item(&func.name, false));
         }
         ast::Stmt::AsyncFunctionDef(func) => {
-            items.push(AstItem::Function {
-                name: func.name.to_string(),
-                visibility: if func.name.starts_with('_') {
-                    "private".to_string()
-                } else {
-                    "public".to_string()
-                },
-                is_async: true,
-                line: 1, // rustpython-parser doesn't provide line numbers easily
-            });
+            items.push(create_function_item(&func.name, true));
         }
         ast::Stmt::ClassDef(class) => {
-            // Count methods and attributes
-            let mut _methods_count = 0;
-            let mut attributes_count = 0;
-
-            for stmt in &class.body {
-                match stmt {
-                    ast::Stmt::FunctionDef(_) | ast::Stmt::AsyncFunctionDef(_) => {
-                        _methods_count += 1
-                    }
-                    ast::Stmt::AnnAssign(_) | ast::Stmt::Assign(_) => attributes_count += 1,
-                    _ => {}
-                }
-            }
+            let attributes_count = count_class_attributes(&class.body);
 
             // Python classes are similar to structs
             items.push(AstItem::Struct {
@@ -139,7 +117,7 @@ fn extract_python_items(stmt: &ast::Stmt, items: &mut Vec<AstItem>) {
                 visibility: "public".to_string(),
                 fields_count: attributes_count,
                 derives: vec![], // Python doesn't have derives like Rust
-                line: 1,         // rustpython-parser doesn't provide line numbers easily
+                line: 1,         // TODO: Extract actual line numbers from AST
             });
 
             // Also extract methods from the class
@@ -151,20 +129,12 @@ fn extract_python_items(stmt: &ast::Stmt, items: &mut Vec<AstItem>) {
             for alias in &import.names {
                 items.push(AstItem::Use {
                     path: alias.name.to_string(),
-                    line: 1, // rustpython-parser doesn't provide line numbers easily
+                    line: 1, // TODO: Extract actual line numbers from AST
                 });
             }
         }
         ast::Stmt::ImportFrom(import_from) => {
-            if let Some(module) = &import_from.module {
-                let base_path = module.to_string();
-                for alias in &import_from.names {
-                    items.push(AstItem::Use {
-                        path: format!("{}.{}", base_path, alias.name),
-                        line: 1, // rustpython-parser doesn't provide line numbers easily
-                    });
-                }
-            }
+            extract_import_from_items(import_from, items);
         }
         _ => {
             // Handle other statement types if needed
@@ -513,5 +483,37 @@ impl PythonComplexityVisitor {
         }
 
         self.exit_nesting();
+    }
+}
+
+// Additional helper functions to reduce code duplication
+fn create_function_item(name: &str, is_async: bool) -> AstItem {
+    AstItem::Function {
+        name: name.to_string(),
+        visibility: if name.starts_with('_') {
+            "private".to_string()
+        } else {
+            "public".to_string()
+        },
+        is_async,
+        line: 1, // TODO: Extract actual line numbers from AST
+    }
+}
+
+fn count_class_attributes(body: &[ast::Stmt]) -> usize {
+    body.iter()
+        .filter(|stmt| matches!(stmt, ast::Stmt::AnnAssign(_) | ast::Stmt::Assign(_)))
+        .count()
+}
+
+fn extract_import_from_items(import_from: &ast::StmtImportFrom, items: &mut Vec<AstItem>) {
+    if let Some(module) = &import_from.module {
+        let base_path = module.to_string();
+        for alias in &import_from.names {
+            items.push(AstItem::Use {
+                path: format!("{}.{}", base_path, alias.name),
+                line: 1, // TODO: Extract actual line numbers from AST
+            });
+        }
     }
 }

@@ -2,9 +2,14 @@
 //!
 //! This module provides a language-agnostic AST representation that enables
 //! consistent analysis across Rust, TypeScript/JavaScript, and Python codebases.
+//! Enhanced with formal verification metadata for proof-enriched ASTs.
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::ops::Range;
+use std::path::{Path, PathBuf};
+use uuid::Uuid;
 
 /// Unique identifier for AST nodes
 pub type NodeKey = u32;
@@ -151,6 +156,262 @@ pub enum ModuleKind {
     Package,
 }
 
+/// Proof annotation system for formal verification metadata
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ProofAnnotation {
+    #[serde(rename = "annotationId")]
+    pub annotation_id: Uuid,
+
+    #[serde(rename = "propertyProven")]
+    pub property_proven: PropertyType,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub specification_id: Option<String>,
+
+    pub method: VerificationMethod,
+
+    #[serde(rename = "toolName")]
+    pub tool_name: String,
+
+    #[serde(rename = "toolVersion")]
+    pub tool_version: String,
+
+    #[serde(rename = "confidenceLevel")]
+    pub confidence_level: ConfidenceLevel,
+
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub assumptions: Vec<String>,
+
+    #[serde(rename = "evidenceType")]
+    pub evidence_type: EvidenceType,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evidence_location: Option<String>,
+
+    #[serde(rename = "dateVerified")]
+    pub date_verified: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum PropertyType {
+    MemorySafety,
+    ThreadSafety,
+    DataRaceFreeze,
+    Termination,
+    FunctionalCorrectness(String), // spec_id
+    ResourceBounds {
+        cpu: Option<u64>,
+        memory: Option<u64>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
+pub enum ConfidenceLevel {
+    Low = 1,    // Heuristic-based (e.g., pattern matching)
+    Medium = 2, // Sound static analysis with assumptions
+    High = 3,   // Machine-checkable proof
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum VerificationMethod {
+    BorrowChecker,
+    FormalProof { prover: String },
+    StaticAnalysis { tool: String },
+    ModelChecking { bounded: bool },
+    AbstractInterpretation,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum EvidenceType {
+    ImplicitTypeSystemGuarantee,
+    ProofScriptReference {
+        uri: String,
+    },
+    TheoremName {
+        theorem: String,
+        theory: Option<String>,
+    },
+    StaticAnalysisReport {
+        report_id: String,
+    },
+    CertificateHash {
+        hash: String,
+        algorithm: String,
+    },
+}
+
+/// Location system for precise code positioning
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Location {
+    pub file_path: PathBuf,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Span {
+    pub start: BytePos,
+    pub end: BytePos,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct BytePos(pub u32);
+
+impl std::hash::Hash for Location {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // Content-addressed hashing for deterministic cache keys
+        self.file_path.hash(state);
+        self.span.start.0.hash(state);
+        // End position omitted for prefix matching scenarios
+    }
+}
+
+impl Location {
+    pub fn new(file_path: PathBuf, start: u32, end: u32) -> Self {
+        Self {
+            file_path,
+            span: Span {
+                start: BytePos(start),
+                end: BytePos(end),
+            },
+        }
+    }
+
+    pub fn contains(&self, other: &Location) -> bool {
+        self.file_path == other.file_path
+            && self.span.start <= other.span.start
+            && self.span.end >= other.span.end
+    }
+
+    pub fn overlaps(&self, other: &Location) -> bool {
+        self.file_path == other.file_path
+            && self.span.start < other.span.end
+            && self.span.end > other.span.start
+    }
+}
+
+impl Span {
+    pub fn new(start: u32, end: u32) -> Self {
+        Self {
+            start: BytePos(start),
+            end: BytePos(end),
+        }
+    }
+
+    pub fn len(&self) -> u32 {
+        self.end.0 - self.start.0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.start.0 >= self.end.0
+    }
+
+    pub fn contains(&self, pos: BytePos) -> bool {
+        self.start <= pos && pos < self.end
+    }
+}
+
+impl BytePos {
+    pub fn to_usize(self) -> usize {
+        self.0 as usize
+    }
+
+    pub fn from_usize(pos: usize) -> Self {
+        Self(pos as u32)
+    }
+}
+
+/// Qualified name for symbol resolution
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct QualifiedName {
+    pub module_path: Vec<String>,
+    pub name: String,
+    pub disambiguator: Option<u32>, // For overloaded names
+}
+
+impl QualifiedName {
+    pub fn new(module_path: Vec<String>, name: String) -> Self {
+        Self {
+            module_path,
+            name,
+            disambiguator: None,
+        }
+    }
+
+    pub fn with_disambiguator(mut self, disambiguator: u32) -> Self {
+        self.disambiguator = Some(disambiguator);
+        self
+    }
+
+    /// Create a qualified name from a string like "crate::module::Type::method"
+    pub fn from_string(qualified_str: &str) -> Result<Self, &'static str> {
+        let parts: Vec<&str> = qualified_str.split("::").collect();
+        if parts.is_empty() {
+            return Err("Empty qualified name");
+        }
+
+        let name = parts.last().unwrap().to_string();
+        let module_path = parts[..parts.len() - 1]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        Ok(Self {
+            module_path,
+            name,
+            disambiguator: None,
+        })
+    }
+
+    /// Convert to fully qualified string representation
+    pub fn to_qualified_string(&self) -> String {
+        let mut result = self.module_path.join("::");
+        if !result.is_empty() {
+            result.push_str("::");
+        }
+        result.push_str(&self.name);
+        if let Some(disambiguator) = self.disambiguator {
+            result.push_str(&format!("#{}", disambiguator));
+        }
+        result
+    }
+}
+
+impl std::str::FromStr for QualifiedName {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_string(s)
+    }
+}
+
+impl std::fmt::Display for QualifiedName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_qualified_string())
+    }
+}
+
+/// Relative location types for companion files
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum RelativeLocation {
+    Function {
+        name: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        module: Option<String>,
+    },
+    Symbol {
+        qualified_name: String, // e.g., "crate::module::Type::method"
+    },
+    Span {
+        start: u32,
+        end: u32,
+    },
+}
+
+/// Type alias for proof mappings
+pub type ProofMap = HashMap<Location, Vec<ProofAnnotation>>;
+
 /// Node metadata union for language-specific data
 #[repr(C)]
 pub union NodeMetadata {
@@ -179,9 +440,10 @@ impl Copy for NodeMetadata {}
 /// Unified AST node representation
 ///
 /// This structure is carefully designed to be:
-/// - Cache-line aligned (64 bytes)
+/// - Cache-line aligned (64 bytes + proof annotations)
 /// - SIMD-friendly for vectorized operations
 /// - Memory efficient with bit-packed fields
+/// - Enhanced with formal verification metadata
 #[repr(C, align(32))]
 #[derive(Clone)]
 pub struct UnifiedAstNode {
@@ -199,6 +461,9 @@ pub struct UnifiedAstNode {
     pub structural_hash: u64,   // 8 bytes - structure hash
     pub name_vector: u64,       // 8 bytes - packed name embedding
     pub metadata: NodeMetadata, // 8 bytes - union type
+
+    // Proof annotations - sparse allocation for performance
+    pub proof_annotations: Option<Vec<ProofAnnotation>>,
 }
 
 impl UnifiedAstNode {
@@ -215,6 +480,7 @@ impl UnifiedAstNode {
             structural_hash: 0,
             name_vector: 0,
             metadata: NodeMetadata::default(),
+            proof_annotations: None,
         }
     }
 
@@ -240,6 +506,37 @@ impl UnifiedAstNode {
     pub fn set_complexity(&mut self, complexity: u32) {
         self.metadata.complexity = complexity as u64;
     }
+
+    /// Add a proof annotation to this node
+    pub fn add_proof_annotation(&mut self, annotation: ProofAnnotation) {
+        match &mut self.proof_annotations {
+            Some(annotations) => annotations.push(annotation),
+            None => self.proof_annotations = Some(vec![annotation]),
+        }
+    }
+
+    /// Get all proof annotations for this node
+    pub fn proof_annotations(&self) -> &[ProofAnnotation] {
+        self.proof_annotations.as_deref().unwrap_or(&[])
+    }
+
+    /// Check if this node has proof annotations
+    pub fn has_proof_annotations(&self) -> bool {
+        self.proof_annotations
+            .as_ref()
+            .is_some_and(|annotations| !annotations.is_empty())
+    }
+
+    /// Get location for this node (requires file path context)
+    pub fn location(&self, file_path: &Path) -> Location {
+        Location {
+            file_path: file_path.to_path_buf(),
+            span: Span {
+                start: BytePos(self.source_range.start),
+                end: BytePos(self.source_range.end),
+            },
+        }
+    }
 }
 
 // Manual Debug implementation for UnifiedAstNode
@@ -257,6 +554,7 @@ impl std::fmt::Debug for UnifiedAstNode {
             .field("structural_hash", &self.structural_hash)
             .field("name_vector", &self.name_vector)
             .field("metadata_raw", &unsafe { self.metadata.raw })
+            .field("proof_annotations", &self.proof_annotations)
             .finish()
     }
 }
@@ -371,8 +669,20 @@ mod tests {
 
     #[test]
     fn test_node_size() {
-        // Ensure our node structure is exactly 64 bytes
-        assert_eq!(std::mem::size_of::<UnifiedAstNode>(), 64);
+        // Ensure our node structure is within expected bounds
+        // With proof annotations, the size is larger than the original 64 bytes
+        let size = std::mem::size_of::<UnifiedAstNode>();
+        assert!(
+            size <= 128,
+            "Node size {} exceeds maximum expected size of 128 bytes",
+            size
+        );
+        // Structure should be at least 64 bytes for the core data
+        assert!(
+            size >= 64,
+            "Node size {} is smaller than minimum expected size of 64 bytes",
+            size
+        );
     }
 
     #[test]

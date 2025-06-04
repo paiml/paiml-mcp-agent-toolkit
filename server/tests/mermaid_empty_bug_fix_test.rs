@@ -1,5 +1,6 @@
 use paiml_mcp_agent_toolkit::models::dag::{DependencyGraph, NodeInfo, NodeType};
 use paiml_mcp_agent_toolkit::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
+use std::collections::HashMap;
 
 #[test]
 fn test_regression_empty_nodes_bug() {
@@ -33,6 +34,7 @@ fn test_regression_empty_nodes_bug() {
             file_path: String::new(),
             line_number: 0,
             complexity: 5,
+            metadata: HashMap::new(),
         });
     }
 
@@ -117,6 +119,7 @@ fn test_node_types_have_labels() {
             file_path: String::new(),
             line_number: 0,
             complexity: 1,
+            metadata: HashMap::new(),
         });
     }
 
@@ -144,6 +147,7 @@ fn test_complexity_styled_diagram_has_labels() {
         file_path: String::new(),
         line_number: 0,
         complexity: 15,
+        metadata: HashMap::new(),
     });
 
     graph.add_node(NodeInfo {
@@ -153,6 +157,7 @@ fn test_complexity_styled_diagram_has_labels() {
         file_path: String::new(),
         line_number: 0,
         complexity: 2,
+        metadata: HashMap::new(),
     });
 
     let generator = MermaidGenerator::new(MermaidOptions {
@@ -213,6 +218,7 @@ fn test_special_characters_in_node_ids() {
             file_path: String::new(),
             line_number: 0,
             complexity: 1,
+            metadata: HashMap::new(),
         });
     }
 

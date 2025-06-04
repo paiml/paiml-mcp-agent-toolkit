@@ -174,7 +174,6 @@ fn send_mcp_request(request: Value) -> Result<McpResponse, String> {
 }
 
 #[test]
-#[ignore = "MCP server communication needs additional setup"]
 fn test_mcp_tools_match_documentation() {
     // First, initialize the MCP connection
     let init_request = json!({
@@ -238,7 +237,6 @@ fn test_mcp_tools_match_documentation() {
 }
 
 #[test]
-#[ignore = "MCP server communication needs additional setup"]
 fn test_mcp_tool_schemas_match_documentation() {
     // Initialize connection
     let init_request = json!({
@@ -391,7 +389,6 @@ fn test_mcp_error_codes_are_complete() {
 }
 
 #[test]
-#[ignore = "MCP server communication needs additional setup"]
 fn test_no_undocumented_mcp_tools() {
     // Initialize and get tools list
     let init_request = json!({

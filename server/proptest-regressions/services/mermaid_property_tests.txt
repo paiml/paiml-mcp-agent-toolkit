@@ -6,3 +6,4 @@
 # everyone who runs the test benefits from these saved cases.
 cc 7d1d7e9b6d524b648049682999e41319c7646cf6cf5293e4a81be5df56dddf8f # shrinks to id = "¡"
 cc f2749d120e69a49934d2bfdd20ec6a50fd32c2e7d8293b492741b16ea87a447a # shrinks to edge_type = Inherits
+cc 9893e4cc4d66e86eca176669221773ba3f569a6dee4eb275839ff83bb9a79189 # shrinks to nodes = [NodeInfo { id: "A", label: "/", node_type: Function, file_path: "a.rs", line_number: 0, complexity: 0, metadata: {} }, NodeInfo { id: "A5_dw9VLX38E6TYf_4_sw5_py_2_3jIl7_Ok5DD", label: "/", node_type: Class, file_path: "BzwKcC9M_z8F__4S4pV8/Ej_3v.rs", line_number: 7665, complexity: 70, metadata: {} }]

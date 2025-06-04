@@ -271,7 +271,7 @@ Performance metrics:
 
 ```
 $ ls -lh target/release/paiml-mcp-agent-toolkit
--rwxr-xr-x 1 user user 18.9M Jan 1 00:00 paiml-mcp-agent-toolkit
+-rwxr-xr-x 1 user user 14.3M Jan 1 00:00 paiml-mcp-agent-toolkit
 ```
 
 Size breakdown:
@@ -376,4 +376,4 @@ make test       # Standard test suite with coverage reports
 
 ---
 
-*Last Updated: 5/31/2025*
+*Last Updated: 6/2/2025*

@@ -14,7 +14,7 @@
 
 // Configuration
 const REPO = "paiml/paiml-mcp-agent-toolkit";
-const BINARY_NAME = "paiml-mcp-agent-toolkit";
+const BINARY_NAME = "pmat";
 const INSTALL_DIR = `${Deno.env.get("HOME")}/.local/bin`;
 
 // Colors for output

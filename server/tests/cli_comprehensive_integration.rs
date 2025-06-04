@@ -9,7 +9,7 @@ use tempfile::TempDir;
 fn test_generate_makefile_e2e() {
     let temp_dir = TempDir::new().unwrap();
 
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
         .args([
             "generate",
@@ -42,7 +42,7 @@ fn test_generate_makefile_e2e() {
 
 #[test]
 fn test_generate_missing_required_params() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["generate", "makefile", "rust/cli"])
         .assert()
         .failure()
@@ -51,7 +51,7 @@ fn test_generate_missing_required_params() {
 
 #[test]
 fn test_generate_invalid_template_uri() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["generate", "invalid", "category", "-p", "project_name=test"])
         .assert()
         .failure()
@@ -60,7 +60,7 @@ fn test_generate_invalid_template_uri() {
 
 #[test]
 fn test_generate_to_stdout() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args([
         "generate",
         "readme",
@@ -81,7 +81,7 @@ fn test_scaffold_parallel_generation() {
     let temp_dir = TempDir::new().unwrap();
     let start = Instant::now();
 
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
         .args([
             "scaffold",
@@ -115,7 +115,7 @@ fn test_scaffold_parallel_generation() {
 
 #[test]
 fn test_list_json_output_schema() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     let output = cmd.args(["list", "--format", "json"]).output().unwrap();
 
     assert!(output.status.success());
@@ -144,7 +144,7 @@ fn test_list_json_output_schema() {
 
 #[test]
 fn test_list_table_output() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["list", "--format", "table"])
         .assert()
         .success()
@@ -155,7 +155,7 @@ fn test_list_table_output() {
 
 #[test]
 fn test_list_yaml_output() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["list", "--format", "yaml"])
         .assert()
         .success()
@@ -166,7 +166,7 @@ fn test_list_yaml_output() {
 
 #[test]
 fn test_list_filtered_by_toolchain() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     let output = cmd
         .args(["list", "--toolchain", "rust", "--format", "json"])
         .output()
@@ -184,7 +184,7 @@ fn test_list_filtered_by_toolchain() {
 
 #[test]
 fn test_list_filtered_by_category() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     let output = cmd
         .args(["list", "--category", "makefile", "--format", "json"])
         .output()
@@ -202,7 +202,7 @@ fn test_list_filtered_by_category() {
 
 #[test]
 fn test_search_basic() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["search", "rust"])
         .assert()
         .success()
@@ -211,7 +211,7 @@ fn test_search_basic() {
 
 #[test]
 fn test_search_with_limit() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["search", "cli", "--limit", "5"])
         .assert()
         .success();
@@ -219,7 +219,7 @@ fn test_search_with_limit() {
 
 #[test]
 fn test_search_with_toolchain_filter() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["search", "makefile", "--toolchain", "deno"])
         .assert()
         .success();
@@ -227,7 +227,7 @@ fn test_search_with_toolchain_filter() {
 
 #[test]
 fn test_validate_success() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args([
         "validate",
         "template://makefile/rust/cli",
@@ -241,7 +241,7 @@ fn test_validate_success() {
 
 #[test]
 fn test_validate_missing_required() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["validate", "template://makefile/rust/cli"])
         .assert()
         .failure() // Validate command returns failure for missing params
@@ -266,7 +266,7 @@ fn helper() -> i32 {
     )
     .unwrap();
 
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
         .args(["context", "--toolchain", "rust", "--format", "json"])
         .assert()
@@ -289,7 +289,7 @@ class Calculator:
     )
     .unwrap();
 
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
         .args([
             "context",
@@ -307,7 +307,7 @@ class Calculator:
 #[test]
 fn test_analyze_churn_json_output() {
     // This test might fail if not in a git repository
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     let result = cmd
         .args(["analyze", "churn", "--format", "json", "--days", "7"])
         .output();
@@ -325,7 +325,7 @@ fn test_analyze_churn_json_output() {
 
 #[test]
 fn test_analyze_churn_csv_output() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     let result = cmd
         .args(["analyze", "churn", "--format", "csv", "--days", "30"])
         .output();
@@ -363,7 +363,7 @@ fn complex_function(x: i32, y: i32) -> i32 {
     )
     .unwrap();
 
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
         .args(["analyze", "complexity", "--format", "summary"])
         .assert()
@@ -390,7 +390,7 @@ function complexFunction(x: number): number {
     )
     .unwrap();
 
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     let output = cmd
         .current_dir(&temp_dir)
         .args([
@@ -458,7 +458,7 @@ pub fn calculate(x: i32) -> i32 {
 
     let output_file = temp_dir.path().join("dag.mmd");
 
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
         .args([
             "analyze",
@@ -495,7 +495,7 @@ fn test_error_propagation_and_codes() {
     ];
 
     for case in cases {
-        let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+        let mut cmd = Command::cargo_bin("pmat").unwrap();
         cmd.args(&case.args)
             .assert()
             .failure()
@@ -505,7 +505,7 @@ fn test_error_propagation_and_codes() {
 
 #[test]
 fn test_help_output() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("--help")
         .assert()
         .success()
@@ -517,7 +517,7 @@ fn test_help_output() {
 
 #[test]
 fn test_version_output() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("--version")
         .assert()
         .success()
@@ -531,7 +531,7 @@ fn test_subcommand_help() {
     ];
 
     for subcmd in subcommands {
-        let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+        let mut cmd = Command::cargo_bin("pmat").unwrap();
         cmd.args([subcmd, "--help"])
             .assert()
             .success()
@@ -541,7 +541,7 @@ fn test_subcommand_help() {
 
 #[test]
 fn test_analyze_subcommand_help() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["analyze", "--help"])
         .assert()
         .success()
@@ -555,7 +555,7 @@ fn test_environment_variable_expansion() {
     std::env::set_var("TEST_PROJECT_NAME", "env-test-project");
 
     let temp_dir = TempDir::new().unwrap();
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
         .args([
             "generate",
@@ -580,7 +580,7 @@ fn test_environment_variable_expansion() {
 
 #[test]
 fn test_mode_flag_cli() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["--mode", "cli", "list"])
         .assert()
         .success()

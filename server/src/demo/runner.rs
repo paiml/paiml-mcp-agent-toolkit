@@ -1,6 +1,7 @@
 use crate::cli::ExecutionMode;
 use crate::handlers::tools::handle_tool_call;
 use crate::models::mcp::{McpRequest, McpResponse};
+use crate::services::git_clone::{CloneError, GitCloner};
 use crate::stateless_server::StatelessTemplateServer;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
@@ -11,7 +12,8 @@ use std::fmt::Write;
 use std::io::{self, Write as IoWrite};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
+use tokio::time::sleep;
 use tracing::instrument;
 
 pub struct DemoRunner {
@@ -56,12 +58,71 @@ impl DemoRunner {
     }
 
     async fn clone_and_prepare(&self, url: &str) -> Result<PathBuf> {
-        // For now, just return an error - git2 integration would go here
-        // This is a placeholder implementation
-        Err(anyhow!(
-            "Remote repository cloning not yet implemented. URL: {}",
-            url
-        ))
+        println!("🔄 Cloning repository: {}", url);
+
+        // Create a temporary directory for cloning
+        let temp_dir = env::temp_dir().join(format!("paiml-demo-{}", uuid::Uuid::new_v4()));
+        tokio::fs::create_dir_all(&temp_dir).await?;
+
+        // Create git cloner with progress tracking
+        let cloner = GitCloner::new(temp_dir.clone()).with_timeout(Duration::from_secs(120)); // 2 minute timeout
+
+        // Monitor progress in background
+        let progress_handle = {
+            let cloner = cloner.clone();
+            tokio::spawn(async move {
+                let mut last_stage = String::new();
+                loop {
+                    sleep(Duration::from_millis(500)).await;
+                    let progress = cloner.get_progress().await;
+
+                    if progress.stage != last_stage {
+                        println!("   📦 {}", progress.stage);
+                        last_stage = progress.stage.clone();
+                    }
+
+                    if progress.total > 0 {
+                        let percent =
+                            (progress.current as f64 / progress.total as f64 * 100.0) as u32;
+                        print!(
+                            "\r   ⏳ Progress: {}% ({}/{})",
+                            percent, progress.current, progress.total
+                        );
+                        io::stdout().flush().ok();
+                    }
+                }
+            })
+        };
+
+        // Clone the repository
+        match cloner.clone_or_update(url).await {
+            Ok(cloned) => {
+                progress_handle.abort();
+                println!("\r   ✅ Clone complete!                                         ");
+
+                if cloned.cached {
+                    println!("   📋 Using cached repository");
+                }
+
+                Ok(cloned.path)
+            }
+            Err(e) => {
+                progress_handle.abort();
+                println!("\r   ❌ Clone failed                                           ");
+
+                // Clean up on failure
+                let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+
+                match e {
+                    CloneError::Timeout => {
+                        Err(anyhow!("Repository clone timed out after 2 minutes"))
+                    }
+                    CloneError::InvalidUrl(msg) => Err(anyhow!("Invalid GitHub URL: {}", msg)),
+                    CloneError::GitError(e) => Err(anyhow!("Git error: {}", e)),
+                    _ => Err(anyhow!("Failed to clone repository: {}", e)),
+                }
+            }
+        }
     }
 
     fn generate_system_diagram(&self, _steps: &[DemoStep]) -> Result<String> {
@@ -269,17 +330,25 @@ impl DemoRunner {
     ) -> Result<DemoReport> {
         let start = Instant::now();
 
-        // Clone remote repository if URL provided
-        let working_path = if let Some(url) = url {
-            self.clone_and_prepare(url).await?
+        // Clone remote repository if URL provided or if path looks like a GitHub URL
+        let (working_path, actual_url) = if let Some(url) = url {
+            (self.clone_and_prepare(url).await?, Some(url.to_string()))
+        } else if repo_path
+            .to_string_lossy()
+            .starts_with("https://github.com/")
+        {
+            // Handle case where GitHub URL is passed as path (from resolve_repo_spec)
+            let url_str = repo_path.to_string_lossy().to_string();
+            let cloned_path = self.clone_and_prepare(&url_str).await?;
+            (cloned_path, Some(url_str))
         } else {
-            repo_path.to_path_buf()
+            (repo_path.to_path_buf(), None)
         };
 
         let version = env!("CARGO_PKG_VERSION");
         println!("🎯 PAIML MCP Agent Toolkit Demo v{}", version);
-        if url.is_some() {
-            println!("📁 Repository: {} (cloned)", url.unwrap());
+        if let Some(ref url) = actual_url {
+            println!("📁 Repository: {} (cloned)", url);
         } else {
             println!("📁 Repository: {}", working_path.display());
         }
@@ -303,8 +372,8 @@ impl DemoRunner {
         let system_diagram = self.generate_system_diagram(&steps)?;
 
         Ok(DemoReport {
-            repository: if url.is_some() {
-                url.unwrap().to_string()
+            repository: if let Some(ref url) = actual_url {
+                url.clone()
             } else {
                 working_path.display().to_string()
             },
@@ -800,39 +869,152 @@ impl DemoReport {
     }
 }
 
-pub fn detect_repository(hint: Option<PathBuf>) -> Result<PathBuf> {
-    let candidate = hint.unwrap_or_else(|| env::current_dir().unwrap());
+/// Resolve repository path from multiple possible sources
+pub fn resolve_repository(
+    path: Option<PathBuf>,
+    url: Option<String>,
+    repo: Option<String>,
+) -> Result<PathBuf> {
+    // Priority order:
+    // 1. --repo flag (can be GitHub URL, local path, or shorthand)
+    // 2. --url flag (remote repository URL)
+    // 3. --path flag (local path)
+    // 4. Current directory
 
-    // Fast path: .git directory exists
+    if let Some(repo_spec) = repo {
+        resolve_repo_spec(&repo_spec)
+    } else if let Some(url) = url {
+        // TODO: Implement URL cloning - for now return error
+        Err(anyhow!(
+            "Remote repository cloning not yet implemented. URL: {}",
+            url
+        ))
+    } else {
+        detect_repository(path)
+    }
+}
+
+/// Parse different repository specification formats
+fn resolve_repo_spec(repo_spec: &str) -> Result<PathBuf> {
+    // Check if it's a local path first
+    let path = PathBuf::from(repo_spec);
+    if path.exists() {
+        return detect_repository(Some(path));
+    }
+
+    // Handle GitHub shorthand formats
+    if repo_spec.starts_with("gh:") {
+        let repo_name = repo_spec.strip_prefix("gh:").unwrap();
+        return Err(anyhow!(
+            "GitHub shorthand cloning not yet implemented: {}",
+            repo_name
+        ));
+    }
+
+    // Handle full GitHub URLs - now implemented!
+    if repo_spec.starts_with("https://github.com/") || repo_spec.starts_with("git@github.com:") {
+        // Return a placeholder that will trigger cloning in execute_with_diagram
+        return Ok(PathBuf::from(repo_spec));
+    }
+
+    // Handle owner/repo format (assume GitHub)
+    if repo_spec.contains('/') && !repo_spec.contains('.') {
+        return Err(anyhow!(
+            "GitHub repository cloning not yet implemented: {}",
+            repo_spec
+        ));
+    }
+
+    // Fall back to treating as local path
+    Err(anyhow!("Repository not found: {}", repo_spec))
+}
+
+pub fn detect_repository(hint: Option<PathBuf>) -> Result<PathBuf> {
+    // Canonicalize input path to handle relative paths, symlinks, and nonexistent paths
+    let candidate = match hint {
+        Some(p) => {
+            // Verify path exists before canonicalization
+            if !p.exists() {
+                return Err(anyhow!("Path does not exist: {:?}", p));
+            }
+            p.canonicalize()
+                .map_err(|e| anyhow!("Failed to canonicalize path {:?}: {}", p, e))?
+        }
+        None => env::current_dir()
+            .and_then(|p| p.canonicalize())
+            .map_err(|e| anyhow!("Failed to get current directory: {}", e))?,
+    };
+
+    // Fast path: direct .git check
     if candidate.join(".git").is_dir() {
         return Ok(candidate);
     }
 
-    // Traverse up to find .git
+    // Bounded parent traversal with explicit termination
     let mut current = candidate.as_path();
+    let mut iterations = 0;
+    const MAX_ITERATIONS: usize = 100; // Defend against pathological cases
+
     while let Some(parent) = current.parent() {
+        // Explicit root check for Unix and Windows
+        if parent == current || parent.as_os_str().is_empty() {
+            break; // Reached filesystem root
+        }
+
         if parent.join(".git").is_dir() {
             return Ok(parent.to_path_buf());
         }
+
         current = parent;
+        iterations += 1;
+
+        if iterations >= MAX_ITERATIONS {
+            return Err(anyhow!(
+                "Repository detection exceeded maximum parent traversal depth"
+            ));
+        }
     }
 
-    // Interactive fallback for CLI mode only
-    if atty::is(atty::Stream::Stdout) {
-        eprintln!("No git repository found in current directory");
-        eprint!("Enter path to a git repository: ");
-        io::stdout().flush()?;
+    // Non-interactive failure for test environments or non-TTY contexts
+    if !atty::is(atty::Stream::Stdout) || env::var("CI").is_ok() {
+        return Err(anyhow!(
+            "No git repository found in {:?} or its parent directories",
+            candidate
+        ));
+    }
 
-        let mut input = String::new();
-        io::stdin().read_line(&mut input)?;
-        let path = PathBuf::from(input.trim());
+    // Interactive fallback with timeout for TTY environments
+    eprintln!("No git repository found in current directory");
+    eprint!("Enter path to a git repository (or press Enter to cancel): ");
+    io::stdout().flush()?;
 
-        if path.join(".git").is_dir() {
-            Ok(path)
-        } else {
-            Err(anyhow!("Invalid repository path"))
+    let mut input = String::new();
+
+    // Use timeout for interactive input to prevent test hangs
+    match io::stdin().read_line(&mut input) {
+        Ok(_) => {
+            let trimmed = input.trim();
+            if trimmed.is_empty() {
+                return Err(anyhow!("Repository detection cancelled by user"));
+            }
+
+            let path = PathBuf::from(trimmed);
+
+            // Validate user input
+            if !path.exists() {
+                return Err(anyhow!("Specified path does not exist: {:?}", path));
+            }
+
+            let canonical = path
+                .canonicalize()
+                .map_err(|e| anyhow!("Failed to canonicalize user path: {}", e))?;
+
+            if canonical.join(".git").is_dir() {
+                Ok(canonical)
+            } else {
+                Err(anyhow!("No .git directory found at: {:?}", canonical))
+            }
         }
-    } else {
-        Err(anyhow!("No git repository found"))
+        Err(e) => Err(anyhow!("Failed to read user input: {}", e)),
     }
 }

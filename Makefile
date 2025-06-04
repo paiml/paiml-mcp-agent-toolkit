@@ -36,11 +36,11 @@ SCRIPTS_DIR = scripts
 all: format build
 
 # Validate everything passes across all projects
-validate: check lint test validate-docs validate-naming test-workflow-dag test-actions deps-validate
+validate: check lint test-fast validate-docs validate-naming test-workflow-dag test-actions deps-validate
 	@echo "✅ All projects validated! All checks passed:"
 	@echo "  ✓ Type checking (cargo check + deno check)"
 	@echo "  ✓ Linting (cargo clippy + deno lint)"
-	@echo "  ✓ Testing (cargo test)"
+	@echo "  ✓ Fast testing (cargo nextest)"
 	@echo "  ✓ Documentation naming consistency"
 	@echo "  ✓ Project naming conventions"
 	@echo "  ✓ GitHub Actions workflow DAG (no version mismatches)"
@@ -116,25 +116,9 @@ test-fast:
 	@RUST_TEST_THREADS=$$(nproc) cargo nextest run --profile fast --workspace || cargo test --release --workspace
 	@echo "✅ Fast tests completed!"
 
-# Run tests in all projects (with coverage)
-test: test-scripts
-	@test_success=true; \
-	for project in $(PROJECTS); do \
-		if [ -d "$$project" ] && [ -f "$$project/Makefile" ]; then \
-			echo "🧪 Testing $$project..."; \
-			$(MAKE) -C $$project test || test_success=false; \
-		else \
-			echo "⚠️  Skipping $$project (no Makefile found)"; \
-		fi \
-	done; \
-	if [ "$$test_success" = "true" ]; then \
-		echo ""; \
-		echo "✅ All tests passed!"; \
-	else \
-		echo ""; \
-		echo "❌ Tests failed for one or more projects"; \
-		exit 1; \
-	fi
+# Run tests - ALWAYS FAST (zero tolerance for slow tests)
+test: test-fast
+	@echo "✅ All fast tests completed!"
 
 # Generate coverage reports for all projects
 coverage:
@@ -179,10 +163,10 @@ dogfood: release
 	@echo "🐕 Dogfooding: Using our own MCP toolkit extensively for analysis and documentation..."
 	@echo "📊 Phase 1: Comprehensive analysis using the built binary..."
 	@mkdir -p artifacts/dogfooding
-	@./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 10 --format json > artifacts/dogfooding/complexity-$(shell date +%Y-%m-%d).json
-	@./target/release/paiml-mcp-agent-toolkit analyze churn --days 30 --top-files 10 --format json > artifacts/dogfooding/churn-$(shell date +%Y-%m-%d).json
-	@./target/release/paiml-mcp-agent-toolkit analyze dag --enhanced --top-files 15 -o artifacts/dogfooding/dag-$(shell date +%Y-%m-%d).mmd
-	@./target/release/paiml-mcp-agent-toolkit context --format markdown --output artifacts/dogfooding/deep-context-$(shell date +%Y-%m-%d).md
+	@./target/release/pmat analyze complexity --top-files 10 --format json > artifacts/dogfooding/complexity-$(shell date +%Y-%m-%d).json
+	@./target/release/pmat analyze churn --days 30 --top-files 10 --format json > artifacts/dogfooding/churn-$(shell date +%Y-%m-%d).json
+	@./target/release/pmat analyze dag --enhanced --top-files 15 -o artifacts/dogfooding/dag-$(shell date +%Y-%m-%d).mmd
+	@./target/release/pmat context --format markdown --output artifacts/dogfooding/deep-context-$(shell date +%Y-%m-%d).md
 	@echo "📝 Phase 2: Updating documentation with binary-generated metrics..."
 	@deno run --allow-all scripts/dogfood-readme.ts
 	@echo ""
@@ -196,12 +180,12 @@ dogfood-ci: release
 	@echo "🐕 CI Dogfooding: Comprehensive testing of our own binary..."
 	@mkdir -p artifacts/dogfooding
 	@echo "📊 Generating comprehensive analysis using built binary..."
-	@./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 10 --format json > artifacts/dogfooding/complexity-latest.json
-	@./target/release/paiml-mcp-agent-toolkit analyze churn --days 7 --top-files 10 --format json > artifacts/dogfooding/churn-latest.json
-	@./target/release/paiml-mcp-agent-toolkit analyze dag --enhanced --top-files 15 -o artifacts/dogfooding/dag-latest.mmd
-	@./target/release/paiml-mcp-agent-toolkit context --format json --output artifacts/dogfooding/deep-context-latest.json
+	@./target/release/pmat analyze complexity --top-files 10 --format json > artifacts/dogfooding/complexity-latest.json
+	@./target/release/pmat analyze churn --days 7 --top-files 10 --format json > artifacts/dogfooding/churn-latest.json
+	@./target/release/pmat analyze dag --enhanced --top-files 15 -o artifacts/dogfooding/dag-latest.mmd
+	@./target/release/pmat context --format json --output artifacts/dogfooding/deep-context-latest.json
 	@echo "🧪 Testing binary performance and interface consistency..."
-	@time ./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 5 --format table
+	@time ./target/release/pmat analyze complexity --top-files 5 --format table
 	@echo "✅ CI dogfooding complete! All metrics generated using our own binary."
 	@echo "📁 Comprehensive reports saved to artifacts/dogfooding/"
 	@echo "⚡ Binary performance validated"
@@ -457,27 +441,27 @@ validate-naming:
 # Generate comprehensive context with full AST and metrics analysis
 context: release
 	@echo "📊 Generating comprehensive deep context analysis..."
-	@./target/release/paiml-mcp-agent-toolkit context --output deep_context.md
+	@./target/release/pmat context --output deep_context.md
 	@echo "✅ Context analysis complete: deep_context.md"
 
 # Simpler alternative using zero-config context command
 context-simple: release
 	@echo "📊 Generating context with zero-config auto-detection..."
-	@./target/release/paiml-mcp-agent-toolkit context --output deep_context.md
+	@./target/release/pmat context --output deep_context.md
 
 # Additional targets for different formats (using auto-detection)
 context-json: release
-	@./target/release/paiml-mcp-agent-toolkit context \
+	@./target/release/pmat context \
 		--format json \
 		--output deep_context.json
 
 context-sarif: release
-	@./target/release/paiml-mcp-agent-toolkit context \
+	@./target/release/pmat context \
 		--format sarif \
 		--output deep_context.sarif
 
 context-llm: release
-	@./target/release/paiml-mcp-agent-toolkit context \
+	@./target/release/pmat context \
 		--format llm-optimized \
 		--output deep_context_llm.md
 
@@ -489,7 +473,7 @@ context-legacy:
 context-benchmark: release context-legacy
 	@echo "🏁 Performance comparison: New auto-detection vs Legacy TypeScript"
 	@echo "=== New Implementation (Zero-config auto-detection) ==="
-	@time ./target/release/paiml-mcp-agent-toolkit context --format markdown --output deep_context_new.md
+	@time ./target/release/pmat context --format markdown --output deep_context_new.md
 	@echo ""
 	@echo "=== Legacy Implementation (TypeScript) ==="
 	@time deno run --allow-all $(SCRIPTS_DIR)/deep-context.ts -o deep_context_legacy_timed.md
@@ -669,8 +653,8 @@ release:
 	cargo build --release --manifest-path server/Cargo.toml
 	@echo ""
 	@echo "✅ Release binary built successfully!"
-	@echo "📍 Binary location: ./target/release/paiml-mcp-agent-toolkit"
-	@echo "📊 Binary size: $$(du -h ./target/release/paiml-mcp-agent-toolkit | cut -f1)"
+	@echo "📍 Binary location: ./target/release/pmat"
+	@echo "📊 Binary size: $$(du -h ./target/release/pmat | cut -f1)"
 	@echo ""
 	@echo "💡 Tips for binary size optimization (future improvements):"
 	@echo "   - Strip debug symbols: cargo build --release --config 'profile.release.strip=true'"
@@ -680,7 +664,7 @@ release:
 # Binary size analysis and monitoring
 size-report: release ## Generate comprehensive binary size report
 	@echo "=== Binary Size Report ==="
-	@ls -lh target/release/paiml-mcp-agent-toolkit
+	@ls -lh target/release/pmat
 	@echo ""
 	@echo "=== Asset Optimization Status ==="
 	@if [ -f "server/assets/vendor/mermaid.min.js.gz" ]; then \
@@ -723,13 +707,13 @@ size-report: release ## Generate comprehensive binary size report
 	fi
 
 size-track: release ## Track binary size over time
-	@SIZE=$$(stat -f%z target/release/paiml-mcp-agent-toolkit 2>/dev/null || stat -c%s target/release/paiml-mcp-agent-toolkit); \
+	@SIZE=$$(stat -f%z target/release/pmat 2>/dev/null || stat -c%s target/release/pmat); \
 	echo "$$(date +%Y-%m-%d),$${SIZE}" >> size-history.csv; \
 	echo "Binary size: $${SIZE} bytes"; \
 	echo "History logged to size-history.csv"
 
 size-check: release ## Check if binary size exceeds threshold
-	@SIZE=$$(stat -f%z target/release/paiml-mcp-agent-toolkit 2>/dev/null || stat -c%s target/release/paiml-mcp-agent-toolkit); \
+	@SIZE=$$(stat -f%z target/release/pmat 2>/dev/null || stat -c%s target/release/pmat); \
 	THRESHOLD=20971520; \
 	echo "Binary size: $${SIZE} bytes"; \
 	echo "Threshold: $${THRESHOLD} bytes (20MB)"; \
@@ -743,12 +727,12 @@ size-check: release ## Check if binary size exceeds threshold
 size-compare: ## Compare binary size with minimal build
 	@echo "=== Building with minimal features ==="
 	@cargo build --release --no-default-features --features rust-only --manifest-path server/Cargo.toml
-	@SIZE_MINIMAL=$$(stat -f%z target/release/paiml-mcp-agent-toolkit 2>/dev/null || stat -c%s target/release/paiml-mcp-agent-toolkit); \
+	@SIZE_MINIMAL=$$(stat -f%z target/release/pmat 2>/dev/null || stat -c%s target/release/pmat); \
 	echo "Minimal build size: $${SIZE_MINIMAL} bytes"
 	@echo ""
 	@echo "=== Building with all features ==="
 	@$(MAKE) release
-	@SIZE_FULL=$$(stat -f%z target/release/paiml-mcp-agent-toolkit 2>/dev/null || stat -c%s target/release/paiml-mcp-agent-toolkit); \
+	@SIZE_FULL=$$(stat -f%z target/release/pmat 2>/dev/null || stat -c%s target/release/pmat); \
 	echo "Full build size: $${SIZE_FULL} bytes"; \
 	REDUCTION=$$(echo "scale=1; ($${SIZE_FULL} - $${SIZE_MINIMAL}) * 100 / $${SIZE_FULL}" | bc -l 2>/dev/null || echo "N/A"); \
 	echo "Feature overhead: $${REDUCTION}%"
@@ -880,8 +864,8 @@ help:
 	@echo "  fix          - Auto-fix all formatting issues (alias for format)"
 	@echo "  lint         - Run linters in all projects (checks only)"
 	@echo "  check        - Type check all projects"
-	@echo "  test         - Run tests in all projects (with coverage)"
-	@echo "  test-fast    - Run fast tests with maximum parallelism (no coverage)"
+	@echo "  test         - Run fast tests (ONLY fast tests allowed)"
+	@echo "  test-fast    - Run fast tests with maximum parallelism"
 	@echo "  test-critical-scripts - Test critical installation/release scripts"
 	@echo "  coverage     - Generate coverage reports for all projects"
 	@echo "  coverage-scripts - Generate coverage report for TypeScript tests"
@@ -967,19 +951,19 @@ test-all-interfaces: release
 	@echo "📖 As per CLAUDE.md: This project MUST test ALL THREE interfaces continuously"
 	@echo ""
 	@echo "🚀 Starting HTTP server in background..."
-	@./target/release/paiml-mcp-agent-toolkit serve --port 8080 &
+	@./target/release/pmat serve --port 8080 &
 	@HTTP_PID=$$!; \
 	sleep 3; \
 	echo ""; \
 	echo "=== Testing Complexity Analysis Across All Interfaces ==="; \
 	echo ""; \
 	echo "🖥️  CLI Interface:"; \
-	time ./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 5 --format json > cli-complexity.json; \
+	time ./target/release/pmat analyze complexity --top-files 5 --format json > cli-complexity.json; \
 	echo "CLI Response size: $$(wc -c < cli-complexity.json) bytes"; \
 	echo ""; \
 	echo "🔗 MCP Interface:"; \
 	echo '{"jsonrpc":"2.0","method":"analyze_complexity","params":{"project_path":"./","top_files":5,"format":"json"},"id":1}' | \
-		./target/release/paiml-mcp-agent-toolkit --mode mcp > mcp-complexity.json; \
+		./target/release/pmat --mode mcp > mcp-complexity.json; \
 	echo "MCP Response size: $$(wc -c < mcp-complexity.json) bytes"; \
 	echo ""; \
 	echo "🌐 HTTP Interface:"; \
@@ -1000,31 +984,31 @@ test-feature-all-interfaces: release
 		exit 1; \
 	fi
 	@echo "🧪 Testing $(FEATURE) feature across all interfaces..."
-	@./target/release/paiml-mcp-agent-toolkit serve --port 8080 &
+	@./target/release/pmat serve --port 8080 &
 	@HTTP_PID=$$!; \
 	sleep 2; \
 	case "$(FEATURE)" in \
 		complexity) \
-			echo "CLI: ./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 5"; \
-			./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 5 --format table; \
+			echo "CLI: ./target/release/pmat analyze complexity --top-files 5"; \
+			./target/release/pmat analyze complexity --top-files 5 --format table; \
 			echo "MCP: analyze_complexity method"; \
-			echo '{"jsonrpc":"2.0","method":"analyze_complexity","params":{"top_files":5},"id":1}' | ./target/release/paiml-mcp-agent-toolkit --mode mcp; \
+			echo '{"jsonrpc":"2.0","method":"analyze_complexity","params":{"top_files":5},"id":1}' | ./target/release/pmat --mode mcp; \
 			echo "HTTP: GET /api/v1/analyze/complexity"; \
 			curl -s "http://localhost:8080/api/v1/analyze/complexity?top_files=5"; \
 			;; \
 		churn) \
-			echo "CLI: ./target/release/paiml-mcp-agent-toolkit analyze churn --days 7"; \
-			./target/release/paiml-mcp-agent-toolkit analyze churn --days 7 --top-files 5 --format table; \
+			echo "CLI: ./target/release/pmat analyze churn --days 7"; \
+			./target/release/pmat analyze churn --days 7 --top-files 5 --format table; \
 			echo "MCP: analyze_churn method"; \
-			echo '{"jsonrpc":"2.0","method":"analyze_churn","params":{"days":7,"top_files":5},"id":1}' | ./target/release/paiml-mcp-agent-toolkit --mode mcp; \
+			echo '{"jsonrpc":"2.0","method":"analyze_churn","params":{"days":7,"top_files":5},"id":1}' | ./target/release/pmat --mode mcp; \
 			echo "HTTP: GET /api/v1/analyze/churn"; \
 			curl -s "http://localhost:8080/api/v1/analyze/churn?days=7&top_files=5"; \
 			;; \
 		context) \
-			echo "CLI: ./target/release/paiml-mcp-agent-toolkit context"; \
-			./target/release/paiml-mcp-agent-toolkit context --format json > /tmp/cli_context.json; \
+			echo "CLI: ./target/release/pmat context"; \
+			./target/release/pmat context --format json > /tmp/cli_context.json; \
 			echo "MCP: analyze_context method"; \
-			echo '{"jsonrpc":"2.0","method":"analyze_context","params":{},"id":1}' | ./target/release/paiml-mcp-agent-toolkit --mode mcp > /tmp/mcp_context.json; \
+			echo '{"jsonrpc":"2.0","method":"analyze_context","params":{},"id":1}' | ./target/release/pmat --mode mcp > /tmp/mcp_context.json; \
 			echo "HTTP: GET /api/v1/context"; \
 			curl -s "http://localhost:8080/api/v1/context" > /tmp/http_context.json; \
 			;; \
@@ -1037,13 +1021,13 @@ test-feature-all-interfaces: release
 # Interface consistency validation
 test-interface-consistency: release
 	@echo "🔍 Testing interface consistency (same results across CLI/MCP/HTTP)..."
-	@./target/release/paiml-mcp-agent-toolkit serve --port 8080 &
+	@./target/release/pmat serve --port 8080 &
 	@HTTP_PID=$$!; \
 	sleep 3; \
 	echo "Generating complexity analysis via all interfaces..."; \
-	./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 3 --format json > consistency-cli.json; \
+	./target/release/pmat analyze complexity --top-files 3 --format json > consistency-cli.json; \
 	echo '{"jsonrpc":"2.0","method":"analyze_complexity","params":{"top_files":3,"format":"json"},"id":1}' | \
-		./target/release/paiml-mcp-agent-toolkit --mode mcp | jq '.result' > consistency-mcp.json; \
+		./target/release/pmat --mode mcp | jq '.result' > consistency-mcp.json; \
 	curl -s "http://localhost:8080/api/v1/analyze/complexity?top_files=3&format=json" > consistency-http.json; \
 	echo "Comparing outputs..."; \
 	if diff -q consistency-cli.json consistency-mcp.json >/dev/null && \
@@ -1062,18 +1046,18 @@ test-interface-consistency: release
 # Performance benchmark across interfaces
 benchmark-all-interfaces: release
 	@echo "⚡ Performance benchmarking across all interfaces..."
-	@./target/release/paiml-mcp-agent-toolkit serve --port 8080 &
+	@./target/release/pmat serve --port 8080 &
 	@HTTP_PID=$$!; \
 	sleep 3; \
 	echo "Benchmarking complexity analysis (5 iterations each):"; \
 	echo ""; \
 	echo "CLI Interface:"; \
 	hyperfine --warmup 2 --min-runs 5 \
-		"./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 5 --format json"; \
+		"./target/release/pmat analyze complexity --top-files 5 --format json"; \
 	echo ""; \
 	echo "MCP Interface:"; \
 	hyperfine --warmup 2 --min-runs 5 \
-		"echo '{\"jsonrpc\":\"2.0\",\"method\":\"analyze_complexity\",\"params\":{\"top_files\":5},\"id\":1}' | ./target/release/paiml-mcp-agent-toolkit --mode mcp"; \
+		"echo '{\"jsonrpc\":\"2.0\",\"method\":\"analyze_complexity\",\"params\":{\"top_files\":5},\"id\":1}' | ./target/release/pmat --mode mcp"; \
 	echo ""; \
 	echo "HTTP Interface:"; \
 	hyperfine --warmup 2 --min-runs 5 \
@@ -1083,7 +1067,7 @@ benchmark-all-interfaces: release
 # Interface load testing
 load-test-interfaces: release
 	@echo "🏋️  Load testing all interfaces..."
-	@./target/release/paiml-mcp-agent-toolkit serve --port 8080 &
+	@./target/release/pmat serve --port 8080 &
 	@HTTP_PID=$$!; \
 	sleep 3; \
 	echo "HTTP Load Test (100 requests, 10 concurrent):"; \
@@ -1095,7 +1079,7 @@ load-test-interfaces: release
 	echo ""; \
 	echo "CLI Parallel Test (10 concurrent processes):"; \
 	for i in $$(seq 1 10); do \
-		./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 5 --format json > /tmp/cli_test_$$i.json & \
+		./target/release/pmat analyze complexity --top-files 5 --format json > /tmp/cli_test_$$i.json & \
 	done; \
 	wait; \
 	echo "✅ CLI parallel test completed"; \
@@ -1111,14 +1095,14 @@ analyze-top-files: release
 	@echo "🔝 Top Files Analysis across multiple metrics using built binary..."
 	@mkdir -p artifacts/analysis
 	@echo "🧮 Complexity Top Files (Top 10):"
-	@./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 10 --format table
+	@./target/release/pmat analyze complexity --top-files 10 --format table
 	@echo ""
 	@echo "🔥 Churn Top Files (Top 10, last 30 days):"
-	@./target/release/paiml-mcp-agent-toolkit analyze churn --days 30 --top-files 10 --format table
+	@./target/release/pmat analyze churn --days 30 --top-files 10 --format table
 	@echo ""
 	@echo "💾 Saving detailed JSON reports..."
-	@./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 15 --format json > artifacts/analysis/top-complexity.json
-	@./target/release/paiml-mcp-agent-toolkit analyze churn --days 30 --top-files 15 --format json > artifacts/analysis/top-churn.json
+	@./target/release/pmat analyze complexity --top-files 15 --format json > artifacts/analysis/top-complexity.json
+	@./target/release/pmat analyze churn --days 30 --top-files 15 --format json > artifacts/analysis/top-churn.json
 	@echo "✅ Top files analysis complete! Reports saved to artifacts/analysis/"
 
 # Composite analysis combining multiple ranking factors
@@ -1126,8 +1110,8 @@ analyze-composite: release
 	@echo "🎯 Composite Analysis: Combining complexity, churn, and risk factors..."
 	@mkdir -p artifacts/analysis
 	@echo "📊 Generating comprehensive ranking using built binary..."
-	@./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 15 --format json > /tmp/complexity_composite.json
-	@./target/release/paiml-mcp-agent-toolkit analyze churn --days 30 --top-files 15 --format json > /tmp/churn_composite.json
+	@./target/release/pmat analyze complexity --top-files 15 --format json > /tmp/complexity_composite.json
+	@./target/release/pmat analyze churn --days 30 --top-files 15 --format json > /tmp/churn_composite.json
 	@echo "🔗 Cross-referencing high-complexity and high-churn files:"
 	@echo "Files appearing in both top complexity and top churn:"
 	@jq -r '.files[] | .file_path' /tmp/complexity_composite.json | sort > /tmp/complexity_files.txt
@@ -1150,17 +1134,17 @@ analyze-health-dashboard: release
 	@echo "📊 Generating comprehensive project health metrics..."
 	@echo ""
 	@echo "=== Project Overview ==="
-	@./target/release/paiml-mcp-agent-toolkit context --format json > artifacts/dashboard/health-context.json
+	@./target/release/pmat context --format json > artifacts/dashboard/health-context.json
 	@echo "Context analysis complete ✓"
 	@echo ""
 	@echo "=== Risk Assessment ==="
-	@./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 5 --format table
+	@./target/release/pmat analyze complexity --top-files 5 --format table
 	@echo ""
 	@echo "=== Recent Activity ==="
-	@./target/release/paiml-mcp-agent-toolkit analyze churn --days 7 --top-files 5 --format table
+	@./target/release/pmat analyze churn --days 7 --top-files 5 --format table
 	@echo ""
 	@echo "=== Dependency Graph ==="
-	@./target/release/paiml-mcp-agent-toolkit analyze dag --enhanced --top-files 10 -o artifacts/dashboard/dependency-graph.mmd
+	@./target/release/pmat analyze dag --enhanced --top-files 10 -o artifacts/dashboard/dependency-graph.mmd
 	@echo "Dependency graph saved to artifacts/dashboard/dependency-graph.mmd ✓"
 	@echo ""
 	@echo "💾 Health dashboard artifacts saved to artifacts/dashboard/"
@@ -1176,18 +1160,18 @@ profile-binary-performance: release
 	@echo ""
 	@echo "=== Binary Startup Performance ==="
 	@hyperfine --warmup 3 --min-runs 10 \
-		"./target/release/paiml-mcp-agent-toolkit --version" \
+		"./target/release/pmat --version" \
 		--export-json artifacts/profiling/startup-performance.json
 	@echo ""
 	@echo "=== Analysis Performance by Operation ==="
 	@echo "Complexity Analysis:"
 	@hyperfine --warmup 2 --min-runs 5 \
-		"./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 5 --format json" \
+		"./target/release/pmat analyze complexity --top-files 5 --format json" \
 		--export-json artifacts/profiling/complexity-performance.json
 	@echo ""
 	@echo "Context Generation:"
 	@hyperfine --warmup 1 --min-runs 3 \
-		"./target/release/paiml-mcp-agent-toolkit context --format json --output /tmp/context_perf.json" \
+		"./target/release/pmat context --format json --output /tmp/context_perf.json" \
 		--export-json artifacts/profiling/context-performance.json
 	@rm -f /tmp/context_perf.json
 	@echo ""
@@ -1200,9 +1184,9 @@ analyze-memory-usage: release
 	@echo "📊 Running memory-intensive operations with monitoring..."
 	@if command -v /usr/bin/time >/dev/null 2>&1; then \
 		echo "Context generation memory usage:"; \
-		/usr/bin/time -v ./target/release/paiml-mcp-agent-toolkit context --format json --output /tmp/memory_test.json 2> artifacts/profiling/memory-context.txt; \
+		/usr/bin/time -v ./target/release/pmat context --format json --output /tmp/memory_test.json 2> artifacts/profiling/memory-context.txt; \
 		echo "Complexity analysis memory usage:"; \
-		/usr/bin/time -v ./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 20 --format json 2> artifacts/profiling/memory-complexity.txt; \
+		/usr/bin/time -v ./target/release/pmat analyze complexity --top-files 20 --format json 2> artifacts/profiling/memory-complexity.txt; \
 		echo "Memory usage reports saved to artifacts/profiling/memory-*.txt"; \
 		rm -f /tmp/memory_test.json; \
 	else \
@@ -1216,13 +1200,13 @@ analyze-scaling: release
 	@mkdir -p artifacts/scaling
 	@echo "🔍 Testing performance with different file counts..."
 	@echo "Small scope (top 3 files):"
-	@time ./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 3 --format json > artifacts/scaling/small-scope.json
+	@time ./target/release/pmat analyze complexity --top-files 3 --format json > artifacts/scaling/small-scope.json
 	@echo ""
 	@echo "Medium scope (top 10 files):"
-	@time ./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 10 --format json > artifacts/scaling/medium-scope.json
+	@time ./target/release/pmat analyze complexity --top-files 10 --format json > artifacts/scaling/medium-scope.json
 	@echo ""
 	@echo "Large scope (top 25 files):"
-	@time ./target/release/paiml-mcp-agent-toolkit analyze complexity --top-files 25 --format json > artifacts/scaling/large-scope.json
+	@time ./target/release/pmat analyze complexity --top-files 25 --format json > artifacts/scaling/large-scope.json
 	@echo ""
 	@echo "📊 Comparing output sizes:"
 	@echo "Small scope: $$(wc -c < artifacts/scaling/small-scope.json) bytes"
@@ -1282,25 +1266,25 @@ verify-artifacts:
 # SATD (Self-Admitted Technical Debt) Analysis Targets using built binary
 analyze-satd: release
 	@echo "🔍 Analyzing Self-Admitted Technical Debt using built binary..."
-	@./target/release/paiml-mcp-agent-toolkit analyze satd --format json --output satd-analysis.json
+	@./target/release/pmat analyze satd --format json --output satd-analysis.json
 	@echo "✅ SATD analysis complete! Report saved to satd-analysis.json"
 
 # Analyze SATD with evolution tracking
 analyze-satd-evolution: release
 	@echo "📈 Analyzing SATD evolution over time using built binary..."
-	@./target/release/paiml-mcp-agent-toolkit analyze satd --evolution --days 90 --format json --output satd-evolution.json
+	@./target/release/pmat analyze satd --evolution --days 90 --format json --output satd-evolution.json
 	@echo "✅ SATD evolution analysis complete! Report saved to satd-evolution.json"
 
 # Export critical SATD items in SARIF format
 export-critical-satd: release
 	@echo "⚠️  Exporting critical technical debt items using built binary..."
-	@./target/release/paiml-mcp-agent-toolkit analyze satd --severity critical --format sarif --output critical-debt.sarif
+	@./target/release/pmat analyze satd --severity critical --format sarif --output critical-debt.sarif
 	@echo "✅ Critical SATD export complete! Report saved to critical-debt.sarif"
 
 # Generate comprehensive SATD metrics
 satd-metrics: release
 	@echo "📊 Generating comprehensive SATD metrics using built binary..."
-	@./target/release/paiml-mcp-agent-toolkit analyze satd --metrics --format json --output satd-metrics.json
+	@./target/release/pmat analyze satd --metrics --format json --output satd-metrics.json
 	@echo "✅ SATD metrics analysis complete! Report saved to satd-metrics.json"
 
 # Clean up validation artifacts

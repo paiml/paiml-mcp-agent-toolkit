@@ -1,5 +1,6 @@
 use paiml_mcp_agent_toolkit::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
 use paiml_mcp_agent_toolkit::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
+use std::collections::HashMap;
 use std::fs;
 
 #[test]
@@ -15,6 +16,7 @@ fn generate_example_mermaid_diagram() {
         file_path: "src/bin/main.rs".to_string(),
         line_number: 10,
         complexity: 5,
+        metadata: HashMap::new(),
     });
 
     graph.add_node(NodeInfo {
@@ -24,6 +26,7 @@ fn generate_example_mermaid_diagram() {
         file_path: "src/lib.rs".to_string(),
         line_number: 25,
         complexity: 12,
+        metadata: HashMap::new(),
     });
 
     graph.add_node(NodeInfo {
@@ -33,6 +36,7 @@ fn generate_example_mermaid_diagram() {
         file_path: "src/services/mermaid_generator.rs".to_string(),
         line_number: 4,
         complexity: 8,
+        metadata: HashMap::new(),
     });
 
     graph.add_node(NodeInfo {
@@ -42,6 +46,7 @@ fn generate_example_mermaid_diagram() {
         file_path: "src/models/dag.rs".to_string(),
         line_number: 5,
         complexity: 3,
+        metadata: HashMap::new(),
     });
 
     graph.add_node(NodeInfo {
@@ -51,6 +56,7 @@ fn generate_example_mermaid_diagram() {
         file_path: "src/services/template_service.rs".to_string(),
         line_number: 15,
         complexity: 6,
+        metadata: HashMap::new(),
     });
 
     graph.add_node(NodeInfo {
@@ -60,6 +66,7 @@ fn generate_example_mermaid_diagram() {
         file_path: "src/services/embedded_templates.rs".to_string(),
         line_number: 100,
         complexity: 15,
+        metadata: HashMap::new(),
     });
 
     graph.add_node(NodeInfo {
@@ -69,6 +76,7 @@ fn generate_example_mermaid_diagram() {
         file_path: "src/ast/parser.rs".to_string(),
         line_number: 50,
         complexity: 20,
+        metadata: HashMap::new(),
     });
 
     // Add edges representing relationships

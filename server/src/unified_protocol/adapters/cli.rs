@@ -68,6 +68,7 @@ impl CliAdapter {
                 target_nodes,
                 centrality_threshold,
                 merge_threshold,
+                ..
             } => Self::decode_demo(
                 path,
                 url,
@@ -312,6 +313,47 @@ impl CliAdapter {
                 parallel,
                 *verbose,
             ),
+            AnalyzeCommands::Tdg {
+                path,
+                threshold,
+                top,
+                format,
+                include_components,
+                output,
+                critical_only,
+                verbose,
+            } => Self::decode_analyze_tdg(
+                path,
+                output,
+                format,
+                *threshold,
+                *critical_only,
+                *top,
+                *include_components,
+                *verbose,
+            ),
+            AnalyzeCommands::Makefile {
+                path,
+                rules,
+                format,
+                fix,
+                gnu_version,
+            } => {
+                // Convert Makefile command to generic analyze method
+                let params = json!({
+                    "path": path,
+                    "rules": rules,
+                    "fix": fix,
+                    "gnu_version": gnu_version,
+                    "format": format,
+                });
+                Ok((
+                    Method::POST,
+                    "/api/v1/analyze/makefile".to_string(),
+                    params,
+                    None,
+                ))
+            }
         }
     }
 
@@ -496,6 +538,35 @@ impl CliAdapter {
         ))
     }
 
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_tdg(
+        path: &std::path::Path,
+        output: &Option<std::path::PathBuf>,
+        format: &crate::cli::TdgOutputFormat,
+        threshold: f64,
+        critical_only: bool,
+        top: usize,
+        include_components: bool,
+        verbose: bool,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let body = json!({
+            "project_path": path.to_string_lossy(),
+            "output_path": output,
+            "format": tdg_format_to_string(format),
+            "threshold": &threshold,
+            "critical_only": &critical_only,
+            "top": &top,
+            "include_components": &include_components,
+            "verbose": &verbose
+        });
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/tdg".to_string(),
+            body,
+            Some(OutputFormat::Json),
+        ))
+    }
+
     fn decode_serve(
         host: &str,
         port: u16,
@@ -670,6 +741,8 @@ impl CliInput {
                 AnalyzeCommands::DeadCode { .. } => "analyze-dead-code",
                 AnalyzeCommands::Satd { .. } => "analyze-satd",
                 AnalyzeCommands::DeepContext { .. } => "analyze-deep-context",
+                AnalyzeCommands::Tdg { .. } => "analyze-tdg",
+                AnalyzeCommands::Makefile { .. } => "analyze-makefile",
             },
             Commands::Demo { .. } => "demo",
             Commands::Serve { .. } => "serve",
@@ -850,6 +923,15 @@ fn deep_context_cache_strategy_to_string(
         crate::cli::DeepContextCacheStrategy::Normal => "normal".to_string(),
         crate::cli::DeepContextCacheStrategy::ForceRefresh => "force-refresh".to_string(),
         crate::cli::DeepContextCacheStrategy::Offline => "offline".to_string(),
+    }
+}
+
+fn tdg_format_to_string(format: &crate::cli::TdgOutputFormat) -> String {
+    match format {
+        crate::cli::TdgOutputFormat::Table => "table".to_string(),
+        crate::cli::TdgOutputFormat::Json => "json".to_string(),
+        crate::cli::TdgOutputFormat::Markdown => "markdown".to_string(),
+        crate::cli::TdgOutputFormat::Sarif => "sarif".to_string(),
     }
 }
 

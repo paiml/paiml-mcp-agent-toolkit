@@ -40,6 +40,12 @@ mod tests {
                     AnalyzeCommands::DeepContext { .. } => {
                         panic!("Expected Churn command, got DeepContext");
                     }
+                    AnalyzeCommands::Tdg { .. } => {
+                        panic!("Expected Churn command, got Tdg");
+                    }
+                    AnalyzeCommands::Makefile { .. } => {
+                        panic!("Expected Churn command, got Makefile");
+                    }
                 }
             }
             _ => panic!("Expected Analyze command"),
@@ -90,6 +96,12 @@ mod tests {
                 }
                 AnalyzeCommands::DeepContext { .. } => {
                     panic!("Expected Churn command, got DeepContext");
+                }
+                AnalyzeCommands::Tdg { .. } => {
+                    panic!("Expected Churn command, got Tdg");
+                }
+                AnalyzeCommands::Makefile { .. } => {
+                    panic!("Expected Churn command, got Makefile");
                 }
             },
             _ => panic!("Expected Analyze command"),

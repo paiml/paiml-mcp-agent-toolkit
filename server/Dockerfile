@@ -18,7 +18,7 @@ COPY src ./src
 COPY templates ./templates
 
 # Build the stateless MCP server binary
-RUN cargo build --release --bin paiml-mcp-agent-toolkit
+RUN cargo build --release --bin pmat
 
 # Runtime stage
 FROM debian:bookworm-slim
@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the binary from builder
-COPY --from=builder /app/target/release/paiml-mcp-agent-toolkit /usr/local/bin/paiml-mcp-agent-toolkit
+COPY --from=builder /app/target/release/pmat /usr/local/bin/pmat
 
 # Create non-root user
 RUN useradd -m -u 1000 mcp-user
@@ -38,4 +38,4 @@ RUN useradd -m -u 1000 mcp-user
 USER mcp-user
 
 # Set entrypoint
-ENTRYPOINT ["/usr/local/bin/paiml-mcp-agent-toolkit"]
+ENTRYPOINT ["/usr/local/bin/pmat"]
