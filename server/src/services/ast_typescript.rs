@@ -3,6 +3,7 @@ use crate::services::complexity::{
     ClassComplexity, ComplexityMetrics, FileComplexityMetrics, FunctionComplexity,
 };
 use crate::services::context::{AstItem, FileContext};
+use crate::services::file_classifier::{FileClassifier, ParseDecision};
 use std::path::Path;
 use swc_common::{sync::Lrc, FileName, SourceMap};
 use swc_ecma_ast::*;
@@ -99,9 +100,29 @@ pub async fn analyze_javascript_file_with_complexity(
 }
 
 pub async fn analyze_typescript_file(path: &Path) -> Result<FileContext, TemplateError> {
+    analyze_typescript_file_with_classifier(path, None).await
+}
+
+pub async fn analyze_typescript_file_with_classifier(
+    path: &Path,
+    classifier: Option<&FileClassifier>,
+) -> Result<FileContext, TemplateError> {
     let content = tokio::fs::read_to_string(path)
         .await
         .map_err(TemplateError::Io)?;
+
+    // Check if we should skip this file based on content
+    if let Some(classifier) = classifier {
+        match classifier.should_parse(path, content.as_bytes()) {
+            ParseDecision::Skip(reason) => {
+                return Err(TemplateError::InvalidUtf8(format!(
+                    "Skipping file due to {:?}",
+                    reason
+                )));
+            }
+            ParseDecision::Parse => {}
+        }
+    }
 
     let cm: Lrc<SourceMap> = Default::default();
     let fm = cm.new_source_file(
@@ -152,9 +173,29 @@ pub async fn analyze_typescript_file(path: &Path) -> Result<FileContext, Templat
 }
 
 pub async fn analyze_javascript_file(path: &Path) -> Result<FileContext, TemplateError> {
+    analyze_javascript_file_with_classifier(path, None).await
+}
+
+pub async fn analyze_javascript_file_with_classifier(
+    path: &Path,
+    classifier: Option<&FileClassifier>,
+) -> Result<FileContext, TemplateError> {
     let content = tokio::fs::read_to_string(path)
         .await
         .map_err(TemplateError::Io)?;
+
+    // Check if we should skip this file based on content
+    if let Some(classifier) = classifier {
+        match classifier.should_parse(path, content.as_bytes()) {
+            ParseDecision::Skip(reason) => {
+                return Err(TemplateError::InvalidUtf8(format!(
+                    "Skipping file due to {:?}",
+                    reason
+                )));
+            }
+            ParseDecision::Parse => {}
+        }
+    }
 
     let cm: Lrc<SourceMap> = Default::default();
     let fm = cm.new_source_file(

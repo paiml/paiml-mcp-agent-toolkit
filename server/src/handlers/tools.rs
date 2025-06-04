@@ -93,6 +93,7 @@ fn is_analysis_tool(tool_name: &str) -> bool {
             | "analyze_defect_probability"
             | "analyze_dead_code"
             | "analyze_deep_context"
+            | "analyze_tdg"
     )
 }
 
@@ -136,12 +137,14 @@ async fn handle_analysis_tools(
             handle_analyze_system_architecture(request_id, tool_params.arguments).await
         }
         "analyze_defect_probability" => {
-            handle_analyze_defect_probability(request_id, tool_params.arguments).await
+            // Deprecated - redirect to TDG analysis
+            handle_analyze_tdg(request_id, tool_params.arguments).await
         }
         "analyze_dead_code" => handle_analyze_dead_code(request_id, tool_params.arguments).await,
         "analyze_deep_context" => {
             handle_analyze_deep_context(request_id, tool_params.arguments).await
         }
+        "analyze_tdg" => handle_analyze_tdg(request_id, tool_params.arguments).await,
         _ => McpResponse::error(
             request_id,
             -32602,
@@ -851,6 +854,32 @@ fn build_complexity_thresholds(
     thresholds
 }
 
+/// Check if a directory entry is a build artifact directory that should be filtered out
+fn is_build_artifact_dir(entry: &walkdir::DirEntry) -> bool {
+    if !entry.file_type().is_dir() {
+        return false;
+    }
+
+    let dir_name = entry.file_name().to_string_lossy();
+    matches!(
+        dir_name.as_ref(),
+        "target"
+            | "node_modules"
+            | ".git"
+            | "dist"
+            | "build"
+            | "out"
+            | ".next"
+            | ".venv"
+            | "__pycache__"
+            | "vendor"
+            | "third_party"
+            | "external"
+            | ".yarn"
+            | "bower_components"
+    )
+}
+
 async fn analyze_project_files(
     project_path: &Path,
     toolchain: &str,
@@ -867,6 +896,7 @@ async fn analyze_project_files(
     for entry in WalkDir::new(project_path)
         .follow_links(false)
         .into_iter()
+        .filter_entry(|e| !is_build_artifact_dir(e))
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
@@ -1086,8 +1116,8 @@ async fn handle_analyze_dag(
         }
     };
 
-    // Build the dependency graph
-    let graph = DagBuilder::build_from_project(&project_context);
+    // Build the dependency graph with pruning limit
+    let graph = DagBuilder::build_from_project_with_limit(&project_context, 50);
 
     // Parse dag type
     let dag_type = args
@@ -1146,6 +1176,10 @@ struct GenerateContextArgs {
     toolchain: Option<String>,
     project_path: Option<String>,
     format: Option<String>,
+    debug: Option<bool>,
+    debug_output: Option<PathBuf>,
+    skip_vendor: Option<bool>,
+    max_line_length: Option<usize>,
 }
 
 async fn handle_generate_context(
@@ -1171,10 +1205,25 @@ async fn handle_generate_context(
     info!("Generating comprehensive context for {:?}", project_path);
 
     // Use the proven deep context analyzer for comprehensive analysis
-    use crate::services::deep_context::DeepContextAnalyzer;
+    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
+    use crate::services::file_classifier::FileClassifierConfig;
 
     // Create analyzer and run analysis using proven implementation
-    let config = crate::services::deep_context::DeepContextConfig::default();
+    let mut config = DeepContextConfig::default();
+
+    // Configure FileClassifier settings if debug options are provided
+    if args.debug.unwrap_or(false)
+        || args.skip_vendor.unwrap_or(false)
+        || args.max_line_length.is_some()
+    {
+        let file_classifier_config = FileClassifierConfig {
+            skip_vendor: args.skip_vendor.unwrap_or(true),
+            max_line_length: args.max_line_length.unwrap_or(10_000),
+            max_file_size: 1_048_576, // 1MB default
+        };
+        config.file_classifier_config = Some(file_classifier_config);
+    }
+
     let analyzer = DeepContextAnalyzer::new(config);
 
     let deep_context = match analyzer.analyze_project(&project_path).await {
@@ -1253,15 +1302,27 @@ async fn handle_analyze_system_architecture(
 
     info!("Analyzing system architecture for {:?}", project_path);
 
+    // Use deep context analyzer for comprehensive analysis
     use crate::services::canonical_query::{
-        AnalysisContext, CallGraph, CanonicalQuery, SystemArchitectureQuery,
+        AnalysisContext, CallEdge, CallEdgeType, CallGraph, CallNode, CallNodeType, CanonicalQuery,
+        SystemArchitectureQuery,
     };
-    use crate::services::context::analyze_project;
-    use crate::services::dag_builder::DagBuilder;
+    use crate::services::complexity::ComplexityMetrics;
+    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
     use std::collections::HashMap;
 
-    // Build analysis context
-    let context_result = match analyze_project(&project_path, "rust").await {
+    // Create deep context analyzer with architecture-focused config
+    let config = DeepContextConfig {
+        include_analyses: vec![
+            crate::services::deep_context::AnalysisType::Ast,
+            crate::services::deep_context::AnalysisType::Complexity,
+            crate::services::deep_context::AnalysisType::Dag,
+        ],
+        ..Default::default()
+    };
+
+    let analyzer = DeepContextAnalyzer::new(config);
+    let deep_context = match analyzer.analyze_project(&project_path).await {
         Ok(ctx) => ctx,
         Err(e) => {
             return McpResponse::error(
@@ -1272,15 +1333,93 @@ async fn handle_analyze_system_architecture(
         }
     };
 
-    let dag_result = DagBuilder::build_from_project(&context_result);
+    // Extract the dependency graph
+    let dag_result = match deep_context.analyses.dependency_graph {
+        Some(dag) => dag,
+        None => {
+            return McpResponse::error(
+                request_id,
+                -32000,
+                "Failed to generate dependency graph".to_string(),
+            );
+        }
+    };
 
-    // Convert to analysis context
+    // Build call graph from DAG
+    let mut call_nodes = Vec::new();
+    let mut call_edges = Vec::new();
+
+    // Convert DAG nodes to call graph nodes
+    for (node_id, node_info) in &dag_result.nodes {
+        let node_type = match node_info.node_type {
+            crate::models::dag::NodeType::Function => CallNodeType::Function,
+            crate::models::dag::NodeType::Class => CallNodeType::Struct, // Map Class to Struct
+            crate::models::dag::NodeType::Module => CallNodeType::Module,
+            crate::models::dag::NodeType::Trait => CallNodeType::Trait,
+            crate::models::dag::NodeType::Interface => CallNodeType::Trait, // Map Interface to Trait
+        };
+
+        call_nodes.push(CallNode {
+            id: node_id.clone(),
+            name: node_info.label.clone(),
+            module_path: node_info
+                .metadata
+                .get("module_path")
+                .cloned()
+                .unwrap_or_else(|| node_info.file_path.clone()),
+            node_type,
+        });
+    }
+
+    // Convert DAG edges to call graph edges
+    for edge in &dag_result.edges {
+        let edge_type = match edge.edge_type {
+            crate::models::dag::EdgeType::Calls => CallEdgeType::FunctionCall,
+            crate::models::dag::EdgeType::Imports => CallEdgeType::ModuleImport,
+            crate::models::dag::EdgeType::Inherits => CallEdgeType::TraitImpl,
+            crate::models::dag::EdgeType::Implements => CallEdgeType::TraitImpl,
+            crate::models::dag::EdgeType::Uses => CallEdgeType::FunctionCall,
+        };
+
+        call_edges.push(CallEdge {
+            from: edge.from.clone(),
+            to: edge.to.clone(),
+            edge_type,
+            weight: edge.weight, // Use actual weight from DAG
+        });
+    }
+
+    let call_graph = CallGraph {
+        nodes: call_nodes,
+        edges: call_edges,
+    };
+
+    // Build complexity map from complexity report
+    let mut complexity_map = HashMap::new();
+    if let Some(ref complexity_report) = deep_context.analyses.complexity_report {
+        for file in &complexity_report.files {
+            for func in &file.functions {
+                let key = format!("{}::{}", file.path, func.name);
+                complexity_map.insert(
+                    key,
+                    ComplexityMetrics {
+                        cyclomatic: func.metrics.cyclomatic,
+                        cognitive: func.metrics.cognitive,
+                        nesting_max: func.metrics.nesting_max,
+                        lines: func.metrics.lines,
+                    },
+                );
+            }
+        }
+    }
+
+    // Create analysis context with real data
     let context = AnalysisContext {
         project_path: project_path.clone(),
         ast_dag: dag_result,
-        call_graph: CallGraph::default(), // TODO: Build actual call graph
-        complexity_map: HashMap::new(),
-        churn_analysis: None, // Optional
+        call_graph,
+        complexity_map,
+        churn_analysis: deep_context.analyses.churn_analysis,
     };
 
     let query = SystemArchitectureQuery;
@@ -1298,6 +1437,14 @@ async fn handle_analyze_system_architecture(
                 }],
                 "result": result,
                 "format": args.format.unwrap_or_else(|| "mermaid".to_string()),
+                "metadata": {
+                    "nodes": result.metadata.nodes,
+                    "edges": result.metadata.edges,
+                    "analysis_time_ms": result.metadata.analysis_time_ms,
+                    "complexity_hotspots": deep_context.analyses.complexity_report
+                        .map(|r| r.hotspots.len())
+                        .unwrap_or(0),
+                }
             });
 
             McpResponse::success(request_id, response)
@@ -1315,6 +1462,7 @@ struct AnalyzeDefectProbabilityArgs {
     format: Option<String>,
 }
 
+#[allow(dead_code)]
 async fn handle_analyze_defect_probability(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
@@ -1350,6 +1498,7 @@ async fn handle_analyze_defect_probability(
     for entry in WalkDir::new(&project_path)
         .follow_links(false)
         .into_iter()
+        .filter_entry(|e| !is_build_artifact_dir(e))
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
@@ -1737,6 +1886,140 @@ fn format_dead_code_as_markdown_mcp(
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+struct AnalyzeTdgArgs {
+    project_path: Option<String>,
+    format: Option<String>,
+    threshold: Option<f64>,
+    include_components: Option<bool>,
+    max_results: Option<usize>,
+}
+
+async fn handle_analyze_tdg(
+    request_id: serde_json::Value,
+    arguments: serde_json::Value,
+) -> McpResponse {
+    let args: AnalyzeTdgArgs = match serde_json::from_value(arguments) {
+        Ok(a) => a,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32602,
+                format!("Invalid analyze_tdg arguments: {}", e),
+            );
+        }
+    };
+
+    let project_path = args
+        .project_path
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+    info!("Analyzing Technical Debt Gradient for {:?}", project_path);
+
+    use crate::services::tdg_calculator::TDGCalculator;
+
+    // Create TDG calculator (primary service for analysis)
+    let calculator = TDGCalculator::new();
+
+    // Run TDG analysis
+    let analysis = match calculator.analyze_directory(&project_path).await {
+        Ok(analysis) => analysis,
+        Err(e) => {
+            return McpResponse::error(request_id, -32000, format!("TDG analysis failed: {}", e));
+        }
+    };
+
+    // Format output
+    let content_text = match args.format.as_deref() {
+        Some("json") => serde_json::to_string_pretty(&analysis).unwrap_or_default(),
+        _ => format_tdg_summary(&analysis),
+    };
+
+    let result = json!({
+        "content": [{
+            "type": "text",
+            "text": content_text
+        }],
+        "analysis": analysis,
+        "format": args.format.unwrap_or_else(|| "summary".to_string()),
+    });
+
+    McpResponse::success(request_id, result)
+}
+
+fn format_tdg_summary(summary: &crate::models::tdg::TDGSummary) -> String {
+    let mut output = String::new();
+
+    output.push_str("# Technical Debt Gradient Analysis\n\n");
+
+    // Summary
+    output.push_str("## Summary\n\n");
+    output.push_str(&format!("**Total files:** {}\n", summary.total_files));
+    output.push_str(&format!(
+        "**Critical files:** {} ({:.1}%)\n",
+        summary.critical_files,
+        if summary.total_files > 0 {
+            (summary.critical_files as f64 / summary.total_files as f64) * 100.0
+        } else {
+            0.0
+        }
+    ));
+    output.push_str(&format!(
+        "**Warning files:** {} ({:.1}%)\n",
+        summary.warning_files,
+        if summary.total_files > 0 {
+            (summary.warning_files as f64 / summary.total_files as f64) * 100.0
+        } else {
+            0.0
+        }
+    ));
+    output.push_str(&format!("**Average TDG:** {:.2}\n", summary.average_tdg));
+    output.push_str(&format!(
+        "**95th percentile TDG:** {:.2}\n",
+        summary.p95_tdg
+    ));
+    output.push_str(&format!(
+        "**99th percentile TDG:** {:.2}\n",
+        summary.p99_tdg
+    ));
+    output.push_str(&format!(
+        "**Estimated technical debt:** {:.0} hours\n\n",
+        summary.estimated_debt_hours
+    ));
+
+    // Hotspots
+    if !summary.hotspots.is_empty() {
+        output.push_str("## Top Hotspots\n\n");
+        output.push_str("| File | TDG Score | Primary Factor | Estimated Hours |\n");
+        output.push_str("|------|-----------|----------------|----------------|\n");
+
+        for hotspot in &summary.hotspots {
+            output.push_str(&format!(
+                "| {} | {:.2} | {} | {:.0} |\n",
+                hotspot.path, hotspot.tdg_score, hotspot.primary_factor, hotspot.estimated_hours
+            ));
+        }
+        output.push('\n');
+    }
+
+    output.push_str("## Severity Distribution\n\n");
+    output.push_str(&format!(
+        "- 🔴 Critical (>2.5): {} files\n",
+        summary.critical_files
+    ));
+    output.push_str(&format!(
+        "- 🟡 Warning (1.5-2.5): {} files\n",
+        summary.warning_files
+    ));
+    output.push_str(&format!(
+        "- 🟢 Normal (<1.5): {} files\n",
+        summary.total_files - summary.critical_files - summary.warning_files
+    ));
+
+    output
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct AnalyzeDeepContextArgs {
     project_path: Option<String>,
     format: Option<String>,
@@ -1804,7 +2087,7 @@ fn parse_analysis_types(
                 "dag" => Some(AnalysisType::Dag),
                 "dead_code" => Some(AnalysisType::DeadCode),
                 "satd" => Some(AnalysisType::Satd),
-                "defect_probability" => Some(AnalysisType::DefectProbability),
+                "tdg" => Some(AnalysisType::TechnicalDebtGradient),
                 _ => None,
             })
             .collect()
@@ -1860,6 +2143,7 @@ fn build_deep_context_config(
         exclude_patterns: args.exclude_pattern.clone().unwrap_or_default(),
         cache_strategy: parse_cache_strategy(args.cache_strategy.clone()),
         parallel: args.parallel.unwrap_or(4),
+        file_classifier_config: None, // Default to None for deep context analysis
     }
 }
 

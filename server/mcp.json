@@ -1,10 +1,10 @@
 {
-  "name": "paiml-mcp-agent-toolkit",
+  "name": "pmat",
   "version": "1.0.0",
-  "description": "MCP Agent Toolkit - Template generation for project scaffolding",
-  "main": "target/release/paiml-mcp-agent-toolkit",
+  "description": "Project Analysis and Intelligence Modeling Toolkit",
+  "main": "target/release/pmat",
   "bin": {
-    "paiml-mcp-agent-toolkit": "target/release/paiml-mcp-agent-toolkit"
+    "pmat": "target/release/pmat"
   },
   "mcp": {
     "runtime": "binary",

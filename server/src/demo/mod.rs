@@ -1,9 +1,14 @@
+pub mod adapters;
 pub mod assets;
+pub mod config;
+pub mod export;
+pub mod protocol_harness;
+pub mod router;
 pub mod runner;
 pub mod server;
 pub mod templates;
 
-pub use runner::{detect_repository, DemoReport, DemoRunner, DemoStep};
+pub use runner::{detect_repository, resolve_repository, DemoReport, DemoRunner, DemoStep};
 pub use server::{DemoContent, Hotspot, LocalDemoServer};
 
 use anyhow::Result;
@@ -13,31 +18,238 @@ pub async fn run_demo(
     args: DemoArgs,
     server: std::sync::Arc<crate::stateless_server::StatelessTemplateServer>,
 ) -> Result<()> {
-    let repo_path = detect_repository(args.path)?;
+    let config = load_demo_config(args, server)?;
+    let analyzer = create_analyzer(config.clone())?;
+    let results = run_analyses(analyzer, &config).await?;
+    let output = generate_output(results, config.args.protocol)?;
+    handle_protocol_output(output, &config).await
+}
 
-    if args.web {
-        // Web server mode
-        run_web_demo(repo_path, server, args.no_browser, args.port).await
-    } else {
-        // CLI output mode - just use the existing demo runner for now
-        println!("CLI demo mode - using existing demo runner");
-        let mut demo_runner = DemoRunner::new(server);
-        let demo_report = demo_runner.execute(repo_path).await?;
+// Configuration loading and validation
+fn load_demo_config(
+    args: DemoArgs,
+    server: std::sync::Arc<crate::stateless_server::StatelessTemplateServer>,
+) -> Result<DemoConfig> {
+    let repo_path = resolve_repository(args.path.clone(), args.url.clone(), args.repo.clone())?;
+    Ok(DemoConfig {
+        repo_path,
+        args,
+        server,
+    })
+}
 
-        match args.format {
-            crate::cli::OutputFormat::Json => {
-                println!("{}", serde_json::to_string_pretty(&demo_report)?);
-            }
-            crate::cli::OutputFormat::Yaml => {
-                println!("{}", serde_yaml::to_string(&demo_report)?);
-            }
-            crate::cli::OutputFormat::Table => {
-                println!("{:#?}", demo_report);
-            }
-        }
+// Create the appropriate analyzer based on configuration
+fn create_analyzer(config: DemoConfig) -> Result<DemoAnalyzer> {
+    use adapters::{cli::CliDemoAdapter, http::HttpDemoAdapter, mcp::McpDemoAdapter};
+    use protocol_harness::DemoEngine;
 
-        Ok(())
+    let mut engine = DemoEngine::new();
+    engine.register_protocol("cli".to_string(), CliDemoAdapter::new());
+    engine.register_protocol("http".to_string(), HttpDemoAdapter::new());
+    engine.register_protocol("mcp".to_string(), McpDemoAdapter::new());
+
+    Ok(DemoAnalyzer { engine, config })
+}
+
+// Run the actual analyses based on protocol
+async fn run_analyses(analyzer: DemoAnalyzer, config: &DemoConfig) -> Result<AnalysisResults> {
+    if config.args.web {
+        return Ok(AnalysisResults::Web);
     }
+
+    if config.args.protocol == Protocol::All {
+        run_all_protocols(analyzer, config).await
+    } else {
+        run_single_protocol(analyzer, config).await
+    }
+}
+
+// Generate output based on results and protocol
+fn generate_output(results: AnalysisResults, _protocol: Protocol) -> Result<DemoOutput> {
+    match results {
+        AnalysisResults::Web => Ok(DemoOutput::Web),
+        AnalysisResults::Single(trace) => Ok(DemoOutput::Single(trace)),
+        AnalysisResults::Multiple(traces) => Ok(DemoOutput::Multiple(traces)),
+    }
+}
+
+// Handle the final output based on configuration
+async fn handle_protocol_output(output: DemoOutput, config: &DemoConfig) -> Result<()> {
+    match output {
+        DemoOutput::Web => {
+            run_web_demo(
+                config.repo_path.clone(),
+                config.server.clone(),
+                config.args.no_browser,
+                config.args.port,
+            )
+            .await
+        }
+        DemoOutput::Single(trace) => {
+            format_and_print_output(&trace.response, &config.args.format)?;
+            if config.args.show_api {
+                print_api_metadata(&trace.protocol_name).await?;
+            }
+            Ok(())
+        }
+        DemoOutput::Multiple(traces) => {
+            for trace in traces {
+                println!("\n=== {} Protocol ===", trace.protocol_name.to_uppercase());
+                format_and_print_output(&trace.response, &config.args.format)?;
+            }
+            Ok(())
+        }
+    }
+}
+
+// Helper to build protocol-specific requests
+fn build_protocol_request(
+    protocol: &str,
+    repo_path: &std::path::Path,
+    show_api: bool,
+) -> serde_json::Value {
+    let path_str = repo_path.to_str().unwrap();
+    match protocol {
+        "cli" => serde_json::json!({
+            "path": path_str,
+            "show_api": show_api
+        }),
+        "http" => serde_json::json!({
+            "method": "GET",
+            "path": "/demo/analyze",
+            "query": {"path": path_str},
+            "headers": {"Accept": "application/json"}
+        }),
+        "mcp" => serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "demo.analyze",
+            "params": {
+                "path": path_str,
+                "include_trace": show_api
+            },
+            "id": 1
+        }),
+        _ => serde_json::json!({}),
+    }
+}
+
+// Format and print output based on format type
+fn format_and_print_output(
+    response: &serde_json::Value,
+    format: &crate::cli::OutputFormat,
+) -> Result<()> {
+    match format {
+        crate::cli::OutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(response)?);
+        }
+        crate::cli::OutputFormat::Yaml => {
+            println!("{}", serde_yaml::to_string(response)?);
+        }
+        crate::cli::OutputFormat::Table => {
+            println!("{:#?}", response);
+        }
+    }
+    Ok(())
+}
+
+// Print API metadata for a protocol
+async fn print_api_metadata(protocol_name: &str) -> Result<()> {
+    println!("\n📊 API Introspection");
+    // TODO: This would require access to the engine reference
+    println!("Protocol: {}", protocol_name);
+    Ok(())
+}
+
+// Run demo for all protocols
+async fn run_all_protocols(analyzer: DemoAnalyzer, config: &DemoConfig) -> Result<AnalysisResults> {
+    println!("🎯 All Protocols Demo");
+    let mut traces = Vec::new();
+
+    for protocol_name in analyzer.engine.list_protocols() {
+        let request =
+            build_protocol_request(&protocol_name, &config.repo_path, config.args.show_api);
+        match analyzer.engine.execute_demo(&protocol_name, request).await {
+            Ok(trace) => traces.push(ProtocolTrace {
+                protocol_name: protocol_name.clone(),
+                response: trace.response,
+            }),
+            Err(e) => eprintln!("Error executing {} protocol: {}", protocol_name, e),
+        }
+    }
+
+    Ok(AnalysisResults::Multiple(traces))
+}
+
+// Run demo for a single protocol
+async fn run_single_protocol(
+    analyzer: DemoAnalyzer,
+    config: &DemoConfig,
+) -> Result<AnalysisResults> {
+    let protocol_name = protocol_to_string(&config.args.protocol);
+    print_protocol_banner(&config.args.protocol);
+
+    let request = build_protocol_request(&protocol_name, &config.repo_path, config.args.show_api);
+    let trace = analyzer
+        .engine
+        .execute_demo(&protocol_name, request)
+        .await?;
+
+    Ok(AnalysisResults::Single(ProtocolTrace {
+        protocol_name,
+        response: trace.response,
+    }))
+}
+
+// Convert Protocol enum to string
+fn protocol_to_string(protocol: &Protocol) -> String {
+    match protocol {
+        Protocol::Cli => "cli".to_string(),
+        Protocol::Http => "http".to_string(),
+        Protocol::Mcp => "mcp".to_string(),
+        Protocol::All => "all".to_string(),
+    }
+}
+
+// Print protocol-specific banner
+fn print_protocol_banner(protocol: &Protocol) {
+    match protocol {
+        Protocol::Cli => println!("🚀 CLI Protocol Demo"),
+        Protocol::Http => println!("🌐 HTTP Protocol Demo"),
+        Protocol::Mcp => println!("🔌 MCP Protocol Demo"),
+        Protocol::All => println!("🎯 All Protocols Demo"),
+    }
+}
+
+// Helper structures for the refactored code
+#[derive(Clone)]
+struct DemoConfig {
+    repo_path: std::path::PathBuf,
+    args: DemoArgs,
+    server: std::sync::Arc<crate::stateless_server::StatelessTemplateServer>,
+}
+
+struct DemoAnalyzer {
+    engine: protocol_harness::DemoEngine,
+    #[allow(dead_code)]
+    config: DemoConfig,
+}
+
+enum AnalysisResults {
+    Web,
+    Single(ProtocolTrace),
+    Multiple(Vec<ProtocolTrace>),
+}
+
+#[derive(Clone)]
+struct ProtocolTrace {
+    protocol_name: String,
+    response: serde_json::Value,
+}
+
+enum DemoOutput {
+    Web,
+    Single(ProtocolTrace),
+    Multiple(Vec<ProtocolTrace>),
 }
 
 // Extract actual analysis results and timings from demo report
@@ -63,9 +275,14 @@ fn extract_analysis_from_demo_report(
                     if let Ok(complexity_data) =
                         serde_json::from_value::<serde_json::Value>(result.clone())
                     {
-                        // Parse complexity summary if available
-                        if let Some(summary) = complexity_data.get("summary") {
-                            complexity_result = parse_complexity_summary(summary);
+                        // Parse the full complexity report from the "report" field
+                        if let Some(report) = complexity_data.get("report") {
+                            if let Ok(report) = serde_json::from_value::<
+                                crate::services::complexity::ComplexityReport,
+                            >(report.clone())
+                            {
+                                complexity_result = Some(report);
+                            }
                         }
                     }
                 }
@@ -90,69 +307,40 @@ fn extract_analysis_from_demo_report(
 }
 
 #[allow(dead_code)]
-fn parse_complexity_summary(
-    summary: &serde_json::Value,
-) -> Option<crate::services::complexity::ComplexityReport> {
-    // Create a minimal complexity report from summary data
-    let total_files = summary.get("total_files")?.as_u64().unwrap_or(0) as usize;
-    let total_functions = summary.get("total_functions")?.as_u64().unwrap_or(0) as usize;
-    let avg_cyclomatic = summary.get("avg_cyclomatic")?.as_f64().unwrap_or(0.0);
-    let tech_debt_hours = summary.get("technical_debt_hours")?.as_f64().unwrap_or(0.0);
-
-    Some(crate::services::complexity::ComplexityReport {
-        summary: crate::services::complexity::ComplexitySummary {
-            total_files,
-            total_functions,
-            median_cyclomatic: avg_cyclomatic as f32,
-            median_cognitive: (avg_cyclomatic * 1.2) as f32, // Estimate
-            max_cyclomatic: (avg_cyclomatic * 3.0) as u16,
-            max_cognitive: (avg_cyclomatic * 3.5) as u16,
-            p90_cyclomatic: (avg_cyclomatic * 2.0) as u16,
-            p90_cognitive: (avg_cyclomatic * 2.4) as u16,
-            technical_debt_hours: tech_debt_hours as f32,
-        },
-        violations: vec![],
-        hotspots: vec![],
-        files: vec![], // Would need more complex parsing to populate
-    })
-}
-
-#[allow(dead_code)]
 fn parse_dag_data(dag_data: &serde_json::Value) -> Option<crate::models::dag::DependencyGraph> {
-    // Try to extract basic graph structure
-    if let Some(stats) = dag_data.get("stats") {
-        let node_count = stats.get("nodes")?.as_u64().unwrap_or(0) as usize;
-        let edge_count = stats.get("edges")?.as_u64().unwrap_or(0) as usize;
+    // Try to extract basic graph structure from the actual response format
+    let node_count = dag_data.get("nodes")?.as_u64().unwrap_or(0) as usize;
+    let edge_count = dag_data.get("edges")?.as_u64().unwrap_or(0) as usize;
 
-        // Create a minimal graph structure
-        if node_count > 0 || edge_count > 0 {
-            return Some(crate::models::dag::DependencyGraph {
-                nodes: (0..node_count)
-                    .map(|i| {
-                        let node_id = format!("node_{}", i);
-                        (
-                            node_id.clone(),
-                            crate::models::dag::NodeInfo {
-                                id: node_id,
-                                label: format!("Module {}", i),
-                                node_type: crate::models::dag::NodeType::Module,
-                                file_path: format!("module_{}.rs", i),
-                                line_number: 1,
-                                complexity: 1,
-                            },
-                        )
-                    })
-                    .collect(),
-                edges: (0..edge_count)
-                    .map(|i| crate::models::dag::Edge {
-                        from: format!("node_{}", i % node_count),
-                        to: format!("node_{}", (i + 1) % node_count),
-                        edge_type: crate::models::dag::EdgeType::Imports,
-                        weight: 1,
-                    })
-                    .collect(),
-            });
-        }
+    // Create a minimal graph structure
+    if node_count > 0 || edge_count > 0 {
+        return Some(crate::models::dag::DependencyGraph {
+            nodes: (0..node_count)
+                .map(|i| {
+                    let node_id = format!("node_{}", i);
+                    (
+                        node_id.clone(),
+                        crate::models::dag::NodeInfo {
+                            id: node_id,
+                            label: format!("Module {}", i),
+                            node_type: crate::models::dag::NodeType::Module,
+                            file_path: format!("module_{}.rs", i),
+                            line_number: 1,
+                            complexity: 1,
+                            metadata: std::collections::HashMap::new(),
+                        },
+                    )
+                })
+                .collect(),
+            edges: (0..edge_count)
+                .map(|i| crate::models::dag::Edge {
+                    from: format!("node_{}", i % node_count),
+                    to: format!("node_{}", (i + 1) % node_count),
+                    edge_type: crate::models::dag::EdgeType::Imports,
+                    weight: 1,
+                })
+                .collect(),
+        });
     }
     None
 }
@@ -240,8 +428,14 @@ async fn run_web_demo(
     // IMPORTANT: Add the system diagram from demo_report
     content.system_diagram = demo_report.system_diagram;
 
-    // Start web server
-    let (_demo_server, port) = LocalDemoServer::spawn(content).await?;
+    // Start web server with actual analysis results
+    let (_demo_server, port) = LocalDemoServer::spawn_with_results(
+        content,
+        complexity_result,
+        None, // churn_result not extracted from demo report yet
+        dag_result,
+    )
+    .await?;
     let url = format!("http://127.0.0.1:{}", port);
 
     println!("\n📊 Demo server running at: {}", url);
@@ -468,6 +662,7 @@ async fn analyze_defect_probability(
 pub struct DemoArgs {
     pub path: Option<std::path::PathBuf>,
     pub url: Option<String>,
+    pub repo: Option<String>,
     pub format: crate::cli::OutputFormat,
     pub no_browser: bool,
     pub port: Option<u16>,
@@ -475,4 +670,18 @@ pub struct DemoArgs {
     pub target_nodes: usize,
     pub centrality_threshold: f64,
     pub merge_threshold: usize,
+    pub protocol: Protocol,
+    pub show_api: bool,
+    pub debug: bool,
+    pub debug_output: Option<std::path::PathBuf>,
+    pub skip_vendor: bool,
+    pub max_line_length: Option<usize>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Protocol {
+    Cli,
+    Http,
+    Mcp,
+    All,
 }

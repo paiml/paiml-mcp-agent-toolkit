@@ -14,7 +14,7 @@ set -euf
 
 # Configuration
 REPO="paiml/paiml-mcp-agent-toolkit"
-BINARY_NAME="paiml-mcp-agent-toolkit"
+BINARY_NAME="pmat"
 INSTALL_DIR="${HOME}/.local/bin"
 
 # Colors for output

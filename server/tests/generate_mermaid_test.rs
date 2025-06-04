@@ -1,5 +1,6 @@
 use paiml_mcp_agent_toolkit::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
 use paiml_mcp_agent_toolkit::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
+use std::collections::HashMap;
 
 #[test]
 fn generate_test_mermaid() {
@@ -13,6 +14,7 @@ fn generate_test_mermaid() {
         file_path: "main.rs".to_string(),
         line_number: 1,
         complexity: 2,
+        metadata: HashMap::new(),
     });
 
     graph.add_node(NodeInfo {
@@ -22,6 +24,7 @@ fn generate_test_mermaid() {
         file_path: "config.rs".to_string(),
         line_number: 1,
         complexity: 5,
+        metadata: HashMap::new(),
     });
 
     graph.add_node(NodeInfo {
@@ -31,6 +34,7 @@ fn generate_test_mermaid() {
         file_path: "server.rs".to_string(),
         line_number: 10,
         complexity: 15,
+        metadata: HashMap::new(),
     });
 
     graph.add_node(NodeInfo {
@@ -40,6 +44,7 @@ fn generate_test_mermaid() {
         file_path: "auth.rs".to_string(),
         line_number: 5,
         complexity: 4,
+        metadata: HashMap::new(),
     });
 
     graph.add_node(NodeInfo {
@@ -49,6 +54,7 @@ fn generate_test_mermaid() {
         file_path: "cache.rs".to_string(),
         line_number: 1,
         complexity: 6,
+        metadata: HashMap::new(),
     });
 
     // Add edges with different types

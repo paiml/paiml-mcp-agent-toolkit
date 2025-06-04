@@ -198,8 +198,8 @@ fn test_analysis_type_equality() {
     assert_eq!(AnalysisType::DeadCode, AnalysisType::DeadCode);
     assert_eq!(AnalysisType::Satd, AnalysisType::Satd);
     assert_eq!(
-        AnalysisType::DefectProbability,
-        AnalysisType::DefectProbability
+        AnalysisType::TechnicalDebtGradient,
+        AnalysisType::TechnicalDebtGradient
     );
 
     assert_ne!(AnalysisType::Ast, AnalysisType::Complexity);

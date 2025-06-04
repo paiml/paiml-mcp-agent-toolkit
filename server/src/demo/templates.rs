@@ -221,7 +221,7 @@ pub const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
             overflow: hidden;
         }
 
-        #mermaid-container, #system-diagram-container {
+        #mermaid-container {
             background: var(--background);
             border-radius: 0.5rem;
             padding: 2rem;
@@ -382,17 +382,17 @@ pub const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
 
         <section class="section">
             <h2 class="section-title">
-                🏗️ System Architecture
+                📊 File Defect Report
             </h2>
             <div class="section-meta">
-                <a href="/api/system-diagram" target="_blank" class="endpoint-url">/api/system-diagram</a>
+                <a href="/api/analysis" target="_blank" class="endpoint-url">/api/analysis</a>
                 <div class="data-source">
                     <div class="data-indicator dynamic"></div>
                     <span>Dynamic</span>
                 </div>
             </div>
-            <div id="system-diagram-container">
-                <div class="loading">Loading system architecture...</div>
+            <div id="file-grid-container">
+                <div id="file-grid"></div>
             </div>
         </section>
     </main>
@@ -487,39 +487,78 @@ pub const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
                     document.getElementById('mermaid-container').innerHTML = '<div class="error">No dependency graph available</div>';
                 }
 
-                // Load and render System Architecture
-                const systemResponse = await fetch('/api/system-diagram');
-                const systemText = await systemResponse.text();
+                // Load file analysis data for Grid.js
+                const analysisResponse = await fetch('/api/analysis');
+                const analysisData = await analysisResponse.json();
                 
-                if (systemText && systemText.trim()) {
-                    const systemContainer = document.getElementById('system-diagram-container');
-                    systemContainer.innerHTML = `<pre class="mermaid">${systemText}</pre>`;
-                    await mermaid.run();
-                    
-                    // Update data source indicator based on whether we have dynamic content
-                    // Check if it's the hardcoded fallback diagram
-                    const isHardcoded = systemText.includes('AST Context Analysis') && 
-                                       systemText.includes('File Parser') && 
-                                       systemText.includes('Handlebars');
-                    
-                    const indicator = document.querySelector('.section:last-of-type .data-indicator');
-                    const statusText = document.querySelector('.section:last-of-type .data-source span');
-                    
-                    if (isHardcoded) {
-                        indicator.className = 'data-indicator default';
-                        statusText.textContent = 'Default';
-                    } else {
-                        indicator.className = 'data-indicator dynamic';
-                        statusText.textContent = 'Dynamic';
-                    }
-                } else {
-                    document.getElementById('system-diagram-container').innerHTML = '<div class="error">No system architecture available</div>';
+                if (analysisData && analysisData.ast_contexts) {
+                    new gridjs.Grid({
+                        columns: [
+                            { 
+                                name: 'File', 
+                                width: '40%',
+                                formatter: (cell) => gridjs.html(`<code style="font-size: 0.875rem">${cell}</code>`)
+                            },
+                            { 
+                                name: 'Complexity',
+                                formatter: (cell) => {
+                                    const colorClass = cell > 15 ? 'danger' : cell > 10 ? 'warning' : 'success';
+                                    return gridjs.html(`<span style="color: var(--${colorClass}); font-weight: 600">${cell}</span>`);
+                                }
+                            },
+                            { 
+                                name: 'Churn',
+                                sort: { 
+                                    compare: (a, b) => b - a 
+                                }
+                            },
+                            { 
+                                name: 'TDG',
+                                formatter: (cell) => {
+                                    const score = parseFloat(cell.toFixed(2));
+                                    const colorClass = score > 2.5 ? 'danger' : score > 2.0 ? 'warning' : score > 1.5 ? 'info' : 'success';
+                                    return gridjs.html(`<span style="color: var(--${colorClass})">${score}</span>`);
+                                }
+                            },
+                            { 
+                                name: 'LOC'
+                            }
+                        ],
+                        data: analysisData.ast_contexts.map(ctx => [
+                            ctx.path.replace('./server/src/', ''),
+                            ctx.complexity_metrics.cognitive,
+                            ctx.churn_metrics?.commit_count || 0,
+                            ctx.tdg_score || 0,
+                            ctx.lines_of_code
+                        ]),
+                        sort: true,
+                        search: true,
+                        pagination: { 
+                            limit: 20 
+                        },
+                        style: {
+                            table: {
+                                'border-radius': '0.5rem'
+                            },
+                            th: { 
+                                'background-color': 'var(--background)', 
+                                'color': 'var(--text)',
+                                'font-weight': '600',
+                                'text-align': 'left',
+                                padding: '1rem'
+                            },
+                            td: {
+                                padding: '1rem',
+                                'border-color': 'var(--border)'
+                            }
+                        }
+                    }).render(document.getElementById('file-grid'));
                 }
 
             } catch (error) {
                 console.error('Error loading demo data:', error);
                 document.getElementById('mermaid-container').innerHTML = `<div class="error">Error: ${error.message}</div>`;
-                document.getElementById('system-diagram-container').innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                document.getElementById('file-grid').innerHTML = `<div class="error">Error loading file analysis: ${error.message}</div>`;
             }
         }
 

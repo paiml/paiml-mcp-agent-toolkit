@@ -37,6 +37,24 @@ pub enum TemplateError {
     Io(#[from] std::io::Error),
 }
 
+#[derive(Error, Debug)]
+pub enum AnalysisError {
+    #[error("Failed to parse file: {0}")]
+    ParseError(String),
+
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("Invalid path: {0}")]
+    InvalidPath(String),
+
+    #[error("Analysis failed: {0}")]
+    AnalysisFailed(String),
+
+    #[error("Template error: {0}")]
+    Template(#[from] TemplateError),
+}
+
 impl TemplateError {
     pub fn to_mcp_code(&self) -> i32 {
         match self {

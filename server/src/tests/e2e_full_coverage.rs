@@ -170,7 +170,7 @@ async fn test_mcp_server_e2e_coverage() {
 #[test]
 fn test_cli_main_binary_version() {
     let output = Command::new("cargo")
-        .args(["run", "--bin", "paiml-mcp-agent-toolkit", "--", "--version"])
+        .args(["run", "--bin", "pmat", "--", "--version"])
         .output()
         .expect("Failed to execute command");
 
@@ -191,7 +191,7 @@ fn test_cli_main_binary_version() {
 #[test]
 fn test_cli_main_binary_help() {
     let output = Command::new("cargo")
-        .args(["run", "--bin", "paiml-mcp-agent-toolkit", "--", "--help"])
+        .args(["run", "--bin", "pmat", "--", "--help"])
         .output()
         .expect("Failed to execute command");
 
@@ -209,14 +209,7 @@ fn test_cli_main_binary_help() {
 fn test_cli_subcommand_help() {
     // Test generate help
     let output = Command::new("cargo")
-        .args([
-            "run",
-            "--bin",
-            "paiml-mcp-agent-toolkit",
-            "--",
-            "generate",
-            "--help",
-        ])
+        .args(["run", "--bin", "pmat", "--", "generate", "--help"])
         .output()
         .expect("Failed to execute command");
 
@@ -226,14 +219,7 @@ fn test_cli_subcommand_help() {
 
     // Test list help
     let output = Command::new("cargo")
-        .args([
-            "run",
-            "--bin",
-            "paiml-mcp-agent-toolkit",
-            "--",
-            "list",
-            "--help",
-        ])
+        .args(["run", "--bin", "pmat", "--", "list", "--help"])
         .output()
         .expect("Failed to execute command");
 
@@ -339,15 +325,7 @@ fn test_cli_invalid_command() {
 #[test]
 fn test_cli_analyze_churn() {
     let output = Command::new("cargo")
-        .args([
-            "run",
-            "--bin",
-            "paiml-mcp-agent-toolkit",
-            "--",
-            "analyze",
-            "churn",
-            "--help",
-        ])
+        .args(["run", "--bin", "pmat", "--", "analyze", "churn", "--help"])
         .output()
         .expect("Failed to execute command");
 

@@ -2,6 +2,18 @@ use crate::{ContentCache, MetadataCache, S3Client, TemplateServer, TemplateServe
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+// Include comprehensive code smell tests for README features
+mod code_smell_comprehensive_tests;
+
+// Include Clap command structure validation tests
+mod clap_command_structure_tests;
+
+// Include Clap argument parsing correctness tests
+mod clap_argument_parsing_tests;
+
+// Include Clap environment variable integration tests
+mod clap_env_var_tests;
+
 #[tokio::test]
 async fn test_template_server_new() {
     let server = TemplateServer::new().await;

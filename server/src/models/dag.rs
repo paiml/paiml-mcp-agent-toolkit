@@ -15,9 +15,11 @@ pub struct NodeInfo {
     pub file_path: String,
     pub line_number: usize,
     pub complexity: u32,
+    #[serde(default)]
+    pub metadata: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Edge {
     pub from: String,
     pub to: String,

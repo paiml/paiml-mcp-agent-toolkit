@@ -4,7 +4,7 @@ use std::process::{Command, Stdio};
 #[test]
 fn test_binary_version_flag() {
     let output = Command::new("cargo")
-        .args(["run", "--bin", "paiml-mcp-agent-toolkit", "--", "--version"])
+        .args(["run", "--bin", "pmat", "--", "--version"])
         .output()
         .expect("Failed to execute command");
 
@@ -21,7 +21,7 @@ fn test_binary_version_flag() {
 #[test]
 fn test_binary_json_rpc_initialize() {
     let mut child = Command::new("cargo")
-        .args(["run", "--bin", "paiml-mcp-agent-toolkit"])
+        .args(["run", "--bin", "pmat"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -50,7 +50,7 @@ fn test_binary_json_rpc_initialize() {
 #[test]
 fn test_binary_invalid_json() {
     let mut child = Command::new("cargo")
-        .args(["run", "--bin", "paiml-mcp-agent-toolkit"])
+        .args(["run", "--bin", "pmat"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -76,7 +76,7 @@ fn test_binary_invalid_json() {
 #[test]
 fn test_binary_multiple_requests() {
     let mut child = Command::new("cargo")
-        .args(["run", "--bin", "paiml-mcp-agent-toolkit"])
+        .args(["run", "--bin", "pmat"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

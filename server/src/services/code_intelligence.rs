@@ -8,7 +8,7 @@ use crate::services::{
     context::analyze_project,
     dag_builder::DagBuilder,
     dead_code_analyzer::{DeadCodeAnalyzer, DeadCodeReport},
-    duplicate_detector::{CloneReport, DuplicateDetector},
+    duplicate_detector::CloneReport,
     mermaid_generator::{MermaidGenerator, MermaidOptions},
 };
 use chrono::{DateTime, Utc};
@@ -134,7 +134,6 @@ impl UnifiedCache {
 /// Main code intelligence interface
 pub struct CodeIntelligence {
     dag: Arc<RwLock<AstDag>>,
-    duplicate: Arc<DuplicateDetector>,
     deadcode: Arc<RwLock<DeadCodeAnalyzer>>,
     cache: Arc<UnifiedCache>,
 }
@@ -151,7 +150,6 @@ impl CodeIntelligence {
 
         Self {
             dag: dag.clone(),
-            duplicate: Arc::new(DuplicateDetector::new()),
             deadcode: Arc::new(RwLock::new(DeadCodeAnalyzer::new(10000))), // Initial capacity
             cache: Arc::new(UnifiedCache::new(100)),
         }
@@ -188,8 +186,9 @@ impl CodeIntelligence {
             if let Ok(project_context) =
                 analyze_project(std::path::Path::new(&req.project_path), "rust").await
             {
-                // Build dependency graph using DagBuilder
-                let dependency_graph = DagBuilder::build_from_project(&project_context);
+                // Build dependency graph using DagBuilder with limit
+                let dependency_graph =
+                    DagBuilder::build_from_project_with_limit(&project_context, 50);
 
                 // Generate Mermaid diagram
                 let mermaid_options = MermaidOptions {
@@ -367,12 +366,8 @@ impl CodeIntelligence {
         for analysis_type in &req.analysis_types {
             match analysis_type {
                 AnalysisType::DuplicateDetection => {
-                    let duplicate = self.duplicate.clone();
-                    futures.push(Box::pin(async move {
-                        let _clone_report = duplicate.detect_all_clones();
-                        // TODO: Store in report
-                    })
-                        as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>);
+                    // Duplicate detection is handled in the deep context analysis
+                    // No additional processing needed here
                 }
 
                 AnalysisType::DeadCodeAnalysis => {
@@ -455,11 +450,11 @@ pub async fn analyze_dag_enhanced(
             output.push_str("%% Duplicate Detection Results:\n");
             output.push_str(&format!(
                 "%% Total clone groups: {}\n",
-                duplicates.summary.total_clones
+                duplicates.summary.clone_groups
             ));
             output.push_str(&format!(
                 "%% Clone coverage: {:.1}%\n",
-                duplicates.summary.clone_coverage
+                duplicates.summary.duplication_ratio * 100.0
             ));
         }
     }

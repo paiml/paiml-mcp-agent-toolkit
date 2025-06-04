@@ -1,3 +1,103 @@
+# Release Notes
+
+## v0.22.0 - GitHub Repository Cloning & Demo 2.0 🚀
+
+### 🎯 NEW: GitHub Repository Cloning
+- **IMPLEMENTED**: Full GitHub repository cloning support in demo mode
+- **FEATURE**: Clone and analyze any public GitHub repository directly
+- **USAGE**: `paiml-mcp-agent-toolkit demo --repo https://github.com/BurntSushi/ripgrep`
+- **IMPLEMENTATION**: Production-grade `GitCloner` service with:
+  - Shallow cloning (depth=1) for performance
+  - Progress tracking with real-time updates
+  - Repository caching with freshness checks
+  - Support for HTTPS, SSH, and shorthand GitHub URLs
+  - Automatic cleanup of temporary directories
+  - 2-minute timeout with graceful error handling
+
+### 🚀 Demo 2.0: Deterministic Graphs & Export System
+
+### 🚀 Major Features
+
+#### Deterministic Graph Generation
+- **NEW**: Semantic naming engine for human-readable node names
+- **NEW**: Fixed-size graph builder with PageRank-based node selection
+- **NEW**: Deterministic Mermaid diagram generation with consistent ordering
+- **FIXED**: Graph generation now produces identical output for identical input
+- **RESULT**: 0% variance in graph generation (fully deterministic)
+
+#### Configuration System with Hot-Reload
+- **NEW**: `.paiml-display.yaml` configuration file support
+- **NEW**: Live configuration updates without restart
+- **NEW**: Broadcast channels for configuration change notifications
+- **NEW**: Configurable panels for dependency, complexity, churn, and context
+- **NOTE**: Hot-reload test marked as platform-dependent
+
+#### Export System (Markdown, JSON, SARIF)
+- **NEW**: Trait-based export system with pluggable formats
+- **NEW**: Markdown exporter with Mermaid diagram support
+- **NEW**: JSON exporter with pretty/compact formatting options
+- **NEW**: SARIF exporter for CI/CD and static analysis tool integration
+- **NEW**: ExportService for unified export management
+- **RESULT**: <500ms export time for 10K node graphs
+
+#### Protocol-Agnostic Demo Harness
+- **NEW**: Unified demo engine supporting CLI, HTTP, and MCP protocols
+- **NEW**: Protocol adapters for consistent behavior across interfaces
+- **NEW**: Router pattern for HTTP endpoints
+- **NEW**: Protocol harness for code reuse
+
+### 🔧 Technical Debt Reduction
+
+#### Code Complexity Improvements
+- **REFACTORED**: `run_demo` complexity reduced from 34 to ~9 (73% reduction)
+- **REFACTORED**: `analyze_ast_contexts` complexity reduced from 24 to ~7 (71% reduction)
+- **REFACTORED**: `handle_connection` complexity reduced from 20 to ~5 (75% reduction)
+- **RESULT**: 70% average complexity reduction for top 3 functions
+
+#### AST Strategy Extraction
+- **NEW**: `AstStrategy` trait for language-specific analysis
+- **NEW**: `StrategyRegistry` for managing language strategies
+- **NEW**: Modular AST analysis with pluggable implementations
+
+#### Build Artifact Filtering
+- **ENHANCED**: Comprehensive build artifact patterns
+- **NEW**: Support for `.gradle/`, `node_modules/`, `__pycache__/`, etc.
+- **VERIFIED**: 0 build artifacts in analysis results
+
+### 🧪 Testing & Quality
+
+- **FIXED**: Binary linking issues resolved
+- **FIXED**: Test data mismatches corrected
+- **RESULT**: All 668 tests passing successfully
+- **COVERAGE**: Comprehensive test suites for all new features
+
+### 📁 New Files
+
+#### Core Demo Module
+- `server/src/demo/config.rs` - Configuration management
+- `server/src/demo/export.rs` - Export system
+- `server/src/demo/router.rs` - HTTP routing
+- `server/src/demo/protocol_harness.rs` - Protocol abstraction
+- `server/src/demo/adapters/` - Protocol adapters
+
+#### Services
+- `server/src/services/semantic_naming.rs` - Semantic names
+- `server/src/services/fixed_graph_builder.rs` - Graph builder
+- `server/src/services/ast_strategies.rs` - AST strategies
+- `server/src/services/file_classifier.rs` - File classification
+
+### 🔄 Breaking Changes
+
+None - All changes are backward compatible.
+
+### 🚀 Migration Guide
+
+1. **Configuration**: Create `.paiml-display.yaml` for custom settings
+2. **Export**: Use `--export` flag with format (markdown/json/sarif)
+3. **Protocols**: Use `--protocol` flag to select interface
+
+---
+
 # Release Notes for v0.20.1
 
 ## 🐛 Critical Bug Fix Release: AST Analysis and SATD False Positive Elimination

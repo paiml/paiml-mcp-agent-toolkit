@@ -299,4 +299,13 @@ mod tests {
 
     #[path = "../tests/cli_property_tests.rs"]
     mod cli_property_tests;
+
+    #[path = "../tests/ast_regression_test.rs"]
+    mod ast_regression_test;
+
+    #[path = "../tests/dead_code_verification.rs"]
+    mod dead_code_verification;
+
+    #[path = "../tests/complexity_distribution_verification.rs"]
+    mod complexity_distribution_verification;
 }

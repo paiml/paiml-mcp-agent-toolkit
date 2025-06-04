@@ -10,7 +10,7 @@
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The PAIML MCP Agent Toolkit is a **zero-configuration AI context generation system** created by [Pragmatic AI Labs](https://paiml.com) that instantly analyzes any codebase with a single command: `paiml-mcp-agent-toolkit context`. By combining intelligent language auto-detection with symbolic reasoning, this toolkit transforms probabilistic language models into **hybrid neuro-symbolic agents** with guaranteed deterministic outputs. Through the Model Context Protocol (MCP), it provides AI agents like Claude with comprehensive project understanding in seconds, creating the perfect bridge between neural flexibility and symbolic precision.
+The PAIML MCP Agent Toolkit is a **zero-configuration AI context generation system** created by [Pragmatic AI Labs](https://paiml.com) that instantly analyzes any codebase with a single command: `pmat context`. By combining intelligent language auto-detection with symbolic reasoning, this toolkit transforms probabilistic language models into **hybrid neuro-symbolic agents** with guaranteed deterministic outputs. Through the Model Context Protocol (MCP), it provides AI agents like Claude with comprehensive project understanding in seconds, creating the perfect bridge between neural flexibility and symbolic precision.
 
 ![PAIML MCP Agent Toolkit Demo](assets/demo.gif)
 
@@ -70,7 +70,7 @@ curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/maste
 **With Claude Code (Hybrid AI Mode):**
 ```bash
 # Add to Claude Code for neuro-symbolic enhancement
-claude mcp add paiml-toolkit ~/.local/bin/paiml-mcp-agent-toolkit
+claude mcp add paiml-toolkit ~/.local/bin/pmat
 
 # Claude now has deterministic reasoning capabilities
 "Analyze the exact complexity of this codebase"
@@ -80,31 +80,50 @@ claude mcp add paiml-toolkit ~/.local/bin/paiml-mcp-agent-toolkit
 **CLI Usage (Standalone Symbolic Engine):**
 ```bash
 # 🆕 Zero-configuration context generation with auto-detection
-paiml-mcp-agent-toolkit context                    # Auto-detects language!
-paiml-mcp-agent-toolkit context --format json     # JSON output
-paiml-mcp-agent-toolkit context rust              # Force specific toolchain
+pmat context                    # Auto-detects language!
+pmat context --format json     # JSON output
+pmat context rust              # Force specific toolchain
 
-# Unified demo system - analyze any repository
-paiml-mcp-agent-toolkit demo --format table  # CLI output
-paiml-mcp-agent-toolkit demo --web           # Web interface
-paiml-mcp-agent-toolkit demo --url https://github.com/user/repo --format json
+# 🧠 Intelligent graph visualization with PageRank pruning
+pmat analyze dag               # Dependency graph (smart pruning)
+pmat analyze dag --target-nodes 25  # Limit to top 25 nodes
+
+# 🎯 Unified demo system - analyze any repository
+pmat demo --format table       # CLI output
+pmat demo --web                # Web interface
+pmat demo --repo https://github.com/BurntSushi/ripgrep  # Clone & analyze GitHub repo
+pmat demo --url https://github.com/user/repo --format json
+
+# Protocol-agnostic demo with export formats
+pmat demo --protocol cli --export markdown   # Export as Markdown
+pmat demo --protocol http --export json      # Export as JSON
+pmat demo --protocol mcp --export sarif      # Export as SARIF (for CI/CD)
+
+# Configure demo display (hot-reload enabled)
+# Create .paiml-display.yaml in your project:
+# panels:
+#   dependency:
+#     max_nodes: 20
+#     max_edges: 60
+#   complexity:
+#     threshold: 15
 
 # Generate templates
-paiml-mcp-agent-toolkit scaffold rust --templates makefile,readme,gitignore
+pmat scaffold rust --templates makefile,readme,gitignore
 
 # Analyze your code  
-paiml-mcp-agent-toolkit analyze complexity --top-files 5
-paiml-mcp-agent-toolkit analyze churn --days 30 --format json
-paiml-mcp-agent-toolkit analyze dag --enhanced --show-complexity
-paiml-mcp-agent-toolkit analyze dead-code --top-files 10 --format json
-paiml-mcp-agent-toolkit analyze satd --top-files 5 --format json
-paiml-mcp-agent-toolkit analyze deep-context --include "ast,complexity,churn" --format json
+pmat analyze complexity --top-files 5
+pmat analyze churn --days 30 --format json
+pmat analyze dag --enhanced --show-complexity
+pmat analyze dead-code --top-files 10 --format json
+pmat analyze satd --top-files 5 --format json
+pmat analyze deep-context --include "ast,complexity,churn" --format json
 ```
 
 **HTTP API Usage:**
 ```bash
 # Start HTTP server with CORS support
-paiml-mcp-agent-toolkit serve --port 8080 --cors
+pmat serve --port 8080 --cors
 
 # Use the REST API
 curl "http://localhost:8080/health"
@@ -120,7 +139,7 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 
 ```bash
 # The magic happens here - zero configuration required!
-paiml-mcp-agent-toolkit context
+pmat context
 
 # Output in seconds:
 # 🔍 Auto-detecting project language...
@@ -311,12 +330,12 @@ Each toolchain supports `makefile`, `readme`, and `gitignore` templates followin
 
 ```bash
 # 🚀 Zero-configuration - just works!
-paiml-mcp-agent-toolkit context
+pmat context
 # Output: 🔍 Auto-detecting project language...
 #         ✅ Detected: rust (confidence: 85.2)
 
 # Traditional approach still supported
-paiml-mcp-agent-toolkit context rust
+pmat context rust
 ```
 
 ### 🧠 Intelligent Language Detection
@@ -476,7 +495,7 @@ When used with Claude Code, the following tools are available:
 
 ### HTTP REST API Endpoints
 
-Start the HTTP server: `paiml-mcp-agent-toolkit serve --port 8080 --cors`
+Start the HTTP server: `pmat serve --port 8080 --cors`
 
 | Endpoint | Method | Description | Parameters |
 |----------|---------|-------------|------------|
@@ -536,7 +555,7 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 - **Total commits**: 1,090
 - **Hotspot**: `./server/Cargo.toml` (high development activity)
 
-**Latest Analysis:** *Generated on 2025-05-31 using paiml-mcp-agent-toolkit analyze complexity --top-files 5*
+**Latest Analysis:** *Generated on 2025-05-31 using pmat analyze complexity --top-files 5*
 <!-- DOGFOODING_METRICS_END -->
 
 ## 🧠 Hybrid AI Benefits
@@ -585,29 +604,29 @@ The toolkit transforms probabilistic responses into verifiable facts:
 
 ```bash
 # List all templates
-paiml-mcp-agent-toolkit list
+pmat list
 
 # Generate single template  
-paiml-mcp-agent-toolkit generate makefile rust/cli -p project_name=my-project
+pmat generate makefile rust/cli -p project_name=my-project
 
 # Full project scaffolding
-paiml-mcp-agent-toolkit scaffold rust --templates makefile,readme,gitignore
+pmat scaffold rust --templates makefile,readme,gitignore
 
 # Code analysis
-paiml-mcp-agent-toolkit analyze complexity --format sarif
-paiml-mcp-agent-toolkit analyze complexity --top-files 5
-paiml-mcp-agent-toolkit analyze churn --days 30 --format json
-paiml-mcp-agent-toolkit analyze dag --enhanced --show-complexity
-paiml-mcp-agent-toolkit analyze dead-code --top-files 10 --format json
-paiml-mcp-agent-toolkit analyze satd --top-files 5 --format json
+pmat analyze complexity --format sarif
+pmat analyze complexity --top-files 5
+pmat analyze churn --days 30 --format json
+pmat analyze dag --enhanced --show-complexity
+pmat analyze dead-code --top-files 10 --format json
+pmat analyze satd --top-files 5 --format json
 
 # 🆕 Project context generation with auto-detection
-paiml-mcp-agent-toolkit context --format json     # Auto-detects language!
-paiml-mcp-agent-toolkit context rust --format json  # Or specify explicitly
+pmat context --format json     # Auto-detects language!
+pmat context rust --format json  # Or specify explicitly
 
 # Debug with enhanced tracing
-paiml-mcp-agent-toolkit --debug analyze complexity
-paiml-mcp-agent-toolkit --trace-filter="paiml=trace" demo
+pmat --debug analyze complexity
+pmat --trace-filter="paiml=trace" demo
 ```
 
 ## 🛠️ Development

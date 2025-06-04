@@ -6,11 +6,24 @@ mod demo_tests {
     use tempfile::TempDir;
 
     #[test]
-    #[ignore = "slow - runs full codebase analysis"]
-    fn test_demo_mode_in_current_directory() -> Result<()> {
-        // Run demo in current directory with CLI mode
+    fn test_demo_mode_in_test_directory() -> Result<()> {
+        // Create a small test directory for fast analysis
+        let temp = TempDir::new()?;
+        let test_path = temp.path();
+
+        // Create some minimal test files
+        std::fs::write(
+            test_path.join("main.rs"),
+            "fn main() { println!(\"Hello, world!\"); }",
+        )?;
+        std::fs::write(
+            test_path.join("lib.rs"),
+            "pub fn add(a: i32, b: i32) -> i32 { a + b }",
+        )?;
+
+        // Run demo on the small test directory
         let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
-        cmd.arg("demo").arg("--cli");
+        cmd.arg("demo").arg("--cli").arg("--path").arg(test_path);
 
         // Verify it runs successfully
         cmd.assert()
@@ -28,10 +41,21 @@ mod demo_tests {
     }
 
     #[test]
-    #[ignore = "slow - runs full codebase analysis"]
     fn test_demo_mode_with_json_output() -> Result<()> {
+        // Create a small test directory for fast analysis
+        let temp = TempDir::new()?;
+        let test_path = temp.path();
+
+        // Create minimal test file
+        std::fs::write(test_path.join("test.rs"), "fn main() {}")?;
+
         let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
-        cmd.arg("demo").arg("--cli").arg("--format").arg("json");
+        cmd.arg("demo")
+            .arg("--cli")
+            .arg("--format")
+            .arg("json")
+            .arg("--path")
+            .arg(test_path);
 
         // Verify JSON output
         cmd.assert()
@@ -70,7 +94,7 @@ mod demo_tests {
 
         cmd.assert()
             .success()
-            .stdout(predicate::str::contains("Repository:"))
+            .stdout(predicate::str::contains("🚀 CLI Protocol Demo"))
             .stdout(predicate::str::contains("test-repo"));
 
         Ok(())
@@ -79,12 +103,21 @@ mod demo_tests {
     // Removed test - demo mode is now always available
 
     #[test]
-    #[ignore = "JSON parsing fails due to stderr output mixing with stdout"]
     fn test_demo_increases_test_coverage() -> Result<()> {
+        // Create small test directory for fast execution
+        let temp = TempDir::new()?;
+        let test_path = temp.path();
+        std::fs::write(test_path.join("test.rs"), "fn main() {}")?;
+
         // This test verifies that running demo mode exercises various code paths
         // We'll check this by running demo and verifying it completes all steps
         let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
-        cmd.arg("demo").arg("--cli").arg("--format").arg("json");
+        cmd.arg("demo")
+            .arg("--cli")
+            .arg("--format")
+            .arg("json")
+            .arg("--path")
+            .arg(test_path);
 
         let output = cmd.output()?;
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -146,6 +179,7 @@ mod demo_tests {
             let args = DemoArgs {
                 path: Some(repo_path.clone()),
                 url: None,
+                repo: None,
                 format: OutputFormat::Json,
                 no_browser: true,
                 port: None,
@@ -153,6 +187,12 @@ mod demo_tests {
                 target_nodes: 15,
                 centrality_threshold: 0.1,
                 merge_threshold: 3,
+                protocol: paiml_mcp_agent_toolkit::demo::Protocol::Cli,
+                show_api: false,
+                debug: false,
+                debug_output: None,
+                skip_vendor: true,
+                max_line_length: None,
             };
 
             // This should complete without panicking

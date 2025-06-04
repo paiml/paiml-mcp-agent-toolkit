@@ -1,7 +1,6 @@
 #![cfg(not(feature = "no-demo"))]
 
 use paiml_mcp_agent_toolkit::demo::{DemoContent, Hotspot, LocalDemoServer};
-use reqwest;
 use std::time::Duration;
 use tokio::time::timeout;
 
@@ -396,6 +395,7 @@ mod demo_web_tests {
             file_path: String::new(),
             line_number: 0,
             complexity: 5,
+            metadata: std::collections::HashMap::new(),
         });
 
         let content =

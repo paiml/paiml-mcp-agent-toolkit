@@ -36,7 +36,7 @@ mod tests {
         // Filter out feature-gated binaries
         let main_binaries: Vec<_> = binaries
             .iter()
-            .filter(|&&name| name == "paiml-mcp-agent-toolkit")
+            .filter(|&&name| name == "pmat")
             .copied()
             .collect();
 
@@ -46,10 +46,7 @@ mod tests {
             "There should be exactly one main binary target"
         );
 
-        assert_eq!(
-            main_binaries[0], "paiml-mcp-agent-toolkit",
-            "Binary name must be 'paiml-mcp-agent-toolkit'"
-        );
+        assert_eq!(main_binaries[0], "pmat", "Binary name must be 'pmat'");
 
         // Check that generate-installer is feature-gated
         if binaries.contains(&"generate-installer") {

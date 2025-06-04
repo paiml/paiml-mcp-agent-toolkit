@@ -274,7 +274,6 @@ impl DeadCodeAnalyzer {
                 || node
                     .flags
                     .has(crate::models::unified_ast::NodeFlags::EXPORTED)
-                || matches!(node.kind, crate::models::unified_ast::AstKind::Function(_))
             {
                 entry_points.insert(node_key);
             }

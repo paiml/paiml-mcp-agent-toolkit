@@ -3,6 +3,7 @@ use crate::services::complexity::{
     ClassComplexity, ComplexityMetrics, FileComplexityMetrics, FunctionComplexity,
 };
 use crate::services::context::{AstItem, FileContext};
+use crate::services::file_classifier::{FileClassifier, ParseDecision};
 use std::path::Path;
 use syn::{
     visit::Visit, Arm, Expr, Fields, FieldsNamed, FieldsUnnamed, ItemEnum, ItemFn, ItemImpl,
@@ -12,9 +13,29 @@ use syn::{
 pub async fn analyze_rust_file_with_complexity(
     path: &Path,
 ) -> Result<FileComplexityMetrics, TemplateError> {
+    analyze_rust_file_with_complexity_and_classifier(path, None).await
+}
+
+pub async fn analyze_rust_file_with_complexity_and_classifier(
+    path: &Path,
+    classifier: Option<&FileClassifier>,
+) -> Result<FileComplexityMetrics, TemplateError> {
     let content = tokio::fs::read_to_string(path)
         .await
         .map_err(TemplateError::Io)?;
+
+    // Check if we should skip this file based on content
+    if let Some(classifier) = classifier {
+        match classifier.should_parse(path, content.as_bytes()) {
+            ParseDecision::Skip(reason) => {
+                return Err(TemplateError::InvalidUtf8(format!(
+                    "Skipping file due to {:?}",
+                    reason
+                )));
+            }
+            ParseDecision::Parse => {}
+        }
+    }
 
     let ast = syn::parse_file(&content)
         .map_err(|e| TemplateError::InvalidUtf8(format!("Rust parse error: {}", e)))?;
@@ -31,9 +52,29 @@ pub async fn analyze_rust_file_with_complexity(
 }
 
 pub async fn analyze_rust_file(path: &Path) -> Result<FileContext, TemplateError> {
+    analyze_rust_file_with_classifier(path, None).await
+}
+
+pub async fn analyze_rust_file_with_classifier(
+    path: &Path,
+    classifier: Option<&FileClassifier>,
+) -> Result<FileContext, TemplateError> {
     let content = tokio::fs::read_to_string(path)
         .await
         .map_err(TemplateError::Io)?;
+
+    // Check if we should skip this file based on content
+    if let Some(classifier) = classifier {
+        match classifier.should_parse(path, content.as_bytes()) {
+            ParseDecision::Skip(reason) => {
+                return Err(TemplateError::InvalidUtf8(format!(
+                    "Skipping file due to {:?}",
+                    reason
+                )));
+            }
+            ParseDecision::Parse => {}
+        }
+    }
 
     let ast = syn::parse_file(&content)
         .map_err(|e| TemplateError::InvalidUtf8(format!("Rust parse error: {}", e)))?;

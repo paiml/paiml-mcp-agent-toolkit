@@ -35,6 +35,105 @@ Force specific execution mode. Auto-detected by default based on environment.
 
 ## Commands
 
+### `demo`
+
+**NEW**: Demonstrate the toolkit's capabilities with protocol-agnostic architecture supporting multiple interfaces.
+
+#### Arguments
+
+- **-p, --path**: Path to analyze (default: current directory)
+- **-u, --url**: GitHub URL to analyze (alternative to path)
+- **--format**: Output format (`table`, `json`, `yaml`)
+- **--web**: Launch web-based demo interface
+- **--no-browser**: Don't open browser automatically (for web mode)
+- **--port**: Port for web server (default: 3030)
+- **--cli**: Force CLI-only mode
+- **--protocol**: Protocol to use for demo (`cli`, `http`, `mcp`, `all`)
+- **--show-api**: Show API introspection information
+- **--export**: Export format (`markdown`, `json`, `sarif`) - save analysis results
+- **--target-nodes**: Target number of nodes for graph reduction (default: 50)
+- **--max-edges**: Maximum edges before triggering PageRank pruning (default: 400)
+- **--pagerank-iterations**: Number of PageRank iterations for importance scoring (default: 10)
+
+#### Protocol Modes
+
+The demo command supports multiple protocol interfaces:
+
+1. **CLI Protocol** (`--protocol cli`): Direct command-line execution with formatted output
+2. **HTTP Protocol** (`--protocol http`): REST API demonstration (placeholder)
+3. **MCP Protocol** (`--protocol mcp`): JSON-RPC 2.0 Model Context Protocol interface
+4. **All Protocols** (`--protocol all`): Compare behavior across all protocols
+
+#### API Introspection
+
+When using `--show-api`, the demo displays detailed information about how the tool translates high-level requests into internal commands:
+
+- **CLI Mode**: Shows exact command-line invocation
+- **MCP Mode**: Displays JSON-RPC request/response format
+- **HTTP Mode**: Shows REST API endpoints and parameters
+
+#### Configuration
+
+The demo system supports configuration through `.paiml-display.yaml` file with hot-reload capabilities:
+
+```yaml
+version: "1.0"
+panels:
+  dependency:
+    max_nodes: 20        # Maximum nodes in dependency graph
+    max_edges: 60        # Maximum edges before reduction
+    grouping: module     # Grouping strategy: module, directory, none
+  complexity:
+    threshold: 15        # Complexity threshold for highlighting
+    max_items: 50        # Maximum items to display
+  churn:
+    days: 30            # Analysis period in days
+    max_items: 20       # Maximum churn items to show
+  context:
+    include_ast: true   # Include AST analysis
+    include_metrics: true # Include quality metrics
+    max_file_size: 500000 # Maximum file size to analyze
+export:
+  formats: ["markdown", "json", "sarif"] # Available export formats
+  include_metadata: true  # Include analysis metadata
+  include_raw_data: false # Include raw analysis data
+performance:
+  cache_enabled: true   # Enable analysis caching
+  cache_ttl: 3600      # Cache time-to-live in seconds
+  parallel_workers: 4   # Number of parallel workers
+```
+
+#### Export Formats
+
+The demo supports multiple export formats for analysis results:
+
+1. **Markdown** (`--export markdown`): Human-readable report with Mermaid diagrams
+2. **JSON** (`--export json`): Structured data for programmatic consumption
+3. **SARIF** (`--export sarif`): Static Analysis Results Interchange Format for CI/CD
+
+#### Examples
+
+```bash
+# Basic demo with table output
+paiml-mcp-agent-toolkit demo
+
+# Demo with specific protocol and API introspection
+paiml-mcp-agent-toolkit demo --protocol cli --show-api
+
+# Analyze GitHub repository with MCP protocol
+paiml-mcp-agent-toolkit demo --url https://github.com/user/repo --protocol mcp
+
+# Web-based interactive demo
+paiml-mcp-agent-toolkit demo --web --port 8080
+
+# Compare all protocols
+paiml-mcp-agent-toolkit demo --protocol all --format json
+
+# Export analysis results
+paiml-mcp-agent-toolkit demo --export markdown -o analysis.md
+paiml-mcp-agent-toolkit demo --export sarif -o results.sarif
+```
+
 ### `generate` (aliases: `gen`, `g`)
 
 Generate a single template file with zero-copy rendering.

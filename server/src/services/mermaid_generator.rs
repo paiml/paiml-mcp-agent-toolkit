@@ -1,8 +1,11 @@
-use crate::models::dag::{DependencyGraph, EdgeType, NodeType};
+use crate::models::dag::{DependencyGraph, EdgeType, NodeInfo, NodeType};
+use crate::services::fixed_graph_builder::{FixedGraphBuilder, GraphConfig};
+use crate::services::semantic_naming::SemanticNamer;
 use std::fmt::Write;
 
 pub struct MermaidGenerator {
     options: MermaidOptions,
+    namer: SemanticNamer,
 }
 
 #[derive(Default)]
@@ -15,10 +18,92 @@ pub struct MermaidOptions {
 
 impl MermaidGenerator {
     pub fn new(options: MermaidOptions) -> Self {
-        Self { options }
+        Self {
+            options,
+            namer: SemanticNamer::new(),
+        }
     }
 
     pub fn generate(&self, graph: &DependencyGraph) -> String {
+        // Use the deterministic fixed graph builder
+        let config = GraphConfig {
+            max_nodes: 50,  // Default reasonable limit
+            max_edges: 400, // Below Mermaid's 500 edge limit
+            grouping: crate::services::fixed_graph_builder::GroupingStrategy::Module,
+        };
+        self.generate_with_config(graph, &config)
+    }
+
+    pub fn generate_with_config(&self, graph: &DependencyGraph, config: &GraphConfig) -> String {
+        // Build fixed-size graph with PageRank selection
+        let builder = FixedGraphBuilder::new(config.clone());
+        let fixed_graph = match builder.build(graph) {
+            Ok(fixed) => fixed,
+            Err(_) => {
+                // Fallback to original implementation if builder fails
+                return self.generate_legacy(graph);
+            }
+        };
+
+        let mut output = String::from("graph TD\n");
+
+        // Generate nodes with deterministic ordering
+        for node in fixed_graph.nodes.values() {
+            let sanitized_id = self.sanitize_id(&node.id);
+            let escaped_label = self.escape_mermaid_label(&node.display_name);
+
+            // Generate node with proper shape based on type
+            let node_def = match node.node_type {
+                NodeType::Module => format!("{}[{}]", sanitized_id, escaped_label),
+                NodeType::Function => format!("{}[{}]", sanitized_id, escaped_label),
+                NodeType::Class => format!("{}[{}]", sanitized_id, escaped_label),
+                NodeType::Trait => format!("{}(({}))", sanitized_id, escaped_label),
+                NodeType::Interface => format!("{}(({}))", sanitized_id, escaped_label),
+            };
+
+            writeln!(output, "    {}", node_def).unwrap();
+        }
+
+        // Add blank line between nodes and edges
+        output.push('\n');
+
+        // Generate edges
+        for edge in &fixed_graph.edges {
+            let arrow = self.get_edge_arrow(&edge.edge_type);
+            writeln!(
+                output,
+                "    {} {} {}",
+                self.sanitize_id(&edge.from),
+                arrow,
+                self.sanitize_id(&edge.to)
+            )
+            .unwrap();
+        }
+
+        // Add styling based on complexity if enabled
+        if self.options.show_complexity {
+            output.push('\n');
+            for node in fixed_graph.nodes.values() {
+                let color = self.get_complexity_color(node.complexity as u32);
+                let (stroke_style, stroke_width) = self.get_node_stroke_style(&node.node_type);
+
+                writeln!(
+                    output,
+                    "    style {} fill:{}{},stroke-width:{}px",
+                    self.sanitize_id(&node.id),
+                    color,
+                    stroke_style,
+                    stroke_width
+                )
+                .unwrap();
+            }
+        }
+
+        output
+    }
+
+    // Legacy implementation for fallback
+    fn generate_legacy(&self, graph: &DependencyGraph) -> String {
         let mut output = String::from("graph TD\n");
 
         // Generate nodes
@@ -42,7 +127,8 @@ impl MermaidGenerator {
     fn generate_nodes(&self, graph: &DependencyGraph, output: &mut String) {
         for (id, node) in &graph.nodes {
             let sanitized_id = self.sanitize_id(id);
-            let escaped_label = self.escape_mermaid_label(&node.label);
+            let semantic_name = self.get_semantic_name(id, node);
+            let escaped_label = self.escape_mermaid_label(&semantic_name);
 
             // Generate node with proper shape based on type
             let node_def = match node.node_type {
@@ -168,6 +254,10 @@ impl MermaidGenerator {
             sanitized
         }
     }
+
+    fn get_semantic_name(&self, id: &str, node: &NodeInfo) -> String {
+        self.namer.get_semantic_name(id, node)
+    }
 }
 
 impl Default for MermaidGenerator {
@@ -180,6 +270,7 @@ impl Default for MermaidGenerator {
 mod tests {
     use super::*;
     use crate::models::dag::{Edge, EdgeType, NodeInfo, NodeType};
+    use std::collections::HashMap;
     use std::fs;
 
     const REFERENCE_STANDARD_PATH: &str = "../artifacts/mermaid/fixtures/reference_standard.mmd";
@@ -342,6 +433,7 @@ mod tests {
             file_path: "main.rs".to_string(),
             line_number: 1,
             complexity: 2,
+            metadata: HashMap::new(),
         });
 
         graph.add_node(NodeInfo {
@@ -351,6 +443,7 @@ mod tests {
             file_path: "lib.rs".to_string(),
             line_number: 10,
             complexity: 5,
+            metadata: HashMap::new(),
         });
 
         graph.add_edge(Edge {
@@ -394,6 +487,7 @@ mod tests {
             file_path: "mod.rs".to_string(),
             line_number: 1,
             complexity: 1,
+            metadata: HashMap::new(),
         });
 
         graph.add_node(NodeInfo {
@@ -403,6 +497,7 @@ mod tests {
             file_path: "lib.rs".to_string(),
             line_number: 10,
             complexity: 5,
+            metadata: HashMap::new(),
         });
 
         graph.add_node(NodeInfo {
@@ -412,6 +507,7 @@ mod tests {
             file_path: "main.rs".to_string(),
             line_number: 20,
             complexity: 3,
+            metadata: HashMap::new(),
         });
 
         graph.add_node(NodeInfo {
@@ -421,6 +517,7 @@ mod tests {
             file_path: "traits.rs".to_string(),
             line_number: 30,
             complexity: 2,
+            metadata: HashMap::new(),
         });
 
         graph.add_node(NodeInfo {
@@ -430,6 +527,7 @@ mod tests {
             file_path: "interfaces.rs".to_string(),
             line_number: 40,
             complexity: 4,
+            metadata: HashMap::new(),
         });
 
         let generator = MermaidGenerator::new(MermaidOptions {
@@ -471,6 +569,7 @@ mod tests {
             file_path: "test.rs".to_string(),
             line_number: 1,
             complexity: 10,
+            metadata: HashMap::new(),
         });
 
         graph.add_node(NodeInfo {
@@ -480,6 +579,7 @@ mod tests {
             file_path: "test.rs".to_string(),
             line_number: 10,
             complexity: 15,
+            metadata: HashMap::new(),
         });
 
         let generator = MermaidGenerator::new(MermaidOptions {
@@ -523,6 +623,7 @@ mod tests {
             file_path: "a.rs".to_string(),
             line_number: 1,
             complexity: 1,
+            metadata: HashMap::new(),
         });
 
         graph.add_node(NodeInfo {
@@ -532,6 +633,7 @@ mod tests {
             file_path: "b.rs".to_string(),
             line_number: 1,
             complexity: 1,
+            metadata: HashMap::new(),
         });
 
         // Add different edge types
@@ -584,6 +686,7 @@ mod tests {
             file_path: "test.rs".to_string(),
             line_number: 1,
             complexity: 1,
+            metadata: HashMap::new(),
         });
 
         let generator = MermaidGenerator::new(MermaidOptions {
@@ -609,6 +712,7 @@ mod tests {
             file_path: "test.rs".to_string(),
             line_number: 1,
             complexity: 10,
+            metadata: HashMap::new(),
         });
 
         let generator = MermaidGenerator::new(MermaidOptions {
@@ -636,6 +740,7 @@ mod tests {
             file_path: "a.rs".to_string(),
             line_number: 1,
             complexity: 1,
+            metadata: HashMap::new(),
         });
 
         // Add edge where 'b' doesn't exist
@@ -706,6 +811,7 @@ mod tests {
             file_path: "test.rs".to_string(),
             line_number: 1,
             complexity: 3,
+            metadata: HashMap::new(),
         });
 
         let generator = MermaidGenerator::new(MermaidOptions {
@@ -747,6 +853,7 @@ mod tests {
                 file_path: "test.rs".to_string(),
                 line_number: 1,
                 complexity: 5,
+                metadata: HashMap::new(),
             });
         }
 
@@ -845,6 +952,7 @@ mod tests {
                 file_path: "cache.rs".to_string(),
                 line_number: 1,
                 complexity: 6,
+                metadata: HashMap::new(),
             });
 
             let generator = MermaidGenerator::new(MermaidOptions {
@@ -937,6 +1045,7 @@ mod tests {
                     file_path: format!("{}.rs", id.split("::").next().unwrap().replace(".rs", "")),
                     line_number: 1,
                     complexity,
+                    metadata: HashMap::new(),
                 });
             }
 

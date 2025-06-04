@@ -1,0 +1,42 @@
+# PAIML MCP Agent Toolkit Display Configuration
+# This file controls the display settings for demo mode
+version: "1.0"
+
+# Panel configurations
+panels:
+  # Dependency graph visualization settings
+  dependency:
+    max_nodes: 20      # Maximum nodes to display (default: 20)
+    max_edges: 60      # Maximum edges to display (default: 60)
+    grouping: module   # Grouping strategy: module | directory | none
+    
+  # Complexity analysis display settings
+  complexity:
+    threshold: 15      # Complexity threshold for highlighting (default: 15)
+    max_items: 50      # Maximum number of items to show (default: 50)
+    
+  # Churn analysis display settings  
+  churn:
+    days: 30          # Number of days to analyze (default: 30)
+    max_items: 20     # Maximum number of items to show (default: 20)
+    
+  # Context generation settings
+  context:
+    include_ast: true       # Include AST analysis (default: true)
+    include_metrics: true   # Include code metrics (default: true)
+    max_file_size: 500000   # Max file size in bytes (default: 500KB)
+
+# Export configuration
+export:
+  formats:
+    - markdown
+    - json
+    - sarif
+  include_metadata: true    # Include generation metadata
+  include_raw_data: false   # Include raw analysis data in exports
+
+# Performance settings
+performance:
+  cache_enabled: true       # Enable caching (default: true)
+  cache_ttl: 3600          # Cache TTL in seconds (default: 1 hour)
+  parallel_workers: 4       # Number of parallel workers (default: 4)

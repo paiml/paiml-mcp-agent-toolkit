@@ -380,12 +380,55 @@ impl AnalysisService for DefaultAnalysisService {
         })
     }
 
-    async fn analyze_dag(&self, _params: &DagParams) -> Result<DagAnalysis, AppError> {
+    async fn analyze_dag(&self, params: &DagParams) -> Result<DagAnalysis, AppError> {
+        use crate::cli::DagType;
+        use crate::services::dag_builder::DagBuilder;
+        use crate::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
+
+        // Parse DAG type from string
+        let dag_type = match params.dag_type.as_str() {
+            "call-graph" => DagType::CallGraph,
+            "import-graph" => DagType::ImportGraph,
+            "inheritance" => DagType::Inheritance,
+            "full-dependency" => DagType::FullDependency,
+            _ => DagType::CallGraph, // Default fallback
+        };
+
+        let project_path = std::path::Path::new(&params.project_path);
+
+        // Use context analysis to get project data, then build DAG
+        let context = crate::services::context::analyze_project(project_path, "rust")
+            .await
+            .map_err(|e| AppError::Analysis(format!("Context analysis failed: {}", e)))?;
+
+        // Build dependency graph with edge truncation
+        let dependency_graph = DagBuilder::build_from_project(&context);
+
+        // Filter by DAG type
+        let filtered_graph = match dag_type {
+            DagType::CallGraph => crate::services::dag_builder::filter_call_edges(dependency_graph),
+            DagType::ImportGraph => {
+                crate::services::dag_builder::filter_import_edges(dependency_graph)
+            }
+            DagType::Inheritance => {
+                crate::services::dag_builder::filter_inheritance_edges(dependency_graph)
+            }
+            DagType::FullDependency => dependency_graph,
+        };
+
+        // Generate Mermaid graph
+        let options = MermaidOptions {
+            show_complexity: params.show_complexity,
+            ..Default::default()
+        };
+        let mermaid_generator = MermaidGenerator::new(options);
+        let graph_string = mermaid_generator.generate(&filtered_graph);
+
         Ok(DagAnalysis {
-            graph: "graph TD\n    A --> B".to_string(),
-            nodes: 2,
-            edges: 1,
-            cycles: vec![],
+            graph: graph_string,
+            nodes: filtered_graph.nodes.len(),
+            edges: filtered_graph.edges.len(),
+            cycles: vec![], // TODO: Implement cycle detection
         })
     }
 
@@ -564,7 +607,7 @@ pub mod handlers {
                     "dag" => Some(AnalysisType::Dag),
                     "dead-code" => Some(AnalysisType::DeadCode),
                     "satd" => Some(AnalysisType::Satd),
-                    "defect-probability" => Some(AnalysisType::DefectProbability),
+                    "tdg" => Some(AnalysisType::TechnicalDebtGradient),
                     _ => None,
                 })
                 .collect();

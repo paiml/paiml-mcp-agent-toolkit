@@ -424,6 +424,20 @@ impl DogfoodingEngine {
                     lines: 0,
                 })
             }
+            FileAst::Makefile(makefile_ast) => {
+                // Count rules as functions
+                let functions = makefile_ast.count_targets();
+                let max_complexity = functions.min(10) as u32; // Simple heuristic
+
+                Ok(FileContext {
+                    path: path.to_path_buf(),
+                    functions,
+                    structs: 0,
+                    traits: 0,
+                    max_complexity,
+                    lines: makefile_ast.nodes.len() * 3, // Rough estimate
+                })
+            }
         }
     }
 

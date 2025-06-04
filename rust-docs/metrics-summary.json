@@ -1,8 +1,15 @@
 {
   "coverage": {
     "overall": 81,
-    "byModule": {},
-    "timestamp": "2025-06-01T03:49:04.322Z"
+    "byModule": {
+      "core": 87,
+      "handlers": 82,
+      "services": 79,
+      "models": 94,
+      "cli": 76,
+      "utils": 91
+    },
+    "timestamp": "2025-06-02T23:17:54.520Z"
   },
   "complexity": {
     "average": {
@@ -10,14 +17,14 @@
       "cognitive": 2.8,
       "nesting": 1.4
     },
-    "files": 154,
-    "timestamp": "2025-06-01T03:49:07.674Z"
+    "files": 215,
+    "timestamp": "2025-06-02T23:17:58.439Z"
   },
   "binarySize": {
-    "total": 19818976,
-    "stripped": 19818976,
+    "total": 14958312,
+    "stripped": 14958312,
     "sections": {
-      ".text": 7293383
+      ".text": 5504659
     }
   },
   "benchmarks": {
@@ -35,6 +42,6 @@
         "p99": 0.8
       }
     },
-    "timestamp": "2025-06-01T03:49:07.675Z"
+    "timestamp": "2025-06-02T23:17:58.439Z"
   }
 }

@@ -70,6 +70,7 @@ pub enum FileAst {
     Rust(syn::File),
     TypeScript(String), // Placeholder - would use swc_ecma_ast in real implementation
     Python(String),     // Placeholder - would use rustpython_ast in real implementation
+    Makefile(crate::services::makefile_linter::MakefileAst),
 }
 
 impl std::fmt::Debug for FileAst {
@@ -80,6 +81,7 @@ impl std::fmt::Debug for FileAst {
                 write!(f, "FileAst::TypeScript({} chars)", content.len())
             }
             FileAst::Python(content) => write!(f, "FileAst::Python({} chars)", content.len()),
+            FileAst::Makefile(_) => write!(f, "FileAst::Makefile(..)"),
         }
     }
 }
@@ -90,6 +92,7 @@ impl FileAst {
             FileAst::Rust(_) => "public".to_string(),
             FileAst::TypeScript(_) => "exported".to_string(),
             FileAst::Python(_) => "global".to_string(),
+            FileAst::Makefile(_) => "global".to_string(),
         }
     }
 }
@@ -228,7 +231,12 @@ impl UnifiedAstEngine {
     /// Check if a file is a supported source file
     fn is_source_file(&self, path: &Path) -> bool {
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-            matches!(ext, "rs" | "ts" | "js" | "tsx" | "jsx" | "py")
+            matches!(
+                ext,
+                "rs" | "ts" | "js" | "tsx" | "jsx" | "py" | "mk" | "make"
+            )
+        } else if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+            name == "Makefile" || name == "makefile"
         } else {
             false
         }
@@ -237,6 +245,7 @@ impl UnifiedAstEngine {
     /// Parse a single file based on its extension
     async fn parse_file(&self, path: &Path) -> Result<Option<FileAst>, TemplateError> {
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+        let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
         match ext {
             "rs" => {
@@ -263,8 +272,37 @@ impl UnifiedAstEngine {
                     .map_err(TemplateError::Io)?;
                 Ok(Some(FileAst::Python(content)))
             }
-            _ => Ok(None),
+            "mk" | "make" => {
+                let content = tokio::fs::read_to_string(path)
+                    .await
+                    .map_err(TemplateError::Io)?;
+                self.parse_makefile(&content)
+                    .map(|ast| Some(FileAst::Makefile(ast)))
+            }
+            _ => {
+                // Check for Makefile by name
+                if filename == "Makefile" || filename == "makefile" {
+                    let content = tokio::fs::read_to_string(path)
+                        .await
+                        .map_err(TemplateError::Io)?;
+                    self.parse_makefile(&content)
+                        .map(|ast| Some(FileAst::Makefile(ast)))
+                } else {
+                    Ok(None)
+                }
+            }
         }
+    }
+
+    /// Parse a Makefile
+    fn parse_makefile(
+        &self,
+        content: &str,
+    ) -> Result<crate::services::makefile_linter::MakefileAst, TemplateError> {
+        let mut parser = crate::services::makefile_linter::MakefileParser::new(content);
+        parser.parse().map_err(|errors| {
+            TemplateError::InvalidUtf8(format!("Makefile parse errors: {:?}", errors))
+        })
     }
 
     /// Extract dependency graph from AST forest using stable algorithms
@@ -313,6 +351,9 @@ impl UnifiedAstEngine {
                 FileAst::Python(_content) => {
                     // TODO: Implement Python import resolution
                 }
+                FileAst::Makefile(_ast) => {
+                    // Makefiles don't have traditional imports
+                }
             }
         }
 
@@ -348,6 +389,17 @@ impl UnifiedAstEngine {
             FileAst::TypeScript(_) | FileAst::Python(_) => {
                 // TODO: Implement for other languages
                 ModuleMetrics::default()
+            }
+            FileAst::Makefile(makefile_ast) => {
+                let mut metrics = ModuleMetrics::default();
+                metrics.functions = makefile_ast
+                    .nodes
+                    .iter()
+                    .filter(|n| n.kind == crate::services::makefile_linter::MakefileNodeKind::Rule)
+                    .count() as u32;
+                metrics.lines = makefile_ast.nodes.len() as u32 * 3; // Rough estimate
+                metrics.complexity = metrics.functions; // Simple heuristic
+                metrics
             }
         }
     }
