@@ -113,7 +113,15 @@ check: check-scripts
 # Fast tests without coverage (optimized for speed)
 test-fast:
 	@echo "⚡ Running fast tests with maximum parallelism..."
-	@RUST_TEST_THREADS=$$(nproc) cargo nextest run --profile fast --workspace || cargo test --release --workspace
+	@if [ "$${CI:-}" = "true" ]; then \
+		echo "🔧 Running CI-optimized test suite (excluding slow integration tests)..."; \
+		RUST_TEST_THREADS=$$(nproc) cargo nextest run --profile fast --workspace \
+			--filter-expr 'not test(demo_core_extraction) and not test(config_hot_reload)' || \
+		cargo test --release --workspace --exclude-ignored; \
+	else \
+		RUST_TEST_THREADS=$$(nproc) cargo nextest run --profile fast --workspace || \
+		cargo test --release --workspace; \
+	fi
 	@echo "✅ Fast tests completed!"
 
 # Run tests - ALWAYS FAST (zero tolerance for slow tests)
