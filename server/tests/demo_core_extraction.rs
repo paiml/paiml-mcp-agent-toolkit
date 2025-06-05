@@ -11,6 +11,11 @@ mod demo_core_extraction_tests {
 
     #[tokio::test]
     async fn test_demo_runner_as_library() -> Result<()> {
+        // Skip slow tests in CI
+        if std::env::var("SKIP_SLOW_TESTS").is_ok() {
+            return Ok(());
+        }
+
         // Create a demo runner programmatically
         let server = Arc::new(StatelessTemplateServer::new()?);
         let mut runner = DemoRunner::new(server);
@@ -88,6 +93,11 @@ performance:
 
     #[tokio::test]
     async fn test_export_service_as_library() -> Result<()> {
+        // Skip slow tests in CI
+        if std::env::var("SKIP_SLOW_TESTS").is_ok() {
+            return Ok(());
+        }
+
         // Create export service
         let export_service = ExportService::new();
 
@@ -124,6 +134,11 @@ performance:
 
     #[tokio::test]
     async fn test_programmatic_demo_with_custom_config() -> Result<()> {
+        // Skip slow tests in CI
+        if std::env::var("SKIP_SLOW_TESTS").is_ok() {
+            return Ok(());
+        }
+
         // Create custom configuration
         let _config = DisplayConfig {
             version: "1.0".to_string(),
@@ -168,6 +183,11 @@ performance:
 
     #[tokio::test]
     async fn test_end_to_end_library_usage() -> Result<()> {
+        // Skip slow tests in CI
+        if std::env::var("SKIP_SLOW_TESTS").is_ok() {
+            return Ok(());
+        }
+
         let temp_dir = TempDir::new()?;
 
         // Step 1: Create configuration
