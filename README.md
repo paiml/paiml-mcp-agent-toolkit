@@ -1,6 +1,7 @@
 # PAIML MCP Agent Toolkit
 
-> **Zero-Configuration AI Context Generation with Symbolic Reasoning**
+> **Zero-Configuration AI Context Generation with Symbolic Reasoning**  
+<!-- CI test -->
 
 [![CI/CD](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml)
 [![Tests](https://img.shields.io/badge/tests-passing-green)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions)
