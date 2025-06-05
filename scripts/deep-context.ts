@@ -786,18 +786,18 @@ function generateRustFilesSection(context: ProjectContext): string {
   if (context.rustFiles.length === 0) return "";
 
   let output = `## Rust Files (${context.rustFiles.length})\n\n`;
-  
+
   for (const rustFile of context.rustFiles) {
     output += generateRustFileDetails(rustFile);
   }
-  
+
   return output;
 }
 
 // Generate details for a single Rust file
 function generateRustFileDetails(rustFile: RustFileAST): string {
   let output = `### ${rustFile.filePath}\n\n`;
-  
+
   output += generateRustImports(rustFile.uses);
   output += generateRustModules(rustFile.mods);
   output += generateRustStructs(rustFile.structs);
@@ -805,17 +805,19 @@ function generateRustFileDetails(rustFile: RustFileAST): string {
   output += generateRustFunctions(rustFile.functions);
   output += generateRustImplementations(rustFile.impls);
   output += generateRustTraits(rustFile.traits);
-  
+
   return output;
 }
 
 // Generate Rust imports section
 function generateRustImports(uses: RustUse[]): string {
   if (uses.length === 0) return "";
-  
+
   let output = `**Imports:**\n`;
   for (const use of uses) {
-    output += `- \`${use.path}\`${use.alias ? ` as ${use.alias}` : ""} (line ${use.lineNumber})\n`;
+    output += `- \`${use.path}\`${
+      use.alias ? ` as ${use.alias}` : ""
+    } (line ${use.lineNumber})\n`;
   }
   output += "\n";
   return output;
@@ -824,10 +826,12 @@ function generateRustImports(uses: RustUse[]): string {
 // Generate Rust modules section
 function generateRustModules(mods: RustMod[]): string {
   if (mods.length === 0) return "";
-  
+
   let output = `**Modules:**\n`;
   for (const mod of mods) {
-    output += `- \`${mod.visibility} mod ${mod.name}\` ${mod.isFile ? "(file)" : "(inline)"} (line ${mod.lineNumber})\n`;
+    output += `- \`${mod.visibility} mod ${mod.name}\` ${
+      mod.isFile ? "(file)" : "(inline)"
+    } (line ${mod.lineNumber})\n`;
   }
   output += "\n";
   return output;
@@ -836,7 +840,7 @@ function generateRustModules(mods: RustMod[]): string {
 // Generate Rust structs section
 function generateRustStructs(structs: RustStruct[]): string {
   if (structs.length === 0) return "";
-  
+
   let output = `**Structs:**\n`;
   for (const struct of structs) {
     output += `- \`${struct.visibility} struct ${struct.name}\``;
@@ -852,10 +856,11 @@ function generateRustStructs(structs: RustStruct[]): string {
 // Generate Rust enums section
 function generateRustEnums(enums: RustEnum[]): string {
   if (enums.length === 0) return "";
-  
+
   let output = `**Enums:**\n`;
   for (const enum_ of enums) {
-    output += `- \`${enum_.visibility} enum ${enum_.name}\` (line ${enum_.lineNumber})\n`;
+    output +=
+      `- \`${enum_.visibility} enum ${enum_.name}\` (line ${enum_.lineNumber})\n`;
   }
   output += "\n";
   return output;
@@ -864,10 +869,12 @@ function generateRustEnums(enums: RustEnum[]): string {
 // Generate Rust functions section
 function generateRustFunctions(functions: RustFunction[]): string {
   if (functions.length === 0) return "";
-  
+
   let output = `**Functions:**\n`;
   for (const fn of functions) {
-    output += `- \`${fn.visibility} ${fn.async ? "async " : ""}fn ${fn.name}(...) -> ${fn.returnType}\` (line ${fn.lineNumber})\n`;
+    output += `- \`${fn.visibility} ${
+      fn.async ? "async " : ""
+    }fn ${fn.name}(...) -> ${fn.returnType}\` (line ${fn.lineNumber})\n`;
   }
   output += "\n";
   return output;
@@ -876,22 +883,27 @@ function generateRustFunctions(functions: RustFunction[]): string {
 // Generate Rust implementations section
 function generateRustImplementations(impls: RustImpl[]): string {
   if (impls.length === 0) return "";
-  
+
   let output = `**Implementations:**\n`;
   for (const impl of impls) {
-    output += `- \`impl ${impl.traitName ? `${impl.traitName} for ` : ""}${impl.structName}\` (line ${impl.lineNumber})\n`;
+    output += `- \`impl ${
+      impl.traitName ? `${impl.traitName} for ` : ""
+    }${impl.structName}\` (line ${impl.lineNumber})\n`;
   }
   output += "\n";
   return output;
 }
 
 // Generate Rust traits section
-function generateRustTraits(traits: Array<{name: string; visibility: string; lineNumber: number}>): string {
+function generateRustTraits(
+  traits: Array<{ name: string; visibility: string; lineNumber: number }>,
+): string {
   if (traits.length === 0) return "";
-  
+
   let output = `**Traits:**\n`;
   for (const trait of traits) {
-    output += `- \`${trait.visibility} trait ${trait.name}\` (line ${trait.lineNumber})\n`;
+    output +=
+      `- \`${trait.visibility} trait ${trait.name}\` (line ${trait.lineNumber})\n`;
   }
   output += "\n";
   return output;
@@ -902,58 +914,70 @@ function generateTypeScriptFilesSection(context: ProjectContext): string {
   if (context.tsFiles.length === 0) return "";
 
   let output = `## TypeScript Files (${context.tsFiles.length})\n\n`;
-  
+
   for (const tsFile of context.tsFiles) {
     output += generateTypeScriptFileDetails(tsFile);
   }
-  
+
   return output;
 }
 
 // Generate details for a single TypeScript file
 function generateTypeScriptFileDetails(tsFile: TypeScriptFileAST): string {
   let output = `### ${tsFile.filePath}\n\n`;
-  
+
   output += generateTypeScriptImports(tsFile.imports);
   output += generateTypeScriptExports(tsFile.exports);
   output += generateTypeScriptInterfaces(tsFile.interfaces);
   output += generateTypeScriptFunctions(tsFile.functions);
   output += generateTypeScriptClasses(tsFile.classes);
-  
+
   return output;
 }
 
 // Generate TypeScript imports section
-function generateTypeScriptImports(imports: Array<{source: string; specifiers: string[]; lineNumber: number}>): string {
+function generateTypeScriptImports(
+  imports: Array<{ source: string; specifiers: string[]; lineNumber: number }>,
+): string {
   if (imports.length === 0) return "";
-  
+
   let output = `**Imports:**\n`;
   for (const imp of imports) {
-    output += `- from \`${imp.source}\`: ${imp.specifiers.join(", ") || "*"} (line ${imp.lineNumber})\n`;
+    output += `- from \`${imp.source}\`: ${
+      imp.specifiers.join(", ") || "*"
+    } (line ${imp.lineNumber})\n`;
   }
   output += "\n";
   return output;
 }
 
 // Generate TypeScript exports section
-function generateTypeScriptExports(exports: Array<{name: string; isDefault: boolean; lineNumber: number}>): string {
+function generateTypeScriptExports(
+  exports: Array<{ name: string; isDefault: boolean; lineNumber: number }>,
+): string {
   if (exports.length === 0) return "";
-  
+
   let output = `**Exports:**\n`;
   for (const exp of exports) {
-    output += `- \`${exp.isDefault ? "default " : ""}${exp.name}\` (line ${exp.lineNumber})\n`;
+    output += `- \`${
+      exp.isDefault ? "default " : ""
+    }${exp.name}\` (line ${exp.lineNumber})\n`;
   }
   output += "\n";
   return output;
 }
 
 // Generate TypeScript interfaces section
-function generateTypeScriptInterfaces(interfaces: TypeScriptInterface[]): string {
+function generateTypeScriptInterfaces(
+  interfaces: TypeScriptInterface[],
+): string {
   if (interfaces.length === 0) return "";
-  
+
   let output = `**Interfaces:**\n`;
   for (const iface of interfaces) {
-    output += `- \`${iface.exported ? "export " : ""}interface ${iface.name}\` with ${iface.properties.length} properties (line ${iface.lineNumber})\n`;
+    output += `- \`${
+      iface.exported ? "export " : ""
+    }interface ${iface.name}\` with ${iface.properties.length} properties (line ${iface.lineNumber})\n`;
   }
   output += "\n";
   return output;
@@ -962,22 +986,30 @@ function generateTypeScriptInterfaces(interfaces: TypeScriptInterface[]): string
 // Generate TypeScript functions section
 function generateTypeScriptFunctions(functions: TypeScriptFunction[]): string {
   if (functions.length === 0) return "";
-  
+
   let output = `**Functions:**\n`;
   for (const fn of functions) {
-    output += `- \`${fn.exported ? "export " : ""}${fn.async ? "async " : ""}function ${fn.name}(${fn.params.map((p) => p.name).join(", ")})${fn.returnType ? `: ${fn.returnType}` : ""}\` (line ${fn.lineNumber})\n`;
+    output += `- \`${fn.exported ? "export " : ""}${
+      fn.async ? "async " : ""
+    }function ${fn.name}(${fn.params.map((p) => p.name).join(", ")})${
+      fn.returnType ? `: ${fn.returnType}` : ""
+    }\` (line ${fn.lineNumber})\n`;
   }
   output += "\n";
   return output;
 }
 
 // Generate TypeScript classes section
-function generateTypeScriptClasses(classes: Array<{name: string; exported: boolean; lineNumber: number}>): string {
+function generateTypeScriptClasses(
+  classes: Array<{ name: string; exported: boolean; lineNumber: number }>,
+): string {
   if (classes.length === 0) return "";
-  
+
   let output = `**Classes:**\n`;
   for (const cls of classes) {
-    output += `- \`${cls.exported ? "export " : ""}class ${cls.name}\` (line ${cls.lineNumber})\n`;
+    output += `- \`${
+      cls.exported ? "export " : ""
+    }class ${cls.name}\` (line ${cls.lineNumber})\n`;
   }
   output += "\n";
   return output;
@@ -988,28 +1020,34 @@ function generateMakefilesSection(context: ProjectContext): string {
   if (context.makefiles.length === 0) return "";
 
   let output = `## Makefiles (${context.makefiles.length})\n\n`;
-  
+
   for (const makefile of context.makefiles) {
     output += generateMakefileDetails(makefile);
   }
-  
+
   return output;
 }
 
 // Generate details for a single Makefile
-function generateMakefileDetails(makefile: {path: string; targets: MakefileTarget[]; variables: Record<string, string>}): string {
+function generateMakefileDetails(
+  makefile: {
+    path: string;
+    targets: MakefileTarget[];
+    variables: Record<string, string>;
+  },
+): string {
   let output = `### ${makefile.path}\n\n`;
-  
+
   output += generateMakefileVariables(makefile.variables);
   output += generateMakefileTargets(makefile.targets);
-  
+
   return output;
 }
 
 // Generate Makefile variables section
 function generateMakefileVariables(variables: Record<string, string>): string {
   if (Object.keys(variables).length === 0) return "";
-  
+
   let output = `**Variables:**\n`;
   for (const [name, value] of Object.entries(variables)) {
     output += `- \`${name} = ${value}\`\n`;
@@ -1021,17 +1059,21 @@ function generateMakefileVariables(variables: Record<string, string>): string {
 // Generate Makefile targets section
 function generateMakefileTargets(targets: MakefileTarget[]): string {
   if (targets.length === 0) return "";
-  
+
   let output = `**Targets:**\n\n`;
   output += "| Target | Description | Dependencies | Commands |\n";
   output += "|--------|-------------|--------------|----------|\n";
 
   for (const target of targets) {
     const commands = target.commands.length > 2
-      ? `${target.commands.slice(0, 2).join("; ")}... (${target.commands.length} total)`
+      ? `${
+        target.commands.slice(0, 2).join("; ")
+      }... (${target.commands.length} total)`
       : target.commands.join("; ");
 
-    output += `| \`${target.name}\` | ${target.description || "-"} | ${target.dependencies.join(", ") || "-"} | ${commands || "-"} |\n`;
+    output += `| \`${target.name}\` | ${target.description || "-"} | ${
+      target.dependencies.join(", ") || "-"
+    } | ${commands || "-"} |\n`;
   }
   output += "\n";
   return output;
@@ -1049,7 +1091,7 @@ function generateReadmeSection(context: ProjectContext): string {
     output += readme.content;
     output += "\n```\n\n";
   }
-  
+
   return output;
 }
 
