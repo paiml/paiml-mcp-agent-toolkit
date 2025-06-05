@@ -55,12 +55,13 @@ jobs:
       
       - name: Run CI pipeline
         id: tests
+        timeout-minutes: 8
         run: |
           make format
           make lint
           make check
           cargo build --release --manifest-path server/Cargo.toml --bin pmat
-          make test-fast
+          timeout 240 make test-fast
           echo "passed=true" >> $GITHUB_OUTPUT
       
       - name: Upload binary artifact
