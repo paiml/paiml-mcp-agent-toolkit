@@ -84,8 +84,8 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-22.04
-          # - target: aarch64-unknown-linux-gnu
-          #   os: ubuntu-22.04
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-22.04
           - target: x86_64-apple-darwin
             os: macos-latest
           - target: aarch64-apple-darwin
@@ -100,37 +100,17 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
+      - name: Install cross-compilation tools
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config cmake perl libssl-dev
-          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
-            sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-            # For cross-compilation, we need to set PKG_CONFIG to use the host's libraries
-            echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
-          fi
-      
-      - name: Install macOS dependencies
-        if: runner.os == 'macOS'
-        run: |
-          # Install dependencies for builds
-          brew install pkg-config cmake openssl@3
-          echo "PKG_CONFIG_PATH=/usr/local/opt/openssl@3/lib/pkgconfig" >> $GITHUB_ENV
+          sudo apt-get install -y gcc-aarch64-linux-gnu
       
       - name: Build binary
-        env:
-          CARGO_PROFILE_RELEASE_LTO: true
-          CARGO_FEATURE_VENDORED: 1
-          OPENSSL_STATIC: 1
         run: |
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-            export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
-            export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
-            export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
           fi
-          
           cd server
           cargo build --release --target ${{ matrix.target }}
           cd ..

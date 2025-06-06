@@ -45,7 +45,7 @@ dirs = "6.0"
 roaring = "0.10"
 rand = "0.9"
 rayon = "1.10"
-git2 = { version = "0.20", default-features = false, features = ["https", "vendored-libgit2", "vendored-openssl"] }
+git2 = { version = "0.20", default-features = false, features = ["https"] }
 
 # Storage
 # rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
