@@ -84,8 +84,8 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-22.04
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-22.04
+          # - target: aarch64-unknown-linux-gnu
+          #   os: ubuntu-22.04
           - target: x86_64-apple-darwin
             os: macos-latest
           - target: aarch64-apple-darwin
@@ -104,16 +104,19 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config cmake perl
+          sudo apt-get install -y build-essential pkg-config cmake perl libssl-dev
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+            # For cross-compilation, we need to set PKG_CONFIG to use the host's libraries
+            echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
           fi
       
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
         run: |
-          # Install dependencies for vendored builds
-          brew install pkg-config cmake
+          # Install dependencies for builds
+          brew install pkg-config cmake openssl@3
+          echo "PKG_CONFIG_PATH=/usr/local/opt/openssl@3/lib/pkgconfig" >> $GITHUB_ENV
       
       - name: Build binary
         env:
@@ -126,7 +129,7 @@ jobs:
             export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
           fi
           cd server
-          VENDORED_OPENSSL=1 cargo build --release --target ${{ matrix.target }}
+          cargo build --release --target ${{ matrix.target }}
           cd ..
           
       - name: Create archive
