@@ -293,7 +293,7 @@ performance:
 "#;
 
         let mut temp_file = NamedTempFile::new().unwrap();
-        write!(temp_file, "{}", yaml_content).unwrap();
+        write!(temp_file, "{yaml_content}").unwrap();
 
         let config = ConfigManager::load_from_file(temp_file.path()).unwrap();
         assert_eq!(config.panels.dependency.max_nodes, 30);

@@ -14,6 +14,21 @@ mod clap_argument_parsing_tests;
 // Include Clap environment variable integration tests
 mod clap_env_var_tests;
 
+// Include project metadata integration tests
+mod project_meta_integration_test;
+
+// Include Kaizen test performance optimizations
+mod kaizen_test_optimizations;
+
+// Include Kaizen reliability patterns for error prevention
+mod kaizen_reliability_patterns;
+
+// Include gitignore respect tests
+mod gitignore_respect_tests;
+
+// TODO: Fix diagnostic command tests
+// mod diagnose_tests;
+
 #[tokio::test]
 async fn test_template_server_new() {
     let server = TemplateServer::new().await;

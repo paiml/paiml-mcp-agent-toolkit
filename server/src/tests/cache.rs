@@ -376,12 +376,12 @@ async fn test_cache_clear() {
     // Add some items
     for i in 0..5 {
         let file = FileContext {
-            path: format!("/test/file{}.rs", i),
+            path: format!("/test/file{i}.rs"),
             language: "rust".to_string(),
             items: vec![],
             complexity_metrics: None,
         };
-        cache.put(PathBuf::from(format!("/test/file{}.rs", i)), file);
+        cache.put(PathBuf::from(format!("/test/file{i}.rs")), file);
     }
 
     // Verify items are cached
@@ -394,7 +394,7 @@ async fn test_cache_clear() {
     // All items should be gone
     for i in 0..5 {
         assert!(cache
-            .get(&PathBuf::from(format!("/test/file{}.rs", i)))
+            .get(&PathBuf::from(format!("/test/file{i}.rs")))
             .is_none());
     }
 }

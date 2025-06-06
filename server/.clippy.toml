@@ -1,0 +1,36 @@
+# Kaizen Clippy Configuration - Continuous Improvement
+# Toyota Way: Systematic quality improvement through automated checking
+
+# Cognitive complexity threshold
+cognitive-complexity-threshold = 25
+
+# Documentation requirements
+missing-docs-in-crate-items = false  # Internal codebase
+
+# Type complexity limits
+type-complexity-threshold = 250
+
+# Enum variant name threshold
+enum-variant-name-threshold = 3
+
+# Function argument threshold
+too-many-arguments-threshold = 7
+
+# Single character binding names
+single-char-binding-names-threshold = 4
+
+# Trivial copy threshold
+trivial-copy-size-limit = 128
+
+# Stack size threshold  
+stack-size-threshold = 512000
+
+# Literal representation threshold
+literal-representation-threshold = 10
+
+# Kaizen improvement settings
+disallowed-names = ["foo", "bar", "baz", "tmp", "temp"]
+
+# Poka-yoke (error prevention) patterns
+avoid-breaking-exported-api = true
+check-private-items = true

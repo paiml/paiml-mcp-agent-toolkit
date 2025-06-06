@@ -5,36 +5,44 @@ use std::fs;
 
 #[test]
 fn binary_size_regression() {
-    // Check if release binary exists (path relative to workspace root)
-    let binary_path = "../target/release/paiml-mcp-agent-toolkit";
+    // Apply Kaizen - Use correct binary name and path with fallback strategy
+    let binary_path = if std::path::Path::new("target/release/pmat").exists() {
+        "target/release/pmat"
+    } else if std::path::Path::new("../target/release/pmat").exists() {
+        "../target/release/pmat"
+    } else {
+        panic!("Release binary 'pmat' not found. Run 'cargo build --release' first");
+    };
+
     let metadata = fs::metadata(binary_path)
-        .expect("Release binary not found. Run `cargo build --release` first");
+        .unwrap_or_else(|e| panic!("Failed to read binary metadata for {binary_path}: {e}"));
 
     let size_bytes = metadata.len();
     let size_mb = size_bytes as f64 / (1024.0 * 1024.0);
 
-    println!("Binary size: {} bytes ({:.2} MB)", size_bytes, size_mb);
+    println!(
+        "Kaizen Quality Check - Binary size: {size_bytes} bytes ({size_mb:.2} MB) at {binary_path}"
+    );
 
     // Define size thresholds
     const MAX_SIZE_BYTES: u64 = 20 * 1024 * 1024; // 20MB
     const EXPECTED_SIZE_BYTES: u64 = 17 * 1024 * 1024; // ~17MB expected
 
-    // Hard limit: fail if binary exceeds 20MB
+    // Jidoka - Build quality in: fail if binary exceeds 20MB
     assert!(
         size_bytes < MAX_SIZE_BYTES,
-        "Binary size {} bytes exceeds maximum limit of {} bytes (20MB). \
-         Binary size optimizations may have regressed.",
-        size_bytes,
-        MAX_SIZE_BYTES
+        "Kaizen Quality Gate Failed: Binary size {size_bytes} bytes exceeds maximum limit of {MAX_SIZE_BYTES} bytes (20MB). \
+         Consider applying Muda elimination to reduce binary size."
     );
 
-    // Warning if binary is significantly larger than expected
+    // Kaizen warning if binary is significantly larger than expected
     if size_bytes > EXPECTED_SIZE_BYTES {
         println!(
-            "WARNING: Binary size {} bytes is larger than expected {} bytes. \
-             This may indicate a regression in size optimizations.",
-            size_bytes, EXPECTED_SIZE_BYTES
+            "⚠️  Kaizen Warning: Binary size {size_bytes} bytes is larger than expected {EXPECTED_SIZE_BYTES} bytes. \
+             This may indicate a regression in size optimizations."
         );
+    } else {
+        println!("✅ Kaizen Success: Binary size within expected limits");
     }
 }
 
@@ -50,10 +58,7 @@ fn feature_size_impact() {
     ];
 
     for (feature_name, min_size, max_size) in feature_sizes {
-        println!(
-            "Expected size for '{}' features: {} - {} bytes",
-            feature_name, min_size, max_size
-        );
+        println!("Expected size for '{feature_name}' features: {min_size} - {max_size} bytes");
     }
 
     // The actual size measurement would be done via Makefile `size-compare` target
@@ -73,15 +78,14 @@ fn template_compression_works() {
     // The compressed template file should exist and be non-empty
     assert!(
         compressed_size > 100,
-        "Template compression appears to have failed: size was {} bytes",
-        compressed_size
+        "Template compression appears to have failed: size was {compressed_size} bytes"
     );
 
     // Should contain the expected compressed template structure
     assert!(compressed_content.contains("COMPRESSED_TEMPLATES"));
     assert!(compressed_content.contains("hex::decode"));
 
-    println!("Compressed templates file size: {} bytes", compressed_size);
+    println!("Compressed templates file size: {compressed_size} bytes");
 }
 
 #[cfg(test)]
@@ -92,35 +96,59 @@ mod benchmarks {
         use std::process::Command;
         use std::time::Instant;
 
-        let binary_path = "../target/release/paiml-mcp-agent-toolkit";
+        // Apply Kaizen - Use correct binary name and path with fallback strategy
+        let binary_path = if std::path::Path::new("target/release/pmat").exists() {
+            "target/release/pmat"
+        } else if std::path::Path::new("../target/release/pmat").exists() {
+            "../target/release/pmat"
+        } else {
+            // Fallback to debug build for development
+            "target/debug/pmat"
+        };
+
+        // Apply Poka-yoke - Verify binary exists before testing
+        if !std::path::Path::new(binary_path).exists() {
+            panic!("Binary not found at {binary_path}. Run 'cargo build --release' to create it.");
+        }
 
         // Measure cold startup time
         let start = Instant::now();
         let output = Command::new(binary_path)
             .arg("--version")
             .output()
-            .expect("Failed to execute binary");
+            .unwrap_or_else(|e| panic!("Failed to execute binary at {binary_path}: {e}"));
         let duration = start.elapsed();
 
         assert!(output.status.success(), "Binary failed to execute");
 
-        // Startup should be under 100ms for good UX
+        // Toyota Way quality standards for user experience
         let startup_ms = duration.as_millis();
-        println!("Cold startup time: {}ms", startup_ms);
+        println!("Kaizen Quality Check - Cold startup time: {startup_ms}ms using {binary_path}");
 
-        // Warning threshold
-        if startup_ms > 100 {
-            println!(
-                "WARNING: Startup time {}ms exceeds recommended 100ms threshold",
-                startup_ms
-            );
+        // Jidoka - Build quality in: Startup should be under 100ms for good UX
+        let startup_threshold_ms = 100;
+        if startup_ms > startup_threshold_ms {
+            println!("⚠️  Kaizen Warning: Startup time {startup_ms}ms exceeds {startup_threshold_ms}ms threshold");
+            println!("   Consider applying Muda elimination to reduce startup overhead");
+        } else {
+            println!("✅ Kaizen Success: Startup time meets quality standard");
         }
+
+        // Quality gate - Allow some flexibility for CI environments
+        let max_startup_ms = if std::env::var("CI").is_ok() {
+            200
+        } else {
+            100
+        };
+        assert!(
+            startup_ms <= max_startup_ms,
+            "Kaizen Quality Gate Failed: Startup time {startup_ms}ms exceeds maximum {max_startup_ms}ms"
+        );
 
         // Hard limit: fail if startup exceeds 1 second
         assert!(
             startup_ms < 1000,
-            "Startup time {}ms exceeds maximum limit of 1000ms",
-            startup_ms
+            "Startup time {startup_ms}ms exceeds maximum limit of 1000ms"
         );
     }
 

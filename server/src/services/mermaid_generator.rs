@@ -54,14 +54,14 @@ impl MermaidGenerator {
 
             // Generate node with proper shape based on type
             let node_def = match node.node_type {
-                NodeType::Module => format!("{}[{}]", sanitized_id, escaped_label),
-                NodeType::Function => format!("{}[{}]", sanitized_id, escaped_label),
-                NodeType::Class => format!("{}[{}]", sanitized_id, escaped_label),
-                NodeType::Trait => format!("{}(({}))", sanitized_id, escaped_label),
-                NodeType::Interface => format!("{}(({}))", sanitized_id, escaped_label),
+                NodeType::Module => format!("{sanitized_id}[{escaped_label}]"),
+                NodeType::Function => format!("{sanitized_id}[{escaped_label}]"),
+                NodeType::Class => format!("{sanitized_id}[{escaped_label}]"),
+                NodeType::Trait => format!("{sanitized_id}(({escaped_label}))"),
+                NodeType::Interface => format!("{sanitized_id}(({escaped_label}))"),
             };
 
-            writeln!(output, "    {}", node_def).unwrap();
+            writeln!(output, "    {node_def}").unwrap();
         }
 
         // Add blank line between nodes and edges
@@ -133,23 +133,23 @@ impl MermaidGenerator {
             // Generate node with proper shape based on type
             let node_def = match node.node_type {
                 NodeType::Module => {
-                    format!("{}[{}]", sanitized_id, escaped_label)
+                    format!("{sanitized_id}[{escaped_label}]")
                 }
                 NodeType::Function => {
-                    format!("{}[{}]", sanitized_id, escaped_label)
+                    format!("{sanitized_id}[{escaped_label}]")
                 }
                 NodeType::Class => {
-                    format!("{}[{}]", sanitized_id, escaped_label)
+                    format!("{sanitized_id}[{escaped_label}]")
                 }
                 NodeType::Trait => {
-                    format!("{}(({}))", sanitized_id, escaped_label)
+                    format!("{sanitized_id}(({escaped_label}))")
                 }
                 NodeType::Interface => {
-                    format!("{}(({}))", sanitized_id, escaped_label)
+                    format!("{sanitized_id}(({escaped_label}))")
                 }
             };
 
-            writeln!(output, "    {}", node_def).unwrap();
+            writeln!(output, "    {node_def}").unwrap();
         }
     }
 
@@ -249,7 +249,7 @@ impl MermaidGenerator {
         if sanitized.is_empty() {
             "_empty".to_string()
         } else if sanitized.chars().next().unwrap().is_numeric() {
-            format!("_{}", sanitized)
+            format!("_{sanitized}")
         } else {
             sanitized
         }
@@ -659,9 +659,7 @@ mod tests {
 
             assert!(
                 output.contains(expected_arrow),
-                "Edge type {:?} should produce arrow {}",
-                edge_type,
-                expected_arrow
+                "Edge type {edge_type:?} should produce arrow {expected_arrow}"
             );
         }
     }
@@ -865,9 +863,8 @@ mod tests {
             let sanitized_id = generator.sanitize_id(id);
             // Verify the node has a label (not just a bare ID)
             assert!(
-                output.contains(&format!("{}[", sanitized_id)),
-                "Node '{}' is missing its label brackets in output",
-                id
+                output.contains(&format!("{sanitized_id}[")),
+                "Node '{id}' is missing its label brackets in output"
             );
         }
 
@@ -890,8 +887,7 @@ mod tests {
             if !trimmed.contains("graph") {
                 assert!(
                     trimmed.contains('[') || trimmed.contains("(("),
-                    "Found bare node ID without label: {}",
-                    trimmed
+                    "Found bare node ID without label: {trimmed}"
                 );
             }
         }
@@ -991,9 +987,7 @@ mod tests {
                 // All arrows must contain at least one dash
                 assert!(
                     arrow.contains("-"),
-                    "Arrow '{}' for {:?} must contain dash",
-                    arrow,
-                    edge_type
+                    "Arrow '{arrow}' for {edge_type:?} must contain dash"
                 );
 
                 // Basic arrow syntax validation - all arrows should contain dashes
@@ -1002,20 +996,17 @@ mod tests {
                     EdgeType::Inherits | EdgeType::Implements => {
                         assert!(
                             arrow.contains("|"),
-                            "Labeled edge '{}' should contain pipe",
-                            arrow
+                            "Labeled edge '{arrow}' should contain pipe"
                         );
                     }
                     _ => {
                         assert!(
                             !arrow.contains(" "),
-                            "Arrow '{}' should not contain spaces",
-                            arrow
+                            "Arrow '{arrow}' should not contain spaces"
                         );
                         assert!(
                             !arrow.contains("|"),
-                            "Arrow '{}' should not contain pipes",
-                            arrow
+                            "Arrow '{arrow}' should not contain pipes"
                         );
                     }
                 }

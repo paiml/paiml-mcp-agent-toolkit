@@ -144,8 +144,7 @@ impl HttpDemoAdapter {
         Ok(HttpResponseBody::Analysis {
             protocol: "http/1.1".to_string(),
             base_command: format!(
-                "paiml-mcp-agent-toolkit analyze context --format json --path {}",
-                analysis_path
+                "paiml-mcp-agent-toolkit analyze context --format json --path {analysis_path}"
             ),
             request: HttpRequestInfo {
                 method: request.method.clone(),
@@ -367,7 +366,7 @@ impl HttpDemoAdapter {
 
         // Run actual analysis
         let deep_context = analyzer.analyze_project(&project_path).await.map_err(|e| {
-            HttpDemoError::AnalysisFailed(format!("Deep context analysis failed: {}", e))
+            HttpDemoError::AnalysisFailed(format!("Deep context analysis failed: {e}"))
         })?;
 
         // Convert to JSON value

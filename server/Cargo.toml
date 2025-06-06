@@ -47,6 +47,10 @@ rand = "0.9"
 rayon = "1.10"
 git2 = { version = "0.20", default-features = false, features = ["https"] }
 
+# Storage
+# rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
+bincode = "1.3"
+
 # Async utilities
 futures = "0.3"
 
@@ -67,13 +71,24 @@ walkdir = "2.5"
 ignore = "0.4"
 toml = "0.8"
 crossbeam-channel = "0.5"
-# For TypeScript/JavaScript parsing (conditional)
-swc_ecma_parser = { version = "14.0", optional = true }
-swc_common = { version = "11.0", optional = true }
-swc_ecma_ast = { version = "11.0", optional = true }
-swc_ecma_visit = { version = "11.0", optional = true }
+# For TypeScript/JavaScript parsing (conditional) - use compatible versions
+swc_ecma_parser = { version = "0.145", optional = true }
+swc_common = { version = "0.33", optional = true }
+swc_ecma_ast = { version = "0.114", optional = true }
+swc_ecma_visit = { version = "0.100", optional = true }
 # For Python parsing (conditional)
 rustpython-parser = { version = "0.4", optional = true }
+# For C/C++ parsing (conditional)
+tree-sitter = { version = "0.23", optional = true }
+tree-sitter-c = { version = "0.21", optional = true }
+tree-sitter-cpp = { version = "0.22", optional = true }
+# Language-specific analysis
+cpp_demangle = { version = "0.4", optional = true }
+gimli = { version = "0.28", optional = true }
+goblin = { version = "0.7", optional = true }
+# Analysis infrastructure for C/C++
+fixedbitset = { version = "0.4", optional = true }
+rustc-hash = { version = "1.1", optional = true }
 
 # Installer generation
 # installer-macro = { path = "../installer-macro" } # Removed - using simple include_str! instead
@@ -100,6 +115,14 @@ http-body-util = "0.1"
 # Graph analysis
 petgraph = "0.8"
 
+# Markdown parsing
+pulldown-cmark = "0.13"
+
+# TUI support
+ratatui = { version = "0.29", optional = true }
+crossterm = { version = "0.29", optional = true }
+sys-info = "0.9.1"
+
 [dev-dependencies]
 mockall = "0.13"
 tokio-test = "0.4"
@@ -112,6 +135,8 @@ assert_cmd = "2.0"
 predicates = "3.1"
 scraper = "0.23"
 serial_test = "3.2"
+quickcheck = "1.0"
+quickcheck_macros = "1.1"
 
 [build-dependencies]
 ureq = "3.0"
@@ -121,14 +146,21 @@ serde_json = "1.0"
 hex = "0.4"
 
 [features]
-default = ["all-languages"]
-all-languages = ["rust-ast", "typescript-ast", "python-ast"]
+default = ["rust-only"]
+all-languages = ["rust-ast", "python-ast", "c-ast", "cpp-ast"]
 rust-only = ["rust-ast"]
 rust-ast = ["syn", "quote", "proc-macro2"]
-typescript-ast = ["swc_ecma_parser", "swc_common", "swc_ecma_ast", "swc_ecma_visit"]
-python-ast = ["rustpython-parser"]
+typescript-ast = ["rust-ast", "swc_ecma_parser", "swc_common", "swc_ecma_ast", "swc_ecma_visit"]
+python-ast = ["rust-ast", "rustpython-parser"]
+c-ast = ["tree-sitter", "tree-sitter-c", "fixedbitset", "rustc-hash"]
+cpp-ast = ["c-ast", "tree-sitter-cpp", "cpp_demangle", "gimli", "goblin"]
 # Feature to exclude demo/reporting functionality for minimal builds
 no-demo = []
+# TUI mode support
+tui = ["ratatui", "crossterm"]
+# Integration tests feature
+integration-tests = []
+syn = ["dep:syn"]
 
 
 [[bin]]

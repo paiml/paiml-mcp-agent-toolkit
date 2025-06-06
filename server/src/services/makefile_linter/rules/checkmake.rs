@@ -48,8 +48,8 @@ impl MakefileRule for MinPhonyRule {
                     rule: self.id().to_string(),
                     severity: self.default_severity(),
                     span: SourceSpan::file_level(),
-                    message: format!("Target '{}' should be declared .PHONY", required),
-                    fix_hint: Some(format!("Add '.PHONY: {}' to your Makefile", required)),
+                    message: format!("Target '{required}' should be declared .PHONY"),
+                    fix_hint: Some(format!("Add '.PHONY: {required}' to your Makefile")),
                 });
             }
         }
@@ -119,10 +119,9 @@ impl MakefileRule for PhonyDeclaredRule {
                             severity: self.default_severity(),
                             span: node.span,
                             message: format!(
-                                "Target '{}' should probably be declared .PHONY",
-                                target
+                                "Target '{target}' should probably be declared .PHONY"
                             ),
-                            fix_hint: Some(format!("Add '{}' to .PHONY declaration", target)),
+                            fix_hint: Some(format!("Add '{target}' to .PHONY declaration")),
                         });
                     }
                 }
@@ -228,9 +227,8 @@ impl MakefileRule for TimestampExpandedRule {
                         severity: self.default_severity(),
                         span: node.span,
                         message: format!(
-                            "Variable '{}' uses immediate assignment with date command. \
-                             This will be evaluated once at parse time",
-                            name
+                            "Variable '{name}' uses immediate assignment with date command. \
+                             This will be evaluated once at parse time"
                         ),
                         fix_hint: Some(
                             "Use deferred assignment (=) instead of immediate (:=)".to_string(),
@@ -302,71 +300,176 @@ fn check_undefined_in_text(
     violations: &mut Vec<Violation>,
     span: SourceSpan,
 ) {
-    // Simple variable reference pattern matching
-    let mut i = 0;
-    let bytes = text.as_bytes();
+    let scanner = VariableScanner::new(text);
 
-    while i < bytes.len() - 1 {
-        if bytes[i] == b'$' && i + 1 < bytes.len() {
-            match bytes[i + 1] {
-                b'(' => {
-                    // Find closing paren
-                    if let Some(end) = text[i + 2..].find(')') {
-                        let var_ref = &text[i + 2..i + 2 + end];
-                        // Skip automatic variables and functions
-                        if !is_automatic_var(var_ref) && !is_function_call(var_ref) {
-                            let var_name = var_ref.split(':').next().unwrap_or(var_ref);
-                            if !defined_vars.contains(var_name) {
-                                violations.push(Violation {
-                                    rule: "undefinedvariable".to_string(),
-                                    severity: Severity::Warning,
-                                    span,
-                                    message: format!("Variable '{}' may be undefined", var_name),
-                                    fix_hint: Some(format!("Define '{}' before use", var_name)),
-                                });
-                            }
-                        }
-                        i += end + 3;
-                        continue;
-                    }
-                }
-                b'{' => {
-                    // Find closing brace
-                    if let Some(end) = text[i + 2..].find('}') {
-                        let var_name = &text[i + 2..i + 2 + end];
-                        if !is_automatic_var(var_name) && !defined_vars.contains(var_name) {
-                            violations.push(Violation {
-                                rule: "undefinedvariable".to_string(),
-                                severity: Severity::Warning,
-                                span,
-                                message: format!("Variable '{}' may be undefined", var_name),
-                                fix_hint: Some(format!("Define '{}' before use", var_name)),
-                            });
-                        }
-                        i += end + 3;
-                        continue;
-                    }
-                }
-                c if c.is_ascii_alphanumeric() || c == b'_' => {
-                    // Single character variable
-                    let byte_slice = [c];
-                    let var_name = std::str::from_utf8(&byte_slice).unwrap();
-                    if !is_automatic_var(var_name) && !defined_vars.contains(var_name) {
-                        violations.push(Violation {
-                            rule: "undefinedvariable".to_string(),
-                            severity: Severity::Warning,
-                            span,
-                            message: format!("Variable '{}' may be undefined", var_name),
-                            fix_hint: Some(format!("Define '{}' before use", var_name)),
-                        });
-                    }
-                    i += 2;
-                    continue;
-                }
-                _ => {}
+    for var_ref in scanner {
+        if should_check_variable(&var_ref) && !defined_vars.contains(&var_ref.name) {
+            violations.push(create_undefined_violation(&var_ref.name, span));
+        }
+    }
+}
+
+/// Represents a variable reference found in text
+#[derive(Debug)]
+struct VariableRef {
+    name: String,
+    #[allow(dead_code)]
+    position: usize,
+    ref_type: VarRefType,
+}
+
+#[derive(Debug, PartialEq)]
+enum VarRefType {
+    Parenthesized, // $(VAR)
+    Braced,        // ${VAR}
+    Single,        // $V
+}
+
+/// Iterator that scans text for variable references
+struct VariableScanner<'a> {
+    text: &'a str,
+    bytes: &'a [u8],
+    position: usize,
+}
+
+impl<'a> VariableScanner<'a> {
+    fn new(text: &'a str) -> Self {
+        Self {
+            text,
+            bytes: text.as_bytes(),
+            position: 0,
+        }
+    }
+
+    fn find_next_dollar(&mut self) -> Option<usize> {
+        while self.position < self.bytes.len() {
+            if self.bytes[self.position] == b'$' {
+                return Some(self.position);
+            }
+            self.position += 1;
+        }
+        None
+    }
+
+    fn parse_parenthesized_var(&mut self, start: usize) -> Option<VariableRef> {
+        let content_start = start + 2;
+        let remaining = &self.text[content_start..];
+
+        if let Some(end) = remaining.find(')') {
+            let var_content = &remaining[..end];
+            let var_name = extract_var_name(var_content);
+
+            self.position = content_start + end + 1;
+
+            Some(VariableRef {
+                name: var_name,
+                position: start,
+                ref_type: VarRefType::Parenthesized,
+            })
+        } else {
+            None
+        }
+    }
+
+    fn parse_braced_var(&mut self, start: usize) -> Option<VariableRef> {
+        let content_start = start + 2;
+        let remaining = &self.text[content_start..];
+
+        if let Some(end) = remaining.find('}') {
+            let var_name = remaining[..end].to_string();
+
+            self.position = content_start + end + 1;
+
+            Some(VariableRef {
+                name: var_name,
+                position: start,
+                ref_type: VarRefType::Braced,
+            })
+        } else {
+            None
+        }
+    }
+
+    fn parse_single_char_var(&mut self, start: usize) -> Option<VariableRef> {
+        let ch = self.bytes[start + 1];
+
+        if ch.is_ascii_alphanumeric() || ch == b'_' {
+            let var_name = std::str::from_utf8(&[ch]).unwrap().to_string();
+
+            self.position = start + 2;
+
+            Some(VariableRef {
+                name: var_name,
+                position: start,
+                ref_type: VarRefType::Single,
+            })
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> Iterator for VariableScanner<'a> {
+    type Item = VariableRef;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let dollar_pos = self.find_next_dollar()?;
+
+            if dollar_pos + 1 >= self.bytes.len() {
+                return None;
+            }
+
+            let next_char = self.bytes[dollar_pos + 1];
+
+            let var_ref = match next_char {
+                b'(' => self.parse_parenthesized_var(dollar_pos),
+                b'{' => self.parse_braced_var(dollar_pos),
+                _ => self.parse_single_char_var(dollar_pos),
+            };
+
+            if let Some(ref_) = var_ref {
+                return Some(ref_);
+            } else {
+                // Skip this dollar sign and continue
+                self.position = dollar_pos + 1;
             }
         }
-        i += 1;
+    }
+}
+
+/// Extract variable name from a reference that might contain modifiers
+fn extract_var_name(var_content: &str) -> String {
+    // Handle pattern substitution like $(VAR:old=new)
+    if let Some(colon_pos) = var_content.find(':') {
+        var_content[..colon_pos].to_string()
+    } else {
+        var_content.to_string()
+    }
+}
+
+/// Check if a variable reference should be validated
+fn should_check_variable(var_ref: &VariableRef) -> bool {
+    // Skip automatic variables
+    if is_automatic_var(&var_ref.name) {
+        return false;
+    }
+
+    // Skip function calls (only applies to parenthesized refs)
+    if var_ref.ref_type == VarRefType::Parenthesized && is_function_call(&var_ref.name) {
+        return false;
+    }
+
+    true
+}
+
+fn create_undefined_violation(var_name: &str, span: SourceSpan) -> Violation {
+    Violation {
+        rule: "undefinedvariable".to_string(),
+        severity: Severity::Warning,
+        span,
+        message: format!("Variable '{var_name}' may be undefined"),
+        fix_hint: Some(format!("Define '{var_name}' before use")),
     }
 }
 
@@ -375,32 +478,38 @@ fn is_automatic_var(var: &str) -> bool {
 }
 
 fn is_function_call(text: &str) -> bool {
-    text.starts_with("shell ")
-        || text.starts_with("wildcard ")
-        || text.starts_with("patsubst ")
-        || text.starts_with("subst ")
-        || text.starts_with("strip ")
-        || text.starts_with("findstring ")
-        || text.starts_with("filter ")
-        || text.starts_with("sort ")
-        || text.starts_with("word ")
-        || text.starts_with("dir ")
-        || text.starts_with("notdir ")
-        || text.starts_with("suffix ")
-        || text.starts_with("basename ")
-        || text.starts_with("addprefix ")
-        || text.starts_with("addsuffix ")
-        || text.starts_with("join ")
-        || text.starts_with("foreach ")
-        || text.starts_with("if ")
-        || text.starts_with("or ")
-        || text.starts_with("and ")
-        || text.starts_with("call ")
-        || text.starts_with("eval ")
-        || text.starts_with("origin ")
-        || text.starts_with("error ")
-        || text.starts_with("warning ")
-        || text.starts_with("info ")
+    const FUNCTION_PREFIXES: &[&str] = &[
+        "shell ",
+        "wildcard ",
+        "patsubst ",
+        "subst ",
+        "strip ",
+        "findstring ",
+        "filter ",
+        "sort ",
+        "word ",
+        "dir ",
+        "notdir ",
+        "suffix ",
+        "basename ",
+        "addprefix ",
+        "addsuffix ",
+        "join ",
+        "foreach ",
+        "if ",
+        "or ",
+        "and ",
+        "call ",
+        "eval ",
+        "origin ",
+        "error ",
+        "warning ",
+        "info ",
+    ];
+
+    FUNCTION_PREFIXES
+        .iter()
+        .any(|prefix| text.starts_with(prefix))
 }
 
 /// Portability rule - checks for GNU Make specific features

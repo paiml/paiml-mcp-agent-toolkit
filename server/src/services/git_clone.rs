@@ -1,11 +1,44 @@
 use anyhow::Result;
 use git2::{build::RepoBuilder, FetchOptions, Progress, RemoteCallbacks, Repository};
+use lazy_static::lazy_static;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
+
+lazy_static! {
+    // Pre-compiled regex patterns for GitHub URL parsing
+    // Name pattern: alphanumeric at start/end, can contain dash, underscore, dot in middle
+    // Single char names are also valid
+    static ref NAME_PATTERN: &'static str = r"[a-zA-Z0-9](?:[a-zA-Z0-9\-_\.]*[a-zA-Z0-9])?";
+
+    static ref GITHUB_HTTPS_REGEX: Regex = {
+        Regex::new(&format!(
+            r"^https://github\.com/({name})/({name})(?:\.git)?/?$",
+            name = *NAME_PATTERN
+        ))
+        .expect("Invalid HTTPS regex pattern")
+    };
+
+    static ref GITHUB_SSH_REGEX: Regex = {
+        Regex::new(&format!(
+            r"^git@github\.com:({name})/({name})(?:\.git)?$",
+            name = *NAME_PATTERN
+        ))
+        .expect("Invalid SSH regex pattern")
+    };
+
+    static ref GITHUB_SHORT_REGEX: Regex = {
+        Regex::new(&format!(
+            r"^({name})/({name})$",
+            name = *NAME_PATTERN
+        ))
+        .expect("Invalid short format regex pattern")
+    };
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CloneProgress {
@@ -240,51 +273,117 @@ impl GitCloner {
         Ok(false)
     }
 
-    fn parse_github_url(&self, url: &str) -> Result<ParsedGitHubUrl, CloneError> {
+    pub fn parse_github_url(&self, url: &str) -> Result<ParsedGitHubUrl, CloneError> {
         // Support various GitHub URL formats
         let url = url.trim();
 
         // HTTPS format: https://github.com/owner/repo or https://github.com/owner/repo.git
-        if let Some(captures) =
-            regex::Regex::new(r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$")
-                .unwrap()
-                .captures(url)
-        {
-            return Ok(ParsedGitHubUrl {
-                owner: captures[1].to_string(),
-                repo: captures[2].to_string(),
-            });
+        if let Some(captures) = GITHUB_HTTPS_REGEX.captures(url) {
+            let owner = captures[1].to_string();
+            let mut repo = captures[2].to_string();
+
+            // Strip .git suffix if present (but only if it makes the name valid)
+            if repo.ends_with(".git") && repo.len() > 4 {
+                let without_git = &repo[..repo.len() - 4];
+                // Only strip .git if the result is still a valid name
+                if self.validate_github_name(without_git) {
+                    repo = without_git.to_string();
+                }
+            }
+
+            // Additional validation
+            if self.validate_github_name(&owner) && self.validate_github_name(&repo) {
+                return Ok(ParsedGitHubUrl { owner, repo });
+            }
         }
 
         // SSH format: git@github.com:owner/repo.git
-        if let Some(captures) = regex::Regex::new(r"git@github\.com:([^/]+)/([^/]+?)(?:\.git)?$")
-            .unwrap()
-            .captures(url)
-        {
-            return Ok(ParsedGitHubUrl {
-                owner: captures[1].to_string(),
-                repo: captures[2].to_string(),
-            });
+        if let Some(captures) = GITHUB_SSH_REGEX.captures(url) {
+            let owner = captures[1].to_string();
+            let mut repo = captures[2].to_string();
+
+            // Strip .git suffix if present
+            if repo.ends_with(".git") && repo.len() > 4 {
+                let without_git = &repo[..repo.len() - 4];
+                if self.validate_github_name(without_git) {
+                    repo = without_git.to_string();
+                }
+            }
+
+            // Additional validation
+            if self.validate_github_name(&owner) && self.validate_github_name(&repo) {
+                return Ok(ParsedGitHubUrl { owner, repo });
+            }
         }
 
         // Short format: owner/repo
-        if let Some(captures) = regex::Regex::new(r"^([^/]+)/([^/]+)$")
-            .unwrap()
-            .captures(url)
-        {
-            return Ok(ParsedGitHubUrl {
-                owner: captures[1].to_string(),
-                repo: captures[2].to_string(),
-            });
+        if let Some(captures) = GITHUB_SHORT_REGEX.captures(url) {
+            let owner = captures[1].to_string();
+            let repo = captures[2].to_string();
+
+            // Additional validation
+            if self.validate_github_name(&owner) && self.validate_github_name(&repo) {
+                return Ok(ParsedGitHubUrl { owner, repo });
+            }
         }
 
-        Err(CloneError::InvalidUrl(format!(
-            "Invalid GitHub URL: {}",
-            url
-        )))
+        Err(CloneError::InvalidUrl(format!("Invalid GitHub URL: {url}")))
     }
 
-    fn compute_cache_key(&self, url: &str) -> String {
+    fn validate_github_name(&self, name: &str) -> bool {
+        // Reject empty names
+        if name.is_empty() || name.len() > 100 {
+            return false;
+        }
+
+        // Reject path traversal attempts
+        if name == ".." || name == "." {
+            return false;
+        }
+
+        // Reject names that start or end with dots
+        if name.starts_with('.') || name.ends_with('.') {
+            return false;
+        }
+
+        // Reject names containing consecutive dots
+        if name.contains("..") {
+            return false;
+        }
+
+        // Reject names with path separators
+        if name.contains('/') || name.contains('\\') {
+            return false;
+        }
+
+        // Reject special Git names
+        let forbidden_names = [".git", ".gitignore", ".gitmodules", ".gitattributes"];
+        if forbidden_names.contains(&name) {
+            return false;
+        }
+
+        // Reject URL encoded characters
+        if name.contains('%') {
+            return false;
+        }
+
+        // Reject control characters and non-ASCII characters
+        // GitHub requires ASCII-only names
+        if !name.chars().all(|c| c.is_ascii() && !c.is_control()) {
+            return false;
+        }
+
+        // Ensure name matches our regex pattern (alphanumeric start/end)
+        if name.len() == 1 {
+            name.chars().all(|c| c.is_ascii_alphanumeric())
+        } else {
+            let chars: Vec<char> = name.chars().collect();
+            chars.first().is_some_and(|c| c.is_ascii_alphanumeric())
+                && chars.last().is_some_and(|c| c.is_ascii_alphanumeric())
+        }
+    }
+
+    pub fn compute_cache_key(&self, url: &str) -> String {
         // Create a cache key from the URL
         // In production, you might want to use a hash
         url.chars()
@@ -303,12 +402,10 @@ impl GitCloner {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ParsedGitHubUrl {
-    #[allow(dead_code)]
-    owner: String,
-    #[allow(dead_code)]
-    repo: String,
+    pub owner: String,
+    pub repo: String,
 }
 
 #[cfg(test)]
@@ -321,20 +418,87 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let cloner = GitCloner::new(temp_dir.path().to_path_buf());
 
+        // Create long strings outside the vec to avoid lifetime issues
+        let long_owner = format!("https://github.com/{}/repo", "a".repeat(101));
+        let long_repo = format!("https://github.com/owner/{}", "b".repeat(101));
+
         // Test various URL formats
         let test_cases = vec![
+            // Valid URLs
             ("https://github.com/rust-lang/rust", true),
             ("https://github.com/rust-lang/rust.git", true),
             ("git@github.com:rust-lang/rust.git", true),
             ("rust-lang/rust", true),
+            ("https://github.com/user123/repo456", true),
+            ("https://github.com/a/b", true),
+            // Invalid URLs - wrong domain
             ("https://gitlab.com/rust-lang/rust", false),
             ("not-a-url", false),
+            // Security-sensitive patterns that should be rejected
+            ("https://github.com/../repo", false),
+            ("https://github.com/owner/..", false),
+            ("https://github.com/.git/config", false),
+            ("https://github.com/./repo", false),
+            ("https://github.com/owner/.", false),
+            ("https://github.com/.gitignore/repo", false),
+            ("https://github.com/owner/.gitmodules", false),
+            ("https://github.com/%2e%2e/repo", false),
+            ("https://github.com/owner%2frepo/test", false),
+            ("https://github.com//double-slash", false),
+            ("https://github.com/owner//double-slash", false),
+            // Names with dots
+            ("https://github.com/.hidden/repo", false),
+            ("https://github.com/owner/repo.", false),
+            ("https://github.com/owner..name/repo", false),
+            // Empty components
+            ("https://github.com//repo", false),
+            ("https://github.com/owner/", false),
+            ("https://github.com/ /repo", false),
+            // Too long
+            (long_owner.as_str(), false),
+            (long_repo.as_str(), false),
         ];
 
         for (url, should_succeed) in test_cases {
             let result = cloner.parse_github_url(url);
-            assert_eq!(result.is_ok(), should_succeed, "Failed for URL: {}", url);
+            assert_eq!(
+                result.is_ok(),
+                should_succeed,
+                "URL '{}' should {} but got {:?}",
+                url,
+                if should_succeed { "succeed" } else { "fail" },
+                result
+            );
         }
+    }
+
+    #[tokio::test]
+    async fn test_validate_github_name() {
+        let temp_dir = TempDir::new().unwrap();
+        let cloner = GitCloner::new(temp_dir.path().to_path_buf());
+
+        // Valid names
+        assert!(cloner.validate_github_name("rust"));
+        assert!(cloner.validate_github_name("rust-lang"));
+        assert!(cloner.validate_github_name("user_name"));
+        assert!(cloner.validate_github_name("repo.name"));
+        assert!(cloner.validate_github_name("123"));
+        assert!(cloner.validate_github_name("a1b2c3"));
+
+        // Invalid names
+        assert!(!cloner.validate_github_name(""));
+        assert!(!cloner.validate_github_name("."));
+        assert!(!cloner.validate_github_name(".."));
+        assert!(!cloner.validate_github_name(".hidden"));
+        assert!(!cloner.validate_github_name("hidden."));
+        assert!(!cloner.validate_github_name("name..name"));
+        assert!(!cloner.validate_github_name(".git"));
+        assert!(!cloner.validate_github_name(".gitignore"));
+        assert!(!cloner.validate_github_name("name/path"));
+        assert!(!cloner.validate_github_name("name\\path"));
+        assert!(!cloner.validate_github_name("name%20space"));
+        assert!(!cloner.validate_github_name("name\0null"));
+        assert!(!cloner.validate_github_name(&"a".repeat(101)));
     }
 
     #[tokio::test]

@@ -76,7 +76,7 @@ impl ArtifactWriter {
                 name.clone(),
                 ArtifactMetadata {
                     path: path.clone(),
-                    hash: format!("{}", hash),
+                    hash: format!("{hash}"),
                     size: content.len(),
                     generated_at: Utc::now(),
                     artifact_type,
@@ -141,10 +141,10 @@ impl ArtifactWriter {
             let hash = self.write_with_hash(&path, content, ArtifactType::MermaidDiagram)?;
 
             self.manifest.insert(
-                format!("mermaid/ast-generated/{}/{}", subdir, name),
+                format!("mermaid/ast-generated/{subdir}/{name}"),
                 ArtifactMetadata {
                     path: path.clone(),
-                    hash: format!("{}", hash),
+                    hash: format!("{hash}"),
                     size: content.len(),
                     generated_at: Utc::now(),
                     artifact_type: ArtifactType::MermaidDiagram,
@@ -169,10 +169,10 @@ impl ArtifactWriter {
             let hash = self.write_with_hash(&path, content, ArtifactType::MermaidDiagram)?;
 
             self.manifest.insert(
-                format!("mermaid/non-code/{}/{}", subdir, name),
+                format!("mermaid/non-code/{subdir}/{name}"),
                 ArtifactMetadata {
                     path: path.clone(),
-                    hash: format!("{}", hash),
+                    hash: format!("{hash}"),
                     size: content.len(),
                     generated_at: Utc::now(),
                     artifact_type: ArtifactType::MermaidDiagram,
@@ -192,10 +192,10 @@ impl ArtifactWriter {
             let hash = self.write_with_hash(&path, &template.content, ArtifactType::Template)?;
 
             self.manifest.insert(
-                format!("templates/{}", filename),
+                format!("templates/{filename}"),
                 ArtifactMetadata {
                     path: path.clone(),
-                    hash: format!("{}", hash),
+                    hash: format!("{hash}"),
                     size: template.content.len(),
                     generated_at: Utc::now(),
                     artifact_type: ArtifactType::Template,
@@ -241,7 +241,7 @@ impl ArtifactWriter {
             "artifacts.json".to_string(),
             ArtifactMetadata {
                 path: manifest_path.clone(),
-                hash: format!("{}", hash),
+                hash: format!("{hash}"),
                 size: manifest_content.len(),
                 generated_at: Utc::now(),
                 artifact_type: ArtifactType::Manifest,
@@ -286,13 +286,13 @@ impl ArtifactWriter {
             let content = fs::read_to_string(&metadata.path).map_err(TemplateError::Io)?;
             let computed_hash = blake3::hash(content.as_bytes());
 
-            if format!("{}", computed_hash) == metadata.hash {
+            if format!("{computed_hash}") == metadata.hash {
                 report.verified += 1;
             } else {
                 report.failed.push(IntegrityFailure {
                     artifact: name.clone(),
                     expected_hash: metadata.hash.clone(),
-                    actual_hash: format!("{}", computed_hash),
+                    actual_hash: format!("{computed_hash}"),
                 });
             }
         }
@@ -442,8 +442,8 @@ mod tests {
 
         for dir in &expected_dirs {
             let path = temp_dir.path().join(dir);
-            assert!(path.exists(), "Directory {} should exist", dir);
-            assert!(path.is_dir(), "Path {} should be a directory", dir);
+            assert!(path.exists(), "Directory {dir} should exist");
+            assert!(path.is_dir(), "Path {dir} should be a directory");
         }
     }
 
@@ -540,7 +540,7 @@ mod tests {
             "test.txt".to_string(),
             ArtifactMetadata {
                 path: file_path.clone(),
-                hash: format!("{}", hash),
+                hash: format!("{hash}"),
                 size: content.len(),
                 generated_at: Utc::now(),
                 artifact_type: ArtifactType::DogfoodingMarkdown,

@@ -823,8 +823,7 @@ mod performance_tests {
         // Memory increase should be reasonable (< 100MB for this test)
         assert!(
             memory_increase < 100 * 1024 * 1024,
-            "Memory usage should be efficient, increased by {} bytes",
-            memory_increase
+            "Memory usage should be efficient, increased by {memory_increase} bytes"
         );
     }
 

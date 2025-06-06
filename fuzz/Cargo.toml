@@ -36,6 +36,12 @@ path = "fuzz_targets/fuzz_mermaid_escaping.rs"
 doc = false
 test = false
 
+[[bin]]
+name = "fuzz_github_urls"
+path = "fuzz_targets/fuzz_github_urls.rs"
+doc = false
+test = false
+
 [profile.release]
 opt-level = 3
 debug = true

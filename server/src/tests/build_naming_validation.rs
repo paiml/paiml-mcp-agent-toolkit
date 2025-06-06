@@ -51,7 +51,7 @@ mod tests {
         // Check that generate-installer is feature-gated
         if binaries.contains(&"generate-installer") {
             // This is OK as it's behind a feature flag
-            assert!(binaries.len() <= 2, "Too many binaries: {:?}", binaries);
+            assert!(binaries.len() <= 2, "Too many binaries: {binaries:?}");
         }
     }
 
@@ -72,8 +72,7 @@ mod tests {
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(
             stdout.is_empty(),
-            "Found references to old package name in source files:\n{}",
-            stdout
+            "Found references to old package name in source files:\n{stdout}"
         );
     }
 
@@ -101,9 +100,7 @@ mod tests {
             let stdout = String::from_utf8_lossy(&output.stdout);
             assert!(
                 stdout.is_empty(),
-                "Found references to old binary name '{}' in GitHub Actions workflows:\n{}",
-                old_name,
-                stdout
+                "Found references to old binary name '{old_name}' in GitHub Actions workflows:\n{stdout}"
             );
         }
     }
@@ -153,18 +150,16 @@ mod tests {
             let stdout = String::from_utf8_lossy(&output.stdout);
             assert!(
                 stdout.is_empty(),
-                "Found references to incorrect repository URL '{}' in workflows:\n{}\nShould be 'paiml/paiml-mcp-agent-toolkit'",
-                wrong_url,
-                stdout
+                "Found references to incorrect repository URL '{wrong_url}' in workflows:\n{stdout}\nShould be 'paiml/paiml-mcp-agent-toolkit'"
             );
         }
     }
 
     #[test]
     fn test_workspace_aware_cargo_commands_in_makefile() {
-        // Read the server/Makefile
+        // Read the root Makefile (server/Makefile was consolidated into root)
         let makefile_content =
-            std::fs::read_to_string("Makefile").expect("Failed to read server/Makefile");
+            std::fs::read_to_string("../Makefile").expect("Failed to read root Makefile");
 
         // Define cargo commands that need workspace awareness
         let workspace_sensitive_commands = vec![

@@ -69,8 +69,7 @@ impl CliDemoAdapter {
         // Validate path exists
         if !path_buf.exists() {
             return Err(CliDemoError::InvalidPath(format!(
-                "Path does not exist: {}",
-                path
+                "Path does not exist: {path}"
             )));
         }
 
@@ -93,7 +92,7 @@ impl CliDemoAdapter {
 
         // Run actual analysis
         let deep_context = analyzer.analyze_project(&path_buf).await.map_err(|e| {
-            CliDemoError::ExecutionFailed(format!("Deep context analysis failed: {}", e))
+            CliDemoError::ExecutionFailed(format!("Deep context analysis failed: {e}"))
         })?;
 
         // Add CLI metadata

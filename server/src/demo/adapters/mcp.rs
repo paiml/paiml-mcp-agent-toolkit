@@ -161,7 +161,7 @@ impl McpDemoAdapter {
 
         let params: DemoAnalyzeParams = match params {
             Some(p) => serde_json::from_value(p).map_err(|e| {
-                McpDemoError::InvalidParams(format!("Failed to parse demo.analyze params: {}", e))
+                McpDemoError::InvalidParams(format!("Failed to parse demo.analyze params: {e}"))
             })?,
             None => {
                 return Err(McpDemoError::InvalidParams(
@@ -227,10 +227,7 @@ impl McpDemoAdapter {
     ) -> Result<McpResponse, McpDemoError> {
         let params: DemoGetResultsParams = match params {
             Some(p) => serde_json::from_value(p).map_err(|e| {
-                McpDemoError::InvalidParams(format!(
-                    "Failed to parse demo.getResults params: {}",
-                    e
-                ))
+                McpDemoError::InvalidParams(format!("Failed to parse demo.getResults params: {e}"))
             })?,
             None => {
                 return Err(McpDemoError::InvalidParams(
@@ -294,10 +291,7 @@ impl McpDemoAdapter {
     ) -> Result<McpResponse, McpDemoError> {
         let params: DemoGetApiTraceParams = match params {
             Some(p) => serde_json::from_value(p).map_err(|e| {
-                McpDemoError::InvalidParams(format!(
-                    "Failed to parse demo.getApiTrace params: {}",
-                    e
-                ))
+                McpDemoError::InvalidParams(format!("Failed to parse demo.getApiTrace params: {e}"))
             })?,
             None => DemoGetApiTraceParams {
                 request_id: None,
@@ -362,8 +356,7 @@ impl McpDemoAdapter {
         // Validate path exists
         if !project_path.exists() {
             return Err(McpDemoError::AnalysisFailed(format!(
-                "Path does not exist: {}",
-                path
+                "Path does not exist: {path}"
             )));
         }
 
@@ -386,7 +379,7 @@ impl McpDemoAdapter {
 
         // Run actual analysis
         let deep_context = analyzer.analyze_project(&project_path).await.map_err(|e| {
-            McpDemoError::AnalysisFailed(format!("Deep context analysis failed: {}", e))
+            McpDemoError::AnalysisFailed(format!("Deep context analysis failed: {e}"))
         })?;
 
         // Add MCP metadata

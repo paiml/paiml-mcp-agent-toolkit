@@ -43,7 +43,7 @@ impl AnalysisRequest {
         let mut hasher = Sha256::new();
         hasher.update(self.project_path.as_bytes());
         for t in &self.analysis_types {
-            hasher.update(format!("{:?}", t).as_bytes());
+            hasher.update(format!("{t:?}").as_bytes());
         }
         format!("{:x}", hasher.finalize())
     }
@@ -481,8 +481,8 @@ pub async fn analyze_dag_enhanced(
     // Add statistics
     let (node_count, generation) = intelligence.get_dag_stats().await;
     output.push_str("\n%% Graph Statistics:\n");
-    output.push_str(&format!("%% Total nodes: {}\n", node_count));
-    output.push_str(&format!("%% Generation: {}\n", generation));
+    output.push_str(&format!("%% Total nodes: {node_count}\n"));
+    output.push_str(&format!("%% Generation: {generation}\n"));
     output.push_str(&format!("%% Analysis timestamp: {}\n", Utc::now()));
 
     Ok(output)

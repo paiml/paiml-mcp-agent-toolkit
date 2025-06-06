@@ -2,7 +2,7 @@ use anyhow::Result;
 use paiml_mcp_agent_toolkit::{cli, stateless_server::StatelessTemplateServer};
 use std::io::IsTerminal;
 use std::sync::Arc;
-use tracing::{debug, info, instrument, trace};
+use tracing::{debug, info, trace};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 enum ExecutionMode {
@@ -10,7 +10,6 @@ enum ExecutionMode {
     Cli,
 }
 
-#[instrument(level = "debug")]
 fn detect_execution_mode() -> ExecutionMode {
     let is_mcp = !std::io::stdin().is_terminal() && std::env::args().len() == 1
         || std::env::var("MCP_VERSION").is_ok();
@@ -55,7 +54,6 @@ fn init_tracing(cli: &cli::EarlyCliArgs) -> Result<()> {
 }
 
 #[tokio::main]
-#[instrument(level = "debug")]
 async fn main() -> Result<()> {
     // Parse CLI to get tracing configuration early
     let cli = cli::parse_early_for_tracing();

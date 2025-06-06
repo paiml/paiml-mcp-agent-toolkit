@@ -106,6 +106,6 @@ fn generate_test_mermaid() {
     let output_path = artifacts_dir.join("intellij_test_updated.mmd");
     std::fs::write(&output_path, &output).unwrap();
 
-    println!("Generated updated test Mermaid file: {:?}", output_path);
-    println!("{}", output);
+    println!("Generated updated test Mermaid file: {output_path:?}");
+    println!("{output}");
 }

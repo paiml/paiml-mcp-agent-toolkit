@@ -46,6 +46,9 @@ mod tests {
                     AnalyzeCommands::Makefile { .. } => {
                         panic!("Expected Churn command, got Makefile");
                     }
+                    AnalyzeCommands::Provability { .. } => {
+                        panic!("Expected Churn command, got Provability");
+                    }
                 }
             }
             _ => panic!("Expected Analyze command"),
@@ -102,6 +105,9 @@ mod tests {
                 }
                 AnalyzeCommands::Makefile { .. } => {
                     panic!("Expected Churn command, got Makefile");
+                }
+                AnalyzeCommands::Provability { .. } => {
+                    panic!("Expected Churn command, got Provability");
                 }
             },
             _ => panic!("Expected Analyze command"),

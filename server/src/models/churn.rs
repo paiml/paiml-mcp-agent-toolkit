@@ -69,7 +69,7 @@ impl std::str::FromStr for ChurnOutputFormat {
             "markdown" => Ok(ChurnOutputFormat::Markdown),
             "csv" => Ok(ChurnOutputFormat::Csv),
             "summary" => Ok(ChurnOutputFormat::Summary),
-            _ => Err(format!("Invalid output format: {}", s)),
+            _ => Err(format!("Invalid output format: {s}")),
         }
     }
 }

@@ -120,7 +120,7 @@ impl LocalDemoServer {
 
                             tokio::spawn(async move {
                                 if let Err(e) = handle_connection(stream, state).await {
-                                    eprintln!("Connection error: {}", e);
+                                    eprintln!("Connection error: {e}");
                                 }
                                 drop(permit);
                             });
@@ -577,15 +577,14 @@ pub(crate) fn serve_dag_mermaid(state: &Arc<RwLock<DemoState>>) -> Response<Byte
     
     N[File Discovery] -->|filters| O[Project Files]
     N -->|excludes| P[External Dependencies]
-    {}
+    {tdg_info}
     
     %% TDG-based styling
     style A fill:#90EE90
     style E fill:#FFD700
     style H fill:#FFA500
     style K fill:#87CEEB
-    style N fill:#DDA0DD"#,
-            tdg_info
+    style N fill:#DDA0DD"#
         );
     }
 

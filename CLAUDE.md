@@ -31,6 +31,64 @@ pmat context       # Self-analysis for validation
 - **Code Smell Detection**: 22 tests for comprehensive quality analysis
 - **Interface Consistency**: Triple-interface testing (CLI, MCP, HTTP)
 - **Performance Validation**: Sub-10ms response time guarantees
+- **C/C++ AST Integration**: 747 tests including new language support
+- **Provability Analysis**: Formal verification testing with confidence scoring
+
+## C/C++ AST Integration & Provability Analysis
+
+### C/C++ Language Support
+The system now includes comprehensive C/C++ language analysis capabilities:
+
+```rust
+// Toyota Way implementation - proper name extraction without shortcuts
+impl CAstStrategy {
+    fn extract_name_from_node(node: &UnifiedAstNode, content: &str) -> Option<String> {
+        let start = node.source_range.start as usize;
+        let end = node.source_range.end as usize;
+        let source_text = &content[start..end];
+        
+        // Parse actual source text for accurate names
+        match &node.kind {
+            AstKind::Function(_) => Self::extract_function_name(source_text),
+            AstKind::Type(_) => Self::extract_type_name(source_text),
+            _ => None,
+        }
+    }
+}
+```
+
+**Key Features:**
+- Tree-sitter based parsing for C and C++
+- Proper name extraction from source ranges
+- Support for C-specific constructs (goto, labels, macros)
+- C++ specific features (classes, templates, operator overloads)
+- Byte position to line number conversion
+- .gitignore respect for build artifacts
+
+### Provability Analysis Framework
+Lightweight formal verification system providing:
+
+```rust
+pub struct LightweightProvabilityAnalyzer {
+    property_cache: DashMap<FunctionId, Vec<VerifiedProperty>>,
+    confidence_threshold: f64,
+    analysis_timeout: Duration,
+}
+
+// Property domain analysis with lattice structures
+pub enum PropertyType {
+    Nullability(NullabilityLattice),
+    AliasAnalysis(AliasLattice),
+    // Additional property types...
+}
+```
+
+**Capabilities:**
+- Property domain analysis with confidence scoring
+- Incremental analysis with efficient caching
+- Integration with deep context analysis
+- Quality gates with automated verification
+- Nullability lattice and alias analysis
 
 ## Dynamic Context Analysis Protocol
 

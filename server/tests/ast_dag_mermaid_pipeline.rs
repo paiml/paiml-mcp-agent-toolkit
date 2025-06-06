@@ -120,28 +120,23 @@ async fn test_ast_to_dag_metadata_propagation() {
         // Verify required metadata fields exist (from bug report fixes)
         assert!(
             node_info.metadata.contains_key("file_path"),
-            "Node {} missing file_path metadata",
-            node_id
+            "Node {node_id} missing file_path metadata"
         );
         assert!(
             node_info.metadata.contains_key("module_path"),
-            "Node {} missing module_path metadata",
-            node_id
+            "Node {node_id} missing module_path metadata"
         );
         assert!(
             node_info.metadata.contains_key("display_name"),
-            "Node {} missing display_name metadata",
-            node_id
+            "Node {node_id} missing display_name metadata"
         );
         assert!(
             node_info.metadata.contains_key("node_type"),
-            "Node {} missing node_type metadata",
-            node_id
+            "Node {node_id} missing node_type metadata"
         );
         assert!(
             node_info.metadata.contains_key("language"),
-            "Node {} missing language metadata",
-            node_id
+            "Node {node_id} missing language metadata"
         );
 
         // Verify metadata values are meaningful (not empty)
@@ -152,15 +147,13 @@ async fn test_ast_to_dag_metadata_propagation() {
         // Verify semantic naming worked
         assert!(
             !node_info.label.is_empty(),
-            "Node {} has empty label",
-            node_id
+            "Node {node_id} has empty label"
         );
 
         // Verify complexity was calculated
         assert!(
             node_info.complexity > 0,
-            "Node {} has zero complexity",
-            node_id
+            "Node {node_id} has zero complexity"
         );
     }
 
@@ -259,8 +252,7 @@ async fn test_pipeline_with_complex_project() {
     for (node_id, node_info) in &pruned_dag.nodes {
         assert!(
             node_info.metadata.contains_key("file_path"),
-            "Pruned node {} missing file_path metadata",
-            node_id
+            "Pruned node {node_id} missing file_path metadata"
         );
         assert!(!node_info.metadata["file_path"].is_empty());
     }

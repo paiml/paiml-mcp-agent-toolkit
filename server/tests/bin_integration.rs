@@ -8,6 +8,11 @@ fn test_binary_version_flag() {
         .output()
         .expect("Failed to execute command");
 
+    if !output.status.success() {
+        eprintln!("Command failed with status: {}", output.status);
+        eprintln!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+        eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+    }
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("paiml-mcp-agent-toolkit"));

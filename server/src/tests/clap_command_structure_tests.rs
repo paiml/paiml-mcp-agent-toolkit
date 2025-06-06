@@ -5,6 +5,11 @@
 
 use crate::cli::{AnalyzeCommands, Cli, Commands};
 use clap::{CommandFactory, Parser};
+use parking_lot::Mutex;
+use std::env;
+
+// Global mutex to ensure env var tests don't interfere across all modules
+static ENV_MUTEX: Mutex<()> = Mutex::new(());
 
 #[cfg(test)]
 mod tests {
@@ -129,8 +134,10 @@ mod tests {
 
     #[test]
     fn test_env_var_support() {
+        let _guard = ENV_MUTEX.lock();
+
         // Test that RUST_LOG env var is properly mapped
-        std::env::set_var("RUST_LOG", "debug");
+        env::set_var("RUST_LOG", "debug");
 
         let cli = Cli::try_parse_from(["pmat", "list"]);
         assert!(cli.is_ok());
@@ -140,7 +147,7 @@ mod tests {
         assert_eq!(cli.trace_filter, Some("debug".to_string()));
 
         // Clean up
-        std::env::remove_var("RUST_LOG");
+        env::remove_var("RUST_LOG");
     }
 
     #[test]
@@ -191,7 +198,7 @@ mod tests {
 
         for args in variations {
             let result = Cli::try_parse_from(args.clone());
-            assert!(result.is_ok(), "Failed to parse: {:?}", args);
+            assert!(result.is_ok(), "Failed to parse: {args:?}");
         }
     }
 
@@ -248,8 +255,7 @@ mod tests {
                     || error_str.contains("unknown")
                     || error_str.contains("analyze")
                     || error_str.contains("did you mean"),
-                "Error should be helpful: {}",
-                error_str
+                "Error should be helpful: {error_str}"
             );
         }
     }

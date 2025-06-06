@@ -18,7 +18,7 @@ pub async fn lint_makefile(path: &Path) -> Result<LintResult, AnalysisError> {
     let mut parser = MakefileParser::new(&content);
     let ast = parser
         .parse()
-        .map_err(|e| AnalysisError::ParseError(format!("Makefile parse error: {:?}", e)))?;
+        .map_err(|e| AnalysisError::ParseError(format!("Makefile parse error: {e:?}")))?;
 
     let registry = RuleRegistry::new();
     let violations = registry.check_all(&ast);
@@ -97,7 +97,7 @@ mod tests {
                 rule: "test".to_string(),
                 severity: Severity::Error,
                 span: SourceSpan::file_level(),
-                message: format!("Test error {}", i),
+                message: format!("Test error {i}"),
                 fix_hint: None,
             });
         }

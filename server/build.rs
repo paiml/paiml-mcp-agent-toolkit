@@ -41,8 +41,8 @@ fn verify_dependency_versions() {
     ];
 
     for dep in &critical_deps {
-        if !lock_content.contains(&format!("name = \"{}\"", dep)) {
-            panic!("Critical dependency {} not found", dep);
+        if !lock_content.contains(&format!("name = \"{dep}\"")) {
+            panic!("Critical dependency {dep} not found");
         }
     }
 }
@@ -84,7 +84,7 @@ fn process_assets(assets: &[(&str, &str)]) {
 
     for (url, filename) in assets {
         let path = vendor_dir.join(filename);
-        let gz_path = vendor_dir.join(format!("{}.gz", filename));
+        let gz_path = vendor_dir.join(format!("{filename}.gz"));
 
         if should_skip_asset(&gz_path) {
             continue;
@@ -106,17 +106,17 @@ fn ensure_asset_downloaded(path: &Path, url: &str, filename: &str) {
 }
 
 fn download_asset(url: &str, path: &Path, filename: &str) {
-    println!("cargo:warning=Downloading {} from {}", filename, url);
+    println!("cargo:warning=Downloading {filename} from {url}");
 
     match ureq::get(url).call() {
         Ok(mut response) => match response.body_mut().read_to_vec() {
             Ok(content) => {
                 if let Err(e) = fs::write(path, &content) {
-                    println!("cargo:warning=Failed to write {}: {}", filename, e);
+                    println!("cargo:warning=Failed to write {filename}: {e}");
                 }
             }
             Err(e) => {
-                println!("cargo:warning=Failed to read {}: {}", filename, e);
+                println!("cargo:warning=Failed to read {filename}: {e}");
                 let _ = fs::write(path, b"/* Asset download failed during build */");
             }
         },
@@ -127,10 +127,7 @@ fn download_asset(url: &str, path: &Path, filename: &str) {
 }
 
 fn handle_download_failure(e: ureq::Error, path: &Path, filename: &str) {
-    println!(
-        "cargo:warning=Failed to download {}: {}. Using placeholder.",
-        filename, e
-    );
+    println!("cargo:warning=Failed to download {filename}: {e}. Using placeholder.");
     // Create a placeholder file
     let _ = fs::write(path, b"/* Asset download failed during build */");
 }
@@ -177,7 +174,7 @@ fn write_compressed_file(gz_path: &Path, compressed: &[u8], filename: &str, orig
 
 fn set_asset_hash_env() {
     let hash = calculate_asset_hash();
-    println!("cargo:rustc-env=ASSET_HASH={}", hash);
+    println!("cargo:rustc-env=ASSET_HASH={hash}");
 }
 
 fn compress_templates() {
@@ -263,9 +260,7 @@ fn serde_json_to_string<T: serde::Serialize>(value: &T) -> String {
 }
 
 fn generate_hex_string(data: &[u8]) -> String {
-    data.iter()
-        .map(|b| format!("{:02x}", b))
-        .collect::<String>()
+    data.iter().map(|b| format!("{b:02x}")).collect::<String>()
 }
 
 fn generate_template_code(hex: &str, count: usize) -> String {
@@ -274,7 +269,7 @@ fn generate_template_code(hex: &str, count: usize) -> String {
 use std::collections::HashMap;
 use once_cell::sync::Lazy;
 
-const COMPRESSED_TEMPLATES: &str = "{}";
+const COMPRESSED_TEMPLATES: &str = "{hex}";
 
 pub static TEMPLATES: Lazy<HashMap<String, String>> = Lazy::new(|| {{
     use flate2::read::GzDecoder;
@@ -288,9 +283,8 @@ pub static TEMPLATES: Lazy<HashMap<String, String>> = Lazy::new(|| {{
     serde_json::from_str(&decompressed).expect("Valid JSON")
 }});
 
-// Template count: {}
-"#,
-        hex, count
+// Template count: {count}
+"#
     )
 }
 
@@ -319,14 +313,14 @@ fn minify_demo_assets() {
 
 fn minify_js_file(input_path: &Path, output_path: &Path) {
     if !input_path.exists() {
-        println!("cargo:warning=JavaScript file not found: {:?}", input_path);
+        println!("cargo:warning=JavaScript file not found: {input_path:?}");
         return;
     }
 
     let content = match fs::read_to_string(input_path) {
         Ok(content) => content,
         Err(e) => {
-            println!("cargo:warning=Failed to read JS file: {}", e);
+            println!("cargo:warning=Failed to read JS file: {e}");
             return;
         }
     };
@@ -334,7 +328,7 @@ fn minify_js_file(input_path: &Path, output_path: &Path) {
     let minified = simple_js_minify(&content);
 
     if let Err(e) = fs::write(output_path, &minified) {
-        println!("cargo:warning=Failed to write minified JS: {}", e);
+        println!("cargo:warning=Failed to write minified JS: {e}");
         return;
     }
 
@@ -348,14 +342,14 @@ fn minify_js_file(input_path: &Path, output_path: &Path) {
 
 fn minify_css_file(input_path: &Path, output_path: &Path) {
     if !input_path.exists() {
-        println!("cargo:warning=CSS file not found: {:?}", input_path);
+        println!("cargo:warning=CSS file not found: {input_path:?}");
         return;
     }
 
     let content = match fs::read_to_string(input_path) {
         Ok(content) => content,
         Err(e) => {
-            println!("cargo:warning=Failed to read CSS file: {}", e);
+            println!("cargo:warning=Failed to read CSS file: {e}");
             return;
         }
     };
@@ -363,7 +357,7 @@ fn minify_css_file(input_path: &Path, output_path: &Path) {
     let minified = simple_css_minify(&content);
 
     if let Err(e) = fs::write(output_path, &minified) {
-        println!("cargo:warning=Failed to write minified CSS: {}", e);
+        println!("cargo:warning=Failed to write minified CSS: {e}");
         return;
     }
 

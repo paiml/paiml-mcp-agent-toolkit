@@ -57,6 +57,11 @@ async fn run_analyses(analyzer: DemoAnalyzer, config: &DemoConfig) -> Result<Ana
         return Ok(AnalysisResults::Web);
     }
 
+    #[cfg(feature = "tui")]
+    if config.args.protocol == Protocol::Tui {
+        return Ok(AnalysisResults::Tui);
+    }
+
     if config.args.protocol == Protocol::All {
         run_all_protocols(analyzer, config).await
     } else {
@@ -68,6 +73,8 @@ async fn run_analyses(analyzer: DemoAnalyzer, config: &DemoConfig) -> Result<Ana
 fn generate_output(results: AnalysisResults, _protocol: Protocol) -> Result<DemoOutput> {
     match results {
         AnalysisResults::Web => Ok(DemoOutput::Web),
+        #[cfg(feature = "tui")]
+        AnalysisResults::Tui => Ok(DemoOutput::Tui),
         AnalysisResults::Single(trace) => Ok(DemoOutput::Single(trace)),
         AnalysisResults::Multiple(traces) => Ok(DemoOutput::Multiple(traces)),
     }
@@ -85,6 +92,8 @@ async fn handle_protocol_output(output: DemoOutput, config: &DemoConfig) -> Resu
             )
             .await
         }
+        #[cfg(feature = "tui")]
+        DemoOutput::Tui => run_tui_demo(config.repo_path.clone()).await,
         DemoOutput::Single(trace) => {
             format_and_print_output(&trace.response, &config.args.format)?;
             if config.args.show_api {
@@ -146,7 +155,7 @@ fn format_and_print_output(
             println!("{}", serde_yaml::to_string(response)?);
         }
         crate::cli::OutputFormat::Table => {
-            println!("{:#?}", response);
+            println!("{response:#?}");
         }
     }
     Ok(())
@@ -156,7 +165,7 @@ fn format_and_print_output(
 async fn print_api_metadata(protocol_name: &str) -> Result<()> {
     println!("\n📊 API Introspection");
     // TODO: This would require access to the engine reference
-    println!("Protocol: {}", protocol_name);
+    println!("Protocol: {protocol_name}");
     Ok(())
 }
 
@@ -173,7 +182,7 @@ async fn run_all_protocols(analyzer: DemoAnalyzer, config: &DemoConfig) -> Resul
                 protocol_name: protocol_name.clone(),
                 response: trace.response,
             }),
-            Err(e) => eprintln!("Error executing {} protocol: {}", protocol_name, e),
+            Err(e) => eprintln!("Error executing {protocol_name} protocol: {e}"),
         }
     }
 
@@ -206,6 +215,8 @@ fn protocol_to_string(protocol: &Protocol) -> String {
         Protocol::Cli => "cli".to_string(),
         Protocol::Http => "http".to_string(),
         Protocol::Mcp => "mcp".to_string(),
+        #[cfg(feature = "tui")]
+        Protocol::Tui => "tui".to_string(),
         Protocol::All => "all".to_string(),
     }
 }
@@ -216,6 +227,8 @@ fn print_protocol_banner(protocol: &Protocol) {
         Protocol::Cli => println!("🚀 CLI Protocol Demo"),
         Protocol::Http => println!("🌐 HTTP Protocol Demo"),
         Protocol::Mcp => println!("🔌 MCP Protocol Demo"),
+        #[cfg(feature = "tui")]
+        Protocol::Tui => println!("📺 TUI Protocol Demo"),
         Protocol::All => println!("🎯 All Protocols Demo"),
     }
 }
@@ -236,6 +249,8 @@ struct DemoAnalyzer {
 
 enum AnalysisResults {
     Web,
+    #[cfg(feature = "tui")]
+    Tui,
     Single(ProtocolTrace),
     Multiple(Vec<ProtocolTrace>),
 }
@@ -248,6 +263,8 @@ struct ProtocolTrace {
 
 enum DemoOutput {
     Web,
+    #[cfg(feature = "tui")]
+    Tui,
     Single(ProtocolTrace),
     Multiple(Vec<ProtocolTrace>),
 }
@@ -317,14 +334,14 @@ fn parse_dag_data(dag_data: &serde_json::Value) -> Option<crate::models::dag::De
         return Some(crate::models::dag::DependencyGraph {
             nodes: (0..node_count)
                 .map(|i| {
-                    let node_id = format!("node_{}", i);
+                    let node_id = format!("node_{i}");
                     (
                         node_id.clone(),
                         crate::models::dag::NodeInfo {
                             id: node_id,
-                            label: format!("Module {}", i),
+                            label: format!("Module {i}"),
                             node_type: crate::models::dag::NodeType::Module,
-                            file_path: format!("module_{}.rs", i),
+                            file_path: format!("module_{i}.rs"),
                             line_number: 1,
                             complexity: 1,
                             metadata: std::collections::HashMap::new(),
@@ -355,7 +372,7 @@ async fn run_web_demo(
     use std::time::Instant;
 
     let version = env!("CARGO_PKG_VERSION");
-    println!("🎯 PAIML MCP Agent Toolkit Demo v{}", version);
+    println!("🎯 PAIML MCP Agent Toolkit Demo v{version}");
     println!("📁 Repository: {}", repo_path.display());
     println!("\n🔍 Analyzing codebase...");
     info!("Starting codebase analysis");
@@ -436,19 +453,16 @@ async fn run_web_demo(
         dag_result,
     )
     .await?;
-    let url = format!("http://127.0.0.1:{}", port);
+    let url = format!("http://127.0.0.1:{port}");
 
-    println!("\n📊 Demo server running at: {}", url);
-    println!("   Analysis completed in {} ms", elapsed);
+    println!("\n📊 Demo server running at: {url}");
+    println!("   Analysis completed in {elapsed} ms");
 
     // Open browser unless disabled
     #[cfg(not(feature = "no-demo"))]
     if !no_browser {
         if let Err(e) = webbrowser::open(&url) {
-            println!(
-                "   Please open {} in your browser (auto-open failed: {})",
-                url, e
-            );
+            println!("   Please open {url} in your browser (auto-open failed: {e})");
         }
     }
 
@@ -683,5 +697,50 @@ pub enum Protocol {
     Cli,
     Http,
     Mcp,
+    #[cfg(feature = "tui")]
+    Tui,
     All,
+}
+
+// TUI demo runner function
+#[cfg(feature = "tui")]
+async fn run_tui_demo(repo_path: std::path::PathBuf) -> Result<()> {
+    use adapters::tui::TuiDemoAdapter;
+
+    println!("📺 Starting TUI Demo for: {}", repo_path.display());
+
+    let mut adapter = TuiDemoAdapter::new()
+        .map_err(|e| anyhow::anyhow!("Failed to create TUI adapter: {}", e))?;
+
+    // Initialize terminal
+    adapter
+        .initialize()
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to initialize TUI: {}", e))?;
+
+    // Start analysis
+    let analyze_request = crate::demo::adapters::tui::TuiRequest {
+        action: "analyze".to_string(),
+        params: {
+            let mut params = std::collections::HashMap::new();
+            params.insert(
+                "path".to_string(),
+                serde_json::Value::String(repo_path.to_string_lossy().into_owned()),
+            );
+            params
+        },
+    };
+
+    let _response = adapter
+        .handle_request(analyze_request)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to start analysis: {}", e))?;
+
+    // Run the main event loop
+    adapter
+        .run_event_loop()
+        .await
+        .map_err(|e| anyhow::anyhow!("TUI event loop failed: {}", e))?;
+
+    Ok(())
 }

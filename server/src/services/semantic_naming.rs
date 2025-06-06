@@ -71,13 +71,13 @@ impl SemanticNamer {
             .replace(['/', '\\'], separator);
 
         // Special handling for index/mod files
-        if module_path.ends_with(&format!("{}index", separator)) {
+        if module_path.ends_with(&format!("{separator}index")) {
             module_path
-                .trim_end_matches(&format!("{}index", separator))
+                .trim_end_matches(&format!("{separator}index"))
                 .to_string()
-        } else if module_path.ends_with(&format!("{}mod", separator)) {
+        } else if module_path.ends_with(&format!("{separator}mod")) {
             module_path
-                .trim_end_matches(&format!("{}mod", separator))
+                .trim_end_matches(&format!("{separator}mod"))
                 .to_string()
         } else {
             module_path
@@ -105,6 +105,8 @@ impl SemanticNamer {
             "js" | "jsx" => "javascript",
             "go" => "go",
             "java" => "java",
+            "c" | "h" => "c",
+            "cpp" | "cc" | "cxx" | "hpp" | "hxx" => "cpp",
             _ => "unknown",
         }
     }

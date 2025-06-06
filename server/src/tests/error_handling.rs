@@ -140,7 +140,7 @@ mod error_handling_tests {
         let error = TemplateError::InvalidUri {
             uri: "bad://uri".to_string(),
         };
-        let debug_str = format!("{:?}", error);
+        let debug_str = format!("{error:?}");
         assert!(debug_str.contains("InvalidUri"));
         assert!(debug_str.contains("bad://uri"));
     }

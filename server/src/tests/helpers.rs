@@ -27,7 +27,7 @@ mod helpers_tests {
             let template = "{{snake_case name}}";
             let data = json!({"name": input});
             let result = handlebars.render_template(template, &data).unwrap();
-            assert_eq!(result, expected, "Failed for input: {}", input);
+            assert_eq!(result, expected, "Failed for input: {input}");
         }
     }
 
@@ -54,7 +54,7 @@ mod helpers_tests {
             let template = "{{kebab_case name}}";
             let data = json!({"name": input});
             let result = handlebars.render_template(template, &data).unwrap();
-            assert_eq!(result, expected, "Failed for input: {}", input);
+            assert_eq!(result, expected, "Failed for input: {input}");
         }
     }
 
@@ -80,7 +80,7 @@ mod helpers_tests {
             let template = "{{pascal_case name}}";
             let data = json!({"name": input});
             let result = handlebars.render_template(template, &data).unwrap();
-            assert_eq!(result, expected, "Failed for input: {}", input);
+            assert_eq!(result, expected, "Failed for input: {input}");
         }
     }
 

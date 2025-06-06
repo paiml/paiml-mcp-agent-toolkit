@@ -345,7 +345,7 @@ impl ProofSource for MockProofSource {
             // Generate mock annotations with unique file names per source
             for i in 0..annotation_count {
                 let location = Location::new(
-                    std::path::PathBuf::from(format!("{}_{}.rs", tool_name, i)),
+                    std::path::PathBuf::from(format!("{tool_name}_{i}.rs")),
                     i as u32 * 10,
                     (i as u32 + 1) * 10,
                 );

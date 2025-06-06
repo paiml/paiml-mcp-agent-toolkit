@@ -521,10 +521,10 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
     if error_count > 0 || warning_count > 0 {
         output.push_str("## Issues Found\n\n");
         if error_count > 0 {
-            output.push_str(&format!("❌ **Errors**: {}\n", error_count));
+            output.push_str(&format!("❌ **Errors**: {error_count}\n"));
         }
         if warning_count > 0 {
-            output.push_str(&format!("⚠️  **Warnings**: {}\n", warning_count));
+            output.push_str(&format!("⚠️  **Warnings**: {warning_count}\n"));
         }
         output.push('\n');
     }
@@ -564,7 +564,7 @@ pub fn format_complexity_report(report: &ComplexityReport) -> String {
     }
 
     for (file, violations) in violations_by_file {
-        output.push_str(&format!("### {}\n\n", file));
+        output.push_str(&format!("### {file}\n\n"));
 
         for violation in violations {
             match violation {

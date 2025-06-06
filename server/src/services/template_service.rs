@@ -16,7 +16,7 @@ pub async fn get_template_content<T: TemplateServerTrait>(
         .get_template_content(uri)
         .await
         .map(|arc_str| arc_str.to_string())
-        .map_err(|_| TemplateError::NotFound(format!("Template content not found: {}", uri)))
+        .map_err(|_| TemplateError::NotFound(format!("Template content not found: {uri}")))
 }
 
 pub async fn generate_template<T: TemplateServerTrait>(
@@ -48,7 +48,7 @@ pub async fn generate_template<T: TemplateServerTrait>(
     let template_content = server
         .get_template_content(uri)
         .await
-        .map_err(|_| TemplateError::NotFound(format!("Template content not found: {}", uri)))?;
+        .map_err(|_| TemplateError::NotFound(format!("Template content not found: {uri}")))?;
 
     // Render template
     let rendered =
@@ -107,7 +107,7 @@ async fn generate_context(
         },
         _ => {
             return Err(TemplateError::InvalidUri {
-                uri: format!("template://context/{}/ast", toolchain),
+                uri: format!("template://context/{toolchain}/ast"),
             })
         }
     };
@@ -127,7 +127,7 @@ pub async fn list_templates<T: TemplateServerTrait>(
 ) -> Result<Vec<Arc<TemplateResource>>, TemplateError> {
     let prefix = build_template_prefix(category, toolchain);
     let mut templates = server.list_templates(&prefix).await.map_err(|_| {
-        TemplateError::NotFound(format!("Failed to list templates with prefix: {}", prefix))
+        TemplateError::NotFound(format!("Failed to list templates with prefix: {prefix}"))
     })?;
 
     // Filter by toolchain if specified but category is not
@@ -176,8 +176,8 @@ fn parse_template_uri(uri: &str) -> Result<(&str, &str, &str), TemplateError> {
 fn build_template_prefix(category: Option<&str>, toolchain: Option<&str>) -> String {
     match (category, toolchain) {
         (None, None) => String::new(), // Empty prefix to match all
-        (Some(cat), None) => format!("{}/", cat),
-        (Some(cat), Some(tc)) => format!("{}/{}/", cat, tc),
+        (Some(cat), None) => format!("{cat}/"),
+        (Some(cat), Some(tc)) => format!("{cat}/{tc}/"),
         (None, Some(_)) => String::new(), // Invalid case, return empty
     }
 }
@@ -187,7 +187,7 @@ fn extract_filename(category: &str) -> String {
         "makefile" => "Makefile".to_string(),
         "readme" => "README.md".to_string(),
         "gitignore" => ".gitignore".to_string(),
-        _ => format!("{}.txt", category),
+        _ => format!("{category}.txt"),
     }
 }
 
@@ -217,7 +217,7 @@ fn validate_parameters(
                     if !regex.is_match(str_value) {
                         return Err(TemplateError::ValidationError {
                             parameter: spec.name.clone(),
-                            reason: format!("value does not match pattern: {}", pattern),
+                            reason: format!("value does not match pattern: {pattern}"),
                         });
                     }
                 }
@@ -258,7 +258,7 @@ pub async fn scaffold_project<T: TemplateServerTrait>(
             _ => continue,
         };
 
-        let uri = format!("template://{}/{}/{}", template_type, toolchain, variant);
+        let uri = format!("template://{template_type}/{toolchain}/{variant}");
 
         match generate_template(server.as_ref(), &uri, params_map.clone()).await {
             Ok(generated) => {
@@ -384,7 +384,7 @@ pub async fn validate_template<T: TemplateServerTrait>(
                         if !regex.is_match(str_val) {
                             errors.push(ValidationError {
                                 field: key.clone(),
-                                message: format!("Does not match pattern: {}", pattern),
+                                message: format!("Does not match pattern: {pattern}"),
                             });
                         }
                     }

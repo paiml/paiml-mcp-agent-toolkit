@@ -88,7 +88,7 @@ async fn test_claude_code_rust_cli_workflow() {
                 // It may show "Build artifacts" section header or the actual patterns
                 assert!(content.contains("target/") || content.contains("Build artifacts"));
             }
-            _ => panic!("Unexpected template type: {}", template_type),
+            _ => panic!("Unexpected template type: {template_type}"),
         }
     }
 
@@ -146,12 +146,7 @@ async fn test_toolchain_scaffolding(
     let result = response.result.unwrap();
     let generated = result["generated"].as_array().unwrap();
 
-    assert_eq!(
-        generated.len(),
-        3,
-        "Wrong number of files for {}",
-        toolchain
-    );
+    assert_eq!(generated.len(), 3, "Wrong number of files for {toolchain}");
     verify_generated_files(generated, toolchain, project_name, description);
 }
 
@@ -173,14 +168,9 @@ fn create_scaffold_request(toolchain: &str, project_name: &str, description: &st
 fn validate_scaffold_response(response: &crate::models::mcp::McpResponse, toolchain: &str) {
     assert!(
         response.result.is_some(),
-        "Failed for toolchain: {}",
-        toolchain
+        "Failed for toolchain: {toolchain}"
     );
-    assert!(
-        response.error.is_none(),
-        "Error for toolchain: {}",
-        toolchain
-    );
+    assert!(response.error.is_none(), "Error for toolchain: {toolchain}");
 }
 
 fn verify_generated_files(
@@ -214,9 +204,9 @@ impl GeneratedFileFlags {
     }
 
     fn assert_all_files_present(&self, toolchain: &str) {
-        assert!(self.has_makefile, "Missing Makefile for {}", toolchain);
-        assert!(self.has_readme, "Missing README for {}", toolchain);
-        assert!(self.has_gitignore, "Missing .gitignore for {}", toolchain);
+        assert!(self.has_makefile, "Missing Makefile for {toolchain}");
+        assert!(self.has_readme, "Missing README for {toolchain}");
+        assert!(self.has_gitignore, "Missing .gitignore for {toolchain}");
     }
 }
 
@@ -247,7 +237,7 @@ fn process_generated_file(
 fn verify_makefile(file: &Value, toolchain: &str, project_name: &str) {
     assert_eq!(
         file["filename"].as_str().unwrap(),
-        &format!("{}/Makefile", project_name)
+        &format!("{project_name}/Makefile")
     );
     let content = file["content"].as_str().unwrap();
     assert!(content.contains(project_name));
@@ -267,7 +257,7 @@ fn verify_makefile_toolchain_specific(content: &str, toolchain: &str) {
 fn verify_readme(file: &Value, project_name: &str, description: &str) {
     assert_eq!(
         file["filename"].as_str().unwrap(),
-        &format!("{}/README.md", project_name)
+        &format!("{project_name}/README.md")
     );
     let content = file["content"].as_str().unwrap();
     assert!(content.contains(project_name));
@@ -277,7 +267,7 @@ fn verify_readme(file: &Value, project_name: &str, description: &str) {
 fn verify_gitignore(file: &Value, toolchain: &str, project_name: &str) {
     assert_eq!(
         file["filename"].as_str().unwrap(),
-        &format!("{}/.gitignore", project_name)
+        &format!("{project_name}/.gitignore")
     );
     let content = file["content"].as_str().unwrap();
 
@@ -400,14 +390,9 @@ async fn test_naming_convention_critical_requirement() {
         let response = handle_tool_call(server.clone(), request).await;
         assert!(
             response.result.is_some(),
-            "Failed for toolchain: {}",
-            toolchain
+            "Failed for toolchain: {toolchain}"
         );
-        assert!(
-            response.error.is_none(),
-            "Error for toolchain: {}",
-            toolchain
-        );
+        assert!(response.error.is_none(), "Error for toolchain: {toolchain}");
 
         let result = response.result.unwrap();
         let generated = result["generated"].as_array().unwrap();
@@ -420,29 +405,22 @@ async fn test_naming_convention_critical_requirement() {
             // Critical: Check for old naming patterns that must not exist
             assert!(
                 !content.contains("mcp-agent-toolkit") || content.contains("paiml-mcp-agent-toolkit"),
-                "Found incorrect 'mcp-agent-toolkit' (without paiml- prefix) in {} for toolchain {}",
-                filename, toolchain
+                "Found incorrect 'mcp-agent-toolkit' (without paiml- prefix) in {filename} for toolchain {toolchain}"
             );
 
             assert!(
                 !content.contains("paiml-agent-toolkit"),
-                "Found incorrect 'paiml-agent-toolkit' (missing -mcp-) in {} for toolchain {}",
-                filename,
-                toolchain
+                "Found incorrect 'paiml-agent-toolkit' (missing -mcp-) in {filename} for toolchain {toolchain}"
             );
 
             assert!(
                 !content.contains("mcp_server_stateless"),
-                "Found old binary name 'mcp_server_stateless' in {} for toolchain {}",
-                filename,
-                toolchain
+                "Found old binary name 'mcp_server_stateless' in {filename} for toolchain {toolchain}"
             );
 
             assert!(
                 !content.contains("mcp-server-"),
-                "Found old artifact pattern 'mcp-server-' in {} for toolchain {}",
-                filename,
-                toolchain
+                "Found old artifact pattern 'mcp-server-' in {filename} for toolchain {toolchain}"
             );
 
             // Positive test: Ensure proper naming is used where appropriate
@@ -452,9 +430,7 @@ async fn test_naming_convention_critical_requirement() {
                     content.contains("paiml-mcp-agent-toolkit")
                         || content.contains("PAIML MCP Agent Toolkit")
                         || !content.to_lowercase().contains("toolkit"), // If no toolkit mention, that's ok
-                    "README should use correct project name in {} for toolchain {}",
-                    filename,
-                    toolchain
+                    "README should use correct project name in {filename} for toolchain {toolchain}"
                 );
             }
         }
@@ -504,26 +480,22 @@ async fn test_naming_convention_in_individual_templates() {
             assert!(
                 !content.contains("mcp-agent-toolkit")
                     || content.contains("paiml-mcp-agent-toolkit"),
-                "Found incorrect 'mcp-agent-toolkit' in template {}",
-                uri
+                "Found incorrect 'mcp-agent-toolkit' in template {uri}"
             );
 
             assert!(
                 !content.contains("paiml-agent-toolkit"),
-                "Found incorrect 'paiml-agent-toolkit' in template {}",
-                uri
+                "Found incorrect 'paiml-agent-toolkit' in template {uri}"
             );
 
             assert!(
                 !content.contains("mcp_server_stateless"),
-                "Found old binary name in template {}",
-                uri
+                "Found old binary name in template {uri}"
             );
 
             assert!(
                 !content.contains("mcp-server-"),
-                "Found old artifact pattern in template {}",
-                uri
+                "Found old artifact pattern in template {uri}"
             );
         }
     }
@@ -641,7 +613,7 @@ serde = "1.0"
     let content = result["content"][0]["text"].as_str().unwrap();
 
     // Debug output to see what's actually generated
-    eprintln!("Generated content:\n{}", content);
+    eprintln!("Generated content:\n{content}");
 
     // Verify the content contains expected elements
     assert!(content.contains("# Project Context: rust Project"));

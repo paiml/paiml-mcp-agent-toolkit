@@ -13,6 +13,24 @@ This specification details the implementation of a unified CLI interface for the
 3. **Runtime Dispatch**: 13ns overhead for mode detection (negligible vs 7ms startup)
 4. **Binary Unification**: Single executable supports both MCP and CLI modes
 
+### Supported Languages
+
+The PAIML MCP Agent Toolkit provides comprehensive language support for:
+
+- **Rust** - Full AST parsing with syn, complexity analysis, and dependency tracking
+- **TypeScript/JavaScript** - Support for .ts, .tsx, .js, .jsx files with modern syntax
+- **Python** - Traditional Python and .pyi type stubs
+- **C** - Complete C language support with goto tracking, macros, and complexity metrics
+- **C++** - Full C++ support including templates, virtual methods, and operator overloading
+- **Cython** - Hybrid Python/C analysis for .pyx and .pxd files
+
+All languages support:
+- AST-based complexity analysis (McCabe Cyclomatic and Cognitive)
+- Dead code detection with confidence scoring
+- Dependency graph generation
+- SATD (Self-Admitted Technical Debt) detection
+- Ripgrep-style .gitignore respect for accurate file discovery
+
 ### Mode Detection Heuristic
 
 ```rust

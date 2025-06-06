@@ -19,6 +19,8 @@ pub enum Language {
     TypeScript,
     JavaScript,
     Python,
+    C,
+    Cpp,
 }
 
 /// Types of code clones detected
@@ -220,107 +222,147 @@ impl UniversalFeatureExtractor {
             Language::Rust => self.tokenize_rust(source),
             Language::TypeScript | Language::JavaScript => self.tokenize_typescript(source),
             Language::Python => self.tokenize_python(source),
+            Language::C | Language::Cpp => self.tokenize_c_style(source),
         }
     }
 
     /// Simple Rust tokenizer (would use syn in production)
+    fn handle_whitespace(&self, tokens: &mut Vec<Token>) {
+        if !self.config.ignore_comments {
+            tokens.push(Token::new(TokenKind::Whitespace));
+        }
+    }
+
+    fn handle_comment(
+        &self,
+        chars: &mut std::iter::Peekable<std::str::CharIndices>,
+        tokens: &mut Vec<Token>,
+    ) {
+        if !self.config.ignore_comments {
+            while let Some((_, ch)) = chars.peek() {
+                if *ch == '\n' {
+                    break;
+                }
+                chars.next();
+            }
+            tokens.push(Token::new(TokenKind::Comment));
+        }
+    }
+
+    fn handle_string_literal(
+        &self,
+        ch: char,
+        chars: &mut std::iter::Peekable<std::str::CharIndices>,
+        tokens: &mut Vec<Token>,
+    ) {
+        let mut literal = String::new();
+        literal.push(ch);
+        while let Some((_, ch)) = chars.next() {
+            literal.push(ch);
+            if ch == '"' {
+                break;
+            }
+            if ch == '\\' {
+                if let Some((_, escaped)) = chars.next() {
+                    literal.push(escaped);
+                }
+            }
+        }
+        tokens.push(Token::new(TokenKind::Literal(literal)));
+    }
+
+    fn handle_number(
+        &self,
+        ch: char,
+        chars: &mut std::iter::Peekable<std::str::CharIndices>,
+        tokens: &mut Vec<Token>,
+    ) {
+        let mut number = String::new();
+        number.push(ch);
+        while let Some((_, ch)) = chars.peek() {
+            if ch.is_ascii_alphanumeric() || *ch == '.' || *ch == '_' {
+                number.push(*ch);
+                chars.next();
+            } else {
+                break;
+            }
+        }
+        tokens.push(Token::new(TokenKind::Literal(number)));
+    }
+
+    fn handle_identifier(
+        &self,
+        ch: char,
+        chars: &mut std::iter::Peekable<std::str::CharIndices>,
+        tokens: &mut Vec<Token>,
+    ) {
+        let mut ident = String::new();
+        ident.push(ch);
+        while let Some((_, ch)) = chars.peek() {
+            if ch.is_ascii_alphanumeric() || *ch == '_' {
+                ident.push(*ch);
+                chars.next();
+            } else {
+                break;
+            }
+        }
+
+        // Check if it's a keyword
+        let token = if self.is_rust_keyword(&ident) {
+            Token::new(TokenKind::Keyword(ident))
+        } else {
+            Token::new(TokenKind::Identifier(ident))
+        };
+        tokens.push(token);
+    }
+
+    fn handle_operator(
+        &self,
+        ch: char,
+        chars: &mut std::iter::Peekable<std::str::CharIndices>,
+        tokens: &mut Vec<Token>,
+    ) {
+        let mut op = String::new();
+        op.push(ch);
+
+        // Handle multi-character operators
+        if let Some((_, next_ch)) = chars.peek() {
+            let two_char = format!("{ch}{next_ch}");
+            if self.is_rust_operator(&two_char) {
+                op.push(*next_ch);
+                chars.next();
+            }
+        }
+
+        if self.is_rust_operator(&op) {
+            tokens.push(Token::new(TokenKind::Operator(op)));
+        } else if self.is_delimiter(ch) {
+            tokens.push(Token::new(TokenKind::Delimiter(op)));
+        }
+    }
+
     fn tokenize_rust(&self, source: &str) -> Vec<Token> {
         let mut tokens = Vec::new();
         let mut chars = source.char_indices().peekable();
 
-        while let Some((i, ch)) = chars.next() {
+        while let Some((_, ch)) = chars.next() {
             match ch {
                 // Skip whitespace
-                ' ' | '\t' | '\n' | '\r' => {
-                    if !self.config.ignore_comments {
-                        tokens.push(Token::new(TokenKind::Whitespace));
-                    }
-                }
+                ' ' | '\t' | '\n' | '\r' => self.handle_whitespace(&mut tokens),
                 // Comments
                 '/' if chars.peek().map(|(_, c)| *c) == Some('/') => {
-                    if !self.config.ignore_comments {
-                        let _comment_start = i;
-                        while let Some((_, ch)) = chars.peek() {
-                            if *ch == '\n' {
-                                break;
-                            }
-                            chars.next();
-                        }
-                        tokens.push(Token::new(TokenKind::Comment));
-                    }
+                    self.handle_comment(&mut chars, &mut tokens);
                 }
                 // String literals
-                '"' => {
-                    let mut literal = String::new();
-                    literal.push(ch);
-                    while let Some((_, ch)) = chars.next() {
-                        literal.push(ch);
-                        if ch == '"' {
-                            break;
-                        }
-                        if ch == '\\' {
-                            if let Some((_, escaped)) = chars.next() {
-                                literal.push(escaped);
-                            }
-                        }
-                    }
-                    tokens.push(Token::new(TokenKind::Literal(literal)));
-                }
+                '"' => self.handle_string_literal(ch, &mut chars, &mut tokens),
                 // Numbers
-                ch if ch.is_ascii_digit() => {
-                    let mut number = String::new();
-                    number.push(ch);
-                    while let Some((_, ch)) = chars.peek() {
-                        if ch.is_ascii_alphanumeric() || *ch == '.' || *ch == '_' {
-                            number.push(*ch);
-                            chars.next();
-                        } else {
-                            break;
-                        }
-                    }
-                    tokens.push(Token::new(TokenKind::Literal(number)));
-                }
+                ch if ch.is_ascii_digit() => self.handle_number(ch, &mut chars, &mut tokens),
                 // Identifiers and keywords
                 ch if ch.is_ascii_alphabetic() || ch == '_' => {
-                    let mut ident = String::new();
-                    ident.push(ch);
-                    while let Some((_, ch)) = chars.peek() {
-                        if ch.is_ascii_alphanumeric() || *ch == '_' {
-                            ident.push(*ch);
-                            chars.next();
-                        } else {
-                            break;
-                        }
-                    }
-
-                    // Check if it's a keyword
-                    let token = if self.is_rust_keyword(&ident) {
-                        Token::new(TokenKind::Keyword(ident))
-                    } else {
-                        Token::new(TokenKind::Identifier(ident))
-                    };
-                    tokens.push(token);
+                    self.handle_identifier(ch, &mut chars, &mut tokens);
                 }
                 // Operators and delimiters
-                _ => {
-                    let mut op = String::new();
-                    op.push(ch);
-
-                    // Handle multi-character operators
-                    if let Some((_, next_ch)) = chars.peek() {
-                        let two_char = format!("{}{}", ch, next_ch);
-                        if self.is_rust_operator(&two_char) {
-                            op.push(*next_ch);
-                            chars.next();
-                        }
-                    }
-
-                    if self.is_rust_operator(&op) {
-                        tokens.push(Token::new(TokenKind::Operator(op)));
-                    } else if self.is_delimiter(ch) {
-                        tokens.push(Token::new(TokenKind::Delimiter(op)));
-                    }
-                }
+                _ => self.handle_operator(ch, &mut chars, &mut tokens),
             }
         }
 
@@ -417,6 +459,79 @@ impl UniversalFeatureExtractor {
         }
 
         tokens
+    }
+
+    /// Tokenize C/C++ source code
+    fn tokenize_c_style(&self, source: &str) -> Vec<Token> {
+        // Simplified tokenizer for C/C++ - in production would use tree-sitter-c/cpp
+        self.tokenize_generic(
+            source,
+            &[
+                "auto",
+                "break",
+                "case",
+                "char",
+                "const",
+                "continue",
+                "default",
+                "do",
+                "double",
+                "else",
+                "enum",
+                "extern",
+                "float",
+                "for",
+                "goto",
+                "if",
+                "inline",
+                "int",
+                "long",
+                "register",
+                "restrict",
+                "return",
+                "short",
+                "signed",
+                "sizeof",
+                "static",
+                "struct",
+                "switch",
+                "typedef",
+                "union",
+                "unsigned",
+                "void",
+                "volatile",
+                "while",
+                "_Bool",
+                "_Complex",
+                "_Imaginary",
+                // C++ additional keywords
+                "class",
+                "namespace",
+                "template",
+                "typename",
+                "virtual",
+                "override",
+                "private",
+                "protected",
+                "public",
+                "new",
+                "delete",
+                "try",
+                "catch",
+                "throw",
+                "using",
+                "friend",
+                "constexpr",
+                "explicit",
+                "mutable",
+                "operator",
+                "this",
+                "nullptr",
+                "bool",
+                "true",
+                "false",
+            ],
+        )
     }
 
     /// Check if string is a Rust keyword
@@ -528,7 +643,7 @@ impl UniversalFeatureExtractor {
             let id = self
                 .identifier_counter
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            let canonical = format!("VAR_{}", id);
+            let canonical = format!("VAR_{id}");
             self.identifier_map
                 .insert(name.to_string(), canonical.clone());
             canonical
@@ -750,13 +865,21 @@ impl DuplicateDetectionEngine {
                     || (line.contains("(") && line.contains(") {"))
             }
             Language::Python => line.starts_with("def ") && line.contains("("),
+            Language::C | Language::Cpp => {
+                // C/C++ function detection (simplified)
+                line.contains("(") && (line.contains(") {") || line.ends_with("{"))
+            }
         }
     }
 
     /// Check if line ends a function
     fn is_function_end(&self, line: &str, lang: Language) -> bool {
         match lang {
-            Language::Rust | Language::TypeScript | Language::JavaScript => line == "}",
+            Language::Rust
+            | Language::TypeScript
+            | Language::JavaScript
+            | Language::C
+            | Language::Cpp => line == "}",
             Language::Python => {
                 // Python function ends when we reach another def or class at the same level
                 line.starts_with("def ")

@@ -103,7 +103,7 @@ mod coverage_improvement {
         let report = aggregate_results(file_metrics);
 
         // Should handle empty input gracefully
-        assert!(format!("{:?}", report).contains("ComplexityReport"));
+        assert!(format!("{report:?}").contains("ComplexityReport"));
     }
 
     #[test]
@@ -133,7 +133,7 @@ mod coverage_improvement {
         let report = aggregate_results(file_metrics);
 
         // Should create valid report
-        assert!(format!("{:?}", report).contains("ComplexityReport"));
+        assert!(format!("{report:?}").contains("ComplexityReport"));
     }
 
     #[test]
@@ -287,22 +287,22 @@ mod coverage_improvement {
 
         // Test various error types to improve coverage
         let template_error = TemplateError::NotFound("test".to_string());
-        assert!(format!("{}", template_error).contains("test"));
+        assert!(format!("{template_error}").contains("test"));
 
         let validation_error = TemplateError::ValidationError {
             parameter: "test_param".to_string(),
             reason: "error1".to_string(),
         };
-        assert!(format!("{}", validation_error).contains("test_param"));
+        assert!(format!("{validation_error}").contains("test_param"));
 
         let invalid_uri_error = TemplateError::InvalidUri {
             uri: "invalid://test".to_string(),
         };
-        assert!(format!("{}", invalid_uri_error).contains("invalid://test"));
+        assert!(format!("{invalid_uri_error}").contains("invalid://test"));
 
         // Test debug formatting
-        assert!(!format!("{:?}", template_error).is_empty());
-        assert!(!format!("{:?}", validation_error).is_empty());
+        assert!(!format!("{template_error:?}").is_empty());
+        assert!(!format!("{validation_error:?}").is_empty());
 
         // Test MCP error codes
         assert_eq!(template_error.to_mcp_code(), -32000);

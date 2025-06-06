@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use axum::body::Body;
 use axum::http::Method;
 use serde_json::{json, Value};
-use tracing::{debug, instrument};
+use tracing::debug;
 
 use crate::cli::{
     AnalyzeCommands, Commands, ComplexityOutputFormat, ContextFormat, DagType, OutputFormat,
@@ -81,6 +81,12 @@ impl CliAdapter {
                 *merge_threshold,
             ),
             Commands::Serve { host, port, cors } => Self::decode_serve(host, *port, *cors),
+            Commands::Diagnose(_) => {
+                // Diagnose command is handled directly in the CLI, not through the unified protocol
+                Err(ProtocolError::InvalidFormat(
+                    "Diagnose command should be handled directly by CLI".to_string(),
+                ))
+            }
         }
     }
 
@@ -124,13 +130,13 @@ impl CliAdapter {
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         let mut query_params = Vec::new();
         if let Some(tc) = toolchain {
-            query_params.push(format!("toolchain={}", tc));
+            query_params.push(format!("toolchain={tc}"));
         }
         if let Some(cat) = category {
-            query_params.push(format!("category={}", cat));
+            query_params.push(format!("category={cat}"));
         }
         if !query_params.is_empty() {
-            query_params.push(format!("format={:?}", format).to_lowercase());
+            query_params.push(format!("format={format:?}").to_lowercase());
         }
 
         let query_string = if query_params.is_empty() {
@@ -141,7 +147,7 @@ impl CliAdapter {
 
         Ok((
             Method::GET,
-            format!("/api/v1/templates{}", query_string),
+            format!("/api/v1/templates{query_string}"),
             json!({}),
             Some(format.clone()),
         ))
@@ -354,6 +360,23 @@ impl CliAdapter {
                     None,
                 ))
             }
+            AnalyzeCommands::Provability {
+                project_path,
+                functions,
+                analysis_depth,
+                format,
+                high_confidence_only,
+                include_evidence,
+                output,
+            } => Self::decode_analyze_provability(
+                project_path,
+                functions,
+                *analysis_depth,
+                format,
+                *high_confidence_only,
+                *include_evidence,
+                output,
+            ),
         }
     }
 
@@ -567,6 +590,32 @@ impl CliAdapter {
         ))
     }
 
+    fn decode_analyze_provability(
+        project_path: &std::path::Path,
+        functions: &[String],
+        analysis_depth: usize,
+        format: &crate::cli::ProvabilityOutputFormat,
+        high_confidence_only: bool,
+        include_evidence: bool,
+        output: &Option<std::path::PathBuf>,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let body = json!({
+            "project_path": project_path.to_string_lossy(),
+            "functions": if functions.is_empty() { None } else { Some(functions) },
+            "analysis_depth": &analysis_depth,
+            "format": provability_format_to_string(format),
+            "high_confidence_only": &high_confidence_only,
+            "include_evidence": &include_evidence,
+            "output_path": output
+        });
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/provability".to_string(),
+            body,
+            Some(OutputFormat::Json),
+        ))
+    }
+
     fn decode_serve(
         host: &str,
         port: u16,
@@ -595,7 +644,7 @@ impl CliAdapter {
         let body = json!({
             "path": path.as_ref().map(|p| p.to_string_lossy().to_string()),
             "url": url,
-            "format": format!("{:?}", format).to_lowercase(),
+            "format": format!("{format:?}").to_lowercase(),
             "no_browser": &no_browser,
             "port": port,
             "cli_mode": &cli,
@@ -630,7 +679,6 @@ impl ProtocolAdapter for CliAdapter {
         Protocol::Cli
     }
 
-    #[instrument(skip_all)]
     async fn decode(&self, input: Self::Input) -> Result<UnifiedRequest, ProtocolError> {
         debug!("Decoding CLI input: {:?}", input.command_name);
 
@@ -662,20 +710,19 @@ impl ProtocolAdapter for CliAdapter {
         Ok(unified_request)
     }
 
-    #[instrument(skip_all)]
     async fn encode(&self, response: UnifiedResponse) -> Result<Self::Output, ProtocolError> {
         debug!(status = %response.status, "Encoding CLI response");
 
         let body_bytes = axum::body::to_bytes(response.body, usize::MAX)
             .await
             .map_err(|e| {
-                ProtocolError::EncodeError(format!("Failed to read response body: {}", e))
+                ProtocolError::EncodeError(format!("Failed to read response body: {e}"))
             })?;
 
         // For CLI, we typically want to output to stdout/stderr
         if response.status.is_success() {
             let content = String::from_utf8(body_bytes.to_vec()).map_err(|e| {
-                ProtocolError::EncodeError(format!("Invalid UTF-8 in response: {}", e))
+                ProtocolError::EncodeError(format!("Invalid UTF-8 in response: {e}"))
             })?;
 
             Ok(CliOutput::Success {
@@ -726,6 +773,20 @@ impl CliInput {
     }
 
     /// Create from the parsed CLI arguments
+    fn get_analyze_command_name(analyze_cmd: &AnalyzeCommands) -> &'static str {
+        match analyze_cmd {
+            AnalyzeCommands::Churn { .. } => "analyze-churn",
+            AnalyzeCommands::Complexity { .. } => "analyze-complexity",
+            AnalyzeCommands::Dag { .. } => "analyze-dag",
+            AnalyzeCommands::DeadCode { .. } => "analyze-dead-code",
+            AnalyzeCommands::Satd { .. } => "analyze-satd",
+            AnalyzeCommands::DeepContext { .. } => "analyze-deep-context",
+            AnalyzeCommands::Tdg { .. } => "analyze-tdg",
+            AnalyzeCommands::Makefile { .. } => "analyze-makefile",
+            AnalyzeCommands::Provability { .. } => "analyze-provability",
+        }
+    }
+
     pub fn from_commands(command: Commands) -> Self {
         let command_name = match &command {
             Commands::Generate { .. } => "generate",
@@ -734,18 +795,10 @@ impl CliInput {
             Commands::Search { .. } => "search",
             Commands::Validate { .. } => "validate",
             Commands::Context { .. } => "context",
-            Commands::Analyze(analyze_cmd) => match analyze_cmd {
-                AnalyzeCommands::Churn { .. } => "analyze-churn",
-                AnalyzeCommands::Complexity { .. } => "analyze-complexity",
-                AnalyzeCommands::Dag { .. } => "analyze-dag",
-                AnalyzeCommands::DeadCode { .. } => "analyze-dead-code",
-                AnalyzeCommands::Satd { .. } => "analyze-satd",
-                AnalyzeCommands::DeepContext { .. } => "analyze-deep-context",
-                AnalyzeCommands::Tdg { .. } => "analyze-tdg",
-                AnalyzeCommands::Makefile { .. } => "analyze-makefile",
-            },
+            Commands::Analyze(analyze_cmd) => Self::get_analyze_command_name(analyze_cmd),
             Commands::Demo { .. } => "demo",
             Commands::Serve { .. } => "serve",
+            Commands::Diagnose(_) => "diagnose",
         }
         .to_string();
 
@@ -769,11 +822,11 @@ impl CliOutput {
     pub fn write_and_exit(self) -> ! {
         match self {
             CliOutput::Success { content, exit_code } => {
-                print!("{}", content);
+                print!("{content}");
                 std::process::exit(exit_code);
             }
             CliOutput::Error { message, exit_code } => {
-                eprintln!("Error: {}", message);
+                eprintln!("Error: {message}");
                 std::process::exit(exit_code);
             }
         }
@@ -932,6 +985,16 @@ fn tdg_format_to_string(format: &crate::cli::TdgOutputFormat) -> String {
         crate::cli::TdgOutputFormat::Json => "json".to_string(),
         crate::cli::TdgOutputFormat::Markdown => "markdown".to_string(),
         crate::cli::TdgOutputFormat::Sarif => "sarif".to_string(),
+    }
+}
+
+fn provability_format_to_string(format: &crate::cli::ProvabilityOutputFormat) -> String {
+    match format {
+        crate::cli::ProvabilityOutputFormat::Summary => "summary".to_string(),
+        crate::cli::ProvabilityOutputFormat::Full => "full".to_string(),
+        crate::cli::ProvabilityOutputFormat::Json => "json".to_string(),
+        crate::cli::ProvabilityOutputFormat::Sarif => "sarif".to_string(),
+        crate::cli::ProvabilityOutputFormat::Markdown => "markdown".to_string(),
     }
 }
 

@@ -65,7 +65,7 @@ make install
 Direct command execution from terminal:
 
 ```bash
-paiml-mcp-agent-toolkit generate makefile rust/cli -p project_name=my-project
+pmat generate makefile rust/cli -p project_name=my-project
 ```
 
 ### MCP Mode
@@ -83,10 +83,10 @@ Override auto-detection:
 
 ```bash
 # Force CLI mode
-paiml-mcp-agent-toolkit --mode cli list
+pmat --mode cli list
 
 # Force MCP mode (waits for JSON-RPC input)
-paiml-mcp-agent-toolkit --mode mcp
+pmat --mode mcp
 ```
 
 ## CLI Command Reference
@@ -98,7 +98,7 @@ Generate a single template with parameter substitution.
 #### Synopsis
 
 ```bash
-paiml-mcp-agent-toolkit generate <CATEGORY> <PATH> [OPTIONS]
+pmat generate <CATEGORY> <PATH> [OPTIONS]
 ```
 
 #### Arguments
@@ -166,7 +166,7 @@ Generate multiple templates at once for a complete project setup.
 #### Synopsis
 
 ```bash
-paiml-mcp-agent-toolkit scaffold <TOOLCHAIN> [OPTIONS]
+pmat scaffold <TOOLCHAIN> [OPTIONS]
 ```
 
 #### Arguments
@@ -202,7 +202,7 @@ Display all available templates with filtering options.
 #### Synopsis
 
 ```bash
-paiml-mcp-agent-toolkit list [OPTIONS]
+pmat list [OPTIONS]
 ```
 
 #### Options
@@ -228,7 +228,7 @@ Find templates by searching in names, descriptions, and parameters.
 #### Synopsis
 
 ```bash
-paiml-mcp-agent-toolkit search <QUERY> [OPTIONS]
+pmat search <QUERY> [OPTIONS]
 ```
 
 #### Arguments
@@ -247,7 +247,7 @@ Validate template parameters before generation.
 #### Synopsis
 
 ```bash
-paiml-mcp-agent-toolkit validate <URI> [OPTIONS]
+pmat validate <URI> [OPTIONS]
 ```
 
 #### Arguments
@@ -265,7 +265,7 @@ Generate project context using Abstract Syntax Tree (AST) analysis.
 #### Synopsis
 
 ```bash
-paiml-mcp-agent-toolkit context <TOOLCHAIN> [OPTIONS]
+pmat context <TOOLCHAIN> [OPTIONS]
 ```
 
 #### Arguments
@@ -299,7 +299,7 @@ Performs static complexity analysis using dual algorithms:
 #### Synopsis
 
 ```bash
-paiml-mcp-agent-toolkit analyze complexity [OPTIONS]
+pmat analyze complexity [OPTIONS]
 ```
 
 #### Options
@@ -326,7 +326,7 @@ Analyze code change frequency and patterns to identify maintenance hotspots.
 #### Synopsis
 
 ```bash
-paiml-mcp-agent-toolkit analyze churn [OPTIONS]
+pmat analyze churn [OPTIONS]
 ```
 
 #### Options
@@ -343,7 +343,7 @@ Generate dependency graphs in Mermaid format for visualizing code structure.
 #### Synopsis
 
 ```bash
-paiml-mcp-agent-toolkit analyze dag [OPTIONS]
+pmat analyze dag [OPTIONS]
 ```
 
 #### Options
@@ -366,7 +366,7 @@ Run an interactive demonstration of all PAIML MCP Agent Toolkit capabilities.
 #### Synopsis
 
 ```bash
-paiml-mcp-agent-toolkit demo [OPTIONS]
+pmat demo [OPTIONS]
 ```
 
 #### Options
@@ -399,6 +399,63 @@ paiml-mcp-agent-toolkit demo --path /path/to/repo
 paiml-mcp-agent-toolkit demo --format json
 ```
 
+### Command: `diagnose`
+
+Run self-diagnostics to verify all features are working correctly.
+
+#### Synopsis
+
+```bash
+pmat diagnose [OPTIONS]
+```
+
+#### Options
+
+- `--format <FORMAT>` - Output format for diagnostic report: `pretty`, `json`, `compact` (default: pretty)
+- `--only <ONLY>` - Only run specific feature tests (can be repeated)
+- `--skip <SKIP>` - Skip specific feature tests (can be repeated)
+- `--timeout <TIMEOUT>` - Maximum time to run diagnostics in seconds (default: 60)
+- `-v, --verbose` - Enable verbose output (info level)
+- `--debug` - Enable debug output (debug level)
+- `--trace` - Enable trace output (trace level)
+- `--trace-filter <TRACE_FILTER>` - Custom trace filter (overrides other flags)
+
+#### Description
+
+The diagnose command performs comprehensive self-diagnostics to verify that all toolkit features are functioning correctly. This is useful for:
+
+- Troubleshooting installation issues
+- Verifying feature availability in different environments
+- Generating diagnostic reports for support
+- Automated health checks in CI/CD pipelines
+
+The diagnostics include tests for:
+- Template rendering capabilities
+- AST parsing for all supported languages
+- Cache system functionality
+- File system access
+- Git integration
+- Performance benchmarks
+
+#### Examples
+
+```bash
+# Run full diagnostics with pretty output
+pmat diagnose
+
+# Generate JSON diagnostic report
+pmat diagnose --format json
+
+# Run only specific feature tests  
+pmat diagnose --only template-rendering --only ast-parsing
+
+# Skip slow tests with timeout
+pmat diagnose --skip performance --timeout 30
+
+# Verbose diagnostic output
+pmat diagnose --verbose
+```
+
 ### Command: `serve`
 
 Start the HTTP REST API server for programmatic access to all toolkit capabilities.
@@ -406,7 +463,7 @@ Start the HTTP REST API server for programmatic access to all toolkit capabiliti
 #### Synopsis
 
 ```bash
-paiml-mcp-agent-toolkit serve [OPTIONS]
+pmat serve [OPTIONS]
 ```
 
 #### Options
@@ -760,11 +817,11 @@ Each template supports customizable parameters with validation.
 ```bash
 # Generate multiple files with parameter reuse
 PARAMS="-p project_name=tokio -p has_tests=true"
-paiml-mcp-agent-toolkit generate makefile rust/cli $PARAMS > Makefile
-paiml-mcp-agent-toolkit generate readme rust/cli $PARAMS > README.md
+pmat generate makefile rust/cli $PARAMS > Makefile
+pmat generate readme rust/cli $PARAMS > README.md
 
 # Complexity analysis with jq processing
-paiml-mcp-agent-toolkit analyze complexity --format json | \
+pmat analyze complexity --format json | \
   jq '.files[] | select(.complexity.cyclomatic > 10)'
 ```
 
@@ -840,11 +897,11 @@ If the tool runs in the wrong mode:
 
 ```bash
 # Force CLI mode
-paiml-mcp-agent-toolkit --mode cli list
+pmat --mode cli list
 
 # Check detection
-echo "test" | paiml-mcp-agent-toolkit  # Should wait for JSON-RPC
-paiml-mcp-agent-toolkit list           # Should show CLI output
+echo "test" | pmat  # Should wait for JSON-RPC
+pmat list           # Should show CLI output
 ```
 
 #### Performance Issues

@@ -50,7 +50,7 @@ mod binary_main_tests {
         let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
         // Should not panic and should create a valid filter
-        assert!(format!("{:?}", filter).contains("info") || !format!("{:?}", filter).is_empty());
+        assert!(format!("{filter:?}").contains("info") || !format!("{filter:?}").is_empty());
     }
 
     #[test]

@@ -115,7 +115,7 @@ mod tests {
         // Test uniform distribution (low entropy)
         let uniform_functions: Vec<FunctionComplexity> = (0..100)
             .map(|i| FunctionComplexity {
-                name: format!("func_{}", i),
+                name: format!("func_{i}"),
                 line_start: (i * 10) as u32,
                 line_end: ((i * 10) + 5) as u32,
                 metrics: ComplexityMetrics {
@@ -137,7 +137,7 @@ mod tests {
         // Test varied distribution (high entropy)
         let varied_functions: Vec<FunctionComplexity> = (0..100)
             .map(|i| FunctionComplexity {
-                name: format!("func_{}", i),
+                name: format!("func_{i}"),
                 line_start: (i * 10) as u32,
                 line_end: ((i * 10) + 5) as u32,
                 metrics: ComplexityMetrics {
@@ -190,7 +190,7 @@ mod tests {
             },
             functions: (0..150)
                 .map(|i| FunctionComplexity {
-                    name: format!("func_{}", i),
+                    name: format!("func_{i}"),
                     line_start: (i * 10) as u32,
                     line_end: ((i * 10) + 5) as u32,
                     metrics: ComplexityMetrics {
@@ -220,7 +220,7 @@ mod tests {
         // Test low variation
         let low_var_functions: Vec<FunctionComplexity> = (0..50)
             .map(|i| FunctionComplexity {
-                name: format!("func_{}", i),
+                name: format!("func_{i}"),
                 line_start: (i * 10) as u32,
                 line_end: ((i * 10) + 5) as u32,
                 metrics: ComplexityMetrics {
@@ -239,7 +239,7 @@ mod tests {
         // Test high variation
         let high_var_functions: Vec<FunctionComplexity> = (0..50)
             .map(|i| FunctionComplexity {
-                name: format!("func_{}", i),
+                name: format!("func_{i}"),
                 line_start: (i * 10) as u32,
                 line_end: ((i * 10) + 5) as u32,
                 metrics: ComplexityMetrics {
@@ -272,7 +272,7 @@ mod tests {
                 };
 
                 FunctionComplexity {
-                    name: format!("func_{}", i),
+                    name: format!("func_{i}"),
                     line_start: (i * 20) as u32,
                     line_end: ((i * 20) + complexity * 2) as u32,
                     metrics: ComplexityMetrics {
