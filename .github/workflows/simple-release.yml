@@ -116,6 +116,9 @@ jobs:
           brew install pkg-config cmake
       
       - name: Build binary
+        env:
+          OPENSSL_NO_VENDOR: 0
+          OPENSSL_STATIC: 1
         run: |
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
