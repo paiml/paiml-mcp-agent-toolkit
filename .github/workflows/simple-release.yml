@@ -121,6 +121,8 @@ jobs:
       - name: Build binary
         env:
           CARGO_PROFILE_RELEASE_LTO: true
+          CARGO_FEATURE_VENDORED: 1
+          OPENSSL_STATIC: 1
         run: |
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
@@ -128,6 +130,7 @@ jobs:
             export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
             export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
           fi
+          
           cd server
           cargo build --release --target ${{ matrix.target }}
           cd ..
