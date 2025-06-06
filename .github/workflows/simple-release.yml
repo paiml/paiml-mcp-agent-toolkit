@@ -118,7 +118,8 @@ jobs:
       - name: Build binary
         env:
           OPENSSL_STATIC: 1
-          RUSTFLAGS: "-C target-feature=+crt-static"
+          OPENSSL_VENDORED: 1
+          OPENSSL_NO_PKG_CONFIG: 1
         run: |
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
@@ -127,7 +128,7 @@ jobs:
             export OPENSSL_DIR=$(brew --prefix openssl)
           fi
           cd server
-          cargo build --release --target ${{ matrix.target }}
+          OPENSSL_STATIC=1 OPENSSL_VENDORED=1 cargo build --release --target ${{ matrix.target }}
           cd ..
           
       - name: Create archive

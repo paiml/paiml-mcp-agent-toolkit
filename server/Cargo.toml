@@ -83,8 +83,6 @@ tree-sitter = { version = "0.23", optional = true }
 tree-sitter-c = { version = "0.21", optional = true }
 tree-sitter-cpp = { version = "0.22", optional = true }
 
-# OpenSSL vendored for cross-compilation
-openssl = { version = "0.10", features = ["vendored"] }
 # Language-specific analysis
 cpp_demangle = { version = "0.4", optional = true }
 gimli = { version = "0.28", optional = true }
