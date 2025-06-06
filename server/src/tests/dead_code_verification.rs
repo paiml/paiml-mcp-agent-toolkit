@@ -108,8 +108,7 @@ mod tests {
 
         assert!(
             dead_function_keys.contains(&3),
-            "Unreachable function (node 3) should be marked as dead. Found dead nodes: {:?}",
-            dead_function_keys
+            "Unreachable function (node 3) should be marked as dead. Found dead nodes: {dead_function_keys:?}"
         );
     }
 

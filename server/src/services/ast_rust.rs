@@ -29,8 +29,7 @@ pub async fn analyze_rust_file_with_complexity_and_classifier(
         match classifier.should_parse(path, content.as_bytes()) {
             ParseDecision::Skip(reason) => {
                 return Err(TemplateError::InvalidUtf8(format!(
-                    "Skipping file due to {:?}",
-                    reason
+                    "Skipping file due to {reason:?}"
                 )));
             }
             ParseDecision::Parse => {}
@@ -38,7 +37,7 @@ pub async fn analyze_rust_file_with_complexity_and_classifier(
     }
 
     let ast = syn::parse_file(&content)
-        .map_err(|e| TemplateError::InvalidUtf8(format!("Rust parse error: {}", e)))?;
+        .map_err(|e| TemplateError::InvalidUtf8(format!("Rust parse error: {e}")))?;
 
     let mut visitor = RustComplexityVisitor::new();
     visitor.visit_file(&ast);
@@ -68,8 +67,7 @@ pub async fn analyze_rust_file_with_classifier(
         match classifier.should_parse(path, content.as_bytes()) {
             ParseDecision::Skip(reason) => {
                 return Err(TemplateError::InvalidUtf8(format!(
-                    "Skipping file due to {:?}",
-                    reason
+                    "Skipping file due to {reason:?}"
                 )));
             }
             ParseDecision::Parse => {}
@@ -77,7 +75,7 @@ pub async fn analyze_rust_file_with_classifier(
     }
 
     let ast = syn::parse_file(&content)
-        .map_err(|e| TemplateError::InvalidUtf8(format!("Rust parse error: {}", e)))?;
+        .map_err(|e| TemplateError::InvalidUtf8(format!("Rust parse error: {e}")))?;
 
     let mut visitor = RustComplexityVisitor::new();
     visitor.enable_complexity = false; // Only collect AST items, not complexity
@@ -305,7 +303,7 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
                             if let Some(complexity) = self.current_function_complexity.take() {
                                 // Add to functions list for now (could be enhanced to link to structs)
                                 self.functions.push(FunctionComplexity {
-                                    name: format!("{}::{}", struct_name, method_name),
+                                    name: format!("{struct_name}::{method_name}"),
                                     line_start: self.current_function_start,
                                     line_end: self.current_function_start + 10,
                                     metrics: complexity,

@@ -4,6 +4,9 @@ pub mod handlers;
 pub mod models;
 pub mod services;
 pub mod stateless_server;
+// Temporarily disabled during fixing
+// #[cfg(test)]
+// pub mod testing;
 pub mod unified_protocol;
 pub mod utils;
 
@@ -184,7 +187,7 @@ pub async fn run_mcp_server<T: TemplateServerTrait + 'static>(server: Arc<T>) ->
 
                 // Write response to stdout
                 let response_json = serde_json::to_string(&response)?;
-                writeln!(stdout, "{}", response_json)?;
+                writeln!(stdout, "{response_json}")?;
                 stdout.flush()?;
             }
             Err(e) => {
@@ -194,11 +197,11 @@ pub async fn run_mcp_server<T: TemplateServerTrait + 'static>(server: Arc<T>) ->
                 let error_response = McpResponse::error(
                     serde_json::Value::Null,
                     -32700,
-                    format!("Parse error: {}", e),
+                    format!("Parse error: {e}"),
                 );
 
                 let response_json = serde_json::to_string(&error_response)?;
-                writeln!(stdout, "{}", response_json)?;
+                writeln!(stdout, "{response_json}")?;
                 stdout.flush()?;
             }
         }

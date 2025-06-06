@@ -225,7 +225,7 @@ pub fn process_data(data: Vec<i32>) -> i32 {
 
         // Pre-populate cache
         for i in 0..100 {
-            cache.insert(format!("file_{}.rs", i), format!("content_{}", i));
+            cache.insert(format!("file_{i}.rs"), format!("content_{i}"));
         }
 
         b.iter(|| {

@@ -120,6 +120,7 @@ deep_context_*.md
 /*.mmd
 /test-dag*.mmd
 /server/dependency_graph.mmd
+/server/*.mmd
 /artifacts/mermaid/test_output/
 
 # Coverage artifacts
@@ -134,8 +135,26 @@ test-install/
 dogfood-*.json
 *-analysis.json
 *-dead-code*.json
+baseline-*.json
+post-*.json
+kaizen-metrics.json
+outdated-deps.json
+/server/baseline-*.json
+/server/post-*.json
+/server/kaizen-metrics.json
+/server/outdated-deps.json
+/artifacts/kaizen/*.json
+/server/.build-info.json
 
 # Dogfooding artifacts with potential naming issues
 artifacts/dogfooding/deep-context-*.json
 artifacts/dogfooding/summary-*.json
 artifacts/dogfooding/combined-metrics-*.json
+
+# Temporary files and test artifacts
+test_*.md
+**/test_context*.md
+**/test_output.md
+**/test_regex.rs
+*-platform.tar.gz
+nonexistent-*

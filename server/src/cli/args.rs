@@ -27,7 +27,7 @@ pub fn validate_params(
                 ));
             }
         } else {
-            errors.push(format!("Unknown parameter: {}", key));
+            errors.push(format!("Unknown parameter: {key}"));
         }
     }
 

@@ -118,7 +118,7 @@ pmat analyze churn --days 30 --format json
 pmat analyze dag --enhanced --show-complexity
 pmat analyze dead-code --top-files 10 --format json
 pmat analyze satd --top-files 5 --format json
-pmat analyze deep-context --include "ast,complexity,churn" --format json
+pmat analyze deep-context --include "ast,complexity,churn,provability" --format json
 ```
 
 **HTTP API Usage:**
@@ -178,7 +178,7 @@ pmat context
 - 🏃 **Self-contained binary with no external runtime dependencies**: Stateless binary with embedded templates
 - ⚡ **Sub-10ms Performance**: <10ms startup, <5ms template rendering
 - 📦 **Optimized Binary**: 16MB with asset compression and build optimizations
-- 🔧 **Three Toolchains**: Rust CLI, Deno/TypeScript, Python UV
+- 🔧 **Multi-Language Support**: Rust, TypeScript/JavaScript, Python, C/C++, Cython with proper name extraction
 - 📦 **MCP 2.0 Compliant**: Full Model Context Protocol with JSON-RPC 2.0
 - 🔍 **Advanced Analysis**: AST-based complexity, churn tracking, dependency graphs
 - 🎯 **Production Observability**: Zero-cost tracing with structured logging
@@ -351,6 +351,8 @@ pmat context rust
 - 🦀 **Rust** (Cargo.toml, .rs files, `use std::`, `fn main()`)
 - 📘 **TypeScript** (tsconfig.json, .ts/.tsx files, `interface`, `type`)
 - 🐍 **Python** (pyproject.toml, .py files, `import`, `def`, shebangs)
+- 🔧 **C/C++** (CMakeLists.txt, .c/.cpp/.h files, goto tracking, macro analysis)
+- 🐍+ **Cython** (.pyx/.pxd files, hybrid Python/C analysis)
 
 ### 🔄 Progressive Enhancement Architecture
 
@@ -402,12 +404,28 @@ pmat context rust
 - **McCabe Cyclomatic** and **Sonar Cognitive** complexity metrics
 - **Advanced File Ranking System**: Composite scoring with `--top-files` flag
   - Parallel processing with caching for large codebases
-  - Support for Rust, TypeScript/JavaScript, Python file analysis
+  - Support for Rust, TypeScript/JavaScript, Python, C/C++, Cython file analysis
   - Vectorized ranking for datasets >1024 files (SIMD-optimized)
   - 95% test coverage with comprehensive edge case handling
-- Multi-language support (Rust, TypeScript, Python)
+- Multi-language support (Rust, TypeScript, Python, C/C++, Cython)
 - SARIF output for IDE integration
 - Zero-overhead implementation (<1ms per KLOC)
+
+### C/C++ Specific Analysis ✨ **NEW**
+- **Goto Statement Tracking**: Identifies and penalizes goto usage with complexity multiplier
+- **Preprocessor Macro Analysis**: Detects object-like, function-like, and variadic macros
+- **C++-Specific Constructs**: Virtual methods, operator overloading, templates, lambdas
+- **Memory Safety Indicators**: Pointer depth analysis and manual memory management patterns
+- **Build Artifact Filtering**: Automatically excludes .o, .a, .so files and CMake artifacts
+- **.gitignore Respect**: Ripgrep-style ignore patterns for accurate analysis
+- **Proper Name Extraction**: Toyota Way implementation with accurate source parsing (no shortcuts)
+
+### Provability Analysis ✨ **NEW**
+- **Lightweight Formal Verification**: Static analysis with confidence scoring for code properties
+- **Property Domain Analysis**: Nullability lattice, alias analysis, and domain-specific verifications
+- **Incremental Analysis**: Efficient property verification with caching for large codebases
+- **Quality Gates Integration**: Automated verification checks with configurable thresholds
+- **Deep Context Integration**: Provability metrics included in comprehensive project analysis
 
 ### Code Churn Analysis
 - Git history analysis to identify maintenance hotspots
@@ -662,6 +680,12 @@ make validate
 - **Performance**: <10ms startup, <5ms template rendering, 16MB optimized binary
 - **Architecture**: Unified protocol supporting CLI, HTTP, and MCP interfaces
 - **QA Framework**: Comprehensive validation including complexity distribution, dead code analysis, environment variable testing
+
+<!-- KAIZEN_METRICS_START -->
+### Kaizen Metrics
+
+(Metrics will be automatically updated by `make kaizen`)
+<!-- KAIZEN_METRICS_END -->
 
 ## 🤝 Contributing
 

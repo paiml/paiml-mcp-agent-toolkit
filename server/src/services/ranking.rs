@@ -467,7 +467,7 @@ mod tests {
         }
 
         fn format_ranking_entry(&self, file: &str, metric: &Self::Metric, rank: usize) -> String {
-            format!("| {:>4} | {} | {:.1} |", rank, file, metric)
+            format!("| {rank:>4} | {file} | {metric:.1} |")
         }
 
         fn ranking_type(&self) -> &'static str {
@@ -999,7 +999,7 @@ mod tests {
         }
 
         fn format_ranking_entry(&self, file: &str, metric: &Self::Metric, rank: usize) -> String {
-            format!("{}. {} ({})", rank, file, metric)
+            format!("{rank}. {file} ({metric})")
         }
 
         fn ranking_type(&self) -> &'static str {

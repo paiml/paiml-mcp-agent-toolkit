@@ -63,7 +63,7 @@ impl DeterministicMermaidEngine {
             let sanitized_id = self.sanitize_id(&node.name);
             let escaped_label = self.escape_mermaid_label(&node.name);
 
-            writeln!(&mut mermaid, "    {}[{}]", sanitized_id, escaped_label).unwrap();
+            writeln!(&mut mermaid, "    {sanitized_id}[{escaped_label}]").unwrap();
         }
 
         // Add blank line between nodes and edges
@@ -128,7 +128,7 @@ impl DeterministicMermaidEngine {
             let node = &service_graph[idx];
             let sanitized_id = self.sanitize_id(&node.name);
             let escaped_label = self.escape_mermaid_label(&node.name);
-            writeln!(&mut mermaid, "    {}[{}]", sanitized_id, escaped_label).unwrap();
+            writeln!(&mut mermaid, "    {sanitized_id}[{escaped_label}]").unwrap();
         }
 
         // Add blank line
@@ -319,7 +319,7 @@ impl DeterministicMermaidEngine {
         if sanitized.is_empty() {
             "_empty".to_string()
         } else if sanitized.chars().next().unwrap().is_numeric() {
-            format!("_{}", sanitized)
+            format!("_{sanitized}")
         } else {
             sanitized
         }
@@ -401,8 +401,7 @@ mod tests {
         let sum: f32 = scores1.values().sum();
         assert!(
             (sum - 1.0).abs() < 0.001,
-            "PageRank scores should sum to 1.0, got {}",
-            sum
+            "PageRank scores should sum to 1.0, got {sum}"
         );
     }
 

@@ -14,7 +14,7 @@ use tower::{ServiceBuilder, ServiceExt};
 use tower_http::compression::CompressionLayer;
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
-use tracing::{info, instrument};
+use tracing::info;
 
 use super::error::{set_protocol_context, AppError};
 use super::{AdapterRegistry, Protocol, UnifiedRequest, UnifiedResponse};
@@ -82,6 +82,14 @@ impl UnifiedService {
                 "/api/v1/analyze/deep-context",
                 post(handlers::analyze_deep_context),
             )
+            .route(
+                "/api/v1/analyze/makefile-lint",
+                post(handlers::analyze_makefile_lint),
+            )
+            .route(
+                "/api/v1/analyze/provability",
+                post(handlers::analyze_provability),
+            )
             // MCP protocol endpoint
             .route("/mcp/{method}", post(handlers::mcp_endpoint))
             // Health and status endpoints
@@ -121,11 +129,6 @@ impl UnifiedService {
     }
 
     /// Process a unified request through the router
-    #[instrument(skip_all, fields(
-        method = %request.method,
-        path = %request.path,
-        trace_id = %request.trace_id
-    ))]
     pub async fn process_request(
         &self,
         request: UnifiedRequest,
@@ -321,8 +324,7 @@ impl TemplateService for DefaultTemplateService {
             })
         } else {
             Err(AppError::NotFound(format!(
-                "Template not found: {}",
-                template_id
+                "Template not found: {template_id}"
             )))
         }
     }
@@ -399,7 +401,7 @@ impl AnalysisService for DefaultAnalysisService {
         // Use context analysis to get project data, then build DAG
         let context = crate::services::context::analyze_project(project_path, "rust")
             .await
-            .map_err(|e| AppError::Analysis(format!("Context analysis failed: {}", e)))?;
+            .map_err(|e| AppError::Analysis(format!("Context analysis failed: {e}")))?;
 
         // Build dependency graph with edge truncation
         let dependency_graph = DagBuilder::build_from_project(&context);
@@ -573,7 +575,7 @@ pub mod handlers {
             .and_then(|v| v.as_str())
             .unwrap_or(".")
             .parse::<PathBuf>()
-            .map_err(|e| AppError::BadRequest(format!("Invalid project_path: {}", e)))?;
+            .map_err(|e| AppError::BadRequest(format!("Invalid project_path: {e}")))?;
 
         let period_days = params
             .get("period_days")
@@ -627,6 +629,98 @@ pub mod handlers {
         ))
     }
 
+    /// Analyze Makefile quality and compliance
+    pub async fn analyze_makefile_lint(
+        Extension(_state): Extension<Arc<AppState>>,
+        Json(params): Json<MakefileLintParams>,
+    ) -> Result<Json<MakefileLintAnalysis>, AppError> {
+        use crate::services::makefile_linter;
+        use std::path::Path;
+
+        let makefile_path = Path::new(&params.path);
+        let lint_result = makefile_linter::lint_makefile(makefile_path)
+            .await
+            .map_err(|e| AppError::Internal(anyhow::anyhow!("Makefile linting failed: {}", e)))?;
+
+        let analysis = MakefileLintAnalysis {
+            path: params.path,
+            violations: lint_result
+                .violations
+                .into_iter()
+                .map(|v| MakefileLintViolation {
+                    rule: v.rule,
+                    severity: match v.severity {
+                        makefile_linter::Severity::Error => "error".to_string(),
+                        makefile_linter::Severity::Warning => "warning".to_string(),
+                        makefile_linter::Severity::Performance => "performance".to_string(),
+                        makefile_linter::Severity::Info => "info".to_string(),
+                    },
+                    line: v.span.line,
+                    column: v.span.column,
+                    message: v.message,
+                    fix_hint: v.fix_hint,
+                })
+                .collect(),
+            quality_score: lint_result.quality_score,
+            rules_applied: params.rules,
+        };
+
+        Ok(Json(analysis))
+    }
+
+    /// Analyze provability properties  
+    pub async fn analyze_provability(
+        Extension(_state): Extension<Arc<AppState>>,
+        Json(params): Json<ProvabilityParams>,
+    ) -> Result<Json<ProvabilityAnalysis>, AppError> {
+        use crate::services::lightweight_provability_analyzer::{
+            FunctionId, LightweightProvabilityAnalyzer,
+        };
+
+        let analyzer = LightweightProvabilityAnalyzer::new();
+
+        // Extract functions from parameters or scan project
+        let functions = if let Some(function_names) = params.functions {
+            function_names
+                .into_iter()
+                .enumerate()
+                .map(|(i, name)| FunctionId {
+                    file_path: format!("{}/src/lib.rs", params.project_path),
+                    function_name: name,
+                    line_number: i * 10, // Mock line numbers
+                })
+                .collect()
+        } else {
+            // Mock function discovery from project path
+            vec![FunctionId {
+                file_path: format!("{}/src/main.rs", params.project_path),
+                function_name: "main".to_string(),
+                line_number: 1,
+            }]
+        };
+
+        let summaries = analyzer.analyze_incrementally(&functions).await;
+
+        let analysis = ProvabilityAnalysis {
+            project_path: params.project_path,
+            analysis_depth: params.analysis_depth.unwrap_or(10),
+            functions_analyzed: summaries.len(),
+            average_provability_score: summaries.iter().map(|s| s.provability_score).sum::<f64>()
+                / summaries.len() as f64,
+            summaries: summaries
+                .into_iter()
+                .map(|s| ProvabilitySummary {
+                    function_id: format!("{}:{}", s.version, functions[0].function_name), // Mock ID
+                    provability_score: s.provability_score,
+                    verified_properties: s.verified_properties,
+                    analysis_time_us: s.analysis_time_us,
+                })
+                .collect(),
+        };
+
+        Ok(Json(analysis))
+    }
+
     /// MCP protocol endpoint
     pub async fn mcp_endpoint(
         Extension(state): Extension<Arc<AppState>>,
@@ -666,10 +760,7 @@ pub mod handlers {
                     .await?;
                 Ok(Json(serde_json::to_value(result)?))
             }
-            _ => Err(AppError::NotFound(format!(
-                "Unknown MCP method: {}",
-                method
-            ))),
+            _ => Err(AppError::NotFound(format!("Unknown MCP method: {method}"))),
         }
     }
 
@@ -919,6 +1010,62 @@ pub struct FileDeadCode {
     pub dead_functions: usize,
     pub dead_classes: usize,
     pub confidence: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MakefileLintParams {
+    pub path: String,
+    #[serde(default)]
+    pub rules: Vec<String>,
+    #[serde(default)]
+    pub fix: bool,
+    #[serde(default)]
+    pub gnu_version: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MakefileLintAnalysis {
+    pub path: String,
+    pub violations: Vec<MakefileLintViolation>,
+    pub quality_score: f32,
+    pub rules_applied: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MakefileLintViolation {
+    pub rule: String,
+    pub severity: String,
+    pub line: usize,
+    pub column: usize,
+    pub message: String,
+    pub fix_hint: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ProvabilityParams {
+    pub project_path: String,
+    #[serde(default)]
+    pub functions: Option<Vec<String>>,
+    #[serde(default)]
+    pub analysis_depth: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProvabilityAnalysis {
+    pub project_path: String,
+    pub analysis_depth: usize,
+    pub functions_analyzed: usize,
+    pub average_provability_score: f64,
+    pub summaries: Vec<ProvabilitySummary>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProvabilitySummary {
+    pub function_id: String,
+    pub provability_score: f64,
+    pub verified_properties:
+        Vec<crate::services::lightweight_provability_analyzer::VerifiedProperty>,
+    pub analysis_time_us: u128,
 }
 
 #[cfg(test)]

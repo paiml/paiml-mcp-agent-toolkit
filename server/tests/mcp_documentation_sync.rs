@@ -75,8 +75,7 @@ fn parse_documented_mcp_tools() -> Vec<DocumentedTool> {
 
             // Look for JSON examples containing this tool
             let json_regex = Regex::new(&format!(
-                r#""name":\s*"{}".*?"arguments":\s*\{{([^}}]+)\}}"#,
-                name
+                r#""name":\s*"{name}".*?"arguments":\s*\{{([^}}]+)\}}"#
             ))
             .unwrap();
             if let Some(cap) = json_regex.captures(&content) {
@@ -128,15 +127,14 @@ fn send_mcp_request(request: Value) -> Result<McpResponse, String> {
 
     let binary_path = get_binary_path();
 
-    // Start the MCP server in MCP mode
+    // Start the MCP server in MCP mode by setting MCP_VERSION environment variable
     let mut child = Command::new(&binary_path)
-        .arg("--mode")
-        .arg("mcp")
+        .env("MCP_VERSION", "1.0")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
-        .map_err(|e| format!("Failed to start MCP server: {}", e))?;
+        .map_err(|e| format!("Failed to start MCP server: {e}"))?;
 
     let mut stdin = child.stdin.take().ok_or("Failed to get stdin")?;
     let stdout = child.stdout.take().ok_or("Failed to get stdout")?;
@@ -345,8 +343,7 @@ fn test_mcp_methods_match_documentation() {
     for method in &expected_methods {
         assert!(
             documented_methods.contains(&method.to_string()),
-            "Expected MCP method '{}' not documented",
-            method
+            "Expected MCP method '{method}' not documented"
         );
     }
 }
@@ -382,8 +379,7 @@ fn test_mcp_error_codes_are_complete() {
     for error_code in &standard_errors {
         assert!(
             documented_errors.contains(error_code),
-            "Standard JSON-RPC error code {} not documented",
-            error_code
+            "Standard JSON-RPC error code {error_code} not documented"
         );
     }
 }
@@ -426,8 +422,7 @@ fn test_no_undocumented_mcp_tools() {
 
             assert!(
                 documented_names.iter().any(|doc_name| doc_name == name),
-                "MCP tool '{}' exists but is not documented in cli-mcp.md",
-                name
+                "MCP tool '{name}' exists but is not documented in cli-mcp.md"
             );
         }
     }

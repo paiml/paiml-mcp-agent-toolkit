@@ -147,8 +147,8 @@ async fn test_handle_resource_read_all_templates() {
 
         let response = handle_resource_read(server.clone(), request).await;
 
-        assert!(response.result.is_some(), "Failed to read {}", uri);
-        assert!(response.error.is_none(), "Error reading {}", uri);
+        assert!(response.result.is_some(), "Failed to read {uri}");
+        assert!(response.error.is_none(), "Error reading {uri}");
 
         let result = response.result.unwrap();
         let contents = result["contents"].as_array().unwrap();

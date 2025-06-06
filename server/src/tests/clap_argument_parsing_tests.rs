@@ -303,7 +303,7 @@ mod custom_validator_tests {
         for mode in valid_modes {
             let cli = Cli::try_parse_from(["pmat", "--mode", mode, "list"]);
 
-            assert!(cli.is_ok(), "Mode '{}' should be valid", mode);
+            assert!(cli.is_ok(), "Mode '{mode}' should be valid");
         }
 
         // Test invalid mode
@@ -467,7 +467,7 @@ mod edge_case_tests {
                 special_path,
             ]);
 
-            assert!(cli.is_ok(), "Failed to parse path: {}", special_path);
+            assert!(cli.is_ok(), "Failed to parse path: {special_path}");
 
             if let Ok(parsed) = cli {
                 match parsed.command {
@@ -558,7 +558,7 @@ mod edge_case_tests {
 
         for args in variations {
             let cli = Cli::try_parse_from(args.clone());
-            assert!(cli.is_ok(), "Failed with args: {:?}", args);
+            assert!(cli.is_ok(), "Failed with args: {args:?}");
 
             if let Ok(parsed) = cli {
                 assert!(parsed.verbose);

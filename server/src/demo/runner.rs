@@ -14,7 +14,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
-use tracing::instrument;
 
 pub struct DemoRunner {
     server: Arc<StatelessTemplateServer>,
@@ -58,7 +57,7 @@ impl DemoRunner {
     }
 
     async fn clone_and_prepare(&self, url: &str) -> Result<PathBuf> {
-        println!("🔄 Cloning repository: {}", url);
+        println!("🔄 Cloning repository: {url}");
 
         // Create a temporary directory for cloning
         let temp_dir = env::temp_dir().join(format!("paiml-demo-{}", uuid::Uuid::new_v4()));
@@ -322,7 +321,6 @@ impl DemoRunner {
         self.execute_with_diagram(&repo_path, None).await
     }
 
-    #[instrument(skip(self, repo_path), fields(repo = %repo_path.display()))]
     pub async fn execute_with_diagram(
         &mut self,
         repo_path: &Path,
@@ -346,9 +344,9 @@ impl DemoRunner {
         };
 
         let version = env!("CARGO_PKG_VERSION");
-        println!("🎯 PAIML MCP Agent Toolkit Demo v{}", version);
+        println!("🎯 PAIML MCP Agent Toolkit Demo v{version}");
         if let Some(ref url) = actual_url {
-            println!("📁 Repository: {} (cloned)", url);
+            println!("📁 Repository: {url} (cloned)");
         } else {
             println!("📁 Repository: {}", working_path.display());
         }
@@ -410,7 +408,7 @@ impl DemoRunner {
         self.execution_log.push(step.clone());
 
         if response.error.is_none() {
-            println!("   ✅ Context generated in {} ms", elapsed);
+            println!("   ✅ Context generated in {elapsed} ms");
         } else {
             println!("   ❌ Failed: {:?}", response.error);
         }
@@ -447,11 +445,11 @@ impl DemoRunner {
         self.execution_log.push(step.clone());
 
         if response.error.is_none() {
-            println!("   ✅ Complexity analyzed in {} ms", elapsed);
+            println!("   ✅ Complexity analyzed in {elapsed} ms");
             if let Some(result) = &response.result {
                 if let Ok(summary) = serde_json::from_value::<Value>(result.clone()) {
                     if let Some(total_functions) = summary.get("total_functions") {
-                        println!("   📊 Analyzed {} functions", total_functions);
+                        println!("   📊 Analyzed {total_functions} functions");
                     }
                 }
             }
@@ -491,13 +489,13 @@ impl DemoRunner {
         self.execution_log.push(step.clone());
 
         if response.error.is_none() {
-            println!("   ✅ DAG generated in {} ms", elapsed);
+            println!("   ✅ DAG generated in {elapsed} ms");
             if let Some(result) = &response.result {
                 if let Ok(dag_result) = serde_json::from_value::<Value>(result.clone()) {
                     if let Some(stats) = dag_result.get("stats") {
                         if let (Some(nodes), Some(edges)) = (stats.get("nodes"), stats.get("edges"))
                         {
-                            println!("   📈 Graph: {} nodes, {} edges", nodes, edges);
+                            println!("   📈 Graph: {nodes} nodes, {edges} edges");
                         }
                     }
                 }
@@ -536,11 +534,11 @@ impl DemoRunner {
         self.execution_log.push(step.clone());
 
         if response.error.is_none() {
-            println!("   ✅ Churn analyzed in {} ms", elapsed);
+            println!("   ✅ Churn analyzed in {elapsed} ms");
             if let Some(result) = &response.result {
                 if let Ok(churn_result) = serde_json::from_value::<Value>(result.clone()) {
                     if let Some(files_analyzed) = churn_result.get("files_analyzed") {
-                        println!("   📈 Analyzed {} files", files_analyzed);
+                        println!("   📈 Analyzed {files_analyzed} files");
                     }
                 }
             }
@@ -579,14 +577,14 @@ impl DemoRunner {
         self.execution_log.push(step.clone());
 
         if response.error.is_none() {
-            println!("   ✅ Architecture analyzed in {} ms", elapsed);
+            println!("   ✅ Architecture analyzed in {elapsed} ms");
             if let Some(result) = &response.result {
                 if let Ok(arch_result) = serde_json::from_value::<Value>(result.clone()) {
                     if let Some(metadata) = arch_result.get("metadata") {
                         if let (Some(nodes), Some(edges)) =
                             (metadata.get("nodes"), metadata.get("edges"))
                         {
-                            println!("   🏗️  Components: {}, Relationships: {}", nodes, edges);
+                            println!("   🏗️  Components: {nodes}, Relationships: {edges}");
                         }
                     }
                 }
@@ -625,7 +623,7 @@ impl DemoRunner {
         self.execution_log.push(step.clone());
 
         if response.error.is_none() {
-            println!("   ✅ Defect analysis completed in {} ms", elapsed);
+            println!("   ✅ Defect analysis completed in {elapsed} ms");
             if let Some(result) = &response.result {
                 if let Ok(defect_result) = serde_json::from_value::<Value>(result.clone()) {
                     if let Some(avg_prob) = defect_result.get("average_probability") {
@@ -676,7 +674,7 @@ impl DemoRunner {
         self.execution_log.push(step.clone());
 
         if response.error.is_none() {
-            println!("   ✅ Template generated in {} ms", elapsed);
+            println!("   ✅ Template generated in {elapsed} ms");
         } else {
             println!("   ❌ Failed: {:?}", response.error);
         }
@@ -739,7 +737,7 @@ impl DemoReport {
         if let Some(ref diagram) = self.system_diagram {
             writeln!(&mut output, "\n🌍 System Architecture:").unwrap();
             writeln!(&mut output, "```mermaid").unwrap();
-            writeln!(&mut output, "{}", diagram).unwrap();
+            writeln!(&mut output, "{diagram}").unwrap();
             writeln!(&mut output, "```").unwrap();
         }
 
@@ -799,8 +797,7 @@ impl DemoReport {
                     ) {
                         writeln!(
                             output,
-                            "      Functions: {}, Warnings: {}, Errors: {}",
-                            total, warnings, errors
+                            "      Functions: {total}, Warnings: {warnings}, Errors: {errors}"
                         )
                         .unwrap();
                     }
@@ -811,7 +808,7 @@ impl DemoReport {
                     if let Some(stats) = dag_result.get("stats") {
                         if let (Some(nodes), Some(edges)) = (stats.get("nodes"), stats.get("edges"))
                         {
-                            writeln!(output, "      Graph size: {} nodes, {} edges", nodes, edges)
+                            writeln!(output, "      Graph size: {nodes} nodes, {edges} edges")
                                 .unwrap();
                         }
                     }
@@ -825,8 +822,7 @@ impl DemoReport {
                     ) {
                         writeln!(
                             output,
-                            "      Files analyzed: {}, Total churn: {}",
-                            files, total_churn
+                            "      Files analyzed: {files}, Total churn: {total_churn}"
                         )
                         .unwrap();
                     }
@@ -838,12 +834,8 @@ impl DemoReport {
                         if let (Some(nodes), Some(edges)) =
                             (metadata.get("nodes"), metadata.get("edges"))
                         {
-                            writeln!(
-                                output,
-                                "      Components: {}, Relationships: {}",
-                                nodes, edges
-                            )
-                            .unwrap();
+                            writeln!(output, "      Components: {nodes}, Relationships: {edges}")
+                                .unwrap();
                         }
                     }
                 }
@@ -929,92 +921,102 @@ fn resolve_repo_spec(repo_spec: &str) -> Result<PathBuf> {
     Err(anyhow!("Repository not found: {}", repo_spec))
 }
 
-pub fn detect_repository(hint: Option<PathBuf>) -> Result<PathBuf> {
-    // Canonicalize input path to handle relative paths, symlinks, and nonexistent paths
-    let candidate = match hint {
+fn get_canonical_path(hint: Option<PathBuf>) -> Result<PathBuf> {
+    match hint {
         Some(p) => {
-            // Verify path exists before canonicalization
             if !p.exists() {
                 return Err(anyhow!("Path does not exist: {:?}", p));
             }
             p.canonicalize()
-                .map_err(|e| anyhow!("Failed to canonicalize path {:?}: {}", p, e))?
+                .map_err(|e| anyhow!("Failed to canonicalize path {:?}: {}", p, e))
         }
         None => env::current_dir()
             .and_then(|p| p.canonicalize())
-            .map_err(|e| anyhow!("Failed to get current directory: {}", e))?,
-    };
+            .map_err(|e| anyhow!("Failed to get current directory: {}", e)),
+    }
+}
 
+fn find_git_root(start_path: &Path) -> Option<PathBuf> {
     // Fast path: direct .git check
-    if candidate.join(".git").is_dir() {
-        return Ok(candidate);
+    if start_path.join(".git").is_dir() {
+        return Some(start_path.to_path_buf());
     }
 
-    // Bounded parent traversal with explicit termination
-    let mut current = candidate.as_path();
+    // Bounded parent traversal
+    let mut current = start_path;
     let mut iterations = 0;
-    const MAX_ITERATIONS: usize = 100; // Defend against pathological cases
+    const MAX_ITERATIONS: usize = 100;
 
     while let Some(parent) = current.parent() {
-        // Explicit root check for Unix and Windows
         if parent == current || parent.as_os_str().is_empty() {
             break; // Reached filesystem root
         }
 
         if parent.join(".git").is_dir() {
-            return Ok(parent.to_path_buf());
+            return Some(parent.to_path_buf());
         }
 
         current = parent;
         iterations += 1;
 
         if iterations >= MAX_ITERATIONS {
-            return Err(anyhow!(
-                "Repository detection exceeded maximum parent traversal depth"
-            ));
+            break;
         }
     }
 
-    // Non-interactive failure for test environments or non-TTY contexts
-    if !atty::is(atty::Stream::Stdout) || env::var("CI").is_ok() {
+    None
+}
+
+fn is_interactive_environment() -> bool {
+    atty::is(atty::Stream::Stdout) && env::var("CI").is_err()
+}
+
+fn read_repository_path_from_user() -> Result<PathBuf> {
+    eprintln!("No git repository found in current directory");
+    eprint!("Enter path to a git repository (or press Enter to cancel): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin()
+        .read_line(&mut input)
+        .map_err(|e| anyhow!("Failed to read user input: {}", e))?;
+
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return Err(anyhow!("Repository detection cancelled by user"));
+    }
+
+    let path = PathBuf::from(trimmed);
+    if !path.exists() {
+        return Err(anyhow!("Specified path does not exist: {:?}", path));
+    }
+
+    let canonical = path
+        .canonicalize()
+        .map_err(|e| anyhow!("Failed to canonicalize user path: {}", e))?;
+
+    if canonical.join(".git").is_dir() {
+        Ok(canonical)
+    } else {
+        Err(anyhow!("No .git directory found at: {:?}", canonical))
+    }
+}
+
+pub fn detect_repository(hint: Option<PathBuf>) -> Result<PathBuf> {
+    let candidate = get_canonical_path(hint)?;
+
+    if let Some(git_root) = find_git_root(&candidate) {
+        return Ok(git_root);
+    }
+
+    // Non-interactive failure for test environments
+    if !is_interactive_environment() {
         return Err(anyhow!(
             "No git repository found in {:?} or its parent directories",
             candidate
         ));
     }
 
-    // Interactive fallback with timeout for TTY environments
-    eprintln!("No git repository found in current directory");
-    eprint!("Enter path to a git repository (or press Enter to cancel): ");
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-
-    // Use timeout for interactive input to prevent test hangs
-    match io::stdin().read_line(&mut input) {
-        Ok(_) => {
-            let trimmed = input.trim();
-            if trimmed.is_empty() {
-                return Err(anyhow!("Repository detection cancelled by user"));
-            }
-
-            let path = PathBuf::from(trimmed);
-
-            // Validate user input
-            if !path.exists() {
-                return Err(anyhow!("Specified path does not exist: {:?}", path));
-            }
-
-            let canonical = path
-                .canonicalize()
-                .map_err(|e| anyhow!("Failed to canonicalize user path: {}", e))?;
-
-            if canonical.join(".git").is_dir() {
-                Ok(canonical)
-            } else {
-                Err(anyhow!("No .git directory found at: {:?}", canonical))
-            }
-        }
-        Err(e) => Err(anyhow!("Failed to read user input: {}", e)),
-    }
+    // Interactive fallback
+    read_repository_path_from_user()
 }

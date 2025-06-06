@@ -1,8 +1,13 @@
+#[cfg(feature = "python-ast")]
+use crate::services::ast_python;
+#[cfg(feature = "typescript-ast")]
+use crate::services::ast_typescript;
+#[cfg(any(feature = "python-ast", feature = "typescript-ast"))]
 use crate::services::context::AstItem;
-use crate::services::{ast_python, ast_typescript};
+#[cfg(any(feature = "python-ast", feature = "typescript-ast"))]
 use std::path::Path;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "python-ast"))]
 mod ast_python_tests {
     use super::*;
 
@@ -148,9 +153,8 @@ mod ast_python_tests {
             // Python AST parser counts attributes, not __init__ parameters
             // For now we just check it's a valid count
             assert!(
-                *fields_count == *fields_count,
-                "Field count is {}",
-                fields_count
+                fields_count == fields_count,
+                "Field count is {fields_count}"
             );
         }
     }
@@ -208,7 +212,7 @@ mod ast_python_tests {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "typescript-ast"))]
 mod ast_typescript_tests {
     use super::*;
 
@@ -549,7 +553,7 @@ mod ast_typescript_tests {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "python-ast", feature = "typescript-ast"))]
 mod ast_integration_tests {
     use super::*;
 

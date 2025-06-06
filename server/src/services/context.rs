@@ -1,9 +1,12 @@
 use crate::models::error::TemplateError;
+#[cfg(feature = "python-ast")]
+use crate::services::ast_python;
+#[cfg(feature = "typescript-ast")]
+use crate::services::ast_typescript;
 use crate::services::cache::{
     manager::SessionCacheManager, persistent_manager::PersistentCacheManager,
 };
 use crate::services::deep_context::DeepContext;
-use crate::services::{ast_python, ast_typescript};
 use ignore::gitignore::GitignoreBuilder;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -419,11 +422,14 @@ async fn analyze_file_by_toolchain(
         }
         "deno" => analyze_deno_file(path).await,
         "python-uv" => {
+            #[cfg(feature = "python-ast")]
             if path.extension().and_then(|s| s.to_str()) == Some("py") {
                 ast_python::analyze_python_file(path).await.ok()
             } else {
                 None
             }
+            #[cfg(not(feature = "python-ast"))]
+            None
         }
         _ => None,
     }
@@ -432,7 +438,9 @@ async fn analyze_file_by_toolchain(
 async fn analyze_deno_file(path: &Path) -> Option<FileContext> {
     let ext = path.extension().and_then(|s| s.to_str());
     match ext {
+        #[cfg(feature = "typescript-ast")]
         Some("ts") | Some("tsx") => ast_typescript::analyze_typescript_file(path).await.ok(),
+        #[cfg(feature = "typescript-ast")]
         Some("js") | Some("jsx") => ast_typescript::analyze_javascript_file(path).await.ok(),
         _ => None,
     }
@@ -624,11 +632,14 @@ async fn analyze_file_by_toolchain_persistent(
         }
         "deno" => analyze_deno_file(path).await,
         "python-uv" => {
+            #[cfg(feature = "python-ast")]
             if path.extension().and_then(|s| s.to_str()) == Some("py") {
                 ast_python::analyze_python_file(path).await.ok()
             } else {
                 None
             }
+            #[cfg(not(feature = "python-ast"))]
+            None
         }
         _ => None,
     }
@@ -671,7 +682,7 @@ fn format_dependencies(output: &mut String, dependencies: &[String]) {
     if !dependencies.is_empty() {
         output.push_str("\n## Dependencies\n\n");
         for dep in dependencies {
-            output.push_str(&format!("- {}\n", dep));
+            output.push_str(&format!("- {dep}\n"));
         }
     }
 }
@@ -735,7 +746,7 @@ where
     F: Fn(&AstItem) -> String,
 {
     if !items.is_empty() {
-        output.push_str(&format!("**{}:**\n", title));
+        output.push_str(&format!("**{title}:**\n"));
         for item in items {
             output.push_str(&format!("{}\n", formatter(item)));
         }
@@ -750,7 +761,7 @@ fn format_module_item(item: &AstItem) -> String {
         line,
     } = item
     {
-        format!("- `{} mod {}` (line {})", visibility, name, line)
+        format!("- `{visibility} mod {name}` (line {line})")
     } else {
         String::new()
     }
@@ -765,14 +776,11 @@ fn format_struct_item(item: &AstItem) -> String {
         line,
     } = item
     {
-        let mut result = format!(
-            "- `{} struct {}` ({} fields)",
-            visibility, name, fields_count
-        );
+        let mut result = format!("- `{visibility} struct {name}` ({fields_count} fields)");
         if !derives.is_empty() {
             result.push_str(&format!(" [derives: {}]", derives.join(", ")));
         }
-        result.push_str(&format!(" (line {})", line));
+        result.push_str(&format!(" (line {line})"));
         result
     } else {
         String::new()
@@ -787,10 +795,7 @@ fn format_enum_item(item: &AstItem) -> String {
         line,
     } = item
     {
-        format!(
-            "- `{} enum {}` ({} variants) (line {})",
-            visibility, name, variants_count, line
-        )
+        format!("- `{visibility} enum {name}` ({variants_count} variants) (line {line})")
     } else {
         String::new()
     }
@@ -803,7 +808,7 @@ fn format_trait_item(item: &AstItem) -> String {
         line,
     } = item
     {
-        format!("- `{} trait {}` (line {})", visibility, name, line)
+        format!("- `{visibility} trait {name}` (line {line})")
     } else {
         String::new()
     }
@@ -838,9 +843,9 @@ fn format_impl_item(item: &AstItem) -> String {
     {
         match trait_name {
             Some(trait_name) => {
-                format!("- `impl {} for {}` (line {})", trait_name, type_name, line)
+                format!("- `impl {trait_name} for {type_name}` (line {line})")
             }
-            None => format!("- `impl {}` (line {})", type_name, line),
+            None => format!("- `impl {type_name}` (line {line})"),
         }
     } else {
         String::new()
@@ -903,7 +908,7 @@ fn format_quality_scorecard(
         scorecard.modularity_score
     ));
     if let Some(coverage) = scorecard.test_coverage {
-        output.push_str(&format!("- **Test Coverage**: {:.1}%\n", coverage));
+        output.push_str(&format!("- **Test Coverage**: {coverage:.1}%\n"));
     }
     output.push_str(&format!(
         "- **Technical Debt**: {:.1} hours\n\n",
@@ -929,11 +934,11 @@ fn format_project_summary(output: &mut String, context: &DeepContext) {
     // Count various AST items
     let (functions, structs, enums, traits, impls) =
         count_ast_items(&context.analyses.ast_contexts);
-    output.push_str(&format!("- **Functions**: {}\n", functions));
-    output.push_str(&format!("- **Structs**: {}\n", structs));
-    output.push_str(&format!("- **Enums**: {}\n", enums));
-    output.push_str(&format!("- **Traits**: {}\n", traits));
-    output.push_str(&format!("- **Implementations**: {}\n\n", impls));
+    output.push_str(&format!("- **Functions**: {functions}\n"));
+    output.push_str(&format!("- **Structs**: {structs}\n"));
+    output.push_str(&format!("- **Enums**: {enums}\n"));
+    output.push_str(&format!("- **Traits**: {traits}\n"));
+    output.push_str(&format!("- **Implementations**: {impls}\n\n"));
 }
 
 fn format_analysis_results(

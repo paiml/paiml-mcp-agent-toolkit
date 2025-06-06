@@ -78,8 +78,7 @@ impl CacheDiagnosticReport {
                     stats.hit_rate * 100.0
                 ));
                 recommendations.push(format!(
-                    "Consider increasing TTL or max_size for {} cache",
-                    name
+                    "Consider increasing TTL or max_size for {name} cache"
                 ));
             }
         }

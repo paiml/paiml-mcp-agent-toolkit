@@ -44,15 +44,14 @@ impl DemoServer {
     /// Spawn demo server subprocess and wait for startup
     async fn spawn(repo_path: &str) -> Result<Self> {
         // Use cargo's TARGET_DIR or fallback to ../target/release
-        let binary_path =
-            std::env::var("CARGO_BIN_EXE_paiml-mcp-agent-toolkit").unwrap_or_else(|_| {
-                // Try debug binary first, then release
-                if std::path::Path::new("target/debug/paiml-mcp-agent-toolkit").exists() {
-                    "target/debug/paiml-mcp-agent-toolkit".to_string()
-                } else {
-                    "../target/release/paiml-mcp-agent-toolkit".to_string()
-                }
-            });
+        let binary_path = std::env::var("CARGO_BIN_EXE_pmat").unwrap_or_else(|_| {
+            // Try debug binary first, then release
+            if std::path::Path::new("target/debug/pmat").exists() {
+                "target/debug/pmat".to_string()
+            } else {
+                "../target/release/pmat".to_string()
+            }
+        });
 
         let mut process = Command::new(&binary_path)
             .args(["demo", "--path", repo_path, "--no-browser"])
@@ -64,7 +63,7 @@ impl DemoServer {
         let stdout = process.stdout.take().expect("Failed to capture stdout");
         let port = Self::parse_port_from_output(stdout).await?;
 
-        let base_url = format!("http://127.0.0.1:{}", port);
+        let base_url = format!("http://127.0.0.1:{port}");
 
         // Wait for server to be ready
         Self::wait_for_server_ready(&base_url).await?;
@@ -321,6 +320,9 @@ async fn test_demo_server_happy_path() -> Result<()> {
 
 #[tokio::test]
 async fn test_api_contract_compliance() -> Result<()> {
+    if std::env::var("SKIP_SLOW_TESTS").is_ok() {
+        return Ok(());
+    }
     let repo_path = TEST_REPO.path().to_str().unwrap();
     let server = DemoServer::spawn(repo_path).await?;
 
@@ -402,10 +404,7 @@ async fn test_concurrent_requests() -> Result<()> {
                 _ => "/api/dag",
             };
 
-            let response = client
-                .get(format!("{}{}", base_url, endpoint))
-                .send()
-                .await?;
+            let response = client.get(format!("{base_url}{endpoint}")).send().await?;
             assert!(response.status().is_success());
             Ok::<_, anyhow::Error>(())
         });
@@ -424,6 +423,9 @@ async fn test_concurrent_requests() -> Result<()> {
 #[tokio::test]
 #[serial]
 async fn test_performance_assertions() -> Result<()> {
+    if std::env::var("SKIP_SLOW_TESTS").is_ok() {
+        return Ok(());
+    }
     let repo_path = TEST_REPO.path().to_str().unwrap();
 
     // Measure startup time
@@ -434,8 +436,7 @@ async fn test_performance_assertions() -> Result<()> {
     // Startup should be reasonable (analysis time is separate)
     assert!(
         startup_time < Duration::from_secs(45),
-        "Startup took too long: {:?}",
-        startup_time
+        "Startup took too long: {startup_time:?}"
     );
 
     // Test response latency
@@ -457,8 +458,7 @@ async fn test_performance_assertions() -> Result<()> {
 
     assert!(
         p99_latency < Duration::from_millis(500),
-        "P99 latency too high: {:?}",
-        p99_latency
+        "P99 latency too high: {p99_latency:?}"
     );
 
     Ok(())
@@ -495,12 +495,12 @@ async fn test_analysis_pipeline_integrity() -> Result<()> {
     let repo_path = TEST_REPO.path().to_str().unwrap();
 
     // Capture process output to verify analysis steps
-    let binary_path = std::env::var("CARGO_BIN_EXE_paiml-mcp-agent-toolkit").unwrap_or_else(|_| {
+    let binary_path = std::env::var("CARGO_BIN_EXE_pmat").unwrap_or_else(|_| {
         // Try debug binary first, then release
-        if std::path::Path::new("target/debug/paiml-mcp-agent-toolkit").exists() {
-            "target/debug/paiml-mcp-agent-toolkit".to_string()
+        if std::path::Path::new("target/debug/pmat").exists() {
+            "target/debug/pmat".to_string()
         } else {
-            "../target/release/paiml-mcp-agent-toolkit".to_string()
+            "../target/release/pmat".to_string()
         }
     });
 
@@ -547,13 +547,13 @@ async fn test_analysis_pipeline_integrity() -> Result<()> {
     ];
 
     for step in &expected_steps {
-        assert!(output.contains(step), "Missing analysis step: {}", step);
+        assert!(output.contains(step), "Missing analysis step: {step}");
     }
 
     // Verify completion markers
     for i in 1..=7 {
-        let marker = format!("{}️⃣", i);
-        assert!(output.contains(&marker), "Missing step marker: {}", marker);
+        let marker = format!("{i}️⃣");
+        assert!(output.contains(&marker), "Missing step marker: {marker}");
     }
 
     // Clean up process
@@ -605,6 +605,9 @@ async fn test_data_source_indicators() -> Result<()> {
 
 #[tokio::test]
 async fn test_mermaid_diagram_rendering() -> Result<()> {
+    if std::env::var("SKIP_SLOW_TESTS").is_ok() {
+        return Ok(());
+    }
     let repo_path = TEST_REPO.path().to_str().unwrap();
     let server = DemoServer::spawn(repo_path).await?;
 

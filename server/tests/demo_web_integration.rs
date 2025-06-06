@@ -27,7 +27,7 @@ async fn test_demo_server_startup_and_shutdown() {
     // Verify server is running
     let client = reqwest::Client::new();
     let response = client
-        .get(format!("http://127.0.0.1:{}/", port))
+        .get(format!("http://127.0.0.1:{port}/"))
         .send()
         .await
         .unwrap();
@@ -40,7 +40,7 @@ async fn test_demo_server_startup_and_shutdown() {
     let result = timeout(Duration::from_secs(2), async {
         loop {
             if client
-                .get(format!("http://127.0.0.1:{}/", port))
+                .get(format!("http://127.0.0.1:{port}/"))
                 .send()
                 .await
                 .is_err()
@@ -84,7 +84,7 @@ async fn test_demo_server_api_endpoints() {
 
     let (server, port) = LocalDemoServer::spawn(content).await.unwrap();
     let client = reqwest::Client::new();
-    let base_url = format!("http://127.0.0.1:{}", port);
+    let base_url = format!("http://127.0.0.1:{port}");
 
     // Test root endpoint (HTML dashboard)
     let response = client.get(&base_url).send().await.unwrap();
@@ -97,7 +97,7 @@ async fn test_demo_server_api_endpoints() {
 
     // Test summary API endpoint
     let response = client
-        .get(format!("{}/api/summary", base_url))
+        .get(format!("{base_url}/api/summary"))
         .send()
         .await
         .unwrap();
@@ -110,7 +110,7 @@ async fn test_demo_server_api_endpoints() {
 
     // Test metrics API endpoint
     let response = client
-        .get(format!("{}/api/metrics", base_url))
+        .get(format!("{base_url}/api/metrics"))
         .send()
         .await
         .unwrap();
@@ -120,7 +120,7 @@ async fn test_demo_server_api_endpoints() {
 
     // Test hotspots API endpoint
     let response = client
-        .get(format!("{}/api/hotspots", base_url))
+        .get(format!("{base_url}/api/hotspots"))
         .send()
         .await
         .unwrap();
@@ -131,7 +131,7 @@ async fn test_demo_server_api_endpoints() {
 
     // Test DAG API endpoint
     let response = client
-        .get(format!("{}/api/dag", base_url))
+        .get(format!("{base_url}/api/dag"))
         .send()
         .await
         .unwrap();
@@ -141,7 +141,7 @@ async fn test_demo_server_api_endpoints() {
 
     // Test 404 handling
     let response = client
-        .get(format!("{}/nonexistent", base_url))
+        .get(format!("{base_url}/nonexistent"))
         .send()
         .await
         .unwrap();
@@ -167,14 +167,14 @@ async fn test_demo_server_static_assets() {
 
     let (server, port) = LocalDemoServer::spawn(content).await.unwrap();
     let client = reqwest::Client::new();
-    let base_url = format!("http://127.0.0.1:{}", port);
+    let base_url = format!("http://127.0.0.1:{port}");
 
     // Test vendor assets (if they exist)
     let vendor_paths = vec!["/vendor/gridjs.min.js", "/vendor/gridjs-mermaid.min.css"];
 
     for path in vendor_paths {
         let response = client
-            .get(format!("{}{}", base_url, path))
+            .get(format!("{base_url}{path}"))
             .send()
             .await
             .unwrap();
@@ -206,7 +206,7 @@ async fn test_demo_server_concurrent_requests() {
     };
 
     let (server, port) = LocalDemoServer::spawn(content).await.unwrap();
-    let base_url = format!("http://127.0.0.1:{}", port);
+    let base_url = format!("http://127.0.0.1:{port}");
 
     // Spawn multiple concurrent requests
     let mut handles = vec![];
@@ -220,11 +220,7 @@ async fn test_demo_server_concurrent_requests() {
                 2 => "/api/metrics",
                 _ => "/api/dag",
             };
-            let response = client
-                .get(format!("{}{}", url, endpoint))
-                .send()
-                .await
-                .unwrap();
+            let response = client.get(format!("{url}{endpoint}")).send().await.unwrap();
             assert_eq!(response.status(), 200);
         });
         handles.push(handle);
@@ -255,7 +251,7 @@ async fn test_demo_server_response_headers() {
 
     let (server, port) = LocalDemoServer::spawn(content).await.unwrap();
     let client = reqwest::Client::new();
-    let base_url = format!("http://127.0.0.1:{}", port);
+    let base_url = format!("http://127.0.0.1:{port}");
 
     // Test HTML response headers
     let response = client.get(&base_url).send().await.unwrap();
@@ -267,7 +263,7 @@ async fn test_demo_server_response_headers() {
 
     // Test JSON response headers
     let response = client
-        .get(format!("{}/api/summary", base_url))
+        .get(format!("{base_url}/api/summary"))
         .send()
         .await
         .unwrap();
@@ -278,7 +274,7 @@ async fn test_demo_server_response_headers() {
 
     // Test DAG response headers
     let response = client
-        .get(format!("{}/api/dag", base_url))
+        .get(format!("{base_url}/api/dag"))
         .send()
         .await
         .unwrap();
@@ -328,7 +324,7 @@ async fn test_demo_content_rendering() {
 
     // Check that the HTML contains our specific values
     let response = client
-        .get(format!("http://127.0.0.1:{}/", port))
+        .get(format!("http://127.0.0.1:{port}/"))
         .send()
         .await
         .unwrap();

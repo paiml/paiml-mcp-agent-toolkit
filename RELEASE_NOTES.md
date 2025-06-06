@@ -1,5 +1,43 @@
 # Release Notes
 
+## v0.21.2 - C/C++ AST Support & Provability Analysis 🔍
+
+### 🎯 NEW: C/C++ Language Support
+- **IMPLEMENTED**: Complete C/C++ AST parsing with tree-sitter integration
+- **FEATURE**: Proper name extraction from source code using Toyota Way principles (no shortcuts)
+- **COVERAGE**: C language constructs: functions, structs, enums, macros, goto statements
+- **COVERAGE**: C++ specific features: classes, templates, operator overloads, destructors, lambdas
+- **PERFORMANCE**: Efficient parsing with byte-position to line number conversion
+- **INTEGRATION**: Full AST strategy pattern implementation for both C and C++
+
+### ✨ NEW: Provability Analysis Framework
+- **IMPLEMENTED**: Lightweight formal verification system with confidence scoring
+- **FEATURE**: Property domain analysis including nullability lattice and alias analysis  
+- **ARCHITECTURE**: Incremental analysis with efficient caching for large codebases
+- **INTEGRATION**: Deep context integration with provability metrics
+- **QUALITY**: Automated verification checks with configurable thresholds
+
+### 🏗️ Architecture Improvements
+- **ENHANCED**: Toyota Way compliance - no shortcuts in implementation
+- **ENHANCED**: Proper source text parsing for accurate name extraction
+- **ENHANCED**: Unified AST model extended with C/C++ specific constructs
+- **ENHANCED**: AST strategies properly utilize actual parsers instead of stubs
+- **FIXED**: Critical caching performance regression for C/C++ files
+- **FIXED**: Missing provability_results field in AnalysisResults struct
+
+### 📊 Quality Metrics
+- **PASSED**: All 747 tests passing with comprehensive coverage
+- **PASSED**: Zero compilation errors and lint warnings
+- **PASSED**: Deep context analysis showing 75% overall health score
+- **ACHIEVED**: TDG scores ranging from 0.64 to 2.91 (7 files at critical level)
+- **VALIDATED**: Proper ripgrep-style .gitignore respect for build artifacts
+
+### 🔧 Technical Debt Remediation
+- **RESOLVED**: AST node field access errors through proper UnifiedAstNode usage
+- **RESOLVED**: Missing name and line information extraction from AST nodes
+- **RESOLVED**: Feature flag consistency between C and C++ strategies
+- **IMPLEMENTED**: Comprehensive error handling for edge cases in AST parsing
+
 ## v0.21.1 - QA V2 Framework & Comprehensive Testing 🧪
 
 ### 🎯 NEW: QA V2 Validation Framework

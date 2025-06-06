@@ -156,7 +156,7 @@ async fn test_artifact_writer_determinism() {
     // Write artifacts multiple times to different locations
     let mut manifests = Vec::new();
     for iteration in 0..3 {
-        let subdir = temp_dir.path().join(format!("run_{}", iteration));
+        let subdir = temp_dir.path().join(format!("run_{iteration}"));
         let mut writer = ArtifactWriter::new(subdir).unwrap();
         writer.write_artifacts(&tree).unwrap();
 
@@ -220,12 +220,11 @@ fn test_hash_collision_resistance() {
     let mut hashes = HashMap::new();
     for (input, description) in test_cases {
         let hash = blake3::hash(input.as_bytes());
-        let hash_str = format!("{}", hash);
+        let hash_str = format!("{hash}");
 
         if let Some(existing_desc) = hashes.get(&hash_str) {
             panic!(
-                "Hash collision detected: '{}' and '{}' produce same hash",
-                description, existing_desc
+                "Hash collision detected: '{description}' and '{existing_desc}' produce same hash"
             );
         }
 
@@ -486,8 +485,8 @@ fn create_large_test_graph() -> petgraph::stable_graph::StableGraph<
     let mut nodes = Vec::new();
     for i in 0..20 {
         let node = graph.add_node(ModuleNode {
-            name: format!("module_{}", i),
-            path: PathBuf::from(format!("src/module_{}.rs", i)),
+            name: format!("module_{i}"),
+            path: PathBuf::from(format!("src/module_{i}.rs")),
             visibility: "public".to_string(),
             metrics: ModuleMetrics {
                 complexity: (i % 10) + 1,

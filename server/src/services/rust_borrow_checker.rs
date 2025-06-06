@@ -230,7 +230,7 @@ impl RustBorrowChecker {
         ProofAnnotation {
             annotation_id: uuid::Uuid::new_v4(),
             property_proven: property,
-            specification_id: Some(format!("auto_trait_{}", trait_name)),
+            specification_id: Some(format!("auto_trait_{trait_name}")),
             method: VerificationMethod::BorrowChecker,
             tool_name: format!("rustc-{}", self.rustc_channel),
             tool_version: self.rustc_version.clone(),
@@ -281,7 +281,7 @@ impl RustBorrowChecker {
 
         let syntax = syn::parse_file(&content).map_err(|e| ProofCollectionError::Parse {
             path: file_path.to_owned(),
-            message: format!("Syntax error: {}", e),
+            message: format!("Syntax error: {e}"),
         })?;
 
         let mut annotations = Vec::new();

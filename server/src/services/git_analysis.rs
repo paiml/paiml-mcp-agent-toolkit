@@ -15,8 +15,7 @@ impl GitAnalysisService {
     ) -> Result<CodeChurnAnalysis, TemplateError> {
         if !project_path.join(".git").exists() {
             return Err(TemplateError::NotFound(format!(
-                "No git repository found at {:?}",
-                project_path
+                "No git repository found at {project_path:?}"
             )));
         }
 
@@ -58,8 +57,7 @@ impl GitAnalysisService {
                 return Ok(Vec::new());
             }
             return Err(TemplateError::NotFound(format!(
-                "Git log failed: {}",
-                error_msg
+                "Git log failed: {error_msg}"
             )));
         }
 

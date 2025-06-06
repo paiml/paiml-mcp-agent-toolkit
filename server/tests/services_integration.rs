@@ -337,7 +337,7 @@ enum TestEnum {
         // Test tracing setup
         use tracing_subscriber::EnvFilter;
         let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-        assert!(!format!("{:?}", filter).is_empty());
+        assert!(!format!("{filter:?}").is_empty());
     }
 
     // Test CLI commands through direct function calls where possible

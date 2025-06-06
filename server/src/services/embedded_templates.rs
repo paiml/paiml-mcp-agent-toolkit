@@ -90,7 +90,7 @@ fn parse_template_category(category_str: &str) -> Result<TemplateCategory, Templ
         "readme" => Ok(TemplateCategory::Readme),
         "gitignore" => Ok(TemplateCategory::Gitignore),
         _ => Err(TemplateError::InvalidUri {
-            uri: format!("Unknown category: {}", category_str),
+            uri: format!("Unknown category: {category_str}"),
         }),
     }
 }
@@ -107,7 +107,7 @@ fn parse_toolchain(toolchain_str: &str) -> Result<Toolchain, TemplateError> {
             python_version: "3.12".to_string(),
         }),
         _ => Err(TemplateError::InvalidUri {
-            uri: format!("Unknown toolchain: {}", toolchain_str),
+            uri: format!("Unknown toolchain: {toolchain_str}"),
         }),
     }
 }
@@ -223,8 +223,7 @@ pub async fn get_template_metadata(uri: &str) -> Result<Arc<TemplateResource>, T
         uri if uri.contains("gitignore/python-uv/cli") => GITIGNORE_PYTHON_UV_CLI_META,
         _ => {
             return Err(TemplateError::NotFound(format!(
-                "Template not found: {}",
-                uri
+                "Template not found: {uri}"
             )))
         }
     };
@@ -251,8 +250,7 @@ pub async fn get_template_content(uri: &str) -> Result<Arc<str>, TemplateError> 
         uri if uri.contains("gitignore/python-uv/cli") => GITIGNORE_PYTHON_UV_CLI_HBS,
         _ => {
             return Err(TemplateError::NotFound(format!(
-                "Template content not found: {}",
-                uri
+                "Template content not found: {uri}"
             )))
         }
     };

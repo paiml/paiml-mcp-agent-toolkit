@@ -329,6 +329,9 @@ impl DeadCodeAnalyzer {
 
     #[cfg(target_arch = "x86_64")]
     #[target_feature(enable = "avx2")]
+    /// # Safety
+    /// This function requires AVX2 instruction set support.
+    /// It must only be called on x86_64 processors with AVX2 capability.
     unsafe fn mark_reachable_vectorized_avx2(&mut self) {
         // use std::arch::x86_64::*;
 

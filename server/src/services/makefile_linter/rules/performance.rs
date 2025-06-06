@@ -21,21 +21,14 @@ impl Default for RecursiveExpansionRule {
     }
 }
 
-impl MakefileRule for RecursiveExpansionRule {
-    fn id(&self) -> &'static str {
-        "recursive-expansion"
-    }
-
-    fn default_severity(&self) -> Severity {
-        Severity::Performance
-    }
-
-    fn check(&self, ast: &MakefileAst) -> Vec<Violation> {
-        let mut violations = Vec::new();
+impl RecursiveExpansionRule {
+    fn identify_expensive_variables(
+        &self,
+        ast: &MakefileAst,
+    ) -> (HashSet<String>, HashMap<String, HashSet<String>>) {
         let mut expensive_vars = HashSet::new();
         let mut var_deps: HashMap<String, HashSet<String>> = HashMap::new();
 
-        // First pass: identify expensive variables and build dependency graph
         for node in &ast.nodes {
             if node.kind != MakefileNodeKind::Variable {
                 continue;
@@ -65,13 +58,20 @@ impl MakefileRule for RecursiveExpansionRule {
             }
         }
 
-        // Propagate expensive status through dependencies
+        (expensive_vars, var_deps)
+    }
+
+    fn propagate_expensive_status(
+        &self,
+        expensive_vars: &mut HashSet<String>,
+        var_deps: &HashMap<String, HashSet<String>>,
+    ) {
         let mut changed = true;
         while changed {
             changed = false;
             let current_expensive = expensive_vars.clone();
 
-            for (var, deps) in &var_deps {
+            for (var, deps) in var_deps {
                 if !expensive_vars.contains(var)
                     && deps.iter().any(|dep| current_expensive.contains(dep))
                 {
@@ -80,8 +80,15 @@ impl MakefileRule for RecursiveExpansionRule {
                 }
             }
         }
+    }
 
-        // Second pass: check usage in recipes
+    fn check_recipe_usage(
+        &self,
+        ast: &MakefileAst,
+        expensive_vars: &HashSet<String>,
+    ) -> Vec<Violation> {
+        let mut violations = Vec::new();
+
         for node in &ast.nodes {
             if node.kind != MakefileNodeKind::Recipe {
                 continue;
@@ -98,13 +105,11 @@ impl MakefileRule for RecursiveExpansionRule {
                                 severity: self.default_severity(),
                                 span: node.span,
                                 message: format!(
-                                    "Expensive variable '{}' expanded {} times in recipe. \
-                                     Consider using := for immediate evaluation",
-                                    var, count
+                                    "Expensive variable '{var}' expanded {count} times in recipe. \
+                                     Consider using := for immediate evaluation"
                                 ),
                                 fix_hint: Some(format!(
-                                    "Change '{} =' to '{} :=' if the value doesn't need to change",
-                                    var, var
+                                    "Change '{var} =' to '{var} :=' if the value doesn't need to change"
                                 )),
                             });
                         }
@@ -113,7 +118,16 @@ impl MakefileRule for RecursiveExpansionRule {
             }
         }
 
-        // Check for variables used in prerequisites (expanded for each target)
+        violations
+    }
+
+    fn check_prerequisite_usage(
+        &self,
+        ast: &MakefileAst,
+        expensive_vars: &HashSet<String>,
+    ) -> Vec<Violation> {
+        let mut violations = Vec::new();
+
         for node in &ast.nodes {
             if node.kind != MakefileNodeKind::Rule {
                 continue;
@@ -151,6 +165,30 @@ impl MakefileRule for RecursiveExpansionRule {
                 }
             }
         }
+
+        violations
+    }
+}
+
+impl MakefileRule for RecursiveExpansionRule {
+    fn id(&self) -> &'static str {
+        "recursive-expansion"
+    }
+
+    fn default_severity(&self) -> Severity {
+        Severity::Performance
+    }
+
+    fn check(&self, ast: &MakefileAst) -> Vec<Violation> {
+        // First pass: identify expensive variables and build dependency graph
+        let (mut expensive_vars, var_deps) = self.identify_expensive_variables(ast);
+
+        // Propagate expensive status through dependencies
+        self.propagate_expensive_status(&mut expensive_vars, &var_deps);
+
+        // Check usage in recipes and prerequisites
+        let mut violations = self.check_recipe_usage(ast, &expensive_vars);
+        violations.extend(self.check_prerequisite_usage(ast, &expensive_vars));
 
         violations
     }
@@ -209,9 +247,9 @@ fn count_var_usage(text: &str) -> HashMap<String, usize> {
 
     for var in vars {
         // Count actual occurrences
-        let pattern1 = format!("$({}", var);
-        let pattern2 = format!("${{{}", var);
-        let pattern3 = format!("${}", var);
+        let pattern1 = format!("$({var}");
+        let pattern2 = format!("${{{var}");
+        let pattern3 = format!("${var}");
 
         let count = text.matches(&pattern1).count()
             + text.matches(&pattern2).count()
@@ -283,7 +321,7 @@ mod tests {
             println!("Node {}: {:?}", i, node.kind);
             match &node.data {
                 NodeData::Variable { name, value, .. } => {
-                    println!("  Variable: {} = {}", name, value);
+                    println!("  Variable: {name} = {value}");
                 }
                 NodeData::Recipe { lines } => {
                     println!("  Recipe with {} lines", lines.len());

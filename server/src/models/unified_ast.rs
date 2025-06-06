@@ -18,6 +18,7 @@ pub type NodeKey = u32;
 pub const INVALID_NODE_KEY: NodeKey = u32::MAX;
 
 /// Language identifier
+/// Apply Kaizen - Add support for additional project file types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum Language {
@@ -25,6 +26,16 @@ pub enum Language {
     TypeScript = 1,
     JavaScript = 2,
     Python = 3,
+    // Kaizen improvement - Add project documentation and configuration languages
+    Markdown = 4,
+    Makefile = 5,
+    Toml = 6,
+    Yaml = 7,
+    Json = 8,
+    Shell = 9,
+    C = 10,
+    Cpp = 11,
+    Cython = 12,
 }
 
 /// Node flags for quick filtering
@@ -41,6 +52,20 @@ impl NodeFlags {
     pub const EXPORTED: u8 = 0b00100000;
     pub const PRIVATE: u8 = 0b01000000;
     pub const DEPRECATED: u8 = 0b10000000;
+
+    // C-specific flags (using a second byte in future if needed)
+    pub const INLINE: u8 = 0b00000001; // inline function
+    pub const VOLATILE: u8 = 0b00000010; // volatile variable
+    pub const RESTRICT: u8 = 0b00000100; // restrict pointer
+    pub const EXTERN: u8 = 0b00001000; // extern linkage
+
+    // C++-specific flags (can overlap with C flags as they're language-specific)
+    pub const VIRTUAL: u8 = 0b00000001; // virtual function
+    pub const OVERRIDE: u8 = 0b00000010; // override specifier
+    pub const FINAL: u8 = 0b00000100; // final specifier
+    pub const MUTABLE: u8 = 0b00001000; // mutable member
+    pub const CONSTEXPR: u8 = 0b00010000; // constexpr
+    pub const NOEXCEPT: u8 = 0b00100000; // noexcept
 
     pub fn new() -> Self {
         Self(0)
@@ -72,6 +97,7 @@ pub enum AstKind {
     Statement(StmtKind),
     Type(TypeKind),
     Module(ModuleKind),
+    Macro(MacroKind), // C-specific preprocessor macros
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -83,6 +109,8 @@ pub enum FunctionKind {
     Setter,
     Lambda,
     Closure,
+    Destructor, // C++ destructor
+    Operator,   // C++ operator overload
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -123,6 +151,9 @@ pub enum ExprKind {
     Identifier,
     Array,
     Object,
+    New,    // C++ new expression
+    Delete, // C++ delete expression
+    Lambda, // C++ lambda expression
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -135,6 +166,11 @@ pub enum StmtKind {
     Throw,
     Try,
     Switch,
+    Goto,    // C-specific
+    Label,   // C-specific
+    DoWhile, // C-specific
+    ForEach, // C++ range-based for
+    Catch,   // C++ catch clause
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -147,6 +183,14 @@ pub enum TypeKind {
     Generic,
     Function,
     Object,
+    Pointer,   // C-specific
+    Struct,    // C-specific (distinct from Object)
+    Enum,      // C-specific enum (distinct from Rust enum)
+    Typedef,   // C-specific
+    Class,     // C++ class
+    Template,  // C++ template
+    Namespace, // C++ namespace
+    Alias,     // C++ using alias
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -154,6 +198,15 @@ pub enum ModuleKind {
     File,
     Namespace,
     Package,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MacroKind {
+    ObjectLike,   // #define PI 3.14
+    FunctionLike, // #define MAX(a,b) ((a)>(b)?(a):(b))
+    Variadic,     // #define DEBUG(...) fprintf(stderr, __VA_ARGS__)
+    Include,      // #include <stdio.h>
+    Conditional,  // #ifdef, #ifndef, #if, #elif, #else, #endif
 }
 
 /// Proof annotation system for formal verification metadata
@@ -371,7 +424,7 @@ impl QualifiedName {
         }
         result.push_str(&self.name);
         if let Some(disambiguator) = self.disambiguator {
-            result.push_str(&format!("#{}", disambiguator));
+            result.push_str(&format!("#{disambiguator}"));
         }
         result
     }
@@ -674,14 +727,12 @@ mod tests {
         let size = std::mem::size_of::<UnifiedAstNode>();
         assert!(
             size <= 128,
-            "Node size {} exceeds maximum expected size of 128 bytes",
-            size
+            "Node size {size} exceeds maximum expected size of 128 bytes"
         );
         // Structure should be at least 64 bytes for the core data
         assert!(
             size >= 64,
-            "Node size {} is smaller than minimum expected size of 64 bytes",
-            size
+            "Node size {size} is smaller than minimum expected size of 64 bytes"
         );
     }
 

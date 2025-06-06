@@ -84,7 +84,7 @@ impl CacheStrategy for TemplateCacheStrategy {
     type Value = TemplateResource;
 
     fn cache_key(&self, uri: &String) -> String {
-        format!("template:{}", uri)
+        format!("template:{uri}")
     }
 
     fn validate(&self, _uri: &String, _cached: &TemplateResource) -> bool {

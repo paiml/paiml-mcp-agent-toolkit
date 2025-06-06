@@ -41,17 +41,14 @@ fn test_regression_empty_nodes_bug() {
     let generator = MermaidGenerator::new(MermaidOptions::default());
     let output = generator.generate(&graph);
 
-    println!("Generated Mermaid diagram:\n{}", output);
+    println!("Generated Mermaid diagram:\n{output}");
 
     // Verify each label appears in output (escaped)
     for (_id, label, description) in &test_cases {
         let escaped = generator.escape_mermaid_label(label);
         assert!(
             output.contains(&escaped),
-            "Label '{}' ({}) not found in output. Escaped label: '{}'",
-            label,
-            description,
-            escaped
+            "Label '{label}' ({description}) not found in output. Escaped label: '{escaped}'"
         );
     }
 
@@ -59,11 +56,10 @@ fn test_regression_empty_nodes_bug() {
     for (id, _, _) in &test_cases {
         let sanitized_id = generator.sanitize_id(id);
         // The ID should appear with a bracket or parenthesis, not alone
-        let bare_id_pattern = format!("    {}\n", sanitized_id);
+        let bare_id_pattern = format!("    {sanitized_id}\n");
         assert!(
             !output.contains(&bare_id_pattern),
-            "Found bare ID '{}' without label in output",
-            sanitized_id
+            "Found bare ID '{sanitized_id}' without label in output"
         );
     }
 
@@ -92,8 +88,7 @@ fn test_mermaid_label_escaping() {
         let escaped = generator.escape_mermaid_label(input);
         assert_eq!(
             escaped, expected,
-            "Escaping '{}' failed. Expected: '{}', Got: '{}'",
-            input, expected, escaped
+            "Escaping '{input}' failed. Expected: '{expected}', Got: '{escaped}'"
         );
     }
 }
@@ -130,8 +125,7 @@ fn test_node_types_have_labels() {
     for (_id, label, _node_type) in &node_types {
         assert!(
             output.contains(label),
-            "Node label '{}' not found in output",
-            label
+            "Node label '{label}' not found in output"
         );
     }
 }
@@ -230,8 +224,7 @@ fn test_special_characters_in_node_ids() {
         if !label.is_empty() {
             assert!(
                 output.contains(label),
-                "Label '{}' not found in output",
-                label
+                "Label '{label}' not found in output"
             );
         }
     }

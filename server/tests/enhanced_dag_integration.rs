@@ -8,7 +8,7 @@ fn test_enhanced_dag_analysis() {
     let temp_dir = TempDir::new().unwrap();
     let output_path = temp_dir.path().join("enhanced-dag.mmd");
 
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args([
         "analyze",
         "dag",
@@ -39,7 +39,7 @@ fn test_enhanced_analysis_backward_compatibility() {
     let output_path = temp_dir.path().join("regular-dag.mmd");
 
     // Test that regular DAG analysis still works without enhanced flags
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args([
         "analyze",
         "dag",
@@ -68,7 +68,7 @@ fn test_enhanced_flags_combinations() {
 
     // Test with only duplicate detection
     let output_path = temp_dir.path().join("duplicates-only.mmd");
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args([
         "analyze",
         "dag",
@@ -81,7 +81,7 @@ fn test_enhanced_flags_combinations() {
 
     // Test with only dead code detection
     let output_path = temp_dir.path().join("dead-code-only.mmd");
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args([
         "analyze",
         "dag",
@@ -94,7 +94,7 @@ fn test_enhanced_flags_combinations() {
 
     // Test enhanced mode without additional analyses
     let output_path = temp_dir.path().join("enhanced-only.mmd");
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args([
         "analyze",
         "dag",
@@ -107,7 +107,7 @@ fn test_enhanced_flags_combinations() {
 
 #[test]
 fn test_enhanced_dag_help() {
-    let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit").unwrap();
+    let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["analyze", "dag", "--help"]);
 
     cmd.assert()

@@ -30,11 +30,7 @@ pub async fn handle_resource_list<T: TemplateServerTrait>(
         }
         Err(e) => {
             error!("Resource listing failed: {}", e);
-            McpResponse::error(
-                request.id,
-                -32000,
-                format!("Failed to list resources: {}", e),
-            )
+            McpResponse::error(request.id, -32000, format!("Failed to list resources: {e}"))
         }
     }
 }
@@ -57,7 +53,7 @@ pub async fn handle_resource_read<T: TemplateServerTrait>(
     let read_params: ResourceReadParams = match serde_json::from_value(params) {
         Ok(p) => p,
         Err(e) => {
-            return McpResponse::error(request.id, -32602, format!("Invalid params: {}", e));
+            return McpResponse::error(request.id, -32602, format!("Invalid params: {e}"));
         }
     };
 
@@ -75,11 +71,7 @@ pub async fn handle_resource_read<T: TemplateServerTrait>(
         }
         Err(e) => {
             error!("Failed to read resource {}: {}", read_params.uri, e);
-            McpResponse::error(
-                request.id,
-                -32000,
-                format!("Failed to read resource: {}", e),
-            )
+            McpResponse::error(request.id, -32000, format!("Failed to read resource: {e}"))
         }
     }
 }

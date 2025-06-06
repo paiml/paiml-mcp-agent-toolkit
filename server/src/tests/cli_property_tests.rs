@@ -17,7 +17,7 @@ proptest! {
         num_val in any::<f64>().prop_filter("finite", |x| x.is_finite()),
     ) {
         // Test string values that are NOT "true", "false", or numbers
-        let input = format!("{}={}", key, str_val);
+        let input = format!("{key}={str_val}");
         if let Ok((k, v)) = parse_key_val(&input) {
             assert_eq!(k, key);
             // Check if this string will be parsed as bool or number
@@ -37,7 +37,7 @@ proptest! {
 
         // Test boolean values explicitly
         let bool_str = if bool_val { "true" } else { "false" };
-        let input = format!("{}={}", key, bool_str);
+        let input = format!("{key}={bool_str}");
         if let Ok((k, v)) = parse_key_val(&input) {
             assert_eq!(k, key);
             assert!(v.is_boolean());
@@ -45,7 +45,7 @@ proptest! {
         }
 
         // Test number values
-        let input = format!("{}={}", key, num_val);
+        let input = format!("{key}={num_val}");
         if let Ok((k, v)) = parse_key_val(&input) {
             assert_eq!(k, key);
             assert!(v.is_number());
@@ -62,7 +62,7 @@ proptest! {
         toolchain in "(rust|deno|python-uv)",
         variant in "cli",
     ) {
-        let uri = format!("template://{}/{}/{}", category, toolchain, variant);
+        let uri = format!("template://{category}/{toolchain}/{variant}");
 
         // Verify URI structure
         assert!(uri.starts_with("template://"));
@@ -82,7 +82,7 @@ proptest! {
         value in ".*",
     ) {
         // Test with various value patterns
-        let input = format!("{}={}", key, value);
+        let input = format!("{key}={value}");
 
         match parse_key_val(&input) {
             Ok((parsed_key, parsed_value)) => {
@@ -124,7 +124,7 @@ proptest! {
     fn prop_empty_value_handling(
         key in "[a-zA-Z_]+",
     ) {
-        let input = format!("{}=", key);
+        let input = format!("{key}=");
         let (parsed_key, parsed_value) = parse_key_val(&input).unwrap();
         assert_eq!(parsed_key, key);
         assert_eq!(parsed_value, json!(true)); // Empty value is treated as boolean true
@@ -328,7 +328,7 @@ proptest! {
         key in "[a-z_]+",
         value_with_special_chars in r#".*[\n\r\t"'\\].*"#,
     ) {
-        let input = format!("{}={}", key, value_with_special_chars);
+        let input = format!("{key}={value_with_special_chars}");
 
         if let Ok((parsed_key, parsed_value)) = parse_key_val(&input) {
             assert_eq!(parsed_key, key);
@@ -347,12 +347,12 @@ proptest! {
         float_val in any::<f64>().prop_filter("finite", |x| x.is_finite()),
     ) {
         // Integer-like strings are parsed as numbers
-        let input = format!("{}={}", key, int_val);
+        let input = format!("{key}={int_val}");
         let (_, parsed_value) = parse_key_val(&input).unwrap();
         assert_eq!(parsed_value, json!(int_val));
 
         // Float-like strings are parsed as numbers
-        let input = format!("{}={}", key, float_val);
+        let input = format!("{key}={float_val}");
         let (_, parsed_value) = parse_key_val(&input).unwrap();
         // Compare the actual numeric values, not JSON representations
         // This handles floating point precision and -0.0 vs 0.0
@@ -378,8 +378,8 @@ proptest! {
         suffix in ".*",
     ) {
         // Create a value with embedded equals signs
-        let complex_value = format!("{}=middle={}", prefix, suffix);
-        let input = format!("{}={}", key, complex_value);
+        let complex_value = format!("{prefix}=middle={suffix}");
+        let input = format!("{key}={complex_value}");
 
         let (parsed_key, parsed_value) = parse_key_val(&input).unwrap();
         assert_eq!(parsed_key, key);

@@ -4,7 +4,7 @@ use axum::http::Method;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, BufReader as AsyncBufReader, Stdin};
-use tracing::{debug, instrument};
+use tracing::debug;
 
 use crate::unified_protocol::{
     McpContext, Protocol, ProtocolAdapter, ProtocolError, UnifiedRequest, UnifiedResponse,
@@ -43,13 +43,12 @@ impl ProtocolAdapter for McpAdapter {
         Protocol::Mcp
     }
 
-    #[instrument(skip_all)]
     async fn decode(&self, input: Self::Input) -> Result<UnifiedRequest, ProtocolError> {
         debug!("Decoding MCP input: {:?}", input);
 
         let json_rpc: JsonRpcRequest = match input {
             McpInput::Line(line) => serde_json::from_str(&line)
-                .map_err(|e| ProtocolError::DecodeError(format!("Invalid JSON-RPC: {}", e)))?,
+                .map_err(|e| ProtocolError::DecodeError(format!("Invalid JSON-RPC: {e}")))?,
             McpInput::Request(req) => req,
         };
 
@@ -85,16 +84,13 @@ impl ProtocolAdapter for McpAdapter {
         Ok(unified_request)
     }
 
-    #[instrument(skip_all)]
     async fn encode(&self, response: UnifiedResponse) -> Result<Self::Output, ProtocolError> {
         debug!(status = %response.status, "Encoding MCP response");
 
         // Extract MCP context to get the request ID
         let body_bytes = http_body_util::BodyExt::collect(response.body)
             .await
-            .map_err(|e| {
-                ProtocolError::EncodeError(format!("Failed to read response body: {}", e))
-            })?
+            .map_err(|e| ProtocolError::EncodeError(format!("Failed to read response body: {e}")))?
             .to_bytes();
 
         let response_data: Value = serde_json::from_slice(&body_bytes)?;
@@ -244,7 +240,7 @@ impl JsonRpcError {
     pub fn method_not_found(method: &str) -> Self {
         Self {
             code: Self::METHOD_NOT_FOUND,
-            message: format!("Method not found: {}", method),
+            message: format!("Method not found: {method}"),
             data: None,
         }
     }
@@ -252,7 +248,7 @@ impl JsonRpcError {
     pub fn invalid_params(message: &str) -> Self {
         Self {
             code: Self::INVALID_PARAMS,
-            message: format!("Invalid params: {}", message),
+            message: format!("Invalid params: {message}"),
             data: None,
         }
     }
@@ -260,7 +256,7 @@ impl JsonRpcError {
     pub fn internal_error(message: &str) -> Self {
         Self {
             code: Self::INTERNAL_ERROR,
-            message: format!("Internal error: {}", message),
+            message: format!("Internal error: {message}"),
             data: None,
         }
     }
@@ -296,7 +292,7 @@ impl McpReader {
         }
 
         serde_json::from_str(line)
-            .map_err(|e| ProtocolError::DecodeError(format!("Invalid JSON: {}", e)))
+            .map_err(|e| ProtocolError::DecodeError(format!("Invalid JSON: {e}")))
     }
 }
 

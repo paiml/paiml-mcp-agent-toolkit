@@ -72,7 +72,7 @@ impl DogfoodingEngine {
     ) -> Result<String, TemplateError> {
         let mut context = String::new();
 
-        context.push_str(&format!("# AST Context Analysis - {}\n\n", date));
+        context.push_str(&format!("# AST Context Analysis - {date}\n\n"));
         context.push_str("## Project Structure\n\n");
 
         // Parse project to get AST forest
@@ -107,11 +107,11 @@ impl DogfoodingEngine {
 
         context.push_str("## Summary Statistics\n\n");
         context.push_str(&format!("- **Total Files**: {}\n", file_contexts.len()));
-        context.push_str(&format!("- **Total Functions**: {}\n", total_functions));
-        context.push_str(&format!("- **Total Structs**: {}\n", total_structs));
-        context.push_str(&format!("- **Total Traits**: {}\n", total_traits));
-        context.push_str(&format!("- **Maximum Complexity**: {}\n", max_complexity));
-        context.push_str(&format!("- **Total Lines**: {}\n", total_lines));
+        context.push_str(&format!("- **Total Functions**: {total_functions}\n"));
+        context.push_str(&format!("- **Total Structs**: {total_structs}\n"));
+        context.push_str(&format!("- **Total Traits**: {total_traits}\n"));
+        context.push_str(&format!("- **Maximum Complexity**: {max_complexity}\n"));
+        context.push_str(&format!("- **Total Lines**: {total_lines}\n"));
 
         Ok(context)
     }
@@ -168,7 +168,7 @@ impl DogfoodingEngine {
     ) -> Result<String, TemplateError> {
         let mut analysis = String::new();
 
-        analysis.push_str(&format!("# Complexity Analysis - {}\n\n", date));
+        analysis.push_str(&format!("# Complexity Analysis - {date}\n\n"));
 
         let ast_forest = self.ast_engine.parse_project(root).await?;
         let file_contexts = self.analyze_all_files(&ast_forest)?;
@@ -206,12 +206,9 @@ impl DogfoodingEngine {
         };
 
         analysis.push_str("\n## Complexity Distribution\n\n");
-        analysis.push_str(&format!("- **Total Files**: {}\n", total_files));
-        analysis.push_str(&format!(
-            "- **Average Complexity**: {:.2}\n",
-            avg_complexity
-        ));
-        analysis.push_str(&format!("- **Median Complexity**: {}\n", median_complexity));
+        analysis.push_str(&format!("- **Total Files**: {total_files}\n"));
+        analysis.push_str(&format!("- **Average Complexity**: {avg_complexity:.2}\n"));
+        analysis.push_str(&format!("- **Median Complexity**: {median_complexity}\n"));
         analysis.push_str(&format!(
             "- **Maximum Complexity**: {}\n",
             complexities.first().unwrap_or(&0)
@@ -287,7 +284,7 @@ impl DogfoodingEngine {
     ) -> Result<String, TemplateError> {
         let mut analysis = String::new();
 
-        analysis.push_str(&format!("# Code Churn Analysis - {}\n\n", date));
+        analysis.push_str(&format!("# Code Churn Analysis - {date}\n\n"));
 
         let churn_metrics = self.get_churn_metrics(root)?;
 
@@ -330,11 +327,11 @@ impl DogfoodingEngine {
     pub fn generate_server_info(&self, date: &str) -> Result<String, TemplateError> {
         let mut info = String::new();
 
-        info.push_str(&format!("# Server Information - {}\n\n", date));
+        info.push_str(&format!("# Server Information - {date}\n\n"));
 
         // Binary metadata
         info.push_str("## Binary Metadata\n\n");
-        info.push_str(&format!("- **Build Date**: {}\n", date));
+        info.push_str(&format!("- **Build Date**: {date}\n"));
         info.push_str(&format!("- **Rust Version**: {}\n", "1.82.0"));
         info.push_str(&format!("- **Target**: {}\n", std::env::consts::ARCH));
         info.push_str(&format!("- **OS**: {}\n", std::env::consts::OS));
@@ -413,7 +410,11 @@ impl DogfoodingEngine {
                     lines: syn_ast.items.len() * 10, // Rough estimate
                 })
             }
-            FileAst::TypeScript(_) | FileAst::Python(_) => {
+            FileAst::TypeScript(_)
+            | FileAst::Python(_)
+            | FileAst::C(_)
+            | FileAst::Cpp(_)
+            | FileAst::Cython(_) => {
                 // Placeholder for other languages
                 Ok(FileContext {
                     path: path.to_path_buf(),
@@ -436,6 +437,21 @@ impl DogfoodingEngine {
                     traits: 0,
                     max_complexity,
                     lines: makefile_ast.nodes.len() * 3, // Rough estimate
+                })
+            }
+            FileAst::Markdown(_)
+            | FileAst::Toml(_)
+            | FileAst::Yaml(_)
+            | FileAst::Json(_)
+            | FileAst::Shell(_) => {
+                // Basic context for non-code files
+                Ok(FileContext {
+                    path: path.to_path_buf(),
+                    functions: 0,
+                    structs: 0,
+                    traits: 0,
+                    max_complexity: 0,
+                    lines: 50, // Rough estimate
                 })
             }
         }

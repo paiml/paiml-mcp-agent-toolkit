@@ -322,7 +322,7 @@ impl DebugReporter {
         let mut skip_reasons = std::collections::HashMap::new();
         for event in &self.events {
             if let ParseDecision::Skip(reason) = event.decision {
-                *skip_reasons.entry(format!("{:?}", reason)).or_insert(0) += 1;
+                *skip_reasons.entry(format!("{reason:?}")).or_insert(0) += 1;
             }
         }
 
@@ -554,8 +554,7 @@ mod tests {
             let decision = classifier.should_parse(Path::new(path), content);
             assert!(
                 matches!(decision, ParseDecision::Skip(SkipReason::BuildArtifact)),
-                "Failed to filter target directory path: {}",
-                path
+                "Failed to filter target directory path: {path}"
             );
         }
 
@@ -572,9 +571,7 @@ mod tests {
             let decision = classifier.should_parse(Path::new(path), content);
             assert!(
                 matches!(decision, ParseDecision::Parse),
-                "Incorrectly filtered source file: {} -> {:?}",
-                path,
-                decision
+                "Incorrectly filtered source file: {path} -> {decision:?}"
             );
         }
     }
@@ -594,8 +591,7 @@ mod tests {
             let decision = classifier.should_parse(Path::new(path), content);
             assert!(
                 matches!(decision, ParseDecision::Skip(SkipReason::BuildArtifact)),
-                "Failed to filter build artifact: {}",
-                path
+                "Failed to filter build artifact: {path}"
             );
         }
 
@@ -610,8 +606,7 @@ mod tests {
             let decision = classifier.should_parse(Path::new(path), content);
             assert!(
                 matches!(decision, ParseDecision::Skip(SkipReason::VendorDirectory)),
-                "Failed to filter vendor artifact: {}",
-                path
+                "Failed to filter vendor artifact: {path}"
             );
         }
     }

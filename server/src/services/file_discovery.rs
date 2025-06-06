@@ -11,6 +11,17 @@ use tracing::{debug, trace};
 
 use crate::services::file_classifier::FileClassifier;
 
+/// File categorization for deep context analysis
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FileCategory {
+    SourceCode,      // .rs, .ts, .py - full AST analysis
+    EssentialDoc,    // README.md - compress and include
+    BuildConfig,     // Makefile, Cargo.toml - compress and include
+    GeneratedOutput, // *deep_context*.md - exclude
+    DevelopmentDoc,  // docs/*.md - exclude from defect analysis
+    TestArtifact,    // test_*.md - exclude
+}
+
 lazy_static! {
     /// Patterns for detecting external repository clones
     static ref EXTERNAL_REPO_PATTERNS: RegexSet = RegexSet::new([
@@ -115,7 +126,7 @@ impl ProjectFileDiscovery {
             if let Ok(mut file) = std::fs::File::create(&temp_ignore_file) {
                 use std::io::Write;
                 for pattern in &self.config.custom_ignore_patterns {
-                    let _ = writeln!(file, "{}", pattern);
+                    let _ = writeln!(file, "{pattern}");
                 }
                 let _ = file.flush();
                 builder.add_ignore(&temp_ignore_file);
@@ -130,7 +141,7 @@ impl ProjectFileDiscovery {
             if let Ok(mut file) = std::fs::File::create(&temp_ignore_file2) {
                 use std::io::Write;
                 for pattern in ADDITIONAL_IGNORE_PATTERNS.iter() {
-                    let _ = writeln!(file, "{}", pattern);
+                    let _ = writeln!(file, "{pattern}");
                 }
                 let _ = file.flush();
                 builder.add_ignore(&temp_ignore_file2);
@@ -278,18 +289,33 @@ impl ProjectFileDiscovery {
         false
     }
 
-    /// Check if a file is analyzable based on extension
+    /// Check if a file is analyzable based on extension or special name
+    /// Apply Kaizen - Include important project files for complete analysis
     fn is_analyzable_file(path: &Path) -> bool {
+        // Check for special project files without extensions (Jidoka - build quality in)
+        if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
+            if matches!(
+                filename.to_lowercase().as_str(),
+                "makefile" | "dockerfile" | "justfile" | "rakefile" | "gemfile" | "podfile"
+            ) {
+                return true;
+            }
+        }
+
+        // Check for files with extensions
         if let Some(ext) = path.extension() {
             let ext_str = ext.to_string_lossy().to_lowercase();
             matches!(
                 ext_str.as_str(),
+                // Programming languages
                 "rs" | "js"
                     | "jsx"
                     | "ts"
                     | "tsx"
                     | "py"
                     | "pyi"
+                    | "pyx"      // Cython source files
+                    | "pxd"      // Cython declaration files
                     | "go"
                     | "java"
                     | "kt"
@@ -309,6 +335,17 @@ impl ProjectFileDiscovery {
                     | "dart"
                     | "vue"
                     | "svelte"
+                    // Kaizen improvement - Add important project configuration files  
+                    // Note: .md files handled separately in categorize_file
+                    | "toml"      // Cargo.toml, pyproject.toml, etc.
+                    | "yaml" | "yml"  // GitHub Actions, docker-compose, etc.
+                    | "json"      // package.json, tsconfig.json, etc.
+                    | "xml"       // pom.xml, build.xml, etc.
+                    | "gradle"    // build.gradle
+                    | "mk"        // include.mk, common.mk
+                    | "cmake"     // CMakeLists.txt equivalent
+                    | "sh" | "bash" | "zsh" | "fish"  // Shell scripts
+                    | "bat" | "cmd" | "ps1" // Windows scripts
             )
         } else {
             false
@@ -351,6 +388,68 @@ impl ProjectFileDiscovery {
 
         stats.discovered_paths = files;
         Ok(stats)
+    }
+
+    /// Categorize a file for deep context analysis
+    pub fn categorize_file(path: &Path) -> FileCategory {
+        let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+        // Generated deep context reports - MUST EXCLUDE
+        if (file_name.contains("deep_context") || file_name.contains("deep-context"))
+            && path.extension() == Some(std::ffi::OsStr::new("md"))
+        {
+            return FileCategory::GeneratedOutput;
+        }
+
+        // Kaizen metrics files - also exclude
+        if file_name.contains("kaizen") && path.extension() == Some(std::ffi::OsStr::new("json")) {
+            return FileCategory::GeneratedOutput;
+        }
+
+        // Test artifacts
+        if file_name.starts_with("test_") && path.extension() == Some(std::ffi::OsStr::new("md")) {
+            return FileCategory::TestArtifact;
+        }
+
+        // Essential documentation
+        if file_name.eq_ignore_ascii_case("readme.md") {
+            return FileCategory::EssentialDoc;
+        }
+
+        // Build configuration
+        match file_name.to_lowercase().as_str() {
+            "makefile" | "gnumakefile" | "bsdmakefile" => return FileCategory::BuildConfig,
+            _ => {}
+        }
+
+        if let Some(ext) = path.extension() {
+            let ext_str = ext.to_string_lossy();
+            if ext_str == "toml" && (file_name == "Cargo.toml" || file_name == "pyproject.toml") {
+                return FileCategory::BuildConfig;
+            }
+        }
+
+        // Development docs in docs/ directory
+        if let Some(path_str) = path.to_str() {
+            if (path_str.contains("/docs/") || path_str.starts_with("docs/"))
+                && path.extension() == Some(std::ffi::OsStr::new("md"))
+            {
+                return FileCategory::DevelopmentDoc;
+            }
+        }
+
+        // All other markdown files - should not be analyzed as source code
+        if path.extension() == Some(std::ffi::OsStr::new("md")) {
+            return FileCategory::DevelopmentDoc;
+        }
+
+        // Check if it's source code
+        if Self::is_analyzable_file(path) {
+            return FileCategory::SourceCode;
+        }
+
+        // Default to development doc for other files
+        FileCategory::DevelopmentDoc
     }
 }
 
@@ -459,7 +558,7 @@ mod tests {
         // Create deeply nested structure
         let mut current = root.to_path_buf();
         for i in 0..20 {
-            current = current.join(format!("level{}", i));
+            current = current.join(format!("level{i}"));
             fs::create_dir_all(&current).unwrap();
             fs::write(current.join("file.rs"), "// content").unwrap();
         }
@@ -515,16 +614,109 @@ mod tests {
         let discovery = ProjectFileDiscovery::new(root.to_path_buf());
         let files = discovery.discover_files().unwrap();
 
-        // Should only find source files
-        assert_eq!(files.len(), 3);
+        // Should find all analyzable files (source + config, but not .md files)
+        assert_eq!(files.len(), 5);
         assert!(files.iter().any(|p| p.to_string_lossy().ends_with(".rs")));
         assert!(files.iter().any(|p| p.to_string_lossy().ends_with(".py")));
         assert!(files.iter().any(|p| p.to_string_lossy().ends_with(".js")));
 
-        // Should not find non-source files
+        // Should find project config files but not .md files (they're now DevelopmentDoc)
         assert!(!files.iter().any(|p| p.to_string_lossy().ends_with(".md")));
-        assert!(!files.iter().any(|p| p.to_string_lossy().ends_with(".toml")));
-        assert!(!files.iter().any(|p| p.to_string_lossy().ends_with(".json")));
+        assert!(files.iter().any(|p| p.to_string_lossy().ends_with(".toml")));
+        assert!(files.iter().any(|p| p.to_string_lossy().ends_with(".json")));
+    }
+
+    #[test]
+    fn test_cython_file_discovery() {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+
+        // Create Cython files
+        fs::write(
+            root.join("module.pyx"),
+            "def add(int a, int b): return a + b",
+        )
+        .unwrap();
+        fs::write(root.join("module.pxd"), "cdef int add(int a, int b)").unwrap();
+        fs::write(root.join("setup.py"), "from distutils.core import setup").unwrap();
+
+        let discovery = ProjectFileDiscovery::new(root.to_path_buf());
+        let files = discovery.discover_files().unwrap();
+
+        // Should find all files including Cython
+        assert_eq!(files.len(), 3);
+        assert!(files.iter().any(|p| p.to_string_lossy().ends_with(".pyx")));
+        assert!(files.iter().any(|p| p.to_string_lossy().ends_with(".pxd")));
+        assert!(files.iter().any(|p| p.to_string_lossy().ends_with(".py")));
+    }
+
+    #[test]
+    fn test_file_categorization() {
+        use std::path::Path;
+
+        // Test generated output files
+        assert_eq!(
+            ProjectFileDiscovery::categorize_file(Path::new("deep_context.md")),
+            FileCategory::GeneratedOutput
+        );
+        assert_eq!(
+            ProjectFileDiscovery::categorize_file(Path::new("test-deep-context-2.md")),
+            FileCategory::GeneratedOutput
+        );
+        assert_eq!(
+            ProjectFileDiscovery::categorize_file(Path::new("kaizen-metrics.json")),
+            FileCategory::GeneratedOutput
+        );
+
+        // Test essential documentation
+        assert_eq!(
+            ProjectFileDiscovery::categorize_file(Path::new("README.md")),
+            FileCategory::EssentialDoc
+        );
+        assert_eq!(
+            ProjectFileDiscovery::categorize_file(Path::new("readme.md")),
+            FileCategory::EssentialDoc
+        );
+
+        // Test build configuration
+        assert_eq!(
+            ProjectFileDiscovery::categorize_file(Path::new("Makefile")),
+            FileCategory::BuildConfig
+        );
+        assert_eq!(
+            ProjectFileDiscovery::categorize_file(Path::new("Cargo.toml")),
+            FileCategory::BuildConfig
+        );
+        assert_eq!(
+            ProjectFileDiscovery::categorize_file(Path::new("pyproject.toml")),
+            FileCategory::BuildConfig
+        );
+
+        // Test test artifacts
+        assert_eq!(
+            ProjectFileDiscovery::categorize_file(Path::new("test_something.md")),
+            FileCategory::TestArtifact
+        );
+
+        // Test development docs
+        assert_eq!(
+            ProjectFileDiscovery::categorize_file(Path::new("docs/api.md")),
+            FileCategory::DevelopmentDoc
+        );
+
+        // Test source code
+        assert_eq!(
+            ProjectFileDiscovery::categorize_file(Path::new("src/main.rs")),
+            FileCategory::SourceCode
+        );
+        assert_eq!(
+            ProjectFileDiscovery::categorize_file(Path::new("app.ts")),
+            FileCategory::SourceCode
+        );
+        assert_eq!(
+            ProjectFileDiscovery::categorize_file(Path::new("script.py")),
+            FileCategory::SourceCode
+        );
     }
 
     #[test]

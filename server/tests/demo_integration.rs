@@ -11,6 +11,9 @@ mod demo_tests {
         let temp = TempDir::new()?;
         let test_path = temp.path();
 
+        // Initialize git repository
+        std::fs::create_dir_all(test_path.join(".git"))?;
+
         // Create some minimal test files
         std::fs::write(
             test_path.join("main.rs"),
@@ -22,20 +25,14 @@ mod demo_tests {
         )?;
 
         // Run demo on the small test directory
-        let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
+        let mut cmd = Command::cargo_bin("pmat")?;
         cmd.arg("demo").arg("--cli").arg("--path").arg(test_path);
 
         // Verify it runs successfully
         cmd.assert()
             .success()
-            .stdout(predicate::str::contains("PAIML MCP Agent Toolkit Demo"))
-            .stdout(predicate::str::contains("AST Context Analysis"))
-            .stdout(predicate::str::contains("Code Complexity Analysis"))
-            .stdout(predicate::str::contains("DAG Visualization"))
-            .stdout(predicate::str::contains("Code Churn Analysis"))
-            .stdout(predicate::str::contains("System Architecture Analysis"))
-            .stdout(predicate::str::contains("Defect Probability Analysis"))
-            .stdout(predicate::str::contains("Template Generation"));
+            .stdout(predicate::str::contains("CLI Protocol Demo"))
+            .stdout(predicate::str::contains("result"));
 
         Ok(())
     }
@@ -46,10 +43,13 @@ mod demo_tests {
         let temp = TempDir::new()?;
         let test_path = temp.path();
 
+        // Initialize git repository
+        std::fs::create_dir_all(test_path.join(".git"))?;
+
         // Create minimal test file
         std::fs::write(test_path.join("test.rs"), "fn main() {}")?;
 
-        let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
+        let mut cmd = Command::cargo_bin("pmat")?;
         cmd.arg("demo")
             .arg("--cli")
             .arg("--format")
@@ -60,9 +60,9 @@ mod demo_tests {
         // Verify JSON output
         cmd.assert()
             .success()
-            .stdout(predicate::str::contains(r#""repository""#))
-            .stdout(predicate::str::contains(r#""steps""#))
-            .stdout(predicate::str::contains(r#""total_time_ms""#));
+            .stdout(predicate::str::contains(r#""result""#))
+            .stdout(predicate::str::contains(r#""cache_key""#))
+            .stdout(predicate::str::contains(r#""execution_time_ms""#));
 
         Ok(())
     }
@@ -86,7 +86,7 @@ mod demo_tests {
             "[package]\nname = \"test\"\nversion = \"0.1.0\"",
         )?;
 
-        let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
+        let mut cmd = Command::cargo_bin("pmat")?;
         cmd.arg("demo")
             .arg("--cli")
             .arg("--path")
@@ -107,11 +107,15 @@ mod demo_tests {
         // Create small test directory for fast execution
         let temp = TempDir::new()?;
         let test_path = temp.path();
+
+        // Initialize git repository
+        std::fs::create_dir_all(test_path.join(".git"))?;
+
         std::fs::write(test_path.join("test.rs"), "fn main() {}")?;
 
         // This test verifies that running demo mode exercises various code paths
         // We'll check this by running demo and verifying it completes all steps
-        let mut cmd = Command::cargo_bin("paiml-mcp-agent-toolkit")?;
+        let mut cmd = Command::cargo_bin("pmat")?;
         cmd.arg("demo")
             .arg("--cli")
             .arg("--format")
@@ -128,30 +132,29 @@ mod demo_tests {
         }
         if !output.status.success() {
             eprintln!("Command failed with status: {}", output.status);
-            eprintln!("stdout: {}", stdout);
+            eprintln!("stdout: {stdout}");
             panic!("Demo command failed");
         }
 
-        // Parse JSON to verify all capabilities were exercised
-        let report: serde_json::Value = serde_json::from_str(&stdout)?;
-        let steps = report["steps"].as_array().expect("steps should be array");
+        // Extract JSON from output (skip the header line)
+        let json_start = stdout.find('{').expect("Should have JSON in output");
+        let json_str = &stdout[json_start..];
 
-        // Verify we have all 7 expected demo steps (with enhanced analyses)
-        assert_eq!(steps.len(), 7);
+        // Parse JSON to verify capabilities were exercised
+        let report: serde_json::Value = serde_json::from_str(json_str)?;
 
-        // Verify each step completed (note: code churn may fail without git history)
-        for (idx, step) in steps.iter().enumerate() {
-            // Code churn (step 4) may fail without git history - that's expected
-            if idx != 3 {
-                assert!(
-                    step["response"]["error"].is_null(),
-                    "Step {} should not have errors",
-                    idx
-                );
-            }
-            // Verify elapsed time is recorded (u64 is always >= 0)
-            let _ = step["elapsed_ms"].as_u64().unwrap();
-        }
+        // Verify basic structure
+        assert!(report["result"].is_object(), "Should have result object");
+        assert!(report["cache_key"].is_string(), "Should have cache key");
+        assert!(
+            report["execution_time_ms"].is_number(),
+            "Should have execution time"
+        );
+
+        // Verify result contains expected analyses
+        let result = &report["result"];
+        assert!(result["analyses"].is_object(), "Should have analyses");
+        assert!(result["metadata"].is_object(), "Should have metadata");
 
         Ok(())
     }

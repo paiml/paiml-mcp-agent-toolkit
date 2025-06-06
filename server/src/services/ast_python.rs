@@ -1,3 +1,5 @@
+// This file is conditionally compiled only when python-ast feature is enabled
+
 use crate::models::error::TemplateError;
 use crate::services::complexity::{
     ClassComplexity, ComplexityMetrics, FileComplexityMetrics, FunctionComplexity,
@@ -20,7 +22,7 @@ fn parse_python_content(content: &str, path: &Path) -> Result<ast::Mod, Template
         rustpython_parser::Mode::Module,
         path.to_str().unwrap_or("<unknown>"),
     )
-    .map_err(|e| TemplateError::InvalidUtf8(format!("Python parse error: {:?}", e)))
+    .map_err(|e| TemplateError::InvalidUtf8(format!("Python parse error: {e:?}")))
 }
 
 fn calculate_complexity_metrics(ast: &ast::Mod, path: &Path) -> FileComplexityMetrics {
@@ -47,8 +49,7 @@ fn check_file_classification(
 ) -> Result<(), TemplateError> {
     match classifier.should_parse(path, content.as_bytes()) {
         ParseDecision::Skip(reason) => Err(TemplateError::InvalidUtf8(format!(
-            "Skipping file due to {:?}",
-            reason
+            "Skipping file due to {reason:?}"
         ))),
         ParseDecision::Parse => Ok(()),
     }

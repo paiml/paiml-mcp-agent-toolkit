@@ -8,7 +8,7 @@ use hyper::server::conn::http1;
 use hyper_util::rt::TokioIo;
 use serde::Serialize;
 use tokio::net::{TcpListener, TcpStream};
-use tracing::{debug, error, info, instrument};
+use tracing::{debug, error, info};
 
 use crate::unified_protocol::{
     HttpContext, Protocol, ProtocolAdapter, ProtocolError, UnifiedRequest, UnifiedResponse,
@@ -65,7 +65,6 @@ impl ProtocolAdapter for HttpAdapter {
         Protocol::Http
     }
 
-    #[instrument(skip_all)]
     async fn decode(&self, input: Self::Input) -> Result<UnifiedRequest, ProtocolError> {
         debug!("Decoding HTTP input");
 
@@ -103,7 +102,7 @@ impl ProtocolAdapter for HttpAdapter {
         let body_bytes = body
             .collect()
             .await
-            .map_err(|e| ProtocolError::DecodeError(format!("Failed to read body: {}", e)))?
+            .map_err(|e| ProtocolError::DecodeError(format!("Failed to read body: {e}")))?
             .to_bytes();
 
         // Store values before moving parts
@@ -133,7 +132,6 @@ impl ProtocolAdapter for HttpAdapter {
         Ok(final_request)
     }
 
-    #[instrument(skip_all)]
     async fn encode(&self, response: UnifiedResponse) -> Result<Self::Output, ProtocolError> {
         debug!(status = %response.status, "Encoding HTTP response");
 
@@ -145,7 +143,7 @@ impl ProtocolAdapter for HttpAdapter {
         }
 
         let final_response = http_response.body(response.body).map_err(|e| {
-            ProtocolError::EncodeError(format!("Failed to build HTTP response: {}", e))
+            ProtocolError::EncodeError(format!("Failed to build HTTP response: {e}"))
         })?;
 
         Ok(HttpOutput::Response(final_response))
@@ -190,7 +188,7 @@ impl ProtocolAdapter for HttpStreamAdapter {
 
         http_response
             .body(response.body)
-            .map_err(|e| ProtocolError::EncodeError(format!("Failed to build response: {}", e)))
+            .map_err(|e| ProtocolError::EncodeError(format!("Failed to build response: {e}")))
     }
 }
 
@@ -231,7 +229,6 @@ impl HttpServer {
         self.adapter.bind().await
     }
 
-    #[instrument(skip_all)]
     pub async fn serve(&mut self) -> Result<(), ProtocolError> {
         info!("Starting HTTP server on {}", self.adapter.bind_addr);
 
@@ -259,7 +256,6 @@ pub trait HttpServiceHandler: Send + Sync {
 }
 
 /// Handle a single HTTP connection
-#[instrument(skip_all)]
 async fn handle_connection(
     stream: TcpStream,
     remote_addr: SocketAddr,
@@ -308,7 +304,7 @@ async fn collect_request_body(body: hyper::body::Incoming) -> Result<bytes::Byte
     Ok(body
         .collect()
         .await
-        .map_err(|e| format!("Body read error: {}", e))?
+        .map_err(|e| format!("Body read error: {e}"))?
         .to_bytes())
 }
 
@@ -319,7 +315,7 @@ async fn decode_http_input(
     adapter
         .decode(input)
         .await
-        .map_err(|e| format!("Decode error: {}", e))
+        .map_err(|e| format!("Decode error: {e}"))
 }
 
 async fn handle_unified_request(
@@ -329,7 +325,7 @@ async fn handle_unified_request(
     service
         .handle(unified_request)
         .await
-        .map_err(|e| format!("Service error: {}", e))
+        .map_err(|e| format!("Service error: {e}"))
 }
 
 async fn encode_unified_response(
@@ -339,7 +335,7 @@ async fn encode_unified_response(
     let http_output = adapter
         .encode(unified_response)
         .await
-        .map_err(|e| format!("Encode error: {}", e))?;
+        .map_err(|e| format!("Encode error: {e}"))?;
 
     match http_output {
         HttpOutput::Response(response) => Ok(response),
@@ -358,7 +354,7 @@ where
     http1::Builder::new()
         .serve_connection(io, service)
         .await
-        .map_err(|e| ProtocolError::HttpError(format!("Connection error: {}", e)))
+        .map_err(|e| ProtocolError::HttpError(format!("Connection error: {e}")))
 }
 
 /// Helper to create HTTP responses with common patterns

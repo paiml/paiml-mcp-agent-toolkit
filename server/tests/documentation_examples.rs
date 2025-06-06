@@ -126,9 +126,7 @@ fn validate_binary_path(command: &str, expected_binary_path: &str) {
         command == expected_binary_path || command.ends_with("paiml-mcp-agent-toolkit");
     assert!(
         is_valid_binary,
-        "Example command doesn't use the expected binary: {} (expected {} or ending with paiml-mcp-agent-toolkit)",
-        command,
-        expected_binary_path
+        "Example command doesn't use the expected binary: {command} (expected {expected_binary_path} or ending with paiml-mcp-agent-toolkit)"
     );
 }
 
@@ -155,9 +153,7 @@ fn validate_command_arguments(parts: &[&str], original_line: &str) {
     let first_arg = parts[1];
     assert!(
         valid_commands.contains(&first_arg),
-        "Example uses unknown command: {} in line: {}",
-        first_arg,
-        original_line
+        "Example uses unknown command: {first_arg} in line: {original_line}"
     );
 }
 
@@ -210,15 +206,12 @@ fn validate_json_rpc_object(obj: &serde_json::Map<String, Value>) {
 
 fn validate_json_array_fallback(json_block: &str) {
     if !json_block.trim().starts_with('[') {
-        panic!("Invalid JSON example in documentation: {}", json_block);
+        panic!("Invalid JSON example in documentation: {json_block}");
     }
 
     match serde_json::from_str::<Vec<Value>>(json_block) {
         Ok(array) => validate_batch_request_array(&array),
-        Err(e) => panic!(
-            "Invalid JSON example in documentation: {}\nError: {}",
-            json_block, e
-        ),
+        Err(e) => panic!("Invalid JSON example in documentation: {json_block}\nError: {e}"),
     }
 }
 
@@ -308,8 +301,7 @@ fn test_jsonc_examples_are_valid() {
                 // Just ensure it's not completely broken
                 assert!(
                     jsonc_block.contains("paiml-mcp-agent-toolkit"),
-                    "JSONC example should reference the tool. Parse error: {}",
-                    e
+                    "JSONC example should reference the tool. Parse error: {e}"
                 );
             }
         }
@@ -339,20 +331,17 @@ fn test_template_uri_examples_are_valid() {
 
         assert!(
             valid_categories.contains(&category),
-            "Invalid category '{}' in template URI",
-            category
+            "Invalid category '{category}' in template URI"
         );
 
         assert!(
             valid_toolchains.contains(&toolchain),
-            "Invalid toolchain '{}' in template URI",
-            toolchain
+            "Invalid toolchain '{toolchain}' in template URI"
         );
 
         assert!(
             valid_variants.contains(&variant),
-            "Invalid variant '{}' in template URI",
-            variant
+            "Invalid variant '{variant}' in template URI"
         );
     }
 }
@@ -376,8 +365,7 @@ fn test_performance_numbers_are_reasonable() {
         // or slower than 1000ms for basic operations
         assert!(
             (1..=1000).contains(&ms),
-            "Unrealistic performance claim: {}ms",
-            ms
+            "Unrealistic performance claim: {ms}ms"
         );
     }
 
@@ -388,6 +376,6 @@ fn test_performance_numbers_are_reasonable() {
         let percentage = cap[1].parse::<u32>().unwrap();
 
         // Cache hit rates should be between 0 and 100
-        assert!(percentage <= 100, "Invalid cache hit rate: {}%", percentage);
+        assert!(percentage <= 100, "Invalid cache hit rate: {percentage}%");
     }
 }

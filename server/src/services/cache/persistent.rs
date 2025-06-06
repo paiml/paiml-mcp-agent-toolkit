@@ -98,7 +98,7 @@ where
         cache_key.hash(&mut hasher);
         let hash = hasher.finish();
 
-        self.cache_dir.join(format!("{:016x}.json", hash))
+        self.cache_dir.join(format!("{hash:016x}.json"))
     }
 
     /// Load cache entries from disk
@@ -138,10 +138,7 @@ where
             }
         }
 
-        eprintln!(
-            "Loaded {} cache entries, expired {} entries",
-            loaded, expired
-        );
+        eprintln!("Loaded {loaded} cache entries, expired {expired} entries");
         Ok(())
     }
 

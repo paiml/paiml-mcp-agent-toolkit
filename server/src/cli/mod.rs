@@ -1,4 +1,7 @@
+pub mod analysis_helpers;
 pub mod args;
+pub mod diagnose;
+pub mod formatting_helpers;
 // TODO: Fix compilation errors in command pattern implementation
 // pub mod command_pattern;
 
@@ -14,7 +17,7 @@ use std::{
     sync::Arc,
 };
 use tokio::io::AsyncWriteExt;
-use tracing::{debug, info, instrument};
+use tracing::{debug, info};
 
 #[derive(Parser)]
 #[command(
@@ -252,6 +255,9 @@ pub enum Commands {
         #[arg(long)]
         cors: bool,
     },
+
+    /// Run self-diagnostics to verify all features are working
+    Diagnose(diagnose::DiagnoseArgs),
 }
 
 #[derive(Subcommand)]
@@ -553,6 +559,37 @@ pub enum AnalyzeCommands {
         )]
         gnu_version: String,
     },
+
+    /// Analyze provability properties using abstract interpretation
+    Provability {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Specific functions to analyze (comma-separated)
+        #[arg(long, value_delimiter = ',')]
+        functions: Vec<String>,
+
+        /// Analysis depth (number of iterations)
+        #[arg(long, default_value_t = 10)]
+        analysis_depth: usize,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "summary")]
+        format: ProvabilityOutputFormat,
+
+        /// Show only high-confidence results
+        #[arg(long)]
+        high_confidence_only: bool,
+
+        /// Include property evidence in output
+        #[arg(long)]
+        include_evidence: bool,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
@@ -579,6 +616,20 @@ pub enum MakefileOutputFormat {
     Gcc,
     /// SARIF format for CI/CD integration
     Sarif,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum ProvabilityOutputFormat {
+    /// Summary statistics only
+    Summary,
+    /// Full detailed report
+    Full,
+    /// JSON format for tools
+    Json,
+    /// SARIF format for CI/CD integration
+    Sarif,
+    /// Markdown report format
+    Markdown,
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
@@ -675,6 +726,8 @@ pub enum DemoProtocol {
     Cli,
     Http,
     Mcp,
+    #[cfg(feature = "tui")]
+    Tui,
     All,
 }
 
@@ -710,7 +763,6 @@ pub fn parse_early_for_tracing() -> EarlyCliArgs {
     }
 }
 
-#[instrument(level = "debug", skip(server))]
 pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
     let cli = Cli::parse();
     debug!("CLI arguments parsed");
@@ -724,7 +776,6 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
     execute_command(cli.command, server).await
 }
 
-#[instrument(level = "debug", skip(command, server))]
 async fn execute_command(
     command: Commands,
     server: Arc<StatelessTemplateServer>,
@@ -802,6 +853,7 @@ async fn execute_command(
             .await
         }
         Commands::Serve { port, host, cors } => handle_serve(host, port, cors).await,
+        Commands::Diagnose(args) => diagnose::handle_diagnose(args).await,
     }
 }
 
@@ -968,6 +1020,26 @@ async fn execute_analyze_command(analyze_cmd: AnalyzeCommands) -> anyhow::Result
             fix,
             gnu_version,
         } => handle_analyze_makefile(path, rules, format, fix, gnu_version).await,
+        AnalyzeCommands::Provability {
+            project_path,
+            functions,
+            analysis_depth,
+            format,
+            high_confidence_only,
+            include_evidence,
+            output,
+        } => {
+            handle_analyze_provability(
+                project_path,
+                functions,
+                analysis_depth,
+                format,
+                high_confidence_only,
+                include_evidence,
+                output,
+            )
+            .await
+        }
     }
 }
 
@@ -1000,6 +1072,8 @@ async fn execute_demo_command(
             DemoProtocol::Cli => crate::demo::Protocol::Cli,
             DemoProtocol::Http => crate::demo::Protocol::Http,
             DemoProtocol::Mcp => crate::demo::Protocol::Mcp,
+            #[cfg(feature = "tui")]
+            DemoProtocol::Tui => crate::demo::Protocol::Tui,
             DemoProtocol::All => crate::demo::Protocol::All,
         }
     };
@@ -1031,7 +1105,6 @@ async fn execute_demo_command(
 
 // Command handlers - extracted from the main run function for better organization
 
-#[instrument(level = "debug", skip(server))]
 async fn handle_generate(
     server: Arc<StatelessTemplateServer>,
     category: String,
@@ -1040,7 +1113,7 @@ async fn handle_generate(
     output: Option<PathBuf>,
     create_dirs: bool,
 ) -> anyhow::Result<()> {
-    let uri = format!("template://{}/{}", category, template);
+    let uri = format!("template://{category}/{template}");
     let params_json = params_to_json(params);
 
     let result = generate_template(server.as_ref(), &uri, params_json).await?;
@@ -1059,7 +1132,6 @@ async fn handle_generate(
     Ok(())
 }
 
-#[instrument(level = "debug", skip(server))]
 async fn handle_scaffold(
     server: Arc<StatelessTemplateServer>,
     toolchain: String,
@@ -1169,7 +1241,6 @@ async fn handle_validate(
     Ok(())
 }
 
-#[instrument(level = "debug")]
 async fn handle_context(
     toolchain: Option<String>,
     project_path: PathBuf,
@@ -1183,7 +1254,7 @@ async fn handle_context(
             eprintln!("🔍 Auto-detecting project language...");
             let toolchain_name = detect_primary_language(&project_path)?;
 
-            eprintln!("✅ Detected: {} (confidence: 95.2%)", toolchain_name);
+            eprintln!("✅ Detected: {toolchain_name} (confidence: 95.2%)");
             toolchain_name
         }
     };
@@ -1205,6 +1276,7 @@ async fn handle_context(
             "complexity".to_string(),
             "churn".to_string(),
             "satd".to_string(),
+            "provability".to_string(),
             "dead-code".to_string(),
         ], // include
         vec![], // exclude
@@ -1306,7 +1378,7 @@ async fn handle_analyze_churn(
         tokio::fs::write(&path, &content).await?;
         eprintln!("✅ Code churn analysis written to: {}", path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
     Ok(())
 }
@@ -1346,7 +1418,7 @@ async fn handle_analyze_dag(
                 path.display()
             );
         } else {
-            println!("{}", result);
+            println!("{result}");
         }
 
         return Ok(());
@@ -1386,7 +1458,7 @@ async fn handle_analyze_dag(
             .or_insert(0);
         *count += 1;
     }
-    eprintln!("🔍 Edge types: {:?}", edge_type_counts);
+    eprintln!("🔍 Edge types: {edge_type_counts:?}");
 
     // Apply filters based on DAG type
     let filtered_graph = match dag_type {
@@ -1432,7 +1504,7 @@ async fn handle_analyze_dag(
         tokio::fs::write(&path, &output_with_stats).await?;
         eprintln!("✅ Dependency graph written to: {}", path.display());
     } else {
-        println!("{}", output_with_stats);
+        println!("{output_with_stats}");
     }
     Ok(())
 }
@@ -1461,7 +1533,7 @@ async fn handle_analyze_complexity(
     // Detect toolchain if not specified
     let detected_toolchain = detect_toolchain(&project_path, toolchain)?;
 
-    eprintln!("🔍 Analyzing {} project complexity...", detected_toolchain);
+    eprintln!("🔍 Analyzing {detected_toolchain} project complexity...");
 
     // Custom thresholds
     let _thresholds = build_complexity_thresholds(max_cyclomatic, max_cognitive);
@@ -1484,53 +1556,16 @@ async fn handle_analyze_complexity(
 
     // Add top files ranking if requested
     if top_files > 0 {
-        use crate::services::ranking::{rank_files_by_complexity, ComplexityRanker};
-
-        let ranker = ComplexityRanker::default();
-        let rankings = rank_files_by_complexity(&file_metrics, top_files, &ranker);
-
-        let ranking_content = format_top_files_ranking(&rankings);
-
-        // Prepend ranking to existing content for non-JSON formats
-        match format {
-            ComplexityOutputFormat::Json => {
-                // For JSON, we need to merge the ranking data
-                let mut report_json: serde_json::Value = serde_json::from_str(&content)?;
-                if let Some(obj) = report_json.as_object_mut() {
-                    obj.insert(
-                        "top_files".to_string(),
-                        serde_json::json!({
-                            "requested": top_files,
-                            "returned": rankings.len(),
-                            "rankings": rankings.iter().enumerate().map(|(i, (file, score))| {
-                                serde_json::json!({
-                                    "rank": i + 1,
-                                    "file": file,
-                                    "function_count": score.function_count,
-                                    "max_cyclomatic": score.cyclomatic_max,
-                                    "avg_cognitive": score.cognitive_avg,
-                                    "halstead_effort": score.halstead_effort,
-                                    "total_score": score.total_score
-                                })
-                            }).collect::<Vec<_>>()
-                        }),
-                    );
-                }
-                content = serde_json::to_string_pretty(&report_json)?;
-            }
-            _ => {
-                content = format!("{}\n{}", ranking_content, content);
-            }
-        }
+        content = add_top_files_ranking(content, format, &file_metrics, top_files)?;
     }
 
     // Write output
-    if let Some(path) = output {
-        tokio::fs::write(&path, &content).await?;
-        eprintln!("✅ Complexity analysis written to: {}", path.display());
-    } else {
-        println!("{}", content);
-    }
+    self::analysis_helpers::write_analysis_output(
+        &content,
+        output,
+        "Complexity analysis written to:",
+    )
+    .await?;
     Ok(())
 }
 
@@ -1586,10 +1621,42 @@ async fn handle_analyze_dead_code(
             output_path.display()
         );
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
+}
+
+/// Apply SATD filters based on severity and critical-only flag
+fn apply_satd_filters(
+    results: &mut crate::services::satd_detector::SATDAnalysisResult,
+    severity: Option<SatdSeverity>,
+    critical_only: bool,
+) {
+    // Apply severity filter if specified
+    if let Some(min_severity) = severity {
+        let min_level = match min_severity {
+            SatdSeverity::Critical => crate::services::satd_detector::Severity::Critical,
+            SatdSeverity::High => crate::services::satd_detector::Severity::High,
+            SatdSeverity::Medium => crate::services::satd_detector::Severity::Medium,
+            SatdSeverity::Low => crate::services::satd_detector::Severity::Low,
+        };
+        self::analysis_helpers::filter_by_severity(
+            &mut results.items,
+            |item| item.severity as u8,
+            min_level as u8,
+        );
+    }
+
+    // Apply critical-only filter
+    if critical_only {
+        results.items.retain(|item| {
+            matches!(
+                item.severity,
+                crate::services::satd_detector::Severity::Critical
+            )
+        });
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1611,32 +1678,12 @@ async fn handle_analyze_satd(
     let detector = SATDDetector::new();
     let mut results = detector.analyze_project(&path, include_tests).await?;
 
-    // Apply severity filter if specified
-    if let Some(min_severity) = severity {
-        let min_level = match min_severity {
-            SatdSeverity::Critical => crate::services::satd_detector::Severity::Critical,
-            SatdSeverity::High => crate::services::satd_detector::Severity::High,
-            SatdSeverity::Medium => crate::services::satd_detector::Severity::Medium,
-            SatdSeverity::Low => crate::services::satd_detector::Severity::Low,
-        };
-        results
-            .items
-            .retain(|item| item.severity as u8 >= min_level as u8);
-    }
-
-    // Apply critical-only filter
-    if critical_only {
-        results.items.retain(|item| {
-            matches!(
-                item.severity,
-                crate::services::satd_detector::Severity::Critical
-            )
-        });
-    }
+    // Apply filters
+    apply_satd_filters(&mut results, severity, critical_only);
 
     // Handle evolution analysis
     if evolution {
-        eprintln!("📈 Tracking SATD evolution over {} days...", days);
+        eprintln!("📈 Tracking SATD evolution over {days} days...");
         // Note: Evolution tracking would require git history analysis
         // This is a placeholder for future implementation
     }
@@ -1666,7 +1713,7 @@ async fn handle_analyze_satd(
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("✅ SATD analysis written to: {}", output_path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -1811,6 +1858,7 @@ fn parse_analysis_filters(
             AnalysisType::Dag,
             AnalysisType::DeadCode,
             AnalysisType::Satd,
+            AnalysisType::Provability,
             AnalysisType::TechnicalDebtGradient,
         ]
     } else {
@@ -1841,9 +1889,10 @@ fn parse_analysis_type(s: &str) -> Option<crate::services::deep_context::Analysi
         "dag" => Some(AnalysisType::Dag),
         "dead-code" => Some(AnalysisType::DeadCode),
         "satd" => Some(AnalysisType::Satd),
+        "provability" => Some(AnalysisType::Provability),
         "tdg" => Some(AnalysisType::TechnicalDebtGradient),
         _ => {
-            eprintln!("⚠️  Unknown analysis type: {}", s);
+            eprintln!("⚠️  Unknown analysis type: {s}");
             None
         }
     }
@@ -1882,7 +1931,7 @@ async fn write_deep_context_output(
         tokio::fs::write(&path, &content).await?;
         eprintln!("✅ Deep context analysis written to: {}", path.display());
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -1905,45 +1954,35 @@ fn format_deep_context_as_markdown(
 fn format_deep_context_comprehensive(
     context: &crate::services::deep_context::DeepContext,
 ) -> anyhow::Result<String> {
-    let mut output = String::new();
+    use crate::cli::formatting_helpers::*;
 
+    let mut output = String::new();
     output.push_str("# Deep Context Analysis\n\n");
 
-    // Executive Summary section
-    output.push_str("## Executive Summary\n\n");
-    output.push_str(&format!("Generated: {}\n", context.metadata.generated_at));
-    output.push_str(&format!("Version: {}\n", context.metadata.tool_version));
-    output.push_str(&format!(
-        "Analysis Time: {:.2}s\n",
-        context.metadata.analysis_duration.as_secs_f64()
-    ));
-    output.push_str(&format!(
-        "Cache Hit Rate: {:.1}%\n",
-        context.metadata.cache_stats.hit_rate * 100.0
-    ));
+    // Use helper functions to reduce complexity
+    output.push_str(&format_executive_summary(context));
+    output.push_str(&format_quality_scorecard(context));
 
-    // Quality scorecard summary
-    output.push_str("\n## Quality Scorecard\n\n");
-    let health_emoji = if context.quality_scorecard.overall_health >= 80.0 {
-        "✅"
-    } else if context.quality_scorecard.overall_health >= 60.0 {
-        "⚠️"
-    } else {
-        "❌"
-    };
+    // Essential Project Metadata (README and Makefile)
+    if context.project_overview.is_some() || context.build_info.is_some() {
+        output.push_str("\n## Essential Project Metadata\n\n");
 
-    output.push_str(&format!(
-        "- **Overall Health**: {} ({:.1}/100)\n",
-        health_emoji, context.quality_scorecard.overall_health
-    ));
-    output.push_str(&format!(
-        "- **Maintainability Index**: {:.1}\n",
-        context.quality_scorecard.maintainability_index
-    ));
-    output.push_str(&format!(
-        "- **Technical Debt**: {:.1} hours estimated\n",
-        context.quality_scorecard.technical_debt_hours
-    ));
+        // Project Overview (from README)
+        if let Some(ref overview) = context.project_overview {
+            output.push_str(&format_project_overview(overview));
+        }
+
+        // Build System (from Makefile)
+        if let Some(ref build_info) = context.build_info {
+            output.push_str(&format_build_info(build_info));
+        }
+    }
+
+    // Add defect summary if any defects found
+    output.push_str(&format_defect_summary(context));
+
+    // Add recommendations
+    output.push_str(&format_recommendations(context));
 
     // Project structure with annotations
     output.push_str("\n## Project Structure\n\n");
@@ -2016,9 +2055,9 @@ fn format_tree_node(
     let mut annotations = Vec::new();
     if let Some(score) = node.annotations.defect_score {
         if score > 0.7 {
-            annotations.push(format!("🔴{:.1}", score));
+            annotations.push(format!("🔴{score:.1}"));
         } else if score > 0.4 {
-            annotations.push(format!("🟡{:.1}", score));
+            annotations.push(format!("🟡{score:.1}"));
         }
     }
     if node.annotations.satd_items > 0 {
@@ -2032,7 +2071,7 @@ fn format_tree_node(
         node_display.push_str(&format!(" [{}]", annotations.join(" ")));
     }
 
-    writeln!(output, "{}{}{}", prefix, connector, node_display)?;
+    writeln!(output, "{prefix}{connector}{node_display}")?;
 
     // Process children
     for (i, child) in node.children.iter().enumerate() {
@@ -2040,7 +2079,7 @@ fn format_tree_node(
         format_tree_node(
             output,
             child,
-            &format!("{}{}", prefix, extension),
+            &format!("{prefix}{extension}"),
             is_last_child,
         )?;
     }
@@ -2133,7 +2172,7 @@ fn format_technical_debt(
 
         writeln!(output, "**SATD Summary:**")?;
         for (severity, count) in by_severity {
-            writeln!(output, "- {:?}: {}", severity, count)?;
+            writeln!(output, "- {severity:?}: {count}")?;
         }
 
         // Top critical debt items
@@ -2275,7 +2314,7 @@ fn format_prioritized_recommendations(
             if !rec.prerequisites.is_empty() {
                 writeln!(output, "**Prerequisites:**")?;
                 for prereq in &rec.prerequisites {
-                    writeln!(output, "- {}", prereq)?;
+                    writeln!(output, "- {prereq}")?;
                 }
             }
             writeln!(output)?;
@@ -2350,16 +2389,14 @@ fn format_terse_executive_summary(context: &crate::services::deep_context::DeepC
     // Count high-risk files based on defect summary
     let high_risk_files = context.defect_summary.total_defects.min(5); // Cap at 5 for terse mode
     output.push_str(&format!(
-        "**Predicted High-Risk Files:** {}\n",
-        high_risk_files
+        "**Predicted High-Risk Files:** {high_risk_files}\n"
     ));
 
     // SATD breakdown by severity
     let (high_satd, medium_satd, low_satd) = get_terse_satd_breakdown(context);
     let total_satd = high_satd + medium_satd + low_satd;
     output.push_str(&format!(
-        "**Technical Debt Items:** {} (High: {}, Medium: {}, Low: {})\n\n",
-        total_satd, high_satd, medium_satd, low_satd
+        "**Technical Debt Items:** {total_satd} (High: {high_satd}, Medium: {medium_satd}, Low: {low_satd})\n\n"
     ));
 
     output
@@ -2449,7 +2486,7 @@ fn format_terse_churn_metrics(context: &crate::services::deep_context::DeepConte
 
         // Calculate median changes per file
         let median_changes = calculate_terse_median_changes(&churn.files);
-        output.push_str(&format!("- **Median Changes:** {}\n", median_changes));
+        output.push_str(&format!("- **Median Changes:** {median_changes}\n"));
 
         // Find max churn file
         let max_churn_file = churn
@@ -2466,7 +2503,7 @@ fn format_terse_churn_metrics(context: &crate::services::deep_context::DeepConte
 
         // Count hotspot files (files with >5 commits as hotspots)
         let hotspot_count = churn.files.iter().filter(|f| f.commit_count > 5).count();
-        output.push_str(&format!("- **Hotspot Files:** {}\n\n", hotspot_count));
+        output.push_str(&format!("- **Hotspot Files:** {hotspot_count}\n\n"));
         output
     } else {
         String::new()
@@ -2500,8 +2537,8 @@ fn format_terse_satd_metrics(context: &crate::services::deep_context::DeepContex
         0
     };
 
-    output.push_str(&format!("- **Total Items:** {}\n", total_satd));
-    output.push_str(&format!("- **High Severity:** {}\n", high_satd));
+    output.push_str(&format!("- **Total Items:** {total_satd}\n"));
+    output.push_str(&format!("- **High Severity:** {high_satd}\n"));
 
     // Count files with SATD items as debt hotspots
     let debt_hotspot_files = if let Some(ref satd) = context.analyses.satd_results {
@@ -2512,8 +2549,7 @@ fn format_terse_satd_metrics(context: &crate::services::deep_context::DeepContex
         0
     };
     output.push_str(&format!(
-        "- **Debt Hotspots:** {} files\n\n",
-        debt_hotspot_files
+        "- **Debt Hotspots:** {debt_hotspot_files} files\n\n"
     ));
     output
 }
@@ -2582,8 +2618,7 @@ fn format_terse_predicted_defect_files(
                 risk_score
             ));
             output.push_str(&format!(
-                "   - Complexity: {}, Churn: {}, SATD: {}\n",
-                complexity, churn, satd
+                "   - Complexity: {complexity}, Churn: {churn}, SATD: {satd}\n"
             ));
         }
     }
@@ -2739,8 +2774,7 @@ fn format_full_executive_summary(context: &crate::services::deep_context::DeepCo
     let (high_satd, medium_satd, low_satd) = get_satd_breakdown(context);
     let total_satd = high_satd + medium_satd + low_satd;
     output.push_str(&format!(
-        "**Technical Debt Items:** {} (High: {}, Medium: {}, Low: {})\n\n",
-        total_satd, high_satd, medium_satd, low_satd
+        "**Technical Debt Items:** {total_satd} (High: {high_satd}, Medium: {medium_satd}, Low: {low_satd})\n\n"
     ));
 
     output
@@ -3146,8 +3180,7 @@ fn format_full_recommendations(context: &crate::services::deep_context::DeepCont
     let (high_satd, _, _) = get_satd_breakdown(context);
     if high_satd > 0 {
         output.push_str(&format!(
-            "📋 **Technical Debt:** {} high-severity items need immediate attention.\n",
-            high_satd
+            "📋 **Technical Debt:** {high_satd} high-severity items need immediate attention.\n"
         ));
     }
 
@@ -3160,7 +3193,7 @@ fn format_full_recommendations(context: &crate::services::deep_context::DeepCont
             .count();
 
         if high_complexity_functions > 0 {
-            output.push_str(&format!("🔧 **Complexity:** {} functions with cyclomatic complexity > 10 should be refactored.\n", high_complexity_functions));
+            output.push_str(&format!("🔧 **Complexity:** {high_complexity_functions} functions with cyclomatic complexity > 10 should be refactored.\n"));
         }
     }
 
@@ -3314,7 +3347,7 @@ fn format_satd_summary(
     output.push('\n');
     output.push_str("By Category:\n");
     for (category, count) in by_category {
-        output.push_str(&format!("  {:?}: {}\n", category, count));
+        output.push_str(&format!("  {category:?}: {count}\n"));
     }
 
     // Show top items if any
@@ -3533,8 +3566,7 @@ fn format_dead_code_summary(
     if !result.ranked_files.is_empty() {
         let top_count = result.ranked_files.len().min(5);
         output.push_str(&format!(
-            "\n🏆 Top {} Files with Most Dead Code:\n",
-            top_count
+            "\n🏆 Top {top_count} Files with Most Dead Code:\n"
         ));
         output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
@@ -3573,7 +3605,7 @@ fn format_dead_code_summary(
             } else {
                 "Recommendation: Minor cleanup needed"
             };
-            output.push_str(&format!("   └─ {}\n", recommendation));
+            output.push_str(&format!("   └─ {recommendation}\n"));
             output.push('\n');
         }
     }
@@ -3853,16 +3885,26 @@ async fn analyze_file_by_toolchain(
             ast_rust::analyze_rust_file_with_complexity(path).await.ok()
         }
         "deno" => {
-            use crate::services::ast_typescript;
-            ast_typescript::analyze_typescript_file_with_complexity(path)
-                .await
-                .ok()
+            #[cfg(feature = "typescript-ast")]
+            {
+                use crate::services::ast_typescript;
+                ast_typescript::analyze_typescript_file_with_complexity(path)
+                    .await
+                    .ok()
+            }
+            #[cfg(not(feature = "typescript-ast"))]
+            None
         }
         "python-uv" => {
-            use crate::services::ast_python;
-            ast_python::analyze_python_file_with_complexity(path)
-                .await
-                .ok()
+            #[cfg(feature = "python-ast")]
+            {
+                use crate::services::ast_python;
+                ast_python::analyze_python_file_with_complexity(path)
+                    .await
+                    .ok()
+            }
+            #[cfg(not(feature = "python-ast"))]
+            None
         }
         _ => None,
     }
@@ -3877,6 +3919,52 @@ fn params_to_json(params: Vec<(String, Value)>) -> serde_json::Map<String, Value
 }
 
 /// Format top files ranking table
+/// Add top files ranking to content based on format
+fn add_top_files_ranking(
+    mut content: String,
+    format: ComplexityOutputFormat,
+    file_metrics: &[crate::services::complexity::FileComplexityMetrics],
+    top_files: usize,
+) -> anyhow::Result<String> {
+    use crate::services::ranking::{rank_files_by_complexity, ComplexityRanker};
+
+    let ranker = ComplexityRanker::default();
+    let rankings = rank_files_by_complexity(file_metrics, top_files, &ranker);
+    let ranking_content = format_top_files_ranking(&rankings);
+
+    match format {
+        ComplexityOutputFormat::Json => {
+            // For JSON, merge the ranking data
+            let ranking_data = serde_json::json!({
+                "requested": top_files,
+                "returned": rankings.len(),
+                "rankings": rankings.iter().enumerate().map(|(i, (file, score))| {
+                    serde_json::json!({
+                        "rank": i + 1,
+                        "file": file,
+                        "function_count": score.function_count,
+                        "max_cyclomatic": score.cyclomatic_max,
+                        "avg_cognitive": score.cognitive_avg,
+                        "halstead_effort": score.halstead_effort,
+                        "total_score": score.total_score
+                    })
+                }).collect::<Vec<_>>()
+            });
+
+            content = self::analysis_helpers::merge_ranking_into_json(
+                &content,
+                "top_files",
+                ranking_data,
+            )?;
+        }
+        _ => {
+            content = format!("{ranking_content}\n{content}");
+        }
+    }
+
+    Ok(content)
+}
+
 fn format_top_files_ranking(
     rankings: &[(String, crate::services::ranking::CompositeComplexityScore)],
 ) -> String {
@@ -3933,7 +4021,7 @@ async fn handle_serve(host: String, port: u16, cors: bool) -> anyhow::Result<()>
     }
 
     // Parse bind address
-    let addr: SocketAddr = format!("{}:{}", host, port).parse()?;
+    let addr: SocketAddr = format!("{host}:{port}").parse()?;
 
     // Create TCP listener
     let listener = tokio::net::TcpListener::bind(&addr).await?;
@@ -3957,11 +4045,8 @@ async fn handle_serve(host: String, port: u16, cors: bool) -> anyhow::Result<()>
     eprintln!("  • POST /api/v1/analyze/deep-context     - Deep context analysis");
     eprintln!("  • POST /mcp/{{method}}                    - MCP protocol endpoint");
     eprintln!();
-    eprintln!(
-        "💡 Example: curl http://{}:{}/api/v1/analyze/complexity?top_files=5",
-        host, port
-    );
-    eprintln!("💡 Example: curl http://{}:{}/health", host, port);
+    eprintln!("💡 Example: curl http://{host}:{port}/api/v1/analyze/complexity?top_files=5");
+    eprintln!("💡 Example: curl http://{host}:{port}/health");
     eprintln!();
     eprintln!("🛑 Press Ctrl+C to stop the server");
 
@@ -4070,7 +4155,7 @@ async fn handle_analyze_tdg(
             eprintln!("💾 Results written to: {}", output_path.display());
         }
     } else {
-        println!("{}", content);
+        println!("{content}");
     }
 
     Ok(())
@@ -4261,7 +4346,7 @@ async fn handle_analyze_makefile(
         MakefileOutputFormat::Sarif => format_makefile_sarif(&result)?,
     };
 
-    println!("{}", output);
+    println!("{output}");
 
     // Exit with error code if violations found
     if result.has_errors() {
@@ -4336,7 +4421,7 @@ fn format_makefile_human(result: &makefile_linter::LintResult) -> String {
                 v.message
             ));
             if let Some(hint) = &v.fix_hint {
-                output.push_str(&format!("    💡 {}\n", hint));
+                output.push_str(&format!("    💡 {hint}\n"));
             }
         }
         output.push('\n');
@@ -4353,7 +4438,7 @@ fn format_makefile_human(result: &makefile_linter::LintResult) -> String {
                 v.message
             ));
             if let Some(hint) = &v.fix_hint {
-                output.push_str(&format!("    💡 {}\n", hint));
+                output.push_str(&format!("    💡 {hint}\n"));
             }
         }
         output.push('\n');
@@ -4370,7 +4455,7 @@ fn format_makefile_human(result: &makefile_linter::LintResult) -> String {
                 v.message
             ));
             if let Some(hint) = &v.fix_hint {
-                output.push_str(&format!("    💡 {}\n", hint));
+                output.push_str(&format!("    💡 {hint}\n"));
             }
         }
         output.push('\n');
@@ -4387,7 +4472,7 @@ fn format_makefile_human(result: &makefile_linter::LintResult) -> String {
                 v.message
             ));
             if let Some(hint) = &v.fix_hint {
-                output.push_str(&format!("    💡 {}\n", hint));
+                output.push_str(&format!("    💡 {hint}\n"));
             }
         }
     }
@@ -4527,6 +4612,251 @@ fn format_makefile_sarif(result: &makefile_linter::LintResult) -> anyhow::Result
                 }
             },
             "results": results
+        }]
+    });
+
+    Ok(serde_json::to_string_pretty(&sarif)?)
+}
+
+/// Handle provability analysis command
+#[allow(clippy::too_many_arguments)]
+async fn handle_analyze_provability(
+    project_path: PathBuf,
+    functions: Vec<String>,
+    _analysis_depth: usize,
+    format: ProvabilityOutputFormat,
+    high_confidence_only: bool,
+    include_evidence: bool,
+    output: Option<PathBuf>,
+) -> anyhow::Result<()> {
+    use crate::services::lightweight_provability_analyzer::{
+        FunctionId, LightweightProvabilityAnalyzer,
+    };
+
+    let analyzer = LightweightProvabilityAnalyzer::new();
+
+    // Extract functions from parameters or mock discovery from project path
+    let function_ids = if functions.is_empty() {
+        // Mock function discovery from project path
+        vec![FunctionId {
+            file_path: format!("{}/src/main.rs", project_path.display()),
+            function_name: "main".to_string(),
+            line_number: 1,
+        }]
+    } else {
+        functions
+            .into_iter()
+            .enumerate()
+            .map(|(i, name)| FunctionId {
+                file_path: format!("{}/src/lib.rs", project_path.display()),
+                function_name: name,
+                line_number: i * 10, // Mock line numbers
+            })
+            .collect()
+    };
+
+    // Perform analysis
+    let summaries = analyzer.analyze_incrementally(&function_ids).await;
+
+    // Filter by confidence if requested
+    let filtered_summaries: Vec<_> = if high_confidence_only {
+        summaries
+            .into_iter()
+            .filter(|s| s.provability_score > 0.8)
+            .collect()
+    } else {
+        summaries
+    };
+
+    // Format output
+    let result = match format {
+        ProvabilityOutputFormat::Summary => format_provability_summary(&filtered_summaries),
+        ProvabilityOutputFormat::Full => {
+            format_provability_full(&filtered_summaries, include_evidence)
+        }
+        ProvabilityOutputFormat::Json => serde_json::to_string_pretty(&filtered_summaries)?,
+        ProvabilityOutputFormat::Markdown => {
+            format_provability_markdown(&filtered_summaries, include_evidence)
+        }
+        ProvabilityOutputFormat::Sarif => format_provability_sarif(&filtered_summaries)?,
+    };
+
+    // Output to file or stdout
+    if let Some(output_path) = output {
+        tokio::fs::write(&output_path, &result).await?;
+        eprintln!("Provability analysis written to {}", output_path.display());
+    } else {
+        println!("{result}");
+    }
+
+    Ok(())
+}
+
+/// Format provability results in summary format
+fn format_provability_summary(
+    summaries: &[crate::services::lightweight_provability_analyzer::ProofSummary],
+) -> String {
+    if summaries.is_empty() {
+        return "No functions analyzed.".to_string();
+    }
+
+    let avg_score =
+        summaries.iter().map(|s| s.provability_score).sum::<f64>() / summaries.len() as f64;
+    let high_confidence = summaries
+        .iter()
+        .filter(|s| s.provability_score > 0.8)
+        .count();
+    let medium_confidence = summaries
+        .iter()
+        .filter(|s| s.provability_score > 0.5 && s.provability_score <= 0.8)
+        .count();
+    let low_confidence = summaries
+        .iter()
+        .filter(|s| s.provability_score <= 0.5)
+        .count();
+
+    format!(
+        "Provability Analysis Summary\n\
+        ============================\n\
+        Functions analyzed: {}\n\
+        Average provability score: {:.2}\n\
+        High confidence (>0.8): {}\n\
+        Medium confidence (0.5-0.8): {}\n\
+        Low confidence (≤0.5): {}\n",
+        summaries.len(),
+        avg_score,
+        high_confidence,
+        medium_confidence,
+        low_confidence
+    )
+}
+
+/// Format provability results in full format
+fn format_provability_full(
+    summaries: &[crate::services::lightweight_provability_analyzer::ProofSummary],
+    include_evidence: bool,
+) -> String {
+    let mut output = format_provability_summary(summaries);
+    output.push_str("\nDetailed Results:\n");
+    output.push_str(&"-".repeat(50));
+    output.push('\n');
+
+    for (i, summary) in summaries.iter().enumerate() {
+        output.push_str(&format!(
+            "\nFunction #{} (Score: {:.2})\n",
+            i + 1,
+            summary.provability_score
+        ));
+        output.push_str(&format!(
+            "  Analysis time: {}μs\n",
+            summary.analysis_time_us
+        ));
+        output.push_str(&format!(
+            "  Properties verified: {}\n",
+            summary.verified_properties.len()
+        ));
+
+        if include_evidence {
+            for prop in &summary.verified_properties {
+                output.push_str(&format!(
+                    "    • {:#?}: {:.1}% confidence - {}\n",
+                    prop.property_type,
+                    prop.confidence * 100.0,
+                    prop.evidence
+                ));
+            }
+        }
+    }
+
+    output
+}
+
+/// Format provability results in markdown format
+fn format_provability_markdown(
+    summaries: &[crate::services::lightweight_provability_analyzer::ProofSummary],
+    include_evidence: bool,
+) -> String {
+    let mut output = String::from("# Provability Analysis Report\n\n");
+
+    if summaries.is_empty() {
+        output.push_str("No functions analyzed.\n");
+        return output;
+    }
+
+    let avg_score =
+        summaries.iter().map(|s| s.provability_score).sum::<f64>() / summaries.len() as f64;
+
+    output.push_str("## Summary\n\n");
+    output.push_str(&format!("- **Functions analyzed:** {}\n", summaries.len()));
+    output.push_str(&format!(
+        "- **Average provability score:** {avg_score:.2}\n"
+    ));
+
+    output.push_str("\n## Results\n\n");
+
+    for (i, summary) in summaries.iter().enumerate() {
+        output.push_str(&format!("### Function #{}\n\n", i + 1));
+        output.push_str(&format!(
+            "- **Provability Score:** {:.2}\n",
+            summary.provability_score
+        ));
+        output.push_str(&format!(
+            "- **Analysis Time:** {}μs\n",
+            summary.analysis_time_us
+        ));
+        output.push_str(&format!(
+            "- **Properties Verified:** {}\n\n",
+            summary.verified_properties.len()
+        ));
+
+        if include_evidence && !summary.verified_properties.is_empty() {
+            output.push_str("#### Verified Properties\n\n");
+            for prop in &summary.verified_properties {
+                output.push_str(&format!(
+                    "- **{:#?}**: {:.1}% confidence\n",
+                    prop.property_type,
+                    prop.confidence * 100.0
+                ));
+                output.push_str(&format!("  - Evidence: {}\n", prop.evidence));
+            }
+            output.push('\n');
+        }
+    }
+
+    output
+}
+
+/// Format provability results in SARIF format
+fn format_provability_sarif(
+    summaries: &[crate::services::lightweight_provability_analyzer::ProofSummary],
+) -> anyhow::Result<String> {
+    // Simplified SARIF format for provability results
+    let sarif = serde_json::json!({
+        "version": "2.1.0",
+        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "paiml-mcp-agent-toolkit",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "semanticVersion": env!("CARGO_PKG_VERSION"),
+                    "informationUri": "https://github.com/paiml/mcp-agent-toolkit"
+                }
+            },
+            "results": summaries.iter().enumerate().map(|(i, summary)| {
+                serde_json::json!({
+                    "ruleId": "provability-score",
+                    "level": if summary.provability_score > 0.8 { "note" } else if summary.provability_score > 0.5 { "warning" } else { "error" },
+                    "message": {
+                        "text": format!("Function #{} has provability score {:.2}", i + 1, summary.provability_score)
+                    },
+                    "properties": {
+                        "provability_score": summary.provability_score,
+                        "analysis_time_us": summary.analysis_time_us,
+                        "verified_properties_count": summary.verified_properties.len()
+                    }
+                })
+            }).collect::<Vec<_>>()
         }]
     });
 

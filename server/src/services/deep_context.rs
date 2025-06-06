@@ -14,10 +14,11 @@ use crate::services::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::Path;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::sync::Semaphore;
-use tracing::{debug, info, instrument};
+use tracing::{debug, info};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeepContextConfig {
@@ -43,6 +44,7 @@ pub enum AnalysisType {
     DeadCode,
     DuplicateCode,
     Satd,
+    Provability,
     TechnicalDebtGradient,
 }
 
@@ -78,6 +80,8 @@ pub struct DeepContext {
     pub hotspots: Vec<DefectHotspot>,
     pub recommendations: Vec<PrioritizedRecommendation>,
     pub qa_verification: Option<QAVerificationResult>,
+    pub build_info: Option<crate::models::project_meta::BuildInfo>,
+    pub project_overview: Option<crate::models::project_meta::ProjectOverview>,
 }
 
 /// Extended structure for QA verification that includes additional fields
@@ -100,6 +104,10 @@ pub struct DeepContextResult {
     pub ast_summaries: Option<Vec<AstSummary>>,
     pub churn_analysis: Option<CodeChurnAnalysis>,
     pub language_stats: Option<HashMap<String, usize>>,
+
+    // Project metadata fields
+    pub build_info: Option<crate::models::project_meta::BuildInfo>,
+    pub project_overview: Option<crate::models::project_meta::ProjectOverview>,
 }
 
 /// Summary of AST analysis for a file
@@ -219,6 +227,8 @@ pub struct AnalysisResults {
     pub dead_code_results: Option<crate::models::dead_code::DeadCodeRankingResult>,
     pub duplicate_code_results: Option<crate::services::duplicate_detector::CloneReport>,
     pub satd_results: Option<SATDAnalysisResult>,
+    pub provability_results:
+        Option<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>>,
     pub cross_language_refs: Vec<CrossLangReference>,
 }
 
@@ -571,6 +581,52 @@ impl DeepContextAnalyzer {
 
         output.push_str("# Deep Context Analysis Report\n\n");
 
+        // Project Overview (from README)
+        if let Some(ref overview) = context.project_overview {
+            output.push_str("## Project Overview\n\n");
+            if !overview.compressed_description.is_empty() {
+                output.push_str(&overview.compressed_description);
+                output.push_str("\n\n");
+            }
+            if !overview.key_features.is_empty() {
+                output.push_str("**Key Features:**\n");
+                for feature in &overview.key_features {
+                    output.push_str(&format!("- {feature}\n"));
+                }
+                output.push('\n');
+            }
+            if let Some(ref arch) = overview.architecture_summary {
+                output.push_str("**Architecture:**\n");
+                output.push_str(arch);
+                output.push_str("\n\n");
+            }
+        }
+
+        // Build System (from Makefile)
+        if let Some(ref build_info) = context.build_info {
+            output.push_str("## Build System\n\n");
+            output.push_str(&format!(
+                "**Detected Toolchain:** {}\n",
+                build_info.toolchain
+            ));
+            if !build_info.targets.is_empty() {
+                output.push_str(&format!(
+                    "**Primary Targets:** {}\n",
+                    build_info.targets.join(", ")
+                ));
+            }
+            if !build_info.dependencies.is_empty() {
+                output.push_str(&format!(
+                    "**Key Dependencies:** {}\n",
+                    build_info.dependencies.join(", ")
+                ));
+            }
+            if let Some(ref cmd) = build_info.primary_command {
+                output.push_str(&format!("**Build Command:** `{cmd}`\n"));
+            }
+            output.push('\n');
+        }
+
         // Quality scorecard
         output.push_str("## Quality Scorecard\n\n");
         output.push_str(&format!(
@@ -675,7 +731,7 @@ impl DeepContextAnalyzer {
             .unwrap_or_default()
             .to_string_lossy();
 
-        writeln!(output, "# Deep Context: {}", project_name)?;
+        writeln!(output, "# Deep Context: {project_name}")?;
         writeln!(output, "Generated: {}", context.metadata.generated_at)?;
         writeln!(output, "Version: {}", context.metadata.tool_version)?;
         writeln!(
@@ -1002,9 +1058,9 @@ impl DeepContextAnalyzer {
         let mut annotations = Vec::new();
         if let Some(score) = node.annotations.defect_score {
             if score > 0.7 {
-                annotations.push(format!("🔴{:.1}", score));
+                annotations.push(format!("🔴{score:.1}"));
             } else if score > 0.4 {
-                annotations.push(format!("🟡{:.1}", score));
+                annotations.push(format!("🟡{score:.1}"));
             }
         }
         if node.annotations.satd_items > 0 {
@@ -1018,7 +1074,7 @@ impl DeepContextAnalyzer {
             node_display.push_str(&format!(" [{}]", annotations.join(" ")));
         }
 
-        writeln!(output, "{}{}{}", prefix, connector, node_display)?;
+        writeln!(output, "{prefix}{connector}{node_display}")?;
 
         // Process children
         for (i, child) in node.children.iter().enumerate() {
@@ -1026,7 +1082,7 @@ impl DeepContextAnalyzer {
             self.format_tree_node(
                 output,
                 child,
-                &format!("{}{}", prefix, extension),
+                &format!("{prefix}{extension}"),
                 is_last_child,
             )?;
         }
@@ -1533,7 +1589,7 @@ impl DeepContextAnalyzer {
 
             writeln!(output, "**SATD Summary:**")?;
             for (severity, count) in by_severity {
-                writeln!(output, "- {:?}: {}", severity, count)?;
+                writeln!(output, "- {severity:?}: {count}")?;
             }
 
             // Top critical debt items
@@ -1702,7 +1758,7 @@ impl DeepContextAnalyzer {
                 if !rec.prerequisites.is_empty() {
                     writeln!(output, "**Prerequisites:**")?;
                     for prereq in &rec.prerequisites {
-                        writeln!(output, "- {}", prereq)?;
+                        writeln!(output, "- {prereq}")?;
                     }
                 }
                 writeln!(output)?;
@@ -1712,7 +1768,6 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
-    #[instrument(level = "info", skip(self))]
     pub async fn analyze_project(&self, project_path: &PathBuf) -> anyhow::Result<DeepContext> {
         let start_time = std::time::Instant::now();
         info!(
@@ -1752,6 +1807,10 @@ impl DeepContextAnalyzer {
         let analysis_duration = start_time.elapsed();
         info!("Deep context analysis completed in {:?}", analysis_duration);
 
+        // Phase 7.5: Analyze project metadata (Makefile and README)
+        let (build_info, project_overview) = self.analyze_project_metadata(project_path).await?;
+        debug!("Project metadata analysis completed");
+
         // Create the deep context
         let mut deep_context = DeepContext {
             metadata: ContextMetadata {
@@ -1774,6 +1833,7 @@ impl DeepContextAnalyzer {
                 dead_code_results: analyses.dead_code_results,
                 duplicate_code_results: analyses.duplicate_code_results,
                 satd_results: analyses.satd_results,
+                provability_results: analyses.provability_results,
                 cross_language_refs: cross_refs,
             },
             quality_scorecard,
@@ -1782,6 +1842,8 @@ impl DeepContextAnalyzer {
             hotspots,
             recommendations,
             qa_verification: None, // Will be populated next
+            build_info,
+            project_overview,
         };
 
         // Phase 8: Run QA verification
@@ -1962,6 +2024,11 @@ impl DeepContextAnalyzer {
                     AnalysisResult::Satd(result)
                 });
             }
+            AnalysisType::Provability => {
+                join_set.spawn(async move {
+                    AnalysisResult::Provability(analyze_provability(&path).await)
+                });
+            }
             AnalysisType::Dag => {
                 let dag_type = self.config.dag_type.clone();
                 join_set
@@ -2049,6 +2116,9 @@ impl DeepContextAnalyzer {
             AnalysisResult::Satd(Ok(satd)) => {
                 results.satd_results = Some(satd);
             }
+            AnalysisResult::Provability(Ok(provability)) => {
+                results.provability_results = Some(provability);
+            }
             AnalysisResult::Dag(Ok(dag)) => {
                 results.dependency_graph = Some(dag);
             }
@@ -2060,6 +2130,7 @@ impl DeepContextAnalyzer {
                 debug!("Duplicate code analysis failed: {}", e)
             }
             AnalysisResult::Satd(Err(e)) => debug!("SATD analysis failed: {}", e),
+            AnalysisResult::Provability(Err(e)) => debug!("Provability analysis failed: {}", e),
             AnalysisResult::Dag(Err(e)) => debug!("DAG analysis failed: {}", e),
         }
     }
@@ -2514,6 +2585,47 @@ impl DeepContextAnalyzer {
         Ok(None)
     }
 
+    /// Analyze project metadata (Makefile and README)
+    async fn analyze_project_metadata(
+        &self,
+        project_path: &Path,
+    ) -> anyhow::Result<(
+        Option<crate::models::project_meta::BuildInfo>,
+        Option<crate::models::project_meta::ProjectOverview>,
+    )> {
+        use crate::services::{
+            makefile_compressor::MakefileCompressor, project_meta_detector::ProjectMetaDetector,
+            readme_compressor::ReadmeCompressor,
+        };
+
+        let detector = ProjectMetaDetector::new();
+        let meta_files = detector.detect(project_path).await;
+
+        let mut build_info = None;
+        let mut project_overview = None;
+
+        for meta_file in meta_files {
+            match meta_file.file_type {
+                crate::models::project_meta::MetaFileType::Makefile => {
+                    let compressor = MakefileCompressor::new();
+                    let compressed = compressor.compress(&meta_file.content);
+                    build_info = Some(crate::models::project_meta::BuildInfo::from_makefile(
+                        compressed,
+                    ));
+                    debug!("Makefile compressed and analyzed");
+                }
+                crate::models::project_meta::MetaFileType::Readme => {
+                    let compressor = ReadmeCompressor::new();
+                    let compressed = compressor.compress(&meta_file.content);
+                    project_overview = Some(compressed.to_summary());
+                    debug!("README compressed and analyzed");
+                }
+            }
+        }
+
+        Ok((build_info, project_overview))
+    }
+
     /// Run QA verification on the deep context analysis results
     async fn run_qa_verification(
         &self,
@@ -2677,6 +2789,10 @@ impl DeepContextAnalyzer {
             ast_summaries,
             churn_analysis: context.analyses.churn_analysis.clone(),
             language_stats: Some(language_stats),
+
+            // Project metadata fields
+            build_info: context.build_info.clone(),
+            project_overview: context.project_overview.clone(),
         })
     }
 
@@ -2711,6 +2827,8 @@ struct ParallelAnalysisResults {
     dead_code_results: Option<crate::models::dead_code::DeadCodeRankingResult>,
     duplicate_code_results: Option<crate::services::duplicate_detector::CloneReport>,
     satd_results: Option<SATDAnalysisResult>,
+    provability_results:
+        Option<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>>,
 }
 
 enum AnalysisResult {
@@ -2720,6 +2838,9 @@ enum AnalysisResult {
     DeadCode(anyhow::Result<crate::models::dead_code::DeadCodeRankingResult>),
     DuplicateCode(anyhow::Result<crate::services::duplicate_detector::CloneReport>),
     Satd(anyhow::Result<SATDAnalysisResult>),
+    Provability(
+        anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>>,
+    ),
     Dag(anyhow::Result<DependencyGraph>),
 }
 
@@ -2744,10 +2865,40 @@ async fn analyze_ast_contexts(
 
     let discovery = ProjectFileDiscovery::new(path.to_path_buf()).with_config(discovery_config);
 
-    let source_files = discovery.discover_files()?;
+    let all_files = discovery.discover_files()?;
+
+    // Filter files based on category
+    let mut source_files = Vec::new();
+    let mut essential_files = Vec::new();
+    let mut skipped_files = 0;
+
+    for file_path in all_files {
+        use crate::services::file_discovery::FileCategory;
+        let category = ProjectFileDiscovery::categorize_file(&file_path);
+
+        match category {
+            FileCategory::SourceCode => {
+                source_files.push(file_path);
+            }
+            FileCategory::GeneratedOutput | FileCategory::TestArtifact => {
+                skipped_files += 1;
+                debug!("Skipping generated/test file: {:?}", file_path);
+            }
+            FileCategory::EssentialDoc | FileCategory::BuildConfig => {
+                // Collect for compression and inclusion in report
+                essential_files.push((file_path.clone(), category));
+                debug!("Will compress metadata file: {:?}", file_path);
+            }
+            FileCategory::DevelopmentDoc => {
+                debug!("Skipping development doc: {:?}", file_path);
+            }
+        }
+    }
+
     info!(
-        "Discovered {} source files for AST analysis",
-        source_files.len()
+        "Discovered {} source files for AST analysis (skipped {} generated/test files)",
+        source_files.len(),
+        skipped_files
     );
 
     // Initialize TDG calculator for per-file analysis
@@ -2799,6 +2950,9 @@ async fn analyze_single_file(file_path: &std::path::Path) -> anyhow::Result<File
         "python" => {
             items = analyze_python_file(file_path).await?;
         }
+        "c" | "cpp" => {
+            items = analyze_c_file(file_path).await?;
+        }
         _ => {}
     }
 
@@ -2818,6 +2972,8 @@ fn detect_language(path: &std::path::Path) -> String {
             "ts" | "tsx" => "typescript".to_string(),
             "js" | "jsx" => "javascript".to_string(),
             "py" => "python".to_string(),
+            "c" | "h" => "c".to_string(),
+            "cpp" | "cc" | "cxx" | "hpp" | "hxx" => "cpp".to_string(),
             _ => "unknown".to_string(),
         }
     } else {
@@ -2839,31 +2995,80 @@ async fn analyze_rust_file(
 
 /// Simple TypeScript/JavaScript file analysis
 async fn analyze_typescript_file(
-    file_path: &std::path::Path,
+    _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    use crate::services::ast_typescript::analyze_typescript_file as analyze_ts;
+    #[cfg(feature = "typescript-ast")]
+    {
+        use crate::services::ast_typescript::analyze_typescript_file as analyze_ts;
 
-    match analyze_ts(file_path).await {
-        Ok(file_context) => Ok(file_context.items),
-        Err(_) => Ok(Vec::new()), // Return empty vec on parse error
+        match analyze_ts(_file_path).await {
+            Ok(file_context) => Ok(file_context.items),
+            Err(_) => Ok(Vec::new()), // Return empty vec on parse error
+        }
     }
+    #[cfg(not(feature = "typescript-ast"))]
+    Ok(Vec::new())
 }
 
 /// Simple Python file analysis
 async fn analyze_python_file(
-    file_path: &std::path::Path,
+    _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    use crate::services::ast_python::analyze_python_file_with_classifier;
+    #[cfg(feature = "python-ast")]
+    {
+        use crate::services::ast_python::analyze_python_file_with_classifier;
 
-    match analyze_python_file_with_classifier(file_path, None).await {
-        Ok(file_context) => Ok(file_context.items),
-        Err(_) => Ok(Vec::new()), // Return empty vec on parse error
+        match analyze_python_file_with_classifier(_file_path, None).await {
+            Ok(file_context) => Ok(file_context.items),
+            Err(_) => Ok(Vec::new()), // Return empty vec on parse error
+        }
     }
+    #[cfg(not(feature = "python-ast"))]
+    Ok(Vec::new())
+}
+
+/// Simple C/C++ file analysis
+async fn analyze_c_file(
+    #[allow(unused_variables)] file_path: &Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "c-ast")]
+    {
+        use crate::models::unified_ast::AstKind;
+        use crate::services::ast_c::CAstParser;
+        use tokio::fs;
+
+        // Read file content
+        let content = fs::read_to_string(file_path).await?;
+
+        // Parse with C AST parser
+        let mut parser = CAstParser::new();
+        let ast_dag = parser.parse_file(file_path, &content)?;
+
+        // Convert AST DAG to context items
+        let mut items = Vec::new();
+        for node in ast_dag.nodes.iter() {
+            if let AstKind::Function(_) = &node.kind {
+                let item = crate::services::context::AstItem::Function {
+                    name: format!("function_{}", node.name_vector), // Using name hash as placeholder
+                    visibility: "public".to_string(),
+                    is_async: false,
+                    line: node.source_range.start as usize,
+                };
+                items.push(item);
+            }
+        }
+
+        Ok(items)
+    }
+    #[cfg(not(feature = "c-ast"))]
+    Ok(Vec::new())
 }
 
 async fn analyze_complexity(path: &std::path::Path) -> anyhow::Result<ComplexityReport> {
+    #[cfg(feature = "python-ast")]
     use crate::services::ast_python::analyze_python_file_with_complexity;
     use crate::services::ast_rust::analyze_rust_file_with_complexity;
+    #[cfg(feature = "typescript-ast")]
     use crate::services::ast_typescript::analyze_typescript_file_with_complexity;
     use crate::services::complexity::aggregate_results;
     use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
@@ -2893,9 +3098,11 @@ async fn analyze_complexity(path: &std::path::Path) -> anyhow::Result<Complexity
         if let Some(ext) = file_path.extension().and_then(|e| e.to_str()) {
             let file_complexity = match ext {
                 "rs" => (analyze_rust_file_with_complexity(&file_path).await).ok(),
+                #[cfg(feature = "typescript-ast")]
                 "ts" | "js" | "jsx" | "tsx" => {
                     (analyze_typescript_file_with_complexity(&file_path).await).ok()
                 }
+                #[cfg(feature = "python-ast")]
                 "py" => (analyze_python_file_with_complexity(&file_path).await).ok(),
                 _ => None,
             };
@@ -3282,16 +3489,16 @@ fn extract_python_class_name(line: &str) -> String {
 }
 
 fn is_function_called_in_file(lines: &[&str], function_name: &str) -> bool {
-    let call_pattern = format!("{}(", function_name);
+    let call_pattern = format!("{function_name}(");
     lines.iter().any(|line| line.contains(&call_pattern))
 }
 
 fn is_type_used_in_file(lines: &[&str], type_name: &str) -> bool {
     lines.iter().any(|line| {
         line.contains(type_name)
-            && (line.contains(&format!("new {}", type_name))
-                || line.contains(&format!(": {}", type_name))
-                || line.contains(&format!("<{}>", type_name)))
+            && (line.contains(&format!("new {type_name}"))
+                || line.contains(&format!(": {type_name}"))
+                || line.contains(&format!("<{type_name}>")))
     })
 }
 
@@ -3315,6 +3522,8 @@ async fn analyze_duplicate_code(
                 "ts" | "tsx" => Some(Language::TypeScript),
                 "js" | "jsx" => Some(Language::JavaScript),
                 "py" => Some(Language::Python),
+                "c" | "h" => Some(Language::C),
+                "cpp" | "cc" | "cxx" | "hpp" | "hxx" => Some(Language::Cpp),
                 _ => None,
             };
 
@@ -3350,6 +3559,29 @@ async fn analyze_satd(_path: &std::path::Path) -> anyhow::Result<SATDAnalysisRes
         files_with_debt: 0,
         analysis_timestamp: chrono::Utc::now(),
     })
+}
+
+async fn analyze_provability(
+    path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>> {
+    use crate::services::lightweight_provability_analyzer::{
+        FunctionId, LightweightProvabilityAnalyzer,
+    };
+
+    info!("Starting provability analysis for path: {:?}", path);
+
+    let analyzer = LightweightProvabilityAnalyzer::new();
+
+    // Mock function discovery from project path - in a full implementation,
+    // this would use AST analysis to discover all functions
+    let function_ids = vec![FunctionId {
+        file_path: format!("{}/src/main.rs", path.display()),
+        function_name: "main".to_string(),
+        line_number: 1,
+    }];
+
+    let summaries = analyzer.analyze_incrementally(&function_ids).await;
+    Ok(summaries)
 }
 
 async fn analyze_dag(

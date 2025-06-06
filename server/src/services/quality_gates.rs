@@ -57,6 +57,16 @@ impl QAVerification {
     pub fn new() -> Self {
         let mut checks: Vec<(&'static str, QualityCheck)> = vec![];
 
+        // Add all quality checks
+        Self::add_dead_code_checks(&mut checks);
+        Self::add_complexity_checks(&mut checks);
+        Self::add_coverage_checks(&mut checks);
+        Self::add_section_checks(&mut checks);
+
+        Self { checks }
+    }
+
+    fn add_dead_code_checks(checks: &mut Vec<(&'static str, QualityCheck)>) {
         // Dead code sanity check
         checks.push(("dead_code_sanity", Box::new(|result| {
             let total_lines = result.complexity_metrics.as_ref()
@@ -102,7 +112,9 @@ impl QAVerification {
                 Ok(())
             }
         })));
+    }
 
+    fn add_complexity_checks(checks: &mut Vec<(&'static str, QualityCheck)>) {
         // Complexity distribution check
         checks.push((
             "complexity_distribution",
@@ -134,8 +146,7 @@ impl QAVerification {
 
                 if cv < 30.0 {
                     Err(format!(
-                        "Low complexity variation (CV={:.1}%) - possible parser issue",
-                        cv
+                        "Low complexity variation (CV={cv:.1}%) - possible parser issue"
                     ))
                 } else {
                     Ok(())
@@ -161,15 +172,16 @@ impl QAVerification {
 
                 if entropy < 2.0 {
                     Err(format!(
-                        "Low complexity entropy: {:.2} (expected >= 2.0)",
-                        entropy
+                        "Low complexity entropy: {entropy:.2} (expected >= 2.0)"
                     ))
                 } else {
                     Ok(())
                 }
             }),
         ));
+    }
 
+    fn add_coverage_checks(checks: &mut Vec<(&'static str, QualityCheck)>) {
         // AST coverage check
         checks.push((
             "ast_coverage",
@@ -197,7 +209,9 @@ impl QAVerification {
                 }
             }),
         ));
+    }
 
+    fn add_section_checks(checks: &mut Vec<(&'static str, QualityCheck)>) {
         // Empty sections check
         checks.push((
             "empty_sections",
@@ -230,8 +244,6 @@ impl QAVerification {
                 }
             }),
         ));
-
-        Self { checks }
     }
 
     pub fn verify(&self, result: &DeepContextResult) -> HashMap<&'static str, Result<(), String>> {
@@ -419,6 +431,7 @@ mod tests {
                 dead_code_results: None,
                 satd_results: None,
                 duplicate_code_results: None,
+                provability_results: None,
                 cross_language_refs: vec![],
             },
             quality_scorecard: QualityScorecard {
@@ -444,6 +457,8 @@ mod tests {
             ast_summaries: None,
             churn_analysis: None,
             language_stats: None,
+            build_info: None,
+            project_overview: None,
         }
     }
 
@@ -493,7 +508,7 @@ mod tests {
         let functions: Vec<FunctionComplexityForQA> = (0..100)
             .map(|i| {
                 FunctionComplexityForQA {
-                    name: format!("func_{}", i),
+                    name: format!("func_{i}"),
                     cyclomatic: ((i % 20) + 1) as u32, // Varied complexity
                     cognitive: ((i % 15) + 1) as u32,
                     nesting_depth: ((i % 5) + 1) as u32,

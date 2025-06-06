@@ -144,8 +144,8 @@ fn generate_example_mermaid_diagram() {
     fs::write(&output_path, &mermaid_output).expect("Failed to write file");
 
     println!("\n=== Generated Mermaid Diagram ===\n");
-    println!("{}", mermaid_output);
-    println!("\n=== Saved to {:?} ===", output_path);
+    println!("{mermaid_output}");
+    println!("\n=== Saved to {output_path:?} ===");
     println!("\nYou can open this file in IntelliJ IDEA with the Mermaid plugin installed.");
     println!("The diagram shows:");
     println!("- Different node types (Function, Class, Trait, Interface) with different shapes");

@@ -11,6 +11,9 @@ use crate::models::tdg::{
     TDGHotspot, TDGRecommendation, TDGScore, TDGSeverity, TDGSummary,
 };
 use crate::services::file_discovery::ProjectFileDiscovery;
+use crate::services::lightweight_provability_analyzer::{
+    FunctionId, LightweightProvabilityAnalyzer,
+};
 
 /// Technical Debt Gradient Calculator
 /// Primary service for calculating TDG scores to replace defect probability
@@ -19,6 +22,8 @@ pub struct TDGCalculator {
     /// Simple cache for TDG scores
     cache: Arc<DashMap<PathBuf, TDGScore>>,
     semaphore: Arc<Semaphore>,
+    /// Lightweight provability analyzer
+    provability_analyzer: Arc<LightweightProvabilityAnalyzer>,
 }
 
 impl TDGCalculator {
@@ -31,6 +36,7 @@ impl TDGCalculator {
             config,
             cache: Arc::new(DashMap::new()),
             semaphore: Arc::new(Semaphore::new(num_cpus::get() * 2)),
+            provability_analyzer: Arc::new(LightweightProvabilityAnalyzer::new()),
         }
     }
 
@@ -49,11 +55,12 @@ impl TDGCalculator {
     /// Calculate TDG score without caching
     async fn calculate_file_uncached(&self, path: &Path) -> Result<TDGScore> {
         // Gather all metrics in parallel
-        let (complexity, churn, coupling, duplication) = tokio::try_join!(
+        let (complexity, churn, coupling, duplication, provability) = tokio::try_join!(
             self.calculate_complexity_factor(path),
             self.calculate_churn_factor(path),
             self.calculate_coupling_factor(path),
             self.calculate_duplication_factor(path),
+            self.calculate_provability_factor(path),
         )?;
 
         let domain_risk = self.calculate_domain_risk(path).await?;
@@ -67,7 +74,7 @@ impl TDGCalculator {
             duplication,
         };
 
-        let value = self.calculate_weighted_tdg(&components);
+        let value = self.calculate_weighted_tdg(&components, provability);
         let severity = TDGSeverity::from(value);
 
         Ok(TDGScore {
@@ -326,15 +333,18 @@ impl TDGCalculator {
     }
 
     /// Calculate weighted TDG value from components
-    fn calculate_weighted_tdg(&self, components: &TDGComponents) -> f64 {
-        let weighted = components.complexity * self.config.complexity_weight
+    fn calculate_weighted_tdg(&self, components: &TDGComponents, provability_factor: f64) -> f64 {
+        let base_weighted = components.complexity * self.config.complexity_weight
             + components.churn * self.config.churn_weight
             + components.coupling * self.config.coupling_weight
             + components.domain_risk * self.config.domain_risk_weight
             + components.duplication * self.config.duplication_weight;
 
+        // Apply provability factor (higher provability reduces TDG)
+        let adjusted = base_weighted * (1.0 - provability_factor * 0.2);
+
         // Ensure result is in 0-5 range
-        weighted.clamp(0.0, 5.0)
+        adjusted.clamp(0.0, 5.0)
     }
 
     /// Calculate confidence level based on data availability
@@ -458,8 +468,7 @@ impl TDGCalculator {
         for (value, name, weight) in components {
             let contribution = value * weight;
             explanation.push_str(&format!(
-                "- {}: {:.2} (contributes {:.2} to total)\n",
-                name, value, contribution
+                "- {name}: {value:.2} (contributes {contribution:.2} to total)\n"
             ));
         }
 
@@ -555,6 +564,32 @@ impl TDGCalculator {
             .count()
     }
 
+    /// Calculate provability factor using lightweight analysis
+    async fn calculate_provability_factor(&self, path: &Path) -> Result<f64> {
+        // Extract function information from file
+        let file_name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown");
+
+        let func_id = FunctionId {
+            file_path: path.to_string_lossy().to_string(),
+            function_name: file_name.to_string(),
+            line_number: 1,
+        };
+
+        let summaries = self
+            .provability_analyzer
+            .analyze_incrementally(&[func_id])
+            .await;
+
+        if let Some(summary) = summaries.first() {
+            Ok(summary.provability_score)
+        } else {
+            Ok(0.0) // Default to no provability
+        }
+    }
+
     /// Generate TDG distribution for visualization
     pub fn calculate_distribution(&self, scores: &[TDGScore]) -> TDGDistribution {
         let bucket_size = 0.5;
@@ -605,6 +640,7 @@ impl Clone for TDGCalculator {
             config: self.config.clone(),
             cache: self.cache.clone(),
             semaphore: self.semaphore.clone(),
+            provability_analyzer: self.provability_analyzer.clone(),
         }
     }
 }

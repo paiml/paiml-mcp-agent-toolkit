@@ -124,9 +124,9 @@ fn get_binary_path() -> String {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let workspace_root = Path::new(manifest_dir).parent().unwrap();
 
-    // Check release build first, then debug
-    let release_binary = workspace_root.join("target/release/paiml-mcp-agent-toolkit");
-    let debug_binary = workspace_root.join("target/debug/paiml-mcp-agent-toolkit");
+    // Check release build first, then debug - look for pmat binary
+    let release_binary = workspace_root.join("target/release/pmat");
+    let debug_binary = workspace_root.join("target/debug/pmat");
 
     if release_binary.exists() {
         release_binary.to_string_lossy().to_string()
@@ -134,7 +134,7 @@ fn get_binary_path() -> String {
         debug_binary.to_string_lossy().to_string()
     } else {
         // Fall back to system binary
-        "paiml-mcp-agent-toolkit".to_string()
+        "pmat".to_string()
     }
 }
 
@@ -284,8 +284,7 @@ fn test_no_undocumented_commands() {
 
         assert!(
             documented_names.contains(actual_cmd),
-            "Command '{}' exists in CLI but is not documented in cli-mcp.md",
-            actual_cmd
+            "Command '{actual_cmd}' exists in CLI but is not documented in cli-mcp.md"
         );
     }
 }
@@ -329,8 +328,8 @@ fn test_documentation_examples_are_valid() {
         // Extract the command (first line if multi-line)
         let command_line = code_block.lines().next().unwrap_or("");
 
-        // Skip if it's not a paiml-mcp-agent-toolkit command
-        if !command_line.contains("paiml-mcp-agent-toolkit") {
+        // Skip if it's not a paiml-mcp-agent-toolkit or pmat command
+        if !command_line.contains("paiml-mcp-agent-toolkit") && !command_line.contains("pmat") {
             continue;
         }
 
@@ -339,8 +338,10 @@ fn test_documentation_examples_are_valid() {
             continue;
         }
 
-        // Replace the binary name with our test binary path
-        let test_command = command_line.replace("paiml-mcp-agent-toolkit", &binary_path);
+        // Replace the binary name with our test binary path (handle both old and new names)
+        let test_command = command_line
+            .replace("paiml-mcp-agent-toolkit", &binary_path)
+            .replace("pmat", &binary_path);
 
         // For commands with line continuations, just test the first line with --help
         let test_args: Vec<&str> = if test_command.contains('\\') {
@@ -373,8 +374,7 @@ fn test_documentation_examples_are_valid() {
             // We expect the command to at least be recognized (even if it shows help)
             assert!(
                 output.is_ok(),
-                "Example command failed to execute: {}",
-                command_line
+                "Example command failed to execute: {command_line}"
             );
         }
     }

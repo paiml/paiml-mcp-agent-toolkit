@@ -107,7 +107,7 @@ pub async fn handle_prompt_get<T: TemplateServerTrait>(
     let get_params: PromptGetParams = match serde_json::from_value(params) {
         Ok(p) => p,
         Err(e) => {
-            return McpResponse::error(request.id, -32602, format!("Invalid params: {}", e));
+            return McpResponse::error(request.id, -32602, format!("Invalid params: {e}"));
         }
     };
 
