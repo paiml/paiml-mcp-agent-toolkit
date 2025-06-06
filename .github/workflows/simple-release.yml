@@ -104,9 +104,9 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libssl-dev
+          sudo apt-get install -y build-essential pkg-config libssl-dev cmake
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
-            sudo apt-get install -y gcc-aarch64-linux-gnu
+            sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
           fi
       
       - name: Install macOS dependencies
@@ -122,12 +122,15 @@ jobs:
         run: |
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+            export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+            export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+            export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
           fi
           if [[ "${{ runner.os }}" == "macOS" ]]; then
             export OPENSSL_DIR=$(brew --prefix openssl)
           fi
           cd server
-          OPENSSL_STATIC=1 OPENSSL_VENDORED=1 cargo build --release --target ${{ matrix.target }}
+          cargo build --release --target ${{ matrix.target }}
           cd ..
           
       - name: Create archive
