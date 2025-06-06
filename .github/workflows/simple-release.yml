@@ -117,8 +117,8 @@ jobs:
       
       - name: Build binary
         env:
-          OPENSSL_NO_VENDOR: 0
-          OPENSSL_STATIC: 1
+          DEP_OPENSSL_VENDORED: 1
+          CARGO_PROFILE_RELEASE_LTO: true
         run: |
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
