@@ -104,7 +104,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config cmake libssl-dev
+          sudo apt-get install -y build-essential pkg-config cmake
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
           fi
@@ -112,14 +112,13 @@ jobs:
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
         run: |
-          # Install dependencies for builds
-          brew install pkg-config cmake openssl@3
-          echo "PKG_CONFIG_PATH=/usr/local/opt/openssl@3/lib/pkgconfig:/opt/homebrew/opt/openssl@3/lib/pkgconfig" >> $GITHUB_ENV
-          echo "OPENSSL_ROOT_DIR=/usr/local/opt/openssl@3:/opt/homebrew/opt/openssl@3" >> $GITHUB_ENV
+          # Install dependencies for vendored builds
+          brew install pkg-config cmake
       
       - name: Build binary
         env:
           CARGO_PROFILE_RELEASE_LTO: true
+          LIBGIT2_NO_VENDOR: 0
         run: |
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
