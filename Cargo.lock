@@ -2361,6 +2361,7 @@ dependencies = [
  "notify",
  "num_cpus",
  "once_cell",
+ "openssl-sys",
  "parking_lot",
  "petgraph",
  "predicates",

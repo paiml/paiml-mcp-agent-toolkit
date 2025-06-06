@@ -17,6 +17,9 @@ async-trait = "0.1"
 serde = { version = "1.0", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "1.0", default-features = false, features = ["std"] }
 
+# Force vendored OpenSSL
+openssl-sys = { version = "0.9", features = ["vendored"] }
+
 # Template engine
 handlebars = { version = "6.3", default-features = false, features = ["string_helpers"] }
 
