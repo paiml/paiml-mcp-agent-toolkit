@@ -104,7 +104,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config cmake
+          sudo apt-get install -y build-essential pkg-config cmake perl
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
           fi
@@ -118,7 +118,6 @@ jobs:
       - name: Build binary
         env:
           CARGO_PROFILE_RELEASE_LTO: true
-          LIBGIT2_NO_VENDOR: 0
         run: |
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
@@ -127,7 +126,7 @@ jobs:
             export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
           fi
           cd server
-          cargo build --release --target ${{ matrix.target }}
+          VENDORED_OPENSSL=1 cargo build --release --target ${{ matrix.target }}
           cd ..
           
       - name: Create archive
