@@ -136,7 +136,7 @@ jobs:
       - name: Create archive
         run: |
           cd target/${{ matrix.target }}/release
-          tar -czf ../../../paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz paiml-mcp-agent-toolkit
+          tar -czf ../../../paiml-mcp-agent-toolkit-${{ matrix.target }}.tar.gz pmat
           cd ../../..
           
       - name: Upload artifact
