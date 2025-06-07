@@ -542,6 +542,242 @@ Comprehensive deep context analysis with:
 - **Markdown**: Human-readable comprehensive reports with annotated file trees
 - **SARIF**: Static Analysis Results Interchange Format for IDE integration and CI/CD pipelines
 
+### `analyze_duplicates` ✨ **NEW**
+
+**NEW**: Detect code duplicates using SIMD-accelerated MinHash algorithms with four detection types.
+
+**Arguments:**
+- `project_path` (string, optional): Path to analyze (default: current directory)
+- `detection_type` (string, optional): Type of detection ("exact", "renamed", "gapped", "semantic", "all")
+- `threshold` (number, optional): Similarity threshold for semantic clones (0.0-1.0, default: 0.85)
+- `gpu` (boolean, optional): Use GPU acceleration if available
+- `perf` (boolean, optional): Output performance metrics
+- `format` (string, optional): Output format ("summary", "detailed", "json", "sarif")
+- `min_lines` (number, optional): Minimum lines of code for duplicate detection (default: 5)
+
+**Detection Types:**
+1. **Exact**: Identical code blocks
+2. **Renamed**: Code with renamed variables/functions  
+3. **Gapped**: Code with inserted/deleted lines
+4. **Semantic**: Functionally equivalent code with different syntax
+5. **All**: Comprehensive detection using all methods
+
+**Returns:**
+- Duplicate detection results with performance metrics (if requested)
+
+**Example Request:**
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "tools/call", 
+    "params": {
+        "name": "analyze_duplicates",
+        "arguments": {
+            "detection_type": "all",
+            "threshold": 0.8,
+            "perf": true,
+            "format": "json"
+        }
+    },
+    "id": 1
+}
+```
+
+### `analyze_defect_probability` ✨ **NEW**
+
+**NEW**: ML-based defect prediction using feature vectors and confidence scoring.
+
+**Arguments:**
+- `project_path` (string, optional): Path to analyze (default: current directory)
+- `min_confidence` (number, optional): Minimum confidence threshold (0.0-1.0, default: 0.7)
+- `explain` (boolean, optional): Include feature importance breakdown
+- `sarif` (boolean, optional): Output SARIF format for IDE integration
+- `format` (string, optional): Output format ("summary", "detailed", "json", "sarif")
+
+**Feature Vectors:**
+The ML model uses 6 primary feature vectors:
+- **Complexity**: Cyclomatic and cognitive complexity metrics
+- **Churn**: Code change frequency and recency
+- **Duplication**: Code clone density and distribution  
+- **Coupling**: Dependency coupling and cohesion metrics
+- **Name Quality**: Identifier semantic quality scoring
+- **Test Coverage**: Test coverage and quality metrics
+
+**Returns:**
+- Defect predictions with confidence scores and optional feature explanations
+
+**Example Request:**
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+        "name": "analyze_defect_probability", 
+        "arguments": {
+            "min_confidence": 0.8,
+            "explain": true,
+            "format": "detailed"
+        }
+    },
+    "id": 1
+}
+```
+
+### `analyze_comprehensive` ✨ **NEW**
+
+**NEW**: Multi-dimensional analysis combining all analysis types with parallel execution and performance metrics.
+
+**Arguments:**
+- `project_path` (string, optional): Path to analyze (default: current directory)
+- `format` (string, optional): Output format ("summary", "detailed", "json", "markdown", "sarif")
+- `include_duplicates` (boolean, optional): Enable duplicate detection analysis
+- `include_dead_code` (boolean, optional): Enable dead code analysis  
+- `include_defects` (boolean, optional): Enable defect prediction analysis
+- `include_complexity` (boolean, optional): Enable complexity analysis
+- `include_tdg` (boolean, optional): Enable TDG (Technical Debt Gradient) analysis
+- `confidence_threshold` (number, optional): Minimum confidence threshold for predictions (default: 0.5)
+- `min_lines` (number, optional): Minimum lines of code for analysis (default: 10)
+- `include_patterns` (array, optional): Include file patterns (e.g., ["**/*.rs"])
+- `exclude_patterns` (array, optional): Exclude file patterns (e.g., ["**/target/**"])
+- `perf` (boolean, optional): Show performance metrics for each analysis component
+- `executive_summary` (boolean, optional): Generate executive summary only (faster analysis)
+
+**Performance Characteristics:**
+- **Duplicate detection**: ~84ms for 200-file codebase
+- **Dead code analysis**: ~7ms analysis time
+- **Defect prediction**: ~45ms ML inference
+- **Complexity analysis**: ~36ms processing
+- **Total comprehensive**: ~143ms for full analysis
+
+**Returns:**
+- Comprehensive analysis results with optional performance breakdown
+
+**Example Request:**
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+        "name": "analyze_comprehensive",
+        "arguments": {
+            "include_duplicates": true,
+            "include_dead_code": true,
+            "include_defects": true,
+            "include_complexity": true,
+            "include_tdg": true,
+            "perf": true,
+            "format": "detailed"
+        }
+    },
+    "id": 1
+}
+```
+
+### `analyze_graph_metrics` ✨ **NEW**
+
+**NEW**: Vectorized graph analytics with PageRank and centrality computation.
+
+**Arguments:**
+- `project_path` (string, optional): Path to analyze (default: current directory)
+- `metrics` (array, optional): Metrics to compute (["centrality", "pagerank", "clustering", "components", "all"])
+- `pagerank_seeds` (array, optional): Personalized PageRank seed nodes
+- `graphml` (boolean, optional): Export as GraphML format
+- `format` (string, optional): Output format ("summary", "detailed", "json")
+
+**Graph Metrics:**
+- **Centrality**: Betweenness, closeness, and degree centrality
+- **PageRank**: Authority scoring with personalization options
+- **Clustering**: Clustering coefficient and modularity
+- **Components**: Connected component analysis
+
+**Returns:**
+- Graph analytics results with optional GraphML export
+
+**Example Request:**
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+        "name": "analyze_graph_metrics",
+        "arguments": {
+            "metrics": ["pagerank", "centrality"],
+            "pagerank_seeds": ["main.rs", "lib.rs"],
+            "format": "json"
+        }
+    },
+    "id": 1
+}
+```
+
+### `analyze_name_similarity` ✨ **NEW**
+
+**NEW**: Semantic name similarity using embeddings and phonetic matching.
+
+**Arguments:**
+- `query` (string, required): Name to search for
+- `project_path` (string, optional): Path to analyze (default: current directory)
+- `top_k` (number, optional): Number of results (default: 10)
+- `phonetic` (boolean, optional): Include phonetic matches
+- `scope` (string, optional): Search scope ("functions", "types", "variables", "all")
+- `format` (string, optional): Output format ("summary", "detailed", "json")
+
+**Returns:**
+- Similar names ranked by semantic similarity with optional phonetic matches
+
+**Example Request:**
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+        "name": "analyze_name_similarity",
+        "arguments": {
+            "query": "calculateTotal",
+            "scope": "functions",
+            "top_k": 5,
+            "phonetic": true
+        }
+    },
+    "id": 1
+}
+```
+
+### `quality_gate` ✨ **NEW**
+
+**NEW**: Comprehensive quality checks with configurable thresholds for CI/CD integration.
+
+**Arguments:**
+- `project_path` (string, optional): Path to analyze (default: current directory)
+- `complexity_threshold` (number, optional): Maximum allowed complexity (default: 10)
+- `duplication_threshold` (number, optional): Maximum duplication percentage (default: 5.0)
+- `coverage_threshold` (number, optional): Minimum test coverage (default: 80.0)
+- `defect_threshold` (number, optional): Maximum defect probability (default: 0.3)
+- `format` (string, optional): Output format ("summary", "detailed", "json", "sarif", "junit")
+- `fail_on_violation` (boolean, optional): Return error code on quality gate failures
+
+**Returns:**
+- Quality gate results with pass/fail status and detailed metrics
+
+**Example Request:**
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+        "name": "quality_gate",
+        "arguments": {
+            "complexity_threshold": 8,
+            "duplication_threshold": 3.0,
+            "coverage_threshold": 90.0,
+            "fail_on_violation": true,
+            "format": "junit"
+        }
+    },
+    "id": 1
+}
+```
+
 ## Connection Management
 
 ### Heartbeat

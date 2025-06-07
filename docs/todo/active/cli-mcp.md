@@ -290,6 +290,39 @@ pmat context <TOOLCHAIN> [OPTIONS]
   - Cross-session caching in `~/.cache/paiml-mcp-agent-toolkit/`
   - Cache hit rates typically exceed 70%
 
+### Command: `report`
+
+Generate enhanced analysis reports combining multiple analysis types into comprehensive documentation.
+
+#### Synopsis
+
+```bash
+pmat report [OPTIONS]
+```
+
+#### Options
+
+- `-p, --project-path <PATH>` - Project path to analyze (default: .)
+- `-f, --output-format <FORMAT>` - Output format: `html`, `markdown`, `json`, `pdf`, `dashboard` (default: markdown)
+- `--include-visualizations` - Include charts and graphs in the report
+- `--include-executive-summary` - Include executive summary (default: true)
+- `--include-recommendations` - Include actionable recommendations (default: true)
+- `--analyses <TYPES>` - Analysis types to include: `all`, `complexity`, `churn`, `dead-code`, `satd` (default: all)
+- `--confidence-threshold <VALUE>` - Confidence threshold for findings 0-100 (default: 50)
+
+#### Examples
+
+```bash
+# Generate comprehensive markdown report
+pmat report
+
+# Generate HTML report with visualizations
+pmat report --output-format html --include-visualizations
+
+# Generate focused complexity report
+pmat report --analyses complexity --confidence-threshold 80
+```
+
 ### Command: `analyze complexity`
 
 Performs static complexity analysis using dual algorithms:

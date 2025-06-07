@@ -63,6 +63,9 @@ async fn dispatch_tool_call<T: TemplateServerTrait>(
         tool_name if is_analysis_tool(tool_name) => {
             handle_analysis_tools(request_id, tool_params).await
         }
+        tool_name if super::vectorized_tools::is_vectorized_tool(tool_name) => {
+            super::vectorized_tools::handle_vectorized_tools(request_id, tool_params).await
+        }
         _ => McpResponse::error(
             request_id,
             -32602,

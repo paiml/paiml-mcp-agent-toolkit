@@ -10,10 +10,31 @@ use crate::models::tdg::{
     RecommendationType, TDGAnalysis, TDGBucket, TDGComponents, TDGConfig, TDGDistribution,
     TDGHotspot, TDGRecommendation, TDGScore, TDGSeverity, TDGSummary,
 };
+use crate::models::unified_ast::{AstKind, UnifiedAstNode};
 use crate::services::file_discovery::ProjectFileDiscovery;
+use crate::services::git_analysis::GitAnalysisService;
 use crate::services::lightweight_provability_analyzer::{
     FunctionId, LightweightProvabilityAnalyzer,
 };
+use crate::services::unified_ast_engine::UnifiedAstEngine;
+use crate::services::verified_complexity::VerifiedComplexityAnalyzer;
+
+/// Complexity variance metrics for TDG calculation
+#[derive(Debug, Clone)]
+pub struct ComplexityVariance {
+    pub mean: f64,
+    pub variance: f64,
+    pub gini: f64,
+    pub percentile_90: f64,
+}
+
+/// Coupling metrics for files
+#[derive(Debug, Clone)]
+pub struct CouplingMetrics {
+    pub afferent: usize,  // Incoming dependencies
+    pub efferent: usize,  // Outgoing dependencies
+    pub instability: f64, // efferent / (afferent + efferent)
+}
 
 /// Technical Debt Gradient Calculator
 /// Primary service for calculating TDG scores to replace defect probability
@@ -24,6 +45,10 @@ pub struct TDGCalculator {
     semaphore: Arc<Semaphore>,
     /// Lightweight provability analyzer
     provability_analyzer: Arc<LightweightProvabilityAnalyzer>,
+    /// AST engine for parsing
+    ast_engine: Arc<UnifiedAstEngine>,
+    /// Project root for git analysis
+    project_root: PathBuf,
 }
 
 impl TDGCalculator {
@@ -37,6 +62,8 @@ impl TDGCalculator {
             cache: Arc::new(DashMap::new()),
             semaphore: Arc::new(Semaphore::new(num_cpus::get() * 2)),
             provability_analyzer: Arc::new(LightweightProvabilityAnalyzer::new()),
+            ast_engine: Arc::new(UnifiedAstEngine::new()),
+            project_root: PathBuf::from("."),
         }
     }
 
@@ -194,18 +221,87 @@ impl TDGCalculator {
         })
     }
 
+    /// Compute complexity gradient with variance analysis
+    #[allow(dead_code)]
+    fn compute_complexity_gradient(&self, ast: &UnifiedAstNode) -> ComplexityVariance {
+        let mut analyzer = VerifiedComplexityAnalyzer::new();
+        // For now, analyze the node itself if it's a function
+        let complexities: Vec<u32> = if matches!(ast.kind, AstKind::Function(_)) {
+            vec![analyzer.analyze_function(ast).cyclomatic]
+        } else {
+            // In real implementation, would traverse children via first_child/next_sibling
+            vec![]
+        };
+
+        if complexities.is_empty() {
+            return ComplexityVariance {
+                mean: 0.0,
+                variance: 0.0,
+                gini: 0.0,
+                percentile_90: 0.0,
+            };
+        }
+
+        // Calculate mean
+        let sum: u32 = complexities.iter().sum();
+        let mean = sum as f64 / complexities.len() as f64;
+
+        // Calculate variance
+        let squared_diff_sum: f64 = complexities
+            .iter()
+            .map(|&c| (c as f64 - mean).powi(2))
+            .sum();
+        let variance = squared_diff_sum / complexities.len() as f64;
+
+        // Calculate Gini coefficient
+        let mut sorted = complexities.clone();
+        sorted.sort_unstable();
+
+        let mut gini_sum = 0.0;
+        for (i, &value) in sorted.iter().enumerate() {
+            gini_sum += (2.0 * (i + 1) as f64 - sorted.len() as f64 - 1.0) * value as f64;
+        }
+        let gini = gini_sum / (sorted.len() as f64 * sum as f64);
+
+        // Calculate 90th percentile
+        let percentile_idx = ((sorted.len() as f64 * 0.9) as usize).min(sorted.len() - 1);
+        let percentile_90 = sorted[percentile_idx] as f64;
+
+        ComplexityVariance {
+            mean,
+            variance,
+            gini,
+            percentile_90,
+        }
+    }
+
     /// Calculate complexity factor (normalized 0-5)
     async fn calculate_complexity_factor(&self, path: &Path) -> Result<f64> {
-        // Simplified complexity calculation based on file content
+        // For now, use heuristic analysis until we have proper AST integration
         let content = tokio::fs::read_to_string(path).await?;
         let lines: Vec<&str> = content.lines().collect();
 
         // Basic complexity heuristics
-        let mut complexity = 0;
-        let mut nesting_level = 0;
+        let mut complexity = 0usize;
+        let mut nesting_level = 0usize;
+        let mut function_complexities = Vec::<usize>::new();
 
         for line in &lines {
             let trimmed = line.trim();
+
+            // Track function boundaries for variance
+            if trimmed.starts_with("fn ")
+                || trimmed.starts_with("def ")
+                || trimmed.starts_with("function ")
+                || trimmed.starts_with("func ")
+            {
+                if complexity > 0 {
+                    function_complexities.push(complexity);
+                }
+                complexity = 1; // Reset for new function
+                nesting_level = 0;
+            }
+
             // Count control flow statements
             if trimmed.starts_with("if ")
                 || trimmed.starts_with("elif ")
@@ -222,18 +318,72 @@ impl TDGCalculator {
             nesting_level = nesting_level.saturating_sub(trimmed.matches('}').count());
         }
 
-        // Normalize to 0-5 scale
-        let normalized = (complexity as f64 / 25.0).min(5.0);
-        Ok(normalized)
+        // Add last function
+        if complexity > 0 {
+            function_complexities.push(complexity);
+        }
+
+        // Calculate variance to ensure different TDG values
+        if function_complexities.is_empty() {
+            return Ok(0.5); // Low complexity for files without functions
+        }
+
+        let mean =
+            function_complexities.iter().sum::<usize>() as f64 / function_complexities.len() as f64;
+        let variance = function_complexities
+            .iter()
+            .map(|&c| (c as f64 - mean).powi(2))
+            .sum::<f64>()
+            / function_complexities.len() as f64;
+
+        // Multi-factor score with variance
+        let base_complexity = mean / 5.0; // More sensitive to complexity
+        let variance_factor = variance.sqrt() / 3.0; // Higher weight for variance
+        let max_complexity = function_complexities.iter().max().copied().unwrap_or(0) as f64;
+        let hotspot_factor = (max_complexity / 10.0).min(1.0);
+
+        // Add file length factor
+        let loc_factor = (lines.len() as f64 / 100.0).min(1.0);
+
+        let score =
+            base_complexity * 0.4 + variance_factor * 0.2 + hotspot_factor * 0.2 + loc_factor * 0.2;
+        Ok(score.min(5.0))
     }
 
     /// Calculate churn factor based on git history
     async fn calculate_churn_factor(&self, path: &Path) -> Result<f64> {
-        // Simplified churn calculation - would integrate with git
-        // For now, return a default value based on file age
+        // Try to use git analysis
+        match GitAnalysisService::analyze_code_churn(&self.project_root, 90) {
+            Ok(analysis) => {
+                // Find this file in the analysis
+                let relative_path = path.strip_prefix(&self.project_root).unwrap_or(path);
+
+                if let Some(file_metrics) = analysis.files.iter().find(|f| {
+                    f.path == relative_path || f.relative_path == relative_path.to_string_lossy()
+                }) {
+                    let monthly_rate = file_metrics.commit_count as f64 / 3.0; // 90 days = 3 months
+
+                    // Apply logarithmic normalization
+                    // log(1 + monthly_rate) scales nicely for typical rates
+                    let normalized = (1.0 + monthly_rate).ln() / 2.0;
+
+                    Ok(normalized.min(5.0))
+                } else {
+                    // File not found in git history
+                    self.calculate_churn_fallback(path).await
+                }
+            }
+            Err(_) => {
+                // Fallback to file age heuristic
+                self.calculate_churn_fallback(path).await
+            }
+        }
+    }
+
+    /// Fallback churn calculation based on file modification time
+    async fn calculate_churn_fallback(&self, path: &Path) -> Result<f64> {
         match tokio::fs::metadata(path).await {
             Ok(metadata) => {
-                // Newer files tend to have higher churn
                 if let Ok(modified) = metadata.modified() {
                     if let Ok(elapsed) = modified.elapsed() {
                         let days_old = elapsed.as_secs() / 86400;
@@ -258,15 +408,94 @@ impl TDGCalculator {
         }
     }
 
+    /// Analyze coupling metrics for a file
+    #[allow(dead_code)]
+    fn analyze_coupling(&self, _file: &Path, ast: &UnifiedAstNode) -> CouplingMetrics {
+        // Extract imports/exports from AST
+        let mut imports = Vec::new();
+        let mut exports = Vec::new();
+
+        self.extract_dependencies(ast, &mut imports, &mut exports);
+
+        // For now, simplified coupling calculation
+        // In full implementation, would track actual dependency graph
+        let efferent = imports.len();
+        let afferent = exports.len(); // Simplified - would need project-wide analysis
+
+        let instability = if afferent + efferent == 0 {
+            0.0
+        } else {
+            efferent as f64 / (afferent + efferent) as f64
+        };
+
+        CouplingMetrics {
+            afferent,
+            efferent,
+            instability,
+        }
+    }
+
+    /// Extract imports and exports from AST
+    #[allow(dead_code)]
+    fn extract_dependencies(
+        &self,
+        node: &UnifiedAstNode,
+        imports: &mut Vec<String>,
+        exports: &mut Vec<String>,
+    ) {
+        match &node.kind {
+            AstKind::Import(_) => {
+                // Simplified - would extract actual import paths
+                imports.push("import".to_string());
+            }
+            AstKind::Function(_) => {
+                // Simplified - would check export status
+                exports.push("function".to_string());
+            }
+            AstKind::Class(_) => {
+                // Simplified - would check export status
+                exports.push("class".to_string());
+            }
+            _ => {}
+        }
+
+        // In real implementation would traverse children via first_child/next_sibling
+    }
+
     /// Calculate coupling factor
     async fn calculate_coupling_factor(&self, path: &Path) -> Result<f64> {
-        // This would integrate with DAG analysis
-        // For now, use a simplified metric based on imports
+        // Use import counting heuristic
         let content = tokio::fs::read_to_string(path).await?;
         let import_count = self.count_imports(&content);
 
-        // Normalize: >15 imports indicates high coupling
-        Ok((import_count as f64 / 15.0).min(5.0))
+        // Also count exported items for better coupling analysis
+        let export_count = content
+            .lines()
+            .filter(|line| {
+                let trimmed = line.trim();
+                trimmed.starts_with("pub fn")
+                    || trimmed.starts_with("pub struct")
+                    || trimmed.starts_with("pub enum")
+                    || trimmed.starts_with("export ")
+                    || trimmed.contains("module.exports")
+            })
+            .count();
+
+        // Calculate instability metric
+        let total = import_count + export_count;
+        let instability = if total == 0 {
+            0.0
+        } else {
+            import_count as f64 / total as f64
+        };
+
+        // Multi-factor coupling score
+        let import_factor = (import_count as f64 / 15.0).min(2.0);
+        let instability_factor = instability * 2.0;
+        let complexity_penalty = if import_count > 20 { 1.0 } else { 0.0 };
+
+        let score = import_factor + instability_factor + complexity_penalty;
+        Ok(score.min(5.0))
     }
 
     /// Calculate code duplication factor
@@ -641,6 +870,8 @@ impl Clone for TDGCalculator {
             cache: self.cache.clone(),
             semaphore: self.semaphore.clone(),
             provability_analyzer: self.provability_analyzer.clone(),
+            ast_engine: self.ast_engine.clone(),
+            project_root: self.project_root.clone(),
         }
     }
 }
@@ -733,5 +964,111 @@ mod tests {
 
         let total_percentage: f64 = distribution.buckets.iter().map(|b| b.percentage).sum();
         assert!((total_percentage - 100.0).abs() < 0.01);
+    }
+
+    #[tokio::test]
+    async fn test_tdg_variance() {
+        let calculator = TDGCalculator::new();
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create files with different complexity levels
+        let simple_file = temp_dir.path().join("simple.rs");
+        tokio::fs::write(
+            &simple_file,
+            r#"
+            fn simple() -> i32 {
+                42
+            }
+            "#,
+        )
+        .await
+        .unwrap();
+
+        let complex_file = temp_dir.path().join("complex.rs");
+        tokio::fs::write(
+            &complex_file,
+            r#"
+            fn complex(items: &[i32]) -> i32 {
+                let mut result = 0;
+                for item in items {
+                    if *item > 0 {
+                        if *item % 2 == 0 {
+                            result += item;
+                        } else {
+                            result -= item;
+                        }
+                    } else if *item < -10 {
+                        for i in 0..*item.abs() {
+                            result *= 2;
+                        }
+                    }
+                }
+                result
+            }
+            "#,
+        )
+        .await
+        .unwrap();
+
+        let medium_file = temp_dir.path().join("medium.rs");
+        tokio::fs::write(
+            &medium_file,
+            r#"
+            fn medium(x: i32, y: i32) -> i32 {
+                if x > y {
+                    x - y
+                } else {
+                    y - x
+                }
+            }
+            "#,
+        )
+        .await
+        .unwrap();
+
+        // Calculate TDG for each file
+        let simple_tdg = calculator.calculate_file(&simple_file).await.unwrap();
+        let complex_tdg = calculator.calculate_file(&complex_file).await.unwrap();
+        let medium_tdg = calculator.calculate_file(&medium_file).await.unwrap();
+
+        // Verify variance - values should be different
+        assert_ne!(
+            simple_tdg.value, complex_tdg.value,
+            "Simple and complex files should have different TDG values"
+        );
+        assert_ne!(
+            simple_tdg.value, medium_tdg.value,
+            "Simple and medium files should have different TDG values"
+        );
+        assert_ne!(
+            complex_tdg.value, medium_tdg.value,
+            "Complex and medium files should have different TDG values"
+        );
+
+        // Verify ordering - complex should be highest
+        assert!(
+            complex_tdg.value > medium_tdg.value,
+            "Complex file should have higher TDG than medium"
+        );
+        assert!(
+            medium_tdg.value > simple_tdg.value,
+            "Medium file should have higher TDG than simple"
+        );
+
+        // Calculate variance
+        let values = [simple_tdg.value, complex_tdg.value, medium_tdg.value];
+        let mean = values.iter().sum::<f64>() / values.len() as f64;
+        let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
+
+        println!(
+            "TDG values: simple={:.3}, medium={:.3}, complex={:.3}",
+            simple_tdg.value, medium_tdg.value, complex_tdg.value
+        );
+        println!("Variance: {variance:.3}");
+        // With multi-factor TDG, variance will be lower but should still be non-zero
+        assert!(
+            variance > 0.01,
+            "TDG variance {variance:.3} too low - values too similar"
+        );
     }
 }

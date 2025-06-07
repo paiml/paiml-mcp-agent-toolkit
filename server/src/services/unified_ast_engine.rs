@@ -12,6 +12,19 @@ use serde_json::json;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// File type classification for parsing strategy
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FileType {
+    Rust,
+    TypeScript,
+    Python,
+    Cython,
+    C,
+    Cpp,
+    Makefile,
+    Unknown,
+}
+
 /// Multi-language AST unification engine
 pub struct UnifiedAstEngine {
     /// Content hasher for deterministic verification
@@ -283,113 +296,147 @@ impl UnifiedAstEngine {
         }
     }
 
-    /// Parse a single file based on its extension
+    /// Parse a single file based on its extension using strategy pattern
     async fn parse_file(&self, path: &Path) -> Result<Option<FileAst>, TemplateError> {
+        // Determine file type and delegate to appropriate parser
+        let file_type = self.determine_file_type(path);
+        self.parse_file_by_type(path, file_type).await
+    }
+
+    /// Determine file type from path (reduces complexity)
+    fn determine_file_type(&self, path: &Path) -> FileType {
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
         match ext {
-            "rs" => {
-                let content = tokio::fs::read_to_string(path)
-                    .await
-                    .map_err(TemplateError::Io)?;
-
-                let ast = syn::parse_file(&content)
-                    .map_err(|e| TemplateError::InvalidUtf8(format!("Rust parse error: {e}")))?;
-
-                Ok(Some(FileAst::Rust(ast)))
-            }
-            "ts" | "tsx" | "js" | "jsx" => {
-                // Placeholder - would use swc_ecma_parser in real implementation
-                let content = tokio::fs::read_to_string(path)
-                    .await
-                    .map_err(TemplateError::Io)?;
-                Ok(Some(FileAst::TypeScript(content)))
-            }
-            "py" => {
-                // Placeholder - would use rustpython_parser in real implementation
-                let content = tokio::fs::read_to_string(path)
-                    .await
-                    .map_err(TemplateError::Io)?;
-                Ok(Some(FileAst::Python(content)))
-            }
-            "pyx" | "pxd" => {
-                // Cython files - for now treat as Python with C extensions
-                let content = tokio::fs::read_to_string(path)
-                    .await
-                    .map_err(TemplateError::Io)?;
-                Ok(Some(FileAst::Cython(content)))
-            }
-            "c" | "h" => {
-                #[cfg(feature = "c-ast")]
-                {
-                    // Parse C file using the C AST parser
-                    let content = tokio::fs::read_to_string(path)
-                        .await
-                        .map_err(TemplateError::Io)?;
-
-                    let mut parser = crate::services::ast_c::CAstParser::new();
-                    match parser.parse_file(path, &content) {
-                        Ok(ast_dag) => Ok(Some(FileAst::C(std::sync::Arc::new(ast_dag)))),
-                        Err(e) => Err(TemplateError::InvalidUtf8(format!("C parse error: {e}"))),
-                    }
-                }
-                #[cfg(not(feature = "c-ast"))]
-                {
-                    // Placeholder when C AST support is not enabled
-                    let _content = tokio::fs::read_to_string(path)
-                        .await
-                        .map_err(TemplateError::Io)?;
-                    Ok(Some(FileAst::C(std::sync::Arc::new(
-                        crate::models::unified_ast::AstDag::new(),
-                    ))))
-                }
-            }
-            "cpp" | "cc" | "cxx" | "hpp" | "hxx" => {
-                #[cfg(feature = "cpp-ast")]
-                {
-                    // Parse C++ file using the C++ AST parser
-                    let content = tokio::fs::read_to_string(path)
-                        .await
-                        .map_err(TemplateError::Io)?;
-
-                    let mut parser = crate::services::ast_cpp::CppAstParser::new();
-                    match parser.parse_file(path, &content) {
-                        Ok(ast_dag) => Ok(Some(FileAst::Cpp(std::sync::Arc::new(ast_dag)))),
-                        Err(e) => Err(TemplateError::InvalidUtf8(format!("C++ parse error: {e}"))),
-                    }
-                }
-                #[cfg(not(feature = "cpp-ast"))]
-                {
-                    // Placeholder when C++ AST support is not enabled
-                    let _content = tokio::fs::read_to_string(path)
-                        .await
-                        .map_err(TemplateError::Io)?;
-                    Ok(Some(FileAst::Cpp(std::sync::Arc::new(
-                        crate::models::unified_ast::AstDag::new(),
-                    ))))
-                }
-            }
-            "mk" | "make" => {
-                let content = tokio::fs::read_to_string(path)
-                    .await
-                    .map_err(TemplateError::Io)?;
-                self.parse_makefile(&content)
-                    .map(|ast| Some(FileAst::Makefile(ast)))
-            }
+            "rs" => FileType::Rust,
+            "ts" | "tsx" | "js" | "jsx" => FileType::TypeScript,
+            "py" => FileType::Python,
+            "pyx" | "pxd" => FileType::Cython,
+            "c" | "h" => FileType::C,
+            "cpp" | "cc" | "cxx" | "hpp" | "hxx" => FileType::Cpp,
+            "mk" | "make" => FileType::Makefile,
             _ => {
-                // Check for Makefile by name
                 if filename == "Makefile" || filename == "makefile" {
-                    let content = tokio::fs::read_to_string(path)
-                        .await
-                        .map_err(TemplateError::Io)?;
-                    self.parse_makefile(&content)
-                        .map(|ast| Some(FileAst::Makefile(ast)))
+                    FileType::Makefile
                 } else {
-                    Ok(None)
+                    FileType::Unknown
                 }
             }
         }
+    }
+
+    /// Parse file based on determined type (strategy pattern)
+    async fn parse_file_by_type(
+        &self,
+        path: &Path,
+        file_type: FileType,
+    ) -> Result<Option<FileAst>, TemplateError> {
+        match file_type {
+            FileType::Rust => self.parse_rust_file(path).await,
+            FileType::TypeScript => self.parse_typescript_file(path).await,
+            FileType::Python => self.parse_python_file(path).await,
+            FileType::Cython => self.parse_cython_file(path).await,
+            FileType::C => self.parse_c_file(path).await,
+            FileType::Cpp => self.parse_cpp_file(path).await,
+            FileType::Makefile => self.parse_makefile_file(path).await,
+            FileType::Unknown => Ok(None),
+        }
+    }
+
+    /// Parse Rust file
+    async fn parse_rust_file(&self, path: &Path) -> Result<Option<FileAst>, TemplateError> {
+        let content = tokio::fs::read_to_string(path)
+            .await
+            .map_err(TemplateError::Io)?;
+
+        let ast = syn::parse_file(&content)
+            .map_err(|e| TemplateError::InvalidUtf8(format!("Rust parse error: {e}")))?;
+
+        Ok(Some(FileAst::Rust(ast)))
+    }
+
+    /// Parse TypeScript/JavaScript file
+    async fn parse_typescript_file(&self, path: &Path) -> Result<Option<FileAst>, TemplateError> {
+        let content = tokio::fs::read_to_string(path)
+            .await
+            .map_err(TemplateError::Io)?;
+        Ok(Some(FileAst::TypeScript(content)))
+    }
+
+    /// Parse Python file
+    async fn parse_python_file(&self, path: &Path) -> Result<Option<FileAst>, TemplateError> {
+        let content = tokio::fs::read_to_string(path)
+            .await
+            .map_err(TemplateError::Io)?;
+        Ok(Some(FileAst::Python(content)))
+    }
+
+    /// Parse Cython file
+    async fn parse_cython_file(&self, path: &Path) -> Result<Option<FileAst>, TemplateError> {
+        let content = tokio::fs::read_to_string(path)
+            .await
+            .map_err(TemplateError::Io)?;
+        Ok(Some(FileAst::Cython(content)))
+    }
+
+    /// Parse C file
+    async fn parse_c_file(&self, path: &Path) -> Result<Option<FileAst>, TemplateError> {
+        #[cfg(feature = "c-ast")]
+        {
+            let content = tokio::fs::read_to_string(path)
+                .await
+                .map_err(TemplateError::Io)?;
+
+            let mut parser = crate::services::ast_c::CAstParser::new();
+            match parser.parse_file(path, &content) {
+                Ok(ast_dag) => Ok(Some(FileAst::C(std::sync::Arc::new(ast_dag)))),
+                Err(e) => Err(TemplateError::InvalidUtf8(format!("C parse error: {e}"))),
+            }
+        }
+        #[cfg(not(feature = "c-ast"))]
+        {
+            let _content = tokio::fs::read_to_string(path)
+                .await
+                .map_err(TemplateError::Io)?;
+            Ok(Some(FileAst::C(std::sync::Arc::new(
+                crate::models::unified_ast::AstDag::new(),
+            ))))
+        }
+    }
+
+    /// Parse C++ file
+    async fn parse_cpp_file(&self, path: &Path) -> Result<Option<FileAst>, TemplateError> {
+        #[cfg(feature = "cpp-ast")]
+        {
+            let content = tokio::fs::read_to_string(path)
+                .await
+                .map_err(TemplateError::Io)?;
+
+            let mut parser = crate::services::ast_cpp::CppAstParser::new();
+            match parser.parse_file(path, &content) {
+                Ok(ast_dag) => Ok(Some(FileAst::Cpp(std::sync::Arc::new(ast_dag)))),
+                Err(e) => Err(TemplateError::InvalidUtf8(format!("C++ parse error: {e}"))),
+            }
+        }
+        #[cfg(not(feature = "cpp-ast"))]
+        {
+            let _content = tokio::fs::read_to_string(path)
+                .await
+                .map_err(TemplateError::Io)?;
+            Ok(Some(FileAst::Cpp(std::sync::Arc::new(
+                crate::models::unified_ast::AstDag::new(),
+            ))))
+        }
+    }
+
+    /// Parse Makefile
+    async fn parse_makefile_file(&self, path: &Path) -> Result<Option<FileAst>, TemplateError> {
+        let content = tokio::fs::read_to_string(path)
+            .await
+            .map_err(TemplateError::Io)?;
+        self.parse_makefile(&content)
+            .map(|ast| Some(FileAst::Makefile(ast)))
     }
 
     /// Parse a Makefile
@@ -427,51 +474,72 @@ impl UnifiedAstEngine {
         // Phase 2: Extract edges from imports/uses in deterministic order
         for (path, ast) in forest.files() {
             let source = self.path_to_module_name(path);
-
-            match ast {
-                FileAst::Rust(syn_ast) => {
-                    for item in &syn_ast.items {
-                        if let syn::Item::Use(use_item) = item {
-                            let targets = self.resolve_rust_imports(use_item);
-                            for target in targets {
-                                if let Some(&target_idx) = node_indices.get(&target) {
-                                    if let Some(&source_idx) = node_indices.get(&source) {
-                                        graph.add_edge(source_idx, target_idx, EdgeType::Imports);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                FileAst::TypeScript(_content) => {
-                    // TODO: Implement TypeScript import resolution
-                }
-                FileAst::Python(_content) => {
-                    // TODO: Implement Python import resolution
-                }
-                FileAst::Cython(_content) => {
-                    // TODO: Implement Cython import resolution (both Python and C imports)
-                }
-                FileAst::C(_ast) => {
-                    // TODO: Implement C #include resolution
-                }
-                FileAst::Cpp(_ast) => {
-                    // TODO: Implement C++ #include resolution
-                }
-                FileAst::Makefile(_ast) => {
-                    // Makefiles don't have traditional imports
-                }
-                FileAst::Markdown(_)
-                | FileAst::Toml(_)
-                | FileAst::Yaml(_)
-                | FileAst::Json(_)
-                | FileAst::Shell(_) => {
-                    // These file types don't have traditional imports
-                }
-            }
+            self.extract_dependencies_for_ast(ast, &source, &node_indices, &mut graph);
         }
 
         Ok(graph)
+    }
+
+    /// Extract dependencies for a single AST (reduces complexity)
+    fn extract_dependencies_for_ast(
+        &self,
+        ast: &FileAst,
+        source: &str,
+        node_indices: &BTreeMap<String, petgraph::stable_graph::NodeIndex>,
+        graph: &mut StableGraph<ModuleNode, EdgeType>,
+    ) {
+        match ast {
+            FileAst::Rust(syn_ast) => {
+                self.extract_rust_dependencies(syn_ast, source, node_indices, graph);
+            }
+            FileAst::TypeScript(_content) => {
+                // TODO: Implement TypeScript import resolution
+            }
+            FileAst::Python(_content) => {
+                // TODO: Implement Python import resolution
+            }
+            FileAst::Cython(_content) => {
+                // TODO: Implement Cython import resolution (both Python and C imports)
+            }
+            FileAst::C(_ast) => {
+                // TODO: Implement C #include resolution
+            }
+            FileAst::Cpp(_ast) => {
+                // TODO: Implement C++ #include resolution
+            }
+            FileAst::Makefile(_ast) => {
+                // Makefiles don't have traditional imports
+            }
+            FileAst::Markdown(_)
+            | FileAst::Toml(_)
+            | FileAst::Yaml(_)
+            | FileAst::Json(_)
+            | FileAst::Shell(_) => {
+                // These file types don't have traditional imports
+            }
+        }
+    }
+
+    /// Extract dependencies from Rust AST
+    fn extract_rust_dependencies(
+        &self,
+        syn_ast: &syn::File,
+        source: &str,
+        node_indices: &BTreeMap<String, petgraph::stable_graph::NodeIndex>,
+        graph: &mut StableGraph<ModuleNode, EdgeType>,
+    ) {
+        for item in &syn_ast.items {
+            if let syn::Item::Use(use_item) = item {
+                let targets = self.resolve_rust_imports(use_item);
+                for target in targets {
+                    if let Some(&target_idx) = node_indices.get(&target) {
+                        if let Some(&source_idx) = node_indices.get(source) {
+                            graph.add_edge(source_idx, target_idx, EdgeType::Imports);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// Convert file path to module name
@@ -482,74 +550,85 @@ impl UnifiedAstEngine {
             .replace('-', "_")
     }
 
-    /// Compute metrics for a single module/file
+    /// Compute metrics for a single module/file (delegated approach)
     fn compute_node_metrics(&self, ast: &FileAst) -> ModuleMetrics {
         match ast {
-            FileAst::Rust(syn_ast) => {
-                let mut metrics = ModuleMetrics::default();
-
-                for item in &syn_ast.items {
-                    match item {
-                        syn::Item::Fn(_) => metrics.functions += 1,
-                        syn::Item::Struct(_) | syn::Item::Enum(_) => metrics.classes += 1,
-                        _ => {}
-                    }
-                }
-
-                metrics.complexity = (metrics.functions + metrics.classes) * 2; // Simple heuristic
-                metrics.lines = syn_ast.items.len() as u32 * 10; // Rough estimate
-                metrics
-            }
+            FileAst::Rust(syn_ast) => self.compute_rust_metrics(syn_ast),
             FileAst::TypeScript(_) | FileAst::Python(_) | FileAst::Cython(_) => {
-                // TODO: Implement for other languages
-                ModuleMetrics::default()
+                ModuleMetrics::default() // TODO: Implement for other languages
             }
-            FileAst::C(ast_dag) | FileAst::Cpp(ast_dag) => {
-                let mut metrics = ModuleMetrics::default();
-
-                // Count functions and complexity from AST DAG
-                for node in ast_dag.nodes.iter() {
-                    match &node.kind {
-                        crate::models::unified_ast::AstKind::Function(_) => {
-                            metrics.functions += 1;
-                            metrics.complexity += node.complexity();
-                        }
-                        crate::models::unified_ast::AstKind::Type(type_kind) => {
-                            if matches!(
-                                type_kind,
-                                crate::models::unified_ast::TypeKind::Struct
-                                    | crate::models::unified_ast::TypeKind::Enum
-                            ) {
-                                metrics.classes += 1;
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-
-                metrics.lines = ast_dag.nodes.len() as u32 * 5; // Rough estimate
-                metrics
-            }
-            FileAst::Makefile(makefile_ast) => {
-                let mut metrics = ModuleMetrics::default();
-                metrics.functions = makefile_ast
-                    .nodes
-                    .iter()
-                    .filter(|n| n.kind == crate::services::makefile_linter::MakefileNodeKind::Rule)
-                    .count() as u32;
-                metrics.lines = makefile_ast.nodes.len() as u32 * 3; // Rough estimate
-                metrics.complexity = metrics.functions; // Simple heuristic
-                metrics
-            }
+            FileAst::C(ast_dag) | FileAst::Cpp(ast_dag) => self.compute_c_cpp_metrics(ast_dag),
+            FileAst::Makefile(makefile_ast) => self.compute_makefile_metrics(makefile_ast),
             FileAst::Markdown(_)
             | FileAst::Toml(_)
             | FileAst::Yaml(_)
             | FileAst::Json(_)
-            | FileAst::Shell(_) => {
-                // Basic metrics for non-code files
-                ModuleMetrics::default()
+            | FileAst::Shell(_) => ModuleMetrics::default(),
+        }
+    }
+
+    /// Compute metrics for Rust AST
+    fn compute_rust_metrics(&self, syn_ast: &syn::File) -> ModuleMetrics {
+        let mut metrics = ModuleMetrics::default();
+
+        for item in &syn_ast.items {
+            match item {
+                syn::Item::Fn(_) => metrics.functions += 1,
+                syn::Item::Struct(_) | syn::Item::Enum(_) => metrics.classes += 1,
+                _ => {}
             }
         }
+
+        metrics.complexity = (metrics.functions + metrics.classes) * 2; // Simple heuristic
+        metrics.lines = syn_ast.items.len() as u32 * 10; // Rough estimate
+        metrics
+    }
+
+    /// Compute metrics for C/C++ AST
+    fn compute_c_cpp_metrics(
+        &self,
+        ast_dag: &std::sync::Arc<crate::models::unified_ast::AstDag>,
+    ) -> ModuleMetrics {
+        let mut metrics = ModuleMetrics::default();
+
+        // Count functions and complexity from AST DAG
+        for node in ast_dag.nodes.iter() {
+            match &node.kind {
+                crate::models::unified_ast::AstKind::Function(_) => {
+                    metrics.functions += 1;
+                    metrics.complexity += node.complexity();
+                }
+                crate::models::unified_ast::AstKind::Type(type_kind) => {
+                    if matches!(
+                        type_kind,
+                        crate::models::unified_ast::TypeKind::Struct
+                            | crate::models::unified_ast::TypeKind::Enum
+                    ) {
+                        metrics.classes += 1;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        metrics.lines = ast_dag.nodes.len() as u32 * 5; // Rough estimate
+        metrics
+    }
+
+    /// Compute metrics for Makefile
+    fn compute_makefile_metrics(
+        &self,
+        makefile_ast: &crate::services::makefile_linter::MakefileAst,
+    ) -> ModuleMetrics {
+        let mut metrics = ModuleMetrics::default();
+        metrics.functions = makefile_ast
+            .nodes
+            .iter()
+            .filter(|n| n.kind == crate::services::makefile_linter::MakefileNodeKind::Rule)
+            .count() as u32;
+        metrics.lines = makefile_ast.nodes.len() as u32 * 3; // Rough estimate
+        metrics.complexity = metrics.functions; // Simple heuristic
+        metrics
     }
 
     /// Resolve Rust use/import statements

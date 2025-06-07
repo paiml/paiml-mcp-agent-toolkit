@@ -24,7 +24,7 @@ fn test_cli_examples_are_valid() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/cli-mcp.md");
+        .join("docs/todo/active/cli-mcp.md");
 
     let content = fs::read_to_string(&doc_path).expect("Failed to read cli-mcp.md");
     let code_block_regex = Regex::new(r"```bash\n((?:[^`]|`[^`]|``[^`])+)\n```").unwrap();
@@ -162,7 +162,7 @@ fn test_mcp_json_examples_are_valid() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/cli-mcp.md");
+        .join("docs/todo/active/cli-mcp.md");
 
     let content = fs::read_to_string(&doc_path).expect("Failed to read cli-mcp.md");
     let json_block_regex = Regex::new(r"```json\n((?:[^`]|`[^`]|``[^`])+)\n```").unwrap();
@@ -234,7 +234,7 @@ fn test_yaml_examples_are_valid() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/cli-mcp.md");
+        .join("docs/todo/active/cli-mcp.md");
 
     let content = fs::read_to_string(&doc_path).expect("Failed to read cli-mcp.md");
 
@@ -266,7 +266,7 @@ fn test_jsonc_examples_are_valid() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/cli-mcp.md");
+        .join("docs/todo/active/cli-mcp.md");
 
     let content = fs::read_to_string(&doc_path).expect("Failed to read cli-mcp.md");
 
@@ -313,7 +313,7 @@ fn test_template_uri_examples_are_valid() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/cli-mcp.md");
+        .join("docs/todo/active/cli-mcp.md");
 
     let content = fs::read_to_string(&doc_path).expect("Failed to read cli-mcp.md");
 
@@ -351,7 +351,7 @@ fn test_performance_numbers_are_reasonable() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/cli-mcp.md");
+        .join("docs/todo/active/cli-mcp.md");
 
     let content = fs::read_to_string(&doc_path).expect("Failed to read cli-mcp.md");
 

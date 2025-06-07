@@ -87,6 +87,18 @@ impl CliAdapter {
                     "Diagnose command should be handled directly by CLI".to_string(),
                 ))
             }
+            Commands::QualityGate { .. } => {
+                // QualityGate command is handled directly in the CLI, not through the unified protocol
+                Err(ProtocolError::InvalidFormat(
+                    "QualityGate command should be handled directly by CLI".to_string(),
+                ))
+            }
+            Commands::Report { .. } => {
+                // Report command is handled directly in the CLI, not through the unified protocol
+                Err(ProtocolError::InvalidFormat(
+                    "Report command should be handled directly by CLI".to_string(),
+                ))
+            }
         }
     }
 
@@ -377,6 +389,87 @@ impl CliAdapter {
                 *include_evidence,
                 output,
             ),
+            AnalyzeCommands::Duplicates { .. } => {
+                // For now, return a placeholder response for the unified protocol
+                Ok((
+                    Method::POST,
+                    "/api/v1/analyze/duplicates".to_string(),
+                    json!({"status": "placeholder"}),
+                    None,
+                ))
+            }
+            AnalyzeCommands::DefectPrediction { .. } => {
+                // For now, return a placeholder response for the unified protocol
+                Ok((
+                    Method::POST,
+                    "/api/v1/analyze/defect-prediction".to_string(),
+                    json!({"status": "placeholder"}),
+                    None,
+                ))
+            }
+            AnalyzeCommands::Comprehensive { .. } => {
+                // For now, return a placeholder response for the unified protocol
+                Ok((
+                    Method::POST,
+                    "/api/v1/analyze/comprehensive".to_string(),
+                    json!({"status": "placeholder"}),
+                    None,
+                ))
+            }
+            AnalyzeCommands::GraphMetrics { .. } => {
+                // For now, return a placeholder response for the unified protocol
+                Ok((
+                    Method::POST,
+                    "/api/v1/analyze/graph-metrics".to_string(),
+                    json!({"status": "placeholder"}),
+                    None,
+                ))
+            }
+            AnalyzeCommands::NameSimilarity { .. } => {
+                // For now, return a placeholder response for the unified protocol
+                Ok((
+                    Method::POST,
+                    "/api/v1/analyze/name-similarity".to_string(),
+                    json!({"status": "placeholder"}),
+                    None,
+                ))
+            }
+            AnalyzeCommands::ProofAnnotations { .. } => {
+                // For now, return a placeholder response for the unified protocol
+                Ok((
+                    Method::POST,
+                    "/api/v1/analyze/proof-annotations".to_string(),
+                    json!({"status": "placeholder"}),
+                    None,
+                ))
+            }
+            AnalyzeCommands::IncrementalCoverage { .. } => {
+                // For now, return a placeholder response for the unified protocol
+                Ok((
+                    Method::POST,
+                    "/api/v1/analyze/incremental-coverage".to_string(),
+                    json!({"status": "placeholder"}),
+                    None,
+                ))
+            }
+            AnalyzeCommands::SymbolTable { .. } => {
+                // For now, return a placeholder response for the unified protocol
+                Ok((
+                    Method::POST,
+                    "/api/v1/analyze/symbol-table".to_string(),
+                    json!({"status": "placeholder"}),
+                    None,
+                ))
+            }
+            AnalyzeCommands::BigO { .. } => {
+                // For now, return a placeholder response for the unified protocol
+                Ok((
+                    Method::POST,
+                    "/api/v1/analyze/big-o".to_string(),
+                    json!({"status": "placeholder"}),
+                    None,
+                ))
+            }
         }
     }
 
@@ -784,6 +877,15 @@ impl CliInput {
             AnalyzeCommands::Tdg { .. } => "analyze-tdg",
             AnalyzeCommands::Makefile { .. } => "analyze-makefile",
             AnalyzeCommands::Provability { .. } => "analyze-provability",
+            AnalyzeCommands::Duplicates { .. } => "analyze-duplicates",
+            AnalyzeCommands::DefectPrediction { .. } => "analyze-defect-prediction",
+            AnalyzeCommands::Comprehensive { .. } => "analyze-comprehensive",
+            AnalyzeCommands::GraphMetrics { .. } => "analyze-graph-metrics",
+            AnalyzeCommands::NameSimilarity { .. } => "analyze-name-similarity",
+            AnalyzeCommands::ProofAnnotations { .. } => "analyze-proof-annotations",
+            AnalyzeCommands::IncrementalCoverage { .. } => "analyze-incremental-coverage",
+            AnalyzeCommands::SymbolTable { .. } => "analyze-symbol-table",
+            AnalyzeCommands::BigO { .. } => "analyze-big-o",
         }
     }
 
@@ -799,6 +901,8 @@ impl CliInput {
             Commands::Demo { .. } => "demo",
             Commands::Serve { .. } => "serve",
             Commands::Diagnose(_) => "diagnose",
+            Commands::QualityGate { .. } => "quality-gate",
+            Commands::Report { .. } => "report",
         }
         .to_string();
 

@@ -298,7 +298,7 @@ impl IncrementalCoverageAnalyzer {
         })
     }
 
-    async fn compute_file_hash(&self, path: &Path) -> Result<[u8; 32]> {
+    pub async fn compute_file_hash(&self, path: &Path) -> Result<[u8; 32]> {
         let content = tokio::fs::read(path).await?;
         let hash = blake3::hash(&content);
         Ok(*hash.as_bytes())

@@ -75,7 +75,7 @@ impl PersistentCacheManager {
 
         // Compute and cache
         let ast = compute().await?;
-        self.ast_cache.put(path_buf, ast.clone());
+        let _ = self.ast_cache.put(path_buf, ast.clone());
         Ok(Arc::new(ast))
     }
 
@@ -86,7 +86,7 @@ impl PersistentCacheManager {
 
     /// Clear all caches
     pub fn clear(&self) {
-        self.ast_cache.clear();
+        let _ = self.ast_cache.clear();
     }
 
     /// Get cache diagnostics
