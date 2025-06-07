@@ -26,6 +26,9 @@ mod kaizen_reliability_patterns;
 // Include gitignore respect tests
 mod gitignore_respect_tests;
 
+// Include metric accuracy tests
+mod metric_accuracy_suite;
+
 // TODO: Fix diagnostic command tests
 // mod diagnose_tests;
 

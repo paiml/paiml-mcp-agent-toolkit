@@ -261,7 +261,7 @@ where
     }
 
     /// Put a value into the cache
-    pub fn put(&self, key: T::Key, value: T::Value) {
+    pub fn put(&self, key: T::Key, value: T::Value) -> Result<()> {
         let cache_key = self.strategy.cache_key(&key);
         let size_bytes = self.estimate_size(&value);
 
@@ -284,6 +284,7 @@ where
         let cache_entry = CacheEntry::new(value, size_bytes);
         self.memory_cache.write().insert(cache_key, cache_entry);
         self.stats.add_bytes(size_bytes);
+        Ok(())
     }
 
     /// Estimate size of a value (simplified)
@@ -351,9 +352,35 @@ where
         self.memory_cache.read().is_empty()
     }
 
+    /// Remove a specific entry from the cache
+    pub fn remove(&self, key: &T::Key) -> Option<Arc<T::Value>> {
+        let cache_key = self.strategy.cache_key(key);
+
+        // Remove from memory cache
+        let value = self.memory_cache.write().remove(&cache_key).map(|entry| {
+            self.stats.remove_bytes(entry.size_bytes);
+            entry.value.clone()
+        });
+
+        // Remove from disk
+        let cache_file = self.cache_file_path(&cache_key);
+        let _ = fs::remove_file(&cache_file);
+
+        value
+    }
+
     /// Clear all cache entries
-    pub fn clear(&self) {
-        self.memory_cache.write().clear();
+    pub fn clear(&self) -> Result<()> {
+        // Clear memory cache and update stats
+        {
+            let mut memory = self.memory_cache.write();
+            for (_, entry) in memory.iter() {
+                self.stats.remove_bytes(entry.size_bytes);
+            }
+            memory.clear();
+        }
+
+        // Clear disk cache
         if let Ok(entries) = fs::read_dir(&self.cache_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
@@ -362,7 +389,34 @@ where
                 }
             }
         }
-        // Reset cache stats (no clear method available, create new)
-        // Note: We can't directly reset stats, but clearing memory cache is the main concern
+        Ok(())
+    }
+
+    /// Evict entries if needed based on memory pressure
+    pub fn evict_if_needed(&self) {
+        // Simple eviction strategy: remove oldest entries if we exceed max_size
+        let max_size = self.strategy.max_size();
+
+        while self.len() > max_size {
+            // Find the oldest entry
+            let oldest_key = {
+                let memory = self.memory_cache.read();
+                memory
+                    .iter()
+                    .min_by_key(|(_, entry)| entry.created)
+                    .map(|(key, _)| key.clone())
+            };
+
+            if let Some(key) = oldest_key {
+                let mut memory = self.memory_cache.write();
+                if let Some(entry) = memory.remove(&key) {
+                    self.stats.remove_bytes(entry.size_bytes);
+                    self.stats.record_eviction();
+                    let _ = fs::remove_file(self.cache_file_path(&key));
+                }
+            } else {
+                break;
+            }
+        }
     }
 }

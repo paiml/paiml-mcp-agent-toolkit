@@ -1,9 +1,12 @@
+pub mod analysis;
 pub mod analysis_helpers;
 pub mod args;
+pub mod command_structure;
 pub mod diagnose;
 pub mod formatting_helpers;
-// TODO: Fix compilation errors in command pattern implementation
-// pub mod command_pattern;
+pub mod handlers;
+
+mod command_dispatcher;
 
 use crate::{
     models::{churn::ChurnOutputFormat, template::*},
@@ -11,7 +14,9 @@ use crate::{
     stateless_server::StatelessTemplateServer,
 };
 use clap::{Parser, Subcommand, ValueEnum};
+use command_dispatcher::CommandDispatcher;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -239,6 +244,88 @@ pub enum Commands {
         /// Maximum line length before considering file unparseable
         #[arg(long)]
         max_line_length: Option<usize>,
+    },
+
+    /// Run quality gate checks on the codebase
+    QualityGate {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(short = 'p', long, default_value = ".")]
+        project_path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "summary")]
+        format: QualityGateOutputFormat,
+
+        /// Exit with non-zero code if quality gate fails
+        #[arg(long)]
+        fail_on_violation: bool,
+
+        /// Specific checks to run (all by default)
+        #[arg(long, value_delimiter = ',')]
+        checks: Vec<QualityCheckType>,
+
+        /// Maximum allowed dead code percentage
+        #[arg(long, default_value = "15.0")]
+        max_dead_code: f64,
+
+        /// Minimum required complexity entropy
+        #[arg(long, default_value = "2.0")]
+        min_entropy: f64,
+
+        /// Maximum allowed cyclomatic complexity p99
+        #[arg(long, default_value = "50")]
+        max_complexity_p99: u32,
+
+        /// Include provability checks
+        #[arg(long)]
+        include_provability: bool,
+
+        /// Output file path
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+
+        /// Show performance metrics
+        #[arg(long)]
+        perf: bool,
+    },
+
+    /// Generate enhanced analysis reports
+    Report {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(short = 'p', long, default_value = ".")]
+        project_path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "markdown")]
+        output_format: ReportOutputFormat,
+
+        /// Include visualizations in the report
+        #[arg(long)]
+        include_visualizations: bool,
+
+        /// Include executive summary
+        #[arg(long, default_value_t = true)]
+        include_executive_summary: bool,
+
+        /// Include actionable recommendations
+        #[arg(long, default_value_t = true)]
+        include_recommendations: bool,
+
+        /// Analysis types to include
+        #[arg(long, value_delimiter = ',', default_value = "all")]
+        analyses: Vec<AnalysisType>,
+
+        /// Confidence threshold for findings (0-100)
+        #[arg(long, default_value_t = 50)]
+        confidence_threshold: u8,
+
+        /// Output file path
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+
+        /// Show performance metrics
+        #[arg(long)]
+        perf: bool,
     },
 
     /// Start HTTP API server
@@ -590,6 +677,436 @@ pub enum AnalyzeCommands {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+
+    /// Detect duplicate code using vectorized MinHash and AST embeddings
+    Duplicates {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Detection type: exact, renamed, gapped, semantic, or all
+        #[arg(long, default_value = "all")]
+        detection_type: DuplicateType,
+
+        /// Similarity threshold for semantic clones (0.0-1.0)
+        #[arg(long, default_value = "0.85")]
+        threshold: f32,
+
+        /// Minimum number of lines for duplicate detection
+        #[arg(long, default_value = "5")]
+        min_lines: usize,
+
+        /// Maximum number of tokens to analyze per fragment
+        #[arg(long, default_value = "128")]
+        max_tokens: usize,
+
+        /// Output format
+        #[arg(long, short = 'f', value_enum, default_value = "summary")]
+        format: DuplicateOutputFormat,
+
+        /// Show performance metrics
+        #[arg(long)]
+        perf: bool,
+
+        /// Include file patterns (e.g., "**/*.rs")
+        #[arg(long)]
+        include: Option<String>,
+
+        /// Exclude file patterns (e.g., "**/target/**")
+        #[arg(long)]
+        exclude: Option<String>,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Predict defect probability using ML-based analysis
+    DefectPrediction {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Minimum confidence threshold for predictions
+        #[arg(long, default_value = "0.5")]
+        confidence_threshold: f32,
+
+        /// Minimum lines of code for analysis
+        #[arg(long, default_value = "10")]
+        min_lines: usize,
+
+        /// Include low-confidence predictions
+        #[arg(long)]
+        include_low_confidence: bool,
+
+        /// Output format
+        #[arg(long, short = 'f', value_enum, default_value = "summary")]
+        format: DefectPredictionOutputFormat,
+
+        /// Show only high-risk files (probability > 0.7)
+        #[arg(long)]
+        high_risk_only: bool,
+
+        /// Include detailed recommendations
+        #[arg(long)]
+        include_recommendations: bool,
+
+        /// Include file patterns (e.g., "**/*.rs")
+        #[arg(long)]
+        include: Option<String>,
+
+        /// Exclude file patterns (e.g., "**/target/**")
+        #[arg(long)]
+        exclude: Option<String>,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Show performance metrics
+        #[arg(long)]
+        perf: bool,
+    },
+
+    /// Run comprehensive multi-dimensional analysis combining all analysis types
+    Comprehensive {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', value_enum, default_value = "summary")]
+        format: ComprehensiveOutputFormat,
+
+        /// Enable duplicate detection analysis
+        #[arg(long, default_value = "true")]
+        include_duplicates: bool,
+
+        /// Enable dead code analysis
+        #[arg(long, default_value = "true")]
+        include_dead_code: bool,
+
+        /// Enable defect prediction analysis
+        #[arg(long, default_value = "true")]
+        include_defects: bool,
+
+        /// Enable complexity analysis
+        #[arg(long, default_value = "true")]
+        include_complexity: bool,
+
+        /// Enable TDG (Technical Debt Gradient) analysis
+        #[arg(long, default_value = "true")]
+        include_tdg: bool,
+
+        /// Minimum confidence threshold for predictions
+        #[arg(long, default_value = "0.5")]
+        confidence_threshold: f32,
+
+        /// Minimum lines of code for analysis
+        #[arg(long, default_value = "10")]
+        min_lines: usize,
+
+        /// Include file patterns (e.g., "**/*.rs")
+        #[arg(long)]
+        include: Option<String>,
+
+        /// Exclude file patterns (e.g., "**/target/**")
+        #[arg(long)]
+        exclude: Option<String>,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Show performance metrics for each analysis component
+        #[arg(long)]
+        perf: bool,
+
+        /// Generate executive summary only (faster analysis)
+        #[arg(long)]
+        executive_summary: bool,
+    },
+
+    /// Analyze graph metrics and centrality measures
+    GraphMetrics {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Metrics to compute
+        #[arg(long, value_delimiter = ',', default_value = "all")]
+        metrics: Vec<GraphMetricType>,
+
+        /// Personalized PageRank seed nodes (file paths or function names)
+        #[arg(long, value_delimiter = ',')]
+        pagerank_seeds: Vec<String>,
+
+        /// PageRank damping factor (0.0-1.0)
+        #[arg(long, default_value = "0.85")]
+        damping_factor: f32,
+
+        /// Maximum iterations for PageRank convergence
+        #[arg(long, default_value = "100")]
+        max_iterations: usize,
+
+        /// Convergence threshold for PageRank
+        #[arg(long, default_value = "0.001")]
+        convergence_threshold: f64,
+
+        /// Export graph as GraphML format
+        #[arg(long)]
+        export_graphml: bool,
+
+        /// Output format
+        #[arg(long, short = 'f', value_enum, default_value = "summary")]
+        format: GraphMetricsOutputFormat,
+
+        /// Include file patterns (e.g., "**/*.rs")
+        #[arg(long)]
+        include: Option<String>,
+
+        /// Exclude file patterns (e.g., "**/target/**")
+        #[arg(long)]
+        exclude: Option<String>,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Show performance metrics
+        #[arg(long)]
+        perf: bool,
+
+        /// Top K nodes to show in results
+        #[arg(long, default_value = "20")]
+        top_k: usize,
+
+        /// Minimum centrality score to include in results
+        #[arg(long, default_value = "0.001")]
+        min_centrality: f64,
+    },
+
+    /// Analyze name similarity with embeddings
+    NameSimilarity {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Name to search for
+        query: String,
+
+        /// Number of results to return
+        #[arg(long, default_value = "10")]
+        top_k: usize,
+
+        /// Include phonetic matches (using Soundex)
+        #[arg(long)]
+        phonetic: bool,
+
+        /// Search scope: functions, types, variables, all
+        #[arg(long, value_enum, default_value = "all")]
+        scope: SearchScope,
+
+        /// Minimum similarity threshold (0.0-1.0)
+        #[arg(long, default_value = "0.3")]
+        threshold: f32,
+
+        /// Output format
+        #[arg(long, short = 'f', value_enum, default_value = "summary")]
+        format: NameSimilarityOutputFormat,
+
+        /// Include file patterns (e.g., "**/*.rs")
+        #[arg(long)]
+        include: Option<String>,
+
+        /// Exclude file patterns (e.g., "**/target/**")
+        #[arg(long)]
+        exclude: Option<String>,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Show performance metrics
+        #[arg(long)]
+        perf: bool,
+
+        /// Include fuzzy string matching
+        #[arg(long)]
+        fuzzy: bool,
+
+        /// Case sensitive matching
+        #[arg(long)]
+        case_sensitive: bool,
+    },
+
+    /// Collect proof annotations from multiple sources
+    ProofAnnotations {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', value_enum, default_value = "summary")]
+        format: ProofAnnotationOutputFormat,
+
+        /// Show only high-confidence annotations
+        #[arg(long)]
+        high_confidence_only: bool,
+
+        /// Include evidence details in output
+        #[arg(long)]
+        include_evidence: bool,
+
+        /// Filter by property type
+        #[arg(long, value_enum)]
+        property_type: Option<PropertyTypeFilter>,
+
+        /// Filter by verification method
+        #[arg(long, value_enum)]
+        verification_method: Option<VerificationMethodFilter>,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Show performance metrics and cache statistics
+        #[arg(long)]
+        perf: bool,
+
+        /// Clear cache before analysis
+        #[arg(long)]
+        clear_cache: bool,
+    },
+
+    /// Analyze incremental coverage changes with caching
+    IncrementalCoverage {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Base commit or branch for comparison
+        #[arg(long, short = 'b', default_value = "main")]
+        base_branch: String,
+
+        /// Target commit or branch
+        #[arg(long, short = 't')]
+        target_branch: Option<String>,
+
+        /// Output format
+        #[arg(long, short = 'f', value_enum, default_value = "summary")]
+        format: IncrementalCoverageOutputFormat,
+
+        /// Minimum coverage threshold for warnings
+        #[arg(long, default_value = "80.0")]
+        coverage_threshold: f64,
+
+        /// Include only changed files
+        #[arg(long)]
+        changed_files_only: bool,
+
+        /// Show detailed per-file coverage
+        #[arg(long)]
+        detailed: bool,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Show performance metrics
+        #[arg(long)]
+        perf: bool,
+
+        /// Cache directory for coverage data
+        #[arg(long)]
+        cache_dir: Option<PathBuf>,
+
+        /// Force refresh of coverage cache
+        #[arg(long)]
+        force_refresh: bool,
+    },
+
+    /// Analyze symbol table with cross-references and usage patterns
+    SymbolTable {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', value_enum, default_value = "summary")]
+        format: SymbolTableOutputFormat,
+
+        /// Filter by symbol type
+        #[arg(long, value_enum)]
+        filter: Option<SymbolTypeFilter>,
+
+        /// Search query for specific symbols
+        #[arg(long, short = 'q')]
+        query: Option<String>,
+
+        /// Include file patterns
+        #[arg(long)]
+        include: Vec<String>,
+
+        /// Exclude file patterns
+        #[arg(long)]
+        exclude: Vec<String>,
+
+        /// Show unreferenced symbols
+        #[arg(long)]
+        show_unreferenced: bool,
+
+        /// Show cross-references
+        #[arg(long)]
+        show_references: bool,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Show performance metrics
+        #[arg(long)]
+        perf: bool,
+    },
+
+    /// Analyze algorithmic complexity (Big-O) of functions
+    BigO {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', value_enum, default_value = "summary")]
+        format: BigOOutputFormat,
+
+        /// Minimum confidence threshold (0-100)
+        #[arg(long, default_value = "50")]
+        confidence_threshold: u8,
+
+        /// Analyze space complexity in addition to time
+        #[arg(long)]
+        analyze_space: bool,
+
+        /// Include file patterns
+        #[arg(long)]
+        include: Vec<String>,
+
+        /// Exclude file patterns
+        #[arg(long)]
+        exclude: Vec<String>,
+
+        /// Show only high complexity functions (O(n²) or worse)
+        #[arg(long)]
+        high_complexity_only: bool,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Show performance metrics
+        #[arg(long)]
+        perf: bool,
+    },
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
@@ -633,6 +1150,118 @@ pub enum ProvabilityOutputFormat {
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum DuplicateType {
+    /// Exact duplicates (Type 1 clones)
+    Exact,
+    /// Renamed duplicates (Type 2 clones)
+    Renamed,
+    /// Gapped duplicates (Type 3 clones)
+    Gapped,
+    /// Semantic duplicates using AST similarity
+    Semantic,
+    /// All types of duplicates
+    All,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum DefectPredictionOutputFormat {
+    /// Summary statistics only
+    Summary,
+    /// Detailed analysis with recommendations
+    Detailed,
+    /// JSON format for tooling
+    Json,
+    /// CSV format for spreadsheet import
+    Csv,
+    /// SARIF format for IDE integration
+    Sarif,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum ComprehensiveOutputFormat {
+    /// Executive summary report
+    Summary,
+    /// Detailed unified analysis report
+    Detailed,
+    /// JSON format for tooling integration
+    Json,
+    /// Markdown report format
+    Markdown,
+    /// SARIF format for IDE integration
+    Sarif,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum GraphMetricType {
+    /// Betweenness centrality
+    Centrality,
+    /// PageRank scores
+    PageRank,
+    /// Clustering coefficient
+    Clustering,
+    /// Connected components analysis
+    Components,
+    /// All available metrics
+    All,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum GraphMetricsOutputFormat {
+    /// Summary statistics only
+    Summary,
+    /// Detailed metrics with rankings
+    Detailed,
+    /// JSON format for tooling integration
+    Json,
+    /// CSV format for spreadsheet import
+    Csv,
+    /// GraphML export format
+    GraphML,
+    /// Markdown report format
+    Markdown,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum SearchScope {
+    /// Search function names
+    Functions,
+    /// Search type/class names
+    Types,
+    /// Search variable names
+    Variables,
+    /// Search all identifiers
+    All,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum NameSimilarityOutputFormat {
+    /// Summary of matches only
+    Summary,
+    /// Detailed match analysis
+    Detailed,
+    /// JSON format for tooling integration
+    Json,
+    /// CSV format for spreadsheet import
+    Csv,
+    /// Markdown report format
+    Markdown,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum DuplicateOutputFormat {
+    /// Summary statistics only
+    Summary,
+    /// Detailed duplicate listing
+    Detailed,
+    /// JSON format for tooling
+    Json,
+    /// CSV format for spreadsheet import
+    Csv,
+    /// SARIF format for IDE integration
+    Sarif,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
 pub enum OutputFormat {
     Table,
     Json,
@@ -673,6 +1302,44 @@ pub enum SatdSeverity {
     High,
     Medium,
     Low,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum SymbolTableOutputFormat {
+    /// Summary with statistics
+    Summary,
+    /// Detailed output with all symbols
+    Detailed,
+    /// JSON format for tools
+    Json,
+    /// CSV format for spreadsheets
+    Csv,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum BigOOutputFormat {
+    /// Summary with complexity distribution
+    Summary,
+    /// JSON format for tools
+    Json,
+    /// Markdown report
+    Markdown,
+    /// Detailed analysis with all functions
+    Detailed,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum SymbolTypeFilter {
+    /// Functions and methods
+    Functions,
+    /// Types, structs, and classes
+    Types,
+    /// Variables and constants
+    Variables,
+    /// Modules and namespaces
+    Modules,
+    /// All symbols
+    All,
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq, Eq, Hash)]
@@ -731,6 +1398,85 @@ pub enum DemoProtocol {
     All,
 }
 
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum ProofAnnotationOutputFormat {
+    Summary,
+    Full,
+    Json,
+    Markdown,
+    Sarif,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum PropertyTypeFilter {
+    MemorySafety,
+    ThreadSafety,
+    DataRaceFreeze,
+    Termination,
+    FunctionalCorrectness,
+    ResourceBounds,
+    All,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum VerificationMethodFilter {
+    FormalProof,
+    ModelChecking,
+    StaticAnalysis,
+    AbstractInterpretation,
+    BorrowChecker,
+    All,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum IncrementalCoverageOutputFormat {
+    Summary,
+    Detailed,
+    Json,
+    Markdown,
+    Lcov,
+    Delta,
+    Sarif,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum QualityGateOutputFormat {
+    Summary,
+    Detailed,
+    Json,
+    Junit,
+    Markdown,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum ReportOutputFormat {
+    Html,
+    Markdown,
+    Json,
+    Pdf,
+    Dashboard,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum AnalysisType {
+    Complexity,
+    DeadCode,
+    Duplication,
+    TechnicalDebt,
+    BigO,
+    All,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum QualityCheckType {
+    DeadCode,
+    Complexity,
+    Coverage,
+    Sections,
+    Provability,
+    All,
+}
+
 /// Early CLI args struct for tracing initialization
 #[derive(Debug, Clone)]
 pub struct EarlyCliArgs {
@@ -773,91 +1519,29 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
         return crate::run_mcp_server(server).await;
     }
 
-    execute_command(cli.command, server).await
+    // Use new command structure for improved modularity
+    let executor = command_structure::CommandExecutorFactory::create(server);
+    executor.execute(cli.command).await
 }
 
+// Deprecated: Use CommandDispatcher::execute_command instead
+#[allow(dead_code)]
 async fn execute_command(
     command: Commands,
     server: Arc<StatelessTemplateServer>,
 ) -> anyhow::Result<()> {
-    match command {
-        Commands::Generate {
-            category,
-            template,
-            params,
-            output,
-            create_dirs,
-        } => handle_generate(server, category, template, params, output, create_dirs).await,
-        Commands::Scaffold {
-            toolchain,
-            templates,
-            params,
-            parallel,
-        } => handle_scaffold(server, toolchain, templates, params, parallel).await,
-        Commands::List {
-            toolchain,
-            category,
-            format,
-        } => handle_list(server, toolchain, category, format).await,
-        Commands::Search {
-            query,
-            toolchain,
-            limit,
-        } => handle_search(server, query, toolchain, limit).await,
-        Commands::Validate { uri, params } => handle_validate(server, uri, params).await,
-        Commands::Context {
-            toolchain,
-            project_path,
-            output,
-            format,
-        } => handle_context(toolchain, project_path, output, format).await,
-        Commands::Analyze(analyze_cmd) => execute_analyze_command(analyze_cmd).await,
-        Commands::Demo {
-            path,
-            url,
-            repo,
-            format,
-            protocol,
-            show_api,
-            no_browser,
-            port,
-            cli,
-            target_nodes,
-            centrality_threshold,
-            merge_threshold,
-            debug,
-            debug_output,
-            skip_vendor,
-            no_skip_vendor,
-            max_line_length,
-        } => {
-            execute_demo_command(
-                path,
-                url,
-                repo,
-                format,
-                protocol,
-                show_api,
-                no_browser,
-                port,
-                cli,
-                target_nodes,
-                centrality_threshold,
-                merge_threshold,
-                debug,
-                debug_output,
-                skip_vendor && !no_skip_vendor,
-                max_line_length,
-                server,
-            )
-            .await
-        }
-        Commands::Serve { port, host, cors } => handle_serve(host, port, cors).await,
-        Commands::Diagnose(args) => diagnose::handle_diagnose(args).await,
-    }
+    CommandDispatcher::execute_command(command, server).await
 }
 
+// Deprecated: Use CommandDispatcher::execute_analyze_command instead
+#[allow(dead_code)]
 async fn execute_analyze_command(analyze_cmd: AnalyzeCommands) -> anyhow::Result<()> {
+    CommandDispatcher::execute_analyze_command(analyze_cmd).await
+}
+
+// Deprecated legacy function - replaced by dispatcher
+#[allow(dead_code)]
+async fn execute_analyze_command_legacy(analyze_cmd: AnalyzeCommands) -> anyhow::Result<()> {
     match analyze_cmd {
         AnalyzeCommands::Churn {
             project_path,
@@ -1040,10 +1724,267 @@ async fn execute_analyze_command(analyze_cmd: AnalyzeCommands) -> anyhow::Result
             )
             .await
         }
+        AnalyzeCommands::Duplicates {
+            project_path,
+            detection_type,
+            threshold,
+            min_lines,
+            max_tokens,
+            format,
+            perf,
+            include,
+            exclude,
+            output,
+        } => {
+            handle_analyze_duplicates(
+                project_path,
+                detection_type,
+                threshold,
+                min_lines,
+                max_tokens,
+                format,
+                perf,
+                include,
+                exclude,
+                output,
+            )
+            .await
+        }
+        AnalyzeCommands::DefectPrediction {
+            project_path,
+            confidence_threshold,
+            min_lines,
+            include_low_confidence,
+            format,
+            high_risk_only,
+            include_recommendations,
+            include,
+            exclude,
+            output,
+            perf,
+        } => {
+            handle_analyze_defect_prediction(
+                project_path,
+                confidence_threshold,
+                min_lines,
+                include_low_confidence,
+                format,
+                high_risk_only,
+                include_recommendations,
+                include,
+                exclude,
+                output,
+                perf,
+            )
+            .await
+        }
+        AnalyzeCommands::Comprehensive {
+            project_path,
+            format,
+            include_duplicates,
+            include_dead_code,
+            include_defects,
+            include_complexity,
+            include_tdg,
+            confidence_threshold,
+            min_lines,
+            include,
+            exclude,
+            output,
+            perf,
+            executive_summary,
+        } => {
+            handle_analyze_comprehensive(
+                project_path.clone(),
+                format.clone(),
+                include_duplicates,
+                include_dead_code,
+                include_defects,
+                include_complexity,
+                include_tdg,
+                confidence_threshold,
+                min_lines,
+                include.clone(),
+                exclude.clone(),
+                output.clone(),
+                perf,
+                executive_summary,
+            )
+            .await
+        }
+        AnalyzeCommands::GraphMetrics {
+            project_path,
+            metrics,
+            pagerank_seeds,
+            damping_factor,
+            max_iterations,
+            convergence_threshold,
+            export_graphml,
+            format,
+            include,
+            exclude,
+            output,
+            perf,
+            top_k,
+            min_centrality,
+        } => {
+            handle_analyze_graph_metrics(
+                project_path,
+                metrics,
+                pagerank_seeds,
+                damping_factor,
+                max_iterations,
+                convergence_threshold,
+                export_graphml,
+                format,
+                include,
+                exclude,
+                output,
+                perf,
+                top_k,
+                min_centrality,
+            )
+            .await
+        }
+        AnalyzeCommands::NameSimilarity {
+            project_path,
+            query,
+            top_k,
+            phonetic,
+            scope,
+            threshold,
+            format,
+            include,
+            exclude,
+            output,
+            perf,
+            fuzzy,
+            case_sensitive,
+        } => {
+            handle_analyze_name_similarity(
+                project_path,
+                query,
+                top_k,
+                phonetic,
+                scope,
+                threshold,
+                format,
+                include,
+                exclude,
+                output,
+                perf,
+                fuzzy,
+                case_sensitive,
+            )
+            .await
+        }
+        AnalyzeCommands::ProofAnnotations {
+            project_path,
+            format,
+            high_confidence_only,
+            include_evidence,
+            property_type,
+            verification_method,
+            output,
+            perf,
+            clear_cache,
+        } => {
+            handle_analyze_proof_annotations(
+                project_path,
+                format,
+                high_confidence_only,
+                include_evidence,
+                property_type,
+                verification_method,
+                output,
+                perf,
+                clear_cache,
+            )
+            .await
+        }
+        AnalyzeCommands::IncrementalCoverage {
+            project_path,
+            base_branch,
+            target_branch: _,
+            format,
+            coverage_threshold,
+            changed_files_only: _,
+            detailed,
+            output,
+            perf,
+            cache_dir,
+            force_refresh: _,
+        } => {
+            handle_analyze_incremental_coverage(
+                project_path.clone(),
+                Some(base_branch.clone()),
+                cache_dir.clone(),
+                format.clone(),
+                true,     // include_aggregate
+                true,     // include_delta
+                detailed, // include_file_coverage
+                coverage_threshold,
+                output.clone(),
+                None, // parallel
+                perf, // verbose
+            )
+            .await
+        }
+        AnalyzeCommands::SymbolTable {
+            project_path,
+            format,
+            filter,
+            query,
+            include,
+            exclude,
+            show_unreferenced,
+            show_references,
+            output,
+            perf,
+        } => {
+            handle_analyze_symbol_table(
+                project_path.clone(),
+                format.clone(),
+                filter.clone(),
+                query.clone(),
+                include.clone(),
+                exclude.clone(),
+                show_unreferenced,
+                show_references,
+                output.clone(),
+                perf,
+            )
+            .await
+        }
+        AnalyzeCommands::BigO {
+            project_path,
+            format,
+            confidence_threshold,
+            analyze_space,
+            include,
+            exclude,
+            high_complexity_only,
+            output,
+            perf,
+        } => {
+            handlers::big_o_handlers::handle_analyze_big_o(
+                project_path,
+                format,
+                confidence_threshold,
+                analyze_space,
+                include,
+                exclude,
+                high_complexity_only,
+                output,
+                perf,
+            )
+            .await
+        }
     }
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
 async fn execute_demo_command(
     path: Option<PathBuf>,
     url: Option<String>,
@@ -1105,6 +2046,7 @@ async fn execute_demo_command(
 
 // Command handlers - extracted from the main run function for better organization
 
+#[allow(dead_code)]
 async fn handle_generate(
     server: Arc<StatelessTemplateServer>,
     category: String,
@@ -1132,6 +2074,7 @@ async fn handle_generate(
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn handle_scaffold(
     server: Arc<StatelessTemplateServer>,
     toolchain: String,
@@ -1169,6 +2112,7 @@ async fn handle_scaffold(
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn handle_list(
     server: Arc<StatelessTemplateServer>,
     toolchain: Option<String>,
@@ -1194,6 +2138,7 @@ async fn handle_list(
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn handle_search(
     server: Arc<StatelessTemplateServer>,
     query: String,
@@ -1216,6 +2161,7 @@ async fn handle_search(
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn handle_validate(
     server: Arc<StatelessTemplateServer>,
     uri: String,
@@ -1241,6 +2187,7 @@ async fn handle_validate(
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn handle_context(
     toolchain: Option<String>,
     project_path: PathBuf,
@@ -1305,6 +2252,7 @@ async fn handle_context(
 
 /// Enhanced language detection based on project files
 /// Implements the lightweight detection strategy from Phase 3 of bug remediation
+#[allow(dead_code)]
 fn detect_primary_language(path: &Path) -> anyhow::Result<String> {
     use std::collections::HashMap;
     use walkdir::WalkDir;
@@ -1510,6 +2458,7 @@ async fn handle_analyze_dag(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
 async fn handle_analyze_complexity(
     project_path: PathBuf,
     toolchain: Option<String>,
@@ -1569,6 +2518,7 @@ async fn handle_analyze_complexity(
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn handle_analyze_dead_code(
     path: PathBuf,
     format: DeadCodeOutputFormat,
@@ -1720,6 +2670,7 @@ async fn handle_analyze_satd(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
 async fn handle_analyze_deep_context(
     project_path: PathBuf,
     output: Option<PathBuf>,
@@ -1770,6 +2721,7 @@ async fn handle_analyze_deep_context(
 
 /// Configuration parameters for building deep context config
 #[derive(Debug)]
+#[allow(dead_code)]
 struct DeepContextConfigParams {
     period_days: u32,
     dag_type: DeepContextDagType,
@@ -1784,6 +2736,7 @@ struct DeepContextConfigParams {
 }
 
 /// Build deep context configuration from CLI arguments
+#[allow(dead_code)]
 fn build_deep_context_config(
     params: DeepContextConfigParams,
 ) -> anyhow::Result<crate::services::deep_context::DeepContextConfig> {
@@ -1821,6 +2774,7 @@ fn build_deep_context_config(
 }
 
 /// Convert CLI DAG type to internal type
+#[allow(dead_code)]
 fn convert_dag_type(dag_type: DeepContextDagType) -> crate::services::deep_context::DagType {
     use crate::services::deep_context::DagType as InternalDagType;
     match dag_type {
@@ -1832,6 +2786,7 @@ fn convert_dag_type(dag_type: DeepContextDagType) -> crate::services::deep_conte
 }
 
 /// Convert CLI cache strategy to internal type
+#[allow(dead_code)]
 fn convert_cache_strategy(
     cache_strategy: DeepContextCacheStrategy,
 ) -> crate::services::deep_context::CacheStrategy {
@@ -1844,6 +2799,7 @@ fn convert_cache_strategy(
 }
 
 /// Parse include/exclude analysis filters
+#[allow(dead_code)]
 fn parse_analysis_filters(
     include: Vec<String>,
     exclude: Vec<String>,
@@ -1880,6 +2836,7 @@ fn parse_analysis_filters(
 }
 
 /// Parse a single analysis type string
+#[allow(dead_code)]
 fn parse_analysis_type(s: &str) -> Option<crate::services::deep_context::AnalysisType> {
     use crate::services::deep_context::AnalysisType;
     match s {
@@ -1899,6 +2856,7 @@ fn parse_analysis_type(s: &str) -> Option<crate::services::deep_context::Analysi
 }
 
 /// Print analysis summary to stderr
+#[allow(dead_code)]
 fn print_analysis_summary(deep_context: &crate::services::deep_context::DeepContext) {
     eprintln!(
         "✅ Analysis completed in {:?}",
@@ -1915,6 +2873,7 @@ fn print_analysis_summary(deep_context: &crate::services::deep_context::DeepCont
 }
 
 /// Format and write deep context output
+#[allow(dead_code)]
 async fn write_deep_context_output(
     deep_context: &crate::services::deep_context::DeepContext,
     format: DeepContextOutputFormat,
@@ -1937,6 +2896,7 @@ async fn write_deep_context_output(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn format_deep_context_as_markdown(
     context: &crate::services::deep_context::DeepContext,
     full: bool,
@@ -1951,6 +2911,7 @@ fn format_deep_context_as_markdown(
 }
 
 /// Format deep context as comprehensive report (matches TypeScript implementation)
+#[allow(dead_code)]
 fn format_deep_context_comprehensive(
     context: &crate::services::deep_context::DeepContext,
 ) -> anyhow::Result<String> {
@@ -2019,6 +2980,7 @@ fn format_deep_context_comprehensive(
 }
 
 // Helper functions for comprehensive markdown formatting
+#[allow(dead_code)]
 fn format_annotated_tree(
     output: &mut String,
     tree: &crate::services::deep_context::AnnotatedFileTree,
@@ -2033,6 +2995,7 @@ fn format_annotated_tree(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn format_tree_node(
     output: &mut String,
     node: &crate::services::deep_context::AnnotatedNode,
@@ -2087,6 +3050,7 @@ fn format_tree_node(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn format_complexity_hotspots(
     output: &mut String,
     context: &crate::services::deep_context::DeepContext,
@@ -2120,6 +3084,7 @@ fn format_complexity_hotspots(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn format_churn_analysis(
     output: &mut String,
     context: &crate::services::deep_context::DeepContext,
@@ -2156,6 +3121,7 @@ fn format_churn_analysis(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn format_technical_debt(
     output: &mut String,
     context: &crate::services::deep_context::DeepContext,
@@ -2207,6 +3173,7 @@ fn format_technical_debt(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn format_dead_code_analysis(
     output: &mut String,
     context: &crate::services::deep_context::DeepContext,
@@ -2247,6 +3214,7 @@ fn format_dead_code_analysis(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn format_defect_predictions(
     output: &mut String,
     context: &crate::services::deep_context::DeepContext,
@@ -2288,6 +3256,7 @@ fn format_defect_predictions(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn format_prioritized_recommendations(
     output: &mut String,
     recommendations: &[crate::services::deep_context::PrioritizedRecommendation],
@@ -2325,6 +3294,7 @@ fn format_prioritized_recommendations(
 }
 
 /// Format deep context as terse report (default mode)
+#[allow(dead_code)]
 fn format_deep_context_terse(
     context: &crate::services::deep_context::DeepContext,
 ) -> anyhow::Result<String> {
@@ -2349,6 +3319,7 @@ fn format_deep_context_terse(
 }
 
 /// Format header section for terse report
+#[allow(dead_code)]
 fn format_terse_header(context: &crate::services::deep_context::DeepContext) -> String {
     let project_name = context
         .metadata
@@ -2370,6 +3341,7 @@ fn format_terse_header(context: &crate::services::deep_context::DeepContext) -> 
 }
 
 /// Format executive summary section for terse report
+#[allow(dead_code)]
 fn format_terse_executive_summary(context: &crate::services::deep_context::DeepContext) -> String {
     let mut output = String::from("## Executive Summary\n");
 
@@ -2403,6 +3375,7 @@ fn format_terse_executive_summary(context: &crate::services::deep_context::DeepC
 }
 
 /// Get SATD breakdown by severity for terse report
+#[allow(dead_code)]
 fn get_terse_satd_breakdown(
     context: &crate::services::deep_context::DeepContext,
 ) -> (usize, usize, usize) {
@@ -2426,6 +3399,7 @@ fn get_terse_satd_breakdown(
 }
 
 /// Format key metrics section for terse report
+#[allow(dead_code)]
 fn format_terse_key_metrics(context: &crate::services::deep_context::DeepContext) -> String {
     let mut output = String::from("## Key Metrics\n");
 
@@ -2448,6 +3422,7 @@ fn format_terse_key_metrics(context: &crate::services::deep_context::DeepContext
 }
 
 /// Format complexity metrics for terse report
+#[allow(dead_code)]
 fn format_terse_complexity_metrics(context: &crate::services::deep_context::DeepContext) -> String {
     if let Some(ref complexity) = context.analyses.complexity_report {
         let mut output = String::from("### Complexity\n");
@@ -2480,6 +3455,7 @@ fn format_terse_complexity_metrics(context: &crate::services::deep_context::Deep
 }
 
 /// Format churn metrics for terse report
+#[allow(dead_code)]
 fn format_terse_churn_metrics(context: &crate::services::deep_context::DeepContext) -> String {
     if let Some(ref churn) = context.analyses.churn_analysis {
         let mut output = String::from("### Code Churn (30 days)\n");
@@ -2511,6 +3487,7 @@ fn format_terse_churn_metrics(context: &crate::services::deep_context::DeepConte
 }
 
 /// Calculate median changes for terse report
+#[allow(dead_code)]
 fn calculate_terse_median_changes(files: &[crate::models::churn::FileChurnMetrics]) -> usize {
     let mut changes_per_file: Vec<usize> = files.iter().map(|f| f.commit_count).collect();
     changes_per_file.sort_unstable();
@@ -2528,6 +3505,7 @@ fn calculate_terse_median_changes(files: &[crate::models::churn::FileChurnMetric
 }
 
 /// Format SATD metrics for terse report
+#[allow(dead_code)]
 fn format_terse_satd_metrics(context: &crate::services::deep_context::DeepContext) -> String {
     let mut output = String::from("### Technical Debt (SATD)\n");
     let (high_satd, _, _) = get_terse_satd_breakdown(context);
@@ -2555,6 +3533,7 @@ fn format_terse_satd_metrics(context: &crate::services::deep_context::DeepContex
 }
 
 /// Format duplicates metrics for terse report (placeholder)
+#[allow(dead_code)]
 fn format_terse_duplicates_metrics() -> String {
     String::from(
         "### Duplicates\n\
@@ -2565,6 +3544,7 @@ fn format_terse_duplicates_metrics() -> String {
 }
 
 /// Format dead code metrics for terse report
+#[allow(dead_code)]
 fn format_terse_dead_code_metrics(context: &crate::services::deep_context::DeepContext) -> String {
     if let Some(ref dead_code) = context.analyses.dead_code_results {
         format!(
@@ -2583,6 +3563,7 @@ fn format_terse_dead_code_metrics(context: &crate::services::deep_context::DeepC
 }
 
 /// Format AST network analysis for terse report (placeholder)
+#[allow(dead_code)]
 fn format_terse_ast_network_analysis() -> String {
     String::from(
         "## AST Network Analysis\n\
@@ -2598,6 +3579,7 @@ fn format_terse_ast_network_analysis() -> String {
 }
 
 /// Format predicted defect files for terse report
+#[allow(dead_code)]
 fn format_terse_predicted_defect_files(
     context: &crate::services::deep_context::DeepContext,
 ) -> String {
@@ -2627,6 +3609,7 @@ fn format_terse_predicted_defect_files(
 }
 
 /// Calculate file risks for terse report
+#[allow(dead_code)]
 fn calculate_terse_file_risks(
     context: &crate::services::deep_context::DeepContext,
 ) -> Vec<(String, f32, u16, usize, usize)> {
@@ -3200,6 +4183,7 @@ fn format_full_recommendations(context: &crate::services::deep_context::DeepCont
     output
 }
 
+#[allow(dead_code)]
 fn format_deep_context_as_sarif(
     context: &crate::services::deep_context::DeepContext,
 ) -> anyhow::Result<String> {
@@ -3997,6 +4981,523 @@ fn format_top_files_ranking(
     }
 
     output.push('\n');
+    output
+}
+
+fn collect_file_paths(
+    node: &crate::services::deep_context::AnnotatedNode,
+    paths: &mut Vec<String>,
+) {
+    use crate::services::deep_context::NodeType;
+
+    match node.node_type {
+        NodeType::File => {
+            paths.push(node.path.to_string_lossy().to_string());
+        }
+        NodeType::Directory => {
+            for child in &node.children {
+                collect_file_paths(child, paths);
+            }
+        }
+    }
+}
+
+fn convert_to_deep_context_result(
+    deep_context: crate::services::deep_context::DeepContext,
+) -> crate::services::deep_context::DeepContextResult {
+    use crate::services::deep_context::*;
+
+    // Extract file paths from the annotated tree by recursively traversing nodes
+    let mut file_tree: Vec<String> = Vec::new();
+    collect_file_paths(&deep_context.file_tree.root, &mut file_tree);
+
+    // Extract complexity metrics for QA verification
+    let complexity_metrics = deep_context
+        .analyses
+        .complexity_report
+        .as_ref()
+        .map(|report| ComplexityMetricsForQA {
+            files: report
+                .files
+                .iter()
+                .map(|f| FileComplexityMetricsForQA {
+                    path: std::path::PathBuf::from(&f.path),
+                    functions: f
+                        .functions
+                        .iter()
+                        .map(|func| FunctionComplexityForQA {
+                            name: func.name.clone(),
+                            cyclomatic: func.metrics.cyclomatic as u32,
+                            cognitive: func.metrics.cognitive as u32,
+                            nesting_depth: func.metrics.nesting_max as u32,
+                            start_line: func.line_start as usize,
+                            end_line: func.line_end as usize,
+                        })
+                        .collect(),
+                    total_cyclomatic: f.total_complexity.cyclomatic as u32,
+                    total_cognitive: f.total_complexity.cognitive as u32,
+                    total_lines: f.total_complexity.lines as usize,
+                })
+                .collect(),
+            summary: ComplexitySummaryForQA {
+                total_files: report.files.len(),
+                total_functions: report.files.iter().map(|f| f.functions.len()).sum(),
+            },
+        });
+
+    // Extract dead code analysis
+    let dead_code_analysis = deep_context
+        .analyses
+        .dead_code_results
+        .as_ref()
+        .map(|results| {
+            DeadCodeAnalysis {
+                summary: DeadCodeSummary {
+                    total_functions: results.summary.total_files_analyzed * 10, // Estimate
+                    dead_functions: results.summary.dead_functions,
+                    total_lines: results.ranked_files.iter().map(|f| f.total_lines).sum(),
+                    total_dead_lines: results.summary.total_dead_lines,
+                    dead_percentage: results.summary.dead_percentage as f64,
+                },
+                dead_functions: results
+                    .ranked_files
+                    .iter()
+                    .flat_map(|file| {
+                        file.items.iter().filter_map(|item| match item.item_type {
+                            crate::models::dead_code::DeadCodeType::Function => {
+                                Some(item.name.clone())
+                            }
+                            _ => None,
+                        })
+                    })
+                    .collect(),
+                warnings: vec![],
+            }
+        });
+
+    // Extract AST summaries
+    let ast_summaries = if !deep_context.analyses.ast_contexts.is_empty() {
+        Some(
+            deep_context
+                .analyses
+                .ast_contexts
+                .iter()
+                .map(|ctx| AstSummary {
+                    path: ctx.base.path.clone(),
+                    language: ctx.base.language.clone(),
+                    total_items: ctx.base.items.len(),
+                    functions: ctx
+                        .base
+                        .items
+                        .iter()
+                        .filter(|item| {
+                            matches!(item, crate::services::context::AstItem::Function { .. })
+                        })
+                        .count(),
+                    classes: ctx
+                        .base
+                        .items
+                        .iter()
+                        .filter(|item| {
+                            matches!(item, crate::services::context::AstItem::Struct { .. })
+                        })
+                        .count(),
+                    imports: ctx
+                        .base
+                        .items
+                        .iter()
+                        .filter(|item| {
+                            matches!(item, crate::services::context::AstItem::Use { .. })
+                        })
+                        .count(),
+                })
+                .collect(),
+        )
+    } else {
+        None
+    };
+
+    // Extract language stats by counting files per language from AST contexts
+    let mut language_stats = HashMap::new();
+    for ctx in &deep_context.analyses.ast_contexts {
+        let lang_name = ctx.base.language.clone();
+        *language_stats.entry(lang_name).or_insert(0) += 1;
+    }
+
+    // Extract churn analysis before moving analyses
+    let churn_analysis = deep_context.analyses.churn_analysis.clone();
+
+    DeepContextResult {
+        metadata: deep_context.metadata,
+        file_tree,
+        analyses: deep_context.analyses,
+        quality_scorecard: deep_context.quality_scorecard,
+        template_provenance: deep_context.template_provenance,
+        defect_summary: deep_context.defect_summary,
+        hotspots: deep_context.hotspots,
+        recommendations: deep_context.recommendations,
+        qa_verification: deep_context.qa_verification,
+        complexity_metrics,
+        dead_code_analysis,
+        ast_summaries,
+        churn_analysis,
+        language_stats: if language_stats.is_empty() {
+            None
+        } else {
+            Some(language_stats)
+        },
+        build_info: deep_context.build_info,
+        project_overview: deep_context.project_overview,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn handle_quality_gate(
+    project_path: PathBuf,
+    format: QualityGateOutputFormat,
+    fail_on_violation: bool,
+    checks: Vec<QualityCheckType>,
+    _max_dead_code: f64,
+    _min_entropy: f64,
+    max_complexity_p99: u32,
+    include_provability: bool,
+    output: Option<PathBuf>,
+    perf: bool,
+) -> anyhow::Result<()> {
+    use crate::services::{deep_context::*, quality_gates::*};
+    use std::time::Instant;
+
+    let start = Instant::now();
+
+    eprintln!(
+        "🔍 Running quality gate checks on {}",
+        project_path.display()
+    );
+
+    // First, run deep context analysis to get all the data we need
+    let config = DeepContextConfig {
+        include_analyses: vec![
+            AnalysisType::Ast,
+            AnalysisType::Complexity,
+            AnalysisType::Churn,
+            AnalysisType::Dag,
+            AnalysisType::DeadCode,
+            AnalysisType::Satd,
+            AnalysisType::DuplicateCode,
+        ],
+        period_days: 30,
+        dag_type: DagType::FullDependency,
+        complexity_thresholds: Some(ComplexityThresholds {
+            max_cyclomatic: max_complexity_p99 as u16,
+            max_cognitive: 50,
+        }),
+        max_depth: None,
+        include_patterns: vec![],
+        exclude_patterns: vec!["vendor/**".to_string(), "node_modules/**".to_string()],
+        cache_strategy: CacheStrategy::Normal,
+        parallel: num_cpus::get(),
+        file_classifier_config: None,
+    };
+
+    let mut config = config;
+    if include_provability {
+        config.include_analyses.push(AnalysisType::Provability);
+    }
+
+    let analyzer = DeepContextAnalyzer::new(config);
+    let deep_context = analyzer.analyze_project(&project_path).await?;
+
+    // Convert DeepContext to DeepContextResult for quality gates
+    let deep_context_result = convert_to_deep_context_result(deep_context);
+
+    // Create quality gate verification service
+    let qa_verification = QAVerification::new();
+
+    // Determine which checks to run
+    let checks_to_run = if checks.is_empty() || checks.contains(&QualityCheckType::All) {
+        vec![
+            QualityCheckType::DeadCode,
+            QualityCheckType::Complexity,
+            QualityCheckType::Coverage,
+            QualityCheckType::Sections,
+        ]
+    } else {
+        checks
+    };
+
+    // Run verification and get detailed results
+    let verification_results = qa_verification.verify(&deep_context_result);
+    let report = qa_verification.generate_verification_report(&deep_context_result);
+
+    if perf {
+        eprintln!(
+            "⏱️  Analysis completed in {:.2}s",
+            start.elapsed().as_secs_f64()
+        );
+    }
+
+    // Format output
+    let content = match format {
+        QualityGateOutputFormat::Summary => format_quality_gate_summary(&report, &checks_to_run),
+        QualityGateOutputFormat::Detailed => {
+            format_quality_gate_detailed(&report, &verification_results, &checks_to_run)
+        }
+        QualityGateOutputFormat::Json => serde_json::to_string_pretty(&report)?,
+        QualityGateOutputFormat::Junit => format_quality_gate_junit(&report, &checks_to_run)?,
+        QualityGateOutputFormat::Markdown => {
+            format_quality_gate_markdown(&report, &verification_results, &checks_to_run)
+        }
+    };
+
+    // Output results
+    if let Some(output_path) = output {
+        tokio::fs::write(&output_path, &content).await?;
+        eprintln!(
+            "✅ Quality gate report written to: {}",
+            output_path.display()
+        );
+    } else {
+        println!("{content}");
+    }
+
+    // Check if we should fail
+    if fail_on_violation && report.overall != VerificationStatus::Pass {
+        eprintln!("\n❌ Quality gate failed!");
+        match report.overall {
+            VerificationStatus::Fail => std::process::exit(1),
+            VerificationStatus::Partial => std::process::exit(2),
+            VerificationStatus::Pass => {} // Already checked above
+        }
+    }
+
+    Ok(())
+}
+
+fn format_quality_gate_summary(
+    report: &crate::services::quality_gates::QAVerificationResult,
+    checks: &[QualityCheckType],
+) -> String {
+    let mut output = String::from("# Quality Gate Summary\n\n");
+
+    output.push_str(&format!(
+        "**Overall Status:** {}\n",
+        match report.overall {
+            crate::services::quality_gates::VerificationStatus::Pass => "✅ PASS",
+            crate::services::quality_gates::VerificationStatus::Partial => "⚠️  PARTIAL",
+            crate::services::quality_gates::VerificationStatus::Fail => "❌ FAIL",
+        }
+    ));
+
+    output.push_str(&format!("**Timestamp:** {}\n", report.timestamp));
+    output.push_str(&format!("**Version:** {}\n\n", report.version));
+
+    if checks.contains(&QualityCheckType::DeadCode) || checks.contains(&QualityCheckType::All) {
+        output.push_str(&format!(
+            "## Dead Code: {}\n",
+            match report.dead_code.status {
+                crate::services::quality_gates::VerificationStatus::Pass => "✅ PASS",
+                crate::services::quality_gates::VerificationStatus::Partial => "⚠️  PARTIAL",
+                crate::services::quality_gates::VerificationStatus::Fail => "❌ FAIL",
+            }
+        ));
+        output.push_str(&format!(
+            "- Actual: {:.1}%\n",
+            report.dead_code.actual * 100.0
+        ));
+        output.push_str(&format!(
+            "- Expected Range: {:.1}%-{:.1}%\n",
+            report.dead_code.expected_range[0] * 100.0,
+            report.dead_code.expected_range[1] * 100.0
+        ));
+        if let Some(notes) = &report.dead_code.notes {
+            output.push_str(&format!("- Notes: {notes}\n"));
+        }
+        output.push('\n');
+    }
+
+    if checks.contains(&QualityCheckType::Complexity) || checks.contains(&QualityCheckType::All) {
+        output.push_str(&format!(
+            "## Complexity: {}\n",
+            match report.complexity.status {
+                crate::services::quality_gates::VerificationStatus::Pass => "✅ PASS",
+                crate::services::quality_gates::VerificationStatus::Partial => "⚠️  PARTIAL",
+                crate::services::quality_gates::VerificationStatus::Fail => "❌ FAIL",
+            }
+        ));
+        output.push_str(&format!("- Entropy: {:.2}\n", report.complexity.entropy));
+        output.push_str(&format!(
+            "- Coefficient of Variation: {:.1}%\n",
+            report.complexity.cv
+        ));
+        output.push_str(&format!("- P99 Complexity: {}\n", report.complexity.p99));
+        if let Some(notes) = &report.complexity.notes {
+            output.push_str(&format!("- Notes: {notes}\n"));
+        }
+        output.push('\n');
+    }
+
+    output
+}
+
+fn format_quality_gate_detailed(
+    report: &crate::services::quality_gates::QAVerificationResult,
+    results: &std::collections::HashMap<&'static str, Result<(), String>>,
+    checks: &[QualityCheckType],
+) -> String {
+    let mut output = format_quality_gate_summary(report, checks);
+
+    output.push_str("## Detailed Check Results\n\n");
+
+    for (check_name, result) in results {
+        let status = match result {
+            Ok(_) => "✅ PASS",
+            Err(_) => "❌ FAIL",
+        };
+
+        output.push_str(&format!("### {check_name} - {status}\n"));
+
+        if let Err(msg) = result {
+            output.push_str(&format!("- Error: {msg}\n"));
+        }
+        output.push('\n');
+    }
+
+    output
+}
+
+fn format_quality_gate_junit(
+    report: &crate::services::quality_gates::QAVerificationResult,
+    checks: &[QualityCheckType],
+) -> anyhow::Result<String> {
+    use serde_json::json;
+
+    let mut test_cases = Vec::new();
+
+    if checks.contains(&QualityCheckType::DeadCode) || checks.contains(&QualityCheckType::All) {
+        let mut test_case = json!({
+            "name": "dead_code_check",
+            "classname": "quality_gate",
+            "time": 0.0
+        });
+
+        if report.dead_code.status != crate::services::quality_gates::VerificationStatus::Pass {
+            test_case["failure"] = json!({
+                "message": format!("Dead code check failed: {:.1}% (expected {:.1}%-{:.1}%)",
+                    report.dead_code.actual * 100.0,
+                    report.dead_code.expected_range[0] * 100.0,
+                    report.dead_code.expected_range[1] * 100.0
+                ),
+                "type": "QualityGateFailure"
+            });
+        }
+
+        test_cases.push(test_case);
+    }
+
+    if checks.contains(&QualityCheckType::Complexity) || checks.contains(&QualityCheckType::All) {
+        let mut test_case = json!({
+            "name": "complexity_check",
+            "classname": "quality_gate",
+            "time": 0.0
+        });
+
+        if report.complexity.status != crate::services::quality_gates::VerificationStatus::Pass {
+            test_case["failure"] = json!({
+                "message": format!("Complexity check failed: entropy={:.2}, cv={:.1}%, p99={}",
+                    report.complexity.entropy,
+                    report.complexity.cv,
+                    report.complexity.p99
+                ),
+                "type": "QualityGateFailure"
+            });
+        }
+
+        test_cases.push(test_case);
+    }
+
+    let junit = json!({
+        "testsuites": [{
+            "name": "quality_gate",
+            "tests": test_cases.len(),
+            "failures": test_cases.iter().filter(|tc| tc.get("failure").is_some()).count(),
+            "time": 0.0,
+            "testcases": test_cases
+        }]
+    });
+
+    Ok(serde_json::to_string_pretty(&junit)?)
+}
+
+fn format_quality_gate_markdown(
+    report: &crate::services::quality_gates::QAVerificationResult,
+    results: &std::collections::HashMap<&'static str, Result<(), String>>,
+    checks: &[QualityCheckType],
+) -> String {
+    let mut output = String::from("# Quality Gate Report\n\n");
+
+    // Status badge
+    let badge = match report.overall {
+        crate::services::quality_gates::VerificationStatus::Pass => {
+            "![Quality Gate](https://img.shields.io/badge/quality%20gate-passed-brightgreen)"
+        }
+        crate::services::quality_gates::VerificationStatus::Partial => {
+            "![Quality Gate](https://img.shields.io/badge/quality%20gate-partial-yellow)"
+        }
+        crate::services::quality_gates::VerificationStatus::Fail => {
+            "![Quality Gate](https://img.shields.io/badge/quality%20gate-failed-red)"
+        }
+    };
+
+    output.push_str(&format!("{badge}\n\n"));
+
+    // Summary table
+    output.push_str("## Summary\n\n");
+    output.push_str("| Check | Status | Details |\n");
+    output.push_str("|-------|--------|---------|\n");
+
+    if checks.contains(&QualityCheckType::DeadCode) || checks.contains(&QualityCheckType::All) {
+        let status_icon = match report.dead_code.status {
+            crate::services::quality_gates::VerificationStatus::Pass => "✅",
+            crate::services::quality_gates::VerificationStatus::Partial => "⚠️",
+            crate::services::quality_gates::VerificationStatus::Fail => "❌",
+        };
+        output.push_str(&format!(
+            "| Dead Code | {} | {:.1}% (expected {:.1}%-{:.1}%) |\n",
+            status_icon,
+            report.dead_code.actual * 100.0,
+            report.dead_code.expected_range[0] * 100.0,
+            report.dead_code.expected_range[1] * 100.0
+        ));
+    }
+
+    if checks.contains(&QualityCheckType::Complexity) || checks.contains(&QualityCheckType::All) {
+        let status_icon = match report.complexity.status {
+            crate::services::quality_gates::VerificationStatus::Pass => "✅",
+            crate::services::quality_gates::VerificationStatus::Partial => "⚠️",
+            crate::services::quality_gates::VerificationStatus::Fail => "❌",
+        };
+        output.push_str(&format!(
+            "| Complexity | {} | Entropy: {:.2}, CV: {:.1}%, P99: {} |\n",
+            status_icon, report.complexity.entropy, report.complexity.cv, report.complexity.p99
+        ));
+    }
+
+    output.push_str("\n## Detailed Results\n\n");
+
+    // Add detailed check results
+    for (check_name, result) in results {
+        match result {
+            Ok(_) => {
+                output.push_str(&format!("### ✅ {check_name}\n\n"));
+                output.push_str("Check passed successfully.\n\n");
+            }
+            Err(msg) => {
+                output.push_str(&format!("### ❌ {check_name}\n\n"));
+                output.push_str(&format!("**Error:** {msg}\n\n"));
+            }
+        }
+    }
+
     output
 }
 
@@ -4861,4 +6362,4178 @@ fn format_provability_sarif(
     });
 
     Ok(serde_json::to_string_pretty(&sarif)?)
+}
+
+/// Handle duplicate detection analysis
+#[allow(clippy::too_many_arguments)]
+async fn handle_analyze_duplicates(
+    project_path: PathBuf,
+    detection_type: DuplicateType,
+    threshold: f32,
+    min_lines: usize,
+    max_tokens: usize,
+    format: DuplicateOutputFormat,
+    perf: bool,
+    include: Option<String>,
+    exclude: Option<String>,
+    output: Option<PathBuf>,
+) -> anyhow::Result<()> {
+    use crate::services::duplicate_detector::{
+        DuplicateDetectionConfig, DuplicateDetectionEngine, Language,
+    };
+    use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
+    use std::time::Instant;
+
+    let start_time = Instant::now();
+
+    // Create configuration based on CLI parameters
+    let mut config = DuplicateDetectionConfig {
+        similarity_threshold: threshold as f64,
+        min_tokens: min_lines * 5,
+        ..Default::default()
+    }; // Rough estimate: ~5 tokens per line
+
+    // Adjust config based on detection type
+    match detection_type {
+        DuplicateType::Exact => {
+            config.similarity_threshold = 1.0;
+            config.normalize_identifiers = false;
+            config.normalize_literals = false;
+        }
+        DuplicateType::Renamed => {
+            config.similarity_threshold = 0.95;
+            config.normalize_identifiers = true;
+            config.normalize_literals = false;
+        }
+        DuplicateType::Gapped => {
+            config.similarity_threshold = 0.80;
+            config.normalize_identifiers = true;
+            config.normalize_literals = true;
+        }
+        DuplicateType::Semantic => {
+            config.similarity_threshold = threshold as f64;
+            config.normalize_identifiers = true;
+            config.normalize_literals = true;
+        }
+        DuplicateType::All => {
+            // Use default settings for comprehensive detection
+        }
+    }
+
+    // Discover source files
+    let mut discovery_config = FileDiscoveryConfig::default();
+
+    // Add custom patterns if specified
+    if let Some(exclude_pattern) = &exclude {
+        discovery_config
+            .custom_ignore_patterns
+            .push(exclude_pattern.clone());
+    }
+
+    let discovery = ProjectFileDiscovery::new(project_path.clone()).with_config(discovery_config);
+    let discovered_files = discovery.discover_files()?;
+
+    // Read and categorize files by language
+    let mut files_with_content = Vec::new();
+    for file_path in discovered_files {
+        // Apply include filter if specified
+        if let Some(include_pattern) = &include {
+            if !file_path.to_string_lossy().contains(include_pattern) {
+                continue;
+            }
+        }
+
+        if let Ok(content) = std::fs::read_to_string(&file_path) {
+            let language = match file_path.extension().and_then(|e| e.to_str()) {
+                Some("rs") => Language::Rust,
+                Some("ts") | Some("tsx") => Language::TypeScript,
+                Some("js") | Some("jsx") => Language::JavaScript,
+                Some("py") => Language::Python,
+                Some("c") | Some("h") => Language::C,
+                Some("cpp") | Some("cc") | Some("cxx") | Some("hpp") => Language::Cpp,
+                _ => continue, // Skip unsupported files
+            };
+
+            // Apply line limit if specified
+            if content.lines().count() >= min_lines {
+                files_with_content.push((file_path, content, language));
+            }
+        }
+    }
+
+    if files_with_content.is_empty() {
+        eprintln!("No source files found matching criteria");
+        return Ok(());
+    }
+
+    // Limit token analysis for performance
+    for (_, content, _) in &mut files_with_content {
+        if content.split_whitespace().count() > max_tokens {
+            // Truncate content to max_tokens
+            let words: Vec<&str> = content.split_whitespace().take(max_tokens).collect();
+            *content = words.join(" ");
+        }
+    }
+
+    // Run duplicate detection
+    let engine = DuplicateDetectionEngine::new(config);
+    let report = engine.detect_duplicates(&files_with_content)?;
+
+    let analysis_time = start_time.elapsed();
+
+    // Output results based on format
+    match format {
+        DuplicateOutputFormat::Summary => {
+            println!("Duplicate Code Analysis Summary");
+            println!("==============================");
+            println!("Files analyzed: {}", report.summary.total_files);
+            println!("Code fragments: {}", report.summary.total_fragments);
+            println!("Duplicate lines: {}", report.summary.duplicate_lines);
+            println!("Total lines: {}", report.summary.total_lines);
+            println!(
+                "Duplication ratio: {:.1}%",
+                report.summary.duplication_ratio * 100.0
+            );
+            println!("Clone groups: {}", report.summary.clone_groups);
+            println!(
+                "Largest group: {} instances",
+                report.summary.largest_group_size
+            );
+
+            if perf {
+                println!("\nPerformance Metrics:");
+                println!("Analysis time: {:.2}s", analysis_time.as_secs_f64());
+                println!(
+                    "Files/second: {:.1}",
+                    files_with_content.len() as f64 / analysis_time.as_secs_f64()
+                );
+            }
+        }
+        DuplicateOutputFormat::Detailed => {
+            println!("Duplicate Code Analysis Report");
+            println!("=============================");
+            println!("{}", serde_json::to_string_pretty(&report)?);
+        }
+        DuplicateOutputFormat::Json => {
+            let mut result = serde_json::to_value(&report)?;
+            if perf {
+                result["performance"] = serde_json::json!({
+                    "analysis_time_s": analysis_time.as_secs_f64(),
+                    "files_per_second": files_with_content.len() as f64 / analysis_time.as_secs_f64()
+                });
+            }
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+        DuplicateOutputFormat::Csv => {
+            println!("file,start_line,end_line,group_id,clone_type,similarity");
+            for group in &report.groups {
+                for instance in &group.fragments {
+                    println!(
+                        "{},{},{},{},{:?},{:.3}",
+                        instance.file.display(),
+                        instance.start_line,
+                        instance.end_line,
+                        group.id,
+                        group.clone_type,
+                        instance.similarity_to_representative
+                    );
+                }
+            }
+        }
+        DuplicateOutputFormat::Sarif => {
+            // SARIF format for IDE integration
+            let sarif = serde_json::json!({
+                "version": "2.1.0",
+                "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+                "runs": [{
+                    "tool": {
+                        "driver": {
+                            "name": "paiml-mcp-agent-toolkit",
+                            "version": env!("CARGO_PKG_VERSION"),
+                            "informationUri": "https://github.com/paiml/mcp-agent-toolkit"
+                        }
+                    },
+                    "results": report.groups.iter().flat_map(|group| {
+                        group.fragments.iter().map(|instance| {
+                            serde_json::json!({
+                                "ruleId": "duplicate-code",
+                                "level": "info",
+                                "message": {
+                                    "text": format!("Duplicate code found in group {} with {:.1}% similarity",
+                                        group.id, instance.similarity_to_representative * 100.0)
+                                },
+                                "locations": [{
+                                    "physicalLocation": {
+                                        "artifactLocation": {
+                                            "uri": instance.file.to_string_lossy()
+                                        },
+                                        "region": {
+                                            "startLine": instance.start_line,
+                                            "endLine": instance.end_line,
+                                            "startColumn": instance.start_column,
+                                            "endColumn": instance.end_column
+                                        }
+                                    }
+                                }]
+                            })
+                        })
+                    }).collect::<Vec<_>>()
+                }]
+            });
+            println!("{}", serde_json::to_string_pretty(&sarif)?);
+        }
+    }
+
+    // Write to output file if specified
+    if let Some(output_path) = output {
+        let content = match format {
+            DuplicateOutputFormat::Json => serde_json::to_string_pretty(&report)?,
+            DuplicateOutputFormat::Sarif => {
+                // Generate SARIF content for file output
+                let sarif = serde_json::json!({
+                    "version": "2.1.0",
+                    "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+                    "runs": [{
+                        "tool": {
+                            "driver": {
+                                "name": "paiml-mcp-agent-toolkit",
+                                "version": env!("CARGO_PKG_VERSION"),
+                                "informationUri": "https://github.com/paiml/mcp-agent-toolkit"
+                            }
+                        },
+                        "results": report.groups.iter().flat_map(|group| {
+                            group.fragments.iter().map(|instance| {
+                                serde_json::json!({
+                                    "ruleId": "duplicate-code",
+                                    "level": "info",
+                                    "message": {
+                                        "text": format!("Duplicate code found in group {} with {:.1}% similarity",
+                                            group.id, instance.similarity_to_representative * 100.0)
+                                    },
+                                    "locations": [{
+                                        "physicalLocation": {
+                                            "artifactLocation": {
+                                                "uri": instance.file.to_string_lossy()
+                                            },
+                                            "region": {
+                                                "startLine": instance.start_line,
+                                                "endLine": instance.end_line,
+                                                "startColumn": instance.start_column,
+                                                "endColumn": instance.end_column
+                                            }
+                                        }
+                                    }]
+                                })
+                            })
+                        }).collect::<Vec<_>>()
+                    }]
+                });
+                serde_json::to_string_pretty(&sarif)?
+            }
+            _ => format!("{report:#?}"),
+        };
+        std::fs::write(output_path, content)?;
+    }
+
+    Ok(())
+}
+
+/// Handle defect prediction analysis
+#[allow(clippy::too_many_arguments)]
+async fn handle_analyze_defect_prediction(
+    project_path: PathBuf,
+    confidence_threshold: f32,
+    min_lines: usize,
+    include_low_confidence: bool,
+    format: DefectPredictionOutputFormat,
+    high_risk_only: bool,
+    include_recommendations: bool,
+    include: Option<String>,
+    exclude: Option<String>,
+    output: Option<PathBuf>,
+    perf: bool,
+) -> anyhow::Result<()> {
+    use crate::services::defect_probability::{DefectProbabilityCalculator, FileMetrics};
+    use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
+    use std::time::Instant;
+
+    let start_time = Instant::now();
+
+    // Discover source files
+    let mut discovery_config = FileDiscoveryConfig::default();
+
+    // Add custom patterns if specified
+    if let Some(exclude_pattern) = &exclude {
+        discovery_config
+            .custom_ignore_patterns
+            .push(exclude_pattern.clone());
+    }
+
+    let discovery = ProjectFileDiscovery::new(project_path.clone()).with_config(discovery_config);
+    let discovered_files = discovery.discover_files()?;
+
+    // Filter files based on include pattern and minimum lines
+    let mut analyzed_files = Vec::new();
+    for file_path in discovered_files {
+        // Apply include filter if specified
+        if let Some(include_pattern) = &include {
+            if !file_path.to_string_lossy().contains(include_pattern) {
+                continue;
+            }
+        }
+
+        // Only analyze source code files
+        if !matches!(
+            file_path.extension().and_then(|e| e.to_str()),
+            Some("rs")
+                | Some("ts")
+                | Some("tsx")
+                | Some("js")
+                | Some("jsx")
+                | Some("py")
+                | Some("c")
+                | Some("h")
+                | Some("cpp")
+                | Some("cc")
+                | Some("cxx")
+                | Some("hpp")
+        ) {
+            continue;
+        }
+
+        if let Ok(content) = std::fs::read_to_string(&file_path) {
+            let lines_of_code = content.lines().count();
+            if lines_of_code >= min_lines {
+                analyzed_files.push((file_path, content, lines_of_code));
+            }
+        }
+    }
+
+    if analyzed_files.is_empty() {
+        eprintln!("No source files found matching criteria");
+        return Ok(());
+    }
+
+    // Initialize defect calculator
+    let defect_calculator = DefectProbabilityCalculator::new();
+
+    // Collect metrics for each file
+    let mut file_metrics = Vec::new();
+    for (file_path, content, lines_of_code) in &analyzed_files {
+        // Calculate basic complexity metrics (simplified)
+        let cyclomatic_complexity = calculate_simple_complexity(content);
+        let cognitive_complexity = (cyclomatic_complexity as f32 * 1.3) as u32; // Rough approximation
+
+        // Calculate basic churn score (simplified - based on file size and modification indicators)
+        let churn_score = calculate_simple_churn_score(content, *lines_of_code);
+
+        // Calculate basic coupling (count imports/includes)
+        let afferent_coupling = content
+            .lines()
+            .filter(|line| {
+                line.trim_start().starts_with("use ")
+                    || line.trim_start().starts_with("import ")
+                    || line.trim_start().starts_with("#include")
+            })
+            .count() as f32;
+
+        let metrics = FileMetrics {
+            file_path: file_path.to_string_lossy().to_string(),
+            churn_score,
+            complexity: cyclomatic_complexity as f32,
+            duplicate_ratio: 0.0, // Would need duplicate detection integration
+            afferent_coupling,
+            efferent_coupling: 0.0, // Simplified for now
+            lines_of_code: *lines_of_code,
+            cyclomatic_complexity,
+            cognitive_complexity,
+        };
+
+        file_metrics.push(metrics);
+    }
+
+    // Calculate defect predictions
+    let predictions = defect_calculator.calculate_batch(&file_metrics);
+
+    // Filter results based on criteria
+    let mut filtered_predictions: Vec<_> = predictions.into_iter().collect();
+
+    if !include_low_confidence {
+        filtered_predictions.retain(|(_, score)| score.confidence >= confidence_threshold);
+    }
+
+    if high_risk_only {
+        filtered_predictions.retain(|(_, score)| score.probability >= 0.7);
+    }
+
+    // Sort by probability (highest first)
+    filtered_predictions.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).unwrap());
+
+    let analysis_time = start_time.elapsed();
+
+    // Output results based on format
+    match format {
+        DefectPredictionOutputFormat::Summary => {
+            println!("Defect Prediction Analysis Summary");
+            println!("=================================");
+            println!("Files analyzed: {}", file_metrics.len());
+            println!("Predictions generated: {}", filtered_predictions.len());
+
+            let high_risk_count = filtered_predictions
+                .iter()
+                .filter(|(_, score)| score.probability >= 0.7)
+                .count();
+            let medium_risk_count = filtered_predictions
+                .iter()
+                .filter(|(_, score)| score.probability >= 0.3 && score.probability < 0.7)
+                .count();
+            let low_risk_count = filtered_predictions
+                .iter()
+                .filter(|(_, score)| score.probability < 0.3)
+                .count();
+
+            println!(
+                "High risk files: {} ({:.1}%)",
+                high_risk_count,
+                100.0 * high_risk_count as f32 / filtered_predictions.len() as f32
+            );
+            println!(
+                "Medium risk files: {} ({:.1}%)",
+                medium_risk_count,
+                100.0 * medium_risk_count as f32 / filtered_predictions.len() as f32
+            );
+            println!(
+                "Low risk files: {} ({:.1}%)",
+                low_risk_count,
+                100.0 * low_risk_count as f32 / filtered_predictions.len() as f32
+            );
+
+            if perf {
+                println!("\nPerformance Metrics:");
+                println!("Analysis time: {:.2}s", analysis_time.as_secs_f64());
+                println!(
+                    "Files/second: {:.1}",
+                    file_metrics.len() as f64 / analysis_time.as_secs_f64()
+                );
+            }
+
+            if !filtered_predictions.is_empty() {
+                println!("\nTop 10 High-Risk Files:");
+                for (file_path, score) in filtered_predictions.iter().take(10) {
+                    println!(
+                        "  {} - {:.1}% risk ({:?})",
+                        std::path::Path::new(file_path)
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy(),
+                        score.probability * 100.0,
+                        score.risk_level
+                    );
+                }
+            }
+        }
+        DefectPredictionOutputFormat::Detailed => {
+            println!("Defect Prediction Analysis Report");
+            println!("================================");
+            for (file_path, score) in &filtered_predictions {
+                println!("\n{file_path}");
+                println!("  Risk Level: {:?}", score.risk_level);
+                println!("  Probability: {:.1}%", score.probability * 100.0);
+                println!("  Confidence: {:.1}%", score.confidence * 100.0);
+
+                println!("  Contributing Factors:");
+                for (factor, contribution) in &score.contributing_factors {
+                    println!("    {factor}: {contribution:.3}");
+                }
+
+                if include_recommendations && !score.recommendations.is_empty() {
+                    println!("  Recommendations:");
+                    for rec in &score.recommendations {
+                        println!("    - {rec}");
+                    }
+                }
+            }
+        }
+        DefectPredictionOutputFormat::Json => {
+            let result = serde_json::json!({
+                "summary": {
+                    "total_files": file_metrics.len(),
+                    "predictions": filtered_predictions.len(),
+                    "high_risk": filtered_predictions.iter().filter(|(_, s)| s.probability >= 0.7).count(),
+                    "medium_risk": filtered_predictions.iter().filter(|(_, s)| s.probability >= 0.3 && s.probability < 0.7).count(),
+                    "low_risk": filtered_predictions.iter().filter(|(_, s)| s.probability < 0.3).count()
+                },
+                "predictions": filtered_predictions.iter().map(|(path, score)| {
+                    serde_json::json!({
+                        "file": path,
+                        "probability": score.probability,
+                        "confidence": score.confidence,
+                        "risk_level": score.risk_level,
+                        "contributing_factors": score.contributing_factors,
+                        "recommendations": if include_recommendations { Some(&score.recommendations) } else { None }
+                    })
+                }).collect::<Vec<_>>(),
+                "performance": if perf { Some(serde_json::json!({
+                    "analysis_time_s": analysis_time.as_secs_f64(),
+                    "files_per_second": file_metrics.len() as f64 / analysis_time.as_secs_f64()
+                })) } else { None }
+            });
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+        DefectPredictionOutputFormat::Csv => {
+            println!("file,probability,confidence,risk_level,churn_factor,complexity_factor,duplication_factor,coupling_factor");
+            for (file_path, score) in &filtered_predictions {
+                let factors = &score.contributing_factors;
+                println!(
+                    "{},{:.3},{:.3},{:?},{:.3},{:.3},{:.3},{:.3}",
+                    file_path,
+                    score.probability,
+                    score.confidence,
+                    score.risk_level,
+                    factors.first().map(|(_, v)| *v).unwrap_or(0.0),
+                    factors.get(1).map(|(_, v)| *v).unwrap_or(0.0),
+                    factors.get(2).map(|(_, v)| *v).unwrap_or(0.0),
+                    factors.get(3).map(|(_, v)| *v).unwrap_or(0.0)
+                );
+            }
+        }
+        DefectPredictionOutputFormat::Sarif => {
+            // SARIF format for IDE integration
+            let sarif = serde_json::json!({
+                "version": "2.1.0",
+                "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+                "runs": [{
+                    "tool": {
+                        "driver": {
+                            "name": "paiml-mcp-agent-toolkit",
+                            "version": env!("CARGO_PKG_VERSION"),
+                            "informationUri": "https://github.com/paiml/mcp-agent-toolkit"
+                        }
+                    },
+                    "results": filtered_predictions.iter().map(|(file_path, score)| {
+                        let level = match score.probability {
+                            p if p >= 0.7 => "error",
+                            p if p >= 0.3 => "warning",
+                            _ => "note"
+                        };
+                        serde_json::json!({
+                            "ruleId": "defect-prediction",
+                            "level": level,
+                            "message": {
+                                "text": format!("High defect probability: {:.1}% (confidence: {:.1}%)",
+                                    score.probability * 100.0, score.confidence * 100.0)
+                            },
+                            "locations": [{
+                                "physicalLocation": {
+                                    "artifactLocation": {
+                                        "uri": file_path
+                                    }
+                                }
+                            }],
+                            "properties": {
+                                "defect_probability": score.probability,
+                                "confidence": score.confidence,
+                                "risk_level": format!("{:?}", score.risk_level)
+                            }
+                        })
+                    }).collect::<Vec<_>>()
+                }]
+            });
+            println!("{}", serde_json::to_string_pretty(&sarif)?);
+        }
+    }
+
+    // Write to output file if specified
+    if let Some(output_path) = output {
+        let content = match format {
+            DefectPredictionOutputFormat::Json => {
+                let result = serde_json::json!({
+                    "predictions": filtered_predictions,
+                    "summary": {
+                        "total_files": file_metrics.len(),
+                        "high_risk": filtered_predictions.iter().filter(|(_, s)| s.probability >= 0.7).count()
+                    }
+                });
+                serde_json::to_string_pretty(&result)?
+            }
+            DefectPredictionOutputFormat::Sarif => {
+                let sarif = serde_json::json!({
+                    "version": "2.1.0",
+                    "runs": [{
+                        "tool": {
+                            "driver": {
+                                "name": "paiml-mcp-agent-toolkit",
+                                "version": env!("CARGO_PKG_VERSION")
+                            }
+                        },
+                        "results": filtered_predictions.iter().map(|(file_path, score)| {
+                            serde_json::json!({
+                                "ruleId": "defect-prediction",
+                                "level": if score.probability >= 0.7 { "error" } else if score.probability >= 0.3 { "warning" } else { "note" },
+                                "message": {
+                                    "text": format!("Defect probability: {:.1}%", score.probability * 100.0)
+                                },
+                                "locations": [{
+                                    "physicalLocation": {
+                                        "artifactLocation": {
+                                            "uri": file_path
+                                        }
+                                    }
+                                }]
+                            })
+                        }).collect::<Vec<_>>()
+                    }]
+                });
+                serde_json::to_string_pretty(&sarif)?
+            }
+            _ => format!("{filtered_predictions:#?}"),
+        };
+        std::fs::write(output_path, content)?;
+    }
+
+    Ok(())
+}
+
+/// Calculate a simple approximation of cyclomatic complexity
+fn calculate_simple_complexity(content: &str) -> u32 {
+    let mut complexity = 1; // Base complexity
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        // Count decision points (simplified)
+        complexity += trimmed.matches("if ").count() as u32;
+        complexity += trimmed.matches("else if ").count() as u32;
+        complexity += trimmed.matches("while ").count() as u32;
+        complexity += trimmed.matches("for ").count() as u32;
+        complexity += trimmed.matches("match ").count() as u32;
+        complexity += trimmed.matches("case ").count() as u32;
+        complexity += trimmed.matches("catch ").count() as u32;
+        complexity += trimmed.matches("&&").count() as u32;
+        complexity += trimmed.matches("||").count() as u32;
+        complexity += trimmed.matches("?").count() as u32; // Ternary operators
+    }
+
+    complexity
+}
+
+/// Calculate a simple churn score based on code characteristics
+fn calculate_simple_churn_score(content: &str, lines_of_code: usize) -> f32 {
+    let mut churn_indicators = 0;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        // Look for indicators of high-churn code
+        if trimmed.contains("TODO") || trimmed.contains("FIXME") || trimmed.contains("XXX") {
+            churn_indicators += 2;
+        }
+        if trimmed.contains("temp") || trimmed.contains("tmp") || trimmed.contains("hack") {
+            churn_indicators += 1;
+        }
+        if trimmed.starts_with("//") && (trimmed.contains("debug") || trimmed.contains("test")) {
+            churn_indicators += 1;
+        }
+    }
+
+    // Normalize by file size and convert to 0-1 range
+    let base_score = churn_indicators as f32 / lines_of_code.max(1) as f32;
+    base_score.min(1.0)
+}
+
+/// Comprehensive analysis combining multiple analysis types
+#[allow(clippy::too_many_arguments)]
+async fn handle_analyze_comprehensive(
+    project_path: PathBuf,
+    format: ComprehensiveOutputFormat,
+    include_duplicates: bool,
+    include_dead_code: bool,
+    include_defects: bool,
+    include_complexity: bool,
+    include_tdg: bool,
+    confidence_threshold: f32,
+    min_lines: usize,
+    _include: Option<String>,
+    _exclude: Option<String>,
+    output: Option<PathBuf>,
+    perf: bool,
+    executive_summary: bool,
+) -> anyhow::Result<()> {
+    let start_time = std::time::Instant::now();
+
+    // Simple file discovery - find common source code files
+    let mut discovered_files = Vec::new();
+    let extensions = vec!["rs", "js", "ts", "py", "cpp", "c", "h", "hpp", "java", "go"];
+
+    fn visit_dir(dir: &Path, extensions: &[&str], files: &mut Vec<PathBuf>) -> Result<(), String> {
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    // Skip common build/cache directories
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                        if ![
+                            "target",
+                            "node_modules",
+                            ".git",
+                            "build",
+                            "dist",
+                            "__pycache__",
+                        ]
+                        .contains(&name)
+                        {
+                            visit_dir(&path, extensions, files)?;
+                        }
+                    }
+                } else if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                    if extensions.contains(&ext) {
+                        files.push(path);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    visit_dir(&project_path, &extensions, &mut discovered_files).map_err(|e| anyhow::anyhow!(e))?;
+
+    // Filter by minimum lines of code
+    let mut analysis_files = Vec::new();
+    for file_path in discovered_files {
+        if let Ok(content) = std::fs::read_to_string(&file_path) {
+            let line_count = content.lines().count();
+            if line_count >= min_lines {
+                analysis_files.push((file_path, content));
+            }
+        }
+    }
+
+    if perf {
+        eprintln!(
+            "📁 Discovery completed: {} files found",
+            analysis_files.len()
+        );
+    }
+
+    // Initialize results containers
+    let mut results = serde_json::json!({
+        "analysis_type": "comprehensive",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "project_path": project_path.to_string_lossy(),
+        "configuration": {
+            "include_duplicates": include_duplicates,
+            "include_dead_code": include_dead_code,
+            "include_defects": include_defects,
+            "include_complexity": include_complexity,
+            "include_tdg": include_tdg,
+            "confidence_threshold": confidence_threshold,
+            "min_lines": min_lines,
+            "executive_summary": executive_summary
+        },
+        "summary": {},
+        "results": {}
+    });
+
+    let mut analysis_times = serde_json::json!({});
+
+    // 1. Duplicate Detection Analysis (simplified)
+    if include_duplicates {
+        let dup_start = std::time::Instant::now();
+
+        // Simple duplicate detection based on file size and hash
+        let mut duplicates = 0;
+        let mut size_groups: std::collections::HashMap<u64, Vec<String>> =
+            std::collections::HashMap::new();
+
+        for (file_path, content) in &analysis_files {
+            let size = content.len() as u64;
+            size_groups
+                .entry(size)
+                .or_default()
+                .push(file_path.to_string_lossy().to_string());
+        }
+
+        for (_, files) in size_groups {
+            if files.len() > 1 {
+                duplicates += files.len() - 1;
+            }
+        }
+
+        let dup_time = dup_start.elapsed();
+        analysis_times["duplicates_ms"] = (dup_time.as_millis() as u64).into();
+
+        if perf {
+            eprintln!("🔍 Duplicates analysis: {:.2}s", dup_time.as_secs_f64());
+        }
+
+        results["results"]["duplicates"] = serde_json::json!({
+            "potential_duplicates": duplicates,
+            "analysis_method": "file_size_based",
+        });
+    }
+
+    // 2. Dead Code Analysis (simplified)
+    if include_dead_code {
+        let dead_start = std::time::Instant::now();
+
+        // Simple dead code detection based on TODO/FIXME patterns
+        let mut dead_indicators = 0;
+        let mut files_with_issues = 0;
+
+        for (_, content) in &analysis_files {
+            let mut file_has_issues = false;
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.contains("TODO")
+                    || trimmed.contains("FIXME")
+                    || trimmed.contains("HACK")
+                    || trimmed.contains("XXX")
+                {
+                    dead_indicators += 1;
+                    file_has_issues = true;
+                }
+            }
+            if file_has_issues {
+                files_with_issues += 1;
+            }
+        }
+
+        let dead_time = dead_start.elapsed();
+        analysis_times["dead_code_ms"] = (dead_time.as_millis() as u64).into();
+
+        if perf {
+            eprintln!("💀 Dead code analysis: {:.2}s", dead_time.as_secs_f64());
+        }
+
+        results["results"]["dead_code"] = serde_json::json!({
+            "potential_issues": dead_indicators,
+            "files_with_issues": files_with_issues,
+            "analysis_method": "pattern_based",
+        });
+    }
+
+    // 3. Defect Prediction Analysis
+    if include_defects {
+        let defect_start = std::time::Instant::now();
+
+        // Use simplified prediction logic
+        let mut defect_predictions = Vec::new();
+        for (file_path, content) in &analysis_files {
+            let lines_of_code = content.lines().count();
+            let complexity_score = calculate_simple_complexity(content);
+            let churn_score = calculate_simple_churn_score(content, lines_of_code);
+
+            // Simple defect probability calculation
+            let probability = (complexity_score as f32 * 0.6 + churn_score * 0.4).min(1.0);
+            let confidence = if lines_of_code > 100 { 0.8 } else { 0.5 };
+
+            if probability >= confidence_threshold {
+                defect_predictions.push(serde_json::json!({
+                    "file": file_path.to_string_lossy(),
+                    "probability": probability,
+                    "confidence": confidence,
+                    "complexity_factor": complexity_score,
+                    "churn_factor": churn_score,
+                    "lines_of_code": lines_of_code
+                }));
+            }
+        }
+
+        let defect_time = defect_start.elapsed();
+        analysis_times["defects_ms"] = (defect_time.as_millis() as u64).into();
+
+        if perf {
+            eprintln!("🎯 Defect prediction: {:.2}s", defect_time.as_secs_f64());
+        }
+
+        results["results"]["defects"] = serde_json::json!({
+            "high_risk_files": defect_predictions.len(),
+            "predictions": if executive_summary {
+                serde_json::Value::Null
+            } else {
+                serde_json::Value::Array(defect_predictions)
+            }
+        });
+    }
+
+    // 4. Complexity Analysis
+    if include_complexity {
+        let complexity_start = std::time::Instant::now();
+
+        let mut file_complexities = Vec::new();
+        let mut total_complexity = 0u32;
+        let mut max_complexity = 0u32;
+
+        for (file_path, content) in &analysis_files {
+            let complexity = calculate_simple_complexity(content);
+            let complexity_u32 = complexity * 100; // Scale for better reporting
+            total_complexity += complexity_u32;
+            max_complexity = max_complexity.max(complexity_u32);
+
+            file_complexities.push(serde_json::json!({
+                "file": file_path.to_string_lossy(),
+                "complexity": complexity,
+                "lines": content.lines().count()
+            }));
+        }
+
+        let complexity_time = complexity_start.elapsed();
+        analysis_times["complexity_ms"] = (complexity_time.as_millis() as u64).into();
+
+        if perf {
+            eprintln!(
+                "🧮 Complexity analysis: {:.2}s",
+                complexity_time.as_secs_f64()
+            );
+        }
+
+        let avg_complexity = if !file_complexities.is_empty() {
+            total_complexity as f64 / file_complexities.len() as f64
+        } else {
+            0.0
+        };
+
+        results["results"]["complexity"] = serde_json::json!({
+            "average_complexity": avg_complexity / 100.0, // Scale back
+            "max_complexity": max_complexity as f64 / 100.0,
+            "total_files": file_complexities.len(),
+            "files": if executive_summary {
+                serde_json::Value::Null
+            } else {
+                serde_json::Value::Array(file_complexities)
+            }
+        });
+    }
+
+    // 5. TDG (Technical Debt Gradient) Analysis
+    if include_tdg {
+        let tdg_start = std::time::Instant::now();
+
+        // Simplified TDG calculation based on complexity and churn
+        let mut total_debt_score = 0.0;
+        let mut critical_files = 0;
+        let mut tdg_results = Vec::new();
+
+        for (file_path, content) in &analysis_files {
+            let complexity = calculate_simple_complexity(content);
+            let churn = calculate_simple_churn_score(content, content.lines().count());
+            let tdg_score = (complexity as f64 + churn as f64) / 2.0;
+
+            if tdg_score > 0.7 {
+                critical_files += 1;
+            }
+
+            total_debt_score += tdg_score;
+
+            tdg_results.push(serde_json::json!({
+                "file": file_path.to_string_lossy(),
+                "tdg_score": tdg_score,
+                "complexity_component": complexity,
+                "churn_component": churn
+            }));
+        }
+
+        let tdg_time = tdg_start.elapsed();
+        analysis_times["tdg_ms"] = (tdg_time.as_millis() as u64).into();
+
+        if perf {
+            eprintln!("📊 TDG analysis: {:.2}s", tdg_time.as_secs_f64());
+        }
+
+        let avg_tdg = if !tdg_results.is_empty() {
+            total_debt_score / tdg_results.len() as f64
+        } else {
+            0.0
+        };
+
+        results["results"]["tdg"] = serde_json::json!({
+            "average_tdg": avg_tdg,
+            "critical_files": critical_files,
+            "estimated_debt_hours": total_debt_score * 10.0, // Rough estimate
+            "files": if executive_summary {
+                serde_json::Value::Null
+            } else {
+                serde_json::Value::Array(tdg_results)
+            }
+        });
+    }
+
+    let total_time = start_time.elapsed();
+
+    // Add performance metrics
+    if perf {
+        results["performance"] = serde_json::json!({
+            "total_time_s": total_time.as_secs_f64(),
+            "files_analyzed": analysis_files.len(),
+            "files_per_second": analysis_files.len() as f64 / total_time.as_secs_f64(),
+            "analysis_breakdown": analysis_times
+        });
+
+        eprintln!(
+            "✅ Comprehensive analysis completed in {:.2}s",
+            total_time.as_secs_f64()
+        );
+    }
+
+    // Generate summary
+    let mut summary_items = Vec::new();
+
+    if include_duplicates {
+        if let Some(dup_results) = results["results"]["duplicates"].as_object() {
+            summary_items.push(format!(
+                "Duplicates: {}",
+                dup_results
+                    .get("potential_duplicates")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0)
+            ));
+        }
+    }
+
+    if include_dead_code {
+        if let Some(dead_results) = results["results"]["dead_code"].as_object() {
+            summary_items.push(format!(
+                "Dead code: {} issues in {} files",
+                dead_results
+                    .get("potential_issues")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0),
+                dead_results
+                    .get("files_with_issues")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0)
+            ));
+        }
+    }
+
+    if include_defects {
+        if let Some(defect_results) = results["results"]["defects"].as_object() {
+            summary_items.push(format!(
+                "High-risk files: {}",
+                defect_results
+                    .get("high_risk_files")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0)
+            ));
+        }
+    }
+
+    if include_complexity {
+        if let Some(complexity_results) = results["results"]["complexity"].as_object() {
+            summary_items.push(format!(
+                "Avg complexity: {:.2}",
+                complexity_results
+                    .get("average_complexity")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0)
+            ));
+        }
+    }
+
+    if include_tdg {
+        if let Some(tdg_results) = results["results"]["tdg"].as_object() {
+            summary_items.push(format!(
+                "TDG: {:.2} avg, {} critical files",
+                tdg_results
+                    .get("average_tdg")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0),
+                tdg_results
+                    .get("critical_files")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0)
+            ));
+        }
+    }
+
+    results["summary"]["overview"] = summary_items.join(" | ").into();
+
+    // Output results
+    match format {
+        ComprehensiveOutputFormat::Summary => {
+            println!("# Comprehensive Analysis Summary\n");
+            println!("📁 **Project**: {}", project_path.display());
+            println!("📊 **Files analyzed**: {}", analysis_files.len());
+            println!("⏱️ **Analysis time**: {:.2}s\n", total_time.as_secs_f64());
+
+            if !summary_items.is_empty() {
+                println!("## Results");
+                for item in summary_items {
+                    println!("- {item}");
+                }
+            }
+        }
+        ComprehensiveOutputFormat::Detailed => {
+            // Print detailed results in a human-readable format
+            println!("# Comprehensive Analysis Report\n");
+            println!("**Project**: {}", project_path.display());
+            println!("**Analysis time**: {:.2}s", total_time.as_secs_f64());
+            println!("**Files analyzed**: {}\n", analysis_files.len());
+
+            // Print each analysis section
+            for (analysis_type, result) in results["results"].as_object().unwrap() {
+                let title = analysis_type.replace('_', " ");
+                let title_case = title
+                    .split_whitespace()
+                    .map(|word| {
+                        let mut chars = word.chars();
+                        match chars.next() {
+                            None => String::new(),
+                            Some(first) => {
+                                first.to_uppercase().collect::<String>() + chars.as_str()
+                            }
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                println!("## {title_case} Analysis");
+                println!("{}\n", serde_json::to_string_pretty(result)?);
+            }
+        }
+        ComprehensiveOutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&results)?);
+        }
+        ComprehensiveOutputFormat::Markdown => {
+            println!("# Comprehensive Analysis Report\n");
+            println!("- **Project**: {}", project_path.display());
+            println!("- **Analysis time**: {:.2}s", total_time.as_secs_f64());
+            println!("- **Files analyzed**: {}\n", analysis_files.len());
+
+            println!("## Summary\n");
+            for item in summary_items {
+                println!("- {item}");
+            }
+
+            if !executive_summary {
+                println!("\n## Detailed Results\n");
+                println!("```json");
+                println!("{}", serde_json::to_string_pretty(&results["results"])?);
+                println!("```");
+            }
+        }
+        ComprehensiveOutputFormat::Sarif => {
+            // Generate SARIF format for IDE integration
+            let mut sarif_results = Vec::new();
+
+            // Add duplicate findings
+            if let Some(dup_data) = results["results"]["duplicates"]["groups"].as_array() {
+                for group in dup_data {
+                    if let Some(instances) = group["instances"].as_array() {
+                        for instance in instances {
+                            sarif_results.push(serde_json::json!({
+                                "ruleId": "code-duplication",
+                                "level": "warning",
+                                "message": {
+                                    "text": "Code duplication detected"
+                                },
+                                "locations": [{
+                                    "physicalLocation": {
+                                        "artifactLocation": {
+                                            "uri": instance["file"]
+                                        }
+                                    }
+                                }]
+                            }));
+                        }
+                    }
+                }
+            }
+
+            let sarif = serde_json::json!({
+                "version": "2.1.0",
+                "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+                "runs": [{
+                    "tool": {
+                        "driver": {
+                            "name": "paiml-mcp-agent-toolkit",
+                            "version": env!("CARGO_PKG_VERSION"),
+                            "informationUri": "https://github.com/paiml/mcp-agent-toolkit"
+                        }
+                    },
+                    "results": sarif_results
+                }]
+            });
+            println!("{}", serde_json::to_string_pretty(&sarif)?);
+        }
+    }
+
+    // Write to output file if specified
+    if let Some(output_path) = output {
+        let content = match format {
+            ComprehensiveOutputFormat::Json => serde_json::to_string_pretty(&results)?,
+            ComprehensiveOutputFormat::Sarif => {
+                let sarif = serde_json::json!({
+                    "version": "2.1.0",
+                    "runs": [{
+                        "tool": {
+                            "driver": {
+                                "name": "paiml-mcp-agent-toolkit",
+                                "version": env!("CARGO_PKG_VERSION")
+                            }
+                        },
+                        "results": []
+                    }]
+                });
+                serde_json::to_string_pretty(&sarif)?
+            }
+            _ => format!(
+                "# Comprehensive Analysis\n\n{}",
+                serde_json::to_string_pretty(&results)?
+            ),
+        };
+
+        std::fs::write(&output_path, content)?;
+        if perf {
+            eprintln!("📄 Results written to {}", output_path.display());
+        }
+    }
+
+    Ok(())
+}
+
+/// Handle graph metrics analysis
+#[allow(clippy::too_many_arguments)]
+async fn handle_analyze_graph_metrics(
+    project_path: PathBuf,
+    metrics: Vec<GraphMetricType>,
+    pagerank_seeds: Vec<String>,
+    damping_factor: f32,
+    max_iterations: usize,
+    convergence_threshold: f64,
+    export_graphml: bool,
+    format: GraphMetricsOutputFormat,
+    include: Option<String>,
+    exclude: Option<String>,
+    output: Option<PathBuf>,
+    perf: bool,
+    top_k: usize,
+    min_centrality: f64,
+) -> anyhow::Result<()> {
+    // Delegate to structured graph metrics analyzer to reduce complexity
+    let analyzer = GraphMetricsAnalyzer::new(GraphMetricsConfig {
+        project_path,
+        metrics,
+        pagerank_seeds,
+        damping_factor,
+        max_iterations,
+        convergence_threshold,
+        export_graphml,
+        include,
+        exclude,
+        top_k,
+        min_centrality,
+    });
+
+    let results = analyzer.analyze(perf).await?;
+    analyzer.write_output(results, format, output).await
+}
+
+/// Configuration for graph metrics analysis
+struct GraphMetricsConfig {
+    project_path: PathBuf,
+    metrics: Vec<GraphMetricType>,
+    pagerank_seeds: Vec<String>,
+    damping_factor: f32,
+    max_iterations: usize,
+    convergence_threshold: f64,
+    #[allow(dead_code)]
+    export_graphml: bool,
+    include: Option<String>,
+    exclude: Option<String>,
+    top_k: usize,
+    min_centrality: f64,
+}
+
+/// Graph metrics analyzer to encapsulate complexity
+struct GraphMetricsAnalyzer {
+    config: GraphMetricsConfig,
+}
+
+type DependencyGraphResult = (HashMap<String, usize>, Vec<(usize, usize)>);
+
+impl GraphMetricsAnalyzer {
+    fn new(config: GraphMetricsConfig) -> Self {
+        Self { config }
+    }
+
+    async fn analyze(&self, perf: bool) -> anyhow::Result<serde_json::Value> {
+        let start_time = std::time::Instant::now();
+
+        // Step 1: File discovery
+        let analyzed_files = self.discover_and_filter_files()?;
+
+        // Step 2: Build graph
+        let (graph_nodes, graph_edges) = self.build_dependency_graph(&analyzed_files)?;
+
+        // Step 3: Compute metrics
+        let mut results = self.initialize_results(&graph_nodes, &graph_edges);
+
+        // Step 4: Calculate each requested metric
+        for metric_type in &self.config.metrics {
+            self.compute_metric(metric_type, &graph_nodes, &graph_edges, &mut results)?;
+        }
+
+        if perf {
+            results["performance"] = serde_json::json!({
+                "analysis_time_ms": start_time.elapsed().as_millis()
+            });
+        }
+
+        Ok(results)
+    }
+
+    fn discover_and_filter_files(&self) -> anyhow::Result<Vec<(PathBuf, String)>> {
+        use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
+
+        let mut discovery_config = FileDiscoveryConfig::default();
+        if let Some(exclude_pattern) = &self.config.exclude {
+            discovery_config
+                .custom_ignore_patterns
+                .push(exclude_pattern.clone());
+        }
+
+        let discovery = ProjectFileDiscovery::new(self.config.project_path.clone())
+            .with_config(discovery_config);
+        let discovered_files = discovery.discover_files()?;
+
+        let mut analyzed_files = Vec::new();
+        for file_path in discovered_files {
+            if let Some(include_pattern) = &self.config.include {
+                if !file_path.to_string_lossy().contains(include_pattern) {
+                    continue;
+                }
+            }
+
+            if let Ok(content) = std::fs::read_to_string(&file_path) {
+                analyzed_files.push((file_path, content));
+            }
+        }
+
+        if analyzed_files.is_empty() {
+            anyhow::bail!("No source files found matching criteria");
+        }
+
+        Ok(analyzed_files)
+    }
+
+    fn build_dependency_graph(
+        &self,
+        analyzed_files: &[(PathBuf, String)],
+    ) -> anyhow::Result<DependencyGraphResult> {
+        let mut graph_nodes = HashMap::new();
+        let mut graph_edges = Vec::new();
+
+        // Create nodes
+        for (node_index, (file_path, _)) in analyzed_files.iter().enumerate() {
+            let file_name = file_path.file_name().unwrap().to_string_lossy();
+            graph_nodes.insert(file_name.to_string(), node_index);
+        }
+
+        // Extract edges
+        for (file_path, content) in analyzed_files.iter() {
+            let file_name = file_path.file_name().unwrap().to_string_lossy();
+            let source_index = graph_nodes[&file_name.to_string()];
+
+            for line in content.lines() {
+                if let Some(referenced_file) = self.extract_dependency(line.trim()) {
+                    if let Some(&target_index) = graph_nodes.get(&referenced_file) {
+                        graph_edges.push((source_index, target_index));
+                    }
+                }
+            }
+        }
+
+        Ok((graph_nodes, graph_edges))
+    }
+
+    fn extract_dependency(&self, line: &str) -> Option<String> {
+        if line.starts_with("import ")
+            || line.starts_with("from ")
+            || line.starts_with("#include")
+            || line.starts_with("use ")
+        {
+            extract_file_reference(line)
+        } else {
+            None
+        }
+    }
+
+    fn initialize_results(
+        &self,
+        graph_nodes: &HashMap<String, usize>,
+        graph_edges: &[(usize, usize)],
+    ) -> serde_json::Value {
+        let num_nodes = graph_nodes.len();
+        let num_edges = graph_edges.len();
+
+        serde_json::json!({
+            "summary": {
+                "total_nodes": num_nodes,
+                "total_edges": num_edges,
+                "density": if num_nodes > 1 {
+                    num_edges as f64 / (num_nodes * (num_nodes - 1)) as f64
+                } else {
+                    0.0
+                }
+            },
+            "metrics": {}
+        })
+    }
+
+    fn compute_metric(
+        &self,
+        metric_type: &GraphMetricType,
+        graph_nodes: &HashMap<String, usize>,
+        graph_edges: &[(usize, usize)],
+        results: &mut serde_json::Value,
+    ) -> anyhow::Result<()> {
+        match metric_type {
+            GraphMetricType::Centrality => {
+                self.compute_centrality_metric(graph_nodes, graph_edges, results)?;
+            }
+            GraphMetricType::PageRank => {
+                self.compute_pagerank_metric(graph_nodes, graph_edges, results)?;
+            }
+            GraphMetricType::Clustering => {
+                self.compute_clustering_metric(graph_nodes, graph_edges, results)?;
+            }
+            GraphMetricType::Components => {
+                self.compute_components_metric(graph_nodes, graph_edges, results)?;
+            }
+            GraphMetricType::All => {
+                // Compute all metrics
+                self.compute_centrality_metric(graph_nodes, graph_edges, results)?;
+                self.compute_pagerank_metric(graph_nodes, graph_edges, results)?;
+                self.compute_clustering_metric(graph_nodes, graph_edges, results)?;
+                self.compute_components_metric(graph_nodes, graph_edges, results)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn compute_centrality_metric(
+        &self,
+        graph_nodes: &HashMap<String, usize>,
+        graph_edges: &[(usize, usize)],
+        results: &mut serde_json::Value,
+    ) -> anyhow::Result<()> {
+        let centrality_scores = calculate_betweenness_centrality(graph_nodes, graph_edges);
+        let mut centrality_results = self.create_ranked_results(centrality_scores, "centrality");
+
+        // Filter and truncate
+        centrality_results
+            .retain(|r| r["centrality"].as_f64().unwrap() >= self.config.min_centrality);
+        centrality_results.truncate(self.config.top_k);
+
+        results["metrics"]["centrality"] = serde_json::json!({
+            "type": "betweenness_centrality",
+            "nodes": centrality_results
+        });
+
+        Ok(())
+    }
+
+    fn compute_pagerank_metric(
+        &self,
+        graph_nodes: &HashMap<String, usize>,
+        graph_edges: &[(usize, usize)],
+        results: &mut serde_json::Value,
+    ) -> anyhow::Result<()> {
+        let pagerank_scores = calculate_pagerank(
+            graph_nodes,
+            graph_edges,
+            self.config.damping_factor as f64,
+            self.config.max_iterations,
+            self.config.convergence_threshold,
+            &self.config.pagerank_seeds,
+        );
+
+        let mut pagerank_results = self.create_ranked_results(pagerank_scores, "pagerank");
+        pagerank_results.truncate(self.config.top_k);
+
+        results["metrics"]["pagerank"] = serde_json::json!({
+            "damping_factor": self.config.damping_factor,
+            "max_iterations": self.config.max_iterations,
+            "convergence_threshold": self.config.convergence_threshold,
+            "seeds": self.config.pagerank_seeds,
+            "nodes": pagerank_results
+        });
+
+        Ok(())
+    }
+
+    fn compute_clustering_metric(
+        &self,
+        graph_nodes: &HashMap<String, usize>,
+        graph_edges: &[(usize, usize)],
+        results: &mut serde_json::Value,
+    ) -> anyhow::Result<()> {
+        let clustering_scores = calculate_clustering_coefficient(graph_nodes, graph_edges);
+        let avg_clustering: f64 =
+            clustering_scores.values().sum::<f64>() / clustering_scores.len() as f64;
+
+        let mut clustering_results: Vec<_> = clustering_scores
+            .iter()
+            .map(|(name, score)| {
+                serde_json::json!({
+                    "node": name,
+                    "clustering_coefficient": score
+                })
+            })
+            .collect();
+
+        clustering_results.sort_by(|a, b| {
+            b["clustering_coefficient"]
+                .as_f64()
+                .unwrap()
+                .partial_cmp(&a["clustering_coefficient"].as_f64().unwrap())
+                .unwrap()
+        });
+
+        clustering_results.truncate(self.config.top_k);
+
+        results["metrics"]["clustering"] = serde_json::json!({
+            "average_coefficient": avg_clustering,
+            "nodes": clustering_results
+        });
+
+        Ok(())
+    }
+
+    fn compute_components_metric(
+        &self,
+        graph_nodes: &HashMap<String, usize>,
+        graph_edges: &[(usize, usize)],
+        results: &mut serde_json::Value,
+    ) -> anyhow::Result<()> {
+        // Connected components analysis
+        let components = find_connected_components(graph_nodes, graph_edges);
+        let num_components = components.len();
+
+        results["metrics"]["components"] = serde_json::json!({
+            "num_components": num_components,
+            "connected": num_components == 1,
+            "component_sizes": components.iter().map(|c| c.len()).collect::<Vec<_>>()
+        });
+
+        Ok(())
+    }
+
+    fn create_ranked_results(
+        &self,
+        scores: HashMap<String, f64>,
+        metric_name: &str,
+    ) -> Vec<serde_json::Value> {
+        let mut results: Vec<_> = scores
+            .iter()
+            .map(|(name, score)| {
+                let mut obj = serde_json::json!({
+                    "node": name,
+                    "rank": 0
+                });
+                obj[metric_name] = (*score).into();
+                obj
+            })
+            .collect();
+
+        // Sort by score (descending)
+        results.sort_by(|a, b| {
+            b[metric_name]
+                .as_f64()
+                .unwrap()
+                .partial_cmp(&a[metric_name].as_f64().unwrap())
+                .unwrap()
+        });
+
+        // Add ranks
+        for (i, result) in results.iter_mut().enumerate() {
+            result["rank"] = (i + 1).into();
+        }
+
+        results
+    }
+
+    async fn write_output(
+        &self,
+        results: serde_json::Value,
+        format: GraphMetricsOutputFormat,
+        output: Option<PathBuf>,
+    ) -> anyhow::Result<()> {
+        let content = match format {
+            GraphMetricsOutputFormat::Json => serde_json::to_string_pretty(&results)?,
+            GraphMetricsOutputFormat::Summary => self.format_as_summary(&results)?,
+            GraphMetricsOutputFormat::Detailed => self.format_as_detailed(&results)?,
+            _ => serde_json::to_string_pretty(&results)?, // Default to JSON for other formats
+        };
+
+        if let Some(output_path) = output {
+            tokio::fs::write(&output_path, &content).await?;
+            eprintln!("✅ Graph metrics written to: {}", output_path.display());
+        } else {
+            println!("{content}");
+        }
+
+        Ok(())
+    }
+
+    fn format_as_summary(&self, results: &serde_json::Value) -> anyhow::Result<String> {
+        // Simplified summary formatting
+        let mut output = String::new();
+        output.push_str("Graph Metrics Analysis\n");
+        output.push_str("=====================\n\n");
+
+        if let Some(summary) = results.get("summary") {
+            output.push_str(&format!("Total Nodes: {}\n", summary["total_nodes"]));
+            output.push_str(&format!("Total Edges: {}\n", summary["total_edges"]));
+            output.push_str(&format!("Graph Density: {:.4}\n\n", summary["density"]));
+        }
+
+        Ok(output)
+    }
+
+    fn format_as_detailed(&self, results: &serde_json::Value) -> anyhow::Result<String> {
+        // Detailed formatting with metrics
+        let mut output = String::new();
+        output.push_str("# Graph Metrics Analysis\n\n");
+
+        if let Some(summary) = results.get("summary") {
+            output.push_str("## Summary\n\n");
+            output.push_str(&format!("- **Total Nodes**: {}\n", summary["total_nodes"]));
+            output.push_str(&format!("- **Total Edges**: {}\n", summary["total_edges"]));
+            output.push_str(&format!(
+                "- **Graph Density**: {:.4}\n\n",
+                summary["density"]
+            ));
+        }
+
+        // Add metric details if available
+        if let Some(metrics) = results.get("metrics").and_then(|m| m.as_object()) {
+            for (metric_name, _metric_data) in metrics {
+                output.push_str(&format!("\n## {metric_name}\n\n"));
+                // Add metric-specific formatting here
+            }
+        }
+
+        Ok(output)
+    }
+}
+
+// Legacy implementation removed - replaced with GraphMetricsAnalyzer
+#[allow(dead_code)]
+#[allow(clippy::too_many_arguments)]
+async fn handle_analyze_graph_metrics_legacy(
+    project_path: PathBuf,
+    metrics: Vec<GraphMetricType>,
+    pagerank_seeds: Vec<String>,
+    damping_factor: f32,
+    max_iterations: usize,
+    convergence_threshold: f64,
+    export_graphml: bool,
+    format: GraphMetricsOutputFormat,
+    include: Option<String>,
+    exclude: Option<String>,
+    output: Option<PathBuf>,
+    perf: bool,
+    top_k: usize,
+    min_centrality: f64,
+) -> anyhow::Result<()> {
+    use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
+    use std::collections::HashMap;
+    use std::time::Instant;
+
+    let start_time = Instant::now();
+
+    // Discover source files
+    let mut discovery_config = FileDiscoveryConfig::default();
+
+    // Add custom patterns if specified
+    if let Some(exclude_pattern) = &exclude {
+        discovery_config
+            .custom_ignore_patterns
+            .push(exclude_pattern.clone());
+    }
+
+    let discovery = ProjectFileDiscovery::new(project_path.clone()).with_config(discovery_config);
+    let discovered_files = discovery.discover_files()?;
+
+    // Filter files based on include pattern
+    let mut analyzed_files = Vec::new();
+    for file_path in discovered_files {
+        // Apply include filter if specified
+        if let Some(include_pattern) = &include {
+            if !file_path.to_string_lossy().contains(include_pattern) {
+                continue;
+            }
+        }
+
+        if let Ok(content) = std::fs::read_to_string(&file_path) {
+            analyzed_files.push((file_path, content));
+        }
+    }
+
+    if analyzed_files.is_empty() {
+        eprintln!("No source files found matching criteria");
+        return Ok(());
+    }
+
+    // Build a simplified dependency graph
+    let mut graph_nodes = HashMap::new();
+    let mut graph_edges = Vec::new();
+
+    // Create nodes for each file
+    for (node_index, (file_path, content)) in analyzed_files.iter().enumerate() {
+        let file_name = file_path.file_name().unwrap().to_string_lossy();
+        graph_nodes.insert(file_name.to_string(), node_index);
+
+        // Simple dependency detection based on imports/includes
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("import ")
+                || trimmed.starts_with("from ")
+                || trimmed.starts_with("#include")
+                || trimmed.starts_with("use ")
+            {
+                // Extract potential file references
+                if let Some(referenced_file) = extract_file_reference(trimmed) {
+                    if let Some(&target_index) = graph_nodes.get(&referenced_file) {
+                        graph_edges.push((graph_nodes[&file_name.to_string()], target_index));
+                    }
+                }
+            }
+        }
+    }
+
+    let num_nodes = graph_nodes.len();
+    let num_edges = graph_edges.len();
+
+    // Initialize results
+    let mut results = serde_json::json!({
+        "summary": {
+            "total_nodes": num_nodes,
+            "total_edges": num_edges,
+            "density": if num_nodes > 1 {
+                num_edges as f64 / (num_nodes * (num_nodes - 1)) as f64
+            } else {
+                0.0
+            }
+        },
+        "metrics": {}
+    });
+
+    // Compute requested metrics
+    for metric_type in &metrics {
+        match metric_type {
+            GraphMetricType::Centrality => {
+                let centrality_scores =
+                    calculate_betweenness_centrality(&graph_nodes, &graph_edges);
+                let mut centrality_results: Vec<_> = centrality_scores
+                    .iter()
+                    .map(|(name, score)| {
+                        serde_json::json!({
+                            "node": name,
+                            "centrality": score,
+                            "rank": 0  // Will be set below
+                        })
+                    })
+                    .collect();
+
+                // Sort by centrality score (descending)
+                centrality_results.sort_by(|a, b| {
+                    b["centrality"]
+                        .as_f64()
+                        .unwrap()
+                        .partial_cmp(&a["centrality"].as_f64().unwrap())
+                        .unwrap()
+                });
+
+                // Add ranks
+                for (i, result) in centrality_results.iter_mut().enumerate() {
+                    result["rank"] = (i + 1).into();
+                }
+
+                // Filter by minimum centrality and top-k
+                centrality_results.retain(|r| r["centrality"].as_f64().unwrap() >= min_centrality);
+                centrality_results.truncate(top_k);
+
+                results["metrics"]["centrality"] = serde_json::json!({
+                    "type": "betweenness_centrality",
+                    "nodes": centrality_results
+                });
+            }
+            GraphMetricType::PageRank => {
+                let pagerank_scores = calculate_pagerank(
+                    &graph_nodes,
+                    &graph_edges,
+                    damping_factor as f64,
+                    max_iterations,
+                    convergence_threshold,
+                    &pagerank_seeds,
+                );
+
+                let mut pagerank_results: Vec<_> = pagerank_scores
+                    .iter()
+                    .map(|(name, score)| {
+                        serde_json::json!({
+                            "node": name,
+                            "pagerank": score,
+                            "rank": 0  // Will be set below
+                        })
+                    })
+                    .collect();
+
+                // Sort by PageRank score (descending)
+                pagerank_results.sort_by(|a, b| {
+                    b["pagerank"]
+                        .as_f64()
+                        .unwrap()
+                        .partial_cmp(&a["pagerank"].as_f64().unwrap())
+                        .unwrap()
+                });
+
+                // Add ranks
+                for (i, result) in pagerank_results.iter_mut().enumerate() {
+                    result["rank"] = (i + 1).into();
+                }
+
+                // Apply top-k limit
+                pagerank_results.truncate(top_k);
+
+                results["metrics"]["pagerank"] = serde_json::json!({
+                    "damping_factor": damping_factor,
+                    "max_iterations": max_iterations,
+                    "convergence_threshold": convergence_threshold,
+                    "seeds": pagerank_seeds,
+                    "nodes": pagerank_results
+                });
+            }
+            GraphMetricType::Clustering => {
+                let clustering_scores =
+                    calculate_clustering_coefficient(&graph_nodes, &graph_edges);
+                let avg_clustering: f64 =
+                    clustering_scores.values().sum::<f64>() / clustering_scores.len() as f64;
+
+                let mut clustering_results: Vec<_> = clustering_scores
+                    .iter()
+                    .map(|(name, score)| {
+                        serde_json::json!({
+                            "node": name,
+                            "clustering_coefficient": score
+                        })
+                    })
+                    .collect();
+
+                // Sort by clustering coefficient (descending)
+                clustering_results.sort_by(|a, b| {
+                    b["clustering_coefficient"]
+                        .as_f64()
+                        .unwrap()
+                        .partial_cmp(&a["clustering_coefficient"].as_f64().unwrap())
+                        .unwrap()
+                });
+
+                clustering_results.truncate(top_k);
+
+                results["metrics"]["clustering"] = serde_json::json!({
+                    "average_clustering": avg_clustering,
+                    "nodes": clustering_results
+                });
+            }
+            GraphMetricType::Components => {
+                let components = find_connected_components(&graph_nodes, &graph_edges);
+                results["metrics"]["components"] = serde_json::json!({
+                    "num_components": components.len(),
+                    "component_sizes": components.iter().map(|c| c.len()).collect::<Vec<_>>(),
+                    "largest_component_size": components.iter().map(|c| c.len()).max().unwrap_or(0)
+                });
+            }
+            GraphMetricType::All => {
+                // This is handled by including all other metric types
+                continue;
+            }
+        }
+    }
+
+    let analysis_time = start_time.elapsed();
+
+    // Add performance metrics if requested
+    if perf {
+        results["performance"] = serde_json::json!({
+            "analysis_time_s": analysis_time.as_secs_f64(),
+            "nodes_per_second": num_nodes as f64 / analysis_time.as_secs_f64(),
+            "edges_per_second": num_edges as f64 / analysis_time.as_secs_f64()
+        });
+    }
+
+    // Output results based on format
+    match format {
+        GraphMetricsOutputFormat::Summary => {
+            println!("Graph Metrics Analysis Summary");
+            println!("============================");
+            println!("Nodes: {num_nodes}");
+            println!("Edges: {num_edges}");
+            println!(
+                "Density: {:.4}",
+                results["summary"]["density"].as_f64().unwrap()
+            );
+
+            if let Some(centrality) = results["metrics"]["centrality"].as_object() {
+                println!("\nTop Centrality Nodes:");
+                for node in centrality["nodes"].as_array().unwrap().iter().take(5) {
+                    println!(
+                        "  {}: {:.4}",
+                        node["node"].as_str().unwrap(),
+                        node["centrality"].as_f64().unwrap()
+                    );
+                }
+            }
+
+            if let Some(pagerank) = results["metrics"]["pagerank"].as_object() {
+                println!("\nTop PageRank Nodes:");
+                for node in pagerank["nodes"].as_array().unwrap().iter().take(5) {
+                    println!(
+                        "  {}: {:.4}",
+                        node["node"].as_str().unwrap(),
+                        node["pagerank"].as_f64().unwrap()
+                    );
+                }
+            }
+
+            if perf {
+                println!("\nPerformance:");
+                println!("  Analysis time: {:.2}s", analysis_time.as_secs_f64());
+            }
+        }
+        GraphMetricsOutputFormat::Detailed => {
+            println!("Graph Metrics Analysis Report");
+            println!("============================");
+            println!("{}", serde_json::to_string_pretty(&results)?);
+        }
+        GraphMetricsOutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&results)?);
+        }
+        GraphMetricsOutputFormat::Csv => {
+            println!("metric_type,node,value,rank");
+
+            if let Some(centrality) = results["metrics"]["centrality"].as_object() {
+                for node in centrality["nodes"].as_array().unwrap() {
+                    println!(
+                        "centrality,{},{},{}",
+                        node["node"].as_str().unwrap(),
+                        node["centrality"].as_f64().unwrap(),
+                        node["rank"].as_u64().unwrap()
+                    );
+                }
+            }
+
+            if let Some(pagerank) = results["metrics"]["pagerank"].as_object() {
+                for node in pagerank["nodes"].as_array().unwrap() {
+                    println!(
+                        "pagerank,{},{},{}",
+                        node["node"].as_str().unwrap(),
+                        node["pagerank"].as_f64().unwrap(),
+                        node["rank"].as_u64().unwrap()
+                    );
+                }
+            }
+        }
+        GraphMetricsOutputFormat::GraphML => {
+            let graphml = generate_graphml(&graph_nodes, &graph_edges, &results)?;
+            println!("{graphml}");
+        }
+        GraphMetricsOutputFormat::Markdown => {
+            println!("# Graph Metrics Analysis Report\n");
+            println!("## Summary\n");
+            println!("- **Nodes**: {num_nodes}");
+            println!("- **Edges**: {num_edges}");
+            println!(
+                "- **Density**: {:.4}\n",
+                results["summary"]["density"].as_f64().unwrap()
+            );
+
+            if let Some(centrality) = results["metrics"]["centrality"].as_object() {
+                println!("## Centrality Analysis\n");
+                println!("| Rank | Node | Centrality |");
+                println!("| ---- | ---- | ---------- |");
+                for node in centrality["nodes"].as_array().unwrap() {
+                    println!(
+                        "| {} | {} | {:.4} |",
+                        node["rank"].as_u64().unwrap(),
+                        node["node"].as_str().unwrap(),
+                        node["centrality"].as_f64().unwrap()
+                    );
+                }
+                println!();
+            }
+
+            if let Some(pagerank) = results["metrics"]["pagerank"].as_object() {
+                println!("## PageRank Analysis\n");
+                println!("| Rank | Node | PageRank |");
+                println!("| ---- | ---- | -------- |");
+                for node in pagerank["nodes"].as_array().unwrap() {
+                    println!(
+                        "| {} | {} | {:.4} |",
+                        node["rank"].as_u64().unwrap(),
+                        node["node"].as_str().unwrap(),
+                        node["pagerank"].as_f64().unwrap()
+                    );
+                }
+                println!();
+            }
+        }
+    }
+
+    // Export GraphML if requested
+    if export_graphml {
+        let graphml_path = output.clone().unwrap_or_else(|| {
+            PathBuf::from(format!(
+                "{}_graph_metrics.graphml",
+                project_path.file_name().unwrap().to_string_lossy()
+            ))
+        });
+        let graphml_content = generate_graphml(&graph_nodes, &graph_edges, &results)?;
+        std::fs::write(&graphml_path, graphml_content)?;
+        eprintln!("📊 GraphML exported to: {}", graphml_path.display());
+    }
+
+    // Write to output file if specified
+    if let Some(output_path) = output {
+        let content = match format {
+            GraphMetricsOutputFormat::Json => serde_json::to_string_pretty(&results)?,
+            GraphMetricsOutputFormat::Csv => {
+                let mut csv_content = String::from("metric_type,node,value,rank\n");
+
+                if let Some(centrality) = results["metrics"]["centrality"].as_object() {
+                    for node in centrality["nodes"].as_array().unwrap() {
+                        csv_content.push_str(&format!(
+                            "centrality,{},{},{}\n",
+                            node["node"].as_str().unwrap(),
+                            node["centrality"].as_f64().unwrap(),
+                            node["rank"].as_u64().unwrap()
+                        ));
+                    }
+                }
+
+                if let Some(pagerank) = results["metrics"]["pagerank"].as_object() {
+                    for node in pagerank["nodes"].as_array().unwrap() {
+                        csv_content.push_str(&format!(
+                            "pagerank,{},{},{}\n",
+                            node["node"].as_str().unwrap(),
+                            node["pagerank"].as_f64().unwrap(),
+                            node["rank"].as_u64().unwrap()
+                        ));
+                    }
+                }
+                csv_content
+            }
+            _ => format!("{results:#?}"),
+        };
+        std::fs::write(&output_path, content)?;
+        eprintln!("📄 Results written to {}", output_path.display());
+    }
+
+    Ok(())
+}
+
+// Helper functions for graph metrics calculation
+
+fn extract_file_reference(import_line: &str) -> Option<String> {
+    // Simple heuristic to extract file references from import statements
+    if import_line.contains("\"") {
+        if let Some(start) = import_line.find('"') {
+            if let Some(end) = import_line[start + 1..].find('"') {
+                let referenced = &import_line[start + 1..start + 1 + end];
+                if referenced.ends_with(".rs")
+                    || referenced.ends_with(".ts")
+                    || referenced.ends_with(".js")
+                    || referenced.ends_with(".py")
+                    || referenced.ends_with(".c")
+                    || referenced.ends_with(".cpp")
+                {
+                    return Some(referenced.split('/').next_back().unwrap().to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+fn calculate_betweenness_centrality(
+    nodes: &HashMap<String, usize>,
+    edges: &[(usize, usize)],
+) -> HashMap<String, f64> {
+    let mut centrality = HashMap::new();
+
+    // Initialize all nodes with 0 centrality
+    for name in nodes.keys() {
+        centrality.insert(name.clone(), 0.0);
+    }
+
+    // Simplified betweenness centrality calculation
+    // In a real implementation, you'd use algorithms like Brandes' algorithm
+    for (name, &node_idx) in nodes {
+        let mut paths_through = 0;
+        for &(from, to) in edges {
+            if from == node_idx || to == node_idx {
+                paths_through += 1;
+            }
+        }
+        centrality.insert(name.clone(), paths_through as f64 / edges.len() as f64);
+    }
+
+    centrality
+}
+
+fn calculate_pagerank(
+    nodes: &HashMap<String, usize>,
+    edges: &[(usize, usize)],
+    damping_factor: f64,
+    max_iterations: usize,
+    convergence_threshold: f64,
+    _seeds: &[String],
+) -> HashMap<String, f64> {
+    let n = nodes.len();
+    if n == 0 {
+        return HashMap::new();
+    }
+
+    let mut pagerank = HashMap::new();
+    let initial_value = 1.0 / n as f64;
+
+    // Initialize PageRank values
+    for name in nodes.keys() {
+        pagerank.insert(name.clone(), initial_value);
+    }
+
+    // Build adjacency list
+    let mut out_links: HashMap<usize, Vec<usize>> = HashMap::new();
+    let mut in_links: HashMap<usize, Vec<usize>> = HashMap::new();
+
+    for &(from, to) in edges {
+        out_links.entry(from).or_default().push(to);
+        in_links.entry(to).or_default().push(from);
+    }
+
+    // Iterate PageRank algorithm
+    for _ in 0..max_iterations {
+        let mut new_pagerank = HashMap::new();
+
+        for (name, &node_idx) in nodes {
+            let mut rank = (1.0 - damping_factor) / n as f64;
+
+            if let Some(incoming) = in_links.get(&node_idx) {
+                for &from_idx in incoming {
+                    let from_name = nodes.iter().find(|(_, &idx)| idx == from_idx).unwrap().0;
+                    let from_rank = pagerank[from_name];
+                    let from_out_degree = out_links.get(&from_idx).map(|v| v.len()).unwrap_or(1);
+                    rank += damping_factor * from_rank / from_out_degree as f64;
+                }
+            }
+
+            new_pagerank.insert(name.clone(), rank);
+        }
+
+        // Check convergence
+        let mut max_diff: f64 = 0.0;
+        for (name, &new_rank) in &new_pagerank {
+            let old_rank = pagerank[name];
+            max_diff = max_diff.max((new_rank - old_rank).abs());
+        }
+
+        pagerank = new_pagerank;
+
+        if max_diff < convergence_threshold {
+            break;
+        }
+    }
+
+    pagerank
+}
+
+fn calculate_clustering_coefficient(
+    nodes: &HashMap<String, usize>,
+    edges: &[(usize, usize)],
+) -> HashMap<String, f64> {
+    let mut clustering = HashMap::new();
+
+    // Build adjacency list
+    let mut adjacency: HashMap<usize, Vec<usize>> = HashMap::new();
+    for &(from, to) in edges {
+        adjacency.entry(from).or_default().push(to);
+        adjacency.entry(to).or_default().push(from);
+    }
+
+    for (name, &node_idx) in nodes {
+        let neighbors = adjacency.get(&node_idx).cloned().unwrap_or_default();
+        let degree = neighbors.len();
+
+        if degree < 2 {
+            clustering.insert(name.clone(), 0.0);
+            continue;
+        }
+
+        // Count triangles
+        let mut triangles = 0;
+        for i in 0..neighbors.len() {
+            for j in (i + 1)..neighbors.len() {
+                let neighbor_i = neighbors[i];
+                let neighbor_j = neighbors[j];
+
+                // Check if neighbor_i and neighbor_j are connected
+                if adjacency
+                    .get(&neighbor_i)
+                    .unwrap_or(&Vec::new())
+                    .contains(&neighbor_j)
+                {
+                    triangles += 1;
+                }
+            }
+        }
+
+        let possible_triangles = degree * (degree - 1) / 2;
+        let coefficient = if possible_triangles > 0 {
+            triangles as f64 / possible_triangles as f64
+        } else {
+            0.0
+        };
+
+        clustering.insert(name.clone(), coefficient);
+    }
+
+    clustering
+}
+
+fn find_connected_components(
+    nodes: &HashMap<String, usize>,
+    edges: &[(usize, usize)],
+) -> Vec<Vec<String>> {
+    let mut visited = std::collections::HashSet::new();
+    let mut components = Vec::new();
+
+    // Build adjacency list
+    let mut adjacency: HashMap<usize, Vec<usize>> = HashMap::new();
+    for &(from, to) in edges {
+        adjacency.entry(from).or_default().push(to);
+        adjacency.entry(to).or_default().push(from);
+    }
+
+    for &node_idx in nodes.values() {
+        if visited.contains(&node_idx) {
+            continue;
+        }
+
+        // DFS to find connected component
+        let mut component = Vec::new();
+        let mut stack = vec![node_idx];
+
+        while let Some(current) = stack.pop() {
+            if visited.contains(&current) {
+                continue;
+            }
+
+            visited.insert(current);
+
+            // Find node name
+            let current_name = nodes
+                .iter()
+                .find(|(_, &idx)| idx == current)
+                .unwrap()
+                .0
+                .clone();
+            component.push(current_name);
+
+            // Add neighbors to stack
+            if let Some(neighbors) = adjacency.get(&current) {
+                for &neighbor in neighbors {
+                    if !visited.contains(&neighbor) {
+                        stack.push(neighbor);
+                    }
+                }
+            }
+        }
+
+        components.push(component);
+    }
+
+    components
+}
+
+fn generate_graphml(
+    nodes: &HashMap<String, usize>,
+    edges: &[(usize, usize)],
+    results: &serde_json::Value,
+) -> anyhow::Result<String> {
+    let mut graphml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns
+         http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key id="centrality" for="node" attr.name="centrality" attr.type="double"/>
+  <key id="pagerank" for="node" attr.name="pagerank" attr.type="double"/>
+  <graph id="G" edgedefault="directed">
+"#,
+    );
+
+    // Add nodes
+    for (name, &idx) in nodes {
+        graphml.push_str(&format!("    <node id=\"n{idx}\">\n"));
+        graphml.push_str(&format!("      <data key=\"name\">{name}</data>\n"));
+
+        // Add centrality data if available
+        if let Some(centrality_metrics) = results["metrics"]["centrality"].as_object() {
+            if let Some(nodes_array) = centrality_metrics["nodes"].as_array() {
+                for node in nodes_array {
+                    if node["node"].as_str() == Some(name) {
+                        graphml.push_str(&format!(
+                            "      <data key=\"centrality\">{}</data>\n",
+                            node["centrality"].as_f64().unwrap()
+                        ));
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Add PageRank data if available
+        if let Some(pagerank_metrics) = results["metrics"]["pagerank"].as_object() {
+            if let Some(nodes_array) = pagerank_metrics["nodes"].as_array() {
+                for node in nodes_array {
+                    if node["node"].as_str() == Some(name) {
+                        graphml.push_str(&format!(
+                            "      <data key=\"pagerank\">{}</data>\n",
+                            node["pagerank"].as_f64().unwrap()
+                        ));
+                        break;
+                    }
+                }
+            }
+        }
+
+        graphml.push_str("    </node>\n");
+    }
+
+    // Add edges
+    for &(from, to) in edges {
+        graphml.push_str(&format!(
+            "    <edge source=\"n{from}\" target=\"n{to}\"/>\n"
+        ));
+    }
+
+    graphml.push_str("  </graph>\n</graphml>");
+
+    Ok(graphml)
+}
+
+/// Handle name similarity analysis
+#[allow(clippy::too_many_arguments)]
+async fn handle_analyze_name_similarity(
+    project_path: PathBuf,
+    query: String,
+    top_k: usize,
+    phonetic: bool,
+    scope: SearchScope,
+    threshold: f32,
+    format: NameSimilarityOutputFormat,
+    include: Option<String>,
+    exclude: Option<String>,
+    output: Option<PathBuf>,
+    perf: bool,
+    fuzzy: bool,
+    case_sensitive: bool,
+) -> anyhow::Result<()> {
+    use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
+    use std::time::Instant;
+
+    let start_time = Instant::now();
+
+    // Discover source files
+    let mut discovery_config = FileDiscoveryConfig::default();
+
+    // Add custom patterns if specified
+    if let Some(exclude_pattern) = &exclude {
+        discovery_config
+            .custom_ignore_patterns
+            .push(exclude_pattern.clone());
+    }
+
+    let discovery = ProjectFileDiscovery::new(project_path.clone()).with_config(discovery_config);
+    let discovered_files = discovery.discover_files()?;
+
+    // Filter files based on include pattern
+    let mut analyzed_files = Vec::new();
+    for file_path in discovered_files {
+        // Apply include filter if specified
+        if let Some(include_pattern) = &include {
+            if !file_path.to_string_lossy().contains(include_pattern) {
+                continue;
+            }
+        }
+
+        if let Ok(content) = std::fs::read_to_string(&file_path) {
+            analyzed_files.push((file_path, content));
+        }
+    }
+
+    if analyzed_files.is_empty() {
+        eprintln!("No source files found matching criteria");
+        return Ok(());
+    }
+
+    // Extract names/identifiers from source files
+    let mut all_names = Vec::new();
+    for (file_path, content) in &analyzed_files {
+        let names = extract_identifiers(content, &scope, file_path);
+        all_names.extend(names);
+    }
+
+    // Calculate similarity scores
+    let mut similarities = Vec::new();
+    let query_lower = if case_sensitive {
+        query.clone()
+    } else {
+        query.to_lowercase()
+    };
+
+    for name_info in &all_names {
+        let name_to_compare = if case_sensitive {
+            name_info.name.clone()
+        } else {
+            name_info.name.to_lowercase()
+        };
+
+        // String similarity (Jaro-Winkler approximation)
+        let mut similarity_score = calculate_string_similarity(&query_lower, &name_to_compare);
+
+        // Fuzzy matching (edit distance)
+        if fuzzy {
+            let edit_distance = calculate_edit_distance(&query_lower, &name_to_compare);
+            let max_len = query_lower.len().max(name_to_compare.len()) as f32;
+            let fuzzy_score = if max_len > 0.0 {
+                1.0 - (edit_distance as f32 / max_len)
+            } else {
+                1.0
+            };
+            similarity_score = similarity_score.max(fuzzy_score);
+        }
+
+        // Phonetic matching (simplified Soundex)
+        if phonetic {
+            let query_soundex = calculate_soundex(&query_lower);
+            let name_soundex = calculate_soundex(&name_to_compare);
+            if query_soundex == name_soundex {
+                similarity_score = similarity_score.max(0.8);
+            }
+        }
+
+        if similarity_score >= threshold {
+            similarities.push(NameSimilarityResult {
+                name: name_info.name.clone(),
+                similarity: similarity_score,
+                file: name_info.file.clone(),
+                line: name_info.line,
+                name_type: name_info.name_type.clone(),
+                context: name_info.context.clone(),
+            });
+        }
+    }
+
+    // Sort by similarity score (descending)
+    similarities.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
+    similarities.truncate(top_k);
+
+    let analysis_time = start_time.elapsed();
+
+    // Prepare results
+    let results = serde_json::json!({
+        "query": query,
+        "total_identifiers": all_names.len(),
+        "matches": similarities.len(),
+        "results": similarities.iter().map(|s| serde_json::json!({
+            "name": s.name,
+            "similarity": s.similarity,
+            "file": s.file.to_string_lossy(),
+            "line": s.line,
+            "type": s.name_type,
+            "context": s.context
+        })).collect::<Vec<_>>(),
+        "parameters": {
+            "scope": format!("{scope:?}"),
+            "threshold": threshold,
+            "phonetic": phonetic,
+            "fuzzy": fuzzy,
+            "case_sensitive": case_sensitive
+        }
+    });
+
+    // Add performance metrics if requested
+    let mut final_results = results;
+    if perf {
+        final_results["performance"] = serde_json::json!({
+            "analysis_time_s": analysis_time.as_secs_f64(),
+            "identifiers_per_second": all_names.len() as f64 / analysis_time.as_secs_f64(),
+            "files_analyzed": analyzed_files.len()
+        });
+    }
+
+    // Output results based on format
+    match format {
+        NameSimilarityOutputFormat::Summary => {
+            println!("Name Similarity Analysis");
+            println!("======================");
+            println!("Query: '{query}'");
+            println!("Total identifiers: {}", all_names.len());
+            println!("Matches found: {}", similarities.len());
+
+            if !similarities.is_empty() {
+                println!("\nTop matches:");
+                for (i, sim) in similarities.iter().take(10).enumerate() {
+                    println!(
+                        "{}. {} (similarity: {:.3}) in {}:{}",
+                        i + 1,
+                        sim.name,
+                        sim.similarity,
+                        sim.file.file_name().unwrap().to_string_lossy(),
+                        sim.line
+                    );
+                }
+            }
+
+            if perf {
+                println!("\nPerformance:");
+                println!("  Analysis time: {:.2}s", analysis_time.as_secs_f64());
+                println!("  Files analyzed: {}", analyzed_files.len());
+            }
+        }
+        NameSimilarityOutputFormat::Detailed => {
+            println!("Name Similarity Analysis Report");
+            println!("==============================");
+
+            for sim in &similarities {
+                println!("\nMatch: {}", sim.name);
+                println!("  Similarity: {:.3}", sim.similarity);
+                println!("  Type: {}", sim.name_type);
+                println!("  File: {}", sim.file.to_string_lossy());
+                println!("  Line: {}", sim.line);
+                if !sim.context.is_empty() {
+                    println!("  Context: {}", sim.context);
+                }
+            }
+        }
+        NameSimilarityOutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&final_results)?);
+        }
+        NameSimilarityOutputFormat::Csv => {
+            println!("name,similarity,type,file,line,context");
+            for sim in &similarities {
+                println!(
+                    "{},{:.3},{},{},{},\"{}\"",
+                    sim.name,
+                    sim.similarity,
+                    sim.name_type,
+                    sim.file.to_string_lossy(),
+                    sim.line,
+                    sim.context.replace('"', "\"\"")
+                );
+            }
+        }
+        NameSimilarityOutputFormat::Markdown => {
+            println!("# Name Similarity Analysis\n");
+            println!("**Query**: `{query}`\n");
+            println!("**Total identifiers**: {}\n", all_names.len());
+            println!("**Matches found**: {}\n", similarities.len());
+
+            if !similarities.is_empty() {
+                println!("## Results\n");
+                println!("| Rank | Name | Similarity | Type | File | Line |");
+                println!("| ---- | ---- | ---------- | ---- | ---- | ---- |");
+                for (i, sim) in similarities.iter().enumerate() {
+                    println!(
+                        "| {} | `{}` | {:.3} | {} | {} | {} |",
+                        i + 1,
+                        sim.name,
+                        sim.similarity,
+                        sim.name_type,
+                        sim.file.file_name().unwrap().to_string_lossy(),
+                        sim.line
+                    );
+                }
+            }
+        }
+    }
+
+    // Write to output file if specified
+    if let Some(output_path) = output {
+        let content = match format {
+            NameSimilarityOutputFormat::Json => serde_json::to_string_pretty(&final_results)?,
+            NameSimilarityOutputFormat::Csv => {
+                let mut csv_content = String::from("name,similarity,type,file,line,context\n");
+                for sim in &similarities {
+                    csv_content.push_str(&format!(
+                        "{},{:.3},{},{},{},\"{}\"\n",
+                        sim.name,
+                        sim.similarity,
+                        sim.name_type,
+                        sim.file.to_string_lossy(),
+                        sim.line,
+                        sim.context.replace('"', "\"\"")
+                    ));
+                }
+                csv_content
+            }
+            _ => format!("{final_results:#?}"),
+        };
+        std::fs::write(&output_path, content)?;
+        eprintln!("📄 Results written to {}", output_path.display());
+    }
+
+    Ok(())
+}
+
+// Helper structures for name similarity analysis
+
+#[derive(Debug, Clone)]
+struct NameInfo {
+    name: String,
+    file: PathBuf,
+    line: u32,
+    name_type: String,
+    context: String,
+}
+
+#[derive(Debug, Clone)]
+struct NameSimilarityResult {
+    name: String,
+    similarity: f32,
+    file: PathBuf,
+    line: u32,
+    name_type: String,
+    context: String,
+}
+
+// Helper functions for name similarity analysis
+
+fn extract_identifiers(content: &str, scope: &SearchScope, file_path: &Path) -> Vec<NameInfo> {
+    let mut identifiers = Vec::new();
+    let file_ext = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+
+    // Simple regex-based identifier extraction
+    for (line_num, line) in content.lines().enumerate() {
+        match file_ext {
+            "rs" => extract_rust_identifiers(
+                line,
+                line_num as u32 + 1,
+                scope,
+                file_path,
+                &mut identifiers,
+            ),
+            "ts" | "js" | "tsx" | "jsx" => extract_js_identifiers(
+                line,
+                line_num as u32 + 1,
+                scope,
+                file_path,
+                &mut identifiers,
+            ),
+            "py" => extract_python_identifiers(
+                line,
+                line_num as u32 + 1,
+                scope,
+                file_path,
+                &mut identifiers,
+            ),
+            "c" | "cpp" | "h" | "hpp" => extract_c_identifiers(
+                line,
+                line_num as u32 + 1,
+                scope,
+                file_path,
+                &mut identifiers,
+            ),
+            _ => extract_generic_identifiers(
+                line,
+                line_num as u32 + 1,
+                scope,
+                file_path,
+                &mut identifiers,
+            ),
+        }
+    }
+
+    identifiers
+}
+
+fn extract_rust_identifiers(
+    line: &str,
+    line_num: u32,
+    scope: &SearchScope,
+    file_path: &Path,
+    identifiers: &mut Vec<NameInfo>,
+) {
+    let trimmed = line.trim();
+
+    // Functions
+    if matches!(scope, SearchScope::Functions | SearchScope::All) {
+        if let Some(caps) = regex::Regex::new(r"(?:pub\s+)?(?:async\s+)?fn\s+(\w+)")
+            .unwrap()
+            .captures(trimmed)
+        {
+            if let Some(name) = caps.get(1) {
+                identifiers.push(NameInfo {
+                    name: name.as_str().to_string(),
+                    file: file_path.to_path_buf(),
+                    line: line_num,
+                    name_type: "function".to_string(),
+                    context: trimmed.to_string(),
+                });
+            }
+        }
+    }
+
+    // Types (structs, enums, traits)
+    if matches!(scope, SearchScope::Types | SearchScope::All) {
+        for pattern in &[
+            r"(?:pub\s+)?struct\s+(\w+)",
+            r"(?:pub\s+)?enum\s+(\w+)",
+            r"(?:pub\s+)?trait\s+(\w+)",
+            r"(?:pub\s+)?type\s+(\w+)",
+        ] {
+            if let Some(caps) = regex::Regex::new(pattern).unwrap().captures(trimmed) {
+                if let Some(name) = caps.get(1) {
+                    identifiers.push(NameInfo {
+                        name: name.as_str().to_string(),
+                        file: file_path.to_path_buf(),
+                        line: line_num,
+                        name_type: "type".to_string(),
+                        context: trimmed.to_string(),
+                    });
+                }
+            }
+        }
+    }
+
+    // Variables (let bindings)
+    if matches!(scope, SearchScope::Variables | SearchScope::All) {
+        if let Some(caps) = regex::Regex::new(r"let\s+(?:mut\s+)?(\w+)")
+            .unwrap()
+            .captures(trimmed)
+        {
+            if let Some(name) = caps.get(1) {
+                identifiers.push(NameInfo {
+                    name: name.as_str().to_string(),
+                    file: file_path.to_path_buf(),
+                    line: line_num,
+                    name_type: "variable".to_string(),
+                    context: trimmed.to_string(),
+                });
+            }
+        }
+    }
+}
+
+fn extract_js_identifiers(
+    line: &str,
+    line_num: u32,
+    scope: &SearchScope,
+    file_path: &Path,
+    identifiers: &mut Vec<NameInfo>,
+) {
+    let trimmed = line.trim();
+
+    // Functions
+    if matches!(scope, SearchScope::Functions | SearchScope::All) {
+        for pattern in &[
+            r"function\s+(\w+)",
+            r"(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\s*(?:function|\(.*?\)\s*=>)",
+            r"(\w+)\s*:\s*(?:async\s+)?function",
+        ] {
+            if let Some(caps) = regex::Regex::new(pattern).unwrap().captures(trimmed) {
+                if let Some(name) = caps.get(1) {
+                    identifiers.push(NameInfo {
+                        name: name.as_str().to_string(),
+                        file: file_path.to_path_buf(),
+                        line: line_num,
+                        name_type: "function".to_string(),
+                        context: trimmed.to_string(),
+                    });
+                }
+            }
+        }
+    }
+
+    // Classes and interfaces
+    if matches!(scope, SearchScope::Types | SearchScope::All) {
+        for pattern in &[r"class\s+(\w+)", r"interface\s+(\w+)", r"type\s+(\w+)\s*="] {
+            if let Some(caps) = regex::Regex::new(pattern).unwrap().captures(trimmed) {
+                if let Some(name) = caps.get(1) {
+                    identifiers.push(NameInfo {
+                        name: name.as_str().to_string(),
+                        file: file_path.to_path_buf(),
+                        line: line_num,
+                        name_type: "type".to_string(),
+                        context: trimmed.to_string(),
+                    });
+                }
+            }
+        }
+    }
+
+    // Variables
+    if matches!(scope, SearchScope::Variables | SearchScope::All) {
+        if let Some(caps) = regex::Regex::new(r"(?:const|let|var)\s+(\w+)")
+            .unwrap()
+            .captures(trimmed)
+        {
+            if let Some(name) = caps.get(1) {
+                identifiers.push(NameInfo {
+                    name: name.as_str().to_string(),
+                    file: file_path.to_path_buf(),
+                    line: line_num,
+                    name_type: "variable".to_string(),
+                    context: trimmed.to_string(),
+                });
+            }
+        }
+    }
+}
+
+fn extract_python_identifiers(
+    line: &str,
+    line_num: u32,
+    scope: &SearchScope,
+    file_path: &Path,
+    identifiers: &mut Vec<NameInfo>,
+) {
+    let trimmed = line.trim();
+
+    // Functions
+    if matches!(scope, SearchScope::Functions | SearchScope::All) {
+        if let Some(caps) = regex::Regex::new(r"def\s+(\w+)").unwrap().captures(trimmed) {
+            if let Some(name) = caps.get(1) {
+                identifiers.push(NameInfo {
+                    name: name.as_str().to_string(),
+                    file: file_path.to_path_buf(),
+                    line: line_num,
+                    name_type: "function".to_string(),
+                    context: trimmed.to_string(),
+                });
+            }
+        }
+    }
+
+    // Classes
+    if matches!(scope, SearchScope::Types | SearchScope::All) {
+        if let Some(caps) = regex::Regex::new(r"class\s+(\w+)")
+            .unwrap()
+            .captures(trimmed)
+        {
+            if let Some(name) = caps.get(1) {
+                identifiers.push(NameInfo {
+                    name: name.as_str().to_string(),
+                    file: file_path.to_path_buf(),
+                    line: line_num,
+                    name_type: "class".to_string(),
+                    context: trimmed.to_string(),
+                });
+            }
+        }
+    }
+
+    // Variables (simplified)
+    if matches!(scope, SearchScope::Variables | SearchScope::All) {
+        if let Some(caps) = regex::Regex::new(r"(\w+)\s*=").unwrap().captures(trimmed) {
+            if let Some(name) = caps.get(1) {
+                let name_str = name.as_str();
+                // Skip obvious non-variables
+                if ![
+                    "def", "class", "if", "for", "while", "try", "except", "with",
+                ]
+                .contains(&name_str)
+                {
+                    identifiers.push(NameInfo {
+                        name: name_str.to_string(),
+                        file: file_path.to_path_buf(),
+                        line: line_num,
+                        name_type: "variable".to_string(),
+                        context: trimmed.to_string(),
+                    });
+                }
+            }
+        }
+    }
+}
+
+fn extract_c_identifiers(
+    line: &str,
+    line_num: u32,
+    scope: &SearchScope,
+    file_path: &Path,
+    identifiers: &mut Vec<NameInfo>,
+) {
+    let trimmed = line.trim();
+
+    // Functions
+    if matches!(scope, SearchScope::Functions | SearchScope::All) {
+        if let Some(caps) =
+            regex::Regex::new(r"(?:static\s+)?(?:inline\s+)?(?:\w+\s+)*(\w+)\s*\([^)]*\)\s*\{")
+                .unwrap()
+                .captures(trimmed)
+        {
+            if let Some(name) = caps.get(1) {
+                identifiers.push(NameInfo {
+                    name: name.as_str().to_string(),
+                    file: file_path.to_path_buf(),
+                    line: line_num,
+                    name_type: "function".to_string(),
+                    context: trimmed.to_string(),
+                });
+            }
+        }
+    }
+
+    // Types (struct, enum, typedef)
+    if matches!(scope, SearchScope::Types | SearchScope::All) {
+        for pattern in &[r"struct\s+(\w+)", r"enum\s+(\w+)", r"typedef\s+.*\s+(\w+);"] {
+            if let Some(caps) = regex::Regex::new(pattern).unwrap().captures(trimmed) {
+                if let Some(name) = caps.get(1) {
+                    identifiers.push(NameInfo {
+                        name: name.as_str().to_string(),
+                        file: file_path.to_path_buf(),
+                        line: line_num,
+                        name_type: "type".to_string(),
+                        context: trimmed.to_string(),
+                    });
+                }
+            }
+        }
+    }
+}
+
+fn extract_generic_identifiers(
+    line: &str,
+    line_num: u32,
+    scope: &SearchScope,
+    file_path: &Path,
+    identifiers: &mut Vec<NameInfo>,
+) {
+    // Very basic identifier extraction for unknown file types
+    if matches!(scope, SearchScope::All) {
+        let identifier_regex = regex::Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
+        for word in line.split_whitespace() {
+            if let Some(caps) = identifier_regex.captures(word) {
+                if let Some(name) = caps.get(0) {
+                    if name.as_str().len() > 2 {
+                        // Skip very short identifiers
+                        identifiers.push(NameInfo {
+                            name: name.as_str().to_string(),
+                            file: file_path.to_path_buf(),
+                            line: line_num,
+                            name_type: "identifier".to_string(),
+                            context: line.trim().to_string(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn calculate_string_similarity(s1: &str, s2: &str) -> f32 {
+    // Simple Jaro similarity approximation
+    if s1 == s2 {
+        return 1.0;
+    }
+
+    let len1 = s1.len();
+    let len2 = s2.len();
+
+    if len1 == 0 || len2 == 0 {
+        return 0.0;
+    }
+
+    let match_distance = (len1.max(len2) / 2).saturating_sub(1);
+    let s1_chars: Vec<char> = s1.chars().collect();
+    let s2_chars: Vec<char> = s2.chars().collect();
+
+    let mut s1_matches = vec![false; len1];
+    let mut s2_matches = vec![false; len2];
+
+    let mut matches = 0;
+
+    // Identify matches
+    for i in 0..len1 {
+        let start = i.saturating_sub(match_distance);
+        let end = (i + match_distance + 1).min(len2);
+
+        for j in start..end {
+            if s2_matches[j] || s1_chars[i] != s2_chars[j] {
+                continue;
+            }
+            s1_matches[i] = true;
+            s2_matches[j] = true;
+            matches += 1;
+            break;
+        }
+    }
+
+    if matches == 0 {
+        return 0.0;
+    }
+
+    // Count transpositions
+    let mut transpositions = 0;
+    let mut k = 0;
+    for i in 0..len1 {
+        if !s1_matches[i] {
+            continue;
+        }
+        while !s2_matches[k] {
+            k += 1;
+        }
+        if s1_chars[i] != s2_chars[k] {
+            transpositions += 1;
+        }
+        k += 1;
+    }
+
+    (matches as f32 / len1 as f32
+        + matches as f32 / len2 as f32
+        + (matches - transpositions / 2) as f32 / matches as f32)
+        / 3.0
+}
+
+fn calculate_edit_distance(s1: &str, s2: &str) -> usize {
+    let len1 = s1.len();
+    let len2 = s2.len();
+
+    if len1 == 0 {
+        return len2;
+    }
+    if len2 == 0 {
+        return len1;
+    }
+
+    let s1_chars: Vec<char> = s1.chars().collect();
+    let s2_chars: Vec<char> = s2.chars().collect();
+
+    let mut dp = vec![vec![0; len2 + 1]; len1 + 1];
+
+    for (i, row) in dp.iter_mut().enumerate().take(len1 + 1) {
+        row[0] = i;
+    }
+    for j in 0..=len2 {
+        dp[0][j] = j;
+    }
+
+    for i in 1..=len1 {
+        for j in 1..=len2 {
+            let cost = if s1_chars[i - 1] == s2_chars[j - 1] {
+                0
+            } else {
+                1
+            };
+            dp[i][j] = (dp[i - 1][j] + 1)
+                .min(dp[i][j - 1] + 1)
+                .min(dp[i - 1][j - 1] + cost);
+        }
+    }
+
+    dp[len1][len2]
+}
+
+fn calculate_soundex(s: &str) -> String {
+    if s.is_empty() {
+        return String::new();
+    }
+
+    let chars: Vec<char> = s.to_uppercase().chars().collect();
+    let mut soundex = vec![chars[0]];
+
+    let get_code = |c: char| -> Option<char> {
+        match c {
+            'B' | 'F' | 'P' | 'V' => Some('1'),
+            'C' | 'G' | 'J' | 'K' | 'Q' | 'S' | 'X' | 'Z' => Some('2'),
+            'D' | 'T' => Some('3'),
+            'L' => Some('4'),
+            'M' | 'N' => Some('5'),
+            'R' => Some('6'),
+            _ => None,
+        }
+    };
+
+    let mut prev_code = get_code(chars[0]);
+
+    for &c in &chars[1..] {
+        if let Some(code) = get_code(c) {
+            if Some(code) != prev_code {
+                soundex.push(code);
+                if soundex.len() == 4 {
+                    break;
+                }
+            }
+            prev_code = Some(code);
+        } else {
+            prev_code = None;
+        }
+    }
+
+    // Pad with zeros
+    while soundex.len() < 4 {
+        soundex.push('0');
+    }
+
+    soundex.into_iter().collect()
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn handle_analyze_proof_annotations(
+    project_path: PathBuf,
+    format: ProofAnnotationOutputFormat,
+    high_confidence_only: bool,
+    include_evidence: bool,
+    property_type: Option<PropertyTypeFilter>,
+    verification_method: Option<VerificationMethodFilter>,
+    output: Option<PathBuf>,
+    perf: bool,
+    clear_cache: bool,
+) -> anyhow::Result<()> {
+    use crate::services::{
+        proof_annotator::{MockProofSource, ProofAnnotator},
+        symbol_table::SymbolTable,
+    };
+    use std::time::Instant;
+
+    let start_time = Instant::now();
+
+    // Create symbol table and proof annotator
+    let symbol_table = std::sync::Arc::new(SymbolTable::new());
+    let mut annotator = ProofAnnotator::new(symbol_table.clone());
+
+    // Clear cache if requested
+    if clear_cache {
+        annotator.clear_cache();
+    }
+
+    // Add mock proof sources for demonstration
+    // In a real implementation, these would be real proof sources like:
+    // - Rust borrow checker integration
+    // - External verification tool outputs
+    // - Manual proof annotations from comments
+    annotator.add_source(MockProofSource::new("borrow_checker".to_string(), 10, 5));
+    annotator.add_source(MockProofSource::new("static_analyzer".to_string(), 20, 3));
+    annotator.add_source(MockProofSource::new("formal_verifier".to_string(), 50, 2));
+
+    // Collect proof annotations
+    let proof_map = annotator.collect_proofs(&project_path).await;
+
+    // Filter annotations based on criteria
+    let filtered_annotations: Vec<_> = proof_map
+        .into_iter()
+        .flat_map(|(location, annotations)| {
+            annotations
+                .into_iter()
+                .filter(|annotation| {
+                    // Filter by confidence level
+                    if high_confidence_only {
+                        matches!(
+                            annotation.confidence_level,
+                            crate::models::unified_ast::ConfidenceLevel::High
+                        )
+                    } else {
+                        true
+                    }
+                })
+                .filter(|annotation| {
+                    // Filter by property type
+                    if let Some(ref filter) = property_type {
+                        match filter {
+                            PropertyTypeFilter::MemorySafety => matches!(
+                                annotation.property_proven,
+                                crate::models::unified_ast::PropertyType::MemorySafety
+                            ),
+                            PropertyTypeFilter::ThreadSafety => matches!(
+                                annotation.property_proven,
+                                crate::models::unified_ast::PropertyType::ThreadSafety
+                            ),
+                            PropertyTypeFilter::DataRaceFreeze => matches!(
+                                annotation.property_proven,
+                                crate::models::unified_ast::PropertyType::DataRaceFreeze
+                            ),
+                            PropertyTypeFilter::Termination => matches!(
+                                annotation.property_proven,
+                                crate::models::unified_ast::PropertyType::Termination
+                            ),
+                            PropertyTypeFilter::FunctionalCorrectness => matches!(
+                                annotation.property_proven,
+                                crate::models::unified_ast::PropertyType::FunctionalCorrectness(_)
+                            ),
+                            PropertyTypeFilter::ResourceBounds => matches!(
+                                annotation.property_proven,
+                                crate::models::unified_ast::PropertyType::ResourceBounds { .. }
+                            ),
+                            PropertyTypeFilter::All => true,
+                        }
+                    } else {
+                        true
+                    }
+                })
+                .filter(|annotation| {
+                    // Filter by verification method
+                    if let Some(ref filter) = verification_method {
+                        match filter {
+                            VerificationMethodFilter::FormalProof => matches!(
+                                annotation.method,
+                                crate::models::unified_ast::VerificationMethod::FormalProof { .. }
+                            ),
+                            VerificationMethodFilter::ModelChecking => matches!(
+                                annotation.method,
+                                crate::models::unified_ast::VerificationMethod::ModelChecking { .. }
+                            ),
+                            VerificationMethodFilter::StaticAnalysis => matches!(
+                                annotation.method,
+                                crate::models::unified_ast::VerificationMethod::StaticAnalysis { .. }
+                            ),
+                            VerificationMethodFilter::AbstractInterpretation => matches!(
+                                annotation.method,
+                                crate::models::unified_ast::VerificationMethod::AbstractInterpretation
+                            ),
+                            VerificationMethodFilter::BorrowChecker => matches!(
+                                annotation.method,
+                                crate::models::unified_ast::VerificationMethod::BorrowChecker
+                            ),
+                            VerificationMethodFilter::All => true,
+                        }
+                    } else {
+                        true
+                    }
+                })
+                .map(|annotation| (location.clone(), annotation))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+
+    let elapsed = start_time.elapsed();
+
+    // Format output
+    let result = match format {
+        ProofAnnotationOutputFormat::Summary => {
+            format_proof_annotations_summary(&filtered_annotations, perf, elapsed, &annotator)
+        }
+        ProofAnnotationOutputFormat::Full => format_proof_annotations_full(
+            &filtered_annotations,
+            include_evidence,
+            perf,
+            elapsed,
+            &annotator,
+        ),
+        ProofAnnotationOutputFormat::Json => {
+            let cache_stats = annotator.cache_stats();
+            let annotations_json: Vec<serde_json::Value> = filtered_annotations
+                .iter()
+                .map(|(location, annotation)| {
+                    serde_json::json!({
+                        "location": {
+                            "file_path": location.file_path.to_string_lossy(),
+                            "start_pos": location.span.start.0,
+                            "end_pos": location.span.end.0
+                        },
+                        "annotation": annotation
+                    })
+                })
+                .collect();
+
+            let json_data = serde_json::json!({
+                "proof_annotations": annotations_json,
+                "summary": {
+                    "total_annotations": filtered_annotations.len(),
+                    "analysis_time_ms": elapsed.as_millis(),
+                    "cache_stats": {
+                        "size": cache_stats.size,
+                        "files_tracked": cache_stats.files_tracked
+                    }
+                }
+            });
+            serde_json::to_string_pretty(&json_data)?
+        }
+        ProofAnnotationOutputFormat::Markdown => format_proof_annotations_markdown(
+            &filtered_annotations,
+            include_evidence,
+            perf,
+            elapsed,
+            &annotator,
+        ),
+        ProofAnnotationOutputFormat::Sarif => {
+            format_proof_annotations_sarif(&filtered_annotations)?
+        }
+    };
+
+    // Output to file or stdout
+    if let Some(output_path) = output {
+        tokio::fs::write(&output_path, &result).await?;
+        eprintln!(
+            "Proof annotations analysis written to {}",
+            output_path.display()
+        );
+    } else {
+        println!("{result}");
+    }
+
+    Ok(())
+}
+
+fn format_proof_annotations_summary(
+    annotations: &[(
+        crate::models::unified_ast::Location,
+        crate::models::unified_ast::ProofAnnotation,
+    )],
+    perf: bool,
+    elapsed: std::time::Duration,
+    annotator: &crate::services::proof_annotator::ProofAnnotator,
+) -> String {
+    let mut output = String::new();
+
+    output.push_str("Proof Annotations Summary\n");
+    output.push_str("========================\n\n");
+
+    output.push_str(&format!("Total annotations found: {}\n", annotations.len()));
+
+    // Group by property type
+    let mut property_counts = std::collections::HashMap::new();
+    let mut method_counts = std::collections::HashMap::new();
+    let mut confidence_counts = std::collections::HashMap::new();
+
+    for (_, annotation) in annotations {
+        *property_counts
+            .entry(format!("{:?}", annotation.property_proven))
+            .or_insert(0) += 1;
+        *method_counts
+            .entry(format!("{:?}", annotation.method))
+            .or_insert(0) += 1;
+        *confidence_counts
+            .entry(format!("{:?}", annotation.confidence_level))
+            .or_insert(0) += 1;
+    }
+
+    output.push_str("\nProperty Types:\n");
+    for (property, count) in property_counts {
+        output.push_str(&format!("  {property}: {count}\n"));
+    }
+
+    output.push_str("\nVerification Methods:\n");
+    for (method, count) in method_counts {
+        output.push_str(&format!("  {method}: {count}\n"));
+    }
+
+    output.push_str("\nConfidence Levels:\n");
+    for (level, count) in confidence_counts {
+        output.push_str(&format!("  {level}: {count}\n"));
+    }
+
+    if perf {
+        let cache_stats = annotator.cache_stats();
+        output.push_str("\nPerformance Metrics:\n");
+        output.push_str(&format!("  Analysis time: {}ms\n", elapsed.as_millis()));
+        output.push_str(&format!("  Cache size: {}\n", cache_stats.size));
+        output.push_str(&format!("  Files tracked: {}\n", cache_stats.files_tracked));
+    }
+
+    output
+}
+
+fn format_proof_annotations_full(
+    annotations: &[(
+        crate::models::unified_ast::Location,
+        crate::models::unified_ast::ProofAnnotation,
+    )],
+    include_evidence: bool,
+    perf: bool,
+    elapsed: std::time::Duration,
+    annotator: &crate::services::proof_annotator::ProofAnnotator,
+) -> String {
+    let mut output = format_proof_annotations_summary(annotations, perf, elapsed, annotator);
+
+    output.push_str("\nDetailed Annotations:\n");
+    output.push_str(&"-".repeat(50));
+    output.push('\n');
+
+    for (i, (location, annotation)) in annotations.iter().enumerate() {
+        output.push_str(&format!("\n{}. {}\n", i + 1, annotation.tool_name));
+        output.push_str(&format!(
+            "   Location: {}:{}:{}\n",
+            location.file_path.display(),
+            location.span.start.0,
+            location.span.end.0
+        ));
+        output.push_str(&format!("   Property: {:?}\n", annotation.property_proven));
+        output.push_str(&format!("   Method: {:?}\n", annotation.method));
+        output.push_str(&format!(
+            "   Confidence: {:?}\n",
+            annotation.confidence_level
+        ));
+        output.push_str(&format!(
+            "   Date: {}\n",
+            annotation.date_verified.format("%Y-%m-%d %H:%M:%S")
+        ));
+
+        if include_evidence {
+            output.push_str(&format!("   Evidence: {:?}\n", annotation.evidence_type));
+            if !annotation.assumptions.is_empty() {
+                output.push_str("   Assumptions:\n");
+                for assumption in &annotation.assumptions {
+                    output.push_str(&format!("     - {assumption}\n"));
+                }
+            }
+        }
+    }
+
+    output
+}
+
+fn format_proof_annotations_markdown(
+    annotations: &[(
+        crate::models::unified_ast::Location,
+        crate::models::unified_ast::ProofAnnotation,
+    )],
+    include_evidence: bool,
+    perf: bool,
+    elapsed: std::time::Duration,
+    annotator: &crate::services::proof_annotator::ProofAnnotator,
+) -> String {
+    let mut output = String::new();
+
+    output.push_str("# Proof Annotations Report\n\n");
+    output.push_str(&format!(
+        "**Total annotations found:** {}\n\n",
+        annotations.len()
+    ));
+
+    // Summary statistics
+    let mut property_counts = std::collections::HashMap::new();
+    for (_, annotation) in annotations {
+        *property_counts
+            .entry(format!("{:?}", annotation.property_proven))
+            .or_insert(0) += 1;
+    }
+
+    output.push_str("## Property Types\n\n");
+    for (property, count) in property_counts {
+        output.push_str(&format!("- **{property}**: {count}\n"));
+    }
+
+    output.push_str("\n## Detailed Annotations\n\n");
+
+    for (location, annotation) in annotations {
+        output.push_str(&format!("### {}\n\n", annotation.tool_name));
+        output.push_str(&format!("- **File**: `{}`\n", location.file_path.display()));
+        output.push_str(&format!(
+            "- **Byte positions**: {}:{}\n",
+            location.span.start.0, location.span.end.0
+        ));
+        output.push_str(&format!(
+            "- **Property**: {:?}\n",
+            annotation.property_proven
+        ));
+        output.push_str(&format!("- **Method**: {:?}\n", annotation.method));
+        output.push_str(&format!(
+            "- **Confidence**: {:?}\n",
+            annotation.confidence_level
+        ));
+
+        if include_evidence {
+            output.push_str(&format!("- **Evidence**: {:?}\n", annotation.evidence_type));
+            if !annotation.assumptions.is_empty() {
+                output.push_str("- **Assumptions**:\n");
+                for assumption in &annotation.assumptions {
+                    output.push_str(&format!("  - {assumption}\n"));
+                }
+            }
+        }
+        output.push('\n');
+    }
+
+    if perf {
+        let cache_stats = annotator.cache_stats();
+        output.push_str("## Performance Metrics\n\n");
+        output.push_str(&format!("- **Analysis time**: {}ms\n", elapsed.as_millis()));
+        output.push_str(&format!("- **Cache size**: {}\n", cache_stats.size));
+        output.push_str(&format!(
+            "- **Files tracked**: {}\n",
+            cache_stats.files_tracked
+        ));
+    }
+
+    output
+}
+
+fn format_proof_annotations_sarif(
+    annotations: &[(
+        crate::models::unified_ast::Location,
+        crate::models::unified_ast::ProofAnnotation,
+    )],
+) -> anyhow::Result<String> {
+    use serde_json::json;
+
+    let results: Vec<_> = annotations
+        .iter()
+        .map(|(location, annotation)| {
+            json!({
+                "ruleId": format!("{:?}", annotation.property_proven),
+                "level": match annotation.confidence_level {
+                    crate::models::unified_ast::ConfidenceLevel::High => "note",
+                    crate::models::unified_ast::ConfidenceLevel::Medium => "info",
+                    crate::models::unified_ast::ConfidenceLevel::Low => "warning"
+                },
+                "message": {
+                    "text": format!("Property {:?} verified using {:?}",
+                        annotation.property_proven, annotation.method)
+                },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": location.file_path.to_string_lossy()
+                        },
+                        "region": {
+                            "startColumn": location.span.start.0,
+                            "endColumn": location.span.end.0
+                        }
+                    }
+                }],
+                "properties": {
+                    "tool": annotation.tool_name,
+                    "confidence": format!("{:?}", annotation.confidence_level),
+                    "verification_method": format!("{:?}", annotation.method),
+                    "date_verified": annotation.date_verified.to_rfc3339()
+                }
+            })
+        })
+        .collect();
+
+    let sarif = json!({
+        "version": "2.1.0",
+        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "paiml-mcp-agent-toolkit",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit"
+                }
+            },
+            "results": results
+        }]
+    });
+
+    Ok(serde_json::to_string_pretty(&sarif)?)
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn handle_analyze_incremental_coverage(
+    project_path: PathBuf,
+    baseline_branch: Option<String>,
+    cache_dir: Option<PathBuf>,
+    format: IncrementalCoverageOutputFormat,
+    include_aggregate: bool,
+    include_delta: bool,
+    include_file_coverage: bool,
+    _confidence_threshold: f64,
+    output: Option<PathBuf>,
+    _parallel: Option<usize>,
+    verbose: bool,
+) -> anyhow::Result<()> {
+    use crate::services::incremental_coverage_analyzer::*;
+
+    if verbose {
+        eprintln!("🔍 Starting incremental coverage analysis...");
+        eprintln!("📂 Project path: {}", project_path.display());
+        if let Some(ref branch) = baseline_branch {
+            eprintln!("🌿 Baseline branch: {branch}");
+        }
+    }
+
+    // Initialize analyzer
+    let cache_path = cache_dir.unwrap_or_else(|| project_path.join(".pmat-cache"));
+    let analyzer = IncrementalCoverageAnalyzer::new(&cache_path)?;
+
+    // Create a simplified changeset for analysis
+    let test_file = project_path.join("src/main.rs");
+    let file_id = if test_file.exists() {
+        let hash = analyzer.compute_file_hash(&test_file).await?;
+        FileId {
+            path: test_file,
+            hash,
+        }
+    } else {
+        // Use first Rust file found
+        let files = discover_rust_files(&project_path).await?;
+        if files.is_empty() {
+            anyhow::bail!("No Rust files found in project");
+        }
+        let first_file = &files[0];
+        let hash = analyzer.compute_file_hash(first_file).await?;
+        FileId {
+            path: first_file.clone(),
+            hash,
+        }
+    };
+
+    let changeset = ChangeSet {
+        modified_files: vec![file_id.clone()],
+        added_files: vec![],
+        deleted_files: vec![],
+    };
+
+    // Run analysis
+    let coverage_update = analyzer.analyze_changes(&changeset).await?;
+
+    if verbose {
+        eprintln!(
+            "✅ Analysis complete: {} files analyzed",
+            coverage_update.file_coverage.len()
+        );
+    }
+
+    // Format output
+    let content = match format {
+        IncrementalCoverageOutputFormat::Summary => {
+            format_incremental_coverage_summary(&coverage_update, include_aggregate, include_delta)
+        }
+        IncrementalCoverageOutputFormat::Detailed => format_incremental_coverage_markdown(
+            &coverage_update,
+            include_aggregate,
+            include_delta,
+            true,
+        ),
+        IncrementalCoverageOutputFormat::Json => format_incremental_coverage_json(
+            &coverage_update,
+            include_aggregate,
+            include_delta,
+            include_file_coverage,
+        )?,
+        IncrementalCoverageOutputFormat::Markdown => format_incremental_coverage_markdown(
+            &coverage_update,
+            include_aggregate,
+            include_delta,
+            include_file_coverage,
+        ),
+        IncrementalCoverageOutputFormat::Lcov => {
+            // For now, return JSON format for LCOV
+            format_incremental_coverage_json(
+                &coverage_update,
+                include_aggregate,
+                include_delta,
+                include_file_coverage,
+            )?
+        }
+        IncrementalCoverageOutputFormat::Delta => {
+            format_incremental_coverage_summary(&coverage_update, false, true)
+        }
+        IncrementalCoverageOutputFormat::Sarif => {
+            format_incremental_coverage_sarif(&coverage_update)?
+        }
+    };
+
+    // Output results
+    if let Some(output_path) = output {
+        tokio::fs::write(&output_path, &content).await?;
+        eprintln!(
+            "✅ Incremental coverage analysis written to: {}",
+            output_path.display()
+        );
+    } else {
+        println!("{content}");
+    }
+
+    Ok(())
+}
+
+fn discover_rust_files_sync(project_path: &std::path::Path) -> anyhow::Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
+
+    fn visit_dir(dir: &std::path::Path, files: &mut Vec<PathBuf>) -> anyhow::Result<()> {
+        if dir.is_dir() {
+            for entry in std::fs::read_dir(dir)? {
+                let entry = entry?;
+                let path = entry.path();
+
+                if path.is_file() {
+                    if let Some(ext) = path.extension() {
+                        if ext == "rs" {
+                            files.push(path);
+                        }
+                    }
+                } else if path.is_dir()
+                    && !path.file_name().unwrap().to_str().unwrap().starts_with('.')
+                {
+                    visit_dir(&path, files)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    visit_dir(project_path, &mut files)?;
+    Ok(files)
+}
+
+async fn discover_rust_files(project_path: &std::path::Path) -> anyhow::Result<Vec<PathBuf>> {
+    let project_path = project_path.to_path_buf();
+    tokio::task::spawn_blocking(move || discover_rust_files_sync(&project_path)).await?
+}
+
+fn format_incremental_coverage_summary(
+    update: &crate::services::incremental_coverage_analyzer::CoverageUpdate,
+    include_aggregate: bool,
+    include_delta: bool,
+) -> String {
+    let mut output = String::from("# Incremental Coverage Analysis Summary\n\n");
+
+    if include_aggregate {
+        output.push_str(&format!(
+            "## Aggregate Coverage\n\
+            - **Line Coverage:** {:.1}%\n\
+            - **Branch Coverage:** {:.1}%\n\
+            - **Function Coverage:** {:.1}%\n\
+            - **Files Covered:** {}/{}\n\n",
+            update.aggregate_coverage.line_percentage,
+            update.aggregate_coverage.branch_percentage,
+            update.aggregate_coverage.function_percentage,
+            update.aggregate_coverage.covered_files,
+            update.aggregate_coverage.total_files
+        ));
+    }
+
+    if include_delta {
+        output.push_str(&format!(
+            "## Delta Coverage\n\
+            - **New Lines Covered:** {}/{}\n\
+            - **Delta Percentage:** {:.1}%\n\n",
+            update.delta_coverage.new_lines_covered,
+            update.delta_coverage.new_lines_total,
+            update.delta_coverage.percentage
+        ));
+    }
+
+    output.push_str(&format!(
+        "## Summary\n\
+        - **Total Files Analyzed:** {}\n",
+        update.file_coverage.len()
+    ));
+
+    output
+}
+
+fn format_incremental_coverage_json(
+    update: &crate::services::incremental_coverage_analyzer::CoverageUpdate,
+    include_aggregate: bool,
+    include_delta: bool,
+    include_file_coverage: bool,
+) -> anyhow::Result<String> {
+    use serde_json::json;
+
+    let mut result = json!({});
+
+    if include_aggregate {
+        result["aggregate_coverage"] = json!({
+            "line_percentage": update.aggregate_coverage.line_percentage,
+            "branch_percentage": update.aggregate_coverage.branch_percentage,
+            "function_percentage": update.aggregate_coverage.function_percentage,
+            "total_files": update.aggregate_coverage.total_files,
+            "covered_files": update.aggregate_coverage.covered_files
+        });
+    }
+
+    if include_delta {
+        result["delta_coverage"] = json!({
+            "new_lines_covered": update.delta_coverage.new_lines_covered,
+            "new_lines_total": update.delta_coverage.new_lines_total,
+            "percentage": update.delta_coverage.percentage
+        });
+    }
+
+    if include_file_coverage {
+        let file_coverage: std::collections::HashMap<String, serde_json::Value> = update
+            .file_coverage
+            .iter()
+            .map(|(file_id, coverage)| {
+                (
+                    file_id.path.to_string_lossy().to_string(),
+                    json!({
+                        "line_coverage": coverage.line_coverage,
+                        "branch_coverage": coverage.branch_coverage,
+                        "function_coverage": coverage.function_coverage,
+                        "total_lines": coverage.total_lines,
+                        "covered_lines_count": coverage.covered_lines.len()
+                    }),
+                )
+            })
+            .collect();
+
+        result["file_coverage"] = json!(file_coverage);
+    }
+
+    Ok(serde_json::to_string_pretty(&result)?)
+}
+
+fn format_incremental_coverage_markdown(
+    update: &crate::services::incremental_coverage_analyzer::CoverageUpdate,
+    include_aggregate: bool,
+    include_delta: bool,
+    include_file_coverage: bool,
+) -> String {
+    let mut output = String::from("# Incremental Coverage Report\n\n");
+
+    if include_aggregate {
+        output.push_str(&format!(
+            "## 📊 Aggregate Coverage\n\n\
+            | Metric | Percentage | Count |\n\
+            |--------|------------|-------|\n\
+            | Line Coverage | {:.1}% | {}/{} files |\n\
+            | Branch Coverage | {:.1}% | - |\n\
+            | Function Coverage | {:.1}% | - |\n\n",
+            update.aggregate_coverage.line_percentage,
+            update.aggregate_coverage.covered_files,
+            update.aggregate_coverage.total_files,
+            update.aggregate_coverage.branch_percentage,
+            update.aggregate_coverage.function_percentage
+        ));
+    }
+
+    if include_delta {
+        output.push_str(&format!(
+            "## 🔄 Delta Coverage\n\n\
+            **New Lines:** {}/{} ({:.1}%)\n\n",
+            update.delta_coverage.new_lines_covered,
+            update.delta_coverage.new_lines_total,
+            update.delta_coverage.percentage
+        ));
+    }
+
+    if include_file_coverage && !update.file_coverage.is_empty() {
+        output.push_str("## 📁 File Coverage Details\n\n");
+        output.push_str("| File | Line % | Branch % | Function % | Lines |\n");
+        output.push_str("|------|--------|----------|------------|-------|\n");
+
+        for (file_id, coverage) in &update.file_coverage {
+            output.push_str(&format!(
+                "| {} | {:.1}% | {:.1}% | {:.1}% | {}/{} |\n",
+                file_id
+                    .path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy(),
+                coverage.line_coverage,
+                coverage.branch_coverage,
+                coverage.function_coverage,
+                coverage.covered_lines.len(),
+                coverage.total_lines
+            ));
+        }
+        output.push('\n');
+    }
+
+    output
+}
+
+fn format_incremental_coverage_sarif(
+    update: &crate::services::incremental_coverage_analyzer::CoverageUpdate,
+) -> anyhow::Result<String> {
+    use serde_json::json;
+
+    let results: Vec<_> = update.file_coverage.iter()
+        .filter(|(_, coverage)| coverage.line_coverage < 80.0) // Flag files with low coverage
+        .map(|(file_id, coverage)| {
+            json!({
+                "ruleId": "low-coverage",
+                "level": if coverage.line_coverage < 50.0 { "error" } else { "warning" },
+                "message": {
+                    "text": format!("Low test coverage: {:.1}% line coverage", coverage.line_coverage)
+                },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": file_id.path.to_string_lossy()
+                        }
+                    }
+                }],
+                "properties": {
+                    "line_coverage": coverage.line_coverage,
+                    "branch_coverage": coverage.branch_coverage,
+                    "function_coverage": coverage.function_coverage,
+                    "total_lines": coverage.total_lines,
+                    "covered_lines": coverage.covered_lines.len()
+                }
+            })
+        })
+        .collect();
+
+    let sarif = json!({
+        "version": "2.1.0",
+        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "paiml-mcp-agent-toolkit",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit"
+                }
+            },
+            "results": results
+        }]
+    });
+
+    Ok(serde_json::to_string_pretty(&sarif)?)
+}
+
+/// Handle symbol table analysis command
+#[allow(clippy::too_many_arguments)]
+async fn handle_analyze_symbol_table(
+    project_path: PathBuf,
+    format: SymbolTableOutputFormat,
+    filter: Option<SymbolTypeFilter>,
+    query: Option<String>,
+    include: Vec<String>,
+    exclude: Vec<String>,
+    _show_unreferenced: bool,
+    _show_references: bool,
+    output: Option<PathBuf>,
+    perf: bool,
+) -> anyhow::Result<()> {
+    use crate::services::context::AstItem;
+    use crate::services::deep_context::{
+        AnalysisType, CacheStrategy, DagType, DeepContextAnalyzer, DeepContextConfig,
+    };
+    use crate::services::symbol_table::SymbolTable;
+    use serde_json::json;
+    use std::time::Instant;
+
+    let start = Instant::now();
+
+    if perf {
+        eprintln!("🔍 Building symbol table for: {}", project_path.display());
+    }
+
+    // Generate deep context to get all symbols
+    let config = DeepContextConfig {
+        include_analyses: vec![AnalysisType::Ast],
+        period_days: 30,
+        dag_type: DagType::FullDependency,
+        complexity_thresholds: None,
+        max_depth: None,
+        include_patterns: include.clone(),
+        exclude_patterns: exclude.clone(),
+        cache_strategy: CacheStrategy::Normal,
+        parallel: num_cpus::get(),
+        file_classifier_config: None,
+    };
+
+    let analyzer = DeepContextAnalyzer::new(config);
+    let deep_context = analyzer.analyze_project(&project_path).await?;
+
+    // Build symbol table
+    let _symbol_table = SymbolTable::new();
+    let mut all_symbols = Vec::new();
+
+    // Extract symbols from AST contexts
+    for ast_ctx in &deep_context.analyses.ast_contexts {
+        for item in &ast_ctx.base.items {
+            let symbol_info = match item {
+                AstItem::Function {
+                    name,
+                    visibility,
+                    is_async,
+                    line,
+                } => Some((
+                    name.clone(),
+                    "function",
+                    *line,
+                    visibility.clone(),
+                    *is_async,
+                )),
+                AstItem::Struct {
+                    name,
+                    visibility,
+                    fields_count: _,
+                    line,
+                    ..
+                } => Some((name.clone(), "struct", *line, visibility.clone(), false)),
+                AstItem::Enum {
+                    name,
+                    visibility,
+                    variants_count: _,
+                    line,
+                } => Some((name.clone(), "enum", *line, visibility.clone(), false)),
+                AstItem::Trait {
+                    name,
+                    visibility,
+                    line,
+                } => Some((name.clone(), "trait", *line, visibility.clone(), false)),
+                AstItem::Module {
+                    name,
+                    visibility,
+                    line,
+                } => Some((name.clone(), "module", *line, visibility.clone(), false)),
+                AstItem::Use { path, line } => {
+                    Some((path.clone(), "import", *line, "pub".to_string(), false))
+                }
+                _ => None,
+            };
+
+            if let Some((name, kind, line, visibility, is_async)) = symbol_info {
+                // Apply filters
+                let passes_filter = match &filter {
+                    Some(SymbolTypeFilter::Functions) => kind == "function",
+                    Some(SymbolTypeFilter::Types) => matches!(kind, "struct" | "enum" | "trait"),
+                    Some(SymbolTypeFilter::Variables) => false, // Not implemented yet
+                    Some(SymbolTypeFilter::Modules) => kind == "module",
+                    Some(SymbolTypeFilter::All) | None => true,
+                };
+
+                if !passes_filter {
+                    continue;
+                }
+
+                // Apply query filter
+                if let Some(q) = &query {
+                    if !name.to_lowercase().contains(&q.to_lowercase()) {
+                        continue;
+                    }
+                }
+
+                all_symbols.push(SymbolInfo {
+                    name,
+                    kind: kind.to_string(),
+                    file: ast_ctx.base.path.clone(),
+                    line,
+                    visibility,
+                    is_async,
+                });
+            }
+        }
+    }
+
+    if perf {
+        eprintln!(
+            "⏱️  Symbol table built in {:.2}s ({} symbols found)",
+            start.elapsed().as_secs_f64(),
+            all_symbols.len()
+        );
+    }
+
+    // Format output
+    let content = match format {
+        SymbolTableOutputFormat::Summary => {
+            format_symbol_table_summary(&all_symbols, &deep_context)
+        }
+        SymbolTableOutputFormat::Detailed => format_symbol_table_detailed(&all_symbols),
+        SymbolTableOutputFormat::Json => serde_json::to_string_pretty(&json!({
+            "symbols": all_symbols,
+            "summary": {
+                "total_symbols": all_symbols.len(),
+                "by_type": count_by_type(&all_symbols),
+                "by_visibility": count_by_visibility(&all_symbols),
+            }
+        }))?,
+        SymbolTableOutputFormat::Csv => format_symbol_table_csv(&all_symbols),
+    };
+
+    // Output results
+    if let Some(output_path) = output {
+        tokio::fs::write(&output_path, &content).await?;
+        if perf {
+            eprintln!("✅ Symbol table written to: {}", output_path.display());
+        }
+    } else {
+        println!("{content}");
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, serde::Serialize)]
+struct SymbolInfo {
+    name: String,
+    kind: String,
+    file: String,
+    line: usize,
+    visibility: String,
+    is_async: bool,
+}
+
+fn format_symbol_table_summary(
+    symbols: &[SymbolInfo],
+    deep_context: &crate::services::deep_context::DeepContext,
+) -> String {
+    let mut output = String::from("# Symbol Table Analysis\n\n");
+
+    output.push_str(&format!("**Total Symbols:** {}\n", symbols.len()));
+    output.push_str(&format!(
+        "**Total Files:** {}\n\n",
+        deep_context.analyses.ast_contexts.len()
+    ));
+
+    output.push_str("## Symbols by Type\n");
+    let by_type = count_by_type(symbols);
+    for (kind, count) in by_type {
+        output.push_str(&format!("- {kind}: {count}\n"));
+    }
+
+    output.push_str("\n## Symbols by Visibility\n");
+    let by_vis = count_by_visibility(symbols);
+    for (vis, count) in by_vis {
+        output.push_str(&format!("- {vis}: {count}\n"));
+    }
+
+    output
+}
+
+fn format_symbol_table_detailed(symbols: &[SymbolInfo]) -> String {
+    let mut output = String::from("# Symbol Table - Detailed\n\n");
+
+    output.push_str("| Name | Type | File | Line | Visibility |\n");
+    output.push_str("|------|------|------|------|------------|\n");
+
+    for symbol in symbols {
+        output.push_str(&format!(
+            "| {} | {} | {} | {} | {} |\n",
+            symbol.name, symbol.kind, symbol.file, symbol.line, symbol.visibility
+        ));
+    }
+
+    output
+}
+
+fn format_symbol_table_csv(symbols: &[SymbolInfo]) -> String {
+    let mut output = String::from("name,type,file,line,visibility,is_async\n");
+
+    for symbol in symbols {
+        output.push_str(&format!(
+            "{},{},{},{},{},{}\n",
+            symbol.name, symbol.kind, symbol.file, symbol.line, symbol.visibility, symbol.is_async
+        ));
+    }
+
+    output
+}
+
+fn count_by_type(symbols: &[SymbolInfo]) -> Vec<(String, usize)> {
+    use std::collections::HashMap;
+    let mut counts = HashMap::new();
+
+    for symbol in symbols {
+        *counts.entry(symbol.kind.clone()).or_insert(0) += 1;
+    }
+
+    let mut result: Vec<_> = counts.into_iter().collect();
+    result.sort_by(|a, b| b.1.cmp(&a.1));
+    result
+}
+
+fn count_by_visibility(symbols: &[SymbolInfo]) -> Vec<(String, usize)> {
+    use std::collections::HashMap;
+    let mut counts = HashMap::new();
+
+    for symbol in symbols {
+        *counts.entry(symbol.visibility.clone()).or_insert(0) += 1;
+    }
+
+    let mut result: Vec<_> = counts.into_iter().collect();
+    result.sort_by(|a, b| b.1.cmp(&a.1));
+    result
 }

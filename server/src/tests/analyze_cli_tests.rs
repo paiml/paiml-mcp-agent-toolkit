@@ -49,6 +49,33 @@ mod tests {
                     AnalyzeCommands::Provability { .. } => {
                         panic!("Expected Churn command, got Provability");
                     }
+                    AnalyzeCommands::Duplicates { .. } => {
+                        panic!("Expected Churn command, got Duplicates");
+                    }
+                    AnalyzeCommands::DefectPrediction { .. } => {
+                        panic!("Expected Churn command, got DefectPrediction");
+                    }
+                    AnalyzeCommands::Comprehensive { .. } => {
+                        panic!("Expected Churn command, got Comprehensive");
+                    }
+                    AnalyzeCommands::GraphMetrics { .. } => {
+                        panic!("Expected Churn command, got GraphMetrics");
+                    }
+                    AnalyzeCommands::NameSimilarity { .. } => {
+                        panic!("Expected Churn command, got NameSimilarity");
+                    }
+                    AnalyzeCommands::ProofAnnotations { .. } => {
+                        panic!("Expected Churn command, got ProofAnnotations");
+                    }
+                    AnalyzeCommands::IncrementalCoverage { .. } => {
+                        panic!("Expected Churn command, got IncrementalCoverage");
+                    }
+                    AnalyzeCommands::SymbolTable { .. } => {
+                        panic!("Expected Churn command, got SymbolTable");
+                    }
+                    AnalyzeCommands::BigO { .. } => {
+                        panic!("Expected Churn command, got BigO");
+                    }
                 }
             }
             _ => panic!("Expected Analyze command"),
@@ -108,6 +135,33 @@ mod tests {
                 }
                 AnalyzeCommands::Provability { .. } => {
                     panic!("Expected Churn command, got Provability");
+                }
+                AnalyzeCommands::Duplicates { .. } => {
+                    panic!("Expected Churn command, got Duplicates");
+                }
+                AnalyzeCommands::DefectPrediction { .. } => {
+                    panic!("Expected Churn command, got DefectPrediction");
+                }
+                AnalyzeCommands::Comprehensive { .. } => {
+                    panic!("Expected Churn command, got Comprehensive");
+                }
+                AnalyzeCommands::GraphMetrics { .. } => {
+                    panic!("Expected Churn command, got GraphMetrics");
+                }
+                AnalyzeCommands::NameSimilarity { .. } => {
+                    panic!("Expected Churn command, got NameSimilarity");
+                }
+                AnalyzeCommands::ProofAnnotations { .. } => {
+                    panic!("Expected Churn command, got ProofAnnotations");
+                }
+                AnalyzeCommands::IncrementalCoverage { .. } => {
+                    panic!("Expected Churn command, got IncrementalCoverage");
+                }
+                AnalyzeCommands::SymbolTable { .. } => {
+                    panic!("Expected Churn command, got SymbolTable");
+                }
+                AnalyzeCommands::BigO { .. } => {
+                    panic!("Expected Churn command, got BigO");
                 }
             },
             _ => panic!("Expected Analyze command"),
