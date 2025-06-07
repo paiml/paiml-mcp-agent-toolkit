@@ -94,6 +94,20 @@ impl<T: CacheStrategy> ContentCache<T> {
         self.hashes.write().insert(cache_key, hash);
     }
 
+    /// Remove a specific entry from the cache
+    pub fn remove(&self, key: &T::Key) -> Option<Arc<T::Value>> {
+        let cache_key = self.strategy.cache_key(key);
+        let mut cache = self.cache.write();
+
+        if let Some(entry) = cache.pop(&cache_key) {
+            self.stats.remove_bytes(entry.size_bytes);
+            self.hashes.write().remove(&cache_key);
+            Some(entry.value.clone())
+        } else {
+            None
+        }
+    }
+
     /// Clear all entries from the cache
     pub fn clear(&self) {
         let mut cache = self.cache.write();

@@ -2,6 +2,7 @@ pub mod initialize;
 pub mod prompts;
 pub mod resources;
 pub mod tools;
+pub mod vectorized_tools;
 
 use crate::models::mcp::{McpRequest, McpResponse};
 use crate::TemplateServerTrait;

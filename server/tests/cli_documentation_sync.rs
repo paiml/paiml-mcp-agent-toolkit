@@ -17,7 +17,7 @@ fn parse_documented_cli_commands() -> Vec<DocumentedCommand> {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/cli-mcp.md");
+        .join("docs/todo/active/cli-mcp.md");
 
     let content = fs::read_to_string(&doc_path).expect("Failed to read cli-mcp.md");
 
@@ -294,7 +294,7 @@ fn test_documentation_examples_are_valid() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/cli-mcp.md");
+        .join("docs/todo/active/cli-mcp.md");
 
     let content = fs::read_to_string(&doc_path).expect("Failed to read cli-mcp.md");
 

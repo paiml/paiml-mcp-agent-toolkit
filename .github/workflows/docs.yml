@@ -1,0 +1,49 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+        
+      - name: Build Documentation
+        run: |
+          cargo doc --no-deps --all-features
+          echo '<meta http-equiv="refresh" content="0; url=paiml_mcp_agent_toolkit/index.html">' > target/doc/index.html
+          cp -r rust-docs target/doc/
+          
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './target/doc'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-22.04
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

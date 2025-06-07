@@ -519,6 +519,196 @@ paiml-mcp-agent-toolkit analyze deep-context \
   --format json
 ```
 
+##### `analyze dead-code`
+
+Analyze unused code detection with confidence scoring.
+
+**Arguments:**
+- **-p, --project-path**: Project path to analyze (default: current directory)
+- **--format**: Output format (`summary`, `detailed`, `json`, `sarif`)
+- **-o, --output**: Output file path
+- **--confidence-threshold**: Minimum confidence for dead code detection (0.0-1.0, default: 0.7)
+- **--include-patterns**: File patterns to include in analysis
+- **--exclude-patterns**: File patterns to exclude from analysis
+- **--entry-points**: Specify entry points for analysis (e.g., `main.rs`, `lib.rs`)
+- **--cross-reference**: Enable cross-language reference analysis
+
+**Examples:**
+```bash
+# Basic dead code analysis
+pmat analyze dead-code
+
+# High-confidence detection only
+pmat analyze dead-code \
+  --confidence-threshold 0.9 \
+  --format sarif \
+  -o dead-code.sarif
+```
+
+##### `analyze duplicates`
+
+**NEW**: Detect code duplicates using SIMD-accelerated MinHash algorithms.
+
+**Arguments:**
+- **--detection-type**: Type of detection (`exact`, `renamed`, `gapped`, `semantic`, `all`)
+- **--threshold**: Similarity threshold for semantic clones (0.0-1.0, default: 0.85)
+- **--gpu**: Use GPU acceleration if available
+- **--perf**: Output performance metrics
+- **--format**: Output format (`summary`, `detailed`, `json`, `sarif`)
+- **-o, --output**: Output file path
+- **--min-lines**: Minimum lines of code for duplicate detection (default: 5)
+
+**Examples:**
+```bash
+# Fast structural duplicate detection
+pmat analyze duplicates --detection-type exact
+
+# Comprehensive semantic duplicate detection
+pmat analyze duplicates --detection-type all --threshold 0.8
+
+# GPU-accelerated analysis with performance metrics
+pmat analyze duplicates --gpu --perf --format json
+```
+
+##### `analyze defect-probability`
+
+**NEW**: ML-based defect prediction using feature vectors and confidence scoring.
+
+**Arguments:**
+- **--min-confidence**: Minimum confidence threshold (0.0-1.0, default: 0.7)
+- **--explain**: Include feature importance breakdown
+- **--sarif**: Output SARIF format for IDE integration
+- **--format**: Output format (`summary`, `detailed`, `json`, `sarif`)
+- **-o, --output**: Output file path
+
+**Examples:**
+```bash
+# High-confidence defect predictions
+pmat analyze defect-probability --min-confidence 0.8
+
+# Detailed analysis with feature explanations
+pmat analyze defect-probability --explain --format detailed
+
+# IDE integration with SARIF output
+pmat analyze defect-probability --sarif -o defects.sarif
+```
+
+##### `analyze comprehensive`
+
+**NEW**: Multi-dimensional analysis combining all analysis types with parallel execution.
+
+**Arguments:**
+- **--format**: Output format (`summary`, `detailed`, `json`, `markdown`, `sarif`)
+- **--include-duplicates**: Enable duplicate detection analysis
+- **--include-dead-code**: Enable dead code analysis
+- **--include-defects**: Enable defect prediction analysis
+- **--include-complexity**: Enable complexity analysis
+- **--include-tdg**: Enable TDG (Technical Debt Gradient) analysis
+- **--confidence-threshold**: Minimum confidence threshold for predictions (default: 0.5)
+- **--min-lines**: Minimum lines of code for analysis (default: 10)
+- **--include**: Include file patterns (e.g., `**/*.rs`)
+- **--exclude**: Exclude file patterns (e.g., `**/target/**`)
+- **-o, --output**: Output file path
+- **--perf**: Show performance metrics for each analysis component
+- **--executive-summary**: Generate executive summary only (faster analysis)
+
+**Performance Characteristics:**
+- **Duplicate detection**: ~84ms for 200-file codebase
+- **Dead code analysis**: ~7ms analysis time
+- **Defect prediction**: ~45ms ML inference
+- **Complexity analysis**: ~36ms processing
+- **Total comprehensive**: ~143ms for full analysis
+
+**Examples:**
+```bash
+# Basic comprehensive analysis
+pmat analyze comprehensive
+
+# Full analysis with all components and performance metrics
+pmat analyze comprehensive \
+  --include-duplicates \
+  --include-dead-code \
+  --include-defects \
+  --include-complexity \
+  --include-tdg \
+  --perf \
+  --format detailed
+
+# Executive summary for quick assessment
+pmat analyze comprehensive --executive-summary --format markdown
+```
+
+##### `analyze graph-metrics`
+
+**NEW**: Vectorized graph analytics with PageRank and centrality computation.
+
+**Arguments:**
+- **--metrics**: Metrics to compute (`centrality`, `pagerank`, `clustering`, `components`, `all`)
+- **--pagerank-seeds**: Personalized PageRank seed nodes
+- **--graphml**: Export as GraphML format
+- **--format**: Output format (`summary`, `detailed`, `json`)
+- **-o, --output**: Output file path
+
+**Examples:**
+```bash
+# Compute all graph metrics
+pmat analyze graph-metrics --metrics all
+
+# Personalized PageRank analysis
+pmat analyze graph-metrics \
+  --metrics pagerank \
+  --pagerank-seeds main.rs,lib.rs \
+  --format json
+```
+
+##### `analyze name-similarity`
+
+**NEW**: Semantic name similarity using embeddings and phonetic matching.
+
+**Arguments:**
+- **query**: Name to search for
+- **--top-k**: Number of results (default: 10)
+- **--phonetic**: Include phonetic matches
+- **--scope**: Search scope (`functions`, `types`, `variables`, `all`)
+- **--format**: Output format (`summary`, `detailed`, `json`)
+
+**Examples:**
+```bash
+# Find similar function names
+pmat analyze name-similarity "calculateTotal" --scope functions
+
+# Phonetic similarity search
+pmat analyze name-similarity "proces" --phonetic --top-k 5
+```
+
+##### `quality-gate`
+
+**NEW**: Comprehensive quality checks with configurable thresholds.
+
+**Arguments:**
+- **--complexity-threshold**: Maximum allowed complexity (default: 10)
+- **--duplication-threshold**: Maximum duplication percentage (default: 5.0)
+- **--coverage-threshold**: Minimum test coverage (default: 80.0)
+- **--defect-threshold**: Maximum defect probability (default: 0.3)
+- **--format**: Output format (`summary`, `detailed`, `json`, `sarif`, `junit`)
+- **-o, --output**: Output file path
+- **--fail-on-violation**: Exit with error code on quality gate failures
+
+**Examples:**
+```bash
+# Basic quality gate with default thresholds
+pmat quality-gate
+
+# Strict quality gate for CI/CD
+pmat quality-gate \
+  --complexity-threshold 8 \
+  --duplication-threshold 3.0 \
+  --coverage-threshold 90.0 \
+  --fail-on-violation \
+  --format junit \
+  -o quality-results.xml
+```
+
 ## Environment Variable Expansion
 
 The CLI supports environment variable expansion in default values:

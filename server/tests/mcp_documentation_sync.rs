@@ -36,7 +36,7 @@ fn parse_documented_mcp_tools() -> Vec<DocumentedTool> {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/cli-mcp.md");
+        .join("docs/todo/active/cli-mcp.md");
 
     let content = fs::read_to_string(&doc_path).expect("Failed to read cli-mcp.md");
 
@@ -312,7 +312,7 @@ fn test_mcp_methods_match_documentation() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/cli-mcp.md");
+        .join("docs/todo/active/cli-mcp.md");
 
     let content = fs::read_to_string(&doc_path).expect("Failed to read cli-mcp.md");
 
@@ -353,7 +353,7 @@ fn test_mcp_error_codes_are_complete() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/cli-mcp.md");
+        .join("docs/todo/active/cli-mcp.md");
 
     let content = fs::read_to_string(&doc_path).expect("Failed to read cli-mcp.md");
 
