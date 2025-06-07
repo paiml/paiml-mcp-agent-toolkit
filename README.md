@@ -38,12 +38,30 @@ pmat demo --web --port 8080                   # Web interface
 pmat demo --repo https://github.com/user/repo # Analyze GitHub repo
 ```
 
+
+<details>
+<summary><i>💫 See CLI usage in action</i></summary>
+<br>
+<b>Context and code analysis:</b>
+<img src="https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/assets/demo2.gif" width=875>
+<br><br>
+<b>Running demos/visualization:</b>
+<img src="https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/assets/demo3.gif" width=875>
+</details>
+
 ### MCP Integration (Claude Code)
 
 ```bash
 # Add to Claude Code
 claude mcp add paiml-toolkit ~/.local/bin/pmat
 ```
+<details>
+<summary><i>💫 See Claude Code usage in action</i></summary>
+<br>
+<img src="https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/assets/demo1.gif" width=875>
+</details>
+
+
 
 Available MCP tools:
 - `generate_template` - Generate project files from templates
