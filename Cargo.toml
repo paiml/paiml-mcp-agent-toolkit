@@ -26,7 +26,7 @@ pr-run-mode = "plan"
 install-updater = false
 
 [profile.release]
-opt-level = "z"          # Optimize for size (-Os equivalent)
+opt-level = 3            # Maximum performance optimization
 lto = "fat"              # Enable Link Time Optimization
 codegen-units = 1        # Single codegen unit for maximum optimization
 panic = "abort"          # Remove unwinding machinery (~200KB savings)
