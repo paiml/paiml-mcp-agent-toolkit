@@ -14,6 +14,7 @@ use crate::services::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use rustc_hash::FxHashMap;
+use rayon::prelude::*;
 use std::path::Path;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -1519,8 +1520,8 @@ impl DeepContextAnalyzer {
             // Find top 10 most complex functions
             let mut all_functions: Vec<_> = complexity
                 .files
-                .iter()
-                .flat_map(|f| f.functions.iter().map(move |func| (f, func)))
+                .par_iter()
+                .flat_map(|f| f.functions.par_iter().map(move |func| (f, func)))
                 .collect();
             all_functions.sort_by_key(|(_, func)| std::cmp::Reverse(func.metrics.cyclomatic));
 
@@ -2282,18 +2283,21 @@ impl DeepContextAnalyzer {
         file_scores: &FxHashMap<String, TDGScore>,
     ) -> anyhow::Result<TDGSummary> {
         let total_files = file_scores.len();
-        let mut critical_files = 0;
-        let mut warning_files = 0;
-        let mut tdg_values: Vec<f64> = Vec::new();
+        let critical_files;
+        let warning_files;
+        let mut tdg_values: Vec<f64>;
 
-        for score in file_scores.values() {
-            tdg_values.push(score.value);
-            match score.severity {
-                TDGSeverity::Critical => critical_files += 1,
-                TDGSeverity::Warning => warning_files += 1,
-                TDGSeverity::Normal => {}
-            }
-        }
+        // Use parallel processing for score analysis
+        let (values, severities): (Vec<_>, Vec<_>) = file_scores
+            .par_iter()
+            .map(|(_, score)| (score.value, &score.severity))
+            .unzip();
+        
+        tdg_values = values;
+        
+        // Count severities in parallel
+        critical_files = severities.par_iter().filter(|s| matches!(s, TDGSeverity::Critical)).count();
+        warning_files = severities.par_iter().filter(|s| matches!(s, TDGSeverity::Warning)).count();
 
         tdg_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
@@ -2437,7 +2441,7 @@ impl DeepContextAnalyzer {
         file_scores: &FxHashMap<String, TDGScore>,
     ) -> anyhow::Result<Vec<DefectHotspot>> {
         let mut hotspots: Vec<_> = file_scores
-            .iter()
+            .par_iter()
             .filter(|(_, score)| score.value > 1.5) // Filter above threshold
             .map(|(path, score)| DefectHotspot {
                 location: FileLocation {
@@ -2747,7 +2751,7 @@ impl DeepContextAnalyzer {
                         .collect(),
                     summary: ComplexitySummaryForQA {
                         total_files: report.files.len(),
-                        total_functions: report.files.iter().map(|f| f.functions.len()).sum(),
+                        total_functions: report.files.par_iter().map(|f| f.functions.len()).sum(),
                     },
                 });
 
@@ -2771,7 +2775,7 @@ impl DeepContextAnalyzer {
                 summary: DeadCodeSummary {
                     total_functions,
                     dead_functions: dead_code.summary.dead_functions,
-                    total_lines: dead_code.ranked_files.iter().map(|f| f.total_lines).sum(),
+                    total_lines: dead_code.ranked_files.par_iter().map(|f| f.total_lines).sum(),
                     total_dead_lines: dead_code.summary.total_dead_lines,
                     dead_percentage: dead_code.summary.dead_percentage as f64,
                 },
@@ -2932,14 +2936,23 @@ async fn analyze_ast_contexts(
     let all_files = discovery.discover_files()?;
 
     // Filter files based on category
+    use crate::services::file_discovery::FileCategory;
+    
+    // Parallelize file categorization
+    let categorized_files: Vec<(PathBuf, FileCategory)> = all_files
+        .into_par_iter()
+        .map(|file_path| {
+            let category = ProjectFileDiscovery::categorize_file(&file_path);
+            (file_path, category)
+        })
+        .collect();
+    
+    // Collect results in single pass
     let mut source_files = Vec::new();
     let mut essential_files = Vec::new();
     let mut skipped_files = 0;
-
-    for file_path in all_files {
-        use crate::services::file_discovery::FileCategory;
-        let category = ProjectFileDiscovery::categorize_file(&file_path);
-
+    
+    for (file_path, category) in categorized_files {
         match category {
             FileCategory::SourceCode => {
                 source_files.push(file_path);
@@ -3216,24 +3229,24 @@ async fn analyze_dead_code(
         .collect();
 
     // Phase 2: Perform lightweight static analysis for dead code detection
-    let mut file_metrics = Vec::new();
-    let mut total_dead_functions = 0;
-    let mut total_dead_classes = 0;
-    let mut total_dead_lines = 0;
-
-    for file_path in &files {
-        if let Ok(content) = std::fs::read_to_string(file_path) {
-            let metrics = analyze_file_for_dead_code(file_path, &content);
-            total_dead_functions += metrics.dead_functions;
-            total_dead_classes += metrics.dead_classes;
-            total_dead_lines += metrics.dead_lines;
-            file_metrics.push(metrics);
-        }
-    }
+    // Use parallel processing for file I/O and analysis
+    let mut file_metrics: Vec<crate::models::dead_code::FileDeadCodeMetrics> = files
+        .par_iter()
+        .filter_map(|file_path| {
+            std::fs::read_to_string(file_path)
+                .ok()
+                .map(|content| analyze_file_for_dead_code(file_path, &content))
+        })
+        .collect();
+    
+    // Aggregate metrics
+    let total_dead_functions: usize = file_metrics.par_iter().map(|m| m.dead_functions).sum();
+    let total_dead_classes: usize = file_metrics.par_iter().map(|m| m.dead_classes).sum();
+    let total_dead_lines: usize = file_metrics.par_iter().map(|m| m.dead_lines).sum();
 
     // Phase 3: Calculate summary statistics
-    let files_with_dead_code = file_metrics.iter().filter(|f| f.dead_score > 0.0).count();
-    let total_lines_estimate: usize = file_metrics.iter().map(|f| f.total_lines).sum();
+    let files_with_dead_code = file_metrics.par_iter().filter(|f| f.dead_score > 0.0).count();
+    let total_lines_estimate: usize = file_metrics.par_iter().map(|f| f.total_lines).sum();
     let dead_percentage = if total_lines_estimate > 0 {
         (total_dead_lines as f32 / total_lines_estimate as f32) * 100.0
     } else {
