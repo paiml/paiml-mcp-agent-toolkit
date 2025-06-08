@@ -554,8 +554,8 @@ pub fn format_complexity_report(report: &ComplexityReport) -> String {
     output.push_str("\n## Detailed Violations\n\n");
 
     // Group violations by file
-    let mut violations_by_file: std::collections::HashMap<&str, Vec<&Violation>> =
-        std::collections::HashMap::new();
+    let mut violations_by_file: rustc_hash::FxHashMap<&str, Vec<&Violation>> =
+        rustc_hash::FxHashMap::default();
     for violation in &report.violations {
         let file = match violation {
             Violation::Error { file, .. } | Violation::Warning { file, .. } => file.as_str(),

@@ -9,7 +9,6 @@ use crate::services::cache::{
 use crate::services::deep_context::DeepContext;
 use futures::future::join_all;
 use ignore::gitignore::GitignoreBuilder;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;

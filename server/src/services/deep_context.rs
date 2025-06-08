@@ -13,7 +13,7 @@ use crate::services::{
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::path::Path;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -104,7 +104,7 @@ pub struct DeepContextResult {
     pub dead_code_analysis: Option<DeadCodeAnalysis>,
     pub ast_summaries: Option<Vec<AstSummary>>,
     pub churn_analysis: Option<CodeChurnAnalysis>,
-    pub language_stats: Option<HashMap<String, usize>>,
+    pub language_stats: Option<FxHashMap<String, usize>>,
 
     // Project metadata fields
     pub build_info: Option<crate::models::project_meta::BuildInfo>,
@@ -363,7 +363,7 @@ pub struct QualityScorecard {
 pub struct TemplateProvenance {
     pub scaffold_timestamp: DateTime<Utc>,
     pub templates_used: Vec<String>,
-    pub parameters: HashMap<String, serde_json::Value>,
+    pub parameters: FxHashMap<String, serde_json::Value>,
     pub drift_analysis: DriftAnalysis,
 }
 
@@ -378,8 +378,8 @@ pub struct DriftAnalysis {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DefectSummary {
     pub total_defects: usize,
-    pub by_severity: HashMap<String, usize>,
-    pub by_type: HashMap<String, usize>,
+    pub by_severity: FxHashMap<String, usize>,
+    pub by_type: FxHashMap<String, usize>,
     pub defect_density: f64,
 }
 
@@ -1585,7 +1585,7 @@ impl DeepContextAnalyzer {
         if let Some(ref satd) = context.analyses.satd_results {
             writeln!(output, "## Technical Debt Analysis\n")?;
 
-            let mut by_severity = std::collections::HashMap::new();
+            let mut by_severity = FxHashMap::default();
             for item in &satd.items {
                 *by_severity.entry(&item.severity).or_insert(0) += 1;
             }
@@ -1967,7 +1967,7 @@ impl DeepContextAnalyzer {
         dag: &DependencyGraph,
     ) -> anyhow::Result<()> {
         // Create a map of file paths to centrality scores
-        let mut centrality_map: HashMap<PathBuf, f32> = HashMap::new();
+        let mut centrality_map: FxHashMap<PathBuf, f32> = FxHashMap::default();
         
         for node in dag.nodes.values() {
             if let Some(centrality_str) = node.metadata.get("centrality") {
@@ -1987,7 +1987,7 @@ impl DeepContextAnalyzer {
     /// Recursively update node centrality scores
     fn update_node_centrality(
         node: &mut AnnotatedNode,
-        centrality_map: &HashMap<PathBuf, f32>,
+        centrality_map: &FxHashMap<PathBuf, f32>,
     ) {
         // Update this node's centrality if it's a file
         if node.node_type == NodeType::File {
@@ -2231,9 +2231,8 @@ impl DeepContextAnalyzer {
     fn collect_file_tdg_scores(
         &self,
         analyses: &ParallelAnalysisResults,
-    ) -> anyhow::Result<std::collections::HashMap<String, TDGScore>> {
-        use std::collections::HashMap;
-        let mut file_tdg_scores = HashMap::new();
+    ) -> anyhow::Result<FxHashMap<String, TDGScore>> {
+        let mut file_tdg_scores = FxHashMap::default();
 
         if let Some(ref ast_contexts) = analyses.ast_contexts {
             for enhanced_context in ast_contexts {
@@ -2280,7 +2279,7 @@ impl DeepContextAnalyzer {
     /// Calculate TDG summary from individual file scores
     fn calculate_tdg_summary(
         &self,
-        file_scores: &std::collections::HashMap<String, TDGScore>,
+        file_scores: &FxHashMap<String, TDGScore>,
     ) -> anyhow::Result<TDGSummary> {
         let total_files = file_scores.len();
         let mut critical_files = 0;
@@ -2351,8 +2350,8 @@ impl DeepContextAnalyzer {
     ) -> anyhow::Result<DefectSummary> {
         // Enumerate actual defects from all analysis sources
         let mut total_defects = 0usize;
-        let mut by_severity = HashMap::new();
-        let mut by_type = HashMap::new();
+        let mut by_severity = FxHashMap::default();
+        let mut by_type = FxHashMap::default();
         let mut total_loc = 0usize;
 
         // Count complexity violations
@@ -2435,7 +2434,7 @@ impl DeepContextAnalyzer {
     /// Generate hotspots from TDG scores
     fn generate_tdg_hotspots(
         &self,
-        file_scores: &std::collections::HashMap<String, TDGScore>,
+        file_scores: &FxHashMap<String, TDGScore>,
     ) -> anyhow::Result<Vec<DefectHotspot>> {
         let mut hotspots: Vec<_> = file_scores
             .iter()
@@ -2577,7 +2576,7 @@ impl DeepContextAnalyzer {
     #[allow(dead_code)]
     fn calculate_defect_probabilities(
         &self,
-        _file_metrics_map: &std::collections::HashMap<String, ()>,
+        _file_metrics_map: &FxHashMap<String, ()>,
         _calculator: &(),
     ) -> anyhow::Result<()> {
         // Legacy function disabled
@@ -2590,13 +2589,13 @@ impl DeepContextAnalyzer {
         &self,
         _project_analysis: &(),
         _analyses: &ParallelAnalysisResults,
-        _file_metrics_map: &std::collections::HashMap<String, ()>,
+        _file_metrics_map: &FxHashMap<String, ()>,
     ) -> anyhow::Result<DefectSummary> {
         // Legacy function disabled - return dummy data
         Ok(DefectSummary {
             total_defects: 0,
-            by_severity: HashMap::new(),
-            by_type: HashMap::new(),
+            by_severity: FxHashMap::default(),
+            by_type: FxHashMap::default(),
             defect_density: 0.0,
         })
     }
@@ -2607,7 +2606,7 @@ impl DeepContextAnalyzer {
         &self,
         _project_analysis: &(),
         _analyses: &ParallelAnalysisResults,
-        _file_metrics_map: &std::collections::HashMap<String, ()>,
+        _file_metrics_map: &FxHashMap<String, ()>,
     ) -> anyhow::Result<Vec<DefectHotspot>> {
         // Legacy function disabled
         Ok(Vec::new())
@@ -2829,7 +2828,7 @@ impl DeepContextAnalyzer {
         };
 
         // Create language statistics
-        let mut language_stats = HashMap::new();
+        let mut language_stats = FxHashMap::default();
         for ctx in &context.analyses.ast_contexts {
             *language_stats.entry(ctx.base.language.clone()).or_insert(0) += 1;
         }

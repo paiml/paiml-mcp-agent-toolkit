@@ -17,7 +17,7 @@ use crate::{
 use clap::{Parser, Subcommand, ValueEnum};
 use command_dispatcher::CommandDispatcher;
 use serde_json::Value;
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -2266,7 +2266,7 @@ async fn handle_context(
 /// Implements the lightweight detection strategy from Phase 3 of bug remediation
 #[allow(dead_code)]
 fn detect_primary_language(path: &Path) -> anyhow::Result<String> {
-    use std::collections::HashMap;
+    // FxHashMap is already imported at module level
     use walkdir::WalkDir;
 
     // Fast path: check for framework/manifest files
@@ -2284,7 +2284,7 @@ fn detect_primary_language(path: &Path) -> anyhow::Result<String> {
     }
 
     // Fallback: count extensions with limited depth for performance
-    let mut counts = HashMap::new();
+    let mut counts = FxHashMap::default();
     for entry in WalkDir::new(path)
         .max_depth(3) // Limit depth to avoid performance issues
         .follow_links(false)
@@ -2410,8 +2410,8 @@ async fn handle_analyze_dag(
     );
 
     // Debug: Check what edge types we have
-    use std::collections::HashMap;
-    let mut edge_type_counts: HashMap<String, usize> = HashMap::new();
+    // FxHashMap is already imported at module level
+    let mut edge_type_counts: FxHashMap<String, usize> = FxHashMap::default();
     for edge in &graph.edges {
         let count = edge_type_counts
             .entry(format!("{:?}", edge.edge_type))
@@ -5130,7 +5130,7 @@ fn convert_to_deep_context_result(
     };
 
     // Extract language stats by counting files per language from AST contexts
-    let mut language_stats = HashMap::new();
+    let mut language_stats = FxHashMap::default();
     for ctx in &deep_context.analyses.ast_contexts {
         let lang_name = ctx.base.language.clone();
         *language_stats.entry(lang_name).or_insert(0) += 1;
@@ -7661,7 +7661,7 @@ struct GraphMetricsAnalyzer {
     config: GraphMetricsConfig,
 }
 
-type DependencyGraphResult = (HashMap<String, usize>, Vec<(usize, usize)>);
+type DependencyGraphResult = (FxHashMap<String, usize>, Vec<(usize, usize)>);
 
 impl GraphMetricsAnalyzer {
     fn new(config: GraphMetricsConfig) -> Self {
@@ -7732,7 +7732,7 @@ impl GraphMetricsAnalyzer {
         &self,
         analyzed_files: &[(PathBuf, String)],
     ) -> anyhow::Result<DependencyGraphResult> {
-        let mut graph_nodes = HashMap::new();
+        let mut graph_nodes = FxHashMap::default();
         let mut graph_edges = Vec::new();
 
         // Create nodes
@@ -7772,7 +7772,7 @@ impl GraphMetricsAnalyzer {
 
     fn initialize_results(
         &self,
-        graph_nodes: &HashMap<String, usize>,
+        graph_nodes: &FxHashMap<String, usize>,
         graph_edges: &[(usize, usize)],
     ) -> serde_json::Value {
         let num_nodes = graph_nodes.len();
@@ -7795,7 +7795,7 @@ impl GraphMetricsAnalyzer {
     fn compute_metric(
         &self,
         metric_type: &GraphMetricType,
-        graph_nodes: &HashMap<String, usize>,
+        graph_nodes: &FxHashMap<String, usize>,
         graph_edges: &[(usize, usize)],
         results: &mut serde_json::Value,
     ) -> anyhow::Result<()> {
@@ -7825,7 +7825,7 @@ impl GraphMetricsAnalyzer {
 
     fn compute_centrality_metric(
         &self,
-        graph_nodes: &HashMap<String, usize>,
+        graph_nodes: &FxHashMap<String, usize>,
         graph_edges: &[(usize, usize)],
         results: &mut serde_json::Value,
     ) -> anyhow::Result<()> {
@@ -7847,7 +7847,7 @@ impl GraphMetricsAnalyzer {
 
     fn compute_pagerank_metric(
         &self,
-        graph_nodes: &HashMap<String, usize>,
+        graph_nodes: &FxHashMap<String, usize>,
         graph_edges: &[(usize, usize)],
         results: &mut serde_json::Value,
     ) -> anyhow::Result<()> {
@@ -7876,7 +7876,7 @@ impl GraphMetricsAnalyzer {
 
     fn compute_clustering_metric(
         &self,
-        graph_nodes: &HashMap<String, usize>,
+        graph_nodes: &FxHashMap<String, usize>,
         graph_edges: &[(usize, usize)],
         results: &mut serde_json::Value,
     ) -> anyhow::Result<()> {
@@ -7914,7 +7914,7 @@ impl GraphMetricsAnalyzer {
 
     fn compute_components_metric(
         &self,
-        graph_nodes: &HashMap<String, usize>,
+        graph_nodes: &FxHashMap<String, usize>,
         graph_edges: &[(usize, usize)],
         results: &mut serde_json::Value,
     ) -> anyhow::Result<()> {
@@ -7933,7 +7933,7 @@ impl GraphMetricsAnalyzer {
 
     fn create_ranked_results(
         &self,
-        scores: HashMap<String, f64>,
+        scores: FxHashMap<String, f64>,
         metric_name: &str,
     ) -> Vec<serde_json::Value> {
         let mut results: Vec<_> = scores
@@ -8050,7 +8050,7 @@ async fn handle_analyze_graph_metrics_legacy(
     min_centrality: f64,
 ) -> anyhow::Result<()> {
     use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
-    use std::collections::HashMap;
+    // FxHashMap is already imported at module level
     use std::time::Instant;
 
     let start_time = Instant::now();
@@ -8089,7 +8089,7 @@ async fn handle_analyze_graph_metrics_legacy(
     }
 
     // Build a simplified dependency graph
-    let mut graph_nodes = HashMap::new();
+    let mut graph_nodes = FxHashMap::default();
     let mut graph_edges = Vec::new();
 
     // Create nodes for each file
@@ -8470,10 +8470,10 @@ fn extract_file_reference(import_line: &str) -> Option<String> {
 }
 
 fn calculate_betweenness_centrality(
-    nodes: &HashMap<String, usize>,
+    nodes: &FxHashMap<String, usize>,
     edges: &[(usize, usize)],
-) -> HashMap<String, f64> {
-    let mut centrality = HashMap::new();
+) -> FxHashMap<String, f64> {
+    let mut centrality = FxHashMap::default();
 
     // Initialize all nodes with 0 centrality
     for name in nodes.keys() {
@@ -8496,19 +8496,19 @@ fn calculate_betweenness_centrality(
 }
 
 fn calculate_pagerank(
-    nodes: &HashMap<String, usize>,
+    nodes: &FxHashMap<String, usize>,
     edges: &[(usize, usize)],
     damping_factor: f64,
     max_iterations: usize,
     convergence_threshold: f64,
     _seeds: &[String],
-) -> HashMap<String, f64> {
+) -> FxHashMap<String, f64> {
     let n = nodes.len();
     if n == 0 {
-        return HashMap::new();
+        return FxHashMap::default();
     }
 
-    let mut pagerank = HashMap::new();
+    let mut pagerank = FxHashMap::default();
     let initial_value = 1.0 / n as f64;
 
     // Initialize PageRank values
@@ -8517,8 +8517,8 @@ fn calculate_pagerank(
     }
 
     // Build adjacency list
-    let mut out_links: HashMap<usize, Vec<usize>> = HashMap::new();
-    let mut in_links: HashMap<usize, Vec<usize>> = HashMap::new();
+    let mut out_links: FxHashMap<usize, Vec<usize>> = FxHashMap::default();
+    let mut in_links: FxHashMap<usize, Vec<usize>> = FxHashMap::default();
 
     for &(from, to) in edges {
         out_links.entry(from).or_default().push(to);
@@ -8527,7 +8527,7 @@ fn calculate_pagerank(
 
     // Iterate PageRank algorithm
     for _ in 0..max_iterations {
-        let mut new_pagerank = HashMap::new();
+        let mut new_pagerank = FxHashMap::default();
 
         for (name, &node_idx) in nodes {
             let mut rank = (1.0 - damping_factor) / n as f64;
@@ -8562,13 +8562,13 @@ fn calculate_pagerank(
 }
 
 fn calculate_clustering_coefficient(
-    nodes: &HashMap<String, usize>,
+    nodes: &FxHashMap<String, usize>,
     edges: &[(usize, usize)],
-) -> HashMap<String, f64> {
-    let mut clustering = HashMap::new();
+) -> FxHashMap<String, f64> {
+    let mut clustering = FxHashMap::default();
 
     // Build adjacency list
-    let mut adjacency: HashMap<usize, Vec<usize>> = HashMap::new();
+    let mut adjacency: FxHashMap<usize, Vec<usize>> = FxHashMap::default();
     for &(from, to) in edges {
         adjacency.entry(from).or_default().push(to);
         adjacency.entry(to).or_default().push(from);
@@ -8615,14 +8615,14 @@ fn calculate_clustering_coefficient(
 }
 
 fn find_connected_components(
-    nodes: &HashMap<String, usize>,
+    nodes: &FxHashMap<String, usize>,
     edges: &[(usize, usize)],
 ) -> Vec<Vec<String>> {
     let mut visited = std::collections::HashSet::new();
     let mut components = Vec::new();
 
     // Build adjacency list
-    let mut adjacency: HashMap<usize, Vec<usize>> = HashMap::new();
+    let mut adjacency: FxHashMap<usize, Vec<usize>> = FxHashMap::default();
     for &(from, to) in edges {
         adjacency.entry(from).or_default().push(to);
         adjacency.entry(to).or_default().push(from);
@@ -8670,7 +8670,7 @@ fn find_connected_components(
 }
 
 fn generate_graphml(
-    nodes: &HashMap<String, usize>,
+    nodes: &FxHashMap<String, usize>,
     edges: &[(usize, usize)],
     results: &serde_json::Value,
 ) -> anyhow::Result<String> {
@@ -10525,8 +10525,8 @@ fn format_symbol_table_csv(symbols: &[SymbolInfo]) -> String {
 }
 
 fn count_by_type(symbols: &[SymbolInfo]) -> Vec<(String, usize)> {
-    use std::collections::HashMap;
-    let mut counts = HashMap::new();
+    // FxHashMap is already imported at module level
+    let mut counts = FxHashMap::default();
 
     for symbol in symbols {
         *counts.entry(symbol.kind.clone()).or_insert(0) += 1;
@@ -10538,8 +10538,8 @@ fn count_by_type(symbols: &[SymbolInfo]) -> Vec<(String, usize)> {
 }
 
 fn count_by_visibility(symbols: &[SymbolInfo]) -> Vec<(String, usize)> {
-    use std::collections::HashMap;
-    let mut counts = HashMap::new();
+    // FxHashMap is already imported at module level
+    let mut counts = FxHashMap::default();
 
     for symbol in symbols {
         *counts.entry(symbol.visibility.clone()).or_insert(0) += 1;
