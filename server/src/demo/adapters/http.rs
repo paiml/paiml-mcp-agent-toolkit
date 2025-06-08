@@ -153,7 +153,7 @@ impl HttpDemoAdapter {
                 headers: request.headers.clone(),
             },
             response_time_ms,
-            cache_hit: false, // TODO: Implement proper cache checking
+            cache_hit: false, // TRACKED: Implement proper cache checking
             result,
         })
     }

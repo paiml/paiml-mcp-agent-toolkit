@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DependencyGraph {
-    pub nodes: HashMap<String, NodeInfo>,
+    pub nodes: FxHashMap<String, NodeInfo>,
     pub edges: Vec<Edge>,
 }
 
@@ -16,7 +16,7 @@ pub struct NodeInfo {
     pub line_number: usize,
     pub complexity: u32,
     #[serde(default)]
-    pub metadata: HashMap<String, String>,
+    pub metadata: FxHashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -48,7 +48,7 @@ pub enum EdgeType {
 impl DependencyGraph {
     pub fn new() -> Self {
         Self {
-            nodes: HashMap::new(),
+            nodes: FxHashMap::default(),
             edges: Vec::new(),
         }
     }
@@ -74,7 +74,7 @@ impl DependencyGraph {
         if filtered_edges.is_empty() && !self.edges.is_empty() {
             // Return empty nodes since no nodes are connected by this edge type
             return Self {
-                nodes: HashMap::new(),
+                nodes: FxHashMap::default(),
                 edges: filtered_edges,
             };
         }
@@ -88,12 +88,12 @@ impl DependencyGraph {
         }
 
         // Otherwise, filter nodes to only those connected by the filtered edges
-        let used_nodes: std::collections::HashSet<String> = filtered_edges
+        let used_nodes: FxHashSet<String> = filtered_edges
             .iter()
             .flat_map(|e| vec![e.from.clone(), e.to.clone()])
             .collect();
 
-        let filtered_nodes: HashMap<String, NodeInfo> = self
+        let filtered_nodes: FxHashMap<String, NodeInfo> = self
             .nodes
             .iter()
             .filter(|(id, _)| used_nodes.contains(*id))

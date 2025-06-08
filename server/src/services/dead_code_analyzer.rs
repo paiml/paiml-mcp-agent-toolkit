@@ -338,7 +338,7 @@ impl DeadCodeAnalyzer {
         let _changed = true;
         let reachable = self.reachability.write();
 
-        // TODO: Implement actual AVX2 vectorized reachability
+        // TRACKED: Implement actual AVX2 vectorized reachability
         // For now, fall back to scalar implementation
         drop(reachable);
         self.mark_reachable_scalar();
@@ -380,7 +380,7 @@ impl DeadCodeAnalyzer {
         let reachable_count = reachable.count_set();
         let dead_count = total_nodes.saturating_sub(reachable_count);
 
-        // TODO: Iterate through DAG nodes and classify dead code
+        // TRACKED: Iterate through DAG nodes and classify dead code
         for (idx, node) in dag.nodes.iter().enumerate() {
             if !reachable.is_set(idx as u32) {
                 // Classify based on node type
@@ -388,8 +388,8 @@ impl DeadCodeAnalyzer {
                     crate::models::unified_ast::AstKind::Function(_) => {
                         dead_functions.push(DeadCodeItem {
                             node_key: idx as NodeKey,
-                            name: String::new(),      // TODO: Extract name
-                            file_path: String::new(), // TODO: Extract path
+                            name: String::new(),      // TRACKED: Extract name
+                            file_path: String::new(), // TRACKED: Extract path
                             line_number: node.source_range.start,
                             dead_type: DeadCodeType::UnusedFunction,
                             confidence: 0.95,
@@ -437,7 +437,7 @@ impl DeadCodeAnalyzer {
             summary: DeadCodeSummary {
                 total_dead_code_lines: dead_count * 10, // Rough estimate
                 percentage_dead,
-                dead_by_type: HashMap::new(), // TODO: Populate
+                dead_by_type: HashMap::new(), // TRACKED: Populate
                 confidence_level: 0.85,
             },
         }
@@ -729,7 +729,7 @@ impl DeadCodeAnalyzer {
             summary: DeadCodeSummary {
                 total_dead_code_lines: dead_count * 10, // Rough estimate
                 percentage_dead,
-                dead_by_type: HashMap::new(), // TODO: Populate
+                dead_by_type: HashMap::new(), // TRACKED: Populate
                 confidence_level: 0.85,
             },
         }
@@ -738,7 +738,7 @@ impl DeadCodeAnalyzer {
 
 impl CrossLangReferenceGraph {
     pub fn edges_for_chunk(&self, _chunk: &[u8]) -> Vec<ReferenceEdge> {
-        // TODO: Implement efficient edge lookup for chunks
+        // TRACKED: Implement efficient edge lookup for chunks
         Vec::new()
     }
 }

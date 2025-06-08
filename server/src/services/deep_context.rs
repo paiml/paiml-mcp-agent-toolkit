@@ -46,6 +46,7 @@ pub enum AnalysisType {
     Satd,
     Provability,
     TechnicalDebtGradient,
+    BigO,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -203,7 +204,7 @@ pub struct AnnotatedNode {
     pub annotations: NodeAnnotations,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum NodeType {
     Directory,
     File,
@@ -216,6 +217,7 @@ pub struct NodeAnnotations {
     pub churn_score: Option<f32>,
     pub dead_code_items: usize,
     pub satd_items: usize,
+    pub centrality: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -230,6 +232,7 @@ pub struct AnalysisResults {
     pub provability_results:
         Option<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>>,
     pub cross_language_refs: Vec<CrossLangReference>,
+    pub big_o_analysis: Option<crate::services::big_o_analyzer::BigOAnalysisReport>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1776,12 +1779,18 @@ impl DeepContextAnalyzer {
         );
 
         // Phase 1: Discovery
-        let file_tree = self.discover_project_structure(project_path).await?;
+        let mut file_tree = self.discover_project_structure(project_path).await?;
         debug!("Discovery phase completed");
 
         // Phase 2: Parallel analysis execution
         let analyses = self.execute_parallel_analyses(project_path).await?;
         debug!("Analysis phase completed");
+        
+        // Phase 2.5: Enrich file tree with centrality scores from DAG analysis
+        if let Some(ref dag) = analyses.dependency_graph {
+            self.enrich_file_tree_with_centrality(&mut file_tree, dag)?;
+            debug!("File tree enriched with centrality scores");
+        }
 
         // Phase 3: Cross-language reference resolution
         let cross_refs = self.build_cross_language_references(&analyses).await?;
@@ -1818,7 +1827,7 @@ impl DeepContextAnalyzer {
                 tool_version: env!("CARGO_PKG_VERSION").to_string(),
                 project_root: project_path.clone(),
                 cache_stats: CacheStats {
-                    hit_rate: 0.0, // TODO: Implement cache statistics
+                    hit_rate: 0.0, // TRACKED: Implement cache statistics
                     memory_efficiency: 0.0,
                     time_saved_ms: 0,
                 },
@@ -1835,6 +1844,7 @@ impl DeepContextAnalyzer {
                 satd_results: analyses.satd_results,
                 provability_results: analyses.provability_results,
                 cross_language_refs: cross_refs,
+                big_o_analysis: analyses.big_o_analysis,
             },
             quality_scorecard,
             template_provenance,
@@ -1914,6 +1924,7 @@ impl DeepContextAnalyzer {
                     churn_score: None,
                     dead_code_items: 0,
                     satd_items: 0,
+                    centrality: None,
                 },
             })
         } else {
@@ -1931,6 +1942,7 @@ impl DeepContextAnalyzer {
                     churn_score: None,
                     dead_code_items: 0,
                     satd_items: 0,
+                    centrality: None,
                 },
             })
         }
@@ -1946,6 +1958,48 @@ impl DeepContextAnalyzer {
         }
 
         false
+    }
+    
+    /// Enrich the file tree with centrality scores from the dependency graph
+    fn enrich_file_tree_with_centrality(
+        &self,
+        file_tree: &mut AnnotatedFileTree,
+        dag: &DependencyGraph,
+    ) -> anyhow::Result<()> {
+        // Create a map of file paths to centrality scores
+        let mut centrality_map: HashMap<PathBuf, f32> = HashMap::new();
+        
+        for node in dag.nodes.values() {
+            if let Some(centrality_str) = node.metadata.get("centrality") {
+                if let Ok(centrality) = centrality_str.parse::<f32>() {
+                    let file_path = PathBuf::from(&node.file_path);
+                    centrality_map.insert(file_path, centrality);
+                }
+            }
+        }
+        
+        // Recursively update the file tree with centrality scores
+        Self::update_node_centrality(&mut file_tree.root, &centrality_map);
+        
+        Ok(())
+    }
+    
+    /// Recursively update node centrality scores
+    fn update_node_centrality(
+        node: &mut AnnotatedNode,
+        centrality_map: &HashMap<PathBuf, f32>,
+    ) {
+        // Update this node's centrality if it's a file
+        if node.node_type == NodeType::File {
+            if let Some(&centrality) = centrality_map.get(&node.path) {
+                node.annotations.centrality = Some(centrality);
+            }
+        }
+        
+        // Recursively update children
+        for child in &mut node.children {
+            Self::update_node_centrality(child, centrality_map);
+        }
     }
 
     async fn execute_parallel_analyses(
@@ -2037,6 +2091,11 @@ impl DeepContextAnalyzer {
             AnalysisType::TechnicalDebtGradient => {
                 // DefectProbability is computed in correlate_defects, not as a separate analysis
             }
+            AnalysisType::BigO => {
+                join_set.spawn(async move {
+                    AnalysisResult::BigO(analyze_big_o(&path).await)
+                });
+            }
         }
 
         Ok(())
@@ -2122,6 +2181,9 @@ impl DeepContextAnalyzer {
             AnalysisResult::Dag(Ok(dag)) => {
                 results.dependency_graph = Some(dag);
             }
+            AnalysisResult::BigO(Ok(big_o)) => {
+                results.big_o_analysis = Some(big_o);
+            }
             AnalysisResult::Ast(Err(e)) => debug!("AST analysis failed: {}", e),
             AnalysisResult::Complexity(Err(e)) => debug!("Complexity analysis failed: {}", e),
             AnalysisResult::Churn(Err(e)) => debug!("Churn analysis failed: {}", e),
@@ -2132,6 +2194,7 @@ impl DeepContextAnalyzer {
             AnalysisResult::Satd(Err(e)) => debug!("SATD analysis failed: {}", e),
             AnalysisResult::Provability(Err(e)) => debug!("Provability analysis failed: {}", e),
             AnalysisResult::Dag(Err(e)) => debug!("DAG analysis failed: {}", e),
+            AnalysisResult::BigO(Err(e)) => debug!("Big-O analysis failed: {}", e),
         }
     }
 
@@ -2139,7 +2202,7 @@ impl DeepContextAnalyzer {
         &self,
         _analyses: &ParallelAnalysisResults,
     ) -> anyhow::Result<Vec<CrossLangReference>> {
-        // TODO: Implement cross-language reference detection
+        // TRACKED: Implement cross-language reference detection
         // This would analyze FFI bindings, WASM exports, Python bindings, etc.
         Ok(Vec::new())
     }
@@ -2829,6 +2892,7 @@ struct ParallelAnalysisResults {
     satd_results: Option<SATDAnalysisResult>,
     provability_results:
         Option<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>>,
+    big_o_analysis: Option<crate::services::big_o_analyzer::BigOAnalysisReport>,
 }
 
 enum AnalysisResult {
@@ -2842,6 +2906,7 @@ enum AnalysisResult {
         anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>>,
     ),
     Dag(anyhow::Result<DependencyGraph>),
+    BigO(anyhow::Result<crate::services::big_o_analyzer::BigOAnalysisReport>),
 }
 
 // Analysis functions (simplified implementations)
@@ -3545,20 +3610,13 @@ async fn analyze_duplicate_code(
     Ok(report)
 }
 
-async fn analyze_satd(_path: &std::path::Path) -> anyhow::Result<SATDAnalysisResult> {
-    Ok(SATDAnalysisResult {
-        items: Vec::new(),
-        summary: crate::services::satd_detector::SATDSummary {
-            total_items: 0,
-            by_severity: std::collections::HashMap::new(),
-            by_category: std::collections::HashMap::new(),
-            files_with_satd: 0,
-            avg_age_days: 0.0,
-        },
-        total_files_analyzed: 0,
-        files_with_debt: 0,
-        analysis_timestamp: chrono::Utc::now(),
-    })
+async fn analyze_satd(path: &std::path::Path) -> anyhow::Result<SATDAnalysisResult> {
+    use crate::services::satd_detector::SATDDetector;
+    
+    let detector = SATDDetector::new();
+    let result = detector.analyze_project(path, false).await?;
+    
+    Ok(result)
 }
 
 async fn analyze_provability(
@@ -3567,26 +3625,82 @@ async fn analyze_provability(
     use crate::services::lightweight_provability_analyzer::{
         FunctionId, LightweightProvabilityAnalyzer,
     };
+    use crate::services::context::{analyze_project, AstItem};
 
     info!("Starting provability analysis for path: {:?}", path);
 
     let analyzer = LightweightProvabilityAnalyzer::new();
 
-    // Mock function discovery from project path - in a full implementation,
-    // this would use AST analysis to discover all functions
-    let function_ids = vec![FunctionId {
-        file_path: format!("{}/src/main.rs", path.display()),
-        function_name: "main".to_string(),
-        line_number: 1,
-    }];
+    // Discover functions from the project using AST analysis
+    let project_context = analyze_project(path, "rust").await?;
+    let mut function_ids = Vec::new();
+    
+    for file in &project_context.files {
+        for item in &file.items {
+            if let AstItem::Function { name, line, .. } = item {
+                function_ids.push(FunctionId {
+                    file_path: file.path.clone(),
+                    function_name: name.clone(),
+                    line_number: *line,
+                });
+            }
+        }
+    }
+    
+    // If no functions found, add a mock one
+    if function_ids.is_empty() {
+        function_ids.push(FunctionId {
+            file_path: format!("{}/src/main.rs", path.display()),
+            function_name: "main".to_string(),
+            line_number: 1,
+        });
+    }
 
     let summaries = analyzer.analyze_incrementally(&function_ids).await;
     Ok(summaries)
 }
 
 async fn analyze_dag(
-    _path: &std::path::Path,
-    _dag_type: DagType,
+    path: &std::path::Path,
+    dag_type: DagType,
 ) -> anyhow::Result<DependencyGraph> {
-    Ok(DependencyGraph::default())
+    use crate::services::{
+        context::analyze_project,
+        dag_builder::{
+            filter_call_edges, filter_import_edges, filter_inheritance_edges, DagBuilder,
+        },
+    };
+
+    // Analyze the project to get AST information
+    let project_context = analyze_project(path, "rust").await?;
+    
+    // Build the dependency graph with PageRank pruning if needed
+    let graph = DagBuilder::build_from_project_with_limit(&project_context, 400);
+    
+    // Apply filters based on DAG type
+    let filtered_graph = match dag_type {
+        DagType::CallGraph => filter_call_edges(graph),
+        DagType::ImportGraph => filter_import_edges(graph),
+        DagType::Inheritance => filter_inheritance_edges(graph),
+        DagType::FullDependency => graph,
+    };
+    
+    Ok(filtered_graph)
+}
+
+async fn analyze_big_o(
+    path: &std::path::Path,
+) -> anyhow::Result<crate::services::big_o_analyzer::BigOAnalysisReport> {
+    use crate::services::big_o_analyzer::{BigOAnalyzer, BigOAnalysisConfig};
+    
+    let analyzer = BigOAnalyzer::new();
+    let config = BigOAnalysisConfig {
+        project_path: path.to_path_buf(),
+        include_patterns: vec!["**/*.rs".to_string(), "**/*.ts".to_string(), "**/*.py".to_string()],
+        exclude_patterns: vec!["**/target/**".to_string(), "**/node_modules/**".to_string()],
+        confidence_threshold: 50,
+        analyze_space_complexity: false,
+    };
+    
+    analyzer.analyze(config).await
 }

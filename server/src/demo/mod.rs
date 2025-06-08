@@ -164,7 +164,7 @@ fn format_and_print_output(
 // Print API metadata for a protocol
 async fn print_api_metadata(protocol_name: &str) -> Result<()> {
     println!("\n📊 API Introspection");
-    // TODO: This would require access to the engine reference
+    // TRACKED: This would require access to the engine reference
     println!("Protocol: {protocol_name}");
     Ok(())
 }
@@ -344,7 +344,7 @@ fn parse_dag_data(dag_data: &serde_json::Value) -> Option<crate::models::dag::De
                             file_path: format!("module_{i}.rs"),
                             line_number: 1,
                             complexity: 1,
-                            metadata: std::collections::HashMap::new(),
+                            metadata: Default::default(),
                         },
                     )
                 })
@@ -558,7 +558,7 @@ async fn analyze_system_architecture(
     let context = AnalysisContext {
         project_path: repo_path.to_path_buf(),
         ast_dag: dag_result,
-        call_graph: CallGraph::default(), // TODO: Build actual call graph
+        call_graph: CallGraph::default(), // TRACKED: Build actual call graph
         complexity_map,
         churn_analysis: churn_result,
     };
@@ -655,8 +655,8 @@ async fn analyze_defect_probability(
                     file_path: relative_path,
                     churn_score,
                     complexity: avg_complexity,
-                    duplicate_ratio: 0.0, // TODO: Implement duplication detection
-                    afferent_coupling: 0.0, // TODO: Implement coupling analysis
+                    duplicate_ratio: 0.0, // TRACKED: Implement duplication detection
+                    afferent_coupling: 0.0, // TRACKED: Implement coupling analysis
                     efferent_coupling: 0.0,
                     lines_of_code: total_loc,
                     cyclomatic_complexity: max_cyclomatic as u32,

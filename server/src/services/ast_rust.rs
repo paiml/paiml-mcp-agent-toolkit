@@ -50,6 +50,7 @@ pub async fn analyze_rust_file_with_complexity_and_classifier(
     })
 }
 
+#[inline(always)]
 pub async fn analyze_rust_file(path: &Path) -> Result<FileContext, TemplateError> {
     analyze_rust_file_with_classifier(path, None).await
 }
@@ -193,7 +194,14 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
         });
 
         if self.enable_complexity {
-            self.current_function_complexity = Some(ComplexityMetrics::default());
+            // Start with base complexity of 1 for any function
+            let base_complexity = if is_async {
+                ComplexityMetrics { cyclomatic: 2, cognitive: 2, ..Default::default() }
+            } else {
+                ComplexityMetrics { cyclomatic: 1, cognitive: 1, ..Default::default() }
+            };
+            
+            self.current_function_complexity = Some(base_complexity);
             self.current_function_name = Some(name);
             self.current_function_start = 1;
 
@@ -293,8 +301,16 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
                     for item in &node.items {
                         if let syn::ImplItem::Fn(method) = item {
                             let method_name = method.sig.ident.to_string();
+                            let is_async = method.sig.asyncness.is_some();
 
-                            self.current_function_complexity = Some(ComplexityMetrics::default());
+                            // Start with base complexity of 1 for any method
+                            let base_complexity = if is_async {
+                                ComplexityMetrics { cyclomatic: 2, cognitive: 2, ..Default::default() }
+                            } else {
+                                ComplexityMetrics { cyclomatic: 1, cognitive: 1, ..Default::default() }
+                            };
+                            
+                            self.current_function_complexity = Some(base_complexity);
                             self.current_function_name = Some(method_name.clone());
                             self.current_function_start = 1;
 
@@ -379,6 +395,14 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
                         }
                         _ => {}
                     }
+                }
+                Expr::Macro(_) => {
+                    // Macros add complexity due to hidden control flow
+                    self.add_complexity(1, 1);
+                }
+                Expr::Async(_) => {
+                    // Async blocks add complexity
+                    self.add_complexity(1, 1);
                 }
                 _ => {}
             }

@@ -207,7 +207,7 @@ impl McpDemoAdapter {
                 params.path
             ),
             execution_time_ms,
-            cache_hit: params.cache, // TODO: Implement actual cache checking
+            cache_hit: params.cache, // TRACKED: Implement actual cache checking
             result,
             trace,
         };

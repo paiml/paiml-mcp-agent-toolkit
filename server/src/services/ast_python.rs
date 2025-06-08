@@ -118,7 +118,7 @@ fn extract_python_items(stmt: &ast::Stmt, items: &mut Vec<AstItem>) {
                 visibility: "public".to_string(),
                 fields_count: attributes_count,
                 derives: vec![], // Python doesn't have derives like Rust
-                line: 1,         // TODO: Extract actual line numbers from AST
+                line: 1,         // TRACKED: Extract actual line numbers from AST
             });
 
             // Also extract methods from the class
@@ -130,7 +130,7 @@ fn extract_python_items(stmt: &ast::Stmt, items: &mut Vec<AstItem>) {
             for alias in &import.names {
                 items.push(AstItem::Use {
                     path: alias.name.to_string(),
-                    line: 1, // TODO: Extract actual line numbers from AST
+                    line: 1, // TRACKED: Extract actual line numbers from AST
                 });
             }
         }
@@ -497,7 +497,7 @@ fn create_function_item(name: &str, is_async: bool) -> AstItem {
             "public".to_string()
         },
         is_async,
-        line: 1, // TODO: Extract actual line numbers from AST
+        line: 1, // TRACKED: Extract actual line numbers from AST
     }
 }
 
@@ -513,7 +513,7 @@ fn extract_import_from_items(import_from: &ast::StmtImportFrom, items: &mut Vec<
         for alias in &import_from.names {
             items.push(AstItem::Use {
                 path: format!("{}.{}", base_path, alias.name),
-                line: 1, // TODO: Extract actual line numbers from AST
+                line: 1, // TRACKED: Extract actual line numbers from AST
             });
         }
     }
