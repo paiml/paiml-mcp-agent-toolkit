@@ -7,7 +7,9 @@ use crate::services::cache::{
     manager::SessionCacheManager, persistent_manager::PersistentCacheManager,
 };
 use crate::services::deep_context::DeepContext;
+use futures::future::join_all;
 use ignore::gitignore::GitignoreBuilder;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
@@ -383,28 +385,37 @@ async fn scan_and_analyze_files(
     cache_manager: Option<Arc<SessionCacheManager>>,
     gitignore: &ignore::gitignore::Gitignore,
 ) -> Vec<FileContext> {
-    let mut files = Vec::new();
-
-    for entry in WalkDir::new(root_path)
+    // First, collect all file paths to analyze
+    let paths: Vec<_> = WalkDir::new(root_path)
         .follow_links(false)
         .into_iter()
         .filter_map(|e| e.ok())
-    {
-        let path = entry.path();
+        .filter(|entry| {
+            let path = entry.path();
+            !path.is_dir() && !gitignore.matched(path, false).is_ignore()
+        })
+        .map(|entry| entry.path().to_path_buf())
+        .collect();
 
-        // Skip if gitignored
-        if gitignore.matched(path, path.is_dir()).is_ignore() {
-            continue;
-        }
+    // Process files in parallel
+    let tasks: Vec<_> = paths
+        .into_iter()
+        .map(|path| {
+            let toolchain = toolchain.to_string();
+            let cache_manager = cache_manager.clone();
+            tokio::spawn(async move {
+                analyze_file_by_toolchain(&path, &toolchain, cache_manager).await
+            })
+        })
+        .collect();
 
-        if let Some(file_context) =
-            analyze_file_by_toolchain(path, toolchain, cache_manager.clone()).await
-        {
-            files.push(file_context);
-        }
-    }
-
-    files
+    // Wait for all tasks to complete and collect results
+    let results = join_all(tasks).await;
+    results
+        .into_iter()
+        .filter_map(|result| result.ok())
+        .filter_map(|option| option)
+        .collect()
 }
 
 async fn analyze_file_by_toolchain(
