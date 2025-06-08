@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::path::Path;
 
 /// Core trait for canonical analysis queries
@@ -19,7 +19,7 @@ pub struct AnalysisContext {
     pub project_path: std::path::PathBuf,
     pub ast_dag: crate::models::dag::DependencyGraph,
     pub call_graph: CallGraph,
-    pub complexity_map: HashMap<String, crate::services::complexity::ComplexityMetrics>,
+    pub complexity_map: FxHashMap<String, crate::services::complexity::ComplexityMetrics>,
     pub churn_analysis: Option<crate::models::churn::CodeChurnAnalysis>,
 }
 
@@ -197,7 +197,7 @@ fn infer_component_relationships(
     call_graph: &CallGraph,
 ) -> Result<Vec<ComponentEdge>> {
     let mut edges = Vec::new();
-    let mut component_map = HashMap::new();
+    let mut component_map = FxHashMap::default();
 
     // Build component lookup map
     for component in components {
@@ -231,7 +231,7 @@ fn infer_component_relationships(
     }
 
     // Deduplicate and aggregate weights
-    let mut aggregated_edges = HashMap::new();
+    let mut aggregated_edges = FxHashMap::default();
     for edge in edges {
         let key = (edge.from.clone(), edge.to.clone(), edge.edge_type.clone());
         let weight = aggregated_edges.get(&key).unwrap_or(&0) + edge.weight;
@@ -253,9 +253,9 @@ fn infer_component_relationships(
 
 fn aggregate_component_metrics(
     components: &[Component],
-    complexity_map: &HashMap<String, crate::services::complexity::ComplexityMetrics>,
-) -> Result<HashMap<String, ComponentMetrics>> {
-    let mut metrics = HashMap::new();
+    complexity_map: &FxHashMap<String, crate::services::complexity::ComplexityMetrics>,
+) -> Result<FxHashMap<String, ComponentMetrics>> {
+    let mut metrics = FxHashMap::default();
 
     for component in components {
         let mut total_complexity = 0.0;
@@ -296,7 +296,7 @@ fn aggregate_component_metrics(
 fn generate_styled_architecture_diagram(
     components: &[Component],
     edges: &[ComponentEdge],
-    metrics: &HashMap<String, ComponentMetrics>,
+    metrics: &FxHashMap<String, ComponentMetrics>,
 ) -> Result<String> {
     let mut diagram = String::from("graph TD\n");
 

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -92,12 +92,12 @@ impl AstStrategy for PythonAstStrategy {
 
 // Strategy registry to manage all language strategies
 pub struct StrategyRegistry {
-    strategies: HashMap<String, Arc<dyn AstStrategy>>,
+    strategies: FxHashMap<String, Arc<dyn AstStrategy>>,
 }
 
 impl StrategyRegistry {
     pub fn new() -> Self {
-        let mut strategies: HashMap<String, Arc<dyn AstStrategy>> = HashMap::new();
+        let mut strategies: FxHashMap<String, Arc<dyn AstStrategy>> = FxHashMap::default();
 
         // Register all supported language strategies
         let rust_strategy = Arc::new(RustAstStrategy) as Arc<dyn AstStrategy>;

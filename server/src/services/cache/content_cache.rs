@@ -1,7 +1,7 @@
 use crate::services::cache::base::{CacheEntry, CacheStats, CacheStrategy};
 use lru::LruCache;
 use parking_lot::RwLock;
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::num::NonZeroUsize;
 use std::sync::Arc;
@@ -12,7 +12,7 @@ pub struct ContentCache<T: CacheStrategy> {
     cache: Arc<RwLock<LruCache<String, CacheEntry<T::Value>>>>,
 
     /// Content validation hashes
-    hashes: Arc<RwLock<HashMap<String, u64>>>,
+    hashes: Arc<RwLock<FxHashMap<String, u64>>>,
 
     /// Statistics
     pub stats: CacheStats,
@@ -28,7 +28,7 @@ impl<T: CacheStrategy> ContentCache<T> {
 
         Self {
             cache: Arc::new(RwLock::new(LruCache::new(max_size))),
-            hashes: Arc::new(RwLock::new(HashMap::new())),
+            hashes: Arc::new(RwLock::new(FxHashMap::default())),
             stats: CacheStats::new(),
             strategy: Arc::new(strategy),
         }
