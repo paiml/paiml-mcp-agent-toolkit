@@ -107,7 +107,8 @@ massif-visualizer massif.out.*
 | LTO enabled | 837.81 µs | 9.18 ms | +2.3% / 0% |
 | FxHashMap (partial) | 820.69 µs | 9.14 ms | +0.2% / -0.4% |
 | Parallel | 876.47 µs | 5.14 ms | +7.0% / -44.0% |
-| **FxHashMap (complete)** | **822.61 µs** | **6.03 ms** | **+0.5% / -34.3%** |
+| FxHashMap (complete) | 822.61 µs | 6.03 ms | +0.5% / -34.3% |
+| **Rayon parallelization** | **836.51 µs** | **3.94 ms** | **+2.2% / -57.1%** |
 
 ### 5. FxHashMap Complete ✅
 - **Timestamp**: 2025-06-08T16:10:00
@@ -120,9 +121,25 @@ massif-visualizer massif.out.*
 - **Net from original**: +0.5% single file, **-34.3% project**
 - Status: **Merged**
 
+### 6. Rayon Parallelization ✅
+- **Timestamp**: 2025-06-08T16:25:00
+- Added rayon::prelude::* to deep_context.rs and duplicate_detector.rs
+- Parallelized:
+  - Complexity hotspot analysis (par_iter on files)
+  - TDG score analysis and severity counting
+  - File categorization (2943 lines -> parallel)
+  - Dead code file I/O and analysis
+  - Duplicate detection O(n²) comparison loop
+  - Various aggregation operations (sum, filter, count)
+- **Before**: 822.61 µs / 6.03 ms
+- **After**: 836.51 µs / 3.94 ms
+- **Result**: +1.7% single file, **-34.7% project** (vs FxHashMap baseline)
+- **Net from original**: +2.2% single file, **-57.1% project**
+- Status: **Merged**
+
 ## Conclusion
 - Established robust benchmarking infrastructure
-- Applied 5 optimizations (inline + LTO + FxHashMap partial + parallel + FxHashMap complete)
-- **Major achievement**: 34.3% improvement on project analysis
-- Single file performance maintained within 1% of baseline
+- Applied 6 optimizations (inline + LTO + FxHashMap partial + parallel + FxHashMap complete + rayon)
+- **Major achievement**: 57.1% improvement on project analysis (3.94ms vs 9.18ms)
+- Single file performance maintained within 2.2% of baseline
 - Next step: Add SmallVec for small collections to reduce allocations

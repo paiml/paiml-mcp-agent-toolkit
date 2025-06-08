@@ -7,6 +7,7 @@
 use anyhow::Result;
 use blake3::Hasher;
 use dashmap::DashMap;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -896,17 +897,25 @@ impl DuplicateDetectionEngine {
         &self,
         fragments: &[CodeFragment],
     ) -> Result<Vec<(FragmentId, FragmentId, f64)>> {
-        let mut clone_pairs = Vec::new();
-
         // Compare all pairs (O(n²) - would use LSH in production)
-        for (i, frag1) in fragments.iter().enumerate() {
-            for frag2 in fragments.iter().skip(i + 1) {
-                let similarity = frag1.signature.jaccard_similarity(&frag2.signature);
-                if similarity >= self.config.similarity_threshold {
-                    clone_pairs.push((frag1.id, frag2.id, similarity));
-                }
-            }
-        }
+        // Use parallel processing to speed up the comparison
+        let clone_pairs: Vec<(FragmentId, FragmentId, f64)> = (0..fragments.len())
+            .into_par_iter()
+            .flat_map(|i| {
+                let frag1 = &fragments[i];
+                fragments[i + 1..]
+                    .iter()
+                    .filter_map(move |frag2| {
+                        let similarity = frag1.signature.jaccard_similarity(&frag2.signature);
+                        if similarity >= self.config.similarity_threshold {
+                            Some((frag1.id, frag2.id, similarity))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect();
 
         Ok(clone_pairs)
     }
