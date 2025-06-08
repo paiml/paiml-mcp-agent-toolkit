@@ -646,7 +646,7 @@ pub(crate) fn serve_architecture_analysis(state: &Arc<RwLock<DemoState>>) -> Res
     use crate::services::canonical_query::{
         AnalysisContext, CallGraph, CanonicalQuery, SystemArchitectureQuery,
     };
-    use std::collections::HashMap;
+    use rustc_hash::FxHashMap;
 
     let state = state.read();
 
@@ -655,7 +655,7 @@ pub(crate) fn serve_architecture_analysis(state: &Arc<RwLock<DemoState>>) -> Res
         project_path: state.repository.clone(),
         ast_dag: state.analysis_results.dependency_graph.clone(),
         call_graph: CallGraph::default(),
-        complexity_map: HashMap::new(),
+        complexity_map: FxHashMap::default(),
         churn_analysis: Some(state.analysis_results.churn_analysis.clone()),
     };
 

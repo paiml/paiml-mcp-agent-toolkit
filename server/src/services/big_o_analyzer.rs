@@ -84,7 +84,7 @@ impl BigOAnalyzer {
 
         // Analyze each file
         let mut all_functions = Vec::new();
-        let mut pattern_counts = std::collections::HashMap::new();
+        let mut pattern_counts = rustc_hash::FxHashMap::default();
 
         for file in &source_files {
             let functions = self.analyze_file(file, &config).await?;
@@ -322,7 +322,7 @@ impl BigOAnalyzer {
     fn build_report(
         &self,
         functions: Vec<FunctionComplexity>,
-        pattern_counts: std::collections::HashMap<String, usize>,
+        pattern_counts: rustc_hash::FxHashMap<String, usize>,
     ) -> BigOAnalysisReport {
         let mut distribution = ComplexityDistribution {
             constant: 0,

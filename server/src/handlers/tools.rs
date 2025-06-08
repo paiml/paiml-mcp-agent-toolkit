@@ -1350,11 +1350,11 @@ fn build_call_graph(
 // Helper function to build complexity map
 fn build_complexity_map(
     complexity_report: Option<&crate::services::complexity::ComplexityReport>,
-) -> std::collections::HashMap<String, crate::services::complexity::ComplexityMetrics> {
+) -> rustc_hash::FxHashMap<String, crate::services::complexity::ComplexityMetrics> {
     use crate::services::complexity::ComplexityMetrics;
-    use std::collections::HashMap;
+    use rustc_hash::FxHashMap;
 
-    let mut complexity_map = HashMap::new();
+    let mut complexity_map = FxHashMap::default();
 
     if let Some(report) = complexity_report {
         for file in &report.files {

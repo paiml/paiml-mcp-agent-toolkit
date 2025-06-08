@@ -539,7 +539,7 @@ async fn analyze_system_architecture(
     use crate::services::canonical_query::{
         AnalysisContext, CallGraph, CanonicalQuery, SystemArchitectureQuery,
     };
-    use std::collections::HashMap;
+    use rustc_hash::FxHashMap;
 
     // Build analysis context
     let _context_result = analyze_context(repo_path).await?;
@@ -548,7 +548,7 @@ async fn analyze_system_architecture(
     let churn_result = analyze_churn(repo_path).await.ok(); // Optional
 
     // Convert complexity report to map
-    let mut complexity_map = HashMap::new();
+    let mut complexity_map = FxHashMap::default();
     for file in &complexity_result.files {
         for function in &file.functions {
             complexity_map.insert(function.name.clone(), function.metrics);

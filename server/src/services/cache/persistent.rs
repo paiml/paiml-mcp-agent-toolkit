@@ -2,7 +2,7 @@ use crate::services::cache::base::{CacheEntry, CacheStats, CacheStrategy};
 use anyhow::{Context, Result};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::fs;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -57,7 +57,7 @@ impl<V> PersistentCacheEntry<V> {
 /// Persistent file-based cache with TTL support
 pub struct PersistentCache<T: CacheStrategy> {
     /// In-memory cache for fast access
-    memory_cache: Arc<RwLock<HashMap<String, CacheEntry<T::Value>>>>,
+    memory_cache: Arc<RwLock<FxHashMap<String, CacheEntry<T::Value>>>>,
 
     /// Cache directory
     cache_dir: PathBuf,
@@ -80,7 +80,7 @@ where
         })?;
 
         let mut cache = Self {
-            memory_cache: Arc::new(RwLock::new(HashMap::new())),
+            memory_cache: Arc::new(RwLock::new(FxHashMap::default())),
             cache_dir,
             strategy: Arc::new(strategy),
             stats: CacheStats::new(),
