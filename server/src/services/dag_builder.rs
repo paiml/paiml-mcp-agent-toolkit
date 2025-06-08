@@ -1,14 +1,14 @@
 use crate::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
 use crate::services::context::{AstItem, FileContext, ProjectContext};
 use crate::services::semantic_naming::SemanticNamer;
-use std::collections::{HashMap, HashSet};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 pub struct DagBuilder {
     graph: DependencyGraph,
     // Track functions by name for call resolution
-    function_map: HashMap<String, String>, // function_name -> full_id
+    function_map: FxHashMap<String, String>, // function_name -> full_id
     // Track types for inheritance resolution
-    type_map: HashMap<String, String>, // type_name -> full_id
+    type_map: FxHashMap<String, String>, // type_name -> full_id
     // Semantic namer for deterministic display names
     namer: SemanticNamer,
 }
@@ -17,8 +17,8 @@ impl DagBuilder {
     pub fn new() -> Self {
         Self {
             graph: DependencyGraph::new(),
-            function_map: HashMap::new(),
-            type_map: HashMap::new(),
+            function_map: FxHashMap::default(),
+            type_map: FxHashMap::default(),
             namer: SemanticNamer::new(),
         }
     }
@@ -43,7 +43,7 @@ impl DagBuilder {
 
     fn finalize_graph(mut self) -> DependencyGraph {
         // First, remove edges that reference non-existent nodes
-        let valid_nodes: HashSet<&String> = self.graph.nodes.keys().collect();
+        let valid_nodes: FxHashSet<&String> = self.graph.nodes.keys().collect();
         self.graph
             .edges
             .retain(|edge| valid_nodes.contains(&edge.from) && valid_nodes.contains(&edge.to));
@@ -69,7 +69,7 @@ impl DagBuilder {
             self.graph.edges.truncate(Self::EDGE_BUDGET);
 
             // Maintain node consistency - only keep nodes referenced in remaining edges
-            let retained_nodes: HashSet<String> = self
+            let retained_nodes: FxHashSet<String> = self
                 .graph
                 .edges
                 .iter()
@@ -86,9 +86,13 @@ impl DagBuilder {
         project: &ProjectContext,
         max_nodes: usize,
     ) -> DependencyGraph {
-        let graph = Self::build_from_project(project);
+        let mut graph = Self::build_from_project(project);
+        
+        // Always calculate PageRank scores for centrality
+        graph = add_pagerank_scores(&graph);
+        
         if graph.edges.len() > 400 {
-            // Safety margin for Mermaid
+            // Safety margin for Mermaid - prune but keep scores
             prune_graph_pagerank(&graph, max_nodes)
         } else {
             graph
@@ -121,7 +125,7 @@ impl DagBuilder {
                                     .map(|f| f.metrics.cognitive as u32)
                             })
                             .unwrap_or_else(|| self.calculate_complexity(item)),
-                        metadata: HashMap::new(),
+                        metadata: FxHashMap::default(),
                     };
                     self.add_node(self.enrich_node(node));
                     self.function_map.insert(name.clone(), id);
@@ -150,7 +154,7 @@ impl DagBuilder {
                                     .map(|c| c.metrics.cognitive as u32)
                             })
                             .unwrap_or_else(|| self.calculate_complexity(item)),
-                        metadata: HashMap::new(),
+                        metadata: FxHashMap::default(),
                     };
                     self.add_node(self.enrich_node(node));
                     self.type_map.insert(name.clone(), id);
@@ -168,7 +172,7 @@ impl DagBuilder {
                         file_path: file.path.clone(),
                         line_number: *line,
                         complexity: 1,
-                        metadata: HashMap::new(),
+                        metadata: FxHashMap::default(),
                     };
                     self.add_node(self.enrich_node(node));
                     self.type_map.insert(name.clone(), id);
@@ -186,7 +190,7 @@ impl DagBuilder {
                         file_path: file.path.clone(),
                         line_number: *line,
                         complexity: 1,
-                        metadata: HashMap::new(),
+                        metadata: FxHashMap::default(),
                     };
                     self.add_node(self.enrich_node(node));
                 }
@@ -209,7 +213,7 @@ impl DagBuilder {
                 .as_ref()
                 .map(|m| m.total_complexity.cognitive as u32)
                 .unwrap_or(1),
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         };
         self.add_node(self.enrich_node(node));
 
@@ -417,6 +421,46 @@ pub fn filter_inheritance_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Inherits)
 }
 
+/// Add PageRank scores to all nodes in the graph
+pub fn add_pagerank_scores(graph: &DependencyGraph) -> DependencyGraph {
+    if graph.nodes.is_empty() {
+        return graph.clone();
+    }
+
+    // Build adjacency for PageRank
+    let node_ids: Vec<&String> = graph.nodes.keys().collect();
+    let mut scores = vec![1.0f32; node_ids.len()];
+    let node_idx: FxHashMap<&String, usize> = node_ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (id, i))
+        .collect();
+
+    // 10 iterations sufficient for ranking
+    for _ in 0..10 {
+        let mut new_scores = vec![0.15f32; scores.len()];
+        for edge in &graph.edges {
+            if let (Some(&from), Some(&to)) = (node_idx.get(&edge.from), node_idx.get(&edge.to)) {
+                let out_degree = graph.edges.iter().filter(|e| e.from == edge.from).count() as f32;
+                if out_degree > 0.0 {
+                    new_scores[to] += 0.85 * scores[from] / out_degree;
+                }
+            }
+        }
+        scores = new_scores;
+    }
+
+    // Create a new graph with centrality scores in metadata
+    let mut new_graph = graph.clone();
+    for (id, node) in &mut new_graph.nodes {
+        if let Some(idx) = node_ids.iter().position(|&nid| nid == id) {
+            node.metadata.insert("centrality".to_string(), scores[idx].to_string());
+        }
+    }
+
+    new_graph
+}
+
 /// Prune graph using PageRank algorithm to keep only the most important nodes
 pub fn prune_graph_pagerank(graph: &DependencyGraph, max_nodes: usize) -> DependencyGraph {
     if graph.nodes.len() <= max_nodes {
@@ -426,7 +470,7 @@ pub fn prune_graph_pagerank(graph: &DependencyGraph, max_nodes: usize) -> Depend
     // Build adjacency for PageRank
     let node_ids: Vec<&String> = graph.nodes.keys().collect();
     let mut scores = vec![1.0f32; node_ids.len()];
-    let node_idx: HashMap<&String, usize> = node_ids
+    let node_idx: FxHashMap<&String, usize> = node_ids
         .iter()
         .enumerate()
         .map(|(i, &id)| (id, i))
@@ -449,19 +493,26 @@ pub fn prune_graph_pagerank(graph: &DependencyGraph, max_nodes: usize) -> Depend
     // Select top-k nodes
     let mut ranked: Vec<_> = scores.iter().enumerate().collect();
     ranked.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap());
-    let keep: HashSet<&String> = ranked
+    let keep: FxHashSet<&String> = ranked
         .iter()
         .take(max_nodes)
         .map(|(i, _)| node_ids[*i])
         .collect();
 
+    // Create nodes with centrality scores in metadata
+    let mut nodes_with_centrality = FxHashMap::default();
+    for (id, node) in &graph.nodes {
+        if keep.contains(id) {
+            let mut node_copy = node.clone();
+            if let Some(idx) = node_ids.iter().position(|&nid| nid == id) {
+                node_copy.metadata.insert("centrality".to_string(), scores[idx].to_string());
+            }
+            nodes_with_centrality.insert(id.clone(), node_copy);
+        }
+    }
+
     DependencyGraph {
-        nodes: graph
-            .nodes
-            .iter()
-            .filter(|(id, _)| keep.contains(id))
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect(),
+        nodes: nodes_with_centrality,
         edges: graph
             .edges
             .iter()

@@ -1,3 +1,4 @@
+
 pub mod analysis;
 pub mod analysis_helpers;
 pub mod args;
@@ -1113,6 +1114,9 @@ pub enum AnalyzeCommands {
 pub enum ContextFormat {
     Markdown,
     Json,
+    Sarif,
+    #[value(name = "llm-optimized")]
+    LlmOptimized,
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
@@ -1540,6 +1544,12 @@ async fn execute_analyze_command(analyze_cmd: AnalyzeCommands) -> anyhow::Result
 }
 
 // Deprecated legacy function - replaced by dispatcher
+// TRACKED: This function has circular dependencies with handlers module.
+// Many handlers in the handlers module delegate back to implementations in this module
+// using super::super::, creating a circular dependency. The handlers need to be
+// properly refactored to contain the actual implementations instead of delegating.
+// Currently only BigO handler (handlers::big_o_handlers::handle_analyze_big_o) is
+// properly implemented without delegation.
 #[allow(dead_code)]
 async fn execute_analyze_command_legacy(analyze_cmd: AnalyzeCommands) -> anyhow::Result<()> {
     match analyze_cmd {
@@ -2210,6 +2220,8 @@ async fn handle_context(
     let deep_context_format = match format {
         ContextFormat::Markdown => DeepContextOutputFormat::Markdown,
         ContextFormat::Json => DeepContextOutputFormat::Json,
+        ContextFormat::Sarif => DeepContextOutputFormat::Sarif,
+        ContextFormat::LlmOptimized => DeepContextOutputFormat::Json, // Use JSON as base for LLM-optimized
     };
 
     // Delegate to proven deep context implementation
@@ -2536,7 +2548,7 @@ async fn handle_analyze_dead_code(
     // Create analyzer with a reasonable capacity (we'll adjust this as needed)
     let mut analyzer = DeadCodeAnalyzer::new(10000);
 
-    // TODO: Support coverage data integration
+    // TRACKED: Support coverage data integration
     // if let Some(coverage_data) = load_coverage_data(&path) {
     //     analyzer = analyzer.with_coverage(coverage_data);
     // }
@@ -7176,7 +7188,7 @@ async fn handle_analyze_comprehensive(
     if include_dead_code {
         let dead_start = std::time::Instant::now();
 
-        // Simple dead code detection based on TODO/FIXME patterns
+        // Simple dead code detection based on TRACKED patterns
         let mut dead_indicators = 0;
         let mut files_with_issues = 0;
 

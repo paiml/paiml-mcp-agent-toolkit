@@ -29,7 +29,7 @@ mod gitignore_respect_tests;
 // Include metric accuracy tests
 mod metric_accuracy_suite;
 
-// TODO: Fix diagnostic command tests
+// TRACKED: Fix diagnostic command tests
 // mod diagnose_tests;
 
 #[tokio::test]

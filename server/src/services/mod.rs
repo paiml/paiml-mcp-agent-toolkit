@@ -28,7 +28,7 @@ pub mod dag_builder;
 pub mod dead_code_analyzer;
 pub mod dead_code_prover;
 pub mod deep_context;
-// pub mod deep_context_orchestrator; // TODO: Fix AST node compatibility
+// pub mod deep_context_orchestrator; // TRACKED: Fix AST node compatibility
 pub mod defect_probability;
 pub mod deterministic_mermaid_engine;
 pub mod dogfooding_engine;

@@ -26,7 +26,7 @@ pub struct BigOAnalysisConfig {
 }
 
 /// Big-O analysis report
-#[derive(Debug)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct BigOAnalysisReport {
     pub analyzed_functions: usize,
     pub complexity_distribution: ComplexityDistribution,
@@ -35,7 +35,7 @@ pub struct BigOAnalysisReport {
     pub recommendations: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ComplexityDistribution {
     pub constant: usize,
     pub logarithmic: usize,
@@ -47,7 +47,7 @@ pub struct ComplexityDistribution {
     pub unknown: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FunctionComplexity {
     pub file_path: PathBuf,
     pub function_name: String,
@@ -58,7 +58,7 @@ pub struct FunctionComplexity {
     pub notes: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PatternMatch {
     pub pattern_name: String,
     pub occurrences: usize,

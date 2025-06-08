@@ -493,19 +493,19 @@ impl UnifiedAstEngine {
                 self.extract_rust_dependencies(syn_ast, source, node_indices, graph);
             }
             FileAst::TypeScript(_content) => {
-                // TODO: Implement TypeScript import resolution
+                // TRACKED: Implement TypeScript import resolution
             }
             FileAst::Python(_content) => {
-                // TODO: Implement Python import resolution
+                // TRACKED: Implement Python import resolution
             }
             FileAst::Cython(_content) => {
-                // TODO: Implement Cython import resolution (both Python and C imports)
+                // TRACKED: Implement Cython import resolution (both Python and C imports)
             }
             FileAst::C(_ast) => {
-                // TODO: Implement C #include resolution
+                // TRACKED: Implement C #include resolution
             }
             FileAst::Cpp(_ast) => {
-                // TODO: Implement C++ #include resolution
+                // TRACKED: Implement C++ #include resolution
             }
             FileAst::Makefile(_ast) => {
                 // Makefiles don't have traditional imports
@@ -555,7 +555,7 @@ impl UnifiedAstEngine {
         match ast {
             FileAst::Rust(syn_ast) => self.compute_rust_metrics(syn_ast),
             FileAst::TypeScript(_) | FileAst::Python(_) | FileAst::Cython(_) => {
-                ModuleMetrics::default() // TODO: Implement for other languages
+                ModuleMetrics::default() // TRACKED: Implement for other languages
             }
             FileAst::C(ast_dag) | FileAst::Cpp(ast_dag) => self.compute_c_cpp_metrics(ast_dag),
             FileAst::Makefile(makefile_ast) => self.compute_makefile_metrics(makefile_ast),

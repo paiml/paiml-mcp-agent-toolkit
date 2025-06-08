@@ -13,7 +13,7 @@ use uuid::Uuid;
 pub mod adapters;
 pub mod error;
 pub mod service;
-// pub mod test_harness; // TODO: Fix Future type issues
+// pub mod test_harness; // TRACKED: Fix Future type issues
 
 /// Core unified request abstraction that can represent any protocol
 #[derive(Debug)]

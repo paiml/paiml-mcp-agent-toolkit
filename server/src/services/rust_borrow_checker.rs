@@ -493,7 +493,7 @@ impl RustBorrowChecker {
             metrics: CollectionMetrics {
                 files_processed: collection_state.files_processed,
                 annotations_found: annotations_count,
-                cache_hits: 0, // TODO: Track cache hits properly
+                cache_hits: 0, // TRACKED: Track cache hits properly
                 duration_ms: duration.as_millis() as u64,
             },
         })

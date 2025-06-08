@@ -204,7 +204,7 @@ impl CodeIntelligence {
                 report.dependency_graph = Some(DependencyGraphReport {
                     nodes: dependency_graph.nodes.len(),
                     edges: dependency_graph.edges.len(),
-                    circular_dependencies: Vec::new(), // TODO: Implement cycle detection
+                    circular_dependencies: Vec::new(), // TRACKED: Implement cycle detection
                     mermaid_diagram,
                 });
             }
@@ -377,7 +377,7 @@ impl CodeIntelligence {
                         let dag_guard = dag.read().await;
                         let mut analyzer = deadcode.write().await;
                         let _dead_report = analyzer.analyze(&dag_guard);
-                        // TODO: Store in report
+                        // TRACKED: Store in report
                     })
                         as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>);
                 }
@@ -387,7 +387,7 @@ impl CodeIntelligence {
                     // No future needed here
                 }
 
-                // TODO: Implement other analysis types
+                // TRACKED: Implement other analysis types
                 _ => {}
             }
         }

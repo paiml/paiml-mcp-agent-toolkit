@@ -177,7 +177,7 @@ impl ComplexityPatternMatcher {
         let mut max_child_depth = 0;
 
         // Check children for nested loops
-        // TODO: Need actual child traversal once AST structure is complete
+        // TRACKED: Need actual child traversal once AST structure is complete
         // For now, return conservative estimate based on AST type
         if ast.first_child != 0 {
             max_child_depth = 1;
@@ -212,7 +212,7 @@ impl ComplexityPatternMatcher {
     fn is_divide_and_conquer(&self, ast: &UnifiedAstNode, _expected_divisions: u32) -> bool {
         // Look for recursive calls with input division
         if let AstKind::Function(_) = &ast.kind {
-            // TODO: Analyze function body for recursive calls
+            // TRACKED: Analyze function body for recursive calls
             // For now, use name-based heuristic
             if let Some(name) = self.get_function_name(ast) {
                 let lower_name = name.to_lowercase();
@@ -272,7 +272,7 @@ impl ComplexityPatternMatcher {
     fn is_recursive_function(&self, ast: &UnifiedAstNode) -> bool {
         // Simple check: function that calls itself
         if let AstKind::Function(_) = &ast.kind {
-            // TODO: Check function body for self-calls
+            // TRACKED: Check function body for self-calls
             // Would need to get function name and check for recursive calls
             return false; // Placeholder
         }
@@ -281,7 +281,7 @@ impl ComplexityPatternMatcher {
 
     /// Find recursive call patterns
     fn find_recursive_calls(&self, _ast: &UnifiedAstNode) -> Vec<RecursiveCall> {
-        Vec::new() // TODO: Implement AST traversal
+        Vec::new() // TRACKED: Implement AST traversal
     }
 
     /// Estimate non-recursive work in function

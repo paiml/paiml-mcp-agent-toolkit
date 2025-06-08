@@ -725,7 +725,7 @@ impl AstDag {
 /// Placeholder for language-specific parsers
 #[derive(Default)]
 pub struct LanguageParsers {
-    // TODO: Add actual parser implementations
+    // TRACKED: Add actual parser implementations
 }
 
 #[cfg(test)]

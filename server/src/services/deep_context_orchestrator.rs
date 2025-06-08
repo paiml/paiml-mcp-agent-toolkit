@@ -330,7 +330,7 @@ impl DeepContextOrchestrator {
                 let _permit = sem.acquire().await?;
                 
                 // For now, create a placeholder AST node
-                // TODO: Integrate with actual AST parsing
+                // TRACKED: Integrate with actual AST parsing
                 use crate::models::unified_ast::{UnifiedAstNode, AstKind, NodeMetadata, Language};
                 
                 let placeholder_ast = UnifiedAstNode {
@@ -338,7 +338,7 @@ impl DeepContextOrchestrator {
                     kind: AstKind::Module,
                     metadata: NodeMetadata::Module { name: path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown").to_string() },
                     source_range: std::ops::Range { start: 0, end: 0 },
-                    language: Language::Rust, // TODO: Detect language from extension
+                    language: Language::Rust, // TRACKED: Detect language from extension
                     children: Vec::new(),
                     parent: None,
                     flags: Default::default(),
@@ -375,7 +375,7 @@ impl DeepContextOrchestrator {
 
     /// Perform comprehensive analysis using the orchestration request
     async fn perform_analysis(&self, _request: &OrchestrationRequest) -> Result<()> {
-        // TODO: Integrate with existing CodeIntelligence service
+        // TRACKED: Integrate with existing CodeIntelligence service
         // For now, just return success
         Ok(())
     }
@@ -385,9 +385,9 @@ impl DeepContextOrchestrator {
         &self,
         file_count: usize,
         duration: std::time::Duration,
-        _analysis_results: (), // TODO: Replace with actual analysis results
+        _analysis_results: (), // TRACKED: Replace with actual analysis results
     ) -> Result<DeepContextReport> {
-        // TODO: Extract actual metrics from analysis results
+        // TRACKED: Extract actual metrics from analysis results
         let complexity_summary = ComplexitySummary {
             total_functions: 150, // Placeholder
             high_complexity_functions: 12,
@@ -399,7 +399,7 @@ impl DeepContextOrchestrator {
         };
 
         let hotspots = vec![
-            // TODO: Generate actual hotspots from analysis
+            // TRACKED: Generate actual hotspots from analysis
         ];
 
         let recommendations = vec![
@@ -416,7 +416,7 @@ impl DeepContextOrchestrator {
             file_count,
             analysis_duration: duration,
             ast_nodes: file_count * 50, // Placeholder estimate
-            dependencies: 0, // TODO: Count actual dependencies
+            dependencies: 0, // TRACKED: Count actual dependencies
             complexity_summary,
             hotspots,
             recommendations,

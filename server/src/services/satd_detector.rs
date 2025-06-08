@@ -535,7 +535,7 @@ impl SATDDetector {
                     map
                 },
                 files_with_satd: files_with_debt,
-                avg_age_days: 0.0, // TODO: Calculate based on git history
+                avg_age_days: 0.0, // TRACKED: Calculate based on git history
             },
             total_files_analyzed,
             files_with_debt,

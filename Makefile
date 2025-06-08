@@ -71,17 +71,41 @@ check: check-scripts
 
 # Fast tests without coverage (optimized for speed) - MUST complete under 3 minutes
 test-fast:
-	@echo "⚡ Running fast tests with maximum parallelism..."
+	@echo "⚡ Running fast tests with intelligent parallelism..."
 	@echo "🚀 Setting SKIP_SLOW_TESTS=1 to ensure tests complete under 3 minutes..."
-	@if [ "$${CI:-}" = "true" ]; then \
+	@echo "🧠 Detecting optimal thread count based on system resources..."
+	@AVAILABLE_MEM=$$(free -g | grep Mem | awk '{print $$7}'); \
+	CPU_CORES=$$(nproc); \
+	if [ "$${CI:-}" = "true" ]; then \
+		echo "🔧 CI environment detected - using full parallelism"; \
+		TEST_THREADS=$$CPU_CORES; \
+	else \
+		echo "📊 System resources: $$CPU_CORES cores, $${AVAILABLE_MEM}GB available memory"; \
+		if [ $$AVAILABLE_MEM -lt 4 ]; then \
+			TEST_THREADS=2; \
+			echo "⚠️  Low memory detected - limiting to 2 threads"; \
+		elif [ $$AVAILABLE_MEM -lt 8 ]; then \
+			TEST_THREADS=$$((CPU_CORES / 3)); \
+			echo "🔧 Medium memory - using $$TEST_THREADS threads (cores/3)"; \
+		elif [ $$CPU_CORES -gt 8 ]; then \
+			TEST_THREADS=$$((CPU_CORES / 2)); \
+			echo "🚀 High core count - using $$TEST_THREADS threads (cores/2)"; \
+		else \
+			TEST_THREADS=$$((CPU_CORES * 2 / 3)); \
+			echo "✅ Normal resources - using $$TEST_THREADS threads (cores*2/3)"; \
+		fi; \
+		TEST_THREADS=$$([ $$TEST_THREADS -lt 1 ] && echo 1 || echo $$TEST_THREADS); \
+	fi; \
+	echo "🔨 Running tests with $$TEST_THREADS threads..."; \
+	if [ "$${CI:-}" = "true" ]; then \
 		echo "🔧 Running CI-optimized test suite (excluding slow integration tests)..."; \
-		SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$(nproc) cargo nextest run --profile fast --workspace \
+		SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$TEST_THREADS cargo nextest run --profile fast --workspace \
 			--filter-expr 'not test(slow_integration)' || \
 		SKIP_SLOW_TESTS=1 cargo test --release --workspace --exclude slow_integration; \
 	else \
-		SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$(nproc) cargo nextest run --profile fast --workspace \
+		SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$TEST_THREADS cargo nextest run --profile fast --workspace \
 			--filter-expr 'not test(slow_integration)' || \
-		SKIP_SLOW_TESTS=1 cargo test --release --workspace --exclude slow_integration; \
+		SKIP_SLOW_TESTS=1 cargo test --release --workspace --exclude slow_integration -- --test-threads=$$TEST_THREADS; \
 	fi
 	@echo "✅ Fast tests completed under 3 minutes!"
 
@@ -91,6 +115,14 @@ test-slow-integration:
 	@echo "⚠️  These tests may take 5-10 minutes and are not part of fast coverage"
 	@cd server && cargo test --test slow_integration --release -- --test-threads=1 --ignored
 	@echo "✅ Slow integration tests completed!"
+
+# Test with manual thread control - use when automatic detection isn't working
+test-safe:
+	@echo "🛡️ Running tests with manual thread control..."
+	@THREADS=$${THREADS:-4}; \
+	echo "📊 Using $$THREADS threads (override with THREADS=n make test-safe)"; \
+	SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$THREADS cargo test --release --workspace --exclude slow_integration -- --test-threads=$$THREADS
+	@echo "✅ Safe test run completed!"
 
 # Run tests - ALWAYS FAST (zero tolerance for slow tests) with coverage summary
 test:
@@ -857,7 +889,8 @@ help:
 	@echo "  lint         - Run linters in all projects (checks only)"
 	@echo "  check        - Type check all projects"
 	@echo "  test         - Run fast tests with coverage (ONLY fast tests allowed)"
-	@echo "  test-fast    - Run fast tests with maximum parallelism (no coverage)"
+	@echo "  test-fast    - Run fast tests with intelligent parallelism (no coverage)"
+	@echo "  test-safe    - Run tests with manual thread control (use THREADS=n make test-safe)"
 	@echo "  test-critical-scripts - Test critical installation/release scripts"
 	@echo "  coverage     - Generate coverage reports for all projects"
 	@echo "  coverage-stdout - Fast coverage to stdout (completes under 2 minutes)"
@@ -1341,3 +1374,32 @@ kaizen: release ## Toyota Way continuous improvement - comprehensive quality gat
 	@echo "🎯 Zero defects, zero waste, continuous improvement achieved."
 
 .PHONY: setup-mermaid-validator test-mermaid-spec validate-mermaid-artifacts mermaid-compliance-report generate-artifacts test-determinism verify-artifacts analyze-satd analyze-satd-evolution export-critical-satd satd-metrics clean-mermaid-validator validate-all-specs benchmark-specs kaizen
+# Context generation optimized for server source
+context-fast: release
+	@echo '📊 Generating context for server source code (fast)...'
+	@cd server/src && ../../target/release/pmat context --format markdown --output ../../deep_context.md
+	@echo '✅ Context generated: deep_context.md'
+	@echo '📏 File size:' && ls -lh deep_context.md | awk '{print $$5}'
+
+context-benchmark: release
+	@echo '⚡ Benchmarking context generation...'
+	@mkdir -p artifacts
+	@echo 'Testing on server/src directory:'
+	@hyperfine --warmup 2 --min-runs 5 \
+		"cd server/src && ../../target/release/pmat context --format json > /tmp/ctx.json" \
+		--export-json artifacts/context-benchmark.json
+	@echo 'Performance results:'
+	@jq -r '.results[0] | "Mean: \(.mean)s, Min: \(.min)s, Max: \(.max)s"' artifacts/context-benchmark.json
+
+# Context generation (optimized for large codebases)
+context: release
+	@echo '📊 Generating context for source code...'
+	@cd server && ../target/release/pmat context --format markdown --output ../deep_context.md
+	@echo '✅ Context generated: deep_context.md'
+	@echo '📏 File size:' && ls -lh deep_context.md | awk '{print $$5}'
+
+context-json: release
+	@echo '📊 Generating JSON context for source code...'
+	@cd server && ../target/release/pmat context --format json --output ../deep_context.json
+	@echo '✅ Context generated: deep_context.json'
+	@echo '📏 File size:' && ls -lh deep_context.json | awk '{print $$5}'

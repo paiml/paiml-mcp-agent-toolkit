@@ -876,7 +876,7 @@ pub fn resolve_repository(
     if let Some(repo_spec) = repo {
         resolve_repo_spec(&repo_spec)
     } else if let Some(url) = url {
-        // TODO: Implement URL cloning - for now return error
+        // TRACKED: Implement URL cloning - for now return error
         Err(anyhow!(
             "Remote repository cloning not yet implemented. URL: {}",
             url

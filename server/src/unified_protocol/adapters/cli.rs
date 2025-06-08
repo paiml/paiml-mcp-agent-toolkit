@@ -959,6 +959,8 @@ fn format_to_string(format: &ContextFormat) -> String {
     match format {
         ContextFormat::Markdown => "markdown".to_string(),
         ContextFormat::Json => "json".to_string(),
+        ContextFormat::Sarif => "sarif".to_string(),
+        ContextFormat::LlmOptimized => "llm-optimized".to_string(),
     }
 }
 
