@@ -300,8 +300,8 @@ class Calculator:
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("# Deep Context Analysis"))
-        .stdout(predicate::str::contains("## Summary"));
+        .stdout(predicate::str::contains("# Project Context"))
+        .stdout(predicate::str::contains("## Project Structure"));
 }
 
 #[test]

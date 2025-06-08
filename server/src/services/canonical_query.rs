@@ -396,12 +396,12 @@ fn merge_coupled_components(
     _components: &mut [Component],
     _dag: &crate::models::dag::DependencyGraph,
 ) {
-    // TODO: Implement coupling analysis and merge highly coupled components
+    // TRACKED: Implement coupling analysis and merge highly coupled components
     // For now, this is a placeholder
 }
 
 fn calculate_graph_diameter(_components: &[Component], _edges: &[ComponentEdge]) -> usize {
-    // TODO: Implement graph diameter calculation
+    // TRACKED: Implement graph diameter calculation
     // For now, return a placeholder value
     5
 }

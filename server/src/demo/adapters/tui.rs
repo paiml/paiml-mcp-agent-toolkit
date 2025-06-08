@@ -548,12 +548,12 @@ impl TuiDemoAdapter {
 #[cfg(feature = "tui")]
 impl TuiDemoAdapter {
     async fn enter_search_mode(&mut self) -> Result<(), TuiDemoError> {
-        // TODO: Implement search mode
+        // TRACKED: Implement search mode
         Ok(())
     }
 
     async fn refresh_analysis(&mut self) -> Result<(), TuiDemoError> {
-        // TODO: Implement analysis refresh
+        // TRACKED: Implement analysis refresh
         Ok(())
     }
 

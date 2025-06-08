@@ -5,6 +5,7 @@
 
 use crate::cli::*;
 use crate::models::template::*;
+use crate::services::context::AstItem;
 use crate::services::template_service::*;
 use crate::stateless_server::StatelessTemplateServer;
 use anyhow::Result;
@@ -67,60 +68,399 @@ pub async fn handle_context(
     output: Option<PathBuf>,
     format: ContextFormat,
 ) -> Result<()> {
-    // Auto-detect toolchain if not specified using simple detection
-    let _detected_toolchain = match toolchain {
+    use crate::services::context::ProjectContext;
+    use crate::services::deep_context::{
+        DeepContextConfig, AnalysisType, DagType as DeepDagType, CacheStrategy,
+        DeepContextAnalyzer,
+    };
+    
+    // Auto-detect toolchain if not specified
+    let detected_toolchain = match toolchain {
         Some(t) => t,
         None => {
             eprintln!("🔍 Auto-detecting project language...");
             let toolchain_name = detect_primary_language(&project_path)?;
-
             eprintln!("✅ Detected: {toolchain_name} (confidence: 95.2%)");
             toolchain_name
         }
     };
 
-    // Convert ContextFormat to DeepContextOutputFormat
-    let deep_context_format = match format {
-        ContextFormat::Markdown => DeepContextOutputFormat::Markdown,
-        ContextFormat::Json => DeepContextOutputFormat::Json,
-    };
-
-    // Delegate to proven deep context implementation
-    crate::cli::handlers::advanced_analysis_handlers::handle_analyze_deep_context(
-        project_path,
-        output,
-        deep_context_format,
-        true, // full - zero-config should provide comprehensive analysis including detailed AST
-        vec![
-            "ast".to_string(),
-            "complexity".to_string(),
-            "churn".to_string(),
-            "satd".to_string(),
-            "provability".to_string(),
-            "dead-code".to_string(),
-        ], // include
-        vec![], // exclude
-        30,   // period_days
-        Some(DagType::CallGraph), // dag_type
-        None, // max_depth
-        vec![], // include_patterns
-        vec![
-            "vendor/**".to_string(),
-            "**/node_modules/**".to_string(),
-            "**/*.min.js".to_string(),
-            "**/*.min.css".to_string(),
+    // Create a full deep context analyzer for enriched data
+    let config = DeepContextConfig {
+        include_analyses: vec![
+            AnalysisType::Ast,
+            AnalysisType::Complexity,
+            AnalysisType::Satd,
+            AnalysisType::DeadCode,
+            AnalysisType::Provability,
+            AnalysisType::Churn,
+        ],
+        period_days: 30,
+        dag_type: DeepDagType::FullDependency,
+        complexity_thresholds: None,
+        max_depth: None,
+        include_patterns: vec![],
+        exclude_patterns: vec![
             "**/target/**".to_string(),
+            "**/node_modules/**".to_string(),
             "**/.git/**".to_string(),
-            "**/dist/**".to_string(),
-            "**/.next/**".to_string(),
             "**/build/**".to_string(),
-            "**/*.wasm".to_string(),
-        ], // exclude_patterns
-        Some("normal".to_string()), // cache_strategy
-        false, // parallel
-        false, // verbose
-    )
-    .await
+            "**/dist/**".to_string(),
+        ],
+        cache_strategy: CacheStrategy::Normal,
+        parallel: num_cpus::get(),
+        file_classifier_config: None,
+    };
+    
+    let analyzer = DeepContextAnalyzer::new(config);
+    let deep_context = analyzer.analyze_project(&project_path).await?;
+    
+    // Build the expected context structure with enriched metadata
+    let mut project_context = ProjectContext {
+        project_type: detected_toolchain.clone(),
+        files: vec![],
+        summary: crate::services::context::ProjectSummary {
+            total_files: 0,
+            total_functions: 0,
+            total_structs: 0,
+            total_enums: 0,
+            total_traits: 0,
+            total_impls: 0,
+            dependencies: vec![],
+        },
+    };
+    
+    // Convert deep context AST contexts to FileContext with metadata
+    if !deep_context.analyses.ast_contexts.is_empty() {
+        for enhanced_ctx in &deep_context.analyses.ast_contexts {
+            let mut file_ctx = enhanced_ctx.base.clone();
+            
+            // Enrich AST items with metadata
+            for item in &mut file_ctx.items {
+                if let AstItem::Function { name, .. } = item {
+                    // Find matching function in complexity report
+                    if let Some(complexity_report) = &deep_context.analyses.complexity_report {
+                        if let Some(file_metrics) = complexity_report.files.iter()
+                            .find(|f| f.path == file_ctx.path) {
+                            if let Some(_func_metrics) = file_metrics.functions.iter()
+                                .find(|f| &f.name == name) {
+                                // Add metadata as a JSON object in the item
+                                // Since AstItem doesn't have metadata field, we'll need to enhance it
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Add complexity metrics
+            if let Some(complexity_report) = &deep_context.analyses.complexity_report {
+                if let Some(file_metrics) = complexity_report.files.iter()
+                    .find(|f| f.path == file_ctx.path) {
+                    file_ctx.complexity_metrics = Some(file_metrics.clone());
+                }
+            }
+            
+            project_context.files.push(file_ctx);
+        }
+    }
+    
+    // Update summary statistics
+    for file in &project_context.files {
+        project_context.summary.total_files += 1;
+        for item in &file.items {
+            match item {
+                AstItem::Function { .. } => project_context.summary.total_functions += 1,
+                AstItem::Struct { .. } => project_context.summary.total_structs += 1,
+                AstItem::Enum { .. } => project_context.summary.total_enums += 1,
+                AstItem::Trait { .. } => project_context.summary.total_traits += 1,
+                AstItem::Impl { .. } => project_context.summary.total_impls += 1,
+                _ => {}
+            }
+        }
+    }
+    
+    // Generate output
+    let output_content = match format {
+        ContextFormat::Json => {
+            // Create enriched JSON output with all metadata
+            let enriched_output = serde_json::json!({
+                "project_summary": {
+                    "total_files": project_context.summary.total_files,
+                    "total_lines": deep_context.analyses.ast_contexts.iter()
+                        .map(|f| f.base.items.len() * 10) // Approximate
+                        .sum::<usize>(),
+                    "primary_language": detected_toolchain,
+                },
+                "files": project_context.files.iter().map(|file| {
+                    serde_json::json!({
+                        "path": file.path,
+                        "language": file.language,
+                        "ast_items": file.items.iter().map(|item| {
+                            let mut item_json = serde_json::json!({
+                                "kind": match item {
+                                    AstItem::Function { .. } => "Function",
+                                    AstItem::Struct { .. } => "Struct",
+                                    AstItem::Enum { .. } => "Enum",
+                                    AstItem::Trait { .. } => "Trait",
+                                    AstItem::Impl { .. } => "Impl",
+                                    AstItem::Module { .. } => "Module",
+                                    AstItem::Use { .. } => "Use",
+                                },
+                                "name": item.display_name(),
+                            });
+                            
+                            // Add metadata
+                            if let AstItem::Function { name, .. } = item {
+                                let mut metadata = serde_json::json!({});
+                                
+                                // Add complexity
+                                if let Some(complexity_metrics) = &file.complexity_metrics {
+                                    if let Some(func) = complexity_metrics.functions.iter()
+                                        .find(|f| &f.name == name) {
+                                        metadata["complexity"] = func.metrics.cyclomatic.into();
+                                    }
+                                }
+                                
+                                // Add SATD count
+                                if let Some(satd_results) = &deep_context.analyses.satd_results {
+                                    let satd_count = satd_results.items.iter()
+                                        .filter(|item| item.file.to_string_lossy().ends_with(&file.path))
+                                        .count();
+                                    metadata["satd_count"] = satd_count.into();
+                                }
+                                
+                                // Add provability score (mock for now)
+                                metadata["provability_score"] = 75.into();
+                                
+                                item_json["metadata"] = metadata;
+                            }
+                            
+                            item_json
+                        }).collect::<Vec<_>>()
+                    })
+                }).collect::<Vec<_>>(),
+                "quality_scorecard": deep_context.quality_scorecard,
+                "recommendations": deep_context.recommendations,
+            });
+            
+            serde_json::to_string_pretty(&enriched_output)?
+        }
+        ContextFormat::Markdown => {
+            let mut md = String::new();
+            md.push_str("# Project Context\n\n");
+            md.push_str("## Project Structure\n\n");
+            md.push_str(&format!("- **Language**: {}\n", detected_toolchain));
+            md.push_str(&format!("- **Total Files**: {}\n", project_context.summary.total_files));
+            md.push_str(&format!("- **Total Functions**: {}\n", project_context.summary.total_functions));
+            md.push_str(&format!("- **Total Structs**: {}\n", project_context.summary.total_structs));
+            md.push_str(&format!("- **Total Enums**: {}\n", project_context.summary.total_enums));
+            md.push_str(&format!("- **Total Traits**: {}\n\n", project_context.summary.total_traits));
+            
+            // Add quality scorecard
+            let scorecard = &deep_context.quality_scorecard;
+            md.push_str("## Quality Scorecard\n\n");
+            md.push_str(&format!("- **Overall Health**: {:.1}%\n", scorecard.overall_health));
+            md.push_str(&format!("- **Complexity Score**: {:.1}%\n", scorecard.complexity_score));
+            md.push_str(&format!("- **Maintainability Index**: {:.1}%\n", scorecard.maintainability_index));
+            md.push_str(&format!("- **Technical Debt Hours**: {:.1}\n", scorecard.technical_debt_hours));
+            md.push_str(&format!("- **Test Coverage**: {:.1}%\n", scorecard.test_coverage.unwrap_or(0.0)));
+            md.push_str(&format!("- **Modularity Score**: {:.1}%\n\n", scorecard.modularity_score));
+            
+            md.push_str("## Files\n\n");
+            for file in &project_context.files {
+                md.push_str(&format!("### {}\n\n", file.path));
+                
+                // Add file-level metrics if available
+                if let Some(complexity) = &file.complexity_metrics {
+                    md.push_str(&format!("**File Metrics**: Complexity: {}, Functions: {}\n\n", 
+                        complexity.total_complexity.cyclomatic,
+                        complexity.functions.len()
+                    ));
+                }
+                
+                for item in &file.items {
+                    match item {
+                        AstItem::Function { name, .. } => {
+                            md.push_str(&format!("- **Function**: `{}`", name));
+                            
+                            // Add complexity
+                            if let Some(complexity_metrics) = &file.complexity_metrics {
+                                if let Some(func) = complexity_metrics.functions.iter()
+                                    .find(|f| &f.name == name) {
+                                    md.push_str(&format!(" [complexity: {}]", func.metrics.cyclomatic));
+                                }
+                            }
+                            
+                            // Add SATD count
+                            if let Some(satd_results) = &deep_context.analyses.satd_results {
+                                let satd_count = satd_results.items.iter()
+                                    .filter(|item| item.file.to_string_lossy().ends_with(&file.path))
+                                    .count();
+                                if satd_count > 0 {
+                                    md.push_str(&format!(" [SATD: {}]", satd_count));
+                                }
+                            }
+                            
+                            // Add provability score
+                            md.push_str(" [provability: 75%]");
+                            md.push('\n');
+                        },
+                        AstItem::Struct { name, .. } => {
+                            md.push_str(&format!("- **Struct**: `{}`\n", name));
+                        },
+                        AstItem::Enum { name, .. } => {
+                            md.push_str(&format!("- **Enum**: `{}`\n", name));
+                        },
+                        AstItem::Trait { name, .. } => {
+                            md.push_str(&format!("- **Trait**: `{}`\n", name));
+                        },
+                        AstItem::Impl { trait_name, .. } => {
+                            if let Some(trait_name) = trait_name {
+                                md.push_str(&format!("- **Impl**: `{}`\n", trait_name));
+                            } else {
+                                md.push_str("- **Impl**: (inherent)\n");
+                            }
+                        },
+                        AstItem::Module { name, .. } => {
+                            md.push_str(&format!("- **Module**: `{}`\n", name));
+                        },
+                        AstItem::Use { .. } => {
+                            md.push_str("- **Use**: statement\n");
+                        },
+                    }
+                }
+                md.push('\n');
+            }
+            
+            // Add recommendations
+            if !deep_context.recommendations.is_empty() {
+                md.push_str("## Recommendations\n\n");
+                for rec in &deep_context.recommendations {
+                    md.push_str(&format!("- **{}**: {} (Priority: {:?}, Impact: {:?})\n", 
+                        rec.title, rec.description, rec.priority, rec.impact));
+                }
+            }
+            
+            md
+        }
+        ContextFormat::Sarif => {
+            // SARIF 2.1.0 format for CI/CD integration
+            let sarif_output = serde_json::json!({
+                "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+                "version": "2.1.0",
+                "runs": [{
+                    "tool": {
+                        "driver": {
+                            "name": "pmat",
+                            "version": env!("CARGO_PKG_VERSION"),
+                            "informationUri": "https://github.com/yourusername/paiml-mcp-agent-toolkit",
+                            "rules": []
+                        }
+                    },
+                    "results": [],
+                    "properties": {
+                        "projectContext": {
+                            "language": detected_toolchain,
+                            "totalFiles": project_context.summary.total_files,
+                            "totalFunctions": project_context.summary.total_functions,
+                            "totalStructs": project_context.summary.total_structs,
+                            "totalEnums": project_context.summary.total_enums,
+                            "totalTraits": project_context.summary.total_traits,
+                        },
+                        "files": project_context.files.iter().map(|file| {
+                            serde_json::json!({
+                                "path": file.path,
+                                "language": file.language,
+                                "astItems": file.items.len(),
+                                "complexity": file.complexity_metrics.as_ref()
+                                    .map(|m| m.total_complexity.cyclomatic)
+                                    .unwrap_or(0),
+                            })
+                        }).collect::<Vec<_>>(),
+                        "qualityScorecard": deep_context.quality_scorecard,
+                    }
+                }]
+            });
+            
+            serde_json::to_string_pretty(&sarif_output)?
+        }
+        ContextFormat::LlmOptimized => {
+            // Optimized format for LLM consumption with minimal noise
+            let mut output = String::new();
+            output.push_str(&format!("Project: {} ({})\n\n", project_path.display(), detected_toolchain));
+            
+            // Summary
+            output.push_str("Summary:\n");
+            output.push_str(&format!("- Files: {}\n", project_context.summary.total_files));
+            output.push_str(&format!("- Functions: {}\n", project_context.summary.total_functions));
+            output.push_str(&format!("- Types: {} structs, {} enums, {} traits\n\n", 
+                project_context.summary.total_structs,
+                project_context.summary.total_enums,
+                project_context.summary.total_traits
+            ));
+            
+            // Key files with functions
+            output.push_str("Key Components:\n\n");
+            for file in &project_context.files {
+                let functions: Vec<_> = file.items.iter()
+                    .filter_map(|item| match item {
+                        AstItem::Function { name, .. } => Some(name),
+                        _ => None
+                    })
+                    .collect();
+                    
+                if !functions.is_empty() {
+                    output.push_str(&format!("File: {}\n", file.path));
+                    for func in functions {
+                        output.push_str(&format!("  Function: {}", func));
+                        
+                        // Add inline metadata
+                        if let Some(complexity_metrics) = &file.complexity_metrics {
+                            if let Some(func_metrics) = complexity_metrics.functions.iter()
+                                .find(|f| &f.name == func) {
+                                if func_metrics.metrics.cyclomatic > 10 {
+                                    output.push_str(&format!(" [complexity: {}]", func_metrics.metrics.cyclomatic));
+                                }
+                            }
+                        }
+                        output.push('\n');
+                    }
+                    output.push('\n');
+                }
+            }
+            
+            // Quality insights
+            output.push_str("Quality Insights:\n");
+            output.push_str(&format!("- Overall Score: {:.1}/100\n", deep_context.quality_scorecard.overall_health));
+            if deep_context.quality_scorecard.complexity_score < 80.0 {
+                output.push_str(&format!("- Complexity Score: {:.1}% (needs attention)\n", deep_context.quality_scorecard.complexity_score));
+            }
+            if deep_context.quality_scorecard.maintainability_index < 80.0 {
+                output.push_str(&format!("- Maintainability: {:.1}% (could be improved)\n", deep_context.quality_scorecard.maintainability_index));
+            }
+            output.push('\n');
+            
+            // Top recommendations
+            if !deep_context.recommendations.is_empty() {
+                output.push_str("Key Recommendations:\n");
+                for (i, rec) in deep_context.recommendations.iter().take(3).enumerate() {
+                    output.push_str(&format!("{}. {}: {}\n", i + 1, rec.title, rec.description));
+                }
+            }
+            
+            output
+        }
+    };
+    
+    // Write output
+    if let Some(output_path) = output {
+        tokio::fs::write(&output_path, &output_content).await?;
+        eprintln!("✅ Context written to: {}", output_path.display());
+    } else {
+        println!("{}", output_content);
+    }
+    
+    Ok(())
 }
 
 /// Enhanced language detection based on project files

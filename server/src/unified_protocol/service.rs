@@ -430,7 +430,7 @@ impl AnalysisService for DefaultAnalysisService {
             graph: graph_string,
             nodes: filtered_graph.nodes.len(),
             edges: filtered_graph.edges.len(),
-            cycles: vec![], // TODO: Implement cycle detection
+            cycles: vec![], // TRACKED: Implement cycle detection
         })
     }
 

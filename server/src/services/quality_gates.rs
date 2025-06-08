@@ -433,6 +433,7 @@ mod tests {
                 duplicate_code_results: None,
                 provability_results: None,
                 cross_language_refs: vec![],
+                big_o_analysis: None,
             },
             quality_scorecard: QualityScorecard {
                 overall_health: 0.8,

@@ -89,7 +89,7 @@ gimli = { version = "0.28", optional = true }
 goblin = { version = "0.7", optional = true }
 # Analysis infrastructure for C/C++
 fixedbitset = { version = "0.4", optional = true }
-rustc-hash = { version = "1.1", optional = true }
+rustc-hash = { version = "1.1" }
 
 # Installer generation
 # installer-macro = { path = "../installer-macro" } # Removed - using simple include_str! instead
@@ -153,7 +153,7 @@ rust-only = ["rust-ast"]
 rust-ast = ["syn", "quote", "proc-macro2"]
 typescript-ast = ["rust-ast", "swc_ecma_parser", "swc_common", "swc_ecma_ast", "swc_ecma_visit"]
 python-ast = ["rust-ast", "rustpython-parser"]
-c-ast = ["tree-sitter", "tree-sitter-c", "fixedbitset", "rustc-hash"]
+c-ast = ["tree-sitter", "tree-sitter-c", "fixedbitset"]
 cpp-ast = ["c-ast", "tree-sitter-cpp", "cpp_demangle", "gimli", "goblin"]
 # Feature to exclude demo/reporting functionality for minimal builds
 no-demo = []
@@ -177,3 +177,10 @@ path = "src/bin/pmat.rs"
 name = "critical_path"
 harness = false
 
+[[bench]]
+name = "performance"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1

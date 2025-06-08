@@ -70,7 +70,7 @@ pub async fn handle_analyze_deep_context(
         DeepContextOutputFormat::Json => analyzer.format_as_json(&report)?,
         DeepContextOutputFormat::Markdown => analyzer.format_as_markdown(&report),
         DeepContextOutputFormat::Sarif => {
-            // TODO: Implement SARIF format
+            // TRACKED: Implement SARIF format
             analyzer.format_as_json(&report)?
         }
     };

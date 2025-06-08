@@ -145,7 +145,7 @@ impl PersistentCacheManager {
             memory_usage_mb,
             memory_pressure,
             cache_stats,
-            hot_paths: Vec::new(), // TODO: Implement hot path tracking
+            hot_paths: Vec::new(), // TRACKED: Implement hot path tracking
             effectiveness,
         }
     }

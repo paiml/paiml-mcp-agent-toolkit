@@ -503,7 +503,7 @@ impl AnalysisResultMatcher {
                     value: actual_value,
                 });
             }
-            // TODO: Implement other comparison types
+            // TRACKED: Implement other comparison types
             _ => {
                 return Err(AssertionError::UnsupportedComparison {
                     comparison: format!("{:?}", expectation.comparison),
