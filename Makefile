@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint check test test-fast coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast
+.PHONY: all validate format lint check test test-fast coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap overnight-refactor overnight-monitor overnight-swap-cron
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -72,6 +72,18 @@ check: check-scripts
 # Fast tests without coverage (optimized for speed) - MUST complete under 3 minutes
 test-fast:
 	@echo "⚡ Running fast tests with intelligent parallelism..."
+	@echo "🧹 Clearing swap memory before tests..."
+	@if [ "$${CI:-}" != "true" ] && command -v sudo >/dev/null 2>&1; then \
+		SWAP_USED=$$(free -b | grep Swap | awk '{print $$3}'); \
+		if [ $$SWAP_USED -gt 0 ]; then \
+			echo "🔄 Swap in use: $$(free -h | grep Swap | awk '{print $$3}'), clearing..."; \
+			sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches" 2>/dev/null || true; \
+			sudo swapoff -a && sudo swapon -a 2>/dev/null || true; \
+			echo "✅ Swap cleared"; \
+		else \
+			echo "✅ No swap in use"; \
+		fi; \
+	fi
 	@echo "🚀 Setting SKIP_SLOW_TESTS=1 to ensure tests complete under 3 minutes..."
 	@echo "🧠 Detecting optimal thread count based on system resources..."
 	@AVAILABLE_MEM=$$(free -g | grep Mem | awk '{print $$7}'); \
@@ -127,6 +139,18 @@ test-safe:
 # Run tests - ALWAYS FAST (zero tolerance for slow tests) with coverage summary
 test:
 	@echo "🧪 Running fast tests with coverage..."
+	@echo "🧹 Clearing swap memory before tests..."
+	@if [ "$${CI:-}" != "true" ] && command -v sudo >/dev/null 2>&1; then \
+		SWAP_USED=$$(free -b | grep Swap | awk '{print $$3}'); \
+		if [ $$SWAP_USED -gt 0 ]; then \
+			echo "🔄 Swap in use: $$(free -h | grep Swap | awk '{print $$3}'), clearing..."; \
+			sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches" 2>/dev/null || true; \
+			sudo swapoff -a && sudo swapon -a 2>/dev/null || true; \
+			echo "✅ Swap cleared"; \
+		else \
+			echo "✅ No swap in use"; \
+		fi; \
+	fi
 	@cd server && SKIP_SLOW_TESTS=1 cargo llvm-cov test \
 		--lib --bins \
 		--no-fail-fast \
@@ -246,6 +270,31 @@ clean:
 	@cargo clean --manifest-path server/Cargo.toml
 	@rm -rf coverage/ artifacts/ target/
 	@echo "✅ Clean completed successfully!"
+
+# Clear swap memory (useful between test runs to prevent swap buildup)
+clear-swap:
+	@echo "🧹 Clearing swap memory..."
+	@if command -v sudo >/dev/null 2>&1; then \
+		SWAP_USED=$$(free -b | grep Swap | awk '{print $$3}'); \
+		SWAP_TOTAL=$$(free -b | grep Swap | awk '{print $$2}'); \
+		if [ $$SWAP_USED -gt 0 ]; then \
+			echo "📊 Swap status: $$(free -h | grep Swap)"; \
+			SWAP_PERCENT=$$((SWAP_USED * 100 / SWAP_TOTAL)); \
+			echo "🔄 Swap usage: $$SWAP_PERCENT% ($$(free -h | grep Swap | awk '{print $$3}') used), clearing..."; \
+			echo "💾 Syncing filesystems..."; \
+			sudo sync; \
+			echo "🗑️ Dropping caches..."; \
+			sudo sh -c "echo 3 > /proc/sys/vm/drop_caches" 2>/dev/null || true; \
+			echo "🔄 Resetting swap..."; \
+			sudo swapoff -a && sudo swapon -a 2>/dev/null || true; \
+			echo "✅ Swap cleared!"; \
+			echo "📊 New swap status: $$(free -h | grep Swap)"; \
+		else \
+			echo "✅ No swap in use"; \
+		fi; \
+	else \
+		echo "⚠️  sudo not available - cannot clear swap"; \
+	fi
 
 # Format TypeScript scripts (excluding archived scripts)
 format-scripts:
@@ -930,6 +979,7 @@ help:
 	@echo "  build        - Build all projects (binaries only)"
 	@echo "  release      - Build optimized release binary (workspace-wide)"
 	@echo "  clean        - Clean all build artifacts"
+	@echo "  clear-swap   - Clear swap memory (useful between test runs)"
 	@echo ""
 	@echo "Documentation:"
 	@echo "  dogfood      - Update README.md with current project metrics"
@@ -977,6 +1027,11 @@ help:
 	@echo "  analyze-satd-evolution  - SATD evolution tracking over time"
 	@echo "  export-critical-satd    - Export critical technical debt in SARIF format"
 	@echo "  satd-metrics           - Generate comprehensive SATD metrics"
+	@echo ""
+	@echo "Overnight Autonomous Refactoring:"
+	@echo "  overnight-refactor      - Start 8-12 hour autonomous refactoring system"
+	@echo "  overnight-monitor       - Monitor progress of overnight refactoring"
+	@echo "  overnight-swap-cron     - Set up cron job for periodic swap clearing"
 	@echo ""
 	@echo "Setup:"
 	@echo "  setup       - Install all development dependencies"
@@ -1426,3 +1481,105 @@ context-json: release
 	@cd server && ../target/release/pmat context --format json --output ../deep_context.json
 	@echo '✅ Context generated: deep_context.json'
 	@echo '📏 File size:' && ls -lh deep_context.json | awk '{print $$5}'
+
+# =============================================================================
+# Overnight Autonomous Refactoring System
+# =============================================================================
+
+# Start overnight autonomous refactoring with state machine
+overnight-refactor: release
+	@echo "🌙 Starting Overnight Autonomous Refactoring System..."
+	@echo "⏱️  This will run for 8-12 hours, applying automated fixes"
+	@echo ""
+	@echo "📊 Pre-flight checks..."
+	@$(MAKE) clear-swap
+	@echo ""
+	@echo "🔍 Current code quality baseline:"
+	@./target/release/pmat analyze satd --format human | head -20 || true
+	@echo ""
+	@echo "🚀 Launching refactoring state machine..."
+	@mkdir -p .refactor_state docs/bugs artifacts/refactor
+	@if [ -f "./scripts/run-overnight-repair.sh" ]; then \
+		echo "Using run-overnight-repair.sh script..."; \
+		bash ./scripts/run-overnight-repair.sh; \
+	else \
+		echo "Creating and running overnight refactor configuration..."; \
+		nohup ./target/release/pmat refactor serve \
+			--refactor-mode batch \
+			--config refactor-config.json \
+			--project . \
+			--parallel 8 \
+			--memory-limit 16384 \
+			--batch-size 50 \
+			--checkpoint-dir .refactor_state \
+			--resume \
+			--auto-commit "refactor: automated fix via state machine [skip ci]" \
+			--max-runtime 43200 \
+			2>&1 | tee refactor_overnight.log & \
+		REFACTOR_PID=$$!; \
+		echo "$$REFACTOR_PID" > .refactor_state/refactor.pid; \
+		echo ""; \
+		echo "✅ Refactoring started with PID: $$REFACTOR_PID"; \
+		echo "📝 Log file: refactor_overnight.log"; \
+		echo "🔍 Monitor with: make overnight-monitor"; \
+		echo "🛑 Stop safely with: kill -SIGUSR1 $$REFACTOR_PID"; \
+	fi
+
+# Monitor overnight refactoring progress
+overnight-monitor:
+	@echo "📊 Overnight Refactoring Monitor"
+	@echo "================================"
+	@if [ -f ".refactor_state/refactor.pid" ]; then \
+		PID=$$(cat .refactor_state/refactor.pid); \
+		if ps -p $$PID > /dev/null 2>&1; then \
+			echo "✅ Refactoring running (PID: $$PID)"; \
+		else \
+			echo "❌ Refactoring not running (PID $$PID not found)"; \
+		fi; \
+	else \
+		echo "❌ No refactoring process found"; \
+	fi
+	@echo ""
+	@echo "📈 Memory and Swap Status:"
+	@free -h | grep -E "Mem:|Swap:"
+	@echo ""
+	@if [ -f "refactor_overnight.log" ]; then \
+		echo "📋 Recent Activity (last 20 lines):"; \
+		tail -20 refactor_overnight.log | grep -E "STATE:|FIXED:|ERROR:|WARNING:" || tail -20 refactor_overnight.log; \
+		echo ""; \
+		echo "📊 Statistics:"; \
+		echo "  States: $$(grep -c "STATE:" refactor_overnight.log 2>/dev/null || echo 0)"; \
+		echo "  Fixed: $$(grep -c "FIXED:" refactor_overnight.log 2>/dev/null || echo 0)"; \
+		echo "  Errors: $$(grep -c "ERROR:" refactor_overnight.log 2>/dev/null || echo 0)"; \
+		echo "  Warnings: $$(grep -c "WARNING:" refactor_overnight.log 2>/dev/null || echo 0)"; \
+	else \
+		echo "⚠️  No log file found yet"; \
+	fi
+	@echo ""
+	@echo "💡 Commands:"
+	@echo "  View full log: tail -f refactor_overnight.log"
+	@echo "  Clear swap if needed: make clear-swap"
+	@echo "  Stop safely: kill -SIGUSR1 $$(cat .refactor_state/refactor.pid 2>/dev/null || echo '<PID>')"
+
+# Set up cron job for periodic swap clearing during overnight runs
+overnight-swap-cron:
+	@echo "⏰ Setting up periodic swap clearing for overnight refactoring..."
+	@CRON_CMD="cd $(shell pwd) && ./scripts/clear-swap-periodic.sh --threshold 50 --log .refactor_state/swap-clear.log"; \
+	CRON_ENTRY="*/30 * * * * $$CRON_CMD"; \
+	echo ""; \
+	echo "📝 Cron entry to add:"; \
+	echo "$$CRON_ENTRY"; \
+	echo ""; \
+	echo "To install, run:"; \
+	echo "  1. crontab -e"; \
+	echo "  2. Add the line above"; \
+	echo "  3. Save and exit"; \
+	echo ""; \
+	echo "Or run this command to append it:"; \
+	echo "  (crontab -l 2>/dev/null; echo \"$$CRON_ENTRY\") | crontab -"; \
+	echo ""; \
+	echo "📊 This will:"; \
+	echo "  - Check swap usage every 30 minutes"; \
+	echo "  - Clear swap if usage exceeds 50%"; \
+	echo "  - Only act if overnight refactor is running"; \
+	echo "  - Log actions to .refactor_state/swap-clear.log"
