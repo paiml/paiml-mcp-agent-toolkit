@@ -25,6 +25,118 @@ impl RustAstParser {
     pub fn new() -> Self {
         Self {}
     }
+
+    fn extract_function_item(func: &syn::ItemFn) -> AstItem {
+        AstItem::Function {
+            name: func.sig.ident.to_string(),
+            visibility: match func.vis {
+                syn::Visibility::Public(_) => "pub".to_string(),
+                _ => "private".to_string(),
+            },
+            is_async: func.sig.asyncness.is_some(),
+            line: 0, // Would extract from span in full implementation
+        }
+    }
+
+    fn extract_struct_item(s: &syn::ItemStruct) -> AstItem {
+        AstItem::Struct {
+            name: s.ident.to_string(),
+            visibility: match s.vis {
+                syn::Visibility::Public(_) => "pub".to_string(),
+                _ => "private".to_string(),
+            },
+            fields_count: match &s.fields {
+                syn::Fields::Named(fields) => fields.named.len(),
+                syn::Fields::Unnamed(fields) => fields.unnamed.len(),
+                syn::Fields::Unit => 0,
+            },
+            derives: Vec::new(), // Would extract derive attributes in full implementation
+            line: 0,
+        }
+    }
+
+    fn extract_enum_item(e: &syn::ItemEnum) -> AstItem {
+        AstItem::Enum {
+            name: e.ident.to_string(),
+            visibility: match e.vis {
+                syn::Visibility::Public(_) => "pub".to_string(),
+                _ => "private".to_string(),
+            },
+            variants_count: e.variants.len(),
+            line: 0,
+        }
+    }
+
+    fn extract_trait_item(t: &syn::ItemTrait) -> AstItem {
+        AstItem::Trait {
+            name: t.ident.to_string(),
+            visibility: match t.vis {
+                syn::Visibility::Public(_) => "pub".to_string(),
+                _ => "private".to_string(),
+            },
+            line: 0,
+        }
+    }
+
+    fn extract_impl_item(i: &syn::ItemImpl) -> Option<AstItem> {
+        if let syn::Type::Path(type_path) = &*i.self_ty {
+            if let Some(segment) = type_path.path.segments.last() {
+                return Some(AstItem::Impl {
+                    type_name: segment.ident.to_string(),
+                    trait_name: i.trait_.as_ref().map(|(_, trait_path, _)| {
+                        if let Some(segment) = trait_path.segments.last() {
+                            segment.ident.to_string()
+                        } else {
+                            "Unknown".to_string()
+                        }
+                    }),
+                    line: 0,
+                });
+            }
+        }
+        None
+    }
+
+    fn extract_use_item(_u: &syn::ItemUse) -> AstItem {
+        AstItem::Use {
+            path: "use_path".to_string(), // Simplified for now
+            line: 0,
+        }
+    }
+
+    fn create_function_node() -> UnifiedAstNode {
+        UnifiedAstNode {
+            kind: AstKind::Function(FunctionKind::Regular),
+            lang: Language::Rust,
+            flags: NodeFlags::default(),
+            parent: 0,
+            first_child: 0,
+            next_sibling: 0,
+            source_range: 0..0, // Would extract from span
+            semantic_hash: 0,   // Would compute semantic hash
+            structural_hash: 0, // Would compute structural hash
+            name_vector: 0,     // Would compute name embedding
+            metadata: NodeMetadata { complexity: 1 }, // Basic complexity
+            proof_annotations: None,
+        }
+    }
+
+    fn create_struct_node() -> UnifiedAstNode {
+        UnifiedAstNode {
+            kind: AstKind::Type(TypeKind::Struct),
+            lang: Language::Rust,
+            flags: NodeFlags::default(),
+            parent: 0,
+            first_child: 0,
+            next_sibling: 0,
+            source_range: 0..0,
+            semantic_hash: 0,
+            structural_hash: 0,
+            name_vector: 0,
+            metadata: NodeMetadata { raw: 0 },
+            proof_annotations: None,
+        }
+    }
 }
 
 impl Default for RustAstParser {
@@ -126,102 +238,20 @@ impl UnifiedAstParser for RustAstParser {
 impl RustAstParser {
     fn extract_ast_item(&self, item: &Item, _warnings: &mut [String]) -> Option<AstItem> {
         match item {
-            Item::Fn(func) => Some(AstItem::Function {
-                name: func.sig.ident.to_string(),
-                visibility: match func.vis {
-                    syn::Visibility::Public(_) => "pub".to_string(),
-                    _ => "private".to_string(),
-                },
-                is_async: func.sig.asyncness.is_some(),
-                line: 0, // Would extract from span in full implementation
-            }),
-            Item::Struct(s) => Some(AstItem::Struct {
-                name: s.ident.to_string(),
-                visibility: match s.vis {
-                    syn::Visibility::Public(_) => "pub".to_string(),
-                    _ => "private".to_string(),
-                },
-                fields_count: match &s.fields {
-                    syn::Fields::Named(fields) => fields.named.len(),
-                    syn::Fields::Unnamed(fields) => fields.unnamed.len(),
-                    syn::Fields::Unit => 0,
-                },
-                derives: Vec::new(), // Would extract derive attributes in full implementation
-                line: 0,
-            }),
-            Item::Enum(e) => Some(AstItem::Enum {
-                name: e.ident.to_string(),
-                visibility: match e.vis {
-                    syn::Visibility::Public(_) => "pub".to_string(),
-                    _ => "private".to_string(),
-                },
-                variants_count: e.variants.len(),
-                line: 0,
-            }),
-            Item::Trait(t) => Some(AstItem::Trait {
-                name: t.ident.to_string(),
-                visibility: match t.vis {
-                    syn::Visibility::Public(_) => "pub".to_string(),
-                    _ => "private".to_string(),
-                },
-                line: 0,
-            }),
-            Item::Impl(i) => {
-                if let syn::Type::Path(type_path) = &*i.self_ty {
-                    if let Some(segment) = type_path.path.segments.last() {
-                        return Some(AstItem::Impl {
-                            type_name: segment.ident.to_string(),
-                            trait_name: i.trait_.as_ref().map(|(_, trait_path, _)| {
-                                if let Some(segment) = trait_path.segments.last() {
-                                    segment.ident.to_string()
-                                } else {
-                                    "Unknown".to_string()
-                                }
-                            }),
-                            line: 0,
-                        });
-                    }
-                }
-                None
-            }
-            Item::Use(_u) => Some(AstItem::Use {
-                path: "use_path".to_string(), // Simplified for now
-                line: 0,
-            }),
+            Item::Fn(func) => Some(Self::extract_function_item(func)),
+            Item::Struct(s) => Some(Self::extract_struct_item(s)),
+            Item::Enum(e) => Some(Self::extract_enum_item(e)),
+            Item::Trait(t) => Some(Self::extract_trait_item(t)),
+            Item::Impl(i) => Self::extract_impl_item(i),
+            Item::Use(u) => Some(Self::extract_use_item(u)),
             _ => None,
         }
     }
 
     fn create_unified_node(&self, item: &Item, _warnings: &mut [String]) -> Option<UnifiedAstNode> {
         match item {
-            Item::Fn(_func) => Some(UnifiedAstNode {
-                kind: AstKind::Function(FunctionKind::Regular),
-                lang: Language::Rust,
-                flags: NodeFlags::default(),
-                parent: 0,
-                first_child: 0,
-                next_sibling: 0,
-                source_range: 0..0, // Would extract from span
-                semantic_hash: 0,   // Would compute semantic hash
-                structural_hash: 0, // Would compute structural hash
-                name_vector: 0,     // Would compute name embedding
-                metadata: NodeMetadata { complexity: 1 }, // Basic complexity
-                proof_annotations: None,
-            }),
-            Item::Struct(_) => Some(UnifiedAstNode {
-                kind: AstKind::Type(TypeKind::Struct),
-                lang: Language::Rust,
-                flags: NodeFlags::default(),
-                parent: 0,
-                first_child: 0,
-                next_sibling: 0,
-                source_range: 0..0,
-                semantic_hash: 0,
-                structural_hash: 0,
-                name_vector: 0,
-                metadata: NodeMetadata { raw: 0 },
-                proof_annotations: None,
-            }),
+            Item::Fn(_func) => Some(Self::create_function_node()),
+            Item::Struct(_) => Some(Self::create_struct_node()),
             // Add other item types as needed
             _ => None,
         }
