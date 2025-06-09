@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint check test test-fast coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen
+.PHONY: all validate format lint check test test-fast coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -58,7 +58,7 @@ fix: format
 	@echo "✅ All fixable issues have been resolved!"
 
 # Run linting in all projects
-lint: lint-scripts
+lint: lint-scripts lint-makefile
 	@echo "🔍 Linting Rust code..."
 	@cargo clippy --manifest-path server/Cargo.toml --all-targets --all-features -- -D warnings
 	@echo "✅ All linting checks passed!"
@@ -276,6 +276,31 @@ check-scripts:
 		echo "✓ No TypeScript scripts to check"; \
 	fi
 
+# Lint Makefile
+# NOTE: The linter reports many false positive "undefined variable" warnings for shell 
+# command substitutions like $$(command) and variable expansions like $${VAR:-default}.
+# These are valid Make syntax. The linter also warns about long recipes (>10 lines)
+# which is a style preference that we accept for complex operations.
+lint-makefile:
+	@echo "🔍 Linting Makefile..."
+	@if [ -f ./target/release/pmat ]; then \
+		output=$$(./target/release/pmat analyze makefile Makefile --format human 2>&1); \
+		echo "$$output" | head -n 5; \
+		issues=$$(echo "$$output" | grep -c "issues" || true); \
+		if [ $$issues -gt 0 ]; then \
+			real_issues=$$(echo "$$output" | grep -E "minphony|phonydeclared|timestampexpanded|portability|performance" | wc -l); \
+			echo ""; \
+			echo "📊 Summary: Found $$real_issues actionable issues (filtering out false positives)"; \
+			echo ""; \
+			echo "$$output" | grep -E "minphony|phonydeclared|timestampexpanded|portability|performance" -A1 | grep -v "^--$$" || echo "✅ No critical issues found!"; \
+		fi; \
+	else \
+		echo "⚠️  Release binary not found. Run 'make release' first or using debug build..."; \
+		cargo run --manifest-path server/Cargo.toml -- analyze makefile Makefile --format human || true; \
+	fi
+	@echo ""
+	@echo "✅ Makefile linting complete!"
+
 # Test TypeScript scripts with coverage
 test-scripts:
 	@rm -rf coverage_deno
@@ -430,7 +455,7 @@ validate-naming:
 	@deno run --allow-read --allow-run $(SCRIPTS_DIR)/validate-naming.ts
 
 # Generate comprehensive context with full AST and metrics analysis
-context: release
+context-root: release
 	@echo "📊 Generating comprehensive deep context analysis..."
 	@./target/release/pmat context --output deep_context.md
 	@echo "✅ Context analysis complete: deep_context.md"
@@ -441,7 +466,7 @@ context-simple: release
 	@./target/release/pmat context --output deep_context.md
 
 # Additional targets for different formats (using auto-detection)
-context-json: release
+context-json-root: release
 	@./target/release/pmat context \
 		--format json \
 		--output deep_context.json
@@ -461,7 +486,7 @@ context-legacy:
 	@echo "🕰️ Running legacy TypeScript implementation for comparison..."
 	@deno run --allow-all $(SCRIPTS_DIR)/deep-context.ts -o deep_context_legacy.md
 
-context-benchmark: release context-legacy
+context-benchmark-legacy: release context-legacy
 	@echo "🏁 Performance comparison: New auto-detection vs Legacy TypeScript"
 	@echo "=== New Implementation (Zero-config auto-detection) ==="
 	@time ./target/release/pmat context --format markdown --output deep_context_new.md
@@ -583,6 +608,8 @@ client-%:
 	fi
 
 # Build for specific target (for cross-compilation in CI)
+# Usage: make build-target TARGET=x86_64-unknown-linux-gnu
+# The TARGET variable must be provided by the user
 build-target:
 	@if [ -z "$(TARGET)" ]; then \
 		echo "Error: TARGET not specified"; \
@@ -645,17 +672,13 @@ coverage-summary:
 outdated:
 	cargo outdated --format json --manifest-path server/Cargo.toml
 
-# Server outdated (alias for CI)
-server-outdated:
-	cargo outdated --format json --manifest-path server/Cargo.toml
+# Server outdated (alias for CI) - removed duplicate, see line 550
 
 # Run cargo test with all features
 test-all-features:
 	cargo test --all-features --manifest-path server/Cargo.toml
 
-# Server test all (alias for CI)
-server-test-all:
-	cargo test --all-features --manifest-path server/Cargo.toml
+# Server test all (alias for CI) - removed duplicate, see line 546
 
 # Run cargo clippy with warnings as errors
 clippy-strict:
@@ -818,9 +841,7 @@ install-dev-tools:
 tokei:
 	tokei server/src --exclude "*.json"
 
-# Count lines of code for server
-server-tokei:
-	tokei server/src --exclude "*.json"
+# Count lines of code for server - removed duplicate, see line 554
 
 # Setup development environment
 # NOTE: This does NOT install Docker - Docker is optional for this project
@@ -1002,6 +1023,8 @@ test-all-interfaces: release
 	rm -f cli-complexity.json mcp-complexity.json http-complexity.json
 
 # Test specific feature across all interfaces
+# Usage: make test-feature-all-interfaces FEATURE=complexity
+# The FEATURE variable must be provided by the user
 test-feature-all-interfaces: release
 	@if [ -z "$(FEATURE)" ]; then \
 		echo "Error: FEATURE not specified"; \

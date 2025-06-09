@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MakefileAst {
     pub nodes: Vec<MakefileNode>,
     pub source_map: HashMap<usize, SourceSpan>,
     pub metadata: MakefileMetadata,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MakefileNode {
     pub kind: MakefileNodeKind,
     pub span: SourceSpan,
@@ -15,7 +15,7 @@ pub struct MakefileNode {
     pub data: NodeData,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum MakefileNodeKind {
     Rule,
     Variable,
@@ -29,7 +29,7 @@ pub enum MakefileNodeKind {
     Prerequisite,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum NodeData {
     Rule {
         targets: Vec<String>,
@@ -52,7 +52,7 @@ pub enum NodeData {
     Text(String),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum AssignmentOp {
     Deferred,    // =
     Immediate,   // :=
@@ -61,13 +61,13 @@ pub enum AssignmentOp {
     Shell,       // !=
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RecipeLine {
     pub text: String,
     pub prefixes: RecipePrefixes,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, serde::Serialize, serde::Deserialize)]
 pub struct RecipePrefixes {
     pub silent: bool,       // @
     pub ignore_error: bool, // -
@@ -102,7 +102,7 @@ impl SourceSpan {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct MakefileMetadata {
     pub has_phony_rules: bool,
     pub has_pattern_rules: bool,

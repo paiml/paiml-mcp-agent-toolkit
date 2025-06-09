@@ -391,7 +391,7 @@ mod demo_web_tests {
             file_path: String::new(),
             line_number: 0,
             complexity: 5,
-            metadata: std::collections::HashMap::new(),
+            metadata: rustc_hash::FxHashMap::default(),
         });
 
         let content =

@@ -99,6 +99,12 @@ impl CliAdapter {
                     "Report command should be handled directly by CLI".to_string(),
                 ))
             }
+            Commands::Refactor(_) => {
+                // Refactor command is handled directly in the CLI, not through the unified protocol
+                Err(ProtocolError::InvalidFormat(
+                    "Refactor command should be handled directly by CLI".to_string(),
+                ))
+            }
         }
     }
 
@@ -903,6 +909,7 @@ impl CliInput {
             Commands::Diagnose(_) => "diagnose",
             Commands::QualityGate { .. } => "quality-gate",
             Commands::Report { .. } => "report",
+            Commands::Refactor(_) => "refactor",
         }
         .to_string();
 

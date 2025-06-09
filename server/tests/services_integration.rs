@@ -226,7 +226,7 @@ enum TestEnum {
             file_path: "test.rs".to_string(),
             line_number: 1,
             complexity: 1,
-            metadata: std::collections::HashMap::new(),
+            metadata: rustc_hash::FxHashMap::default(),
         });
 
         test_graph.add_edge(Edge {

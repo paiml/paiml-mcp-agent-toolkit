@@ -10,6 +10,31 @@ This document serves as the operational guide for the paiml-mcp-agent-toolkit (p
 - Hansei (反省): Focus on fixing existing broken functionality rather than adding new features
 - Kaizen - Continuous Improvement
 
+## Zero Tolerance Quality Standards
+
+### ABSOLUTE RULES - NO EXCEPTIONS
+1. **ZERO SATD**: No TODO, FIXME, HACK, XXX, or placeholder implementations allowed
+2. **ZERO High Complexity**: No function may exceed cyclomatic complexity of 20
+3. **ZERO Known Defects**: All code must be fully functional before committing
+4. **ZERO Incomplete Features**: Only merge complete, tested, documented features
+
+### Implementation Standards
+- **No Placeholders**: Every function must have a complete implementation
+- **No Temporary Code**: All code is production-ready or it doesn't exist
+- **No Workarounds**: Fix the root cause, not the symptom
+- **No Technical Debt**: Pay as you go - fix issues immediately
+
+### Quality Gates
+```bash
+# These must ALL pass before ANY commit:
+make lint          # Zero warnings
+make test-fast     # 100% pass rate
+pmat analyze satd  # Zero SATD items
+pmat analyze complexity --max-cyclomatic 20  # No violations
+```
+
+If you cannot implement something completely, do not implement it at all.
+
 ## QA V2 Framework Integration
 
 ### Validation Pipeline

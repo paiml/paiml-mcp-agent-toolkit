@@ -294,21 +294,6 @@ impl MakefileRule for UndefinedVariableRule {
     }
 }
 
-fn check_undefined_in_text(
-    text: &str,
-    defined_vars: &HashSet<String>,
-    violations: &mut Vec<Violation>,
-    span: SourceSpan,
-) {
-    let scanner = VariableScanner::new(text);
-
-    for var_ref in scanner {
-        if should_check_variable(&var_ref) && !defined_vars.contains(&var_ref.name) {
-            violations.push(create_undefined_violation(&var_ref.name, span));
-        }
-    }
-}
-
 /// Represents a variable reference found in text
 #[derive(Debug)]
 struct VariableRef {
@@ -332,6 +317,21 @@ struct VariableScanner<'a> {
     position: usize,
 }
 
+fn check_undefined_in_text(
+    text: &str,
+    defined_vars: &HashSet<String>,
+    violations: &mut Vec<Violation>,
+    span: SourceSpan,
+) {
+    let scanner = VariableScanner::new(text);
+
+    for var_ref in scanner {
+        if should_check_variable(&var_ref) && !defined_vars.contains(&var_ref.name) {
+            violations.push(create_undefined_violation(&var_ref.name, span));
+        }
+    }
+}
+
 impl<'a> VariableScanner<'a> {
     fn new(text: &'a str) -> Self {
         Self {
@@ -353,6 +353,10 @@ impl<'a> VariableScanner<'a> {
 
     fn parse_parenthesized_var(&mut self, start: usize) -> Option<VariableRef> {
         let content_start = start + 2;
+        if content_start >= self.text.len() {
+            return None;
+        }
+
         let remaining = &self.text[content_start..];
 
         if let Some(end) = remaining.find(')') {
@@ -373,6 +377,10 @@ impl<'a> VariableScanner<'a> {
 
     fn parse_braced_var(&mut self, start: usize) -> Option<VariableRef> {
         let content_start = start + 2;
+        if content_start >= self.text.len() {
+            return None;
+        }
+
         let remaining = &self.text[content_start..];
 
         if let Some(end) = remaining.find('}') {
@@ -391,6 +399,10 @@ impl<'a> VariableScanner<'a> {
     }
 
     fn parse_single_char_var(&mut self, start: usize) -> Option<VariableRef> {
+        if start + 1 >= self.bytes.len() {
+            return None;
+        }
+
         let ch = self.bytes[start + 1];
 
         if ch.is_ascii_alphanumeric() || ch == b'_' {
@@ -422,6 +434,12 @@ impl<'a> Iterator for VariableScanner<'a> {
 
             let next_char = self.bytes[dollar_pos + 1];
 
+            // Handle $$ escape sequence (literal $)
+            if next_char == b'$' {
+                self.position = dollar_pos + 2;
+                continue;
+            }
+
             let var_ref = match next_char {
                 b'(' => self.parse_parenthesized_var(dollar_pos),
                 b'{' => self.parse_braced_var(dollar_pos),
@@ -440,16 +458,45 @@ impl<'a> Iterator for VariableScanner<'a> {
 
 /// Extract variable name from a reference that might contain modifiers
 fn extract_var_name(var_content: &str) -> String {
+    // Handle default value syntax ${VAR:-default}
+    if var_content.contains(":-") {
+        if let Some(pos) = var_content.find(":-") {
+            return var_content[..pos].trim().to_string();
+        }
+    }
+
+    // Handle alternative value syntax ${VAR:+alt}
+    if var_content.contains(":+") {
+        if let Some(pos) = var_content.find(":+") {
+            return var_content[..pos].trim().to_string();
+        }
+    }
+
     // Handle pattern substitution like $(VAR:old=new)
     if let Some(colon_pos) = var_content.find(':') {
-        var_content[..colon_pos].to_string()
-    } else {
-        var_content.to_string()
+        // But not if it's part of a shell command with spaces
+        let before_colon = &var_content[..colon_pos];
+        if !before_colon.contains(' ') && !before_colon.contains('|') && !before_colon.contains('{')
+        {
+            return before_colon.trim().to_string();
+        }
     }
+
+    // If it contains shell operators, it's likely a command not a variable
+    if var_content.contains('|') || var_content.contains('>') || var_content.contains('<') {
+        return String::new(); // Return empty to skip validation
+    }
+
+    var_content.trim().to_string()
 }
 
 /// Check if a variable reference should be validated
 fn should_check_variable(var_ref: &VariableRef) -> bool {
+    // Skip empty names (likely shell commands)
+    if var_ref.name.is_empty() {
+        return false;
+    }
+
     // Skip automatic variables
     if is_automatic_var(&var_ref.name) {
         return false;
@@ -457,6 +504,16 @@ fn should_check_variable(var_ref: &VariableRef) -> bool {
 
     // Skip function calls (only applies to parenthesized refs)
     if var_ref.ref_type == VarRefType::Parenthesized && is_function_call(&var_ref.name) {
+        return false;
+    }
+
+    // Skip shell commands (contain spaces or common shell operators)
+    if var_ref.name.contains(' ') || var_ref.name.contains(';') || var_ref.name.contains('&') {
+        return false;
+    }
+
+    // Skip single letter variables that are likely loop variables
+    if var_ref.name.len() == 1 && var_ref.name.chars().all(|c| c.is_lowercase()) {
         return false;
     }
 

@@ -196,11 +196,19 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
         if self.enable_complexity {
             // Start with base complexity of 1 for any function
             let base_complexity = if is_async {
-                ComplexityMetrics { cyclomatic: 2, cognitive: 2, ..Default::default() }
+                ComplexityMetrics {
+                    cyclomatic: 2,
+                    cognitive: 2,
+                    ..Default::default()
+                }
             } else {
-                ComplexityMetrics { cyclomatic: 1, cognitive: 1, ..Default::default() }
+                ComplexityMetrics {
+                    cyclomatic: 1,
+                    cognitive: 1,
+                    ..Default::default()
+                }
             };
-            
+
             self.current_function_complexity = Some(base_complexity);
             self.current_function_name = Some(name);
             self.current_function_start = 1;
@@ -305,11 +313,19 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
 
                             // Start with base complexity of 1 for any method
                             let base_complexity = if is_async {
-                                ComplexityMetrics { cyclomatic: 2, cognitive: 2, ..Default::default() }
+                                ComplexityMetrics {
+                                    cyclomatic: 2,
+                                    cognitive: 2,
+                                    ..Default::default()
+                                }
                             } else {
-                                ComplexityMetrics { cyclomatic: 1, cognitive: 1, ..Default::default() }
+                                ComplexityMetrics {
+                                    cyclomatic: 1,
+                                    cognitive: 1,
+                                    ..Default::default()
+                                }
                             };
-                            
+
                             self.current_function_complexity = Some(base_complexity);
                             self.current_function_name = Some(method_name.clone());
                             self.current_function_start = 1;

@@ -78,14 +78,14 @@ impl SimpleDeepContext {
         let exclude_dirs = ["target", "node_modules", ".git", "build", "dist"];
 
         let mut files = Vec::new();
-        
+
         // Resolve the project path to an absolute path
         let abs_project_path = if project_path.is_absolute() {
             project_path.clone()
         } else {
             std::env::current_dir()?.join(project_path)
         };
-        
+
         info!("🔍 Searching for files in: {}", abs_project_path.display());
 
         for entry in WalkDir::new(&abs_project_path)
@@ -121,9 +121,18 @@ impl SimpleDeepContext {
         info!("📁 Found {} source files after filtering", files.len());
         if files.is_empty() {
             info!("⚠️  No source files found. Check if:");
-            info!("   - The project path is correct: {}", abs_project_path.display());
-            info!("   - Source files exist with extensions: {:?}", source_extensions);
-            info!("   - Files are not in excluded directories: {:?}", exclude_dirs);
+            info!(
+                "   - The project path is correct: {}",
+                abs_project_path.display()
+            );
+            info!(
+                "   - Source files exist with extensions: {:?}",
+                source_extensions
+            );
+            info!(
+                "   - Files are not in excluded directories: {:?}",
+                exclude_dirs
+            );
         }
         Ok(files)
     }

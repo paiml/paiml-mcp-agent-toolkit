@@ -54,7 +54,7 @@ mod tests {
                     file_path,
                     line_number,
                     complexity,
-                    metadata: std::collections::HashMap::new(),
+                    metadata: rustc_hash::FxHashMap::default(),
                 },
             )
     }
@@ -119,7 +119,7 @@ mod tests {
                 file_path: "test.rs".to_string(),
                 line_number: 1,
                 complexity: 5,
-                metadata: std::collections::HashMap::new(),
+                metadata: rustc_hash::FxHashMap::default(),
             });
 
             let generator = MermaidGenerator::new(MermaidOptions {

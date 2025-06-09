@@ -6,6 +6,7 @@ pub mod deep_context_config;
 pub mod error;
 pub mod mcp;
 pub mod project_meta;
+pub mod refactor;
 pub mod tdg;
 pub mod template;
 pub mod unified_ast;

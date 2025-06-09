@@ -231,6 +231,9 @@ impl CommandExecutor {
                 .await
             }
             Commands::Diagnose(args) => self.registry.utility_handlers.handle_diagnose(args).await,
+            Commands::Refactor(refactor_cmd) => {
+                super::handlers::route_refactor_command(refactor_cmd).await
+            }
         }
     }
 }

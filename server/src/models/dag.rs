@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use rustc_hash::{FxHashMap, FxHashSet};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DependencyGraph {

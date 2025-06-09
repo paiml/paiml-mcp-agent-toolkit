@@ -1,6 +1,6 @@
 use crate::services::deep_context::*;
 use chrono::Utc;
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -75,12 +75,12 @@ fn test_quality_scorecard_calculations() {
 
 #[test]
 fn test_defect_summary_aggregation() {
-    let mut by_severity = HashMap::new();
+    let mut by_severity = FxHashMap::default();
     by_severity.insert("high".to_string(), 5);
     by_severity.insert("medium".to_string(), 10);
     by_severity.insert("low".to_string(), 15);
 
-    let mut by_type = HashMap::new();
+    let mut by_type = FxHashMap::default();
     by_type.insert("dead_code".to_string(), 8);
     by_type.insert("technical_debt".to_string(), 12);
     by_type.insert("complexity".to_string(), 10);
@@ -151,7 +151,7 @@ fn test_cross_language_references() {
 fn test_template_provenance_tracking() {
     use serde_json::json;
 
-    let mut parameters = HashMap::new();
+    let mut parameters = FxHashMap::default();
     parameters.insert("project_name".to_string(), json!("test-project"));
     parameters.insert("language".to_string(), json!("rust"));
 

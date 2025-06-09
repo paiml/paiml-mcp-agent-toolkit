@@ -12,6 +12,7 @@ pub mod duplication_analysis;
 pub mod enhanced_reporting_handlers;
 pub mod generation_handlers;
 pub mod name_similarity_analysis;
+pub mod refactor_handlers;
 pub mod utility_handlers;
 
 // Re-export handler functions
@@ -28,6 +29,7 @@ pub use demo_handlers::{handle_demo, handle_quality_gate};
 pub use duplication_analysis::handle_analyze_duplicates;
 pub use generation_handlers::{handle_generate, handle_scaffold, handle_validate};
 pub use name_similarity_analysis::handle_analyze_name_similarity;
+pub use refactor_handlers::route_refactor_command;
 pub use utility_handlers::{
     handle_context, handle_diagnose, handle_list, handle_search, handle_serve,
 };

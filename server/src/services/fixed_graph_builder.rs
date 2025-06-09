@@ -260,9 +260,10 @@ impl FixedGraphBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rustc_hash::FxHashMap;
 
     fn create_test_graph() -> DependencyGraph {
-        let mut nodes = HashMap::new();
+        let mut nodes = FxHashMap::default();
 
         // Add some test nodes
         nodes.insert(
@@ -274,7 +275,7 @@ mod tests {
                 file_path: "src/services/foo.rs".to_string(),
                 line_number: 1,
                 complexity: 10,
-                metadata: HashMap::new(),
+                metadata: FxHashMap::default(),
             },
         );
 
@@ -287,7 +288,7 @@ mod tests {
                 file_path: "src/models/bar.rs".to_string(),
                 line_number: 1,
                 complexity: 5,
-                metadata: HashMap::new(),
+                metadata: FxHashMap::default(),
             },
         );
 

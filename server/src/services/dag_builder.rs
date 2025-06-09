@@ -87,10 +87,10 @@ impl DagBuilder {
         max_nodes: usize,
     ) -> DependencyGraph {
         let mut graph = Self::build_from_project(project);
-        
+
         // Always calculate PageRank scores for centrality
         graph = add_pagerank_scores(&graph);
-        
+
         if graph.edges.len() > 400 {
             // Safety margin for Mermaid - prune but keep scores
             prune_graph_pagerank(&graph, max_nodes)
@@ -454,7 +454,8 @@ pub fn add_pagerank_scores(graph: &DependencyGraph) -> DependencyGraph {
     let mut new_graph = graph.clone();
     for (id, node) in &mut new_graph.nodes {
         if let Some(idx) = node_ids.iter().position(|&nid| nid == id) {
-            node.metadata.insert("centrality".to_string(), scores[idx].to_string());
+            node.metadata
+                .insert("centrality".to_string(), scores[idx].to_string());
         }
     }
 
@@ -505,7 +506,9 @@ pub fn prune_graph_pagerank(graph: &DependencyGraph, max_nodes: usize) -> Depend
         if keep.contains(id) {
             let mut node_copy = node.clone();
             if let Some(idx) = node_ids.iter().position(|&nid| nid == id) {
-                node_copy.metadata.insert("centrality".to_string(), scores[idx].to_string());
+                node_copy
+                    .metadata
+                    .insert("centrality".to_string(), scores[idx].to_string());
             }
             nodes_with_centrality.insert(id.clone(), node_copy);
         }

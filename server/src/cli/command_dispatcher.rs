@@ -3,7 +3,7 @@
 //! This module implements a dispatch table pattern to reduce cyclomatic complexity
 //! in the CLI module by delegating command execution to specialized handlers.
 
-use super::{AnalyzeCommands, Commands};
+use super::{AnalyzeCommands, Commands, RefactorCommands};
 use crate::stateless_server::StatelessTemplateServer;
 use std::sync::Arc;
 
@@ -167,6 +167,7 @@ impl CommandDispatcher {
             }
             Commands::Serve { port, host, cors } => super::handle_serve(host, port, cors).await,
             Commands::Diagnose(args) => super::diagnose::handle_diagnose(args).await,
+            Commands::Refactor(refactor_cmd) => Self::execute_refactor_command(refactor_cmd).await,
         }
     }
 
@@ -174,5 +175,11 @@ impl CommandDispatcher {
     pub async fn execute_analyze_command(analyze_cmd: AnalyzeCommands) -> anyhow::Result<()> {
         // Delegate to the modular analysis handlers
         super::handlers::route_analyze_command(analyze_cmd).await
+    }
+
+    /// Execute refactor commands using handler pattern (reduces CC)
+    pub async fn execute_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::Result<()> {
+        // Delegate to the refactor handlers
+        super::handlers::route_refactor_command(refactor_cmd).await
     }
 }

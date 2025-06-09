@@ -413,7 +413,7 @@ async fn scan_and_analyze_files(
     results
         .into_iter()
         .filter_map(|result| result.ok())
-        .filter_map(|option| option)
+        .flatten()
         .collect()
 }
 
