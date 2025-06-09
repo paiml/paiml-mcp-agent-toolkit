@@ -29,7 +29,7 @@ pub use demo_handlers::{handle_demo, handle_quality_gate};
 pub use duplication_analysis::handle_analyze_duplicates;
 pub use generation_handlers::{handle_generate, handle_scaffold, handle_validate};
 pub use name_similarity_analysis::handle_analyze_name_similarity;
-pub use refactor_handlers::route_refactor_command;
+pub use refactor_handlers::{route_refactor_command, RefactorServeParams};
 pub use utility_handlers::{
     handle_context, handle_diagnose, handle_list, handle_search, handle_serve,
 };

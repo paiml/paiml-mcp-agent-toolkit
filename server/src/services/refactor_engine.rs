@@ -332,7 +332,7 @@ impl UnifiedEngine {
                 _ => {
                     // Advance state machine
                     let mut state_machine = self.state_machine.write().await;
-                    state_machine.advance().map_err(|e| EngineError::StateMachine(e))?;
+                    state_machine.advance().map_err(EngineError::StateMachine)?;
                     
                     // Track metrics
                     if matches!(current_state, State::Refactor { .. }) {

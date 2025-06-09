@@ -7,6 +7,21 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
+/// Parameters for the refactor serve command
+pub struct RefactorServeParams {
+    pub mode: RefactorMode,
+    pub config: Option<PathBuf>,
+    pub project: PathBuf,
+    pub parallel: usize,
+    pub memory_limit: usize,
+    pub batch_size: usize,
+    pub priority: Option<String>,
+    pub checkpoint_dir: Option<PathBuf>,
+    pub resume: bool,
+    pub auto_commit: Option<String>,
+    pub max_runtime: Option<u64>,
+}
+
 pub async fn route_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::Result<()> {
     match refactor_cmd {
         RefactorCommands::Serve {
@@ -22,8 +37,8 @@ pub async fn route_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::R
             auto_commit,
             max_runtime,
         } => {
-            handle_refactor_serve(
-                refactor_mode,
+            let params = RefactorServeParams {
+                mode: refactor_mode,
                 config,
                 project,
                 parallel,
@@ -34,8 +49,8 @@ pub async fn route_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::R
                 resume,
                 auto_commit,
                 max_runtime,
-            )
-            .await
+            };
+            handle_refactor_serve(params).await
         }
         RefactorCommands::Interactive {
             project_path,
@@ -66,19 +81,20 @@ pub async fn route_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::R
     }
 }
 
-pub async fn handle_refactor_serve(
-    mode: RefactorMode,
-    config: Option<PathBuf>,
-    project: PathBuf,
-    parallel: usize,
-    memory_limit: usize,
-    batch_size: usize,
-    priority: Option<String>,
-    checkpoint_dir: Option<PathBuf>,
-    resume: bool,
-    auto_commit: Option<String>,
-    max_runtime: Option<u64>,
-) -> anyhow::Result<()> {
+pub async fn handle_refactor_serve(params: RefactorServeParams) -> anyhow::Result<()> {
+    let RefactorServeParams {
+        mode,
+        config,
+        project,
+        parallel,
+        memory_limit,
+        batch_size,
+        priority,
+        checkpoint_dir,
+        resume,
+        auto_commit,
+        max_runtime,
+    } = params;
     println!("🔧 Starting refactor server mode...");
     println!("📁 Project: {}", project.display());
     println!("⚙️  Mode: {:?}", mode);
@@ -89,7 +105,7 @@ pub async fn handle_refactor_serve(
     // Load configuration from JSON if provided
     let mut refactor_config = if let Some(config_path) = &config {
         println!("📋 Loading config from: {}", config_path.display());
-        load_refactor_config_json(&config_path).await?
+        load_refactor_config_json(config_path).await?
     } else {
         RefactorConfig::default()
     };
@@ -445,7 +461,7 @@ async fn create_auto_commit(
     
     // Stage all changes
     let status = Command::new("git")
-        .args(&["add", "-A"])
+        .args(["add", "-A"])
         .status()?;
     
     if !status.success() {
@@ -461,7 +477,7 @@ async fn create_auto_commit(
     
     // Create the commit
     let status = Command::new("git")
-        .args(&["commit", "-m", &message])
+        .args(["commit", "-m", &message])
         .status()?;
     
     if status.success() {
