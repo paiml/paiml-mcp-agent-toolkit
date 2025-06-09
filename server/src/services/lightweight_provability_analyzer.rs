@@ -343,7 +343,7 @@ impl LightweightProvabilityAnalyzer {
     /// Calculate provability factor for TDG integration
     pub fn calculate_provability_factor(&self, summary: &ProofSummary) -> f64 {
         // Convert provability score (0-1) to factor (0-5) for TDG
-        // Higher provability = lower technical debt
+        // Higher provability = lower TDG score
         let base_factor = 5.0 * (1.0 - summary.provability_score);
 
         // Adjust based on critical properties

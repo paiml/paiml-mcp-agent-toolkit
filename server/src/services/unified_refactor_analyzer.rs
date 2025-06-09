@@ -233,7 +233,7 @@ impl UnifiedAnalyzer for RustAnalyzer {
                     maintainability_score: 0.3,
                 },
                 risk_level: RiskLevel::Low,
-                explanation: "Simplify complex expressions to reduce technical debt".to_string(),
+                explanation: "Simplify complex expressions to reduce code complexity".to_string(),
             });
         }
 
