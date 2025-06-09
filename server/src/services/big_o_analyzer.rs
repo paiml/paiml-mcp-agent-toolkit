@@ -73,6 +73,90 @@ impl BigOAnalyzer {
         }
     }
 
+    fn get_loop_keywords(language: &str) -> Vec<&'static str> {
+        match language {
+            "rust" => vec!["for", "while", "loop"],
+            "javascript" | "typescript" => vec!["for", "while", "do"],
+            "python" => vec!["for", "while"],
+            _ => vec!["for", "while"],
+        }
+    }
+
+    fn detect_recursive_call(line: &str, function_name: &str) -> bool {
+        let trimmed = line.trim();
+        trimmed.contains(function_name)
+            && !trimmed.starts_with("fn")
+            && !trimmed.starts_with("function")
+    }
+
+    fn detect_sorting_operation(line: &str) -> bool {
+        let trimmed = line.trim();
+        trimmed.contains(".sort(") || trimmed.contains("sort(")
+    }
+
+    fn detect_binary_search(line: &str) -> bool {
+        let trimmed = line.trim();
+        trimmed.contains("binary_search") || trimmed.contains("binarySearch")
+    }
+
+    fn calculate_loop_depth(lines: &[&str], loop_keywords: &[&str]) -> usize {
+        let mut loop_depth = 0;
+        let mut max_loop_depth = 0;
+
+        for line in lines {
+            let trimmed = line.trim();
+
+            // Track loop depth
+            for keyword in loop_keywords {
+                if trimmed.starts_with(keyword) {
+                    loop_depth += 1;
+                    max_loop_depth = max_loop_depth.max(loop_depth);
+                }
+            }
+
+            if trimmed.contains('}') && loop_depth > 0 {
+                loop_depth -= 1;
+            }
+        }
+
+        max_loop_depth
+    }
+
+    fn determine_time_complexity(max_loop_depth: usize, has_recursion: bool) -> ComplexityBound {
+        if has_recursion && max_loop_depth == 0 {
+            return ComplexityBound::unknown();
+        }
+
+        match max_loop_depth {
+            0 => ComplexityBound::constant().with_confidence(90),
+            1 => ComplexityBound::linear().with_confidence(80),
+            2 => ComplexityBound::quadratic().with_confidence(75),
+            3 => ComplexityBound::polynomial(3, 1).with_confidence(70),
+            n => ComplexityBound::polynomial(n as u32, 1).with_confidence(60),
+        }
+    }
+
+    fn detect_space_complexity(function_body: &str) -> (ComplexityBound, bool) {
+        let space_indicators = [
+            "Vec::new",
+            "vec!",
+            "HashMap::new",
+            "HashSet::new",
+            "BTreeMap::new",
+            "[]",
+        ];
+
+        let has_allocation = space_indicators
+            .iter()
+            .any(|indicator| function_body.contains(indicator));
+
+        if has_allocation {
+            (ComplexityBound::linear().with_confidence(70), true)
+        } else {
+            (ComplexityBound::constant().with_confidence(90), false)
+        }
+    }
+
     /// Analyze project for algorithmic complexity
     pub async fn analyze(&self, config: BigOAnalysisConfig) -> Result<BigOAnalysisReport> {
         info!("🔍 Starting Big-O complexity analysis");
@@ -222,93 +306,49 @@ impl BigOAnalyzer {
         function_body: &str,
         language: &str,
     ) -> ComplexityAnalysisResult {
-        let mut time_complexity = ComplexityBound::constant();
-        let mut space_complexity = ComplexityBound::constant();
         let mut notes = Vec::new();
-
-        // Count loops
-        let loop_keywords = match language {
-            "rust" => vec!["for", "while", "loop"],
-            "javascript" | "typescript" => vec!["for", "while", "do"],
-            "python" => vec!["for", "while"],
-            _ => vec!["for", "while"],
-        };
-
-        let mut loop_depth = 0;
-        let mut max_loop_depth = 0;
-        let lines: Vec<&str> = function_body.lines().take(100).collect(); // Limit analysis
-
+        let lines: Vec<&str> = function_body.lines().take(100).collect();
+        
+        // Get language-specific loop keywords
+        let loop_keywords = Self::get_loop_keywords(language);
+        
+        // Calculate loop depth
+        let max_loop_depth = Self::calculate_loop_depth(&lines, &loop_keywords);
+        
+        // Check for patterns
+        let mut has_recursion = false;
+        let mut has_sorting = false;
+        
         for line in &lines {
-            let trimmed = line.trim();
-
-            // Track loop depth
-            for keyword in &loop_keywords {
-                if trimmed.starts_with(keyword) {
-                    loop_depth += 1;
-                    max_loop_depth = max_loop_depth.max(loop_depth);
-                }
-            }
-
-            if trimmed.contains('{') {
-                // Entering block
-            } else if trimmed.contains('}') && loop_depth > 0 {
-                loop_depth -= 1;
-            }
-
-            // Check for recursive calls
-            if trimmed.contains(function_name)
-                && !trimmed.starts_with("fn")
-                && !trimmed.starts_with("function")
-            {
+            if Self::detect_recursive_call(line, function_name) {
+                has_recursion = true;
                 notes.push("Recursive function detected".to_string());
-                time_complexity = ComplexityBound::unknown(); // Need more analysis
             }
-
-            // Check for common operations
-            if trimmed.contains(".sort(") || trimmed.contains("sort(") {
-                time_complexity = if time_complexity
-                    .class
-                    .is_better_than(&BigOClass::Linearithmic)
-                {
-                    ComplexityBound::linearithmic()
-                } else {
-                    time_complexity
-                };
+            
+            if Self::detect_sorting_operation(line) {
+                has_sorting = true;
                 notes.push("Pattern: Sorting operation".to_string());
             }
-
-            if trimmed.contains("binary_search") || trimmed.contains("binarySearch") {
+            
+            if Self::detect_binary_search(line) {
                 notes.push("Pattern: Binary search".to_string());
             }
         }
-
-        // Set complexity based on loop depth
-        match max_loop_depth {
-            0 => {
-                if notes.iter().any(|n| n.contains("Recursive")) {
-                    time_complexity = ComplexityBound::unknown();
-                } else {
-                    time_complexity = ComplexityBound::constant().with_confidence(90);
-                }
-            }
-            1 => time_complexity = ComplexityBound::linear().with_confidence(80),
-            2 => time_complexity = ComplexityBound::quadratic().with_confidence(75),
-            3 => time_complexity = ComplexityBound::polynomial(3, 1).with_confidence(70),
-            _ => {
-                time_complexity = ComplexityBound::polynomial(max_loop_depth, 1).with_confidence(60)
-            }
+        
+        // Determine time complexity
+        let mut time_complexity = Self::determine_time_complexity(max_loop_depth, has_recursion);
+        
+        // Adjust for sorting operations
+        if has_sorting && time_complexity.class.is_better_than(&BigOClass::Linearithmic) {
+            time_complexity = ComplexityBound::linearithmic();
         }
-
-        // Check for space complexity indicators
-        if function_body.contains("Vec::new")
-            || function_body.contains("vec!")
-            || function_body.contains("HashMap::new")
-            || function_body.contains("[]")
-        {
-            space_complexity = ComplexityBound::linear().with_confidence(70);
+        
+        // Determine space complexity
+        let (space_complexity, has_allocation) = Self::detect_space_complexity(function_body);
+        if has_allocation {
             notes.push("Dynamic memory allocation detected".to_string());
         }
-
+        
         ComplexityAnalysisResult {
             time_complexity,
             space_complexity,
