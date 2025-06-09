@@ -10,7 +10,7 @@ mod command_dispatcher;
 
 use crate::{
     models::{churn::ChurnOutputFormat, template::*},
-    services::{makefile_linter, template_service::*},
+    services::{makefile_linter, template_service::*, defect_probability::FileMetrics},
     stateless_server::StatelessTemplateServer,
 };
 use clap::{Parser, Subcommand, ValueEnum};
@@ -6676,7 +6676,7 @@ async fn handle_analyze_duplicates(
 
 // Print duplicate summary format
 fn print_duplicate_summary(
-    report: &crate::services::duplicate_detector::DuplicateReport,
+    report: &crate::services::duplicate_detector::CloneReport,
     perf: bool,
     analysis_time: std::time::Duration,
     file_count: usize,
@@ -6709,7 +6709,7 @@ fn print_duplicate_summary(
 
 // Format and output duplicate detection results
 fn format_duplicate_results(
-    report: &crate::services::duplicate_detector::DuplicateReport,
+    report: &crate::services::duplicate_detector::CloneReport,
     format: &DuplicateOutputFormat,
     perf: bool,
     analysis_time: std::time::Duration,
@@ -6849,6 +6849,72 @@ fn format_duplicate_results(
     Ok(())
 }
 
+// Configuration for defect prediction analysis
+struct DefectPredictionConfig {
+    confidence_threshold: f32,
+    min_lines: usize,
+    include_low_confidence: bool,
+    high_risk_only: bool,
+    include_recommendations: bool,
+    include: Option<String>,
+    exclude: Option<String>,
+}
+
+// Discover and filter source files for defect analysis
+async fn discover_source_files_for_defect_analysis(
+    project_path: &PathBuf,
+    config: &DefectPredictionConfig,
+) -> anyhow::Result<Vec<(PathBuf, String, usize)>> {
+    use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
+    
+    let mut discovery_config = FileDiscoveryConfig::default();
+    
+    // Add custom patterns if specified
+    if let Some(exclude_pattern) = &config.exclude {
+        discovery_config
+            .custom_ignore_patterns
+            .push(exclude_pattern.clone());
+    }
+    
+    let discovery = ProjectFileDiscovery::new(project_path.clone()).with_config(discovery_config);
+    let discovered_files = discovery.discover_files()?;
+    
+    // Filter files based on criteria
+    let mut analyzed_files = Vec::new();
+    for file_path in discovered_files {
+        // Apply include filter if specified
+        if let Some(include_pattern) = &config.include {
+            if !file_path.to_string_lossy().contains(include_pattern) {
+                continue;
+            }
+        }
+        
+        // Check if it's a source code file
+        if !is_source_code_file(&file_path) {
+            continue;
+        }
+        
+        if let Ok(content) = std::fs::read_to_string(&file_path) {
+            let lines_of_code = content.lines().count();
+            if lines_of_code >= config.min_lines {
+                analyzed_files.push((file_path, content, lines_of_code));
+            }
+        }
+    }
+    
+    Ok(analyzed_files)
+}
+
+// Check if a file is a source code file based on extension
+fn is_source_code_file(path: &Path) -> bool {
+    matches!(
+        path.extension().and_then(|e| e.to_str()),
+        Some("rs") | Some("ts") | Some("tsx") | Some("js") | Some("jsx") |
+        Some("py") | Some("c") | Some("h") | Some("cpp") | Some("cc") |
+        Some("cxx") | Some("hpp")
+    )
+}
+
 /// Handle defect prediction analysis
 #[allow(clippy::too_many_arguments)]
 async fn handle_analyze_defect_prediction(
@@ -6864,61 +6930,24 @@ async fn handle_analyze_defect_prediction(
     output: Option<PathBuf>,
     perf: bool,
 ) -> anyhow::Result<()> {
-    use crate::services::defect_probability::{DefectProbabilityCalculator, FileMetrics};
-    use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
+    use crate::services::defect_probability::DefectProbabilityCalculator;
     use std::time::Instant;
 
     let start_time = Instant::now();
+    
+    // Create configuration
+    let config = DefectPredictionConfig {
+        confidence_threshold,
+        min_lines,
+        include_low_confidence,
+        high_risk_only,
+        include_recommendations,
+        include,
+        exclude,
+    };
 
-    // Discover source files
-    let mut discovery_config = FileDiscoveryConfig::default();
-
-    // Add custom patterns if specified
-    if let Some(exclude_pattern) = &exclude {
-        discovery_config
-            .custom_ignore_patterns
-            .push(exclude_pattern.clone());
-    }
-
-    let discovery = ProjectFileDiscovery::new(project_path.clone()).with_config(discovery_config);
-    let discovered_files = discovery.discover_files()?;
-
-    // Filter files based on include pattern and minimum lines
-    let mut analyzed_files = Vec::new();
-    for file_path in discovered_files {
-        // Apply include filter if specified
-        if let Some(include_pattern) = &include {
-            if !file_path.to_string_lossy().contains(include_pattern) {
-                continue;
-            }
-        }
-
-        // Only analyze source code files
-        if !matches!(
-            file_path.extension().and_then(|e| e.to_str()),
-            Some("rs")
-                | Some("ts")
-                | Some("tsx")
-                | Some("js")
-                | Some("jsx")
-                | Some("py")
-                | Some("c")
-                | Some("h")
-                | Some("cpp")
-                | Some("cc")
-                | Some("cxx")
-                | Some("hpp")
-        ) {
-            continue;
-        }
-
-        if let Ok(content) = std::fs::read_to_string(&file_path) {
-            let lines_of_code = content.lines().count();
-            if lines_of_code >= min_lines {
-                analyzed_files.push((file_path, content, lines_of_code));
-            }
-        }
-    }
+    // Discover and filter source files
+    let analyzed_files = discover_source_files_for_defect_analysis(&project_path, &config).await?;
 
     if analyzed_files.is_empty() {
         eprintln!("No source files found matching criteria");

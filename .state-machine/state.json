@@ -1,0 +1,16 @@
+{
+  "current_state": "COMMITTING",
+  "iteration": 1,
+  "started_at": "2025-06-09T11:15:00Z",
+  "files_processed": ["./server/src/cli/mod.rs", "./server/src/services/ast_rust_unified.rs"],
+  "fixes_applied": 3,
+  "failures": {},
+  "last_checkpoint": "2025-06-09T16:25:00Z",
+  "metrics": {
+    "total_complexity_reduction": 50,
+    "satd_resolved": 0,
+    "dead_code_removed_loc": 0,
+    "duplicate_eliminated_percent": 0,
+    "test_coverage_delta": 0
+  }
+}
