@@ -6505,32 +6505,29 @@ fn format_provability_sarif(
 
 /// Handle duplicate detection analysis
 #[allow(clippy::too_many_arguments)]
-async fn handle_analyze_duplicates(
-    project_path: PathBuf,
+// Helper struct for duplicate analysis configuration
+struct DuplicateAnalysisConfig {
     detection_type: DuplicateType,
     threshold: f32,
     min_lines: usize,
     max_tokens: usize,
-    format: DuplicateOutputFormat,
-    perf: bool,
     include: Option<String>,
     exclude: Option<String>,
-    output: Option<PathBuf>,
-) -> anyhow::Result<()> {
-    use crate::services::duplicate_detector::{
-        DuplicateDetectionConfig, DuplicateDetectionEngine, Language,
-    };
-    use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
-    use std::time::Instant;
+}
 
-    let start_time = Instant::now();
-
-    // Create configuration based on CLI parameters
+// Create duplicate detection config based on detection type
+fn create_duplicate_detection_config(
+    detection_type: &DuplicateType,
+    threshold: f32,
+    min_lines: usize,
+) -> crate::services::duplicate_detector::DuplicateDetectionConfig {
+    use crate::services::duplicate_detector::DuplicateDetectionConfig;
+    
     let mut config = DuplicateDetectionConfig {
         similarity_threshold: threshold as f64,
-        min_tokens: min_lines * 5,
+        min_tokens: min_lines * 5, // Rough estimate: ~5 tokens per line
         ..Default::default()
-    }; // Rough estimate: ~5 tokens per line
+    };
 
     // Adjust config based on detection type
     match detection_type {
@@ -6558,60 +6555,111 @@ async fn handle_analyze_duplicates(
             // Use default settings for comprehensive detection
         }
     }
+    
+    config
+}
 
-    // Discover source files
+// Determine language from file extension
+fn get_language_from_extension(ext: Option<&str>) -> Option<crate::services::duplicate_detector::Language> {
+    use crate::services::duplicate_detector::Language;
+    
+    match ext {
+        Some("rs") => Some(Language::Rust),
+        Some("ts") | Some("tsx") => Some(Language::TypeScript),
+        Some("js") | Some("jsx") => Some(Language::JavaScript),
+        Some("py") => Some(Language::Python),
+        Some("c") | Some("h") => Some(Language::C),
+        Some("cpp") | Some("cc") | Some("cxx") | Some("hpp") => Some(Language::Cpp),
+        _ => None,
+    }
+}
+
+// Discover and process files for duplicate analysis
+async fn discover_and_process_files(
+    project_path: &PathBuf,
+    config: &DuplicateAnalysisConfig,
+) -> anyhow::Result<Vec<(PathBuf, String, crate::services::duplicate_detector::Language)>> {
+    use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
+    
     let mut discovery_config = FileDiscoveryConfig::default();
-
+    
     // Add custom patterns if specified
-    if let Some(exclude_pattern) = &exclude {
+    if let Some(exclude_pattern) = &config.exclude {
         discovery_config
             .custom_ignore_patterns
             .push(exclude_pattern.clone());
     }
-
+    
     let discovery = ProjectFileDiscovery::new(project_path.clone()).with_config(discovery_config);
     let discovered_files = discovery.discover_files()?;
-
+    
     // Read and categorize files by language
     let mut files_with_content = Vec::new();
     for file_path in discovered_files {
         // Apply include filter if specified
-        if let Some(include_pattern) = &include {
+        if let Some(include_pattern) = &config.include {
             if !file_path.to_string_lossy().contains(include_pattern) {
                 continue;
             }
         }
-
-        if let Ok(content) = std::fs::read_to_string(&file_path) {
-            let language = match file_path.extension().and_then(|e| e.to_str()) {
-                Some("rs") => Language::Rust,
-                Some("ts") | Some("tsx") => Language::TypeScript,
-                Some("js") | Some("jsx") => Language::JavaScript,
-                Some("py") => Language::Python,
-                Some("c") | Some("h") => Language::C,
-                Some("cpp") | Some("cc") | Some("cxx") | Some("hpp") => Language::Cpp,
-                _ => continue, // Skip unsupported files
-            };
-
-            // Apply line limit if specified
-            if content.lines().count() >= min_lines {
-                files_with_content.push((file_path, content, language));
+        
+        if let Ok(mut content) = std::fs::read_to_string(&file_path) {
+            let ext = file_path.extension().and_then(|e| e.to_str());
+            if let Some(language) = get_language_from_extension(ext) {
+                // Apply line limit if specified
+                if content.lines().count() >= config.min_lines {
+                    // Limit token analysis for performance
+                    if content.split_whitespace().count() > config.max_tokens {
+                        let words: Vec<&str> = content.split_whitespace()
+                            .take(config.max_tokens)
+                            .collect();
+                        content = words.join(" ");
+                    }
+                    files_with_content.push((file_path, content, language));
+                }
             }
         }
     }
+    
+    Ok(files_with_content)
+}
 
+async fn handle_analyze_duplicates(
+    project_path: PathBuf,
+    detection_type: DuplicateType,
+    threshold: f32,
+    min_lines: usize,
+    max_tokens: usize,
+    format: DuplicateOutputFormat,
+    perf: bool,
+    include: Option<String>,
+    exclude: Option<String>,
+    output: Option<PathBuf>,
+) -> anyhow::Result<()> {
+    use crate::services::duplicate_detector::DuplicateDetectionEngine;
+    use std::time::Instant;
+
+    let start_time = Instant::now();
+
+    // Create configuration
+    let config = create_duplicate_detection_config(&detection_type, threshold, min_lines);
+    
+    // Create analysis configuration
+    let analysis_config = DuplicateAnalysisConfig {
+        detection_type,
+        threshold,
+        min_lines,
+        max_tokens,
+        include,
+        exclude,
+    };
+
+    // Discover and process source files
+    let files_with_content = discover_and_process_files(&project_path, &analysis_config).await?;
+    
     if files_with_content.is_empty() {
         eprintln!("No source files found matching criteria");
         return Ok(());
-    }
-
-    // Limit token analysis for performance
-    for (_, content, _) in &mut files_with_content {
-        if content.split_whitespace().count() > max_tokens {
-            // Truncate content to max_tokens
-            let words: Vec<&str> = content.split_whitespace().take(max_tokens).collect();
-            *content = words.join(" ");
-        }
     }
 
     // Run duplicate detection
@@ -6620,33 +6668,57 @@ async fn handle_analyze_duplicates(
 
     let analysis_time = start_time.elapsed();
 
-    // Output results based on format
+    // Format and output results
+    format_duplicate_results(&report, &format, perf, analysis_time, &files_with_content, &output)?;
+    
+    Ok(())
+}
+
+// Print duplicate summary format
+fn print_duplicate_summary(
+    report: &crate::services::duplicate_detector::DuplicateReport,
+    perf: bool,
+    analysis_time: std::time::Duration,
+    file_count: usize,
+) {
+    println!("Duplicate Code Analysis Summary");
+    println!("==============================");
+    println!("Files analyzed: {}", report.summary.total_files);
+    println!("Code fragments: {}", report.summary.total_fragments);
+    println!("Duplicate lines: {}", report.summary.duplicate_lines);
+    println!("Total lines: {}", report.summary.total_lines);
+    println!(
+        "Duplication ratio: {:.1}%",
+        report.summary.duplication_ratio * 100.0
+    );
+    println!("Clone groups: {}", report.summary.clone_groups);
+    println!(
+        "Largest group: {} instances",
+        report.summary.largest_group_size
+    );
+
+    if perf {
+        println!("\nPerformance Metrics:");
+        println!("Analysis time: {:.2}s", analysis_time.as_secs_f64());
+        println!(
+            "Files/second: {:.1}",
+            file_count as f64 / analysis_time.as_secs_f64()
+        );
+    }
+}
+
+// Format and output duplicate detection results
+fn format_duplicate_results(
+    report: &crate::services::duplicate_detector::DuplicateReport,
+    format: &DuplicateOutputFormat,
+    perf: bool,
+    analysis_time: std::time::Duration,
+    files_with_content: &[(PathBuf, String, crate::services::duplicate_detector::Language)],
+    output: &Option<PathBuf>,
+) -> anyhow::Result<()> {
     match format {
         DuplicateOutputFormat::Summary => {
-            println!("Duplicate Code Analysis Summary");
-            println!("==============================");
-            println!("Files analyzed: {}", report.summary.total_files);
-            println!("Code fragments: {}", report.summary.total_fragments);
-            println!("Duplicate lines: {}", report.summary.duplicate_lines);
-            println!("Total lines: {}", report.summary.total_lines);
-            println!(
-                "Duplication ratio: {:.1}%",
-                report.summary.duplication_ratio * 100.0
-            );
-            println!("Clone groups: {}", report.summary.clone_groups);
-            println!(
-                "Largest group: {} instances",
-                report.summary.largest_group_size
-            );
-
-            if perf {
-                println!("\nPerformance Metrics:");
-                println!("Analysis time: {:.2}s", analysis_time.as_secs_f64());
-                println!(
-                    "Files/second: {:.1}",
-                    files_with_content.len() as f64 / analysis_time.as_secs_f64()
-                );
-            }
+            print_duplicate_summary(report, perf, analysis_time, files_with_content.len());
         }
         DuplicateOutputFormat::Detailed => {
             println!("Duplicate Code Analysis Report");
@@ -8160,70 +8232,79 @@ impl GraphMetricsAnalyzer {
 // Legacy implementation removed - replaced with GraphMetricsAnalyzer
 #[allow(dead_code)]
 #[allow(clippy::too_many_arguments)]
-async fn handle_analyze_graph_metrics_legacy(
-    project_path: PathBuf,
+// Extracted types for graph metrics computation
+struct LegacyGraphContext {
+    nodes: FxHashMap<String, usize>,
+    edges: Vec<(usize, usize)>,
+    num_nodes: usize,
+    num_edges: usize,
+}
+
+struct LegacyMetricsConfig {
     metrics: Vec<GraphMetricType>,
     pagerank_seeds: Vec<String>,
     damping_factor: f32,
     max_iterations: usize,
     convergence_threshold: f64,
-    export_graphml: bool,
-    format: GraphMetricsOutputFormat,
-    include: Option<String>,
-    exclude: Option<String>,
-    output: Option<PathBuf>,
-    perf: bool,
     top_k: usize,
     min_centrality: f64,
-) -> anyhow::Result<()> {
+}
+
+struct LegacyMetricsOutput {
+    format: GraphMetricsOutputFormat,
+    export_graphml: bool,
+    output: Option<PathBuf>,
+    perf: bool,
+}
+
+// Extract file discovery and filtering logic
+fn discover_and_filter_files(
+    project_path: &PathBuf,
+    include: &Option<String>,
+    exclude: &Option<String>,
+) -> anyhow::Result<Vec<(PathBuf, String)>> {
     use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
-    // FxHashMap is already imported at module level
-    use std::time::Instant;
-
-    let start_time = Instant::now();
-
-    // Discover source files
+    
     let mut discovery_config = FileDiscoveryConfig::default();
-
+    
     // Add custom patterns if specified
-    if let Some(exclude_pattern) = &exclude {
+    if let Some(exclude_pattern) = exclude {
         discovery_config
             .custom_ignore_patterns
             .push(exclude_pattern.clone());
     }
-
+    
     let discovery = ProjectFileDiscovery::new(project_path.clone()).with_config(discovery_config);
     let discovered_files = discovery.discover_files()?;
-
-    // Filter files based on include pattern
+    
+    // Filter files based on include pattern and read content
     let mut analyzed_files = Vec::new();
     for file_path in discovered_files {
         // Apply include filter if specified
-        if let Some(include_pattern) = &include {
+        if let Some(include_pattern) = include {
             if !file_path.to_string_lossy().contains(include_pattern) {
                 continue;
             }
         }
-
+        
         if let Ok(content) = std::fs::read_to_string(&file_path) {
             analyzed_files.push((file_path, content));
         }
     }
+    
+    Ok(analyzed_files)
+}
 
-    if analyzed_files.is_empty() {
-        eprintln!("No source files found matching criteria");
-        return Ok(());
-    }
-
-    // Build a simplified dependency graph
+// Build dependency graph from analyzed files
+fn build_dependency_graph(analyzed_files: &[(PathBuf, String)]) -> anyhow::Result<LegacyGraphContext> {
     let mut graph_nodes = FxHashMap::default();
     let mut graph_edges = Vec::new();
-
+    
     // Create nodes for each file
     for (node_index, (file_path, content)) in analyzed_files.iter().enumerate() {
         let file_name = file_path.file_name().unwrap().to_string_lossy();
         graph_nodes.insert(file_name.to_string(), node_index);
-
+        
         // Simple dependency detection based on imports/includes
         for line in content.lines() {
             let trimmed = line.trim();
@@ -8241,336 +8322,531 @@ async fn handle_analyze_graph_metrics_legacy(
             }
         }
     }
-
+    
     let num_nodes = graph_nodes.len();
     let num_edges = graph_edges.len();
+    
+    Ok(LegacyGraphContext {
+        nodes: graph_nodes,
+        edges: graph_edges,
+        num_nodes,
+        num_edges,
+    })
+}
+
+async fn handle_analyze_graph_metrics_legacy(
+    project_path: PathBuf,
+    metrics: Vec<GraphMetricType>,
+    pagerank_seeds: Vec<String>,
+    damping_factor: f32,
+    max_iterations: usize,
+    convergence_threshold: f64,
+    export_graphml: bool,
+    format: GraphMetricsOutputFormat,
+    include: Option<String>,
+    exclude: Option<String>,
+    output: Option<PathBuf>,
+    perf: bool,
+    top_k: usize,
+    min_centrality: f64,
+) -> anyhow::Result<()> {
+    use std::time::Instant;
+    let start_time = Instant::now();
+
+    // Discover and filter source files
+    let analyzed_files = discover_and_filter_files(&project_path, &include, &exclude)?;
+    if analyzed_files.is_empty() {
+        eprintln!("No source files found matching criteria");
+        return Ok(());
+    }
+
+    // Build the dependency graph
+    let graph_context = build_dependency_graph(&analyzed_files)?;
 
     // Initialize results
-    let mut results = serde_json::json!({
-        "summary": {
-            "total_nodes": num_nodes,
-            "total_edges": num_edges,
-            "density": if num_nodes > 1 {
-                num_edges as f64 / (num_nodes * (num_nodes - 1)) as f64
-            } else {
-                0.0
-            }
-        },
-        "metrics": {}
-    });
+    let mut results = initialize_results(&graph_context);
 
+    // Create config for metric computation
+    let config = LegacyMetricsConfig {
+        metrics: metrics.clone(),
+        pagerank_seeds,
+        damping_factor,
+        max_iterations,
+        convergence_threshold,
+        top_k,
+        min_centrality,
+    };
+    
     // Compute requested metrics
-    for metric_type in &metrics {
-        match metric_type {
-            GraphMetricType::Centrality => {
-                let centrality_scores =
-                    calculate_betweenness_centrality(&graph_nodes, &graph_edges);
-                let mut centrality_results: Vec<_> = centrality_scores
-                    .iter()
-                    .map(|(name, score)| {
-                        serde_json::json!({
-                            "node": name,
-                            "centrality": score,
-                            "rank": 0  // Will be set below
-                        })
-                    })
-                    .collect();
-
-                // Sort by centrality score (descending)
-                centrality_results.sort_by(|a, b| {
-                    b["centrality"]
-                        .as_f64()
-                        .unwrap()
-                        .partial_cmp(&a["centrality"].as_f64().unwrap())
-                        .unwrap()
-                });
-
-                // Add ranks
-                for (i, result) in centrality_results.iter_mut().enumerate() {
-                    result["rank"] = (i + 1).into();
-                }
-
-                // Filter by minimum centrality and top-k
-                centrality_results.retain(|r| r["centrality"].as_f64().unwrap() >= min_centrality);
-                centrality_results.truncate(top_k);
-
-                results["metrics"]["centrality"] = serde_json::json!({
-                    "type": "betweenness_centrality",
-                    "nodes": centrality_results
-                });
-            }
-            GraphMetricType::PageRank => {
-                let pagerank_scores = calculate_pagerank(
-                    &graph_nodes,
-                    &graph_edges,
-                    damping_factor as f64,
-                    max_iterations,
-                    convergence_threshold,
-                    &pagerank_seeds,
-                );
-
-                let mut pagerank_results: Vec<_> = pagerank_scores
-                    .iter()
-                    .map(|(name, score)| {
-                        serde_json::json!({
-                            "node": name,
-                            "pagerank": score,
-                            "rank": 0  // Will be set below
-                        })
-                    })
-                    .collect();
-
-                // Sort by PageRank score (descending)
-                pagerank_results.sort_by(|a, b| {
-                    b["pagerank"]
-                        .as_f64()
-                        .unwrap()
-                        .partial_cmp(&a["pagerank"].as_f64().unwrap())
-                        .unwrap()
-                });
-
-                // Add ranks
-                for (i, result) in pagerank_results.iter_mut().enumerate() {
-                    result["rank"] = (i + 1).into();
-                }
-
-                // Apply top-k limit
-                pagerank_results.truncate(top_k);
-
-                results["metrics"]["pagerank"] = serde_json::json!({
-                    "damping_factor": damping_factor,
-                    "max_iterations": max_iterations,
-                    "convergence_threshold": convergence_threshold,
-                    "seeds": pagerank_seeds,
-                    "nodes": pagerank_results
-                });
-            }
-            GraphMetricType::Clustering => {
-                let clustering_scores =
-                    calculate_clustering_coefficient(&graph_nodes, &graph_edges);
-                let avg_clustering: f64 =
-                    clustering_scores.values().sum::<f64>() / clustering_scores.len() as f64;
-
-                let mut clustering_results: Vec<_> = clustering_scores
-                    .iter()
-                    .map(|(name, score)| {
-                        serde_json::json!({
-                            "node": name,
-                            "clustering_coefficient": score
-                        })
-                    })
-                    .collect();
-
-                // Sort by clustering coefficient (descending)
-                clustering_results.sort_by(|a, b| {
-                    b["clustering_coefficient"]
-                        .as_f64()
-                        .unwrap()
-                        .partial_cmp(&a["clustering_coefficient"].as_f64().unwrap())
-                        .unwrap()
-                });
-
-                clustering_results.truncate(top_k);
-
-                results["metrics"]["clustering"] = serde_json::json!({
-                    "average_clustering": avg_clustering,
-                    "nodes": clustering_results
-                });
-            }
-            GraphMetricType::Components => {
-                let components = find_connected_components(&graph_nodes, &graph_edges);
-                results["metrics"]["components"] = serde_json::json!({
-                    "num_components": components.len(),
-                    "component_sizes": components.iter().map(|c| c.len()).collect::<Vec<_>>(),
-                    "largest_component_size": components.iter().map(|c| c.len()).max().unwrap_or(0)
-                });
-            }
-            GraphMetricType::All => {
-                // This is handled by including all other metric types
-                continue;
-            }
-        }
-    }
+    compute_metrics(&graph_context, &config, &mut results)?;
 
     let analysis_time = start_time.elapsed();
 
     // Add performance metrics if requested
     if perf {
-        results["performance"] = serde_json::json!({
-            "analysis_time_s": analysis_time.as_secs_f64(),
-            "nodes_per_second": num_nodes as f64 / analysis_time.as_secs_f64(),
-            "edges_per_second": num_edges as f64 / analysis_time.as_secs_f64()
-        });
+        add_performance_metrics(&mut results, &graph_context, analysis_time);
     }
 
-    // Output results based on format
-    match format {
+    // Create output configuration
+    let output_config = LegacyMetricsOutput {
+        format,
+        export_graphml,
+        output,
+        perf,
+    };
+
+    // Handle output formatting and export
+    handle_output(&graph_context, &results, &output_config, &project_path, analysis_time)?;
+
+    Ok(())
+}
+
+// Initialize results JSON with summary information
+fn initialize_results(context: &LegacyGraphContext) -> serde_json::Value {
+    serde_json::json!({
+        "summary": {
+            "total_nodes": context.num_nodes,
+            "total_edges": context.num_edges,
+            "density": if context.num_nodes > 1 {
+                context.num_edges as f64 / (context.num_nodes * (context.num_nodes - 1)) as f64
+            } else {
+                0.0
+            }
+        },
+        "metrics": {}
+    })
+}
+
+// Add performance metrics to results
+fn add_performance_metrics(
+    results: &mut serde_json::Value,
+    context: &LegacyGraphContext,
+    analysis_time: std::time::Duration,
+) {
+    results["performance"] = serde_json::json!({
+        "analysis_time_s": analysis_time.as_secs_f64(),
+        "nodes_per_second": context.num_nodes as f64 / analysis_time.as_secs_f64(),
+        "edges_per_second": context.num_edges as f64 / analysis_time.as_secs_f64()
+    });
+}
+
+// Compute all requested metrics
+fn compute_metrics(
+    context: &LegacyGraphContext,
+    config: &LegacyMetricsConfig,
+    results: &mut serde_json::Value,
+) -> anyhow::Result<()> {
+    for metric_type in &config.metrics {
+        match metric_type {
+            GraphMetricType::Centrality => {
+                compute_centrality_metric(context, config, results)?;
+            }
+            GraphMetricType::PageRank => {
+                compute_pagerank_metric(context, config, results)?;
+            }
+            GraphMetricType::Clustering => {
+                compute_clustering_metric(context, config, results)?;
+            }
+            GraphMetricType::Components => {
+                compute_components_metric(context, results)?;
+            }
+            GraphMetricType::All => {
+                // Skip - handled by including all other metric types
+            }
+        }
+    }
+    Ok(())
+}
+
+// Compute centrality metric
+fn compute_centrality_metric(
+    context: &LegacyGraphContext,
+    config: &LegacyMetricsConfig,
+    results: &mut serde_json::Value,
+) -> anyhow::Result<()> {
+    let centrality_scores = calculate_betweenness_centrality(&context.nodes, &context.edges);
+    let mut centrality_results: Vec<_> = centrality_scores
+        .iter()
+        .map(|(name, score)| {
+            serde_json::json!({
+                "node": name,
+                "centrality": score,
+                "rank": 0
+            })
+        })
+        .collect();
+
+    // Sort and rank
+    sort_and_rank_results(&mut centrality_results, "centrality");
+    
+    // Filter by minimum centrality and top-k
+    centrality_results.retain(|r| r["centrality"].as_f64().unwrap() >= config.min_centrality);
+    centrality_results.truncate(config.top_k);
+
+    results["metrics"]["centrality"] = serde_json::json!({
+        "type": "betweenness_centrality",
+        "nodes": centrality_results
+    });
+    
+    Ok(())
+}
+
+// Compute PageRank metric
+fn compute_pagerank_metric(
+    context: &LegacyGraphContext,
+    config: &LegacyMetricsConfig,
+    results: &mut serde_json::Value,
+) -> anyhow::Result<()> {
+    let pagerank_scores = calculate_pagerank(
+        &context.nodes,
+        &context.edges,
+        config.damping_factor as f64,
+        config.max_iterations,
+        config.convergence_threshold,
+        &config.pagerank_seeds,
+    );
+
+    let mut pagerank_results: Vec<_> = pagerank_scores
+        .iter()
+        .map(|(name, score)| {
+            serde_json::json!({
+                "node": name,
+                "pagerank": score,
+                "rank": 0
+            })
+        })
+        .collect();
+
+    // Sort and rank
+    sort_and_rank_results(&mut pagerank_results, "pagerank");
+    pagerank_results.truncate(config.top_k);
+
+    results["metrics"]["pagerank"] = serde_json::json!({
+        "damping_factor": config.damping_factor,
+        "max_iterations": config.max_iterations,
+        "convergence_threshold": config.convergence_threshold,
+        "seeds": config.pagerank_seeds,
+        "nodes": pagerank_results
+    });
+    
+    Ok(())
+}
+
+// Compute clustering coefficient metric
+fn compute_clustering_metric(
+    context: &LegacyGraphContext,
+    config: &LegacyMetricsConfig,
+    results: &mut serde_json::Value,
+) -> anyhow::Result<()> {
+    let clustering_scores = calculate_clustering_coefficient(&context.nodes, &context.edges);
+    let avg_clustering: f64 = if clustering_scores.is_empty() {
+        0.0
+    } else {
+        clustering_scores.values().sum::<f64>() / clustering_scores.len() as f64
+    };
+
+    let mut clustering_results: Vec<_> = clustering_scores
+        .iter()
+        .map(|(name, score)| {
+            serde_json::json!({
+                "node": name,
+                "clustering_coefficient": score
+            })
+        })
+        .collect();
+
+    // Sort by clustering coefficient
+    clustering_results.sort_by(|a, b| {
+        b["clustering_coefficient"]
+            .as_f64()
+            .unwrap()
+            .partial_cmp(&a["clustering_coefficient"].as_f64().unwrap())
+            .unwrap()
+    });
+
+    clustering_results.truncate(config.top_k);
+
+    results["metrics"]["clustering"] = serde_json::json!({
+        "average_clustering": avg_clustering,
+        "nodes": clustering_results
+    });
+    
+    Ok(())
+}
+
+// Compute connected components metric
+fn compute_components_metric(
+    context: &LegacyGraphContext,
+    results: &mut serde_json::Value,
+) -> anyhow::Result<()> {
+    let components = find_connected_components(&context.nodes, &context.edges);
+    results["metrics"]["components"] = serde_json::json!({
+        "num_components": components.len(),
+        "component_sizes": components.iter().map(|c| c.len()).collect::<Vec<_>>(),
+        "largest_component_size": components.iter().map(|c| c.len()).max().unwrap_or(0)
+    });
+    Ok(())
+}
+
+// Sort results by a specific field and add ranks
+fn sort_and_rank_results(results: &mut Vec<serde_json::Value>, field: &str) {
+    results.sort_by(|a, b| {
+        b[field]
+            .as_f64()
+            .unwrap()
+            .partial_cmp(&a[field].as_f64().unwrap())
+            .unwrap()
+    });
+
+    for (i, result) in results.iter_mut().enumerate() {
+        result["rank"] = (i + 1).into();
+    }
+}
+
+// Handle all output formatting and file export
+fn handle_output(
+    context: &LegacyGraphContext,
+    results: &serde_json::Value,
+    config: &LegacyMetricsOutput,
+    project_path: &PathBuf,
+    analysis_time: std::time::Duration,
+) -> anyhow::Result<()> {
+    // Format output based on selected format
+    match config.format {
         GraphMetricsOutputFormat::Summary => {
-            println!("Graph Metrics Analysis Summary");
-            println!("============================");
-            println!("Nodes: {num_nodes}");
-            println!("Edges: {num_edges}");
-            println!(
-                "Density: {:.4}",
-                results["summary"]["density"].as_f64().unwrap()
-            );
-
-            if let Some(centrality) = results["metrics"]["centrality"].as_object() {
-                println!("\nTop Centrality Nodes:");
-                for node in centrality["nodes"].as_array().unwrap().iter().take(5) {
-                    println!(
-                        "  {}: {:.4}",
-                        node["node"].as_str().unwrap(),
-                        node["centrality"].as_f64().unwrap()
-                    );
-                }
-            }
-
-            if let Some(pagerank) = results["metrics"]["pagerank"].as_object() {
-                println!("\nTop PageRank Nodes:");
-                for node in pagerank["nodes"].as_array().unwrap().iter().take(5) {
-                    println!(
-                        "  {}: {:.4}",
-                        node["node"].as_str().unwrap(),
-                        node["pagerank"].as_f64().unwrap()
-                    );
-                }
-            }
-
-            if perf {
-                println!("\nPerformance:");
-                println!("  Analysis time: {:.2}s", analysis_time.as_secs_f64());
-            }
+            print_summary_format(context, results, analysis_time, config.perf);
         }
         GraphMetricsOutputFormat::Detailed => {
-            println!("Graph Metrics Analysis Report");
-            println!("============================");
-            println!("{}", serde_json::to_string_pretty(&results)?);
+            print_detailed_format(results)?;
         }
         GraphMetricsOutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&results)?);
+            print_json_format(results)?;
         }
         GraphMetricsOutputFormat::Csv => {
-            println!("metric_type,node,value,rank");
-
-            if let Some(centrality) = results["metrics"]["centrality"].as_object() {
-                for node in centrality["nodes"].as_array().unwrap() {
-                    println!(
-                        "centrality,{},{},{}",
-                        node["node"].as_str().unwrap(),
-                        node["centrality"].as_f64().unwrap(),
-                        node["rank"].as_u64().unwrap()
-                    );
-                }
-            }
-
-            if let Some(pagerank) = results["metrics"]["pagerank"].as_object() {
-                for node in pagerank["nodes"].as_array().unwrap() {
-                    println!(
-                        "pagerank,{},{},{}",
-                        node["node"].as_str().unwrap(),
-                        node["pagerank"].as_f64().unwrap(),
-                        node["rank"].as_u64().unwrap()
-                    );
-                }
-            }
+            print_csv_format(results);
         }
         GraphMetricsOutputFormat::GraphML => {
-            let graphml = generate_graphml(&graph_nodes, &graph_edges, &results)?;
-            println!("{graphml}");
+            print_graphml_format(context, results)?;
         }
         GraphMetricsOutputFormat::Markdown => {
-            println!("# Graph Metrics Analysis Report\n");
-            println!("## Summary\n");
-            println!("- **Nodes**: {num_nodes}");
-            println!("- **Edges**: {num_edges}");
-            println!(
-                "- **Density**: {:.4}\n",
-                results["summary"]["density"].as_f64().unwrap()
-            );
-
-            if let Some(centrality) = results["metrics"]["centrality"].as_object() {
-                println!("## Centrality Analysis\n");
-                println!("| Rank | Node | Centrality |");
-                println!("| ---- | ---- | ---------- |");
-                for node in centrality["nodes"].as_array().unwrap() {
-                    println!(
-                        "| {} | {} | {:.4} |",
-                        node["rank"].as_u64().unwrap(),
-                        node["node"].as_str().unwrap(),
-                        node["centrality"].as_f64().unwrap()
-                    );
-                }
-                println!();
-            }
-
-            if let Some(pagerank) = results["metrics"]["pagerank"].as_object() {
-                println!("## PageRank Analysis\n");
-                println!("| Rank | Node | PageRank |");
-                println!("| ---- | ---- | -------- |");
-                for node in pagerank["nodes"].as_array().unwrap() {
-                    println!(
-                        "| {} | {} | {:.4} |",
-                        node["rank"].as_u64().unwrap(),
-                        node["node"].as_str().unwrap(),
-                        node["pagerank"].as_f64().unwrap()
-                    );
-                }
-                println!();
-            }
+            print_markdown_format(context, results);
         }
     }
 
     // Export GraphML if requested
-    if export_graphml {
-        let graphml_path = output.clone().unwrap_or_else(|| {
-            PathBuf::from(format!(
-                "{}_graph_metrics.graphml",
-                project_path.file_name().unwrap().to_string_lossy()
-            ))
-        });
-        let graphml_content = generate_graphml(&graph_nodes, &graph_edges, &results)?;
-        std::fs::write(&graphml_path, graphml_content)?;
-        eprintln!("📊 GraphML exported to: {}", graphml_path.display());
+    if config.export_graphml {
+        export_graphml_file(context, results, &config.output, project_path)?;
     }
 
     // Write to output file if specified
-    if let Some(output_path) = output {
-        let content = match format {
-            GraphMetricsOutputFormat::Json => serde_json::to_string_pretty(&results)?,
-            GraphMetricsOutputFormat::Csv => {
-                let mut csv_content = String::from("metric_type,node,value,rank\n");
-
-                if let Some(centrality) = results["metrics"]["centrality"].as_object() {
-                    for node in centrality["nodes"].as_array().unwrap() {
-                        csv_content.push_str(&format!(
-                            "centrality,{},{},{}\n",
-                            node["node"].as_str().unwrap(),
-                            node["centrality"].as_f64().unwrap(),
-                            node["rank"].as_u64().unwrap()
-                        ));
-                    }
-                }
-
-                if let Some(pagerank) = results["metrics"]["pagerank"].as_object() {
-                    for node in pagerank["nodes"].as_array().unwrap() {
-                        csv_content.push_str(&format!(
-                            "pagerank,{},{},{}\n",
-                            node["node"].as_str().unwrap(),
-                            node["pagerank"].as_f64().unwrap(),
-                            node["rank"].as_u64().unwrap()
-                        ));
-                    }
-                }
-                csv_content
-            }
-            _ => format!("{results:#?}"),
-        };
-        std::fs::write(&output_path, content)?;
-        eprintln!("📄 Results written to {}", output_path.display());
+    if let Some(output_path) = &config.output {
+        write_output_file(output_path, &config.format, context, results)?;
     }
 
     Ok(())
+}
+
+// Print summary format output
+fn print_summary_format(
+    context: &LegacyGraphContext,
+    results: &serde_json::Value,
+    analysis_time: std::time::Duration,
+    perf: bool,
+) {
+    println!("Graph Metrics Analysis Summary");
+    println!("============================");
+    println!("Nodes: {}", context.num_nodes);
+    println!("Edges: {}", context.num_edges);
+    println!(
+        "Density: {:.4}",
+        results["summary"]["density"].as_f64().unwrap()
+    );
+
+    if let Some(centrality) = results["metrics"]["centrality"].as_object() {
+        println!("\nTop Centrality Nodes:");
+        for node in centrality["nodes"].as_array().unwrap().iter().take(5) {
+            println!(
+                "  {}: {:.4}",
+                node["node"].as_str().unwrap(),
+                node["centrality"].as_f64().unwrap()
+            );
+        }
+    }
+
+    if let Some(pagerank) = results["metrics"]["pagerank"].as_object() {
+        println!("\nTop PageRank Nodes:");
+        for node in pagerank["nodes"].as_array().unwrap().iter().take(5) {
+            println!(
+                "  {}: {:.4}",
+                node["node"].as_str().unwrap(),
+                node["pagerank"].as_f64().unwrap()
+            );
+        }
+    }
+
+    if perf {
+        println!("\nPerformance:");
+        println!("  Analysis time: {:.2}s", analysis_time.as_secs_f64());
+    }
+}
+
+// Print detailed format output
+fn print_detailed_format(results: &serde_json::Value) -> anyhow::Result<()> {
+    println!("Graph Metrics Analysis Report");
+    println!("============================");
+    println!("{}", serde_json::to_string_pretty(results)?);
+    Ok(())
+}
+
+// Print JSON format output
+fn print_json_format(results: &serde_json::Value) -> anyhow::Result<()> {
+    println!("{}", serde_json::to_string_pretty(results)?);
+    Ok(())
+}
+
+// Print CSV format output
+fn print_csv_format(results: &serde_json::Value) {
+    println!("metric_type,node,value,rank");
+
+    if let Some(centrality) = results["metrics"]["centrality"].as_object() {
+        for node in centrality["nodes"].as_array().unwrap() {
+            println!(
+                "centrality,{},{},{}",
+                node["node"].as_str().unwrap(),
+                node["centrality"].as_f64().unwrap(),
+                node["rank"].as_u64().unwrap()
+            );
+        }
+    }
+
+    if let Some(pagerank) = results["metrics"]["pagerank"].as_object() {
+        for node in pagerank["nodes"].as_array().unwrap() {
+            println!(
+                "pagerank,{},{},{}",
+                node["node"].as_str().unwrap(),
+                node["pagerank"].as_f64().unwrap(),
+                node["rank"].as_u64().unwrap()
+            );
+        }
+    }
+}
+
+// Print GraphML format output
+fn print_graphml_format(
+    context: &LegacyGraphContext,
+    results: &serde_json::Value,
+) -> anyhow::Result<()> {
+    let graphml = generate_graphml(&context.nodes, &context.edges, results)?;
+    println!("{graphml}");
+    Ok(())
+}
+
+// Print Markdown format output
+fn print_markdown_format(context: &LegacyGraphContext, results: &serde_json::Value) {
+    println!("# Graph Metrics Analysis Report\n");
+    println!("## Summary\n");
+    println!("- **Nodes**: {}", context.num_nodes);
+    println!("- **Edges**: {}", context.num_edges);
+    println!(
+        "- **Density**: {:.4}\n",
+        results["summary"]["density"].as_f64().unwrap()
+    );
+
+    if let Some(centrality) = results["metrics"]["centrality"].as_object() {
+        println!("## Centrality Analysis\n");
+        println!("| Rank | Node | Centrality |");
+        println!("| ---- | ---- | ---------- |");
+        for node in centrality["nodes"].as_array().unwrap() {
+            println!(
+                "| {} | {} | {:.4} |",
+                node["rank"].as_u64().unwrap(),
+                node["node"].as_str().unwrap(),
+                node["centrality"].as_f64().unwrap()
+            );
+        }
+        println!();
+    }
+
+    if let Some(pagerank) = results["metrics"]["pagerank"].as_object() {
+        println!("## PageRank Analysis\n");
+        println!("| Rank | Node | PageRank |");
+        println!("| ---- | ---- | -------- |");
+        for node in pagerank["nodes"].as_array().unwrap() {
+            println!(
+                "| {} | {} | {:.4} |",
+                node["rank"].as_u64().unwrap(),
+                node["node"].as_str().unwrap(),
+                node["pagerank"].as_f64().unwrap()
+            );
+        }
+        println!();
+    }
+}
+
+// Export GraphML file
+fn export_graphml_file(
+    context: &LegacyGraphContext,
+    results: &serde_json::Value,
+    output: &Option<PathBuf>,
+    project_path: &PathBuf,
+) -> anyhow::Result<()> {
+    let graphml_path = output.clone().unwrap_or_else(|| {
+        PathBuf::from(format!(
+            "{}_graph_metrics.graphml",
+            project_path.file_name().unwrap().to_string_lossy()
+        ))
+    });
+    let graphml_content = generate_graphml(&context.nodes, &context.edges, results)?;
+    std::fs::write(&graphml_path, graphml_content)?;
+    eprintln!("📊 GraphML exported to: {}", graphml_path.display());
+    Ok(())
+}
+
+// Write output to file
+fn write_output_file(
+    output_path: &PathBuf,
+    format: &GraphMetricsOutputFormat,
+    context: &LegacyGraphContext,
+    results: &serde_json::Value,
+) -> anyhow::Result<()> {
+    let content = match format {
+        GraphMetricsOutputFormat::Json => serde_json::to_string_pretty(results)?,
+        GraphMetricsOutputFormat::Csv => format_csv_content(results),
+        GraphMetricsOutputFormat::GraphML => generate_graphml(&context.nodes, &context.edges, results)?,
+        _ => format!("{results:#?}"),
+    };
+    std::fs::write(output_path, content)?;
+    eprintln!("📄 Results written to {}", output_path.display());
+    Ok(())
+}
+
+// Format CSV content
+fn format_csv_content(results: &serde_json::Value) -> String {
+    let mut csv_content = String::from("metric_type,node,value,rank\n");
+
+    if let Some(centrality) = results["metrics"]["centrality"].as_object() {
+        for node in centrality["nodes"].as_array().unwrap() {
+            csv_content.push_str(&format!(
+                "centrality,{},{},{}\n",
+                node["node"].as_str().unwrap(),
+                node["centrality"].as_f64().unwrap(),
+                node["rank"].as_u64().unwrap()
+            ));
+        }
+    }
+
+    if let Some(pagerank) = results["metrics"]["pagerank"].as_object() {
+        for node in pagerank["nodes"].as_array().unwrap() {
+            csv_content.push_str(&format!(
+                "pagerank,{},{},{}\n",
+                node["node"].as_str().unwrap(),
+                node["pagerank"].as_f64().unwrap(),
+                node["rank"].as_u64().unwrap()
+            ));
+        }
+    }
+    
+    csv_content
 }
 
 // Helper functions for graph metrics calculation
