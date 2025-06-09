@@ -1,4 +1,3 @@
-
 pub mod analysis;
 pub mod analysis_helpers;
 pub mod args;
@@ -16,8 +15,8 @@ use crate::{
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use command_dispatcher::CommandDispatcher;
-use serde_json::Value;
 use rustc_hash::FxHashMap;
+use serde_json::Value;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -346,6 +345,10 @@ pub enum Commands {
 
     /// Run self-diagnostics to verify all features are working
     Diagnose(diagnose::DiagnoseArgs),
+
+    /// Refactor code with real-time analysis or interactive mode
+    #[command(subcommand)]
+    Refactor(RefactorCommands),
 }
 
 #[derive(Subcommand)]
@@ -1108,6 +1111,130 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         perf: bool,
     },
+}
+
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum RefactorCommands {
+    /// Run refactor server mode for batch processing
+    Serve {
+        /// Refactor mode (batch or interactive)
+        #[arg(long, value_enum, default_value = "batch")]
+        refactor_mode: RefactorMode,
+
+        /// JSON configuration file for batch mode
+        #[arg(short = 'c', long)]
+        config: Option<PathBuf>,
+
+        /// Project directory to refactor
+        #[arg(short = 'p', long, default_value = ".")]
+        project: PathBuf,
+
+        /// Number of parallel workers
+        #[arg(long, default_value = "4")]
+        parallel: usize,
+
+        /// Memory limit in MB
+        #[arg(long, default_value = "512")]
+        memory_limit: usize,
+
+        /// Files per batch
+        #[arg(long, default_value = "10")]
+        batch_size: usize,
+
+        /// Priority sorting expression (e.g., "complexity * defect_probability")
+        #[arg(long)]
+        priority: Option<String>,
+
+        /// Checkpoint directory for resuming
+        #[arg(long)]
+        checkpoint_dir: Option<PathBuf>,
+
+        /// Resume from previous checkpoint
+        #[arg(long)]
+        resume: bool,
+
+        /// Auto-commit with message template
+        #[arg(long)]
+        auto_commit: Option<String>,
+
+        /// Maximum runtime in seconds
+        #[arg(long)]
+        max_runtime: Option<u64>,
+    },
+
+    /// Run interactive refactoring mode
+    Interactive {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(short = 'p', long, default_value = ".")]
+        project_path: PathBuf,
+
+        /// Explanation level for operations
+        #[arg(long, value_enum, default_value = "detailed")]
+        explain: ExplainLevel,
+
+        /// Checkpoint file for state persistence
+        #[arg(long, default_value = "refactor_state.json")]
+        checkpoint: PathBuf,
+
+        /// Target complexity threshold
+        #[arg(long, default_value = "20")]
+        target_complexity: u16,
+
+        /// Maximum steps to execute
+        #[arg(long)]
+        steps: Option<u32>,
+
+        /// Configuration file path
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
+
+    /// Show current refactoring status
+    Status {
+        /// Checkpoint file to read state from
+        #[arg(long, default_value = "refactor_state.json")]
+        checkpoint: PathBuf,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "json")]
+        format: RefactorOutputFormat,
+    },
+
+    /// Resume refactoring from checkpoint
+    Resume {
+        /// Checkpoint file to resume from
+        #[arg(long, default_value = "refactor_state.json")]
+        checkpoint: PathBuf,
+
+        /// Maximum steps to execute
+        #[arg(long, default_value = "10")]
+        steps: u32,
+
+        /// Override explanation level
+        #[arg(long, value_enum)]
+        explain: Option<ExplainLevel>,
+    },
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum ExplainLevel {
+    Brief,
+    Detailed,
+    Verbose,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum RefactorOutputFormat {
+    Json,
+    Table,
+    Summary,
+}
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum RefactorMode {
+    Batch,
+    Interactive,
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
@@ -5353,7 +5480,7 @@ fn format_quality_gate_summary(
 
 fn format_quality_gate_detailed(
     report: &crate::services::quality_gates::QAVerificationResult,
-    results: &std::collections::HashMap<&'static str, Result<(), String>>,
+    results: &rustc_hash::FxHashMap<&'static str, Result<(), String>>,
     checks: &[QualityCheckType],
 ) -> String {
     let mut output = format_quality_gate_summary(report, checks);
@@ -5442,7 +5569,7 @@ fn format_quality_gate_junit(
 
 fn format_quality_gate_markdown(
     report: &crate::services::quality_gates::QAVerificationResult,
-    results: &std::collections::HashMap<&'static str, Result<(), String>>,
+    results: &rustc_hash::FxHashMap<&'static str, Result<(), String>>,
     checks: &[QualityCheckType],
 ) -> String {
     let mut output = String::from("# Quality Gate Report\n\n");

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use rustc_hash::FxHashMap;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 /// Core trait for canonical analysis queries

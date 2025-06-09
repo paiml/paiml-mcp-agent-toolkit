@@ -98,6 +98,31 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 - **C/C++** - Goto tracking, macro analysis, memory safety indicators
 - **Cython** - Hybrid Python/C analysis
 
+## 📚 Documentation
+
+### Feature Documentation
+
+- **[Feature Overview](docs/features/README.md)** - Complete feature index
+- **[Makefile Linter](docs/features/makefile-linter.md)** - 50+ rules for Makefile quality
+- **[Emit-Refactor Engine](docs/features/emit-refactor-engine.md)** - Real-time defect detection & refactoring
+- **[Excellence Tracker](docs/features/excellence-tracker.md)** - Code quality metrics tracking
+- **[Technical Debt Gradient](docs/features/technical-debt-gradient.md)** - Quantitative debt measurement
+- **[MCP Protocol](docs/features/mcp-protocol.md)** - AI agent integration guide
+
+### Additional Features
+
+- **Code Quality Tools**
+  - `pmat lint-makefile` - Lint Makefiles with actionable feedback
+  - `pmat excellence-tracker` - Track code quality metrics over time
+  - `pmat refactor serve` - Real-time refactoring suggestions
+  - `pmat refactor interactive` - Interactive refactoring mode
+
+- **Advanced Analysis**
+  - `pmat analyze tdg` - Calculate Technical Debt Gradient
+  - `pmat analyze provability` - Lightweight formal verification
+  - `pmat analyze defect-prediction` - ML-based defect prediction
+  - `pmat analyze name-similarity` - Semantic naming analysis
+
 ## 📊 Output Formats
 
 - **JSON** - Structured data for tools and APIs

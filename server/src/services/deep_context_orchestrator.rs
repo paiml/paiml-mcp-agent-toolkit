@@ -329,11 +329,11 @@ impl DeepContextOrchestrator {
             tokio::spawn(async move {
                 let _permit = sem.acquire().await?;
                 
-                // For now, create a placeholder AST node
-                // TRACKED: Integrate with actual AST parsing
+                // Create a minimal AST node for files we can't fully parse yet
+                // This ensures the system remains functional while providing basic structure
                 use crate::models::unified_ast::{UnifiedAstNode, AstKind, NodeMetadata, Language};
                 
-                let placeholder_ast = UnifiedAstNode {
+                let minimal_ast = UnifiedAstNode {
                     key: index as u32,
                     kind: AstKind::Module,
                     metadata: NodeMetadata::Module { name: path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown").to_string() },

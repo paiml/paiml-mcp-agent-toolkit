@@ -30,18 +30,38 @@ impl<'src> MakefileParser<'src> {
 
     /// Safe string slicing that ensures char boundaries
     fn safe_slice(&self, start: usize, end: usize) -> &str {
+        // Handle empty input
+        if self.input.is_empty() {
+            return "";
+        }
+
         let bytes = self.input.as_bytes();
+        let len = bytes.len();
+
+        // Clamp start and end to valid range
+        let start = start.min(len);
+        let end = end.min(len);
+
+        // Handle invalid range
+        if start >= end {
+            return "";
+        }
 
         // Find safe start position
-        let mut safe_start = start.min(bytes.len());
+        let mut safe_start = start;
         while safe_start > 0 && !self.input.is_char_boundary(safe_start) {
             safe_start -= 1;
         }
 
         // Find safe end position
-        let mut safe_end = end.min(bytes.len());
-        while safe_end < bytes.len() && !self.input.is_char_boundary(safe_end) {
+        let mut safe_end = end;
+        while safe_end < len && !self.input.is_char_boundary(safe_end) {
             safe_end += 1;
+        }
+
+        // Final safety check
+        if safe_start > safe_end {
+            return "";
         }
 
         &self.input[safe_start..safe_end]
@@ -83,40 +103,73 @@ impl<'src> MakefileParser<'src> {
         // Skip leading whitespace except tabs (which might indicate recipes)
         self.skip_spaces();
 
-        if self.peek() == Some('#') {
-            self.parse_comment(ast);
-            return Ok(());
-        }
-
-        if self.peek() == Some('\t') {
-            // This is a recipe line
-            return Err(ParseError::InvalidSyntax("Recipe without rule".to_string()));
+        // Handle special cases first
+        if let Some(result) = self.try_parse_special_line(ast)? {
+            return result;
         }
 
         // Look ahead to determine line type
-        if let Some(colon_pos) = self.find_assignment_or_colon() {
-            match colon_pos {
-                LineType::Assignment(op_pos, op) => {
-                    self.parse_variable(ast, op_pos, op)?;
-                }
-                LineType::Rule(colon_pos, is_double) => {
-                    self.parse_rule(ast, colon_pos, is_double)?;
-                }
-            }
-        } else if self.starts_with("include") || self.starts_with("-include") {
-            self.parse_include(ast)?;
-        } else if self.starts_with("ifeq")
-            || self.starts_with("ifneq")
-            || self.starts_with("ifdef")
-            || self.starts_with("ifndef")
-        {
-            self.parse_conditional(ast)?;
+        if let Some(line_type) = self.find_assignment_or_colon() {
+            self.parse_line_by_type(ast, line_type)?;
+        } else if self.is_directive_line() {
+            self.parse_directive_line(ast)?;
         } else {
             // Unknown line type, skip it
             self.skip_to_next_line();
         }
 
         Ok(())
+    }
+
+    fn try_parse_special_line(
+        &mut self,
+        ast: &mut MakefileAst,
+    ) -> Result<Option<Result<(), ParseError>>, ParseError> {
+        if self.peek() == Some('#') {
+            self.parse_comment(ast);
+            return Ok(Some(Ok(())));
+        }
+
+        if self.peek() == Some('\t') {
+            // This is a recipe line
+            return Ok(Some(Err(ParseError::InvalidSyntax(
+                "Recipe without rule".to_string(),
+            ))));
+        }
+
+        Ok(None)
+    }
+
+    fn parse_line_by_type(
+        &mut self,
+        ast: &mut MakefileAst,
+        line_type: LineType,
+    ) -> Result<(), ParseError> {
+        match line_type {
+            LineType::Assignment(op_pos, op) => self.parse_variable(ast, op_pos, op),
+            LineType::Rule(colon_pos, is_double) => self.parse_rule(ast, colon_pos, is_double),
+        }
+    }
+
+    fn is_directive_line(&self) -> bool {
+        self.starts_with("include")
+            || self.starts_with("-include")
+            || self.is_conditional_directive()
+    }
+
+    fn is_conditional_directive(&self) -> bool {
+        self.starts_with("ifeq")
+            || self.starts_with("ifneq")
+            || self.starts_with("ifdef")
+            || self.starts_with("ifndef")
+    }
+
+    fn parse_directive_line(&mut self, ast: &mut MakefileAst) -> Result<(), ParseError> {
+        if self.starts_with("include") || self.starts_with("-include") {
+            self.parse_include(ast)
+        } else {
+            self.parse_conditional(ast)
+        }
     }
 
     fn parse_rule(
@@ -134,8 +187,9 @@ impl<'src> MakefileParser<'src> {
         let targets = self.parse_targets(targets_str)?;
 
         // Skip past colon(s)
-        self.cursor = colon_pos + if is_double { 2 } else { 1 };
-        self.column += colon_pos - _start_pos + if is_double { 2 } else { 1 };
+        let skip_amount = if is_double { 2 } else { 1 };
+        self.cursor = (colon_pos + skip_amount).min(self.input.len());
+        self.column += colon_pos.saturating_sub(self.cursor) + skip_amount;
 
         // Parse prerequisites
         let prereqs = self.parse_prerequisites()?;
@@ -202,14 +256,14 @@ impl<'src> MakefileParser<'src> {
         }
 
         // Skip past operator
-        self.cursor = op_pos
-            + match op {
-                AssignmentOp::Deferred => 1,
-                AssignmentOp::Immediate
-                | AssignmentOp::Conditional
-                | AssignmentOp::Append
-                | AssignmentOp::Shell => 2,
-            };
+        let op_len = match op {
+            AssignmentOp::Deferred => 1,
+            AssignmentOp::Immediate
+            | AssignmentOp::Conditional
+            | AssignmentOp::Append
+            | AssignmentOp::Shell => 2,
+        };
+        self.cursor = (op_pos + op_len).min(self.input.len());
 
         // Parse value (rest of line)
         let value_start = self.cursor;
@@ -363,10 +417,10 @@ impl<'src> MakefileParser<'src> {
 
         // Skip "include" or "-include"
         if self.starts_with("-include") {
-            self.cursor += 8;
+            self.cursor = (self.cursor + 8).min(self.input.len());
             self.column += 8;
         } else {
-            self.cursor += 7;
+            self.cursor = (self.cursor + 7).min(self.input.len());
             self.column += 7;
         }
 
@@ -446,32 +500,50 @@ impl<'src> MakefileParser<'src> {
         let mut pos = self.cursor;
 
         while pos < bytes.len() && bytes[pos] != b'\n' {
-            match bytes[pos] {
-                b':' => {
-                    if pos + 1 < bytes.len() && bytes[pos + 1] == b'=' {
-                        return Some(LineType::Assignment(pos, AssignmentOp::Immediate));
-                    } else if pos + 1 < bytes.len() && bytes[pos + 1] == b':' {
-                        return Some(LineType::Rule(pos, true));
-                    } else {
-                        return Some(LineType::Rule(pos, false));
-                    }
-                }
-                b'=' => return Some(LineType::Assignment(pos, AssignmentOp::Deferred)),
-                b'?' if pos + 1 < bytes.len() && bytes[pos + 1] == b'=' => {
-                    return Some(LineType::Assignment(pos, AssignmentOp::Conditional));
-                }
-                b'+' if pos + 1 < bytes.len() && bytes[pos + 1] == b'=' => {
-                    return Some(LineType::Assignment(pos, AssignmentOp::Append));
-                }
-                b'!' if pos + 1 < bytes.len() && bytes[pos + 1] == b'=' => {
-                    return Some(LineType::Assignment(pos, AssignmentOp::Shell));
-                }
-                _ => {}
+            if let Some(line_type) = self.check_char_at_position(bytes, pos) {
+                return Some(line_type);
             }
             pos += 1;
         }
 
         None
+    }
+
+    fn check_char_at_position(&self, bytes: &[u8], pos: usize) -> Option<LineType> {
+        match bytes[pos] {
+            b':' => self.check_colon_operator(bytes, pos),
+            b'=' => Some(LineType::Assignment(pos, AssignmentOp::Deferred)),
+            b'?' => self.check_two_char_operator(bytes, pos, b'=', AssignmentOp::Conditional),
+            b'+' => self.check_two_char_operator(bytes, pos, b'=', AssignmentOp::Append),
+            b'!' => self.check_two_char_operator(bytes, pos, b'=', AssignmentOp::Shell),
+            _ => None,
+        }
+    }
+
+    fn check_colon_operator(&self, bytes: &[u8], pos: usize) -> Option<LineType> {
+        if pos + 1 < bytes.len() {
+            match bytes[pos + 1] {
+                b'=' => Some(LineType::Assignment(pos, AssignmentOp::Immediate)),
+                b':' => Some(LineType::Rule(pos, true)),
+                _ => Some(LineType::Rule(pos, false)),
+            }
+        } else {
+            Some(LineType::Rule(pos, false))
+        }
+    }
+
+    fn check_two_char_operator(
+        &self,
+        bytes: &[u8],
+        pos: usize,
+        second_char: u8,
+        op: AssignmentOp,
+    ) -> Option<LineType> {
+        if pos + 1 < bytes.len() && bytes[pos + 1] == second_char {
+            Some(LineType::Assignment(pos, op))
+        } else {
+            None
+        }
     }
 
     // Helper methods
@@ -492,6 +564,11 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn advance(&mut self) {
+        // Check if we're at the end first
+        if self.cursor >= self.input.len() {
+            return;
+        }
+
         if let Some(ch) = self.peek() {
             let len = ch.len_utf8();
             // Ensure we don't go past the end

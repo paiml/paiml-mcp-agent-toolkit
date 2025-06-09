@@ -9,6 +9,7 @@ use crate::services::cache::{
 };
 use crate::services::context::{AstItem, FileContext};
 use chrono::Utc;
+use rustc_hash::FxHashMap;
 use semver::Version;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -152,7 +153,7 @@ async fn test_dag_cache() {
 
     // Create a test DependencyGraph
     let graph = DependencyGraph {
-        nodes: HashMap::new(),
+        nodes: FxHashMap::default(),
         edges: vec![],
     };
 

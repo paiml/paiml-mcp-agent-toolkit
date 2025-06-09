@@ -386,7 +386,7 @@ async fn test_mermaid_output_quality() {
 #[test]
 fn test_metadata_serialization() {
     // Test that metadata can be properly serialized/deserialized
-    let mut metadata = std::collections::HashMap::new();
+    let mut metadata = rustc_hash::FxHashMap::default();
     metadata.insert("file_path".to_string(), "src/main.rs".to_string());
     metadata.insert("module_path".to_string(), "main".to_string());
     metadata.insert("display_name".to_string(), "main".to_string());
