@@ -38,6 +38,50 @@ pub async fn handle_list(
     Ok(())
 }
 
+// Helper structures for markdown formatting
+struct MarkdownBuilder {
+    content: String,
+}
+
+impl MarkdownBuilder {
+    fn new() -> Self {
+        Self {
+            content: String::new(),
+        }
+    }
+
+    fn add_header(&mut self, level: usize, text: &str) {
+        for _ in 0..level {
+            self.content.push('#');
+        }
+        self.content.push(' ');
+        self.content.push_str(text);
+        self.content.push_str("\n\n");
+    }
+
+    fn add_bullet(&mut self, text: &str) {
+        self.content.push_str("- ");
+        self.content.push_str(text);
+        self.content.push('\n');
+    }
+
+    fn add_metric(&mut self, label: &str, value: impl std::fmt::Display) {
+        self.content.push_str(&format!("- **{}**: {}\n", label, value));
+    }
+
+    fn add_percentage_metric(&mut self, label: &str, value: f64) {
+        self.content.push_str(&format!("- **{}**: {:.1}%\n", label, value));
+    }
+
+    fn add_newline(&mut self) {
+        self.content.push('\n');
+    }
+
+    fn build(self) -> String {
+        self.content
+    }
+}
+
 /// Handle template search command
 pub async fn handle_search(
     server: Arc<StatelessTemplateServer>,
@@ -385,122 +429,128 @@ fn format_markdown_output(
     deep_context: &crate::services::deep_context::DeepContext,
     detected_toolchain: &str,
 ) -> String {
-    let mut md = String::new();
-    md.push_str("# Project Context\n\n");
-    md.push_str("## Project Structure\n\n");
-    md.push_str(&format!("- **Language**: {}\n", detected_toolchain));
-    md.push_str(&format!(
-        "- **Total Files**: {}\n",
-        project_context.summary.total_files
-    ));
-    md.push_str(&format!(
-        "- **Total Functions**: {}\n",
-        project_context.summary.total_functions
-    ));
-    md.push_str(&format!(
-        "- **Total Structs**: {}\n",
-        project_context.summary.total_structs
-    ));
-    md.push_str(&format!(
-        "- **Total Enums**: {}\n",
-        project_context.summary.total_enums
-    ));
-    md.push_str(&format!(
-        "- **Total Traits**: {}\n\n",
-        project_context.summary.total_traits
-    ));
-
+    let mut builder = MarkdownBuilder::new();
+    
+    // Add project header and structure
+    builder.add_header(1, "Project Context");
+    builder.add_header(2, "Project Structure");
+    add_project_structure(&mut builder, project_context, detected_toolchain);
+    
     // Add quality scorecard
-    let scorecard = &deep_context.quality_scorecard;
-    md.push_str("## Quality Scorecard\n\n");
-    md.push_str(&format!(
-        "- **Overall Health**: {:.1}%\n",
-        scorecard.overall_health
-    ));
-    md.push_str(&format!(
-        "- **Complexity Score**: {:.1}%\n",
-        scorecard.complexity_score
-    ));
-    md.push_str(&format!(
-        "- **Maintainability Index**: {:.1}%\n",
-        scorecard.maintainability_index
-    ));
-    md.push_str(&format!(
-        "- **Technical Debt Hours**: {:.1}\n",
-        scorecard.technical_debt_hours
-    ));
-    md.push_str(&format!(
-        "- **Test Coverage**: {:.1}%\n",
-        scorecard.test_coverage.unwrap_or(0.0)
-    ));
-    md.push_str(&format!(
-        "- **Modularity Score**: {:.1}%\n\n",
-        scorecard.modularity_score
-    ));
+    builder.add_header(2, "Quality Scorecard");
+    add_quality_scorecard(&mut builder, &deep_context.quality_scorecard);
+    
+    // Add files section
+    builder.add_header(2, "Files");
+    add_files_section(&mut builder, &project_context.files, &deep_context.analyses);
+    
+    // Add recommendations
+    if !deep_context.recommendations.is_empty() {
+        builder.add_header(2, "Recommendations");
+        add_recommendations(&mut builder, &deep_context.recommendations);
+    }
+    
+    builder.build()
+}
 
-    md.push_str("## Files\n\n");
-    for file in &project_context.files {
-        md.push_str(&format!("### {}\n\n", file.path));
+fn add_project_structure(
+    builder: &mut MarkdownBuilder,
+    project_context: &crate::services::context::ProjectContext,
+    detected_toolchain: &str,
+) {
+    builder.add_metric("Language", detected_toolchain);
+    builder.add_metric("Total Files", project_context.summary.total_files);
+    builder.add_metric("Total Functions", project_context.summary.total_functions);
+    builder.add_metric("Total Structs", project_context.summary.total_structs);
+    builder.add_metric("Total Enums", project_context.summary.total_enums);
+    builder.add_metric("Total Traits", project_context.summary.total_traits);
+    builder.add_newline();
+}
 
+fn add_quality_scorecard(
+    builder: &mut MarkdownBuilder,
+    scorecard: &crate::services::deep_context::QualityScorecard,
+) {
+    builder.add_percentage_metric("Overall Health", scorecard.overall_health);
+    builder.add_percentage_metric("Complexity Score", scorecard.complexity_score);
+    builder.add_percentage_metric("Maintainability Index", scorecard.maintainability_index);
+    builder.add_metric("Technical Debt Hours", format!("{:.1}", scorecard.technical_debt_hours));
+    builder.add_percentage_metric("Test Coverage", scorecard.test_coverage.unwrap_or(0.0));
+    builder.add_percentage_metric("Modularity Score", scorecard.modularity_score);
+    builder.add_newline();
+}
+
+fn add_files_section(
+    builder: &mut MarkdownBuilder,
+    files: &[crate::services::context::FileContext],
+    analyses: &crate::services::deep_context::AnalysisResults,
+) {
+    for file in files {
+        builder.add_header(3, &file.path);
+        
         // Add file-level metrics if available
         if let Some(complexity) = &file.complexity_metrics {
-            md.push_str(&format!(
+            builder.content.push_str(&format!(
                 "**File Metrics**: Complexity: {}, Functions: {}\n\n",
                 complexity.total_complexity.cyclomatic,
                 complexity.functions.len()
             ));
         }
+        
+        add_file_items(builder, &file.items, file, analyses);
+        builder.add_newline();
+    }
+}
 
-        for item in &file.items {
-            match item {
-                AstItem::Function { name, .. } => {
-                    md.push_str(&format!("- **Function**: `{}`", name));
-                    md.push_str(&format_function_annotations(
-                        name,
-                        file,
-                        &deep_context.analyses,
-                    ));
-                    md.push('\n');
-                }
-                AstItem::Struct { name, .. } => {
-                    md.push_str(&format!("- **Struct**: `{}`\n", name));
-                }
-                AstItem::Enum { name, .. } => {
-                    md.push_str(&format!("- **Enum**: `{}`\n", name));
-                }
-                AstItem::Trait { name, .. } => {
-                    md.push_str(&format!("- **Trait**: `{}`\n", name));
-                }
-                AstItem::Impl { trait_name, .. } => {
-                    if let Some(trait_name) = trait_name {
-                        md.push_str(&format!("- **Impl**: `{}`\n", trait_name));
-                    } else {
-                        md.push_str("- **Impl**: (inherent)\n");
-                    }
-                }
-                AstItem::Module { name, .. } => {
-                    md.push_str(&format!("- **Module**: `{}`\n", name));
-                }
-                AstItem::Use { .. } => {
-                    md.push_str("- **Use**: statement\n");
+fn add_file_items(
+    builder: &mut MarkdownBuilder,
+    items: &[AstItem],
+    file: &crate::services::context::FileContext,
+    analyses: &crate::services::deep_context::AnalysisResults,
+) {
+    for item in items {
+        match item {
+            AstItem::Function { name, .. } => {
+                builder.content.push_str(&format!("- **Function**: `{}`", name));
+                builder.content.push_str(&format_function_annotations(name, file, analyses));
+                builder.content.push('\n');
+            }
+            AstItem::Struct { name, .. } => {
+                builder.content.push_str(&format!("- **Struct**: `{}`\n", name));
+            }
+            AstItem::Enum { name, .. } => {
+                builder.content.push_str(&format!("- **Enum**: `{}`\n", name));
+            }
+            AstItem::Trait { name, .. } => {
+                builder.content.push_str(&format!("- **Trait**: `{}`\n", name));
+            }
+            AstItem::Impl { trait_name, .. } => {
+                if let Some(trait_name) = trait_name {
+                    builder.content.push_str(&format!("- **Impl**: `{}`\n", trait_name));
+                } else {
+                    builder.content.push_str("- **Impl**: (inherent)\n");
                 }
             }
-        }
-        md.push('\n');
-    }
-
-    // Add recommendations
-    if !deep_context.recommendations.is_empty() {
-        md.push_str("## Recommendations\n\n");
-        for rec in &deep_context.recommendations {
-            md.push_str(&format!(
-                "- **{}**: {} (Priority: {:?}, Impact: {:?})\n",
-                rec.title, rec.description, rec.priority, rec.impact
-            ));
+            AstItem::Module { name, .. } => {
+                builder.content.push_str(&format!("- **Module**: `{}`\n", name));
+            }
+            AstItem::Use { .. } => {
+                builder.content.push_str("- **Use**: statement\n");
+            }
         }
     }
+}
 
-    md
+fn add_recommendations(
+    builder: &mut MarkdownBuilder,
+    recommendations: &[crate::services::deep_context::PrioritizedRecommendation],
+) {
+    for rec in recommendations {
+        builder.content.push_str(&format!(
+            "- **{}**: {} (Priority: {:?}, Impact: {:?})\n",
+            rec.title, rec.description, rec.priority, rec.impact
+        ));
+    }
 }
 
 /// Format function annotations for markdown output
