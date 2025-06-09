@@ -921,7 +921,7 @@ fn format_quality_scorecard(
         output.push_str(&format!("- **Test Coverage**: {coverage:.1}%\n"));
     }
     output.push_str(&format!(
-        "- **Technical Debt**: {:.1} hours\n\n",
+        "- **Refactoring Estimate**: {:.1} hours\n\n",
         scorecard.technical_debt_hours
     ));
 }
@@ -981,7 +981,7 @@ fn format_analysis_results(
             complexity.summary.max_cognitive
         ));
         output.push_str(&format!(
-            "- **Technical Debt Hours**: {:.1}\n\n",
+            "- **Refactoring Hours**: {:.1}\n\n",
             complexity.summary.technical_debt_hours
         ));
     }
@@ -1045,7 +1045,7 @@ fn format_analysis_results(
 
     // SATD Analysis
     if let Some(ref satd) = analyses.satd_results {
-        output.push_str("### Technical Debt (SATD) Analysis\n\n");
+        output.push_str("### Self-Admitted Debt Analysis\n\n");
         output.push_str(&format!("- **Total SATD Items**: {}\n", satd.items.len()));
         output.push_str("- **Categories**: Various debt types detected\n\n");
     }

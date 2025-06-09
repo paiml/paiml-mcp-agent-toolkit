@@ -188,8 +188,10 @@ impl<'src> MakefileParser<'src> {
 
         // Skip past colon(s)
         let skip_amount = if is_double { 2 } else { 1 };
+        // Calculate column advance before updating cursor to avoid underflow
+        let column_advance = colon_pos.saturating_sub(self.cursor) + skip_amount;
         self.cursor = (colon_pos + skip_amount).min(self.input.len());
-        self.column += colon_pos.saturating_sub(self.cursor) + skip_amount;
+        self.column += column_advance;
 
         // Parse prerequisites
         let prereqs = self.parse_prerequisites()?;

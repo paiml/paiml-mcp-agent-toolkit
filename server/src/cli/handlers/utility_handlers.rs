@@ -431,26 +431,36 @@ fn format_markdown_output(
 ) -> String {
     let mut builder = MarkdownBuilder::new();
     
+    // Add project sections
+    add_project_sections(&mut builder, project_context, deep_context, detected_toolchain);
+    
+    builder.build()
+}
+
+fn add_project_sections(
+    builder: &mut MarkdownBuilder,
+    project_context: &crate::services::context::ProjectContext,
+    deep_context: &crate::services::deep_context::DeepContext,
+    detected_toolchain: &str,
+) {
     // Add project header and structure
     builder.add_header(1, "Project Context");
     builder.add_header(2, "Project Structure");
-    add_project_structure(&mut builder, project_context, detected_toolchain);
+    add_project_structure(builder, project_context, detected_toolchain);
     
     // Add quality scorecard
     builder.add_header(2, "Quality Scorecard");
-    add_quality_scorecard(&mut builder, &deep_context.quality_scorecard);
+    add_quality_scorecard(builder, &deep_context.quality_scorecard);
     
     // Add files section
     builder.add_header(2, "Files");
-    add_files_section(&mut builder, &project_context.files, &deep_context.analyses);
+    add_files_section(builder, &project_context.files, &deep_context.analyses);
     
     // Add recommendations
     if !deep_context.recommendations.is_empty() {
         builder.add_header(2, "Recommendations");
-        add_recommendations(&mut builder, &deep_context.recommendations);
+        add_recommendations(builder, &deep_context.recommendations);
     }
-    
-    builder.build()
 }
 
 fn add_project_structure(

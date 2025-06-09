@@ -390,7 +390,7 @@ impl EnhancedReportingService {
             sections.push(self.build_duplication_section(duplication)?);
         }
 
-        // Technical debt section
+        // TDG analysis section
         if let Some(tdg) = &results.tdg_analysis {
             sections.push(self.build_tdg_section(tdg)?);
         }
@@ -516,7 +516,7 @@ impl EnhancedReportingService {
         );
 
         Ok(ReportSection {
-            title: "Technical Debt Gradient".to_string(),
+            title: "Code Quality Gradient".to_string(),
             section_type: SectionType::TechnicalDebt,
             content: serde_json::to_value(tdg)?,
             metrics,

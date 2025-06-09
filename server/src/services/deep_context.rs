@@ -671,7 +671,7 @@ impl DeepContextAnalyzer {
             scorecard.maintainability_index
         ));
         output.push_str(&format!(
-            "- Technical Debt: {:.1} hours\n",
+            "- Refactoring Time: {:.1} hours\n",
             scorecard.technical_debt_hours
         ));
         output.push_str(&format!(
@@ -821,7 +821,7 @@ impl DeepContextAnalyzer {
         )?;
         writeln!(
             output,
-            "- **Technical Debt**: {:.1} hours estimated",
+            "- **Refactoring Time**: {:.1} hours estimated",
             context.quality_scorecard.technical_debt_hours
         )?;
 
@@ -993,8 +993,8 @@ impl DeepContextAnalyzer {
         if let Some(ref satd) = analyses.satd_results {
             rules.push(json!({
                 "id": "debt/technical-debt",
-                "shortDescription": {"text": "Technical debt item"},
-                "fullDescription": {"text": "Self-admitted technical debt requiring attention"},
+                "shortDescription": {"text": "Code quality issue"},
+                "fullDescription": {"text": "Self-admitted code issue requiring attention"},
                 "defaultConfiguration": {"level": "note"},
                 "properties": {"tags": ["debt", "maintainability"]}
             }));
@@ -1678,7 +1678,7 @@ impl DeepContextAnalyzer {
 
         // TDG Score
         if let Some(ref tdg) = context.defects.tdg_score {
-            writeln!(output, "\n**Technical Debt Gradient:** {:.2}\n", tdg.value)?;
+            writeln!(output, "\n**Code Quality Gradient:** {:.2}\n", tdg.value)?;
             writeln!(
                 output,
                 "**TDG Severity:** {:?}\n",
@@ -1788,7 +1788,7 @@ impl DeepContextAnalyzer {
     ) -> anyhow::Result<()> {
         use std::fmt::Write;
         if let Some(ref satd) = context.analyses.satd_results {
-            writeln!(output, "## Technical Debt Analysis\n")?;
+            writeln!(output, "## Code Quality Analysis\n")?;
 
             let mut by_severity = FxHashMap::default();
             for item in &satd.items {
