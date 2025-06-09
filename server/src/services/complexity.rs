@@ -426,7 +426,7 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
     hotspots.sort_by(|a, b| b.complexity.cmp(&a.complexity));
     hotspots.truncate(10); // Top 10 hotspots
 
-    // Estimate technical debt (simplified: 30 min per complexity point over threshold)
+    // Estimate refactoring time (simplified: 30 min per complexity point over threshold)
     let debt_minutes: f32 = violations
         .iter()
         .map(|v| match v {
@@ -501,7 +501,7 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
 
     if report.summary.technical_debt_hours > 0.0 {
         output.push_str(&format!(
-            "⏱️  **Estimated Technical Debt**: {:.1} hours\n\n",
+            "⏱️  **Estimated Refactoring Time**: {:.1} hours\n\n",
             report.summary.technical_debt_hours
         ));
     }

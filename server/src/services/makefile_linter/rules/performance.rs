@@ -199,7 +199,7 @@ fn extract_var_refs(text: &str) -> HashSet<String> {
     let mut i = 0;
     let bytes = text.as_bytes();
 
-    while i < bytes.len() - 1 {
+    while i + 1 < bytes.len() {
         if bytes[i] == b'$' && i + 1 < bytes.len() {
             match bytes[i + 1] {
                 b'(' => {

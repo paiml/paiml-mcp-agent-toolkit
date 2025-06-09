@@ -36,11 +36,11 @@ pub struct CouplingMetrics {
     pub instability: f64, // efferent / (afferent + efferent)
 }
 
-/// Technical Debt Gradient Calculator
+/// TDG (Code Quality Gradient) Calculator
 /// Primary service for calculating TDG scores to replace defect probability
 pub struct TDGCalculator {
     config: TDGConfig,
-    /// Simple cache for TDG scores
+    /// Cache for TDG scores
     cache: Arc<DashMap<PathBuf, TDGScore>>,
     semaphore: Arc<Semaphore>,
     /// Lightweight provability analyzer
@@ -537,7 +537,7 @@ impl TDGCalculator {
     async fn calculate_domain_risk(&self, path: &Path) -> Result<f64> {
         let mut risk: f64 = 0.0;
 
-        // Security-sensitive paths
+        // High-risk domain paths
         if path.to_string_lossy().contains("auth")
             || path.to_string_lossy().contains("crypto")
             || path.to_string_lossy().contains("security")
@@ -659,7 +659,7 @@ impl TDGCalculator {
     /// Generate human-readable explanation
     fn generate_explanation(&self, score: &TDGScore) -> String {
         let mut explanation = format!(
-            "Technical Debt Gradient: {:.2} ({})\n\n",
+            "Code Quality Gradient: {:.2} ({})\n\n",
             score.value,
             score.severity.as_str()
         );

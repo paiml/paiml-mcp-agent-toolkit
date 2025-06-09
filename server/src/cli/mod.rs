@@ -5,12 +5,16 @@ pub mod command_structure;
 pub mod diagnose;
 pub mod formatting_helpers;
 pub mod handlers;
+mod name_similarity_helpers;
+mod proof_annotation_helpers;
+mod defect_prediction_helpers;
+mod symbol_table_helpers;
 
 mod command_dispatcher;
 
 use crate::{
     models::{churn::ChurnOutputFormat, template::*},
-    services::{makefile_linter, template_service::*, defect_probability::FileMetrics},
+    services::{makefile_linter, template_service::*},
     stateless_server::StatelessTemplateServer,
 };
 use clap::{Parser, Subcommand, ValueEnum};
@@ -6849,71 +6853,6 @@ fn format_duplicate_results(
     Ok(())
 }
 
-// Configuration for defect prediction analysis
-struct DefectPredictionConfig {
-    confidence_threshold: f32,
-    min_lines: usize,
-    include_low_confidence: bool,
-    high_risk_only: bool,
-    include_recommendations: bool,
-    include: Option<String>,
-    exclude: Option<String>,
-}
-
-// Discover and filter source files for defect analysis
-async fn discover_source_files_for_defect_analysis(
-    project_path: &PathBuf,
-    config: &DefectPredictionConfig,
-) -> anyhow::Result<Vec<(PathBuf, String, usize)>> {
-    use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
-    
-    let mut discovery_config = FileDiscoveryConfig::default();
-    
-    // Add custom patterns if specified
-    if let Some(exclude_pattern) = &config.exclude {
-        discovery_config
-            .custom_ignore_patterns
-            .push(exclude_pattern.clone());
-    }
-    
-    let discovery = ProjectFileDiscovery::new(project_path.clone()).with_config(discovery_config);
-    let discovered_files = discovery.discover_files()?;
-    
-    // Filter files based on criteria
-    let mut analyzed_files = Vec::new();
-    for file_path in discovered_files {
-        // Apply include filter if specified
-        if let Some(include_pattern) = &config.include {
-            if !file_path.to_string_lossy().contains(include_pattern) {
-                continue;
-            }
-        }
-        
-        // Check if it's a source code file
-        if !is_source_code_file(&file_path) {
-            continue;
-        }
-        
-        if let Ok(content) = std::fs::read_to_string(&file_path) {
-            let lines_of_code = content.lines().count();
-            if lines_of_code >= config.min_lines {
-                analyzed_files.push((file_path, content, lines_of_code));
-            }
-        }
-    }
-    
-    Ok(analyzed_files)
-}
-
-// Check if a file is a source code file based on extension
-fn is_source_code_file(path: &Path) -> bool {
-    matches!(
-        path.extension().and_then(|e| e.to_str()),
-        Some("rs") | Some("ts") | Some("tsx") | Some("js") | Some("jsx") |
-        Some("py") | Some("c") | Some("h") | Some("cpp") | Some("cc") |
-        Some("cxx") | Some("hpp")
-    )
-}
 
 /// Handle defect prediction analysis
 #[allow(clippy::too_many_arguments)]
@@ -6930,6 +6869,7 @@ async fn handle_analyze_defect_prediction(
     output: Option<PathBuf>,
     perf: bool,
 ) -> anyhow::Result<()> {
+    use defect_prediction_helpers::*;
     use crate::services::defect_probability::DefectProbabilityCalculator;
     use std::time::Instant;
 
@@ -6954,332 +6894,58 @@ async fn handle_analyze_defect_prediction(
         return Ok(());
     }
 
-    // Initialize defect calculator
+    // Collect metrics and calculate predictions
+    let file_metrics = collect_file_metrics(&analyzed_files);
     let defect_calculator = DefectProbabilityCalculator::new();
-
-    // Collect metrics for each file
-    let mut file_metrics = Vec::new();
-    for (file_path, content, lines_of_code) in &analyzed_files {
-        // Calculate basic complexity metrics (simplified)
-        let cyclomatic_complexity = calculate_simple_complexity(content);
-        let cognitive_complexity = (cyclomatic_complexity as f32 * 1.3) as u32; // Rough approximation
-
-        // Calculate basic churn score (simplified - based on file size and modification indicators)
-        let churn_score = calculate_simple_churn_score(content, *lines_of_code);
-
-        // Calculate basic coupling (count imports/includes)
-        let afferent_coupling = content
-            .lines()
-            .filter(|line| {
-                line.trim_start().starts_with("use ")
-                    || line.trim_start().starts_with("import ")
-                    || line.trim_start().starts_with("#include")
-            })
-            .count() as f32;
-
-        let metrics = FileMetrics {
-            file_path: file_path.to_string_lossy().to_string(),
-            churn_score,
-            complexity: cyclomatic_complexity as f32,
-            duplicate_ratio: 0.0, // Would need duplicate detection integration
-            afferent_coupling,
-            efferent_coupling: 0.0, // Simplified for now
-            lines_of_code: *lines_of_code,
-            cyclomatic_complexity,
-            cognitive_complexity,
-        };
-
-        file_metrics.push(metrics);
-    }
-
-    // Calculate defect predictions
     let predictions = defect_calculator.calculate_batch(&file_metrics);
-
-    // Filter results based on criteria
-    let mut filtered_predictions: Vec<_> = predictions.into_iter().collect();
-
-    if !include_low_confidence {
-        filtered_predictions.retain(|(_, score)| score.confidence >= confidence_threshold);
-    }
-
-    if high_risk_only {
-        filtered_predictions.retain(|(_, score)| score.probability >= 0.7);
-    }
-
-    // Sort by probability (highest first)
-    filtered_predictions.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).unwrap());
-
+    
+    // Filter results
+    let filtered_predictions = filter_predictions(predictions, &config);
     let analysis_time = start_time.elapsed();
 
-    // Output results based on format
-    match format {
+    // Generate output based on format
+    let output_content = match format {
         DefectPredictionOutputFormat::Summary => {
-            println!("Defect Prediction Analysis Summary");
-            println!("=================================");
-            println!("Files analyzed: {}", file_metrics.len());
-            println!("Predictions generated: {}", filtered_predictions.len());
-
-            let high_risk_count = filtered_predictions
-                .iter()
-                .filter(|(_, score)| score.probability >= 0.7)
-                .count();
-            let medium_risk_count = filtered_predictions
-                .iter()
-                .filter(|(_, score)| score.probability >= 0.3 && score.probability < 0.7)
-                .count();
-            let low_risk_count = filtered_predictions
-                .iter()
-                .filter(|(_, score)| score.probability < 0.3)
-                .count();
-
-            println!(
-                "High risk files: {} ({:.1}%)",
-                high_risk_count,
-                100.0 * high_risk_count as f32 / filtered_predictions.len() as f32
-            );
-            println!(
-                "Medium risk files: {} ({:.1}%)",
-                medium_risk_count,
-                100.0 * medium_risk_count as f32 / filtered_predictions.len() as f32
-            );
-            println!(
-                "Low risk files: {} ({:.1}%)",
-                low_risk_count,
-                100.0 * low_risk_count as f32 / filtered_predictions.len() as f32
-            );
-
-            if perf {
-                println!("\nPerformance Metrics:");
-                println!("Analysis time: {:.2}s", analysis_time.as_secs_f64());
-                println!(
-                    "Files/second: {:.1}",
-                    file_metrics.len() as f64 / analysis_time.as_secs_f64()
-                );
-            }
-
-            if !filtered_predictions.is_empty() {
-                println!("\nTop 10 High-Risk Files:");
-                for (file_path, score) in filtered_predictions.iter().take(10) {
-                    println!(
-                        "  {} - {:.1}% risk ({:?})",
-                        std::path::Path::new(file_path)
-                            .file_name()
-                            .unwrap_or_default()
-                            .to_string_lossy(),
-                        score.probability * 100.0,
-                        score.risk_level
-                    );
-                }
-            }
+            let risk_dist = calculate_risk_distribution(&filtered_predictions);
+            format_summary_output(
+                file_metrics.len(),
+                &filtered_predictions,
+                &risk_dist,
+                perf,
+                analysis_time,
+            )
         }
         DefectPredictionOutputFormat::Detailed => {
-            println!("Defect Prediction Analysis Report");
-            println!("================================");
-            for (file_path, score) in &filtered_predictions {
-                println!("\n{file_path}");
-                println!("  Risk Level: {:?}", score.risk_level);
-                println!("  Probability: {:.1}%", score.probability * 100.0);
-                println!("  Confidence: {:.1}%", score.confidence * 100.0);
-
-                println!("  Contributing Factors:");
-                for (factor, contribution) in &score.contributing_factors {
-                    println!("    {factor}: {contribution:.3}");
-                }
-
-                if include_recommendations && !score.recommendations.is_empty() {
-                    println!("  Recommendations:");
-                    for rec in &score.recommendations {
-                        println!("    - {rec}");
-                    }
-                }
-            }
+            format_detailed_output(&filtered_predictions, include_recommendations)
         }
         DefectPredictionOutputFormat::Json => {
-            let result = serde_json::json!({
-                "summary": {
-                    "total_files": file_metrics.len(),
-                    "predictions": filtered_predictions.len(),
-                    "high_risk": filtered_predictions.iter().filter(|(_, s)| s.probability >= 0.7).count(),
-                    "medium_risk": filtered_predictions.iter().filter(|(_, s)| s.probability >= 0.3 && s.probability < 0.7).count(),
-                    "low_risk": filtered_predictions.iter().filter(|(_, s)| s.probability < 0.3).count()
-                },
-                "predictions": filtered_predictions.iter().map(|(path, score)| {
-                    serde_json::json!({
-                        "file": path,
-                        "probability": score.probability,
-                        "confidence": score.confidence,
-                        "risk_level": score.risk_level,
-                        "contributing_factors": score.contributing_factors,
-                        "recommendations": if include_recommendations { Some(&score.recommendations) } else { None }
-                    })
-                }).collect::<Vec<_>>(),
-                "performance": if perf { Some(serde_json::json!({
-                    "analysis_time_s": analysis_time.as_secs_f64(),
-                    "files_per_second": file_metrics.len() as f64 / analysis_time.as_secs_f64()
-                })) } else { None }
-            });
-            println!("{}", serde_json::to_string_pretty(&result)?);
+            format_json_output(
+                file_metrics.len(),
+                &filtered_predictions,
+                include_recommendations,
+                perf,
+                analysis_time,
+            )?
         }
         DefectPredictionOutputFormat::Csv => {
-            println!("file,probability,confidence,risk_level,churn_factor,complexity_factor,duplication_factor,coupling_factor");
-            for (file_path, score) in &filtered_predictions {
-                let factors = &score.contributing_factors;
-                println!(
-                    "{},{:.3},{:.3},{:?},{:.3},{:.3},{:.3},{:.3}",
-                    file_path,
-                    score.probability,
-                    score.confidence,
-                    score.risk_level,
-                    factors.first().map(|(_, v)| *v).unwrap_or(0.0),
-                    factors.get(1).map(|(_, v)| *v).unwrap_or(0.0),
-                    factors.get(2).map(|(_, v)| *v).unwrap_or(0.0),
-                    factors.get(3).map(|(_, v)| *v).unwrap_or(0.0)
-                );
-            }
+            format_csv_output(&filtered_predictions)
         }
         DefectPredictionOutputFormat::Sarif => {
-            // SARIF format for IDE integration
-            let sarif = serde_json::json!({
-                "version": "2.1.0",
-                "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-                "runs": [{
-                    "tool": {
-                        "driver": {
-                            "name": "paiml-mcp-agent-toolkit",
-                            "version": env!("CARGO_PKG_VERSION"),
-                            "informationUri": "https://github.com/paiml/mcp-agent-toolkit"
-                        }
-                    },
-                    "results": filtered_predictions.iter().map(|(file_path, score)| {
-                        let level = match score.probability {
-                            p if p >= 0.7 => "error",
-                            p if p >= 0.3 => "warning",
-                            _ => "note"
-                        };
-                        serde_json::json!({
-                            "ruleId": "defect-prediction",
-                            "level": level,
-                            "message": {
-                                "text": format!("High defect probability: {:.1}% (confidence: {:.1}%)",
-                                    score.probability * 100.0, score.confidence * 100.0)
-                            },
-                            "locations": [{
-                                "physicalLocation": {
-                                    "artifactLocation": {
-                                        "uri": file_path
-                                    }
-                                }
-                            }],
-                            "properties": {
-                                "defect_probability": score.probability,
-                                "confidence": score.confidence,
-                                "risk_level": format!("{:?}", score.risk_level)
-                            }
-                        })
-                    }).collect::<Vec<_>>()
-                }]
-            });
-            println!("{}", serde_json::to_string_pretty(&sarif)?);
+            format_sarif_output(&filtered_predictions)?
         }
-    }
+    };
 
-    // Write to output file if specified
+    // Write output
     if let Some(output_path) = output {
-        let content = match format {
-            DefectPredictionOutputFormat::Json => {
-                let result = serde_json::json!({
-                    "predictions": filtered_predictions,
-                    "summary": {
-                        "total_files": file_metrics.len(),
-                        "high_risk": filtered_predictions.iter().filter(|(_, s)| s.probability >= 0.7).count()
-                    }
-                });
-                serde_json::to_string_pretty(&result)?
-            }
-            DefectPredictionOutputFormat::Sarif => {
-                let sarif = serde_json::json!({
-                    "version": "2.1.0",
-                    "runs": [{
-                        "tool": {
-                            "driver": {
-                                "name": "paiml-mcp-agent-toolkit",
-                                "version": env!("CARGO_PKG_VERSION")
-                            }
-                        },
-                        "results": filtered_predictions.iter().map(|(file_path, score)| {
-                            serde_json::json!({
-                                "ruleId": "defect-prediction",
-                                "level": if score.probability >= 0.7 { "error" } else if score.probability >= 0.3 { "warning" } else { "note" },
-                                "message": {
-                                    "text": format!("Defect probability: {:.1}%", score.probability * 100.0)
-                                },
-                                "locations": [{
-                                    "physicalLocation": {
-                                        "artifactLocation": {
-                                            "uri": file_path
-                                        }
-                                    }
-                                }]
-                            })
-                        }).collect::<Vec<_>>()
-                    }]
-                });
-                serde_json::to_string_pretty(&sarif)?
-            }
-            _ => format!("{filtered_predictions:#?}"),
-        };
-        std::fs::write(output_path, content)?;
+        std::fs::write(&output_path, &output_content)?;
+        eprintln!("Defect prediction analysis written to {}", output_path.display());
+    } else {
+        println!("{}", output_content);
     }
 
     Ok(())
 }
 
-/// Calculate a simple approximation of cyclomatic complexity
-fn calculate_simple_complexity(content: &str) -> u32 {
-    let mut complexity = 1; // Base complexity
-
-    for line in content.lines() {
-        let trimmed = line.trim();
-
-        // Count decision points (simplified)
-        complexity += trimmed.matches("if ").count() as u32;
-        complexity += trimmed.matches("else if ").count() as u32;
-        complexity += trimmed.matches("while ").count() as u32;
-        complexity += trimmed.matches("for ").count() as u32;
-        complexity += trimmed.matches("match ").count() as u32;
-        complexity += trimmed.matches("case ").count() as u32;
-        complexity += trimmed.matches("catch ").count() as u32;
-        complexity += trimmed.matches("&&").count() as u32;
-        complexity += trimmed.matches("||").count() as u32;
-        complexity += trimmed.matches("?").count() as u32; // Ternary operators
-    }
-
-    complexity
-}
-
-/// Calculate a simple churn score based on code characteristics
-fn calculate_simple_churn_score(content: &str, lines_of_code: usize) -> f32 {
-    let mut churn_indicators = 0;
-
-    for line in content.lines() {
-        let trimmed = line.trim();
-
-        // Look for indicators of high-churn code
-        if trimmed.contains("TODO") || trimmed.contains("FIXME") || trimmed.contains("XXX") {
-            churn_indicators += 2;
-        }
-        if trimmed.contains("temp") || trimmed.contains("tmp") || trimmed.contains("hack") {
-            churn_indicators += 1;
-        }
-        if trimmed.starts_with("//") && (trimmed.contains("debug") || trimmed.contains("test")) {
-            churn_indicators += 1;
-        }
-    }
-
-    // Normalize by file size and convert to 0-1 range
-    let base_score = churn_indicators as f32 / lines_of_code.max(1) as f32;
-    base_score.min(1.0)
-}
 
 /// Comprehensive analysis combining multiple analysis types
 #[allow(clippy::too_many_arguments)]
@@ -7299,6 +6965,7 @@ async fn handle_analyze_comprehensive(
     perf: bool,
     executive_summary: bool,
 ) -> anyhow::Result<()> {
+    use defect_prediction_helpers::{calculate_simple_complexity, calculate_simple_churn_score};
     let start_time = std::time::Instant::now();
 
     // Simple file discovery - find common source code files
@@ -9185,250 +8852,62 @@ async fn handle_analyze_name_similarity(
     fuzzy: bool,
     case_sensitive: bool,
 ) -> anyhow::Result<()> {
-    use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
     use std::time::Instant;
+    use name_similarity_helpers::*;
 
     let start_time = Instant::now();
 
-    // Discover source files
-    let mut discovery_config = FileDiscoveryConfig::default();
-
-    // Add custom patterns if specified
-    if let Some(exclude_pattern) = &exclude {
-        discovery_config
-            .custom_ignore_patterns
-            .push(exclude_pattern.clone());
-    }
-
-    let discovery = ProjectFileDiscovery::new(project_path.clone()).with_config(discovery_config);
-    let discovered_files = discovery.discover_files()?;
-
-    // Filter files based on include pattern
-    let mut analyzed_files = Vec::new();
-    for file_path in discovered_files {
-        // Apply include filter if specified
-        if let Some(include_pattern) = &include {
-            if !file_path.to_string_lossy().contains(include_pattern) {
-                continue;
-            }
-        }
-
-        if let Ok(content) = std::fs::read_to_string(&file_path) {
-            analyzed_files.push((file_path, content));
-        }
-    }
-
+    // Step 1: Discover source files
+    let analyzed_files = discover_source_files(project_path, &include, &exclude)?;
+    
     if analyzed_files.is_empty() {
         eprintln!("No source files found matching criteria");
         return Ok(());
     }
 
-    // Extract names/identifiers from source files
-    let mut all_names = Vec::new();
-    for (file_path, content) in &analyzed_files {
-        let names = extract_identifiers(content, &scope, file_path);
-        all_names.extend(names);
-    }
+    // Step 2: Extract identifiers
+    let all_names = extract_all_identifiers(&analyzed_files, &scope);
 
-    // Calculate similarity scores
-    let mut similarities = Vec::new();
-    let query_lower = if case_sensitive {
-        query.clone()
-    } else {
-        query.to_lowercase()
-    };
-
-    for name_info in &all_names {
-        let name_to_compare = if case_sensitive {
-            name_info.name.clone()
-        } else {
-            name_info.name.to_lowercase()
-        };
-
-        // String similarity (Jaro-Winkler approximation)
-        let mut similarity_score = calculate_string_similarity(&query_lower, &name_to_compare);
-
-        // Fuzzy matching (edit distance)
-        if fuzzy {
-            let edit_distance = calculate_edit_distance(&query_lower, &name_to_compare);
-            let max_len = query_lower.len().max(name_to_compare.len()) as f32;
-            let fuzzy_score = if max_len > 0.0 {
-                1.0 - (edit_distance as f32 / max_len)
-            } else {
-                1.0
-            };
-            similarity_score = similarity_score.max(fuzzy_score);
-        }
-
-        // Phonetic matching (simplified Soundex)
-        if phonetic {
-            let query_soundex = calculate_soundex(&query_lower);
-            let name_soundex = calculate_soundex(&name_to_compare);
-            if query_soundex == name_soundex {
-                similarity_score = similarity_score.max(0.8);
-            }
-        }
-
-        if similarity_score >= threshold {
-            similarities.push(NameSimilarityResult {
-                name: name_info.name.clone(),
-                similarity: similarity_score,
-                file: name_info.file.clone(),
-                line: name_info.line,
-                name_type: name_info.name_type.clone(),
-                context: name_info.context.clone(),
-            });
-        }
-    }
-
-    // Sort by similarity score (descending)
-    similarities.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
+    // Step 3: Calculate similarities
+    let mut similarities = calculate_similarities(
+        &all_names,
+        &query,
+        threshold,
+        case_sensitive,
+        fuzzy,
+        phonetic,
+    );
     similarities.truncate(top_k);
 
     let analysis_time = start_time.elapsed();
 
-    // Prepare results
-    let results = serde_json::json!({
-        "query": query,
-        "total_identifiers": all_names.len(),
-        "matches": similarities.len(),
-        "results": similarities.iter().map(|s| serde_json::json!({
-            "name": s.name,
-            "similarity": s.similarity,
-            "file": s.file.to_string_lossy(),
-            "line": s.line,
-            "type": s.name_type,
-            "context": s.context
-        })).collect::<Vec<_>>(),
-        "parameters": {
-            "scope": format!("{scope:?}"),
-            "threshold": threshold,
-            "phonetic": phonetic,
-            "fuzzy": fuzzy,
-            "case_sensitive": case_sensitive
-        }
-    });
+    // Step 4: Build results
+    let final_results = build_results_json(
+        &query,
+        all_names.len(),
+        &similarities,
+        &scope,
+        threshold,
+        phonetic,
+        fuzzy,
+        case_sensitive,
+        perf,
+        analysis_time,
+        analyzed_files.len(),
+    );
 
-    // Add performance metrics if requested
-    let mut final_results = results;
-    if perf {
-        final_results["performance"] = serde_json::json!({
-            "analysis_time_s": analysis_time.as_secs_f64(),
-            "identifiers_per_second": all_names.len() as f64 / analysis_time.as_secs_f64(),
-            "files_analyzed": analyzed_files.len()
-        });
-    }
-
-    // Output results based on format
-    match format {
-        NameSimilarityOutputFormat::Summary => {
-            println!("Name Similarity Analysis");
-            println!("======================");
-            println!("Query: '{query}'");
-            println!("Total identifiers: {}", all_names.len());
-            println!("Matches found: {}", similarities.len());
-
-            if !similarities.is_empty() {
-                println!("\nTop matches:");
-                for (i, sim) in similarities.iter().take(10).enumerate() {
-                    println!(
-                        "{}. {} (similarity: {:.3}) in {}:{}",
-                        i + 1,
-                        sim.name,
-                        sim.similarity,
-                        sim.file.file_name().unwrap().to_string_lossy(),
-                        sim.line
-                    );
-                }
-            }
-
-            if perf {
-                println!("\nPerformance:");
-                println!("  Analysis time: {:.2}s", analysis_time.as_secs_f64());
-                println!("  Files analyzed: {}", analyzed_files.len());
-            }
-        }
-        NameSimilarityOutputFormat::Detailed => {
-            println!("Name Similarity Analysis Report");
-            println!("==============================");
-
-            for sim in &similarities {
-                println!("\nMatch: {}", sim.name);
-                println!("  Similarity: {:.3}", sim.similarity);
-                println!("  Type: {}", sim.name_type);
-                println!("  File: {}", sim.file.to_string_lossy());
-                println!("  Line: {}", sim.line);
-                if !sim.context.is_empty() {
-                    println!("  Context: {}", sim.context);
-                }
-            }
-        }
-        NameSimilarityOutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&final_results)?);
-        }
-        NameSimilarityOutputFormat::Csv => {
-            println!("name,similarity,type,file,line,context");
-            for sim in &similarities {
-                println!(
-                    "{},{:.3},{},{},{},\"{}\"",
-                    sim.name,
-                    sim.similarity,
-                    sim.name_type,
-                    sim.file.to_string_lossy(),
-                    sim.line,
-                    sim.context.replace('"', "\"\"")
-                );
-            }
-        }
-        NameSimilarityOutputFormat::Markdown => {
-            println!("# Name Similarity Analysis\n");
-            println!("**Query**: `{query}`\n");
-            println!("**Total identifiers**: {}\n", all_names.len());
-            println!("**Matches found**: {}\n", similarities.len());
-
-            if !similarities.is_empty() {
-                println!("## Results\n");
-                println!("| Rank | Name | Similarity | Type | File | Line |");
-                println!("| ---- | ---- | ---------- | ---- | ---- | ---- |");
-                for (i, sim) in similarities.iter().enumerate() {
-                    println!(
-                        "| {} | `{}` | {:.3} | {} | {} | {} |",
-                        i + 1,
-                        sim.name,
-                        sim.similarity,
-                        sim.name_type,
-                        sim.file.file_name().unwrap().to_string_lossy(),
-                        sim.line
-                    );
-                }
-            }
-        }
-    }
-
-    // Write to output file if specified
-    if let Some(output_path) = output {
-        let content = match format {
-            NameSimilarityOutputFormat::Json => serde_json::to_string_pretty(&final_results)?,
-            NameSimilarityOutputFormat::Csv => {
-                let mut csv_content = String::from("name,similarity,type,file,line,context\n");
-                for sim in &similarities {
-                    csv_content.push_str(&format!(
-                        "{},{:.3},{},{},{},\"{}\"\n",
-                        sim.name,
-                        sim.similarity,
-                        sim.name_type,
-                        sim.file.to_string_lossy(),
-                        sim.line,
-                        sim.context.replace('"', "\"\"")
-                    ));
-                }
-                csv_content
-            }
-            _ => format!("{final_results:#?}"),
-        };
-        std::fs::write(&output_path, content)?;
-        eprintln!("📄 Results written to {}", output_path.display());
-    }
+    // Step 5: Output results
+    output_results(
+        format,
+        &query,
+        all_names.len(),
+        &similarities,
+        &final_results,
+        perf,
+        analysis_time,
+        analyzed_files.len(),
+        output,
+    )?;
 
     Ok(())
 }
@@ -9436,22 +8915,22 @@ async fn handle_analyze_name_similarity(
 // Helper structures for name similarity analysis
 
 #[derive(Debug, Clone)]
-struct NameInfo {
-    name: String,
-    file: PathBuf,
-    line: u32,
-    name_type: String,
-    context: String,
+pub(crate) struct NameInfo {
+    pub name: String,
+    pub file: PathBuf,
+    pub line: u32,
+    pub name_type: String,
+    pub context: String,
 }
 
 #[derive(Debug, Clone)]
-struct NameSimilarityResult {
-    name: String,
-    similarity: f32,
-    file: PathBuf,
-    line: u32,
-    name_type: String,
-    context: String,
+pub(crate) struct NameSimilarityResult {
+    pub name: String,
+    pub similarity: f32,
+    pub file: PathBuf,
+    pub line: u32,
+    pub name_type: String,
+    pub context: String,
 }
 
 // Helper functions for name similarity analysis
@@ -9938,188 +9417,75 @@ async fn handle_analyze_proof_annotations(
     perf: bool,
     clear_cache: bool,
 ) -> anyhow::Result<()> {
-    use crate::services::{
-        proof_annotator::{MockProofSource, ProofAnnotator},
-        symbol_table::SymbolTable,
-    };
+    use proof_annotation_helpers::*;
     use std::time::Instant;
 
     let start_time = Instant::now();
 
-    // Create symbol table and proof annotator
-    let symbol_table = std::sync::Arc::new(SymbolTable::new());
-    let mut annotator = ProofAnnotator::new(symbol_table.clone());
+    // Setup proof annotator
+    let annotator = setup_proof_annotator(clear_cache);
 
-    // Clear cache if requested
-    if clear_cache {
-        annotator.clear_cache();
-    }
+    // Create filter configuration
+    let filter = ProofAnnotationFilter {
+        high_confidence_only,
+        property_type,
+        verification_method,
+    };
 
-    // Add mock proof sources for demonstration
-    // In a real implementation, these would be real proof sources like:
-    // - Rust borrow checker integration
-    // - External verification tool outputs
-    // - Manual proof annotations from comments
-    annotator.add_source(MockProofSource::new("borrow_checker".to_string(), 10, 5));
-    annotator.add_source(MockProofSource::new("static_analyzer".to_string(), 20, 3));
-    annotator.add_source(MockProofSource::new("formal_verifier".to_string(), 50, 2));
-
-    // Collect proof annotations
-    let proof_map = annotator.collect_proofs(&project_path).await;
-
-    // Filter annotations based on criteria
-    let filtered_annotations: Vec<_> = proof_map
-        .into_iter()
-        .flat_map(|(location, annotations)| {
-            annotations
-                .into_iter()
-                .filter(|annotation| {
-                    // Filter by confidence level
-                    if high_confidence_only {
-                        matches!(
-                            annotation.confidence_level,
-                            crate::models::unified_ast::ConfidenceLevel::High
-                        )
-                    } else {
-                        true
-                    }
-                })
-                .filter(|annotation| {
-                    // Filter by property type
-                    if let Some(ref filter) = property_type {
-                        match filter {
-                            PropertyTypeFilter::MemorySafety => matches!(
-                                annotation.property_proven,
-                                crate::models::unified_ast::PropertyType::MemorySafety
-                            ),
-                            PropertyTypeFilter::ThreadSafety => matches!(
-                                annotation.property_proven,
-                                crate::models::unified_ast::PropertyType::ThreadSafety
-                            ),
-                            PropertyTypeFilter::DataRaceFreeze => matches!(
-                                annotation.property_proven,
-                                crate::models::unified_ast::PropertyType::DataRaceFreeze
-                            ),
-                            PropertyTypeFilter::Termination => matches!(
-                                annotation.property_proven,
-                                crate::models::unified_ast::PropertyType::Termination
-                            ),
-                            PropertyTypeFilter::FunctionalCorrectness => matches!(
-                                annotation.property_proven,
-                                crate::models::unified_ast::PropertyType::FunctionalCorrectness(_)
-                            ),
-                            PropertyTypeFilter::ResourceBounds => matches!(
-                                annotation.property_proven,
-                                crate::models::unified_ast::PropertyType::ResourceBounds { .. }
-                            ),
-                            PropertyTypeFilter::All => true,
-                        }
-                    } else {
-                        true
-                    }
-                })
-                .filter(|annotation| {
-                    // Filter by verification method
-                    if let Some(ref filter) = verification_method {
-                        match filter {
-                            VerificationMethodFilter::FormalProof => matches!(
-                                annotation.method,
-                                crate::models::unified_ast::VerificationMethod::FormalProof { .. }
-                            ),
-                            VerificationMethodFilter::ModelChecking => matches!(
-                                annotation.method,
-                                crate::models::unified_ast::VerificationMethod::ModelChecking { .. }
-                            ),
-                            VerificationMethodFilter::StaticAnalysis => matches!(
-                                annotation.method,
-                                crate::models::unified_ast::VerificationMethod::StaticAnalysis { .. }
-                            ),
-                            VerificationMethodFilter::AbstractInterpretation => matches!(
-                                annotation.method,
-                                crate::models::unified_ast::VerificationMethod::AbstractInterpretation
-                            ),
-                            VerificationMethodFilter::BorrowChecker => matches!(
-                                annotation.method,
-                                crate::models::unified_ast::VerificationMethod::BorrowChecker
-                            ),
-                            VerificationMethodFilter::All => true,
-                        }
-                    } else {
-                        true
-                    }
-                })
-                .map(|annotation| (location.clone(), annotation))
-                .collect::<Vec<_>>()
-        })
-        .collect();
+    // Collect and filter annotations
+    let filtered_annotations = collect_and_filter_annotations(&annotator, &project_path, &filter).await;
 
     let elapsed = start_time.elapsed();
 
-    // Format output
-    let result = match format {
-        ProofAnnotationOutputFormat::Summary => {
-            format_proof_annotations_summary(&filtered_annotations, perf, elapsed, &annotator)
-        }
-        ProofAnnotationOutputFormat::Full => format_proof_annotations_full(
-            &filtered_annotations,
-            include_evidence,
-            perf,
-            elapsed,
-            &annotator,
-        ),
-        ProofAnnotationOutputFormat::Json => {
-            let cache_stats = annotator.cache_stats();
-            let annotations_json: Vec<serde_json::Value> = filtered_annotations
-                .iter()
-                .map(|(location, annotation)| {
-                    serde_json::json!({
-                        "location": {
-                            "file_path": location.file_path.to_string_lossy(),
-                            "start_pos": location.span.start.0,
-                            "end_pos": location.span.end.0
-                        },
-                        "annotation": annotation
-                    })
-                })
-                .collect();
-
-            let json_data = serde_json::json!({
-                "proof_annotations": annotations_json,
-                "summary": {
-                    "total_annotations": filtered_annotations.len(),
-                    "analysis_time_ms": elapsed.as_millis(),
-                    "cache_stats": {
-                        "size": cache_stats.size,
-                        "files_tracked": cache_stats.files_tracked
-                    }
-                }
-            });
-            serde_json::to_string_pretty(&json_data)?
-        }
-        ProofAnnotationOutputFormat::Markdown => format_proof_annotations_markdown(
-            &filtered_annotations,
-            include_evidence,
-            perf,
-            elapsed,
-            &annotator,
-        ),
-        ProofAnnotationOutputFormat::Sarif => {
-            format_proof_annotations_sarif(&filtered_annotations)?
-        }
-    };
+    // Format output based on selected format
+    let result = format_proof_output(
+        format,
+        &filtered_annotations,
+        include_evidence,
+        perf,
+        elapsed,
+        &annotator,
+    )?;
 
     // Output to file or stdout
+    write_output(output, &result).await?;
+
+    Ok(())
+}
+
+async fn write_output(output: Option<PathBuf>, result: &str) -> anyhow::Result<()> {
     if let Some(output_path) = output {
-        tokio::fs::write(&output_path, &result).await?;
-        eprintln!(
-            "Proof annotations analysis written to {}",
-            output_path.display()
-        );
+        tokio::fs::write(&output_path, result).await?;
+        eprintln!("Proof annotations analysis written to {}", output_path.display());
     } else {
         println!("{result}");
     }
-
     Ok(())
+}
+
+fn format_proof_output(
+    format: ProofAnnotationOutputFormat,
+    annotations: &[(crate::models::unified_ast::Location, crate::models::unified_ast::ProofAnnotation)],
+    include_evidence: bool,
+    perf: bool,
+    elapsed: std::time::Duration,
+    annotator: &crate::services::proof_annotator::ProofAnnotator,
+) -> anyhow::Result<String> {
+    use proof_annotation_helpers::format_as_json;
+    
+    Ok(match format {
+        ProofAnnotationOutputFormat::Summary => {
+            format_proof_annotations_summary(annotations, perf, elapsed, annotator)
+        }
+        ProofAnnotationOutputFormat::Full => {
+            format_proof_annotations_full(annotations, include_evidence, perf, elapsed, annotator)
+        }
+        ProofAnnotationOutputFormat::Json => format_as_json(annotations, elapsed, annotator)?,
+        ProofAnnotationOutputFormat::Markdown => {
+            format_proof_annotations_markdown(annotations, include_evidence, perf, elapsed, annotator)
+        }
+        ProofAnnotationOutputFormat::Sarif => format_proof_annotations_sarif(annotations)?,
+    })
 }
 
 fn format_proof_annotations_summary(
@@ -10739,11 +10105,10 @@ async fn handle_analyze_symbol_table(
     output: Option<PathBuf>,
     perf: bool,
 ) -> anyhow::Result<()> {
-    use crate::services::context::AstItem;
+    use symbol_table_helpers::*;
     use crate::services::deep_context::{
         AnalysisType, CacheStrategy, DagType, DeepContextAnalyzer, DeepContextConfig,
     };
-    use crate::services::symbol_table::SymbolTable;
     use serde_json::json;
     use std::time::Instant;
 
@@ -10770,87 +10135,8 @@ async fn handle_analyze_symbol_table(
     let analyzer = DeepContextAnalyzer::new(config);
     let deep_context = analyzer.analyze_project(&project_path).await?;
 
-    // Build symbol table
-    let _symbol_table = SymbolTable::new();
-    let mut all_symbols = Vec::new();
-
-    // Extract symbols from AST contexts
-    for ast_ctx in &deep_context.analyses.ast_contexts {
-        for item in &ast_ctx.base.items {
-            let symbol_info = match item {
-                AstItem::Function {
-                    name,
-                    visibility,
-                    is_async,
-                    line,
-                } => Some((
-                    name.clone(),
-                    "function",
-                    *line,
-                    visibility.clone(),
-                    *is_async,
-                )),
-                AstItem::Struct {
-                    name,
-                    visibility,
-                    fields_count: _,
-                    line,
-                    ..
-                } => Some((name.clone(), "struct", *line, visibility.clone(), false)),
-                AstItem::Enum {
-                    name,
-                    visibility,
-                    variants_count: _,
-                    line,
-                } => Some((name.clone(), "enum", *line, visibility.clone(), false)),
-                AstItem::Trait {
-                    name,
-                    visibility,
-                    line,
-                } => Some((name.clone(), "trait", *line, visibility.clone(), false)),
-                AstItem::Module {
-                    name,
-                    visibility,
-                    line,
-                } => Some((name.clone(), "module", *line, visibility.clone(), false)),
-                AstItem::Use { path, line } => {
-                    Some((path.clone(), "import", *line, "pub".to_string(), false))
-                }
-                _ => None,
-            };
-
-            if let Some((name, kind, line, visibility, is_async)) = symbol_info {
-                // Apply filters
-                let passes_filter = match &filter {
-                    Some(SymbolTypeFilter::Functions) => kind == "function",
-                    Some(SymbolTypeFilter::Types) => matches!(kind, "struct" | "enum" | "trait"),
-                    Some(SymbolTypeFilter::Variables) => false, // Not implemented yet
-                    Some(SymbolTypeFilter::Modules) => kind == "module",
-                    Some(SymbolTypeFilter::All) | None => true,
-                };
-
-                if !passes_filter {
-                    continue;
-                }
-
-                // Apply query filter
-                if let Some(q) = &query {
-                    if !name.to_lowercase().contains(&q.to_lowercase()) {
-                        continue;
-                    }
-                }
-
-                all_symbols.push(SymbolInfo {
-                    name,
-                    kind: kind.to_string(),
-                    file: ast_ctx.base.path.clone(),
-                    line,
-                    visibility,
-                    is_async,
-                });
-            }
-        }
-    }
+    // Extract all symbols using helper
+    let all_symbols = extract_symbols_from_context(&deep_context, &filter, &query);
 
     if perf {
         eprintln!(
@@ -10890,94 +10176,3 @@ async fn handle_analyze_symbol_table(
     Ok(())
 }
 
-#[derive(Debug, serde::Serialize)]
-struct SymbolInfo {
-    name: String,
-    kind: String,
-    file: String,
-    line: usize,
-    visibility: String,
-    is_async: bool,
-}
-
-fn format_symbol_table_summary(
-    symbols: &[SymbolInfo],
-    deep_context: &crate::services::deep_context::DeepContext,
-) -> String {
-    let mut output = String::from("# Symbol Table Analysis\n\n");
-
-    output.push_str(&format!("**Total Symbols:** {}\n", symbols.len()));
-    output.push_str(&format!(
-        "**Total Files:** {}\n\n",
-        deep_context.analyses.ast_contexts.len()
-    ));
-
-    output.push_str("## Symbols by Type\n");
-    let by_type = count_by_type(symbols);
-    for (kind, count) in by_type {
-        output.push_str(&format!("- {kind}: {count}\n"));
-    }
-
-    output.push_str("\n## Symbols by Visibility\n");
-    let by_vis = count_by_visibility(symbols);
-    for (vis, count) in by_vis {
-        output.push_str(&format!("- {vis}: {count}\n"));
-    }
-
-    output
-}
-
-fn format_symbol_table_detailed(symbols: &[SymbolInfo]) -> String {
-    let mut output = String::from("# Symbol Table - Detailed\n\n");
-
-    output.push_str("| Name | Type | File | Line | Visibility |\n");
-    output.push_str("|------|------|------|------|------------|\n");
-
-    for symbol in symbols {
-        output.push_str(&format!(
-            "| {} | {} | {} | {} | {} |\n",
-            symbol.name, symbol.kind, symbol.file, symbol.line, symbol.visibility
-        ));
-    }
-
-    output
-}
-
-fn format_symbol_table_csv(symbols: &[SymbolInfo]) -> String {
-    let mut output = String::from("name,type,file,line,visibility,is_async\n");
-
-    for symbol in symbols {
-        output.push_str(&format!(
-            "{},{},{},{},{},{}\n",
-            symbol.name, symbol.kind, symbol.file, symbol.line, symbol.visibility, symbol.is_async
-        ));
-    }
-
-    output
-}
-
-fn count_by_type(symbols: &[SymbolInfo]) -> Vec<(String, usize)> {
-    // FxHashMap is already imported at module level
-    let mut counts = FxHashMap::default();
-
-    for symbol in symbols {
-        *counts.entry(symbol.kind.clone()).or_insert(0) += 1;
-    }
-
-    let mut result: Vec<_> = counts.into_iter().collect();
-    result.sort_by(|a, b| b.1.cmp(&a.1));
-    result
-}
-
-fn count_by_visibility(symbols: &[SymbolInfo]) -> Vec<(String, usize)> {
-    // FxHashMap is already imported at module level
-    let mut counts = FxHashMap::default();
-
-    for symbol in symbols {
-        *counts.entry(symbol.visibility.clone()).or_insert(0) += 1;
-    }
-
-    let mut result: Vec<_> = counts.into_iter().collect();
-    result.sort_by(|a, b| b.1.cmp(&a.1));
-    result
-}

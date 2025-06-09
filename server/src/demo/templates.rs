@@ -299,7 +299,7 @@ pub const HTML_TEMPLATE: &str = r#"<!DOCTYPE html>
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Technical Debt</div>
+                <div class="stat-label">Refactoring Time</div>
                 <div class="stat-value">
                     <span id="tech-debt">{tech_debt_hours}</span>
                     <span class="stat-unit">hours</span>

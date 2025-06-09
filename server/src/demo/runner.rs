@@ -876,11 +876,8 @@ pub fn resolve_repository(
     if let Some(repo_spec) = repo {
         resolve_repo_spec(&repo_spec)
     } else if let Some(url) = url {
-        // TRACKED: Implement URL cloning - for now return error
-        Err(anyhow!(
-            "Remote repository cloning not yet implemented. URL: {}",
-            url
-        ))
+        // Return a PathBuf that will trigger cloning in execute_with_diagram
+        Ok(PathBuf::from(url))
     } else {
         detect_repository(path)
     }
