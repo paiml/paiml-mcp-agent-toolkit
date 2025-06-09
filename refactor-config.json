@@ -1,0 +1,56 @@
+{
+  "state_machine": {
+    "initial_state": "analyzing",
+    "checkpoint_interval": 300,
+    "max_iterations": 10000,
+    "transitions": [
+      {"from": "analyzing", "to": "planning", "condition": "metrics_collected"},
+      {"from": "planning", "to": "executing", "condition": "violations_prioritized"},
+      {"from": "executing", "to": "validating", "condition": "refactor_applied"},
+      {"from": "validating", "to": "analyzing", "condition": "tests_pass"},
+      {"from": "validating", "to": "reverting", "condition": "tests_fail"},
+      {"from": "reverting", "to": "planning", "condition": "rollback_complete"}
+    ]
+  },
+  "target_complexity": 10,
+  "remove_satd": true,
+  "max_function_lines": 50,
+  "parallel_workers": 8,
+  "memory_limit_mb": 16384,
+  "batch_size": 50,
+  "priority_expression": "tdg_score DESC, complexity DESC, churn DESC",
+  "auto_commit_template": "refactor: automated fix via state machine [skip ci]",
+  "thresholds": {
+    "cyclomatic_warn": 10,
+    "cyclomatic_error": 20,
+    "cognitive_warn": 15,
+    "cognitive_error": 30,
+    "tdg_warn": 1.5,
+    "tdg_error": 2.0
+  },
+  "strategies": {
+    "prefer_functional": true,
+    "use_early_returns": true,
+    "extract_helpers": true
+  },
+  "operations": {
+    "extract_function": {"min_lines": 10, "max_complexity": 8},
+    "inline_variable": {"single_use": true},
+    "remove_dead_code": {"confidence": 0.95},
+    "fix_satd": {"patterns": ["TODO", "FIXME", "HACK", "XXX"]},
+    "reduce_nesting": {"max_depth": 3},
+    "split_module": {"max_lines": 500}
+  },
+  "validation": {
+    "run_tests": "make test-fast",
+    "check_coverage": "cargo tarpaulin --out Xml --timeout 300",
+    "lint_check": "make lint",
+    "rollback_on_failure": true
+  },
+  "output": {
+    "deep_context": "./deep_context_state.json",
+    "checklist": "docs/bugs/prepare-release.md",
+    "state_log": "refactor_state.log",
+    "metrics_snapshot": "metrics_evolution.jsonl"
+  }
+}
