@@ -15,6 +15,7 @@ mod export_integration_tests {
         FunctionComplexity,
     };
     use paiml_mcp_agent_toolkit::services::deep_context::{CacheStats, ContextMetadata};
+    use rustc_hash::FxHashMap;
     use std::collections::HashMap;
     use tempfile::TempDir;
 
@@ -297,7 +298,7 @@ mod export_integration_tests {
     #[test]
     fn test_create_export_report() {
         // Create test data
-        let mut nodes = HashMap::new();
+        let mut nodes = FxHashMap::default();
         nodes.insert(
             "node1".to_string(),
             NodeInfo {
@@ -307,7 +308,7 @@ mod export_integration_tests {
                 file_path: "src/module_a.rs".to_string(),
                 line_number: 1,
                 complexity: 5,
-                metadata: HashMap::new(),
+                metadata: FxHashMap::default(),
             },
         );
         nodes.insert(
@@ -319,7 +320,7 @@ mod export_integration_tests {
                 file_path: "src/module_b.rs".to_string(),
                 line_number: 1,
                 complexity: 8,
-                metadata: HashMap::new(),
+                metadata: FxHashMap::default(),
             },
         );
 
@@ -438,7 +439,7 @@ mod export_integration_tests {
     #[test]
     fn test_export_without_optional_data() {
         let dag = DependencyGraph {
-            nodes: HashMap::new(),
+            nodes: FxHashMap::default(),
             edges: vec![],
         };
 

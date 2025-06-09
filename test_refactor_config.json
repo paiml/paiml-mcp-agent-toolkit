@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "target_complexity": 15,
+    "max_function_lines": 40,
+    "remove_satd": true
+  },
+  "parallel_workers": 4,
+  "memory_limit_mb": 256,
+  "batch_size": 5,
+  "priority_expression": "complexity * defect_probability",
+  "auto_commit_template": "refactor: Automated refactoring - {files} files, {refactors} changes, {complexity_reduction} complexity reduction"
+}

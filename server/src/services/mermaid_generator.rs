@@ -270,7 +270,7 @@ impl Default for MermaidGenerator {
 mod tests {
     use super::*;
     use crate::models::dag::{Edge, EdgeType, NodeInfo, NodeType};
-    use std::collections::HashMap;
+    use rustc_hash::FxHashMap;
     use std::fs;
 
     const REFERENCE_STANDARD_PATH: &str = "../artifacts/mermaid/fixtures/reference_standard.mmd";
@@ -433,7 +433,7 @@ mod tests {
             file_path: "main.rs".to_string(),
             line_number: 1,
             complexity: 2,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         graph.add_node(NodeInfo {
@@ -443,7 +443,7 @@ mod tests {
             file_path: "lib.rs".to_string(),
             line_number: 10,
             complexity: 5,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         graph.add_edge(Edge {
@@ -487,7 +487,7 @@ mod tests {
             file_path: "mod.rs".to_string(),
             line_number: 1,
             complexity: 1,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         graph.add_node(NodeInfo {
@@ -497,7 +497,7 @@ mod tests {
             file_path: "lib.rs".to_string(),
             line_number: 10,
             complexity: 5,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         graph.add_node(NodeInfo {
@@ -507,7 +507,7 @@ mod tests {
             file_path: "main.rs".to_string(),
             line_number: 20,
             complexity: 3,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         graph.add_node(NodeInfo {
@@ -517,7 +517,7 @@ mod tests {
             file_path: "traits.rs".to_string(),
             line_number: 30,
             complexity: 2,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         graph.add_node(NodeInfo {
@@ -527,7 +527,7 @@ mod tests {
             file_path: "interfaces.rs".to_string(),
             line_number: 40,
             complexity: 4,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         let generator = MermaidGenerator::new(MermaidOptions {
@@ -569,7 +569,7 @@ mod tests {
             file_path: "test.rs".to_string(),
             line_number: 1,
             complexity: 10,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         graph.add_node(NodeInfo {
@@ -579,7 +579,7 @@ mod tests {
             file_path: "test.rs".to_string(),
             line_number: 10,
             complexity: 15,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         let generator = MermaidGenerator::new(MermaidOptions {
@@ -623,7 +623,7 @@ mod tests {
             file_path: "a.rs".to_string(),
             line_number: 1,
             complexity: 1,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         graph.add_node(NodeInfo {
@@ -633,7 +633,7 @@ mod tests {
             file_path: "b.rs".to_string(),
             line_number: 1,
             complexity: 1,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         // Add different edge types
@@ -684,7 +684,7 @@ mod tests {
             file_path: "test.rs".to_string(),
             line_number: 1,
             complexity: 1,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         let generator = MermaidGenerator::new(MermaidOptions {
@@ -710,7 +710,7 @@ mod tests {
             file_path: "test.rs".to_string(),
             line_number: 1,
             complexity: 10,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         let generator = MermaidGenerator::new(MermaidOptions {
@@ -738,7 +738,7 @@ mod tests {
             file_path: "a.rs".to_string(),
             line_number: 1,
             complexity: 1,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         // Add edge where 'b' doesn't exist
@@ -809,7 +809,7 @@ mod tests {
             file_path: "test.rs".to_string(),
             line_number: 1,
             complexity: 3,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
 
         let generator = MermaidGenerator::new(MermaidOptions {
@@ -851,7 +851,7 @@ mod tests {
                 file_path: "test.rs".to_string(),
                 line_number: 1,
                 complexity: 5,
-                metadata: HashMap::new(),
+                metadata: FxHashMap::default(),
             });
         }
 
@@ -948,7 +948,7 @@ mod tests {
                 file_path: "cache.rs".to_string(),
                 line_number: 1,
                 complexity: 6,
-                metadata: HashMap::new(),
+                metadata: FxHashMap::default(),
             });
 
             let generator = MermaidGenerator::new(MermaidOptions {
@@ -1036,7 +1036,7 @@ mod tests {
                     file_path: format!("{}.rs", id.split("::").next().unwrap().replace(".rs", "")),
                     line_number: 1,
                     complexity,
-                    metadata: HashMap::new(),
+                    metadata: FxHashMap::default(),
                 });
             }
 

@@ -12,9 +12,9 @@ use crate::services::{
     tdg_calculator::TDGCalculator,
 };
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use rustc_hash::FxHashMap;
 use rayon::prelude::*;
+use rustc_hash::FxHashMap;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -215,10 +215,15 @@ pub enum NodeType {
 pub struct NodeAnnotations {
     pub defect_score: Option<f32>,
     pub complexity_score: Option<f32>,
+    pub cognitive_complexity: Option<u16>,
     pub churn_score: Option<f32>,
     pub dead_code_items: usize,
     pub satd_items: usize,
     pub centrality: Option<f32>,
+    pub test_coverage: Option<f32>,
+    pub big_o_complexity: Option<String>,
+    pub memory_complexity: Option<String>,
+    pub duplication_score: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -580,13 +585,25 @@ impl DeepContextAnalyzer {
         &self,
         context: &DeepContext,
     ) -> anyhow::Result<String> {
-        // Simplified markdown formatting without formatting_pipeline
         let mut output = String::new();
-
         output.push_str("# Deep Context Analysis Report\n\n");
 
-        // Project Overview (from README)
-        if let Some(ref overview) = context.project_overview {
+        self.append_project_overview(&mut output, &context.project_overview)?;
+        self.append_build_info(&mut output, &context.build_info)?;
+        self.append_quality_scorecard(&mut output, &context.quality_scorecard)?;
+        self.append_project_structure(&mut output, &context.file_tree)?;
+        self.append_analysis_results(&mut output, &context.analyses)?;
+        self.append_recommendations(&mut output, &context.recommendations)?;
+
+        Ok(output)
+    }
+
+    fn append_project_overview(
+        &self,
+        output: &mut String,
+        overview: &Option<crate::models::project_meta::ProjectOverview>,
+    ) -> anyhow::Result<()> {
+        if let Some(ref overview) = overview {
             output.push_str("## Project Overview\n\n");
             if !overview.compressed_description.is_empty() {
                 output.push_str(&overview.compressed_description);
@@ -605,9 +622,15 @@ impl DeepContextAnalyzer {
                 output.push_str("\n\n");
             }
         }
+        Ok(())
+    }
 
-        // Build System (from Makefile)
-        if let Some(ref build_info) = context.build_info {
+    fn append_build_info(
+        &self,
+        output: &mut String,
+        build_info: &Option<crate::models::project_meta::BuildInfo>,
+    ) -> anyhow::Result<()> {
+        if let Some(ref build_info) = build_info {
             output.push_str("## Build System\n\n");
             output.push_str(&format!(
                 "**Detected Toolchain:** {}\n",
@@ -630,63 +653,87 @@ impl DeepContextAnalyzer {
             }
             output.push('\n');
         }
+        Ok(())
+    }
 
-        // Quality scorecard
+    fn append_quality_scorecard(
+        &self,
+        output: &mut String,
+        scorecard: &QualityScorecard,
+    ) -> anyhow::Result<()> {
         output.push_str("## Quality Scorecard\n\n");
         output.push_str(&format!(
             "- Overall Health: {:.1}%\n",
-            context.quality_scorecard.overall_health
+            scorecard.overall_health
         ));
         output.push_str(&format!(
             "- Maintainability Index: {:.1}%\n",
-            context.quality_scorecard.maintainability_index
+            scorecard.maintainability_index
         ));
         output.push_str(&format!(
             "- Technical Debt: {:.1} hours\n",
-            context.quality_scorecard.technical_debt_hours
+            scorecard.technical_debt_hours
         ));
         output.push_str(&format!(
             "- Complexity Score: {:.1}%\n",
-            context.quality_scorecard.complexity_score
+            scorecard.complexity_score
         ));
         output.push('\n');
+        Ok(())
+    }
 
-        // File tree
+    fn append_project_structure(
+        &self,
+        output: &mut String,
+        file_tree: &AnnotatedFileTree,
+    ) -> anyhow::Result<()> {
         output.push_str("## Project Structure\n\n");
         output.push_str("```\n");
         output.push_str(&format!(
             "Total Files: {}\nTotal Size: {} bytes\n",
-            context.file_tree.total_files, context.file_tree.total_size_bytes
+            file_tree.total_files, file_tree.total_size_bytes
         ));
         output.push_str("\n```\n\n");
+        Ok(())
+    }
 
-        // Analysis results
+    fn append_analysis_results(
+        &self,
+        output: &mut String,
+        analyses: &AnalysisResults,
+    ) -> anyhow::Result<()> {
         output.push_str("## Analysis Results\n\n");
 
-        if !context.analyses.ast_contexts.is_empty() {
+        if !analyses.ast_contexts.is_empty() {
             output.push_str(&format!(
                 "### AST Analysis\n- Files analyzed: {}\n\n",
-                context.analyses.ast_contexts.len()
+                analyses.ast_contexts.len()
             ));
         }
 
-        if let Some(ref complexity) = context.analyses.complexity_report {
+        if let Some(ref complexity) = analyses.complexity_report {
             output.push_str(&format!("### Complexity Analysis\n- Total files: {}\n- Total functions: {}\n- Median cyclomatic complexity: {:.1}\n\n",
                 complexity.summary.total_files, complexity.summary.total_functions, complexity.summary.median_cyclomatic));
         }
 
-        if let Some(ref churn) = context.analyses.churn_analysis {
+        if let Some(ref churn) = analyses.churn_analysis {
             output.push_str(&format!(
                 "### Code Churn\n- Files analyzed: {}\n- Total commits: {}\n\n",
                 churn.files.len(),
                 churn.summary.total_commits
             ));
         }
+        Ok(())
+    }
 
-        // Recommendations
-        if !context.recommendations.is_empty() {
+    fn append_recommendations(
+        &self,
+        output: &mut String,
+        recommendations: &[PrioritizedRecommendation],
+    ) -> anyhow::Result<()> {
+        if !recommendations.is_empty() {
             output.push_str("## Recommendations\n\n");
-            for (i, rec) in context.recommendations.iter().enumerate() {
+            for (i, rec) in recommendations.iter().enumerate() {
                 output.push_str(&format!(
                     "{}. **{}** (Priority: {:?})\n   {}\n   Effort: {:?}\n\n",
                     i + 1,
@@ -697,8 +744,7 @@ impl DeepContextAnalyzer {
                 ));
             }
         }
-
-        Ok(output)
+        Ok(())
     }
 
     /// Legacy format method (kept for backward compatibility)
@@ -830,163 +876,10 @@ impl DeepContextAnalyzer {
         let mut results = Vec::new();
         let mut rules = Vec::new();
 
-        // Add complexity violations as SARIF results
-        if let Some(ref complexity) = context.analyses.complexity_report {
-            // Define complexity rules
-            rules.push(json!({
-                "id": "complexity/high-cyclomatic",
-                "shortDescription": {"text": "High cyclomatic complexity"},
-                "fullDescription": {"text": "Function has cyclomatic complexity above recommended threshold"},
-                "defaultConfiguration": {"level": "warning"},
-                "properties": {
-                    "tags": ["complexity", "maintainability"]
-                }
-            }));
-
-            rules.push(json!({
-                "id": "complexity/high-cognitive",
-                "shortDescription": {"text": "High cognitive complexity"},
-                "fullDescription": {"text": "Function has cognitive complexity above recommended threshold"},
-                "defaultConfiguration": {"level": "warning"},
-                "properties": {
-                    "tags": ["complexity", "maintainability"]
-                }
-            }));
-
-            // Add results for high complexity functions
-            for file in &complexity.files {
-                for func in &file.functions {
-                    if func.metrics.cyclomatic > 10 {
-                        results.push(json!({
-                            "ruleId": "complexity/high-cyclomatic",
-                            "level": if func.metrics.cyclomatic > 20 { "error" } else { "warning" },
-                            "message": {
-                                "text": format!("Function '{}' has cyclomatic complexity of {}", func.name, func.metrics.cyclomatic)
-                            },
-                            "locations": [{
-                                "physicalLocation": {
-                                    "artifactLocation": {"uri": file.path.clone()},
-                                    "region": {
-                                        "startLine": func.line_start,
-                                        "startColumn": 1,
-                                        "endLine": func.line_end
-                                    }
-                                }
-                            }],
-                            "properties": {
-                                "cyclomatic_complexity": func.metrics.cyclomatic,
-                                "cognitive_complexity": func.metrics.cognitive
-                            }
-                        }));
-                    }
-
-                    if func.metrics.cognitive > 15 {
-                        results.push(json!({
-                            "ruleId": "complexity/high-cognitive",
-                            "level": if func.metrics.cognitive > 25 { "error" } else { "warning" },
-                            "message": {
-                                "text": format!("Function '{}' has cognitive complexity of {}", func.name, func.metrics.cognitive)
-                            },
-                            "locations": [{
-                                "physicalLocation": {
-                                    "artifactLocation": {"uri": file.path.clone()},
-                                    "region": {
-                                        "startLine": func.line_start,
-                                        "startColumn": 1,
-                                        "endLine": func.line_end
-                                    }
-                                }
-                            }],
-                            "properties": {
-                                "cyclomatic_complexity": func.metrics.cyclomatic,
-                                "cognitive_complexity": func.metrics.cognitive
-                            }
-                        }));
-                    }
-                }
-            }
-        }
-
-        // Add SATD items as SARIF results
-        if let Some(ref satd) = context.analyses.satd_results {
-            rules.push(json!({
-                "id": "debt/technical-debt",
-                "shortDescription": {"text": "Technical debt item"},
-                "fullDescription": {"text": "Self-admitted technical debt requiring attention"},
-                "defaultConfiguration": {"level": "note"},
-                "properties": {
-                    "tags": ["debt", "maintainability"]
-                }
-            }));
-
-            for item in &satd.items {
-                let level = match item.severity {
-                    crate::services::satd_detector::Severity::Critical => "error",
-                    crate::services::satd_detector::Severity::High => "warning",
-                    crate::services::satd_detector::Severity::Medium => "note",
-                    crate::services::satd_detector::Severity::Low => "note",
-                };
-
-                results.push(json!({
-                    "ruleId": "debt/technical-debt",
-                    "level": level,
-                    "message": {
-                        "text": format!("{}: {}", item.category, item.text.trim())
-                    },
-                    "locations": [{
-                        "physicalLocation": {
-                            "artifactLocation": {"uri": item.file.to_string_lossy()},
-                            "region": {
-                                "startLine": item.line,
-                                "startColumn": 1
-                            }
-                        }
-                    }],
-                    "properties": {
-                        "category": format!("{:?}", item.category),
-                        "severity": format!("{:?}", item.severity),
-                        "debt_type": "self_admitted"
-                    }
-                }));
-            }
-        }
-
-        // Add dead code as SARIF results
-        if let Some(ref dead_code) = context.analyses.dead_code_results {
-            rules.push(json!({
-                "id": "dead-code/unused-code",
-                "shortDescription": {"text": "Dead code detected"},
-                "fullDescription": {"text": "Code that appears to be unused and can potentially be removed"},
-                "defaultConfiguration": {"level": "warning"},
-                "properties": {
-                    "tags": ["dead-code", "maintainability"]
-                }
-            }));
-
-            for file in &dead_code.ranked_files {
-                if file.dead_functions > 0 {
-                    results.push(json!({
-                        "ruleId": "dead-code/unused-code",
-                        "level": "warning",
-                        "message": {
-                            "text": format!("File contains {} dead functions and {} dead lines", 
-                                file.dead_functions, file.dead_lines)
-                        },
-                        "locations": [{
-                            "physicalLocation": {
-                                "artifactLocation": {"uri": file.path.clone()},
-                                "region": {"startLine": 1, "startColumn": 1}
-                            }
-                        }],
-                        "properties": {
-                            "dead_functions": file.dead_functions,
-                            "dead_lines": file.dead_lines,
-                            "dead_code_percentage": file.dead_lines as f64 / file.total_lines.max(1) as f64 * 100.0
-                        }
-                    }));
-                }
-            }
-        }
+        // Process each analysis type through dedicated handlers
+        self.add_complexity_sarif_items_from_analyses(&context.analyses, &mut rules, &mut results);
+        self.add_satd_sarif_items_from_analyses(&context.analyses, &mut rules, &mut results);
+        self.add_dead_code_sarif_items_from_analyses(&context.analyses, &mut rules, &mut results);
 
         let sarif = json!({
             "version": "2.1.0",
@@ -1013,6 +906,179 @@ impl DeepContextAnalyzer {
 
         serde_json::to_string_pretty(&sarif)
             .map_err(|e| anyhow::anyhow!("Failed to serialize to SARIF: {}", e))
+    }
+
+    /// Add complexity violations to SARIF results from AnalysisResults
+    fn add_complexity_sarif_items_from_analyses(
+        &self,
+        analyses: &AnalysisResults,
+        rules: &mut Vec<serde_json::Value>,
+        results: &mut Vec<serde_json::Value>,
+    ) {
+        use serde_json::json;
+
+        if let Some(ref complexity) = analyses.complexity_report {
+            // Add complexity rules once
+            rules.extend_from_slice(&[
+                json!({
+                    "id": "complexity/high-cyclomatic",
+                    "shortDescription": {"text": "High cyclomatic complexity"},
+                    "fullDescription": {"text": "Function has cyclomatic complexity above recommended threshold"},
+                    "defaultConfiguration": {"level": "warning"},
+                    "properties": {"tags": ["complexity", "maintainability"]}
+                }),
+                json!({
+                    "id": "complexity/high-cognitive",
+                    "shortDescription": {"text": "High cognitive complexity"},
+                    "fullDescription": {"text": "Function has cognitive complexity above recommended threshold"},
+                    "defaultConfiguration": {"level": "warning"},
+                    "properties": {"tags": ["complexity", "maintainability"]}
+                })
+            ]);
+
+            // Process complexity violations
+            for file in &complexity.files {
+                for func in &file.functions {
+                    self.add_complexity_violation(file, func, results);
+                }
+            }
+        }
+    }
+
+    /// Add a single complexity violation
+    fn add_complexity_violation(
+        &self,
+        file: &crate::services::complexity::FileComplexityMetrics,
+        func: &crate::services::complexity::FunctionComplexity,
+        results: &mut Vec<serde_json::Value>,
+    ) {
+        use serde_json::json;
+
+        if func.metrics.cyclomatic > 10 {
+            results.push(json!({
+                "ruleId": "complexity/high-cyclomatic",
+                "level": if func.metrics.cyclomatic > 20 { "error" } else { "warning" },
+                "message": {"text": format!("Function '{}' has cyclomatic complexity of {}", func.name, func.metrics.cyclomatic)},
+                "locations": [self.create_location(&file.path, func.line_start as usize, func.line_end as usize)],
+                "properties": {
+                    "cyclomatic_complexity": func.metrics.cyclomatic,
+                    "cognitive_complexity": func.metrics.cognitive
+                }
+            }));
+        }
+
+        if func.metrics.cognitive > 15 {
+            results.push(json!({
+                "ruleId": "complexity/high-cognitive",
+                "level": if func.metrics.cognitive > 25 { "error" } else { "warning" },
+                "message": {"text": format!("Function '{}' has cognitive complexity of {}", func.name, func.metrics.cognitive)},
+                "locations": [self.create_location(&file.path, func.line_start as usize, func.line_end as usize)],
+                "properties": {
+                    "cyclomatic_complexity": func.metrics.cyclomatic,
+                    "cognitive_complexity": func.metrics.cognitive
+                }
+            }));
+        }
+    }
+
+    /// Add SATD items to SARIF results from AnalysisResults
+    fn add_satd_sarif_items_from_analyses(
+        &self,
+        analyses: &AnalysisResults,
+        rules: &mut Vec<serde_json::Value>,
+        results: &mut Vec<serde_json::Value>,
+    ) {
+        use serde_json::json;
+
+        if let Some(ref satd) = analyses.satd_results {
+            rules.push(json!({
+                "id": "debt/technical-debt",
+                "shortDescription": {"text": "Technical debt item"},
+                "fullDescription": {"text": "Self-admitted technical debt requiring attention"},
+                "defaultConfiguration": {"level": "note"},
+                "properties": {"tags": ["debt", "maintainability"]}
+            }));
+
+            for item in &satd.items {
+                let level = self.satd_severity_to_level(&item.severity);
+                results.push(json!({
+                    "ruleId": "debt/technical-debt",
+                    "level": level,
+                    "message": {"text": format!("{}: {}", item.category, item.text.trim())},
+                    "locations": [self.create_location(&item.file.to_string_lossy(), item.line as usize, item.line as usize)],
+                    "properties": {
+                        "category": format!("{:?}", item.category),
+                        "severity": format!("{:?}", item.severity),
+                        "debt_type": "self_admitted"
+                    }
+                }));
+            }
+        }
+    }
+
+    /// Add dead code items to SARIF results from AnalysisResults
+    fn add_dead_code_sarif_items_from_analyses(
+        &self,
+        analyses: &AnalysisResults,
+        rules: &mut Vec<serde_json::Value>,
+        results: &mut Vec<serde_json::Value>,
+    ) {
+        use serde_json::json;
+
+        if let Some(ref dead_code) = analyses.dead_code_results {
+            rules.push(json!({
+                "id": "dead-code/unused-code",
+                "shortDescription": {"text": "Dead code detected"},
+                "fullDescription": {"text": "Code that appears to be unused and can potentially be removed"},
+                "defaultConfiguration": {"level": "warning"},
+                "properties": {"tags": ["dead-code", "maintainability"]}
+            }));
+
+            results.extend(
+                dead_code.ranked_files
+                    .iter()
+                    .filter(|file| file.dead_functions > 0)
+                    .map(|file| json!({
+                        "ruleId": "dead-code/unused-code",
+                        "level": "warning",
+                        "message": {"text": format!("File contains {} dead functions and {} dead lines", 
+                            file.dead_functions, file.dead_lines)},
+                        "locations": [self.create_location(&file.path, 1, 1)],
+                        "properties": {
+                            "dead_functions": file.dead_functions,
+                            "dead_lines": file.dead_lines,
+                            "dead_code_percentage": file.dead_lines as f64 / file.total_lines.max(1) as f64 * 100.0
+                        }
+                    }))
+            );
+        }
+    }
+
+    /// Helper to create location objects
+    fn create_location(&self, uri: &str, start_line: usize, end_line: usize) -> serde_json::Value {
+        serde_json::json!({
+            "physicalLocation": {
+                "artifactLocation": {"uri": uri},
+                "region": {
+                    "startLine": start_line,
+                    "startColumn": 1,
+                    "endLine": end_line
+                }
+            }
+        })
+    }
+
+    /// Convert SATD severity to SARIF level
+    fn satd_severity_to_level(
+        &self,
+        severity: &crate::services::satd_detector::Severity,
+    ) -> &'static str {
+        match severity {
+            crate::services::satd_detector::Severity::Critical => "error",
+            crate::services::satd_detector::Severity::High => "warning",
+            crate::services::satd_detector::Severity::Medium => "note",
+            crate::services::satd_detector::Severity::Low => "note",
+        }
     }
 
     fn overall_health_emoji(&self, health: f64) -> &'static str {
@@ -1049,49 +1115,164 @@ impl DeepContextAnalyzer {
         is_last: bool,
     ) -> anyhow::Result<()> {
         use std::fmt::Write;
+
         let connector = if is_last { "└── " } else { "├── " };
         let extension = if is_last { "    " } else { "│   " };
 
-        // Format node with annotations
-        let mut node_display = node.name.clone();
-        if matches!(node.node_type, NodeType::Directory) {
-            node_display.push('/');
-        }
-
-        // Add annotations if present
-        let mut annotations = Vec::new();
-        if let Some(score) = node.annotations.defect_score {
-            if score > 0.7 {
-                annotations.push(format!("🔴{score:.1}"));
-            } else if score > 0.4 {
-                annotations.push(format!("🟡{score:.1}"));
-            }
-        }
-        if node.annotations.satd_items > 0 {
-            annotations.push(format!("📝{}", node.annotations.satd_items));
-        }
-        if node.annotations.dead_code_items > 0 {
-            annotations.push(format!("💀{}", node.annotations.dead_code_items));
-        }
-
-        if !annotations.is_empty() {
-            node_display.push_str(&format!(" [{}]", annotations.join(" ")));
-        }
-
+        let node_display = self.format_node_display(node)?;
         writeln!(output, "{prefix}{connector}{node_display}")?;
 
         // Process children
+        let child_prefix = format!("{prefix}{extension}");
         for (i, child) in node.children.iter().enumerate() {
             let is_last_child = i == node.children.len() - 1;
-            self.format_tree_node(
-                output,
-                child,
-                &format!("{prefix}{extension}"),
-                is_last_child,
-            )?;
+            self.format_tree_node(output, child, &child_prefix, is_last_child)?;
         }
 
         Ok(())
+    }
+
+    fn format_node_display(&self, node: &AnnotatedNode) -> anyhow::Result<String> {
+        let mut display = node.name.clone();
+
+        if matches!(node.node_type, NodeType::Directory) {
+            display.push('/');
+        }
+
+        let annotations = self.collect_node_annotations(&node.annotations);
+        if !annotations.is_empty() {
+            display.push_str(&format!(" [{}]", annotations.join(" ")));
+        }
+
+        Ok(display)
+    }
+
+    fn collect_node_annotations(&self, annotations: &NodeAnnotations) -> Vec<String> {
+        let mut result = Vec::new();
+
+        // Defect score
+        if let Some(score) = annotations.defect_score {
+            self.add_defect_indicator(&mut result, score);
+        }
+
+        // Cognitive complexity
+        if let Some(complexity) = annotations.cognitive_complexity {
+            self.add_cognitive_complexity_indicator(&mut result, complexity);
+        }
+
+        // SATD items
+        if annotations.satd_items > 0 {
+            result.push(format!("📝{}", annotations.satd_items));
+        }
+
+        // Dead code items
+        if annotations.dead_code_items > 0 {
+            result.push(format!("💀{}", annotations.dead_code_items));
+        }
+
+        // Test coverage
+        if let Some(coverage) = annotations.test_coverage {
+            self.add_coverage_indicator(&mut result, coverage);
+        }
+
+        // Big-O complexity
+        if let Some(ref big_o) = annotations.big_o_complexity {
+            let emoji = self.get_big_o_emoji(big_o);
+            result.push(format!("{}{}", emoji, big_o));
+        }
+
+        // Churn score
+        if let Some(churn) = annotations.churn_score {
+            self.add_churn_indicator(&mut result, churn);
+        }
+
+        // Memory complexity
+        if let Some(ref mem_complexity) = annotations.memory_complexity {
+            self.add_memory_complexity_indicator(&mut result, mem_complexity);
+        }
+
+        // Duplication score
+        if let Some(duplication) = annotations.duplication_score {
+            self.add_duplication_indicator(&mut result, duplication);
+        }
+
+        result
+    }
+
+    /// Add defect score indicator
+    fn add_defect_indicator(&self, result: &mut Vec<String>, score: f32) {
+        if score > 0.7 {
+            result.push(format!("🔴{score:.1}"));
+        } else if score > 0.4 {
+            result.push(format!("🟡{score:.1}"));
+        }
+    }
+
+    /// Add cognitive complexity indicator
+    fn add_cognitive_complexity_indicator(&self, result: &mut Vec<String>, complexity: u16) {
+        if complexity > 30 {
+            result.push(format!("🧠{}", complexity));
+        } else if complexity > 15 {
+            result.push(format!("🧪{}", complexity));
+        }
+    }
+
+    /// Add test coverage indicator
+    fn add_coverage_indicator(&self, result: &mut Vec<String>, coverage: f32) {
+        if coverage < 0.5 {
+            result.push(format!("🚨{:.0}%", coverage * 100.0));
+        } else if coverage < 0.8 {
+            result.push(format!("⚠️{:.0}%", coverage * 100.0));
+        } else {
+            result.push(format!("✅{:.0}%", coverage * 100.0));
+        }
+    }
+
+    /// Add churn indicator
+    fn add_churn_indicator(&self, result: &mut Vec<String>, churn: f32) {
+        if churn > 0.8 {
+            result.push(format!("🔥{:.1}", churn)); // High churn - hot file
+        } else if churn > 0.5 {
+            result.push(format!("🌡️{:.1}", churn)); // Medium churn
+        } else if churn > 0.2 {
+            result.push(format!("🌊{:.1}", churn)); // Low churn
+        }
+    }
+
+    /// Add memory complexity indicator
+    fn add_memory_complexity_indicator(&self, result: &mut Vec<String>, mem_complexity: &str) {
+        let emoji = match mem_complexity {
+            "O(1)" => "💎",       // Constant memory - excellent
+            "O(log n)" => "💚",   // Logarithmic memory - very good
+            "O(n)" => "💙",       // Linear memory - good
+            "O(n log n)" => "💛", // Linearithmic memory - okay
+            "O(n²)" => "🟠",      // Quadratic memory - warning
+            _ => "💔",            // High memory usage - critical
+        };
+        result.push(format!("{}{}", emoji, mem_complexity));
+    }
+
+    /// Add duplication indicator
+    fn add_duplication_indicator(&self, result: &mut Vec<String>, duplication: f32) {
+        if duplication > 0.3 {
+            result.push(format!("📑{:.0}%", duplication * 100.0)); // High duplication
+        } else if duplication > 0.1 {
+            result.push(format!("📄{:.0}%", duplication * 100.0)); // Medium duplication
+        }
+    }
+
+    /// Get emoji for Big-O complexity notation
+    fn get_big_o_emoji(&self, big_o: &str) -> &'static str {
+        match big_o {
+            "O(1)" => "🎯",            // Constant - excellent
+            "O(log n)" => "⚡",        // Logarithmic - very good
+            "O(n)" => "📊",            // Linear - good
+            "O(n log n)" => "📈",      // Linearithmic - acceptable
+            "O(n²)" => "⚠️",           // Quadratic - warning
+            "O(n³)" => "🚨",           // Cubic - danger
+            "O(2ⁿ)" | "O(n!)" => "💥", // Exponential/Factorial - critical
+            _ => "❓",                 // Unknown
+        }
     }
 
     pub fn format_enhanced_ast_section(
@@ -1546,34 +1727,57 @@ impl DeepContextAnalyzer {
         output: &mut String,
         context: &DeepContext,
     ) -> anyhow::Result<()> {
-        use std::fmt::Write;
         if let Some(ref churn) = context.analyses.churn_analysis {
-            writeln!(output, "## Code Churn Analysis\n")?;
-
-            writeln!(output, "**Summary:**")?;
-            writeln!(output, "- Total Commits: {}", churn.summary.total_commits)?;
-            writeln!(output, "- Files Changed: {}", churn.files.len())?;
-
-            // Top churned files
-            let mut sorted_files = churn.files.clone();
-            sorted_files.sort_by_key(|f| std::cmp::Reverse(f.commit_count));
-
-            writeln!(output, "\n**Top Changed Files:**")?;
-            writeln!(output, "| File | Commits | Authors |")?;
-            writeln!(output, "|------|---------|---------|")?;
-
-            for file in sorted_files.iter().take(10) {
-                writeln!(
-                    output,
-                    "| `{}` | {} | {} |",
-                    file.relative_path,
-                    file.commit_count,
-                    file.unique_authors.len()
-                )?;
-            }
-            writeln!(output)?;
+            self.write_churn_header(output)?;
+            self.write_churn_summary(output, churn)?;
+            self.write_churn_files_table(output, &churn.files)?;
         }
+        Ok(())
+    }
 
+    fn write_churn_header(&self, output: &mut String) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        writeln!(output, "## Code Churn Analysis\n")?;
+        Ok(())
+    }
+
+    fn write_churn_summary(
+        &self,
+        output: &mut String,
+        churn: &CodeChurnAnalysis,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        writeln!(output, "**Summary:**")?;
+        writeln!(output, "- Total Commits: {}", churn.summary.total_commits)?;
+        writeln!(output, "- Files Changed: {}", churn.files.len())?;
+        Ok(())
+    }
+
+    fn write_churn_files_table(
+        &self,
+        output: &mut String,
+        files: &[crate::models::churn::FileChurnMetrics],
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+
+        // Sort files by commit count
+        let mut sorted_files = files.to_vec();
+        sorted_files.sort_by_key(|f| std::cmp::Reverse(f.commit_count));
+
+        writeln!(output, "\n**Top Changed Files:**")?;
+        writeln!(output, "| File | Commits | Authors |")?;
+        writeln!(output, "|------|---------|---------|")?;
+
+        for file in sorted_files.iter().take(10) {
+            writeln!(
+                output,
+                "| `{}` | {} | {} |",
+                file.relative_path,
+                file.commit_count,
+                file.unique_authors.len()
+            )?;
+        }
+        writeln!(output)?;
         Ok(())
     }
 
@@ -1633,38 +1837,52 @@ impl DeepContextAnalyzer {
         output: &mut String,
         context: &DeepContext,
     ) -> anyhow::Result<()> {
-        use std::fmt::Write;
         if let Some(ref dead_code) = context.analyses.dead_code_results {
-            writeln!(output, "## Dead Code Analysis\n")?;
+            self.write_dead_code_header(output)?;
+            self.write_dead_code_summary(output, &dead_code.summary)?;
+            self.write_dead_code_files_table(output, &dead_code.ranked_files)?;
+        }
+        Ok(())
+    }
 
-            writeln!(output, "**Summary:**")?;
-            writeln!(
-                output,
-                "- Dead Functions: {}",
-                dead_code.summary.dead_functions
-            )?;
-            writeln!(
-                output,
-                "- Total Dead Lines: {}",
-                dead_code.summary.total_dead_lines
-            )?;
+    fn write_dead_code_header(&self, output: &mut String) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        writeln!(output, "## Dead Code Analysis\n")?;
+        Ok(())
+    }
 
-            if !dead_code.ranked_files.is_empty() {
-                writeln!(output, "\n**Top Files with Dead Code:**")?;
-                writeln!(output, "| File | Dead Lines | Dead Functions |")?;
-                writeln!(output, "|------|------------|----------------|")?;
+    fn write_dead_code_summary(
+        &self,
+        output: &mut String,
+        summary: &crate::models::dead_code::DeadCodeSummary,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        writeln!(output, "**Summary:**")?;
+        writeln!(output, "- Dead Functions: {}", summary.dead_functions)?;
+        writeln!(output, "- Total Dead Lines: {}", summary.total_dead_lines)?;
+        Ok(())
+    }
 
-                for file in dead_code.ranked_files.iter().take(10) {
-                    writeln!(
-                        output,
-                        "| `{}` | {} | {} |",
-                        file.path, file.dead_lines, file.dead_functions
-                    )?;
-                }
+    fn write_dead_code_files_table(
+        &self,
+        output: &mut String,
+        files: &[crate::models::dead_code::FileDeadCodeMetrics],
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        if !files.is_empty() {
+            writeln!(output, "\n**Top Files with Dead Code:**")?;
+            writeln!(output, "| File | Dead Lines | Dead Functions |")?;
+            writeln!(output, "|------|------------|----------------|")?;
+
+            for file in files.iter().take(10) {
+                writeln!(
+                    output,
+                    "| `{}` | {} | {} |",
+                    file.path, file.dead_lines, file.dead_functions
+                )?;
             }
             writeln!(output)?;
         }
-
         Ok(())
     }
 
@@ -1701,27 +1919,50 @@ impl DeepContextAnalyzer {
         output: &mut String,
         context: &DeepContext,
     ) -> anyhow::Result<()> {
+        self.write_defect_header(output)?;
+        self.write_defect_summary(output, &context.defect_summary)?;
+        self.write_defect_hotspots_table(output, &context.hotspots)?;
+        Ok(())
+    }
+
+    fn write_defect_header(&self, output: &mut String) -> anyhow::Result<()> {
         use std::fmt::Write;
         writeln!(output, "## Defect Probability Analysis\n")?;
+        Ok(())
+    }
 
+    fn write_defect_summary(
+        &self,
+        output: &mut String,
+        summary: &DefectSummary,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
         writeln!(output, "**Risk Assessment:**")?;
         writeln!(
             output,
             "- Total Defects Predicted: {}",
-            context.defect_summary.total_defects
+            summary.total_defects
         )?;
         writeln!(
             output,
             "- Defect Density: {:.2} defects per 1000 lines",
-            context.defect_summary.defect_density
+            summary.defect_density
         )?;
+        Ok(())
+    }
 
-        if !context.hotspots.is_empty() {
+    fn write_defect_hotspots_table(
+        &self,
+        output: &mut String,
+        hotspots: &[DefectHotspot],
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        if !hotspots.is_empty() {
             writeln!(output, "\n**High-Risk Hotspots:**")?;
             writeln!(output, "| File:Line | Risk Score | Effort (hours) |")?;
             writeln!(output, "|-----------|------------|----------------|")?;
 
-            for hotspot in context.hotspots.iter().take(10) {
+            for hotspot in hotspots.iter().take(10) {
                 writeln!(
                     output,
                     "| `{}:{}` | {:.1} | {:.1} |",
@@ -1733,7 +1974,6 @@ impl DeepContextAnalyzer {
             }
         }
         writeln!(output)?;
-
         Ok(())
     }
 
@@ -1742,33 +1982,84 @@ impl DeepContextAnalyzer {
         output: &mut String,
         recommendations: &[PrioritizedRecommendation],
     ) -> anyhow::Result<()> {
-        use std::fmt::Write;
-        if !recommendations.is_empty() {
-            writeln!(output, "## Prioritized Recommendations\n")?;
-
-            for (i, rec) in recommendations.iter().enumerate() {
-                let priority_emoji = match rec.priority {
-                    Priority::Critical => "🔴",
-                    Priority::High => "🟡",
-                    Priority::Medium => "🔵",
-                    Priority::Low => "⚪",
-                };
-
-                writeln!(output, "### {} {} {}", priority_emoji, i + 1, rec.title)?;
-                writeln!(output, "**Description:** {}", rec.description)?;
-                writeln!(output, "**Effort:** {:?}", rec.estimated_effort)?;
-                writeln!(output, "**Impact:** {:?}", rec.impact)?;
-
-                if !rec.prerequisites.is_empty() {
-                    writeln!(output, "**Prerequisites:**")?;
-                    for prereq in &rec.prerequisites {
-                        writeln!(output, "- {prereq}")?;
-                    }
-                }
-                writeln!(output)?;
-            }
+        if recommendations.is_empty() {
+            return Ok(());
         }
 
+        self.write_recommendations_header(output)?;
+
+        for (i, rec) in recommendations.iter().enumerate() {
+            self.write_single_recommendation(output, i, rec)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_recommendations_header(&self, output: &mut String) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        writeln!(output, "## Prioritized Recommendations\n")?;
+        Ok(())
+    }
+
+    fn write_single_recommendation(
+        &self,
+        output: &mut String,
+        index: usize,
+        rec: &PrioritizedRecommendation,
+    ) -> anyhow::Result<()> {
+        let priority_emoji = self.get_priority_emoji(&rec.priority);
+        self.write_recommendation_title(output, priority_emoji, index + 1, &rec.title)?;
+        self.write_recommendation_details(output, rec)?;
+        self.write_recommendation_prerequisites(output, &rec.prerequisites)?;
+        Ok(())
+    }
+
+    fn get_priority_emoji(&self, priority: &Priority) -> &'static str {
+        match priority {
+            Priority::Critical => "🔴",
+            Priority::High => "🟡",
+            Priority::Medium => "🔵",
+            Priority::Low => "⚪",
+        }
+    }
+
+    fn write_recommendation_title(
+        &self,
+        output: &mut String,
+        emoji: &str,
+        number: usize,
+        title: &str,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        writeln!(output, "### {} {} {}", emoji, number, title)?;
+        Ok(())
+    }
+
+    fn write_recommendation_details(
+        &self,
+        output: &mut String,
+        rec: &PrioritizedRecommendation,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        writeln!(output, "**Description:** {}", rec.description)?;
+        writeln!(output, "**Effort:** {:?}", rec.estimated_effort)?;
+        writeln!(output, "**Impact:** {:?}", rec.impact)?;
+        Ok(())
+    }
+
+    fn write_recommendation_prerequisites(
+        &self,
+        output: &mut String,
+        prerequisites: &[String],
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        if !prerequisites.is_empty() {
+            writeln!(output, "**Prerequisites:**")?;
+            for prereq in prerequisites {
+                writeln!(output, "- {prereq}")?;
+            }
+        }
+        writeln!(output)?;
         Ok(())
     }
 
@@ -1786,7 +2077,7 @@ impl DeepContextAnalyzer {
         // Phase 2: Parallel analysis execution
         let analyses = self.execute_parallel_analyses(project_path).await?;
         debug!("Analysis phase completed");
-        
+
         // Phase 2.5: Enrich file tree with centrality scores from DAG analysis
         if let Some(ref dag) = analyses.dependency_graph {
             self.enrich_file_tree_with_centrality(&mut file_tree, dag)?;
@@ -1922,10 +2213,15 @@ impl DeepContextAnalyzer {
                 annotations: NodeAnnotations {
                     defect_score: None,
                     complexity_score: None,
+                    cognitive_complexity: None,
                     churn_score: None,
                     dead_code_items: 0,
                     satd_items: 0,
                     centrality: None,
+                    test_coverage: None,
+                    big_o_complexity: None,
+                    memory_complexity: None,
+                    duplication_score: None,
                 },
             })
         } else {
@@ -1940,10 +2236,15 @@ impl DeepContextAnalyzer {
                 annotations: NodeAnnotations {
                     defect_score: None,
                     complexity_score: None,
+                    cognitive_complexity: None,
                     churn_score: None,
                     dead_code_items: 0,
                     satd_items: 0,
                     centrality: None,
+                    test_coverage: None,
+                    big_o_complexity: None,
+                    memory_complexity: None,
+                    duplication_score: None,
                 },
             })
         }
@@ -1960,7 +2261,7 @@ impl DeepContextAnalyzer {
 
         false
     }
-    
+
     /// Enrich the file tree with centrality scores from the dependency graph
     fn enrich_file_tree_with_centrality(
         &self,
@@ -1969,7 +2270,7 @@ impl DeepContextAnalyzer {
     ) -> anyhow::Result<()> {
         // Create a map of file paths to centrality scores
         let mut centrality_map: FxHashMap<PathBuf, f32> = FxHashMap::default();
-        
+
         for node in dag.nodes.values() {
             if let Some(centrality_str) = node.metadata.get("centrality") {
                 if let Ok(centrality) = centrality_str.parse::<f32>() {
@@ -1978,25 +2279,22 @@ impl DeepContextAnalyzer {
                 }
             }
         }
-        
+
         // Recursively update the file tree with centrality scores
         Self::update_node_centrality(&mut file_tree.root, &centrality_map);
-        
+
         Ok(())
     }
-    
+
     /// Recursively update node centrality scores
-    fn update_node_centrality(
-        node: &mut AnnotatedNode,
-        centrality_map: &FxHashMap<PathBuf, f32>,
-    ) {
+    fn update_node_centrality(node: &mut AnnotatedNode, centrality_map: &FxHashMap<PathBuf, f32>) {
         // Update this node's centrality if it's a file
         if node.node_type == NodeType::File {
             if let Some(&centrality) = centrality_map.get(&node.path) {
                 node.annotations.centrality = Some(centrality);
             }
         }
-        
+
         // Recursively update children
         for child in &mut node.children {
             Self::update_node_centrality(child, centrality_map);
@@ -2043,62 +2341,112 @@ impl DeepContextAnalyzer {
         let path = project_path.to_path_buf();
 
         match analysis_type {
-            AnalysisType::Ast => {
-                let file_classifier_config = self.config.file_classifier_config.clone();
-                join_set.spawn(async move {
-                    AnalysisResult::Ast(analyze_ast_contexts(&path, file_classifier_config).await)
-                });
-            }
-            AnalysisType::Complexity => {
-                join_set.spawn(async move {
-                    AnalysisResult::Complexity(analyze_complexity(&path).await)
-                });
-            }
-            AnalysisType::Churn => {
-                let days = self.config.period_days;
-                join_set
-                    .spawn(async move { AnalysisResult::Churn(analyze_churn(&path, days).await) });
-            }
-            AnalysisType::DeadCode => {
-                join_set
-                    .spawn(async move { AnalysisResult::DeadCode(analyze_dead_code(&path).await) });
-            }
-            AnalysisType::DuplicateCode => {
-                join_set.spawn(async move {
-                    AnalysisResult::DuplicateCode(analyze_duplicate_code(&path).await)
-                });
-            }
-            AnalysisType::Satd => {
-                join_set.spawn(async move {
-                    let result = tokio::task::spawn_blocking(move || {
-                        tokio::runtime::Handle::current()
-                            .block_on(async { analyze_satd(&path).await })
-                    })
-                    .await
-                    .unwrap_or_else(|_| Err(anyhow::anyhow!("SATD analysis failed")));
-                    AnalysisResult::Satd(result)
-                });
-            }
-            AnalysisType::Provability => {
-                join_set.spawn(async move {
-                    AnalysisResult::Provability(analyze_provability(&path).await)
-                });
-            }
-            AnalysisType::Dag => {
-                let dag_type = self.config.dag_type.clone();
-                join_set
-                    .spawn(async move { AnalysisResult::Dag(analyze_dag(&path, dag_type).await) });
-            }
-            AnalysisType::TechnicalDebtGradient => {
-                // DefectProbability is computed in correlate_defects, not as a separate analysis
-            }
-            AnalysisType::BigO => {
-                join_set.spawn(async move {
-                    AnalysisResult::BigO(analyze_big_o(&path).await)
-                });
-            }
+            AnalysisType::Ast => self.spawn_ast_analysis(join_set, path),
+            AnalysisType::Complexity => self.spawn_complexity_analysis(join_set, path),
+            AnalysisType::Churn => self.spawn_churn_analysis(join_set, path),
+            AnalysisType::DeadCode => self.spawn_dead_code_analysis(join_set, path),
+            AnalysisType::DuplicateCode => self.spawn_duplicate_analysis(join_set, path),
+            AnalysisType::Satd => self.spawn_satd_analysis(join_set, path),
+            AnalysisType::Provability => self.spawn_provability_analysis(join_set, path),
+            AnalysisType::Dag => self.spawn_dag_analysis(join_set, path),
+            AnalysisType::TechnicalDebtGradient => Ok(()), // Computed in correlate_defects
+            AnalysisType::BigO => self.spawn_big_o_analysis(join_set, path),
         }
+    }
 
+    fn spawn_ast_analysis(
+        &self,
+        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
+        path: PathBuf,
+    ) -> anyhow::Result<()> {
+        let file_classifier_config = self.config.file_classifier_config.clone();
+        join_set.spawn(async move {
+            AnalysisResult::Ast(analyze_ast_contexts(&path, file_classifier_config).await)
+        });
+        Ok(())
+    }
+
+    fn spawn_complexity_analysis(
+        &self,
+        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
+        path: PathBuf,
+    ) -> anyhow::Result<()> {
+        join_set.spawn(async move { AnalysisResult::Complexity(analyze_complexity(&path).await) });
+        Ok(())
+    }
+
+    fn spawn_churn_analysis(
+        &self,
+        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
+        path: PathBuf,
+    ) -> anyhow::Result<()> {
+        let days = self.config.period_days;
+        join_set.spawn(async move { AnalysisResult::Churn(analyze_churn(&path, days).await) });
+        Ok(())
+    }
+
+    fn spawn_dead_code_analysis(
+        &self,
+        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
+        path: PathBuf,
+    ) -> anyhow::Result<()> {
+        join_set.spawn(async move { AnalysisResult::DeadCode(analyze_dead_code(&path).await) });
+        Ok(())
+    }
+
+    fn spawn_duplicate_analysis(
+        &self,
+        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
+        path: PathBuf,
+    ) -> anyhow::Result<()> {
+        join_set.spawn(async move {
+            AnalysisResult::DuplicateCode(analyze_duplicate_code(&path).await)
+        });
+        Ok(())
+    }
+
+    fn spawn_satd_analysis(
+        &self,
+        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
+        path: PathBuf,
+    ) -> anyhow::Result<()> {
+        join_set.spawn(async move {
+            let result = tokio::task::spawn_blocking(move || {
+                tokio::runtime::Handle::current().block_on(async { analyze_satd(&path).await })
+            })
+            .await
+            .unwrap_or_else(|_| Err(anyhow::anyhow!("SATD analysis failed")));
+            AnalysisResult::Satd(result)
+        });
+        Ok(())
+    }
+
+    fn spawn_provability_analysis(
+        &self,
+        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
+        path: PathBuf,
+    ) -> anyhow::Result<()> {
+        join_set
+            .spawn(async move { AnalysisResult::Provability(analyze_provability(&path).await) });
+        Ok(())
+    }
+
+    fn spawn_dag_analysis(
+        &self,
+        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
+        path: PathBuf,
+    ) -> anyhow::Result<()> {
+        let dag_type = self.config.dag_type.clone();
+        join_set.spawn(async move { AnalysisResult::Dag(analyze_dag(&path, dag_type).await) });
+        Ok(())
+    }
+
+    fn spawn_big_o_analysis(
+        &self,
+        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
+        path: PathBuf,
+    ) -> anyhow::Result<()> {
+        join_set.spawn(async move { AnalysisResult::BigO(analyze_big_o(&path).await) });
         Ok(())
     }
 
@@ -2157,45 +2505,69 @@ impl DeepContextAnalyzer {
         results: &mut ParallelAnalysisResults,
         result: AnalysisResult,
     ) {
+        match &result {
+            AnalysisResult::Ast(Ok(data)) => {
+                results.ast_contexts = Some(data.clone());
+            }
+            AnalysisResult::Complexity(Ok(data)) => {
+                results.complexity_report = Some(data.clone());
+            }
+            AnalysisResult::Churn(Ok(data)) => {
+                results.churn_analysis = Some(data.clone());
+            }
+            AnalysisResult::DeadCode(Ok(data)) => {
+                results.dead_code_results = Some(data.clone());
+            }
+            AnalysisResult::DuplicateCode(Ok(data)) => {
+                results.duplicate_code_results = Some(data.clone());
+            }
+            AnalysisResult::Satd(Ok(data)) => {
+                results.satd_results = Some(data.clone());
+            }
+            AnalysisResult::Provability(Ok(data)) => {
+                results.provability_results = Some(data.clone());
+            }
+            AnalysisResult::Dag(Ok(data)) => {
+                results.dependency_graph = Some(data.clone());
+            }
+            AnalysisResult::BigO(Ok(data)) => {
+                results.big_o_analysis = Some(data.clone());
+            }
+            // Handle errors with helper
+            _ => self.log_integration_error(&result),
+        }
+    }
+
+    /// Log errors from analysis integration
+    fn log_integration_error(&self, result: &AnalysisResult) {
         match result {
-            AnalysisResult::Ast(Ok(ast_contexts)) => {
-                results.ast_contexts = Some(ast_contexts);
+            AnalysisResult::Ast(Err(e))
+            | AnalysisResult::Complexity(Err(e))
+            | AnalysisResult::Churn(Err(e))
+            | AnalysisResult::DeadCode(Err(e))
+            | AnalysisResult::DuplicateCode(Err(e))
+            | AnalysisResult::Satd(Err(e))
+            | AnalysisResult::Provability(Err(e))
+            | AnalysisResult::Dag(Err(e))
+            | AnalysisResult::BigO(Err(e)) => {
+                debug!("{} analysis failed: {}", self.get_analysis_name(result), e);
             }
-            AnalysisResult::Complexity(Ok(complexity)) => {
-                results.complexity_report = Some(complexity);
-            }
-            AnalysisResult::Churn(Ok(churn)) => {
-                results.churn_analysis = Some(churn);
-            }
-            AnalysisResult::DeadCode(Ok(dead_code)) => {
-                results.dead_code_results = Some(dead_code);
-            }
-            AnalysisResult::DuplicateCode(Ok(duplicate_code)) => {
-                results.duplicate_code_results = Some(duplicate_code);
-            }
-            AnalysisResult::Satd(Ok(satd)) => {
-                results.satd_results = Some(satd);
-            }
-            AnalysisResult::Provability(Ok(provability)) => {
-                results.provability_results = Some(provability);
-            }
-            AnalysisResult::Dag(Ok(dag)) => {
-                results.dependency_graph = Some(dag);
-            }
-            AnalysisResult::BigO(Ok(big_o)) => {
-                results.big_o_analysis = Some(big_o);
-            }
-            AnalysisResult::Ast(Err(e)) => debug!("AST analysis failed: {}", e),
-            AnalysisResult::Complexity(Err(e)) => debug!("Complexity analysis failed: {}", e),
-            AnalysisResult::Churn(Err(e)) => debug!("Churn analysis failed: {}", e),
-            AnalysisResult::DeadCode(Err(e)) => debug!("Dead code analysis failed: {}", e),
-            AnalysisResult::DuplicateCode(Err(e)) => {
-                debug!("Duplicate code analysis failed: {}", e)
-            }
-            AnalysisResult::Satd(Err(e)) => debug!("SATD analysis failed: {}", e),
-            AnalysisResult::Provability(Err(e)) => debug!("Provability analysis failed: {}", e),
-            AnalysisResult::Dag(Err(e)) => debug!("DAG analysis failed: {}", e),
-            AnalysisResult::BigO(Err(e)) => debug!("Big-O analysis failed: {}", e),
+            _ => {}
+        }
+    }
+
+    /// Get analysis name for logging
+    fn get_analysis_name(&self, result: &AnalysisResult) -> &'static str {
+        match result {
+            AnalysisResult::Ast(_) => "AST",
+            AnalysisResult::Complexity(_) => "Complexity",
+            AnalysisResult::Churn(_) => "Churn",
+            AnalysisResult::DeadCode(_) => "Dead code",
+            AnalysisResult::DuplicateCode(_) => "Duplicate code",
+            AnalysisResult::Satd(_) => "SATD",
+            AnalysisResult::Provability(_) => "Provability",
+            AnalysisResult::Dag(_) => "DAG",
+            AnalysisResult::BigO(_) => "Big-O",
         }
     }
 
@@ -2283,21 +2655,23 @@ impl DeepContextAnalyzer {
         file_scores: &FxHashMap<String, TDGScore>,
     ) -> anyhow::Result<TDGSummary> {
         let total_files = file_scores.len();
-        let critical_files;
-        let warning_files;
-        let mut tdg_values: Vec<f64>;
-
         // Use parallel processing for score analysis
         let (values, severities): (Vec<_>, Vec<_>) = file_scores
             .par_iter()
             .map(|(_, score)| (score.value, &score.severity))
             .unzip();
-        
-        tdg_values = values;
-        
+
+        let mut tdg_values = values;
+
         // Count severities in parallel
-        critical_files = severities.par_iter().filter(|s| matches!(s, TDGSeverity::Critical)).count();
-        warning_files = severities.par_iter().filter(|s| matches!(s, TDGSeverity::Warning)).count();
+        let critical_files = severities
+            .par_iter()
+            .filter(|s| matches!(s, TDGSeverity::Critical))
+            .count();
+        let warning_files = severities
+            .par_iter()
+            .filter(|s| matches!(s, TDGSeverity::Warning))
+            .count();
 
         tdg_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
@@ -2775,7 +3149,11 @@ impl DeepContextAnalyzer {
                 summary: DeadCodeSummary {
                     total_functions,
                     dead_functions: dead_code.summary.dead_functions,
-                    total_lines: dead_code.ranked_files.par_iter().map(|f| f.total_lines).sum(),
+                    total_lines: dead_code
+                        .ranked_files
+                        .par_iter()
+                        .map(|f| f.total_lines)
+                        .sum(),
                     total_dead_lines: dead_code.summary.total_dead_lines,
                     dead_percentage: dead_code.summary.dead_percentage as f64,
                 },
@@ -2937,7 +3315,7 @@ async fn analyze_ast_contexts(
 
     // Filter files based on category
     use crate::services::file_discovery::FileCategory;
-    
+
     // Parallelize file categorization
     let categorized_files: Vec<(PathBuf, FileCategory)> = all_files
         .into_par_iter()
@@ -2946,12 +3324,12 @@ async fn analyze_ast_contexts(
             (file_path, category)
         })
         .collect();
-    
+
     // Collect results in single pass
     let mut source_files = Vec::new();
     let mut essential_files = Vec::new();
     let mut skipped_files = 0;
-    
+
     for (file_path, category) in categorized_files {
         match category {
             FileCategory::SourceCode => {
@@ -3238,14 +3616,17 @@ async fn analyze_dead_code(
                 .map(|content| analyze_file_for_dead_code(file_path, &content))
         })
         .collect();
-    
+
     // Aggregate metrics
     let total_dead_functions: usize = file_metrics.par_iter().map(|m| m.dead_functions).sum();
     let total_dead_classes: usize = file_metrics.par_iter().map(|m| m.dead_classes).sum();
     let total_dead_lines: usize = file_metrics.par_iter().map(|m| m.dead_lines).sum();
 
     // Phase 3: Calculate summary statistics
-    let files_with_dead_code = file_metrics.par_iter().filter(|f| f.dead_score > 0.0).count();
+    let files_with_dead_code = file_metrics
+        .par_iter()
+        .filter(|f| f.dead_score > 0.0)
+        .count();
     let total_lines_estimate: usize = file_metrics.par_iter().map(|f| f.total_lines).sum();
     let dead_percentage = if total_lines_estimate > 0 {
         (total_dead_lines as f32 / total_lines_estimate as f32) * 100.0
@@ -3624,20 +4005,20 @@ async fn analyze_duplicate_code(
 
 async fn analyze_satd(path: &std::path::Path) -> anyhow::Result<SATDAnalysisResult> {
     use crate::services::satd_detector::SATDDetector;
-    
+
     let detector = SATDDetector::new();
     let result = detector.analyze_project(path, false).await?;
-    
+
     Ok(result)
 }
 
 async fn analyze_provability(
     path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>> {
+    use crate::services::context::{analyze_project, AstItem};
     use crate::services::lightweight_provability_analyzer::{
         FunctionId, LightweightProvabilityAnalyzer,
     };
-    use crate::services::context::{analyze_project, AstItem};
 
     info!("Starting provability analysis for path: {:?}", path);
 
@@ -3646,7 +4027,7 @@ async fn analyze_provability(
     // Discover functions from the project using AST analysis
     let project_context = analyze_project(path, "rust").await?;
     let mut function_ids = Vec::new();
-    
+
     for file in &project_context.files {
         for item in &file.items {
             if let AstItem::Function { name, line, .. } = item {
@@ -3658,7 +4039,7 @@ async fn analyze_provability(
             }
         }
     }
-    
+
     // If no functions found, add a mock one
     if function_ids.is_empty() {
         function_ids.push(FunctionId {
@@ -3672,10 +4053,7 @@ async fn analyze_provability(
     Ok(summaries)
 }
 
-async fn analyze_dag(
-    path: &std::path::Path,
-    dag_type: DagType,
-) -> anyhow::Result<DependencyGraph> {
+async fn analyze_dag(path: &std::path::Path, dag_type: DagType) -> anyhow::Result<DependencyGraph> {
     use crate::services::{
         context::analyze_project,
         dag_builder::{
@@ -3685,10 +4063,10 @@ async fn analyze_dag(
 
     // Analyze the project to get AST information
     let project_context = analyze_project(path, "rust").await?;
-    
+
     // Build the dependency graph with PageRank pruning if needed
     let graph = DagBuilder::build_from_project_with_limit(&project_context, 400);
-    
+
     // Apply filters based on DAG type
     let filtered_graph = match dag_type {
         DagType::CallGraph => filter_call_edges(graph),
@@ -3696,23 +4074,27 @@ async fn analyze_dag(
         DagType::Inheritance => filter_inheritance_edges(graph),
         DagType::FullDependency => graph,
     };
-    
+
     Ok(filtered_graph)
 }
 
 async fn analyze_big_o(
     path: &std::path::Path,
 ) -> anyhow::Result<crate::services::big_o_analyzer::BigOAnalysisReport> {
-    use crate::services::big_o_analyzer::{BigOAnalyzer, BigOAnalysisConfig};
-    
+    use crate::services::big_o_analyzer::{BigOAnalysisConfig, BigOAnalyzer};
+
     let analyzer = BigOAnalyzer::new();
     let config = BigOAnalysisConfig {
         project_path: path.to_path_buf(),
-        include_patterns: vec!["**/*.rs".to_string(), "**/*.ts".to_string(), "**/*.py".to_string()],
+        include_patterns: vec![
+            "**/*.rs".to_string(),
+            "**/*.ts".to_string(),
+            "**/*.py".to_string(),
+        ],
         exclude_patterns: vec!["**/target/**".to_string(), "**/node_modules/**".to_string()],
         confidence_threshold: 50,
         analyze_space_complexity: false,
     };
-    
+
     analyzer.analyze(config).await
 }

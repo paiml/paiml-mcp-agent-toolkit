@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::path::Path;
 
 use crate::models::dag::NodeInfo;
@@ -7,13 +7,13 @@ use crate::models::dag::NodeInfo;
 #[derive(Debug, Clone)]
 pub struct SemanticNamer {
     /// Language-specific separator patterns
-    patterns: HashMap<String, &'static str>,
+    patterns: FxHashMap<String, &'static str>,
 }
 
 impl SemanticNamer {
     /// Create a new SemanticNamer with default language patterns
     pub fn new() -> Self {
-        let mut patterns = HashMap::new();
+        let mut patterns = FxHashMap::default();
         patterns.insert("rust".to_string(), "::");
         patterns.insert("python".to_string(), ".");
         patterns.insert("typescript".to_string(), ".");
@@ -156,7 +156,7 @@ mod tests {
             file_path: "src/my_module.rs".to_string(),
             line_number: 1,
             complexity: 5,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         };
 
         assert_eq!(namer.get_semantic_name("node_123", &node), "MyModule");

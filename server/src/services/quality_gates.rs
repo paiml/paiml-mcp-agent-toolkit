@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 use crate::services::deep_context::{DeepContextResult, FunctionComplexityForQA};
 use serde::{Deserialize, Serialize};
@@ -246,7 +246,10 @@ impl QAVerification {
         ));
     }
 
-    pub fn verify(&self, result: &DeepContextResult) -> HashMap<&'static str, Result<(), String>> {
+    pub fn verify(
+        &self,
+        result: &DeepContextResult,
+    ) -> FxHashMap<&'static str, Result<(), String>> {
         self.checks
             .iter()
             .map(|(name, check)| (*name, check(result)))
@@ -373,9 +376,7 @@ impl QAVerification {
 }
 
 fn calculate_complexity_entropy(functions: &[&FunctionComplexityForQA]) -> f64 {
-    use std::collections::HashMap;
-
-    let mut freq_map = HashMap::new();
+    let mut freq_map = FxHashMap::default();
     for func in functions {
         *freq_map.entry(func.cyclomatic).or_insert(0) += 1;
     }
@@ -404,7 +405,6 @@ mod tests {
         DeadCodeSummary, DeepContextResult, DefectSummary, FileComplexityMetricsForQA,
         FunctionComplexityForQA, QualityScorecard,
     };
-    use std::collections::HashMap;
     use std::path::PathBuf;
     use std::time::Duration;
 
@@ -446,8 +446,8 @@ mod tests {
             template_provenance: None,
             defect_summary: DefectSummary {
                 total_defects: 0,
-                by_severity: HashMap::new(),
-                by_type: HashMap::new(),
+                by_severity: FxHashMap::default(),
+                by_type: FxHashMap::default(),
                 defect_density: 0.0,
             },
             hotspots: vec![],

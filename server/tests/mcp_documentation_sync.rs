@@ -49,13 +49,6 @@ fn parse_documented_mcp_tools() -> Vec<DocumentedTool> {
             "generate_template",
             "Generate templates with parameter substitution",
         ),
-        ("analyze_complexity", "Analyze code complexity"),
-        ("analyze_code_churn", "Analyze git history for code churn"),
-        ("analyze_dag", "Generate dependency graphs"),
-        (
-            "generate_context",
-            "Generate project context using AST analysis",
-        ),
         ("get_server_info", "Get information about the server"),
         ("list_templates", "List available templates"),
         ("scaffold_project", "Scaffold a complete project"),

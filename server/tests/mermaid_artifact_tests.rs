@@ -1,6 +1,6 @@
 use paiml_mcp_agent_toolkit::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
 use paiml_mcp_agent_toolkit::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::fs;
 use std::path::Path;
 
@@ -85,7 +85,7 @@ fn generate_simple_architecture() -> String {
             file_path: String::new(),
             line_number: 0,
             complexity: 0,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
     }
 
@@ -140,7 +140,7 @@ fn generate_styled_workflow() -> String {
             file_path: String::new(),
             line_number: 0,
             complexity,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
     }
 
@@ -213,7 +213,7 @@ fn generate_ast_simple() -> String {
             file_path: String::new(),
             line_number: 0,
             complexity: 0,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
     }
 
@@ -279,7 +279,7 @@ fn generate_ast_styled() -> String {
             file_path: String::new(),
             line_number: 0,
             complexity,
-            metadata: HashMap::new(),
+            metadata: FxHashMap::default(),
         });
     }
 
