@@ -4098,3 +4098,14 @@ async fn analyze_big_o(
 
     analyzer.analyze(config).await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deep_context_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

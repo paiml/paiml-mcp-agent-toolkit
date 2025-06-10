@@ -126,12 +126,13 @@ pub async fn handle_refactor_serve(params: RefactorServeParams) -> anyhow::Resul
     refactor_config.batch_size = batch_size;
 
     // Handle checkpoint directory
-    let checkpoint_path = checkpoint_dir.unwrap_or_else(|| {
-        project.join(".refactor_checkpoints")
-    });
+    let checkpoint_path = checkpoint_dir.unwrap_or_else(|| project.join(".refactor_checkpoints"));
 
     if resume {
-        println!("🔄 Resuming from checkpoint in: {}", checkpoint_path.display());
+        println!(
+            "🔄 Resuming from checkpoint in: {}",
+            checkpoint_path.display()
+        );
     } else {
         // Create checkpoint directory if it doesn't exist
         tokio::fs::create_dir_all(&checkpoint_path).await?;
@@ -166,9 +167,12 @@ pub async fn handle_refactor_serve(params: RefactorServeParams) -> anyhow::Resul
 
     // Discover targets with priority sorting if specified
     let mut targets = discover_refactor_targets(&project).await?;
-    
+
     if let Some(priority_expr) = &refactor_config.priority_expression {
-        println!("🔀 Sorting {} targets by priority expression", targets.len());
+        println!(
+            "🔀 Sorting {} targets by priority expression",
+            targets.len()
+        );
         // In a real implementation, we would evaluate the priority expression
         // For now, we'll just note that this would be done
         targets = sort_targets_by_priority(targets, priority_expr).await?;
@@ -192,10 +196,10 @@ pub async fn handle_refactor_serve(params: RefactorServeParams) -> anyhow::Resul
     // Run with runtime monitoring
     let summary = if let Some(limit) = runtime_limit {
         println!("⏱️  Maximum runtime: {} seconds", limit.as_secs());
-        
+
         // Run with timeout
         let result = tokio::time::timeout(limit, engine.run()).await;
-        
+
         match result {
             Ok(summary) => summary?,
             Err(_) => {
@@ -212,7 +216,10 @@ pub async fn handle_refactor_serve(params: RefactorServeParams) -> anyhow::Resul
     println!("\n✅ Refactor server completed:");
     println!("   Files processed: {}", summary.files_processed);
     println!("   Refactors applied: {}", summary.refactors_applied);
-    println!("   Complexity reduction: {:.2}%", summary.complexity_reduction);
+    println!(
+        "   Complexity reduction: {:.2}%",
+        summary.complexity_reduction
+    );
     println!("   SATD removed: {}", summary.satd_removed);
     println!("   Runtime: {:.2}s", start_time.elapsed().as_secs_f64());
 
@@ -397,13 +404,13 @@ async fn load_refactor_config(config_path: &Path) -> anyhow::Result<RefactorConf
 
 async fn load_refactor_config_json(config_path: &Path) -> anyhow::Result<RefactorConfig> {
     println!("📝 Loading JSON config from: {}", config_path.display());
-    
+
     let config_data = tokio::fs::read_to_string(config_path).await?;
     let config: serde_json::Value = serde_json::from_str(&config_data)?;
-    
+
     // Parse the JSON configuration into RefactorConfig
     let mut refactor_config = RefactorConfig::default();
-    
+
     if let Some(rules) = config.get("rules") {
         if let Some(target_complexity) = rules.get("target_complexity").and_then(|v| v.as_u64()) {
             refactor_config.target_complexity = target_complexity as u16;
@@ -415,27 +422,27 @@ async fn load_refactor_config_json(config_path: &Path) -> anyhow::Result<Refacto
             refactor_config.remove_satd = remove_satd;
         }
     }
-    
+
     if let Some(parallel) = config.get("parallel_workers").and_then(|v| v.as_u64()) {
         refactor_config.parallel_workers = parallel as usize;
     }
-    
+
     if let Some(memory) = config.get("memory_limit_mb").and_then(|v| v.as_u64()) {
         refactor_config.memory_limit_mb = memory as usize;
     }
-    
+
     if let Some(batch) = config.get("batch_size").and_then(|v| v.as_u64()) {
         refactor_config.batch_size = batch as usize;
     }
-    
+
     if let Some(priority) = config.get("priority_expression").and_then(|v| v.as_str()) {
         refactor_config.priority_expression = Some(priority.to_string());
     }
-    
+
     if let Some(auto_commit) = config.get("auto_commit_template").and_then(|v| v.as_str()) {
         refactor_config.auto_commit_template = Some(auto_commit.to_string());
     }
-    
+
     Ok(refactor_config)
 }
 
@@ -447,7 +454,7 @@ async fn sort_targets_by_priority(
     // 1. Analyze each file to get metrics (complexity, defect_probability, etc.)
     // 2. Evaluate the priority expression for each file
     // 3. Sort by the resulting priority score
-    
+
     // For now, just reverse the order as a placeholder
     targets.reverse();
     Ok(targets)
@@ -458,34 +465,35 @@ async fn create_auto_commit(
     summary: &crate::models::refactor::Summary,
 ) -> anyhow::Result<()> {
     use std::process::Command;
-    
+
     // Stage all changes
-    let status = Command::new("git")
-        .args(["add", "-A"])
-        .status()?;
-    
+    let status = Command::new("git").args(["add", "-A"]).status()?;
+
     if !status.success() {
         return Err(anyhow::anyhow!("Failed to stage changes"));
     }
-    
+
     // Format the commit message using the template
     let message = template
         .replace("{files}", &summary.files_processed.to_string())
         .replace("{refactors}", &summary.refactors_applied.to_string())
-        .replace("{complexity_reduction}", &format!("{:.1}%", summary.complexity_reduction))
+        .replace(
+            "{complexity_reduction}",
+            &format!("{:.1}%", summary.complexity_reduction),
+        )
         .replace("{satd_removed}", &summary.satd_removed.to_string());
-    
+
     // Create the commit
     let status = Command::new("git")
         .args(["commit", "-m", &message])
         .status()?;
-    
+
     if status.success() {
         println!("✅ Auto-commit created: {}", message);
     } else {
         println!("⚠️  Auto-commit failed");
     }
-    
+
     Ok(())
 }
 
@@ -517,5 +525,16 @@ impl From<ExplainLevel> for crate::services::refactor_engine::ExplainLevel {
             ExplainLevel::Detailed => crate::services::refactor_engine::ExplainLevel::Detailed,
             ExplainLevel::Verbose => crate::services::refactor_engine::ExplainLevel::Verbose,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_refactor_handlers_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
     }
 }

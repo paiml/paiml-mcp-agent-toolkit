@@ -8,7 +8,10 @@ binary-name ::= "paiml-mcp-agent-toolkit"
 global-opts ::= "--mode" mode-value
 mode-value  ::= "cli" | "mcp"
 subcommand  ::= "generate" | "scaffold" | "list" | "search" | "validate" | "context" | "analyze"
-analyze     ::= "analyze" ("churn" | "complexity" | "dag" | "dead-code" | "deep-context")
+analyze     ::= "analyze" ("churn" | "complexity" | "dag" | "dead-code" | "deep-context" | 
+                           "big-o" | "makefile-lint" | "proof-annotations" | "graph-metrics" |
+                           "name-similarity" | "defect-prediction" | "incremental-coverage" |
+                           "symbol-table" | "satd" | "tdg")
 ```
 
 ## Memory Model
@@ -681,7 +684,182 @@ pmat analyze name-similarity "calculateTotal" --scope functions
 pmat analyze name-similarity "proces" --phonetic --top-k 5
 ```
 
-##### `quality-gate`
+##### `analyze big-o`
+
+**NEW**: Detect algorithmic complexity with confidence scores.
+
+**Arguments:**
+- **-p, --project-path**: Project path (default: current directory)
+- **--min-complexity**: Minimum complexity to report (e.g., "O(n^2)")
+- **--min-confidence**: Minimum confidence threshold (0.0-1.0)
+- **--include-evidence**: Show detailed evidence
+- **--format**: Output format (`summary`, `detailed`, `json`)
+- **--top-k**: Limit results to top K functions
+
+**Examples:**
+```bash
+# Basic Big-O analysis
+pmat analyze big-o
+
+# Find quadratic or worse complexity
+pmat analyze big-o --min-complexity "O(n^2)" --format json
+```
+
+##### `analyze makefile-lint`
+
+**NEW**: Lint Makefiles with 50+ quality rules.
+
+**Arguments:**
+- **--makefile**: Path to Makefile (default: ./Makefile)
+- **--min-severity**: Minimum severity level (`info`, `warning`, `error`)
+- **--format**: Output format (`human`, `json`, `sarif`, `checkmake`)
+- **--pedantic**: Enable all rules including pedantic
+- **--fix**: Apply auto-fixes
+- **--config**: Configuration file path
+
+**Examples:**
+```bash
+# Basic linting
+pmat analyze makefile-lint
+
+# Fix issues automatically
+pmat analyze makefile-lint --fix
+
+# CI/CD integration
+pmat analyze makefile-lint --min-severity error --format sarif
+```
+
+##### `analyze proof-annotations`
+
+**NEW**: Lightweight formal verification for code properties.
+
+**Arguments:**
+- **-p, --project-path**: Project path (default: current directory)
+- **--property-type**: Filter by property type (`nullability`, `bounds`, `aliasing`)
+- **--high-confidence-only**: Only show high confidence properties
+- **--include-evidence**: Include detailed evidence
+- **--format**: Output format (`summary`, `detailed`, `json`)
+
+**Examples:**
+```bash
+# Basic provability analysis
+pmat analyze proof-annotations
+
+# Focus on null safety
+pmat analyze proof-annotations --property-type nullability --high-confidence-only
+```
+
+##### `analyze incremental-coverage`
+
+**NEW**: Analyze coverage changes since base branch.
+
+**Arguments:**
+- **-p, --project-path**: Project path (default: current directory)
+- **-b, --base-branch**: Base branch for comparison (default: main)
+- **--coverage-format**: Input format (`lcov`, `cobertura`, `jacoco`)
+- **--min-coverage**: Minimum coverage for new code
+- **--format**: Output format (`summary`, `detailed`, `json`)
+
+**Examples:**
+```bash
+# Check coverage for PR
+pmat analyze incremental-coverage --base-branch main
+
+# Enforce minimum coverage
+pmat analyze incremental-coverage --min-coverage 80.0 --fail-on-decrease
+```
+
+##### `analyze symbol-table`
+
+**NEW**: Generate comprehensive symbol tables.
+
+**Arguments:**
+- **-p, --project-path**: Project path (default: current directory)
+- **--include-private**: Include private symbols
+- **--cross-reference**: Generate cross-references
+- **--format**: Output format (`summary`, `json`, `ctags`)
+- **-o, --output**: Output file path
+
+**Examples:**
+```bash
+# Generate symbol table
+pmat analyze symbol-table --format json -o symbols.json
+
+# Generate ctags format
+pmat analyze symbol-table --format ctags --include-private
+```
+
+### `refactor`
+
+**NEW**: Automated refactoring engine with interactive and batch modes.
+
+#### Subcommands
+
+##### `refactor interactive`
+
+Interactive refactoring with step-by-step guidance.
+
+**Arguments:**
+- **-p, --project-path**: Project path (default: current directory)
+- **--explain**: Explanation level (`minimal`, `normal`, `detailed`)
+- **--checkpoint**: Checkpoint file for state persistence
+- **--target-complexity**: Target complexity threshold
+- **--steps**: Maximum steps to execute
+- **--config**: Configuration file path
+
+**Examples:**
+```bash
+# Start interactive session
+pmat refactor interactive
+
+# Limited steps with target
+pmat refactor interactive --steps 5 --target-complexity 15
+```
+
+##### `refactor serve`
+
+Batch refactoring server for large-scale operations.
+
+**Arguments:**
+- **--refactor-mode**: Mode (`batch`, `interactive`)
+- **-c, --config**: JSON configuration file
+- **-p, --project**: Project directory
+- **--parallel**: Number of parallel workers
+- **--memory-limit**: Memory limit in MB
+- **--batch-size**: Files per batch
+- **--priority**: Priority expression
+- **--checkpoint-dir**: Checkpoint directory
+- **--resume**: Resume from checkpoint
+- **--auto-commit**: Auto-commit template
+- **--max-runtime**: Maximum runtime in seconds
+
+**Examples:**
+```bash
+# Batch refactoring
+pmat refactor serve --config refactor.json
+
+# Resume with auto-commit
+pmat refactor serve --resume --auto-commit "refactor: {file}"
+```
+
+##### `refactor status`
+
+Show current refactoring status.
+
+**Arguments:**
+- **--checkpoint**: Checkpoint file
+- **--format**: Output format (`json`, `yaml`, `summary`)
+
+##### `refactor resume`
+
+Resume refactoring from checkpoint.
+
+**Arguments:**
+- **--checkpoint**: Checkpoint file
+- **--steps**: Maximum steps
+- **--explain**: Override explanation level
+
+### `quality-gate`
 
 **NEW**: Comprehensive quality checks with configurable thresholds.
 

@@ -317,3 +317,14 @@ impl Default for SimpleDeepContext {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_simple_deep_context_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

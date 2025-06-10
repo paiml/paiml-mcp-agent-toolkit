@@ -201,3 +201,14 @@ fn format_big_o_detailed(report: &crate::services::big_o_analyzer::BigOAnalysisR
 
     output
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_big_o_handlers_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

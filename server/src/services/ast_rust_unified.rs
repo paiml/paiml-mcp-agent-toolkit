@@ -112,10 +112,10 @@ impl RustAstParser {
             parent: 0,
             first_child: 0,
             next_sibling: 0,
-            source_range: 0..0, // Would extract from span
-            semantic_hash: 0,   // Would compute semantic hash
-            structural_hash: 0, // Would compute structural hash
-            name_vector: 0,     // Would compute name embedding
+            source_range: 0..0,                       // Would extract from span
+            semantic_hash: 0,                         // Would compute semantic hash
+            structural_hash: 0,                       // Would compute structural hash
+            name_vector: 0,                           // Would compute name embedding
             metadata: NodeMetadata { complexity: 1 }, // Basic complexity
             proof_annotations: None,
         }

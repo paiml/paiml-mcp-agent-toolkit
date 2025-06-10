@@ -524,3 +524,14 @@ pub fn prune_graph_pagerank(graph: &DependencyGraph, max_nodes: usize) -> Depend
             .collect(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_dag_builder_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

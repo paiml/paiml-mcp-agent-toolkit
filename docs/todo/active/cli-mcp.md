@@ -534,6 +534,166 @@ curl "http://localhost:8080/health"
 curl "http://localhost:8080/api/v1/analyze/complexity?top_files=5"
 ```
 
+### Command: `refactor`
+
+Automated refactoring with real-time analysis and interactive mode support.
+
+#### Synopsis
+
+```bash
+pmat refactor <SUBCOMMAND> [OPTIONS]
+```
+
+#### Description
+
+The refactor command provides automated refactoring capabilities to reduce code complexity and improve maintainability. It supports both batch processing and interactive modes, with checkpoint support for resuming operations.
+
+#### Subcommands
+
+- `serve` - Run refactor server mode for batch processing
+- `interactive` - Run interactive refactoring mode
+- `status` - Show current refactoring status
+- `resume` - Resume refactoring from checkpoint
+
+#### Examples
+
+```bash
+# Run batch refactoring with configuration
+pmat refactor serve --config refactor-config.json
+
+# Start interactive refactoring session
+pmat refactor interactive
+
+# Check refactoring status
+pmat refactor status
+
+# Resume from checkpoint
+pmat refactor resume
+```
+
+### Command: `refactor serve`
+
+Run refactor server mode for batch processing of refactoring operations.
+
+#### Synopsis
+
+```bash
+pmat refactor serve [OPTIONS]
+```
+
+#### Options
+
+- `--refactor-mode <MODE>` - Refactor mode: `batch`, `interactive` (default: batch)
+- `-c, --config <PATH>` - JSON configuration file for batch mode
+- `-p, --project <PATH>` - Project directory to refactor (default: .)
+- `--parallel <N>` - Number of parallel workers (default: 4)
+- `--memory-limit <MB>` - Memory limit in MB (default: 512)
+- `--batch-size <N>` - Files per batch (default: 10)
+- `--priority <EXPR>` - Priority sorting expression (e.g., "complexity * defect_probability")
+- `--checkpoint-dir <PATH>` - Checkpoint directory for resuming
+- `--resume` - Resume from previous checkpoint
+- `--auto-commit <MSG>` - Auto-commit with message template
+- `--max-runtime <SECS>` - Maximum runtime in seconds
+
+#### Examples
+
+```bash
+# Run batch refactoring with configuration file
+pmat refactor serve --config refactor-config.json
+
+# Run with custom parallelism and memory limits
+pmat refactor serve --parallel 8 --memory-limit 1024 --batch-size 20
+
+# Resume from checkpoint with auto-commit
+pmat refactor serve --resume --checkpoint-dir ./checkpoints --auto-commit "refactor: reduce complexity in {file}"
+```
+
+### Command: `refactor interactive`
+
+Run interactive refactoring mode with real-time feedback and explanations.
+
+#### Synopsis
+
+```bash
+pmat refactor interactive [OPTIONS]
+```
+
+#### Options
+
+- `-p, --project-path <PATH>` - Project path to analyze (default: .)
+- `--explain <LEVEL>` - Explanation level: `minimal`, `normal`, `detailed` (default: detailed)
+- `--checkpoint <PATH>` - Checkpoint file for state persistence (default: refactor_state.json)
+- `--target-complexity <N>` - Target complexity threshold (default: 20)
+- `--steps <N>` - Maximum steps to execute
+- `--config <PATH>` - Configuration file path
+
+#### Examples
+
+```bash
+# Start interactive refactoring session
+pmat refactor interactive
+
+# Interactive mode with custom target complexity
+pmat refactor interactive --target-complexity 15 --explain minimal
+
+# Limited steps with checkpoint
+pmat refactor interactive --steps 5 --checkpoint my-refactor.json
+```
+
+### Command: `refactor status`
+
+Show current refactoring status from checkpoint file.
+
+#### Synopsis
+
+```bash
+pmat refactor status [OPTIONS]
+```
+
+#### Options
+
+- `--checkpoint <PATH>` - Checkpoint file to read state from (default: refactor_state.json)
+- `--format <FORMAT>` - Output format: `json`, `yaml`, `summary` (default: json)
+
+#### Examples
+
+```bash
+# Show refactoring status
+pmat refactor status
+
+# Show status from specific checkpoint
+pmat refactor status --checkpoint ./checkpoints/refactor-2024-01-01.json --format summary
+```
+
+### Command: `refactor resume`
+
+Resume refactoring from a checkpoint file.
+
+#### Synopsis
+
+```bash
+pmat refactor resume [OPTIONS]
+```
+
+#### Options
+
+- `--checkpoint <PATH>` - Checkpoint file to resume from (default: refactor_state.json)
+- `--steps <N>` - Maximum steps to execute (default: 10)
+- `--explain <LEVEL>` - Override explanation level: `minimal`, `normal`, `detailed`
+
+#### Examples
+
+```bash
+# Resume refactoring with default settings
+pmat refactor resume
+
+# Resume with limited steps
+pmat refactor resume --steps 5 --explain minimal
+
+# Resume from specific checkpoint
+pmat refactor resume --checkpoint ./backups/refactor-backup.json
+```
+
 ## MCP Protocol Implementation
 
 ### Transport Layer

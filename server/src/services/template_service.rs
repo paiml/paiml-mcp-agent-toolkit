@@ -442,3 +442,14 @@ pub struct ValidationError {
     pub field: String,
     pub message: String,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_template_service_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

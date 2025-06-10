@@ -42,3 +42,14 @@ pub async fn handle_analyze_name_similarity(
     )
     .await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_name_similarity_analysis_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

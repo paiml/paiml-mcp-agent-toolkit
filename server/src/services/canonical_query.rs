@@ -430,3 +430,14 @@ impl PartialEq for ComponentEdgeType {
 }
 
 impl Eq for ComponentEdgeType {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_canonical_query_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

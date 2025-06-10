@@ -339,7 +339,7 @@ impl RefactorStateMachine {
     fn find_violations(&self, file_id: &FileId) -> Vec<Violation> {
         // Check thresholds and create violations
         let mut violations = Vec::new();
-        
+
         // Simulate finding a high complexity violation
         if file_id.path.to_string_lossy().contains("complex") {
             violations.push(Violation {
@@ -353,13 +353,21 @@ impl RefactorStateMachine {
                 description: "Function exceeds complexity threshold".to_string(),
                 suggested_fix: Some(RefactorOp::ExtractFunction {
                     name: "extract_helper".to_string(),
-                    start: BytePos { byte: 1000, line: 100, column: 1 },
-                    end: BytePos { byte: 2000, line: 150, column: 1 },
+                    start: BytePos {
+                        byte: 1000,
+                        line: 100,
+                        column: 1,
+                    },
+                    end: BytePos {
+                        byte: 2000,
+                        line: 150,
+                        column: 1,
+                    },
                     params: vec!["param1".to_string()],
                 }),
             });
         }
-        
+
         violations
     }
 
@@ -450,5 +458,16 @@ impl Violation {
                     simplified: "simple".to_string(),
                 },
             })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_refactor_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
     }
 }

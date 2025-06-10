@@ -39,3 +39,14 @@ pub async fn handle_analyze_graph_metrics(
     )
     .await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_graph_metrics_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

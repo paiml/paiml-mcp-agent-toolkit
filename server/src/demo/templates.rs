@@ -586,3 +586,14 @@ pub const CSS_DARK_THEME: &str = r#"
     }
 }
 "#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_templates_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

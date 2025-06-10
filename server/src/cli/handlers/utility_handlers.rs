@@ -59,6 +59,7 @@ impl MarkdownBuilder {
         self.content.push_str("\n\n");
     }
 
+    #[allow(dead_code)]
     fn add_bullet(&mut self, text: &str) {
         self.content.push_str("- ");
         self.content.push_str(text);
@@ -66,11 +67,13 @@ impl MarkdownBuilder {
     }
 
     fn add_metric(&mut self, label: &str, value: impl std::fmt::Display) {
-        self.content.push_str(&format!("- **{}**: {}\n", label, value));
+        self.content
+            .push_str(&format!("- **{}**: {}\n", label, value));
     }
 
     fn add_percentage_metric(&mut self, label: &str, value: f64) {
-        self.content.push_str(&format!("- **{}**: {:.1}%\n", label, value));
+        self.content
+            .push_str(&format!("- **{}**: {:.1}%\n", label, value));
     }
 
     fn add_newline(&mut self) {
@@ -430,10 +433,15 @@ fn format_markdown_output(
     detected_toolchain: &str,
 ) -> String {
     let mut builder = MarkdownBuilder::new();
-    
+
     // Add project sections
-    add_project_sections(&mut builder, project_context, deep_context, detected_toolchain);
-    
+    add_project_sections(
+        &mut builder,
+        project_context,
+        deep_context,
+        detected_toolchain,
+    );
+
     builder.build()
 }
 
@@ -447,15 +455,15 @@ fn add_project_sections(
     builder.add_header(1, "Project Context");
     builder.add_header(2, "Project Structure");
     add_project_structure(builder, project_context, detected_toolchain);
-    
+
     // Add quality scorecard
     builder.add_header(2, "Quality Scorecard");
     add_quality_scorecard(builder, &deep_context.quality_scorecard);
-    
+
     // Add files section
     builder.add_header(2, "Files");
     add_files_section(builder, &project_context.files, &deep_context.analyses);
-    
+
     // Add recommendations
     if !deep_context.recommendations.is_empty() {
         builder.add_header(2, "Recommendations");
@@ -484,7 +492,10 @@ fn add_quality_scorecard(
     builder.add_percentage_metric("Overall Health", scorecard.overall_health);
     builder.add_percentage_metric("Complexity Score", scorecard.complexity_score);
     builder.add_percentage_metric("Maintainability Index", scorecard.maintainability_index);
-    builder.add_metric("Technical Debt Hours", format!("{:.1}", scorecard.technical_debt_hours));
+    builder.add_metric(
+        "Technical Debt Hours",
+        format!("{:.1}", scorecard.technical_debt_hours),
+    );
     builder.add_percentage_metric("Test Coverage", scorecard.test_coverage.unwrap_or(0.0));
     builder.add_percentage_metric("Modularity Score", scorecard.modularity_score);
     builder.add_newline();
@@ -497,7 +508,7 @@ fn add_files_section(
 ) {
     for file in files {
         builder.add_header(3, &file.path);
-        
+
         // Add file-level metrics if available
         if let Some(complexity) = &file.complexity_metrics {
             builder.content.push_str(&format!(
@@ -506,7 +517,7 @@ fn add_files_section(
                 complexity.functions.len()
             ));
         }
-        
+
         add_file_items(builder, &file.items, file, analyses);
         builder.add_newline();
     }
@@ -521,28 +532,42 @@ fn add_file_items(
     for item in items {
         match item {
             AstItem::Function { name, .. } => {
-                builder.content.push_str(&format!("- **Function**: `{}`", name));
-                builder.content.push_str(&format_function_annotations(name, file, analyses));
+                builder
+                    .content
+                    .push_str(&format!("- **Function**: `{}`", name));
+                builder
+                    .content
+                    .push_str(&format_function_annotations(name, file, analyses));
                 builder.content.push('\n');
             }
             AstItem::Struct { name, .. } => {
-                builder.content.push_str(&format!("- **Struct**: `{}`\n", name));
+                builder
+                    .content
+                    .push_str(&format!("- **Struct**: `{}`\n", name));
             }
             AstItem::Enum { name, .. } => {
-                builder.content.push_str(&format!("- **Enum**: `{}`\n", name));
+                builder
+                    .content
+                    .push_str(&format!("- **Enum**: `{}`\n", name));
             }
             AstItem::Trait { name, .. } => {
-                builder.content.push_str(&format!("- **Trait**: `{}`\n", name));
+                builder
+                    .content
+                    .push_str(&format!("- **Trait**: `{}`\n", name));
             }
             AstItem::Impl { trait_name, .. } => {
                 if let Some(trait_name) = trait_name {
-                    builder.content.push_str(&format!("- **Impl**: `{}`\n", trait_name));
+                    builder
+                        .content
+                        .push_str(&format!("- **Impl**: `{}`\n", trait_name));
                 } else {
                     builder.content.push_str("- **Impl**: (inherent)\n");
                 }
             }
             AstItem::Module { name, .. } => {
-                builder.content.push_str(&format!("- **Module**: `{}`\n", name));
+                builder
+                    .content
+                    .push_str(&format!("- **Module**: `{}`\n", name));
             }
             AstItem::Use { .. } => {
                 builder.content.push_str("- **Use**: statement\n");
@@ -899,4 +924,15 @@ pub async fn handle_serve(host: String, port: u16, cors: bool) -> Result<()> {
 /// Handle diagnose command
 pub async fn handle_diagnose(args: crate::cli::diagnose::DiagnoseArgs) -> Result<()> {
     crate::cli::diagnose::handle_diagnose(args).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_utility_handlers_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
 }

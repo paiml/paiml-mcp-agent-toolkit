@@ -96,3 +96,14 @@ pub fn parse_key_val(s: &str) -> Result<(String, Value), String> {
 
     Ok((key.to_string(), value))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_args_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

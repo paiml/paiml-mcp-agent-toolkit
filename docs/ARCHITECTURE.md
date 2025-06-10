@@ -101,6 +101,12 @@ Pluggable analysis modules:
 - **TDG Calculator**: Technical debt gradient
 - **SATD Detector**: Self-admitted technical debt
 - **Provability Analyzer**: Lightweight formal verification
+- **Big-O Analyzer**: Algorithmic complexity detection
+- **Makefile Linter**: 50+ quality rules for Makefiles
+- **Graph Metrics**: PageRank and centrality analysis
+- **Name Similarity**: Semantic name search with embeddings
+- **Defect Prediction**: ML-based defect probability
+- **Incremental Coverage**: Coverage change tracking
 
 #### Cache System
 Multi-tier caching for performance:
@@ -410,6 +416,132 @@ async fn analyze_complexity(ast: &UnifiedAst) -> Result<ComplexityMetrics> {
 }
 ```
 
+## Major Feature Architectures
+
+### Refactor Engine
+
+The refactor engine uses a multi-stage pipeline for safe code transformation:
+
+```rust
+pub struct RefactorEngine {
+    analyzer: UnifiedRefactorAnalyzer,
+    transformer: TransformationEngine,
+    validator: RefactorValidator,
+    checkpointer: CheckpointManager,
+}
+
+pub struct RefactorPipeline {
+    stages: Vec<Box<dyn RefactorStage>>,
+    rollback_manager: RollbackManager,
+    test_runner: TestRunner,
+}
+```
+
+**Pipeline Stages:**
+1. **Analysis**: Identify refactoring opportunities
+2. **Planning**: Generate transformation plan
+3. **Validation**: Ensure semantic preservation
+4. **Execution**: Apply transformations
+5. **Verification**: Run tests and validate
+
+### Provability Analysis System
+
+Lightweight formal verification using abstract interpretation:
+
+```rust
+pub struct ProvabilityAnalyzer {
+    property_domains: HashMap<PropertyType, Box<dyn PropertyDomain>>,
+    inference_engine: InferenceEngine,
+    cache: PropertyCache,
+}
+
+pub trait PropertyDomain {
+    fn analyze(&self, node: &AstNode) -> PropertyResult;
+    fn merge(&self, a: &Property, b: &Property) -> Property;
+    fn widen(&self, a: &Property, b: &Property) -> Property;
+}
+```
+
+**Supported Properties:**
+- Nullability lattice
+- Alias analysis
+- Range intervals
+- Initialization states
+- Taint propagation
+
+### Big-O Complexity Detection
+
+Pattern-based algorithmic complexity analysis:
+
+```rust
+pub struct BigOAnalyzer {
+    pattern_matcher: PatternMatcher,
+    loop_analyzer: LoopComplexityAnalyzer,
+    recursion_detector: RecursionAnalyzer,
+    evidence_collector: EvidenceCollector,
+}
+
+pub enum ComplexityClass {
+    Constant,
+    Logarithmic,
+    Linear,
+    Linearithmic,
+    Quadratic,
+    Cubic,
+    Exponential,
+}
+```
+
+### Makefile Linting Engine
+
+Rule-based linting with auto-fix capabilities:
+
+```rust
+pub struct MakefileLinter {
+    rule_engine: RuleEngine,
+    parser: MakefileParser,
+    auto_fixer: AutoFixer,
+}
+```
+
+## Testing Architecture
+
+### Distributed Test Strategy
+
+The project employs a stratified test architecture to achieve sub-linear compilation scaling and maximize parallel execution. Tests are organized into 5 independent binaries:
+
+```
+tests/
+├── unit/core.rs           # <10s - Core logic, zero I/O
+├── integration/
+│   ├── services.rs        # <30s - Service integration
+│   └── protocols.rs       # <45s - Protocol validation
+├── e2e/system.rs          # <120s - Full workflows
+└── performance/regression.rs  # Performance baselines
+```
+
+**Key Benefits:**
+- 65-80% faster build times through parallel compilation
+- <1s feedback for unit tests
+- 4x throughput via parallel execution
+- Selective instrumentation for coverage
+
+### Test Organization
+
+```rust
+pub struct MakefileLinter {
+    parser: MakefileParser,
+    rules: Vec<Box<dyn LintRule>>,
+    fixer: AutoFixer,
+    config: LintConfig,
+}
+
+pub trait LintRule {
+    fn check(&self, ast: &MakefileAst) -> Vec<LintIssue>;
+    fn fix(&self, issue: &LintIssue) -> Option<Fix>;
+}
+```
+
 ## Future Architecture Considerations
 
 1. **Plugin System**: Dynamic loading of analyzers
@@ -417,3 +549,5 @@ async fn analyze_complexity(ast: &UnifiedAst) -> Result<ComplexityMetrics> {
 3. **Real-time Monitoring**: Continuous analysis daemon
 4. **Cloud Integration**: SaaS offering
 5. **IDE Integration**: Language Server Protocol
+6. **GPU Acceleration**: For ML-based analysis
+7. **Incremental Compilation**: Faster re-analysis

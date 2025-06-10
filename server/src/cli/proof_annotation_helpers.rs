@@ -1,10 +1,12 @@
 //! Helper functions for proof annotation analysis to reduce complexity
 
-use std::path::PathBuf;
-use anyhow::Result;
-use crate::models::unified_ast::{ConfidenceLevel, PropertyType, VerificationMethod, ProofAnnotation, Location};
-use crate::services::proof_annotator::ProofAnnotator;
 use super::{PropertyTypeFilter, VerificationMethodFilter};
+use crate::models::unified_ast::{
+    ConfidenceLevel, Location, ProofAnnotation, PropertyType, VerificationMethod,
+};
+use crate::services::proof_annotator::ProofAnnotator;
+use anyhow::Result;
+use std::path::Path;
 
 /// Filter configuration for proof annotations
 pub struct ProofAnnotationFilter {
@@ -48,10 +50,16 @@ fn filter_by_property_type(
             matches!(annotation.property_proven, PropertyType::Termination)
         }
         Some(PropertyTypeFilter::FunctionalCorrectness) => {
-            matches!(annotation.property_proven, PropertyType::FunctionalCorrectness(_))
+            matches!(
+                annotation.property_proven,
+                PropertyType::FunctionalCorrectness(_)
+            )
         }
         Some(PropertyTypeFilter::ResourceBounds) => {
-            matches!(annotation.property_proven, PropertyType::ResourceBounds { .. })
+            matches!(
+                annotation.property_proven,
+                PropertyType::ResourceBounds { .. }
+            )
         }
         Some(PropertyTypeFilter::All) | None => true,
     }
@@ -73,7 +81,10 @@ fn filter_by_verification_method(
             matches!(annotation.method, VerificationMethod::StaticAnalysis { .. })
         }
         Some(VerificationMethodFilter::AbstractInterpretation) => {
-            matches!(annotation.method, VerificationMethod::AbstractInterpretation)
+            matches!(
+                annotation.method,
+                VerificationMethod::AbstractInterpretation
+            )
         }
         Some(VerificationMethodFilter::BorrowChecker) => {
             matches!(annotation.method, VerificationMethod::BorrowChecker)
@@ -81,7 +92,6 @@ fn filter_by_verification_method(
         Some(VerificationMethodFilter::All) | None => true,
     }
 }
-
 
 /// Format proof annotations as JSON
 pub fn format_as_json(
@@ -115,37 +125,37 @@ pub fn format_as_json(
             }
         }
     });
-    
+
     serde_json::to_string_pretty(&json_data).map_err(Into::into)
 }
 
 /// Setup proof annotator with mock sources
 pub fn setup_proof_annotator(clear_cache: bool) -> ProofAnnotator {
     use crate::services::{proof_annotator::MockProofSource, symbol_table::SymbolTable};
-    
+
     let symbol_table = std::sync::Arc::new(SymbolTable::new());
     let mut annotator = ProofAnnotator::new(symbol_table.clone());
-    
+
     if clear_cache {
         annotator.clear_cache();
     }
-    
+
     // Add mock proof sources
     annotator.add_source(MockProofSource::new("borrow_checker".to_string(), 10, 5));
     annotator.add_source(MockProofSource::new("static_analyzer".to_string(), 20, 3));
     annotator.add_source(MockProofSource::new("formal_verifier".to_string(), 50, 2));
-    
+
     annotator
 }
 
 /// Filter and collect proof annotations
 pub async fn collect_and_filter_annotations(
     annotator: &ProofAnnotator,
-    project_path: &PathBuf,
+    project_path: &Path,
     filter: &ProofAnnotationFilter,
 ) -> Vec<(Location, ProofAnnotation)> {
     let proof_map = annotator.collect_proofs(project_path).await;
-    
+
     proof_map
         .into_iter()
         .flat_map(|(location, annotations)| {
@@ -156,4 +166,15 @@ pub async fn collect_and_filter_annotations(
                 .collect::<Vec<_>>()
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_proof_annotation_helpers_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
 }

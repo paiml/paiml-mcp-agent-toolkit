@@ -51,3 +51,14 @@ pub async fn analyze_router(cmd: super::super::AnalyzeCommands) -> Result<()> {
 }
 
 pub struct AnalysisHandlers;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_analysis_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

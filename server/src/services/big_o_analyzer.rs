@@ -308,47 +308,51 @@ impl BigOAnalyzer {
     ) -> ComplexityAnalysisResult {
         let mut notes = Vec::new();
         let lines: Vec<&str> = function_body.lines().take(100).collect();
-        
+
         // Get language-specific loop keywords
         let loop_keywords = Self::get_loop_keywords(language);
-        
+
         // Calculate loop depth
         let max_loop_depth = Self::calculate_loop_depth(&lines, &loop_keywords);
-        
+
         // Check for patterns
         let mut has_recursion = false;
         let mut has_sorting = false;
-        
+
         for line in &lines {
             if Self::detect_recursive_call(line, function_name) {
                 has_recursion = true;
                 notes.push("Recursive function detected".to_string());
             }
-            
+
             if Self::detect_sorting_operation(line) {
                 has_sorting = true;
                 notes.push("Pattern: Sorting operation".to_string());
             }
-            
+
             if Self::detect_binary_search(line) {
                 notes.push("Pattern: Binary search".to_string());
             }
         }
-        
+
         // Determine time complexity
         let mut time_complexity = Self::determine_time_complexity(max_loop_depth, has_recursion);
-        
+
         // Adjust for sorting operations
-        if has_sorting && time_complexity.class.is_better_than(&BigOClass::Linearithmic) {
+        if has_sorting
+            && time_complexity
+                .class
+                .is_better_than(&BigOClass::Linearithmic)
+        {
             time_complexity = ComplexityBound::linearithmic();
         }
-        
+
         // Determine space complexity
         let (space_complexity, has_allocation) = Self::detect_space_complexity(function_body);
         if has_allocation {
             notes.push("Dynamic memory allocation detected".to_string());
         }
-        
+
         ComplexityAnalysisResult {
             time_complexity,
             space_complexity,

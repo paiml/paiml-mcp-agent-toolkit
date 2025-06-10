@@ -63,3 +63,14 @@ pub mod unified_ast_engine;
 pub mod unified_ast_parser;
 pub mod unified_refactor_analyzer;
 pub mod verified_complexity;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mod_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

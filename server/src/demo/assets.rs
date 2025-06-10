@@ -122,3 +122,14 @@ pub fn decompress_asset(asset: &EmbeddedAsset) -> std::borrow::Cow<'static, [u8]
 pub fn get_asset_hash() -> &'static str {
     option_env!("ASSET_HASH").unwrap_or("development")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_assets_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

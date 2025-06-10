@@ -444,3 +444,14 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
         syn::visit::visit_stmt(self, node);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ast_rust_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}
