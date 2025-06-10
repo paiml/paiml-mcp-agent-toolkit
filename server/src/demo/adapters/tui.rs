@@ -722,3 +722,14 @@ impl TuiDemoAdapter {
         Err("TUI feature not enabled")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tui_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

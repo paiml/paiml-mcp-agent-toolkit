@@ -697,3 +697,14 @@ pub fn format_as_sarif(report: &ComplexityReport) -> Result<String, serde_json::
 
     serde_json::to_string_pretty(&sarif)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_complexity_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

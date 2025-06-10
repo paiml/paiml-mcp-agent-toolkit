@@ -161,6 +161,10 @@ no-demo = []
 tui = ["ratatui", "crossterm"]
 # Integration tests feature
 integration-tests = []
+# End-to-end tests feature
+e2e-tests = []
+# Performance tests feature
+perf-tests = []
 syn = ["dep:syn"]
 
 
@@ -180,6 +184,31 @@ harness = false
 [[bench]]
 name = "performance"
 harness = false
+
+[[test]]
+name = "unit_core"
+path = "tests/unit/core.rs"
+required-features = []
+
+[[test]]
+name = "services_integration"
+path = "tests/integration/services.rs"
+required-features = ["integration-tests"]
+
+[[test]]
+name = "protocol_adapters"
+path = "tests/integration/protocols.rs"
+required-features = ["integration-tests"]
+
+[[test]]
+name = "e2e_system"
+path = "tests/e2e/system.rs"
+required-features = ["e2e-tests"]
+
+[[test]]
+name = "performance_regression"
+path = "tests/performance/regression.rs"
+required-features = ["perf-tests"]
 
 [profile.release]
 lto = true

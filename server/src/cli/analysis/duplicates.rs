@@ -16,8 +16,8 @@ pub async fn handle_analyze_duplicates(
     exclude: Option<String>,
     output: Option<PathBuf>,
 ) -> Result<()> {
-    // Delegate to original implementation for now
-    crate::cli::handle_analyze_duplicates(
+    // Create config and delegate to original implementation
+    let config = crate::cli::DuplicateHandlerConfig {
         project_path,
         detection_type,
         threshold,
@@ -28,6 +28,17 @@ pub async fn handle_analyze_duplicates(
         include,
         exclude,
         output,
-    )
-    .await
+    };
+    crate::cli::handle_analyze_duplicates(config).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_duplicates_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
 }

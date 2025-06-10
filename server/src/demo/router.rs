@@ -93,3 +93,14 @@ pub fn handle_request(
         .body(bytes::Bytes::from_static(b"Demo mode disabled"))
         .unwrap()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_router_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

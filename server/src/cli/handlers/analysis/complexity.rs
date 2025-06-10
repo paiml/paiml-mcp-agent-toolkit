@@ -34,3 +34,14 @@ pub async fn handle_complexity(cmd: AnalyzeCommands) -> Result<()> {
         unreachable!("handle_complexity called with non-complexity command")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_complexity_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

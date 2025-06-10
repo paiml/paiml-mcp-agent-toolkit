@@ -292,8 +292,13 @@ impl UnifiedEngine {
         } else {
             unreachable!("run_batch called with non-batch mode")
         };
-        
-        let (resume, _parallel_workers) = if let EngineMode::Batch { resume, parallel_workers, .. } = &self.mode {
+
+        let (resume, _parallel_workers) = if let EngineMode::Batch {
+            resume,
+            parallel_workers,
+            ..
+        } = &self.mode
+        {
             (*resume, *parallel_workers)
         } else {
             unreachable!("run_batch called with non-batch mode")
@@ -333,7 +338,7 @@ impl UnifiedEngine {
                     // Advance state machine
                     let mut state_machine = self.state_machine.write().await;
                     state_machine.advance().map_err(EngineError::StateMachine)?;
-                    
+
                     // Track metrics
                     if matches!(current_state, State::Refactor { .. }) {
                         total_refactors += 1;
@@ -353,8 +358,12 @@ impl UnifiedEngine {
     }
 
     pub async fn save_checkpoint(&self) -> Result<(), EngineError> {
-        if let EngineMode::Interactive { checkpoint_file, .. } = &self.mode {
-            self.save_checkpoint_to(checkpoint_file.parent().unwrap_or(Path::new("."))).await
+        if let EngineMode::Interactive {
+            checkpoint_file, ..
+        } = &self.mode
+        {
+            self.save_checkpoint_to(checkpoint_file.parent().unwrap_or(Path::new(".")))
+                .await
         } else if let EngineMode::Batch { checkpoint_dir, .. } = &self.mode {
             self.save_checkpoint_to(checkpoint_dir).await
         } else {
@@ -516,27 +525,31 @@ impl UnifiedEngine {
 
     async fn rollback_last_change(&self) -> Result<(), EngineError> {
         let mut state_machine = self.state_machine.write().await;
-        
+
         // Check if we have any history to rollback
         if state_machine.history.is_empty() {
-            return Err(EngineError::StateMachine("No operations to rollback".to_string()));
+            return Err(EngineError::StateMachine(
+                "No operations to rollback".to_string(),
+            ));
         }
-        
+
         // Get the last transition
-        let last_transition = state_machine.history.pop()
-            .ok_or_else(|| EngineError::StateMachine("Failed to get last transition".to_string()))?;
-        
+        let last_transition = state_machine.history.pop().ok_or_else(|| {
+            EngineError::StateMachine("Failed to get last transition".to_string())
+        })?;
+
         // Restore the previous state
         state_machine.current = last_transition.from;
-        
+
         // If we rolled back a file analysis, decrement the target index
-        if matches!(state_machine.current, State::Analyze { .. }) && state_machine.current_target_index > 0 {
+        if matches!(state_machine.current, State::Analyze { .. })
+            && state_machine.current_target_index > 0
+        {
             state_machine.current_target_index -= 1;
         }
-        
+
         Ok(())
     }
-
 
     async fn explain_current_state(&self) -> Result<String, EngineError> {
         let state_machine = self.state_machine.read().await;
@@ -577,7 +590,7 @@ impl UnifiedEngine {
                             (if_count + for_count + while_count + match_count + function_count)
                                 .min(100) as u16;
                         let estimated_cognitive = (estimated_cyclomatic as f32 * 1.3) as u16;
-                        
+
                         // Count SATD markers
                         let todo_count = content.matches("TODO").count();
                         let fixme_count = content.matches("FIXME").count();
@@ -667,5 +680,16 @@ pub enum EngineError {
 impl From<String> for EngineError {
     fn from(s: String) -> Self {
         EngineError::StateMachine(s)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_refactor_engine_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
     }
 }

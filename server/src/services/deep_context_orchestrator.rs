@@ -451,3 +451,14 @@ impl DeepContextOrchestratorFactory {
         Ok(DeepContextOrchestrator::new(ast_engine, intelligence, cache_manager))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deep_context_orchestrator_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

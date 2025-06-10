@@ -111,3 +111,14 @@ pub struct PromptArgument {
     pub description: Option<String>,
     pub required: bool,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mcp_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

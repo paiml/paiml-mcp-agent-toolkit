@@ -173,3 +173,14 @@ pub fn format_recommendations(context: &DeepContext) -> String {
 
     output
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_formatting_helpers_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

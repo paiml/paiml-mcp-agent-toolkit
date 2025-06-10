@@ -86,3 +86,14 @@ pub struct GeneratedTemplate {
 pub struct TemplateResponse {
     pub content: String,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_template_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

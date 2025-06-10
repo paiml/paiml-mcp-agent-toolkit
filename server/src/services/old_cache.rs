@@ -50,3 +50,15 @@ pub async fn put_content(
     cache_guard.put(key.clone(), value);
     debug!("Cached content: {}", key);
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_old_cache_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

@@ -27,10 +27,21 @@ pmat analyze dag --target-nodes 25            # Dependency graph
 pmat analyze dead-code --format json          # Dead code detection
 pmat analyze satd --top-files 10              # Technical debt
 pmat analyze deep-context --format json       # Comprehensive analysis
+pmat analyze big-o                            # Big-O complexity analysis
+pmat analyze makefile-lint                    # Makefile quality linting
+pmat analyze proof-annotations                # Provability analysis
+pmat analyze graph-metrics                    # Graph centrality metrics
+pmat analyze name-similarity "function_name"  # Semantic name search
 
 # Project scaffolding
 pmat scaffold rust --templates makefile,readme,gitignore
 pmat list                                      # Available templates
+
+# Refactoring engine
+pmat refactor interactive                      # Interactive refactoring
+pmat refactor serve --config refactor.json     # Batch refactoring
+pmat refactor status                          # Check refactor progress
+pmat refactor resume                          # Resume from checkpoint
 
 # Demo and visualization
 pmat demo --format table                      # CLI demo
@@ -72,6 +83,11 @@ Available MCP tools:
 - `analyze_dead_code` - Dead code detection
 - `analyze_deep_context` - Comprehensive analysis
 - `generate_context` - Zero-config context generation
+- `analyze_big_o` - Big-O complexity analysis with confidence scores
+- `analyze_makefile_lint` - Lint Makefiles with 50+ quality rules
+- `analyze_proof_annotations` - Lightweight formal verification
+- `analyze_graph_metrics` - Graph centrality and PageRank analysis
+- `refactor_interactive` - Interactive refactoring with explanations
 
 ### HTTP API
 
@@ -112,16 +128,19 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 ### Additional Features
 
 - **Code Quality Tools**
-  - `pmat lint-makefile` - Lint Makefiles with actionable feedback
+  - `pmat analyze makefile-lint` - Lint Makefiles with 50+ quality rules
   - `pmat excellence-tracker` - Track code quality metrics over time
-  - `pmat refactor serve` - Real-time refactoring suggestions
-  - `pmat refactor interactive` - Interactive refactoring mode
+  - `pmat refactor serve` - Batch refactoring with checkpoints
+  - `pmat refactor interactive` - Interactive refactoring with explanations
 
 - **Advanced Analysis**
   - `pmat analyze tdg` - Calculate Technical Debt Gradient
-  - `pmat analyze provability` - Lightweight formal verification
+  - `pmat analyze proof-annotations` - Lightweight formal verification
   - `pmat analyze defect-prediction` - ML-based defect prediction
-  - `pmat analyze name-similarity` - Semantic naming analysis
+  - `pmat analyze name-similarity` - Semantic name search with embeddings
+  - `pmat analyze big-o` - Big-O complexity with confidence scores
+  - `pmat analyze graph-metrics` - PageRank and centrality metrics
+  - `pmat analyze incremental-coverage` - Coverage changes since base branch
 
 ## 📊 Output Formats
 
@@ -155,6 +174,26 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 - [MCP Protocol](rust-docs/mcp-protocol.md) 
 - [HTTP API](rust-docs/http-api.md)
 - [Architecture](rust-docs/architecture.md)
+- [Distributed Testing](docs/features/distributed-testing.md)
+
+## 🧪 Testing
+
+The project uses a distributed test architecture for fast feedback:
+
+```bash
+# Run specific test suites
+make test-unit        # <10s - Core logic tests
+make test-services    # <30s - Service integration
+make test-protocols   # <45s - Protocol validation
+make test-e2e         # <120s - Full system tests
+make test-performance # Performance regression
+
+# Run all tests in parallel
+make test-all
+
+# Coverage analysis
+make coverage-stratified
+```
 
 ## 🤝 Contributing
 

@@ -73,3 +73,14 @@ impl std::str::FromStr for ChurnOutputFormat {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_churn_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

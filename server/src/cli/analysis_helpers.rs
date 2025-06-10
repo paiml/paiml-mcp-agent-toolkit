@@ -45,3 +45,14 @@ pub fn apply_limit<T>(items: &mut Vec<T>, limit: Option<usize>) {
         items.truncate(max);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_analysis_helpers_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint check test test-fast coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap overnight-refactor overnight-monitor overnight-swap-cron
+.PHONY: all validate format lint check test test-fast coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap overnight-refactor overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-all coverage-stratified
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -71,55 +71,67 @@ check: check-scripts
 
 # Fast tests without coverage (optimized for speed) - MUST complete under 3 minutes
 test-fast:
-	@echo "⚡ Running fast tests with intelligent parallelism..."
-	@echo "🧹 Clearing swap memory before tests..."
-	@if [ "$${CI:-}" != "true" ] && command -v sudo >/dev/null 2>&1; then \
-		SWAP_USED=$$(free -b | grep Swap | awk '{print $$3}'); \
-		if [ $$SWAP_USED -gt 0 ]; then \
-			echo "🔄 Swap in use: $$(free -h | grep Swap | awk '{print $$3}'), clearing..."; \
-			sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches" 2>/dev/null || true; \
-			sudo swapoff -a && sudo swapon -a 2>/dev/null || true; \
-			echo "✅ Swap cleared"; \
-		else \
-			echo "✅ No swap in use"; \
-		fi; \
-	fi
-	@echo "🚀 Setting SKIP_SLOW_TESTS=1 to ensure tests complete under 3 minutes..."
-	@echo "🧠 Detecting optimal thread count based on system resources..."
-	@AVAILABLE_MEM=$$(free -g | grep Mem | awk '{print $$7}'); \
-	CPU_CORES=$$(nproc); \
+	@echo "⚡ Running fast tests with maximum parallelism..."
+	@echo "🚀 Setting SKIP_SLOW_TESTS=1 to ensure tests complete quickly..."
+	@echo "🧠 Configuring for high-performance testing..."
+	@CPU_CORES=$$(nproc); \
 	if [ "$${CI:-}" = "true" ]; then \
 		echo "🔧 CI environment detected - using full parallelism"; \
 		TEST_THREADS=$$CPU_CORES; \
 	else \
-		echo "📊 System resources: $$CPU_CORES cores, $${AVAILABLE_MEM}GB available memory"; \
-		if [ $$AVAILABLE_MEM -lt 4 ]; then \
-			TEST_THREADS=2; \
-			echo "⚠️  Low memory detected - limiting to 2 threads"; \
-		elif [ $$AVAILABLE_MEM -lt 8 ]; then \
-			TEST_THREADS=$$((CPU_CORES / 3)); \
-			echo "🔧 Medium memory - using $$TEST_THREADS threads (cores/3)"; \
-		elif [ $$CPU_CORES -gt 8 ]; then \
-			TEST_THREADS=$$((CPU_CORES / 2)); \
-			echo "🚀 High core count - using $$TEST_THREADS threads (cores/2)"; \
-		else \
-			TEST_THREADS=$$((CPU_CORES * 2 / 3)); \
-			echo "✅ Normal resources - using $$TEST_THREADS threads (cores*2/3)"; \
-		fi; \
-		TEST_THREADS=$$([ $$TEST_THREADS -lt 1 ] && echo 1 || echo $$TEST_THREADS); \
+		echo "📊 System resources: $$CPU_CORES cores"; \
+		echo "🚀 Using all $$CPU_CORES cores for maximum performance"; \
+		TEST_THREADS=$$CPU_CORES; \
 	fi; \
 	echo "🔨 Running tests with $$TEST_THREADS threads..."; \
-	if [ "$${CI:-}" = "true" ]; then \
-		echo "🔧 Running CI-optimized test suite (excluding slow integration tests)..."; \
-		SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$TEST_THREADS cargo nextest run --profile fast --workspace \
-			--filter-expr 'not test(slow_integration)' || \
-		SKIP_SLOW_TESTS=1 cargo test --release --workspace --exclude slow_integration; \
+	if command -v cargo-nextest >/dev/null 2>&1; then \
+		echo "⚡ Using cargo-nextest for faster test execution..."; \
+		timeout 180 bash -c "SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$TEST_THREADS cargo nextest run --profile fast --workspace --filter-expr 'not test(slow_integration)'" || \
+		(echo "⚠️  Nextest failed or timed out, falling back to cargo test..."; \
+		timeout 180 bash -c "SKIP_SLOW_TESTS=1 cargo test --release --workspace -- --test-threads=$$TEST_THREADS"); \
 	else \
-		SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$TEST_THREADS cargo nextest run --profile fast --workspace \
-			--filter-expr 'not test(slow_integration)' || \
-		SKIP_SLOW_TESTS=1 cargo test --release --workspace --exclude slow_integration -- --test-threads=$$TEST_THREADS; \
+		echo "📦 Using standard cargo test..."; \
+		timeout 180 bash -c "SKIP_SLOW_TESTS=1 cargo test --release --workspace -- --test-threads=$$TEST_THREADS"; \
 	fi
 	@echo "✅ Fast tests completed under 3 minutes!"
+
+# Stratified test targets for distributed test architecture
+test-unit:
+	@echo "🚀 Running unit tests (<10s feedback)..."
+	@cd server && cargo test --test unit_core -- --test-threads=$$(nproc)
+	@echo "✅ Unit tests completed!"
+
+test-services:
+	@echo "🔧 Running service integration tests (<30s)..."
+	@cd server && cargo test --test services_integration --features integration-tests -- --test-threads=4
+	@echo "✅ Service tests completed!"
+
+test-protocols:
+	@echo "🌐 Running protocol adapter tests (<45s)..."
+	@cd server && cargo test --test protocol_adapters --features integration-tests -- --test-threads=2
+	@echo "✅ Protocol tests completed!"
+
+test-e2e:
+	@echo "🎯 Running end-to-end system tests (<120s)..."
+	@cd server && cargo test --test e2e_system --features e2e-tests -- --test-threads=1
+	@echo "✅ E2E tests completed!"
+
+test-performance:
+	@echo "📊 Running performance regression tests..."
+	@cd server && cargo test --test performance_regression --features perf-tests -- --test-threads=1
+	@echo "✅ Performance tests completed!"
+
+# Run all stratified tests in parallel
+test-all: 
+	@echo "🔄 Running all stratified tests in parallel..."
+	@$(MAKE) -j4 test-unit test-services test-protocols test-e2e
+	@echo "✅ All stratified tests completed!"
+
+# Coverage for stratified tests
+coverage-stratified:
+	@echo "📊 Running stratified test coverage..."
+	@./scripts/test-coverage.sh
+	@echo "✅ Stratified coverage completed!"
 
 # Slow integration tests (run separately, not part of fast coverage)
 test-slow-integration:
@@ -139,18 +151,7 @@ test-safe:
 # Run tests - ALWAYS FAST (zero tolerance for slow tests) with coverage summary
 test:
 	@echo "🧪 Running fast tests with coverage..."
-	@echo "🧹 Clearing swap memory before tests..."
-	@if [ "$${CI:-}" != "true" ] && command -v sudo >/dev/null 2>&1; then \
-		SWAP_USED=$$(free -b | grep Swap | awk '{print $$3}'); \
-		if [ $$SWAP_USED -gt 0 ]; then \
-			echo "🔄 Swap in use: $$(free -h | grep Swap | awk '{print $$3}'), clearing..."; \
-			sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches" 2>/dev/null || true; \
-			sudo swapoff -a && sudo swapon -a 2>/dev/null || true; \
-			echo "✅ Swap cleared"; \
-		else \
-			echo "✅ No swap in use"; \
-		fi; \
-	fi
+	@echo "🚀 Using maximum parallelism for coverage tests..."
 	@cd server && SKIP_SLOW_TESTS=1 cargo llvm-cov test \
 		--lib --bins \
 		--no-fail-fast \
@@ -980,6 +981,15 @@ help:
 	@echo "  release      - Build optimized release binary (workspace-wide)"
 	@echo "  clean        - Clean all build artifacts"
 	@echo "  clear-swap   - Clear swap memory (useful between test runs)"
+	@echo ""
+	@echo "Distributed Testing (stratified architecture):"
+	@echo "  test-unit     - Run unit tests (<10s feedback)"
+	@echo "  test-services - Run service integration tests (<30s)"
+	@echo "  test-protocols - Run protocol adapter tests (<45s)"
+	@echo "  test-e2e      - Run end-to-end system tests (<120s)"
+	@echo "  test-performance - Run performance regression tests"
+	@echo "  test-all      - Run all stratified tests in parallel"
+	@echo "  coverage-stratified - Generate coverage for distributed tests"
 	@echo ""
 	@echo "Documentation:"
 	@echo "  dogfood      - Update README.md with current project metrics"

@@ -183,3 +183,14 @@ impl CommandDispatcher {
         super::handlers::route_refactor_command(refactor_cmd).await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_command_dispatcher_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

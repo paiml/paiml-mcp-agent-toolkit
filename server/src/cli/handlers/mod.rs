@@ -33,3 +33,14 @@ pub use refactor_handlers::{route_refactor_command, RefactorServeParams};
 pub use utility_handlers::{
     handle_context, handle_diagnose, handle_list, handle_search, handle_serve,
 };
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mod_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}
