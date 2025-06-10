@@ -1,16 +1,14 @@
 [build]
-incremental = true
-rustflags = [
-    "-C", "link-arg=-s",       # Strip symbols during linking
-]
+# Use all available cores
+jobs = 16
 
 [target.x86_64-unknown-linux-gnu]
-rustflags = [
-    "-C", "link-arg=-Wl,--gc-sections",  # Remove unused sections
-    "-C", "link-arg=-Wl,--strip-all",    # Strip all symbols
-]
+# Use lld linker for faster linking
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
-[profile.test]
-incremental = true
-opt-level = 0
-debug = 1  # Reduce debug info for faster compilation
+[profile.release]
+# Optimize for build speed while keeping good runtime performance
+opt-level = 2
+lto = "thin"
+codegen-units = 16
