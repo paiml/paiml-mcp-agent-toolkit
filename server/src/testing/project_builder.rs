@@ -36,8 +36,8 @@ impl ProjectBuilder {
         
         Ok(Self {
             temp_dir,
-            files: HashMap::new(),
-            directories: Vec::new(),
+            files: HashMap::with_capacity(64),
+            directories: Vec::with_capacity(256),
             init_git: false,
             package_json: None,
             cargo_toml: None,

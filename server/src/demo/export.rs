@@ -83,7 +83,7 @@ pub struct MarkdownExporter;
 
 impl Exporter for MarkdownExporter {
     fn export(&self, report: &ExportReport) -> Result<String> {
-        let mut output = String::new();
+        let mut output = String::with_capacity(1024);
 
         // Header
         output.push_str(&format!(

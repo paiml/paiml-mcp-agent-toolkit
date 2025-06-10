@@ -89,7 +89,7 @@ impl TestHarness {
 
         // Test all protocols
         let protocols = [Protocol::Mcp, Protocol::Http, Protocol::Cli];
-        let mut responses = HashMap::new();
+        let mut responses = HashMap::with_capacity(64);
 
         for protocol in &protocols {
             match self.test_protocol(protocol, method, path, &body).await {
@@ -200,7 +200,7 @@ impl TestHarness {
 
         // For error cases, we expect all protocols to fail consistently
         let protocols = [Protocol::Mcp, Protocol::Http, Protocol::Cli];
-        let mut error_responses = HashMap::new();
+        let mut error_responses = HashMap::with_capacity(64);
 
         for protocol in &protocols {
             match self

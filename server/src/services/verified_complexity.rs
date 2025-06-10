@@ -55,6 +55,7 @@ impl VerifiedComplexityAnalyzer {
     }
 
     /// Calculate all complexity metrics for a function
+#[inline]
     pub fn analyze_function(&mut self, node: &UnifiedAstNode) -> ComplexityMetrics {
         debug_assert!(
             matches!(node.kind, AstKind::Function(_)),

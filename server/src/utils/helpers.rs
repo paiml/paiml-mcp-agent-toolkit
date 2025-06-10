@@ -89,7 +89,7 @@ pub fn current_date_helper(
 
 // Case conversion utilities
 fn to_snake_case(s: &str) -> String {
-    let mut result = String::new();
+    let mut result = String::with_capacity(1024);
     let mut prev_is_upper = false;
 
     for (i, ch) in s.chars().enumerate() {
@@ -113,7 +113,7 @@ fn to_pascal_case(s: &str) -> String {
         .map(|s| {
             let mut chars = s.chars();
             match chars.next() {
-                None => String::new(),
+                None => String::with_capacity(1024),
                 Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
             }
         })

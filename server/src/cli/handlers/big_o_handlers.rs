@@ -108,7 +108,7 @@ pub async fn handle_analyze_big_o(
 
 /// Format Big-O report as summary
 fn format_big_o_summary(report: &crate::services::big_o_analyzer::BigOAnalysisReport) -> String {
-    let mut output = String::new();
+    let mut output = String::with_capacity(1024);
 
     output.push_str("Big-O Complexity Analysis Summary\n");
     output.push_str("=================================\n\n");

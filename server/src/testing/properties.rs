@@ -73,7 +73,7 @@ fn prop_cache_get_put_coherence(key: String, value: String) -> TestResult {
     }
     
     // Test with in-memory cache simulation
-    let mut cache = HashMap::new();
+    let mut cache = HashMap::with_capacity(64);
     cache.insert(key.clone(), value.clone());
     
     let retrieved = cache.get(&key);
@@ -86,7 +86,7 @@ fn prop_cache_invalidation_consistency(keys: Vec<String>) -> TestResult {
         return TestResult::discard();
     }
     
-    let mut cache = HashMap::new();
+    let mut cache = HashMap::with_capacity(64);
     
     // Populate cache
     for (i, key) in keys.iter().enumerate() {
@@ -164,7 +164,7 @@ fn prop_concurrent_ast_analysis_safety(nodes: Vec<UnifiedAstNode>) -> TestResult
     use std::sync::{Arc, Mutex};
     use std::thread;
     
-    let shared_results = Arc::new(Mutex::new(Vec::new()));
+    let shared_results = Arc::new(Mutex::new(Vec::with_capacity(256)));
     let mut handles = vec![];
     
     for node in nodes {
@@ -197,7 +197,7 @@ fn prop_cache_concurrent_access_safety(operations: Vec<(String, String)>) -> Tes
     use std::sync::{Arc, RwLock};
     use std::thread;
     
-    let cache = Arc::new(RwLock::new(HashMap::new()));
+    let cache = Arc::new(RwLock::new(HashMap::with_capacity(64)));
     let mut handles = vec![];
     
     for (key, value) in operations {
@@ -244,7 +244,7 @@ fn prop_symbol_table_consistency(symbols: Vec<Symbol>) -> TestResult {
         return TestResult::discard();
     }
     
-    let mut symbol_table = HashMap::new();
+    let mut symbol_table = HashMap::with_capacity(64);
     
     for symbol in &symbols {
         symbol_table.insert(symbol.name.clone(), symbol.clone());
@@ -396,7 +396,7 @@ mod tests {
     
     #[test]
     fn test_invariant_properties() {
-        let graph = DependencyGraph { nodes: std::collections::HashMap::new(), edges: vec![] };
+        let graph = DependencyGraph { nodes: std::collections::HashMap::with_capacity(64), edges: vec![] };
         assert!(!prop_dag_acyclic_invariant(graph));
         
         let node = UnifiedAstNode {

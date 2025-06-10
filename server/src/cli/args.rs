@@ -2,6 +2,7 @@ use crate::models::template::ParameterSpec;
 use serde_json::Value;
 
 /// Shared parameter validation logic
+#[inline]
 pub fn validate_params(
     specs: &[ParameterSpec],
     provided: &serde_json::Map<String, Value>,
@@ -72,6 +73,7 @@ pub fn expand_env_vars(template: &str) -> String {
     .to_string()
 }
 
+#[inline]
 /// Zero-allocation parameter parsing for common types
 pub fn parse_key_val(s: &str) -> Result<(String, Value), String> {
     let pos = s

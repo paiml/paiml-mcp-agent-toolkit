@@ -157,7 +157,7 @@ impl AstParserRegistry {
     /// Create a new registry
     pub fn new() -> Self {
         Self {
-            parsers: Vec::new(),
+            parsers: Vec::with_capacity(256),
         }
     }
 
@@ -175,6 +175,7 @@ impl AstParserRegistry {
     }
 
     /// Get all registered parsers
+#[inline]
     pub fn parsers(&self) -> &[Arc<dyn UnifiedAstParser>] {
         &self.parsers
     }
