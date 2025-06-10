@@ -87,9 +87,10 @@ impl SimdValidator {
     }
 
     /// Validate SIMD operation metrics
+#[inline]
     pub fn validate(&self, metrics: &SimdMetrics) -> ValidationResult {
-        let mut errors = Vec::new();
-        let mut warnings = Vec::new();
+        let mut errors = Vec::with_capacity(256);
+        let mut warnings = Vec::with_capacity(256);
 
         // Check utilization
         if metrics.utilization < self.min_utilization {
@@ -145,6 +146,7 @@ impl SimdValidator {
         }
     }
 
+#[inline]
     /// Validate vectorized hash computation
     pub fn validate_vectorized_hash(
         &self,
@@ -154,6 +156,7 @@ impl SimdValidator {
         let metrics = self.compute_hash_metrics(input_data, expected_hash)?;
         Ok(self.validate(&metrics))
     }
+#[inline]
 
     /// Validate vectorized similarity computation
     pub fn validate_vectorized_similarity(
@@ -163,6 +166,7 @@ impl SimdValidator {
     ) -> Result<ValidationResult, PmatError> {
         let metrics = self.compute_similarity_metrics(vectors, expected_similarities)?;
         Ok(self.validate(&metrics))
+#[inline]
     }
 
     /// Validate vectorized duplicate detection
@@ -289,7 +293,7 @@ impl SimdValidator {
 
     fn simd_similarities(&self, vectors: &[Vec<f32>]) -> Vec<f32> {
         // Mock implementation - in reality would use SIMD dot product
-        let mut similarities = Vec::new();
+        let mut similarities = Vec::with_capacity(256);
         
         for i in 0..vectors.len() {
             for j in i + 1..vectors.len() {
@@ -442,7 +446,7 @@ impl SimdBenchmark {
 
     fn simd_similarities_mock(vectors: &[Vec<f32>]) -> Vec<f32> {
         // Mock SIMD implementation
-        let mut similarities = Vec::new();
+        let mut similarities = Vec::with_capacity(256);
         for i in 0..vectors.len() {
             for j in i + 1..vectors.len() {
                 similarities.push(0.5); // Mock similarity
@@ -453,7 +457,7 @@ impl SimdBenchmark {
 
     fn scalar_similarities_mock(vectors: &[Vec<f32>]) -> Vec<f32> {
         // Mock scalar implementation (same logic, simulating slower execution)
-        let mut similarities = Vec::new();
+        let mut similarities = Vec::with_capacity(256);
         for i in 0..vectors.len() {
             for j in i + 1..vectors.len() {
                 // Simulate more work for scalar version

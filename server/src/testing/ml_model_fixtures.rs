@@ -168,8 +168,8 @@ impl MlModelFixture {
     pub fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
-            input_features: Vec::new(),
-            expected_predictions: Vec::new(),
+            input_features: Vec::with_capacity(256),
+            expected_predictions: Vec::with_capacity(256),
             performance_metrics: ModelMetrics::default(),
             config: TestConfig::default(),
         }
@@ -199,6 +199,7 @@ impl MlModelFixture {
     }
 
     /// Validate model predictions against expected results
+#[inline]
     pub fn validate_predictions(
         &self,
         actual_predictions: &[Prediction],
@@ -214,7 +215,7 @@ impl MlModelFixture {
             });
         }
 
-        let mut errors = Vec::new();
+        let mut errors = Vec::with_capacity(256);
         let mut total_error = 0.0;
         let mut confidence_sum = 0.0;
 
@@ -498,7 +499,7 @@ impl BatchModelTester {
     /// Create a new batch tester
     pub fn new() -> Self {
         Self {
-            fixtures: Vec::new(),
+            fixtures: Vec::with_capacity(256),
         }
     }
 
@@ -519,7 +520,7 @@ impl BatchModelTester {
     where
         F: Fn(&[FeatureVector]) -> Result<Vec<Prediction>, PmatError>,
     {
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(256);
 
         for fixture in &self.fixtures {
             let predictions = match model_fn(&fixture.input_features) {
@@ -669,7 +670,7 @@ mod tests {
         
         // Mock model function that returns exact expected predictions
         let mock_model = |features: &[FeatureVector]| -> Result<Vec<Prediction>, PmatError> {
-            let mut predictions = Vec::new();
+            let mut predictions = Vec::with_capacity(256);
             
             for (i, _) in features.iter().enumerate() {
                 let prediction = if i == 0 {
@@ -678,7 +679,7 @@ mod tests {
                         file_path: PathBuf::from("src/high_risk_module.rs"),
                         defect_probability: 0.85,
                         confidence: 0.92,
-                        feature_importance: HashMap::new(),
+                        feature_importance: HashMap::with_capacity(64),
                         risk_category: RiskCategory::High,
                     }
                 } else {
@@ -687,7 +688,7 @@ mod tests {
                         file_path: PathBuf::from("src/low_risk_module.rs"),
                         defect_probability: 0.15,
                         confidence: 0.88,
-                        feature_importance: HashMap::new(),
+                        feature_importance: HashMap::with_capacity(64),
                         risk_category: RiskCategory::Low,
                     }
                 };

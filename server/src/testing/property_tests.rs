@@ -22,7 +22,7 @@ pub struct UnifiedAstParserProperties {
 impl UnifiedAstParserProperties {
     /// Create new property tester with registered parsers
     pub fn new() -> Self {
-        let mut parsers: HashMap<Language, Box<dyn UnifiedAstParser>> = HashMap::new();
+        let mut parsers: HashMap<Language, Box<dyn UnifiedAstParser>> = HashMap::with_capacity(64);
         
         // Register available parsers
         parsers.insert(

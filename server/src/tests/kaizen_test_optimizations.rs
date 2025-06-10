@@ -87,7 +87,7 @@ impl TestMetrics {
 
     /// Generate Kaizen improvement report
     pub fn generate_kaizen_report(&self) -> String {
-        let mut report = String::new();
+        let mut report = String::with_capacity(1024);
         report.push_str("# Kaizen Test Performance Report\n\n");
 
         report.push_str("## Test Suite Health\n");

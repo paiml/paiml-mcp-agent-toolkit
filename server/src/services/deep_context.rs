@@ -585,7 +585,7 @@ impl DeepContextAnalyzer {
         &self,
         context: &DeepContext,
     ) -> anyhow::Result<String> {
-        let mut output = String::new();
+        let mut output = String::with_capacity(1024);
         output.push_str("# Deep Context Analysis Report\n\n");
 
         self.append_project_overview(&mut output, &context.project_overview)?;
@@ -752,7 +752,7 @@ impl DeepContextAnalyzer {
         &self,
         context: &DeepContext,
     ) -> anyhow::Result<String> {
-        let mut output = String::new();
+        let mut output = String::with_capacity(1024);
 
         // Step 1: Format header and metadata
         self.format_legacy_header(&mut output, context)?;
@@ -1483,7 +1483,7 @@ impl DeepContextAnalyzer {
 
         for struct_item in structs.iter().take(5) {
             let derives_str = if struct_item.derives.is_empty() {
-                String::new()
+                String::with_capacity(1024)
             } else {
                 format!(" (derives: {})", struct_item.derives.join(", "))
             };
@@ -3864,10 +3864,10 @@ fn extract_function_name(line: &str) -> String {
         if let Some(paren_pos) = after_fn.find('(') {
             after_fn[..paren_pos].trim().to_string()
         } else {
-            String::new()
+            String::with_capacity(1024)
         }
     } else {
-        String::new()
+        String::with_capacity(1024)
     }
 }
 
@@ -3880,7 +3880,7 @@ fn extract_struct_name(line: &str) -> String {
             .unwrap_or("")
             .to_string()
     } else {
-        String::new()
+        String::with_capacity(1024)
     }
 }
 
@@ -3890,10 +3890,10 @@ fn extract_js_function_name(line: &str) -> String {
         if let Some(paren_pos) = after_fn.find('(') {
             after_fn[..paren_pos].trim().to_string()
         } else {
-            String::new()
+            String::with_capacity(1024)
         }
     } else {
-        String::new()
+        String::with_capacity(1024)
     }
 }
 
@@ -3906,7 +3906,7 @@ fn extract_class_name(line: &str) -> String {
             .unwrap_or("")
             .to_string()
     } else {
-        String::new()
+        String::with_capacity(1024)
     }
 }
 
@@ -3916,10 +3916,10 @@ fn extract_python_function_name(line: &str) -> String {
         if let Some(paren_pos) = after_def.find('(') {
             after_def[..paren_pos].trim().to_string()
         } else {
-            String::new()
+            String::with_capacity(1024)
         }
     } else {
-        String::new()
+        String::with_capacity(1024)
     }
 }
 
@@ -3942,7 +3942,7 @@ fn extract_python_class_name(line: &str) -> String {
                 .to_string()
         }
     } else {
-        String::new()
+        String::with_capacity(1024)
     }
 }
 

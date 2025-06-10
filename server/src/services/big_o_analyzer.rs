@@ -496,7 +496,7 @@ impl BigOAnalyzer {
 
     /// Format report as Markdown
     pub fn format_as_markdown(&self, report: &BigOAnalysisReport) -> String {
-        let mut md = String::new();
+        let mut md = String::with_capacity(1024);
 
         md.push_str("# Big-O Complexity Analysis Report\n\n");
 

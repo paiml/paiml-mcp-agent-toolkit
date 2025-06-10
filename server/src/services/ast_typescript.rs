@@ -53,6 +53,7 @@ impl TypeScriptParser {
         }
     }
 
+#[inline]
     pub fn parse_file(&mut self, path: &Path, content: &str) -> Result<AstDag> {
         #[cfg(feature = "typescript-ast")]
         {

@@ -557,7 +557,7 @@ pub(crate) fn serve_dag_mermaid(state: &Arc<RwLock<DemoState>>) -> Response<Byte
                 tdg_summary.average_tdg
             )
         } else {
-            String::new()
+            String::with_capacity(1024)
         };
 
         diagram = format!(

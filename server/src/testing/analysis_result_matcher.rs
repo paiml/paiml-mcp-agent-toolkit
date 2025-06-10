@@ -142,14 +142,14 @@ impl AnalysisResultMatcher {
     /// Create a new analysis result matcher
     pub fn new() -> Self {
         Self {
-            complexity_expectations: HashMap::new(),
-            dead_code_expectations: Vec::new(),
-            duplicate_expectations: Vec::new(),
-            defect_expectations: Vec::new(),
-            graph_expectations: HashMap::new(),
+            complexity_expectations: HashMap::with_capacity(64),
+            dead_code_expectations: Vec::with_capacity(256),
+            duplicate_expectations: Vec::with_capacity(256),
+            defect_expectations: Vec::with_capacity(256),
+            graph_expectations: HashMap::with_capacity(64),
             simd_expectations: None,
             ml_expectations: None,
-            json_path_expectations: Vec::new(),
+            json_path_expectations: Vec::with_capacity(256),
             performance_thresholds: PerformanceThresholds::default(),
         }
     }
@@ -224,7 +224,7 @@ impl AnalysisResultMatcher {
 
     /// Assert that a JSON result matches all expectations
     pub fn assert_json(&self, result: &Value) -> Result<(), AssertionError> {
-        let mut errors = Vec::new();
+        let mut errors = Vec::with_capacity(256);
 
         // Check complexity expectations
         for (key, expectation) in &self.complexity_expectations {

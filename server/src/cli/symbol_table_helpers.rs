@@ -120,7 +120,7 @@ pub fn extract_symbols_from_context(
 
 /// Count symbols by type
 pub fn count_by_type(symbols: &[SymbolInfo]) -> std::collections::HashMap<String, usize> {
-    let mut counts = std::collections::HashMap::new();
+    let mut counts = std::collections::HashMap::with_capacity(64);
     for symbol in symbols {
         *counts.entry(symbol.kind.clone()).or_insert(0) += 1;
     }
@@ -129,7 +129,7 @@ pub fn count_by_type(symbols: &[SymbolInfo]) -> std::collections::HashMap<String
 
 /// Count symbols by visibility
 pub fn count_by_visibility(symbols: &[SymbolInfo]) -> std::collections::HashMap<String, usize> {
-    let mut counts = std::collections::HashMap::new();
+    let mut counts = std::collections::HashMap::with_capacity(64);
     for symbol in symbols {
         *counts.entry(symbol.visibility.clone()).or_insert(0) += 1;
     }
@@ -138,7 +138,7 @@ pub fn count_by_visibility(symbols: &[SymbolInfo]) -> std::collections::HashMap<
 
 /// Format symbol table summary
 pub fn format_symbol_table_summary(symbols: &[SymbolInfo], deep_context: &DeepContext) -> String {
-    let mut output = String::new();
+    let mut output = String::with_capacity(1024);
 
     output.push_str("Symbol Table Summary\n");
     output.push_str("===================\n\n");
@@ -163,7 +163,7 @@ pub fn format_symbol_table_summary(symbols: &[SymbolInfo], deep_context: &DeepCo
 
     output.push_str("\nTop 10 most referenced files:\n");
     let mut file_counts: std::collections::HashMap<PathBuf, usize> =
-        std::collections::HashMap::new();
+        std::collections::HashMap::with_capacity(64);
     for symbol in symbols {
         *file_counts.entry(symbol.file.clone()).or_insert(0) += 1;
     }
@@ -183,14 +183,14 @@ pub fn format_symbol_table_summary(symbols: &[SymbolInfo], deep_context: &DeepCo
 
 /// Format symbol table detailed output
 pub fn format_symbol_table_detailed(symbols: &[SymbolInfo]) -> String {
-    let mut output = String::new();
+    let mut output = String::with_capacity(1024);
 
     output.push_str("Symbol Table\n");
     output.push_str("============\n\n");
 
     // Group by file
     let mut symbols_by_file: std::collections::HashMap<PathBuf, Vec<&SymbolInfo>> =
-        std::collections::HashMap::new();
+        std::collections::HashMap::with_capacity(64);
     for symbol in symbols {
         symbols_by_file
             .entry(symbol.file.clone())
@@ -220,7 +220,7 @@ pub fn format_symbol_table_detailed(symbols: &[SymbolInfo]) -> String {
 
 /// Format symbol table as CSV
 pub fn format_symbol_table_csv(symbols: &[SymbolInfo]) -> String {
-    let mut output = String::new();
+    let mut output = String::with_capacity(1024);
 
     output.push_str("name,kind,file,line,visibility,is_async\n");
 

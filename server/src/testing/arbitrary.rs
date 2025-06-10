@@ -23,7 +23,7 @@ impl Arbitrary for UnifiedAstNode {
             name_vector: u64::arbitrary(g),
             metadata: NodeMetadata { raw: 0 },
             proof_annotations: if g.gen_bool(0.1) {
-                Some(Vec::new()) // Simple case for now
+                Some(Vec::with_capacity(256)) // Simple case for now
             } else {
                 None
             },

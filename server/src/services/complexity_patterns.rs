@@ -248,6 +248,7 @@ impl ComplexityPatternMatcher {
     }
 
     /// Analyze recursive patterns
+#[inline]
     pub fn analyze_recursion(&self, ast: &UnifiedAstNode) -> Option<RecurrenceRelation> {
         if !self.is_recursive_function(ast) {
             return None;
@@ -290,6 +291,7 @@ impl ComplexityPatternMatcher {
         ComplexityBound::linear() // Placeholder
     }
 
+#[inline]
     /// Analyze loop complexity
     pub fn analyze_loop_complexity(&self, ast: &UnifiedAstNode) -> ComplexityBound {
         let loop_depth = self.count_loop_depth(ast);
