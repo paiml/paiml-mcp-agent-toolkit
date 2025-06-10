@@ -257,7 +257,7 @@ async fn run_big_o_analysis(_project_path: &Path) -> Result<BigOAnalysis> {
     use std::collections::HashMap;
 
     // In a real implementation, this would call the actual Big-O analyzer
-    let mut distribution = HashMap::new();
+    let mut distribution = HashMap::with_capacity(64);
     distribution.insert("O(1)".to_string(), 50);
     distribution.insert("O(n)".to_string(), 30);
     distribution.insert("O(n²)".to_string(), 5);

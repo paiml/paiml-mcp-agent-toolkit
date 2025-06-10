@@ -217,6 +217,7 @@ impl DeadCodeAnalyzer {
     }
 
     /// Perform complete dead code analysis
+#[inline]
     pub fn analyze(&mut self, dag: &AstDag) -> DeadCodeReport {
         // Phase 1: Build reference graph from AST
         self.build_reference_graph(dag);
@@ -231,6 +232,7 @@ impl DeadCodeAnalyzer {
         self.classify_dead_code(dag)
     }
 
+#[inline]
     /// Perform dead code analysis on a dependency graph
     pub fn analyze_dependency_graph(&mut self, dag: &DependencyGraph) -> DeadCodeReport {
         // Phase 1: Build reference graph from dependency graph

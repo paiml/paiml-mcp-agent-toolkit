@@ -70,7 +70,7 @@ impl DemoRunner {
         let progress_handle = {
             let cloner = cloner.clone();
             tokio::spawn(async move {
-                let mut last_stage = String::new();
+                let mut last_stage = String::with_capacity(1024);
                 loop {
                     sleep(Duration::from_millis(500)).await;
                     let progress = cloner.get_progress().await;
@@ -258,7 +258,7 @@ impl DemoRunner {
     }
 
     fn render_system_mermaid(&self, _components: &HashMap<String, Component>) -> Result<String> {
-        let mut output = String::new();
+        let mut output = String::with_capacity(1024);
         output.push_str("graph TD\n");
 
         // Add nodes and connections based on target diagram
@@ -973,7 +973,7 @@ fn read_repository_path_from_user() -> Result<PathBuf> {
     eprint!("Enter path to a git repository (or press Enter to cancel): ");
     io::stdout().flush()?;
 
-    let mut input = String::new();
+    let mut input = String::with_capacity(1024);
     io::stdin()
         .read_line(&mut input)
         .map_err(|e| anyhow!("Failed to read user input: {}", e))?;

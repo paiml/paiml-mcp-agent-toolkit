@@ -77,7 +77,7 @@ impl E2eTestBuilder {
             project_builder: None,
             result_matcher: AnalysisResultMatcher::new(),
             simd_validator: None,
-            ml_fixtures: Vec::new(),
+            ml_fixtures: Vec::with_capacity(256),
             config: E2eTestConfig::default(),
         }
     }
@@ -166,11 +166,12 @@ pub struct ComplexStruct {
 impl ComplexStruct {
     pub fn new() -> Self {
         Self {
-            data: Vec::new(),
-            metadata: std::collections::HashMap::new(),
+            data: Vec::with_capacity(256),
+            metadata: std::collections::HashMap::with_capacity(64),
         }
     }
     
+#[inline]
     pub fn process(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         for (index, value) in self.data.iter().enumerate() {
             if *value > 0 {
@@ -328,15 +329,16 @@ pub struct CodeAnalyzer {
 
 impl CodeAnalyzer {
     pub fn new() -> Self {
-        let mut thresholds = HashMap::new();
+        let mut thresholds = HashMap::with_capacity(64);
         thresholds.insert("complexity".to_string(), 10.0);
         thresholds.insert("duplication".to_string(), 0.1);
         
         Self {
-            metrics: HashMap::new(),
+            metrics: HashMap::with_capacity(64),
             thresholds,
         }
     }
+#[inline]
 
     pub fn analyze_file(&mut self, path: &str, content: &str) -> Result<(), Box<dyn std::error::Error>> {
         let complexity = self.calculate_complexity(content);
@@ -505,7 +507,7 @@ mod tests {
         let analysis_json = serde_json::to_value(&analysis_result)
             .map_err(|e| PmatError::SerializationError(e.to_string()))?;
 
-        let mut errors = Vec::new();
+        let mut errors = Vec::with_capacity(256);
 
         // Validate analysis results
         if let Err(e) = self.result_matcher.assert_json(&analysis_json) {
@@ -525,8 +527,8 @@ mod tests {
             // Mock SIMD validation - in real implementation would measure actual SIMD usage
             Some(super::ValidationResult {
                 passed: true,
-                errors: Vec::new(),
-                warnings: Vec::new(),
+                errors: Vec::with_capacity(256),
+                warnings: Vec::with_capacity(256),
                 metrics: super::SimdMetrics {
                     utilization: 0.85,
                     operations_count: 1000,
@@ -546,14 +548,14 @@ mod tests {
             self.ml_fixtures.iter().map(|fixture| {
                 (fixture.name.clone(), super::ml_model_fixtures::ValidationResult {
                     passed: true,
-                    errors: Vec::new(),
+                    errors: Vec::with_capacity(256),
                     mean_prediction_error: 0.05,
                     mean_confidence: 0.85,
                     model_metrics: fixture.performance_metrics.clone(),
                 })
             }).collect()
         } else {
-            Vec::new()
+            Vec::with_capacity(256)
         };
 
         // Cleanup if requested
@@ -599,7 +601,7 @@ impl E2eBatchRunner {
     /// Create a new batch runner
     pub fn new() -> Self {
         Self {
-            tests: Vec::new(),
+            tests: Vec::with_capacity(256),
             parallel: false,
         }
     }
@@ -631,7 +633,7 @@ impl E2eBatchRunner {
             results
         } else {
             // Run tests sequentially
-            let mut results = Vec::new();
+            let mut results = Vec::with_capacity(256);
             for test in self.tests {
                 results.push(test.execute().await);
             }

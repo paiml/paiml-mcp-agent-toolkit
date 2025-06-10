@@ -9,6 +9,7 @@ use tracing::info;
 pub struct GitAnalysisService;
 
 impl GitAnalysisService {
+#[inline]
     pub fn analyze_code_churn(
         project_path: &Path,
         period_days: u32,
@@ -62,7 +63,7 @@ impl GitAnalysisService {
         }
 
         let log_output = String::from_utf8_lossy(&output.stdout);
-        let mut file_stats: HashMap<PathBuf, FileStats> = HashMap::new();
+        let mut file_stats: HashMap<PathBuf, FileStats> = HashMap::with_capacity(64);
         let mut current_commit: Option<CommitInfo> = None;
 
         for line in log_output.lines() {
@@ -77,7 +78,7 @@ impl GitAnalysisService {
                     let path = PathBuf::from(&file_path);
                     let stats = file_stats.entry(path.clone()).or_insert_with(|| FileStats {
                         commits: Vec::new(),
-                        authors: HashSet::new(),
+                        authors: HashSet::with_capacity(64),
                         total_additions: 0,
                         total_deletions: 0,
                         first_seen: commit.date.clone(),
@@ -164,7 +165,7 @@ impl GitAnalysisService {
     }
 
     fn generate_summary(files: &[FileChurnMetrics]) -> ChurnSummary {
-        let mut author_contributions: HashMap<String, usize> = HashMap::new();
+        let mut author_contributions: HashMap<String, usize> = HashMap::with_capacity(64);
         let mut total_commits = 0;
 
         for file in files {

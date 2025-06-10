@@ -50,7 +50,7 @@ impl VectorizedOperationVerifier {
 
     /// Verify all vectorized operations in the codebase
     pub fn verify_all_operations(&self) -> Result<Vec<VectorizedVerificationResult>, PmatError> {
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(256);
 
         // Verify mathematical operations
         results.extend(self.verify_mathematical_operations()?);
@@ -69,7 +69,7 @@ impl VectorizedOperationVerifier {
 
     /// Verify mathematical operations for correctness
     fn verify_mathematical_operations(&self) -> Result<Vec<VectorizedVerificationResult>, PmatError> {
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(256);
 
         // Test cosine similarity
         results.push(self.verify_cosine_similarity()?);
@@ -101,7 +101,7 @@ impl VectorizedOperationVerifier {
         ];
 
         let mut max_error = 0.0;
-        let mut errors = Vec::new();
+        let mut errors = Vec::with_capacity(256);
 
         for (i, (a, b)) in test_cases.iter().enumerate() {
             let scalar_result = self.cosine_similarity_scalar(a, b);
@@ -149,7 +149,7 @@ impl VectorizedOperationVerifier {
         ];
 
         let mut max_error = 0.0;
-        let mut errors = Vec::new();
+        let mut errors = Vec::with_capacity(256);
 
         for (i, (a, b)) in test_vectors.iter().enumerate() {
             let scalar_result = self.dot_product_scalar(a, b);
@@ -194,7 +194,7 @@ impl VectorizedOperationVerifier {
         ];
 
         let mut max_error = 0.0;
-        let mut errors = Vec::new();
+        let mut errors = Vec::with_capacity(256);
 
         for (i, vector) in test_vectors.iter().enumerate() {
             let scalar_norm = self.vector_norm_scalar(vector);
@@ -242,7 +242,7 @@ impl VectorizedOperationVerifier {
             (vec![f32::NAN, 1.0, 2.0], vec![1.0, f32::INFINITY, 3.0]),
         ];
 
-        let mut errors = Vec::new();
+        let mut errors = Vec::with_capacity(256);
         let mut stable_operations = 0;
 
         for (i, (a, b)) in edge_cases.iter().enumerate() {
@@ -287,7 +287,7 @@ impl VectorizedOperationVerifier {
 
     /// Verify SIMD intrinsics implementations
     fn verify_simd_intrinsics(&self) -> Result<Vec<VectorizedVerificationResult>, PmatError> {
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(256);
 
         // Verify AVX2 vectorized sum
         results.push(self.verify_avx2_sum()?);
@@ -320,7 +320,7 @@ impl VectorizedOperationVerifier {
         ];
 
         let mut max_error = 0.0;
-        let mut errors = Vec::new();
+        let mut errors = Vec::with_capacity(256);
 
         for (i, data) in test_data.iter().enumerate() {
             let scalar_sum = data.iter().sum::<f32>();
@@ -363,7 +363,7 @@ impl VectorizedOperationVerifier {
             b"A".repeat(1024),
         ];
 
-        let mut errors = Vec::new();
+        let mut errors = Vec::with_capacity(256);
         
         for (i, input) in test_inputs.iter().enumerate() {
             let scalar_hash = self.hash_scalar(input);
@@ -392,7 +392,7 @@ impl VectorizedOperationVerifier {
 
     /// Verify parallel operations
     fn verify_parallel_operations(&self) -> Result<Vec<VectorizedVerificationResult>, PmatError> {
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(256);
 
         // Verify parallel ranking
         results.push(self.verify_parallel_ranking()?);
@@ -421,7 +421,7 @@ impl VectorizedOperationVerifier {
         let rel_error = abs_error / sequential_sum.abs();
         let speedup = sequential_time.as_nanos() as f64 / parallel_time.as_nanos() as f64;
 
-        let mut errors = Vec::new();
+        let mut errors = Vec::with_capacity(256);
         if rel_error > self.tolerance {
             errors.push(format!(
                 "Parallel ranking error {:.2e} > tolerance {:.2e}",
@@ -454,7 +454,7 @@ impl VectorizedOperationVerifier {
                 sequential_max, parallel_max
             )]
         } else {
-            Vec::new()
+            Vec::with_capacity(256)
         };
 
         Ok(VectorizedVerificationResult {
@@ -471,7 +471,7 @@ impl VectorizedOperationVerifier {
 
     /// Verify hash operations
     fn verify_hash_operations(&self) -> Result<Vec<VectorizedVerificationResult>, PmatError> {
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(256);
 
         // Verify Blake3 consistency
         results.push(self.verify_blake3_hash()?);
@@ -487,7 +487,7 @@ impl VectorizedOperationVerifier {
             (0..1000).map(|i| (i % 256) as u8).collect(),
         ];
 
-        let mut errors = Vec::new();
+        let mut errors = Vec::with_capacity(256);
 
         for (i, input) in test_inputs.iter().enumerate() {
             let hash1 = blake3::hash(input);

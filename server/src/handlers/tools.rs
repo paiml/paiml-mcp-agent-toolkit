@@ -330,7 +330,7 @@ fn validate_parameter_values(
     parameters: &serde_json::Map<String, serde_json::Value>,
     parameter_specs: &[ParameterSpec],
 ) -> Vec<String> {
-    let mut validation_errors = Vec::new();
+    let mut validation_errors = Vec::with_capacity(256);
 
     for (key, value) in parameters {
         if let Some(param_spec) = parameter_specs.iter().find(|p| p.name == *key) {
@@ -407,8 +407,8 @@ async fn handle_scaffold_project<T: TemplateServerTrait>(
         }
     };
 
-    let mut results = Vec::new();
-    let mut errors = Vec::new();
+    let mut results = Vec::with_capacity(256);
+    let mut errors = Vec::with_capacity(256);
 
     // Generate each requested template
     for template_type in &args.templates {
@@ -626,7 +626,7 @@ async fn handle_analyze_code_churn(
 }
 
 pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
-    let mut output = String::new();
+    let mut output = String::with_capacity(1024);
 
     output.push_str("# Code Churn Analysis\n\n");
     output.push_str(&format!("Period: {} days\n", analysis.period_days));
@@ -658,7 +658,7 @@ pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) 
 }
 
 pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
-    let mut output = String::new();
+    let mut output = String::with_capacity(1024);
 
     output.push_str("# Code Churn Analysis Report\n\n");
     output.push_str(&format!(
@@ -705,7 +705,7 @@ pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalys
 }
 
 pub fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
-    let mut output = String::new();
+    let mut output = String::with_capacity(1024);
 
     output.push_str(
         "file_path,commits,additions,deletions,churn_score,unique_authors,last_modified\n",
@@ -874,7 +874,7 @@ async fn analyze_project_files(
 ) {
     use crate::services::file_discovery::ProjectFileDiscovery;
 
-    let mut file_metrics = Vec::new();
+    let mut file_metrics = Vec::with_capacity(256);
     let mut file_count = 0;
 
     // Use ProjectFileDiscovery which properly respects .gitignore files
@@ -1039,7 +1039,7 @@ fn format_complexity_rankings(
         }
         _ => {
             // Table format (default)
-            let mut output = String::new();
+            let mut output = String::with_capacity(1024);
             output.push_str(&format!("## Top {} Complexity Files\n\n", rankings.len()));
             output.push_str("| Rank | File                               | Functions | Max Cyclomatic | Avg Cognitive | Halstead | Score |\n");
             output.push_str("|------|------------------------------------|-----------|--------------  |---------------|----------|-------|\n");
@@ -1530,7 +1530,7 @@ async fn handle_analyze_defect_probability(
     use crate::services::file_discovery::ProjectFileDiscovery;
 
     let calculator = DefectProbabilityCalculator::new();
-    let mut file_metrics = Vec::new();
+    let mut file_metrics = Vec::with_capacity(256);
 
     // Use ProjectFileDiscovery which properly respects .gitignore files
     let discovery = ProjectFileDiscovery::new(project_path.clone());
@@ -1715,7 +1715,7 @@ fn format_dead_code_output(
 fn format_dead_code_summary_mcp(
     result: &crate::models::dead_code::DeadCodeRankingResult,
 ) -> anyhow::Result<String> {
-    let mut output = String::new();
+    let mut output = String::with_capacity(1024);
 
     output.push_str("# Dead Code Analysis Summary\n\n");
     output.push_str(&format!(
@@ -1796,7 +1796,7 @@ fn format_dead_code_as_sarif_mcp(
 ) -> anyhow::Result<String> {
     use serde_json::json;
 
-    let mut results = Vec::new();
+    let mut results = Vec::with_capacity(256);
 
     for file_metrics in &result.ranked_files {
         for item in &file_metrics.items {
@@ -1846,7 +1846,7 @@ fn format_dead_code_as_sarif_mcp(
 fn format_dead_code_as_markdown_mcp(
     result: &crate::models::dead_code::DeadCodeRankingResult,
 ) -> anyhow::Result<String> {
-    let mut output = String::new();
+    let mut output = String::with_capacity(1024);
 
     output.push_str("# Dead Code Analysis Report\n\n");
     output.push_str(&format!(
@@ -1986,7 +1986,7 @@ async fn handle_analyze_tdg(
 }
 
 fn format_tdg_summary(summary: &crate::models::tdg::TDGSummary) -> String {
-    let mut output = String::new();
+    let mut output = String::with_capacity(1024);
 
     output.push_str("# Technical Debt Gradient Analysis\n\n");
 
@@ -2243,7 +2243,7 @@ fn format_deep_context_as_sarif(_context: &crate::services::deep_context::DeepCo
 fn format_deep_context_as_markdown(context: &crate::services::deep_context::DeepContext) -> String {
     use crate::cli::formatting_helpers::*;
 
-    let mut output = String::new();
+    let mut output = String::with_capacity(1024);
     output.push_str("# Deep Context Analysis\n\n");
 
     // Reuse helper functions from cli module
