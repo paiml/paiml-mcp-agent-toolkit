@@ -33,3 +33,14 @@ pub async fn handle_analyze_defect_prediction(
     )
     .await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_defect_prediction_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

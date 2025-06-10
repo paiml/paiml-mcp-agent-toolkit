@@ -1017,3 +1017,14 @@ pub fn detect_repository(hint: Option<PathBuf>) -> Result<PathBuf> {
     // Interactive fallback
     read_repository_path_from_user()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_runner_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

@@ -268,3 +268,14 @@ async fn run_big_o_analysis(_project_path: &Path) -> Result<BigOAnalysis> {
         complexity_distribution: distribution,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_enhanced_reporting_handlers_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

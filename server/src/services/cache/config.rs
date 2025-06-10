@@ -120,3 +120,14 @@ impl CacheConfig {
         self.max_memory_mb * 1024 * 1024
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_config_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

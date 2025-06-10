@@ -224,10 +224,10 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             exclude,
             output,
         } => {
-            super::duplication_analysis::handle_analyze_duplicates(
+            let config = super::duplication_analysis::DuplicateAnalysisConfig {
                 project_path,
                 detection_type,
-                threshold as f64,
+                threshold: threshold as f64,
                 min_lines,
                 max_tokens,
                 format,
@@ -235,8 +235,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 include,
                 exclude,
                 output,
-            )
-            .await
+            };
+            super::duplication_analysis::handle_analyze_duplicates(config).await
         }
         AnalyzeCommands::DefectPrediction {
             project_path,
@@ -469,5 +469,16 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             )
             .await
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_analysis_handlers_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
     }
 }

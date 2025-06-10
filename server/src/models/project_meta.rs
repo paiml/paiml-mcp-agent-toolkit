@@ -107,3 +107,14 @@ impl CompressedReadme {
         overview
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_project_meta_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

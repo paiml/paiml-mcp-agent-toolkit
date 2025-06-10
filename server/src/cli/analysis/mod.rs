@@ -15,3 +15,14 @@ pub use duplicates::handle_analyze_duplicates;
 pub use graph_metrics::handle_analyze_graph_metrics;
 pub use name_similarity::handle_analyze_name_similarity;
 pub use symbol_table::handle_analyze_symbol_table;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mod_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

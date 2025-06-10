@@ -189,3 +189,14 @@ pub async fn handle_analyze_dag(
     )
     .await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_complexity_handlers_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

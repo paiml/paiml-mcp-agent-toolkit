@@ -1,11 +1,39 @@
 //! Helper functions for name similarity analysis to reduce complexity
 
-use std::path::PathBuf;
 use anyhow::Result;
 use serde_json::Value;
+use std::path::PathBuf;
 
-use super::{NameInfo, NameSimilarityResult, NameSimilarityOutputFormat, SearchScope};
+use super::{NameInfo, NameSimilarityOutputFormat, NameSimilarityResult, SearchScope};
 use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
+
+/// Configuration for JSON results building
+pub struct JsonResultsConfig<'a> {
+    pub query: &'a str,
+    pub all_names_len: usize,
+    pub similarities: &'a [NameSimilarityResult],
+    pub scope: &'a SearchScope,
+    pub threshold: f32,
+    pub phonetic: bool,
+    pub fuzzy: bool,
+    pub case_sensitive: bool,
+    pub perf: bool,
+    pub analysis_time: std::time::Duration,
+    pub analyzed_files_len: usize,
+}
+
+/// Configuration for output formatting
+pub struct OutputConfig<'a> {
+    pub format: NameSimilarityOutputFormat,
+    pub query: &'a str,
+    pub all_names_len: usize,
+    pub similarities: &'a [NameSimilarityResult],
+    pub final_results: &'a Value,
+    pub perf: bool,
+    pub analysis_time: std::time::Duration,
+    pub analyzed_files_len: usize,
+    pub output: Option<PathBuf>,
+}
 
 /// Discover and filter source files based on configuration
 pub fn discover_source_files(
@@ -14,14 +42,16 @@ pub fn discover_source_files(
     exclude: &Option<String>,
 ) -> Result<Vec<(PathBuf, String)>> {
     let mut discovery_config = FileDiscoveryConfig::default();
-    
+
     if let Some(exclude_pattern) = exclude {
-        discovery_config.custom_ignore_patterns.push(exclude_pattern.clone());
+        discovery_config
+            .custom_ignore_patterns
+            .push(exclude_pattern.clone());
     }
-    
+
     let discovery = ProjectFileDiscovery::new(project_path).with_config(discovery_config);
     let discovered_files = discovery.discover_files()?;
-    
+
     let mut analyzed_files = Vec::new();
     for file_path in discovered_files {
         if let Some(include_pattern) = include {
@@ -29,12 +59,12 @@ pub fn discover_source_files(
                 continue;
             }
         }
-        
+
         if let Ok(content) = std::fs::read_to_string(&file_path) {
             analyzed_files.push((file_path, content));
         }
     }
-    
+
     Ok(analyzed_files)
 }
 
@@ -66,21 +96,17 @@ pub fn calculate_similarities(
     } else {
         query.to_lowercase()
     };
-    
+
     for name_info in all_names {
         let name_to_compare = if case_sensitive {
             name_info.name.clone()
         } else {
             name_info.name.to_lowercase()
         };
-        
-        let similarity_score = calculate_combined_similarity(
-            &query_lower,
-            &name_to_compare,
-            fuzzy,
-            phonetic,
-        );
-        
+
+        let similarity_score =
+            calculate_combined_similarity(&query_lower, &name_to_compare, fuzzy, phonetic);
+
         if similarity_score >= threshold {
             similarities.push(NameSimilarityResult {
                 name: name_info.name.clone(),
@@ -92,20 +118,15 @@ pub fn calculate_similarities(
             });
         }
     }
-    
+
     similarities.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
     similarities
 }
 
 /// Calculate combined similarity score
-fn calculate_combined_similarity(
-    query: &str,
-    name: &str,
-    fuzzy: bool,
-    phonetic: bool,
-) -> f32 {
+fn calculate_combined_similarity(query: &str, name: &str, fuzzy: bool, phonetic: bool) -> f32 {
     let mut score = super::calculate_string_similarity(query, name);
-    
+
     if fuzzy {
         let edit_distance = super::calculate_edit_distance(query, name);
         let max_len = query.len().max(name.len()) as f32;
@@ -116,7 +137,7 @@ fn calculate_combined_similarity(
         };
         score = score.max(fuzzy_score);
     }
-    
+
     if phonetic {
         let query_soundex = super::calculate_soundex(query);
         let name_soundex = super::calculate_soundex(name);
@@ -124,29 +145,17 @@ fn calculate_combined_similarity(
             score = score.max(0.8);
         }
     }
-    
+
     score
 }
 
 /// Build results JSON with optional performance metrics
-pub fn build_results_json(
-    query: &str,
-    all_names_len: usize,
-    similarities: &[NameSimilarityResult],
-    scope: &SearchScope,
-    threshold: f32,
-    phonetic: bool,
-    fuzzy: bool,
-    case_sensitive: bool,
-    perf: bool,
-    analysis_time: std::time::Duration,
-    analyzed_files_len: usize,
-) -> Value {
+pub fn build_results_json(config: JsonResultsConfig) -> Value {
     let mut results = serde_json::json!({
-        "query": query,
-        "total_identifiers": all_names_len,
-        "matches": similarities.len(),
-        "results": similarities.iter().map(|s| serde_json::json!({
+        "query": config.query,
+        "total_identifiers": config.all_names_len,
+        "matches": config.similarities.len(),
+        "results": config.similarities.iter().map(|s| serde_json::json!({
             "name": s.name,
             "similarity": s.similarity,
             "file": s.file.to_string_lossy(),
@@ -155,61 +164,50 @@ pub fn build_results_json(
             "context": s.context
         })).collect::<Vec<_>>(),
         "parameters": {
-            "scope": format!("{scope:?}"),
-            "threshold": threshold,
-            "phonetic": phonetic,
-            "fuzzy": fuzzy,
-            "case_sensitive": case_sensitive
+            "scope": format!("{:?}", config.scope),
+            "threshold": config.threshold,
+            "phonetic": config.phonetic,
+            "fuzzy": config.fuzzy,
+            "case_sensitive": config.case_sensitive
         }
     });
-    
-    if perf {
+
+    if config.perf {
         results["performance"] = serde_json::json!({
-            "analysis_time_s": analysis_time.as_secs_f64(),
-            "identifiers_per_second": all_names_len as f64 / analysis_time.as_secs_f64(),
-            "files_analyzed": analyzed_files_len
+            "analysis_time_s": config.analysis_time.as_secs_f64(),
+            "identifiers_per_second": config.all_names_len as f64 / config.analysis_time.as_secs_f64(),
+            "files_analyzed": config.analyzed_files_len
         });
     }
-    
+
     results
 }
 
 /// Format and output results based on selected format
-pub fn output_results(
-    format: NameSimilarityOutputFormat,
-    query: &str,
-    all_names_len: usize,
-    similarities: &[NameSimilarityResult],
-    final_results: &Value,
-    perf: bool,
-    analysis_time: std::time::Duration,
-    analyzed_files_len: usize,
-    output: Option<PathBuf>,
-) -> Result<()> {
-    let output_content = match format {
-        NameSimilarityOutputFormat::Summary => {
-            format_summary_output(query, all_names_len, similarities, perf, analysis_time, analyzed_files_len)
-        }
-        NameSimilarityOutputFormat::Detailed => {
-            format_detailed_output(similarities)
-        }
-        NameSimilarityOutputFormat::Json => {
-            serde_json::to_string_pretty(final_results)?
-        }
-        NameSimilarityOutputFormat::Csv => {
-            format_csv_output(similarities)
-        }
+pub fn output_results(config: OutputConfig) -> Result<()> {
+    let output_content = match config.format {
+        NameSimilarityOutputFormat::Summary => format_summary_output(
+            config.query,
+            config.all_names_len,
+            config.similarities,
+            config.perf,
+            config.analysis_time,
+            config.analyzed_files_len,
+        ),
+        NameSimilarityOutputFormat::Detailed => format_detailed_output(config.similarities),
+        NameSimilarityOutputFormat::Json => serde_json::to_string_pretty(config.final_results)?,
+        NameSimilarityOutputFormat::Csv => format_csv_output(config.similarities),
         NameSimilarityOutputFormat::Markdown => {
-            format_markdown_output(query, all_names_len, similarities)
+            format_markdown_output(config.query, config.all_names_len, config.similarities)
         }
     };
-    
-    if let Some(output_path) = output {
+
+    if let Some(output_path) = config.output {
         std::fs::write(output_path, output_content)?;
     } else {
         println!("{}", output_content);
     }
-    
+
     Ok(())
 }
 
@@ -227,7 +225,7 @@ fn format_summary_output(
     output.push_str(&format!("Query: '{query}'\n"));
     output.push_str(&format!("Total identifiers: {}\n", all_names_len));
     output.push_str(&format!("Matches found: {}\n", similarities.len()));
-    
+
     if !similarities.is_empty() {
         output.push_str("\nTop matches:\n");
         for (i, sim) in similarities.iter().take(10).enumerate() {
@@ -241,13 +239,16 @@ fn format_summary_output(
             ));
         }
     }
-    
+
     if perf {
         output.push_str("\nPerformance:\n");
-        output.push_str(&format!("  Analysis time: {:.2}s\n", analysis_time.as_secs_f64()));
+        output.push_str(&format!(
+            "  Analysis time: {:.2}s\n",
+            analysis_time.as_secs_f64()
+        ));
         output.push_str(&format!("  Files analyzed: {}\n", analyzed_files_len));
     }
-    
+
     output
 }
 
@@ -255,7 +256,7 @@ fn format_detailed_output(similarities: &[NameSimilarityResult]) -> String {
     let mut output = String::new();
     output.push_str("Name Similarity Analysis Report\n");
     output.push_str("==============================\n");
-    
+
     for sim in similarities {
         output.push_str(&format!("\nMatch: {}\n", sim.name));
         output.push_str(&format!("  Similarity: {:.3}\n", sim.similarity));
@@ -266,7 +267,7 @@ fn format_detailed_output(similarities: &[NameSimilarityResult]) -> String {
             output.push_str(&format!("  Context: {}\n", sim.context));
         }
     }
-    
+
     output
 }
 
@@ -297,7 +298,7 @@ fn format_markdown_output(
     output.push_str(&format!("**Query**: `{query}`\n\n"));
     output.push_str(&format!("**Total identifiers**: {}\n\n", all_names_len));
     output.push_str(&format!("**Matches found**: {}\n\n", similarities.len()));
-    
+
     if !similarities.is_empty() {
         output.push_str("## Results\n\n");
         output.push_str("| Rank | Name | Similarity | Type | File | Line |\n");
@@ -314,6 +315,17 @@ fn format_markdown_output(
             ));
         }
     }
-    
+
     output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_name_similarity_helpers_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
 }

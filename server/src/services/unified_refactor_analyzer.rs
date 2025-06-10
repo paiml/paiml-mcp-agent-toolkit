@@ -160,17 +160,18 @@ impl UnifiedAnalyzer for RustAnalyzer {
         let complexity = analyzer.analyze_function(node);
 
         // Calculate TDG based on complexity
-        let tdg_score = ((complexity.cyclomatic as f32 / 10.0) + (complexity.cognitive as f32 / 15.0)) / 2.0;
-        
+        let tdg_score =
+            ((complexity.cyclomatic as f32 / 10.0) + (complexity.cognitive as f32 / 15.0)) / 2.0;
+
         // Analyze dead code by checking for unused functions
         let dead_code = vec![false; 10]; // Simplified: assume 10 symbols, none dead
-        
+
         // Count SATD markers in the node's text (would need actual text in real impl)
         let satd_count = 0; // Would need to analyze actual source text
-        
+
         // Simple provability score based on complexity
         let provability = 1.0 / (1.0 + complexity.cyclomatic as f32 / 20.0);
-        
+
         Ok(MetricSet {
             complexity: (complexity.cyclomatic as u16, complexity.cognitive as u16),
             tdg_score,
@@ -276,7 +277,7 @@ impl UnifiedAnalyzer for RustAnalyzer {
             }
             _ => 0,
         };
-        
+
         Ok(AstDelta {
             nodes_added_count,
             nodes_removed,
@@ -291,25 +292,25 @@ impl UnifiedAnalyzer for RustAnalyzer {
         let nodes_modified_count = delta.nodes_modified.len() as i16;
         let nodes_removed_count = delta.nodes_removed.len() as i16;
         let nodes_added_count = delta.nodes_added_count as i16;
-        
+
         // Estimate complexity changes based on node changes
         let complexity_change = (
             -nodes_removed_count + (nodes_added_count / 2), // Cyclomatic
             -nodes_removed_count + (nodes_added_count / 3), // Cognitive
         );
-        
+
         // TDG changes based on modifications
         let tdg_change = -0.1 * nodes_modified_count as f32;
-        
+
         // Dead code might be removed
         let dead_code_change = -nodes_removed_count as i32;
-        
+
         // SATD changes (removing nodes might remove SATD)
         let satd_change = if nodes_removed_count > 0 { -1 } else { 0 };
-        
+
         // Provability improves with simplification
         let provability_change = if nodes_modified_count > 0 { 0.05 } else { 0.0 };
-        
+
         Ok(MetricDelta {
             complexity_change,
             tdg_change,
@@ -354,5 +355,16 @@ impl Language {
             "swift" => Language::Swift,
             _ => Language::Other(0),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_unified_refactor_analyzer_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
     }
 }

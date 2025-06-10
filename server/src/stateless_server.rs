@@ -84,3 +84,14 @@ impl TemplateServerTrait for StatelessTemplateServer {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_stateless_server_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

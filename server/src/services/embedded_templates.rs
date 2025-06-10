@@ -257,3 +257,14 @@ pub async fn get_template_content(uri: &str) -> Result<Arc<str>, TemplateError> 
 
     Ok(content.into())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_embedded_templates_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

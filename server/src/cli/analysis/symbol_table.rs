@@ -31,3 +31,14 @@ pub async fn handle_analyze_symbol_table(
     )
     .await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_symbol_table_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}

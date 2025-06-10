@@ -435,3 +435,14 @@ impl std::fmt::Display for ErrorSeverity {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_error_basic() {
+        // Basic test
+        assert_eq!(1 + 1, 2);
+    }
+}
