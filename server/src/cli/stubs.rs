@@ -3807,7 +3807,7 @@ mod tests {
         
         // Initialize git repo for incremental coverage
         std::process::Command::new("git")
-            .args(&["init"])
+            .args(["init"])
             .current_dir(&project_path)
             .output()
             .unwrap();
@@ -3830,7 +3830,7 @@ mod tests {
 
         // This might fail if git is not available, but should not panic
         match result {
-            Ok(_) => assert!(true),
+            Ok(_) => {}, // Success
             Err(e) => {
                 // Accept git-related errors
                 assert!(e.to_string().contains("git") || e.to_string().contains("No changed files"));
@@ -3923,7 +3923,7 @@ mod tests {
         let _ = MakefileOutputFormat::Gcc;
         
         // Test that different formats produce different output
-        let formats = vec![
+        let formats = [
             MakefileOutputFormat::Human,
             MakefileOutputFormat::Json,
             MakefileOutputFormat::Sarif,

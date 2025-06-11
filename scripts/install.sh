@@ -95,7 +95,8 @@ install() {
     info "Installing ${BINARY_NAME} v${VERSION} for ${PLATFORM}..."
     
     # Construct download URL
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${BINARY_NAME}-${PLATFORM}.tar.gz"
+    # Note: Release artifacts use full repo name, not just binary name
+    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/v${VERSION}/paiml-mcp-agent-toolkit-${PLATFORM}.tar.gz"
     
     # Create temp directory
     TMP_DIR=$(mktemp -d)
