@@ -59,7 +59,7 @@ jobs:
       
       - name: Run CI pipeline
         id: tests
-        timeout-minutes: 8
+        timeout-minutes: 20
         run: |
           make format
           make lint
