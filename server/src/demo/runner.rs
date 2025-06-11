@@ -965,7 +965,8 @@ fn find_git_root(start_path: &Path) -> Option<PathBuf> {
 }
 
 fn is_interactive_environment() -> bool {
-    atty::is(atty::Stream::Stdout) && env::var("CI").is_err()
+    use std::io::IsTerminal;
+    std::io::stdout().is_terminal() && env::var("CI").is_err()
 }
 
 fn read_repository_path_from_user() -> Result<PathBuf> {
