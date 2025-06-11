@@ -5,6 +5,10 @@ name: Code Quality
 on:
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   coverage-check:
     name: Coverage Check
