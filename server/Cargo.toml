@@ -61,7 +61,6 @@ notify = "8.0"
 clap = { version = "4.5", default-features = false, features = ["std", "derive", "help", "env"] }
 num_cpus = "1.17"
 serde_yaml = "0.9"
-atty = "0.2"
 
 # AST parsing (conditional compilation)
 syn = { version = "2.0", features = ["full", "parsing", "visit"], optional = true }
