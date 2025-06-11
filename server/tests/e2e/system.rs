@@ -8,10 +8,8 @@ use tempfile::TempDir;
 #[test]
 fn test_binary_exists() {
     // This test just checks if binary path is valid
-    assert!(
-        std::path::Path::new("../target/release/pmat").exists() || true,
-        "Binary path check"
-    );
+    // Always passes - binary may not be built yet
+    let _ = std::path::Path::new("../target/release/pmat").exists();
 }
 
 #[test]

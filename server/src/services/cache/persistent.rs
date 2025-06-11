@@ -420,3 +420,32 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_persistent_cache_entry_creation() {
+        let entry = PersistentCacheEntry::new("test_value".to_string(), 100);
+        assert_eq!(entry.value, "test_value");
+        assert_eq!(entry.size_bytes, 100);
+        assert!(entry.created_timestamp > 0);
+    }
+
+    #[test]
+    fn test_persistent_cache_entry_age() {
+        let entry = PersistentCacheEntry::new("test_value".to_string(), 100);
+        let age = entry.age();
+        assert!(age.as_secs() < 10); // Should be less than 10 seconds old
+    }
+
+    #[test]
+    fn test_cache_file_path() {
+        let temp_dir = TempDir::new().unwrap();
+        // We can't easily test PersistentCache without a proper CacheStrategy implementation
+        // but we can at least test the basic structure compiles
+        assert!(temp_dir.path().exists());
+    }
+}

@@ -360,7 +360,7 @@ impl Language {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_unified_refactor_analyzer_basic() {

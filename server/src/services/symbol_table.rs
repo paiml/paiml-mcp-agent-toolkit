@@ -92,14 +92,28 @@ impl SymbolTable {
         }
     }
 
-    /// Find all symbols within a span
+    /// Find all symbols within a span using binary search for efficiency
     pub fn symbols_in_span(&self, location: &Location) -> Vec<QualifiedName> {
         if let Some(spans) = self.span_index.get(&location.file_path) {
-            spans
-                .iter()
-                .filter(|(pos, _)| location.span.contains(*pos))
-                .map(|(_, qname)| qname.clone())
-                .collect()
+            // Binary search to find the first symbol that could be in our span
+            let start_idx = match spans.binary_search_by_key(&location.span.start, |(pos, _)| *pos)
+            {
+                Ok(idx) => idx,
+                Err(idx) => idx.saturating_sub(1), // Check one before insertion point
+            };
+
+            // Collect symbols starting from the binary search result
+            let mut result = Vec::new();
+            for i in start_idx..spans.len() {
+                let (pos, qname) = &spans[i];
+                if *pos > location.span.end {
+                    break; // No more symbols can be in the span
+                }
+                if location.span.contains(*pos) {
+                    result.push(qname.clone());
+                }
+            }
+            result
         } else {
             Vec::new()
         }

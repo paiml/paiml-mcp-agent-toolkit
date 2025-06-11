@@ -4101,7 +4101,7 @@ async fn analyze_big_o(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_deep_context_basic() {

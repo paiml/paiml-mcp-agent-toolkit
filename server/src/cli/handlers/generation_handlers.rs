@@ -3,7 +3,7 @@
 //! This module contains the extracted implementations for template generation,
 //! project scaffolding, and template validation operations.
 
-use crate::cli::*;
+// use crate::cli::*; // Currently unused
 use crate::services::template_service::*;
 use crate::stateless_server::StatelessTemplateServer;
 use anyhow::Result;
@@ -22,7 +22,7 @@ pub async fn handle_generate(
     create_dirs: bool,
 ) -> Result<()> {
     let uri = format!("template://{category}/{template}");
-    let params_json = params_to_json(params);
+    let params_json = super::super::stubs::params_to_json(params);
 
     let result = generate_template(server.as_ref(), &uri, params_json).await?;
 
@@ -50,12 +50,12 @@ pub async fn handle_scaffold(
 ) -> Result<()> {
     use futures::stream::{self, StreamExt};
 
-    let params_json = params_to_json(params);
+    let params_json = super::super::stubs::params_to_json(params);
     let results = scaffold_project(
         server.clone(),
         &toolchain,
         templates,
-        serde_json::Value::Object(params_json),
+        serde_json::Value::Object(params_json.clone()),
     )
     .await?;
 
@@ -84,7 +84,7 @@ pub async fn handle_validate(
     uri: String,
     params: Vec<(String, Value)>,
 ) -> Result<()> {
-    let params_json = params_to_json(params);
+    let params_json = super::super::stubs::params_to_json(params);
     let result = validate_template(
         server.clone(),
         &uri,
@@ -106,7 +106,7 @@ pub async fn handle_validate(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_generation_handlers_basic() {

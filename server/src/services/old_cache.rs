@@ -54,7 +54,7 @@ pub async fn put_content(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_old_cache_basic() {

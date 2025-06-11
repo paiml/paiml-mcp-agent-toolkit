@@ -85,7 +85,7 @@ pub async fn handle_quality_gate(
     perf: bool,
 ) -> Result<()> {
     // Delegate to main quality gate implementation for now - will be extracted later
-    super::super::handle_quality_gate(
+    super::super::stubs::handle_quality_gate(
         project_path,
         format,
         fail_on_violation,
@@ -102,7 +102,7 @@ pub async fn handle_quality_gate(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_demo_handlers_basic() {

@@ -1020,7 +1020,7 @@ pub fn detect_repository(hint: Option<PathBuf>) -> Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_runner_basic() {

@@ -742,7 +742,7 @@ impl DuplicateDetectionEngine {
         let clone_groups = self.group_clones(clone_pairs)?;
 
         // Phase 4: Generate summary and hotspots
-        let summary = self.compute_summary(&all_fragments, &clone_groups);
+        let summary = self.compute_summary(&all_fragments, &clone_groups, files.len());
         let hotspots = self.compute_hotspots(&clone_groups);
 
         Ok(CloneReport {
@@ -892,28 +892,68 @@ impl DuplicateDetectionEngine {
         }
     }
 
-    /// Find clone pairs using similarity threshold
+    /// Find clone pairs using LSH for efficient similarity search
     fn find_clone_pairs(
         &self,
         fragments: &[CodeFragment],
     ) -> Result<Vec<(FragmentId, FragmentId, f64)>> {
-        // Compare all pairs (O(n²) - would use LSH in production)
-        // Use parallel processing to speed up the comparison
-        let clone_pairs: Vec<(FragmentId, FragmentId, f64)> = (0..fragments.len())
-            .into_par_iter()
-            .flat_map(|i| {
-                let frag1 = &fragments[i];
-                fragments[i + 1..]
-                    .iter()
-                    .filter_map(move |frag2| {
-                        let similarity = frag1.signature.jaccard_similarity(&frag2.signature);
-                        if similarity >= self.config.similarity_threshold {
-                            Some((frag1.id, frag2.id, similarity))
+        // Use LSH to find candidate pairs efficiently (O(n) average case)
+        let bands = self.config.num_bands;
+        let rows_per_band = self.config.rows_per_band;
+
+        // Create LSH buckets for each band
+        let mut lsh_buckets: Vec<HashMap<u64, Vec<usize>>> = vec![HashMap::new(); bands];
+
+        // Hash each fragment into buckets
+        for (idx, fragment) in fragments.iter().enumerate() {
+            for (band, bucket) in lsh_buckets.iter_mut().enumerate().take(bands) {
+                let start = band * rows_per_band;
+                let end = start + rows_per_band;
+
+                // Hash the band portion of the signature
+                let mut hasher = xxhash_rust::xxh64::Xxh64::new(band as u64);
+                for i in start..end.min(fragment.signature.values.len()) {
+                    hasher.update(&fragment.signature.values[i].to_le_bytes());
+                }
+                let band_hash = hasher.digest();
+
+                bucket.entry(band_hash).or_default().push(idx);
+            }
+        }
+
+        // Find candidate pairs from buckets
+        let mut candidate_pairs = HashSet::new();
+        for band_buckets in &lsh_buckets {
+            for bucket in band_buckets.values() {
+                if bucket.len() < 2 {
+                    continue;
+                }
+                // Add all pairs from this bucket as candidates
+                for i in 0..bucket.len() {
+                    for j in (i + 1)..bucket.len() {
+                        let pair = if bucket[i] < bucket[j] {
+                            (bucket[i], bucket[j])
                         } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<_>>()
+                            (bucket[j], bucket[i])
+                        };
+                        candidate_pairs.insert(pair);
+                    }
+                }
+            }
+        }
+
+        // Verify candidate pairs with exact similarity calculation
+        let clone_pairs: Vec<(FragmentId, FragmentId, f64)> = candidate_pairs
+            .into_par_iter()
+            .filter_map(|(i, j)| {
+                let frag1 = &fragments[i];
+                let frag2 = &fragments[j];
+                let similarity = frag1.signature.jaccard_similarity(&frag2.signature);
+                if similarity >= self.config.similarity_threshold {
+                    Some((frag1.id, frag2.id, similarity))
+                } else {
+                    None
+                }
             })
             .collect();
 
@@ -1022,13 +1062,12 @@ impl DuplicateDetectionEngine {
     }
 
     /// Compute summary statistics
-    fn compute_summary(&self, fragments: &[CodeFragment], groups: &[CloneGroup]) -> CloneSummary {
-        let total_files = fragments
-            .iter()
-            .map(|f| &f.file_path)
-            .collect::<HashSet<_>>()
-            .len();
-
+    fn compute_summary(
+        &self,
+        fragments: &[CodeFragment],
+        groups: &[CloneGroup],
+        file_count: usize,
+    ) -> CloneSummary {
         let duplicate_lines = groups.iter().map(|g| g.total_lines).sum();
 
         let total_lines = fragments
@@ -1045,7 +1084,7 @@ impl DuplicateDetectionEngine {
         let largest_group_size = groups.iter().map(|g| g.fragments.len()).max().unwrap_or(0);
 
         CloneSummary {
-            total_files,
+            total_files: file_count,
             total_fragments: fragments.len(),
             duplicate_lines,
             total_lines,
@@ -1057,19 +1096,22 @@ impl DuplicateDetectionEngine {
 
     /// Compute duplication hotspots
     fn compute_hotspots(&self, groups: &[CloneGroup]) -> Vec<DuplicationHotspot> {
-        let mut file_stats: HashMap<PathBuf, (usize, usize)> = HashMap::new();
+        let mut file_stats: HashMap<PathBuf, (usize, HashSet<usize>)> = HashMap::new();
 
         for group in groups {
             for instance in &group.fragments {
-                let (lines, count) = file_stats.entry(instance.file.clone()).or_insert((0, 0));
+                let (lines, group_ids) = file_stats
+                    .entry(instance.file.clone())
+                    .or_insert((0, HashSet::new()));
                 *lines += instance.end_line - instance.start_line + 1;
-                *count += 1;
+                group_ids.insert(group.id as usize);
             }
         }
 
         let mut hotspots: Vec<DuplicationHotspot> = file_stats
             .into_iter()
-            .map(|(file, (duplicate_lines, clone_groups))| {
+            .map(|(file, (duplicate_lines, group_ids))| {
+                let clone_groups = group_ids.len();
                 let severity =
                     (duplicate_lines as f64).ln().max(1.0) * (clone_groups as f64).sqrt();
                 DuplicationHotspot {
@@ -1096,6 +1138,616 @@ impl Default for DuplicateDetectionEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    // Helper function to create test tokens
+    fn create_test_tokens(code: &str) -> Vec<Token> {
+        code.split_whitespace()
+            .map(|word| {
+                if matches!(word, "fn" | "let" | "if" | "else" | "return") {
+                    Token::new(TokenKind::Keyword(word.to_string()))
+                } else if word.chars().all(|c| c.is_numeric()) {
+                    Token::new(TokenKind::Literal(word.to_string()))
+                } else if matches!(word, "(" | ")" | "{" | "}" | ";" | ",") {
+                    Token::new(TokenKind::Delimiter(word.to_string()))
+                } else if matches!(word, "+" | "-" | "*" | "/" | "=" | "==") {
+                    Token::new(TokenKind::Operator(word.to_string()))
+                } else {
+                    Token::new(TokenKind::Identifier(word.to_string()))
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn test_token_creation_and_hash() {
+        let token = Token::new(TokenKind::Identifier("test".to_string()));
+        assert_eq!(token.text, "test");
+        assert!(matches!(token.kind, TokenKind::Identifier(_)));
+
+        let hash = token.hash();
+        assert_ne!(hash, 0);
+    }
+
+    #[test]
+    fn test_all_token_kinds() {
+        let identifier = Token::new(TokenKind::Identifier("var".to_string()));
+        assert_eq!(identifier.text, "var");
+
+        let literal = Token::new(TokenKind::Literal("42".to_string()));
+        assert_eq!(literal.text, "42");
+
+        let keyword = Token::new(TokenKind::Keyword("fn".to_string()));
+        assert_eq!(keyword.text, "fn");
+
+        let operator = Token::new(TokenKind::Operator("+".to_string()));
+        assert_eq!(operator.text, "+");
+
+        let delimiter = Token::new(TokenKind::Delimiter("{".to_string()));
+        assert_eq!(delimiter.text, "{");
+
+        let comment = Token::new(TokenKind::Comment);
+        assert_eq!(comment.text, "//");
+
+        let whitespace = Token::new(TokenKind::Whitespace);
+        assert_eq!(whitespace.text, " ");
+    }
+
+    #[test]
+    fn test_minhash_signature_jaccard_similarity() {
+        let sig1 = MinHashSignature {
+            values: vec![1, 2, 3, 4, 5],
+        };
+
+        let sig2 = MinHashSignature {
+            values: vec![1, 2, 3, 6, 7],
+        };
+
+        let similarity = sig1.jaccard_similarity(&sig2);
+        assert_eq!(similarity, 0.6); // 3 matches out of 5
+
+        // Test identical signatures
+        let similarity_same = sig1.jaccard_similarity(&sig1);
+        assert_eq!(similarity_same, 1.0);
+
+        // Test completely different signatures
+        let sig3 = MinHashSignature {
+            values: vec![10, 20, 30, 40, 50],
+        };
+        let similarity_diff = sig1.jaccard_similarity(&sig3);
+        assert_eq!(similarity_diff, 0.0);
+    }
+
+    #[test]
+    fn test_clone_type_display() {
+        let clone1 = CloneType::Type1 { similarity: 0.9 };
+        let clone2 = CloneType::Type2 {
+            similarity: 0.8,
+            normalized: true,
+        };
+        let clone3 = CloneType::Type3 {
+            similarity: 0.7,
+            ast_distance: 0.3,
+        };
+
+        // Test that the types can be created and compared
+        assert!(matches!(clone1, CloneType::Type1 { .. }));
+        assert!(matches!(clone2, CloneType::Type2 { .. }));
+        assert!(matches!(clone3, CloneType::Type3 { .. }));
+    }
+
+    #[test]
+    fn test_duplicate_detection_config_default() {
+        let config = DuplicateDetectionConfig::default();
+        assert_eq!(config.min_tokens, 50);
+        assert_eq!(config.similarity_threshold, 0.70);
+        assert_eq!(config.shingle_size, 5);
+        assert_eq!(config.num_hash_functions, 200);
+        assert_eq!(config.num_bands, 20);
+        assert_eq!(config.rows_per_band, 10);
+        assert!(config.normalize_identifiers);
+        assert!(config.normalize_literals);
+        assert!(config.ignore_comments);
+        assert_eq!(config.min_group_size, 2);
+    }
+
+    #[test]
+    fn test_universal_feature_extractor() {
+        let config = DuplicateDetectionConfig::default();
+        let extractor = UniversalFeatureExtractor::new(config);
+
+        // Test Rust code
+        let rust_tokens = extractor.extract_features(
+            "fn main() { let x = 42; println!(\"Hello\"); }",
+            Language::Rust,
+        );
+        assert!(!rust_tokens.is_empty());
+
+        // Test TypeScript code
+        let ts_tokens = extractor.extract_features(
+            "function main(): void { const x = 42; console.log('Hello'); }",
+            Language::TypeScript,
+        );
+        assert!(!ts_tokens.is_empty());
+
+        // Test Python code
+        let py_tokens = extractor.extract_features(
+            "def main():\n    x = 42\n    print('Hello')",
+            Language::Python,
+        );
+        assert!(!py_tokens.is_empty());
+    }
+
+    #[test]
+    fn test_normalize_tokens() {
+        let config = DuplicateDetectionConfig::default();
+        let extractor = UniversalFeatureExtractor::new(config);
+
+        let tokens = vec![
+            Token::new(TokenKind::Identifier("myVar".to_string())),
+            Token::new(TokenKind::Literal("42".to_string())),
+            Token::new(TokenKind::Comment),
+        ];
+
+        let normalized = extractor.normalize_tokens(&tokens);
+
+        // Should normalize identifier
+        assert!(normalized[0].text.starts_with("VAR_"));
+
+        // Should normalize literal
+        assert_eq!(normalized[1].text, "LITERAL");
+
+        // Should remove comment (ignore_comments is true by default)
+        assert_eq!(normalized.len(), 2);
+    }
+
+    #[test]
+    fn test_normalize_tokens_keep_identifiers_and_literals() {
+        let config = DuplicateDetectionConfig {
+            normalize_identifiers: false,
+            normalize_literals: false,
+            ignore_comments: false,
+            ..Default::default()
+        };
+        let extractor = UniversalFeatureExtractor::new(config);
+
+        let tokens = vec![
+            Token::new(TokenKind::Identifier("myVar".to_string())),
+            Token::new(TokenKind::Literal("42".to_string())),
+            Token::new(TokenKind::Comment),
+        ];
+
+        let normalized = extractor.normalize_tokens(&tokens);
+
+        // Should keep original identifier
+        assert_eq!(normalized[0].text, "myVar");
+
+        // Should keep original literal
+        assert_eq!(normalized[1].text, "42");
+
+        // Should keep comment
+        assert_eq!(normalized.len(), 3);
+    }
+
+    #[test]
+    fn test_minhash_generator() {
+        let generator = MinHashGenerator::new(100);
+        assert_eq!(generator.seeds.len(), 100);
+
+        // Test shingle generation
+        let tokens = create_test_tokens("fn test ( ) { return 42 ; }");
+        let shingles = generator.generate_shingles(&tokens, 3);
+        assert_eq!(shingles.len(), tokens.len().saturating_sub(2)); // n - k + 1
+
+        // Test signature computation
+        let signature = generator.compute_signature(&shingles);
+        assert_eq!(signature.values.len(), 100);
+    }
+
+    #[test]
+    fn test_code_fragment_creation() {
+        let fragment = CodeFragment {
+            id: 1,
+            file_path: PathBuf::from("test.rs"),
+            start_line: 10,
+            end_line: 20,
+            start_column: 0,
+            end_column: 80,
+            raw_content: "test content".to_string(),
+            tokens: vec![],
+            normalized_tokens: vec![],
+            signature: MinHashSignature {
+                values: vec![1, 2, 3],
+            },
+            hash: 12345,
+            language: Language::Rust,
+        };
+
+        assert_eq!(fragment.id, 1);
+        assert_eq!(fragment.file_path, PathBuf::from("test.rs"));
+        assert_eq!(fragment.start_line, 10);
+        assert_eq!(fragment.end_line, 20);
+    }
+
+    #[test]
+    fn test_duplicate_detection_engine_basic() {
+        let config = DuplicateDetectionConfig {
+            min_tokens: 5,
+            similarity_threshold: 0.5,
+            ..Default::default()
+        };
+
+        let engine = DuplicateDetectionEngine::new(config);
+
+        // Test with identical code
+        let files = vec![
+            (
+                PathBuf::from("file1.rs"),
+                "fn test() { let x = 42; return x; }".to_string(),
+                Language::Rust,
+            ),
+            (
+                PathBuf::from("file2.rs"),
+                "fn test() { let x = 42; return x; }".to_string(),
+                Language::Rust,
+            ),
+        ];
+
+        let report = engine.detect_duplicates(&files).unwrap();
+        assert!(report.summary.clone_groups > 0);
+        assert!(report.summary.duplication_ratio > 0.0);
+    }
+
+    #[test]
+    fn test_duplicate_detection_different_languages() {
+        let config = DuplicateDetectionConfig {
+            min_tokens: 5,
+            similarity_threshold: 0.6,
+            ..Default::default()
+        };
+
+        let engine = DuplicateDetectionEngine::new(config);
+
+        let files = vec![
+            (
+                PathBuf::from("test.rs"),
+                "fn calculate(x: i32) -> i32 { x * 2 }".to_string(),
+                Language::Rust,
+            ),
+            (
+                PathBuf::from("test.ts"),
+                "function calculate(x: number): number { return x * 2; }".to_string(),
+                Language::TypeScript,
+            ),
+            (
+                PathBuf::from("test.py"),
+                "def calculate(x): return x * 2".to_string(),
+                Language::Python,
+            ),
+        ];
+
+        let report = engine.detect_duplicates(&files).unwrap();
+        assert_eq!(report.summary.total_files, 3);
+    }
+
+    #[test]
+    fn test_extract_fragments() {
+        let engine = DuplicateDetectionEngine::new(DuplicateDetectionConfig {
+            min_tokens: 5,
+            ..Default::default()
+        });
+
+        let fragments = engine
+            .extract_fragments(
+                &PathBuf::from("test.rs"),
+                "fn one() { println!(\"1\"); }\n\nfn two() { println!(\"2\"); }",
+                Language::Rust,
+            )
+            .unwrap();
+        assert!(!fragments.is_empty());
+    }
+
+    #[test]
+    fn test_find_clone_pairs_with_lsh() {
+        let engine = DuplicateDetectionEngine::new(DuplicateDetectionConfig::default());
+
+        // Create test fragments with similar signatures
+        let mut fragments = vec![];
+        for i in 0..5 {
+            fragments.push(CodeFragment {
+                id: i as u64,
+                file_path: PathBuf::from(format!("file{}.rs", i)),
+                start_line: 1,
+                end_line: 10,
+                start_column: 0,
+                end_column: 100,
+                raw_content: format!("content {}", i),
+                tokens: vec![],
+                normalized_tokens: vec![],
+                signature: MinHashSignature {
+                    values: if i < 3 {
+                        vec![1, 2, 3, 4, 5] // Similar signatures for first 3
+                    } else {
+                        vec![10, 20, 30, 40, 50] // Different for last 2
+                    },
+                },
+                hash: i as u64,
+                language: Language::Rust,
+            });
+        }
+
+        let pairs = engine.find_clone_pairs(&fragments).unwrap();
+        assert!(!pairs.is_empty());
+    }
+
+    #[test]
+    fn test_group_clones() {
+        let engine = DuplicateDetectionEngine::new(DuplicateDetectionConfig::default());
+
+        // Populate fragments in the engine
+        for i in 1..=5 {
+            let fragment = CodeFragment {
+                id: i,
+                file_path: PathBuf::from(format!("file{}.rs", i)),
+                start_line: 1,
+                end_line: 10,
+                start_column: 0,
+                end_column: 100,
+                raw_content: String::new(),
+                tokens: vec![],
+                normalized_tokens: vec![],
+                signature: MinHashSignature { values: vec![] },
+                hash: 0,
+                language: Language::Rust,
+            };
+            engine.fragments.insert(i, fragment);
+        }
+
+        let clone_pairs = vec![(1, 2, 0.9), (2, 3, 0.85), (4, 5, 0.95)];
+
+        let groups = engine.group_clones(clone_pairs).unwrap();
+        assert_eq!(groups.len(), 2); // Should form 2 groups: {1,2,3} and {4,5}
+    }
+
+    #[test]
+    fn test_compute_summary() {
+        let engine = DuplicateDetectionEngine::new(DuplicateDetectionConfig::default());
+
+        let fragments = vec![
+            CodeFragment {
+                id: 1,
+                file_path: PathBuf::from("file1.rs"),
+                start_line: 1,
+                end_line: 10,
+                start_column: 0,
+                end_column: 100,
+                raw_content: String::new(),
+                tokens: vec![],
+                normalized_tokens: vec![],
+                signature: MinHashSignature { values: vec![] },
+                hash: 0,
+                language: Language::Rust,
+            },
+            CodeFragment {
+                id: 2,
+                file_path: PathBuf::from("file2.rs"),
+                start_line: 1,
+                end_line: 5,
+                start_column: 0,
+                end_column: 50,
+                raw_content: String::new(),
+                tokens: vec![],
+                normalized_tokens: vec![],
+                signature: MinHashSignature { values: vec![] },
+                hash: 0,
+                language: Language::Rust,
+            },
+        ];
+
+        let groups = vec![CloneGroup {
+            id: 1,
+            clone_type: CloneType::Type1 { similarity: 1.0 },
+            fragments: vec![CloneInstance {
+                file: PathBuf::from("file1.rs"),
+                start_line: 1,
+                end_line: 10,
+                start_column: 0,
+                end_column: 100,
+                similarity_to_representative: 1.0,
+                normalized_hash: 123,
+            }],
+            total_lines: 10,
+            total_tokens: 50,
+            average_similarity: 1.0,
+            representative: 1,
+        }];
+
+        let summary = engine.compute_summary(&fragments, &groups, 2);
+        assert_eq!(summary.total_files, 2);
+        assert_eq!(summary.total_fragments, 2);
+        assert_eq!(summary.clone_groups, 1);
+        assert_eq!(summary.total_lines, 15); // 10 + 5
+        assert_eq!(summary.duplicate_lines, 10);
+    }
+
+    #[test]
+    fn test_compute_hotspots() {
+        let engine = DuplicateDetectionEngine::new(DuplicateDetectionConfig::default());
+
+        let groups = vec![CloneGroup {
+            id: 1,
+            clone_type: CloneType::Type1 { similarity: 1.0 },
+            fragments: vec![
+                CloneInstance {
+                    file: PathBuf::from("hotspot.rs"),
+                    start_line: 1,
+                    end_line: 10,
+                    start_column: 0,
+                    end_column: 100,
+                    similarity_to_representative: 1.0,
+                    normalized_hash: 123,
+                },
+                CloneInstance {
+                    file: PathBuf::from("hotspot.rs"),
+                    start_line: 20,
+                    end_line: 30,
+                    start_column: 0,
+                    end_column: 100,
+                    similarity_to_representative: 0.9,
+                    normalized_hash: 124,
+                },
+            ],
+            total_lines: 20,
+            total_tokens: 100,
+            average_similarity: 0.95,
+            representative: 1,
+        }];
+
+        let hotspots = engine.compute_hotspots(&groups);
+        assert_eq!(hotspots.len(), 1);
+        assert_eq!(hotspots[0].file, PathBuf::from("hotspot.rs"));
+        assert_eq!(hotspots[0].clone_groups, 1);
+    }
+
+    #[test]
+    fn test_find_representative() {
+        let mut representative = HashMap::new();
+        representative.insert(1, 1);
+        representative.insert(2, 1);
+        representative.insert(3, 2);
+
+        assert_eq!(
+            DuplicateDetectionEngine::find_representative(&representative, 3),
+            1
+        );
+        assert_eq!(
+            DuplicateDetectionEngine::find_representative(&representative, 1),
+            1
+        );
+
+        // Test non-existent ID
+        assert_eq!(
+            DuplicateDetectionEngine::find_representative(&representative, 999),
+            999
+        );
+    }
+
+    #[test]
+    fn test_empty_file_handling() {
+        let config = DuplicateDetectionConfig::default();
+        let engine = DuplicateDetectionEngine::new(config);
+
+        let files = vec![(PathBuf::from("empty.rs"), String::new(), Language::Rust)];
+
+        let report = engine.detect_duplicates(&files).unwrap();
+        assert_eq!(report.summary.total_files, 1);
+        assert_eq!(report.summary.total_fragments, 0);
+    }
+
+    #[test]
+    fn test_c_and_cpp_languages() {
+        let config = DuplicateDetectionConfig::default();
+        let extractor = UniversalFeatureExtractor::new(config);
+
+        // Test C code
+        let c_tokens = extractor.extract_features(
+            "#include <stdio.h>\nint main() { printf(\"Hello\"); return 0; }",
+            Language::C,
+        );
+        assert!(!c_tokens.is_empty());
+
+        // Test C++ code
+        let cpp_tokens = extractor.extract_features(
+            "#include <iostream>\nint main() { std::cout << \"Hello\"; return 0; }",
+            Language::Cpp,
+        );
+        assert!(!cpp_tokens.is_empty());
+    }
+
+    #[test]
+    fn test_language_specific_edge_cases() {
+        let config = DuplicateDetectionConfig::default();
+        let extractor = UniversalFeatureExtractor::new(config);
+
+        // JavaScript template literals
+        let js_code = "const msg = `Hello ${name}!`;";
+        let js_tokens = extractor.extract_features(js_code, Language::JavaScript);
+        assert!(!js_tokens.is_empty());
+
+        // Python f-strings
+        let py_code = "msg = f'Hello {name}!'";
+        let py_tokens = extractor.extract_features(py_code, Language::Python);
+        assert!(!py_tokens.is_empty());
+
+        // Rust lifetime annotations
+        let rust_code = "fn test<'a>(x: &'a str) -> &'a str { x }";
+        let rust_tokens = extractor.extract_features(rust_code, Language::Rust);
+        assert!(!rust_tokens.is_empty());
+    }
+
+    #[test]
+    fn test_is_function_start() {
+        let engine = DuplicateDetectionEngine::new(DuplicateDetectionConfig::default());
+
+        // Test Rust
+        assert!(engine.is_function_start("fn main() {", Language::Rust));
+        assert!(engine.is_function_start("pub fn test(x: i32) -> i32 {", Language::Rust));
+        assert!(!engine.is_function_start("let x = 42;", Language::Rust));
+
+        // Test TypeScript/JavaScript
+        assert!(engine.is_function_start("function test() {", Language::TypeScript));
+        assert!(engine.is_function_start("const test = () => {", Language::TypeScript));
+        assert!(engine.is_function_start("test(param) {", Language::JavaScript));
+
+        // Test Python
+        assert!(engine.is_function_start("def test():", Language::Python));
+        assert!(engine.is_function_start("def test(x, y):", Language::Python));
+        assert!(!engine.is_function_start("if True:", Language::Python));
+
+        // Test C/C++
+        assert!(engine.is_function_start("int main() {", Language::C));
+        assert!(engine.is_function_start("void test(int x) {", Language::C));
+        assert!(engine.is_function_start("std::string getName() const {", Language::Cpp));
+    }
+
+    #[test]
+    fn test_is_function_end() {
+        let engine = DuplicateDetectionEngine::new(DuplicateDetectionConfig::default());
+
+        // Test most languages
+        assert!(engine.is_function_end("}", Language::Rust));
+        assert!(engine.is_function_end("}", Language::TypeScript));
+        assert!(engine.is_function_end("}", Language::JavaScript));
+        assert!(engine.is_function_end("}", Language::C));
+        assert!(engine.is_function_end("}", Language::Cpp));
+
+        // Test Python
+        assert!(engine.is_function_end("def another_function():", Language::Python));
+        assert!(engine.is_function_end("class Test:", Language::Python));
+        assert!(engine.is_function_end("import os", Language::Python));
+        assert!(!engine.is_function_end("    return x", Language::Python));
+    }
+
+    #[test]
+    fn test_canonicalize_identifier() {
+        let config = DuplicateDetectionConfig::default();
+        let extractor = UniversalFeatureExtractor::new(config);
+
+        let canonical1 = extractor.canonicalize_identifier("myVar");
+        let canonical2 = extractor.canonicalize_identifier("myVar");
+        let canonical3 = extractor.canonicalize_identifier("otherVar");
+
+        // Same identifier should get same canonical name
+        assert_eq!(canonical1, canonical2);
+
+        // Different identifier should get different canonical name
+        assert_ne!(canonical1, canonical3);
+
+        // Should follow VAR_N pattern
+        assert!(canonical1.starts_with("VAR_"));
+        assert!(canonical3.starts_with("VAR_"));
+    }
 
     #[test]
     fn test_token_hash() {

@@ -23,7 +23,7 @@ pub async fn handle_list(
         list_templates(server.as_ref(), toolchain.as_deref(), category.as_deref()).await?;
 
     match format {
-        OutputFormat::Table => print_table(&templates),
+        OutputFormat::Table => super::super::stubs::print_table(&templates),
         OutputFormat::Json => {
             let templates_deref: Vec<&TemplateResource> =
                 templates.iter().map(|t| t.as_ref()).collect();
@@ -166,8 +166,9 @@ async fn analyze_project(
             AnalysisType::Complexity,
             AnalysisType::Satd,
             AnalysisType::DeadCode,
-            AnalysisType::Provability,
-            AnalysisType::Churn,
+            // Skip expensive analyses for context generation
+            // AnalysisType::Provability,
+            // AnalysisType::Churn,
         ],
         period_days: 30,
         dag_type: DeepDagType::FullDependency,
@@ -918,7 +919,7 @@ fn detect_primary_language(path: &Path) -> Result<String> {
 /// Handle serve command
 pub async fn handle_serve(host: String, port: u16, cors: bool) -> Result<()> {
     // Delegate to main serve implementation for now - will be extracted later
-    super::super::handle_serve(host, port, cors).await
+    super::super::stubs::handle_serve(host, port, cors).await
 }
 
 /// Handle diagnose command
@@ -928,7 +929,7 @@ pub async fn handle_diagnose(args: crate::cli::diagnose::DiagnoseArgs) -> Result
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_utility_handlers_basic() {
@@ -936,3 +937,7 @@ mod tests {
         assert_eq!(1 + 1, 2);
     }
 }
+
+#[cfg(test)]
+#[path = "utility_handlers_tests.rs"]
+mod utility_handlers_tests;

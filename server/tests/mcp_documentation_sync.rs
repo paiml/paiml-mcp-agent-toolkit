@@ -54,6 +54,41 @@ fn parse_documented_mcp_tools() -> Vec<DocumentedTool> {
         ("scaffold_project", "Scaffold a complete project"),
         ("search_templates", "Search for templates"),
         ("validate_template", "Validate template parameters"),
+        ("analyze_complexity", "Analyze code complexity"),
+        ("analyze_code_churn", "Analyze code change patterns"),
+        ("analyze_dag", "Generate dependency graphs"),
+        ("generate_context", "Generate project context"),
+        ("analyze_dead_code", "Analyze dead code"),
+        ("analyze_deep_context", "Analyze deep context"),
+        // Vectorized tools
+        (
+            "analyze_duplicates_vectorized",
+            "Analyze code duplicates using SIMD",
+        ),
+        (
+            "analyze_graph_metrics_vectorized",
+            "Analyze graph metrics using vectorization",
+        ),
+        (
+            "analyze_name_similarity_vectorized",
+            "Analyze name similarity using SIMD",
+        ),
+        (
+            "analyze_symbol_table_vectorized",
+            "Analyze symbol tables with vectorization",
+        ),
+        (
+            "analyze_incremental_coverage_vectorized",
+            "Analyze incremental coverage with SIMD",
+        ),
+        (
+            "analyze_big_o_vectorized",
+            "Analyze Big O complexity using vectorization",
+        ),
+        (
+            "generate_enhanced_report",
+            "Generate enhanced analysis report",
+        ),
     ];
 
     // Pre-compile the parameter extraction regex outside the loop
@@ -103,15 +138,15 @@ fn get_binary_path() -> String {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let workspace_root = Path::new(manifest_dir).parent().unwrap();
 
-    let release_binary = workspace_root.join("target/release/paiml-mcp-agent-toolkit");
-    let debug_binary = workspace_root.join("target/debug/paiml-mcp-agent-toolkit");
+    let release_binary = workspace_root.join("target/release/pmat");
+    let debug_binary = workspace_root.join("target/debug/pmat");
 
     if release_binary.exists() {
         release_binary.to_string_lossy().to_string()
     } else if debug_binary.exists() {
         debug_binary.to_string_lossy().to_string()
     } else {
-        "paiml-mcp-agent-toolkit".to_string()
+        "pmat".to_string()
     }
 }
 

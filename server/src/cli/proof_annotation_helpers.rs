@@ -170,7 +170,7 @@ pub async fn collect_and_filter_annotations(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_proof_annotation_helpers_basic() {

@@ -33,7 +33,7 @@ impl UnifiedRequest {
             path,
             headers: HeaderMap::new(),
             body: Body::empty(),
-            extensions: HashMap::new(),
+            extensions: HashMap::with_capacity(4),
             trace_id: Uuid::new_v4(),
         }
     }

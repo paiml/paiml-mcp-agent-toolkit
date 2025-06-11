@@ -241,7 +241,7 @@ pub fn format_symbol_table_csv(symbols: &[SymbolInfo]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_symbol_table_helpers_basic() {

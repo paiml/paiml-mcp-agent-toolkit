@@ -153,6 +153,7 @@ impl MermaidGenerator {
         }
     }
 
+    #[inline]
     pub fn escape_mermaid_label(&self, label: &str) -> String {
         // For IntelliJ compatibility, use simple character replacements instead of HTML entities
         label
@@ -184,6 +185,7 @@ impl MermaidGenerator {
         }
     }
 
+    #[inline]
     pub fn get_edge_arrow(&self, edge_type: &EdgeType) -> &'static str {
         match edge_type {
             EdgeType::Calls => "-->",
@@ -211,6 +213,7 @@ impl MermaidGenerator {
         }
     }
 
+    #[inline]
     pub fn get_complexity_color(&self, complexity: u32) -> &'static str {
         match complexity {
             1..=3 => "#90EE90",  // Light green for low complexity
@@ -229,6 +232,7 @@ impl MermaidGenerator {
         }
     }
 
+    #[inline]
     pub fn sanitize_id(&self, id: &str) -> String {
         // First replace common multi-character patterns
         let sanitized = id.replace("::", "_").replace(['/', '.', '-', ' '], "_");
@@ -932,7 +936,7 @@ mod tests {
     #[cfg(test)]
     mod validation_tests {
         use super::*;
-        use crate::models::dag::{Edge, EdgeType};
+        use crate::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
 
         /// Test characters that caused the IntelliJ parse error:
         /// "Parse error on line 2: ...cache_rs_Cache_K_V_ [Interface: Cache(K,V)  -  ..."

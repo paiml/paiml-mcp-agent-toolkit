@@ -332,3 +332,66 @@ impl SessionCacheManager {
 // Safe to send between threads
 unsafe impl Send for SessionCacheManager {}
 unsafe impl Sync for SessionCacheManager {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_session_cache_manager_creation() {
+        let config = CacheConfig::default();
+        let manager = SessionCacheManager::new(config);
+
+        assert!(manager.created.elapsed().as_secs() < 1);
+    }
+
+    #[test]
+    fn test_clear_all() {
+        let config = CacheConfig::default();
+        let manager = SessionCacheManager::new(config);
+
+        // Add some data to caches
+        let test_path = std::path::PathBuf::from("test.rs");
+        manager.ast_cache.write().put(
+            test_path,
+            FileContext {
+                path: "test.rs".to_string(),
+                language: "rust".to_string(),
+                items: vec![],
+                complexity_metrics: None,
+            },
+        );
+
+        assert_eq!(manager.ast_cache.read().len(), 1);
+
+        // Clear all
+        manager.clear_all();
+
+        assert_eq!(manager.ast_cache.read().len(), 0);
+    }
+
+    #[test]
+    fn test_get_diagnostics() {
+        let config = CacheConfig::default();
+        let manager = SessionCacheManager::new(config);
+
+        let diagnostics = manager.get_diagnostics();
+
+        assert_eq!(diagnostics.session_id, manager.session_id);
+        assert!(diagnostics.uptime.as_secs() < 1);
+        assert_eq!(diagnostics.cache_stats.len(), 5); // 5 cache types
+    }
+
+    #[test]
+    fn test_memory_pressure() {
+        let config = CacheConfig {
+            max_memory_mb: 1, // Very small limit
+            ..Default::default()
+        };
+        let manager = SessionCacheManager::new(config);
+
+        // Since we have no data, pressure should be 0
+        let diagnostics = manager.get_diagnostics();
+        assert_eq!(diagnostics.memory_pressure, 0.0);
+    }
+}
