@@ -704,15 +704,23 @@ mod tests {
         let file1 = temp_dir.path().join("small.rs");
         let file2 = temp_dir.path().join("large.rs");
 
-        let mut f1 = File::create(&file1).unwrap();
-        writeln!(f1, "fn small() {{}}").unwrap();
-
-        let mut f2 = File::create(&file2).unwrap();
-        writeln!(f2, "fn large() {{ // This is a much longer file").unwrap();
-        for _ in 0..100 {
-            writeln!(f2, "    println!(\"line\");").unwrap();
+        {
+            use std::io::BufWriter;
+            let f1 = File::create(&file1).unwrap();
+            let mut writer = BufWriter::new(f1);
+            writeln!(writer, "fn small() {{}}").unwrap();
         }
-        writeln!(f2, "}}").unwrap();
+
+        {
+            use std::io::BufWriter;
+            let f2 = File::create(&file2).unwrap();
+            let mut writer = BufWriter::new(f2);
+            writeln!(writer, "fn large() {{ // This is a much longer file").unwrap();
+            for _ in 0..100 {
+                writeln!(writer, "    println!(\"line\");").unwrap();
+            }
+            writeln!(writer, "}}").unwrap();
+        }
 
         let ranker = ComplexityRanker::default();
         let engine = RankingEngine::new(ranker);

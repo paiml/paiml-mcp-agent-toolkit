@@ -3,10 +3,9 @@
 //! Tests #[derive(Parser)] propagation, binary name detection,
 //! subcommand hierarchy, and global argument accessibility.
 
-use crate::cli::{AnalyzeCommands, Cli, Commands};
+use crate::cli::Cli;
 use clap::{CommandFactory, Parser};
 use parking_lot::Mutex;
-use std::env;
 
 // Global mutex to ensure env var tests don't interfere across all modules
 static ENV_MUTEX: Mutex<()> = Mutex::new(());
@@ -14,6 +13,8 @@ static ENV_MUTEX: Mutex<()> = Mutex::new(());
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::{AnalyzeCommands, Commands};
+    use std::env;
 
     #[test]
     fn test_derive_parser_propagation() {
@@ -137,7 +138,9 @@ mod tests {
         let _guard = ENV_MUTEX.lock();
 
         // Test that RUST_LOG env var is properly mapped
-        env::set_var("RUST_LOG", "debug");
+        unsafe {
+            env::set_var("RUST_LOG", "debug");
+        }
 
         let cli = Cli::try_parse_from(["pmat", "list"]);
         assert!(cli.is_ok());
@@ -147,7 +150,9 @@ mod tests {
         assert_eq!(cli.trace_filter, Some("debug".to_string()));
 
         // Clean up
-        env::remove_var("RUST_LOG");
+        unsafe {
+            env::remove_var("RUST_LOG");
+        }
     }
 
     #[test]

@@ -931,6 +931,179 @@ Validate template parameters before generation.
 }
 ```
 
+#### `analyze_dead_code`
+Analyze dead code in the project to identify unused functions, classes, and modules.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_dead_code",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "format": "summary",
+      "top_files": 10,
+      "include_unreachable": false
+    }
+  }
+}
+```
+
+#### `analyze_deep_context`
+Perform deep context analysis combining multiple analysis types for comprehensive insights.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_deep_context",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "format": "markdown",
+      "include_analyses": ["ast", "complexity", "churn"]
+    }
+  }
+}
+```
+
+#### `analyze_duplicates_vectorized`
+Analyze code duplicates using high-performance SIMD vectorization.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_duplicates_vectorized",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "min_lines": 10,
+      "format": "summary"
+    }
+  }
+}
+```
+
+#### `analyze_graph_metrics_vectorized`
+Analyze graph metrics using vectorized operations for performance.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_graph_metrics_vectorized",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "metrics": ["centrality", "clustering"],
+      "format": "json"
+    }
+  }
+}
+```
+
+#### `analyze_name_similarity_vectorized`
+Analyze name similarity using SIMD-accelerated string comparison.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_name_similarity_vectorized",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "threshold": 0.8,
+      "format": "summary"
+    }
+  }
+}
+```
+
+#### `analyze_symbol_table_vectorized`
+Analyze symbol tables with vectorized processing for large codebases.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_symbol_table_vectorized",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "include_private": false,
+      "format": "json"
+    }
+  }
+}
+```
+
+#### `analyze_incremental_coverage_vectorized`
+Analyze incremental code coverage using SIMD operations.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_incremental_coverage_vectorized",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "baseline_commit": "main",
+      "format": "summary"
+    }
+  }
+}
+```
+
+#### `analyze_big_o_vectorized`
+Analyze Big O complexity using vectorized algorithm analysis.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_big_o_vectorized",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "functions": ["sort", "search"],
+      "format": "summary"
+    }
+  }
+}
+```
+
+#### `generate_enhanced_report`
+Generate comprehensive enhanced analysis report combining multiple analyses.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "generate_enhanced_report",
+    "arguments": {
+      "project_path": "/path/to/project",
+      "output_format": "html",
+      "analyses": ["complexity", "coverage", "duplicates"],
+      "include_visualizations": true
+    }
+  }
+}
+```
+
 ### Batch Request Support
 
 ```json

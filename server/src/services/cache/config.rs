@@ -123,7 +123,7 @@ impl CacheConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_config_basic() {

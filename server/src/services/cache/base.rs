@@ -3,6 +3,10 @@ use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+#[cfg(test)]
+#[path = "base_tests.rs"]
+mod tests;
+
 /// Base trait for cache strategies
 pub trait CacheStrategy: Send + Sync {
     type Key: Hash + Eq + Clone + Send;
@@ -117,16 +121,5 @@ impl CacheStats {
 impl Default for CacheStats {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_base_basic() {
-        // Basic test
-        assert_eq!(1 + 1, 2);
     }
 }

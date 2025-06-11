@@ -445,7 +445,7 @@ pub struct ValidationError {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_template_service_basic() {

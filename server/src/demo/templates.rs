@@ -589,7 +589,7 @@ pub const CSS_DARK_THEME: &str = r#"
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_templates_basic() {

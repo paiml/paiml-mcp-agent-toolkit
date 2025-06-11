@@ -115,11 +115,20 @@ impl Default for DependencyGraph {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_dag_basic() {
         // Basic test
         assert_eq!(1 + 1, 2);
     }
+}
+
+// DAG generation types
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum DagType {
+    CallGraph,
+    ImportGraph,
+    Inheritance,
+    FullDependency,
 }

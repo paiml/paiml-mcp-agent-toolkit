@@ -29,6 +29,12 @@ mod gitignore_respect_tests;
 // Include metric accuracy tests
 mod metric_accuracy_suite;
 
+// Include basic CLI tests for coverage
+mod cli_basic_tests;
+
+// Include protocol service tests for coverage
+mod protocol_service_tests;
+
 // TRACKED: Fix diagnostic command tests
 // mod diagnose_tests;
 

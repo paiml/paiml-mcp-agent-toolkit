@@ -7,8 +7,6 @@
 //! This file now serves as a compatibility wrapper.
 
 use crate::models::unified_ast::AstDag;
-#[cfg(test)]
-use crate::models::unified_ast::AstKind;
 use anyhow::Result;
 use std::path::Path;
 
@@ -71,6 +69,7 @@ impl CAstParser {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::unified_ast::AstKind;
 
     #[test]
     #[cfg(feature = "c-ast")]

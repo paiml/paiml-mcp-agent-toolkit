@@ -521,7 +521,7 @@ fn extract_import_from_items(import_from: &ast::StmtImportFrom, items: &mut Vec<
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_ast_python_basic() {

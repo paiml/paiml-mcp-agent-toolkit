@@ -282,7 +282,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             perf,
             executive_summary,
         } => {
-            super::super::handle_analyze_comprehensive(
+            super::super::stubs::handle_analyze_comprehensive(
                 project_path,
                 format,
                 include_duplicates,
@@ -316,7 +316,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             top_k,
             min_centrality,
         } => {
-            super::super::handle_analyze_graph_metrics(
+            super::advanced_analysis_handlers::handle_analyze_graph_metrics(
                 project_path,
                 metrics,
                 pagerank_seeds,
@@ -377,7 +377,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             perf,
             clear_cache,
         } => {
-            super::super::handle_analyze_proof_annotations(
+            super::super::stubs::handle_analyze_proof_annotations(
                 project_path,
                 format,
                 high_confidence_only,
@@ -403,19 +403,18 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             cache_dir,
             force_refresh,
         } => {
-            let _ = (target_branch, force_refresh); // Silence unused warnings
-            super::super::handle_analyze_incremental_coverage(
+            super::super::stubs::handle_analyze_incremental_coverage(
                 project_path,
-                Some(base_branch),
-                cache_dir,
+                base_branch,
+                target_branch,
                 format,
-                detailed,
+                coverage_threshold,
                 changed_files_only,
                 detailed,
-                coverage_threshold,
                 output,
-                None,
                 perf,
+                cache_dir,
+                force_refresh,
             )
             .await
         }
@@ -431,7 +430,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             output,
             perf,
         } => {
-            super::super::handle_analyze_symbol_table(
+            super::advanced_analysis_handlers::handle_analyze_symbol_table(
                 project_path,
                 format,
                 filter,
@@ -474,7 +473,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_analysis_handlers_basic() {

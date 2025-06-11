@@ -45,6 +45,7 @@ pub mod lightweight_provability_analyzer;
 pub mod makefile_compressor;
 pub mod makefile_linter;
 pub mod mermaid_generator;
+pub mod parsed_file_cache;
 pub mod project_meta_detector;
 pub mod proof_annotator;
 pub mod quality_gates;
@@ -66,8 +67,6 @@ pub mod verified_complexity;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_mod_basic() {
         // Basic test

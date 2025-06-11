@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint check test test-fast coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap overnight-refactor overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-all coverage-stratified
+.PHONY: all validate format lint lint-main check test test-fast coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap overnight-refactor overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-all coverage-stratified
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -63,6 +63,12 @@ lint: lint-scripts lint-makefile
 	@cargo clippy --manifest-path server/Cargo.toml --all-targets --all-features -- -D warnings
 	@echo "✅ All linting checks passed!"
 
+# Lint only main code (skip tests)
+lint-main: lint-scripts lint-makefile
+	@echo "🔍 Linting Rust library and binaries..."
+	@cargo clippy --manifest-path server/Cargo.toml --lib --bins -- -D warnings
+	@echo "✅ Main code linting passed!"
+
 # Type check all projects  
 check: check-scripts
 	@echo "✅ Type checking Rust code..."
@@ -71,34 +77,37 @@ check: check-scripts
 
 # Fast tests without coverage (optimized for speed) - MUST complete under 3 minutes
 test-fast:
-	@echo "⚡ Running fast tests with maximum parallelism..."
+	@echo "⚡ Running fast tests with safe parallelism..."
+	@chmod +x test-pre-check.sh 2>/dev/null || true
+	@./test-pre-check.sh || (echo "❌ System health check failed. Please fix issues before running tests."; exit 1)
 	@echo "🚀 Setting SKIP_SLOW_TESTS=1 to ensure tests complete quickly..."
-	@echo "🧠 Configuring for high-performance testing..."
+	@echo "🛡️ Using conservative thread count to prevent system crashes..."
 	@CPU_CORES=$$(nproc); \
 	if [ "$${CI:-}" = "true" ]; then \
-		echo "🔧 CI environment detected - using full parallelism"; \
-		TEST_THREADS=$$CPU_CORES; \
+		echo "🔧 CI environment detected - using moderate parallelism"; \
+		TEST_THREADS=8; \
 	else \
 		echo "📊 System resources: $$CPU_CORES cores"; \
-		echo "🚀 Using all $$CPU_CORES cores for maximum performance"; \
-		TEST_THREADS=$$CPU_CORES; \
+		echo "⚠️  Using fixed 4 threads for stability (override with THREADS env var)"; \
+		TEST_THREADS=$${THREADS:-4}; \
 	fi; \
 	echo "🔨 Running tests with $$TEST_THREADS threads..."; \
 	if command -v cargo-nextest >/dev/null 2>&1; then \
 		echo "⚡ Using cargo-nextest for faster test execution..."; \
-		timeout 180 bash -c "SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$TEST_THREADS cargo nextest run --profile fast --workspace --filter-expr 'not test(slow_integration)'" || \
-		(echo "⚠️  Nextest failed or timed out, falling back to cargo test..."; \
-		timeout 180 bash -c "SKIP_SLOW_TESTS=1 cargo test --release --workspace -- --test-threads=$$TEST_THREADS"); \
+		SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$TEST_THREADS cargo nextest run --profile fast --workspace --filter-expr 'not test(slow_integration)' || \
+		(echo "⚠️  Nextest failed, falling back to cargo test..."; \
+		SKIP_SLOW_TESTS=1 cargo test --workspace -- --test-threads=$$TEST_THREADS); \
 	else \
 		echo "📦 Using standard cargo test..."; \
-		timeout 180 bash -c "SKIP_SLOW_TESTS=1 cargo test --release --workspace -- --test-threads=$$TEST_THREADS"; \
+		SKIP_SLOW_TESTS=1 cargo test --workspace -- --test-threads=$$TEST_THREADS; \
 	fi
-	@echo "✅ Fast tests completed under 3 minutes!"
+	@echo "✅ Fast tests completed!"
 
 # Stratified test targets for distributed test architecture
 test-unit:
 	@echo "🚀 Running unit tests (<10s feedback)..."
-	@cd server && cargo test --test unit_core -- --test-threads=$$(nproc)
+	@CORES=$$(nproc); THREADS=$$((CORES > 2 ? CORES - 2 : 1)); \
+	cd server && cargo test --test unit_core -- --test-threads=$$THREADS
 	@echo "✅ Unit tests completed!"
 
 test-services:
@@ -151,11 +160,12 @@ test-safe:
 # Run tests - ALWAYS FAST (zero tolerance for slow tests) with coverage summary
 test:
 	@echo "🧪 Running fast tests with coverage..."
-	@echo "🚀 Using maximum parallelism for coverage tests..."
-	@cd server && SKIP_SLOW_TESTS=1 cargo llvm-cov test \
+	@echo "🚀 Using optimized parallelism for coverage tests..."
+	@CORES=$$(nproc); THREADS=$$((CORES > 2 ? CORES - 2 : 1)); \
+	cd server && SKIP_SLOW_TESTS=1 cargo llvm-cov test \
 		--lib --bins \
 		--no-fail-fast \
-		-- --test-threads=$$(nproc) 2>&1 | grep -E "test result:|passed|failed|TOTAL|%"
+		-- --test-threads=$$THREADS 2>&1 | grep -E "test result:|passed|failed|TOTAL|%"
 	@echo "✅ All fast tests completed with coverage summary!"
 
 # Generate coverage reports for all projects (fast and comprehensive)

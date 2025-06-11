@@ -1094,7 +1094,7 @@ mod tests {
     #[tokio::test]
     async fn test_template_generation() {
         let service = DefaultTemplateService;
-        let mut params = HashMap::new();
+        let mut params = HashMap::with_capacity(2);
         params.insert(
             "project_name".to_string(),
             Value::String("test-project".to_string()),

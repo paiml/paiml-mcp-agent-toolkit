@@ -36,7 +36,7 @@ fn test_http_request_format() {
 #[test]
 fn test_cli_argument_parsing() {
     // Test CLI argument format
-    let args = vec!["analyze", "complexity", ".", "--json"];
+    let args = ["analyze", "complexity", ".", "--json"];
 
     assert_eq!(args[0], "analyze");
     assert_eq!(args[1], "complexity");
@@ -120,7 +120,7 @@ fn test_parameter_normalization() {
         }
     });
 
-    let cli_params = vec![".", "--threshold", "10", "--format", "json"];
+    let cli_params = [".", "--threshold", "10", "--format", "json"];
 
     // Extract normalized values
     assert_eq!(mcp_params["path"], ".");

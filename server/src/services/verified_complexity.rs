@@ -1,6 +1,4 @@
 use crate::models::unified_ast::{AstKind, ExprKind, StmtKind, UnifiedAstNode};
-#[cfg(test)]
-use crate::models::unified_ast::{FunctionKind, NodeFlags};
 use std::collections::HashMap;
 
 /// Verified complexity analyzer implementing cognitive complexity per Sonar rules
@@ -55,7 +53,7 @@ impl VerifiedComplexityAnalyzer {
     }
 
     /// Calculate all complexity metrics for a function
-#[inline]
+    #[inline]
     pub fn analyze_function(&mut self, node: &UnifiedAstNode) -> ComplexityMetrics {
         debug_assert!(
             matches!(node.kind, AstKind::Function(_)),
@@ -287,6 +285,7 @@ impl Default for VerifiedComplexityAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::unified_ast::{FunctionKind, NodeFlags};
 
     fn create_test_function() -> UnifiedAstNode {
         UnifiedAstNode {
