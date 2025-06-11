@@ -15,6 +15,10 @@ env:
   CI: true
   SKIP_SLOW_TESTS: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   # STAGE 1: CI - This must pass before anything else runs
   ci:
