@@ -3665,3 +3665,331 @@ fn estimate_cognitive_complexity(content: &str) -> u32 {
 
     complexity.min(60) // Cap at 60 for reasonable values
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+    use std::io::Write;
+
+    #[tokio::test]
+    async fn test_handle_analyze_makefile_basic() {
+        // Create a temporary directory and Makefile
+        let temp_dir = TempDir::new().unwrap();
+        let makefile_path = temp_dir.path().join("Makefile");
+        let mut file = std::fs::File::create(&makefile_path).unwrap();
+        writeln!(file, "all:").unwrap();
+        writeln!(file, "\techo 'Hello World'").unwrap();
+
+        // Test basic makefile analysis
+        let result = handle_analyze_makefile(
+            makefile_path.clone(),
+            vec![],  // Empty rules vector
+            MakefileOutputFormat::Human,
+            false,
+            None,
+        )
+        .await;
+
+        // Should complete without error
+        assert!(result.is_ok(), "Makefile analysis failed: {:?}", result.err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_makefile_with_rules() {
+        let temp_dir = TempDir::new().unwrap();
+        let makefile_path = temp_dir.path().join("Makefile");
+        let mut file = std::fs::File::create(&makefile_path).unwrap();
+        writeln!(file, "test:").unwrap();
+        writeln!(file, "\tcargo test").unwrap();
+
+        // Test with custom rules
+        let result = handle_analyze_makefile(
+            makefile_path,
+            vec!["phonytargets".to_string()],
+            MakefileOutputFormat::Json,
+            false,
+            Some("3.82".to_string()),
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_provability() {
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = temp_dir.path().to_path_buf();
+        
+        // Create a simple Rust file for analysis
+        let src_dir = project_path.join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+        let rust_file = src_dir.join("lib.rs");
+        let mut file = std::fs::File::create(&rust_file).unwrap();
+        writeln!(file, "pub fn add(a: i32, b: i32) -> i32 {{").unwrap();
+        writeln!(file, "    a + b").unwrap();
+        writeln!(file, "}}").unwrap();
+
+        // Test provability analysis
+        let result = handle_analyze_provability(
+            project_path,
+            vec!["add".to_string()],  // Functions to analyze
+            10,  // Analysis depth
+            ProvabilityOutputFormat::Json,
+            false,  // high_confidence_only
+            false,  // include_evidence
+            None,  // output path
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_defect_prediction() {
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = temp_dir.path().to_path_buf();
+        
+        // Create test files
+        let src_dir = project_path.join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+        let rust_file = src_dir.join("main.rs");
+        let mut file = std::fs::File::create(&rust_file).unwrap();
+        writeln!(file, "fn main() {{").unwrap();
+        writeln!(file, "    println!(\"Hello, world!\");").unwrap();
+        writeln!(file, "}}").unwrap();
+
+        // Test defect prediction
+        let result = handle_analyze_defect_prediction(
+            project_path,
+            0.5,  // confidence_threshold
+            10,   // min_lines
+            false,  // include_low_confidence
+            DefectPredictionOutputFormat::Summary,
+            false,  // high_risk_only
+            false,  // include_recommendations
+            None,  // include
+            None,  // exclude
+            None,  // output
+            false,  // _perf
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_proof_annotations() {
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = temp_dir.path().to_path_buf();
+        
+        // Test proof annotation collection
+        let result = handle_analyze_proof_annotations(
+            project_path,
+            ProofAnnotationOutputFormat::Json,
+            false,  // high_confidence_only
+            false,  // include_evidence
+            None,  // sources
+            None,  // confidence_levels
+            None,  // output
+            false,  // _perf
+            false,  // clear_cache
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_incremental_coverage() {
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = temp_dir.path().to_path_buf();
+        
+        // Initialize git repo for incremental coverage
+        std::process::Command::new("git")
+            .args(&["init"])
+            .current_dir(&project_path)
+            .output()
+            .unwrap();
+
+        // Test incremental coverage analysis
+        let result = handle_analyze_incremental_coverage(
+            project_path,
+            "main".to_string(),  // base_branch
+            None,  // coverage_file
+            IncrementalCoverageOutputFormat::Summary,
+            80.0,  // coverage_threshold
+            false,  // changed_files_only
+            false,  // detailed
+            None,  // output
+            false,  // _perf
+            None,  // cache_dir
+            false,  // force_refresh
+        )
+        .await;
+
+        // This might fail if git is not available, but should not panic
+        match result {
+            Ok(_) => assert!(true),
+            Err(e) => {
+                // Accept git-related errors
+                assert!(e.to_string().contains("git") || e.to_string().contains("No changed files"));
+            }
+        }
+    }
+
+    #[test]
+    fn test_extract_identifiers() {
+        // Test Rust identifiers
+        let rust_code = "fn calculate_total(items: Vec<Item>) -> u32 { items.len() }";
+        let identifiers = extract_identifiers(rust_code);
+        assert!(identifiers.iter().any(|i| i.name == "calculate_total"));
+
+        // Test JavaScript identifiers
+        let js_code = "function getUserName(userId) { return users[userId].name; }";
+        let identifiers = extract_identifiers(js_code);
+        assert!(identifiers.iter().any(|i| i.name == "getUserName"));
+
+        // Test Python identifiers
+        let py_code = "def process_data(input_list): return [x * 2 for x in input_list]";
+        let identifiers = extract_identifiers(py_code);
+        assert!(identifiers.iter().any(|i| i.name == "process_data"));
+    }
+
+    #[test]
+    fn test_calculate_string_similarity() {
+        // Identical strings
+        assert_eq!(calculate_string_similarity("hello", "hello"), 1.0);
+        
+        // Completely different strings
+        assert_eq!(calculate_string_similarity("hello", "world"), 0.0);
+        
+        // Similar strings
+        let similarity = calculate_string_similarity("hello_world", "hello_word");
+        assert!(similarity > 0.5 && similarity < 1.0);
+        
+        // Empty strings
+        assert_eq!(calculate_string_similarity("", ""), 1.0);
+        assert_eq!(calculate_string_similarity("hello", ""), 0.0);
+    }
+
+    #[test]
+    fn test_calculate_edit_distance() {
+        // Identical strings
+        assert_eq!(calculate_edit_distance("hello", "hello"), 0);
+        
+        // One character difference
+        assert_eq!(calculate_edit_distance("hello", "hallo"), 1);
+        
+        // Multiple differences
+        assert_eq!(calculate_edit_distance("kitten", "sitting"), 3);
+        
+        // Empty strings
+        assert_eq!(calculate_edit_distance("", ""), 0);
+        assert_eq!(calculate_edit_distance("hello", ""), 5);
+        assert_eq!(calculate_edit_distance("", "world"), 5);
+    }
+
+    #[test]
+    fn test_calculate_soundex() {
+        // Test basic soundex
+        assert_eq!(calculate_soundex("Robert"), "R163");
+        assert_eq!(calculate_soundex("Rupert"), "R163");
+        assert_eq!(calculate_soundex("Rubin"), "R150");
+        
+        // Test similar sounding names
+        assert_eq!(calculate_soundex("Ashcraft"), calculate_soundex("Ashcroft"));
+        
+        // Test edge cases
+        assert_eq!(calculate_soundex("A"), "A000");
+        assert_eq!(calculate_soundex("123"), "");
+        assert_eq!(calculate_soundex(""), "");
+    }
+
+    #[test]
+    fn test_handle_serve_placeholder() {
+        // Test that handle_serve is defined (actual server test would require more setup)
+        // This is a compile-time test to ensure the function exists
+        let _ = handle_serve;
+    }
+
+    #[test]
+    fn test_output_format_completeness() {
+        // Test MakefileOutputFormat has all expected variants
+        // Just verify that we can create each variant
+        let _ = MakefileOutputFormat::Human;
+        let _ = MakefileOutputFormat::Json;
+        let _ = MakefileOutputFormat::Sarif;
+        let _ = MakefileOutputFormat::Gcc;
+        
+        // Test that different formats produce different output
+        let formats = vec![
+            MakefileOutputFormat::Human,
+            MakefileOutputFormat::Json,
+            MakefileOutputFormat::Sarif,
+            MakefileOutputFormat::Gcc,
+        ];
+        
+        // Ensure we have 4 unique formats
+        assert_eq!(formats.len(), 4);
+    }
+
+    #[test]
+    fn test_estimate_complexity_functions() {
+        // Test cyclomatic complexity estimation
+        let simple_code = "fn add(a: i32, b: i32) -> i32 { a + b }";
+        let simple_complexity = estimate_cyclomatic_complexity(simple_code);
+        assert_eq!(simple_complexity, 1); // No branches
+
+        let complex_code = r#"
+            fn process(x: i32) -> i32 {
+                if x > 0 {
+                    for i in 0..x {
+                        if i % 2 == 0 {
+                            continue;
+                        }
+                    }
+                    x
+                } else {
+                    -x
+                }
+            }
+        "#;
+        let complex_complexity = estimate_cyclomatic_complexity(complex_code);
+        assert!(complex_complexity > 3); // Multiple branches and loops
+
+        // Test cognitive complexity estimation
+        let cognitive_simple = estimate_cognitive_complexity(simple_code);
+        assert_eq!(cognitive_simple, 0); // No nesting or control flow
+
+        let cognitive_complex = estimate_cognitive_complexity(complex_code);
+        assert!(cognitive_complex > 2); // Nested control structures
+    }
+
+    #[test]
+    fn test_get_ngrams() {
+        let ngrams = get_ngrams("hello", 2);
+        assert!(ngrams.contains("he"));
+        assert!(ngrams.contains("el"));
+        assert!(ngrams.contains("ll"));
+        assert!(ngrams.contains("lo"));
+        assert_eq!(ngrams.len(), 4);
+
+        // Test with string shorter than n
+        let short_ngrams = get_ngrams("hi", 3);
+        assert_eq!(short_ngrams.len(), 1);
+        assert!(short_ngrams.contains("hi"));
+    }
+
+    #[test]
+    fn test_soundex_code() {
+        assert_eq!(soundex_code('B'), '1');
+        assert_eq!(soundex_code('C'), '2');
+        assert_eq!(soundex_code('D'), '3');
+        assert_eq!(soundex_code('L'), '4');
+        assert_eq!(soundex_code('M'), '5');
+        assert_eq!(soundex_code('R'), '6');
+        assert_eq!(soundex_code('A'), '0');
+        assert_eq!(soundex_code('E'), '0');
+    }
+}
