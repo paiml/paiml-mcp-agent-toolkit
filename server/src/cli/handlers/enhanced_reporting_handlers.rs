@@ -271,7 +271,7 @@ async fn run_big_o_analysis(_project_path: &Path) -> Result<BigOAnalysis> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_enhanced_reporting_handlers_basic() {

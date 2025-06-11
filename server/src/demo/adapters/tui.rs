@@ -725,7 +725,7 @@ impl TuiDemoAdapter {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_tui_basic() {

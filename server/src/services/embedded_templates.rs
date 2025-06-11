@@ -260,7 +260,7 @@ pub async fn get_template_content(uri: &str) -> Result<Arc<str>, TemplateError> 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_embedded_templates_basic() {

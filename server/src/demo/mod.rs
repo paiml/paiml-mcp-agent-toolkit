@@ -747,7 +747,7 @@ async fn run_tui_demo(repo_path: std::path::PathBuf) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_mod_basic() {

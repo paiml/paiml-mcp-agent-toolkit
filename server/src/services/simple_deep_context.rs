@@ -320,7 +320,7 @@ impl Default for SimpleDeepContext {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_simple_deep_context_basic() {

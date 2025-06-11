@@ -231,3 +231,87 @@ where
         Self::new((*self.strategy).clone())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    struct TestStrategy;
+
+    impl CacheStrategy for TestStrategy {
+        type Key = String;
+        type Value = String;
+
+        fn cache_key(&self, input: &Self::Key) -> String {
+            input.clone()
+        }
+
+        fn validate(&self, _key: &Self::Key, _value: &Self::Value) -> bool {
+            true
+        }
+
+        fn ttl(&self) -> Option<Duration> {
+            None
+        }
+
+        fn max_size(&self) -> usize {
+            100
+        }
+    }
+
+    #[test]
+    fn test_content_cache_basic() {
+        let cache = ContentCache::new(TestStrategy);
+        assert_eq!(cache.len(), 0);
+
+        // Put and get
+        cache.put("key1".to_string(), "value1".to_string());
+        assert_eq!(cache.len(), 1);
+
+        let value = cache.get(&"key1".to_string());
+        assert!(value.is_some());
+        assert_eq!(*value.unwrap(), "value1");
+    }
+
+    #[test]
+    fn test_content_cache_clear() {
+        let cache = ContentCache::new(TestStrategy);
+
+        for i in 0..5 {
+            cache.put(format!("key{}", i), format!("value{}", i));
+        }
+        assert_eq!(cache.len(), 5);
+
+        cache.clear();
+        assert_eq!(cache.len(), 0);
+    }
+
+    #[test]
+    fn test_content_cache_stats() {
+        let cache = ContentCache::new(TestStrategy);
+
+        // Check initial stats
+        assert_eq!(
+            cache.stats.hits.load(std::sync::atomic::Ordering::Relaxed),
+            0
+        );
+        assert_eq!(
+            cache
+                .stats
+                .misses
+                .load(std::sync::atomic::Ordering::Relaxed),
+            0
+        );
+
+        // Cause a miss
+        cache.get(&"missing".to_string());
+        assert_eq!(
+            cache
+                .stats
+                .misses
+                .load(std::sync::atomic::Ordering::Relaxed),
+            1
+        );
+    }
+}

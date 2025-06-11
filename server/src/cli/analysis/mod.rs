@@ -18,7 +18,7 @@ pub use symbol_table::handle_analyze_symbol_table;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests // Commented out: unused import
 
     #[test]
     fn test_mod_basic() {

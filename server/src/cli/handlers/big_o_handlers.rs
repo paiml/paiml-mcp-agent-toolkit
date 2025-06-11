@@ -204,7 +204,7 @@ fn format_big_o_detailed(report: &crate::services::big_o_analyzer::BigOAnalysisR
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_big_o_handlers_basic() {

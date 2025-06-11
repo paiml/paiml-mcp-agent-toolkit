@@ -656,12 +656,5 @@ fn print_pretty_report(report: &DiagnosticReport) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_diagnose_basic() {
-        // Basic test
-        assert_eq!(1 + 1, 2);
-    }
-}
+#[path = "diagnose_tests.rs"]
+mod tests;

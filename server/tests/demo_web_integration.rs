@@ -196,7 +196,7 @@ async fn test_demo_server_concurrent_requests() {
         mermaid_diagram: "graph TD\n  A --> B".to_string(),
         system_diagram: None,
         files_analyzed: 100,
-        avg_complexity: 3.14,
+        avg_complexity: std::f64::consts::PI,
         tech_debt_hours: 8,
         hotspots: vec![],
         ast_time_ms: 50,

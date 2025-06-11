@@ -100,6 +100,29 @@ impl DagBuilder {
     }
 
     fn collect_nodes(&mut self, file: &FileContext) {
+        // Build complexity lookup maps for O(1) access
+        let function_complexity: FxHashMap<&str, u32> = file
+            .complexity_metrics
+            .as_ref()
+            .map(|m| {
+                m.functions
+                    .iter()
+                    .map(|f| (f.name.as_str(), f.metrics.cognitive as u32))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let class_complexity: FxHashMap<&str, u32> = file
+            .complexity_metrics
+            .as_ref()
+            .map(|m| {
+                m.classes
+                    .iter()
+                    .map(|c| (c.name.as_str(), c.metrics.cognitive as u32))
+                    .collect()
+            })
+            .unwrap_or_default();
+
         for item in &file.items {
             match item {
                 AstItem::Function {
@@ -115,15 +138,9 @@ impl DagBuilder {
                         node_type: NodeType::Function,
                         file_path: file.path.clone(),
                         line_number: *line,
-                        complexity: file
-                            .complexity_metrics
-                            .as_ref()
-                            .and_then(|m| {
-                                m.functions
-                                    .iter()
-                                    .find(|f| f.name == *name)
-                                    .map(|f| f.metrics.cognitive as u32)
-                            })
+                        complexity: function_complexity
+                            .get(name.as_str())
+                            .copied()
                             .unwrap_or_else(|| self.calculate_complexity(item)),
                         metadata: FxHashMap::default(),
                     };
@@ -144,15 +161,9 @@ impl DagBuilder {
                         node_type: NodeType::Class,
                         file_path: file.path.clone(),
                         line_number: *line,
-                        complexity: file
-                            .complexity_metrics
-                            .as_ref()
-                            .and_then(|m| {
-                                m.classes
-                                    .iter()
-                                    .find(|c| c.name == *name)
-                                    .map(|c| c.metrics.cognitive as u32)
-                            })
+                        complexity: class_complexity
+                            .get(name.as_str())
+                            .copied()
                             .unwrap_or_else(|| self.calculate_complexity(item)),
                         metadata: FxHashMap::default(),
                     };
@@ -527,7 +538,7 @@ pub fn prune_graph_pagerank(graph: &DependencyGraph, max_nodes: usize) -> Depend
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_dag_builder_basic() {

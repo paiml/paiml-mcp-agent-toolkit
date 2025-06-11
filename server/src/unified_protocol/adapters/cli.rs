@@ -395,84 +395,310 @@ impl CliAdapter {
                 *include_evidence,
                 output,
             ),
-            AnalyzeCommands::Duplicates { .. } => {
-                // For now, return a placeholder response for the unified protocol
+            AnalyzeCommands::Duplicates {
+                project_path,
+                detection_type,
+                threshold,
+                min_lines,
+                max_tokens,
+                format,
+                perf,
+                include,
+                exclude,
+                output,
+            } => {
+                let params = json!({
+                    "project_path": project_path,
+                    "detection_type": detection_type,
+                    "threshold": threshold,
+                    "min_lines": min_lines,
+                    "max_tokens": max_tokens,
+                    "format": format,
+                    "perf": perf,
+                    "include": include,
+                    "exclude": exclude,
+                    "output": output,
+                });
                 Ok((
                     Method::POST,
                     "/api/v1/analyze/duplicates".to_string(),
-                    json!({"status": "placeholder"}),
+                    params,
                     None,
                 ))
             }
-            AnalyzeCommands::DefectPrediction { .. } => {
-                // For now, return a placeholder response for the unified protocol
+            AnalyzeCommands::DefectPrediction {
+                project_path,
+                confidence_threshold,
+                min_lines,
+                include_low_confidence,
+                format,
+                high_risk_only,
+                include_recommendations,
+                include,
+                exclude,
+                output,
+                perf,
+            } => {
+                let params = json!({
+                    "project_path": project_path,
+                    "confidence_threshold": confidence_threshold,
+                    "min_lines": min_lines,
+                    "include_low_confidence": include_low_confidence,
+                    "format": format,
+                    "high_risk_only": high_risk_only,
+                    "include_recommendations": include_recommendations,
+                    "include": include,
+                    "exclude": exclude,
+                    "output": output,
+                    "perf": perf,
+                });
                 Ok((
                     Method::POST,
                     "/api/v1/analyze/defect-prediction".to_string(),
-                    json!({"status": "placeholder"}),
+                    params,
                     None,
                 ))
             }
-            AnalyzeCommands::Comprehensive { .. } => {
-                // For now, return a placeholder response for the unified protocol
+            AnalyzeCommands::Comprehensive {
+                project_path,
+                format,
+                include_duplicates,
+                include_dead_code,
+                include_defects,
+                include_complexity,
+                include_tdg,
+                confidence_threshold,
+                min_lines,
+                include,
+                exclude,
+                output,
+                perf,
+                executive_summary,
+            } => {
+                let params = json!({
+                    "project_path": project_path,
+                    "format": format,
+                    "include_duplicates": include_duplicates,
+                    "include_dead_code": include_dead_code,
+                    "include_defects": include_defects,
+                    "include_complexity": include_complexity,
+                    "include_tdg": include_tdg,
+                    "confidence_threshold": confidence_threshold,
+                    "min_lines": min_lines,
+                    "include": include,
+                    "exclude": exclude,
+                    "output": output,
+                    "perf": perf,
+                    "executive_summary": executive_summary,
+                });
                 Ok((
                     Method::POST,
                     "/api/v1/analyze/comprehensive".to_string(),
-                    json!({"status": "placeholder"}),
+                    params,
                     None,
                 ))
             }
-            AnalyzeCommands::GraphMetrics { .. } => {
-                // For now, return a placeholder response for the unified protocol
+            AnalyzeCommands::GraphMetrics {
+                project_path,
+                metrics,
+                pagerank_seeds,
+                damping_factor,
+                max_iterations,
+                convergence_threshold,
+                format,
+                include,
+                exclude,
+                output,
+                export_graphml,
+                perf,
+                top_k,
+                min_centrality,
+            } => {
+                let params = json!({
+                    "project_path": project_path,
+                    "metrics": metrics.iter().map(graph_metric_type_to_string).collect::<Vec<_>>(),
+                    "pagerank_seeds": pagerank_seeds,
+                    "damping_factor": damping_factor,
+                    "max_iterations": max_iterations,
+                    "convergence_threshold": convergence_threshold,
+                    "format": graph_metrics_format_to_string(format),
+                    "include": include,
+                    "exclude": exclude,
+                    "output": output,
+                    "export_graphml": export_graphml,
+                    "perf": perf,
+                    "top_k": top_k,
+                    "min_centrality": min_centrality,
+                });
                 Ok((
                     Method::POST,
                     "/api/v1/analyze/graph-metrics".to_string(),
-                    json!({"status": "placeholder"}),
+                    params,
                     None,
                 ))
             }
-            AnalyzeCommands::NameSimilarity { .. } => {
-                // For now, return a placeholder response for the unified protocol
+            AnalyzeCommands::NameSimilarity {
+                project_path,
+                query,
+                top_k,
+                phonetic,
+                scope,
+                threshold,
+                format,
+                include,
+                exclude,
+                output,
+                perf,
+                fuzzy,
+                case_sensitive,
+            } => {
+                use crate::cli::SearchScope;
+                let params = json!({
+                    "project_path": project_path,
+                    "query": query,
+                    "top_k": top_k,
+                    "phonetic": phonetic,
+                    "scope": match scope {
+                        SearchScope::Functions => "functions",
+                        SearchScope::Types => "types",
+                        SearchScope::Variables => "variables",
+                        SearchScope::All => "all",
+                    },
+                    "threshold": threshold,
+                    "format": name_similarity_format_to_string(format),
+                    "include": include,
+                    "exclude": exclude,
+                    "output": output,
+                    "perf": perf,
+                    "fuzzy": fuzzy,
+                    "case_sensitive": case_sensitive,
+                });
                 Ok((
                     Method::POST,
                     "/api/v1/analyze/name-similarity".to_string(),
-                    json!({"status": "placeholder"}),
+                    params,
                     None,
                 ))
             }
-            AnalyzeCommands::ProofAnnotations { .. } => {
-                // For now, return a placeholder response for the unified protocol
+            AnalyzeCommands::ProofAnnotations {
+                project_path,
+                format,
+                high_confidence_only,
+                include_evidence,
+                property_type,
+                verification_method,
+                output,
+                perf,
+                clear_cache,
+            } => {
+                let params = json!({
+                    "project_path": project_path,
+                    "format": proof_annotation_format_to_string(format),
+                    "high_confidence_only": high_confidence_only,
+                    "include_evidence": include_evidence,
+                    "property_type": property_type.as_ref().map(property_type_filter_to_string),
+                    "verification_method": verification_method.as_ref().map(verification_method_filter_to_string),
+                    "output": output,
+                    "perf": perf,
+                    "clear_cache": clear_cache,
+                });
                 Ok((
                     Method::POST,
                     "/api/v1/analyze/proof-annotations".to_string(),
-                    json!({"status": "placeholder"}),
+                    params,
                     None,
                 ))
             }
-            AnalyzeCommands::IncrementalCoverage { .. } => {
-                // For now, return a placeholder response for the unified protocol
+            AnalyzeCommands::IncrementalCoverage {
+                project_path,
+                base_branch,
+                target_branch,
+                format,
+                coverage_threshold,
+                changed_files_only,
+                detailed,
+                output,
+                perf,
+                cache_dir,
+                force_refresh,
+            } => {
+                let params = json!({
+                    "project_path": project_path,
+                    "base_branch": base_branch,
+                    "target_branch": target_branch,
+                    "format": incremental_coverage_format_to_string(format),
+                    "coverage_threshold": coverage_threshold,
+                    "changed_files_only": changed_files_only,
+                    "detailed": detailed,
+                    "output": output,
+                    "perf": perf,
+                    "cache_dir": cache_dir,
+                    "force_refresh": force_refresh,
+                });
                 Ok((
                     Method::POST,
                     "/api/v1/analyze/incremental-coverage".to_string(),
-                    json!({"status": "placeholder"}),
+                    params,
                     None,
                 ))
             }
-            AnalyzeCommands::SymbolTable { .. } => {
-                // For now, return a placeholder response for the unified protocol
+            AnalyzeCommands::SymbolTable {
+                project_path,
+                format,
+                query,
+                filter,
+                include,
+                exclude,
+                show_unreferenced,
+                show_references,
+                output,
+                perf,
+            } => {
+                let params = json!({
+                    "project_path": project_path,
+                    "format": symbol_table_format_to_string(format),
+                    "query": query,
+                    "filter": filter.as_ref().map(symbol_type_filter_to_string),
+                    "include": include,
+                    "exclude": exclude,
+                    "show_unreferenced": show_unreferenced,
+                    "show_references": show_references,
+                    "output": output,
+                    "perf": perf,
+                });
                 Ok((
                     Method::POST,
                     "/api/v1/analyze/symbol-table".to_string(),
-                    json!({"status": "placeholder"}),
+                    params,
                     None,
                 ))
             }
-            AnalyzeCommands::BigO { .. } => {
-                // For now, return a placeholder response for the unified protocol
+            AnalyzeCommands::BigO {
+                project_path,
+                format,
+                confidence_threshold,
+                analyze_space,
+                include,
+                exclude,
+                output,
+                perf,
+                high_complexity_only,
+            } => {
+                let params = json!({
+                    "project_path": project_path,
+                    "format": big_o_format_to_string(format),
+                    "confidence_threshold": confidence_threshold,
+                    "analyze_space": analyze_space,
+                    "include": include,
+                    "exclude": exclude,
+                    "output": output,
+                    "perf": perf,
+                    "high_complexity_only": high_complexity_only,
+                });
                 Ok((
                     Method::POST,
                     "/api/v1/analyze/big-o".to_string(),
-                    json!({"status": "placeholder"}),
+                    params,
                     None,
                 ))
             }
@@ -1025,6 +1251,116 @@ fn satd_severity_to_string(severity: &crate::cli::SatdSeverity) -> String {
     }
 }
 
+fn graph_metric_type_to_string(metric: &crate::cli::GraphMetricType) -> String {
+    match metric {
+        crate::cli::GraphMetricType::All => "all".to_string(),
+        crate::cli::GraphMetricType::Centrality => "centrality".to_string(),
+        crate::cli::GraphMetricType::PageRank => "pagerank".to_string(),
+        crate::cli::GraphMetricType::Clustering => "clustering".to_string(),
+        crate::cli::GraphMetricType::Components => "components".to_string(),
+    }
+}
+
+fn graph_metrics_format_to_string(format: &crate::cli::GraphMetricsOutputFormat) -> String {
+    match format {
+        crate::cli::GraphMetricsOutputFormat::Summary => "summary".to_string(),
+        crate::cli::GraphMetricsOutputFormat::Detailed => "detailed".to_string(),
+        crate::cli::GraphMetricsOutputFormat::Json => "json".to_string(),
+        crate::cli::GraphMetricsOutputFormat::Csv => "csv".to_string(),
+        crate::cli::GraphMetricsOutputFormat::GraphML => "graphml".to_string(),
+        crate::cli::GraphMetricsOutputFormat::Markdown => "markdown".to_string(),
+    }
+}
+
+fn name_similarity_format_to_string(format: &crate::cli::NameSimilarityOutputFormat) -> String {
+    match format {
+        crate::cli::NameSimilarityOutputFormat::Summary => "summary".to_string(),
+        crate::cli::NameSimilarityOutputFormat::Detailed => "detailed".to_string(),
+        crate::cli::NameSimilarityOutputFormat::Json => "json".to_string(),
+        crate::cli::NameSimilarityOutputFormat::Csv => "csv".to_string(),
+        crate::cli::NameSimilarityOutputFormat::Markdown => "markdown".to_string(),
+    }
+}
+
+fn property_type_filter_to_string(filter: &crate::cli::PropertyTypeFilter) -> String {
+    match filter {
+        crate::cli::PropertyTypeFilter::All => "all".to_string(),
+        crate::cli::PropertyTypeFilter::MemorySafety => "memory-safety".to_string(),
+        crate::cli::PropertyTypeFilter::ThreadSafety => "thread-safety".to_string(),
+        crate::cli::PropertyTypeFilter::DataRaceFreeze => "data-race-freeze".to_string(),
+        crate::cli::PropertyTypeFilter::Termination => "termination".to_string(),
+        crate::cli::PropertyTypeFilter::FunctionalCorrectness => {
+            "functional-correctness".to_string()
+        }
+        crate::cli::PropertyTypeFilter::ResourceBounds => "resource-bounds".to_string(),
+    }
+}
+
+fn verification_method_filter_to_string(method: &crate::cli::VerificationMethodFilter) -> String {
+    match method {
+        crate::cli::VerificationMethodFilter::All => "all".to_string(),
+        crate::cli::VerificationMethodFilter::FormalProof => "formal-proof".to_string(),
+        crate::cli::VerificationMethodFilter::ModelChecking => "model-checking".to_string(),
+        crate::cli::VerificationMethodFilter::StaticAnalysis => "static-analysis".to_string(),
+        crate::cli::VerificationMethodFilter::AbstractInterpretation => {
+            "abstract-interpretation".to_string()
+        }
+        crate::cli::VerificationMethodFilter::BorrowChecker => "borrow-checker".to_string(),
+    }
+}
+
+fn proof_annotation_format_to_string(format: &crate::cli::ProofAnnotationOutputFormat) -> String {
+    match format {
+        crate::cli::ProofAnnotationOutputFormat::Summary => "summary".to_string(),
+        crate::cli::ProofAnnotationOutputFormat::Full => "full".to_string(),
+        crate::cli::ProofAnnotationOutputFormat::Json => "json".to_string(),
+        crate::cli::ProofAnnotationOutputFormat::Markdown => "markdown".to_string(),
+        crate::cli::ProofAnnotationOutputFormat::Sarif => "sarif".to_string(),
+    }
+}
+
+fn incremental_coverage_format_to_string(
+    format: &crate::cli::IncrementalCoverageOutputFormat,
+) -> String {
+    match format {
+        crate::cli::IncrementalCoverageOutputFormat::Summary => "summary".to_string(),
+        crate::cli::IncrementalCoverageOutputFormat::Detailed => "detailed".to_string(),
+        crate::cli::IncrementalCoverageOutputFormat::Json => "json".to_string(),
+        crate::cli::IncrementalCoverageOutputFormat::Markdown => "markdown".to_string(),
+        crate::cli::IncrementalCoverageOutputFormat::Lcov => "lcov".to_string(),
+        crate::cli::IncrementalCoverageOutputFormat::Delta => "delta".to_string(),
+        crate::cli::IncrementalCoverageOutputFormat::Sarif => "sarif".to_string(),
+    }
+}
+
+fn symbol_type_filter_to_string(filter: &crate::cli::SymbolTypeFilter) -> String {
+    match filter {
+        crate::cli::SymbolTypeFilter::All => "all".to_string(),
+        crate::cli::SymbolTypeFilter::Functions => "functions".to_string(),
+        crate::cli::SymbolTypeFilter::Types => "types".to_string(),
+        crate::cli::SymbolTypeFilter::Variables => "variables".to_string(),
+        crate::cli::SymbolTypeFilter::Modules => "modules".to_string(),
+    }
+}
+
+fn symbol_table_format_to_string(format: &crate::cli::SymbolTableOutputFormat) -> String {
+    match format {
+        crate::cli::SymbolTableOutputFormat::Summary => "summary".to_string(),
+        crate::cli::SymbolTableOutputFormat::Detailed => "detailed".to_string(),
+        crate::cli::SymbolTableOutputFormat::Json => "json".to_string(),
+        crate::cli::SymbolTableOutputFormat::Csv => "csv".to_string(),
+    }
+}
+
+fn big_o_format_to_string(format: &crate::cli::BigOOutputFormat) -> String {
+    match format {
+        crate::cli::BigOOutputFormat::Summary => "summary".to_string(),
+        crate::cli::BigOOutputFormat::Json => "json".to_string(),
+        crate::cli::BigOOutputFormat::Markdown => "markdown".to_string(),
+        crate::cli::BigOOutputFormat::Detailed => "detailed".to_string(),
+    }
+}
+
 /// CLI runner that integrates with the unified protocol system
 pub struct CliRunner {
     adapter: CliAdapter,
@@ -1114,6 +1450,9 @@ fn provability_format_to_string(format: &crate::cli::ProvabilityOutputFormat) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::{AnalyzeCommands, Commands, ComplexityOutputFormat, DagType, OutputFormat};
+    use crate::models::churn::ChurnOutputFormat;
+    use serde_json::{json, Value};
     use std::path::PathBuf;
 
     #[test]

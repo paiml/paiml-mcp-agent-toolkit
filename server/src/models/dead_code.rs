@@ -398,3 +398,12 @@ mod tests {
         assert!(medium_score > low_score);
     }
 }
+
+// Additional type for handler compatibility
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeadCodeResult {
+    pub summary: DeadCodeSummary,
+    pub files: Vec<FileDeadCodeMetrics>,
+    pub total_files: usize,
+    pub analyzed_files: usize,
+}

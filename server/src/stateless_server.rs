@@ -87,7 +87,7 @@ impl TemplateServerTrait for StatelessTemplateServer {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_stateless_server_basic() {

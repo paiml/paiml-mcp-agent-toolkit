@@ -37,7 +37,7 @@ pub async fn handle_complexity(cmd: AnalyzeCommands) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_complexity_basic() {

@@ -706,7 +706,7 @@ impl EnhancedReportingService {
 
     /// Format report as Markdown
     fn format_as_markdown(&self, report: &UnifiedAnalysisReport) -> Result<String> {
-        let mut md = String::new();
+        let mut md = String::with_capacity(8192);
 
         // Title
         md.push_str(&format!(
@@ -812,7 +812,7 @@ impl EnhancedReportingService {
     /// Format report as HTML
     async fn format_as_html(&self, report: &UnifiedAnalysisReport) -> Result<String> {
         // In a real implementation, this would use templates
-        let mut html = String::new();
+        let mut html = String::with_capacity(16384);
 
         html.push_str("<!DOCTYPE html>\n<html>\n<head>\n");
         html.push_str("<title>Analysis Report</title>\n");

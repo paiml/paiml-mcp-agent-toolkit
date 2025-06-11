@@ -529,12 +529,5 @@ impl From<ExplainLevel> for crate::services::refactor_engine::ExplainLevel {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_refactor_handlers_basic() {
-        // Basic test
-        assert_eq!(1 + 1, 2);
-    }
-}
+#[path = "refactor_handlers_tests.rs"]
+mod tests;

@@ -125,7 +125,7 @@ pub fn get_asset_hash() -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_assets_basic() {

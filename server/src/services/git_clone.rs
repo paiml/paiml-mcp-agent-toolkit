@@ -273,7 +273,7 @@ impl GitCloner {
         Ok(false)
     }
 
-#[inline]
+    #[inline]
     pub fn parse_github_url(&self, url: &str) -> Result<ParsedGitHubUrl, CloneError> {
         // Support various GitHub URL formats
         let url = url.trim();

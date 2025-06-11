@@ -9,7 +9,7 @@ use tracing::info;
 pub struct GitAnalysisService;
 
 impl GitAnalysisService {
-#[inline]
+    #[inline]
     pub fn analyze_code_churn(
         project_path: &Path,
         period_days: u32,
@@ -217,7 +217,7 @@ struct CommitInfo {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_git_analysis_basic() {

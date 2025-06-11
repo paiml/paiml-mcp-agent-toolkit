@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 /// Technical Debt Gradient (TDG) - Primary code quality metric
 /// Replaces defect probability throughout the system
@@ -262,4 +263,23 @@ mod tests {
         // Weights should sum to 1.0
         assert!((total_weight - 1.0).abs() < f64::EPSILON);
     }
+}
+
+// Additional types for SATD analysis
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SatdItem {
+    pub file_path: PathBuf,
+    pub line_number: usize,
+    pub comment_text: String,
+    pub debt_type: String,
+    pub severity: SatdSeverity,
+    pub confidence: f64,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SatdSeverity {
+    Low,
+    Medium,
+    High,
+    Critical,
 }

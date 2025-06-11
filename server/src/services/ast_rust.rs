@@ -4,6 +4,7 @@ use crate::services::complexity::{
 };
 use crate::services::context::{AstItem, FileContext};
 use crate::services::file_classifier::{FileClassifier, ParseDecision};
+use crate::services::parsed_file_cache::PARSED_FILE_CACHE;
 use std::path::Path;
 use syn::{
     visit::Visit, Arm, Expr, Fields, FieldsNamed, FieldsUnnamed, ItemEnum, ItemFn, ItemImpl,
@@ -24,30 +25,36 @@ pub async fn analyze_rust_file_with_complexity_and_classifier(
         .await
         .map_err(TemplateError::Io)?;
 
-    // Check if we should skip this file based on content
-    if let Some(classifier) = classifier {
-        match classifier.should_parse(path, content.as_bytes()) {
-            ParseDecision::Skip(reason) => {
-                return Err(TemplateError::InvalidUtf8(format!(
-                    "Skipping file due to {reason:?}"
-                )));
+    // Use cache for the result
+    let result = PARSED_FILE_CACHE
+        .get_or_compute_complexity(path, &content, || async {
+            // Check if we should skip this file based on content
+            if let Some(classifier) = classifier {
+                match classifier.should_parse(path, content.as_bytes()) {
+                    ParseDecision::Skip(reason) => {
+                        return Err(anyhow::anyhow!("Skipping file due to {:?}", reason));
+                    }
+                    ParseDecision::Parse => {}
+                }
             }
-            ParseDecision::Parse => {}
-        }
-    }
 
-    let ast = syn::parse_file(&content)
-        .map_err(|e| TemplateError::InvalidUtf8(format!("Rust parse error: {e}")))?;
+            let ast = syn::parse_file(&content)
+                .map_err(|e| anyhow::anyhow!("Rust parse error: {}", e))?;
 
-    let mut visitor = RustComplexityVisitor::new();
-    visitor.visit_file(&ast);
+            let mut visitor = RustComplexityVisitor::new();
+            visitor.visit_file(&ast);
 
-    Ok(FileComplexityMetrics {
-        path: path.display().to_string(),
-        total_complexity: visitor.file_complexity,
-        functions: visitor.functions,
-        classes: visitor.structs, // In Rust, structs are like classes
-    })
+            Ok(FileComplexityMetrics {
+                path: path.display().to_string(),
+                total_complexity: visitor.file_complexity,
+                functions: visitor.functions,
+                classes: visitor.structs, // In Rust, structs are like classes
+            })
+        })
+        .await
+        .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
+
+    Ok((*result).clone())
 }
 
 #[inline(always)]
@@ -63,31 +70,37 @@ pub async fn analyze_rust_file_with_classifier(
         .await
         .map_err(TemplateError::Io)?;
 
-    // Check if we should skip this file based on content
-    if let Some(classifier) = classifier {
-        match classifier.should_parse(path, content.as_bytes()) {
-            ParseDecision::Skip(reason) => {
-                return Err(TemplateError::InvalidUtf8(format!(
-                    "Skipping file due to {reason:?}"
-                )));
+    // Use cache for the result
+    let result = PARSED_FILE_CACHE
+        .get_or_compute_context(path, &content, || async {
+            // Check if we should skip this file based on content
+            if let Some(classifier) = classifier {
+                match classifier.should_parse(path, content.as_bytes()) {
+                    ParseDecision::Skip(reason) => {
+                        return Err(anyhow::anyhow!("Skipping file due to {:?}", reason));
+                    }
+                    ParseDecision::Parse => {}
+                }
             }
-            ParseDecision::Parse => {}
-        }
-    }
 
-    let ast = syn::parse_file(&content)
-        .map_err(|e| TemplateError::InvalidUtf8(format!("Rust parse error: {e}")))?;
+            let ast = syn::parse_file(&content)
+                .map_err(|e| anyhow::anyhow!("Rust parse error: {}", e))?;
 
-    let mut visitor = RustComplexityVisitor::new();
-    visitor.enable_complexity = false; // Only collect AST items, not complexity
-    visitor.visit_file(&ast);
+            let mut visitor = RustComplexityVisitor::new();
+            visitor.enable_complexity = false; // Only collect AST items, not complexity
+            visitor.visit_file(&ast);
 
-    Ok(FileContext {
-        path: path.display().to_string(),
-        language: "rust".to_string(),
-        items: visitor.items,
-        complexity_metrics: None,
-    })
+            Ok(FileContext {
+                path: path.display().to_string(),
+                language: "rust".to_string(),
+                items: visitor.items,
+                complexity_metrics: None,
+            })
+        })
+        .await
+        .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
+
+    Ok((*result).clone())
 }
 
 struct RustComplexityVisitor {
@@ -447,8 +460,6 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_ast_rust_basic() {
         // Basic test

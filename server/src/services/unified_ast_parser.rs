@@ -175,7 +175,7 @@ impl AstParserRegistry {
     }
 
     /// Get all registered parsers
-#[inline]
+    #[inline]
     pub fn parsers(&self) -> &[Arc<dyn UnifiedAstParser>] {
         &self.parsers
     }

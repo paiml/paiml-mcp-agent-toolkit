@@ -10,7 +10,7 @@ pub use tui::{TuiDemoAdapter, TuiRequest, TuiResponse};
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_mod_basic() {

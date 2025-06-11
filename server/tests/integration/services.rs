@@ -122,13 +122,13 @@ fn test_git_analysis_basic() {
         create_test_file(&temp_dir, "test.txt", "test content");
 
         std::process::Command::new("git")
-            .args(&["add", "."])
+            .args(["add", "."])
             .current_dir(temp_dir.path())
             .output()
             .ok();
 
         std::process::Command::new("git")
-            .args(&["commit", "-m", "Initial commit"])
+            .args(["commit", "-m", "Initial commit"])
             .current_dir(temp_dir.path())
             .output()
             .ok();
@@ -156,6 +156,12 @@ pub mod file_discovery {
 
     pub struct FileDiscovery;
 
+    impl Default for FileDiscovery {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl FileDiscovery {
         pub fn new() -> Self {
             Self
@@ -168,22 +174,20 @@ pub mod file_discovery {
         ) -> Result<Vec<String>, String> {
             let mut files = Vec::new();
 
-            for entry in WalkDir::new(path) {
-                if let Ok(entry) = entry {
-                    if entry.file_type().is_file() {
-                        if let Some(path_str) = entry.path().to_str() {
-                            // Check if file matches any ignore pattern
-                            let should_ignore = ignore_patterns.iter().any(|pattern| {
-                                if pattern.starts_with("*.") {
-                                    path_str.ends_with(&pattern[1..])
-                                } else {
-                                    path_str.contains(pattern)
-                                }
-                            });
-
-                            if !should_ignore {
-                                files.push(path_str.to_string());
+            for entry in WalkDir::new(path).into_iter().flatten() {
+                if entry.file_type().is_file() {
+                    if let Some(path_str) = entry.path().to_str() {
+                        // Check if file matches any ignore pattern
+                        let should_ignore = ignore_patterns.iter().any(|pattern| {
+                            if pattern.starts_with("*.") {
+                                path_str.ends_with(&pattern[1..])
+                            } else {
+                                path_str.contains(pattern)
                             }
+                        });
+
+                        if !should_ignore {
+                            files.push(path_str.to_string());
                         }
                     }
                 }
@@ -210,6 +214,12 @@ pub mod project_meta_detector {
     }
 
     pub struct ProjectMetaDetector;
+
+    impl Default for ProjectMetaDetector {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
 
     impl ProjectMetaDetector {
         pub fn new() -> Self {
@@ -248,6 +258,12 @@ pub mod file_classifier {
 
     pub struct FileClassifier;
 
+    impl Default for FileClassifier {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl FileClassifier {
         pub fn new() -> Self {
             Self
@@ -278,6 +294,12 @@ pub mod file_classifier {
 pub mod template_service {
     pub struct TemplateService;
 
+    impl Default for TemplateService {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl TemplateService {
         pub fn new() -> Self {
             Self
@@ -298,6 +320,12 @@ pub mod git_analysis {
     use std::path::Path;
 
     pub struct GitAnalyzer;
+
+    impl Default for GitAnalyzer {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
 
     impl GitAnalyzer {
         pub fn new() -> Self {

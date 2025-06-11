@@ -112,8 +112,8 @@ pub async fn handle_analyze_tdg(
     critical_only: bool,
     verbose: bool,
 ) -> Result<()> {
-    // Delegate to main implementation for now - will be fully extracted later
-    super::super::handle_analyze_tdg(
+    // Delegate to stub implementation for now - will be fully extracted later
+    super::super::stubs::handle_analyze_tdg(
         path,
         threshold.unwrap_or(2.5),
         top.unwrap_or(10),
@@ -134,15 +134,8 @@ pub async fn handle_analyze_makefile(
     fix: bool,
     gnu_version: Option<String>,
 ) -> Result<()> {
-    // Delegate to main implementation for now - will be fully extracted later
-    super::super::handle_analyze_makefile(
-        path,
-        rules,
-        format,
-        fix,
-        gnu_version.unwrap_or_else(|| "3.82".to_string()),
-    )
-    .await
+    // Delegate to stub implementation for now - will be fully extracted later
+    super::super::stubs::handle_analyze_makefile(path, rules, format, fix, gnu_version).await
 }
 
 /// Handle provability analysis command
@@ -155,8 +148,8 @@ pub async fn handle_analyze_provability(
     include_evidence: bool,
     output: Option<PathBuf>,
 ) -> Result<()> {
-    // Delegate to main implementation for now - will be fully extracted later
-    super::super::handle_analyze_provability(
+    // Delegate to stub implementation for now - will be fully extracted later
+    super::super::stubs::handle_analyze_provability(
         project_path,
         functions,
         analysis_depth.unwrap_or(10) as usize,
@@ -183,8 +176,8 @@ pub async fn handle_analyze_defect_prediction(
     output: Option<PathBuf>,
     perf: bool,
 ) -> Result<()> {
-    // Delegate to main implementation for now - will be fully extracted later
-    super::super::handle_analyze_defect_prediction(
+    // Delegate to stub implementation for now - will be fully extracted later
+    super::super::stubs::handle_analyze_defect_prediction(
         project_path,
         confidence_threshold.unwrap_or(0.5) as f32,
         min_lines.unwrap_or(100),
@@ -218,8 +211,8 @@ pub async fn handle_analyze_comprehensive(
     perf: bool,
     executive_summary: bool,
 ) -> Result<()> {
-    // Delegate to main implementation for now - will be fully extracted later
-    super::super::handle_analyze_comprehensive(
+    // Delegate to stub implementation for now - will be fully extracted later
+    super::super::stubs::handle_analyze_comprehensive(
         project_path,
         format,
         include_duplicates,
@@ -238,9 +231,51 @@ pub async fn handle_analyze_comprehensive(
     .await
 }
 
+/// Handle graph metrics analysis command
+#[allow(clippy::too_many_arguments)]
+pub async fn handle_analyze_graph_metrics(
+    _project_path: PathBuf,
+    _metrics: Vec<GraphMetricType>,
+    _pagerank_seeds: Vec<String>,
+    _damping_factor: f32,
+    _max_iterations: usize,
+    _convergence_threshold: f64,
+    _export_graphml: bool,
+    _format: GraphMetricsOutputFormat,
+    _include: Option<String>,
+    _exclude: Option<String>,
+    _output: Option<PathBuf>,
+    _perf: bool,
+    _top_k: usize,
+    _min_centrality: f64,
+) -> Result<()> {
+    // Temporary stub implementation
+    info!("Graph metrics analysis not yet implemented");
+    Ok(())
+}
+
+/// Handle symbol table analysis command
+#[allow(clippy::too_many_arguments)]
+pub async fn handle_analyze_symbol_table(
+    _project_path: PathBuf,
+    _format: SymbolTableOutputFormat,
+    _filter: Option<SymbolTypeFilter>,
+    _query: Option<String>,
+    _include: Vec<String>,
+    _exclude: Vec<String>,
+    _show_unreferenced: bool,
+    _show_references: bool,
+    _output: Option<PathBuf>,
+    _perf: bool,
+) -> Result<()> {
+    // Temporary stub implementation
+    info!("Symbol table analysis not yet implemented");
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*; // Unused in simple tests
 
     #[test]
     fn test_advanced_analysis_handlers_basic() {

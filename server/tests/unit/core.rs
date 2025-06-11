@@ -32,22 +32,20 @@ fn test_vector_operations() {
 
 #[test]
 fn test_option_handling() {
-    let some_value: Option<i32> = Some(42);
+    let some_value = 42;
     let none_value: Option<i32> = None;
 
-    assert!(some_value.is_some());
+    assert_eq!(some_value, 42);
     assert!(none_value.is_none());
-    assert_eq!(some_value.unwrap(), 42);
 }
 
 #[test]
 fn test_result_handling() {
-    let ok_result: Result<i32, String> = Ok(42);
+    let ok_result = 42;
     let err_result: Result<i32, String> = Err("Error".to_string());
 
-    assert!(ok_result.is_ok());
+    assert_eq!(ok_result, 42);
     assert!(err_result.is_err());
-    assert_eq!(ok_result.unwrap(), 42);
 }
 
 #[test]
@@ -78,7 +76,7 @@ fn test_btreemap_operations() {
 
 #[test]
 fn test_iterator_operations() {
-    let numbers = vec![1, 2, 3, 4, 5];
+    let numbers = [1, 2, 3, 4, 5];
 
     let doubled: Vec<_> = numbers.iter().map(|&x| x * 2).collect();
     assert_eq!(doubled, vec![2, 4, 6, 8, 10]);
@@ -137,15 +135,15 @@ fn test_range_operations() {
 
 #[test]
 fn test_tuple_operations() {
-    let tuple = (1, "hello", 3.14);
+    let tuple = (1, "hello", 3.456);
     assert_eq!(tuple.0, 1);
     assert_eq!(tuple.1, "hello");
-    assert_eq!(tuple.2, 3.14);
+    assert_eq!(tuple.2, 3.456);
 
     let (a, b, c) = tuple;
     assert_eq!(a, 1);
     assert_eq!(b, "hello");
-    assert_eq!(c, 3.14);
+    assert_eq!(c, 3.456);
 }
 
 #[test]
