@@ -93,12 +93,12 @@ test-fast:
 	echo "🔨 Running tests with $$TEST_THREADS threads..."; \
 	if command -v cargo-nextest >/dev/null 2>&1; then \
 		echo "⚡ Using cargo-nextest for faster test execution..."; \
-		SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$TEST_THREADS cargo nextest run --profile fast --workspace --filter-expr 'not test(slow_integration)' || \
+		SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$TEST_THREADS cargo nextest run --profile fast --workspace --features skip-slow-tests --filter-expr 'not test(slow_integration)' || \
 		(echo "⚠️  Nextest failed, falling back to cargo test..."; \
-		SKIP_SLOW_TESTS=1 cargo test --workspace -- --test-threads=$$TEST_THREADS); \
+		SKIP_SLOW_TESTS=1 cargo test --workspace --features skip-slow-tests -- --test-threads=$$TEST_THREADS); \
 	else \
 		echo "📦 Using standard cargo test..."; \
-		SKIP_SLOW_TESTS=1 cargo test --workspace -- --test-threads=$$TEST_THREADS; \
+		SKIP_SLOW_TESTS=1 cargo test --workspace --features skip-slow-tests -- --test-threads=$$TEST_THREADS; \
 	fi
 	@echo "✅ Fast tests completed!"
 
