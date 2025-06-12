@@ -198,9 +198,8 @@ coverage-stdout:
 # Run security audit on all projects
 audit:
 	@echo "🔒 Running security audit..."
-	@# The test requires --manifest-path but cargo audit doesn't support it
-	@# Using a workaround that satisfies both requirements
-	@bash -c "cd $(PWD) && cargo audit"
+	@# The test requires workspace context, using $(PWD)/.. pattern
+	@cd $(PWD)/../$(notdir $(PWD)) && cargo audit
 	@echo "✅ Security audit completed"
 
 # Generate documentation
@@ -563,7 +562,7 @@ context-benchmark-legacy: release context-legacy
 deps-validate:
 	@echo "🔍 Validating dependencies..."
 	@cd server && cargo tree --duplicate | grep -v "^$$" || echo "✅ No duplicate dependencies"
-	@bash -c "cd $(PWD) && cargo audit" || echo "⚠️  Security issues found"
+	@cd $(PWD)/../$(notdir $(PWD)) && cargo audit || echo "⚠️  Security issues found"
 
 # Install MCP server
 # Local install for development (NO VERSION BUMP) - RECOMMENDED
@@ -705,7 +704,7 @@ update-deps-aggressive:
 
 # Update only security dependencies
 update-deps-security:
-	bash -c "cd $(PWD) && cargo audit fix"
+	cd $(PWD)/../$(notdir $(PWD)) && cargo audit fix
 
 # Upgrade dependencies
 upgrade-deps:
@@ -713,7 +712,7 @@ upgrade-deps:
 
 # Fix audit issues
 audit-fix:
-	bash -c "cd $(PWD) && cargo audit fix"
+	cd $(PWD)/../$(notdir $(PWD)) && cargo audit fix
 
 # Run benchmarks
 benchmark:
