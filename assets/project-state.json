@@ -8,7 +8,7 @@
   "package": {
     "name": "paiml-mcp-agent-toolkit",
     "binary": {
-      "main": "paiml-mcp-agent-toolkit",
+      "main": "pmat",
       "allowed_additional": ["generate-installer"]
     }
   },
@@ -27,6 +27,7 @@
   },
   "deprecated": {
     "binaryNames": [
+      "paiml-mcp-agent-toolkit",
       "mcp_server_stateless",
       "mcp-template-server",
       "mcp_template_server",
