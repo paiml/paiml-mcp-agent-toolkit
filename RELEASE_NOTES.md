@@ -157,7 +157,7 @@ Following Toyota Way principles:
 ### 🎯 NEW: GitHub Repository Cloning
 - **IMPLEMENTED**: Full GitHub repository cloning support in demo mode
 - **FEATURE**: Clone and analyze any public GitHub repository directly
-- **USAGE**: `paiml-mcp-agent-toolkit demo --repo https://github.com/BurntSushi/ripgrep`
+- **USAGE**: `pmat demo --repo https://github.com/BurntSushi/ripgrep`
 - **IMPLEMENTATION**: Production-grade `GitCloner` service with:
   - Shallow cloning (depth=1) for performance
   - Progress tracking with real-time updates
@@ -360,7 +360,7 @@ This release introduces revolutionary single-shot context generation with intell
 
 ### 🆕 Zero-Configuration Context Generation
 - **NEW**: Auto-detection system supporting polyglot projects with confidence scoring
-- **NEW**: Single-shot context generation: `paiml-mcp-agent-toolkit context` (no parameters required!)
+- **NEW**: Single-shot context generation: `pmat context` (no parameters required!)
 - **NEW**: Multi-strategy language detection (build files, extensions, content analysis)
 - **NEW**: Support for 8 languages: Rust, TypeScript, JavaScript, Python, Go, Java, C#, C/C++
 - **NEW**: Intelligent confidence scoring with detection accuracy feedback
@@ -424,12 +424,12 @@ This release introduces revolutionary single-shot context generation with intell
 
 ```bash
 # 🆕 Zero-configuration operation
-paiml-mcp-agent-toolkit context
+pmat context
 # Output: 🔍 Auto-detecting project language...
 #         ✅ Detected: rust (confidence: 85.2)
 
 # Traditional approach still supported
-paiml-mcp-agent-toolkit context rust --format json
+pmat context rust --format json
 
 # Enhanced with intelligent defaults
 paiml-mcp-agent-toolkit context --format json  # Auto-detects format preference
