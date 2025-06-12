@@ -78,8 +78,7 @@ check: check-scripts
 # Fast tests without coverage (optimized for speed) - MUST complete under 3 minutes
 test-fast:
 	@echo "⚡ Running fast tests with safe parallelism..."
-	@chmod +x test-pre-check.sh 2>/dev/null || true
-	@./test-pre-check.sh || (echo "❌ System health check failed. Please fix issues before running tests."; exit 1)
+	@# System health check removed - script archived
 	@echo "🚀 Setting SKIP_SLOW_TESTS=1 to ensure tests complete quickly..."
 	@echo "🛡️ Using conservative thread count to prevent system crashes..."
 	@CPU_CORES=$$(nproc); \
