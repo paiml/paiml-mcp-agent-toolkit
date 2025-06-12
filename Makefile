@@ -198,7 +198,7 @@ coverage-stdout:
 # Run security audit on all projects
 audit:
 	@echo "🔒 Running security audit..."
-	@cargo audit
+	@cd . && cargo audit
 	@echo "✅ Security audit completed"
 
 # Generate documentation
@@ -561,7 +561,7 @@ context-benchmark-legacy: release context-legacy
 deps-validate:
 	@echo "🔍 Validating dependencies..."
 	@cd server && cargo tree --duplicate | grep -v "^$$" || echo "✅ No duplicate dependencies"
-	@cargo audit || echo "⚠️  Security issues found"
+	@cd . && cargo audit || echo "⚠️  Security issues found"
 
 # Install MCP server
 # Local install for development (NO VERSION BUMP) - RECOMMENDED
@@ -703,7 +703,7 @@ update-deps-aggressive:
 
 # Update only security dependencies
 update-deps-security:
-	cargo audit fix
+	cd . && cargo audit fix
 
 # Upgrade dependencies
 upgrade-deps:
@@ -711,7 +711,7 @@ upgrade-deps:
 
 # Fix audit issues
 audit-fix:
-	cargo audit fix
+	cd . && cargo audit fix
 
 # Run benchmarks
 benchmark:
