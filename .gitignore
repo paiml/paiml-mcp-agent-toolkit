@@ -158,3 +158,6 @@ test_*.md
 **/test_regex.rs
 *-platform.tar.gz
 nonexistent-*
+
+# Archive directory
+archive/
