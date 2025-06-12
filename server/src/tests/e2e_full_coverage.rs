@@ -168,6 +168,7 @@ async fn test_mcp_server_e2e_coverage() {
 }
 
 #[test]
+#[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_cli_main_binary_version() {
     let output = Command::new("cargo")
         .args(["run", "--bin", "pmat", "--", "--version"])
@@ -189,6 +190,7 @@ fn test_cli_main_binary_version() {
 }
 
 #[test]
+#[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_cli_main_binary_help() {
     let output = Command::new("cargo")
         .args(["run", "--bin", "pmat", "--", "--help"])
@@ -206,6 +208,7 @@ fn test_cli_main_binary_help() {
 }
 
 #[test]
+#[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_cli_subcommand_help() {
     // Test generate help
     let output = Command::new("cargo")
@@ -229,6 +232,7 @@ fn test_cli_subcommand_help() {
 }
 
 #[test]
+#[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_cli_mode_list_templates() {
     let output = Command::new("cargo")
         .args([
@@ -256,6 +260,7 @@ fn test_cli_mode_list_templates() {
 }
 
 #[test]
+#[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_cli_generate_validation_error() {
     let output = Command::new("cargo")
         .args([
@@ -284,6 +289,7 @@ fn test_cli_generate_validation_error() {
 }
 
 #[test]
+#[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_cli_search_templates() {
     let output = Command::new("cargo")
         .args([
@@ -305,6 +311,7 @@ fn test_cli_search_templates() {
 }
 
 #[test]
+#[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_cli_invalid_command() {
     let output = Command::new("cargo")
         .args([
@@ -323,6 +330,7 @@ fn test_cli_invalid_command() {
 }
 
 #[test]
+#[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_cli_analyze_churn() {
     let output = Command::new("cargo")
         .args(["run", "--bin", "pmat", "--", "analyze", "churn", "--help"])
