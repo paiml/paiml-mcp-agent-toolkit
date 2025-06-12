@@ -27,7 +27,6 @@
   },
   "deprecated": {
     "binaryNames": [
-      "paiml-mcp-agent-toolkit",
       "mcp_server_stateless",
       "mcp-template-server",
       "mcp_template_server",
