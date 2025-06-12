@@ -584,5 +584,5 @@ fn test_mode_flag_cli() {
     cmd.args(["--mode", "cli", "list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("URI"));
+        .stdout(predicate::str::contains("Name"));
 }
