@@ -198,7 +198,7 @@ coverage-stdout:
 # Run security audit on all projects
 audit:
 	@echo "🔒 Running security audit..."
-	@cargo audit --manifest-path server/Cargo.toml
+	@cd server && cargo audit
 	@echo "✅ Security audit completed"
 
 # Generate documentation
@@ -598,7 +598,7 @@ check-rebuild:
 uninstall:
 	@echo "🗑️  Uninstalling MCP Agent Toolkit..."
 	@echo "Note: Uninstall functionality moved to installation scripts"
-	@echo "Run: curl -fsSL https://raw.githubusercontent.com/paiml/mcp-agent-toolkit/master/scripts/install.sh | sh -s -- --uninstall"
+	@echo "Run: curl -fsSL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh -s -- --uninstall"
 
 # Server-specific commands (direct cargo execution)
 server-build-binary: ## Build server binary
