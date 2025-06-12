@@ -148,7 +148,7 @@ fn test_list_table_output() {
     cmd.args(["list", "--format", "table"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("URI"))
+        .stdout(predicate::str::contains("Name"))
         .stdout(predicate::str::contains("Toolchain"))
         .stdout(predicate::str::contains("Category"));
 }
