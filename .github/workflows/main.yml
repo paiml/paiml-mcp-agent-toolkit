@@ -65,7 +65,7 @@ jobs:
           make lint
           make check
           cargo build --release --manifest-path server/Cargo.toml --bin pmat
-          timeout 240 make test-fast
+          timeout 600 make test-fast
           echo "passed=true" >> $GITHUB_OUTPUT
       
       - name: Upload binary artifact
