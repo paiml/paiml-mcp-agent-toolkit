@@ -9,15 +9,21 @@ pub mod args;
 pub mod command_dispatcher;
 pub mod command_structure;
 pub mod commands;
+pub mod coverage_helpers;
+pub mod defect_helpers;
 pub mod defect_prediction_helpers;
 pub mod diagnose;
 pub mod enums;
 pub mod formatting_helpers;
 pub mod handlers;
 pub mod name_similarity_helpers;
+pub mod proof_annotation_formatter;
 pub mod proof_annotation_helpers;
+pub mod provability_helpers;
 pub mod stubs;
+pub mod stubs_refactored;
 pub mod symbol_table_helpers;
+pub mod tdg_helpers;
 
 // Re-export commonly used types from submodules
 pub use commands::{AnalyzeCommands, Cli, Commands, Mode, RefactorCommands};
@@ -127,6 +133,7 @@ pub fn detect_primary_language(path: &Path) -> Option<String> {
                         *lang_counts.entry("deno").or_insert(0) += 1
                     }
                     Some("py") => *lang_counts.entry("python-uv").or_insert(0) += 1,
+                    Some("kt") | Some("kts") => *lang_counts.entry("kotlin").or_insert(0) += 1,
                     _ => {}
                 }
             }

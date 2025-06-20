@@ -22,6 +22,7 @@ pub enum Language {
     Python,
     C,
     Cpp,
+    Kotlin,
 }
 
 /// Types of code clones detected
@@ -224,6 +225,7 @@ impl UniversalFeatureExtractor {
             Language::TypeScript | Language::JavaScript => self.tokenize_typescript(source),
             Language::Python => self.tokenize_python(source),
             Language::C | Language::Cpp => self.tokenize_c_style(source),
+            Language::Kotlin => self.tokenize_kotlin(source),
         }
     }
 
@@ -531,6 +533,91 @@ impl UniversalFeatureExtractor {
                 "bool",
                 "true",
                 "false",
+            ],
+        )
+    }
+
+    /// Tokenize Kotlin source code
+    fn tokenize_kotlin(&self, source: &str) -> Vec<Token> {
+        // Simplified tokenizer for Kotlin - in production would use tree-sitter-kotlin
+        self.tokenize_generic(
+            source,
+            &[
+                "abstract",
+                "actual",
+                "annotation",
+                "as",
+                "break",
+                "by",
+                "catch",
+                "class",
+                "companion",
+                "const",
+                "constructor",
+                "continue",
+                "crossinline",
+                "data",
+                "delegate",
+                "do",
+                "dynamic",
+                "else",
+                "enum",
+                "expect",
+                "external",
+                "false",
+                "field",
+                "file",
+                "final",
+                "finally",
+                "for",
+                "fun",
+                "get",
+                "if",
+                "import",
+                "in",
+                "infix",
+                "init",
+                "inline",
+                "inner",
+                "interface",
+                "internal",
+                "is",
+                "it",
+                "lateinit",
+                "noinline",
+                "null",
+                "object",
+                "open",
+                "operator",
+                "out",
+                "override",
+                "package",
+                "param",
+                "private",
+                "property",
+                "protected",
+                "public",
+                "receiver",
+                "reified",
+                "return",
+                "sealed",
+                "set",
+                "setparam",
+                "super",
+                "suspend",
+                "tailrec",
+                "this",
+                "throw",
+                "true",
+                "try",
+                "typealias",
+                "typeof",
+                "val",
+                "var",
+                "vararg",
+                "when",
+                "where",
+                "while",
             ],
         )
     }
@@ -870,6 +957,7 @@ impl DuplicateDetectionEngine {
                 // C/C++ function detection (simplified)
                 line.contains("(") && (line.contains(") {") || line.ends_with("{"))
             }
+            Language::Kotlin => line.contains("fun ") && line.contains("("),
         }
     }
 
@@ -880,7 +968,8 @@ impl DuplicateDetectionEngine {
             | Language::TypeScript
             | Language::JavaScript
             | Language::C
-            | Language::Cpp => line == "}",
+            | Language::Cpp
+            | Language::Kotlin => line == "}",
             Language::Python => {
                 // Python function ends when we reach another def or class at the same level
                 line.starts_with("def ")
