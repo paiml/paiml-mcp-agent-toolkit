@@ -10,6 +10,43 @@ This document serves as the operational guide for the paiml-mcp-agent-toolkit (p
 - Hansei (反省): Focus on fixing existing broken functionality rather than adding new features
 - Kaizen - Continuous Improvement
 
+## CRITICAL: v0.26.0 Release Blockers (2025-01-20)
+
+### Pre-release QA Testing Results
+Comprehensive QA testing revealed 3 critical issues preventing release:
+
+1. **Context Generation Timeout** ❌
+   - **Issue**: `pmat context` times out after 300s when processing minified JS files
+   - **Root Cause**: SATD detector attempts to extract comments from vendor/*.min.js files with lines >10,000 chars
+   - **Partial Fix Applied**: Increased timeout, added file size checks, but SATD detector still processing these files
+   - **Fix Needed**: Modify SATD detector to skip minified/vendor files before processing
+
+2. **Complexity Analysis Detection** ❌
+   - **Issue**: `pmat analyze complexity` reports 0 functions found in Rust projects
+   - **Root Causes**: 
+     - Language detection counts .ts/.js files and incorrectly identifies Rust projects as "deno"
+     - analyze_file_complexity only has Rust patterns, no TypeScript/JavaScript patterns
+   - **Fix Needed**: 
+     - Check for Cargo.toml vs package.json in language detection
+     - Add TypeScript/JavaScript function patterns to complexity analyzer
+
+3. **Silent Command Failures** ❌
+   - **Issue**: Multiple commands produce no output and exit silently
+   - **Affected Commands**: quality-gate, serve, comprehensive, graph-metrics, name-similarity, symbol-table, duplicates
+   - **Root Cause**: Incomplete stub implementations from CLI refactor
+   - **Fix Needed**: Complete the stub implementations
+
+### Files to Review for Fixes:
+- `server/src/services/satd_detector.rs` - Add minified file exclusion
+- `server/src/cli/mod.rs:detect_primary_language()` - Fix language detection logic
+- `server/src/cli/stubs.rs:analyze_file_complexity()` - Add multi-language patterns
+- `server/src/cli/stubs.rs` - Complete stub implementations
+
+### Test Results Documentation:
+- `qa-test-results.md` - Full QA test execution results
+- `qa-fix-summary.md` - Detailed analysis of issues and fixes
+- `pre-release-qa-checklist.md` - 120+ manual tests for validation
+
 ## Zero Tolerance Quality Standards
 
 ### ABSOLUTE RULES - NO EXCEPTIONS
@@ -100,6 +137,18 @@ pmat context       # Self-analysis for validation
 - **Incremental Coverage**: Git diff integration for tracking coverage on changed code with threshold validation
 - **Output Formats**: Support for JSON, SARIF, Markdown, CSV, Summary, GCC, Detailed, Full, LCOV, and Delta formats across all analyzers
 
+### Current Work Session (2025-01-20)
+- ✅ Implemented Kotlin language support with memory-safe parsing
+- ✅ Created comprehensive pre-release QA checklist (120+ tests)
+- ✅ Executed QA testing and identified 3 critical blockers
+- ✅ Applied partial fixes for timeout and file filtering
+- ✅ Documented all issues in qa-test-results.md and qa-fix-summary.md
+- ❌ Context generation still timing out (SATD detector issue)
+- ❌ Complexity analysis detecting 0 functions (language detection issue)
+- ❌ Multiple commands with incomplete implementations
+
+**Next Steps**: Fix the 3 critical issues before v0.26.0 release
+
 ### Completed Work - Phase 2 (2025-01-11)
 - ✅ All stub implementations completed:
   - Technical Debt Gradient (TDG) analysis
@@ -143,7 +192,42 @@ pmat context       # Self-analysis for validation
 - Address performance issues in context command after recompilation
 - Run comprehensive test coverage analysis to measure improvement from 42.30%
 
-## C/C++ AST Integration & Provability Analysis
+## Language Support & AST Integration
+
+### Kotlin Language Support (v0.26.0)
+Complete Kotlin language analysis with memory-safe parsing:
+
+```rust
+// Memory-safe iterative parsing to prevent stack overflow
+impl KotlinAstParser {
+    const MAX_NODES: usize = 100_000;
+    const MAX_PARSING_TIME: Duration = Duration::from_secs(30);
+    
+    fn parse_iteratively(&mut self, content: &str) -> Result<Vec<UnifiedAstNode>> {
+        let mut stack = vec![(tree.root_node(), 0)];
+        let mut nodes = Vec::new();
+        
+        while let Some((node, depth)) = stack.pop() {
+            if nodes.len() >= Self::MAX_NODES {
+                warn!("Node limit reached, stopping parsing");
+                break;
+            }
+            
+            // Process node and add children to stack
+            // Avoids recursive calls that can blow the stack
+        }
+        
+        Ok(nodes)
+    }
+}
+```
+
+**Key Features:**
+- Tree-sitter-kotlin based parsing
+- Support for all Kotlin constructs (classes, interfaces, functions, lambdas)
+- Iterative parsing prevents memory exhaustion
+- Proper handling of .kt and .kts files
+- Integration with unified AST system
 
 ### C/C++ Language Support
 The system now includes comprehensive C/C++ language analysis capabilities:
@@ -511,5 +595,27 @@ pub fn process_request<T: Validate>(raw: T) -> Result<Response> {
    hyperfine --warmup 3 \
      'cargo run --release -- analyze complexity src/'
    ```
+
+## Project Status & Next Actions
+
+### Current State (2025-01-20)
+- **Version**: v0.26.0 (NOT READY FOR RELEASE)
+- **Kotlin Support**: ✅ Fully implemented and tested
+- **Complexity Refactoring**: ✅ All functions < 20 complexity
+- **Pre-release QA**: ❌ 3 critical blockers found
+
+### Immediate Actions Required
+1. Fix SATD detector to exclude minified files
+2. Fix language detection to properly identify Rust projects
+3. Add TypeScript/JavaScript patterns to complexity analyzer
+4. Complete stub implementations for silent commands
+
+### Quick Test Commands
+```bash
+# Test if fixes are working:
+./target/release/pmat context --toolchain rust  # Should complete < 60s
+./target/release/pmat analyze complexity        # Should find Rust functions
+./target/release/pmat analyze graph-metrics     # Should produce output
+```
 
 This architecture prioritizes deterministic correctness across protocol boundaries while maintaining sub-second response times for typical development workflows. The unified service layer ensures behavioral equivalence regardless of entry point, enabling seamless integration across diverse toolchains.
