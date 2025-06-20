@@ -33,6 +33,20 @@ This directory contains comprehensive documentation for all features of the PAIM
 - [**Scaffolding**](./scaffolding.md) - Project template generation
 - [**Git Integration**](./git-integration.md) - Repository analysis and cloning
 
+### 🌐 Language Support
+- **Rust** - Complete AST analysis with syn
+- **TypeScript/JavaScript** - Full parsing via SWC
+- **Python** - AST analysis with rustpython-parser
+- **C/C++** - Tree-sitter based parsing with goto tracking
+- **Kotlin** - Full AST support via tree-sitter-kotlin (with memory safety guarantees)
+- **Cython** - Hybrid Python/C analysis
+
+#### 🛡️ Memory Safety (v0.26.0)
+All language parsers now include comprehensive memory safety protections:
+- **Bounded parsing**: Maximum nodes, time limits, and file size restrictions
+- **Iterative processing**: Prevents stack overflow in large codebases
+- **Toyota Way methodology**: Five Whys root cause analysis for reliability
+
 ## 🚀 Quick Start
 
 Each feature document includes:
@@ -48,12 +62,14 @@ Each feature document includes:
 
 | Feature | Status | Version | Description |
 |---------|--------|---------|-------------|
-| Makefile Linter | ✅ Stable | 0.21.5 | 50+ rules for Makefile quality |
-| Emit-Refactor Engine | ✅ Stable | 0.21.5 | Dual-mode refactoring system |
-| Deep Context | ✅ Stable | 0.21.5 | AST-based analysis |
-| TDG Calculator | ✅ Stable | 0.21.5 | Technical debt metrics |
-| Provability Analysis | 🔧 Beta | 0.21.5 | Formal verification |
-| MCP Protocol | ✅ Stable | 0.21.5 | AI agent integration |
+| Makefile Linter | ✅ Stable | 0.25.0 | 50+ rules for Makefile quality |
+| Emit-Refactor Engine | ✅ Stable | 0.25.0 | Dual-mode refactoring system |
+| Deep Context | ✅ Stable | 0.25.0 | AST-based analysis |
+| TDG Calculator | ✅ Stable | 0.25.0 | Technical debt metrics |
+| Provability Analysis | ✅ Stable | 0.25.0 | Formal verification |
+| MCP Protocol | ✅ Stable | 0.25.0 | AI agent integration |
+| Kotlin AST Parser | ✅ Stable | 0.26.0 | Full AST with memory safety |
+| Memory Safety | ✅ Stable | 0.26.0 | System stability guarantees |
 
 ## 🔗 Related Documentation
 

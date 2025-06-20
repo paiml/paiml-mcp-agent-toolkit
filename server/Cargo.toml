@@ -1,6 +1,6 @@
 [package]
 name = "paiml-mcp-agent-toolkit"
-version = "0.25.0"
+version = "0.26.0"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -78,9 +78,11 @@ swc_ecma_visit = { version = "0.100", optional = true }
 # For Python parsing (conditional)
 rustpython-parser = { version = "0.4", optional = true }
 # For C/C++ parsing (conditional)
-tree-sitter = { version = "0.23", optional = true }
+tree-sitter = { version = "0.22", optional = true }
 tree-sitter-c = { version = "0.21", optional = true }
 tree-sitter-cpp = { version = "0.22", optional = true }
+# For Kotlin parsing (conditional)
+tree-sitter-kotlin = { version = "0.3.8", optional = true }
 
 # Language-specific analysis
 cpp_demangle = { version = "0.4", optional = true }
@@ -147,7 +149,7 @@ hex = "0.4"
 
 [features]
 default = ["rust-only"]
-all-languages = ["rust-ast", "python-ast", "c-ast", "cpp-ast"]
+all-languages = ["rust-ast", "python-ast", "c-ast", "cpp-ast", "kotlin-ast"]
 rust-only = ["rust-ast"]
 skip-slow-tests = []
 rust-ast = ["syn", "quote", "proc-macro2"]
@@ -155,6 +157,7 @@ typescript-ast = ["rust-ast", "swc_ecma_parser", "swc_common", "swc_ecma_ast", "
 python-ast = ["rust-ast", "rustpython-parser"]
 c-ast = ["tree-sitter", "tree-sitter-c", "fixedbitset"]
 cpp-ast = ["c-ast", "tree-sitter-cpp", "cpp_demangle", "gimli", "goblin"]
+kotlin-ast = ["tree-sitter", "tree-sitter-kotlin"]
 # Feature to exclude demo/reporting functionality for minimal builds
 no-demo = []
 # TUI mode support

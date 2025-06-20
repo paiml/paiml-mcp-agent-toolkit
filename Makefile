@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint lint-main check test test-fast coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap overnight-refactor overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-all coverage-stratified
+.PHONY: all validate format lint lint-main check test test-fast coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-refactor overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-all coverage-stratified
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -303,6 +303,25 @@ clear-swap:
 		fi; \
 	else \
 		echo "⚠️  sudo not available - cannot clear swap"; \
+	fi
+
+# Configure swap size (increase from 512MB to 8GB)
+config-swap:
+	@echo "⚙️  Configuring swap size to 8GB..."
+	@if [ -f "$(SCRIPTS_DIR)/config-swap.ts" ]; then \
+		echo "📋 Running swap configuration script..."; \
+		echo "   This will:"; \
+		echo "   • Disable current swap"; \
+		echo "   • Create new 8GB swapfile"; \
+		echo "   • Set swappiness to 10"; \
+		echo "   • Make changes permanent"; \
+		echo ""; \
+		echo "⚠️  This requires sudo privileges"; \
+		sudo $$(which deno) run --allow-run --allow-read --allow-write $(SCRIPTS_DIR)/config-swap.ts; \
+	else \
+		echo "❌ Swap configuration script not found at $(SCRIPTS_DIR)/config-swap.ts"; \
+		echo "   Please ensure the script exists before running this target."; \
+		exit 1; \
 	fi
 
 # Format TypeScript scripts (excluding archived scripts)

@@ -871,21 +871,7 @@ fn detect_primary_language(path: &Path) -> Result<String> {
     use std::collections::HashMap;
     use walkdir::WalkDir;
 
-    // Fast path: check for framework/manifest files
-    if path.join("Cargo.toml").exists() {
-        return Ok("rust".to_string());
-    }
-    if path.join("package.json").exists() || path.join("deno.json").exists() {
-        return Ok("deno".to_string());
-    }
-    if path.join("pyproject.toml").exists() || path.join("requirements.txt").exists() {
-        return Ok("python-uv".to_string());
-    }
-    if path.join("go.mod").exists() {
-        return Ok("go".to_string());
-    }
-
-    // Fallback: count extensions with limited depth for performance
+    // Count extensions first to understand the actual content
     let mut counts = HashMap::new();
     for entry in WalkDir::new(path)
         .max_depth(3) // Limit depth to avoid performance issues
@@ -899,11 +885,75 @@ fn detect_primary_language(path: &Path) -> Result<String> {
         }
     }
 
-    // Find most common extension and map to toolchain
+    // Check for language-specific source files first (prioritize content over build files)
+    let has_kotlin =
+        counts.get("kt").copied().unwrap_or(0) > 0 || counts.get("kts").copied().unwrap_or(0) > 0;
+    let has_rust = counts.get("rs").copied().unwrap_or(0) > 0;
+    let has_python = counts.get("py").copied().unwrap_or(0) > 0;
+    let has_typescript =
+        counts.get("ts").copied().unwrap_or(0) > 0 || counts.get("tsx").copied().unwrap_or(0) > 0;
+    let has_javascript =
+        counts.get("js").copied().unwrap_or(0) > 0 || counts.get("jsx").copied().unwrap_or(0) > 0;
+    let has_go = counts.get("go").copied().unwrap_or(0) > 0;
+
+    // Prioritize by source file presence, then check for build files
+    if has_kotlin {
+        // Check for Kotlin build files to confirm
+        if path.join("build.gradle").exists() || path.join("build.gradle.kts").exists() {
+            return Ok("kotlin".to_string());
+        }
+        // Even without gradle, if we have .kt files, it's likely Kotlin
+        return Ok("kotlin".to_string());
+    }
+
+    if has_rust && path.join("Cargo.toml").exists() {
+        return Ok("rust".to_string());
+    }
+
+    if has_python {
+        if path.join("pyproject.toml").exists() || path.join("requirements.txt").exists() {
+            return Ok("python-uv".to_string());
+        }
+        return Ok("python-uv".to_string());
+    }
+
+    if has_typescript || has_javascript {
+        if path.join("deno.json").exists() || path.join("deno.lock").exists() {
+            return Ok("deno".to_string());
+        }
+        if path.join("package.json").exists() {
+            return Ok("deno".to_string());
+        }
+        return Ok("deno".to_string());
+    }
+
+    if has_go && path.join("go.mod").exists() {
+        return Ok("go".to_string());
+    }
+
+    // Fallback: check for build files without source files (edge case)
+    if path.join("Cargo.toml").exists() {
+        return Ok("rust".to_string());
+    }
+    if path.join("package.json").exists() || path.join("deno.json").exists() {
+        return Ok("deno".to_string());
+    }
+    if path.join("pyproject.toml").exists() || path.join("requirements.txt").exists() {
+        return Ok("python-uv".to_string());
+    }
+    if path.join("build.gradle").exists() || path.join("build.gradle.kts").exists() {
+        return Ok("kotlin".to_string());
+    }
+    if path.join("go.mod").exists() {
+        return Ok("go".to_string());
+    }
+
+    // Ultimate fallback: use most common extension
     let detected = counts
         .into_iter()
         .max_by_key(|(_, count)| *count)
         .map(|(ext, _)| match ext.as_str() {
+            "kt" | "kts" => "kotlin",
             "rs" => "rust",
             "ts" | "tsx" | "js" | "jsx" => "deno",
             "py" => "python-uv",

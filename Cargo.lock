@@ -2293,7 +2293,7 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "paiml-mcp-agent-toolkit"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -2374,6 +2374,7 @@ dependencies = [
  "tree-sitter",
  "tree-sitter-c",
  "tree-sitter-cpp",
+ "tree-sitter-kotlin",
  "ureq",
  "uuid",
  "walkdir",
@@ -4133,14 +4134,12 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter"
-version = "0.23.2"
+version = "0.22.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0203df02a3b6dd63575cc1d6e609edc2181c9a11867a271b25cfd2abff3ec5ca"
+checksum = "df7cc499ceadd4dcdf7ec6d4cbc34ece92c3fa07821e287aedecd4416c516dca"
 dependencies = [
  "cc",
  "regex",
- "regex-syntax 0.8.5",
- "tree-sitter-language",
 ]
 
 [[package]]
@@ -4164,10 +4163,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree-sitter-language"
-version = "0.1.5"
+name = "tree-sitter-kotlin"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4013970217383f67b18aef68f6fb2e8d409bc5755227092d32efb0422ba24b8"
+checksum = "54ff60aeb036f5762515ceb31404512ea4f9599764bcd3857074bb82867bdd34"
+dependencies = [
+ "cc",
+ "tree-sitter",
+]
 
 [[package]]
 name = "triomphe"

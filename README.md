@@ -113,6 +113,7 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 - **Python** - AST analysis and code metrics  
 - **C/C++** - Goto tracking, macro analysis, memory safety indicators
 - **Cython** - Hybrid Python/C analysis
+- **Kotlin** - Full AST parsing for classes, functions, interfaces, and more
 
 ## 📚 Documentation
 
@@ -149,6 +150,17 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 - **SARIF** - Static analysis format for IDEs
 - **Mermaid** - Dependency graphs and diagrams
 
+## 🌐 Language Support
+
+- **Rust** - Complete AST analysis with native syn parser
+- **TypeScript/JavaScript** - Full parsing support via SWC
+- **Python** - AST analysis with rustpython-parser
+- **C/C++** - Tree-sitter based parsing with comprehensive coverage
+- **Kotlin** - Full AST support via tree-sitter-kotlin (v0.26.0)
+- **Go, Java, Ruby** - Basic support via unified AST
+
+All parsers include memory safety protections and iterative processing to handle large codebases efficiently.
+
 ## 🎯 Use Cases
 
 ### For AI Agents
@@ -175,6 +187,17 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 - [HTTP API](rust-docs/http-api.md)
 - [Architecture](rust-docs/architecture.md)
 - [Distributed Testing](docs/features/distributed-testing.md)
+
+## 🛠️ System Operations
+
+### Memory Management
+
+For systems with low swap space, we provide a configuration tool:
+
+```bash
+make config-swap      # Configure 8GB swap (requires sudo)
+make clear-swap       # Clear swap memory between heavy operations
+```
 
 ## 🧪 Testing
 

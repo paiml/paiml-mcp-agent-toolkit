@@ -36,6 +36,7 @@ pub enum Language {
     C = 10,
     Cpp = 11,
     Cython = 12,
+    Kotlin = 13,
 }
 
 /// Node flags for quick filtering

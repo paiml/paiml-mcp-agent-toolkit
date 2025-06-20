@@ -22,6 +22,7 @@ enum FileType {
     C,
     Cpp,
     Makefile,
+    Kotlin,
     Unknown,
 }
 
@@ -88,6 +89,7 @@ pub enum FileAst {
     Cpp(std::sync::Arc<crate::models::unified_ast::AstDag>), // C++ language AST
     Cython(String),     // Cython - Python with C extensions
     Makefile(crate::services::makefile_linter::MakefileAst),
+    Kotlin(String), // Kotlin - JVM language
     // Kaizen improvement - Add project file types for complete analysis
     Markdown(String), // README.md, documentation
     Toml(String),     // Cargo.toml, pyproject.toml
@@ -113,6 +115,7 @@ impl std::fmt::Debug for FileAst {
             FileAst::Yaml(_) => write!(f, "FileAst::Yaml(..)"),
             FileAst::Json(_) => write!(f, "FileAst::Json(..)"),
             FileAst::Shell(_) => write!(f, "FileAst::Shell(..)"),
+            FileAst::Kotlin(content) => write!(f, "FileAst::Kotlin({} chars)", content.len()),
         }
     }
 }
@@ -132,6 +135,7 @@ impl FileAst {
             FileAst::Yaml(_) => "global".to_string(),
             FileAst::Json(_) => "global".to_string(),
             FileAst::Shell(_) => "global".to_string(),
+            FileAst::Kotlin(_) => "public".to_string(),
         }
     }
 }
@@ -316,6 +320,7 @@ impl UnifiedAstEngine {
             "c" | "h" => FileType::C,
             "cpp" | "cc" | "cxx" | "hpp" | "hxx" => FileType::Cpp,
             "mk" | "make" => FileType::Makefile,
+            "kt" | "kts" => FileType::Kotlin,
             _ => {
                 if filename == "Makefile" || filename == "makefile" {
                     FileType::Makefile
@@ -340,6 +345,7 @@ impl UnifiedAstEngine {
             FileType::C => self.parse_c_file(path).await,
             FileType::Cpp => self.parse_cpp_file(path).await,
             FileType::Makefile => self.parse_makefile_file(path).await,
+            FileType::Kotlin => self.parse_kotlin_file(path).await,
             FileType::Unknown => Ok(None),
         }
     }
@@ -439,6 +445,14 @@ impl UnifiedAstEngine {
             .map(|ast| Some(FileAst::Makefile(ast)))
     }
 
+    /// Parse Kotlin file
+    async fn parse_kotlin_file(&self, path: &Path) -> Result<Option<FileAst>, TemplateError> {
+        let content = tokio::fs::read_to_string(path)
+            .await
+            .map_err(TemplateError::Io)?;
+        Ok(Some(FileAst::Kotlin(content)))
+    }
+
     /// Parse a Makefile
     fn parse_makefile(
         &self,
@@ -507,6 +521,9 @@ impl UnifiedAstEngine {
             FileAst::Cpp(_ast) => {
                 // TRACKED: Implement C++ #include resolution
             }
+            FileAst::Kotlin(_content) => {
+                // TRACKED: Implement Kotlin import resolution
+            }
             FileAst::Makefile(_ast) => {
                 // Makefiles don't have traditional imports
             }
@@ -554,7 +571,10 @@ impl UnifiedAstEngine {
     fn compute_node_metrics(&self, ast: &FileAst) -> ModuleMetrics {
         match ast {
             FileAst::Rust(syn_ast) => self.compute_rust_metrics(syn_ast),
-            FileAst::TypeScript(_) | FileAst::Python(_) | FileAst::Cython(_) => {
+            FileAst::TypeScript(_)
+            | FileAst::Python(_)
+            | FileAst::Cython(_)
+            | FileAst::Kotlin(_) => {
                 ModuleMetrics::default() // TRACKED: Implement for other languages
             }
             FileAst::C(ast_dag) | FileAst::Cpp(ast_dag) => self.compute_c_cpp_metrics(ast_dag),

@@ -414,7 +414,8 @@ impl DogfoodingEngine {
             | FileAst::Python(_)
             | FileAst::C(_)
             | FileAst::Cpp(_)
-            | FileAst::Cython(_) => {
+            | FileAst::Cython(_)
+            | FileAst::Kotlin(_) => {
                 // Placeholder for other languages
                 Ok(FileContext {
                     path: path.to_path_buf(),

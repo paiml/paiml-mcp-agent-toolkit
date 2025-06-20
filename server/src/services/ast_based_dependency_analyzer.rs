@@ -140,8 +140,8 @@ impl AstBasedDependencyAnalyzer {
                 self.analyze_typescript_content(&content, file_path).await
             }
             Language::Python => self.analyze_python_content(&content, file_path).await,
-            Language::C | Language::Cpp => {
-                // C/C++ dependency analysis would go here
+            Language::C | Language::Cpp | Language::Kotlin => {
+                // C/C++/Kotlin dependency analysis would go here
                 // For now, return empty analysis
                 Ok(DependencyAnalysis {
                     external: Vec::new(),

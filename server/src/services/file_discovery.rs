@@ -55,6 +55,16 @@ lazy_static! {
         "/bazel-*/",
         "/.ccache/",
         "/.cache/",
+        // Minified and bundled files
+        "*.min.js",
+        "*.min.css",
+        "*.bundle.js",
+        "*-bundle.js",
+        "*.production.js",
+        "*.prod.js",
+        "*-min.js",
+        "*.packed.js",
+        "*.dist.js",
     ];
 }
 

@@ -20,6 +20,7 @@ impl SemanticNamer {
         patterns.insert("javascript".to_string(), ".");
         patterns.insert("go".to_string(), "/");
         patterns.insert("java".to_string(), ".");
+        patterns.insert("kotlin".to_string(), ".");
 
         Self { patterns }
     }
@@ -107,6 +108,7 @@ impl SemanticNamer {
             "java" => "java",
             "c" | "h" => "c",
             "cpp" | "cc" | "cxx" | "hpp" | "hxx" => "cpp",
+            "kt" | "kts" => "kotlin",
             _ => "unknown",
         }
     }
