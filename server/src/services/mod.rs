@@ -8,6 +8,8 @@ pub mod ast_c_dispatch;
 pub mod ast_cpp;
 #[cfg(feature = "cpp-ast")]
 pub mod ast_cpp_dispatch;
+#[cfg(feature = "kotlin-ast")]
+pub mod ast_kotlin;
 #[cfg(feature = "python-ast")]
 pub mod ast_python;
 pub mod ast_rust;

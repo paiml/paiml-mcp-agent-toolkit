@@ -2309,7 +2309,8 @@ impl DeepContextAnalyzer {
         let mut join_set = self.spawn_analysis_tasks(project_path)?;
 
         // Step 2: Collect and process results with timeout
-        let collection_timeout = std::time::Duration::from_secs(60);
+        // Increased timeout to handle projects with many files or large files
+        let collection_timeout = std::time::Duration::from_secs(300); // 5 minutes
         let results = self
             .collect_analysis_results(&mut join_set, collection_timeout)
             .await?;
@@ -3408,6 +3409,11 @@ async fn analyze_single_file(file_path: &std::path::Path) -> anyhow::Result<File
         "c" | "cpp" => {
             items = analyze_c_file(file_path).await?;
         }
+        "kotlin" => {
+            tracing::debug!("Analyzing Kotlin file: {}", file_path.display());
+            items = analyze_kotlin_file(file_path).await?;
+            tracing::debug!("Kotlin analysis returned {} items", items.len());
+        }
         _ => {}
     }
 
@@ -3429,6 +3435,7 @@ fn detect_language(path: &std::path::Path) -> String {
             "py" => "python".to_string(),
             "c" | "h" => "c".to_string(),
             "cpp" | "cc" | "cxx" | "hpp" | "hxx" => "cpp".to_string(),
+            "kt" | "kts" => "kotlin".to_string(),
             _ => "unknown".to_string(),
         }
     } else {
@@ -3516,6 +3523,39 @@ async fn analyze_c_file(
         Ok(items)
     }
     #[cfg(not(feature = "c-ast"))]
+    Ok(Vec::new())
+}
+
+async fn analyze_kotlin_file(
+    #[allow(unused_variables)] file_path: &Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "kotlin-ast")]
+    {
+        use crate::services::ast_strategies::{AstStrategy, KotlinAstStrategy};
+        use crate::services::file_classifier::FileClassifier;
+
+        tracing::debug!("analyze_kotlin_file called for: {}", file_path.display());
+        let classifier = FileClassifier::new();
+        let strategy = KotlinAstStrategy;
+        match strategy.analyze(file_path, &classifier).await {
+            Ok(file_context) => {
+                tracing::debug!(
+                    "KotlinAstStrategy returned {} items",
+                    file_context.items.len()
+                );
+                Ok(file_context.items)
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to analyze Kotlin file {}: {}",
+                    file_path.display(),
+                    e
+                );
+                Ok(Vec::new())
+            }
+        }
+    }
+    #[cfg(not(feature = "kotlin-ast"))]
     Ok(Vec::new())
 }
 
@@ -3982,6 +4022,7 @@ async fn analyze_duplicate_code(
                 "py" => Some(Language::Python),
                 "c" | "h" => Some(Language::C),
                 "cpp" | "cc" | "cxx" | "hpp" | "hxx" => Some(Language::Cpp),
+                "kt" | "kts" => Some(Language::Kotlin),
                 _ => None,
             };
 
