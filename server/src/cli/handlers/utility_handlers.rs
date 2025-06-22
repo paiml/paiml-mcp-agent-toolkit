@@ -162,11 +162,13 @@ async fn analyze_project(
 
     let config = DeepContextConfig {
         include_analyses: vec![
+            // Note: AST analysis can be expensive on large codebases
+            // Consider using --exclude patterns or specific paths
             AnalysisType::Ast,
             AnalysisType::Complexity,
             AnalysisType::Satd,
-            AnalysisType::DeadCode,
             // Skip expensive analyses for context generation
+            // AnalysisType::DeadCode,
             // AnalysisType::Provability,
             // AnalysisType::Churn,
         ],
