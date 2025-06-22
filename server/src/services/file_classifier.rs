@@ -18,6 +18,10 @@ const DEFAULT_MAX_LINE_LENGTH: usize = 10_000;
 /// Maximum file size for AST parsing (1MB)
 pub const DEFAULT_MAX_FILE_SIZE: usize = 1_048_576;
 
+/// Maximum file size before considering it a "large file" (500KB)
+/// Large files are likely minified/generated and should be skipped by default
+pub const LARGE_FILE_THRESHOLD: usize = 512_000;
+
 /// Shannon entropy threshold for minified content detection
 const MINIFIED_ENTROPY_THRESHOLD: f64 = 6.0;
 
@@ -116,6 +120,7 @@ pub enum SkipReason {
     BinaryContent,
     EmptyFile,
     BuildArtifact,
+    LargeFile,
 }
 
 impl FileClassifier {
@@ -123,7 +128,13 @@ impl FileClassifier {
         Self::default()
     }
 
-    pub fn should_parse(&self, path: &Path, content: &[u8]) -> ParseDecision {
+    /// Check if a file should be parsed, with option to include large files
+    pub fn should_parse_with_options(
+        &self,
+        path: &Path,
+        content: &[u8],
+        include_large_files: bool,
+    ) -> ParseDecision {
         // Fast path: empty files
         if content.is_empty() {
             return ParseDecision::Skip(SkipReason::EmptyFile);
@@ -132,6 +143,12 @@ impl FileClassifier {
         // Fast path: file size check
         if content.len() > self.max_file_size {
             return ParseDecision::Skip(SkipReason::FileTooLarge);
+        }
+
+        // Check for large files that are likely minified/generated
+        // Skip this check if include_large_files is true
+        if !include_large_files && content.len() > LARGE_FILE_THRESHOLD {
+            return ParseDecision::Skip(SkipReason::LargeFile);
         }
 
         // Check if build artifact
@@ -165,6 +182,10 @@ impl FileClassifier {
         }
 
         ParseDecision::Parse
+    }
+
+    pub fn should_parse(&self, path: &Path, content: &[u8]) -> ParseDecision {
+        self.should_parse_with_options(path, content, false)
     }
 
     fn is_vendor_path(&self, path: &Path) -> bool {
@@ -405,7 +426,128 @@ struct VendorRules {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Instant;
+
+    #[test]
+    fn test_large_file_detection() {
+        let classifier = FileClassifier::default();
+        
+        // Test file under threshold (400KB) - use content with newlines to avoid LineTooLong
+        let mut small_content = String::new();
+        for _ in 0..4000 {
+            small_content.push_str("a".repeat(100).as_str());
+            small_content.push('\n');
+        }
+        let decision = classifier.should_parse(Path::new("small.js"), small_content.as_bytes());
+        assert_eq!(decision, ParseDecision::Parse);
+        
+        // Test file over threshold (600KB) - use content with newlines to avoid LineTooLong
+        let mut large_content = String::new();
+        for _ in 0..6000 {
+            large_content.push_str("a".repeat(100).as_str());
+            large_content.push('\n');
+        }
+        let decision = classifier.should_parse(Path::new("large.js"), large_content.as_bytes());
+        assert_eq!(decision, ParseDecision::Skip(SkipReason::LargeFile));
+        
+        // Test file exactly at threshold
+        let mut threshold_content = String::new();
+        for _ in 0..(LARGE_FILE_THRESHOLD / 101) {
+            threshold_content.push_str("a".repeat(100).as_str());
+            threshold_content.push('\n');
+        }
+        let decision = classifier.should_parse(Path::new("threshold.js"), threshold_content.as_bytes());
+        assert_eq!(decision, ParseDecision::Parse);
+    }
+
+    #[test]
+    fn test_include_large_files_flag() {
+        let classifier = FileClassifier::default();
+        
+        // Create large content with newlines to avoid LineTooLong
+        let mut large_content = String::new();
+        for _ in 0..6000 {
+            large_content.push_str("a".repeat(100).as_str());
+            large_content.push('\n');
+        }
+        let large_content_bytes = large_content.as_bytes();
+        
+        // Without flag - should skip
+        let decision = classifier.should_parse_with_options(
+            Path::new("large.js"),
+            large_content_bytes,
+            false,
+        );
+        assert_eq!(decision, ParseDecision::Skip(SkipReason::LargeFile));
+        
+        // With flag - should parse
+        let decision = classifier.should_parse_with_options(
+            Path::new("large.js"),
+            large_content_bytes,
+            true,
+        );
+        assert_eq!(decision, ParseDecision::Parse);
+    }
+
+    #[test]
+    fn test_very_large_files_still_skipped() {
+        let classifier = FileClassifier::default();
+        let very_large_content = vec![b'a'; 2_000_000]; // 2MB
+        
+        // Even with include_large_files, files over max_file_size should be skipped
+        let decision = classifier.should_parse_with_options(
+            Path::new("huge.js"),
+            &very_large_content,
+            true,
+        );
+        assert_eq!(decision, ParseDecision::Skip(SkipReason::FileTooLarge));
+    }
+
+    #[test]
+    fn test_skip_reason_priorities() {
+        let classifier = FileClassifier::default();
+        
+        // Empty file should skip with EmptyFile reason (highest priority)
+        let empty_content = b"";
+        let decision = classifier.should_parse_with_options(
+            Path::new("empty.js"),
+            empty_content,
+            false,
+        );
+        assert_eq!(decision, ParseDecision::Skip(SkipReason::EmptyFile));
+        
+        // Build artifact should skip even if large
+        // But LargeFile check happens first in our implementation
+        let build_content = vec![b'a'; 600_000];
+        let decision = classifier.should_parse_with_options(
+            Path::new("target/debug/deps/lib.rlib"),
+            &build_content,
+            false,
+        );
+        assert_eq!(decision, ParseDecision::Skip(SkipReason::LargeFile));
+    }
+
+    #[test]
+    fn test_minified_vs_large_file_detection() {
+        let classifier = FileClassifier::default();
+        
+        // Large but not minified file (has newlines)
+        let mut large_normal = String::new();
+        for i in 0..10_000 {
+            large_normal.push_str(&format!("function test{} () {{\n  return {};\n}}\n", i, i));
+        }
+        let content = large_normal.as_bytes();
+        
+        // Should skip due to size if over threshold
+        if content.len() > LARGE_FILE_THRESHOLD {
+            let decision = classifier.should_parse(Path::new("large_normal.js"), content);
+            assert_eq!(decision, ParseDecision::Skip(SkipReason::LargeFile));
+        }
+        
+        // Minified content (one very long line)
+        let minified = "a".repeat(11_000); // Long line
+        let decision = classifier.should_parse(Path::new("minified.js"), minified.as_bytes());
+        assert_eq!(decision, ParseDecision::Skip(SkipReason::LineTooLong));
+    }
 
     #[test]
     fn test_vendor_detection_determinism() {

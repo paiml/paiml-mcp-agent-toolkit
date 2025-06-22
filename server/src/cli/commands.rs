@@ -162,6 +162,10 @@ pub enum Commands {
         /// Output format
         #[arg(long, value_enum, default_value = "markdown")]
         format: ContextFormat,
+
+        /// Include large files (>500KB) that are normally skipped
+        #[arg(long)]
+        include_large_files: bool,
     },
 
     /// Analyze code metrics and patterns

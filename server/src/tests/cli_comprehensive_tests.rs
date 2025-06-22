@@ -336,11 +336,13 @@ fn test_context_command_parsing() {
             project_path,
             output,
             format,
+            include_large_files,
         } => {
             assert_eq!(toolchain, Some("rust".to_string()));
             assert_eq!(project_path, PathBuf::from("/tmp/project"));
             assert_eq!(output, Some(PathBuf::from("context.md")));
             assert_eq!(format, ContextFormat::Markdown);
+            assert_eq!(include_large_files, false); // default value
         }
         _ => panic!("Expected Context command"),
     }
