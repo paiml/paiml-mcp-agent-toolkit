@@ -483,9 +483,16 @@ impl SATDDetector {
 
             // Check file size before reading
             if let Ok(metadata) = tokio::fs::metadata(&file_path).await {
+                // Check if file is too large (>500KB)
+                if metadata.len() > crate::services::file_classifier::LARGE_FILE_THRESHOLD as u64 {
+                    eprintln!("⚠️  Skipped: {} (large file >500KB)", file_path.display());
+                    continue;
+                }
+                
                 if metadata.len() > 1_000_000 {
                     // For large files, check if content looks minified
                     if self.is_likely_minified_content(&file_path).await {
+                        eprintln!("⚠️  Skipped: {} (minified content)", file_path.display());
                         continue;
                     }
                 }
