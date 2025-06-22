@@ -476,6 +476,11 @@ impl SATDDetector {
                 continue;
             }
 
+            // Skip minified/vendor files
+            if self.is_minified_or_vendor_file(&file_path) {
+                continue;
+            }
+
             total_files_analyzed += 1;
 
             match tokio::fs::read_to_string(&file_path).await {
@@ -575,6 +580,12 @@ impl SATDDetector {
             if !include_tests && self.is_test_file(&file_path) {
                 continue;
             }
+            
+            // Skip minified/vendor files
+            if self.is_minified_or_vendor_file(&file_path) {
+                continue;
+            }
+            
             match tokio::fs::read_to_string(&file_path).await {
                 Ok(content) => {
                     // Validate file size before processing
@@ -703,6 +714,28 @@ impl SATDDetector {
                 || file_name.ends_with(".test.ts")
                 || file_name.ends_with(".spec.js")
                 || file_name.ends_with(".spec.ts")
+        } else {
+            false
+        }
+    }
+
+    /// Check if file is minified or in vendor directory
+    fn is_minified_or_vendor_file(&self, path: &Path) -> bool {
+        // Check if path contains vendor directory
+        if path.components().any(|c| c.as_os_str() == "vendor") {
+            return true;
+        }
+        
+        if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+            // Common minified file patterns
+            file_name.contains(".min.")
+                || file_name.contains(".bundle.")
+                || file_name.contains("-min.")
+                || file_name.contains(".production.")
+                || file_name.ends_with(".min.js")
+                || file_name.ends_with(".min.css")
+                || file_name.ends_with(".bundle.js")
+                || file_name.ends_with(".production.js")
         } else {
             false
         }

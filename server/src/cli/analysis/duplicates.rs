@@ -16,8 +16,8 @@ pub async fn handle_analyze_duplicates(
     _exclude: Option<String>,
     _output: Option<PathBuf>,
 ) -> Result<()> {
-    // Stub implementation
-    tracing::info!("Duplicate analysis not yet implemented");
+    eprintln!("🚧 Duplicate detection is not yet implemented in this version.");
+    eprintln!("This feature will be available in a future release.");
     Ok(())
 }
 

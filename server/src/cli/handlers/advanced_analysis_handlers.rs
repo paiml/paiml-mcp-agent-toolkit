@@ -249,8 +249,10 @@ pub async fn handle_analyze_graph_metrics(
     _top_k: usize,
     _min_centrality: f64,
 ) -> Result<()> {
-    // Temporary stub implementation
-    info!("Graph metrics analysis not yet implemented");
+    eprintln!("🚧 Graph metrics analysis is not yet implemented in this version.");
+    eprintln!("This feature will be available in a future release.");
+    eprintln!("For now, you can use:");
+    eprintln!("  - pmat analyze dag - for dependency graph visualization");
     Ok(())
 }
 
@@ -268,8 +270,8 @@ pub async fn handle_analyze_symbol_table(
     _output: Option<PathBuf>,
     _perf: bool,
 ) -> Result<()> {
-    // Temporary stub implementation
-    info!("Symbol table analysis not yet implemented");
+    eprintln!("🚧 Symbol table analysis is not yet implemented in this version.");
+    eprintln!("This feature will be available in a future release.");
     Ok(())
 }
 

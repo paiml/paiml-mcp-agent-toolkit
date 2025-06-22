@@ -678,12 +678,14 @@ pub async fn handle_quality_gate(
     _output: Option<PathBuf>,
     _perf: bool,
 ) -> Result<()> {
-    info!("Quality gate analysis not yet implemented");
+    eprintln!("🚧 Quality gate analysis is not yet implemented in this version.");
+    eprintln!("This feature will be available in a future release.");
     Ok(())
 }
 
 pub async fn handle_serve(_host: String, _port: u16, _cors: bool) -> Result<()> {
-    info!("Server mode not yet implemented");
+    eprintln!("🚧 Server mode is not yet implemented in this version.");
+    eprintln!("This feature will be available in a future release.");
     Ok(())
 }
 
@@ -704,7 +706,13 @@ pub async fn handle_analyze_comprehensive(
     _perf: bool,
     _executive_summary: bool,
 ) -> Result<()> {
-    info!("Comprehensive analysis not yet implemented");
+    eprintln!("🚧 Comprehensive analysis is not yet implemented in this version.");
+    eprintln!("This feature will be available in a future release.");
+    eprintln!("For now, you can run individual analysis commands:");
+    eprintln!("  - pmat analyze complexity");
+    eprintln!("  - pmat analyze satd");
+    eprintln!("  - pmat analyze tdg");
+    eprintln!("  - pmat analyze defect-prediction");
     Ok(())
 }
 
@@ -811,16 +819,67 @@ fn analyze_file_complexity(
     let lines: Vec<&str> = content.lines().collect();
     let mut functions = Vec::new();
 
+    // Detect language from file extension
+    let is_rust = path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e == "rs")
+        .unwrap_or(false);
+    let is_typescript = path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| matches!(e, "ts" | "tsx" | "js" | "jsx"))
+        .unwrap_or(false);
+    let is_python = path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e == "py")
+        .unwrap_or(false);
+
     // Find function definitions (basic pattern matching)
     for (line_num, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
 
-        // Rust function patterns
-        if trimmed.starts_with("fn ")
-            || trimmed.starts_with("pub fn ")
-            || trimmed.starts_with("async fn ")
-        {
-            if let Some(name) = extract_function_name(trimmed) {
+        let mut found_function = false;
+        let mut function_name = None;
+
+        if is_rust {
+            // Rust function patterns
+            if trimmed.starts_with("fn ")
+                || trimmed.starts_with("pub fn ")
+                || trimmed.starts_with("async fn ")
+                || trimmed.starts_with("pub async fn ")
+                || trimmed.starts_with("pub(crate) fn ")
+                || trimmed.starts_with("pub(super) fn ")
+            {
+                function_name = extract_rust_function_name(trimmed);
+                found_function = true;
+            }
+        } else if is_typescript {
+            // TypeScript/JavaScript function patterns
+            if trimmed.starts_with("function ")
+                || trimmed.starts_with("async function ")
+                || trimmed.starts_with("export function ")
+                || trimmed.starts_with("export async function ")
+                || trimmed.starts_with("export default function ")
+                || trimmed.contains("= function")
+                || trimmed.contains("= async function")
+                || (trimmed.contains("const ") && trimmed.contains(" = ("))
+                || (trimmed.contains("let ") && trimmed.contains(" = ("))
+                || (trimmed.contains("var ") && trimmed.contains(" = ("))
+                || (trimmed.contains("export const ") && trimmed.contains(" = ("))
+                || trimmed.contains(" => {")
+            {
+                function_name = extract_js_function_name(trimmed);
+                found_function = true;
+            }
+        } else if is_python {
+            // Python function patterns
+            if trimmed.starts_with("def ") || trimmed.starts_with("async def ") {
+                function_name = extract_python_function_name(trimmed);
+                found_function = true;
+            }
+        }
+
+        if found_function {
+            if let Some(name) = function_name {
                 // Simple complexity estimation based on control flow keywords
                 let function_complexity = estimate_function_complexity(&lines, line_num);
 
@@ -862,13 +921,54 @@ fn analyze_file_complexity(
     })
 }
 
-fn extract_function_name(line: &str) -> Option<String> {
+fn extract_rust_function_name(line: &str) -> Option<String> {
     // Extract function name from line like "pub fn function_name("
     let line = line.trim();
     if let Some(fn_pos) = line.find("fn ") {
         let after_fn = &line[fn_pos + 3..];
         if let Some(paren_pos) = after_fn.find('(') {
             let name = after_fn[..paren_pos].trim();
+            return Some(name.to_string());
+        }
+    }
+    None
+}
+
+fn extract_js_function_name(line: &str) -> Option<String> {
+    let line = line.trim();
+    
+    // Handle: function name(
+    if let Some(pos) = line.find("function ") {
+        let after = &line[pos + 9..];
+        if let Some(paren_pos) = after.find('(') {
+            let name = after[..paren_pos].trim();
+            if !name.is_empty() {
+                return Some(name.to_string());
+            }
+        }
+    }
+    
+    // Handle: const/let/var name = 
+    for keyword in &["const ", "let ", "var "] {
+        if let Some(pos) = line.find(keyword) {
+            let after = &line[pos + keyword.len()..];
+            if let Some(eq_pos) = after.find(" = ") {
+                let name = after[..eq_pos].trim();
+                return Some(name.to_string());
+            }
+        }
+    }
+    
+    // For anonymous functions, use line number as name
+    Some(format!("anonymous_fn"))
+}
+
+fn extract_python_function_name(line: &str) -> Option<String> {
+    let line = line.trim();
+    if let Some(pos) = line.find("def ") {
+        let after = &line[pos + 4..];
+        if let Some(paren_pos) = after.find('(') {
+            let name = after[..paren_pos].trim();
             return Some(name.to_string());
         }
     }
