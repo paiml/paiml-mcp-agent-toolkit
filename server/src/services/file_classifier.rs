@@ -16,7 +16,7 @@ pub struct FileClassifierConfig {
 const DEFAULT_MAX_LINE_LENGTH: usize = 10_000;
 
 /// Maximum file size for AST parsing (1MB)
-const DEFAULT_MAX_FILE_SIZE: usize = 1_048_576;
+pub const DEFAULT_MAX_FILE_SIZE: usize = 1_048_576;
 
 /// Shannon entropy threshold for minified content detection
 const MINIFIED_ENTROPY_THRESHOLD: f64 = 6.0;
