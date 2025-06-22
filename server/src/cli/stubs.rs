@@ -959,8 +959,8 @@ fn extract_js_function_name(line: &str) -> Option<String> {
         }
     }
     
-    // For anonymous functions, use line number as name
-    Some(format!("anonymous_fn"))
+    // For anonymous functions, use generic name
+    Some("anonymous_fn".to_string())
 }
 
 fn extract_python_function_name(line: &str) -> Option<String> {
