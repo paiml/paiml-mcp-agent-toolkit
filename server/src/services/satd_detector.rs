@@ -481,6 +481,16 @@ impl SATDDetector {
                 continue;
             }
 
+            // Check file size before reading
+            if let Ok(metadata) = tokio::fs::metadata(&file_path).await {
+                if metadata.len() > 1_000_000 {
+                    // For large files, check if content looks minified
+                    if self.is_likely_minified_content(&file_path).await {
+                        continue;
+                    }
+                }
+            }
+
             total_files_analyzed += 1;
 
             match tokio::fs::read_to_string(&file_path).await {
@@ -584,6 +594,16 @@ impl SATDDetector {
             // Skip minified/vendor files
             if self.is_minified_or_vendor_file(&file_path) {
                 continue;
+            }
+            
+            // Check file size before reading
+            if let Ok(metadata) = tokio::fs::metadata(&file_path).await {
+                if metadata.len() > 1_000_000 {
+                    // For large files, check if content looks minified
+                    if self.is_likely_minified_content(&file_path).await {
+                        continue;
+                    }
+                }
             }
             
             match tokio::fs::read_to_string(&file_path).await {
@@ -738,6 +758,33 @@ impl SATDDetector {
                 || file_name.ends_with(".production.js")
         } else {
             false
+        }
+    }
+
+    /// Check if file content suggests it's minified (has very long lines)
+    async fn is_likely_minified_content(&self, path: &Path) -> bool {
+        use tokio::io::{AsyncBufReadExt, BufReader};
+        
+        match tokio::fs::File::open(path).await {
+            Ok(file) => {
+                let reader = BufReader::new(file);
+                let mut lines = reader.lines();
+                
+                // Check first few lines for length
+                for _ in 0..3 {
+                    match lines.next_line().await {
+                        Ok(Some(line)) => {
+                            if line.len() > 5000 {
+                                return true; // Very long line, likely minified
+                            }
+                        }
+                        Ok(None) => break,
+                        Err(_) => return false,
+                    }
+                }
+                false
+            }
+            Err(_) => false,
         }
     }
 
