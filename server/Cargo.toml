@@ -120,6 +120,9 @@ petgraph = "0.8"
 # Markdown parsing
 pulldown-cmark = "0.13"
 
+# Progress bars
+indicatif = "0.17"
+
 # TUI support
 ratatui = { version = "0.29", optional = true }
 crossterm = { version = "0.29", optional = true }

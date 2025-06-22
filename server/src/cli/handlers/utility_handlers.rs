@@ -114,12 +114,13 @@ pub async fn handle_context(
     project_path: PathBuf,
     output: Option<PathBuf>,
     format: ContextFormat,
+    include_large_files: bool,
 ) -> Result<()> {
     // Auto-detect toolchain if not specified
     let detected_toolchain = detect_or_use_toolchain(toolchain, &project_path)?;
 
     // Create analyzer and perform analysis
-    let deep_context = analyze_project(&project_path).await?;
+    let deep_context = analyze_project(&project_path, include_large_files).await?;
 
     // Build project context
     let project_context = build_project_context(detected_toolchain.clone(), &deep_context)?;
@@ -155,10 +156,12 @@ fn detect_or_use_toolchain(toolchain: Option<String>, project_path: &Path) -> Re
 /// Create analyzer and perform project analysis
 async fn analyze_project(
     project_path: &Path,
+    include_large_files: bool,
 ) -> Result<crate::services::deep_context::DeepContext> {
     use crate::services::deep_context::{
         AnalysisType, CacheStrategy, DagType as DeepDagType, DeepContextAnalyzer, DeepContextConfig,
     };
+    use crate::services::file_classifier::FileClassifierConfig;
 
     let config = DeepContextConfig {
         include_analyses: vec![
@@ -186,7 +189,15 @@ async fn analyze_project(
         ],
         cache_strategy: CacheStrategy::Normal,
         parallel: num_cpus::get(),
-        file_classifier_config: None,
+        file_classifier_config: if include_large_files {
+            Some(FileClassifierConfig {
+                skip_vendor: true,
+                max_line_length: 10_000,
+                max_file_size: 10_485_760, // 10MB when including large files
+            })
+        } else {
+            None
+        },
     };
 
     let analyzer = DeepContextAnalyzer::new(config);

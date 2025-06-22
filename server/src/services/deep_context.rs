@@ -2070,45 +2070,58 @@ impl DeepContextAnalyzer {
             project_path
         );
 
+        // Create progress tracker
+        let progress = crate::services::progress::ProgressTracker::new(true);
+        let main_progress = progress.create_spinner("Analyzing project...");
+
         // Phase 1: Discovery
+        main_progress.set_message("Discovering project structure...");
         let mut file_tree = self.discover_project_structure(project_path).await?;
         debug!("Discovery phase completed");
 
         // Phase 2: Parallel analysis execution
-        let analyses = self.execute_parallel_analyses(project_path).await?;
+        main_progress.set_message("Running parallel analyses...");
+        let analyses = self.execute_parallel_analyses_with_progress(project_path, &progress).await?;
         debug!("Analysis phase completed");
 
         // Phase 2.5: Enrich file tree with centrality scores from DAG analysis
         if let Some(ref dag) = analyses.dependency_graph {
+            main_progress.set_message("Enriching file tree with centrality scores...");
             self.enrich_file_tree_with_centrality(&mut file_tree, dag)?;
             debug!("File tree enriched with centrality scores");
         }
 
         // Phase 3: Cross-language reference resolution
+        main_progress.set_message("Resolving cross-language references...");
         let cross_refs = self.build_cross_language_references(&analyses).await?;
         debug!("Cross-reference resolution completed");
 
         // Phase 4: Defect correlation
+        main_progress.set_message("Correlating defects...");
         let (defect_summary, hotspots) = self.correlate_defects(&analyses).await?;
         debug!("Defect correlation completed");
 
         // Phase 5: Quality scoring
+        main_progress.set_message("Calculating quality scores...");
         let quality_scorecard = self.calculate_quality_scores(&analyses).await?;
         debug!("Quality scoring completed");
 
         // Phase 6: Generate recommendations
+        main_progress.set_message("Generating recommendations...");
         let recommendations = self
             .generate_recommendations(&hotspots, &quality_scorecard)
             .await?;
         debug!("Recommendations generated");
 
         // Phase 7: Template provenance (if available)
+        main_progress.set_message("Analyzing template provenance...");
         let template_provenance = self.analyze_template_provenance(project_path).await?;
 
         let analysis_duration = start_time.elapsed();
         info!("Deep context analysis completed in {:?}", analysis_duration);
 
         // Phase 7.5: Analyze project metadata (Makefile and README)
+        main_progress.set_message("Analyzing project metadata...");
         let (build_info, project_overview) = self.analyze_project_metadata(project_path).await?;
         debug!("Project metadata analysis completed");
 
@@ -2149,8 +2162,13 @@ impl DeepContextAnalyzer {
         };
 
         // Phase 8: Run QA verification
+        main_progress.set_message("Running QA verification...");
         deep_context.qa_verification = Some(self.run_qa_verification(&deep_context).await?);
         info!("QA verification completed");
+
+        // Complete progress tracking
+        main_progress.finish_with_message("Analysis complete!");
+        progress.clear();
 
         Ok(deep_context)
     }
@@ -2301,6 +2319,7 @@ impl DeepContextAnalyzer {
         }
     }
 
+    #[allow(dead_code)]
     async fn execute_parallel_analyses(
         &self,
         project_path: &std::path::Path,
@@ -2315,6 +2334,29 @@ impl DeepContextAnalyzer {
             .collect_analysis_results(&mut join_set, collection_timeout)
             .await?;
 
+        Ok(results)
+    }
+
+    async fn execute_parallel_analyses_with_progress(
+        &self,
+        project_path: &std::path::Path,
+        progress: &crate::services::progress::ProgressTracker,
+    ) -> anyhow::Result<ParallelAnalysisResults> {
+        // Step 1: Spawn all analysis tasks with progress tracking
+        let mut join_set = self.spawn_analysis_tasks(project_path)?;
+
+        // Create sub-progress bars for different analyses
+        let analysis_count = self.config.include_analyses.len() as u64;
+        let analysis_progress = progress.create_sub_progress("Running analyses", analysis_count);
+
+        // Step 2: Collect and process results with timeout
+        // Increased timeout to handle projects with many files or large files
+        let collection_timeout = std::time::Duration::from_secs(300); // 5 minutes
+        let results = self
+            .collect_analysis_results_with_progress(&mut join_set, collection_timeout, &analysis_progress)
+            .await?;
+
+        analysis_progress.finish_with_message("Analyses complete");
         Ok(results)
     }
 
@@ -2452,6 +2494,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Collect and process analysis results with timeout
+    #[allow(dead_code)]
     async fn collect_analysis_results(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -2472,7 +2515,29 @@ impl DeepContextAnalyzer {
         }
     }
 
+    async fn collect_analysis_results_with_progress(
+        &self,
+        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
+        timeout: std::time::Duration,
+        progress: &indicatif::ProgressBar,
+    ) -> anyhow::Result<ParallelAnalysisResults> {
+        let collection_future = self.process_analysis_results_with_progress(join_set, progress);
+
+        match tokio::time::timeout(timeout, collection_future).await {
+            Ok(Ok(results)) => {
+                debug!("Parallel analysis collection completed successfully");
+                Ok(results)
+            }
+            Ok(Err(e)) => Err(anyhow::anyhow!("Analysis result aggregation failed: {}", e)),
+            Err(_) => Err(anyhow::anyhow!(
+                "Analysis collection timed out after {:?}",
+                timeout
+            )),
+        }
+    }
+
     /// Process all analysis results concurrently
+    #[allow(dead_code)]
     async fn process_analysis_results(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -2481,6 +2546,36 @@ impl DeepContextAnalyzer {
         let mut pending_results = Vec::new();
         while let Some(result) = join_set.join_next().await {
             pending_results.push(result?);
+        }
+
+        // Process results concurrently
+        let result_processors: Vec<_> = pending_results
+            .into_iter()
+            .map(|result| tokio::spawn(async move { result }))
+            .collect();
+
+        // Aggregate processed results
+        let mut results = ParallelAnalysisResults::default();
+        for processor in result_processors {
+            if let Ok(processed) = processor.await {
+                self.integrate_analysis_result(&mut results, processed);
+            }
+        }
+
+        Ok(results)
+    }
+
+    /// Process all analysis results concurrently with progress
+    async fn process_analysis_results_with_progress(
+        &self,
+        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
+        progress: &indicatif::ProgressBar,
+    ) -> anyhow::Result<ParallelAnalysisResults> {
+        // Collect all results first
+        let mut pending_results = Vec::new();
+        while let Some(result) = join_set.join_next().await {
+            pending_results.push(result?);
+            progress.inc(1);
         }
 
         // Process results concurrently

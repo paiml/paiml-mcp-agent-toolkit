@@ -56,6 +56,7 @@ async fn test_handle_context() {
         temp_dir.path().to_path_buf(),
         None,
         ContextFormat::Markdown,
+        false, // include_large_files
     )
     .await;
     assert!(result.is_ok());
