@@ -122,6 +122,25 @@ use std::path::Path;
 pub fn detect_primary_language(path: &Path) -> Option<String> {
     use walkdir::WalkDir;
 
+    // First check for project marker files
+    if path.join("Cargo.toml").exists() {
+        return Some("rust".to_string());
+    }
+    if path.join("package.json").exists() {
+        // Could be Node.js or Deno - check for deno.json/deno.jsonc
+        if path.join("deno.json").exists() || path.join("deno.jsonc").exists() {
+            return Some("deno".to_string());
+        }
+        return Some("deno".to_string()); // Default TypeScript/JS to deno for now
+    }
+    if path.join("pyproject.toml").exists() || path.join("setup.py").exists() {
+        return Some("python-uv".to_string());
+    }
+    if path.join("build.gradle").exists() || path.join("build.gradle.kts").exists() {
+        return Some("kotlin".to_string());
+    }
+
+    // Fall back to counting file extensions
     let mut lang_counts = std::collections::HashMap::new();
 
     for entry in WalkDir::new(path).max_depth(3).into_iter().flatten() {
@@ -347,8 +366,8 @@ pub async fn handle_analyze_name_similarity(
     _fuzzy: bool,
     _case_sensitive: bool,
 ) -> anyhow::Result<()> {
-    // Stub implementation to avoid recursion
-    tracing::info!("Name similarity analysis not yet implemented (from CLI mod)");
+    eprintln!("🚧 Name similarity analysis is not yet implemented in this version.");
+    eprintln!("This feature will be available in a future release.");
     Ok(())
 }
 
