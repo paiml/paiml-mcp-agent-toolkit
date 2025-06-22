@@ -45,9 +45,35 @@
 - **CREATED**: 6 new helper modules for better code organization
 - **QUALITY**: Meets all Zero Tolerance standards from CLAUDE.md
 
+### 🐛 Bug Fixes
+- **FIXED**: Language detection now correctly identifies Rust projects
+  - Checks for Cargo.toml before counting file extensions
+  - Prevents misidentification as "deno" projects
+- **FIXED**: Complexity analysis now detects functions in all languages
+  - Added TypeScript/JavaScript function patterns
+  - Added Python function patterns
+  - Now correctly finds 4980 functions (was 0)
+- **FIXED**: Silent command failures now show helpful messages
+  - Commands like quality-gate, graph-metrics, etc. now indicate "not yet implemented"
+  - Better user experience with clear feedback
+- **FIXED**: SATD analysis no longer attempts to process minified files
+  - Added filename-based detection (.min.js, .bundle.js, vendor/)
+  - Added content-based detection (lines >5000 characters)
+  - Prevents timeout issues with vendor files
+
+### ⚠️ Known Limitations
+- **CONTEXT GENERATION**: May timeout on very large codebases (>1000 files) with AST analysis
+  - **Workaround 1**: Use specific paths: `pmat context --path src/module`
+  - **Workaround 2**: Use exclude patterns: `pmat context --exclude "**/node_modules/**"`
+  - **Note**: Other analysis commands (complexity, satd, tdg) work without issues
+  - Future releases will include performance optimizations
+
 ### 📚 Documentation Updates
 - **UPDATED**: README.md with language support section
 - **UPDATED**: REFACTORING_STATUS.md showing 100% completion
+- **ADDED**: Comprehensive pre-release QA checklist (120+ tests)
+- **ADDED**: v0.26.0-release-status.md with final assessment
+- **UPDATED**: CLAUDE.md with release status and known limitations
 - **ADDED**: System Operations section for memory management
 - **ENHANCED**: Feature documentation with Kotlin capabilities
 - **ARCHIVED**: Outdated Kotlin test files to archive/2024-06-kotlin-implementation/
