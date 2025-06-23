@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.26.0 - Kotlin Support, New Analysis Features & Quality Improvements 🚀
+## v0.26.1 - Kotlin Support, New Analysis Features & Quality Improvements 🚀
 
 ### 🌟 NEW: Kotlin Language Support ✅
 - **IMPLEMENTED**: Complete Kotlin language support via tree-sitter-kotlin
