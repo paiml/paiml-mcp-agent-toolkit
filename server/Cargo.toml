@@ -10,7 +10,7 @@ repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
 
 [dependencies]
 # Async runtime
-tokio = { version = "1.45", features = ["rt-multi-thread", "macros", "net", "io-util", "io-std", "fs", "sync", "signal"] }
+tokio = { version = "1.45", features = ["rt-multi-thread", "macros", "net", "io-util", "io-std", "fs", "sync", "signal", "process"] }
 async-trait = "0.1"
 
 # Serialization
@@ -151,8 +151,8 @@ serde_json = "1.0"
 hex = "0.4"
 
 [features]
-default = ["rust-only"]
-all-languages = ["rust-ast", "python-ast", "c-ast", "cpp-ast", "kotlin-ast"]
+default = ["all-languages"]
+all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "kotlin-ast"]
 rust-only = ["rust-ast"]
 skip-slow-tests = []
 rust-ast = ["syn", "quote", "proc-macro2"]

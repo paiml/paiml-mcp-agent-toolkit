@@ -57,6 +57,7 @@ impl CliAdapter {
                 output,
                 format,
                 include_large_files: _,
+                skip_expensive_metrics: _,
             } => Self::decode_context(toolchain.as_deref(), project_path, output, format),
             Commands::Analyze(analyze_cmd) => Self::decode_analyze_command(analyze_cmd),
             Commands::Demo {
@@ -253,6 +254,7 @@ impl CliAdapter {
                 project_path,
                 output,
                 max_depth,
+                target_nodes,
                 filter_external,
                 show_complexity,
                 include_duplicates,
@@ -263,6 +265,7 @@ impl CliAdapter {
                 project_path,
                 output,
                 max_depth,
+                target_nodes,
                 *filter_external,
                 *show_complexity,
                 *include_duplicates,
@@ -763,6 +766,7 @@ impl CliAdapter {
         project_path: &std::path::Path,
         output: &Option<std::path::PathBuf>,
         max_depth: &Option<usize>,
+        target_nodes: &Option<usize>,
         filter_external: bool,
         show_complexity: bool,
         include_duplicates: bool,
@@ -774,6 +778,7 @@ impl CliAdapter {
             "dag_type": dag_type_to_string(dag_type),
             "output_path": output,
             "max_depth": max_depth,
+            "target_nodes": target_nodes,
             "filter_external": &filter_external,
             "show_complexity": &show_complexity,
             "include_duplicates": &include_duplicates,
@@ -1256,6 +1261,8 @@ fn graph_metric_type_to_string(metric: &crate::cli::GraphMetricType) -> String {
     match metric {
         crate::cli::GraphMetricType::All => "all".to_string(),
         crate::cli::GraphMetricType::Centrality => "centrality".to_string(),
+        crate::cli::GraphMetricType::Betweenness => "betweenness".to_string(),
+        crate::cli::GraphMetricType::Closeness => "closeness".to_string(),
         crate::cli::GraphMetricType::PageRank => "pagerank".to_string(),
         crate::cli::GraphMetricType::Clustering => "clustering".to_string(),
         crate::cli::GraphMetricType::Components => "components".to_string(),
@@ -1266,6 +1273,7 @@ fn graph_metrics_format_to_string(format: &crate::cli::GraphMetricsOutputFormat)
     match format {
         crate::cli::GraphMetricsOutputFormat::Summary => "summary".to_string(),
         crate::cli::GraphMetricsOutputFormat::Detailed => "detailed".to_string(),
+        crate::cli::GraphMetricsOutputFormat::Human => "human".to_string(),
         crate::cli::GraphMetricsOutputFormat::Json => "json".to_string(),
         crate::cli::GraphMetricsOutputFormat::Csv => "csv".to_string(),
         crate::cli::GraphMetricsOutputFormat::GraphML => "graphml".to_string(),
@@ -1277,6 +1285,7 @@ fn name_similarity_format_to_string(format: &crate::cli::NameSimilarityOutputFor
     match format {
         crate::cli::NameSimilarityOutputFormat::Summary => "summary".to_string(),
         crate::cli::NameSimilarityOutputFormat::Detailed => "detailed".to_string(),
+        crate::cli::NameSimilarityOutputFormat::Human => "human".to_string(),
         crate::cli::NameSimilarityOutputFormat::Json => "json".to_string(),
         crate::cli::NameSimilarityOutputFormat::Csv => "csv".to_string(),
         crate::cli::NameSimilarityOutputFormat::Markdown => "markdown".to_string(),
@@ -1338,6 +1347,7 @@ fn symbol_type_filter_to_string(filter: &crate::cli::SymbolTypeFilter) -> String
     match filter {
         crate::cli::SymbolTypeFilter::All => "all".to_string(),
         crate::cli::SymbolTypeFilter::Functions => "functions".to_string(),
+        crate::cli::SymbolTypeFilter::Classes => "classes".to_string(),
         crate::cli::SymbolTypeFilter::Types => "types".to_string(),
         crate::cli::SymbolTypeFilter::Variables => "variables".to_string(),
         crate::cli::SymbolTypeFilter::Modules => "modules".to_string(),
@@ -1348,6 +1358,7 @@ fn symbol_table_format_to_string(format: &crate::cli::SymbolTableOutputFormat) -
     match format {
         crate::cli::SymbolTableOutputFormat::Summary => "summary".to_string(),
         crate::cli::SymbolTableOutputFormat::Detailed => "detailed".to_string(),
+        crate::cli::SymbolTableOutputFormat::Human => "human".to_string(),
         crate::cli::SymbolTableOutputFormat::Json => "json".to_string(),
         crate::cli::SymbolTableOutputFormat::Csv => "csv".to_string(),
     }

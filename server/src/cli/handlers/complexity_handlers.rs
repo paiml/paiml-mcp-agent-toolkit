@@ -125,6 +125,10 @@ pub async fn handle_analyze_dead_code(
 
     // Run analysis with ranking
     let mut result = analyzer.analyze_with_ranking(&path, config).await?;
+    
+    // Debug: Check if we got any results
+    eprintln!("🔍 Found {} ranked files", result.ranked_files.len());
+    eprintln!("🔍 Total files analyzed: {}", result.summary.total_files_analyzed);
 
     // Apply top_files limit if specified
     if let Some(limit) = top_files {
@@ -658,6 +662,7 @@ pub async fn handle_analyze_dag(
     project_path: PathBuf,
     output: Option<PathBuf>,
     max_depth: Option<usize>,
+    target_nodes: Option<usize>,
     filter_external: bool,
     show_complexity: bool,
     include_duplicates: bool,
@@ -805,11 +810,11 @@ pub async fn handle_analyze_dag(
     };
 
     let generator = MermaidGenerator::new(options);
-    let mermaid_content = if enhanced {
+    let mermaid_content = if enhanced || target_nodes.is_some() {
         // Use advanced graph configuration
         let config = GraphConfig {
-            max_nodes: 100,
-            max_edges: 400,
+            max_nodes: target_nodes.unwrap_or(100),
+            max_edges: target_nodes.map(|n| n * 4).unwrap_or(400),
             grouping: GroupingStrategy::Module,
         };
         generator.generate_with_config(&enriched_graph, &config)

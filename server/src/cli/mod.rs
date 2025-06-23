@@ -352,23 +352,37 @@ pub async fn handle_analyze_graph_metrics(
 
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_name_similarity(
-    _project_path: PathBuf,
-    _query: String,
-    _top_k: usize,
-    _phonetic: bool,
-    _scope: SearchScope,
-    _threshold: f32,
-    _format: NameSimilarityOutputFormat,
-    _include: Option<String>,
-    _exclude: Option<String>,
-    _output: Option<PathBuf>,
-    _perf: bool,
-    _fuzzy: bool,
-    _case_sensitive: bool,
+    project_path: PathBuf,
+    query: String,
+    top_k: usize,
+    phonetic: bool,
+    scope: SearchScope,
+    threshold: f32,
+    format: NameSimilarityOutputFormat,
+    include: Option<String>,
+    exclude: Option<String>,
+    output: Option<PathBuf>,
+    perf: bool,
+    fuzzy: bool,
+    case_sensitive: bool,
 ) -> anyhow::Result<()> {
-    eprintln!("🚧 Name similarity analysis is not yet implemented in this version.");
-    eprintln!("This feature will be available in a future release.");
-    Ok(())
+    // Delegate to the actual implementation
+    crate::cli::analysis::name_similarity::handle_analyze_name_similarity(
+        project_path,
+        query,
+        top_k,
+        phonetic,
+        scope,
+        threshold,
+        format,
+        include,
+        exclude,
+        output,
+        perf,
+        fuzzy,
+        case_sensitive,
+    )
+    .await
 }
 
 #[allow(clippy::too_many_arguments)]

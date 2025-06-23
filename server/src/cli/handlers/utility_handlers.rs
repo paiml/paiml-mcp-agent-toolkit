@@ -115,12 +115,13 @@ pub async fn handle_context(
     output: Option<PathBuf>,
     format: ContextFormat,
     include_large_files: bool,
+    skip_expensive_metrics: bool,
 ) -> Result<()> {
     // Auto-detect toolchain if not specified
     let detected_toolchain = detect_or_use_toolchain(toolchain, &project_path)?;
 
     // Create analyzer and perform analysis
-    let deep_context = analyze_project(&project_path, include_large_files).await?;
+    let deep_context = analyze_project(&project_path, include_large_files, skip_expensive_metrics).await?;
 
     // Build project context
     let project_context = build_project_context(detected_toolchain.clone(), &deep_context)?;
@@ -157,6 +158,7 @@ fn detect_or_use_toolchain(toolchain: Option<String>, project_path: &Path) -> Re
 async fn analyze_project(
     project_path: &Path,
     include_large_files: bool,
+    skip_expensive_metrics: bool,
 ) -> Result<crate::services::deep_context::DeepContext> {
     use crate::services::deep_context::{
         AnalysisType, CacheStrategy, DagType as DeepDagType, DeepContextAnalyzer, DeepContextConfig,
@@ -164,17 +166,24 @@ async fn analyze_project(
     use crate::services::file_classifier::FileClassifierConfig;
 
     let config = DeepContextConfig {
-        include_analyses: vec![
-            // Note: AST analysis can be expensive on large codebases
-            // Consider using --exclude patterns or specific paths
-            AnalysisType::Ast,
-            AnalysisType::Complexity,
-            AnalysisType::Satd,
-            // Skip expensive analyses for context generation
-            // AnalysisType::DeadCode,
-            // AnalysisType::Provability,
-            // AnalysisType::Churn,
-        ],
+        include_analyses: if skip_expensive_metrics {
+            vec![
+                // Only include AST analysis when skipping expensive metrics
+                AnalysisType::Ast,
+            ]
+        } else {
+            vec![
+                // Note: AST analysis can be expensive on large codebases
+                // Consider using --exclude patterns or specific paths
+                AnalysisType::Ast,
+                AnalysisType::Complexity,
+                AnalysisType::Satd,
+                // Skip expensive analyses for context generation
+                // AnalysisType::DeadCode,
+                // AnalysisType::Provability,
+                // AnalysisType::Churn,
+            ]
+        },
         period_days: 30,
         dag_type: DeepDagType::FullDependency,
         complexity_thresholds: None,

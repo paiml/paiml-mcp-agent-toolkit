@@ -154,6 +154,7 @@ mod tests {
                 NameSimilarityOutputFormat::Csv => {}
                 NameSimilarityOutputFormat::Summary => {}
                 NameSimilarityOutputFormat::Markdown => {}
+                NameSimilarityOutputFormat::Human => {}
             }
         }
     }

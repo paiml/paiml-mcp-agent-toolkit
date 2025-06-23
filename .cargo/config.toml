@@ -1,0 +1,13 @@
+[build]
+# Limit parallel compilation to prevent OOM
+jobs = 2
+
+[profile.test]
+# Reduce memory usage during test compilation
+opt-level = 0
+codegen-units = 1
+incremental = false
+
+[env]
+# Limit test parallelism
+RUST_TEST_THREADS = "2"

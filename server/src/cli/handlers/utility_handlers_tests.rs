@@ -57,6 +57,7 @@ async fn test_handle_context() {
         None,
         ContextFormat::Markdown,
         false, // include_large_files
+        false, // skip_expensive_metrics
     )
     .await;
     assert!(result.is_ok());

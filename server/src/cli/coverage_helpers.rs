@@ -37,11 +37,36 @@ pub async fn get_changed_files_for_coverage(
         eprintln!("🎯 Target branch: {}", target);
     }
 
-    // Mock implementation - in real version would use git
-    let changed_files = vec![
-        (project_path.join("src/main.rs"), "M".to_string()),
-        (project_path.join("src/lib.rs"), "A".to_string()),
-    ];
+    // Use git to get actual changed files
+    use tokio::process::Command;
+    
+    let target = target_branch.unwrap_or("HEAD");
+    let output = Command::new("git")
+        .arg("diff")
+        .arg("--name-status")
+        .arg(format!("{}...{}", base_branch, target))
+        .current_dir(project_path)
+        .output()
+        .await?;
+    
+    if !output.status.success() {
+        // If git command fails, return empty list instead of erroring
+        eprintln!("⚠️ Git command failed, returning empty changelist");
+        return Ok(vec![]);
+    }
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut changed_files = Vec::new();
+    
+    for line in stdout.lines() {
+        if let Some((status, path)) = line.split_once('\t') {
+            let full_path = project_path.join(path);
+            // Only include files that actually exist (not deleted)
+            if full_path.exists() && status != "D" {
+                changed_files.push((full_path, status.to_string()));
+            }
+        }
+    }
 
     eprintln!("📝 Found {} changed files", changed_files.len());
     Ok(changed_files)

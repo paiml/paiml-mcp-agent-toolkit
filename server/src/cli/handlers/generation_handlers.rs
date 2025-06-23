@@ -51,30 +51,68 @@ pub async fn handle_scaffold(
     use futures::stream::{self, StreamExt};
 
     let params_json = super::super::stubs::params_to_json(params);
+    
+    // If no templates specified, use default templates for the toolchain
+    let templates_to_use = if templates.is_empty() {
+        match toolchain.as_str() {
+            "rust" => vec!["makefile".to_string(), "readme".to_string(), "gitignore".to_string()],
+            "deno" => vec!["makefile".to_string(), "readme".to_string(), "gitignore".to_string()],
+            "python-uv" => vec!["makefile".to_string(), "readme".to_string(), "gitignore".to_string()],
+            _ => vec!["readme".to_string()],
+        }
+    } else {
+        templates
+    };
+    
     let results = scaffold_project(
         server.clone(),
         &toolchain,
-        templates,
+        templates_to_use,
         serde_json::Value::Object(params_json.clone()),
     )
     .await?;
 
+    // Report any errors
+    if !results.errors.is_empty() {
+        eprintln!("⚠️ Some templates failed to generate:");
+        for error in &results.errors {
+            eprintln!("  - {}: {}", error.template, error.error);
+        }
+    }
+
+    // Store file count before moving the vector
+    let file_count = results.files.len();
+    
     // Parallel file writing with bounded concurrency
-    stream::iter(results.files)
+    let write_results: Vec<_> = stream::iter(results.files)
         .map(|file| async move {
             let path = PathBuf::from(&file.path);
             if let Some(parent) = path.parent() {
                 tokio::fs::create_dir_all(parent).await?;
             }
             tokio::fs::write(&path, &file.content).await?;
-            eprintln!("✅ {}", file.path);
+            eprintln!("✅ Created: {}", file.path);
             Ok::<_, anyhow::Error>(())
         })
         .buffer_unordered(parallel)
-        .collect::<Vec<_>>()
+        .collect()
         .await;
 
-    eprintln!("\n🚀 Project scaffolded successfully!");
+    // Check if any writes failed
+    let mut any_failed = false;
+    for result in write_results {
+        if let Err(e) = result {
+            eprintln!("❌ Failed to write file: {}", e);
+            any_failed = true;
+        }
+    }
+
+    if !any_failed && file_count > 0 {
+        eprintln!("\n🚀 Project scaffolded successfully!");
+    } else if file_count == 0 {
+        eprintln!("\n⚠️ No files were generated. Check your parameters and template availability.");
+    }
+    
     Ok(())
 }
 

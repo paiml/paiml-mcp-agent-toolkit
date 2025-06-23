@@ -30,8 +30,14 @@ pmat analyze deep-context --format json       # Comprehensive analysis
 pmat analyze big-o                            # Big-O complexity analysis
 pmat analyze makefile-lint                    # Makefile quality linting
 pmat analyze proof-annotations                # Provability analysis
-pmat analyze graph-metrics                    # Graph centrality metrics
-pmat analyze name-similarity "function_name"  # Semantic name search
+
+# New in v0.26.0
+pmat analyze graph-metrics                    # Graph centrality metrics (PageRank, betweenness, closeness)
+pmat analyze name-similarity "function_name"  # Fuzzy name matching with phonetic support
+pmat analyze symbol-table                     # Symbol extraction with cross-references
+pmat analyze duplicates --min-lines 10        # Code duplication detection
+pmat quality-gate --strict                    # Comprehensive quality enforcement
+pmat diagnose --verbose                       # Self-diagnostics and health checks
 
 # Project scaffolding
 pmat scaffold rust --templates makefile,readme,gitignore

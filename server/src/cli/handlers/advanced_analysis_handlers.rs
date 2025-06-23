@@ -234,45 +234,69 @@ pub async fn handle_analyze_comprehensive(
 /// Handle graph metrics analysis command
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_graph_metrics(
-    _project_path: PathBuf,
-    _metrics: Vec<GraphMetricType>,
-    _pagerank_seeds: Vec<String>,
-    _damping_factor: f32,
-    _max_iterations: usize,
-    _convergence_threshold: f64,
-    _export_graphml: bool,
-    _format: GraphMetricsOutputFormat,
-    _include: Option<String>,
-    _exclude: Option<String>,
-    _output: Option<PathBuf>,
-    _perf: bool,
-    _top_k: usize,
-    _min_centrality: f64,
+    project_path: PathBuf,
+    metrics: Vec<GraphMetricType>,
+    pagerank_seeds: Vec<String>,
+    damping_factor: f32,
+    max_iterations: usize,
+    convergence_threshold: f64,
+    export_graphml: bool,
+    format: GraphMetricsOutputFormat,
+    include: Option<String>,
+    exclude: Option<String>,
+    output: Option<PathBuf>,
+    perf: bool,
+    top_k: usize,
+    min_centrality: f64,
 ) -> Result<()> {
-    eprintln!("🚧 Graph metrics analysis is not yet implemented in this version.");
-    eprintln!("This feature will be available in a future release.");
-    eprintln!("For now, you can use:");
-    eprintln!("  - pmat analyze dag - for dependency graph visualization");
-    Ok(())
+    // Delegate to the actual implementation
+    crate::cli::analysis::graph_metrics::handle_analyze_graph_metrics(
+        project_path,
+        metrics,
+        pagerank_seeds,
+        damping_factor,
+        max_iterations,
+        convergence_threshold,
+        export_graphml,
+        format,
+        include,
+        exclude,
+        output,
+        perf,
+        top_k,
+        min_centrality,
+    )
+    .await
 }
 
 /// Handle symbol table analysis command
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_symbol_table(
-    _project_path: PathBuf,
-    _format: SymbolTableOutputFormat,
-    _filter: Option<SymbolTypeFilter>,
-    _query: Option<String>,
-    _include: Vec<String>,
-    _exclude: Vec<String>,
-    _show_unreferenced: bool,
-    _show_references: bool,
-    _output: Option<PathBuf>,
-    _perf: bool,
+    project_path: PathBuf,
+    format: SymbolTableOutputFormat,
+    filter: Option<SymbolTypeFilter>,
+    query: Option<String>,
+    include: Vec<String>,
+    exclude: Vec<String>,
+    show_unreferenced: bool,
+    show_references: bool,
+    output: Option<PathBuf>,
+    perf: bool,
 ) -> Result<()> {
-    eprintln!("🚧 Symbol table analysis is not yet implemented in this version.");
-    eprintln!("This feature will be available in a future release.");
-    Ok(())
+    // Delegate to the actual implementation
+    crate::cli::analysis::symbol_table::handle_analyze_symbol_table(
+        project_path,
+        format,
+        filter,
+        query,
+        Some(include.join(",")),
+        Some(exclude.join(",")),
+        show_unreferenced,
+        show_references,
+        output,
+        perf,
+    )
+    .await
 }
 
 #[cfg(test)]
