@@ -80,23 +80,29 @@ test-fast:
 	@echo "⚡ Running fast tests with safe parallelism..."
 	@# System health check removed - script archived
 	@echo "🚀 Setting SKIP_SLOW_TESTS=1 to ensure tests complete quickly..."
-	@echo "🛡️ Using conservative thread count to prevent system crashes..."
-	@CPU_CORES=$$(nproc); \
+	@echo "🛡️ Using conservative thread count and memory limits to prevent system crashes..."
+	@# Memory-safe settings to prevent OOM
+	@export CARGO_BUILD_JOBS=2; \
+	export CARGO_INCREMENTAL=0; \
+	export CARGO_PROFILE_TEST_CODEGEN_UNITS=1; \
+	CPU_CORES=$$(nproc); \
 	if [ "$${CI:-}" = "true" ]; then \
 		echo "🔧 CI environment detected - using moderate parallelism"; \
 		TEST_THREADS=8; \
+		CARGO_BUILD_JOBS=4; \
 	else \
 		echo "📊 System resources: $$CPU_CORES cores"; \
-		echo "⚠️  Using fixed 4 threads for stability (override with THREADS env var)"; \
-		TEST_THREADS=$${THREADS:-4}; \
+		echo "⚠️  Using limited parallelism for stability (2 build jobs, 2 test threads)"; \
+		echo "   Override with: CARGO_BUILD_JOBS=n THREADS=n make test-fast"; \
+		TEST_THREADS=$${THREADS:-2}; \
 	fi; \
-	echo "🔨 Running tests with $$TEST_THREADS threads..."; \
+	echo "🔨 Building with $$CARGO_BUILD_JOBS jobs, testing with $$TEST_THREADS threads..."; \
 	if command -v cargo-nextest >/dev/null 2>&1; then \
 		echo "⚡ Using cargo-nextest for faster test execution..."; \
-		SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$TEST_THREADS cargo nextest run --profile fast --workspace --features skip-slow-tests --filter-expr 'not test(slow_integration)'; \
+		SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$TEST_THREADS CARGO_BUILD_JOBS=$$CARGO_BUILD_JOBS cargo nextest run --profile fast --workspace --features skip-slow-tests --filter-expr 'not test(slow_integration)' --jobs $$CARGO_BUILD_JOBS; \
 	else \
 		echo "📦 Using standard cargo test..."; \
-		SKIP_SLOW_TESTS=1 cargo test --workspace --features skip-slow-tests -- --test-threads=$$TEST_THREADS; \
+		SKIP_SLOW_TESTS=1 CARGO_BUILD_JOBS=$$CARGO_BUILD_JOBS cargo test --workspace --features skip-slow-tests --jobs $$CARGO_BUILD_JOBS -- --test-threads=$$TEST_THREADS; \
 	fi
 	@echo "✅ Fast tests completed!"
 
@@ -157,11 +163,22 @@ test-safe:
 # Run tests - ALWAYS FAST (zero tolerance for slow tests) with coverage summary
 test:
 	@echo "🧪 Running fast tests with coverage..."
-	@echo "🚀 Using optimized parallelism for coverage tests..."
-	@CORES=$$(nproc); THREADS=$$((CORES > 2 ? CORES - 2 : 1)); \
-	cd server && SKIP_SLOW_TESTS=1 cargo llvm-cov test \
+	@echo "🚀 Using memory-safe parallelism for coverage tests..."
+	@# Memory-safe settings to prevent OOM
+	@export CARGO_BUILD_JOBS=$${CARGO_BUILD_JOBS:-2}; \
+	export CARGO_INCREMENTAL=0; \
+	export CARGO_PROFILE_TEST_CODEGEN_UNITS=1; \
+	CORES=$$(nproc); \
+	if [ "$${CI:-}" = "true" ]; then \
+		THREADS=4; CARGO_BUILD_JOBS=4; \
+	else \
+		THREADS=$${THREADS:-2}; \
+	fi; \
+	echo "🔨 Building with $$CARGO_BUILD_JOBS jobs, testing with $$THREADS threads..."; \
+	cd server && SKIP_SLOW_TESTS=1 CARGO_BUILD_JOBS=$$CARGO_BUILD_JOBS cargo llvm-cov test \
 		--lib --bins \
 		--no-fail-fast \
+		--jobs $$CARGO_BUILD_JOBS \
 		-- --test-threads=$$THREADS 2>&1 | grep -E "test result:|passed|failed|TOTAL|%"
 	@echo "✅ All fast tests completed with coverage summary!"
 

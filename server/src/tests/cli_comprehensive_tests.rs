@@ -337,12 +337,14 @@ fn test_context_command_parsing() {
             output,
             format,
             include_large_files,
+            skip_expensive_metrics,
         } => {
             assert_eq!(toolchain, Some("rust".to_string()));
             assert_eq!(project_path, PathBuf::from("/tmp/project"));
             assert_eq!(output, Some(PathBuf::from("context.md")));
             assert_eq!(format, ContextFormat::Markdown);
-            assert_eq!(include_large_files, false); // default value
+            assert!(!include_large_files); // default value
+            assert!(!skip_expensive_metrics); // default value
         }
         _ => panic!("Expected Context command"),
     }
@@ -567,6 +569,7 @@ fn test_analyze_dag_full_options() {
             project_path,
             output,
             max_depth,
+            target_nodes: _,
             filter_external,
             show_complexity,
             include_duplicates: _,

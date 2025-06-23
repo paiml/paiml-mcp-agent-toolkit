@@ -2081,7 +2081,9 @@ impl DeepContextAnalyzer {
 
         // Phase 2: Parallel analysis execution
         main_progress.set_message("Running parallel analyses...");
+        let analysis_start = std::time::Instant::now();
         let analyses = self.execute_parallel_analyses_with_progress(project_path, &progress).await?;
+        info!("Analysis phase completed in {:?}", analysis_start.elapsed());
         debug!("Analysis phase completed");
 
         // Phase 2.5: Enrich file tree with centrality scores from DAG analysis
@@ -3393,6 +3395,7 @@ async fn analyze_ast_contexts(
 ) -> anyhow::Result<Vec<EnhancedFileContext>> {
     use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
 
+    let _start_time = std::time::Instant::now();
     info!("Starting AST analysis for path: {:?}", path);
 
     let mut enhanced_contexts = Vec::new();
@@ -3452,14 +3455,23 @@ async fn analyze_ast_contexts(
         skipped_files
     );
 
-    // Initialize TDG calculator for per-file analysis
-    let tdg_calculator = crate::services::tdg_calculator::TDGCalculator::new();
-
-    // Analyze each discovered source file
+    // Analyze each discovered source file WITHOUT TDG calculation
+    let mut file_count = 0;
+    let analysis_start = std::time::Instant::now();
+    
     for file_path in source_files {
+        let file_start = std::time::Instant::now();
         if let Ok(file_context) = analyze_single_file(&file_path).await {
-            // Calculate TDG score for this file
-            let tdg_score = (tdg_calculator.calculate_file(&file_path).await).ok();
+            let ast_time = file_start.elapsed();
+            
+            if file_count % 10 == 0 {
+                info!(
+                    "Progress: {}/{} files. Last file - AST: {:?}", 
+                    file_count, 
+                    enhanced_contexts.capacity(),
+                    ast_time
+                );
+            }
 
             let enhanced_context = EnhancedFileContext {
                 base: file_context,
@@ -3469,13 +3481,22 @@ async fn analyze_ast_contexts(
                     dead_code: None,
                     technical_debt: Vec::new(),
                     complexity_violations: Vec::new(),
-                    tdg_score,
+                    tdg_score: None,  // Skip TDG calculation for context generation
                 },
                 symbol_id: uuid::Uuid::new_v4().to_string(),
             };
             enhanced_contexts.push(enhanced_context);
+            file_count += 1;
         }
     }
+    
+    let total_time = analysis_start.elapsed();
+    info!(
+        "AST analysis phase took {:?} for {} files ({:?} per file average)",
+        total_time,
+        file_count,
+        total_time / file_count.max(1) as u32
+    );
 
     info!(
         "AST analysis completed. Generated {} file contexts",

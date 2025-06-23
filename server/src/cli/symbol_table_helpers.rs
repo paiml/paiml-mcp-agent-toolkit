@@ -66,6 +66,7 @@ pub fn extract_symbol_from_ast_item(
 pub fn passes_type_filter(kind: &str, filter: &Option<super::SymbolTypeFilter>) -> bool {
     match filter {
         Some(super::SymbolTypeFilter::Functions) => kind == "function",
+        Some(super::SymbolTypeFilter::Classes) => kind == "class",
         Some(super::SymbolTypeFilter::Types) => matches!(kind, "struct" | "enum" | "trait"),
         Some(super::SymbolTypeFilter::Variables) => false, // Not implemented yet
         Some(super::SymbolTypeFilter::Modules) => kind == "module",

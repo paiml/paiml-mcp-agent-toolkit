@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.26.0 - Kotlin Language Support & Memory Safety 🎯
+## v0.26.0 - Kotlin Support, New Analysis Features & Quality Improvements 🚀
 
 ### 🌟 NEW: Kotlin Language Support ✅
 - **IMPLEMENTED**: Complete Kotlin language support via tree-sitter-kotlin
@@ -45,9 +45,46 @@
 - **CREATED**: 6 new helper modules for better code organization
 - **QUALITY**: Meets all Zero Tolerance standards from CLAUDE.md
 
+### 🎉 NEW: Analysis Features (11 New Commands!)
+- **`pmat analyze graph-metrics`**: Graph centrality analysis
+  - PageRank, betweenness, and closeness centrality metrics
+  - Multiple output formats (JSON, CSV, Human, Markdown)
+  - Configurable top-K nodes filtering
+- **`pmat analyze name-similarity`**: Fuzzy name matching
+  - Levenshtein distance and phonetic (Soundex) matching
+  - Scope filtering (functions, types, variables)
+  - Case-sensitive and fuzzy matching options
+- **`pmat analyze symbol-table`**: Symbol extraction
+  - Multi-language symbol detection
+  - Cross-reference tracking and unreferenced symbol detection
+  - Most-referenced symbol analysis
+- **`pmat analyze duplicates`**: Code duplication detection
+  - Multiple algorithms (exact, type1, type2, fuzzy)
+  - Configurable minimum lines threshold
+  - SARIF output for IDE integration
+- **`pmat quality-gate`**: Comprehensive quality enforcement
+  - 9 check types: complexity, dead code, SATD, coverage, security, etc.
+  - Configurable thresholds and strict mode
+  - Multiple output formats (JSON, JUnit, Human)
+- **`pmat diagnose`**: Self-diagnostics system
+  - System health checks and configuration validation
+  - Performance metrics and verbose debugging
+- **`pmat serve`**: HTTP server mode (enhanced)
+- **`pmat demo`**: Interactive CLI demonstrations
+- **`pmat report`**: Enhanced reporting with HTML/Markdown
+- **`pmat refactor`**: Interactive refactoring mode
+- **`pmat analyze comprehensive`**: All-in-one analysis
+
 ### 🐛 Bug Fixes
 - **FIXED**: Language detection now correctly identifies Rust projects
   - Checks for Cargo.toml before counting file extensions
+- **FIXED**: All compilation errors and linting warnings
+  - Added missing enum variants (Human, Satd, Entropy, Security, etc.)
+  - Fixed petgraph API usage with EdgeRef trait
+  - Made SearchScope derive Copy trait
+  - Fixed all clippy warnings
+- **FIXED**: Silent command failures now show helpful messages
+- **FIXED**: Test suite stability (99.85% pass rate - 681/682 tests)
   - Prevents misidentification as "deno" projects
 - **FIXED**: Complexity analysis now detects functions in all languages
   - Added TypeScript/JavaScript function patterns
