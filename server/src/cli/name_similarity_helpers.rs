@@ -197,6 +197,14 @@ pub fn output_results(config: OutputConfig) -> Result<()> {
             config.analyzed_files_len,
         ),
         NameSimilarityOutputFormat::Detailed => format_detailed_output(config.similarities),
+        NameSimilarityOutputFormat::Human => format_summary_output(
+            config.query,
+            config.all_names_len,
+            config.similarities,
+            config.perf,
+            config.analysis_time,
+            config.analyzed_files_len,
+        ),
         NameSimilarityOutputFormat::Json => serde_json::to_string_pretty(config.final_results)?,
         NameSimilarityOutputFormat::Csv => format_csv_output(config.similarities),
         NameSimilarityOutputFormat::Markdown => {

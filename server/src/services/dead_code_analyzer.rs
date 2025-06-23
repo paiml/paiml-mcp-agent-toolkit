@@ -475,6 +475,9 @@ impl DeadCodeAnalyzer {
 
         // 1. Build AST DAG for project - we'll analyze as Rust by default for now
         let project_context = analyze_project(project_path, "rust").await?;
+        
+        // Track total files analyzed
+        let total_files_in_project = project_context.files.len();
 
         // 2. Convert to AstDag format
         let dag = crate::services::dag_builder::DagBuilder::build_from_project(&project_context);
@@ -501,7 +504,9 @@ impl DeadCodeAnalyzer {
         }
         file_metrics.retain(|f| f.dead_lines >= config.min_dead_lines);
 
-        let summary = crate::models::dead_code::DeadCodeSummary::from_files(&file_metrics);
+        let mut summary = crate::models::dead_code::DeadCodeSummary::from_files(&file_metrics);
+        // Update total files analyzed to reflect actual project files
+        summary.total_files_analyzed = total_files_in_project;
 
         Ok(crate::models::dead_code::DeadCodeRankingResult {
             summary,

@@ -196,6 +196,8 @@ pub enum DuplicateType {
     Gapped,
     /// Semantic duplicates using AST similarity
     Semantic,
+    /// Fuzzy matching (similar but not exact)
+    Fuzzy,
     /// All types of duplicates
     All,
 }
@@ -207,6 +209,7 @@ impl fmt::Display for DuplicateType {
             DuplicateType::Renamed => write!(f, "renamed"),
             DuplicateType::Gapped => write!(f, "gapped"),
             DuplicateType::Semantic => write!(f, "semantic"),
+            DuplicateType::Fuzzy => write!(f, "fuzzy"),
             DuplicateType::All => write!(f, "all"),
         }
     }
@@ -269,8 +272,12 @@ impl fmt::Display for ComprehensiveOutputFormat {
 /// Graph metric type
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
 pub enum GraphMetricType {
-    /// Betweenness centrality
+    /// Degree centrality
     Centrality,
+    /// Betweenness centrality
+    Betweenness,
+    /// Closeness centrality
+    Closeness,
     /// PageRank scores
     PageRank,
     /// Clustering coefficient
@@ -285,6 +292,8 @@ impl fmt::Display for GraphMetricType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             GraphMetricType::Centrality => write!(f, "centrality"),
+            GraphMetricType::Betweenness => write!(f, "betweenness"),
+            GraphMetricType::Closeness => write!(f, "closeness"),
             GraphMetricType::PageRank => write!(f, "pagerank"),
             GraphMetricType::Clustering => write!(f, "clustering"),
             GraphMetricType::Components => write!(f, "components"),
@@ -300,6 +309,8 @@ pub enum GraphMetricsOutputFormat {
     Summary,
     /// Detailed metrics with rankings
     Detailed,
+    /// Human-readable format
+    Human,
     /// JSON format for tooling integration
     Json,
     /// CSV format for spreadsheet import
@@ -315,6 +326,7 @@ impl fmt::Display for GraphMetricsOutputFormat {
         match self {
             GraphMetricsOutputFormat::Summary => write!(f, "summary"),
             GraphMetricsOutputFormat::Detailed => write!(f, "detailed"),
+            GraphMetricsOutputFormat::Human => write!(f, "human"),
             GraphMetricsOutputFormat::Json => write!(f, "json"),
             GraphMetricsOutputFormat::Csv => write!(f, "csv"),
             GraphMetricsOutputFormat::GraphML => write!(f, "graphml"),
@@ -324,7 +336,7 @@ impl fmt::Display for GraphMetricsOutputFormat {
 }
 
 /// Search scope
-#[derive(Clone, Debug, ValueEnum, PartialEq)]
+#[derive(Clone, Copy, Debug, ValueEnum, PartialEq)]
 pub enum SearchScope {
     /// Search function names
     Functions,
@@ -354,6 +366,8 @@ pub enum NameSimilarityOutputFormat {
     Summary,
     /// Detailed match analysis
     Detailed,
+    /// Human-readable format
+    Human,
     /// JSON format for tooling integration
     Json,
     /// CSV format for spreadsheet import
@@ -367,6 +381,7 @@ impl fmt::Display for NameSimilarityOutputFormat {
         match self {
             NameSimilarityOutputFormat::Summary => write!(f, "summary"),
             NameSimilarityOutputFormat::Detailed => write!(f, "detailed"),
+            NameSimilarityOutputFormat::Human => write!(f, "human"),
             NameSimilarityOutputFormat::Json => write!(f, "json"),
             NameSimilarityOutputFormat::Csv => write!(f, "csv"),
             NameSimilarityOutputFormat::Markdown => write!(f, "markdown"),
@@ -381,6 +396,8 @@ pub enum DuplicateOutputFormat {
     Summary,
     /// Detailed duplicate listing
     Detailed,
+    /// Human-readable format
+    Human,
     /// JSON format for tooling
     Json,
     /// CSV format for spreadsheet import
@@ -394,6 +411,7 @@ impl fmt::Display for DuplicateOutputFormat {
         match self {
             DuplicateOutputFormat::Summary => write!(f, "summary"),
             DuplicateOutputFormat::Detailed => write!(f, "detailed"),
+            DuplicateOutputFormat::Human => write!(f, "human"),
             DuplicateOutputFormat::Json => write!(f, "json"),
             DuplicateOutputFormat::Csv => write!(f, "csv"),
             DuplicateOutputFormat::Sarif => write!(f, "sarif"),
@@ -492,6 +510,8 @@ pub enum SymbolTableOutputFormat {
     Summary,
     /// Detailed output with all symbols
     Detailed,
+    /// Human-readable format
+    Human,
     /// JSON format for tools
     Json,
     /// CSV format for spreadsheets
@@ -503,6 +523,7 @@ impl fmt::Display for SymbolTableOutputFormat {
         match self {
             SymbolTableOutputFormat::Summary => write!(f, "summary"),
             SymbolTableOutputFormat::Detailed => write!(f, "detailed"),
+            SymbolTableOutputFormat::Human => write!(f, "human"),
             SymbolTableOutputFormat::Json => write!(f, "json"),
             SymbolTableOutputFormat::Csv => write!(f, "csv"),
         }
@@ -538,6 +559,8 @@ impl fmt::Display for BigOOutputFormat {
 pub enum SymbolTypeFilter {
     /// Functions and methods
     Functions,
+    /// Classes only
+    Classes,
     /// Types, structs, and classes
     Types,
     /// Variables and constants
@@ -552,6 +575,7 @@ impl fmt::Display for SymbolTypeFilter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SymbolTypeFilter::Functions => write!(f, "functions"),
+            SymbolTypeFilter::Classes => write!(f, "classes"),
             SymbolTypeFilter::Types => write!(f, "types"),
             SymbolTypeFilter::Variables => write!(f, "variables"),
             SymbolTypeFilter::Modules => write!(f, "modules"),
@@ -781,6 +805,7 @@ impl fmt::Display for IncrementalCoverageOutputFormat {
 pub enum QualityGateOutputFormat {
     Summary,
     Detailed,
+    Human,
     Json,
     Junit,
     Markdown,
@@ -791,6 +816,7 @@ impl fmt::Display for QualityGateOutputFormat {
         match self {
             QualityGateOutputFormat::Summary => write!(f, "summary"),
             QualityGateOutputFormat::Detailed => write!(f, "detailed"),
+            QualityGateOutputFormat::Human => write!(f, "human"),
             QualityGateOutputFormat::Json => write!(f, "json"),
             QualityGateOutputFormat::Junit => write!(f, "junit"),
             QualityGateOutputFormat::Markdown => write!(f, "markdown"),
@@ -852,6 +878,10 @@ pub enum QualityCheckType {
     Coverage,
     Sections,
     Provability,
+    Satd,
+    Entropy,
+    Security,
+    Duplicates,
     All,
 }
 
@@ -863,6 +893,10 @@ impl fmt::Display for QualityCheckType {
             QualityCheckType::Coverage => write!(f, "coverage"),
             QualityCheckType::Sections => write!(f, "sections"),
             QualityCheckType::Provability => write!(f, "provability"),
+            QualityCheckType::Satd => write!(f, "satd"),
+            QualityCheckType::Entropy => write!(f, "entropy"),
+            QualityCheckType::Security => write!(f, "security"),
+            QualityCheckType::Duplicates => write!(f, "duplicates"),
             QualityCheckType::All => write!(f, "all"),
         }
     }

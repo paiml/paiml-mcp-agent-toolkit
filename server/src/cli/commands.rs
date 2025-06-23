@@ -166,6 +166,10 @@ pub enum Commands {
         /// Include large files (>500KB) that are normally skipped
         #[arg(long)]
         include_large_files: bool,
+
+        /// Skip expensive metrics (TDG, complexity analysis) for faster execution
+        #[arg(long)]
+        skip_expensive_metrics: bool,
     },
 
     /// Analyze code metrics and patterns
@@ -427,6 +431,10 @@ pub enum AnalyzeCommands {
         /// Maximum depth for graph traversal
         #[arg(long)]
         max_depth: Option<usize>,
+
+        /// Target number of nodes (applies graph reduction if exceeded)
+        #[arg(long)]
+        target_nodes: Option<usize>,
 
         /// Filter out external dependencies
         #[arg(long)]

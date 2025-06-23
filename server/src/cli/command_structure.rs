@@ -123,10 +123,11 @@ impl CommandExecutor {
                 output,
                 format,
                 include_large_files,
+                skip_expensive_metrics,
             } => {
                 self.registry
                     .utility_handlers
-                    .handle_context(toolchain, project_path, output, format, include_large_files)
+                    .handle_context(toolchain, project_path, output, format, include_large_files, skip_expensive_metrics)
                     .await
             }
             Commands::Serve { port, host, cors } => {
@@ -346,6 +347,7 @@ impl UtilityCommandGroup {
         output: Option<std::path::PathBuf>,
         format: crate::cli::ContextFormat,
         include_large_files: bool,
+        skip_expensive_metrics: bool,
     ) -> Result<()> {
         crate::cli::handlers::utility_handlers::handle_context(
             toolchain,
@@ -353,6 +355,7 @@ impl UtilityCommandGroup {
             output,
             format,
             include_large_files,
+            skip_expensive_metrics,
         )
         .await
     }
