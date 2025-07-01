@@ -1,4 +1,4 @@
-#![cfg(not(feature = "no-demo"))]
+#![cfg(feature = "demo")]
 
 use paiml_mcp_agent_toolkit::demo::{DemoContent, Hotspot, LocalDemoServer};
 use std::time::Duration;
