@@ -1,4 +1,4 @@
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 mod implementation {
     use bytes::Bytes;
     use http::{Response, StatusCode};
@@ -80,10 +80,10 @@ mod implementation {
     }
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub use implementation::handle_request;
 
-#[cfg(feature = "no-demo")]
+#[cfg(not(feature = "demo"))]
 pub fn handle_request(
     _path: &str,
     _state: &std::sync::Arc<parking_lot::RwLock<crate::demo::server::DemoState>>,

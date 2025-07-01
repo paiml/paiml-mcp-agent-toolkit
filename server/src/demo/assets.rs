@@ -1,6 +1,6 @@
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 use once_cell::sync::Lazy;
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy)]
@@ -17,7 +17,7 @@ pub enum AssetEncoding {
 }
 
 // Compile-time embedded assets with zero runtime overhead
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 static ASSETS: Lazy<HashMap<&'static str, EmbeddedAsset>> = Lazy::new(|| {
     let mut m = HashMap::with_capacity(8);
 
@@ -90,12 +90,12 @@ static ASSETS: Lazy<HashMap<&'static str, EmbeddedAsset>> = Lazy::new(|| {
     m
 });
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub fn get_asset(path: &str) -> Option<&'static EmbeddedAsset> {
     ASSETS.get(path)
 }
 
-#[cfg(feature = "no-demo")]
+#[cfg(not(feature = "demo"))]
 pub fn get_asset(_path: &str) -> Option<&'static EmbeddedAsset> {
     None
 }

@@ -459,14 +459,14 @@ async fn run_web_demo(
     println!("   Analysis completed in {elapsed} ms");
 
     // Open browser unless disabled
-    #[cfg(not(feature = "no-demo"))]
+    #[cfg(feature = "demo")]
     if !no_browser {
         if let Err(e) = webbrowser::open(&url) {
             println!("   Please open {url} in your browser (auto-open failed: {e})");
         }
     }
 
-    #[cfg(feature = "no-demo")]
+    #[cfg(not(feature = "demo"))]
     let _ = no_browser; // Avoid unused variable warning when demo is disabled
 
     println!("\nPress Ctrl+C to stop the demo server");

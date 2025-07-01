@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
 use std::env;
 use std::fs;
 use std::io::Write;
@@ -18,7 +20,7 @@ fn main() {
     compress_templates();
 
     // Download and compress assets for demo mode
-    if env::var("CARGO_FEATURE_NO_DEMO").is_err() {
+    if env::var("CARGO_FEATURE_DEMO").is_ok() {
         download_and_compress_assets();
         minify_demo_assets();
     }
