@@ -59,6 +59,30 @@ impl fmt::Display for ExplainLevel {
     }
 }
 
+/// Enforce output format  
+#[derive(Clone, Copy, Debug, ValueEnum, PartialEq, Serialize, Deserialize)]
+pub enum EnforceOutputFormat {
+    /// Summary output
+    Summary,
+    /// JSON output
+    Json,
+    /// Progress output
+    Progress,
+    /// SARIF format
+    Sarif,
+}
+
+impl fmt::Display for EnforceOutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            EnforceOutputFormat::Summary => write!(f, "summary"),
+            EnforceOutputFormat::Json => write!(f, "json"),
+            EnforceOutputFormat::Progress => write!(f, "progress"),
+            EnforceOutputFormat::Sarif => write!(f, "sarif"),
+        }
+    }
+}
+
 /// Refactor output format
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
 pub enum RefactorOutputFormat {
@@ -89,6 +113,73 @@ impl fmt::Display for RefactorMode {
         match self {
             RefactorMode::Batch => write!(f, "batch"),
             RefactorMode::Interactive => write!(f, "interactive"),
+        }
+    }
+}
+
+/// Refactor auto output format
+#[derive(Clone, Copy, Debug, ValueEnum, PartialEq, Eq)]
+pub enum RefactorAutoOutputFormat {
+    /// Concise summary of progress
+    Summary,
+    /// Detailed progress information
+    Detailed,
+    /// JSON format for automation
+    Json,
+}
+
+impl fmt::Display for RefactorAutoOutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RefactorAutoOutputFormat::Summary => write!(f, "summary"),
+            RefactorAutoOutputFormat::Detailed => write!(f, "detailed"),
+            RefactorAutoOutputFormat::Json => write!(f, "json"),
+        }
+    }
+}
+
+/// Refactor docs output format
+#[derive(Clone, Copy, Debug, ValueEnum, PartialEq, Eq)]
+pub enum RefactorDocsOutputFormat {
+    /// Summary of found issues
+    Summary,
+    /// Detailed list with explanations
+    Detailed,
+    /// JSON format for automation
+    Json,
+    /// Interactive mode for confirmation
+    Interactive,
+}
+
+impl fmt::Display for RefactorDocsOutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RefactorDocsOutputFormat::Summary => write!(f, "summary"),
+            RefactorDocsOutputFormat::Detailed => write!(f, "detailed"),
+            RefactorDocsOutputFormat::Json => write!(f, "json"),
+            RefactorDocsOutputFormat::Interactive => write!(f, "interactive"),
+        }
+    }
+}
+
+/// Quality profile for refactoring
+#[derive(Clone, Copy, Debug, ValueEnum, PartialEq, Eq, Default)]
+pub enum QualityProfile {
+    /// Standard quality profile
+    Standard,
+    /// Strict quality profile
+    Strict,
+    /// Extreme quality profile - RIGID standards
+    #[default]
+    Extreme,
+}
+
+impl fmt::Display for QualityProfile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            QualityProfile::Standard => write!(f, "standard"),
+            QualityProfile::Strict => write!(f, "strict"),
+            QualityProfile::Extreme => write!(f, "extreme"),
         }
     }
 }
@@ -154,6 +245,34 @@ impl fmt::Display for MakefileOutputFormat {
             MakefileOutputFormat::Json => write!(f, "json"),
             MakefileOutputFormat::Gcc => write!(f, "gcc"),
             MakefileOutputFormat::Sarif => write!(f, "sarif"),
+        }
+    }
+}
+
+/// Lint hotspot output format
+#[derive(Clone, Debug, ValueEnum, PartialEq, Serialize, Deserialize)]
+pub enum LintHotspotOutputFormat {
+    /// Summary output
+    Summary,
+    /// Detailed output
+    Detailed,
+    /// JSON output
+    Json,
+    /// Enforcement JSON output
+    #[value(name = "enforcement-json")]
+    EnforcementJson,
+    /// SARIF format for CI/CD integration
+    Sarif,
+}
+
+impl fmt::Display for LintHotspotOutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LintHotspotOutputFormat::Summary => write!(f, "summary"),
+            LintHotspotOutputFormat::Detailed => write!(f, "detailed"),
+            LintHotspotOutputFormat::Json => write!(f, "json"),
+            LintHotspotOutputFormat::EnforcementJson => write!(f, "enforcement-json"),
+            LintHotspotOutputFormat::Sarif => write!(f, "sarif"),
         }
     }
 }

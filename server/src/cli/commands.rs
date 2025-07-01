@@ -8,12 +8,14 @@ use crate::cli::{
     AnalysisType, BigOOutputFormat, ComplexityOutputFormat, ComprehensiveOutputFormat,
     ContextFormat, DagType, DeadCodeOutputFormat, DeepContextCacheStrategy, DeepContextDagType,
     DeepContextOutputFormat, DefectPredictionOutputFormat, DemoProtocol, DuplicateOutputFormat,
-    DuplicateType, ExplainLevel, GraphMetricType, GraphMetricsOutputFormat,
-    IncrementalCoverageOutputFormat, MakefileOutputFormat, NameSimilarityOutputFormat,
-    OutputFormat, ProofAnnotationOutputFormat, PropertyTypeFilter, ProvabilityOutputFormat,
-    QualityCheckType, QualityGateOutputFormat, RefactorMode, RefactorOutputFormat,
-    ReportOutputFormat, SatdOutputFormat, SatdSeverity, SearchScope, SymbolTableOutputFormat,
-    SymbolTypeFilter, TdgOutputFormat, VerificationMethodFilter,
+    DuplicateType, EnforceOutputFormat, ExplainLevel, GraphMetricType, GraphMetricsOutputFormat,
+    IncrementalCoverageOutputFormat, LintHotspotOutputFormat, MakefileOutputFormat, 
+    NameSimilarityOutputFormat, OutputFormat, ProofAnnotationOutputFormat, PropertyTypeFilter, 
+    ProvabilityOutputFormat,
+    QualityCheckType, QualityGateOutputFormat, QualityProfile, RefactorAutoOutputFormat,
+    RefactorDocsOutputFormat, RefactorMode, RefactorOutputFormat, ReportOutputFormat, 
+    SatdOutputFormat, SatdSeverity, SearchScope, SymbolTableOutputFormat, SymbolTypeFilter, 
+    TdgOutputFormat, VerificationMethodFilter,
 };
 use crate::models::churn::ChurnOutputFormat;
 use clap::{Parser, Subcommand};
@@ -347,6 +349,10 @@ pub enum Commands {
     /// Run self-diagnostics to verify all features are working
     Diagnose(DiagnoseArgs),
 
+    /// Enforce extreme quality standards using state machine
+    #[command(subcommand)]
+    Enforce(EnforceCommands),
+
     /// Refactor code with real-time analysis or interactive mode
     #[command(subcommand)]
     Refactor(RefactorCommands),
@@ -623,6 +629,50 @@ pub enum AnalyzeCommands {
         /// Enable verbose analysis output
         #[arg(long)]
         verbose: bool,
+    },
+
+    /// Find the file with highest defect density (lint violations per line)
+    #[command(name = "lint-hotspot")]
+    LintHotspot {
+        /// Project path to analyze
+        #[arg(short = 'p', long, default_value = ".")]
+        project_path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "summary")]
+        format: LintHotspotOutputFormat,
+
+        /// Maximum allowed defect density (violations per 100 lines)
+        #[arg(long, default_value_t = 5.0)]
+        max_density: f64,
+
+        /// Minimum confidence for automated fixes (0.0-1.0)
+        #[arg(long, default_value_t = 0.8)]
+        min_confidence: f64,
+
+        /// Enforce quality standards (exit non-zero if violations found)
+        #[arg(long)]
+        enforce: bool,
+
+        /// Dry run - show what would be fixed without making changes
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Include enforcement metadata in output
+        #[arg(long)]
+        enforcement_metadata: bool,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Enable performance metrics
+        #[arg(long)]
+        perf: bool,
+
+        /// Additional flags to pass to clippy (uses extreme quality by default)
+        #[arg(long, default_value = "-D warnings -D clippy::pedantic -D clippy::nursery -D clippy::cargo")]
+        clippy_flags: String,
     },
 
     /// Analyze Makefile quality and compliance
@@ -1119,6 +1169,94 @@ pub enum AnalyzeCommands {
     },
 }
 
+/// Enforce subcommands
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum EnforceCommands {
+    /// Enforce extreme quality standards
+    Extreme {
+        /// Project path to enforce quality on
+        #[arg(short = 'p', long, default_value = ".")]
+        project_path: PathBuf,
+
+        /// Single file mode - enforce on one file at a time
+        #[arg(long)]
+        single_file_mode: bool,
+
+        /// Dry run - show what would be changed without making changes
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Quality profile to use
+        #[arg(long, value_enum, default_value = "extreme")]
+        profile: QualityProfile,
+
+        /// Show progress during enforcement
+        #[arg(long, default_value_t = true)]
+        show_progress: bool,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "summary")]
+        format: EnforceOutputFormat,
+
+        /// Output file path
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+
+        /// Maximum iterations before giving up
+        #[arg(long, default_value_t = 100)]
+        max_iterations: u32,
+
+        /// Target improvement percentage
+        #[arg(long)]
+        target_improvement: Option<f32>,
+
+        /// Maximum time in seconds
+        #[arg(long)]
+        max_time: Option<u64>,
+
+        /// Apply suggestions automatically
+        #[arg(long)]
+        apply_suggestions: bool,
+
+        /// Validate only (no changes)
+        #[arg(long)]
+        validate_only: bool,
+
+        /// List all violations and exit
+        #[arg(long)]
+        list_violations: bool,
+
+        /// Configuration file path
+        #[arg(long)]
+        config: Option<PathBuf>,
+
+        /// CI mode (exit with error on violations)
+        #[arg(long)]
+        ci_mode: bool,
+
+        /// Specific file to enforce
+        #[arg(long)]
+        file: Option<PathBuf>,
+
+        /// Include pattern
+        #[arg(long)]
+        include: Option<String>,
+
+        /// Exclude pattern
+        #[arg(long)]
+        exclude: Option<String>,
+
+        /// Cache directory
+        #[arg(long)]
+        cache_dir: Option<PathBuf>,
+
+        /// Clear cache before starting
+        #[arg(long)]
+        clear_cache: bool,
+    },
+}
+
 /// Refactor subcommands
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
@@ -1221,6 +1359,144 @@ pub enum RefactorCommands {
         /// Override explanation level
         #[arg(long, value_enum)]
         explain: Option<ExplainLevel>,
+    },
+
+    /// AI-powered automated refactoring to achieve RIGID extreme quality standards
+    Auto {
+        /// Project path to refactor
+        #[arg(short = 'p', long, default_value = ".")]
+        project_path: PathBuf,
+
+        /// Maximum iterations to run
+        #[arg(long, default_value = "10")]
+        max_iterations: u32,
+
+        /// Quality profile to enforce
+        #[arg(long, value_enum, default_value = "extreme")]
+        quality_profile: QualityProfile,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "detailed")]
+        format: RefactorAutoOutputFormat,
+
+        /// Dry run mode (don't write files)
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Skip compilation check
+        #[arg(long)]
+        skip_compilation: bool,
+
+        /// Skip test execution
+        #[arg(long)]
+        skip_tests: bool,
+
+        /// Output checkpoint file
+        #[arg(long)]
+        checkpoint: Option<PathBuf>,
+
+        /// Verbose output
+        #[arg(short = 'v', long)]
+        verbose: bool,
+
+        /// Patterns to exclude from refactoring (e.g., "tests/**", "benches/**")
+        #[arg(long, value_delimiter = ',')]
+        exclude: Vec<String>,
+
+        /// Patterns to include for refactoring (overrides exclude)
+        #[arg(long, value_delimiter = ',')]
+        include: Vec<String>,
+
+        /// Path to .refactorignore file
+        #[arg(long)]
+        ignore_file: Option<PathBuf>,
+
+        /// Specific test file to fix (automatically includes related source files)
+        #[arg(long, short = 't')]
+        test: Option<PathBuf>,
+
+        /// Test name pattern to fix (e.g., "test_mixed_language_project_context")
+        #[arg(long)]
+        test_name: Option<String>,
+    },
+
+    /// AI-assisted documentation cleanup and refactoring
+    Docs {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(short = 'p', long, default_value = ".")]
+        project_path: PathBuf,
+
+        /// Include docs directory
+        #[arg(long, default_value_t = true)]
+        include_docs: bool,
+
+        /// Include root directory
+        #[arg(long, default_value_t = true)]
+        include_root: bool,
+
+        /// Additional directories to scan
+        #[arg(long, value_delimiter = ',')]
+        additional_dirs: Vec<PathBuf>,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "summary")]
+        format: RefactorDocsOutputFormat,
+
+        /// Dry run - show what would be removed without making changes
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Patterns to identify temporary files (e.g., "fix-*.sh", "*_TEMP.md")
+        #[arg(long, value_delimiter = ',', default_value = "fix-*,test-*,temp-*,tmp-*,*_TEMP*,*_TMP*,FAST_*,FIX_*,ZERO_DEFECTS_*")]
+        temp_patterns: Vec<String>,
+
+        /// Patterns to identify outdated status files
+        #[arg(long, value_delimiter = ',', default_value = "*_STATUS.md,*_PROGRESS.md,*_COMPLETE.md,final_verification.md,overnight-*.md")]
+        status_patterns: Vec<String>,
+
+        /// Patterns to identify build artifacts
+        #[arg(long, value_delimiter = ',', default_value = "*.mmd,optimization_state.json,complexity_report.json,satd_report.json")]
+        artifact_patterns: Vec<String>,
+
+        /// Custom patterns to include in cleanup
+        #[arg(long, value_delimiter = ',')]
+        custom_patterns: Vec<String>,
+
+        /// Minimum age in days before considering a file for cleanup
+        #[arg(long, default_value_t = 0)]
+        min_age_days: u32,
+
+        /// Maximum file size in MB to consider (larger files are skipped)
+        #[arg(long, default_value_t = 10)]
+        max_size_mb: u64,
+
+        /// Include subdirectories recursively
+        #[arg(long, default_value_t = true)]
+        recursive: bool,
+
+        /// Preserve files matching these patterns (overrides other patterns)
+        #[arg(long, value_delimiter = ',', default_value = "README.md,LICENSE*,CHANGELOG*,CONTRIBUTING*")]
+        preserve_patterns: Vec<String>,
+
+        /// Output file path for the report
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+
+        /// Auto-remove files without confirmation (use with caution)
+        #[arg(long)]
+        auto_remove: bool,
+
+        /// Create backup before removing files
+        #[arg(long)]
+        backup: bool,
+
+        /// Backup directory path
+        #[arg(long, default_value = ".refactor-docs-backup")]
+        backup_dir: PathBuf,
+
+        /// Show performance metrics
+        #[arg(long)]
+        perf: bool,
     },
 }
 
