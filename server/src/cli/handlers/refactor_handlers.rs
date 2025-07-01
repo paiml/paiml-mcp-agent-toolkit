@@ -78,6 +78,81 @@ pub async fn route_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::R
             steps,
             explain,
         } => handle_refactor_resume(checkpoint, steps, explain).await,
+        RefactorCommands::Auto {
+            project_path,
+            max_iterations,
+            quality_profile: _, // TODO: Use quality profile
+            format,
+            dry_run,
+            skip_compilation: _, // TODO: Use skip_compilation
+            skip_tests: _,       // TODO: Use skip_tests
+            checkpoint,
+            verbose: _, // TODO: Use verbose
+            exclude,
+            include,
+            ignore_file,
+            test,
+            test_name,
+        } => {
+            super::refactor_auto_handlers::handle_refactor_auto(
+                project_path,
+                format,
+                max_iterations,
+                checkpoint,
+                dry_run,
+                false, // ci_mode - use false for interactive mode
+                exclude,
+                include,
+                ignore_file,
+                test,
+                test_name,
+            )
+            .await
+        }
+        RefactorCommands::Docs {
+            project_path,
+            include_docs,
+            include_root,
+            additional_dirs,
+            format,
+            dry_run,
+            temp_patterns,
+            status_patterns,
+            artifact_patterns,
+            custom_patterns,
+            min_age_days,
+            max_size_mb,
+            recursive,
+            preserve_patterns,
+            output,
+            auto_remove,
+            backup,
+            backup_dir,
+            perf,
+        } => {
+            super::refactor_docs_handlers::handle_refactor_docs(
+                project_path,
+                include_docs,
+                include_root,
+                additional_dirs,
+                format,
+                dry_run,
+                temp_patterns,
+                status_patterns,
+                artifact_patterns,
+                custom_patterns,
+                min_age_days,
+                max_size_mb,
+                recursive,
+                preserve_patterns,
+                output,
+                auto_remove,
+                backup,
+                backup_dir,
+                perf,
+            )
+            .await
+        }
     }
 }
 
