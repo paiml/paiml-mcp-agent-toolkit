@@ -493,7 +493,7 @@ fn format_summary(
             output.push_str(&format!("- **{}**: {} files ({:.2} MB)\n", 
                 category, count, *size as f64 / 1_048_576.0));
         }
-        output.push_str("\n");
+        output.push('\n');
     }
 
     if !result.errors.is_empty() {
@@ -501,7 +501,7 @@ fn format_summary(
         for error in &result.errors {
             output.push_str(&format!("- {}\n", error));
         }
-        output.push_str("\n");
+        output.push('\n');
     }
 
     if perf {
@@ -540,7 +540,7 @@ fn format_detailed(
         for file in &result.preserved_files {
             output.push_str(&format!("- {}\n", file.display()));
         }
-        output.push_str("\n");
+        output.push('\n');
     }
 
     Ok(output)
