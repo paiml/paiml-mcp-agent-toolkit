@@ -13,7 +13,7 @@ fn test_basic_arithmetic() {
 fn test_string_operations() {
     let s1 = "Hello";
     let s2 = "World";
-    let combined = format!("{} {}", s1, s2);
+    let combined = format!("{s1} {s2}");
 
     assert_eq!(combined, "Hello World");
     assert!(combined.contains("Hello"));
@@ -70,7 +70,7 @@ fn test_btreemap_operations() {
     map.insert(1, "one");
     map.insert(2, "two");
 
-    let keys: Vec<_> = map.keys().cloned().collect();
+    let keys: Vec<_> = map.keys().copied().collect();
     assert_eq!(keys, vec![1, 2, 3]); // BTreeMap maintains order
 }
 
@@ -84,7 +84,7 @@ fn test_iterator_operations() {
     let sum: i32 = numbers.iter().sum();
     assert_eq!(sum, 15);
 
-    let evens: Vec<_> = numbers.iter().filter(|&&x| x % 2 == 0).cloned().collect();
+    let evens: Vec<_> = numbers.iter().filter(|&&x| x % 2 == 0).copied().collect();
     assert_eq!(evens, vec![2, 4]);
 }
 

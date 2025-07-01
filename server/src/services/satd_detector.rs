@@ -488,7 +488,7 @@ impl SATDDetector {
                     eprintln!("⚠️  Skipped: {} (large file >500KB)", file_path.display());
                     continue;
                 }
-                
+
                 if metadata.len() > 1_000_000 {
                     // For large files, check if content looks minified
                     if self.is_likely_minified_content(&file_path).await {
@@ -597,12 +597,12 @@ impl SATDDetector {
             if !include_tests && self.is_test_file(&file_path) {
                 continue;
             }
-            
+
             // Skip minified/vendor files
             if self.is_minified_or_vendor_file(&file_path) {
                 continue;
             }
-            
+
             // Check file size before reading
             if let Ok(metadata) = tokio::fs::metadata(&file_path).await {
                 if metadata.len() > 1_000_000 {
@@ -612,7 +612,7 @@ impl SATDDetector {
                     }
                 }
             }
-            
+
             match tokio::fs::read_to_string(&file_path).await {
                 Ok(content) => {
                     // Validate file size before processing
@@ -752,7 +752,7 @@ impl SATDDetector {
         if path.components().any(|c| c.as_os_str() == "vendor") {
             return true;
         }
-        
+
         if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
             // Common minified file patterns
             file_name.contains(".min.")
@@ -771,12 +771,12 @@ impl SATDDetector {
     /// Check if file content suggests it's minified (has very long lines)
     async fn is_likely_minified_content(&self, path: &Path) -> bool {
         use tokio::io::{AsyncBufReadExt, BufReader};
-        
+
         match tokio::fs::File::open(path).await {
             Ok(file) => {
                 let reader = BufReader::new(file);
                 let mut lines = reader.lines();
-                
+
                 // Check first few lines for length
                 for _ in 0..3 {
                     match lines.next_line().await {

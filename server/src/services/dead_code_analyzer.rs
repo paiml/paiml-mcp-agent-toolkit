@@ -475,7 +475,7 @@ impl DeadCodeAnalyzer {
 
         // 1. Build AST DAG for project - we'll analyze as Rust by default for now
         let project_context = analyze_project(project_path, "rust").await?;
-        
+
         // Track total files analyzed
         let total_files_in_project = project_context.files.len();
 

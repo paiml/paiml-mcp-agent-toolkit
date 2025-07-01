@@ -1,0 +1,53 @@
+# Default patterns to exclude from automated refactoring
+# Lines starting with # are comments
+
+# Test files
+tests/**
+**/test_*.rs
+**/*_test.rs
+**/*_tests.rs
+
+# Benchmark files
+benches/**
+**/bench_*.rs
+**/*_bench.rs
+
+# Fixture files
+**/fixtures/**
+**/test_data/**
+**/testdata/**
+
+# Build and generated files
+target/**
+build.rs
+**/generated/**
+*.generated.rs
+
+# Documentation examples
+**/examples/**
+**/example_*.rs
+
+# Third-party and vendor code
+vendor/**
+**/vendor/**
+third_party/**
+
+# Fuzzing targets
+fuzz/**
+**/fuzz_targets/**
+
+# CI/CD and scripts
+.github/**
+scripts/**
+*.sh
+
+# IDE and editor files
+.vscode/**
+.idea/**
+*.swp
+*.swo
+*~
+
+# Large generated files
+**/large_*.rs
+**/test_artifacts.rs

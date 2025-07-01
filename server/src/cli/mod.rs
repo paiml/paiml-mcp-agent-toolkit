@@ -21,12 +21,11 @@ pub mod proof_annotation_formatter;
 pub mod proof_annotation_helpers;
 pub mod provability_helpers;
 pub mod stubs;
-pub mod stubs_refactored;
 pub mod symbol_table_helpers;
 pub mod tdg_helpers;
 
 // Re-export commonly used types from submodules
-pub use commands::{AnalyzeCommands, Cli, Commands, Mode, RefactorCommands};
+pub use commands::{AnalyzeCommands, Cli, Commands, EnforceCommands, Mode, RefactorCommands};
 pub use enums::*;
 
 // Type definitions for handler compatibility

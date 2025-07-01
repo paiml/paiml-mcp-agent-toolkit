@@ -58,7 +58,7 @@ fn should_skip_line(line: &str) -> bool {
 
     // Check if paiml-mcp-agent-toolkit is actually the command
     let first_word = line.split_whitespace().next().unwrap_or("");
-    if !first_word.contains("paiml-mcp-agent-toolkit") && !first_word.contains("=") {
+    if !first_word.contains("paiml-mcp-agent-toolkit") && !first_word.contains('=') {
         return true;
     }
 
@@ -73,11 +73,11 @@ fn should_skip_line(line: &str) -> bool {
     }
 
     // Skip environment variable settings
-    line.contains("=") && line.split_whitespace().next().unwrap_or("").contains("=")
+    line.contains('=') && line.split_whitespace().next().unwrap_or("").contains('=')
 }
 
 fn has_complex_shell_features(line: &str) -> bool {
-    line.contains("|") || line.contains(">") || line.contains("$") || line.contains("curl")
+    line.contains('|') || line.contains('>') || line.contains('$') || line.contains("curl")
 }
 
 fn is_non_toolkit_command(line: &str) -> bool {
@@ -205,9 +205,10 @@ fn validate_json_rpc_object(obj: &serde_json::Map<String, Value>) {
 }
 
 fn validate_json_array_fallback(json_block: &str) {
-    if !json_block.trim().starts_with('[') {
-        panic!("Invalid JSON example in documentation: {json_block}");
-    }
+    assert!(
+        json_block.trim().starts_with('['),
+        "Invalid JSON example in documentation: {json_block}"
+    );
 
     match serde_json::from_str::<Vec<Value>>(json_block) {
         Ok(array) => validate_batch_request_array(&array),

@@ -105,10 +105,11 @@ class RustDocsUpdater {
       try {
         const cmd = new Deno.Command("cargo", {
           args: [
-            "tarpaulin",
-            "--print-summary",
+            "llvm-cov",
+            "report",
             "--manifest-path",
             "server/Cargo.toml",
+            "--summary-only",
           ],
           cwd: PROJECT_ROOT,
           stdout: "piped",
