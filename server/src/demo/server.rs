@@ -1,4 +1,4 @@
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 use crate::demo::assets::{decompress_asset, get_asset};
 use crate::models::dag::DependencyGraph;
 use crate::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
@@ -12,19 +12,19 @@ use std::sync::Arc;
 // Import the validated HTML template
 #[allow(unused_imports)]
 use super::templates::CSS_DARK_THEME;
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 use super::templates::HTML_TEMPLATE;
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 use parking_lot::RwLock;
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 use bytes::BytesMut;
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 use tokio::net::{TcpListener, TcpStream};
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 use tokio::sync::Semaphore;
 
 #[derive(Debug, Clone, Serialize)]
@@ -73,12 +73,12 @@ pub struct LocalDemoServer {
 }
 
 impl LocalDemoServer {
-    #[cfg(not(feature = "no-demo"))]
+    #[cfg(feature = "demo")]
     pub async fn spawn(initial_content: DemoContent) -> Result<(Self, u16)> {
         Self::spawn_with_results(initial_content, None, None, None).await
     }
 
-    #[cfg(not(feature = "no-demo"))]
+    #[cfg(feature = "demo")]
     pub async fn spawn_with_results(
         initial_content: DemoContent,
         complexity_report: Option<crate::services::complexity::ComplexityReport>,
@@ -136,19 +136,19 @@ impl LocalDemoServer {
         Ok((Self { port, shutdown_tx }, port))
     }
 
-    #[cfg(feature = "no-demo")]
+    #[cfg(not(feature = "demo"))]
     pub async fn spawn(_initial_content: DemoContent) -> Result<(Self, u16)> {
-        anyhow::bail!("Demo mode not available. Build without --features no-demo")
+        anyhow::bail!("Demo mode not available. Build with --features demo")
     }
 
-    #[cfg(feature = "no-demo")]
+    #[cfg(not(feature = "demo"))]
     pub async fn spawn_with_results(
         _initial_content: DemoContent,
         _complexity_report: Option<crate::services::complexity::ComplexityReport>,
         _churn_analysis: Option<crate::models::churn::CodeChurnAnalysis>,
         _dependency_graph: Option<DependencyGraph>,
     ) -> Result<(Self, u16)> {
-        anyhow::bail!("Demo mode not available. Build without --features no-demo")
+        anyhow::bail!("Demo mode not available. Build with --features demo")
     }
 
     pub fn port(&self) -> u16 {
@@ -160,7 +160,7 @@ impl LocalDemoServer {
     }
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 async fn handle_connection(mut stream: TcpStream, state: Arc<RwLock<DemoState>>) -> Result<()> {
     let mut buffer = BytesMut::with_capacity(4096);
     stream.read_buf(&mut buffer).await?;
@@ -179,13 +179,13 @@ async fn handle_connection(mut stream: TcpStream, state: Arc<RwLock<DemoState>>)
     Ok(())
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 #[derive(Debug)]
 struct MinimalRequest {
     path: String,
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 fn parse_minimal_request(buffer: &[u8]) -> Result<MinimalRequest> {
     let request_str = std::str::from_utf8(buffer)?;
     let first_line = request_str
@@ -203,7 +203,7 @@ fn parse_minimal_request(buffer: &[u8]) -> Result<MinimalRequest> {
     })
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 fn serialize_response(response: Response<Bytes>) -> Vec<u8> {
     let mut output = Vec::new();
 
@@ -242,7 +242,7 @@ fn serialize_response(response: Response<Bytes>) -> Vec<u8> {
     output
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub(crate) fn serve_dashboard(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
     let results = &state.analysis_results;
@@ -288,7 +288,7 @@ pub(crate) fn serve_dashboard(state: &Arc<RwLock<DemoState>>) -> Response<Bytes>
         .unwrap()
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub(crate) fn serve_static_asset(path: &str) -> Response<Bytes> {
     if let Some(asset) = get_asset(path) {
         let content = decompress_asset(asset);
@@ -306,7 +306,7 @@ pub(crate) fn serve_static_asset(path: &str) -> Response<Bytes> {
     }
 }
 
-#[cfg(feature = "no-demo")]
+#[cfg(not(feature = "demo"))]
 #[allow(dead_code)]
 pub(crate) fn serve_static_asset(_path: &str) -> Response<Bytes> {
     Response::builder()
@@ -316,7 +316,7 @@ pub(crate) fn serve_static_asset(_path: &str) -> Response<Bytes> {
 }
 
 // Disabled demo mode stubs for new endpoints
-#[cfg(feature = "no-demo")]
+#[cfg(not(feature = "demo"))]
 #[allow(dead_code)]
 pub(crate) fn serve_architecture_analysis(
     _state: &std::sync::Arc<parking_lot::RwLock<DemoState>>,
@@ -327,7 +327,7 @@ pub(crate) fn serve_architecture_analysis(
         .unwrap()
 }
 
-#[cfg(feature = "no-demo")]
+#[cfg(not(feature = "demo"))]
 #[allow(dead_code)]
 pub(crate) fn serve_defect_analysis(
     _state: &std::sync::Arc<parking_lot::RwLock<DemoState>>,
@@ -338,7 +338,7 @@ pub(crate) fn serve_defect_analysis(
         .unwrap()
 }
 
-#[cfg(feature = "no-demo")]
+#[cfg(not(feature = "demo"))]
 #[allow(dead_code)]
 pub(crate) fn serve_statistics_analysis(
     _state: &std::sync::Arc<parking_lot::RwLock<DemoState>>,
@@ -349,7 +349,7 @@ pub(crate) fn serve_statistics_analysis(
         .unwrap()
 }
 
-#[cfg(feature = "no-demo")]
+#[cfg(not(feature = "demo"))]
 #[allow(dead_code)]
 pub(crate) fn serve_system_diagram(
     _state: &std::sync::Arc<parking_lot::RwLock<DemoState>>,
@@ -360,7 +360,7 @@ pub(crate) fn serve_system_diagram(
         .unwrap()
 }
 
-#[cfg(feature = "no-demo")]
+#[cfg(not(feature = "demo"))]
 #[allow(dead_code)]
 pub(crate) fn serve_analysis_stream(
     _state: &std::sync::Arc<parking_lot::RwLock<DemoState>>,
@@ -371,19 +371,19 @@ pub(crate) fn serve_analysis_stream(
         .unwrap()
 }
 
-#[cfg(feature = "no-demo")]
+#[cfg(not(feature = "demo"))]
 #[allow(dead_code)]
 fn calculate_graph_density(_graph: &DependencyGraph) -> f64 {
     0.0
 }
 
-#[cfg(feature = "no-demo")]
+#[cfg(not(feature = "demo"))]
 #[allow(dead_code)]
 fn calculate_avg_degree(_graph: &DependencyGraph) -> f64 {
     0.0
 }
 
-#[cfg(feature = "no-demo")]
+#[cfg(not(feature = "demo"))]
 #[allow(dead_code)]
 pub(crate) fn serve_analysis_data(
     _state: &std::sync::Arc<parking_lot::RwLock<DemoState>>,
@@ -395,7 +395,7 @@ pub(crate) fn serve_analysis_data(
 }
 
 // API endpoints
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub(crate) fn serve_summary_json(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
     let results = &state.analysis_results;
@@ -418,7 +418,7 @@ pub(crate) fn serve_summary_json(state: &Arc<RwLock<DemoState>>) -> Response<Byt
         .unwrap()
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub(crate) fn serve_metrics_json(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
     let metrics = serde_json::json!({
@@ -434,7 +434,7 @@ pub(crate) fn serve_metrics_json(state: &Arc<RwLock<DemoState>>) -> Response<Byt
         .unwrap()
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 #[derive(Serialize)]
 struct HotspotEntry {
     rank: usize,
@@ -444,7 +444,7 @@ struct HotspotEntry {
     path: String,
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub(crate) fn serve_hotspots_table(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
 
@@ -526,7 +526,7 @@ pub(crate) fn serve_hotspots_table(state: &Arc<RwLock<DemoState>>) -> Response<B
         .unwrap()
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub(crate) fn serve_dag_mermaid(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
 
@@ -596,7 +596,7 @@ pub(crate) fn serve_dag_mermaid(state: &Arc<RwLock<DemoState>>) -> Response<Byte
         .unwrap()
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub(crate) fn serve_system_diagram_mermaid(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
 
@@ -641,7 +641,7 @@ pub(crate) fn serve_system_diagram_mermaid(state: &Arc<RwLock<DemoState>>) -> Re
 
 // Enhanced API endpoints following the specification
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub(crate) fn serve_architecture_analysis(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     use crate::services::canonical_query::{
         AnalysisContext, CallGraph, CanonicalQuery, SystemArchitectureQuery,
@@ -674,7 +674,7 @@ pub(crate) fn serve_architecture_analysis(state: &Arc<RwLock<DemoState>>) -> Res
     }
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub(crate) fn serve_defect_analysis(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     // Temporarily return placeholder until TDG integration is complete
     let state = state.read();
@@ -701,7 +701,7 @@ pub(crate) fn serve_defect_analysis(state: &Arc<RwLock<DemoState>>) -> Response<
         .unwrap()
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub(crate) fn serve_statistics_analysis(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
 
@@ -735,13 +735,13 @@ pub(crate) fn serve_statistics_analysis(state: &Arc<RwLock<DemoState>>) -> Respo
         .unwrap()
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub(crate) fn serve_system_diagram(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     // This endpoint could support content negotiation in the future
     serve_architecture_analysis(state)
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub(crate) fn serve_analysis_stream(_state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     // Placeholder for Server-Sent Events streaming
     // This would need a more complex implementation with actual streaming
@@ -755,7 +755,7 @@ pub(crate) fn serve_analysis_stream(_state: &Arc<RwLock<DemoState>>) -> Response
 }
 
 // Grid.js API endpoint for file analysis data
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub(crate) fn serve_analysis_data(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
 
@@ -870,7 +870,7 @@ pub(crate) fn serve_analysis_data(state: &Arc<RwLock<DemoState>>) -> Response<By
 
 // Helper functions for statistics calculation
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 fn calculate_graph_density(graph: &DependencyGraph) -> f64 {
     let n = graph.nodes.len() as f64;
     if n <= 1.0 {
@@ -880,7 +880,7 @@ fn calculate_graph_density(graph: &DependencyGraph) -> f64 {
     }
 }
 
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 fn calculate_avg_degree(graph: &DependencyGraph) -> f64 {
     let n = graph.nodes.len() as f64;
     if n == 0.0 {
@@ -928,7 +928,7 @@ impl DemoContent {
 }
 
 // For backwards compatibility with synchronous API
-#[cfg(not(feature = "no-demo"))]
+#[cfg(feature = "demo")]
 pub fn spawn_sync(initial_content: DemoContent) -> Result<LocalDemoServer> {
     // Create a tokio runtime for the synchronous API
     let runtime = tokio::runtime::Runtime::new()?;

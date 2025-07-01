@@ -7,6 +7,10 @@ authors = ["Pragmatic AI Labs"]
 description = "MCP server for project scaffolding and template generation"
 homepage = "https://paiml.com"
 repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
+license = "MIT OR Apache-2.0"
+readme = "../README.md"
+keywords = ["mcp", "cli", "template", "scaffolding", "codegen"]
+categories = ["command-line-utilities", "development-tools", "template-engine"]
 
 [dependencies]
 # Async runtime
@@ -152,7 +156,7 @@ serde_json = "1.0"
 hex = "0.4"
 
 [features]
-default = ["all-languages"]
+default = ["all-languages", "demo"]
 all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "kotlin-ast"]
 rust-only = ["rust-ast"]
 skip-slow-tests = []
@@ -163,7 +167,7 @@ c-ast = ["tree-sitter", "tree-sitter-c", "fixedbitset"]
 cpp-ast = ["c-ast", "tree-sitter-cpp", "cpp_demangle", "gimli", "goblin"]
 kotlin-ast = ["tree-sitter", "tree-sitter-kotlin"]
 # Feature to exclude demo/reporting functionality for minimal builds
-no-demo = []
+demo = []
 # TUI mode support
 tui = ["ratatui", "crossterm"]
 # Integration tests feature
