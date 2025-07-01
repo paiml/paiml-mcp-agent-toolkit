@@ -41,9 +41,10 @@ fn verify_dependency_versions() {
     ];
 
     for dep in &critical_deps {
-        if !lock_content.contains(&format!("name = \"{dep}\"")) {
-            panic!("Critical dependency {dep} not found");
-        }
+        assert!(
+            lock_content.contains(&format!("name = \"{dep}\"")),
+            "Critical dependency {dep} not found"
+        );
     }
 }
 
@@ -61,7 +62,7 @@ fn setup_asset_directories() {
     let _ = fs::create_dir_all(demo_dir);
 }
 
-fn get_asset_definitions() -> [(&'static str, &'static str); 4] {
+const fn get_asset_definitions() -> [(&'static str, &'static str); 4] {
     [
         (
             "https://unpkg.com/gridjs@6.0.6/dist/gridjs.umd.js",
@@ -378,7 +379,7 @@ fn copy_demo_asset(input_path: &Path, output_path: &Path) {
 fn simple_js_minify(content: &str) -> String {
     content
         .lines()
-        .map(|line| line.trim())
+        .map(str::trim)
         .filter(|line| !line.is_empty() && !line.starts_with("//"))
         .collect::<Vec<_>>()
         .join(" ")

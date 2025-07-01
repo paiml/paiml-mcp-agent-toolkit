@@ -38,9 +38,13 @@ impl IncrementalChurnAnalyzer {
     }
 
     /// Get churn metrics for a specific file (lazy evaluation)
-    pub async fn get_file_churn(&self, file_path: &Path) -> Result<FileChurnMetrics, TemplateError> {
+    pub async fn get_file_churn(
+        &self,
+        file_path: &Path,
+    ) -> Result<FileChurnMetrics, TemplateError> {
         // Check cache first
-        let relative_path = file_path.strip_prefix(&self.project_root)
+        let relative_path = file_path
+            .strip_prefix(&self.project_root)
             .unwrap_or(file_path)
             .to_path_buf();
 
@@ -53,7 +57,7 @@ impl IncrementalChurnAnalyzer {
 
         // Compute churn for this specific file
         let metrics = self.compute_file_churn(file_path).await?;
-        
+
         // Cache the result
         let commit_hash = self.get_current_commit_hash().await?;
         let entry = ChurnCacheEntry {
@@ -77,7 +81,8 @@ impl IncrementalChurnAnalyzer {
 
         // Separate cached and uncached files
         for file in files {
-            let relative_path = file.strip_prefix(&self.project_root)
+            let relative_path = file
+                .strip_prefix(&self.project_root)
                 .unwrap_or(&file)
                 .to_path_buf();
 
@@ -92,15 +97,19 @@ impl IncrementalChurnAnalyzer {
 
         // Batch analyze uncached files
         if !uncached_files.is_empty() {
-            let new_metrics = self.batch_compute_churn(&uncached_files, period_days).await?;
-            
+            let new_metrics = self
+                .batch_compute_churn(&uncached_files, period_days)
+                .await?;
+
             // Cache new results
             let commit_hash = self.get_current_commit_hash().await?;
             for metrics in &new_metrics {
-                let relative_path = metrics.path.strip_prefix(&self.project_root)
+                let relative_path = metrics
+                    .path
+                    .strip_prefix(&self.project_root)
                     .unwrap_or(&metrics.path)
                     .to_path_buf();
-                
+
                 let entry = ChurnCacheEntry {
                     metrics: metrics.clone(),
                     last_modified: Utc::now(),
@@ -108,7 +117,7 @@ impl IncrementalChurnAnalyzer {
                 };
                 self.cache.insert(relative_path, entry);
             }
-            
+
             file_metrics.extend(new_metrics);
         }
 
@@ -136,7 +145,10 @@ impl IncrementalChurnAnalyzer {
     }
 
     /// Compute churn for a single file
-    async fn compute_file_churn(&self, file_path: &Path) -> Result<FileChurnMetrics, TemplateError> {
+    async fn compute_file_churn(
+        &self,
+        file_path: &Path,
+    ) -> Result<FileChurnMetrics, TemplateError> {
         // Use git log to get file-specific churn
         let output = std::process::Command::new("git")
             .arg("log")
@@ -171,19 +183,20 @@ impl IncrementalChurnAnalyzer {
             if let Some((hash, author, date)) = Self::parse_commit_line(lines[i]) {
                 commits.push(hash);
                 authors.insert(author);
-                
+
                 let parsed_date = DateTime::parse_from_rfc3339(&date)
                     .unwrap_or_else(|_| Utc::now().into())
                     .with_timezone(&Utc);
-                
+
                 if first_seen.is_none() {
                     first_seen = Some(parsed_date);
                 }
                 last_modified = Some(parsed_date);
-                
+
                 // Look for numstat on next line
                 if i + 1 < lines.len() {
-                    if let Some((additions, deletions, _)) = Self::parse_numstat_line(lines[i + 1]) {
+                    if let Some((additions, deletions, _)) = Self::parse_numstat_line(lines[i + 1])
+                    {
                         total_additions += additions;
                         total_deletions += deletions;
                         i += 1; // Skip numstat line
@@ -195,7 +208,8 @@ impl IncrementalChurnAnalyzer {
 
         let mut metrics = FileChurnMetrics {
             path: file_path.to_path_buf(),
-            relative_path: file_path.strip_prefix(&self.project_root)
+            relative_path: file_path
+                .strip_prefix(&self.project_root)
                 .unwrap_or(file_path)
                 .to_string_lossy()
                 .to_string(),
@@ -222,10 +236,11 @@ impl IncrementalChurnAnalyzer {
     ) -> Result<Vec<FileChurnMetrics>, TemplateError> {
         // Fall back to full analysis for batch
         let analysis = GitAnalysisService::analyze_code_churn(&self.project_root, period_days)?;
-        
+
         // Filter to only requested files
         let requested_files: std::collections::HashSet<_> = files.iter().collect();
-        let filtered_metrics: Vec<_> = analysis.files
+        let filtered_metrics: Vec<_> = analysis
+            .files
             .into_iter()
             .filter(|m| requested_files.contains(&m.path))
             .collect();
@@ -244,7 +259,9 @@ impl IncrementalChurnAnalyzer {
             .map_err(TemplateError::Io)?;
 
         if !output.status.success() {
-            return Err(TemplateError::NotFound("Failed to get current commit hash".to_string()));
+            return Err(TemplateError::NotFound(
+                "Failed to get current commit hash".to_string(),
+            ));
         }
 
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
@@ -348,8 +365,8 @@ impl IncrementalChurnAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[tokio::test]
     async fn test_incremental_churn_cache() {
@@ -362,11 +379,11 @@ mod tests {
     async fn test_cache_stats() {
         let temp_dir = TempDir::new().unwrap();
         let analyzer = IncrementalChurnAnalyzer::new(temp_dir.path().to_path_buf());
-        
+
         let (size, memory) = analyzer.cache_stats();
         assert_eq!(size, 0);
         assert_eq!(memory, 0);
-        
+
         // Clear cache should work even when empty
         analyzer.clear_cache();
         let (size, _) = analyzer.cache_stats();
@@ -378,12 +395,12 @@ mod tests {
         let line = "abc123|John Doe|2024-01-01T12:00:00Z";
         let result = IncrementalChurnAnalyzer::parse_commit_line(line);
         assert!(result.is_some());
-        
+
         let (hash, author, date) = result.unwrap();
         assert_eq!(hash, "abc123");
         assert_eq!(author, "John Doe");
         assert_eq!(date, "2024-01-01T12:00:00Z");
-        
+
         // Test invalid line
         let invalid = "invalid line";
         assert!(IncrementalChurnAnalyzer::parse_commit_line(invalid).is_none());
@@ -394,19 +411,19 @@ mod tests {
         let line = "10\t20\tsrc/main.rs";
         let result = IncrementalChurnAnalyzer::parse_numstat_line(line);
         assert!(result.is_some());
-        
+
         let (additions, deletions, path) = result.unwrap();
         assert_eq!(additions, 10);
         assert_eq!(deletions, 20);
         assert_eq!(path, "src/main.rs");
-        
+
         // Test with spaces in filename
         let line_with_spaces = "5\t15\tsrc/my file.rs";
         let result = IncrementalChurnAnalyzer::parse_numstat_line(line_with_spaces);
         assert!(result.is_some());
         let (_, _, path) = result.unwrap();
         assert_eq!(path, "src/my file.rs");
-        
+
         // Test invalid line
         assert!(IncrementalChurnAnalyzer::parse_numstat_line("invalid").is_none());
     }
@@ -414,9 +431,9 @@ mod tests {
     #[tokio::test]
     async fn test_generate_summary() {
         let analyzer = IncrementalChurnAnalyzer::new(PathBuf::from("."));
-        
+
         let mut metrics = vec![];
-        
+
         // Add some test metrics
         for i in 0..5 {
             let mut m = FileChurnMetrics {
@@ -433,9 +450,9 @@ mod tests {
             m.calculate_churn_score(10, 150);
             metrics.push(m);
         }
-        
+
         let summary = analyzer.generate_summary(&metrics);
-        
+
         assert_eq!(summary.total_files_changed, 5);
         assert_eq!(summary.total_commits, 30); // 10 + 8 + 6 + 4 + 2
         assert_eq!(summary.author_contributions.len(), 5);
@@ -448,10 +465,10 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let test_file = temp_dir.path().join("test.rs");
         fs::write(&test_file, "test content").unwrap();
-        
+
         let analyzer = IncrementalChurnAnalyzer::new(temp_dir.path().to_path_buf());
         let result = analyzer.get_file_churn(&test_file).await;
-        
+
         // Should fail because there's no git repo
         assert!(result.is_err());
     }
@@ -460,9 +477,9 @@ mod tests {
     async fn test_analyze_incremental_empty() {
         let temp_dir = TempDir::new().unwrap();
         let analyzer = IncrementalChurnAnalyzer::new(temp_dir.path().to_path_buf());
-        
+
         let result = analyzer.analyze_incremental(vec![], 30).await;
-        
+
         // Should succeed with empty results
         assert!(result.is_ok());
         let analysis = result.unwrap();
@@ -474,14 +491,14 @@ mod tests {
     async fn test_batch_compute_churn_no_git() {
         let temp_dir = TempDir::new().unwrap();
         let analyzer = IncrementalChurnAnalyzer::new(temp_dir.path().to_path_buf());
-        
+
         let files = vec![
             temp_dir.path().join("file1.rs"),
             temp_dir.path().join("file2.rs"),
         ];
-        
+
         let result = analyzer.batch_compute_churn(&files, 30).await;
-        
+
         // Should fail because there's no git repo
         assert!(result.is_err());
     }
@@ -490,7 +507,7 @@ mod tests {
     async fn test_get_current_commit_hash_no_git() {
         let temp_dir = TempDir::new().unwrap();
         let analyzer = IncrementalChurnAnalyzer::new(temp_dir.path().to_path_buf());
-        
+
         let result = analyzer.get_current_commit_hash().await;
         assert!(result.is_err());
     }
@@ -500,10 +517,10 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let test_file = temp_dir.path().join("test.rs");
         fs::write(&test_file, "test content").unwrap();
-        
+
         let analyzer = IncrementalChurnAnalyzer::new(temp_dir.path().to_path_buf());
         let result = analyzer.get_file_last_commit_hash(&test_file).await;
-        
+
         // Should return empty string for non-git files
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "");
@@ -513,7 +530,7 @@ mod tests {
     async fn test_is_cache_valid() {
         let temp_dir = TempDir::new().unwrap();
         let analyzer = IncrementalChurnAnalyzer::new(temp_dir.path().to_path_buf());
-        
+
         let entry = ChurnCacheEntry {
             metrics: FileChurnMetrics {
                 path: temp_dir.path().join("test.rs"),
@@ -529,7 +546,7 @@ mod tests {
             last_modified: Utc::now(),
             git_commit_hash: "abc123".to_string(),
         };
-        
+
         // In a non-git directory, cache should be invalid
         let result = analyzer.is_cache_valid(&entry, &entry.metrics.path).await;
         assert!(result.is_ok());
@@ -543,22 +560,26 @@ mod tests {
 10	20	src/main.rs
 def456|Jane Smith|2024-01-02T12:00:00Z
 5	10	src/main.rs"#;
-        
+
         // We can't test the full function without git, but we can test the parsing
         let lines: Vec<&str> = output.lines().collect();
         let mut commits = Vec::new();
         let mut authors = std::collections::HashSet::new();
         let mut total_additions = 0;
         let mut total_deletions = 0;
-        
+
         let mut i = 0;
         while i < lines.len() {
-            if let Some((hash, author, _date)) = IncrementalChurnAnalyzer::parse_commit_line(lines[i]) {
+            if let Some((hash, author, _date)) =
+                IncrementalChurnAnalyzer::parse_commit_line(lines[i])
+            {
                 commits.push(hash);
                 authors.insert(author);
-                
+
                 if i + 1 < lines.len() {
-                    if let Some((additions, deletions, _)) = IncrementalChurnAnalyzer::parse_numstat_line(lines[i + 1]) {
+                    if let Some((additions, deletions, _)) =
+                        IncrementalChurnAnalyzer::parse_numstat_line(lines[i + 1])
+                    {
                         total_additions += additions;
                         total_deletions += deletions;
                         i += 1;
@@ -567,7 +588,7 @@ def456|Jane Smith|2024-01-02T12:00:00Z
             }
             i += 1;
         }
-        
+
         assert_eq!(commits.len(), 2);
         assert_eq!(authors.len(), 2);
         assert_eq!(total_additions, 15);

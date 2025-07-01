@@ -147,16 +147,20 @@ fn symbol_to_ast_item(symbol: &TypeScriptSymbol) -> Option<AstItem> {
 #[cfg(feature = "typescript-ast")]
 fn analyze_with_dispatch(path: &Path) -> Result<FileContext, TemplateError> {
     use crate::services::file_classifier::DEFAULT_MAX_FILE_SIZE;
-    
+
     // Check file size before attempting to parse
     let metadata = std::fs::metadata(path)
         .map_err(|e| TemplateError::InvalidUtf8(format!("Failed to get file metadata: {e}")))?;
-    
+
     let file_size = metadata.len() as usize;
-    
+
     // Skip files larger than 1MB (configurable)
     if file_size > DEFAULT_MAX_FILE_SIZE {
-        tracing::debug!("Skipping large file {}: {} bytes", path.display(), file_size);
+        tracing::debug!(
+            "Skipping large file {}: {} bytes",
+            path.display(),
+            file_size
+        );
         return Ok(FileContext {
             path: path.to_string_lossy().to_string(),
             language: detect_language_simple(path).to_string(),
@@ -164,11 +168,14 @@ fn analyze_with_dispatch(path: &Path) -> Result<FileContext, TemplateError> {
             complexity_metrics: None,
         });
     }
-    
+
     // Check if file is likely minified based on name patterns
     if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
-        if file_name.contains(".min.") || file_name.contains(".bundle.") || 
-           file_name.ends_with("-min.js") || file_name.contains(".production.") {
+        if file_name.contains(".min.")
+            || file_name.contains(".bundle.")
+            || file_name.ends_with("-min.js")
+            || file_name.contains(".production.")
+        {
             tracing::debug!("Skipping minified file: {}", path.display());
             return Ok(FileContext {
                 path: path.to_string_lossy().to_string(),
@@ -178,16 +185,19 @@ fn analyze_with_dispatch(path: &Path) -> Result<FileContext, TemplateError> {
             });
         }
     }
-    
+
     // Use new dispatch parser for improved performance and maintainability
     let mut parser = TsAstDispatchParser::new();
     let content = std::fs::read_to_string(path)
         .map_err(|e| TemplateError::InvalidUtf8(format!("Failed to read file: {e}")))?;
-    
+
     // Additional check: if the file has very long lines, it's likely minified
     if let Some(max_line_len) = content.lines().map(|l| l.len()).max() {
         if max_line_len > 10_000 {
-            tracing::debug!("Skipping file with very long lines (likely minified): {}", path.display());
+            tracing::debug!(
+                "Skipping file with very long lines (likely minified): {}",
+                path.display()
+            );
             return Ok(FileContext {
                 path: path.to_string_lossy().to_string(),
                 language: detect_language_simple(path).to_string(),
@@ -216,13 +226,13 @@ fn analyze_with_dispatch(path: &Path) -> Result<FileContext, TemplateError> {
 #[cfg(feature = "typescript-ast")]
 fn calculate_complexity_with_dispatch(path: &Path) -> Result<FileComplexityMetrics, TemplateError> {
     use crate::services::file_classifier::DEFAULT_MAX_FILE_SIZE;
-    
+
     // Check file size before attempting to parse
     let metadata = std::fs::metadata(path)
         .map_err(|e| TemplateError::InvalidUtf8(format!("Failed to get file metadata: {e}")))?;
-    
+
     let file_size = metadata.len() as usize;
-    
+
     // Return empty metrics for large or minified files
     if file_size > DEFAULT_MAX_FILE_SIZE {
         return Ok(FileComplexityMetrics {
@@ -232,7 +242,7 @@ fn calculate_complexity_with_dispatch(path: &Path) -> Result<FileComplexityMetri
             classes: Vec::new(),
         });
     }
-    
+
     // Check if file is likely minified
     if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
         if file_name.contains(".min.") || file_name.contains(".bundle.") {
@@ -244,7 +254,7 @@ fn calculate_complexity_with_dispatch(path: &Path) -> Result<FileComplexityMetri
             });
         }
     }
-    
+
     // Use new dispatch parser for complexity calculation
     let mut parser = TsAstDispatchParser::new();
     let content = std::fs::read_to_string(path)

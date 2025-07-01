@@ -69,7 +69,17 @@ impl CommandDispatcher {
                 format,
                 include_large_files,
                 skip_expensive_metrics,
-            } => handlers::handle_context(toolchain, project_path, output, format, include_large_files, skip_expensive_metrics).await,
+            } => {
+                handlers::handle_context(
+                    toolchain,
+                    project_path,
+                    output,
+                    format,
+                    include_large_files,
+                    skip_expensive_metrics,
+                )
+                .await
+            }
             Commands::Analyze(analyze_cmd) => Self::execute_analyze_command(analyze_cmd).await,
             Commands::Demo {
                 path,
@@ -180,6 +190,7 @@ impl CommandDispatcher {
             }
             Commands::Serve { port, host, cors } => handlers::handle_serve(host, port, cors).await,
             Commands::Diagnose(args) => super::diagnose::handle_diagnose(args).await,
+            Commands::Enforce(enforce_cmd) => handlers::route_enforce_command(enforce_cmd).await,
             Commands::Refactor(refactor_cmd) => Self::execute_refactor_command(refactor_cmd).await,
         }
     }

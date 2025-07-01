@@ -121,7 +121,8 @@ pub async fn handle_context(
     let detected_toolchain = detect_or_use_toolchain(toolchain, &project_path)?;
 
     // Create analyzer and perform analysis
-    let deep_context = analyze_project(&project_path, include_large_files, skip_expensive_metrics).await?;
+    let deep_context =
+        analyze_project(&project_path, include_large_files, skip_expensive_metrics).await?;
 
     // Build project context
     let project_context = build_project_context(detected_toolchain.clone(), &deep_context)?;

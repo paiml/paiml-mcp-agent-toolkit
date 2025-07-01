@@ -23,7 +23,7 @@ async fn test_kotlin_parser_directly() {
             );
         }
         Err(e) => {
-            panic!("Kotlin parsing failed: {}", e);
+            panic!("Kotlin parsing failed: {e}");
         }
     }
 }

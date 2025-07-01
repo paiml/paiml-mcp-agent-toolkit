@@ -39,7 +39,7 @@ pub async fn get_changed_files_for_coverage(
 
     // Use git to get actual changed files
     use tokio::process::Command;
-    
+
     let target = target_branch.unwrap_or("HEAD");
     let output = Command::new("git")
         .arg("diff")
@@ -48,16 +48,16 @@ pub async fn get_changed_files_for_coverage(
         .current_dir(project_path)
         .output()
         .await?;
-    
+
     if !output.status.success() {
         // If git command fails, return empty list instead of erroring
         eprintln!("⚠️ Git command failed, returning empty changelist");
         return Ok(vec![]);
     }
-    
+
     let stdout = String::from_utf8_lossy(&output.stdout);
     let mut changed_files = Vec::new();
-    
+
     for line in stdout.lines() {
         if let Some((status, path)) = line.split_once('\t') {
             let full_path = project_path.join(path);

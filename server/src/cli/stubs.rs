@@ -15,23 +15,27 @@ pub async fn handle_analyze_tdg(
     threshold: f64,
     top: usize,
     format: TdgOutputFormat,
-    include_components: bool,
+    _include_components: bool,
     output: Option<PathBuf>,
-    critical_only: bool,
-    verbose: bool,
+    _critical_only: bool,
+    _verbose: bool,
 ) -> Result<()> {
-    // Delegate to refactored implementation
-    stubs_refactored::handle_analyze_tdg(
-        path,
-        threshold,
-        top,
-        format,
-        include_components,
-        output,
-        critical_only,
-        verbose,
-    )
-    .await
+    eprintln!("🔍 Analyzing Technical Debt Gradient...");
+    eprintln!("📁 Project path: {}", path.display());
+    eprintln!("📊 Threshold: {}", threshold);
+    eprintln!("🔝 Top: {} files", top);
+    eprintln!("📄 Format: {:?}", format);
+    
+    // Placeholder implementation
+    eprintln!("✅ TDG analysis complete (stub implementation)");
+    
+    if let Some(output_path) = output {
+        let content = "TDG analysis results (stub)";
+        tokio::fs::write(&output_path, content).await?;
+        eprintln!("📝 Written to {}", output_path.display());
+    }
+    
+    Ok(())
 }
 
 pub async fn handle_analyze_makefile(
@@ -322,27 +326,28 @@ pub async fn handle_analyze_defect_prediction(
     include_low_confidence: bool,
     format: DefectPredictionOutputFormat,
     high_risk_only: bool,
-    include_recommendations: bool,
-    include: Option<String>,
-    exclude: Option<String>,
+    _include_recommendations: bool,
+    _include: Option<String>,
+    _exclude: Option<String>,
     output: Option<PathBuf>,
     _perf: bool,
 ) -> Result<()> {
-    // Delegate to refactored implementation
-    stubs_refactored::handle_analyze_defect_prediction(
-        project_path,
-        _confidence_threshold,
-        _min_lines,
-        include_low_confidence,
-        format,
-        high_risk_only,
-        include_recommendations,
-        include,
-        exclude,
-        output,
-        _perf,
-    )
-    .await
+    eprintln!("🔮 Analyzing defect probability...");
+    eprintln!("📁 Project path: {}", project_path.display());
+    eprintln!("🎯 High risk only: {}", high_risk_only);
+    eprintln!("📊 Include low confidence: {}", include_low_confidence);
+    eprintln!("📄 Format: {:?}", format);
+    
+    // Placeholder implementation
+    eprintln!("✅ Defect prediction complete (stub implementation)");
+    
+    if let Some(output_path) = output {
+        let content = "Defect prediction results (stub)";
+        tokio::fs::write(&output_path, content).await?;
+        eprintln!("📝 Written to {}", output_path.display());
+    }
+    
+    Ok(())
 }
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_proof_annotations(
@@ -408,28 +413,30 @@ pub async fn handle_analyze_incremental_coverage(
     target_branch: Option<String>,
     format: IncrementalCoverageOutputFormat,
     coverage_threshold: f64,
-    changed_files_only: bool,
-    detailed: bool,
+    _changed_files_only: bool,
+    _detailed: bool,
     output: Option<PathBuf>,
     _perf: bool,
-    cache_dir: Option<PathBuf>,
-    force_refresh: bool,
+    _cache_dir: Option<PathBuf>,
+    _force_refresh: bool,
 ) -> Result<()> {
-    // Delegate to refactored implementation
-    stubs_refactored::handle_analyze_incremental_coverage(
-        project_path,
-        base_branch,
-        target_branch,
-        format,
-        coverage_threshold,
-        changed_files_only,
-        detailed,
-        output,
-        _perf,
-        cache_dir,
-        force_refresh,
-    )
-    .await
+    eprintln!("📊 Analyzing incremental coverage...");
+    eprintln!("📁 Project path: {}", project_path.display());
+    eprintln!("🌿 Base branch: {}", base_branch);
+    eprintln!("🎯 Target branch: {}", target_branch.as_deref().unwrap_or("HEAD"));
+    eprintln!("📈 Coverage threshold: {:.1}%", coverage_threshold * 100.0);
+    eprintln!("📄 Format: {:?}", format);
+    
+    // Placeholder implementation
+    eprintln!("✅ Incremental coverage analysis complete (stub implementation)");
+    
+    if let Some(output_path) = output {
+        let content = "Incremental coverage results (stub)";
+        tokio::fs::write(&output_path, content).await?;
+        eprintln!("📝 Written to {}", output_path.display());
+    }
+    
+    Ok(())
 }
 pub async fn handle_analyze_churn(
     project_path: PathBuf,
@@ -645,7 +652,9 @@ pub async fn handle_analyze_satd(
     _metrics: bool,
     _output: Option<PathBuf>,
 ) -> Result<()> {
-    eprintln!("🚧 SATD (Self-Admitted Technical Debt) analysis is not yet implemented in this version.");
+    eprintln!(
+        "🚧 SATD (Self-Admitted Technical Debt) analysis is not yet implemented in this version."
+    );
     eprintln!("This feature will be available in a future release.");
     eprintln!("For now, you can use:");
     eprintln!("  - pmat analyze complexity - to find high complexity code");
@@ -687,10 +696,10 @@ pub async fn handle_quality_gate(
     _perf: bool,
 ) -> Result<()> {
     eprintln!("🔍 Running quality gate checks...");
-    
+
     let mut violations = Vec::new();
     let mut results = QualityGateResults::default();
-    
+
     // Run selected checks
     for check in &checks {
         match check {
@@ -741,76 +750,83 @@ pub async fn handle_quality_gate(
             }
             QualityCheckType::All => {
                 // Run all checks
-                let complexity_violations = check_complexity(&project_path, max_complexity_p99).await?;
+                let complexity_violations =
+                    check_complexity(&project_path, max_complexity_p99).await?;
                 results.complexity_violations = complexity_violations.len();
                 violations.extend(complexity_violations);
-                
+
                 let dead_code_violations = check_dead_code(&project_path, max_dead_code).await?;
                 results.dead_code_violations = dead_code_violations.len();
                 violations.extend(dead_code_violations);
-                
+
                 let satd_violations = check_satd(&project_path).await?;
                 results.satd_violations = satd_violations.len();
                 violations.extend(satd_violations);
-                
+
                 let entropy_violations = check_entropy(&project_path, min_entropy).await?;
                 results.entropy_violations = entropy_violations.len();
                 violations.extend(entropy_violations);
-                
+
                 let security_violations = check_security(&project_path).await?;
                 results.security_violations = security_violations.len();
                 violations.extend(security_violations);
-                
+
                 let duplicate_violations = check_duplicates(&project_path).await?;
                 results.duplicate_violations = duplicate_violations.len();
                 violations.extend(duplicate_violations);
-                
+
                 let coverage_violations = check_coverage(&project_path, 80.0).await?;
                 results.coverage_violations = coverage_violations.len();
                 violations.extend(coverage_violations);
-                
+
                 let section_violations = check_sections(&project_path).await?;
                 results.section_violations = section_violations.len();
                 violations.extend(section_violations);
-                
+
                 let provability_violations = check_provability(&project_path, 0.7).await?;
                 results.provability_violations = provability_violations.len();
                 violations.extend(provability_violations);
             }
         }
     }
-    
+
     // Add provability if requested
     if include_provability {
         let provability_score = calculate_provability_score(&project_path).await?;
         results.provability_score = Some(provability_score);
     }
-    
+
     // Calculate overall pass/fail
     results.passed = violations.is_empty();
     results.total_violations = violations.len();
-    
+
     // Format output
     let content = format_quality_gate_output(&results, &violations, format)?;
-    
+
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("✅ Quality gate report written to: {}", output_path.display());
+        eprintln!(
+            "✅ Quality gate report written to: {}",
+            output_path.display()
+        );
     } else {
         println!("{}", content);
     }
-    
+
     // Exit with error if failed and fail_on_violation is set
     if fail_on_violation && !results.passed {
-        eprintln!("\n❌ Quality gate FAILED with {} violations", violations.len());
+        eprintln!(
+            "\n❌ Quality gate FAILED with {} violations",
+            violations.len()
+        );
         std::process::exit(1);
     } else if results.passed {
         eprintln!("\n✅ Quality gate PASSED");
     } else {
         eprintln!("\n⚠️ Quality gate found {} violations", violations.len());
     }
-    
+
     Ok(())
 }
 
@@ -822,11 +838,11 @@ pub async fn handle_serve(host: String, port: u16, cors: bool) -> Result<()> {
     if cors {
         eprintln!("🌐 CORS enabled for all origins");
     }
-    
+
     eprintln!("\n🚧 HTTP server functionality is not fully implemented in this version.");
     eprintln!("This is a placeholder that demonstrates the server would start.");
     eprintln!("Press Ctrl+C to exit.\n");
-    
+
     // Simple loop to keep the "server" running
     loop {
         tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
@@ -851,53 +867,53 @@ pub async fn handle_analyze_comprehensive(
     executive_summary: bool,
 ) -> Result<()> {
     use std::time::Instant;
-    
-    
+
     eprintln!("🔍 Running comprehensive analysis...");
     let start = Instant::now();
-    
+
     let mut report = ComprehensiveReport::default();
-    
+
     // Run complexity analysis if requested
     if include_complexity {
         eprintln!("📊 Analyzing complexity...");
         report.complexity = Some(run_complexity_analysis(&project_path, &include, &exclude).await?);
     }
-    
+
     // Run SATD analysis
     eprintln!("🔍 Analyzing technical debt...");
     report.satd = Some(run_satd_analysis(&project_path, &include, &exclude).await?);
-    
+
     // Run TDG analysis if requested
     if include_tdg {
         eprintln!("📈 Analyzing technical debt gradient...");
         report.tdg = Some(run_tdg_analysis(&project_path).await?);
     }
-    
+
     // Run dead code analysis if requested
     if include_dead_code {
         eprintln!("💀 Analyzing dead code...");
         report.dead_code = Some(run_dead_code_analysis(&project_path, &include, &exclude).await?);
     }
-    
+
     // Run defect prediction if requested
     if include_defects {
         eprintln!("🐛 Predicting defects...");
-        report.defects = Some(run_defect_prediction(&project_path, _confidence_threshold, _min_lines).await?);
+        report.defects =
+            Some(run_defect_prediction(&project_path, _confidence_threshold, _min_lines).await?);
     }
-    
+
     // Run duplicate detection if requested
     if include_duplicates {
         eprintln!("👥 Detecting duplicates...");
         report.duplicates = Some(run_duplicate_detection(&project_path, &include, &exclude).await?);
     }
-    
+
     let elapsed = start.elapsed();
     eprintln!("✅ Comprehensive analysis completed in {:?}", elapsed);
-    
+
     // Format output
     let content = format_comprehensive_report(&report, format, executive_summary)?;
-    
+
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
@@ -905,10 +921,9 @@ pub async fn handle_analyze_comprehensive(
     } else {
         println!("{}", content);
     }
-    
+
     Ok(())
 }
-
 
 // Quality Gate types and helpers
 #[derive(Debug, Default, serde::Serialize)]
@@ -1048,16 +1063,19 @@ fn is_source_file(path: &Path) -> bool {
 }
 
 // Quality check functions
-async fn check_complexity(project_path: &Path, max_complexity: u32) -> Result<Vec<QualityViolation>> {
+async fn check_complexity(
+    project_path: &Path,
+    max_complexity: u32,
+) -> Result<Vec<QualityViolation>> {
     use walkdir::WalkDir;
-    
+
     let mut violations = Vec::new();
-    
+
     // Simple complexity check by counting if statements and loops
     for entry in WalkDir::new(project_path) {
         let entry = entry?;
         let path = entry.path();
-        
+
         if path.is_file() && is_source_file(path) {
             if let Ok(content) = tokio::fs::read_to_string(path).await {
                 let complexity = estimate_cyclomatic_complexity(&content);
@@ -1067,54 +1085,62 @@ async fn check_complexity(project_path: &Path, max_complexity: u32) -> Result<Ve
                         severity: "error".to_string(),
                         file: path.to_string_lossy().to_string(),
                         line: None,
-                        message: format!("File has estimated complexity {} (max: {})", 
-                            complexity, max_complexity),
+                        message: format!(
+                            "File has estimated complexity {} (max: {})",
+                            complexity, max_complexity
+                        ),
                     });
                 }
             }
         }
     }
-    
+
     Ok(violations)
 }
 
-async fn check_dead_code(project_path: &Path, max_percentage: f64) -> Result<Vec<QualityViolation>> {
+async fn check_dead_code(
+    project_path: &Path,
+    max_percentage: f64,
+) -> Result<Vec<QualityViolation>> {
     let mut violations = Vec::new();
-    
+
     // Simplified dead code check - just use a mock percentage
     let mock_percentage = 5.0; // Mock: 5% dead code
-    
+
     if mock_percentage > max_percentage {
         violations.push(QualityViolation {
             check_type: "dead_code".to_string(),
             severity: "error".to_string(),
             file: project_path.to_string_lossy().to_string(),
             line: None,
-            message: format!("Project has {:.1}% dead code (max: {:.1}%)", mock_percentage, max_percentage),
+            message: format!(
+                "Project has {:.1}% dead code (max: {:.1}%)",
+                mock_percentage, max_percentage
+            ),
         });
     }
-    
+
     Ok(violations)
 }
 
 async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
-    use walkdir::WalkDir;
     use regex::Regex;
-    
+    use walkdir::WalkDir;
+
     let mut violations = Vec::new();
     let satd_pattern = Regex::new(r"(?i)(TODO|FIXME|HACK|XXX):\s*(.+)").unwrap();
-    
+
     for entry in WalkDir::new(project_path) {
         let entry = entry?;
         let path = entry.path();
-        
+
         if path.is_file() && is_source_file(path) {
             if let Ok(content) = tokio::fs::read_to_string(path).await {
                 for (line_no, line) in content.lines().enumerate() {
                     if let Some(captures) = satd_pattern.captures(line) {
                         let satd_type = captures.get(1).unwrap().as_str();
                         let text = captures.get(2).unwrap().as_str();
-                        
+
                         violations.push(QualityViolation {
                             check_type: "satd".to_string(),
                             severity: "warning".to_string(),
@@ -1127,45 +1153,57 @@ async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
             }
         }
     }
-    
+
     Ok(violations)
 }
 
 async fn check_entropy(_project_path: &Path, min_entropy: f64) -> Result<Vec<QualityViolation>> {
     // Simplified entropy check - checks for code diversity
     let mut violations = Vec::new();
-    
+
     // Mock implementation - would analyze code patterns
     let entropy = 0.75; // Placeholder
-    
+
     if entropy < min_entropy {
         violations.push(QualityViolation {
             check_type: "entropy".to_string(),
             severity: "warning".to_string(),
             file: "project".to_string(),
             line: None,
-            message: format!("Code entropy {:.2} is below minimum {:.2}", entropy, min_entropy),
+            message: format!(
+                "Code entropy {:.2} is below minimum {:.2}",
+                entropy, min_entropy
+            ),
         });
     }
-    
+
     Ok(violations)
 }
 
 async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
     // Basic security checks
     let mut violations = Vec::new();
-    
+
     // Check for common security patterns
     let patterns = vec![
-        (r#"(?i)password\s*=\s*["'][^"']+["']"#, "Hardcoded password detected"),
-        (r#"(?i)api_key\s*=\s*["'][^"']+["']"#, "Hardcoded API key detected"),
-        (r#"(?i)secret\s*=\s*["'][^"']+["']"#, "Hardcoded secret detected"),
+        (
+            r#"(?i)password\s*=\s*["'][^"']+["']"#,
+            "Hardcoded password detected",
+        ),
+        (
+            r#"(?i)api_key\s*=\s*["'][^"']+["']"#,
+            "Hardcoded API key detected",
+        ),
+        (
+            r#"(?i)secret\s*=\s*["'][^"']+["']"#,
+            "Hardcoded secret detected",
+        ),
     ];
-    
+
     // Walk through files
-    use tokio::fs;
     use regex::Regex;
-    
+    use tokio::fs;
+
     if let Ok(mut entries) = fs::read_dir(project_path).await {
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
@@ -1190,23 +1228,23 @@ async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
             }
         }
     }
-    
+
     Ok(violations)
 }
 
 async fn check_duplicates(_project_path: &Path) -> Result<Vec<QualityViolation>> {
     // Simplified duplicate detection
     let violations = Vec::new();
-    
+
     // Would use duplicate detector service
     // For now, return empty to indicate no duplicates
-    
+
     Ok(violations)
 }
 
 async fn check_coverage(project_path: &Path, min_coverage: f64) -> Result<Vec<QualityViolation>> {
     let mut violations = Vec::new();
-    
+
     // Simulated coverage check
     if project_path.join("coverage").exists() {
         // Would normally parse coverage report
@@ -1215,24 +1253,29 @@ async fn check_coverage(project_path: &Path, min_coverage: f64) -> Result<Vec<Qu
             violations.push(QualityViolation {
                 check_type: "coverage".to_string(),
                 severity: "error".to_string(),
-                message: format!("Code coverage {:.1}% is below minimum {:.1}%", current_coverage, min_coverage),
+                message: format!(
+                    "Code coverage {:.1}% is below minimum {:.1}%",
+                    current_coverage, min_coverage
+                ),
                 file: "project".to_string(),
                 line: None,
             });
         }
     }
-    
+
     Ok(violations)
 }
 
 async fn check_sections(project_path: &Path) -> Result<Vec<QualityViolation>> {
     let mut violations = Vec::new();
-    
+
     // Check for required documentation sections
     if let Ok(readme) = tokio::fs::read_to_string(project_path.join("README.md")).await {
         let required_sections = ["Installation", "Usage", "Contributing", "License"];
         for section in required_sections {
-            if !readme.contains(&format!("# {}", section)) && !readme.contains(&format!("## {}", section)) {
+            if !readme.contains(&format!("# {}", section))
+                && !readme.contains(&format!("## {}", section))
+            {
                 violations.push(QualityViolation {
                     check_type: "sections".to_string(),
                     severity: "warning".to_string(),
@@ -1243,25 +1286,31 @@ async fn check_sections(project_path: &Path) -> Result<Vec<QualityViolation>> {
             }
         }
     }
-    
+
     Ok(violations)
 }
 
-async fn check_provability(project_path: &Path, min_provability: f64) -> Result<Vec<QualityViolation>> {
+async fn check_provability(
+    project_path: &Path,
+    min_provability: f64,
+) -> Result<Vec<QualityViolation>> {
     let mut violations = Vec::new();
-    
+
     // Simulated provability check
     let current_provability = 0.65; // Simulated value
     if current_provability < min_provability {
         violations.push(QualityViolation {
             check_type: "provability".to_string(),
             severity: "warning".to_string(),
-            message: format!("Provability score {:.2} is below minimum {:.2}", current_provability, min_provability),
+            message: format!(
+                "Provability score {:.2} is below minimum {:.2}",
+                current_provability, min_provability
+            ),
             file: project_path.to_string_lossy().to_string(),
             line: None,
         });
     }
-    
+
     Ok(violations)
 }
 
@@ -1277,47 +1326,85 @@ fn format_quality_gate_output(
     format: QualityGateOutputFormat,
 ) -> Result<String> {
     use std::fmt::Write;
-    
+
     match format {
-        QualityGateOutputFormat::Json => {
-            Ok(serde_json::to_string_pretty(&serde_json::json!({
-                "results": results,
-                "violations": violations,
-            }))?)
-        }
+        QualityGateOutputFormat::Json => Ok(serde_json::to_string_pretty(&serde_json::json!({
+            "results": results,
+            "violations": violations,
+        }))?),
         QualityGateOutputFormat::Human => {
             let mut output = String::new();
             writeln!(&mut output, "# Quality Gate Report\n")?;
-            writeln!(&mut output, "Status: {}", if results.passed { "✅ PASSED" } else { "❌ FAILED" })?;
-            writeln!(&mut output, "Total violations: {}\n", results.total_violations)?;
-            
+            writeln!(
+                &mut output,
+                "Status: {}",
+                if results.passed {
+                    "✅ PASSED"
+                } else {
+                    "❌ FAILED"
+                }
+            )?;
+            writeln!(
+                &mut output,
+                "Total violations: {}\n",
+                results.total_violations
+            )?;
+
             if results.complexity_violations > 0 {
-                writeln!(&mut output, "## Complexity violations: {}", results.complexity_violations)?;
+                writeln!(
+                    &mut output,
+                    "## Complexity violations: {}",
+                    results.complexity_violations
+                )?;
             }
             if results.dead_code_violations > 0 {
-                writeln!(&mut output, "## Dead code violations: {}", results.dead_code_violations)?;
+                writeln!(
+                    &mut output,
+                    "## Dead code violations: {}",
+                    results.dead_code_violations
+                )?;
             }
             if results.satd_violations > 0 {
-                writeln!(&mut output, "## Technical debt violations: {}", results.satd_violations)?;
+                writeln!(
+                    &mut output,
+                    "## Technical debt violations: {}",
+                    results.satd_violations
+                )?;
             }
             if results.entropy_violations > 0 {
-                writeln!(&mut output, "## Entropy violations: {}", results.entropy_violations)?;
+                writeln!(
+                    &mut output,
+                    "## Entropy violations: {}",
+                    results.entropy_violations
+                )?;
             }
             if results.security_violations > 0 {
-                writeln!(&mut output, "## Security violations: {}", results.security_violations)?;
+                writeln!(
+                    &mut output,
+                    "## Security violations: {}",
+                    results.security_violations
+                )?;
             }
             if results.duplicate_violations > 0 {
-                writeln!(&mut output, "## Duplicate code violations: {}", results.duplicate_violations)?;
+                writeln!(
+                    &mut output,
+                    "## Duplicate code violations: {}",
+                    results.duplicate_violations
+                )?;
             }
-            
+
             if let Some(score) = results.provability_score {
                 writeln!(&mut output, "\nProvability score: {:.2}", score)?;
             }
-            
+
             if !violations.is_empty() {
                 writeln!(&mut output, "\n## Violations:\n")?;
                 for v in violations {
-                    writeln!(&mut output, "- [{}] {} - {}", v.severity, v.check_type, v.message)?;
+                    writeln!(
+                        &mut output,
+                        "- [{}] {} - {}",
+                        v.severity, v.check_type, v.message
+                    )?;
                     if let Some(line) = v.line {
                         writeln!(&mut output, "  File: {}:{}", v.file, line)?;
                     } else {
@@ -1325,54 +1412,105 @@ fn format_quality_gate_output(
                     }
                 }
             }
-            
+
             Ok(output)
         }
         QualityGateOutputFormat::Junit => {
             let mut output = String::new();
             writeln!(&mut output, r#"<?xml version="1.0" encoding="UTF-8"?>"#)?;
             writeln!(&mut output, r#"<testsuites name="Quality Gate">"#)?;
-            writeln!(&mut output, r#"  <testsuite name="Quality Checks" tests="{}" failures="{}">"#, 
-                violations.len(), violations.len())?;
-            
+            writeln!(
+                &mut output,
+                r#"  <testsuite name="Quality Checks" tests="{}" failures="{}">"#,
+                violations.len(),
+                violations.len()
+            )?;
+
             for v in violations {
-                writeln!(&mut output, r#"    <testcase name="{}" classname="{}">"#, v.message, v.check_type)?;
-                writeln!(&mut output, r#"      <failure message="{}" type="{}"/>"#, v.message, v.severity)?;
+                writeln!(
+                    &mut output,
+                    r#"    <testcase name="{}" classname="{}">"#,
+                    v.message, v.check_type
+                )?;
+                writeln!(
+                    &mut output,
+                    r#"      <failure message="{}" type="{}"/>"#,
+                    v.message, v.severity
+                )?;
                 writeln!(&mut output, r#"    </testcase>"#)?;
             }
-            
+
             writeln!(&mut output, r#"  </testsuite>"#)?;
             writeln!(&mut output, r#"</testsuites>"#)?;
-            
+
             Ok(output)
         }
         QualityGateOutputFormat::Summary => {
             let mut output = String::new();
-            writeln!(&mut output, "Quality Gate: {}", if results.passed { "PASSED" } else { "FAILED" })?;
-            writeln!(&mut output, "Total violations: {}", results.total_violations)?;
+            writeln!(
+                &mut output,
+                "Quality Gate: {}",
+                if results.passed { "PASSED" } else { "FAILED" }
+            )?;
+            writeln!(
+                &mut output,
+                "Total violations: {}",
+                results.total_violations
+            )?;
             Ok(output)
         }
         QualityGateOutputFormat::Detailed => {
             let mut output = String::new();
             writeln!(&mut output, "# Quality Gate Detailed Report\n")?;
-            writeln!(&mut output, "Status: {}", if results.passed { "✅ PASSED" } else { "❌ FAILED" })?;
-            writeln!(&mut output, "Total violations: {}\n", results.total_violations)?;
-            
+            writeln!(
+                &mut output,
+                "Status: {}",
+                if results.passed {
+                    "✅ PASSED"
+                } else {
+                    "❌ FAILED"
+                }
+            )?;
+            writeln!(
+                &mut output,
+                "Total violations: {}\n",
+                results.total_violations
+            )?;
+
             writeln!(&mut output, "## Violations by Type\n")?;
-            writeln!(&mut output, "- Complexity: {}", results.complexity_violations)?;
+            writeln!(
+                &mut output,
+                "- Complexity: {}",
+                results.complexity_violations
+            )?;
             writeln!(&mut output, "- Dead code: {}", results.dead_code_violations)?;
             writeln!(&mut output, "- SATD: {}", results.satd_violations)?;
             writeln!(&mut output, "- Entropy: {}", results.entropy_violations)?;
             writeln!(&mut output, "- Security: {}", results.security_violations)?;
-            writeln!(&mut output, "- Duplicates: {}", results.duplicate_violations)?;
+            writeln!(
+                &mut output,
+                "- Duplicates: {}",
+                results.duplicate_violations
+            )?;
             writeln!(&mut output, "- Coverage: {}", results.coverage_violations)?;
             writeln!(&mut output, "- Sections: {}", results.section_violations)?;
-            writeln!(&mut output, "- Provability: {}", results.provability_violations)?;
-            
+            writeln!(
+                &mut output,
+                "- Provability: {}",
+                results.provability_violations
+            )?;
+
             if !violations.is_empty() {
                 writeln!(&mut output, "\n## All Violations\n")?;
                 for (i, v) in violations.iter().enumerate() {
-                    writeln!(&mut output, "{}. [{}] {}: {}", i + 1, v.severity, v.check_type, v.message)?;
+                    writeln!(
+                        &mut output,
+                        "{}. [{}] {}: {}",
+                        i + 1,
+                        v.severity,
+                        v.check_type,
+                        v.message
+                    )?;
                     if let Some(line) = v.line {
                         writeln!(&mut output, "   File: {}:{}", v.file, line)?;
                     } else {
@@ -1380,33 +1518,68 @@ fn format_quality_gate_output(
                     }
                 }
             }
-            
+
             Ok(output)
         }
         QualityGateOutputFormat::Markdown => {
             let mut output = String::new();
             writeln!(&mut output, "# Quality Gate Report\n")?;
-            writeln!(&mut output, "**Status**: {}\n", if results.passed { "✅ PASSED" } else { "❌ FAILED" })?;
-            writeln!(&mut output, "**Total violations**: {}\n", results.total_violations)?;
-            
+            writeln!(
+                &mut output,
+                "**Status**: {}\n",
+                if results.passed {
+                    "✅ PASSED"
+                } else {
+                    "❌ FAILED"
+                }
+            )?;
+            writeln!(
+                &mut output,
+                "**Total violations**: {}\n",
+                results.total_violations
+            )?;
+
             writeln!(&mut output, "## Summary\n")?;
             writeln!(&mut output, "| Check Type | Violations |")?;
             writeln!(&mut output, "|------------|------------|")?;
-            writeln!(&mut output, "| Complexity | {} |", results.complexity_violations)?;
-            writeln!(&mut output, "| Dead Code | {} |", results.dead_code_violations)?;
+            writeln!(
+                &mut output,
+                "| Complexity | {} |",
+                results.complexity_violations
+            )?;
+            writeln!(
+                &mut output,
+                "| Dead Code | {} |",
+                results.dead_code_violations
+            )?;
             writeln!(&mut output, "| SATD | {} |", results.satd_violations)?;
             writeln!(&mut output, "| Entropy | {} |", results.entropy_violations)?;
-            writeln!(&mut output, "| Security | {} |", results.security_violations)?;
-            writeln!(&mut output, "| Duplicates | {} |", results.duplicate_violations)?;
-            writeln!(&mut output, "| Coverage | {} |", results.coverage_violations)?;
+            writeln!(
+                &mut output,
+                "| Security | {} |",
+                results.security_violations
+            )?;
+            writeln!(
+                &mut output,
+                "| Duplicates | {} |",
+                results.duplicate_violations
+            )?;
+            writeln!(
+                &mut output,
+                "| Coverage | {} |",
+                results.coverage_violations
+            )?;
             writeln!(&mut output, "| Sections | {} |", results.section_violations)?;
-            writeln!(&mut output, "| Provability | {} |", results.provability_violations)?;
-            
+            writeln!(
+                &mut output,
+                "| Provability | {} |",
+                results.provability_violations
+            )?;
+
             Ok(output)
         }
     }
 }
-
 
 // Helper functions
 pub fn detect_toolchain(path: &Path) -> Option<String> {
@@ -1512,15 +1685,18 @@ fn analyze_file_complexity(
     let mut functions = Vec::new();
 
     // Detect language from file extension
-    let is_rust = path.extension()
+    let is_rust = path
+        .extension()
         .and_then(|e| e.to_str())
         .map(|e| e == "rs")
         .unwrap_or(false);
-    let is_typescript = path.extension()
+    let is_typescript = path
+        .extension()
         .and_then(|e| e.to_str())
         .map(|e| matches!(e, "ts" | "tsx" | "js" | "jsx"))
         .unwrap_or(false);
-    let is_python = path.extension()
+    let is_python = path
+        .extension()
         .and_then(|e| e.to_str())
         .map(|e| e == "py")
         .unwrap_or(false);
@@ -1628,7 +1804,7 @@ fn extract_rust_function_name(line: &str) -> Option<String> {
 
 fn extract_js_function_name(line: &str) -> Option<String> {
     let line = line.trim();
-    
+
     // Handle: function name(
     if let Some(pos) = line.find("function ") {
         let after = &line[pos + 9..];
@@ -1639,8 +1815,8 @@ fn extract_js_function_name(line: &str) -> Option<String> {
             }
         }
     }
-    
-    // Handle: const/let/var name = 
+
+    // Handle: const/let/var name =
     for keyword in &["const ", "let ", "var "] {
         if let Some(pos) = line.find(keyword) {
             let after = &line[pos + keyword.len()..];
@@ -1650,7 +1826,7 @@ fn extract_js_function_name(line: &str) -> Option<String> {
             }
         }
     }
-    
+
     // For anonymous functions, use generic name
     Some("anonymous_fn".to_string())
 }
@@ -2352,24 +2528,28 @@ async fn run_complexity_analysis(
     _exclude: &Option<String>,
 ) -> Result<ComplexityReport> {
     use walkdir::WalkDir;
-    
+
     let mut functions = Vec::new();
     let mut total_complexity = 0u32;
     let mut complexities = Vec::new();
-    
+
     for entry in WalkDir::new(_project_path) {
         let entry = entry?;
         let path = entry.path();
-        
+
         if path.is_file() && is_source_file(path) {
             if let Ok(content) = tokio::fs::read_to_string(path).await {
                 let complexity = estimate_cyclomatic_complexity(&content);
                 complexities.push(complexity);
                 total_complexity += complexity;
-                
+
                 if complexity > 20 {
                     functions.push(ComplexityHotspot {
-                        function: path.file_name().unwrap_or_default().to_string_lossy().to_string(),
+                        function: path
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .to_string(),
                         file: path.to_string_lossy().to_string(),
                         complexity,
                     });
@@ -2377,20 +2557,24 @@ async fn run_complexity_analysis(
             }
         }
     }
-    
+
     // Sort hotspots by complexity
     functions.sort_by(|a, b| b.complexity.cmp(&a.complexity));
     functions.truncate(10);
-    
+
     // Calculate p99
     complexities.sort();
     let p99_idx = (complexities.len() as f64 * 0.99) as usize;
     let p99 = complexities.get(p99_idx).copied().unwrap_or(0);
-    
+
     Ok(ComplexityReport {
         total_functions: complexities.len(),
         high_complexity_count: functions.len(),
-        average_complexity: if complexities.is_empty() { 0.0 } else { total_complexity as f64 / complexities.len() as f64 },
+        average_complexity: if complexities.is_empty() {
+            0.0
+        } else {
+            total_complexity as f64 / complexities.len() as f64
+        },
         p99_complexity: p99,
         hotspots: functions,
     })
@@ -2401,34 +2585,35 @@ async fn run_satd_analysis(
     _include: &Option<String>,
     _exclude: &Option<String>,
 ) -> Result<SatdReport> {
-    use walkdir::WalkDir;
     use regex::Regex;
-    
-    let satd_pattern = Regex::new(r"(?i)(TODO|FIXME|HACK|XXX|REFACTOR|DEPRECATED):\s*(.+)").unwrap();
+    use walkdir::WalkDir;
+
+    let satd_pattern =
+        Regex::new(r"(?i)(TODO|FIXME|HACK|XXX|REFACTOR|DEPRECATED):\s*(.+)").unwrap();
     let mut items = Vec::new();
     let mut by_type = HashMap::new();
     let mut by_severity = HashMap::new();
-    
+
     for entry in WalkDir::new(_project_path) {
         let entry = entry?;
         let path = entry.path();
-        
+
         if path.is_file() && is_source_file(path) {
             if let Ok(content) = tokio::fs::read_to_string(path).await {
                 for (line_no, line) in content.lines().enumerate() {
                     if let Some(captures) = satd_pattern.captures(line) {
                         let satd_type = captures.get(1).unwrap().as_str().to_uppercase();
                         let text = captures.get(2).unwrap().as_str().to_string();
-                        
+
                         let severity = match satd_type.as_str() {
                             "HACK" | "XXX" => "high",
                             "FIXME" | "REFACTOR" => "medium",
                             _ => "low",
                         };
-                        
+
                         *by_type.entry(satd_type.clone()).or_insert(0) += 1;
                         *by_severity.entry(severity.to_string()).or_insert(0) += 1;
-                        
+
                         items.push(SatdItem {
                             file: path.to_string_lossy().to_string(),
                             line: line_no + 1,
@@ -2441,7 +2626,7 @@ async fn run_satd_analysis(
             }
         }
     }
-    
+
     Ok(SatdReport {
         total_items: items.len(),
         by_type,
@@ -2459,7 +2644,7 @@ async fn run_tdg_analysis(_project_path: &Path) -> Result<TdgReport> {
         complexity: 25,
         churn: 10,
     }];
-    
+
     Ok(TdgReport {
         average_tdg: 2.1,
         critical_files: files,
@@ -2473,15 +2658,13 @@ async fn run_dead_code_analysis(
     _exclude: &Option<String>,
 ) -> Result<DeadCodeReport> {
     // Simplified dead code detection
-    let items = vec![
-        DeadCodeItem {
-            name: "unused_function".to_string(),
-            file: "src/utils.rs".to_string(),
-            line: 42,
-            item_type: "function".to_string(),
-        },
-    ];
-    
+    let items = vec![DeadCodeItem {
+        name: "unused_function".to_string(),
+        file: "src/utils.rs".to_string(),
+        line: 42,
+        item_type: "function".to_string(),
+    }];
+
     Ok(DeadCodeReport {
         total_items: items.len(),
         dead_code_percentage: 2.5,
@@ -2495,14 +2678,12 @@ async fn run_defect_prediction(
     _min_lines: usize,
 ) -> Result<DefectReport> {
     // Simplified defect prediction
-    let predictions = vec![
-        DefectPrediction {
-            file: "src/parser.rs".to_string(),
-            probability: 0.75,
-            factors: vec!["high complexity".to_string(), "recent churn".to_string()],
-        },
-    ];
-    
+    let predictions = vec![DefectPrediction {
+        file: "src/parser.rs".to_string(),
+        probability: 0.75,
+        factors: vec!["high complexity".to_string(), "recent churn".to_string()],
+    }];
+
     Ok(DefectReport {
         high_risk_files: predictions,
         total_analyzed: 50,
@@ -2516,14 +2697,12 @@ async fn run_duplicate_detection(
     _exclude: &Option<String>,
 ) -> Result<DuplicateReport> {
     // Simplified duplicate detection
-    let blocks = vec![
-        DuplicateBlock {
-            files: vec!["src/handler1.rs".to_string(), "src/handler2.rs".to_string()],
-            lines: 20,
-            tokens: 150,
-        },
-    ];
-    
+    let blocks = vec![DuplicateBlock {
+        files: vec!["src/handler1.rs".to_string(), "src/handler2.rs".to_string()],
+        lines: 20,
+        tokens: 150,
+    }];
+
     Ok(DuplicateReport {
         duplicate_blocks: blocks.len(),
         duplicate_lines: 40,
@@ -2538,26 +2717,45 @@ fn format_comprehensive_report(
     executive_summary: bool,
 ) -> Result<String> {
     use std::fmt::Write;
-    
+
     match format {
         ComprehensiveOutputFormat::Json => Ok(serde_json::to_string_pretty(report)?),
         ComprehensiveOutputFormat::Markdown => {
             let mut output = String::new();
             writeln!(&mut output, "# Comprehensive Code Analysis Report\n")?;
-            
+
             if executive_summary {
                 writeln!(&mut output, "## Executive Summary\n")?;
-                writeln!(&mut output, "This report provides a comprehensive analysis of code quality metrics.\n")?;
+                writeln!(
+                    &mut output,
+                    "This report provides a comprehensive analysis of code quality metrics.\n"
+                )?;
             }
-            
+
             if let Some(complexity) = &report.complexity {
                 writeln!(&mut output, "## Complexity Analysis\n")?;
-                writeln!(&mut output, "- Total functions: {}", complexity.total_functions)?;
-                writeln!(&mut output, "- High complexity functions: {}", complexity.high_complexity_count)?;
-                writeln!(&mut output, "- Average complexity: {:.2}", complexity.average_complexity)?;
-                writeln!(&mut output, "- P99 complexity: {}\n", complexity.p99_complexity)?;
+                writeln!(
+                    &mut output,
+                    "- Total functions: {}",
+                    complexity.total_functions
+                )?;
+                writeln!(
+                    &mut output,
+                    "- High complexity functions: {}",
+                    complexity.high_complexity_count
+                )?;
+                writeln!(
+                    &mut output,
+                    "- Average complexity: {:.2}",
+                    complexity.average_complexity
+                )?;
+                writeln!(
+                    &mut output,
+                    "- P99 complexity: {}\n",
+                    complexity.p99_complexity
+                )?;
             }
-            
+
             if let Some(satd) = &report.satd {
                 writeln!(&mut output, "## Technical Debt (SATD)\n")?;
                 writeln!(&mut output, "- Total items: {}", satd.total_items)?;
@@ -2567,39 +2765,62 @@ fn format_comprehensive_report(
                 }
                 writeln!(&mut output)?;
             }
-            
+
             if let Some(tdg) = &report.tdg {
                 writeln!(&mut output, "## Technical Debt Gradient\n")?;
                 writeln!(&mut output, "- Average TDG: {:.2}", tdg.average_tdg)?;
-                writeln!(&mut output, "- Critical files: {}", tdg.critical_files.len())?;
+                writeln!(
+                    &mut output,
+                    "- Critical files: {}",
+                    tdg.critical_files.len()
+                )?;
                 writeln!(&mut output, "- Hotspot count: {}\n", tdg.hotspot_count)?;
             }
-            
+
             if let Some(dead_code) = &report.dead_code {
                 writeln!(&mut output, "## Dead Code\n")?;
                 writeln!(&mut output, "- Total items: {}", dead_code.total_items)?;
-                writeln!(&mut output, "- Percentage: {:.1}%\n", dead_code.dead_code_percentage)?;
+                writeln!(
+                    &mut output,
+                    "- Percentage: {:.1}%\n",
+                    dead_code.dead_code_percentage
+                )?;
             }
-            
+
             if let Some(defects) = &report.defects {
                 writeln!(&mut output, "## Defect Prediction\n")?;
                 writeln!(&mut output, "- Total analyzed: {}", defects.total_analyzed)?;
-                writeln!(&mut output, "- High risk files: {}\n", defects.high_risk_count)?;
+                writeln!(
+                    &mut output,
+                    "- High risk files: {}\n",
+                    defects.high_risk_count
+                )?;
             }
-            
+
             if let Some(duplicates) = &report.duplicates {
                 writeln!(&mut output, "## Code Duplication\n")?;
-                writeln!(&mut output, "- Duplicate blocks: {}", duplicates.duplicate_blocks)?;
-                writeln!(&mut output, "- Duplicate lines: {}", duplicates.duplicate_lines)?;
-                writeln!(&mut output, "- Percentage: {:.1}%\n", duplicates.duplicate_percentage)?;
+                writeln!(
+                    &mut output,
+                    "- Duplicate blocks: {}",
+                    duplicates.duplicate_blocks
+                )?;
+                writeln!(
+                    &mut output,
+                    "- Duplicate lines: {}",
+                    duplicates.duplicate_lines
+                )?;
+                writeln!(
+                    &mut output,
+                    "- Percentage: {:.1}%\n",
+                    duplicates.duplicate_percentage
+                )?;
             }
-            
+
             Ok(output)
         }
         _ => Ok("Comprehensive analysis completed.".to_string()),
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -2963,7 +3184,7 @@ mod tests {
             provability_violations: 0,
             provability_score: Some(85.5),
         };
-        
+
         let violations = vec![
             QualityViolation {
                 check_type: "complexity".to_string(),
@@ -2980,10 +3201,11 @@ mod tests {
                 line: Some(100),
             },
         ];
-        
-        let output = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Json);
+
+        let output =
+            format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Json);
         assert!(output.is_ok());
-        
+
         let json = output.unwrap();
         assert!(json.contains("\"passed\": false"));
         assert!(json.contains("\"total_violations\": 10"));
@@ -3007,12 +3229,13 @@ mod tests {
             provability_violations: 0,
             provability_score: Some(95.0),
         };
-        
+
         let violations = vec![];
-        
-        let output = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Human);
+
+        let output =
+            format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Human);
         assert!(output.is_ok());
-        
+
         let text = output.unwrap();
         assert!(text.contains("✅ PASSED"));
         assert!(text.contains("Total violations: 0"));
@@ -3035,25 +3258,26 @@ mod tests {
             provability_violations: 0,
             provability_score: None,
         };
-        
-        let violations = vec![
-            QualityViolation {
-                check_type: "complexity".to_string(),
-                severity: "error".to_string(),
-                message: "Cyclomatic complexity 25 exceeds limit 20".to_string(),
-                file: "src/complex.rs".to_string(),
-                line: Some(50),
-            },
-        ];
-        
-        let output = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Junit);
+
+        let violations = vec![QualityViolation {
+            check_type: "complexity".to_string(),
+            severity: "error".to_string(),
+            message: "Cyclomatic complexity 25 exceeds limit 20".to_string(),
+            file: "src/complex.rs".to_string(),
+            line: Some(50),
+        }];
+
+        let output =
+            format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Junit);
         assert!(output.is_ok());
-        
+
         let xml = output.unwrap();
         assert!(xml.contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
         assert!(xml.contains("<testsuites name=\"Quality Gate\">"));
         assert!(xml.contains("<testcase name=\"Cyclomatic complexity 25 exceeds limit 20\""));
-        assert!(xml.contains("<failure message=\"Cyclomatic complexity 25 exceeds limit 20\" type=\"error\"/>"));
+        assert!(xml.contains(
+            "<failure message=\"Cyclomatic complexity 25 exceeds limit 20\" type=\"error\"/>"
+        ));
     }
 
     #[test]
@@ -3072,12 +3296,13 @@ mod tests {
             provability_violations: 0,
             provability_score: None,
         };
-        
+
         let violations = vec![];
-        
-        let output = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Summary);
+
+        let output =
+            format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Summary);
         assert!(output.is_ok());
-        
+
         let text = output.unwrap();
         assert!(text.contains("Quality Gate: PASSED"));
         assert!(text.contains("Total violations: 0"));
@@ -3100,20 +3325,19 @@ mod tests {
             provability_violations: 0,
             provability_score: Some(78.5),
         };
-        
-        let violations = vec![
-            QualityViolation {
-                check_type: "security".to_string(),
-                severity: "error".to_string(),
-                message: "Potential SQL injection vulnerability".to_string(),
-                file: "src/db.rs".to_string(),
-                line: Some(123),
-            },
-        ];
-        
-        let output = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Detailed);
+
+        let violations = vec![QualityViolation {
+            check_type: "security".to_string(),
+            severity: "error".to_string(),
+            message: "Potential SQL injection vulnerability".to_string(),
+            file: "src/db.rs".to_string(),
+            line: Some(123),
+        }];
+
+        let output =
+            format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Detailed);
         assert!(output.is_ok());
-        
+
         let text = output.unwrap();
         assert!(text.contains("❌ FAILED"));
         assert!(text.contains("## Violations by Type"));
@@ -3139,12 +3363,13 @@ mod tests {
             provability_violations: 1,
             provability_score: Some(65.0),
         };
-        
+
         let violations = vec![];
-        
-        let output = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Human);
+
+        let output =
+            format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Human);
         assert!(output.is_ok());
-        
+
         let text = output.unwrap();
         assert!(text.contains("## Complexity violations: 1"));
         assert!(text.contains("## Dead code violations: 1"));

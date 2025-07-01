@@ -76,7 +76,7 @@ create_refactor_config() {
   },
   "validation": {
     "run_tests": "make test-fast",
-    "check_coverage": "cargo tarpaulin --out Xml --timeout 300",
+    "check_coverage": "cargo llvm-cov report --json --output-path coverage.json",
     "lint_check": "make lint",
     "rollback_on_failure": true
   },

@@ -45,7 +45,7 @@ mod tests {
         // Create a large file (600KB) with valid code
         let mut large_content = String::new();
         for i in 0..10_000 {
-            large_content.push_str(&format!("function test{} () {{ return {}; }}\n", i, i));
+            large_content.push_str(&format!("function test{i} () {{ return {i}; }}\n"));
         }
         fs::write(project_path.join("large.js"), large_content).unwrap();
 
