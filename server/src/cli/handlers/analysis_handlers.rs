@@ -178,6 +178,32 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             )
             .await
         }
+        AnalyzeCommands::LintHotspot {
+            project_path,
+            format,
+            max_density,
+            min_confidence,
+            enforce,
+            dry_run,
+            enforcement_metadata,
+            output,
+            perf,
+            clippy_flags,
+        } => {
+            super::lint_hotspot_handlers::handle_analyze_lint_hotspot(
+                project_path,
+                format,
+                max_density,
+                min_confidence,
+                enforce,
+                dry_run,
+                enforcement_metadata,
+                output,
+                perf,
+                clippy_flags,
+            )
+            .await
+        }
         AnalyzeCommands::Makefile {
             path,
             rules,

@@ -357,13 +357,15 @@ impl TDGCalculator {
     async fn calculate_churn_factor(&self, path: &Path) -> Result<f64> {
         // Get cached churn analysis or compute it once
         let analysis = self.get_or_compute_churn_analysis().await?;
-        
+
         // Find this file in the analysis
         let relative_path = path.strip_prefix(&self.project_root).unwrap_or(path);
 
-        if let Some(file_metrics) = analysis.files.iter().find(|f| {
-            f.path == relative_path || f.relative_path == relative_path.to_string_lossy()
-        }) {
+        if let Some(file_metrics) = analysis
+            .files
+            .iter()
+            .find(|f| f.path == relative_path || f.relative_path == relative_path.to_string_lossy())
+        {
             let monthly_rate = file_metrics.commit_count as f64 / 3.0; // 90 days = 3 months
 
             // Apply logarithmic normalization
@@ -378,13 +380,15 @@ impl TDGCalculator {
     }
 
     /// Get cached churn analysis or compute it once for the entire project
-    pub async fn get_or_compute_churn_analysis(&self) -> Result<crate::models::churn::CodeChurnAnalysis> {
+    pub async fn get_or_compute_churn_analysis(
+        &self,
+    ) -> Result<crate::models::churn::CodeChurnAnalysis> {
         let mut cache = self.cached_churn_analysis.lock().await;
-        
+
         if let Some(ref analysis) = *cache {
             return Ok(analysis.clone());
         }
-        
+
         // Compute churn analysis once for the entire project
         tracing::info!("Computing churn analysis for project (this should only happen once)...");
         match GitAnalysisService::analyze_code_churn(&self.project_root, 90) {
@@ -959,7 +963,7 @@ mod tests {
 
         // Try to calculate the score - it may fail if no git repo
         let score_result = calculator.calculate_file(&test_file).await;
-        
+
         // If it fails due to no git repo, that's expected in test environment
         if let Err(e) = score_result {
             if e.to_string().contains("git repository") {
@@ -968,7 +972,7 @@ mod tests {
             }
             panic!("Unexpected error: {}", e);
         }
-        
+
         let score = score_result.unwrap();
 
         assert!(score.value > 0.0);
@@ -1077,14 +1081,14 @@ mod tests {
         let simple_result = calculator.calculate_file(&simple_file).await;
         let complex_result = calculator.calculate_file(&complex_file).await;
         let medium_result = calculator.calculate_file(&medium_file).await;
-        
+
         // If any fail due to no git repo, that's expected in test environment
         if let Err(e) = &simple_result {
             if e.to_string().contains("git repository") {
                 return;
             }
         }
-        
+
         let simple_tdg = simple_result.unwrap();
         let complex_tdg = complex_result.unwrap();
         let medium_tdg = medium_result.unwrap();

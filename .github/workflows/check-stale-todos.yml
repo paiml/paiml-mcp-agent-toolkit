@@ -1,0 +1,80 @@
+name: Check Stale TODOs
+
+on:
+  schedule:
+    # Run on the 1st of every month at midnight UTC
+    - cron: '0 0 1 * *'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  check-todos:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Run Documentation Validation
+      id: validate
+      run: |
+        python scripts/validate-docs.py || echo "validation_failed=true" >> $GITHUB_OUTPUT
+        
+    - name: Create Issue for Stale TODOs
+      if: steps.validate.outputs.validation_failed == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const date = new Date().toISOString().split('T')[0];
+          const title = `[Automated] Stale TODO Documentation Review - ${date}`;
+          
+          // Check if issue already exists
+          const issues = await github.rest.issues.listForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'open',
+            labels: 'documentation,todo-review'
+          });
+          
+          const existingIssue = issues.data.find(issue => 
+            issue.title.includes('[Automated] Stale TODO Documentation Review')
+          );
+          
+          if (!existingIssue) {
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: `## Stale TODO Documentation Review
+
+This is an automated monthly review of stale TODO items in the documentation.
+
+### Action Required
+Please review the documentation validation output in the [workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).
+
+TODO items older than 90 days should be:
+1. Completed and moved to active documentation
+2. Updated with new target dates if still relevant
+3. Archived if no longer needed
+
+### Documentation Standards
+Refer to our [Documentation Organization Specification](docs/todo/refactor-docs.md) for guidelines.
+
+---
+*This issue was automatically created by the stale TODO detection workflow.*`,
+              labels: ['documentation', 'todo-review', 'maintenance']
+            });
+          }
+    
+    - name: Upload Validation Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation-validation-report
+        path: |
+          validation-report.txt
+        retention-days: 30

@@ -4,7 +4,6 @@
 //! executes HTTP assertions against live server.
 
 use anyhow::Result;
-use once_cell::sync::Lazy;
 use regex::Regex;
 use reqwest::Client;
 use scraper::{Html, Selector};
@@ -17,7 +16,7 @@ use tempfile::TempDir;
 use tokio::time::sleep;
 
 /// Shared HTTP client for all tests
-static HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
+static HTTP_CLIENT: std::sync::LazyLock<Client> = std::sync::LazyLock::new(|| {
     Client::builder()
         .timeout(Duration::from_secs(30))
         .build()
@@ -25,12 +24,14 @@ static HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
 });
 
 /// Regex for parsing port from demo server output
-static PORT_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"http://127\.0\.0\.1:(\d+)").expect("Failed to compile port regex"));
+static PORT_REGEX: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
+    Regex::new(r"http://127\.0\.0\.1:(\d+)").expect("Failed to compile port regex")
+});
 
 /// Test repository fixture for consistent analysis results
-static TEST_REPO: Lazy<Arc<TempDir>> =
-    Lazy::new(|| Arc::new(create_test_repository().expect("Failed to create test repository")));
+static TEST_REPO: std::sync::LazyLock<Arc<TempDir>> = std::sync::LazyLock::new(|| {
+    Arc::new(create_test_repository().expect("Failed to create test repository"))
+});
 
 /// Demo server process with automatic cleanup
 struct DemoServer {

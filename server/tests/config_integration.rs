@@ -168,7 +168,7 @@ performance:
                 assert_eq!(updated_config.panels.complexity.threshold, 25);
                 assert_eq!(updated_config.performance.parallel_workers, 8);
             }
-            _ = sleep(test_timeout) => {
+            () = sleep(test_timeout) => {
                 panic!("Config update notification not received within timeout (Kaizen optimization: {test_timeout:?})");
             }
         }

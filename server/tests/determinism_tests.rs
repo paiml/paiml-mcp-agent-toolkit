@@ -392,7 +392,7 @@ async fn create_test_project() -> TempDir {
     // Utils module
     fs::write(
         src_dir.join("utils.rs"),
-        r#"
+        r"
         pub fn helper_function() -> i32 {
             42
         }
@@ -410,7 +410,7 @@ async fn create_test_project() -> TempDir {
                 self.value * 2
             }
         }
-    "#,
+    ",
     )
     .unwrap();
 

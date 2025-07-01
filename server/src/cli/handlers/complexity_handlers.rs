@@ -125,10 +125,13 @@ pub async fn handle_analyze_dead_code(
 
     // Run analysis with ranking
     let mut result = analyzer.analyze_with_ranking(&path, config).await?;
-    
+
     // Debug: Check if we got any results
     eprintln!("🔍 Found {} ranked files", result.ranked_files.len());
-    eprintln!("🔍 Total files analyzed: {}", result.summary.total_files_analyzed);
+    eprintln!(
+        "🔍 Total files analyzed: {}",
+        result.summary.total_files_analyzed
+    );
 
     // Apply top_files limit if specified
     if let Some(limit) = top_files {

@@ -318,7 +318,7 @@ fn test_mcp_tool_schemas_match_documentation() {
                 if let Some(required) = schema.get("required").and_then(|r| r.as_array()) {
                     let actual_required: Vec<String> = required
                         .iter()
-                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .filter_map(|v| v.as_str().map(std::string::ToString::to_string))
                         .collect();
 
                     for doc_req in &doc_tool.required_params {
@@ -370,7 +370,7 @@ fn test_mcp_methods_match_documentation() {
 
     for method in &expected_methods {
         assert!(
-            documented_methods.contains(&method.to_string()),
+            documented_methods.contains(&(*method).to_string()),
             "Expected MCP method '{method}' not documented"
         );
     }
@@ -444,7 +444,7 @@ fn test_no_undocumented_mcp_tools() {
     for tool in tools_array {
         if let Some(name) = tool["name"].as_str() {
             // Skip internal tools
-            if name.starts_with("_") {
+            if name.starts_with('_') {
                 continue;
             }
 

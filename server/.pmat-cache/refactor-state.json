@@ -1,0 +1,39 @@
+{
+  "iteration": 1,
+  "context_generated": true,
+  "context_path": "./.pmat-cache/deep_context.md",
+  "current_file": "src/services/deep_context.rs",
+  "files_completed": [],
+  "quality_metrics": {
+    "total_violations": 4852,
+    "coverage_percent": 0.0,
+    "max_complexity": 136,
+    "satd_count": 100,
+    "files_with_issues": 1,
+    "total_files": 0,
+    "functions_with_high_complexity": 0,
+    "total_functions": 0
+  },
+  "progress": {
+    "overall_completion_percent": 0.0,
+    "lint_completion_percent": 0.0,
+    "complexity_completion_percent": 0.0,
+    "satd_completion_percent": 0.0,
+    "coverage_completion_percent": 0.0,
+    "files_completed": 0,
+    "files_remaining": 0,
+    "estimated_time_remaining_minutes": 0,
+    "quality_gates_passed": [],
+    "quality_gates_remaining": [
+      "Fix lint violations",
+      "Reduce complexity to ≤ 10",
+      "Resolve SATD items",
+      "Achieve ≥ 80% coverage"
+    ],
+    "current_phase": "LintFixes"
+  },
+  "start_time": {
+    "secs_since_epoch": 1751384720,
+    "nanos_since_epoch": 635258466
+  }
+}

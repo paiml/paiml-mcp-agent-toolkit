@@ -13,7 +13,7 @@ pub enum ArtifactCategory {
 }
 
 impl ArtifactCategory {
-    fn path(&self) -> &'static str {
+    const fn path(&self) -> &'static str {
         match self {
             Self::NonCodeSimple => "non-code/simple",
             Self::NonCodeStyled => "non-code/styled",
@@ -408,7 +408,7 @@ fn test_generate_all_artifacts() {
     let base_path = Path::new("../artifacts/mermaid");
     let artifact_specs = get_artifact_specs();
 
-    for spec in artifact_specs.iter() {
+    for spec in &artifact_specs {
         let category_path = base_path.join(spec.category.path());
         fs::create_dir_all(&category_path).unwrap();
 
@@ -458,7 +458,7 @@ fn test_maintain_mermaid_readme() {
     let artifact_specs = get_artifact_specs();
 
     // First generate the artifacts
-    for spec in artifact_specs.iter() {
+    for spec in &artifact_specs {
         let category_path = base_path.join(spec.category.path());
         fs::create_dir_all(&category_path).unwrap();
         let file_path = category_path.join(spec.name);
@@ -557,7 +557,7 @@ fn test_maintain_mermaid_readme() {
     fs::write(&readme_path, content).unwrap();
 }
 
-fn format_category_title(category: &ArtifactCategory) -> &'static str {
+const fn format_category_title(category: &ArtifactCategory) -> &'static str {
     match category {
         ArtifactCategory::NonCodeSimple => "Non-Code Simple Diagrams",
         ArtifactCategory::NonCodeStyled => "Non-Code Styled Diagrams",

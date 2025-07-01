@@ -76,6 +76,9 @@ mod tests {
                     AnalyzeCommands::BigO { .. } => {
                         panic!("Expected Churn command, got BigO");
                     }
+                    AnalyzeCommands::LintHotspot { .. } => {
+                        panic!("Expected Churn command, got LintHotspot");
+                    }
                 }
             }
             _ => panic!("Expected Analyze command"),
@@ -162,6 +165,9 @@ mod tests {
                 }
                 AnalyzeCommands::BigO { .. } => {
                     panic!("Expected Churn command, got BigO");
+                }
+                AnalyzeCommands::LintHotspot { .. } => {
+                    panic!("Expected Churn command, got LintHotspot");
                 }
             },
             _ => panic!("Expected Analyze command"),

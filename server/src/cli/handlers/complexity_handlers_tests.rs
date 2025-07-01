@@ -42,7 +42,7 @@ fn test_complexity_output_format_display() {
 #[tokio::test]
 async fn test_handle_analyze_dead_code_summary_output() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Create a test file with obvious dead code
     std::fs::write(
         temp_dir.path().join("dead.rs"),
@@ -61,7 +61,7 @@ fn main() {
 "#,
     )
     .unwrap();
-    
+
     // Test with summary format
     let result = handle_analyze_dead_code(
         temp_dir.path().to_path_buf(),
@@ -73,7 +73,7 @@ fn main() {
         None,
     )
     .await;
-    
+
     assert!(result.is_ok());
 }
 
@@ -81,7 +81,7 @@ fn main() {
 async fn test_handle_analyze_dead_code_json_output() {
     let temp_dir = TempDir::new().unwrap();
     let output_file = temp_dir.path().join("dead_code.json");
-    
+
     // Create test file
     std::fs::write(
         temp_dir.path().join("test.rs"),
@@ -96,7 +96,7 @@ fn main() {
 "#,
     )
     .unwrap();
-    
+
     // Test with JSON output to file
     let result = handle_analyze_dead_code(
         temp_dir.path().to_path_buf(),
@@ -108,9 +108,9 @@ fn main() {
         Some(output_file.clone()),
     )
     .await;
-    
+
     assert!(result.is_ok());
-    
+
     // Verify file was created
     if output_file.exists() {
         let content = std::fs::read_to_string(&output_file).unwrap();
@@ -122,7 +122,7 @@ fn main() {
 #[tokio::test]
 async fn test_handle_analyze_dead_code_top_files_limit() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Create multiple test files
     for i in 0..5 {
         std::fs::write(
@@ -138,7 +138,7 @@ fn dead_function_{}() {{
         )
         .unwrap();
     }
-    
+
     // Test with top_files = 3
     let result = handle_analyze_dead_code(
         temp_dir.path().to_path_buf(),
@@ -150,7 +150,7 @@ fn dead_function_{}() {{
         None,
     )
     .await;
-    
+
     assert!(result.is_ok());
 }
 
@@ -158,7 +158,7 @@ fn dead_function_{}() {{
 async fn test_handle_analyze_dead_code_sarif_format() {
     let temp_dir = TempDir::new().unwrap();
     let output_file = temp_dir.path().join("dead_code.sarif");
-    
+
     // Create test file with dead code
     std::fs::write(
         temp_dir.path().join("test.rs"),
@@ -171,7 +171,7 @@ fn dead_function() {
 "#,
     )
     .unwrap();
-    
+
     // Test SARIF output
     let result = handle_analyze_dead_code(
         temp_dir.path().to_path_buf(),
@@ -183,9 +183,9 @@ fn dead_function() {
         Some(output_file.clone()),
     )
     .await;
-    
+
     assert!(result.is_ok());
-    
+
     // Verify SARIF structure if file exists
     if output_file.exists() {
         let content = std::fs::read_to_string(&output_file).unwrap();
@@ -198,7 +198,7 @@ fn dead_function() {
 #[tokio::test]
 async fn test_handle_analyze_dead_code_with_min_lines() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Create file with small dead function
     std::fs::write(
         temp_dir.path().join("test.rs"),
@@ -214,7 +214,7 @@ fn larger_dead_function() {
 "#,
     )
     .unwrap();
-    
+
     // Test with min_dead_lines = 3
     let result = handle_analyze_dead_code(
         temp_dir.path().to_path_buf(),
@@ -226,7 +226,7 @@ fn larger_dead_function() {
         None,
     )
     .await;
-    
+
     assert!(result.is_ok());
 }
 

@@ -177,31 +177,59 @@ test:
 	echo "🔨 Building with $$CARGO_BUILD_JOBS jobs, testing with $$THREADS threads..."; \
 	cd server && SKIP_SLOW_TESTS=1 CARGO_BUILD_JOBS=$$CARGO_BUILD_JOBS cargo llvm-cov test \
 		--lib --bins \
+		--features skip-slow-tests \
 		--no-fail-fast \
 		--jobs $$CARGO_BUILD_JOBS \
 		-- --test-threads=$$THREADS 2>&1 | grep -E "test result:|passed|failed|TOTAL|%"
 	@echo "✅ All fast tests completed with coverage summary!"
 
-# Generate coverage reports for all projects (fast and comprehensive)
+# Fast coverage - default target, MUST be < 30 seconds
 coverage:
-	@echo "📊 Generating fast coverage report..."
+	@echo "⚡ Running FAST coverage (target: < 30 seconds)..."
 	@mkdir -p coverage/
-	@if [ "$${CI:-}" = "true" ]; then \
-		echo "🔧 Running CI-optimized coverage (text only)..."; \
-		cargo llvm-cov report --manifest-path server/Cargo.toml --summary-only; \
+	@# Try to reuse existing test results first
+	@if [ -d "target/llvm-cov-target" ]; then \
+		echo "🔄 Found existing test results, generating report..."; \
+		cd server && cargo llvm-cov report --html --output-dir ../coverage/ 2>/dev/null && \
+		cargo llvm-cov report --summary-only | grep -E "TOTAL|%" || \
+		(echo "🚀 No valid coverage data, running fast lib tests..." && \
+		 SKIP_SLOW_TESTS=1 cargo llvm-cov test --lib --features skip-slow-tests --html --output-dir ../coverage/ -- --test-threads=$$(nproc)); \
 	else \
-		echo "🔧 Running local coverage (HTML + summary)..."; \
-		cargo llvm-cov report --manifest-path server/Cargo.toml --html --output-dir coverage/ --summary-only; \
-		echo "📁 HTML report: coverage/index.html"; \
+		echo "🚀 Running fast lib tests with coverage..."; \
+		cd server && SKIP_SLOW_TESTS=1 cargo llvm-cov test --lib \
+			--features skip-slow-tests \
+			--html --output-dir ../coverage/ \
+			-- --test-threads=$$(nproc); \
 	fi
-	@echo "✅ Coverage report generated!"
+	@echo "📁 HTML report: coverage/index.html"
+	@cd server && cargo llvm-cov report --summary-only | grep -E "TOTAL|%" || true
+	@echo "✅ Fast coverage complete! Use 'make coverage-full' for comprehensive coverage."
+
+# Comprehensive coverage - includes all tests
+coverage-full:
+	@echo "📊 Running comprehensive coverage (all tests)..."
+	@mkdir -p coverage/
+	@cd server && cargo llvm-cov --lib --bins --tests \
+		--html --output-dir ../coverage/
+	@echo "📁 HTML report: coverage/index.html"
+	@cd server && cargo llvm-cov report
+	@echo "✅ Comprehensive coverage complete!"
+
+# Show existing coverage report (instant)
+coverage-report:
+	@echo "📊 Showing existing coverage report..."
+	@if [ -d "target/llvm-cov-target" ]; then \
+		cd server && cargo llvm-cov report --summary-only | grep -E "TOTAL|%|---" || echo "No coverage data found. Run 'make coverage' first."; \
+	else \
+		echo "⚠️  No coverage data found. Run 'make coverage' first."; \
+	fi
 
 # Fast coverage to stdout - MUST complete under 2 minutes
 coverage-stdout:
 	@echo "📊 Running fast coverage to stdout (under 2 minutes)..."
-	@echo "🚀 Running unit tests only for fast coverage..."
+	@echo "🚀 Running unit tests with LLVM coverage..."
 	@start_time=$$(date +%s); \
-	cd server && SKIP_SLOW_TESTS=1 cargo test --lib --quiet 2>&1 | grep -E "test result:|passed|failed" || true; \
+	cd server && SKIP_SLOW_TESTS=1 cargo llvm-cov test --lib --features skip-slow-tests --summary-only 2>&1 | grep -E "test result:|passed|failed|TOTAL|%" || true; \
 	end_time=$$(date +%s); \
 	duration=$$((end_time - start_time)); \
 	echo ""; \
@@ -1007,7 +1035,9 @@ help:
 	@echo "  test-fast    - Run fast tests with intelligent parallelism (no coverage)"
 	@echo "  test-safe    - Run tests with manual thread control (use THREADS=n make test-safe)"
 	@echo "  test-critical-scripts - Test critical installation/release scripts"
-	@echo "  coverage     - Generate coverage reports for all projects"
+	@echo "  coverage     - FAST coverage report (<30s, lib tests only)"
+	@echo "  coverage-full - Comprehensive coverage (all tests, slower)"
+	@echo "  coverage-report - Show existing coverage report (instant)"
 	@echo "  coverage-stdout - Fast coverage to stdout (completes under 2 minutes)"
 	@echo "  coverage-scripts - Generate coverage report for TypeScript tests"
 	@echo "  audit        - Run security audit on all projects"

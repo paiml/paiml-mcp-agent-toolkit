@@ -129,11 +129,16 @@ impl FileClassificationReporter {
     }
 
     /// Report a skipped file
-    pub fn report_skipped(&self, path: &std::path::Path, reason: crate::services::file_classifier::SkipReason) {
+    pub fn report_skipped(
+        &self,
+        path: &std::path::Path,
+        reason: crate::services::file_classifier::SkipReason,
+    ) {
         use crate::services::file_classifier::SkipReason;
-        
-        self.skipped_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        
+
+        self.skipped_count
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
         match reason {
             SkipReason::LargeFile => {
                 if let Ok(mut files) = self.large_files_skipped.lock() {
@@ -156,7 +161,9 @@ impl FileClassificationReporter {
 
     /// Get summary of skipped files
     pub fn get_summary(&self) -> (u64, Vec<std::path::PathBuf>) {
-        let count = self.skipped_count.load(std::sync::atomic::Ordering::Relaxed);
+        let count = self
+            .skipped_count
+            .load(std::sync::atomic::Ordering::Relaxed);
         let files = self.large_files_skipped.lock().unwrap().clone();
         (count, files)
     }

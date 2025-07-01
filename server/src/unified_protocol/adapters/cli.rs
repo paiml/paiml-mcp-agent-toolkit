@@ -101,6 +101,12 @@ impl CliAdapter {
                     "Report command should be handled directly by CLI".to_string(),
                 ))
             }
+            Commands::Enforce(_) => {
+                // Enforce command is handled directly in the CLI, not through the unified protocol
+                Err(ProtocolError::InvalidFormat(
+                    "Enforce command should be handled directly by CLI".to_string(),
+                ))
+            }
             Commands::Refactor(_) => {
                 // Refactor command is handled directly in the CLI, not through the unified protocol
                 Err(ProtocolError::InvalidFormat(
@@ -360,6 +366,38 @@ impl CliAdapter {
                 *include_components,
                 *verbose,
             ),
+            AnalyzeCommands::LintHotspot {
+                project_path,
+                format,
+                max_density,
+                min_confidence,
+                enforce,
+                dry_run,
+                enforcement_metadata,
+                output,
+                perf,
+                clippy_flags,
+            } => {
+                // Convert LintHotspot command to generic analyze method
+                let params = json!({
+                    "project_path": project_path,
+                    "format": format,
+                    "max_density": max_density,
+                    "min_confidence": min_confidence,
+                    "enforce": enforce,
+                    "dry_run": dry_run,
+                    "enforcement_metadata": enforcement_metadata,
+                    "output": output,
+                    "perf": perf,
+                    "clippy_flags": clippy_flags,
+                });
+                Ok((
+                    Method::POST,
+                    "/api/v1/analyze/lint-hotspot".to_string(),
+                    params,
+                    None,
+                ))
+            },
             AnalyzeCommands::Makefile {
                 path,
                 rules,
@@ -1113,6 +1151,7 @@ impl CliInput {
             AnalyzeCommands::Satd { .. } => "analyze-satd",
             AnalyzeCommands::DeepContext { .. } => "analyze-deep-context",
             AnalyzeCommands::Tdg { .. } => "analyze-tdg",
+            AnalyzeCommands::LintHotspot { .. } => "analyze-lint-hotspot",
             AnalyzeCommands::Makefile { .. } => "analyze-makefile",
             AnalyzeCommands::Provability { .. } => "analyze-provability",
             AnalyzeCommands::Duplicates { .. } => "analyze-duplicates",
@@ -1141,6 +1180,7 @@ impl CliInput {
             Commands::Diagnose(_) => "diagnose",
             Commands::QualityGate { .. } => "quality-gate",
             Commands::Report { .. } => "report",
+            Commands::Enforce(_) => "enforce",
             Commands::Refactor(_) => "refactor",
         }
         .to_string();

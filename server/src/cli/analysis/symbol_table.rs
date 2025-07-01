@@ -79,18 +79,13 @@ pub async fn handle_analyze_symbol_table(
 
     // Build the symbol table
     let table = build_symbol_table(&project_path, &include, &exclude).await?;
-    
+
     // Apply filters
     let filtered = apply_filters(table, filter, query)?;
-    
+
     // Format output
-    let content = format_output(
-        filtered,
-        format,
-        show_unreferenced,
-        show_references,
-    )?;
-    
+    let content = format_output(filtered, format, show_unreferenced, show_references)?;
+
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
@@ -98,7 +93,7 @@ pub async fn handle_analyze_symbol_table(
     } else {
         println!("{}", content);
     }
-    
+
     Ok(())
 }
 
@@ -109,22 +104,22 @@ async fn build_symbol_table(
     exclude: &Option<String>,
 ) -> Result<SymbolTable> {
     let mut symbols = Vec::new();
-    
+
     // Get all relevant files
     let files = collect_files(project_path, include, exclude).await?;
-    
+
     // Extract symbols from each file
     for file in files {
         let file_symbols = extract_symbols_from_file(&file).await?;
         symbols.extend(file_symbols);
     }
-    
+
     // Find unreferenced symbols
     let unreferenced = find_unreferenced_symbols(&symbols);
-    
+
     // Find most referenced symbols
     let most_referenced = find_most_referenced(&symbols);
-    
+
     Ok(SymbolTable {
         total_symbols: symbols.len(),
         symbols,
@@ -139,16 +134,10 @@ async fn collect_files(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<Vec<PathBuf>> {
-    
     let mut files = Vec::new();
-    
-    collect_files_recursive(
-        project_path,
-        &mut files,
-        include,
-        exclude,
-    ).await?;
-    
+
+    collect_files_recursive(project_path, &mut files, include, exclude).await?;
+
     Ok(files)
 }
 
@@ -160,18 +149,18 @@ async fn collect_files_recursive(
     exclude: &Option<String>,
 ) -> Result<()> {
     let mut entries = tokio::fs::read_dir(dir).await?;
-    
+
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
         let path_str = path.to_string_lossy();
-        
+
         // Skip excluded paths
         if let Some(excl) = exclude {
             if path_str.contains(excl) {
                 continue;
             }
         }
-        
+
         if path.is_dir() {
             // Skip hidden and vendor directories
             let name = path.file_name().unwrap_or_default().to_string_lossy();
@@ -189,23 +178,33 @@ async fn collect_files_recursive(
             }
         }
     }
-    
+
     Ok(())
 }
 
 // Check if file is a source file
 fn is_source_file(path: &Path) -> bool {
-    matches!(path.extension().and_then(|s| s.to_str()),
-        Some("rs") | Some("js") | Some("ts") | Some("py") | 
-        Some("java") | Some("cpp") | Some("c") | Some("h") |
-        Some("hpp") | Some("go") | Some("rb"))
+    matches!(
+        path.extension().and_then(|s| s.to_str()),
+        Some("rs")
+            | Some("js")
+            | Some("ts")
+            | Some("py")
+            | Some("java")
+            | Some("cpp")
+            | Some("c")
+            | Some("h")
+            | Some("hpp")
+            | Some("go")
+            | Some("rb")
+    )
 }
 
 // Extract symbols from a single file
 async fn extract_symbols_from_file(file_path: &Path) -> Result<Vec<Symbol>> {
     let content = tokio::fs::read_to_string(file_path).await?;
     let file_str = file_path.to_string_lossy().to_string();
-    
+
     // Use simple regex-based extraction for now
     extract_symbols_simple(&content, &file_str)
 }
@@ -213,21 +212,36 @@ async fn extract_symbols_from_file(file_path: &Path) -> Result<Vec<Symbol>> {
 // Simple symbol extraction using regex
 fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
     use regex::Regex;
-    
+
     let mut symbols = Vec::new();
-    
+
     // Function patterns for different languages
     let patterns = vec![
-        (Regex::new(r"(?m)^(?:pub\s+)?(?:async\s+)?fn\s+(\w+)")?, SymbolKind::Function),
+        (
+            Regex::new(r"(?m)^(?:pub\s+)?(?:async\s+)?fn\s+(\w+)")?,
+            SymbolKind::Function,
+        ),
         (Regex::new(r"(?m)^class\s+(\w+)")?, SymbolKind::Class),
-        (Regex::new(r"(?m)^(?:export\s+)?(?:async\s+)?function\s+(\w+)")?, SymbolKind::Function),
+        (
+            Regex::new(r"(?m)^(?:export\s+)?(?:async\s+)?function\s+(\w+)")?,
+            SymbolKind::Function,
+        ),
         (Regex::new(r"(?m)^def\s+(\w+)")?, SymbolKind::Function),
         (Regex::new(r"(?m)^const\s+(\w+)\s*=")?, SymbolKind::Constant),
-        (Regex::new(r"(?m)^(?:pub\s+)?struct\s+(\w+)")?, SymbolKind::Type),
-        (Regex::new(r"(?m)^(?:pub\s+)?enum\s+(\w+)")?, SymbolKind::Enum),
-        (Regex::new(r"(?m)^interface\s+(\w+)")?, SymbolKind::Interface),
+        (
+            Regex::new(r"(?m)^(?:pub\s+)?struct\s+(\w+)")?,
+            SymbolKind::Type,
+        ),
+        (
+            Regex::new(r"(?m)^(?:pub\s+)?enum\s+(\w+)")?,
+            SymbolKind::Enum,
+        ),
+        (
+            Regex::new(r"(?m)^interface\s+(\w+)")?,
+            SymbolKind::Interface,
+        ),
     ];
-    
+
     for (line_no, line) in content.lines().enumerate() {
         for (pattern, kind) in &patterns {
             if let Some(captures) = pattern.captures(line) {
@@ -250,7 +264,7 @@ fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
             }
         }
     }
-    
+
     Ok(symbols)
 }
 
@@ -282,7 +296,7 @@ fn find_most_referenced(symbols: &[Symbol]) -> Vec<(String, usize)> {
         .iter()
         .map(|s| (s.name.clone(), s.references.len()))
         .collect();
-    
+
     refs.sort_by(|a, b| b.1.cmp(&a.1));
     refs.truncate(10);
     refs
@@ -297,21 +311,31 @@ fn apply_filters(
     // Filter by type
     if let Some(type_filter) = filter {
         table.symbols.retain(|s| match type_filter {
-            crate::cli::SymbolTypeFilter::Functions => s.kind == SymbolKind::Function || s.kind == SymbolKind::Method,
+            crate::cli::SymbolTypeFilter::Functions => {
+                s.kind == SymbolKind::Function || s.kind == SymbolKind::Method
+            }
             crate::cli::SymbolTypeFilter::Classes => s.kind == SymbolKind::Class,
-            crate::cli::SymbolTypeFilter::Types => s.kind == SymbolKind::Type || s.kind == SymbolKind::Interface || s.kind == SymbolKind::Enum,
-            crate::cli::SymbolTypeFilter::Variables => s.kind == SymbolKind::Variable || s.kind == SymbolKind::Constant,
+            crate::cli::SymbolTypeFilter::Types => {
+                s.kind == SymbolKind::Type
+                    || s.kind == SymbolKind::Interface
+                    || s.kind == SymbolKind::Enum
+            }
+            crate::cli::SymbolTypeFilter::Variables => {
+                s.kind == SymbolKind::Variable || s.kind == SymbolKind::Constant
+            }
             crate::cli::SymbolTypeFilter::Modules => s.kind == SymbolKind::Module,
             crate::cli::SymbolTypeFilter::All => true,
         });
     }
-    
+
     // Filter by query
     if let Some(q) = query {
         let q_lower = q.to_lowercase();
-        table.symbols.retain(|s| s.name.to_lowercase().contains(&q_lower));
+        table
+            .symbols
+            .retain(|s| s.name.to_lowercase().contains(&q_lower));
     }
-    
+
     Ok(table)
 }
 
@@ -323,60 +347,59 @@ fn format_output(
     _show_references: bool,
 ) -> Result<String> {
     use std::fmt::Write;
-    
+
     match format {
-        crate::cli::SymbolTableOutputFormat::Json => {
-            Ok(serde_json::to_string_pretty(&table)?)
-        }
-        crate::cli::SymbolTableOutputFormat::Human |
-        crate::cli::SymbolTableOutputFormat::Summary |
-        crate::cli::SymbolTableOutputFormat::Detailed => {
+        crate::cli::SymbolTableOutputFormat::Json => Ok(serde_json::to_string_pretty(&table)?),
+        crate::cli::SymbolTableOutputFormat::Human
+        | crate::cli::SymbolTableOutputFormat::Summary
+        | crate::cli::SymbolTableOutputFormat::Detailed => {
             let mut output = String::new();
             writeln!(&mut output, "# Symbol Table Analysis\n")?;
             writeln!(&mut output, "Total symbols: {}", table.total_symbols)?;
             writeln!(&mut output, "\n## Symbols by Type\n")?;
-            
+
             // Group by type
             let mut by_type: HashMap<SymbolKind, Vec<&Symbol>> = HashMap::new();
             for symbol in &table.symbols {
                 by_type.entry(symbol.kind.clone()).or_default().push(symbol);
             }
-            
+
             for (kind, syms) in by_type {
                 writeln!(&mut output, "### {:?} ({})", kind, syms.len())?;
                 for sym in syms.iter().take(10) {
-                    writeln!(&mut output, "  - {} ({}:{})", 
-                        sym.name, sym.file, sym.line)?;
+                    writeln!(&mut output, "  - {} ({}:{})", sym.name, sym.file, sym.line)?;
                 }
                 if syms.len() > 10 {
                     writeln!(&mut output, "  ... and {} more", syms.len() - 10)?;
                 }
                 writeln!(&mut output)?;
             }
-            
+
             if show_unreferenced && !table.unreferenced_symbols.is_empty() {
                 writeln!(&mut output, "## Unreferenced Symbols\n")?;
                 for name in &table.unreferenced_symbols {
                     writeln!(&mut output, "  - {}", name)?;
                 }
             }
-            
+
             if !table.most_referenced.is_empty() {
                 writeln!(&mut output, "\n## Most Referenced Symbols\n")?;
                 for (name, count) in &table.most_referenced {
                     writeln!(&mut output, "  - {}: {} references", name, count)?;
                 }
             }
-            
+
             Ok(output)
         }
         crate::cli::SymbolTableOutputFormat::Csv => {
             let mut output = String::new();
             writeln!(&mut output, "name,kind,file,line,column,visibility")?;
             for sym in table.symbols {
-                writeln!(&mut output, "{},{:?},{},{},{},{:?}",
-                    sym.name, sym.kind, sym.file, sym.line, 
-                    sym.column, sym.visibility)?;
+                writeln!(
+                    &mut output,
+                    "{},{:?},{},{},{},{:?}",
+                    sym.name, sym.kind, sym.file, sym.line, sym.column, sym.visibility
+                )?;
             }
             Ok(output)
         }
@@ -389,18 +412,27 @@ mod tests {
 
     #[test]
     fn test_detect_visibility() {
-        assert!(matches!(detect_visibility("pub fn test()"), Visibility::Public));
-        assert!(matches!(detect_visibility("private fn test()"), Visibility::Private));
-        assert!(matches!(detect_visibility("fn test()"), Visibility::Internal));
+        assert!(matches!(
+            detect_visibility("pub fn test()"),
+            Visibility::Public
+        ));
+        assert!(matches!(
+            detect_visibility("private fn test()"),
+            Visibility::Private
+        ));
+        assert!(matches!(
+            detect_visibility("fn test()"),
+            Visibility::Internal
+        ));
     }
-    
+
     #[test]
     fn test_is_source_file() {
         assert!(is_source_file(Path::new("test.rs")));
         assert!(is_source_file(Path::new("test.js")));
         assert!(!is_source_file(Path::new("test.txt")));
     }
-    
+
     #[test]
     fn test_extract_symbols_simple() {
         let content = "pub fn test_function() {}\nstruct TestStruct {}";
@@ -409,26 +441,24 @@ mod tests {
         assert_eq!(symbols[0].name, "test_function");
         assert_eq!(symbols[1].name, "TestStruct");
     }
-    
+
     #[tokio::test]
     async fn test_symbol_table_creation() {
         let table = SymbolTable {
-            symbols: vec![
-                Symbol {
-                    name: "test".to_string(),
-                    kind: SymbolKind::Function,
-                    file: "test.rs".to_string(),
-                    line: 1,
-                    column: 0,
-                    visibility: Visibility::Public,
-                    references: vec![],
-                }
-            ],
+            symbols: vec![Symbol {
+                name: "test".to_string(),
+                kind: SymbolKind::Function,
+                file: "test.rs".to_string(),
+                line: 1,
+                column: 0,
+                visibility: Visibility::Public,
+                references: vec![],
+            }],
             total_symbols: 1,
             unreferenced_symbols: vec!["test".to_string()],
             most_referenced: vec![],
         };
-        
+
         assert_eq!(table.total_symbols, 1);
         assert_eq!(table.unreferenced_symbols.len(), 1);
     }

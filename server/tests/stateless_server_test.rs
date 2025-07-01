@@ -1,4 +1,4 @@
-//! Tests for stateless_server
+//! Tests for `stateless_server`
 
 #[cfg(test)]
 mod stateless_server_tests {

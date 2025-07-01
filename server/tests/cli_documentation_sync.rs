@@ -363,8 +363,7 @@ fn test_documentation_examples_are_valid() {
                 let subcommand_pos = cmd_args
                     .iter()
                     .position(|arg| !arg.starts_with('-'))
-                    .map(|pos| pos + 1)
-                    .unwrap_or(cmd_args.len());
+                    .map_or(cmd_args.len(), |pos| pos + 1);
 
                 cmd_args.insert(subcommand_pos.min(cmd_args.len()), "--help");
             }

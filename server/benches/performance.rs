@@ -10,7 +10,7 @@ fn bench_core_operations(c: &mut Criterion) {
     c.bench_function("analyze_rust_file", |b| {
         b.iter(|| {
             rt.block_on(async { analyze_rust_file(black_box(Path::new("src/lib.rs"))).await })
-        })
+        });
     });
 
     c.bench_function("analyze_project_small", |b| {
@@ -18,7 +18,7 @@ fn bench_core_operations(c: &mut Criterion) {
             rt.block_on(async {
                 analyze_project(black_box(Path::new("src/models")), black_box("rust")).await
             })
-        })
+        });
     });
 }
 

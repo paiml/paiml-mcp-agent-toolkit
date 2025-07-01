@@ -50,6 +50,7 @@ pub mod makefile_linter;
 pub mod mermaid_generator;
 pub mod parallel_git;
 pub mod parsed_file_cache;
+pub mod progress;
 pub mod project_meta_detector;
 pub mod proof_annotator;
 pub mod quality_gates;
@@ -68,7 +69,6 @@ pub mod unified_ast_engine;
 pub mod unified_ast_parser;
 pub mod unified_refactor_analyzer;
 pub mod verified_complexity;
-pub mod progress;
 
 #[cfg(test)]
 mod tests {

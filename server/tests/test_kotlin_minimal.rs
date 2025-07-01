@@ -29,7 +29,7 @@ class Hello {
             println!("  - Found {} nodes", ast_dag.nodes.len());
         }
         Err(e) => {
-            println!("✗ Parsing failed: {}", e);
+            println!("✗ Parsing failed: {e}");
         }
     }
 

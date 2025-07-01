@@ -35,7 +35,7 @@ class TestClass {
                 assert!(!ast.nodes.is_empty(), "AST should have nodes");
             }
             Err(e) => {
-                panic!("❌ Kotlin parsing failed: {}", e);
+                panic!("❌ Kotlin parsing failed: {e}");
             }
         }
     }

@@ -127,7 +127,14 @@ impl CommandExecutor {
             } => {
                 self.registry
                     .utility_handlers
-                    .handle_context(toolchain, project_path, output, format, include_large_files, skip_expensive_metrics)
+                    .handle_context(
+                        toolchain,
+                        project_path,
+                        output,
+                        format,
+                        include_large_files,
+                        skip_expensive_metrics,
+                    )
                     .await
             }
             Commands::Serve { port, host, cors } => {
@@ -235,6 +242,9 @@ impl CommandExecutor {
             Commands::Diagnose(args) => self.registry.utility_handlers.handle_diagnose(args).await,
             Commands::Refactor(refactor_cmd) => {
                 super::handlers::route_refactor_command(refactor_cmd).await
+            }
+            Commands::Enforce(enforce_cmd) => {
+                super::handlers::route_enforce_command(enforce_cmd).await
             }
         }
     }

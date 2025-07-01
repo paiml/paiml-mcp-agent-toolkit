@@ -343,7 +343,7 @@ fn test_analyze_complexity_summary() {
     let temp_dir = TempDir::new().unwrap();
     fs::write(
         temp_dir.path().join("complex.rs"),
-        r#"
+        r"
 fn complex_function(x: i32, y: i32) -> i32 {
     if x > 0 {
         if y > 0 {
@@ -359,7 +359,7 @@ fn complex_function(x: i32, y: i32) -> i32 {
         _ => x * 3,
     }
 }
-"#,
+",
     )
     .unwrap();
 
@@ -376,7 +376,7 @@ fn test_analyze_complexity_sarif_format() {
     let temp_dir = TempDir::new().unwrap();
     fs::write(
         temp_dir.path().join("test.ts"),
-        r#"
+        r"
 function complexFunction(x: number): number {
     if (x > 0) {
         if (x > 10) {
@@ -386,7 +386,7 @@ function complexFunction(x: number): number {
     }
     return 0;
 }
-"#,
+",
     )
     .unwrap();
 
@@ -427,7 +427,7 @@ fn test_analyze_dag_mermaid_output() {
     let temp_dir = TempDir::new().unwrap();
     fs::write(
         temp_dir.path().join("main.rs"),
-        r#"
+        r"
 mod helpers;
 
 fn main() {
@@ -438,7 +438,7 @@ fn main() {
 fn process_data(x: i32) -> i32 {
     helpers::calculate(x)
 }
-"#,
+",
     )
     .unwrap();
 

@@ -19,7 +19,7 @@ class Person(val name: String, var age: Int) {
 
     // Create temporary file
     let mut file = NamedTempFile::new().unwrap();
-    writeln!(file, "{}", kotlin_code).unwrap();
+    writeln!(file, "{kotlin_code}").unwrap();
     let path = file.path();
 
     // Test parsing
@@ -66,7 +66,7 @@ class Car : Vehicle {
 
     // Create temporary file
     let mut file = NamedTempFile::new().unwrap();
-    writeln!(file, "{}", kotlin_code).unwrap();
+    writeln!(file, "{kotlin_code}").unwrap();
     let path = file.path();
 
     // Test parsing
@@ -91,7 +91,7 @@ class Car : Vehicle {
 
 #[tokio::test]
 async fn test_kotlin_data_class_parsing() {
-    let kotlin_code = r#"
+    let kotlin_code = r"
 data class User(val id: Int, val name: String, val email: String)
 
 enum class Status {
@@ -99,11 +99,11 @@ enum class Status {
     INACTIVE,
     PENDING
 }
-"#;
+";
 
     // Create temporary file with .kt extension
     let file = tempfile::Builder::new().suffix(".kt").tempfile().unwrap();
-    writeln!(file.as_file(), "{}", kotlin_code).unwrap();
+    writeln!(file.as_file(), "{kotlin_code}").unwrap();
     let path = file.path();
 
     // Test parsing

@@ -126,8 +126,8 @@ make server-coverage-lcov
 
 ### View Line-by-Line Coverage
 ```bash
-cargo tarpaulin --out Html --output-dir coverage
-open coverage/tarpaulin-report.html
+cargo llvm-cov html --output-dir coverage
+open coverage/index.html
 ```
 
 ## Coverage Requirements
@@ -140,12 +140,12 @@ open coverage/tarpaulin-report.html
 ### Exclusions
 ```rust
 // Excluded from coverage
-#[cfg(not(tarpaulin_include))]
+#[cfg(not(coverage))]
 mod tests {
     // Test utilities
 }
 
-// Excluded patterns in tarpaulin.toml
+// Excluded patterns in coverage configuration
 - "**/tests/**"
 - "**/benches/**"
 - "**/build.rs"
@@ -202,7 +202,7 @@ all-features = true
 ```yaml
 - name: Generate Coverage
   run: |
-    cargo tarpaulin --out Xml --all-features
+    cargo llvm-cov report --lcov --output-path lcov.info --all-features
     bash <(curl -s https://codecov.io/bash)
 ```
 

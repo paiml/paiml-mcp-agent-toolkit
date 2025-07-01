@@ -43,12 +43,11 @@ mod slow_integration_tests {
         })
         .await;
 
-        match result {
-            Ok(test_result) => test_result,
-            Err(_) => {
-                eprintln!("Warning: test_demo_runner_as_library timed out after 120s");
-                Ok(()) // Skip on timeout rather than fail
-            }
+        if let Ok(test_result) = result {
+            test_result
+        } else {
+            eprintln!("Warning: test_demo_runner_as_library timed out after 120s");
+            Ok(()) // Skip on timeout rather than fail
         }
     }
 
@@ -92,12 +91,11 @@ mod slow_integration_tests {
         })
         .await;
 
-        match result {
-            Ok(test_result) => test_result,
-            Err(_) => {
-                eprintln!("Warning: test_export_service_as_library timed out after 120s");
-                Ok(()) // Skip on timeout rather than fail
-            }
+        if let Ok(test_result) = result {
+            test_result
+        } else {
+            eprintln!("Warning: test_export_service_as_library timed out after 120s");
+            Ok(()) // Skip on timeout rather than fail
         }
     }
 
@@ -137,14 +135,11 @@ mod slow_integration_tests {
         })
         .await;
 
-        match result {
-            Ok(test_result) => test_result,
-            Err(_) => {
-                eprintln!(
-                    "Warning: test_programmatic_demo_with_custom_config timed out after 120s"
-                );
-                Ok(()) // Skip on timeout rather than fail
-            }
+        if let Ok(test_result) = result {
+            test_result
+        } else {
+            eprintln!("Warning: test_programmatic_demo_with_custom_config timed out after 120s");
+            Ok(()) // Skip on timeout rather than fail
         }
     }
 
@@ -217,12 +212,11 @@ performance:
         })
         .await;
 
-        match result {
-            Ok(test_result) => test_result,
-            Err(_) => {
-                eprintln!("Warning: test_end_to_end_library_usage timed out after 180s");
-                Ok(()) // Skip on timeout rather than fail
-            }
+        if let Ok(test_result) = result {
+            test_result
+        } else {
+            eprintln!("Warning: test_end_to_end_library_usage timed out after 180s");
+            Ok(()) // Skip on timeout rather than fail
         }
     }
 

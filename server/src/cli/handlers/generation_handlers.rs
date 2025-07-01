@@ -51,19 +51,31 @@ pub async fn handle_scaffold(
     use futures::stream::{self, StreamExt};
 
     let params_json = super::super::stubs::params_to_json(params);
-    
+
     // If no templates specified, use default templates for the toolchain
     let templates_to_use = if templates.is_empty() {
         match toolchain.as_str() {
-            "rust" => vec!["makefile".to_string(), "readme".to_string(), "gitignore".to_string()],
-            "deno" => vec!["makefile".to_string(), "readme".to_string(), "gitignore".to_string()],
-            "python-uv" => vec!["makefile".to_string(), "readme".to_string(), "gitignore".to_string()],
+            "rust" => vec![
+                "makefile".to_string(),
+                "readme".to_string(),
+                "gitignore".to_string(),
+            ],
+            "deno" => vec![
+                "makefile".to_string(),
+                "readme".to_string(),
+                "gitignore".to_string(),
+            ],
+            "python-uv" => vec![
+                "makefile".to_string(),
+                "readme".to_string(),
+                "gitignore".to_string(),
+            ],
             _ => vec!["readme".to_string()],
         }
     } else {
         templates
     };
-    
+
     let results = scaffold_project(
         server.clone(),
         &toolchain,
@@ -82,7 +94,7 @@ pub async fn handle_scaffold(
 
     // Store file count before moving the vector
     let file_count = results.files.len();
-    
+
     // Parallel file writing with bounded concurrency
     let write_results: Vec<_> = stream::iter(results.files)
         .map(|file| async move {
@@ -112,7 +124,7 @@ pub async fn handle_scaffold(
     } else if file_count == 0 {
         eprintln!("\n⚠️ No files were generated. Check your parameters and template availability.");
     }
-    
+
     Ok(())
 }
 

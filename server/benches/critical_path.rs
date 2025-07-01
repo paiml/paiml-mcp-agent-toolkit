@@ -100,7 +100,7 @@ fn benchmark_template_generation(c: &mut Criterion) {
     });
 
     c.bench_function("template_render_complex", |b| {
-        let template = r#"
+        let template = r"
 # {{project_name}}
 
 {{#if has_tests}}
@@ -114,7 +114,7 @@ Run benchmarks with: `cargo bench`
 {{/if}}
 
 Copyright {{current_year}} {{author}}
-"#;
+";
         let mut context = serde_json::Map::new();
         context.insert("project_name".to_string(), json!("test-project"));
         context.insert("has_tests".to_string(), json!(true));

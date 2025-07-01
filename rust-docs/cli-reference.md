@@ -795,6 +795,49 @@ pmat analyze symbol-table --format ctags --include-private
 
 #### Subcommands
 
+##### `refactor auto`
+
+**AI-powered automated refactoring** that enforces extreme quality standards.
+
+**Arguments:**
+- **-p, --project-path**: Project path to refactor (default: current directory)
+- **--max-iterations**: Maximum iterations to run (default: 10)
+- **--quality-profile**: Quality profile (`standard`, `strict`, `extreme`) (default: extreme)
+- **--format**: Output format (`summary`, `detailed`, `json`) (default: detailed)
+- **--dry-run**: Show what would be done without making changes
+- **--skip-compilation**: Skip compilation checks (faster but less safe)
+- **--skip-tests**: Skip test execution (not recommended)
+- **--checkpoint**: Checkpoint file for resumable refactoring
+- **-v, --verbose**: Enable verbose output
+
+**Quality Standards (Extreme Profile):**
+- Test coverage ≥ 80% per file
+- Cyclomatic complexity ≤ 10 (target: 5)
+- Zero SATD (no TODO, FIXME, HACK)
+- Zero lint violations (pedantic + nursery)
+
+**Prioritization:**
+1. Compilation errors (highest priority)
+2. Lint violations (sorted by count)
+3. High complexity functions (>10)
+4. SATD items
+5. Coverage gaps (<80%)
+
+**Examples:**
+```bash
+# Run automated refactoring
+pmat refactor auto
+
+# Dry run with JSON output
+pmat refactor auto --dry-run --format json
+
+# Resume from checkpoint
+pmat refactor auto --checkpoint refactor-state.json
+
+# Limited iterations
+pmat refactor auto --max-iterations 5 --verbose
+```
+
 ##### `refactor interactive`
 
 Interactive refactoring with step-by-step guidance.
@@ -858,6 +901,65 @@ Resume refactoring from checkpoint.
 - **--checkpoint**: Checkpoint file
 - **--steps**: Maximum steps
 - **--explain**: Override explanation level
+
+##### `refactor docs`
+
+**NEW**: AI-assisted documentation cleanup and refactoring that enforces Zero Tolerance Quality Standards.
+
+**Arguments:**
+- **-p, --project-path**: Project path to analyze (default: current directory)
+- **--dry-run**: Show what would be done without making changes
+- **--auto-remove**: Automatically remove files without confirmation
+- **--backup**: Create backup before removing files (default: true when auto-removing)
+- **--backup-dir**: Directory for backups (default: .pmat-backup)
+- **--format**: Output format (`summary`, `detailed`, `json`, `interactive`)
+- **--include-docs**: Include docs directory in cleanup (default: true)
+- **--include-root**: Include root directory files in cleanup (default: true)
+- **--include-scripts**: Include scripts directory in cleanup (default: true)
+- **--min-age-days**: Minimum file age in days before considering for removal (default: 0)
+- **--temp-patterns**: Additional temporary file patterns to match
+- **--status-patterns**: Additional status file patterns to match
+- **--artifact-patterns**: Additional artifact patterns to match
+- **--preservation-patterns**: Patterns for files to always preserve
+- **--show-reasons**: Show detailed reasons for each file classification
+- **--verbose**: Enable verbose output
+
+**Pattern Categories:**
+
+1. **Temporary Scripts**: Files matching patterns like `fix-*`, `test-*`, `temp-*`, `tmp-*`, `quick-*`
+2. **Status Reports**: Files matching `*_STATUS.md`, `*_PROGRESS.md`, `*_COMPLETE.md`, `*_SUCCESS.md`
+3. **Build Artifacts**: Generated files like `*.mmd`, `optimization_state.json`, `complexity_report.json`
+4. **Outdated Documentation**: Files with names like `OLD_*`, `DEPRECATED_*`, `OBSOLETE_*`
+
+**Interactive Mode Features:**
+- Review each file before removal
+- See file content preview
+- Choose actions: keep, remove, skip
+- Batch operations: keep all, remove all
+
+**Examples:**
+```bash
+# Dry run to see what would be removed
+pmat refactor docs --dry-run
+
+# Interactive review mode
+pmat refactor docs --format interactive
+
+# Auto-remove with backup
+pmat refactor docs --auto-remove --backup
+
+# Only remove files older than 7 days
+pmat refactor docs --min-age-days 7 --auto-remove
+
+# Custom patterns with preservation
+pmat refactor docs \
+  --temp-patterns "cleanup-*,old-*" \
+  --preservation-patterns "*.spec.md,*.design.md" \
+  --show-reasons
+
+# Verbose JSON output for automation
+pmat refactor docs --format json --verbose --dry-run
+```
 
 ### `quality-gate`
 

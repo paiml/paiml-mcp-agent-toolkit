@@ -1,6 +1,6 @@
 //! Fast demo core extraction tests
 //!
-//! Slow integration tests have been moved to tests/slow_integration.rs to ensure
+//! Slow integration tests have been moved to `tests/slow_integration.rs` to ensure
 //! fast test coverage completes within 3 minutes.
 
 #[cfg(test)]

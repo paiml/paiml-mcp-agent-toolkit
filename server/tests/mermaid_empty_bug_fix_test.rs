@@ -28,8 +28,8 @@ fn test_regression_empty_nodes_bug() {
 
     for (id, label, _description) in &test_cases {
         graph.add_node(NodeInfo {
-            id: id.to_string(),
-            label: label.to_string(),
+            id: (*id).to_string(),
+            label: (*label).to_string(),
             node_type: NodeType::Function,
             file_path: String::new(),
             line_number: 0,
@@ -64,7 +64,7 @@ fn test_regression_empty_nodes_bug() {
     }
 
     // Verify proper node formatting
-    assert!(output.contains("["), "No node labels with brackets found");
+    assert!(output.contains('['), "No node labels with brackets found");
     assert!(output.contains("graph TD"), "Missing graph declaration");
 }
 
@@ -108,8 +108,8 @@ fn test_node_types_have_labels() {
 
     for (id, label, node_type) in &node_types {
         graph.add_node(NodeInfo {
-            id: id.to_string(),
-            label: label.to_string(),
+            id: (*id).to_string(),
+            label: (*label).to_string(),
             node_type: node_type.clone(),
             file_path: String::new(),
             line_number: 0,
@@ -188,7 +188,7 @@ fn test_empty_graph_doesnt_crash() {
         output.contains("graph TD"),
         "Empty graph should still have declaration"
     );
-    assert!(!output.contains("["), "Empty graph should have no nodes");
+    assert!(!output.contains('['), "Empty graph should have no nodes");
 }
 
 #[test]
@@ -206,8 +206,8 @@ fn test_special_characters_in_node_ids() {
 
     for (id, label) in &test_ids {
         graph.add_node(NodeInfo {
-            id: id.to_string(),
-            label: label.to_string(),
+            id: (*id).to_string(),
+            label: (*label).to_string(),
             node_type: NodeType::Function,
             file_path: String::new(),
             line_number: 0,
