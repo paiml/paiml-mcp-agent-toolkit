@@ -24,6 +24,11 @@ fn main() {
     }
 }
 
+/// Verifies critical dependencies exist in Cargo.lock
+/// 
+/// # Panics
+/// 
+/// Panics if Cargo.lock doesn't exist or critical dependencies are missing
 fn verify_dependency_versions() {
     // In a workspace, Cargo.lock is in the parent directory
     let lock_path = if Path::new("../Cargo.lock").exists() {
@@ -122,12 +127,12 @@ fn download_asset(url: &str, path: &Path, filename: &str) {
             }
         },
         Err(e) => {
-            handle_download_failure(e, path, filename);
+            handle_download_failure(&e, path, filename);
         }
     }
 }
 
-fn handle_download_failure(e: ureq::Error, path: &Path, filename: &str) {
+fn handle_download_failure(e: &ureq::Error, path: &Path, filename: &str) {
     println!("cargo:warning=Failed to download {filename}: {e}. Using placeholder.");
     // Create a placeholder file
     let _ = fs::write(path, b"/* Asset download failed during build */");
@@ -138,15 +143,9 @@ fn compress_asset(path: &Path, gz_path: &Path, filename: &str) {
         return;
     }
 
-    let input = match fs::read(path) {
-        Ok(data) => data,
-        Err(_) => return,
-    };
+    let Ok(input) = fs::read(path) else { return };
 
-    let compressed = match create_compressed_data(&input) {
-        Some(data) => data,
-        None => return,
-    };
+    let Some(compressed) = create_compressed_data(&input) else { return };
 
     write_compressed_file(gz_path, &compressed, filename, input.len());
 }
@@ -178,6 +177,11 @@ fn set_asset_hash_env() {
     println!("cargo:rustc-env=ASSET_HASH={hash}");
 }
 
+/// Compresses template files at build time
+/// 
+/// # Panics
+/// 
+/// Panics if `OUT_DIR` environment variable is not set
 fn compress_templates() {
     use std::collections::HashMap;
 
@@ -218,17 +222,24 @@ fn compress_templates() {
         let out_dir = env::var("OUT_DIR").unwrap();
         let dest_path = Path::new(&out_dir).join("compressed_templates.rs");
         if fs::write(dest_path, template_code).is_ok() {
+            #[allow(clippy::cast_precision_loss)]
+            let reduction_percent = (1.0 - total_compressed as f64 / total_original as f64) * 100.0;
             println!(
                 "cargo:warning=Compressed {} templates ({} -> {} bytes, {:.1}% reduction)",
                 templates.len(),
                 total_original,
                 total_compressed,
-                (1.0 - total_compressed as f64 / total_original as f64) * 100.0
+                reduction_percent
             );
         }
     }
 }
 
+/// Collects template files from directory
+/// 
+/// # Errors
+/// 
+/// Returns error if directory cannot be read
 fn collect_template_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::Error> {
     let mut files = Vec::new();
     for entry in fs::read_dir(dir)? {
@@ -261,7 +272,11 @@ fn serde_json_to_string<T: serde::Serialize>(value: &T) -> String {
 }
 
 fn generate_hex_string(data: &[u8]) -> String {
-    data.iter().map(|b| format!("{b:02x}")).collect::<String>()
+    data.iter().fold(String::new(), |mut acc, b| {
+        use std::fmt::Write;
+        let _ = write!(acc, "{b:02x}");
+        acc
+    })
 }
 
 fn generate_template_code(hex: &str, count: usize) -> String {
@@ -314,7 +329,7 @@ fn minify_demo_assets() {
 
 fn minify_js_file(input_path: &Path, output_path: &Path) {
     if !input_path.exists() {
-        println!("cargo:warning=JavaScript file not found: {input_path:?}");
+        println!("cargo:warning=JavaScript file not found: {}", input_path.display());
         return;
     }
 
@@ -333,17 +348,19 @@ fn minify_js_file(input_path: &Path, output_path: &Path) {
         return;
     }
 
+    #[allow(clippy::cast_precision_loss)]
+    let reduction = (1.0 - minified.len() as f64 / content.len() as f64) * 100.0;
     println!(
         "cargo:warning=Minified JavaScript: {} -> {} bytes ({:.1}% reduction)",
         content.len(),
         minified.len(),
-        (1.0 - minified.len() as f64 / content.len() as f64) * 100.0
+        reduction
     );
 }
 
 fn minify_css_file(input_path: &Path, output_path: &Path) {
     if !input_path.exists() {
-        println!("cargo:warning=CSS file not found: {input_path:?}");
+        println!("cargo:warning=CSS file not found: {}", input_path.display());
         return;
     }
 
@@ -362,11 +379,13 @@ fn minify_css_file(input_path: &Path, output_path: &Path) {
         return;
     }
 
+    #[allow(clippy::cast_precision_loss)]
+    let reduction = (1.0 - minified.len() as f64 / content.len() as f64) * 100.0;
     println!(
         "cargo:warning=Minified CSS: {} -> {} bytes ({:.1}% reduction)",
         content.len(),
         minified.len(),
-        (1.0 - minified.len() as f64 / content.len() as f64) * 100.0
+        reduction
     );
 }
 
