@@ -970,7 +970,7 @@ mod tests {
                 // Skip test in non-git environment
                 return;
             }
-            panic!("Unexpected error: {}", e);
+            panic!("Unexpected error: {e}");
         }
 
         let score = score_result.unwrap();

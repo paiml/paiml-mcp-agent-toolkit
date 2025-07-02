@@ -31,7 +31,7 @@ mod tests {
         ) {
             let mut code = String::new();
             for i in 0..func_count {
-                code.push_str(&format!("function test{}(): i32 {{ return {}; }}\n\n", i, i));
+                code.push_str(&format!("function test{i}(): i32 {{ return {i}; }}\n\n"));
             }
             let parser = AssemblyScriptParser::new();
             prop_assert!(parser.is_ok());
