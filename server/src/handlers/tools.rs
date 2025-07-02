@@ -535,7 +535,7 @@ async fn handle_get_server_info(request_id: serde_json::Value) -> McpResponse {
             "text": "PAIML MCP Agent Toolkit - Professional project scaffolding toolkit created by Pragmatic AI Labs"
         }],
         "serverInfo": {
-            "name": "paiml-mcp-agent-toolkit",
+            "name": "pmat",
             "version": env!("CARGO_PKG_VERSION"),
             "vendor": "Pragmatic AI Labs (paiml.com)",
             "author": "Pragmatic AI Labs",
@@ -1830,7 +1830,7 @@ fn format_dead_code_as_sarif_mcp(
         "runs": [{
             "tool": {
                 "driver": {
-                    "name": "paiml-mcp-agent-toolkit",
+                    "name": "pmat",
                     "version": "0.1.0",
                     "informationUri": "https://github.com/paiml/mcp-agent-toolkit"
                 }
@@ -2228,7 +2228,7 @@ fn format_deep_context_as_sarif(_context: &crate::services::deep_context::DeepCo
         "runs": [{
             "tool": {
                 "driver": {
-                    "name": "paiml-mcp-agent-toolkit",
+                    "name": "pmat",
                     "version": env!("CARGO_PKG_VERSION"),
                     "informationUri": "https://github.com/paiml/mcp-agent-toolkit"
                 }

@@ -181,7 +181,7 @@ mod cli_integration_tests {
 
         // Simulate CLI args
         let _args = [
-            "paiml-mcp-agent-toolkit",
+            "pmat",
             "generate",
             "makefile",
             "rust/cli",

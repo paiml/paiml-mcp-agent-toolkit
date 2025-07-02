@@ -40,7 +40,7 @@ async fn test_handle_initialize() {
 
     let result = response.result.unwrap();
     assert_eq!(result["protocolVersion"], "1.0");
-    assert_eq!(result["serverInfo"]["name"], "paiml-mcp-agent-toolkit");
+    assert_eq!(result["serverInfo"]["name"], "pmat");
     assert_eq!(
         result["serverInfo"]["vendor"],
         "Pragmatic AI Labs (paiml.com)"
