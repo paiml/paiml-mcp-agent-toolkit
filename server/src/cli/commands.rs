@@ -9,13 +9,12 @@ use crate::cli::{
     ContextFormat, DagType, DeadCodeOutputFormat, DeepContextCacheStrategy, DeepContextDagType,
     DeepContextOutputFormat, DefectPredictionOutputFormat, DemoProtocol, DuplicateOutputFormat,
     DuplicateType, EnforceOutputFormat, ExplainLevel, GraphMetricType, GraphMetricsOutputFormat,
-    IncrementalCoverageOutputFormat, LintHotspotOutputFormat, MakefileOutputFormat, 
-    NameSimilarityOutputFormat, OutputFormat, ProofAnnotationOutputFormat, PropertyTypeFilter, 
-    ProvabilityOutputFormat,
-    QualityCheckType, QualityGateOutputFormat, QualityProfile, RefactorAutoOutputFormat,
-    RefactorDocsOutputFormat, RefactorMode, RefactorOutputFormat, ReportOutputFormat, 
-    SatdOutputFormat, SatdSeverity, SearchScope, SymbolTableOutputFormat, SymbolTypeFilter, 
-    TdgOutputFormat, VerificationMethodFilter,
+    IncrementalCoverageOutputFormat, LintHotspotOutputFormat, MakefileOutputFormat,
+    NameSimilarityOutputFormat, OutputFormat, ProofAnnotationOutputFormat, PropertyTypeFilter,
+    ProvabilityOutputFormat, QualityCheckType, QualityGateOutputFormat, QualityProfile,
+    RefactorAutoOutputFormat, RefactorDocsOutputFormat, RefactorMode, RefactorOutputFormat,
+    ReportOutputFormat, SatdOutputFormat, SatdSeverity, SearchScope, SymbolTableOutputFormat,
+    SymbolTypeFilter, TdgOutputFormat, VerificationMethodFilter,
 };
 use crate::models::churn::ChurnOutputFormat;
 use clap::{Parser, Subcommand};
@@ -671,7 +670,10 @@ pub enum AnalyzeCommands {
         perf: bool,
 
         /// Additional flags to pass to clippy (uses extreme quality by default)
-        #[arg(long, default_value = "-D warnings -D clippy::pedantic -D clippy::nursery -D clippy::cargo")]
+        #[arg(
+            long,
+            default_value = "-D warnings -D clippy::pedantic -D clippy::nursery -D clippy::cargo"
+        )]
         clippy_flags: String,
     },
 
@@ -1367,8 +1369,16 @@ pub enum RefactorCommands {
         #[arg(short = 'p', long, default_value = ".")]
         project_path: PathBuf,
 
+        /// Single file mode - refactor one file at a time
+        #[arg(long)]
+        single_file_mode: bool,
+
+        /// Specific file to refactor (implies single file mode)
+        #[arg(long)]
+        file: Option<PathBuf>,
+
         /// Maximum iterations to run
-        #[arg(long, default_value = "10")]
+        #[arg(long, default_value = "100")]
         max_iterations: u32,
 
         /// Quality profile to enforce
@@ -1376,7 +1386,7 @@ pub enum RefactorCommands {
         quality_profile: QualityProfile,
 
         /// Output format
-        #[arg(long, value_enum, default_value = "detailed")]
+        #[arg(short = 'f', long, value_enum, default_value = "detailed")]
         format: RefactorAutoOutputFormat,
 
         /// Dry run mode (don't write files)
@@ -1447,15 +1457,27 @@ pub enum RefactorCommands {
         dry_run: bool,
 
         /// Patterns to identify temporary files (e.g., "fix-*.sh", "*_TEMP.md")
-        #[arg(long, value_delimiter = ',', default_value = "fix-*,test-*,temp-*,tmp-*,*_TEMP*,*_TMP*,FAST_*,FIX_*,ZERO_DEFECTS_*")]
+        #[arg(
+            long,
+            value_delimiter = ',',
+            default_value = "fix-*,test-*,temp-*,tmp-*,*_TEMP*,*_TMP*,FAST_*,FIX_*,ZERO_DEFECTS_*"
+        )]
         temp_patterns: Vec<String>,
 
         /// Patterns to identify outdated status files
-        #[arg(long, value_delimiter = ',', default_value = "*_STATUS.md,*_PROGRESS.md,*_COMPLETE.md,final_verification.md,overnight-*.md")]
+        #[arg(
+            long,
+            value_delimiter = ',',
+            default_value = "*_STATUS.md,*_PROGRESS.md,*_COMPLETE.md,final_verification.md,overnight-*.md"
+        )]
         status_patterns: Vec<String>,
 
         /// Patterns to identify build artifacts
-        #[arg(long, value_delimiter = ',', default_value = "*.mmd,optimization_state.json,complexity_report.json,satd_report.json")]
+        #[arg(
+            long,
+            value_delimiter = ',',
+            default_value = "*.mmd,optimization_state.json,complexity_report.json,satd_report.json"
+        )]
         artifact_patterns: Vec<String>,
 
         /// Custom patterns to include in cleanup
@@ -1475,7 +1497,11 @@ pub enum RefactorCommands {
         recursive: bool,
 
         /// Preserve files matching these patterns (overrides other patterns)
-        #[arg(long, value_delimiter = ',', default_value = "README.md,LICENSE*,CHANGELOG*,CONTRIBUTING*")]
+        #[arg(
+            long,
+            value_delimiter = ',',
+            default_value = "README.md,LICENSE*,CHANGELOG*,CONTRIBUTING*"
+        )]
         preserve_patterns: Vec<String>,
 
         /// Output file path for the report

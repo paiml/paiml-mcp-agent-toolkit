@@ -4,7 +4,6 @@ pub mod handlers;
 pub mod models;
 pub mod services;
 pub mod stateless_server;
-// Temporarily disabled during fixing
 // #[cfg(test)]
 // pub mod testing;
 pub mod unified_protocol;

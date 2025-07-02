@@ -189,7 +189,7 @@ async fn collect_files_recursive(
 fn is_source_file(path: &Path) -> bool {
     matches!(
         path.extension().and_then(|s| s.to_str()),
-        Some("rs") | Some("js") | Some("ts") | Some("py") | Some("java")
+        Some("rs" | "js" | "ts" | "py" | "java")
     )
 }
 
@@ -201,7 +201,7 @@ fn extract_dependencies(content: &str, file_path: &Path) -> Result<Vec<String>> 
     let mut deps = Vec::new();
 
     let patterns = match ext {
-        "rs" => vec![Regex::new(r#"use\s+(\w+)"#)?, Regex::new(r#"mod\s+(\w+)"#)?],
+        "rs" => vec![Regex::new(r"use\s+(\w+)")?, Regex::new(r"mod\s+(\w+)")?],
         "js" | "ts" => vec![
             Regex::new(r#"import\s+.*from\s+['"]\./(\w+)"#)?,
             Regex::new(r#"require\(['"]\./(\w+)"#)?,
