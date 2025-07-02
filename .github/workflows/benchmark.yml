@@ -57,7 +57,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           hyperfine --warmup 3 \
             --export-markdown startup.md \
-            './target/release/paiml-mcp-agent-toolkit < test_input.json' \
+            './target/release/pmat < test_input.json' \
             || true
           cat startup.md >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
@@ -65,7 +65,7 @@ jobs:
           # Benchmark memory usage
           echo "### Memory Usage" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          /usr/bin/time -v ./target/release/paiml-mcp-agent-toolkit < test_input.json 2>&1 | grep -E "Maximum resident set size" >> $GITHUB_STEP_SUMMARY || true
+          /usr/bin/time -v ./target/release/pmat < test_input.json 2>&1 | grep -E "Maximum resident set size" >> $GITHUB_STEP_SUMMARY || true
           echo '```' >> $GITHUB_STEP_SUMMARY
       
       - name: Run cargo bench

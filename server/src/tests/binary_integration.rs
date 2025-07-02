@@ -18,7 +18,7 @@ mod binary_integration_tests {
 
         assert!(output.status.success());
         let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(stdout.contains("paiml-mcp-agent-toolkit"));
+        assert!(stdout.contains("pmat"));
         assert!(stdout.contains("Commands:"));
     }
 
@@ -31,7 +31,7 @@ mod binary_integration_tests {
 
         assert!(output.status.success());
         let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(stdout.contains("paiml-mcp-agent-toolkit"));
+        assert!(stdout.contains("pmat"));
     }
 
     #[test]

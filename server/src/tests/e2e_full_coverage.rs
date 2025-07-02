@@ -177,7 +177,7 @@ fn test_cli_main_binary_version() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("paiml-mcp-agent-toolkit"));
+    assert!(stdout.contains("pmat"));
 
     // Read the actual version from Cargo.toml instead of hardcoding
     let expected_version = env!("CARGO_PKG_VERSION");
@@ -235,15 +235,7 @@ fn test_cli_subcommand_help() {
 #[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_cli_mode_list_templates() {
     let output = Command::new("cargo")
-        .args([
-            "run",
-            "--bin",
-            "paiml-mcp-agent-toolkit",
-            "--",
-            "--mode",
-            "cli",
-            "list",
-        ])
+        .args(["run", "--bin", "pmat", "--", "--mode", "cli", "list"])
         .output()
         .expect("Failed to execute command");
 
@@ -264,12 +256,7 @@ fn test_cli_mode_list_templates() {
 fn test_cli_generate_validation_error() {
     let output = Command::new("cargo")
         .args([
-            "run",
-            "--bin",
-            "paiml-mcp-agent-toolkit",
-            "--",
-            "generate",
-            "makefile",
+            "run", "--bin", "pmat", "--", "generate", "makefile",
             "rust/cli",
             // Missing required project_name parameter - this should fail
         ])
@@ -292,14 +279,7 @@ fn test_cli_generate_validation_error() {
 #[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_cli_search_templates() {
     let output = Command::new("cargo")
-        .args([
-            "run",
-            "--bin",
-            "paiml-mcp-agent-toolkit",
-            "--",
-            "search",
-            "rust",
-        ])
+        .args(["run", "--bin", "pmat", "--", "search", "rust"])
         .output()
         .expect("Failed to execute command");
 
@@ -314,13 +294,7 @@ fn test_cli_search_templates() {
 #[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_cli_invalid_command() {
     let output = Command::new("cargo")
-        .args([
-            "run",
-            "--bin",
-            "paiml-mcp-agent-toolkit",
-            "--",
-            "invalid-command",
-        ])
+        .args(["run", "--bin", "pmat", "--", "invalid-command"])
         .output()
         .expect("Failed to execute command");
 

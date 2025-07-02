@@ -20,7 +20,7 @@ use std::path::PathBuf;
 #[test]
 fn test_generate_command_full_parsing() {
     let args = vec![
-        "paiml-mcp-agent-toolkit",
+        "pmat",
         "generate",
         "makefile",
         "rust/cli",
@@ -64,7 +64,7 @@ fn test_generate_command_full_parsing() {
 fn test_generate_command_aliases() {
     // Test 'gen' alias
     let args = vec![
-        "paiml-mcp-agent-toolkit",
+        "pmat",
         "gen",
         "readme",
         "deno/cli",
@@ -75,7 +75,7 @@ fn test_generate_command_aliases() {
 
     // Test 'g' alias
     let args = vec![
-        "paiml-mcp-agent-toolkit",
+        "pmat",
         "g",
         "gitignore",
         "python-uv/cli",
@@ -88,11 +88,11 @@ fn test_generate_command_aliases() {
 #[test]
 fn test_generate_missing_required_args() {
     // Missing template path
-    let args = vec!["paiml-mcp-agent-toolkit", "generate", "makefile"];
+    let args = vec!["pmat", "generate", "makefile"];
     assert!(Cli::try_parse_from(&args).is_err());
 
     // Missing category
-    let args = vec!["paiml-mcp-agent-toolkit", "generate"];
+    let args = vec!["pmat", "generate"];
     assert!(Cli::try_parse_from(&args).is_err());
 }
 
@@ -101,7 +101,7 @@ fn test_generate_missing_required_args() {
 #[test]
 fn test_scaffold_command_parsing() {
     let args = vec![
-        "paiml-mcp-agent-toolkit",
+        "pmat",
         "scaffold",
         "rust",
         "--templates",
@@ -138,7 +138,7 @@ fn test_scaffold_command_parsing() {
 fn test_scaffold_template_delimiter() {
     // Test comma-separated templates
     let args = vec![
-        "paiml-mcp-agent-toolkit",
+        "pmat",
         "scaffold",
         "deno",
         "-t",
@@ -161,7 +161,7 @@ fn test_scaffold_template_delimiter() {
 #[test]
 fn test_scaffold_default_parallel() {
     let args = vec![
-        "paiml-mcp-agent-toolkit",
+        "pmat",
         "scaffold",
         "python-uv",
         "-t",
@@ -187,7 +187,7 @@ fn test_list_command_all_formats() {
     let formats = vec!["table", "json", "yaml"];
 
     for format in formats {
-        let args = vec!["paiml-mcp-agent-toolkit", "list", "--format", format];
+        let args = vec!["pmat", "list", "--format", format];
         let cli = Cli::try_parse_from(&args).unwrap();
 
         match cli.command {
@@ -208,7 +208,7 @@ fn test_list_command_all_formats() {
 #[test]
 fn test_list_command_filters() {
     let args = vec![
-        "paiml-mcp-agent-toolkit",
+        "pmat",
         "list",
         "--toolchain",
         "rust",
@@ -235,7 +235,7 @@ fn test_list_command_filters() {
 
 #[test]
 fn test_list_default_format() {
-    let args = vec!["paiml-mcp-agent-toolkit", "list"];
+    let args = vec!["pmat", "list"];
     let cli = Cli::try_parse_from(&args).unwrap();
 
     match cli.command {
@@ -251,7 +251,7 @@ fn test_list_default_format() {
 #[test]
 fn test_search_command_parsing() {
     let args = vec![
-        "paiml-mcp-agent-toolkit",
+        "pmat",
         "search",
         "rust makefile",
         "--toolchain",
@@ -277,7 +277,7 @@ fn test_search_command_parsing() {
 
 #[test]
 fn test_search_default_limit() {
-    let args = vec!["paiml-mcp-agent-toolkit", "search", "template"];
+    let args = vec!["pmat", "search", "template"];
     let cli = Cli::try_parse_from(&args).unwrap();
 
     match cli.command {
@@ -293,7 +293,7 @@ fn test_search_default_limit() {
 #[test]
 fn test_validate_command_parsing() {
     let args = vec![
-        "paiml-mcp-agent-toolkit",
+        "pmat",
         "validate",
         "template://makefile/rust/cli",
         "-p",
@@ -317,7 +317,7 @@ fn test_validate_command_parsing() {
 #[test]
 fn test_context_command_parsing() {
     let args = vec![
-        "paiml-mcp-agent-toolkit",
+        "pmat",
         "context",
         "--toolchain",
         "rust",
@@ -359,7 +359,7 @@ fn test_context_formats() {
 
     for (format_str, expected) in formats {
         let args = vec![
-            "paiml-mcp-agent-toolkit",
+            "pmat",
             "context",
             "--toolchain",
             "deno",
@@ -379,7 +379,7 @@ fn test_context_formats() {
 
 #[test]
 fn test_context_default_values() {
-    let args = vec!["paiml-mcp-agent-toolkit", "context"];
+    let args = vec!["pmat", "context"];
     let cli = Cli::try_parse_from(&args).unwrap();
 
     match cli.command {
@@ -402,7 +402,7 @@ fn test_context_default_values() {
 #[test]
 fn test_analyze_churn_full_options() {
     let args = vec![
-        "paiml-mcp-agent-toolkit",
+        "pmat",
         "analyze",
         "churn",
         "-p",
@@ -442,13 +442,7 @@ fn test_analyze_churn_all_formats() {
     ];
 
     for (format_str, expected) in formats {
-        let args = vec![
-            "paiml-mcp-agent-toolkit",
-            "analyze",
-            "churn",
-            "--format",
-            format_str,
-        ];
+        let args = vec!["pmat", "analyze", "churn", "--format", format_str];
         let cli = Cli::try_parse_from(&args).unwrap();
 
         match cli.command {
@@ -465,7 +459,7 @@ fn test_analyze_churn_all_formats() {
 #[test]
 fn test_analyze_complexity_full_options() {
     let args = vec![
-        "paiml-mcp-agent-toolkit",
+        "pmat",
         "analyze",
         "complexity",
         "-p",
@@ -524,13 +518,7 @@ fn test_analyze_complexity_formats() {
     ];
 
     for (format_str, expected) in formats {
-        let args = vec![
-            "paiml-mcp-agent-toolkit",
-            "analyze",
-            "complexity",
-            "--format",
-            format_str,
-        ];
+        let args = vec!["pmat", "analyze", "complexity", "--format", format_str];
         let cli = Cli::try_parse_from(&args).unwrap();
 
         match cli.command {
@@ -547,7 +535,7 @@ fn test_analyze_complexity_formats() {
 #[test]
 fn test_analyze_dag_full_options() {
     let args = vec![
-        "paiml-mcp-agent-toolkit",
+        "pmat",
         "analyze",
         "dag",
         "--dag-type",
@@ -597,13 +585,7 @@ fn test_analyze_dag_types() {
     ];
 
     for (type_str, expected) in dag_types {
-        let args = vec![
-            "paiml-mcp-agent-toolkit",
-            "analyze",
-            "dag",
-            "--dag-type",
-            type_str,
-        ];
+        let args = vec!["pmat", "analyze", "dag", "--dag-type", type_str];
         let cli = Cli::try_parse_from(&args).unwrap();
 
         match cli.command {
@@ -740,19 +722,19 @@ Nested: ${TEST_PROJECT}-${TEST_VERSION}
 #[test]
 fn test_cli_error_scenarios() {
     // Unknown command
-    let args = vec!["paiml-mcp-agent-toolkit", "unknown-command"];
+    let args = vec!["pmat", "unknown-command"];
     assert!(Cli::try_parse_from(&args).is_err());
 
     // Invalid option
-    let args = vec!["paiml-mcp-agent-toolkit", "list", "--invalid-option"];
+    let args = vec!["pmat", "list", "--invalid-option"];
     assert!(Cli::try_parse_from(&args).is_err());
 
     // Missing required argument
-    let args = vec!["paiml-mcp-agent-toolkit", "search"];
+    let args = vec!["pmat", "search"];
     assert!(Cli::try_parse_from(&args).is_err());
 
     // Invalid enum value
-    let args = vec!["paiml-mcp-agent-toolkit", "list", "--format", "invalid"];
+    let args = vec!["pmat", "list", "--format", "invalid"];
     assert!(Cli::try_parse_from(&args).is_err());
 }
 
@@ -760,7 +742,7 @@ fn test_cli_error_scenarios() {
 
 #[test]
 fn test_help_flags() {
-    let args = vec!["paiml-mcp-agent-toolkit", "--help"];
+    let args = vec!["pmat", "--help"];
     let result = Cli::try_parse_from(&args);
     assert!(result.is_err());
     if let Err(e) = result {
@@ -768,7 +750,7 @@ fn test_help_flags() {
     }
 
     // Subcommand help
-    let args = vec!["paiml-mcp-agent-toolkit", "generate", "--help"];
+    let args = vec!["pmat", "generate", "--help"];
     let result = Cli::try_parse_from(&args);
     assert!(result.is_err());
     if let Err(e) = result {
@@ -778,7 +760,7 @@ fn test_help_flags() {
 
 #[test]
 fn test_version_flag() {
-    let args = vec!["paiml-mcp-agent-toolkit", "--version"];
+    let args = vec!["pmat", "--version"];
     let result = Cli::try_parse_from(&args);
     assert!(result.is_err());
     if let Err(e) = result {
@@ -791,12 +773,12 @@ fn test_version_flag() {
 #[test]
 fn test_mode_flag() {
     // Force CLI mode
-    let args = vec!["paiml-mcp-agent-toolkit", "--mode", "cli", "list"];
+    let args = vec!["pmat", "--mode", "cli", "list"];
     let cli = Cli::try_parse_from(&args).unwrap();
     assert!(matches!(cli.mode, Some(crate::cli::Mode::Cli)));
 
     // Force MCP mode
-    let args = vec!["paiml-mcp-agent-toolkit", "--mode", "mcp", "list"];
+    let args = vec!["pmat", "--mode", "mcp", "list"];
     let cli = Cli::try_parse_from(&args).unwrap();
     assert!(matches!(cli.mode, Some(crate::cli::Mode::Mcp)));
 }
@@ -806,7 +788,7 @@ fn test_mode_flag() {
 #[test]
 fn test_multiple_parameter_types() {
     let args = vec![
-        "paiml-mcp-agent-toolkit",
+        "pmat",
         "generate",
         "makefile",
         "rust/cli",
@@ -850,7 +832,7 @@ fn test_nested_subcommand_parsing() {
     ];
 
     for (subcmd, expected) in subcommands {
-        let mut args = vec!["paiml-mcp-agent-toolkit"];
+        let mut args = vec!["pmat"];
         args.extend(subcmd);
 
         let cli = Cli::try_parse_from(&args).unwrap();

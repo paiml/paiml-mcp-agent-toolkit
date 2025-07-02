@@ -1,0 +1,63 @@
+name: Publish to crates.io
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Check version consistency
+        run: |
+          # Extract version from tag
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          
+          # Extract version from server/Cargo.toml
+          CARGO_VERSION=$(grep -m1 '^version = ' server/Cargo.toml | cut -d'"' -f2)
+          
+          # Verify they match
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "Error: Tag version ($TAG_VERSION) doesn't match Cargo.toml version ($CARGO_VERSION)"
+            exit 1
+          fi
+          
+          echo "Publishing version $CARGO_VERSION"
+
+      - name: Run tests
+        run: make test-fast
+
+      - name: Check if version is already published
+        run: |
+          CARGO_VERSION=$(grep -m1 '^version = ' server/Cargo.toml | cut -d'"' -f2)
+          
+          # Check if this version already exists on crates.io
+          if cargo search pmat --limit 1 | grep -q "pmat = \"$CARGO_VERSION\""; then
+            echo "Version $CARGO_VERSION is already published on crates.io"
+            exit 0
+          fi
+
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          cd server
+          cargo publish --no-verify

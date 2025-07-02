@@ -8,7 +8,7 @@ mod tests {
     #[test]
     fn test_analyze_churn_command_parsing() {
         // Test basic analyze churn command
-        let args = vec!["paiml-mcp-agent-toolkit", "analyze", "churn"];
+        let args = vec!["pmat", "analyze", "churn"];
         let cli = Cli::try_parse_from(args).unwrap();
 
         match cli.command {
@@ -94,7 +94,7 @@ mod tests {
     #[test]
     fn test_analyze_churn_with_all_options() {
         let args = vec![
-            "paiml-mcp-agent-toolkit",
+            "pmat",
             "analyze",
             "churn",
             "--days",
@@ -192,13 +192,7 @@ mod tests {
         let formats = vec!["json", "markdown", "csv", "summary"];
 
         for fmt in formats {
-            let args = vec![
-                "paiml-mcp-agent-toolkit",
-                "analyze",
-                "churn",
-                "--format",
-                fmt,
-            ];
+            let args = vec!["pmat", "analyze", "churn", "--format", fmt];
             let cli = Cli::try_parse_from(args).unwrap();
 
             match cli.command {
@@ -216,13 +210,7 @@ mod tests {
 
     #[test]
     fn test_analyze_churn_invalid_format() {
-        let args = vec![
-            "paiml-mcp-agent-toolkit",
-            "analyze",
-            "churn",
-            "--format",
-            "invalid",
-        ];
+        let args = vec!["pmat", "analyze", "churn", "--format", "invalid"];
         let result = Cli::try_parse_from(args);
         assert!(result.is_err());
     }
@@ -230,17 +218,9 @@ mod tests {
     #[test]
     fn test_analyze_churn_short_flags() {
         let args = vec![
-            "paiml-mcp-agent-toolkit",
-            "analyze",
-            "churn",
-            "-d",
-            "7", // Short form of --days
-            "-p",
-            "/tmp", // Short form of --project-path
-            "--format",
-            "csv",
-            "-o",
-            "out.csv", // Short form of --output
+            "pmat", "analyze", "churn", "-d", "7", // Short form of --days
+            "-p", "/tmp", // Short form of --project-path
+            "--format", "csv", "-o", "out.csv", // Short form of --output
         ];
         let cli = Cli::try_parse_from(args).unwrap();
 
@@ -263,7 +243,7 @@ mod tests {
     #[test]
     fn test_analyze_subcommand_help() {
         // Test that help works
-        let args = vec!["paiml-mcp-agent-toolkit", "analyze", "--help"];
+        let args = vec!["pmat", "analyze", "--help"];
         let result = Cli::try_parse_from(args);
         // Help should cause an error (but a specific kind)
         assert!(result.is_err());
@@ -274,7 +254,7 @@ mod tests {
     #[test]
     fn test_analyze_churn_help() {
         // Test that help works for churn subcommand
-        let args = vec!["paiml-mcp-agent-toolkit", "analyze", "churn", "--help"];
+        let args = vec!["pmat", "analyze", "churn", "--help"];
         let result = Cli::try_parse_from(args);
         assert!(result.is_err());
         let err = result.unwrap_err();

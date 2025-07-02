@@ -1,27 +1,92 @@
 # PAIML MCP Agent Toolkit (pmat)
 
-[![CI/CD](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml) [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
+[![Documentation](https://docs.rs/pmat/badge.svg)](https://docs.rs/pmat)
+[![CI/CD](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml) 
+[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io) 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Downloads](https://img.shields.io/crates/d/pmat)](https://crates.io/crates/pmat)
 
 **Zero-configuration AI context generation system** that analyzes any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com) with extreme quality standards and zero tolerance for technical debt.
 
 ## 🚀 Installation
 
-### Quick Install (Linux/macOS)
+Install `pmat` using one of the following methods:
+
+- **From Crates.io (Recommended):**
+  ```bash
+  cargo install pmat
+  ```
+
+- **With the Quick Install Script (Linux/macOS):**
+  ```bash
+  curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+  ```
+
+- **From Source:**
+  ```bash
+  git clone https://github.com/paiml/paiml-mcp-agent-toolkit
+  cd paiml-mcp-agent-toolkit
+  cargo build --release
+  ```
+
+- **From GitHub Releases:**
+  Pre-built binaries for Linux, macOS, and Windows are available on the [releases page](https://github.com/paiml/paiml-mcp-agent-toolkit/releases).
+
+### Requirements
+- **Rust:** 1.80.0 or later
+- **Git:** For repository analysis
+
+## 🚀 Getting Started
+
+### Quick Start
 
 ```bash
-curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+# Analyze current directory
+pmat context
+
+# Get complexity metrics for top 10 files
+pmat analyze complexity --top-files 10
+
+# Find technical debt
+pmat analyze satd
+
+# Run comprehensive quality checks
+pmat quality-gate --strict
 ```
 
-### Manual Installation
+### Using as a Library
 
-```bash
-# Install from crates.io
-cargo install paiml-mcp-agent-toolkit
+Add to your `Cargo.toml`:
 
-# Or build from source
-git clone https://github.com/paiml/paiml-mcp-agent-toolkit
-cd paiml-mcp-agent-toolkit
-cargo build --release
+```toml
+[dependencies]
+pmat = "0.26.3"
+```
+
+Basic usage:
+
+```rust
+use pmat::{
+    services::code_analysis::CodeAnalysisService,
+    types::ProjectPath,
+};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let service = CodeAnalysisService::new();
+    let path = ProjectPath::new(".");
+    
+    // Generate context
+    let context = service.generate_context(path, None).await?;
+    println!("Project context: {}", context);
+    
+    // Analyze complexity
+    let complexity = service.analyze_complexity(path, Some(10)).await?;
+    println!("Complexity results: {:?}", complexity);
+    
+    Ok(())
+}
 ```
 
 ## Key Features
@@ -168,46 +233,24 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
   -d '{"project_path":"./","include":["ast","complexity","churn"]}'
 ```
 
-## New in v0.26.3 - Quality Uplift
+## Recent Updates
 
-### 🏆 Zero Tolerance Quality Standards Achieved
-- **SATD Elimination**: Removed all TODO/FIXME/HACK comments from implementation
-- **Complexity Reduction**: All functions now below cyclomatic complexity of 20
-- **Extreme Linting**: `make lint` passes with pedantic and nursery standards
-- **Single File Mode**: Enhanced support for targeted quality improvements
-  ```bash
-  pmat refactor auto --single-file-mode --file src/main.rs
-  pmat analyze lint-hotspot --file src/lib.rs  
-  pmat enforce extreme --file src/module.rs
-  ```
+### 🏆 v0.26.3 - Quality Uplift
+- **SATD Elimination**: Removed all TODO/FIXME/HACK comments from implementation.
+- **Complexity Reduction**: All functions now below a cyclomatic complexity of 20.
+- **Extreme Linting**: `make lint` passes with pedantic and nursery standards.
+- **Single File Mode**: Enhanced support for targeted quality improvements.
 
-## New in v0.26.1
+### 🧹 v0.26.1 - Documentation Cleanup (`pmat refactor docs`)
+- AI-assisted documentation cleanup to maintain Zero Tolerance Quality Standards.
+- Identifies and removes temporary files, outdated reports, and build artifacts.
+- Interactive mode for reviewing files before removal with automatic backups.
 
-### 🧹 Documentation Cleanup (`pmat refactor docs`)
-AI-assisted documentation cleanup that maintains Zero Tolerance Quality Standards:
-- Identifies temporary files, outdated status reports, and build artifacts
-- Interactive mode for reviewing files before removal
-- Automatic backup before making changes
-- Customizable patterns and preservation rules
-
-Example:
-```bash
-# Dry run to see what would be removed
-pmat refactor docs --dry-run
-
-# Interactive mode
-pmat refactor docs --format interactive
-
-# Auto-remove with backup
-pmat refactor docs --auto-remove --backup
-```
-
-### 🔥 EXTREME Quality Lint Analysis
-The `lint-hotspot` command now uses the strictest possible quality standards by default:
-```bash
-# Runs with: -D warnings -D clippy::pedantic -D clippy::nursery -D clippy::cargo
-pmat analyze lint-hotspot
-```
+### 🔥 v0.26.0 - New Analysis Commands
+- **Graph Metrics**: `pmat analyze graph-metrics` for centrality analysis.
+- **Name Similarity**: `pmat analyze name-similarity` for fuzzy name matching.
+- **Symbol Table**: `pmat analyze symbol-table` for symbol extraction.
+- **Code Duplication**: `pmat analyze duplicates` for detecting duplicate code.
 
 ## Zero Tolerance Quality Standards
 
@@ -245,23 +288,21 @@ This project follows strict quality standards:
 
 ## 📚 Documentation
 
-### Feature Documentation
+Explore our comprehensive documentation to get the most out of `pmat`.
 
-- **[Feature Overview](docs/features/README.md)** - Complete feature index
-- **[Makefile Linter](docs/features/makefile-linter.md)** - 50+ rules for Makefile quality
-- **[Emit-Refactor Engine](docs/features/emit-refactor-engine.md)** - Real-time defect detection & refactoring
-- **[Excellence Tracker](docs/features/excellence-tracker.md)** - Code quality metrics tracking
-- **[Technical Debt Gradient](docs/features/technical-debt-gradient.md)** - Quantitative debt measurement
-- **[MCP Protocol](docs/features/mcp-protocol.md)** - AI agent integration guide
-- **[Distributed Testing](docs/features/distributed-testing.md)** - Fast feedback test architecture
+### Getting Started
+- **[Architecture](docs/architecture/ARCHITECTURE.md)**: Understand the system design and principles.
+- **[CLI Reference](docs/cli-reference.md)**: View the full command-line interface guide.
+- **[API Documentation](https://docs.rs/pmat)**: Browse the complete Rust API documentation on docs.rs.
 
-### API Documentation
+### Usage Guides
+- **[Feature Overview](docs/features/README.md)**: Discover all available features.
+- **[MCP Integration](docs/features/mcp-protocol.md)**: Learn how to integrate `pmat` with AI agents.
+- **[CI/CD Integration](docs/integrations/ci-cd-integration.md)**: Set up quality gates in your CI/CD pipeline.
 
-- [Architecture](docs/architecture/ARCHITECTURE.md)
-- [CLI Reference](rust-docs/cli-reference.md)
-- [MCP Protocol](rust-docs/mcp-protocol.md) 
-- [HTTP API](rust-docs/http-api.md)
-- [Contributing Guidelines](CONTRIBUTING.md)
+### Development
+- **[Contributing Guide](CONTRIBUTING.md)**: Read our guidelines for contributing to the project.
+- **[Release Process](docs/release-process.md)**: Follow our step-by-step release workflow.
 
 ## 🛠️ System Operations
 
@@ -295,10 +336,36 @@ make coverage-stratified
 
 ## 🤝 Contributing
 
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Quick Start for Contributors
+
+```bash
+# Clone and setup
+git clone https://github.com/paiml/paiml-mcp-agent-toolkit
+cd paiml-mcp-agent-toolkit
+
+# Install dependencies
+make install-deps
+
+# Run tests
+make test-fast      # Quick validation
+make test-all       # Complete test suite
+
+# Check code quality
+make lint           # Run extreme quality lints
+make coverage       # Generate coverage report
+```
+
+### Development Workflow
+
 1. Fork the repository
-2. Create a feature branch  
-3. Run `make test-fast` for validation
-4. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes following our Zero Tolerance Quality Standards
+4. Run `make lint` and `make test-fast` before committing
+5. Submit a pull request with a clear description of changes
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## 📄 License
 

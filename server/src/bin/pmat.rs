@@ -1,5 +1,5 @@
 use anyhow::Result;
-use paiml_mcp_agent_toolkit::{cli, stateless_server::StatelessTemplateServer};
+use pmat::{cli, stateless_server::StatelessTemplateServer};
 use std::io::IsTerminal;
 use std::sync::Arc;
 use tracing::{debug, info, trace};
@@ -28,11 +28,11 @@ fn init_tracing(cli: &cli::EarlyCliArgs) -> Result<()> {
     let filter = if let Some(ref custom) = cli.trace_filter {
         EnvFilter::try_new(custom)?
     } else if cli.trace {
-        EnvFilter::new("debug,paiml_mcp_agent_toolkit=trace")
+        EnvFilter::new("debug,pmat=trace")
     } else if cli.debug {
-        EnvFilter::new("warn,paiml_mcp_agent_toolkit=debug")
+        EnvFilter::new("warn,pmat=debug")
     } else if cli.verbose {
-        EnvFilter::new("warn,paiml_mcp_agent_toolkit=info")
+        EnvFilter::new("warn,pmat=info")
     } else {
         // Production default: only errors and warnings
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn"))
@@ -75,7 +75,7 @@ async fn main() -> Result<()> {
     match detect_execution_mode() {
         ExecutionMode::Mcp => {
             info!("Running in MCP server mode");
-            paiml_mcp_agent_toolkit::run_mcp_server(server).await
+            pmat::run_mcp_server(server).await
         }
         ExecutionMode::Cli => {
             info!("Running in CLI mode");

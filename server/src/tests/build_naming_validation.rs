@@ -15,10 +15,7 @@ mod tests {
 
         // Check package name
         let package_name = metadata["packages"][0]["name"].as_str().unwrap();
-        assert_eq!(
-            package_name, "paiml-mcp-agent-toolkit",
-            "Package name must be 'paiml-mcp-agent-toolkit'"
-        );
+        assert_eq!(package_name, "pmat", "Package name must be 'pmat'");
 
         // Check binary targets
         let targets = metadata["packages"][0]["targets"].as_array().unwrap();
@@ -111,7 +108,7 @@ mod tests {
         let output = Command::new("grep")
             .args([
                 "-r",
-                "paiml-mcp-agent-toolkit",
+                "pmat",
                 "../.github/workflows/",
                 "--include=*.yml",
                 "--include=*.yaml",
@@ -122,7 +119,7 @@ mod tests {
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(
             !stdout.is_empty(),
-            "No references to 'paiml-mcp-agent-toolkit' found in GitHub Actions workflows. Workflows should use the correct binary name."
+            "No references to 'pmat' found in GitHub Actions workflows. Workflows should use the correct binary name."
         );
     }
 
@@ -130,7 +127,7 @@ mod tests {
     fn test_no_wrong_repo_urls_in_workflows() {
         // Check for incorrect repository URLs in workflows
         let wrong_urls = vec![
-            "pragmatic-ai-labs/paiml-mcp-agent-toolkit",
+            "pragmatic-ai-labs/pmat",
             "paiml/mcp-template-server",
             "pragmatic-ai-labs/mcp-template-server",
         ];
@@ -150,7 +147,7 @@ mod tests {
             let stdout = String::from_utf8_lossy(&output.stdout);
             assert!(
                 stdout.is_empty(),
-                "Found references to incorrect repository URL '{wrong_url}' in workflows:\n{stdout}\nShould be 'paiml/paiml-mcp-agent-toolkit'"
+                "Found references to incorrect repository URL '{wrong_url}' in workflows:\n{stdout}\nShould be 'paiml/pmat'"
             );
         }
     }

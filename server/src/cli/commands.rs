@@ -24,7 +24,7 @@ use std::path::PathBuf;
 /// Main CLI structure
 #[derive(Parser)]
 #[command(
-    name = "paiml-mcp-agent-toolkit",
+    name = "pmat",
     about = "Professional project quantitative scaffolding and analysis toolkit",
     version,
     long_about = None

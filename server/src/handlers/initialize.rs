@@ -26,7 +26,7 @@ pub async fn handle_initialize<T: TemplateServerTrait>(
                 "prompts": {},
             },
             "serverInfo": {
-                "name": "paiml-mcp-agent-toolkit",
+                "name": "pmat",
                 "version": env!("CARGO_PKG_VERSION"),
                 "vendor": "Pragmatic AI Labs (paiml.com)",
                 "author": "Pragmatic AI Labs",

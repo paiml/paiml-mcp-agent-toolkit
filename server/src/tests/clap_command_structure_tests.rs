@@ -22,7 +22,7 @@ mod tests {
         let cmd = Cli::command();
 
         // Check basic command properties
-        assert_eq!(cmd.get_name(), "paiml-mcp-agent-toolkit");
+        assert_eq!(cmd.get_name(), "pmat");
         assert!(cmd.get_about().is_some());
 
         // Verify version is propagated
@@ -34,7 +34,7 @@ mod tests {
         let cmd = Cli::command();
 
         // Binary name should be properly detected
-        assert_eq!(cmd.get_name(), "paiml-mcp-agent-toolkit");
+        assert_eq!(cmd.get_name(), "pmat");
 
         // Check if binary name can be overridden
         let cmd_with_name = cmd.clone().name("pmat");

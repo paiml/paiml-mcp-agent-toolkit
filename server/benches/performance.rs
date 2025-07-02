@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use paiml_mcp_agent_toolkit::services::{ast_rust::analyze_rust_file, context::analyze_project};
+use pmat::services::{ast_rust::analyze_rust_file, context::analyze_project};
 use std::hint::black_box;
 use std::path::Path;
 

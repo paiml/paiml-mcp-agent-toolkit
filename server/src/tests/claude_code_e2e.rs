@@ -363,7 +363,7 @@ async fn test_claude_code_search_templates() {
 async fn test_naming_convention_critical_requirement() {
     let server = create_test_server();
 
-    // Test that all generated templates use correct "paiml-mcp-agent-toolkit" naming
+    // Test that all generated templates use correct "pmat" naming
     let test_cases = vec![
         ("rust", "test-rust-project", "A Rust CLI project"),
         ("deno", "test-deno-project", "A Deno TypeScript project"),
@@ -404,7 +404,7 @@ async fn test_naming_convention_critical_requirement() {
 
             // Critical: Check for old naming patterns that must not exist
             assert!(
-                !content.contains("mcp-agent-toolkit") || content.contains("paiml-mcp-agent-toolkit"),
+                !content.contains("mcp-agent-toolkit") || content.contains("pmat"),
                 "Found incorrect 'mcp-agent-toolkit' (without paiml- prefix) in {filename} for toolchain {toolchain}"
             );
 
@@ -427,7 +427,7 @@ async fn test_naming_convention_critical_requirement() {
             if file["template"].as_str().unwrap() == "readme" {
                 // README should mention the toolkit name
                 assert!(
-                    content.contains("paiml-mcp-agent-toolkit")
+                    content.contains("pmat")
                         || content.contains("PAIML MCP Agent Toolkit")
                         || !content.to_lowercase().contains("toolkit"), // If no toolkit mention, that's ok
                     "README should use correct project name in {filename} for toolchain {toolchain}"
@@ -478,8 +478,7 @@ async fn test_naming_convention_in_individual_templates() {
 
             // Apply same naming convention checks
             assert!(
-                !content.contains("mcp-agent-toolkit")
-                    || content.contains("paiml-mcp-agent-toolkit"),
+                !content.contains("mcp-agent-toolkit") || content.contains("pmat"),
                 "Found incorrect 'mcp-agent-toolkit' in template {uri}"
             );
 
@@ -516,7 +515,7 @@ async fn test_server_info_naming_convention() {
 
         // Server info should not contain old names
         assert!(
-            !info_str.contains("mcp-agent-toolkit") || info_str.contains("paiml-mcp-agent-toolkit"),
+            !info_str.contains("mcp-agent-toolkit") || info_str.contains("pmat"),
             "Server info contains incorrect 'mcp-agent-toolkit' naming"
         );
 
