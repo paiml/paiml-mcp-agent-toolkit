@@ -4,10 +4,10 @@
 //! system produces byte-identical output across multiple runs, ensuring complete
 //! determinism as specified in deterministic-graphs-mmd-spec.md
 
-use paiml_mcp_agent_toolkit::services::artifact_writer::ArtifactWriter;
-use paiml_mcp_agent_toolkit::services::deterministic_mermaid_engine::DeterministicMermaidEngine;
-use paiml_mcp_agent_toolkit::services::dogfooding_engine::DogfoodingEngine;
-use paiml_mcp_agent_toolkit::services::unified_ast_engine::UnifiedAstEngine;
+use pmat::services::artifact_writer::ArtifactWriter;
+use pmat::services::deterministic_mermaid_engine::DeterministicMermaidEngine;
+use pmat::services::dogfooding_engine::DogfoodingEngine;
+use pmat::services::unified_ast_engine::UnifiedAstEngine;
 use std::collections::HashMap;
 use std::fs;
 use tempfile::TempDir;
@@ -418,11 +418,11 @@ async fn create_test_project() -> TempDir {
 }
 
 fn create_test_dependency_graph() -> petgraph::stable_graph::StableGraph<
-    paiml_mcp_agent_toolkit::services::unified_ast_engine::ModuleNode,
-    paiml_mcp_agent_toolkit::models::dag::EdgeType,
+    pmat::services::unified_ast_engine::ModuleNode,
+    pmat::models::dag::EdgeType,
 > {
-    use paiml_mcp_agent_toolkit::models::dag::EdgeType;
-    use paiml_mcp_agent_toolkit::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
+    use pmat::models::dag::EdgeType;
+    use pmat::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
     use std::path::PathBuf;
 
     let mut graph = petgraph::stable_graph::StableGraph::new();
@@ -472,11 +472,11 @@ fn create_test_dependency_graph() -> petgraph::stable_graph::StableGraph<
 }
 
 fn create_large_test_graph() -> petgraph::stable_graph::StableGraph<
-    paiml_mcp_agent_toolkit::services::unified_ast_engine::ModuleNode,
-    paiml_mcp_agent_toolkit::models::dag::EdgeType,
+    pmat::services::unified_ast_engine::ModuleNode,
+    pmat::models::dag::EdgeType,
 > {
-    use paiml_mcp_agent_toolkit::models::dag::EdgeType;
-    use paiml_mcp_agent_toolkit::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
+    use pmat::models::dag::EdgeType;
+    use pmat::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
     use std::path::PathBuf;
 
     let mut graph = petgraph::stable_graph::StableGraph::new();
@@ -515,10 +515,10 @@ fn create_large_test_graph() -> petgraph::stable_graph::StableGraph<
 }
 
 fn create_single_node_graph() -> petgraph::stable_graph::StableGraph<
-    paiml_mcp_agent_toolkit::services::unified_ast_engine::ModuleNode,
-    paiml_mcp_agent_toolkit::models::dag::EdgeType,
+    pmat::services::unified_ast_engine::ModuleNode,
+    pmat::models::dag::EdgeType,
 > {
-    use paiml_mcp_agent_toolkit::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
+    use pmat::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
     use std::path::PathBuf;
 
     let mut graph = petgraph::stable_graph::StableGraph::new();
@@ -532,11 +532,11 @@ fn create_single_node_graph() -> petgraph::stable_graph::StableGraph<
 }
 
 fn create_cyclic_graph() -> petgraph::stable_graph::StableGraph<
-    paiml_mcp_agent_toolkit::services::unified_ast_engine::ModuleNode,
-    paiml_mcp_agent_toolkit::models::dag::EdgeType,
+    pmat::services::unified_ast_engine::ModuleNode,
+    pmat::models::dag::EdgeType,
 > {
-    use paiml_mcp_agent_toolkit::models::dag::EdgeType;
-    use paiml_mcp_agent_toolkit::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
+    use pmat::models::dag::EdgeType;
+    use pmat::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
     use std::path::PathBuf;
 
     let mut graph = petgraph::stable_graph::StableGraph::new();
@@ -570,11 +570,8 @@ fn create_cyclic_graph() -> petgraph::stable_graph::StableGraph<
     graph
 }
 
-fn create_test_artifact_tree() -> paiml_mcp_agent_toolkit::services::unified_ast_engine::ArtifactTree
-{
-    use paiml_mcp_agent_toolkit::services::unified_ast_engine::{
-        ArtifactTree, MermaidArtifacts, Template,
-    };
+fn create_test_artifact_tree() -> pmat::services::unified_ast_engine::ArtifactTree {
+    use pmat::services::unified_ast_engine::{ArtifactTree, MermaidArtifacts, Template};
     use std::collections::BTreeMap;
     use std::path::PathBuf;
 
@@ -600,9 +597,7 @@ fn create_test_artifact_tree() -> paiml_mcp_agent_toolkit::services::unified_ast
     }
 }
 
-fn compute_tree_hash(
-    tree: &paiml_mcp_agent_toolkit::services::unified_ast_engine::ArtifactTree,
-) -> blake3::Hash {
+fn compute_tree_hash(tree: &pmat::services::unified_ast_engine::ArtifactTree) -> blake3::Hash {
     let mut hasher = blake3::Hasher::new();
 
     // Hash in deterministic order

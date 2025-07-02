@@ -1,6 +1,6 @@
 #[cfg(feature = "kotlin-ast")]
 mod kotlin_tests {
-    use paiml_mcp_agent_toolkit::services::ast_kotlin::KotlinAstParser;
+    use pmat::services::ast_kotlin::KotlinAstParser;
 
     #[test]
     fn test_kotlin_parsing() {

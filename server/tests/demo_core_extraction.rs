@@ -6,8 +6,8 @@
 #[cfg(test)]
 mod demo_core_extraction_tests {
     use anyhow::Result;
-    use paiml_mcp_agent_toolkit::demo::config::ConfigManager;
-    use paiml_mcp_agent_toolkit::demo::export::ExportService;
+    use pmat::demo::config::ConfigManager;
+    use pmat::demo::export::ExportService;
     use tempfile::TempDir;
 
     #[tokio::test]

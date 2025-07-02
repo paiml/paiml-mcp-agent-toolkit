@@ -1,6 +1,6 @@
-use paiml_mcp_agent_toolkit::services::complexity::*;
-use paiml_mcp_agent_toolkit::stateless_server::StatelessTemplateServer;
-use paiml_mcp_agent_toolkit::TemplateServerTrait;
+use pmat::services::complexity::*;
+use pmat::stateless_server::StatelessTemplateServer;
+use pmat::TemplateServerTrait;
 use std::path::Path;
 
 #[cfg(test)]
@@ -240,7 +240,7 @@ mod coverage_improvement {
     #[test]
     fn test_various_helper_functions() {
         use handlebars::Handlebars;
-        use paiml_mcp_agent_toolkit::utils::helpers::*;
+        use pmat::utils::helpers::*;
         use serde_json::json;
 
         // Test helper functions with various inputs
@@ -283,7 +283,7 @@ mod coverage_improvement {
 
     #[test]
     fn test_error_handling_coverage() {
-        use paiml_mcp_agent_toolkit::models::error::*;
+        use pmat::models::error::*;
 
         // Test various error types to improve coverage
         let template_error = TemplateError::NotFound("test".to_string());

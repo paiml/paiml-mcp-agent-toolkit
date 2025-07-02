@@ -19,7 +19,7 @@ class Hello {
     let path = Path::new("test.kt");
 
     // Test parser creation
-    let mut parser = paiml_mcp_agent_toolkit::services::ast_kotlin::KotlinAstParser::new();
+    let mut parser = pmat::services::ast_kotlin::KotlinAstParser::new();
     println!("✓ Parser created successfully");
 
     // Test parsing

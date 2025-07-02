@@ -1,7 +1,7 @@
 #![cfg(feature = "kotlin-ast")]
 
-use paiml_mcp_agent_toolkit::services::ast_strategies::{AstStrategy, KotlinAstStrategy};
-use paiml_mcp_agent_toolkit::services::file_classifier::FileClassifier;
+use pmat::services::ast_strategies::{AstStrategy, KotlinAstStrategy};
+use pmat::services::file_classifier::FileClassifier;
 use std::io::Write;
 use tempfile::NamedTempFile;
 
@@ -31,15 +31,14 @@ class Person(val name: String, var age: Int) {
     let context = result.unwrap();
     assert_eq!(context.language, "kotlin");
 
-
     // Check that we found the class and function
     let class_found = context.items.iter().any(|item| {
-        matches!(item, paiml_mcp_agent_toolkit::services::context::AstItem::Struct { name, .. } if name == "Person")
+        matches!(item, pmat::services::context::AstItem::Struct { name, .. } if name == "Person")
     });
     assert!(class_found, "Should find Person class");
 
     let function_found = context.items.iter().any(|item| {
-        matches!(item, paiml_mcp_agent_toolkit::services::context::AstItem::Function { name, .. } if name == "greet")
+        matches!(item, pmat::services::context::AstItem::Function { name, .. } if name == "greet")
     });
     assert!(function_found, "Should find greet function");
 }
@@ -80,12 +79,12 @@ class Car : Vehicle {
 
     // Check that we found the interface and class
     let interface_found = context.items.iter().any(|item| {
-        matches!(item, paiml_mcp_agent_toolkit::services::context::AstItem::Struct { name, .. } if name == "Vehicle")
+        matches!(item, pmat::services::context::AstItem::Struct { name, .. } if name == "Vehicle")
     });
     assert!(interface_found, "Should find Vehicle interface");
 
     let class_found = context.items.iter().any(|item| {
-        matches!(item, paiml_mcp_agent_toolkit::services::context::AstItem::Struct { name, .. } if name == "Car")
+        matches!(item, pmat::services::context::AstItem::Struct { name, .. } if name == "Car")
     });
     assert!(class_found, "Should find Car class");
 }
@@ -115,18 +114,16 @@ enum class Status {
     assert!(result.is_ok());
     let context = result.unwrap();
 
-
     // Check that we found the data class
     let data_class_found = context.items.iter().any(|item| {
-        matches!(item, paiml_mcp_agent_toolkit::services::context::AstItem::Struct { name, .. } if name == "User")
+        matches!(item, pmat::services::context::AstItem::Struct { name, .. } if name == "User")
     });
     assert!(data_class_found, "Should find User data class");
 
-
     // Check that we found the enum - it should be an Enum item, not Struct
     let enum_found = context.items.iter().any(|item| {
-        matches!(item, paiml_mcp_agent_toolkit::services::context::AstItem::Struct { name, .. } if name == "Status")
-            || matches!(item, paiml_mcp_agent_toolkit::services::context::AstItem::Enum { name, .. } if name == "Status")
+        matches!(item, pmat::services::context::AstItem::Struct { name, .. } if name == "Status")
+            || matches!(item, pmat::services::context::AstItem::Enum { name, .. } if name == "Status")
     });
     assert!(enum_found, "Should find Status enum");
 }

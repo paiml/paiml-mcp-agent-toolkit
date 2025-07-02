@@ -6,10 +6,10 @@
 #[cfg(test)]
 mod slow_integration_tests {
     use anyhow::Result;
-    use paiml_mcp_agent_toolkit::demo::config::{ConfigManager, DisplayConfig};
-    use paiml_mcp_agent_toolkit::demo::export::{create_export_report, ExportService};
-    use paiml_mcp_agent_toolkit::demo::DemoRunner;
-    use paiml_mcp_agent_toolkit::stateless_server::StatelessTemplateServer;
+    use pmat::demo::config::{ConfigManager, DisplayConfig};
+    use pmat::demo::export::{create_export_report, ExportService};
+    use pmat::demo::DemoRunner;
+    use pmat::stateless_server::StatelessTemplateServer;
     use std::path::Path;
     use std::sync::Arc;
     use tempfile::TempDir;
@@ -108,12 +108,12 @@ mod slow_integration_tests {
             let _config = DisplayConfig {
                 version: "1.0".to_string(),
                 panels: Default::default(),
-                export: paiml_mcp_agent_toolkit::demo::config::ExportConfig {
+                export: pmat::demo::config::ExportConfig {
                     formats: vec!["json".to_string()],
                     include_metadata: false,
                     include_raw_data: false,
                 },
-                performance: paiml_mcp_agent_toolkit::demo::config::PerformanceConfig {
+                performance: pmat::demo::config::PerformanceConfig {
                     cache_enabled: false,
                     cache_ttl: 0,
                     parallel_workers: 2,

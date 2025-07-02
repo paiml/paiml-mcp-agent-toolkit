@@ -1,4 +1,4 @@
-use paiml_mcp_agent_toolkit::services::git_clone::{CloneError, GitCloner};
+use pmat::services::git_clone::{CloneError, GitCloner};
 use tempfile::TempDir;
 
 #[test]
