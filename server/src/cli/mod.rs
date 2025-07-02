@@ -121,10 +121,23 @@ use std::path::Path;
 pub fn detect_primary_language(path: &Path) -> Option<String> {
     use walkdir::WalkDir;
 
-    // First check for project marker files
+    // First check for project marker files in order of specificity
+    // Check Rust first as it's the most specific (requires Cargo.toml)
     if path.join("Cargo.toml").exists() {
         return Some("rust".to_string());
     }
+    
+    // Check for Python project files
+    if path.join("pyproject.toml").exists() || path.join("setup.py").exists() {
+        return Some("python-uv".to_string());
+    }
+    
+    // Check for Kotlin/Gradle build files
+    if path.join("build.gradle").exists() || path.join("build.gradle.kts").exists() {
+        return Some("kotlin".to_string());
+    }
+    
+    // Check for JavaScript/TypeScript projects
     if path.join("package.json").exists() {
         // Could be Node.js or Deno - check for deno.json/deno.jsonc
         if path.join("deno.json").exists() || path.join("deno.jsonc").exists() {
@@ -132,17 +145,25 @@ pub fn detect_primary_language(path: &Path) -> Option<String> {
         }
         return Some("deno".to_string()); // Default TypeScript/JS to deno for now
     }
-    if path.join("pyproject.toml").exists() || path.join("setup.py").exists() {
-        return Some("python-uv".to_string());
-    }
-    if path.join("build.gradle").exists() || path.join("build.gradle.kts").exists() {
-        return Some("kotlin".to_string());
-    }
 
     // Fall back to counting file extensions
     let mut lang_counts = std::collections::HashMap::new();
 
-    for entry in WalkDir::new(path).max_depth(3).into_iter().flatten() {
+    // Use higher depth and exclude common non-source directories
+    for entry in WalkDir::new(path)
+        .max_depth(5)
+        .into_iter()
+        .filter_entry(|e| {
+            let file_name = e.file_name().to_str().unwrap_or("");
+            !file_name.starts_with('.') 
+                && file_name != "target" 
+                && file_name != "node_modules"
+                && file_name != "build"
+                && file_name != "dist"
+                && file_name != "archive"
+        })
+        .flatten() 
+    {
         if entry.file_type().is_file() {
             if let Some(ext) = entry.path().extension() {
                 match ext.to_str() {
@@ -162,6 +183,89 @@ pub fn detect_primary_language(path: &Path) -> Option<String> {
         .into_iter()
         .max_by_key(|&(_, count)| count)
         .map(|(lang, _)| lang.to_string())
+}
+
+/// Detect primary language with confidence score
+pub fn detect_primary_language_with_confidence(path: &Path) -> Option<(String, f64)> {
+    use walkdir::WalkDir;
+
+    // First check for project marker files in order of specificity
+    // These have 100% confidence when found
+    if path.join("Cargo.toml").exists() {
+        return Some(("rust".to_string(), 100.0));
+    }
+    
+    if path.join("pyproject.toml").exists() || path.join("setup.py").exists() {
+        return Some(("python-uv".to_string(), 100.0));
+    }
+    
+    if path.join("build.gradle").exists() || path.join("build.gradle.kts").exists() {
+        return Some(("kotlin".to_string(), 100.0));
+    }
+    
+    if path.join("package.json").exists() {
+        if path.join("deno.json").exists() || path.join("deno.jsonc").exists() {
+            return Some(("deno".to_string(), 100.0));
+        }
+        return Some(("deno".to_string(), 90.0)); // Slightly less confident without deno config
+    }
+
+    // Fall back to counting file extensions
+    let mut lang_counts = std::collections::HashMap::new();
+    let mut total_files = 0;
+
+    // Use higher depth and exclude common non-source directories
+    for entry in WalkDir::new(path)
+        .max_depth(5)
+        .into_iter()
+        .filter_entry(|e| {
+            let file_name = e.file_name().to_str().unwrap_or("");
+            !file_name.starts_with('.') 
+                && file_name != "target" 
+                && file_name != "node_modules"
+                && file_name != "build"
+                && file_name != "dist"
+                && file_name != "archive"
+        })
+        .flatten() 
+    {
+        if entry.file_type().is_file() {
+            if let Some(ext) = entry.path().extension() {
+                match ext.to_str() {
+                    Some("rs") => {
+                        *lang_counts.entry("rust").or_insert(0) += 1;
+                        total_files += 1;
+                    }
+                    Some("ts") | Some("tsx") | Some("js") | Some("jsx") => {
+                        *lang_counts.entry("deno").or_insert(0) += 1;
+                        total_files += 1;
+                    }
+                    Some("py") => {
+                        *lang_counts.entry("python-uv").or_insert(0) += 1;
+                        total_files += 1;
+                    }
+                    Some("kt") | Some("kts") => {
+                        *lang_counts.entry("kotlin").or_insert(0) += 1;
+                        total_files += 1;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    if total_files == 0 {
+        return None;
+    }
+
+    lang_counts
+        .into_iter()
+        .max_by_key(|&(_, count)| count)
+        .map(|(lang, count)| {
+            // Calculate confidence as percentage of files for this language
+            let confidence = (count as f64 / total_files as f64) * 100.0;
+            (lang.to_string(), confidence)
+        })
 }
 
 pub fn apply_satd_filters(

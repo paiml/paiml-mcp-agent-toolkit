@@ -148,9 +148,22 @@ fn detect_or_use_toolchain(toolchain: Option<String>, project_path: &Path) -> Re
         Some(t) => Ok(t),
         None => {
             eprintln!("🔍 Auto-detecting project language...");
-            let toolchain_name = detect_primary_language(project_path)?;
-            eprintln!("✅ Detected: {toolchain_name} (confidence: 95.2%)");
-            Ok(toolchain_name)
+            
+            // First try with confidence
+            if let Some((lang, confidence)) = super::super::detect_primary_language_with_confidence(project_path) {
+                eprintln!("✅ Detected: {lang} (confidence: {confidence:.1}%)");
+                return Ok(lang);
+            }
+            
+            // Fall back to simple detection
+            if let Some(lang) = super::super::detect_primary_language(project_path) {
+                eprintln!("✅ Detected: {lang}");
+                return Ok(lang);
+            }
+            
+            // Default to rust if no language detected
+            eprintln!("⚠️  Could not detect language, defaulting to Rust");
+            Ok("rust".to_string())
         }
     }
 }
@@ -888,6 +901,8 @@ fn format_llm_optimized_output(
     output
 }
 
+// Removed - using the function from cli/mod.rs instead
+/*
 /// Enhanced language detection based on project files
 /// Implements the lightweight detection strategy from Phase 3 of bug remediation
 fn detect_primary_language(path: &Path) -> Result<String> {
@@ -919,18 +934,37 @@ fn detect_primary_language(path: &Path) -> Result<String> {
         counts.get("js").copied().unwrap_or(0) > 0 || counts.get("jsx").copied().unwrap_or(0) > 0;
     let has_go = counts.get("go").copied().unwrap_or(0) > 0;
 
-    // Prioritize by source file presence, then check for build files
-    if has_kotlin {
-        // Check for Kotlin build files to confirm
-        if path.join("build.gradle").exists() || path.join("build.gradle.kts").exists() {
-            return Ok("kotlin".to_string());
+    // Check for project marker files first (strongest indicators)
+    if path.join("Cargo.toml").exists() {
+        return Ok("rust".to_string());
+    }
+    
+    if path.join("pyproject.toml").exists() || path.join("setup.py").exists() {
+        return Ok("python-uv".to_string());
+    }
+    
+    if path.join("package.json").exists() {
+        if path.join("deno.json").exists() || path.join("deno.jsonc").exists() {
+            return Ok("deno".to_string());
         }
-        // Even without gradle, if we have .kt files, it's likely Kotlin
+        return Ok("node".to_string());
+    }
+    
+    if path.join("go.mod").exists() {
+        return Ok("go".to_string());
+    }
+    
+    if path.join("build.gradle").exists() || path.join("build.gradle.kts").exists() {
         return Ok("kotlin".to_string());
     }
-
-    if has_rust && path.join("Cargo.toml").exists() {
+    
+    // Fall back to source file detection if no project markers found
+    if has_rust {
         return Ok("rust".to_string());
+    }
+    
+    if has_kotlin {
+        return Ok("kotlin".to_string());
     }
 
     if has_python {
@@ -988,6 +1022,7 @@ fn detect_primary_language(path: &Path) -> Result<String> {
 
     Ok(detected)
 }
+*/
 
 /// Handle serve command
 pub async fn handle_serve(host: String, port: u16, cors: bool) -> Result<()> {
@@ -1010,4 +1045,3 @@ mod tests {
         assert_eq!(1 + 1, 2);
     }
 }
-
