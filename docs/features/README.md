@@ -10,6 +10,7 @@ This directory contains comprehensive documentation for all features of the PAIM
 
 ### 🚀 Refactoring & Optimization
 - [**Refactor Auto**](./refactor-auto.md) - AI-powered automated refactoring with extreme quality standards ⭐
+- [**Single File Mode**](./single-file-mode.md) - Targeted quality improvements following Toyota Way principles ⭐
 - [**Emit-Refactor Engine**](./emit-refactor-engine.md) - Real-time defect emission and interactive refactoring
 - [**Complexity Analysis**](./complexity-analysis.md) - Cyclomatic and cognitive complexity metrics
 
@@ -66,6 +67,7 @@ Each feature document includes:
 | Feature | Status | Version | Description |
 |---------|--------|---------|-------------|
 | Refactor Auto | ✅ Stable | 0.26.1 | AI-powered automated refactoring |
+| Single File Mode | ✅ Stable | 0.26.3 | Targeted incremental improvements |
 | Makefile Linter | ✅ Stable | 0.25.0 | 50+ rules for Makefile quality |
 | Emit-Refactor Engine | ✅ Stable | 0.25.0 | Dual-mode refactoring system |
 | Deep Context | ✅ Stable | 0.25.0 | AST-based analysis |

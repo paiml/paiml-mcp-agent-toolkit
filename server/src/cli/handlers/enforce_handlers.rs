@@ -943,3 +943,4 @@ mod tests {
         assert!(json.contains("0.5"));
     }
 }
+

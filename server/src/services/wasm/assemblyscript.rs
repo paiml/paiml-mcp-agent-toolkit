@@ -22,8 +22,16 @@ pub struct AssemblyScriptParser {
 }
 
 impl AssemblyScriptParser {
-    /// Create a new AssemblyScript parser
-    pub fn new(timeout: Duration) -> Self {
+    /// Create a new AssemblyScript parser without timeout parameter
+    pub fn new() -> Result<Self> {
+        Ok(Self {
+            _max_depth: 100,
+            _timeout: Duration::from_secs(30),
+        })
+    }
+    
+    /// Create a new AssemblyScript parser with custom timeout
+    pub fn new_with_timeout(timeout: Duration) -> Self {
         Self {
             _max_depth: 100,
             _timeout: timeout,
@@ -71,7 +79,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_assemblyscript_parser() {
-        let mut parser = AssemblyScriptParser::new(Duration::from_secs(5));
+        let mut parser = AssemblyScriptParser::new().unwrap();
         
         let mut temp_file = NamedTempFile::new().unwrap();
         writeln!(temp_file, "function test(): i32 {{ return 42; }}").unwrap();
@@ -84,7 +92,7 @@ mod tests {
 
     #[test]
     fn test_complexity_analysis() {
-        let parser = AssemblyScriptParser::new(Duration::from_secs(5));
+        let parser = AssemblyScriptParser::new_with_timeout(Duration::from_secs(5));
         let content = "function test(): i32 { return 42; }\nfunction test2(): i32 { return 24; }";
         
         let complexity = parser.analyze_complexity(content).unwrap();

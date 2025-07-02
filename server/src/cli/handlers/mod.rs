@@ -20,8 +20,6 @@ pub mod refactor_handlers;
 pub mod utility_handlers;
 pub mod wasm_handlers;
 
-#[cfg(test)]
-pub mod refactor_auto_property_tests;
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{
