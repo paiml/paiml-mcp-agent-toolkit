@@ -163,7 +163,9 @@ impl AstBasedDependencyAnalyzer {
             | Language::Toml
             | Language::Yaml
             | Language::Json
-            | Language::Shell => {
+            | Language::Shell
+            | Language::AssemblyScript
+            | Language::WebAssembly => {
                 // No dependency analysis for these file types yet
                 Ok(DependencyAnalysis {
                     external: Vec::new(),

@@ -76,6 +76,12 @@ mod tests {
                     AnalyzeCommands::BigO { .. } => {
                         panic!("Expected Churn command, got BigO");
                     }
+                    AnalyzeCommands::AssemblyScript { .. } => {
+                        panic!("Expected Churn command, got AssemblyScript");
+                    }
+                    AnalyzeCommands::WebAssembly { .. } => {
+                        panic!("Expected Churn command, got WebAssembly");
+                    }
                     AnalyzeCommands::LintHotspot { .. } => {
                         panic!("Expected Churn command, got LintHotspot");
                     }
@@ -165,6 +171,12 @@ mod tests {
                 }
                 AnalyzeCommands::BigO { .. } => {
                     panic!("Expected Churn command, got BigO");
+                }
+                AnalyzeCommands::AssemblyScript { .. } => {
+                    panic!("Expected Churn command, got AssemblyScript");
+                }
+                AnalyzeCommands::WebAssembly { .. } => {
+                    panic!("Expected Churn command, got WebAssembly");
                 }
                 AnalyzeCommands::LintHotspot { .. } => {
                     panic!("Expected Churn command, got LintHotspot");
