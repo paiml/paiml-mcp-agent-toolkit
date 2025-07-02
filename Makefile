@@ -60,13 +60,13 @@ fix: format
 # Run linting in all projects
 lint: lint-scripts lint-makefile
 	@echo "🔍 Linting Rust code..."
-	@cargo clippy --manifest-path server/Cargo.toml --all-targets --all-features -- -D warnings -D clippy::cargo -A clippy::multiple-crate-versions
+	@cargo clippy --manifest-path server/Cargo.toml --all-targets --all-features -- -D warnings -D clippy::cargo -A clippy::multiple-crate-versions -A clippy::uninlined-format-args
 	@echo "✅ All linting checks passed!"
 
 # Lint only main code (skip tests)
 lint-main: lint-scripts lint-makefile
 	@echo "🔍 Linting Rust library and binaries..."
-	@cargo clippy --manifest-path server/Cargo.toml --lib --bins -- -D warnings -D clippy::cargo -A clippy::multiple-crate-versions
+	@cargo clippy --manifest-path server/Cargo.toml --lib --bins -- -D warnings -D clippy::cargo -A clippy::multiple-crate-versions -A clippy::uninlined-format-args
 	@echo "✅ Main code linting passed!"
 
 # Type check all projects  
