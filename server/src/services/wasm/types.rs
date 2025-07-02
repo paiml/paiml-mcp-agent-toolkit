@@ -193,7 +193,7 @@ pub struct SourceLocation {
 }
 
 /// Severity levels for issues and patterns
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Severity {
     Low,
     Medium,

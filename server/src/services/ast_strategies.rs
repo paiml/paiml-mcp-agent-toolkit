@@ -512,24 +512,42 @@ impl AstStrategy for KotlinAstStrategy {
             Ok(ast_dag) => {
                 // Convert AST DAG to FileContext items
                 let mut items = Vec::new();
+                let content_lines: Vec<&str> = content.lines().collect();
 
                 for node in ast_dag.nodes.iter() {
+                    // Extract name from source using source range
+                    let name = Self::extract_name_from_node(node, &content);
+                    let line_number =
+                        Self::byte_pos_to_line(node.source_range.start as usize, &content_lines);
+
                     let item = match &node.kind {
                         crate::models::unified_ast::AstKind::Function(_) => {
                             crate::services::context::AstItem::Function {
-                                name: "kotlinFunction".to_string(),
+                                name: name.unwrap_or_else(|| "anonymousFunction".to_string()),
                                 visibility: "public".to_string(),
                                 is_async: false, // Kotlin uses coroutines, not async
-                                line: 1,
+                                line: line_number,
                             }
                         }
-                        crate::models::unified_ast::AstKind::Type(_) => {
-                            crate::services::context::AstItem::Struct {
-                                name: "KotlinClass".to_string(),
-                                visibility: "public".to_string(),
-                                fields_count: 0,
-                                derives: vec![],
-                                line: 1,
+                        crate::models::unified_ast::AstKind::Type(type_kind) => {
+                            match type_kind {
+                                crate::models::unified_ast::TypeKind::Enum => {
+                                    crate::services::context::AstItem::Enum {
+                                        name: name.unwrap_or_else(|| "AnonymousEnum".to_string()),
+                                        visibility: "public".to_string(),
+                                        variants_count: 0,
+                                        line: line_number,
+                                    }
+                                }
+                                _ => {
+                                    crate::services::context::AstItem::Struct {
+                                        name: name.unwrap_or_else(|| "AnonymousClass".to_string()),
+                                        visibility: "public".to_string(),
+                                        fields_count: 0,
+                                        derives: vec![],
+                                        line: line_number,
+                                    }
+                                }
                             }
                         }
                         _ => continue,
@@ -559,6 +577,103 @@ impl AstStrategy for KotlinAstStrategy {
 
     fn supports_extension(&self, ext: &str) -> bool {
         matches!(ext, "kt" | "kts")
+    }
+}
+
+#[cfg(feature = "kotlin-ast")]
+impl KotlinAstStrategy {
+    /// Extract name from UnifiedAstNode by analyzing the source range
+    fn extract_name_from_node(
+        node: &crate::models::unified_ast::UnifiedAstNode,
+        content: &str,
+    ) -> Option<String> {
+        // For now, extract a reasonable segment from the source range
+        let start = node.source_range.start as usize;
+        let end = node.source_range.end as usize;
+
+        if start >= content.len() || end > content.len() || start >= end {
+            return None;
+        }
+
+        let source_text = &content[start..end];
+
+        // Use simple heuristics to extract identifiers from the source text
+        match &node.kind {
+            crate::models::unified_ast::AstKind::Function(_) => {
+                Self::extract_function_name(source_text)
+            }
+            crate::models::unified_ast::AstKind::Type(_) => Self::extract_class_name(source_text),
+            _ => None,
+        }
+    }
+
+    /// Extract function name from Kotlin source text
+    fn extract_function_name(source_text: &str) -> Option<String> {
+        // Look for pattern: fun name(...) 
+        if let Some(fun_pos) = source_text.find("fun ") {
+            let after_fun = &source_text[fun_pos + 4..];
+            if let Some(paren_pos) = after_fun.find('(') {
+                let name_part = &after_fun[..paren_pos];
+                // Take the first word as the function name
+                return name_part.split_whitespace().next().map(|s| s.to_string());
+            }
+        }
+        None
+    }
+
+    /// Extract class/interface/object name from source text
+    fn extract_class_name(source_text: &str) -> Option<String> {
+        // Look for patterns like "class Name", "interface Name", "object Name", "data class Name", "enum class Name"
+        let lines = source_text.lines().next()?; // Get first line
+        let words: Vec<&str> = lines.split_whitespace().collect();
+        
+        // Handle enum class first
+        if words.len() >= 3 && words[0] == "enum" && words[1] == "class" {
+            let name_with_extras = words[2];
+            let name = name_with_extras
+                .split(['(', ':', '<', '{'])
+                .next()
+                .unwrap_or(name_with_extras)
+                .trim();
+            return Some(name.to_string());
+        }
+        
+        // Handle data class
+        if words.len() >= 3 && words[0] == "data" && words[1] == "class" {
+            let name_with_extras = words[2];
+            let name = name_with_extras
+                .split(['(', ':', '<'])
+                .next()
+                .unwrap_or(name_with_extras);
+            return Some(name.to_string());
+        }
+        
+        // Handle regular class/interface/object
+        for i in 0..words.len() {
+            if matches!(words[i], "class" | "interface" | "object") && i + 1 < words.len() {
+                let name_with_extras = words[i + 1];
+                // Remove everything after the first '(' or ':' or '<'
+                let name = name_with_extras
+                    .split(['(', ':', '<'])
+                    .next()
+                    .unwrap_or(name_with_extras);
+                return Some(name.to_string());
+            }
+        }
+        
+        None
+    }
+
+    /// Convert byte position to line number
+    fn byte_pos_to_line(byte_pos: usize, content_lines: &[&str]) -> usize {
+        let mut current_pos = 0;
+        for (line_idx, line) in content_lines.iter().enumerate() {
+            if current_pos + line.len() >= byte_pos {
+                return line_idx + 1; // 1-based line numbers
+            }
+            current_pos += line.len() + 1; // +1 for newline character
+        }
+        content_lines.len() // Return last line if position is beyond content
     }
 }
 
