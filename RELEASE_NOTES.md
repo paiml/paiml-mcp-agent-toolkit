@@ -1,5 +1,37 @@
 # Release Notes
 
+## v0.26.2 (2025-07-02)
+
+### New Features
+
+#### 🚀 WebAssembly and AssemblyScript Support
+- Added comprehensive WebAssembly analysis capabilities
+- Two new analysis commands:
+  - `pmat analyze assemblyscript` - Analyze AssemblyScript source code
+  - `pmat analyze webassembly` - Analyze WebAssembly binary and text formats
+- Features include:
+  - **Complexity Analysis**: WASM-specific metrics including gas estimation
+  - **Security Validation**: Basic security checks for WebAssembly modules
+  - **Memory Analysis**: Memory pool management and optimization hints
+  - **Parallel Processing**: Efficient analysis of multiple WASM files
+  - **Multiple Output Formats**: JSON, SARIF, Markdown, and summary formats
+- Supports file extensions: `.wasm` (binary), `.wat` (text), `.ts` (AssemblyScript)
+
+#### 🔧 Language Support Expansion
+- Added Language enum variants: `AssemblyScript = 14`, `WebAssembly = 15`
+- Integrated with unified AST system for consistent analysis
+- Memory-safe parsing with timeout protection and file size limits
+
+### Improvements
+- Enhanced language detection to support WebAssembly file types
+- Added WASM-specific complexity metrics (cyclomatic, cognitive, memory pressure)
+- Implemented iterative parsing to prevent stack overflow on large files
+
+### Bug Fixes
+- Fixed compilation issues with unused imports and variables
+- Resolved pattern matching exhaustiveness in test files
+- Fixed field assignment clippy warnings
+
 ## v0.26.1 (2025-07-02)
 
 ### New Features

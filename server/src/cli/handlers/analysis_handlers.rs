@@ -496,6 +496,52 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             )
             .await
         }
+        AnalyzeCommands::AssemblyScript {
+            project_path,
+            format,
+            wasm_complexity,
+            memory_analysis,
+            security,
+            output,
+            timeout,
+            perf,
+        } => {
+            super::wasm_handlers::handle_analyze_assemblyscript(
+                project_path,
+                format,
+                wasm_complexity,
+                memory_analysis,
+                security,
+                output,
+                timeout,
+                perf,
+            )
+            .await
+        }
+        AnalyzeCommands::WebAssembly {
+            project_path,
+            format,
+            include_binary,
+            include_text,
+            memory_analysis,
+            security,
+            complexity,
+            output,
+            perf,
+        } => {
+            super::wasm_handlers::handle_analyze_webassembly(
+                project_path,
+                format,
+                include_binary,
+                include_text,
+                memory_analysis,
+                security,
+                complexity,
+                output,
+                perf,
+            )
+            .await
+        }
     }
 }
 

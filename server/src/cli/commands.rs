@@ -1169,6 +1169,80 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         perf: bool,
     },
+
+    /// Analyze AssemblyScript code
+    AssemblyScript {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', value_enum, default_value = "summary")]
+        format: ComplexityOutputFormat,
+
+        /// Include WASM complexity analysis
+        #[arg(long)]
+        wasm_complexity: bool,
+
+        /// Memory analysis with pool optimization
+        #[arg(long)]
+        memory_analysis: bool,
+
+        /// Security validation checks
+        #[arg(long)]
+        security: bool,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Maximum parsing time in seconds
+        #[arg(long, default_value = "30")]
+        timeout: u64,
+
+        /// Show performance metrics
+        #[arg(long)]
+        perf: bool,
+    },
+
+    /// Analyze WebAssembly binary and text format
+    WebAssembly {
+        /// Project path to analyze (defaults to current directory)  
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', value_enum, default_value = "summary")]
+        format: ComplexityOutputFormat,
+
+        /// Include binary WASM (.wasm) files
+        #[arg(long, default_value = "true")]
+        include_binary: bool,
+
+        /// Include text WASM (.wat) files
+        #[arg(long, default_value = "true")]
+        include_text: bool,
+
+        /// Memory usage analysis
+        #[arg(long)]
+        memory_analysis: bool,
+
+        /// Security validation
+        #[arg(long)]
+        security: bool,
+
+        /// Complexity analysis
+        #[arg(long)]
+        complexity: bool,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Show performance metrics
+        #[arg(long)]
+        perf: bool,
+    },
 }
 
 /// Enforce subcommands

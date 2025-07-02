@@ -40,6 +40,8 @@ This directory contains comprehensive documentation for all features of the PAIM
 - **Python** - AST analysis with rustpython-parser
 - **C/C++** - Tree-sitter based parsing with goto tracking
 - **Kotlin** - Full AST support via tree-sitter-kotlin (with memory safety guarantees)
+- **WebAssembly** - Binary (.wasm) and text format (.wat) analysis (v0.26.2)
+- **AssemblyScript** - TypeScript-like syntax for WebAssembly (v0.26.2)
 - **Cython** - Hybrid Python/C analysis
 
 #### 🛡️ Memory Safety (v0.26.0)

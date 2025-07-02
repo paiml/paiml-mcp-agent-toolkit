@@ -52,6 +52,8 @@ cargo build --release
 - **Python** - Comprehensive Python 3 support
 - **Kotlin** - Memory-safe parsing with full language support
 - **C/C++** - Tree-sitter based analysis
+- **WebAssembly** - WASM binary and text format analysis
+- **AssemblyScript** - TypeScript-like syntax for WebAssembly
 - **Makefiles** - Specialized linting and analysis
 
 ## 📋 Tool Usage
@@ -82,6 +84,10 @@ pmat analyze symbol-table                     # Symbol extraction with cross-ref
 pmat analyze duplicates --min-lines 10        # Code duplication detection
 pmat quality-gate --strict                    # Comprehensive quality enforcement
 pmat diagnose --verbose                       # Self-diagnostics and health checks
+
+# New in v0.26.2 - WebAssembly Support
+pmat analyze assemblyscript --wasm-complexity  # AssemblyScript analysis with WASM metrics
+pmat analyze webassembly --include-binary      # WebAssembly binary and text format analysis
 
 # Project scaffolding
 pmat scaffold rust --templates makefile,readme,gitignore
