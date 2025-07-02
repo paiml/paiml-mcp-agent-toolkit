@@ -418,7 +418,7 @@ function complexFunction(x: number): number {
         assert_eq!(runs.len(), 1);
 
         let tool = &runs[0]["tool"]["driver"];
-        assert_eq!(tool["name"], "paiml-mcp-agent-toolkit");
+        assert_eq!(tool["name"], "pmat");
     }
 }
 
@@ -521,7 +521,7 @@ fn test_version_output() {
     cmd.arg("--version")
         .assert()
         .success()
-        .stdout(predicate::str::is_match(r"paiml-mcp-agent-toolkit \d+\.\d+\.\d+").unwrap());
+        .stdout(predicate::str::is_match(r"pmat \d+\.\d+\.\d+").unwrap());
 }
 
 #[test]

@@ -158,9 +158,7 @@ mod benchmarks {
         // Actual measurement would require external tools like valgrind or system monitoring
 
         println!("Memory usage baseline test");
-        println!(
-            "Run with: valgrind --tool=massif ./target/release/paiml-mcp-agent-toolkit --version"
-        );
+        println!("Run with: valgrind --tool=massif ./target/release/pmat --version");
         println!("Expected peak memory: <50MB for CLI operations");
 
         // For now, this is just documentation

@@ -1,10 +1,10 @@
 [package]
-name = "paiml-mcp-agent-toolkit"
-version = "0.26.3"
+name = "pmat"
+version = "0.26.4"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
-description = "Zero-configuration AI context generation and code quality analysis toolkit with CLI, MCP, and HTTP interfaces"
+description = "PMAT - Zero-config AI context generation and code quality toolkit (CLI, MCP, HTTP)"
 homepage = "https://paiml.com"
 repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
 license = "MIT OR Apache-2.0"
