@@ -19,6 +19,9 @@ pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod utility_handlers;
 
+#[cfg(test)]
+pub mod refactor_auto_property_tests;
+
 // Re-export handler functions
 pub use advanced_analysis_handlers::{
     handle_analyze_comprehensive, handle_analyze_deep_context, handle_analyze_defect_prediction,

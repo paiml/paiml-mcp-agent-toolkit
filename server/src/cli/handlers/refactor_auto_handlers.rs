@@ -2618,6 +2618,44 @@ async fn output_ai_unified_rewrite_request(
     current_coverage: f64,
     context_path: &Path,
 ) -> Result<()> {
+    // Print clear instructions BEFORE the JSON
+    eprintln!();
+    eprintln!("📋 REFACTORING REQUEST GENERATED");
+    eprintln!("================================");
+    eprintln!();
+    eprintln!("🎯 What you need to do:");
+    eprintln!("   1. Refactor {} to meet EXTREME quality standards", file_path.display());
+    eprintln!("   2. Create comprehensive unit tests achieving ≥80% coverage");
+    eprintln!("   3. Fix all {} lint violations", violations.len());
+    eprintln!("   4. Ensure all functions have complexity ≤ 10 (target: 5)");
+    eprintln!();
+    eprintln!("📁 Files to create/modify:");
+    eprintln!("   • {} (refactored source)", file_path.display());
+    
+    // Determine test file location
+    let test_file_path = if file_path.to_string_lossy().contains("/src/") {
+        // For files in src/, tests go alongside
+        let stem = file_path.file_stem().unwrap().to_string_lossy();
+        file_path.with_file_name(format!("{}_test.rs", stem))
+    } else {
+        // For other files, use tests/ directory
+        let stem = file_path.file_stem().unwrap().to_string_lossy();
+        PathBuf::from("tests").join(format!("{}_test.rs", stem))
+    };
+    eprintln!("   • {} (unit tests with >80% coverage)", test_file_path.display());
+    
+    eprintln!();
+    eprintln!("✅ Success Criteria:");
+    eprintln!("   • All functions have complexity ≤ 10 (target: 5)");
+    eprintln!("   • Test coverage ≥ 80% (meaningful tests, not placeholders)");
+    eprintln!("   • Zero SATD comments (TODO, FIXME, HACK, XXX)");
+    eprintln!("   • All {} lint violations fixed", violations.len());
+    eprintln!("   • All public items documented");
+    eprintln!("   • Code compiles and all tests pass");
+    eprintln!();
+    eprintln!("📄 Full refactoring request follows (save as refactor_request.json):");
+    eprintln!("---");
+
     // Read the full context
     let context_content = fs::read_to_string(context_path).await?;
     let file_context = extract_file_context(&context_content, file_path);
@@ -2676,6 +2714,20 @@ async fn output_ai_unified_rewrite_request(
 
     // Output as JSON for AI consumption
     println!("{}", serde_json::to_string_pretty(&request)?);
+
+    // Print clear next steps AFTER the JSON
+    eprintln!("---");
+    eprintln!();
+    eprintln!("💡 Next Steps:");
+    eprintln!("   1. Save the above JSON as refactor_request.json");
+    eprintln!("   2. Use your AI tool to process the request");
+    eprintln!("   3. Apply the generated refactoring and tests");
+    eprintln!("   4. Run: cargo test --lib -- {}::tests", file_path.file_stem().unwrap().to_string_lossy());
+    eprintln!("   5. Run: cargo tarpaulin --lib --out Html --output-dir coverage");
+    eprintln!("   6. Verify coverage meets 80% threshold");
+    eprintln!("   7. Run: pmat analyze complexity {} --max-cyclomatic 10", file_path.display());
+    eprintln!("   8. Commit when all quality gates pass");
+    eprintln!();
 
     Ok(())
 }

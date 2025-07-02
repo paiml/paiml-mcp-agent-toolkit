@@ -80,6 +80,8 @@ pub async fn route_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::R
         } => handle_refactor_resume(checkpoint, steps, explain).await,
         RefactorCommands::Auto {
             project_path,
+            single_file_mode: _, // TODO: Use single_file_mode
+            file: _,             // TODO: Use file
             max_iterations,
             quality_profile: _, // TODO: Use quality profile
             format,

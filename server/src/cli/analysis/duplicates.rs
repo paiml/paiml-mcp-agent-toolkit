@@ -272,22 +272,22 @@ fn count_tokens(content: &str) -> usize {
 /// Check if line starts a code block - refactored to reduce complexity
 fn is_block_start(line: &str) -> bool {
     let trimmed = line.trim();
-    
+
     // Check for function/method declarations
     if is_function_declaration(trimmed) {
         return true;
     }
-    
+
     // Check for class/type declarations
     if is_type_declaration(trimmed) {
         return true;
     }
-    
+
     // Check for block opening
     if is_block_opening(trimmed) {
         return true;
     }
-    
+
     false
 }
 
@@ -408,7 +408,7 @@ fn should_process_file(path: &Path, include: &Option<String>, exclude: &Option<S
 fn is_source_file(path: &Path) -> bool {
     matches!(
         path.extension().and_then(|s| s.to_str()),
-        Some("rs") | Some("js") | Some("ts") | Some("py") | Some("java") | Some("cpp") | Some("c") | Some("kt") | Some("kts")
+        Some("rs" | "js" | "ts" | "py" | "java" | "cpp" | "c" | "kt" | "kts")
     )
 }
 
@@ -433,7 +433,7 @@ fn format_json_output(report: &DuplicateReport) -> Result<String> {
 /// Format output for human reading
 fn format_human_output(report: &DuplicateReport) -> Result<String> {
     use std::fmt::Write;
-    
+
     let mut output = String::new();
     writeln!(&mut output, "# Duplicate Code Analysis\n")?;
 
@@ -580,15 +580,15 @@ mod tests {
         assert!(is_block_start("fn main() {"));
         assert!(is_block_start("function test() {"));
         assert!(is_block_start("def calculate():"));
-        
+
         // Type declarations
         assert!(is_block_start("class Foo {"));
         assert!(is_block_start("struct Bar {"));
         assert!(is_block_start("impl Display for Foo {"));
-        
+
         // Block openings
         assert!(is_block_start("if condition {"));
-        
+
         // Not block starts
         assert!(!is_block_start("let x = 1;"));
         assert!(!is_block_start("{ x: 1 }"));
@@ -612,18 +612,22 @@ mod tests {
     #[test]
     fn test_should_process_file() {
         let path = Path::new("src/main.rs");
-        
+
         // No filters
         assert!(should_process_file(path, &None, &None));
-        
+
         // Include filter
         assert!(should_process_file(path, &Some("src".to_string()), &None));
-        assert!(!should_process_file(path, &Some("tests".to_string()), &None));
-        
+        assert!(!should_process_file(
+            path,
+            &Some("tests".to_string()),
+            &None
+        ));
+
         // Exclude filter
         assert!(!should_process_file(path, &None, &Some("src".to_string())));
         assert!(should_process_file(path, &None, &Some("tests".to_string())));
-        
+
         // Both filters (exclude takes precedence)
         assert!(!should_process_file(
             path,
@@ -642,9 +646,9 @@ mod tests {
             "    }",
             "}",
         ];
-        
+
         assert_eq!(find_block_end(&lines), Some(6));
-        
+
         let lines2 = vec!["fn test() {", "    let x = 1;"];
         assert_eq!(find_block_end(&lines2), None);
     }
@@ -662,10 +666,10 @@ mod tests {
             "    println!(\"y = {}\", y);",
             "}",
         ];
-        
+
         let mut blocks = Vec::new();
         extract_exact_blocks(&mut blocks, &lines, "test.rs", 3, 100);
-        
+
         // Should find multiple sliding windows
         assert!(!blocks.is_empty());
         assert!(blocks.iter().all(|(_, file, _, _, _)| file == "test.rs"));
@@ -674,10 +678,22 @@ mod tests {
     #[test]
     fn test_find_duplicate_blocks_no_duplicates() {
         let blocks = vec![
-            ("hash1".to_string(), "file1.rs".to_string(), 1, 10, "content1".to_string()),
-            ("hash2".to_string(), "file2.rs".to_string(), 1, 10, "content2".to_string()),
+            (
+                "hash1".to_string(),
+                "file1.rs".to_string(),
+                1,
+                10,
+                "content1".to_string(),
+            ),
+            (
+                "hash2".to_string(),
+                "file2.rs".to_string(),
+                1,
+                10,
+                "content2".to_string(),
+            ),
         ];
-        
+
         let duplicates = find_duplicate_blocks(blocks, 0.8);
         assert!(duplicates.is_empty());
     }
@@ -685,11 +701,29 @@ mod tests {
     #[test]
     fn test_find_duplicate_blocks_with_duplicates() {
         let blocks = vec![
-            ("hash1".to_string(), "file1.rs".to_string(), 1, 10, "content1".to_string()),
-            ("hash1".to_string(), "file2.rs".to_string(), 20, 29, "content1".to_string()),
-            ("hash2".to_string(), "file3.rs".to_string(), 1, 5, "content2".to_string()),
+            (
+                "hash1".to_string(),
+                "file1.rs".to_string(),
+                1,
+                10,
+                "content1".to_string(),
+            ),
+            (
+                "hash1".to_string(),
+                "file2.rs".to_string(),
+                20,
+                29,
+                "content1".to_string(),
+            ),
+            (
+                "hash2".to_string(),
+                "file3.rs".to_string(),
+                1,
+                5,
+                "content2".to_string(),
+            ),
         ];
-        
+
         let duplicates = find_duplicate_blocks(blocks, 0.8);
         assert_eq!(duplicates.len(), 1);
         assert_eq!(duplicates[0].hash, "hash1");
@@ -704,16 +738,17 @@ mod tests {
             total_lines: 100,
             duplication_percentage: 0.0,
         };
-        
+
         // Calculate percentage
-        stats.duplication_percentage = (stats.duplicate_lines as f32 / stats.total_lines as f32) * 100.0;
+        stats.duplication_percentage =
+            (stats.duplicate_lines as f32 / stats.total_lines as f32) * 100.0;
         assert_eq!(stats.duplication_percentage, 20.0);
     }
 
     #[tokio::test]
     async fn test_detect_duplicates_empty_project() {
         use tempfile::TempDir;
-        
+
         let temp_dir = TempDir::new().unwrap();
         let result = detect_duplicates(
             temp_dir.path(),
@@ -723,8 +758,9 @@ mod tests {
             100,
             &None,
             &None,
-        ).await;
-        
+        )
+        .await;
+
         assert!(result.is_ok());
         let report = result.unwrap();
         assert_eq!(report.total_duplicates, 0);
@@ -743,7 +779,7 @@ mod tests {
             duplicate_blocks: vec![],
             file_statistics: HashMap::new(),
         };
-        
+
         let result = format_json_output(&report);
         assert!(result.is_ok());
         let json = result.unwrap();
@@ -758,31 +794,29 @@ mod tests {
             duplicate_lines: 20,
             total_lines: 100,
             duplication_percentage: 20.0,
-            duplicate_blocks: vec![
-                DuplicateBlock {
-                    hash: "hash1".to_string(),
-                    locations: vec![
-                        DuplicateLocation {
-                            file: "file1.rs".to_string(),
-                            start_line: 10,
-                            end_line: 20,
-                            content_preview: "fn test() {".to_string(),
-                        },
-                        DuplicateLocation {
-                            file: "file2.rs".to_string(),
-                            start_line: 30,
-                            end_line: 40,
-                            content_preview: "fn test() {".to_string(),
-                        },
-                    ],
-                    lines: 10,
-                    tokens: 20,
-                    similarity: 1.0,
-                },
-            ],
+            duplicate_blocks: vec![DuplicateBlock {
+                hash: "hash1".to_string(),
+                locations: vec![
+                    DuplicateLocation {
+                        file: "file1.rs".to_string(),
+                        start_line: 10,
+                        end_line: 20,
+                        content_preview: "fn test() {".to_string(),
+                    },
+                    DuplicateLocation {
+                        file: "file2.rs".to_string(),
+                        start_line: 30,
+                        end_line: 40,
+                        content_preview: "fn test() {".to_string(),
+                    },
+                ],
+                lines: 10,
+                tokens: 20,
+                similarity: 1.0,
+            }],
             file_statistics: HashMap::new(),
         };
-        
+
         let result = format_human_output(&report);
         assert!(result.is_ok());
         let output = result.unwrap();

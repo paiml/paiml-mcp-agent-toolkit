@@ -311,7 +311,7 @@ async fn run_clippy_analysis(project_path: &Path, clippy_flags: &str) -> Result<
 
     // Find workspace root if we're in a workspace
     let workspace_root = find_workspace_root(project_path)?;
-    
+
     // Run clippy with JSON output and all targets (extreme quality)
     let mut cmd = Command::new("cargo");
     cmd.current_dir(project_path)
@@ -393,7 +393,7 @@ async fn run_clippy_analysis(project_path: &Path, clippy_flags: &str) -> Result<
                 file_path.clone()
             }
         };
-        
+
         if actual_path.exists() {
             let content = tokio::fs::read_to_string(&actual_path).await?;
             metrics.sloc = content
@@ -979,7 +979,7 @@ fn format_sarif(result: &LintHotspotResult) -> Result<String> {
 /// Returns an error if the operation fails
 fn find_workspace_root(start_path: &Path) -> Result<Option<PathBuf>> {
     let mut current = start_path;
-    
+
     loop {
         let cargo_toml = current.join("Cargo.toml");
         if cargo_toml.exists() {
@@ -989,13 +989,13 @@ fn find_workspace_root(start_path: &Path) -> Result<Option<PathBuf>> {
                 return Ok(Some(current.to_path_buf()));
             }
         }
-        
+
         // Move up one directory
         match current.parent() {
             Some(parent) => current = parent,
             None => break,
         }
     }
-    
+
     Ok(None)
 }

@@ -489,6 +489,82 @@ pmat diagnose --skip performance --timeout 30
 pmat diagnose --verbose
 ```
 
+### Command: `enforce`
+
+Enforce extreme quality standards using automated code quality enforcement.
+
+#### Synopsis
+
+```bash
+pmat enforce <SUBCOMMAND> [OPTIONS]
+```
+
+#### Description
+
+The enforce command provides automated enforcement of extreme quality standards through state machine-driven code improvements. It can automatically apply fixes for code quality issues including complexity reduction, SATD elimination, and linting violations.
+
+#### Subcommands
+
+- `extreme` - Enforce extreme quality standards with zero tolerance
+
+### Command: `enforce extreme`
+
+Enforce extreme quality standards with zero tolerance for code quality issues.
+
+#### Synopsis
+
+```bash
+pmat enforce extreme [OPTIONS]
+```
+
+#### Options
+
+- `-p, --project-path <PATH>` - Project path to enforce quality on (default: .)
+- `--single-file-mode` - Enforce on one file at a time
+- `--dry-run` - Show what would be changed without making changes
+- `--profile <PROFILE>` - Quality profile to use: `extreme` (default: extreme)
+- `--show-progress` - Show progress during enforcement (default: true)
+- `-f, --format <FORMAT>` - Output format: `summary`, `detailed`, `json` (default: summary)
+- `-o, --output <PATH>` - Output file path
+- `--max-iterations <N>` - Maximum iterations before giving up (default: 100)
+- `--target-improvement <PERCENT>` - Target improvement percentage
+- `--max-time <SECONDS>` - Maximum time in seconds
+- `--auto-apply` - Apply suggestions automatically
+
+#### Description
+
+The enforce extreme command applies the highest quality standards to your codebase:
+
+- **Zero SATD Policy**: Eliminates all TODO, FIXME, HACK, and XXX comments
+- **Complexity Reduction**: Refactors functions exceeding cyclomatic complexity of 20
+- **Lint Enforcement**: Applies pedantic and nursery clippy lints
+- **Dead Code Removal**: Identifies and removes unused code
+- **Documentation**: Ensures all public items are documented
+
+The enforcement process uses a state machine to iteratively improve code quality until all standards are met or limits are reached.
+
+#### Examples
+
+```bash
+# Enforce extreme quality standards on current directory
+pmat enforce extreme
+
+# Dry run to see what would be changed
+pmat enforce extreme --dry-run
+
+# Enforce with automatic fixes applied
+pmat enforce extreme --auto-apply
+
+# Enforce on a specific project with progress
+pmat enforce extreme -p ./my-project --show-progress
+
+# Enforce with time limit and target improvement
+pmat enforce extreme --max-time 300 --target-improvement 50
+
+# Generate detailed JSON report
+pmat enforce extreme -f json -o quality-report.json
+```
+
 ### Command: `serve`
 
 Start the HTTP REST API server for programmatic access to all toolkit capabilities.

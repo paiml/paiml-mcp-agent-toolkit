@@ -27,9 +27,9 @@ fn main() {
 }
 
 /// Verifies critical dependencies exist in Cargo.lock
-/// 
+///
 /// # Panics
-/// 
+///
 /// Panics if Cargo.lock doesn't exist or critical dependencies are missing
 fn verify_dependency_versions() {
     // In a workspace, Cargo.lock is in the parent directory
@@ -147,7 +147,9 @@ fn compress_asset(path: &Path, gz_path: &Path, filename: &str) {
 
     let Ok(input) = fs::read(path) else { return };
 
-    let Some(compressed) = create_compressed_data(&input) else { return };
+    let Some(compressed) = create_compressed_data(&input) else {
+        return;
+    };
 
     write_compressed_file(gz_path, &compressed, filename, input.len());
 }
@@ -180,9 +182,9 @@ fn set_asset_hash_env() {
 }
 
 /// Compresses template files at build time
-/// 
+///
 /// # Panics
-/// 
+///
 /// Panics if `OUT_DIR` environment variable is not set
 fn compress_templates() {
     use std::collections::HashMap;
@@ -238,9 +240,9 @@ fn compress_templates() {
 }
 
 /// Collects template files from directory
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns error if directory cannot be read
 fn collect_template_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::Error> {
     let mut files = Vec::new();
@@ -331,7 +333,10 @@ fn minify_demo_assets() {
 
 fn minify_js_file(input_path: &Path, output_path: &Path) {
     if !input_path.exists() {
-        println!("cargo:warning=JavaScript file not found: {}", input_path.display());
+        println!(
+            "cargo:warning=JavaScript file not found: {}",
+            input_path.display()
+        );
         return;
     }
 
