@@ -1,5 +1,5 @@
-use paiml_mcp_agent_toolkit::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
-use paiml_mcp_agent_toolkit::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
+use pmat::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
+use pmat::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
 use rustc_hash::FxHashMap;
 use std::fs;
 use std::path::Path;

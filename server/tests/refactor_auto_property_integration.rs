@@ -6,15 +6,15 @@
 #[cfg(test)]
 mod tests {
     use assert_cmd::Command;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     /// Create a test project with code that needs refactoring
     fn create_test_project() -> TempDir {
         let temp_dir = TempDir::new().unwrap();
         let src_dir = temp_dir.path().join("src");
         fs::create_dir_all(&src_dir).unwrap();
-        
+
         // Create a complex function that needs refactoring
         let complex_code = r#"
 //! Test module with high complexity
@@ -76,9 +76,9 @@ mod tests {
     }
 }
 "#;
-        
+
         fs::write(src_dir.join("lib.rs"), complex_code).unwrap();
-        
+
         // Create Cargo.toml
         let cargo_toml = r#"[package]
 name = "test-project"
@@ -92,9 +92,9 @@ quickcheck = "1.0"
 quickcheck_macros = "1.0"
 proptest = "1.6"
 "#;
-        
+
         fs::write(temp_dir.path().join("Cargo.toml"), cargo_toml).unwrap();
-        
+
         temp_dir
     }
 
@@ -102,7 +102,7 @@ proptest = "1.6"
     #[ignore] // This test requires the full pmat binary
     fn test_refactor_auto_generates_property_tests() {
         let test_project = create_test_project();
-        
+
         // Run refactor auto in single file mode
         let mut cmd = Command::cargo_bin("pmat").unwrap();
         cmd.arg("refactor")
@@ -114,18 +114,18 @@ proptest = "1.6"
             .arg(test_project.path())
             .arg("--max-iterations")
             .arg("1");
-        
+
         // Should complete successfully
         cmd.assert().success();
-        
+
         // Check that refactoring request was generated
         let cache_dir = test_project.path().join(".pmat-cache");
         assert!(cache_dir.exists(), "Cache directory should be created");
-        
+
         // Check for refactor state
         let state_file = cache_dir.join("refactor-state.json");
         assert!(state_file.exists(), "Refactor state should be saved");
-        
+
         // Read the state to verify it includes property test generation
         let state_content = fs::read_to_string(&state_file).unwrap();
         assert!(
@@ -147,9 +147,11 @@ proptest = "1.6"
                 \"example_property_test\": \"#[quickcheck]\\nfn prop_refactoring_preserves_behavior\"
             }
         }";
-        
+
         let parsed: serde_json::Value = serde_json::from_str(test_json).unwrap();
-        assert!(parsed["property_test_generation"]["enabled"].as_bool().unwrap());
+        assert!(parsed["property_test_generation"]["enabled"]
+            .as_bool()
+            .unwrap());
         assert!(parsed["property_test_generation"]["instructions"].is_array());
     }
 
@@ -176,7 +178,7 @@ mod property_tests {
         TestResult::from_bool(original_result == refactored_result)
     }
 }"#;
-        
+
         // Just verify it's valid syntax (would need syn to properly parse)
         assert!(template.contains("#[quickcheck]"));
         assert!(template.contains("TestResult"));
@@ -188,10 +190,10 @@ mod property_tests {
         // Test that we can track coverage improvements from property tests
         let initial_coverage = 45.0;
         let target_coverage = 80.0;
-        
+
         // Simulate coverage improvement
         let improved_coverage = 85.0;
-        
+
         assert!(improved_coverage >= target_coverage);
         assert!(improved_coverage > initial_coverage);
     }
@@ -218,7 +220,7 @@ impl Arbitrary for ValidRustCode {
             }))
     }
 }"#;
-        
+
         assert!(shrinking_example.contains("shrink"));
         assert!(shrinking_example.contains("filter_map"));
     }

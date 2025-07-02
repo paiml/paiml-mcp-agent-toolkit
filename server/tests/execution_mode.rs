@@ -55,7 +55,7 @@ mod binary_main_tests {
 
     #[test]
     fn test_server_creation_logic() {
-        use paiml_mcp_agent_toolkit::stateless_server::StatelessTemplateServer;
+        use pmat::stateless_server::StatelessTemplateServer;
         use std::sync::Arc;
 
         // Test the server creation logic from main
@@ -96,8 +96,7 @@ mod binary_main_tests {
         // Test that we can set up the tokio runtime (main is async)
         let result = tokio::spawn(async {
             // Simulate some async work like in main
-            let server_result =
-                paiml_mcp_agent_toolkit::stateless_server::StatelessTemplateServer::new();
+            let server_result = pmat::stateless_server::StatelessTemplateServer::new();
             server_result.is_ok()
         })
         .await;
