@@ -36,12 +36,15 @@ cargo build --release
 
 ### 🛠️ Refactoring Tools
 - **AI-Powered Auto Refactoring** - `pmat refactor auto` achieves extreme quality standards
+  - **Single File Mode** - `pmat refactor auto --single-file-mode --file path/to/file.rs` for targeted refactoring
 - **Documentation Cleanup** - `pmat refactor docs` maintains Zero Tolerance Quality Standards
 - **Interactive Refactoring** - Step-by-step guided refactoring with explanations
 - **Enforcement Mode** - Enforce extreme quality standards using state machines
+  - **Single File Mode** - `pmat enforce extreme --file path/to/file.rs` for file-specific enforcement
 
 ### 📊 Quality Gates
 - **Lint Hotspot Analysis** - Find files with highest defect density using EXTREME Clippy standards
+  - **Single File Mode** - `pmat lint-hotspot --file path/to/file.rs` for targeted analysis
 - **Provability Analysis** - Lightweight formal verification with property analysis
 - **Defect Prediction** - ML-based prediction of defect-prone code
 - **Quality Enforcement** - Exit with error codes for CI/CD integration
@@ -164,6 +167,19 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
   -H "Content-Type: application/json" \
   -d '{"project_path":"./","include":["ast","complexity","churn"]}'
 ```
+
+## New in v0.26.3 - Quality Uplift
+
+### 🏆 Zero Tolerance Quality Standards Achieved
+- **SATD Elimination**: Removed all TODO/FIXME/HACK comments from implementation
+- **Complexity Reduction**: All functions now below cyclomatic complexity of 20
+- **Extreme Linting**: `make lint` passes with pedantic and nursery standards
+- **Single File Mode**: Enhanced support for targeted quality improvements
+  ```bash
+  pmat refactor auto --single-file-mode --file src/main.rs
+  pmat analyze lint-hotspot --file src/lib.rs  
+  pmat enforce extreme --file src/module.rs
+  ```
 
 ## New in v0.26.1
 

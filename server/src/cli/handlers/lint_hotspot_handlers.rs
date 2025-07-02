@@ -22,6 +22,7 @@ use tokio::process::Command;
 /// Parameters for lint hotspot analysis
 pub struct LintHotspotParams {
     pub project_path: PathBuf,
+    pub file: Option<PathBuf>,
     pub format: LintHotspotOutputFormat,
     pub max_density: f64,
     pub min_confidence: f64,
@@ -196,6 +197,7 @@ struct DiagnosticText {
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_lint_hotspot(
     project_path: PathBuf,
+    file: Option<PathBuf>,
     format: LintHotspotOutputFormat,
     max_density: f64,
     min_confidence: f64,
@@ -208,6 +210,7 @@ pub async fn handle_analyze_lint_hotspot(
 ) -> Result<()> {
     let params = LintHotspotParams {
         project_path,
+        file,
         format,
         max_density,
         min_confidence,
@@ -235,7 +238,16 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
     }
 
     // Run clippy and analyze output
-    let result = run_clippy_analysis(&params.project_path, &params.clippy_flags).await?;
+    let result = if let Some(ref file_path) = params.file {
+        // Single file mode - analyze only the specified file
+        if params.format != LintHotspotOutputFormat::Json {
+            eprintln!("📄 Analyzing single file: {}", file_path.display());
+        }
+        run_clippy_analysis_single_file(&params.project_path, file_path, &params.clippy_flags).await?
+    } else {
+        // Normal mode - find the hotspot
+        run_clippy_analysis(&params.project_path, &params.clippy_flags).await?
+    };
 
     // Generate enforcement metadata if requested
     let enforcement = if params.enforcement_metadata || params.enforce {
@@ -460,6 +472,165 @@ async fn run_clippy_analysis(project_path: &Path, clippy_flags: &str) -> Result<
             blocking: false,
         },
     })
+}
+
+/// Run clippy on a single file and analyze the JSON output
+///
+/// # Errors
+///
+/// Returns an error if the operation fails
+async fn run_clippy_analysis_single_file(
+    project_path: &Path,
+    file_path: &Path,
+    clippy_flags: &str,
+) -> Result<LintHotspotResult> {
+    // Parse clippy flags
+    let flags: Vec<&str> = clippy_flags.split_whitespace().collect();
+
+    // Run clippy with JSON output
+    let mut cmd = Command::new("cargo");
+    cmd.current_dir(project_path)
+        .arg("clippy")
+        .arg("--message-format=json");
+
+    // Add clippy flags after -- separator
+    if !flags.is_empty() {
+        cmd.arg("--");
+        cmd.args(&flags);
+    }
+
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+
+    let output = cmd.output().await.context("Failed to run cargo clippy")?;
+
+    // Parse JSON output line by line
+    let reader = BufReader::new(output.stdout.as_slice());
+    let mut file_violations = Vec::new();
+    let mut all_violations = Vec::new();
+    let mut severity_dist = SeverityDistribution::default();
+
+    // Convert file_path to absolute path for comparison
+    let abs_file_path = if file_path.is_absolute() {
+        file_path.to_path_buf()
+    } else {
+        project_path.join(file_path)
+    };
+
+    for line in std::io::BufRead::lines(reader) {
+        let line = line?;
+        if let Ok(msg) = serde_json::from_str::<ClippyMessage>(&line) {
+            if let (Some("compiler-message"), Some(diagnostic)) = (msg.reason.as_deref(), &msg.message) {
+                // Check if this diagnostic is for our target file
+                if let Some(span) = diagnostic.spans.iter().find(|s| s.is_primary || diagnostic.spans.len() == 1) {
+                    let diagnostic_path = PathBuf::from(&span.file_name);
+                    
+                    // Check if this is our target file (handle both absolute and relative paths)
+                    let matches = diagnostic_path == abs_file_path || 
+                                 diagnostic_path == *file_path ||
+                                 diagnostic_path.ends_with(file_path);
+                    
+                    if matches {
+                        // Create violation detail
+                        let violation = ViolationDetail {
+                            file: file_path.to_path_buf(),
+                            line: span.line_start,
+                            column: span.column_start,
+                            end_line: span.line_end,
+                            end_column: span.column_end,
+                            lint_name: diagnostic.code.as_ref().map(|c| c.code.clone()).unwrap_or_default(),
+                            message: diagnostic.message.clone(),
+                            severity: diagnostic.level.clone(),
+                            suggestion: span.suggested_replacement.clone(),
+                            machine_applicable: span.suggestion_applicability.as_ref()
+                                .map(|a| a == "machine-applicable" || a == "maybe-incorrect")
+                                .unwrap_or(false),
+                        };
+                        
+                        file_violations.push(violation.clone());
+                        all_violations.push(violation);
+                        
+                        // Update severity distribution
+                        match diagnostic.level.as_str() {
+                            "error" => severity_dist.error += 1,
+                            "warning" => severity_dist.warning += 1,
+                            _ => severity_dist.note += 1,
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Count lines in the file
+    let sloc = count_source_lines(project_path, file_path).await.unwrap_or(100);
+    let total_violations = file_violations.len();
+    let defect_density = (total_violations as f64 / sloc as f64) * 100.0;
+
+    // Create hotspot for the single file
+    let hotspot = LintHotspot {
+        file: file_path.to_path_buf(),
+        defect_density,
+        total_violations,
+        sloc,
+        severity_distribution: severity_dist,
+        top_lints: count_top_lints(&file_violations),
+        detailed_violations: file_violations,
+    };
+    let mut summary_by_file = HashMap::new();
+    summary_by_file.insert(
+        file_path.to_path_buf(),
+        FileSummary {
+            total_violations,
+            errors: hotspot.severity_distribution.error,
+            warnings: hotspot.severity_distribution.warning,
+            sloc,
+            defect_density,
+        },
+    );
+
+    Ok(LintHotspotResult {
+        hotspot,
+        all_violations,
+        summary_by_file,
+        total_project_violations: total_violations,
+        enforcement: None,
+        refactor_chain: None,
+        quality_gate: QualityGateStatus {
+            passed: defect_density <= 5.0, // Use default threshold
+            violations: vec![],
+            blocking: false,
+        },
+    })
+}
+
+/// Count top lint types from violations
+fn count_top_lints(violations: &[ViolationDetail]) -> Vec<(String, usize)> {
+    let mut lint_counts: HashMap<String, usize> = HashMap::new();
+    
+    for violation in violations {
+        *lint_counts.entry(violation.lint_name.clone()).or_insert(0) += 1;
+    }
+    
+    let mut counts: Vec<_> = lint_counts.into_iter().collect();
+    counts.sort_by(|a, b| b.1.cmp(&a.1));
+    counts.truncate(10); // Top 10 lints
+    counts
+}
+
+/// Count source lines in a file
+async fn count_source_lines(project_path: &Path, file_path: &Path) -> Result<usize> {
+    let full_path = if file_path.is_absolute() {
+        file_path.to_path_buf()
+    } else {
+        project_path.join(file_path)
+    };
+    
+    let content = tokio::fs::read_to_string(&full_path).await?;
+    let non_empty_lines = content.lines()
+        .filter(|line| !line.trim().is_empty() && !line.trim().starts_with("//"))
+        .count();
+    
+    Ok(non_empty_lines.max(1)) // At least 1 to avoid division by zero
 }
 
 /// Process a diagnostic message
@@ -999,3 +1170,4 @@ fn find_workspace_root(start_path: &Path) -> Result<Option<PathBuf>> {
 
     Ok(None)
 }
+

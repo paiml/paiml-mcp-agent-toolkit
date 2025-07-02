@@ -637,6 +637,10 @@ pub enum AnalyzeCommands {
         #[arg(short = 'p', long, default_value = ".")]
         project_path: PathBuf,
 
+        /// Analyze a specific file instead of finding the hotspot
+        #[arg(long)]
+        file: Option<PathBuf>,
+
         /// Output format
         #[arg(short = 'f', long, value_enum, default_value = "summary")]
         format: LintHotspotOutputFormat,
@@ -1259,6 +1263,10 @@ pub enum EnforceCommands {
         #[arg(long)]
         single_file_mode: bool,
 
+        /// Specific file to enforce (implies single file mode)
+        #[arg(long)]
+        file: Option<PathBuf>,
+
         /// Dry run - show what would be changed without making changes
         #[arg(long)]
         dry_run: bool,
@@ -1310,10 +1318,6 @@ pub enum EnforceCommands {
         /// CI mode (exit with error on violations)
         #[arg(long)]
         ci_mode: bool,
-
-        /// Specific file to enforce
-        #[arg(long)]
-        file: Option<PathBuf>,
 
         /// Include pattern
         #[arg(long)]

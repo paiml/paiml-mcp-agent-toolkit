@@ -368,6 +368,7 @@ impl CliAdapter {
             ),
             AnalyzeCommands::LintHotspot {
                 project_path,
+                file,
                 format,
                 max_density,
                 min_confidence,
@@ -381,6 +382,7 @@ impl CliAdapter {
                 // Convert LintHotspot command to generic analyze method
                 let params = json!({
                     "project_path": project_path,
+                    "file": file,
                     "format": format,
                     "max_density": max_density,
                     "min_confidence": min_confidence,

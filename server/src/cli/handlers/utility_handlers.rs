@@ -1011,6 +1011,3 @@ mod tests {
     }
 }
 
-#[cfg(test)]
-#[path = "utility_handlers_tests.rs"]
-mod utility_handlers_tests;

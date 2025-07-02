@@ -2,13 +2,22 @@
 //!
 //! These are temporary implementations to fix compilation while refactoring.
 
-use crate::cli::*;
+use crate::cli::{
+    ComprehensiveOutputFormat, DagType, DeadCodeOutputFormat, DefectPredictionOutputFormat,
+    IncrementalCoverageOutputFormat, MakefileOutputFormat, ProofAnnotationOutputFormat,
+    PropertyTypeFilter, ProvabilityOutputFormat, QualityCheckType, QualityGateOutputFormat,
+    SatdOutputFormat, SatdSeverity, TdgOutputFormat, VerificationMethodFilter,
+};
 use crate::services::lightweight_provability_analyzer::ProofSummary;
+use crate::services::makefile_linter;
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-// Additional handler stubs for advanced analysis
+/// Analyzes Technical Debt Gradient (TDG) for a project
+///
+/// # Errors
+/// Returns an error if the analysis fails or output cannot be written
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_tdg(
     path: PathBuf,
@@ -22,8 +31,8 @@ pub async fn handle_analyze_tdg(
 ) -> Result<()> {
     eprintln!("🔍 Analyzing Technical Debt Gradient...");
     eprintln!("📁 Project path: {}", path.display());
-    eprintln!("📊 Threshold: {}", threshold);
-    eprintln!("🔝 Top: {} files", top);
+    eprintln!("📊 Threshold: {threshold}");
+    eprintln!("🔝 Top: {top} files");
     eprintln!("📄 Format: {:?}", format);
 
     // Placeholder implementation
@@ -38,6 +47,10 @@ pub async fn handle_analyze_tdg(
     Ok(())
 }
 
+/// Analyzes a Makefile for quality issues
+///
+/// # Errors
+/// Returns an error if the Makefile cannot be read or analyzed
 pub async fn handle_analyze_makefile(
     path: PathBuf,
     rules: Vec<String>,
@@ -46,7 +59,6 @@ pub async fn handle_analyze_makefile(
     gnu_version: Option<String>,
 ) -> Result<()> {
     use crate::services::makefile_linter;
-    use std::fmt::Write;
 
     eprintln!("🔧 Analyzing Makefile...");
 
@@ -60,194 +72,311 @@ pub async fn handle_analyze_makefile(
         .await
         .map_err(|e| anyhow::anyhow!("Makefile linting failed: {}", e))?;
 
-    eprintln!("📊 Found {} violations", lint_result.violations.len());
-    eprintln!(
-        "✨ Quality score: {:.1}%",
-        lint_result.quality_score * 100.0
-    );
+    print_makefile_analysis_summary(&lint_result);
 
     // Filter violations by rules if specified
-    let filtered_violations = if rules.is_empty() || rules == vec!["all"] {
-        lint_result.violations.clone()
-    } else {
-        lint_result
-            .violations
-            .iter()
-            .filter(|v| rules.contains(&v.rule))
-            .cloned()
-            .collect()
-    };
+    let filtered_violations = filter_makefile_violations(&lint_result.violations, &rules);
 
     // Format output based on requested format
-    let content = match format {
-        MakefileOutputFormat::Json => serde_json::to_string_pretty(&serde_json::json!({
-            "path": path.display().to_string(),
-            "violations": filtered_violations,
-            "quality_score": lint_result.quality_score,
-            "gnu_version": gnu_version,
-        }))?,
-        MakefileOutputFormat::Human => {
-            let mut output = String::new();
-            writeln!(&mut output, "# Makefile Analysis Report\n")?;
-            writeln!(&mut output, "**File**: {}", path.display())?;
-            writeln!(
-                &mut output,
-                "**Quality Score**: {:.1}%",
-                lint_result.quality_score * 100.0
-            )?;
-            if let Some(ver) = &gnu_version {
-                writeln!(&mut output, "**GNU Make Version**: {}", ver)?;
-            }
-            writeln!(&mut output)?;
-
-            if filtered_violations.is_empty() {
-                writeln!(&mut output, "✅ No violations found!")?;
-            } else {
-                writeln!(&mut output, "## Violations\n")?;
-                writeln!(&mut output, "| Line | Rule | Severity | Message |")?;
-                writeln!(&mut output, "|------|------|----------|---------|")?;
-
-                for violation in &filtered_violations {
-                    let severity = match violation.severity {
-                        makefile_linter::Severity::Error => "❌ Error",
-                        makefile_linter::Severity::Warning => "⚠️ Warning",
-                        makefile_linter::Severity::Performance => "⚡ Performance",
-                        makefile_linter::Severity::Info => "ℹ️ Info",
-                    };
-
-                    writeln!(
-                        &mut output,
-                        "| {} | {} | {} | {} |",
-                        violation.span.line,
-                        violation.rule,
-                        severity,
-                        violation.message.replace('|', "\\|")
-                    )?;
-                }
-
-                // Add fix hints if available
-                let violations_with_fixes: Vec<_> = filtered_violations
-                    .iter()
-                    .filter(|v| v.fix_hint.is_some())
-                    .collect();
-
-                if !violations_with_fixes.is_empty() {
-                    writeln!(&mut output, "\n## Fix Suggestions\n")?;
-                    for violation in violations_with_fixes {
-                        writeln!(
-                            &mut output,
-                            "**Line {}** ({}): {}",
-                            violation.span.line,
-                            violation.rule,
-                            violation.fix_hint.as_ref().unwrap()
-                        )?;
-                    }
-                }
-            }
-
-            output
-        }
-        MakefileOutputFormat::Sarif => {
-            // SARIF format for IDE integration
-            let sarif = serde_json::json!({
-                "version": "2.1.0",
-                "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-                "runs": [{
-                    "tool": {
-                        "driver": {
-                            "name": "paiml-makefile-linter",
-                            "version": env!("CARGO_PKG_VERSION"),
-                            "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
-                            "rules": filtered_violations.iter()
-                                .map(|v| &v.rule)
-                                .collect::<std::collections::HashSet<_>>()
-                                .into_iter()
-                                .map(|rule| {
-                                    serde_json::json!({
-                                        "id": rule,
-                                        "name": rule,
-                                        "defaultConfiguration": {
-                                            "level": "warning"
-                                        }
-                                    })
-                                })
-                                .collect::<Vec<_>>()
-                        }
-                    },
-                    "results": filtered_violations.iter().map(|violation| {
-                        let level = match violation.severity {
-                            makefile_linter::Severity::Error => "error",
-                            makefile_linter::Severity::Warning => "warning",
-                            makefile_linter::Severity::Performance => "note",
-                            makefile_linter::Severity::Info => "note",
-                        };
-
-                        serde_json::json!({
-                            "ruleId": &violation.rule,
-                            "level": level,
-                            "message": {
-                                "text": &violation.message
-                            },
-                            "locations": [{
-                                "physicalLocation": {
-                                    "artifactLocation": {
-                                        "uri": path.display().to_string()
-                                    },
-                                    "region": {
-                                        "startLine": violation.span.line,
-                                        "startColumn": violation.span.column
-                                    }
-                                }
-                            }],
-                            "fixes": violation.fix_hint.as_ref().map(|hint| vec![
-                                serde_json::json!({
-                                    "description": {
-                                        "text": hint
-                                    }
-                                })
-                            ])
-                        })
-                    }).collect::<Vec<_>>()
-                }]
-            });
-
-            serde_json::to_string_pretty(&sarif)?
-        }
-        MakefileOutputFormat::Gcc => {
-            // GCC-style output for editor integration
-            let mut output = String::new();
-            for violation in &filtered_violations {
-                writeln!(
-                    &mut output,
-                    "{}:{}:{}: {}: {} [{}]",
-                    path.display(),
-                    violation.span.line,
-                    violation.span.column,
-                    match violation.severity {
-                        makefile_linter::Severity::Error => "error",
-                        makefile_linter::Severity::Warning => "warning",
-                        makefile_linter::Severity::Performance => "note",
-                        makefile_linter::Severity::Info => "note",
-                    },
-                    violation.message,
-                    violation.rule
-                )?;
-            }
-            output
-        }
-    };
+    let content = format_makefile_output(&path, &filtered_violations, &lint_result, gnu_version.as_ref(), format)?;
 
     // Print output
     println!("{}", content);
 
     // Handle fix mode if requested
-    if fix && filtered_violations.iter().any(|v| v.fix_hint.is_some()) {
-        eprintln!("\n💡 Fix mode is not yet implemented. See fix suggestions above.");
-    }
+    handle_makefile_fix_mode(fix, &filtered_violations);
 
     Ok(())
 }
 
+// Helper: Print analysis summary
+fn print_makefile_analysis_summary(lint_result: &makefile_linter::LintResult) {
+    eprintln!("📊 Found {} violations", lint_result.violations.len());
+    eprintln!(
+        "✨ Quality score: {:.1}%",
+        lint_result.quality_score * 100.0
+    );
+}
+
+// Helper: Filter violations by rules
+fn filter_makefile_violations(
+    violations: &[makefile_linter::Violation],
+    rules: &[String],
+) -> Vec<makefile_linter::Violation> {
+    if rules.is_empty() || rules == vec!["all"] {
+        violations.to_vec()
+    } else {
+        violations
+            .iter()
+            .filter(|v| rules.contains(&v.rule))
+            .cloned()
+            .collect()
+    }
+}
+
+// Helper: Handle fix mode
+fn handle_makefile_fix_mode(fix: bool, filtered_violations: &[makefile_linter::Violation]) {
+    if fix && filtered_violations.iter().any(|v| v.fix_hint.is_some()) {
+        eprintln!("\n💡 Fix mode is not yet implemented. See fix suggestions above.");
+    }
+}
+
+// Helper: Format makefile output based on format
+fn format_makefile_output(
+    path: &Path,
+    filtered_violations: &[makefile_linter::Violation],
+    lint_result: &makefile_linter::LintResult,
+    gnu_version: Option<&String>,
+    format: MakefileOutputFormat,
+) -> Result<String> {
+    match format {
+        MakefileOutputFormat::Json => format_makefile_as_json(path, filtered_violations, lint_result, gnu_version),
+        MakefileOutputFormat::Human => format_makefile_as_human(path, filtered_violations, lint_result, gnu_version),
+        MakefileOutputFormat::Sarif => format_makefile_as_sarif(path, filtered_violations),
+        MakefileOutputFormat::Gcc => format_makefile_as_gcc(path, filtered_violations),
+    }
+}
+
+// Helper: Format as JSON
+fn format_makefile_as_json(
+    path: &Path,
+    filtered_violations: &[makefile_linter::Violation],
+    lint_result: &makefile_linter::LintResult,
+    gnu_version: Option<&String>,
+) -> Result<String> {
+    Ok(serde_json::to_string_pretty(&serde_json::json!({
+        "path": path.display().to_string(),
+        "violations": filtered_violations,
+        "quality_score": lint_result.quality_score,
+        "gnu_version": gnu_version,
+    }))?)
+}
+
+// Helper: Format as human-readable
+fn format_makefile_as_human(
+    path: &Path,
+    filtered_violations: &[makefile_linter::Violation],
+    lint_result: &makefile_linter::LintResult,
+    gnu_version: Option<&String>,
+) -> Result<String> {
+    let mut output = String::new();
+    
+    write_makefile_human_header(&mut output, path, lint_result, gnu_version)?;
+    write_makefile_violations_table(&mut output, filtered_violations)?;
+    write_makefile_fix_suggestions(&mut output, filtered_violations)?;
+    
+    Ok(output)
+}
+
+// Helper: Write human format header
+fn write_makefile_human_header(
+    output: &mut String,
+    path: &Path,
+    lint_result: &makefile_linter::LintResult,
+    gnu_version: Option<&String>,
+) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "# Makefile Analysis Report\n")?;
+    writeln!(output, "**File**: {}", path.display())?;
+    writeln!(output, "**Quality Score**: {:.1}%", lint_result.quality_score * 100.0)?;
+    if let Some(ver) = gnu_version {
+        writeln!(output, "**GNU Make Version**: {ver}")?;
+    }
+    writeln!(output)?;
+    Ok(())
+}
+
+// Helper: Write violations table
+fn write_makefile_violations_table(
+    output: &mut String,
+    filtered_violations: &[makefile_linter::Violation],
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    if filtered_violations.is_empty() {
+        writeln!(output, "✅ No violations found!")?;
+    } else {
+        writeln!(output, "## Violations\n")?;
+        writeln!(output, "| Line | Rule | Severity | Message |")?;
+        writeln!(output, "|------|------|----------|---------|")?;
+
+        for violation in filtered_violations {
+            let severity = get_severity_display(&violation.severity);
+            writeln!(
+                output,
+                "| {} | {} | {} | {} |",
+                violation.span.line,
+                violation.rule,
+                severity,
+                violation.message.replace('|', "\\|")
+            )?;
+        }
+    }
+    Ok(())
+}
+
+// Helper: Get severity display string
+fn get_severity_display(severity: &makefile_linter::Severity) -> &'static str {
+    match severity {
+        makefile_linter::Severity::Error => "❌ Error",
+        makefile_linter::Severity::Warning => "⚠️ Warning",
+        makefile_linter::Severity::Performance => "⚡ Performance",
+        makefile_linter::Severity::Info => "ℹ️ Info",
+    }
+}
+
+// Helper: Write fix suggestions
+fn write_makefile_fix_suggestions(
+    output: &mut String,
+    filtered_violations: &[makefile_linter::Violation],
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    let violations_with_fixes: Vec<_> = filtered_violations
+        .iter()
+        .filter(|v| v.fix_hint.is_some())
+        .collect();
+
+    if !violations_with_fixes.is_empty() {
+        writeln!(output, "\n## Fix Suggestions\n")?;
+        for violation in violations_with_fixes {
+            writeln!(
+                output,
+                "**Line {}** ({}): {}",
+                violation.span.line,
+                violation.rule,
+                violation.fix_hint.as_ref().unwrap()
+            )?;
+        }
+    }
+    Ok(())
+}
+
+// Helper: Format as SARIF
+fn format_makefile_as_sarif(
+    path: &Path,
+    filtered_violations: &[makefile_linter::Violation],
+) -> Result<String> {
+    let sarif = serde_json::json!({
+        "version": "2.1.0",
+        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "paiml-makefile-linter",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
+                    "rules": build_sarif_rules(filtered_violations)
+                }
+            },
+            "results": build_sarif_results(path, filtered_violations)
+        }]
+    });
+
+    Ok(serde_json::to_string_pretty(&sarif)?)
+}
+
+// Helper: Build SARIF rules
+fn build_sarif_rules(filtered_violations: &[makefile_linter::Violation]) -> Vec<serde_json::Value> {
+    filtered_violations.iter()
+        .map(|v| &v.rule)
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .map(|rule| {
+            serde_json::json!({
+                "id": rule,
+                "name": rule,
+                "defaultConfiguration": {
+                    "level": "warning"
+                }
+            })
+        })
+        .collect::<Vec<_>>()
+}
+
+// Helper: Build SARIF results
+fn build_sarif_results(
+    path: &Path,
+    filtered_violations: &[makefile_linter::Violation],
+) -> Vec<serde_json::Value> {
+    filtered_violations.iter().map(|violation| {
+        let level = get_sarif_level(&violation.severity);
+        serde_json::json!({
+            "ruleId": &violation.rule,
+            "level": level,
+            "message": {
+                "text": &violation.message
+            },
+            "locations": [{
+                "physicalLocation": {
+                    "artifactLocation": {
+                        "uri": path.display().to_string()
+                    },
+                    "region": {
+                        "startLine": violation.span.line,
+                        "startColumn": violation.span.column
+                    }
+                }
+            }],
+            "fixes": violation.fix_hint.as_ref().map(|hint| vec![
+                serde_json::json!({
+                    "description": {
+                        "text": hint
+                    }
+                })
+            ])
+        })
+    }).collect::<Vec<_>>()
+}
+
+// Helper: Get SARIF level
+fn get_sarif_level(severity: &makefile_linter::Severity) -> &'static str {
+    match severity {
+        makefile_linter::Severity::Error => "error",
+        makefile_linter::Severity::Warning => "warning",
+        makefile_linter::Severity::Performance => "note",
+        makefile_linter::Severity::Info => "note",
+    }
+}
+
+// Helper: Format as GCC style
+fn format_makefile_as_gcc(
+    path: &Path,
+    filtered_violations: &[makefile_linter::Violation],
+) -> Result<String> {
+    use std::fmt::Write;
+    let mut output = String::new();
+    
+    for violation in filtered_violations {
+        writeln!(
+            &mut output,
+            "{}:{}:{}: {}: {} [{}]",
+            path.display(),
+            violation.span.line,
+            violation.span.column,
+            get_gcc_level(&violation.severity),
+            violation.message,
+            violation.rule
+        )?;
+    }
+    
+    Ok(output)
+}
+
+// Helper: Get GCC level
+fn get_gcc_level(severity: &makefile_linter::Severity) -> &'static str {
+    match severity {
+        makefile_linter::Severity::Error => "error",
+        makefile_linter::Severity::Warning => "warning",
+        makefile_linter::Severity::Performance => "note",
+        makefile_linter::Severity::Info => "note",
+    }
+}
+
+/// Analyzes provability of code assertions
+///
+/// # Errors
+/// Returns an error if the analysis fails
 pub async fn handle_analyze_provability(
     project_path: PathBuf,
     functions: Vec<String>,
@@ -407,6 +536,10 @@ pub async fn handle_analyze_proof_annotations(
     Ok(())
 }
 #[allow(clippy::too_many_arguments)]
+/// Analyzes incremental test coverage
+///
+/// # Errors
+/// Returns an error if coverage data cannot be analyzed
 pub async fn handle_analyze_incremental_coverage(
     project_path: PathBuf,
     base_branch: String,
@@ -891,11 +1024,15 @@ pub async fn handle_quality_gate(
     Ok(())
 }
 
+/// Starts an HTTP server
+///
+/// # Errors
+/// Returns an error if the server cannot be started
 pub async fn handle_serve(host: String, port: u16, cors: bool) -> Result<()> {
-    eprintln!("🚀 Starting PMAT server on http://{}:{}", host, port);
+    eprintln!("🚀 Starting PMAT server on http://{host}:{port}");
     eprintln!("✅ Server ready!");
-    eprintln!("📍 Health check: http://{}:{}/health", host, port);
-    eprintln!("📍 API base: http://{}:{}/api/v1", host, port);
+    eprintln!("📍 Health check: http://{host}:{port}/health");
+    eprintln!("📍 API base: http://{host}:{port}/api/v1");
     if cors {
         eprintln!("🌐 CORS enabled for all origins");
     }
@@ -1119,7 +1256,7 @@ struct QualityViolation {
 fn is_source_file(path: &Path) -> bool {
     matches!(
         path.extension().and_then(|s| s.to_str()),
-        Some("rs") | Some("js") | Some("ts") | Some("py") | Some("java") | Some("cpp") | Some("c")
+        Some("rs" | "js" | "ts" | "py" | "java" | "cpp" | "c")
     )
 }
 
@@ -1147,8 +1284,7 @@ async fn check_complexity(
                         file: path.to_string_lossy().to_string(),
                         line: None,
                         message: format!(
-                            "File has estimated complexity {} (max: {})",
-                            complexity, max_complexity
+                            "File has estimated complexity {complexity} (max: {max_complexity})"
                         ),
                     });
                 }
@@ -1175,8 +1311,7 @@ async fn check_dead_code(
             file: project_path.to_string_lossy().to_string(),
             line: None,
             message: format!(
-                "Project has {:.1}% dead code (max: {:.1}%)",
-                mock_percentage, max_percentage
+                "Project has {mock_percentage:.1}% dead code (max: {max_percentage:.1}%)"
             ),
         });
     }
@@ -1207,7 +1342,7 @@ async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
                             severity: "warning".to_string(),
                             file: path.to_string_lossy().to_string(),
                             line: Some(line_no + 1),
-                            message: format!("Technical debt: {} - {}", satd_type, text),
+                            message: format!("Technical debt: {satd_type} - {text}"),
                         });
                     }
                 }
@@ -1232,8 +1367,7 @@ async fn check_entropy(_project_path: &Path, min_entropy: f64) -> Result<Vec<Qua
             file: "project".to_string(),
             line: None,
             message: format!(
-                "Code entropy {:.2} is below minimum {:.2}",
-                entropy, min_entropy
+                "Code entropy {entropy:.2} is below minimum {min_entropy:.2}"
             ),
         });
     }
@@ -1315,8 +1449,7 @@ async fn check_coverage(project_path: &Path, min_coverage: f64) -> Result<Vec<Qu
                 check_type: "coverage".to_string(),
                 severity: "error".to_string(),
                 message: format!(
-                    "Code coverage {:.1}% is below minimum {:.1}%",
-                    current_coverage, min_coverage
+                    "Code coverage {current_coverage:.1}% is below minimum {min_coverage:.1}%"
                 ),
                 file: "project".to_string(),
                 line: None,
@@ -1334,13 +1467,13 @@ async fn check_sections(project_path: &Path) -> Result<Vec<QualityViolation>> {
     if let Ok(readme) = tokio::fs::read_to_string(project_path.join("README.md")).await {
         let required_sections = ["Installation", "Usage", "Contributing", "License"];
         for section in required_sections {
-            if !readme.contains(&format!("# {}", section))
-                && !readme.contains(&format!("## {}", section))
+            if !readme.contains(&format!("# {section}"))
+                && !readme.contains(&format!("## {section}"))
             {
                 violations.push(QualityViolation {
                     check_type: "sections".to_string(),
                     severity: "warning".to_string(),
-                    message: format!("Missing required section: {}", section),
+                    message: format!("Missing required section: {section}"),
                     file: "README.md".to_string(),
                     line: None,
                 });
@@ -1364,8 +1497,7 @@ async fn check_provability(
             check_type: "provability".to_string(),
             severity: "warning".to_string(),
             message: format!(
-                "Provability score {:.2} is below minimum {:.2}",
-                current_provability, min_provability
+                "Provability score {current_provability:.2} is below minimum {min_provability:.2}"
             ),
             file: project_path.to_string_lossy().to_string(),
             line: None,
@@ -1381,265 +1513,229 @@ async fn calculate_provability_score(_project_path: &Path) -> Result<f64> {
     Ok(0.85) // Placeholder score
 }
 
+// Refactored format_quality_gate_output with reduced complexity
 fn format_quality_gate_output(
     results: &QualityGateResults,
     violations: &[QualityViolation],
     format: QualityGateOutputFormat,
 ) -> Result<String> {
-    use std::fmt::Write;
-
     match format {
-        QualityGateOutputFormat::Json => Ok(serde_json::to_string_pretty(&serde_json::json!({
-            "results": results,
-            "violations": violations,
-        }))?),
-        QualityGateOutputFormat::Human => {
-            let mut output = String::new();
-            writeln!(&mut output, "# Quality Gate Report\n")?;
-            writeln!(
-                &mut output,
-                "Status: {}",
-                if results.passed {
-                    "✅ PASSED"
-                } else {
-                    "❌ FAILED"
-                }
-            )?;
-            writeln!(
-                &mut output,
-                "Total violations: {}\n",
-                results.total_violations
-            )?;
+        QualityGateOutputFormat::Json => format_qg_as_json(results, violations),
+        QualityGateOutputFormat::Human => format_qg_as_human(results, violations),
+        QualityGateOutputFormat::Junit => format_qg_as_junit(violations),
+        QualityGateOutputFormat::Summary => format_qg_as_summary(results),
+        QualityGateOutputFormat::Detailed => format_qg_as_detailed(results, violations),
+        QualityGateOutputFormat::Markdown => format_qg_as_markdown(results),
+    }
+}
 
-            if results.complexity_violations > 0 {
-                writeln!(
-                    &mut output,
-                    "## Complexity violations: {}",
-                    results.complexity_violations
-                )?;
-            }
-            if results.dead_code_violations > 0 {
-                writeln!(
-                    &mut output,
-                    "## Dead code violations: {}",
-                    results.dead_code_violations
-                )?;
-            }
-            if results.satd_violations > 0 {
-                writeln!(
-                    &mut output,
-                    "## Technical debt violations: {}",
-                    results.satd_violations
-                )?;
-            }
-            if results.entropy_violations > 0 {
-                writeln!(
-                    &mut output,
-                    "## Entropy violations: {}",
-                    results.entropy_violations
-                )?;
-            }
-            if results.security_violations > 0 {
-                writeln!(
-                    &mut output,
-                    "## Security violations: {}",
-                    results.security_violations
-                )?;
-            }
-            if results.duplicate_violations > 0 {
-                writeln!(
-                    &mut output,
-                    "## Duplicate code violations: {}",
-                    results.duplicate_violations
-                )?;
-            }
+// Helper: Format as JSON
+fn format_qg_as_json(results: &QualityGateResults, violations: &[QualityViolation]) -> Result<String> {
+    Ok(serde_json::to_string_pretty(&serde_json::json!({
+        "results": results,
+        "violations": violations,
+    }))?)
+}
 
-            if let Some(score) = results.provability_score {
-                writeln!(&mut output, "\nProvability score: {:.2}", score)?;
-            }
+// Helper: Format as human-readable
+fn format_qg_as_human(results: &QualityGateResults, violations: &[QualityViolation]) -> Result<String> {
+    use std::fmt::Write;
+    let mut output = String::new();
+    
+    write_qg_human_header(&mut output, results)?;
+    write_qg_violation_counts(&mut output, results)?;
+    
+    if let Some(score) = results.provability_score {
+        writeln!(&mut output, "\nProvability score: {score:.2}")?;
+    }
+    
+    if !violations.is_empty() {
+        write_qg_violations_list(&mut output, violations)?;
+    }
+    
+    Ok(output)
+}
 
-            if !violations.is_empty() {
-                writeln!(&mut output, "\n## Violations:\n")?;
-                for v in violations {
-                    writeln!(
-                        &mut output,
-                        "- [{}] {} - {}",
-                        v.severity, v.check_type, v.message
-                    )?;
-                    if let Some(line) = v.line {
-                        writeln!(&mut output, "  File: {}:{}", v.file, line)?;
-                    } else {
-                        writeln!(&mut output, "  File: {}", v.file)?;
-                    }
-                }
-            }
+// Helper: Write human header
+fn write_qg_human_header(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "# Quality Gate Report\n")?;
+    writeln!(output, "Status: {}",
+        if results.passed { "✅ PASSED" } else { "❌ FAILED" }
+    )?;
+    writeln!(output, "Total violations: {}\n", results.total_violations)?;
+    Ok(())
+}
 
-            Ok(output)
-        }
-        QualityGateOutputFormat::Junit => {
-            let mut output = String::new();
-            writeln!(&mut output, r#"<?xml version="1.0" encoding="UTF-8"?>"#)?;
-            writeln!(&mut output, r#"<testsuites name="Quality Gate">"#)?;
-            writeln!(
-                &mut output,
-                r#"  <testsuite name="Quality Checks" tests="{}" failures="{}">"#,
-                violations.len(),
-                violations.len()
-            )?;
-
-            for v in violations {
-                writeln!(
-                    &mut output,
-                    r#"    <testcase name="{}" classname="{}">"#,
-                    v.message, v.check_type
-                )?;
-                writeln!(
-                    &mut output,
-                    r#"      <failure message="{}" type="{}"/>"#,
-                    v.message, v.severity
-                )?;
-                writeln!(&mut output, r#"    </testcase>"#)?;
-            }
-
-            writeln!(&mut output, r#"  </testsuite>"#)?;
-            writeln!(&mut output, r#"</testsuites>"#)?;
-
-            Ok(output)
-        }
-        QualityGateOutputFormat::Summary => {
-            let mut output = String::new();
-            writeln!(
-                &mut output,
-                "Quality Gate: {}",
-                if results.passed { "PASSED" } else { "FAILED" }
-            )?;
-            writeln!(
-                &mut output,
-                "Total violations: {}",
-                results.total_violations
-            )?;
-            Ok(output)
-        }
-        QualityGateOutputFormat::Detailed => {
-            let mut output = String::new();
-            writeln!(&mut output, "# Quality Gate Detailed Report\n")?;
-            writeln!(
-                &mut output,
-                "Status: {}",
-                if results.passed {
-                    "✅ PASSED"
-                } else {
-                    "❌ FAILED"
-                }
-            )?;
-            writeln!(
-                &mut output,
-                "Total violations: {}\n",
-                results.total_violations
-            )?;
-
-            writeln!(&mut output, "## Violations by Type\n")?;
-            writeln!(
-                &mut output,
-                "- Complexity: {}",
-                results.complexity_violations
-            )?;
-            writeln!(&mut output, "- Dead code: {}", results.dead_code_violations)?;
-            writeln!(&mut output, "- SATD: {}", results.satd_violations)?;
-            writeln!(&mut output, "- Entropy: {}", results.entropy_violations)?;
-            writeln!(&mut output, "- Security: {}", results.security_violations)?;
-            writeln!(
-                &mut output,
-                "- Duplicates: {}",
-                results.duplicate_violations
-            )?;
-            writeln!(&mut output, "- Coverage: {}", results.coverage_violations)?;
-            writeln!(&mut output, "- Sections: {}", results.section_violations)?;
-            writeln!(
-                &mut output,
-                "- Provability: {}",
-                results.provability_violations
-            )?;
-
-            if !violations.is_empty() {
-                writeln!(&mut output, "\n## All Violations\n")?;
-                for (i, v) in violations.iter().enumerate() {
-                    writeln!(
-                        &mut output,
-                        "{}. [{}] {}: {}",
-                        i + 1,
-                        v.severity,
-                        v.check_type,
-                        v.message
-                    )?;
-                    if let Some(line) = v.line {
-                        writeln!(&mut output, "   File: {}:{}", v.file, line)?;
-                    } else {
-                        writeln!(&mut output, "   File: {}", v.file)?;
-                    }
-                }
-            }
-
-            Ok(output)
-        }
-        QualityGateOutputFormat::Markdown => {
-            let mut output = String::new();
-            writeln!(&mut output, "# Quality Gate Report\n")?;
-            writeln!(
-                &mut output,
-                "**Status**: {}\n",
-                if results.passed {
-                    "✅ PASSED"
-                } else {
-                    "❌ FAILED"
-                }
-            )?;
-            writeln!(
-                &mut output,
-                "**Total violations**: {}\n",
-                results.total_violations
-            )?;
-
-            writeln!(&mut output, "## Summary\n")?;
-            writeln!(&mut output, "| Check Type | Violations |")?;
-            writeln!(&mut output, "|------------|------------|")?;
-            writeln!(
-                &mut output,
-                "| Complexity | {} |",
-                results.complexity_violations
-            )?;
-            writeln!(
-                &mut output,
-                "| Dead Code | {} |",
-                results.dead_code_violations
-            )?;
-            writeln!(&mut output, "| SATD | {} |", results.satd_violations)?;
-            writeln!(&mut output, "| Entropy | {} |", results.entropy_violations)?;
-            writeln!(
-                &mut output,
-                "| Security | {} |",
-                results.security_violations
-            )?;
-            writeln!(
-                &mut output,
-                "| Duplicates | {} |",
-                results.duplicate_violations
-            )?;
-            writeln!(
-                &mut output,
-                "| Coverage | {} |",
-                results.coverage_violations
-            )?;
-            writeln!(&mut output, "| Sections | {} |", results.section_violations)?;
-            writeln!(
-                &mut output,
-                "| Provability | {} |",
-                results.provability_violations
-            )?;
-
-            Ok(output)
+// Helper: Write violation counts
+fn write_qg_violation_counts(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    use std::fmt::Write;
+    let counts = [
+        ("Complexity", results.complexity_violations),
+        ("Dead code", results.dead_code_violations),
+        ("Technical debt", results.satd_violations),
+        ("Entropy", results.entropy_violations),
+        ("Security", results.security_violations),
+        ("Duplicate code", results.duplicate_violations),
+    ];
+    
+    for (name, count) in counts {
+        if count > 0 {
+            writeln!(output, "## {name} violations: {count}")?;
         }
     }
+    Ok(())
+}
+
+// Helper: Write violations list
+fn write_qg_violations_list(output: &mut String, violations: &[QualityViolation]) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "\n## Violations:\n")?;
+    for v in violations {
+        writeln!(output, "- [{}] {} - {}", v.severity, v.check_type, v.message)?;
+        if let Some(line) = v.line {
+            writeln!(output, "  File: {}:{}", v.file, line)?;
+        } else {
+            writeln!(output, "  File: {}", v.file)?;
+        }
+    }
+    Ok(())
+}
+
+// Helper: Format as JUnit XML
+fn format_qg_as_junit(violations: &[QualityViolation]) -> Result<String> {
+    use std::fmt::Write;
+    let mut output = String::new();
+    
+    writeln!(&mut output, r#"<?xml version="1.0" encoding="UTF-8"?>"#)?;
+    writeln!(&mut output, r#"<testsuites name="Quality Gate">"#)?;
+    writeln!(&mut output, 
+        r#"  <testsuite name="Quality Checks" tests="{}" failures="{}">"#,
+        violations.len(), violations.len()
+    )?;
+    
+    for v in violations {
+        writeln!(&mut output, 
+            r#"    <testcase name="{}" classname="{}">"#,
+            v.message, v.check_type
+        )?;
+        writeln!(&mut output, 
+            r#"      <failure message="{}" type="{}"/>"#,
+            v.message, v.severity
+        )?;
+        writeln!(&mut output, r"    </testcase>")?;
+    }
+    
+    writeln!(&mut output, r"  </testsuite>")?;
+    writeln!(&mut output, r"</testsuites>")?;
+    Ok(output)
+}
+
+// Helper: Format as summary
+fn format_qg_as_summary(results: &QualityGateResults) -> Result<String> {
+    use std::fmt::Write;
+    let mut output = String::new();
+    writeln!(&mut output, "Quality Gate: {}",
+        if results.passed { "PASSED" } else { "FAILED" }
+    )?;
+    writeln!(&mut output, "Total violations: {}", results.total_violations)?;
+    Ok(output)
+}
+
+// Helper: Format as detailed
+fn format_qg_as_detailed(results: &QualityGateResults, violations: &[QualityViolation]) -> Result<String> {
+    let mut output = String::new();
+    
+    write_qg_detailed_header(&mut output, results)?;
+    write_qg_detailed_summary(&mut output, results)?;
+    
+    if !violations.is_empty() {
+        write_qg_detailed_violations(&mut output, violations)?;
+    }
+    
+    Ok(output)
+}
+
+// Helper: Write detailed header
+fn write_qg_detailed_header(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "# Quality Gate Detailed Report\n")?;
+    writeln!(output, "Status: {}",
+        if results.passed { "✅ PASSED" } else { "❌ FAILED" }
+    )?;
+    writeln!(output, "Total violations: {}\n", results.total_violations)?;
+    Ok(())
+}
+
+// Helper: Write detailed summary
+fn write_qg_detailed_summary(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "## Violations by Type\n")?;
+    let items = [
+        ("Complexity", results.complexity_violations),
+        ("Dead code", results.dead_code_violations),
+        ("SATD", results.satd_violations),
+        ("Entropy", results.entropy_violations),
+        ("Security", results.security_violations),
+        ("Duplicates", results.duplicate_violations),
+        ("Coverage", results.coverage_violations),
+        ("Sections", results.section_violations),
+        ("Provability", results.provability_violations),
+    ];
+    
+    for (name, count) in items {
+        writeln!(output, "- {}: {}", name, count)?;
+    }
+    Ok(())
+}
+
+// Helper: Write detailed violations
+fn write_qg_detailed_violations(output: &mut String, violations: &[QualityViolation]) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "\n## All Violations\n")?;
+    for (i, v) in violations.iter().enumerate() {
+        writeln!(output, "{}. [{}] {}: {}", i + 1, v.severity, v.check_type, v.message)?;
+        if let Some(line) = v.line {
+            writeln!(output, "   File: {}:{}", v.file, line)?;
+        } else {
+            writeln!(output, "   File: {}", v.file)?;
+        }
+    }
+    Ok(())
+}
+
+// Helper: Format as Markdown
+fn format_qg_as_markdown(results: &QualityGateResults) -> Result<String> {
+    use std::fmt::Write;
+    let mut output = String::new();
+    
+    writeln!(output, "# Quality Gate Report\n")?;
+    writeln!(output, "**Status**: {}\n",
+        if results.passed { "✅ PASSED" } else { "❌ FAILED" }
+    )?;
+    writeln!(output, "**Total violations**: {}\n", results.total_violations)?;
+    
+    writeln!(output, "## Summary\n")?;
+    writeln!(output, "| Check Type | Violations |")?;
+    writeln!(output, "|------------|------------|")?;
+    
+    let rows = [
+        ("Complexity", results.complexity_violations),
+        ("Dead Code", results.dead_code_violations),
+        ("SATD", results.satd_violations),
+        ("Entropy", results.entropy_violations),
+        ("Security", results.security_violations),
+        ("Duplicates", results.duplicate_violations),
+        ("Coverage", results.coverage_violations),
+        ("Sections", results.section_violations),
+        ("Provability", results.provability_violations),
+    ];
+    
+    for (name, count) in rows {
+        writeln!(output, "| {} | {} |", name, count)?;
+    }
+    
+    Ok(output)
 }
 
 // Helper functions
@@ -1814,8 +1910,8 @@ fn analyze_file_complexity(
 
                 functions.push(FunctionComplexity {
                     name,
-                    line_start: (line_num + 1) as u32,
-                    line_end: (line_num + 10) as u32, // Rough estimate
+                    line_start: u32::try_from(line_num + 1).unwrap_or(u32::MAX),
+                    line_end: u32::try_from(line_num + 10).unwrap_or(u32::MAX), // Rough estimate
                     metrics: function_complexity,
                 });
             }
@@ -1839,7 +1935,7 @@ fn analyze_file_complexity(
             .map(|f| f.metrics.nesting_max)
             .max()
             .unwrap_or(0),
-        lines: lines.len() as u16,
+        lines: u16::try_from(lines.len()).unwrap_or(u16::MAX),
     };
 
     Ok(FileComplexityMetrics {
@@ -1927,7 +2023,7 @@ fn estimate_function_complexity(
             || trimmed.contains("match ")
         {
             cyclomatic += 1;
-            cognitive += 1 + nesting as u16; // Cognitive complexity increases with nesting
+            cognitive += 1 + u16::from(nesting); // Cognitive complexity increases with nesting
         }
 
         if trimmed.contains("else") {
@@ -1949,7 +2045,7 @@ fn estimate_function_complexity(
         cyclomatic: cyclomatic.min(255),
         cognitive: cognitive.min(255),
         nesting_max: max_nesting,
-        lines: function_lines.len().min(65535) as u16,
+        lines: u16::try_from(function_lines.len()).unwrap_or(u16::MAX),
     }
 }
 
@@ -2536,7 +2632,7 @@ fn estimate_cyclomatic_complexity(content: &str) -> u32 {
         }
 
         // Count logical operators
-        complexity += (trimmed.matches("&&").count() + trimmed.matches("||").count()) as u32;
+        complexity += u32::try_from(trimmed.matches("&&").count() + trimmed.matches("||").count()).unwrap_or(0);
     }
 
     complexity.min(50) // Cap at 50 for reasonable values
@@ -2625,7 +2721,7 @@ async fn run_complexity_analysis(
 
     // Calculate p99
     complexities.sort();
-    let p99_idx = (complexities.len() as f64 * 0.99) as usize;
+    let p99_idx = (f64::from(complexities.len() as u32) * 0.99) as usize;
     let p99 = complexities.get(p99_idx).copied().unwrap_or(0);
 
     Ok(ComplexityReport {
@@ -2634,7 +2730,7 @@ async fn run_complexity_analysis(
         average_complexity: if complexities.is_empty() {
             0.0
         } else {
-            total_complexity as f64 / complexities.len() as f64
+            f64::from(total_complexity) / f64::from(complexities.len() as u32)
         },
         p99_complexity: p99,
         hotspots: functions,
@@ -2777,110 +2873,131 @@ fn format_comprehensive_report(
     format: ComprehensiveOutputFormat,
     executive_summary: bool,
 ) -> Result<String> {
-    use std::fmt::Write;
-
     match format {
-        ComprehensiveOutputFormat::Json => Ok(serde_json::to_string_pretty(report)?),
-        ComprehensiveOutputFormat::Markdown => {
-            let mut output = String::new();
-            writeln!(&mut output, "# Comprehensive Code Analysis Report\n")?;
-
-            if executive_summary {
-                writeln!(&mut output, "## Executive Summary\n")?;
-                writeln!(
-                    &mut output,
-                    "This report provides a comprehensive analysis of code quality metrics.\n"
-                )?;
-            }
-
-            if let Some(complexity) = &report.complexity {
-                writeln!(&mut output, "## Complexity Analysis\n")?;
-                writeln!(
-                    &mut output,
-                    "- Total functions: {}",
-                    complexity.total_functions
-                )?;
-                writeln!(
-                    &mut output,
-                    "- High complexity functions: {}",
-                    complexity.high_complexity_count
-                )?;
-                writeln!(
-                    &mut output,
-                    "- Average complexity: {:.2}",
-                    complexity.average_complexity
-                )?;
-                writeln!(
-                    &mut output,
-                    "- P99 complexity: {}\n",
-                    complexity.p99_complexity
-                )?;
-            }
-
-            if let Some(satd) = &report.satd {
-                writeln!(&mut output, "## Technical Debt (SATD)\n")?;
-                writeln!(&mut output, "- Total items: {}", satd.total_items)?;
-                writeln!(&mut output, "- By type:")?;
-                for (t, count) in &satd.by_type {
-                    writeln!(&mut output, "  - {}: {}", t, count)?;
-                }
-                writeln!(&mut output)?;
-            }
-
-            if let Some(tdg) = &report.tdg {
-                writeln!(&mut output, "## Technical Debt Gradient\n")?;
-                writeln!(&mut output, "- Average TDG: {:.2}", tdg.average_tdg)?;
-                writeln!(
-                    &mut output,
-                    "- Critical files: {}",
-                    tdg.critical_files.len()
-                )?;
-                writeln!(&mut output, "- Hotspot count: {}\n", tdg.hotspot_count)?;
-            }
-
-            if let Some(dead_code) = &report.dead_code {
-                writeln!(&mut output, "## Dead Code\n")?;
-                writeln!(&mut output, "- Total items: {}", dead_code.total_items)?;
-                writeln!(
-                    &mut output,
-                    "- Percentage: {:.1}%\n",
-                    dead_code.dead_code_percentage
-                )?;
-            }
-
-            if let Some(defects) = &report.defects {
-                writeln!(&mut output, "## Defect Prediction\n")?;
-                writeln!(&mut output, "- Total analyzed: {}", defects.total_analyzed)?;
-                writeln!(
-                    &mut output,
-                    "- High risk files: {}\n",
-                    defects.high_risk_count
-                )?;
-            }
-
-            if let Some(duplicates) = &report.duplicates {
-                writeln!(&mut output, "## Code Duplication\n")?;
-                writeln!(
-                    &mut output,
-                    "- Duplicate blocks: {}",
-                    duplicates.duplicate_blocks
-                )?;
-                writeln!(
-                    &mut output,
-                    "- Duplicate lines: {}",
-                    duplicates.duplicate_lines
-                )?;
-                writeln!(
-                    &mut output,
-                    "- Percentage: {:.1}%\n",
-                    duplicates.duplicate_percentage
-                )?;
-            }
-
-            Ok(output)
-        }
+        ComprehensiveOutputFormat::Json => format_comp_as_json(report),
+        ComprehensiveOutputFormat::Markdown => format_comp_as_markdown(report, executive_summary),
         _ => Ok("Comprehensive analysis completed.".to_string()),
     }
+}
+
+// Helper: Format comprehensive report as JSON
+fn format_comp_as_json(report: &ComprehensiveReport) -> Result<String> {
+    Ok(serde_json::to_string_pretty(report)?)
+}
+
+// Helper: Format comprehensive report as Markdown
+fn format_comp_as_markdown(report: &ComprehensiveReport, executive_summary: bool) -> Result<String> {
+    use std::fmt::Write;
+    let mut output = String::new();
+    
+    writeln!(&mut output, "# Comprehensive Code Analysis Report\n")?;
+    
+    if executive_summary {
+        write_comp_executive_summary(&mut output)?;
+    }
+    
+    write_comp_analysis_sections(&mut output, report)?;
+    
+    Ok(output)
+}
+
+// Helper: Write executive summary
+fn write_comp_executive_summary(output: &mut String) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "## Executive Summary\n")?;
+    writeln!(output, "This report provides a comprehensive analysis of code quality metrics.\n")?;
+    Ok(())
+}
+
+// Helper: Write all analysis sections
+fn write_comp_analysis_sections(output: &mut String, report: &ComprehensiveReport) -> Result<()> {
+    if let Some(complexity) = &report.complexity {
+        write_comp_complexity_section(output, complexity)?;
+    }
+    
+    if let Some(satd) = &report.satd {
+        write_comp_satd_section(output, satd)?;
+    }
+    
+    if let Some(tdg) = &report.tdg {
+        write_comp_tdg_section(output, tdg)?;
+    }
+    
+    if let Some(dead_code) = &report.dead_code {
+        write_comp_dead_code_section(output, dead_code)?;
+    }
+    
+    if let Some(defects) = &report.defects {
+        write_comp_defects_section(output, defects)?;
+    }
+    
+    if let Some(duplicates) = &report.duplicates {
+        write_comp_duplicates_section(output, duplicates)?;
+    }
+    
+    Ok(())
+}
+
+// Helper: Write complexity section
+fn write_comp_complexity_section(output: &mut String, complexity: &ComplexityReport) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "## Complexity Analysis\n")?;
+    writeln!(output, "- Total functions: {}", complexity.total_functions)?;
+    writeln!(output, "- High complexity functions: {}", complexity.high_complexity_count)?;
+    writeln!(output, "- Average complexity: {:.2}", complexity.average_complexity)?;
+    writeln!(output, "- P99 complexity: {}\n", complexity.p99_complexity)?;
+    Ok(())
+}
+
+// Helper: Write SATD section
+fn write_comp_satd_section(output: &mut String, satd: &SatdReport) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "## Technical Debt (SATD)\n")?;
+    writeln!(output, "- Total items: {}", satd.total_items)?;
+    writeln!(output, "- By type:")?;
+    for (t, count) in &satd.by_type {
+        writeln!(output, "  - {}: {}", t, count)?;
+    }
+    writeln!(output)?;
+    Ok(())
+}
+
+// Helper: Write TDG section
+fn write_comp_tdg_section(output: &mut String, tdg: &TdgReport) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "## Technical Debt Gradient\n")?;
+    writeln!(output, "- Average TDG: {:.2}", tdg.average_tdg)?;
+    writeln!(output, "- Critical files: {}", tdg.critical_files.len())?;
+    writeln!(output, "- Hotspot count: {}\n", tdg.hotspot_count)?;
+    Ok(())
+}
+
+// Helper: Write dead code section
+fn write_comp_dead_code_section(output: &mut String, dead_code: &DeadCodeReport) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "## Dead Code\n")?;
+    writeln!(output, "- Total items: {}", dead_code.total_items)?;
+    writeln!(output, "- Percentage: {:.1}%\n", dead_code.dead_code_percentage)?;
+    Ok(())
+}
+
+// Helper: Write defects section
+fn write_comp_defects_section(output: &mut String, defects: &DefectReport) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "## Defect Prediction\n")?;
+    writeln!(output, "- Total analyzed: {}", defects.total_analyzed)?;
+    writeln!(output, "- High risk files: {}\n", defects.high_risk_count)?;
+    Ok(())
+}
+
+// Helper: Write duplicates section
+fn write_comp_duplicates_section(output: &mut String, duplicates: &DuplicateReport) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "## Code Duplication\n")?;
+    writeln!(output, "- Duplicate blocks: {}", duplicates.duplicate_blocks)?;
+    writeln!(output, "- Duplicate lines: {}", duplicates.duplicate_lines)?;
+    writeln!(output, "- Percentage: {:.1}%\n", duplicates.duplicate_percentage)?;
+    Ok(())
 }
 
 #[cfg(test)]

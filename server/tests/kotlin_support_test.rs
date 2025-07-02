@@ -31,6 +31,7 @@ class Person(val name: String, var age: Int) {
     let context = result.unwrap();
     assert_eq!(context.language, "kotlin");
 
+
     // Check that we found the class and function
     let class_found = context.items.iter().any(|item| {
         matches!(item, paiml_mcp_agent_toolkit::services::context::AstItem::Struct { name, .. } if name == "Person")
@@ -91,7 +92,7 @@ class Car : Vehicle {
 
 #[tokio::test]
 async fn test_kotlin_data_class_parsing() {
-    let kotlin_code = r"
+    let kotlin_code = r#"
 data class User(val id: Int, val name: String, val email: String)
 
 enum class Status {
@@ -99,11 +100,11 @@ enum class Status {
     INACTIVE,
     PENDING
 }
-";
+"#;
 
     // Create temporary file with .kt extension
     let file = tempfile::Builder::new().suffix(".kt").tempfile().unwrap();
-    writeln!(file.as_file(), "{kotlin_code}").unwrap();
+    writeln!(file.as_file(), "{}", kotlin_code).unwrap();
     let path = file.path();
 
     // Test parsing
@@ -114,15 +115,18 @@ enum class Status {
     assert!(result.is_ok());
     let context = result.unwrap();
 
+
     // Check that we found the data class
     let data_class_found = context.items.iter().any(|item| {
         matches!(item, paiml_mcp_agent_toolkit::services::context::AstItem::Struct { name, .. } if name == "User")
     });
     assert!(data_class_found, "Should find User data class");
 
-    // Check that we found the enum
+
+    // Check that we found the enum - it should be an Enum item, not Struct
     let enum_found = context.items.iter().any(|item| {
         matches!(item, paiml_mcp_agent_toolkit::services::context::AstItem::Struct { name, .. } if name == "Status")
+            || matches!(item, paiml_mcp_agent_toolkit::services::context::AstItem::Enum { name, .. } if name == "Status")
     });
     assert!(enum_found, "Should find Status enum");
 }

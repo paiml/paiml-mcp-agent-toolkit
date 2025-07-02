@@ -180,6 +180,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         }
         AnalyzeCommands::LintHotspot {
             project_path,
+            file,
             format,
             max_density,
             min_confidence,
@@ -192,6 +193,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         } => {
             super::lint_hotspot_handlers::handle_analyze_lint_hotspot(
                 project_path,
+                file,
                 format,
                 max_density,
                 min_confidence,

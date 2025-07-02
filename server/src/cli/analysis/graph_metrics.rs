@@ -207,8 +207,8 @@ fn extract_dependencies(content: &str, file_path: &Path) -> Result<Vec<String>> 
             Regex::new(r#"require\(['"]\./(\w+)"#)?,
         ],
         "py" => vec![
-            Regex::new(r#"from\s+(\w+)\s+import"#)?,
-            Regex::new(r#"import\s+(\w+)"#)?,
+            Regex::new(r"from\s+(\w+)\s+import")?,
+            Regex::new(r"import\s+(\w+)")?,
         ],
         _ => vec![],
     };
@@ -526,127 +526,160 @@ fn export_to_graphml(
 }
 
 // Format output
+// Refactored format_output with reduced complexity
 fn format_output(
     result: GraphMetricsResult,
     format: crate::cli::GraphMetricsOutputFormat,
 ) -> Result<String> {
-    use std::fmt::Write;
-
     match format {
-        crate::cli::GraphMetricsOutputFormat::Json => Ok(serde_json::to_string_pretty(&result)?),
+        crate::cli::GraphMetricsOutputFormat::Json => format_gm_as_json(result),
         crate::cli::GraphMetricsOutputFormat::Human
         | crate::cli::GraphMetricsOutputFormat::Summary
-        | crate::cli::GraphMetricsOutputFormat::Detailed => {
-            let mut output = String::new();
-            writeln!(&mut output, "# Graph Metrics Analysis\n")?;
-            writeln!(&mut output, "## Graph Statistics")?;
-            writeln!(&mut output, "- Total nodes: {}", result.total_nodes)?;
-            writeln!(&mut output, "- Total edges: {}", result.total_edges)?;
-            writeln!(&mut output, "- Density: {:.3}", result.density)?;
-            writeln!(
-                &mut output,
-                "- Average degree: {:.2}",
-                result.average_degree
-            )?;
-            writeln!(&mut output, "- Max degree: {}", result.max_degree)?;
-            writeln!(
-                &mut output,
-                "- Connected components: {}",
-                result.connected_components
-            )?;
-            writeln!(&mut output, "\n## Top Nodes by Centrality\n")?;
-
-            for (i, node) in result.nodes.iter().enumerate() {
-                writeln!(&mut output, "{}. {} ", i + 1, node.name)?;
-                writeln!(
-                    &mut output,
-                    "   - Degree: {:.3} (in: {}, out: {})",
-                    node.degree_centrality, node.in_degree, node.out_degree
-                )?;
-                writeln!(
-                    &mut output,
-                    "   - Betweenness: {:.3}",
-                    node.betweenness_centrality
-                )?;
-                writeln!(
-                    &mut output,
-                    "   - Closeness: {:.3}",
-                    node.closeness_centrality
-                )?;
-                writeln!(&mut output, "   - PageRank: {:.3}", node.pagerank)?;
-                writeln!(&mut output)?;
-            }
-
-            Ok(output)
-        }
-        crate::cli::GraphMetricsOutputFormat::Csv => {
-            let mut output = String::new();
-            writeln!(
-                &mut output,
-                "name,degree_centrality,betweenness,closeness,pagerank,in_degree,out_degree"
-            )?;
-            for node in result.nodes {
-                writeln!(
-                    &mut output,
-                    "{},{:.3},{:.3},{:.3},{:.3},{},{}",
-                    node.name,
-                    node.degree_centrality,
-                    node.betweenness_centrality,
-                    node.closeness_centrality,
-                    node.pagerank,
-                    node.in_degree,
-                    node.out_degree
-                )?;
-            }
-            Ok(output)
-        }
+        | crate::cli::GraphMetricsOutputFormat::Detailed => format_gm_as_human(result),
+        crate::cli::GraphMetricsOutputFormat::Csv => format_gm_as_csv(result),
         crate::cli::GraphMetricsOutputFormat::GraphML => {
-            // GraphML format handled separately via export_to_graphml
             Ok("GraphML export handled separately.".to_string())
         }
-        crate::cli::GraphMetricsOutputFormat::Markdown => {
-            let mut output = String::new();
-            writeln!(&mut output, "# Graph Metrics Report\n")?;
-            writeln!(&mut output, "## Summary\n")?;
-            writeln!(&mut output, "| Metric | Value |")?;
-            writeln!(&mut output, "|--------|-------|")?;
-            writeln!(&mut output, "| Total Nodes | {} |", result.total_nodes)?;
-            writeln!(&mut output, "| Total Edges | {} |", result.total_edges)?;
-            writeln!(&mut output, "| Density | {:.3} |", result.density)?;
-            writeln!(
-                &mut output,
-                "| Average Degree | {:.2} |",
-                result.average_degree
-            )?;
-            writeln!(&mut output, "| Max Degree | {} |", result.max_degree)?;
-            writeln!(
-                &mut output,
-                "| Connected Components | {} |",
-                result.connected_components
-            )?;
-            writeln!(&mut output, "\n## Top Nodes\n")?;
-            writeln!(
-                &mut output,
-                "| Node | Degree | Betweenness | Closeness | PageRank |"
-            )?;
-            writeln!(
-                &mut output,
-                "|------|--------|-------------|-----------|----------|"
-            )?;
-            for node in result.nodes.iter().take(10) {
-                writeln!(
-                    &mut output,
-                    "| {} | {:.3} | {:.3} | {:.3} | {:.3} |",
-                    node.name,
-                    node.degree_centrality,
-                    node.betweenness_centrality,
-                    node.closeness_centrality,
-                    node.pagerank
-                )?;
-            }
-            Ok(output)
-        }
+        crate::cli::GraphMetricsOutputFormat::Markdown => format_gm_as_markdown(result),
     }
+}
+
+// Helper: Format as JSON
+fn format_gm_as_json(result: GraphMetricsResult) -> Result<String> {
+    Ok(serde_json::to_string_pretty(&result)?)
+}
+
+// Helper: Format as human-readable
+fn format_gm_as_human(result: GraphMetricsResult) -> Result<String> {
+    let mut output = String::new();
+    
+    write_gm_human_header(&mut output)?;
+    write_gm_statistics(&mut output, &result)?;
+    write_gm_top_nodes(&mut output, &result)?;
+    
+    Ok(output)
+}
+
+// Helper: Write human header
+fn write_gm_human_header(output: &mut String) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "# Graph Metrics Analysis\n")?;
+    writeln!(output, "## Graph Statistics")?;
+    Ok(())
+}
+
+// Helper: Write statistics
+fn write_gm_statistics(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "- Total nodes: {}", result.total_nodes)?;
+    writeln!(output, "- Total edges: {}", result.total_edges)?;
+    writeln!(output, "- Density: {:.3}", result.density)?;
+    writeln!(output, "- Average degree: {:.2}", result.average_degree)?;
+    writeln!(output, "- Max degree: {}", result.max_degree)?;
+    writeln!(output, "- Connected components: {}", result.connected_components)?;
+    Ok(())
+}
+
+// Helper: Write top nodes
+fn write_gm_top_nodes(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "\n## Top Nodes by Centrality\n")?;
+    
+    for (i, node) in result.nodes.iter().enumerate() {
+        write_gm_node_details(output, i + 1, node)?;
+    }
+    
+    Ok(())
+}
+
+// Helper: Write node details
+fn write_gm_node_details(output: &mut String, index: usize, node: &NodeMetrics) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "{}. {} ", index, node.name)?;
+    writeln!(output, "   - Degree: {:.3} (in: {}, out: {})",
+        node.degree_centrality, node.in_degree, node.out_degree)?;
+    writeln!(output, "   - Betweenness: {:.3}", node.betweenness_centrality)?;
+    writeln!(output, "   - Closeness: {:.3}", node.closeness_centrality)?;
+    writeln!(output, "   - PageRank: {:.3}", node.pagerank)?;
+    writeln!(output)?;
+    Ok(())
+}
+
+// Helper: Format as CSV
+fn format_gm_as_csv(result: GraphMetricsResult) -> Result<String> {
+    use std::fmt::Write;
+    let mut output = String::new();
+    
+    // Write header
+    writeln!(output, "name,degree_centrality,betweenness,closeness,pagerank,in_degree,out_degree")?;
+    
+    // Write data rows
+    for node in result.nodes {
+        writeln!(output, "{},{:.3},{:.3},{:.3},{:.3},{},{}",
+            node.name,
+            node.degree_centrality,
+            node.betweenness_centrality,
+            node.closeness_centrality,
+            node.pagerank,
+            node.in_degree,
+            node.out_degree
+        )?;
+    }
+    
+    Ok(output)
+}
+
+// Helper: Format as Markdown
+fn format_gm_as_markdown(result: GraphMetricsResult) -> Result<String> {
+    let mut output = String::new();
+    
+    write_gm_markdown_header(&mut output)?;
+    write_gm_markdown_summary(&mut output, &result)?;
+    write_gm_markdown_top_nodes(&mut output, &result)?;
+    
+    Ok(output)
+}
+
+// Helper: Write Markdown header
+fn write_gm_markdown_header(output: &mut String) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "# Graph Metrics Report\n")?;
+    writeln!(output, "## Summary\n")?;
+    Ok(())
+}
+
+// Helper: Write Markdown summary table
+fn write_gm_markdown_summary(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "| Metric | Value |")?;
+    writeln!(output, "|--------|-------|")?;
+    writeln!(output, "| Total Nodes | {} |", result.total_nodes)?;
+    writeln!(output, "| Total Edges | {} |", result.total_edges)?;
+    writeln!(output, "| Density | {:.3} |", result.density)?;
+    writeln!(output, "| Average Degree | {:.2} |", result.average_degree)?;
+    writeln!(output, "| Max Degree | {} |", result.max_degree)?;
+    writeln!(output, "| Connected Components | {} |", result.connected_components)?;
+    Ok(())
+}
+
+// Helper: Write Markdown top nodes table
+fn write_gm_markdown_top_nodes(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "\n## Top Nodes\n")?;
+    writeln!(output, "| Node | Degree | Betweenness | Closeness | PageRank |")?;
+    writeln!(output, "|------|--------|-------------|-----------|----------|")?;
+    
+    for node in result.nodes.iter().take(10) {
+        writeln!(output, "| {} | {:.3} | {:.3} | {:.3} | {:.3} |",
+            node.name,
+            node.degree_centrality,
+            node.betweenness_centrality,
+            node.closeness_centrality,
+            node.pagerank
+        )?;
+    }
+    
+    Ok(())
 }
 
 #[cfg(test)]

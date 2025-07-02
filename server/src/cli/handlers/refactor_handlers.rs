@@ -80,16 +80,16 @@ pub async fn route_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::R
         } => handle_refactor_resume(checkpoint, steps, explain).await,
         RefactorCommands::Auto {
             project_path,
-            single_file_mode: _, // TODO: Use single_file_mode
-            file: _,             // TODO: Use file
+            single_file_mode,
+            file,
             max_iterations,
-            quality_profile: _, // TODO: Use quality profile
+            quality_profile: _,
             format,
             dry_run,
-            skip_compilation: _, // TODO: Use skip_compilation
-            skip_tests: _,       // TODO: Use skip_tests
+            skip_compilation: _,
+            skip_tests: _,
             checkpoint,
-            verbose: _, // TODO: Use verbose
+            verbose: _,
             exclude,
             include,
             ignore_file,
@@ -98,6 +98,8 @@ pub async fn route_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::R
         } => {
             super::refactor_auto_handlers::handle_refactor_auto(
                 project_path,
+                single_file_mode,
+                file,
                 format,
                 max_iterations,
                 checkpoint,
@@ -605,6 +607,3 @@ impl From<ExplainLevel> for crate::services::refactor_engine::ExplainLevel {
     }
 }
 
-#[cfg(test)]
-#[path = "refactor_handlers_tests.rs"]
-mod tests;

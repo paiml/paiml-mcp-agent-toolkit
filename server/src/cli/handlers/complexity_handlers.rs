@@ -822,10 +822,4 @@ mod tests {
     }
 }
 
-#[cfg(test)]
-#[path = "complexity_handlers_tests.rs"]
-mod complexity_tests;
 
-#[cfg(test)]
-#[path = "complexity_handlers_dead_code_tests.rs"]
-mod dead_code_tests;

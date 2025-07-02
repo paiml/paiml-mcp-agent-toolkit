@@ -7,6 +7,22 @@ use std::path::Path;
 
 use super::types::WasmMetrics;
 
+/// WebAssembly binary analysis result
+#[derive(Debug, Clone)]
+pub struct WasmAnalysis {
+    /// Parsed sections from the binary
+    pub sections: Vec<WasmSection>,
+}
+
+/// WebAssembly section information
+#[derive(Debug, Clone)]
+pub struct WasmSection {
+    /// Section ID
+    pub id: u8,
+    /// Section size in bytes
+    pub size: usize,
+}
+
 /// WebAssembly binary analyzer
 pub struct WasmBinaryAnalyzer {
     max_file_size: usize,
@@ -44,6 +60,64 @@ impl WasmBinaryAnalyzer {
 
         Ok(metrics)
     }
+    
+    /// Analyze raw WASM bytes
+    pub fn analyze_bytes(&self, data: &[u8]) -> Result<WasmAnalysis> {
+        // Check minimum size and magic bytes
+        if data.len() < 8 {
+            return Err(anyhow::anyhow!("File too small to be valid WASM"));
+        }
+        
+        if &data[0..4] != b"\0asm" {
+            return Err(anyhow::anyhow!("Invalid WASM magic number"));
+        }
+        
+        let mut sections = Vec::new();
+        let mut pos = 8; // Skip magic and version
+        
+        // Parse sections
+        while pos < data.len() {
+            if pos + 2 > data.len() {
+                break;
+            }
+            
+            let section_id = data[pos];
+            pos += 1;
+            
+            // Decode LEB128 section size
+            let mut size = 0u64;
+            let mut shift = 0;
+            loop {
+                if pos >= data.len() {
+                    break;
+                }
+                let byte = data[pos];
+                pos += 1;
+                
+                size |= ((byte & 0x7F) as u64) << shift;
+                if byte & 0x80 == 0 {
+                    break;
+                }
+                shift += 7;
+                if shift > 35 {
+                    return Err(anyhow::anyhow!("Invalid LEB128 encoding"));
+                }
+            }
+            
+            sections.push(WasmSection {
+                id: section_id,
+                size: size as usize,
+            });
+            
+            // Skip section content
+            pos += size as usize;
+            if pos > data.len() {
+                break;
+            }
+        }
+        
+        Ok(WasmAnalysis { sections })
+    }
 }
 
 impl Default for WasmBinaryAnalyzer {
@@ -53,7 +127,7 @@ impl Default for WasmBinaryAnalyzer {
 }
 
 /// Count occurrences of a byte pattern
-fn count_occurrences(haystack: &[u8], needle: &[u8]) -> u32 {
+pub fn count_occurrences(haystack: &[u8], needle: &[u8]) -> u32 {
     let mut count = 0;
     let mut pos = 0;
     

@@ -77,14 +77,14 @@ check: check-scripts
 
 # Fast tests without coverage (optimized for speed) - MUST complete under 3 minutes
 test-fast:
-	@echo "⚡ Running fast tests with safe parallelism..."
+	@echo "⚡ Running fast tests with optimized parallelism..."
 	@# System health check removed - script archived
 	@echo "🚀 Setting SKIP_SLOW_TESTS=1 to ensure tests complete quickly..."
-	@echo "🛡️ Using conservative thread count and memory limits to prevent system crashes..."
-	@# Memory-safe settings to prevent OOM
-	@export CARGO_BUILD_JOBS=2; \
+	@echo "🔥 Using high parallelism for maximum performance..."
+	@# Optimized settings for systems with adequate memory
+	@export CARGO_BUILD_JOBS=$${CARGO_BUILD_JOBS:-8}; \
 	export CARGO_INCREMENTAL=0; \
-	export CARGO_PROFILE_TEST_CODEGEN_UNITS=1; \
+	export CARGO_PROFILE_TEST_CODEGEN_UNITS=4; \
 	CPU_CORES=$$(nproc); \
 	if [ "$${CI:-}" = "true" ]; then \
 		echo "🔧 CI environment detected - using moderate parallelism"; \
@@ -92,9 +92,10 @@ test-fast:
 		CARGO_BUILD_JOBS=4; \
 	else \
 		echo "📊 System resources: $$CPU_CORES cores"; \
-		echo "⚠️  Using limited parallelism for stability (2 build jobs, 2 test threads)"; \
+		OPTIMAL_THREADS=$$((CPU_CORES > 16 ? 16 : CPU_CORES > 8 ? CPU_CORES - 2 : CPU_CORES)); \
+		echo "🚀 Using optimized parallelism ($$CARGO_BUILD_JOBS build jobs, $$OPTIMAL_THREADS test threads)"; \
 		echo "   Override with: CARGO_BUILD_JOBS=n THREADS=n make test-fast"; \
-		TEST_THREADS=$${THREADS:-2}; \
+		TEST_THREADS=$${THREADS:-$$OPTIMAL_THREADS}; \
 	fi; \
 	echo "🔨 Building with $$CARGO_BUILD_JOBS jobs, testing with $$TEST_THREADS threads..."; \
 	if command -v cargo-nextest >/dev/null 2>&1; then \

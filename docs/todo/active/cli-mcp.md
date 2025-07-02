@@ -529,7 +529,7 @@ pmat enforce extreme [OPTIONS]
 - `--max-iterations <N>` - Maximum iterations before giving up (default: 100)
 - `--target-improvement <PERCENT>` - Target improvement percentage
 - `--max-time <SECONDS>` - Maximum time in seconds
-- `--auto-apply` - Apply suggestions automatically
+- `--apply-suggestions` - Apply suggestions automatically
 
 #### Description
 
@@ -553,7 +553,7 @@ pmat enforce extreme
 pmat enforce extreme --dry-run
 
 # Enforce with automatic fixes applied
-pmat enforce extreme --auto-apply
+pmat enforce extreme --apply-suggestions
 
 # Enforce on a specific project with progress
 pmat enforce extreme -p ./my-project --show-progress

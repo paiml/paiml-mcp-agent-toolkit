@@ -3,8 +3,29 @@
 //! This module provides complexity analysis for WebAssembly modules.
 
 use anyhow::Result;
-use crate::models::unified_ast::AstDag;
+use crate::models::unified_ast::{AstDag, NodeKey};
 use super::types::WasmComplexity;
+
+/// Memory cost model for complexity calculation
+#[derive(Debug, Clone)]
+pub struct MemoryCostModel {
+    /// Cost of memory load operations
+    pub load_cost: f64,
+    /// Cost of memory store operations
+    pub store_cost: f64,
+    /// Cost of memory grow operations
+    pub grow_cost: f64,
+}
+
+impl Default for MemoryCostModel {
+    fn default() -> Self {
+        Self {
+            load_cost: 3.0,
+            store_cost: 5.0,
+            grow_cost: 100.0,
+        }
+    }
+}
 
 /// WebAssembly complexity analyzer
 pub struct WasmComplexityAnalyzer {
@@ -31,6 +52,25 @@ impl WasmComplexityAnalyzer {
             indirect_call_overhead: 1.0,
             max_loop_depth: 1,
         })
+    }
+
+    /// Analyze a single function's complexity
+    pub fn analyze_function(&self, _dag: &AstDag, _func_id: NodeKey) -> WasmComplexity {
+        // Basic complexity estimation
+        // Since AstDag doesn't expose edge/node access methods,
+        // we'll use a simple heuristic
+        let cyclomatic = 1; // Base complexity
+        let max_depth = 0u32;
+        
+        WasmComplexity {
+            cyclomatic,
+            cognitive: cyclomatic,
+            memory_pressure: cyclomatic as f32 * 0.1,
+            hot_path_score: cyclomatic as f32,
+            estimated_gas: cyclomatic as f64 * 1000.0,
+            indirect_call_overhead: 1.0,
+            max_loop_depth: max_depth,
+        }
     }
 
     /// Analyze text complexity  

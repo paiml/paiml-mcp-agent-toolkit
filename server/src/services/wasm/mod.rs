@@ -7,16 +7,32 @@
 //!
 //! Follows Toyota Way principles with extreme quality standards.
 pub mod assemblyscript;
+#[cfg(test)]
+pub mod assemblyscript_property_tests;
 pub mod binary;
+#[cfg(test)]
+pub mod binary_property_tests;
 pub mod complexity;
+#[cfg(test)]
+pub mod complexity_property_tests;
 pub mod error;
 pub mod language_detection;
 pub mod memory_pool;
 pub mod parallel;
 pub mod security;
+#[cfg(test)]
+pub mod security_property_tests;
 pub mod traits;
 pub mod types;
 pub mod wat;
+#[cfg(test)]
+pub mod wat_property_tests;
+#[cfg(test)]
+pub mod coverage_tests;
+#[cfg(test)]
+pub mod integration_tests;
+#[cfg(test)]
+pub mod tests;
 
 pub use self::assemblyscript::AssemblyScriptParser;
 pub use self::binary::WasmBinaryAnalyzer;

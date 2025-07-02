@@ -47,14 +47,14 @@ pub enum Language {
 pub struct NodeFlags(u8);
 
 impl NodeFlags {
-    pub const ASYNC: u8 = 0b00000001;
-    pub const GENERATOR: u8 = 0b00000010;
-    pub const ABSTRACT: u8 = 0b00000100;
-    pub const STATIC: u8 = 0b00001000;
-    pub const CONST: u8 = 0b00010000;
-    pub const EXPORTED: u8 = 0b00100000;
-    pub const PRIVATE: u8 = 0b01000000;
-    pub const DEPRECATED: u8 = 0b10000000;
+    pub const ASYNC: u8 = 0b0000_0001;
+    pub const GENERATOR: u8 = 0b0000_0010;
+    pub const ABSTRACT: u8 = 0b0000_0100;
+    pub const STATIC: u8 = 0b0000_1000;
+    pub const CONST: u8 = 0b0001_0000;
+    pub const EXPORTED: u8 = 0b0010_0000;
+    pub const PRIVATE: u8 = 0b0100_0000;
+    pub const DEPRECATED: u8 = 0b1000_0000;
 
     // C-specific flags (using a second byte in future if needed)
     pub const INLINE: u8 = 0b00000001; // inline function
@@ -354,7 +354,7 @@ impl Location {
     pub fn overlaps(&self, other: &Location) -> bool {
         self.file_path == other.file_path
             && self.span.start < other.span.end
-            && self.span.end > other.span.start
+            && other.span.start < self.span.end
     }
 }
 

@@ -10,7 +10,6 @@ use crate::services::wasm::{
 };
 use anyhow::Result;
 use std::path::PathBuf;
-use std::time::Duration;
 use walkdir::WalkDir;
 
 /// Handle AssemblyScript analysis
@@ -22,14 +21,14 @@ pub async fn handle_analyze_assemblyscript(
     _memory_analysis: bool,
     security: bool,
     output: Option<PathBuf>,
-    timeout: u64,
+    _timeout: u64,
     perf: bool,
 ) -> Result<()> {
     eprintln!("🔍 Analyzing AssemblyScript code...");
 
     let start = std::time::Instant::now();
     let detector = WasmLanguageDetector::new();
-    let mut parser = AssemblyScriptParser::new(Duration::from_secs(timeout));
+    let mut parser = AssemblyScriptParser::new()?;
     let mut results = Vec::new();
 
     // Collect AssemblyScript files

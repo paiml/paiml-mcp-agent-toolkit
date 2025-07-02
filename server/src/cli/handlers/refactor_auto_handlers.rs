@@ -133,6 +133,64 @@ pub enum RefactorPhase {
     Complete,
 }
 
+/// Handle single file refactoring
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to analyze lint violations
+/// - Failed to analyze file complexity
+/// - Failed to count SATD comments
+/// - Failed to generate refactoring request
+/// - Failed to serialize JSON output
+async fn handle_single_file_refactor(
+    file_path: PathBuf,
+    format: RefactorAutoOutputFormat,
+    dry_run: bool,
+    _max_iterations: u32,
+) -> Result<()> {
+    eprintln!("🎯 Analyzing single file: {}", file_path.display());
+    
+    // Get lint violations for this specific file
+    let lint_violations = get_single_file_lint_violations(&file_path).await?;
+    eprintln!("📊 Found {} lint violations", lint_violations.len());
+    
+    // Get complexity metrics
+    let complexity_metrics = analyze_file_complexity(&file_path).await?;
+    eprintln!("🔢 Max complexity: {}", complexity_metrics.max_complexity);
+    
+    // Check for SATD
+    let satd_count = count_file_satd(&file_path).await?;
+    eprintln!("💭 SATD comments: {satd_count}");
+    
+    // Generate refactoring request
+    let refactor_request = generate_single_file_refactor_request(
+        &file_path,
+        lint_violations,
+        complexity_metrics,
+        satd_count,
+    )?;
+    
+    // Output the request
+    match format {
+        RefactorAutoOutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&refactor_request)?);
+        }
+        RefactorAutoOutputFormat::Summary => {
+            print_single_file_summary(&refactor_request);
+        }
+        RefactorAutoOutputFormat::Detailed => {
+            print_single_file_detailed(&refactor_request);
+        }
+    }
+    
+    if !dry_run {
+        eprintln!("💡 To apply fixes, use the generated refactoring request with an AI assistant.");
+    }
+    
+    Ok(())
+}
+
 /// File rewrite plan
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileRewritePlan {
@@ -182,9 +240,26 @@ pub enum FixStrategy {
 }
 
 /// Main entry point for automated refactoring
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Single file mode is enabled but no file is provided
+/// - Failed to read ignore file
+/// - Failed to analyze project
+/// - Failed to generate context
+/// - Failed to verify build
+/// - Failed to analyze lint violations
+///
+/// # Panics
+///
+/// Panics if:
+/// - Current file is None when expected to be Some (internal logic error)
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_refactor_auto(
     project_path: PathBuf,
+    single_file_mode: bool,
+    file: Option<PathBuf>,
     format: RefactorAutoOutputFormat,
     max_iterations: u32,
     cache_dir: Option<PathBuf>,
@@ -200,6 +275,20 @@ pub async fn handle_refactor_auto(
 
     eprintln!("🚀 Starting automated refactoring...");
     eprintln!("📁 Project: {}", project_path.display());
+    
+    // Handle single file mode
+    if single_file_mode || file.is_some() {
+        if let Some(target_file) = file {
+            eprintln!("📄 Single file mode: {}", target_file.display());
+            return handle_single_file_refactor(
+                target_file,
+                format,
+                dry_run,
+                max_iterations,
+            ).await;
+        }
+        return Err(anyhow::anyhow!("Single file mode requires --file parameter"));
+    }
     
     // Load ignore patterns
     let mut all_exclude_patterns = exclude_patterns.clone();
@@ -230,7 +319,7 @@ pub async fn handle_refactor_auto(
     }
     
     if !all_exclude_patterns.is_empty() {
-        eprintln!("🚫 Excluding patterns: {:?}", all_exclude_patterns);
+        eprintln!("🚫 Excluding patterns: {all_exclude_patterns:?}");
     }
     
     // Handle test-specific refactoring
@@ -254,33 +343,36 @@ pub async fn handle_refactor_auto(
         all_exclude_patterns.clear();
     }
     if !include_patterns.is_empty() {
-        eprintln!("✅ Including patterns: {:?}", include_patterns);
+        eprintln!("✅ Including patterns: {include_patterns:?}");
     }
 
     // Determine the actual project path to analyze
     let workspace_root = find_workspace_root(&project_path)?;
-    let actual_project_path = if let Some(ws_root) = &workspace_root {
-        eprintln!("📦 Detected workspace root: {}", ws_root.display());
+    let actual_project_path = workspace_root.as_ref().map_or_else(
+        || {
+            eprintln!("📦 Single crate project detected");
+            project_path.clone()
+        },
+        |ws_root| {
+            eprintln!("📦 Detected workspace root: {}", ws_root.display());
 
-        // If we're at the workspace root, we need to analyze the server directory
-        if project_path == *ws_root {
-            let server_path = ws_root.join("server");
-            if server_path.exists() && server_path.join("Cargo.toml").exists() {
-                eprintln!("📂 Analyzing server crate in workspace");
-                server_path
+            // If we're at the workspace root, we need to analyze the server directory
+            if project_path == *ws_root {
+                let server_path = ws_root.join("server");
+                if server_path.exists() && server_path.join("Cargo.toml").exists() {
+                    eprintln!("📂 Analyzing server crate in workspace");
+                    server_path
+                } else {
+                    // Find the first workspace member with a Cargo.toml
+                    eprintln!("⚠️  No server directory found, using workspace root");
+                    project_path.clone()
+                }
             } else {
-                // Find the first workspace member with a Cargo.toml
-                eprintln!("⚠️  No server directory found, using workspace root");
+                // We're in a workspace member directory
                 project_path.clone()
             }
-        } else {
-            // We're in a workspace member directory
-            project_path.clone()
-        }
-    } else {
-        eprintln!("📦 Single crate project detected");
-        project_path.clone()
-    };
+        },
+    );
 
     // Use actual_project_path for all subsequent operations
     let project_path = actual_project_path;
@@ -315,7 +407,7 @@ pub async fn handle_refactor_auto(
         let lint_analysis = match run_lint_hotspot_analysis(&project_path).await {
             Ok(analysis) => analysis,
             Err(e) => {
-                eprintln!("⚠️  Lint analysis failed: {}", e);
+                eprintln!("⚠️  Lint analysis failed: {e}");
                 eprintln!("   Falling back to basic analysis...");
                 // Return a minimal analysis result so we can continue
                 LintHotspotResult {
@@ -357,7 +449,9 @@ pub async fn handle_refactor_auto(
         
         // Display progress with visual bar
         eprintln!("\n📊 Progress Update - Iteration {}/{}", state.iteration, max_iterations);
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let progress_bar = "█".repeat((progress.overall_completion_percent / 5.0) as usize);
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let empty_bar = "░".repeat(20 - (progress.overall_completion_percent / 5.0) as usize);
         eprintln!(
             "🎯 Overall: {:.1}% [{}{}]",
@@ -473,16 +567,16 @@ pub async fn handle_refactor_auto(
 
         // Update progress for the selected file
         state.progress.current_phase = match () {
-            _ if lint_analysis.all_violations.iter().any(|v| v.file == target_file) => RefactorPhase::LintFixes,
-            _ if target_file.to_string_lossy().contains("compilation_error") => RefactorPhase::BuildFixes,
-            _ if state.quality_metrics.coverage_percent < 80.0 => RefactorPhase::CoverageDriven,
-            _ => RefactorPhase::QualityValidation,
+            () if lint_analysis.all_violations.iter().any(|v| v.file == target_file) => RefactorPhase::LintFixes,
+            () if target_file.to_string_lossy().contains("compilation_error") => RefactorPhase::BuildFixes,
+            () if state.quality_metrics.coverage_percent < 80.0 => RefactorPhase::CoverageDriven,
+            () => RefactorPhase::QualityValidation,
         };
         save_state(&state, &state_file).await?;
 
         // Step 7: B. Check coverage for THIS SPECIFIC FILE
         let file_coverage = check_file_coverage(&project_path, &target_file).await?;
-        eprintln!("📊 File coverage: {:.1}%", file_coverage);
+        eprintln!("📊 File coverage: {file_coverage:.1}%");
 
         // Collect ALL violations for this specific file
         let file_violations: Vec<_> = lint_analysis
@@ -587,12 +681,12 @@ pub async fn handle_refactor_auto(
                     .cloned()
                     .collect();
 
-                if file_violations.is_empty() {
-                    eprintln!("✅ File appears to be already fixed!");
-                    state.files_completed.push(target_file.clone());
-                    continue;
+                if !file_violations.is_empty() {
+                    break;
                 }
-                break;
+                eprintln!("✅ File appears to be already fixed!");
+                state.files_completed.push(target_file.clone());
+                continue;
             }
         } else {
             eprintln!(
@@ -616,8 +710,7 @@ pub async fn handle_refactor_auto(
         if !dry_run {
             let new_file_coverage = check_file_coverage(&project_path, &target_file).await?;
             eprintln!(
-                "📊 New file coverage: {:.1}% (was {:.1}%)",
-                new_file_coverage, file_coverage
+                "📊 New file coverage: {new_file_coverage:.1}% (was {file_coverage:.1}%)"
             );
 
             // Check if this file meets ALL quality goals
@@ -643,7 +736,7 @@ pub async fn handle_refactor_auto(
             } else {
                 eprintln!("⚠️  File {} still needs work:", target_file.display());
                 if new_file_coverage < 80.0 {
-                    eprintln!("   - Coverage: {:.1}% (need 80%)", new_file_coverage);
+                    eprintln!("   - Coverage: {new_file_coverage:.1}% (need 80%)");
                 }
                 if !updated_rewrite_plan.violations.is_empty() {
                     eprintln!(
@@ -694,7 +787,7 @@ pub async fn handle_refactor_auto(
             } else {
                 let hours = updated_progress.estimated_time_remaining_minutes / 60;
                 let minutes = updated_progress.estimated_time_remaining_minutes % 60;
-                eprintln!("   ⏱️  Est. time remaining: {}h {}m", hours, minutes);
+                eprintln!("   ⏱️  Est. time remaining: {hours}h {minutes}m");
             }
         }
         
@@ -728,6 +821,12 @@ pub async fn handle_refactor_auto(
 /// # Errors
 ///
 /// Returns an error if the operation fails
+///
+/// # Panics
+///
+/// Panics if:
+/// - Output path cannot be converted to string
+/// - Project path cannot be converted to string when in workspace
 async fn generate_context(project_path: &Path, cache_dir: &Option<PathBuf>) -> Result<PathBuf> {
     use tokio::process::Command;
 
@@ -786,6 +885,11 @@ async fn generate_context(project_path: &Path, cache_dir: &Option<PathBuf>) -> R
 /// # Errors
 ///
 /// Returns an error if the operation fails
+///
+/// # Panics
+///
+/// Panics if:
+/// - Analysis directory path cannot be converted to string
 async fn run_lint_hotspot_analysis(project_path: &Path) -> Result<LintHotspotResult> {
     use tokio::process::Command;
 
@@ -989,7 +1093,7 @@ async fn run_tarpaulin_for_file(coverage_dir: &Path, relative_file: &Path) -> Re
             Ok(0.0)
         }
         Ok(Err(e)) => {
-            eprintln!("⚠️  Tarpaulin error: {}", e);
+            eprintln!("⚠️  Tarpaulin error: {e}");
             Ok(0.0)
         }
         Err(_) => {
@@ -1010,7 +1114,7 @@ fn parse_tarpaulin_output(stdout: &[u8], relative_file: &Path) -> Result<f64> {
 
     // Look for file-specific coverage
     for line in output_str.lines() {
-        if line.contains(relative_file_str.as_ref()) && line.contains("%") {
+        if line.contains(relative_file_str.as_ref()) && line.contains('%') {
             if let Some(percent) = extract_percentage_from_line(line) {
                 return Ok(percent);
             }
@@ -1019,7 +1123,7 @@ fn parse_tarpaulin_output(stdout: &[u8], relative_file: &Path) -> Result<f64> {
 
     // Fallback to overall coverage if file-specific not found
     for line in output_str.lines() {
-        if line.contains("Coverage") && line.contains("%") {
+        if line.contains("Coverage") && line.contains('%') {
             if let Some(percent) = extract_percentage_from_line(line) {
                 return Ok(percent);
             }
@@ -1041,6 +1145,11 @@ fn extract_percentage_from_line(line: &str) -> Option<f64> {
 /// # Errors
 ///
 /// Returns an error if the operation fails
+///
+/// # Panics
+///
+/// Panics if:
+/// - The check command output status unwrap fails (though it's already checked with is_err)
 async fn check_coverage(project_path: &Path) -> Result<f64> {
     use tokio::process::Command;
 
@@ -1086,7 +1195,7 @@ async fn check_coverage(project_path: &Path) -> Result<f64> {
             // Parse coverage from output
             let output_str = String::from_utf8_lossy(&output.stdout);
             for line in output_str.lines() {
-                if line.contains("Coverage") && line.contains("%") {
+                if line.contains("Coverage") && line.contains('%') {
                     // Extract percentage (e.g., "Coverage 73.45%")
                     if let Some(percent_str) = line.split_whitespace().last() {
                         if let Ok(percent) = percent_str.trim_end_matches('%').parse::<f64>() {
@@ -1109,7 +1218,7 @@ fn meets_quality_gates(metrics: &QualityMetrics) -> bool {
     let profile = QualityProfile::default(); // Extreme profile: 80% coverage, max complexity 20, zero SATD
 
     metrics.coverage_percent >= profile.coverage_min
-        && metrics.max_complexity <= profile.complexity_max as u32
+        && metrics.max_complexity <= u32::from(profile.complexity_max)
         && metrics.satd_count <= profile.satd_allowed
         && metrics.total_violations == 0
 }
@@ -1152,10 +1261,207 @@ fn calculate_file_severity_score(file: &Path, all_violations: &[ViolationDetail]
 
 /// Get cached file coverage (returns None if not available)
 fn get_cached_file_coverage(_file: &Path) -> Option<f64> {
-    // TODO: Implement actual coverage cache lookup
-    // For now, return None to indicate no cached data
-    // In a real implementation, this would query a coverage database or cache
+    // Return None to indicate no cached data available
+    // Coverage data must be computed fresh for accuracy
     None
+}
+
+/// Get lint violations for a single file
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to get current executable
+/// - Failed to run analyze command
+///
+/// # Panics
+///
+/// Panics if:
+/// - File path cannot be converted to string
+async fn get_single_file_lint_violations(file_path: &Path) -> Result<Vec<ViolationDetailJson>> {
+    // Get the current executable path
+    let current_exe = std::env::current_exe()?;
+    
+    let output = Command::new(current_exe)
+        .args([
+            "analyze",
+            "lint-hotspot",
+            "--file",
+            file_path.to_str().unwrap(),
+            "-f", "json",
+        ])
+        .output()
+        .await?;
+
+    // Parse JSON even if exit code is non-zero (quality gate might fail)
+    if !output.stdout.is_empty() {
+        if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&output.stdout) {
+            if let Some(hotspot) = json["hotspot"].as_object() {
+                if let Some(violations) = hotspot["detailed_violations"].as_array() {
+                    let parsed: Vec<ViolationDetailJson> = violations.iter()
+                        .filter_map(|v| serde_json::from_value(v.clone()).ok())
+                        .collect();
+                    return Ok(parsed);
+                }
+            }
+        }
+    }
+    
+    Ok(vec![])
+}
+
+/// Analyze complexity for a single file
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to get current executable
+/// - Failed to run complexity analysis command
+///
+/// # Panics
+///
+/// Panics if:
+/// - File parent directory cannot be determined or converted to string
+async fn analyze_file_complexity(file_path: &Path) -> Result<QualityMetrics> {
+    // Use pmat complexity command for the file
+    let output = Command::new("./target/debug/pmat")
+        .args([
+            "analyze",
+            "complexity",
+            "--project-path",
+            file_path.parent().unwrap_or_else(|| Path::new(".")).to_str().unwrap(),
+            "-f", "json",
+        ])
+        .output()
+        .await?;
+    
+    let mut metrics = QualityMetrics::default();
+    
+    if output.status.success() {
+        if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&output.stdout) {
+            // Find metrics for our specific file
+            if let Some(files) = json["files"].as_array() {
+                for file_entry in files {
+                    if file_entry["path"].as_str() == Some(file_path.to_str().unwrap()) {
+                        if let Some(max_complexity) = file_entry["max_complexity"].as_u64() {
+                            metrics.max_complexity = max_complexity as u32;
+                        }
+                        if let Some(functions) = file_entry["functions"].as_array() {
+                            metrics.total_functions = functions.len();
+                            metrics.functions_with_high_complexity = functions.iter()
+                                .filter(|f| f["complexity"].as_u64().unwrap_or(0) > 10)
+                                .count();
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(metrics)
+}
+
+/// Count SATD comments in a file
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to read file contents
+async fn count_file_satd(file_path: &PathBuf) -> Result<usize> {
+    let content = tokio::fs::read_to_string(file_path).await?;
+    let satd_patterns = ["TODO:", "FIXME:", "HACK:", "XXX:"];
+    let mut count = 0;
+    
+    for line in content.lines() {
+        for pattern in &satd_patterns {
+            if line.contains(pattern) {
+                count += 1;
+                break;
+            }
+        }
+    }
+    
+    Ok(count)
+}
+
+/// Generate refactoring request for single file
+fn generate_single_file_refactor_request(
+    file_path: &PathBuf,
+    violations: Vec<ViolationDetailJson>,
+    _metrics: QualityMetrics,
+    _satd_count: usize,
+) -> Result<FileRewritePlan> {
+    let content = std::fs::read_to_string(file_path)?;
+    
+    Ok(FileRewritePlan {
+        file_path: file_path.clone(),
+        violations: violations.into_iter().map(|v| ViolationWithContext {
+            lint_name: v.lint_name,
+            line: v.line,
+            column: v.column,
+            message: v.message,
+            ast_node_id: None,
+            fix_strategy: FixStrategy::ApplySuggestion(v.suggestion.unwrap_or_default()),
+        }).collect(),
+        ast_metadata: AstMetadata {
+            functions: vec![],
+            imports: vec![],
+            structure_hash: String::new(),
+        },
+        new_content: content,
+    })
+}
+
+/// Extract context lines around a violation
+fn extract_context_lines(content: &str, line: u32, context: u32) -> Vec<String> {
+    let lines: Vec<&str> = content.lines().collect();
+    let start = (line.saturating_sub(context + 1)) as usize;
+    let end = ((line + context) as usize).min(lines.len());
+    
+    lines[start..end].iter().map(|&s| s.to_string()).collect()
+}
+
+/// Print single file summary
+fn print_single_file_summary(request: &FileRewritePlan) {
+    println!("📄 File: {}", request.file_path.display());
+    println!("🚨 Violations: {}", request.violations.len());
+    println!();
+    
+    // Group violations by type
+    let mut violation_counts: HashMap<String, usize> = HashMap::new();
+    for v in &request.violations {
+        *violation_counts.entry(v.lint_name.clone()).or_insert(0) += 1;
+    }
+    
+    println!("Top violations:");
+    let mut counts: Vec<_> = violation_counts.into_iter().collect();
+    counts.sort_by(|a, b| b.1.cmp(&a.1));
+    
+    for (lint, count) in counts.iter().take(5) {
+        println!("  - {lint}: {count} occurrences");
+    }
+}
+
+/// Print single file detailed output
+fn print_single_file_detailed(request: &FileRewritePlan) {
+    println!("# Refactoring Request for {}", request.file_path.display());
+    println!();
+    println!("## Summary");
+    println!("Total violations: {}", request.violations.len());
+    println!();
+    
+    println!("## Violations by Line");
+    let mut violations_by_line: Vec<_> = request.violations.iter().collect();
+    violations_by_line.sort_by_key(|v| v.line);
+    
+    for v in violations_by_line.iter().take(20) {
+        println!("- Line {}: [{}] {}", v.line, v.lint_name, v.message);
+    }
+    
+    if request.violations.len() > 20 {
+        println!("... and {} more violations", request.violations.len() - 20);
+    }
 }
 
 /// Check if a file should be processed based on include/exclude patterns
@@ -1170,9 +1476,7 @@ fn should_process_file(
     if !include_patterns.is_empty() {
         let included = include_patterns.iter().any(|pattern| {
             glob::Pattern::new(pattern)
-                .ok()
-                .map(|p| p.matches(&path_str))
-                .unwrap_or(false)
+                .is_ok_and(|p| p.matches(&path_str))
         });
         if !included {
             return false;
@@ -1182,9 +1486,7 @@ fn should_process_file(
     // Check exclude patterns
     for pattern in exclude_patterns {
         if glob::Pattern::new(pattern)
-            .ok()
-            .map(|p| p.matches(&path_str))
-            .unwrap_or(false)
+            .is_ok_and(|p| p.matches(&path_str))
         {
             return false;
         }
@@ -1197,6 +1499,10 @@ fn should_process_file(
 /// 1. PRIMARY: Files with the most lint violations (highest count first)
 /// 2. SECONDARY: Files with the most severe violations (critical errors weighted higher)
 /// 3. TERTIARY: Files with the lowest code coverage (prioritize untested code)
+///
+/// # Errors
+///
+/// Returns an error if no more files with lint violations are found
 fn select_target_file(
     lint_analysis: &LintHotspotResult,
     completed_files: &[PathBuf],
@@ -1270,6 +1576,12 @@ fn select_target_file(
 }
 
 /// Create a rewrite plan using AST + lint data
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to load AST metadata
+/// - Failed to generate refactored content
 async fn create_rewrite_plan(
     file_path: &Path,
     lint_analysis: &LintHotspotResult,
@@ -1410,6 +1722,15 @@ fn should_refresh_context(state: &RefactorState) -> bool {
 }
 
 /// Output progress in the requested format
+///
+/// # Errors
+///
+/// Returns an error if JSON serialization fails
+///
+/// # Panics
+///
+/// Panics if:
+/// - Files by density comparison returns None (should not happen with valid f64)
 fn output_progress(
     state: &RefactorState,
     _lint_analysis: &LintHotspotResult,
@@ -1427,7 +1748,7 @@ fn output_progress(
         }
         RefactorAutoOutputFormat::Json => {
             let json = serde_json::to_string_pretty(state)?;
-            println!("{}", json);
+            println!("{json}");
         }
         RefactorAutoOutputFormat::Detailed => {
             eprintln!("📊 Detailed Progress:");
@@ -1437,8 +1758,7 @@ fn output_progress(
                 state
                     .current_file
                     .as_ref()
-                    .map(|p| p.display().to_string())
-                    .unwrap_or_else(|| "None".to_string())
+                    .map_or_else(|| "None".to_string(), |p| p.display().to_string())
             );
             eprintln!("\n  Files completed ({}):", state.files_completed.len());
             for (i, file) in state.files_completed.iter().enumerate() {
@@ -1532,7 +1852,8 @@ struct ViolationDetail {
     machine_applicable: bool,
 }
 
-// Load AST metadata from context
+/// Load AST metadata from context
+///
 /// # Errors
 ///
 /// Returns an error if the operation fails
@@ -1569,16 +1890,13 @@ async fn load_ast_metadata_from_context(file: &Path, context_path: &Path) -> Res
                         line[func_name_start + 1..func_name_start + 1 + func_name_end].to_string();
 
                     // Extract complexity
-                    let complexity = if let Some(comp_start) = line.find("[complexity: ") {
-                        let comp_str = &line[comp_start + 12..];
-                        if let Some(comp_end) = comp_str.find(']') {
-                            comp_str[..comp_end].parse().unwrap_or(0)
-                        } else {
-                            0
-                        }
-                    } else {
-                        0
-                    };
+                    let complexity = line.find("[complexity: ")
+                        .and_then(|comp_start| {
+                            let comp_str = &line[comp_start + 12..];
+                            comp_str.find(']')
+                                .and_then(|comp_end| comp_str[..comp_end].parse().ok())
+                        })
+                        .unwrap_or(0);
 
                     functions.push(FunctionInfo {
                         name: func_name,
@@ -1600,6 +1918,7 @@ async fn load_ast_metadata_from_context(file: &Path, context_path: &Path) -> Res
     })
 }
 
+/// Map violations to AST nodes
 fn map_violations_to_ast(
     _violations: &[Violation],
     _ast: &AstMetadata,
@@ -1607,6 +1926,11 @@ fn map_violations_to_ast(
     vec![]
 }
 
+/// Generate refactored content based on violations
+///
+/// # Errors
+///
+/// Returns an error if failed to read file contents
 #[allow(dead_code)]
 async fn generate_refactored_content(
     file: &Path,
@@ -1630,7 +1954,7 @@ async fn generate_refactored_content(
     sorted_violations.sort_by(|a, b| b.line.cmp(&a.line));
 
     // Apply fixes based on violation type
-    let lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
+    let lines: Vec<String> = content.lines().map(std::string::ToString::to_string).collect();
     let mut fixed_lines = lines.clone();
 
     for violation in &sorted_violations {
@@ -1696,8 +2020,7 @@ async fn generate_refactored_content(
                     if let Some(line) = fixed_lines.get_mut(line_idx) {
                         if !line.contains("// COMPLEXITY:") {
                             *line = format!(
-                                "// COMPLEXITY: This function needs to be broken down\n{}",
-                                line
+                                "// COMPLEXITY: This function needs to be broken down\n{line}"
                             );
                         }
                     }
@@ -1709,7 +2032,7 @@ async fn generate_refactored_content(
                     if let Some(line) = fixed_lines.get_mut(line_idx) {
                         // For now, just comment on what needs to be fixed
                         if !line.trim().is_empty() {
-                            *line = format!("// REFACTORING_NEEDED: {}", line);
+                            *line = format!("// REFACTORING_NEEDED: {line}");
                         }
                     }
                 }
@@ -1726,7 +2049,7 @@ async fn generate_refactored_content(
         // Keep the line if:
         // 1. It's not empty, OR
         // 2. The original line was also empty (preserve original empty lines)
-        if !line.is_empty() || lines.get(idx).is_some_and(|original| original.is_empty()) {
+        if !line.is_empty() || lines.get(idx).map(String::is_empty).unwrap_or(false) {
             new_lines.push(line.clone());
         }
     }
@@ -1740,12 +2063,16 @@ async fn generate_refactored_content(
     Ok(content)
 }
 
-/// Output AI-friendly rewrite request with all context
 /// Output AI test generation request in JSON format
 ///
 /// # Errors
 ///
 /// Returns an error if the operation fails
+///
+/// # Panics
+///
+/// Panics if:
+/// - Test file has no parent directory
 async fn output_ai_test_generation_request(test_file: &Path, context_path: &Path) -> Result<()> {
     // Read the full context
     let context_content = fs::read_to_string(context_path).await?;
@@ -1786,6 +2113,13 @@ async fn output_ai_test_generation_request(test_file: &Path, context_path: &Path
     Ok(())
 }
 
+/// Output AI rewrite request for a target file
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to read file contents
+/// - Failed to serialize JSON
 async fn output_ai_rewrite_request(
     target_file: &Path,
     lint_analysis: &LintHotspotResult,
@@ -1924,6 +2258,13 @@ async fn get_crate_name(project_path: &Path) -> Result<String> {
 }
 
 /// Create a test generation plan
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to read context file
+/// - Failed to find untested functions
+/// - Failed to generate test content
 async fn create_test_generation_plan(
     test_file: &Path,
     context_path: &Path,
@@ -1963,6 +2304,10 @@ async fn create_test_generation_plan(
 }
 
 /// Find untested functions from the context
+///
+/// # Errors
+///
+/// Returns an error if the operation fails
 async fn find_untested_functions(
     context_content: &str,
     _project_path: &Path,
@@ -1970,6 +2315,7 @@ async fn find_untested_functions(
     let mut untested = Vec::new();
 
     // Parse the context to find functions
+    #[allow(clippy::collection_is_never_read)]
     let mut _current_file = None;
     let mut in_function_list = false;
 
@@ -2016,16 +2362,13 @@ fn parse_new_function_line(line: &str) -> Option<FunctionInfo> {
     let name = line[name_start + 1..name_end].to_string();
 
     // Extract complexity
-    let complexity = if let Some(comp_start) = line.find("[complexity: ") {
-        let comp_str = &line[comp_start + 12..];
-        if let Some(comp_end) = comp_str.find(']') {
-            comp_str[..comp_end].parse().unwrap_or(1)
-        } else {
-            1
-        }
-    } else {
-        1
-    };
+    let complexity = line.find("[complexity: ")
+        .and_then(|comp_start| {
+            let comp_str = &line[comp_start + 12..];
+            comp_str.find(']')
+                .and_then(|comp_end| comp_str[..comp_end].parse().ok())
+        })
+        .unwrap_or(1);
 
     Some(FunctionInfo {
         name,
@@ -2045,16 +2388,14 @@ fn parse_function_line(line: &str) -> Option<FunctionInfo> {
         let name = line[..name_end].to_string();
 
         // Extract complexity
-        let complexity = if let Some(comp_start) = line.find("complexity: ") {
-            let comp_str = &line[comp_start + 12..];
-            if let Some(comp_end) = comp_str.find(|c: char| !c.is_numeric()) {
-                comp_str[..comp_end].parse().unwrap_or(1)
-            } else {
-                comp_str.parse().unwrap_or(1)
-            }
-        } else {
-            1
-        };
+        let complexity = line.find("complexity: ")
+            .and_then(|comp_start| {
+                let comp_str = &line[comp_start + 12..];
+                comp_str.find(|c: char| !c.is_numeric())
+                    .and_then(|comp_end| comp_str[..comp_end].parse().ok())
+                    .or_else(|| comp_str.parse().ok())
+            })
+            .unwrap_or(1);
 
         Some(FunctionInfo {
             name,
@@ -2098,18 +2439,13 @@ async fn generate_test_content(functions: &[FunctionInfo], test_file: &Path) -> 
     // Generate a test for each function
     for func in functions {
         let indent = if is_integration_test { "" } else { "    " };
-        content.push_str(&format!(
-            "{}#[test]\n{}fn test_{}() {{\n{}    // Test for {}\n{}    // This function has complexity {}\n{}    assert!(true); // Placeholder test\n{}}}\n\n",
-            indent,
-            indent,
+        write!(
+            &mut content,
+            "{indent}#[test]\n{indent}fn test_{}() {{\n{indent}    // Test for {}\n{indent}    // This function has complexity {}\n{indent}    assert!(true); // Placeholder test\n{indent}}}\n\n",
             func.name.replace(['-', ':'], "_"),
-            indent,
             func.name,
-            indent,
-            func.complexity,
-            indent,
-            indent
-        ));
+            func.complexity
+        ).unwrap();
     }
 
     // Close module if we opened one
@@ -2126,6 +2462,12 @@ async fn generate_test_content(functions: &[FunctionInfo], test_file: &Path) -> 
 /// Find the largest file with lowest coverage that hasn't been completed
 /// This implements the enhanced heuristic: when no lint issues exist,
 /// focus on the biggest coverage gaps first (largest files with lowest coverage)
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to find rust files
+/// - No files available for coverage improvement
 async fn find_file_with_lowest_coverage(
     project_path: &Path,
     completed_files: &[PathBuf],
@@ -2159,11 +2501,9 @@ async fn find_file_with_lowest_coverage(
             .unwrap_or(0.0);
 
         // Get file size (lines of code)
-        let file_size = if let Ok(content) = tokio::fs::read_to_string(&file).await {
-            content.lines().count()
-        } else {
-            0
-        };
+        let file_size = tokio::fs::read_to_string(&file)
+            .await
+            .map_or(0, |content| content.lines().count());
 
         // Skip very small files (< 20 lines)
         if file_size < 20 {
@@ -2177,8 +2517,7 @@ async fn find_file_with_lowest_coverage(
             .to_string();
         file_coverage_data.push((file, coverage, file_size));
         eprintln!(
-            "  📈 {} - {:.1}% coverage, {} lines",
-            file_name, coverage, file_size
+            "  📈 {file_name} - {coverage:.1}% coverage, {file_size} lines"
         );
     }
 
@@ -2226,6 +2565,12 @@ fn is_non_refactorable_file(file: &Path) -> bool {
 
 /// Select target file for Priority 3 (coverage) or Priority 4 (enforce extreme)
 /// This is called when lint violations are fixed and build passes
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - No files need refactoring
+/// - Failed to find target files
 async fn select_coverage_or_extreme_target(
     project_path: &Path,
     state: &RefactorState,
@@ -2254,6 +2599,12 @@ async fn select_coverage_or_extreme_target(
 }
 
 /// Find a file with coverage < 80%
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to find rust files
+/// - No files with coverage < 80% found
 async fn find_file_with_low_coverage(
     project_path: &Path,
     completed_files: &[PathBuf],
@@ -2280,7 +2631,7 @@ async fn find_file_with_low_coverage(
             .unwrap_or(0.0);
             
         if coverage < 80.0 {
-            eprintln!("   📊 {} has {:.1}% coverage (< 80%)", file.display(), coverage);
+            eprintln!("   📊 {} has {coverage:.1}% coverage (< 80%)", file.display());
             return Ok(file);
         }
     }
@@ -2290,6 +2641,12 @@ async fn find_file_with_low_coverage(
 
 /// Select target file based on extreme quality standards
 /// This includes complexity, SATD, and other quality metrics
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - All quality gates are met (refactoring complete)
+/// - Failed to find target files
 async fn select_extreme_quality_target(
     project_path: &Path,
     state: &RefactorState,
@@ -2300,7 +2657,7 @@ async fn select_extreme_quality_target(
     let profile = QualityProfile::default();
     
     // Check for high complexity
-    if state.quality_metrics.max_complexity > profile.complexity_max as u32 {
+    if state.quality_metrics.max_complexity > u32::from(profile.complexity_max) {
         eprintln!("   🔧 Found functions with complexity > {} (max allowed: {})",
             state.quality_metrics.max_complexity, profile.complexity_max);
         return find_file_with_high_complexity(project_path, completed_files, exclude_patterns, include_patterns).await;
@@ -2324,6 +2681,12 @@ async fn select_extreme_quality_target(
 
 /// Select target file using fallback strategies when no lint violations exist
 /// Priority: 1) High complexity, 2) SATD items, 3) Coverage gaps (enhanced)
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - All quality gates are met (refactoring complete)
+/// - Failed to find target files
 async fn select_fallback_target(
     project_path: &Path,
     state: &RefactorState,
@@ -2333,7 +2696,7 @@ async fn select_fallback_target(
 ) -> Result<PathBuf> {
     let profile = QualityProfile::default();
 
-    if state.quality_metrics.max_complexity > profile.complexity_max as u32 {
+    if state.quality_metrics.max_complexity > u32::from(profile.complexity_max) {
         eprintln!("🔧 FALLBACK MODE 1: Targeting high complexity functions");
         find_file_with_high_complexity(project_path, completed_files, exclude_patterns, include_patterns).await
     } else if state.quality_metrics.satd_count > 0 {
@@ -2390,6 +2753,13 @@ fn visit_dirs(dir: &Path, rust_files: &mut Vec<PathBuf>) -> Result<()> {
 }
 
 /// Create a unified rewrite plan for both file and tests
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to load AST metadata
+/// - Failed to read file contents
+/// - Failed to generate refactored content
 async fn create_unified_rewrite_plan(
     file_path: &Path,
     violations: &[ViolationDetail],
@@ -2415,7 +2785,7 @@ async fn create_unified_rewrite_plan(
         // Check for complexity violations using RIGID extreme profile
         let profile = QualityProfile::default();
         for func in &ast_metadata.functions {
-            if func.complexity > profile.complexity_max as u32 {
+            if func.complexity > u32::from(profile.complexity_max) {
                 all_violations.push(ViolationDetail {
                     file: file_path.to_path_buf(),
                     line: func.start_line,
@@ -2505,6 +2875,7 @@ fn detect_satd_in_file(content: &str, file_path: &Path) -> Vec<ViolationDetail> 
                         line: (line_num + 1) as u32,
                         column: 1,
                         end_line: (line_num + 1) as u32,
+                        #[allow(clippy::cast_possible_truncation)]
                         end_column: line.len() as u32,
                         lint_name: "satd_item".to_string(),
                         message: format!("Self-admitted technical debt: {}", line.trim()),
@@ -2522,6 +2893,10 @@ fn detect_satd_in_file(content: &str, file_path: &Path) -> Vec<ViolationDetail> 
 }
 
 /// Generate test file content
+///
+/// # Errors
+///
+/// Returns an error if the operation fails
 async fn generate_test_file_content(
     file_path: &Path,
     _ast_metadata: &AstMetadata,
@@ -2536,7 +2911,7 @@ async fn generate_test_file_content(
             .unwrap_or("test");
 
         Ok(format!(
-            r"//! Tests for {}
+            r#"//! Tests for {}
 
 #[cfg(test)]
 mod tests {{
@@ -2548,7 +2923,7 @@ mod tests {{
         assert_eq!(1 + 1, 2);
     }}
 }}
-",
+"#,
             test_name
         ))
     } else {
@@ -2611,6 +2986,13 @@ async fn find_test_file_for(source_file: &Path, project_path: &Path) -> Result<P
 }
 
 /// Output unified AI rewrite request
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to read context file
+/// - Failed to read current file content
+/// - Failed to serialize JSON
 async fn output_ai_unified_rewrite_request(
     file_path: &Path,
     violations: &[ViolationDetail],
@@ -2733,6 +3115,10 @@ async fn output_ai_unified_rewrite_request(
 }
 
 /// Calculate comprehensive refactor progress with percentage completion
+///
+/// # Errors
+///
+/// Returns an error if failed to find rust files
 pub async fn calculate_refactor_progress(
     project_path: &Path,
     quality_metrics: &QualityMetrics,
@@ -2749,9 +3135,10 @@ pub async fn calculate_refactor_progress(
     let lint_completion = if quality_metrics.total_violations == 0 {
         100.0
     } else {
-        ((total_rust_files.saturating_sub(quality_metrics.files_with_issues)) as f64
+        #[allow(clippy::cast_precision_loss)]
+        (((total_rust_files.saturating_sub(quality_metrics.files_with_issues)) as f64
             / total_rust_files as f64)
-            * 100.0
+            * 100.0)
     };
 
     let complexity_completion = if quality_metrics.max_complexity <= 10 {
@@ -2761,7 +3148,8 @@ pub async fn calculate_refactor_progress(
         let good_functions =
             target_functions.saturating_sub(quality_metrics.functions_with_high_complexity);
         if target_functions > 0 {
-            (good_functions as f64 / target_functions as f64) * 100.0
+            #[allow(clippy::cast_precision_loss)]
+            ((good_functions as f64 / target_functions as f64) * 100.0)
         } else {
             100.0
         }
@@ -2773,7 +3161,8 @@ pub async fn calculate_refactor_progress(
         // Estimate based on files processed vs remaining SATD
         let estimated_total_satd: usize = 100; // Rough estimate
         let cleaned_satd = estimated_total_satd.saturating_sub(quality_metrics.satd_count);
-        (cleaned_satd as f64 / estimated_total_satd as f64) * 100.0
+        #[allow(clippy::cast_precision_loss)]
+        ((cleaned_satd as f64 / estimated_total_satd as f64) * 100.0)
     };
 
     let coverage_completion = quality_metrics.coverage_percent.min(100.0);
@@ -2807,7 +3196,7 @@ pub async fn calculate_refactor_progress(
     } else {
         elapsed_seconds as f64 * 20.0 // Conservative estimate if just started
     };
-    let estimated_remaining_minutes =
+    let estimated_remaining_minutes = 
         ((estimated_total_time - elapsed_seconds as f64) / 60.0).max(0.0) as u32;
 
     // Quality gates
@@ -2863,6 +3252,13 @@ pub async fn calculate_refactor_progress(
 }
 
 /// Display current refactoring progress
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to read state file
+/// - Failed to deserialize state
+/// - Failed to calculate progress
 pub async fn display_refactor_progress(
     project_path: PathBuf,
     cache_dir: Option<PathBuf>,
@@ -2893,7 +3289,9 @@ pub async fn display_refactor_progress(
     eprintln!("==========================\n");
 
     // Overall progress with visual bar
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let progress_bar = "█".repeat((progress.overall_completion_percent / 5.0) as usize);
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let empty_bar = "░".repeat(20 - (progress.overall_completion_percent / 5.0) as usize);
     eprintln!(
         "🎯 Overall Progress: {:.1}% [{}{}]",
@@ -2939,7 +3337,7 @@ pub async fn display_refactor_progress(
         } else {
             let hours = progress.estimated_time_remaining_minutes / 60;
             let minutes = progress.estimated_time_remaining_minutes % 60;
-            eprintln!("   ⏱️  Estimated Time Remaining: {}h {}m", hours, minutes);
+            eprintln!("   ⏱️  Estimated Time Remaining: {hours}h {minutes}m");
         }
     }
 
@@ -2948,7 +3346,7 @@ pub async fn display_refactor_progress(
         eprintln!("   (none yet)");
     } else {
         for gate in &progress.quality_gates_passed {
-            eprintln!("   ✅ {}", gate);
+            eprintln!("   ✅ {gate}");
         }
     }
 
@@ -2957,7 +3355,7 @@ pub async fn display_refactor_progress(
         eprintln!("   🎉 All quality gates passed!");
     } else {
         for gate in &progress.quality_gates_remaining {
-            eprintln!("   ⏳ {}", gate);
+            eprintln!("   ⏳ {gate}");
         }
     }
 
@@ -2993,16 +3391,18 @@ pub async fn display_refactor_progress(
     Ok(())
 }
 
-/// Find the workspace root by looking for Cargo.toml with [workspace]
+/// Find source files that a test depends on
 ///
 /// # Errors
 ///
-/// Find source files that a test depends on
+/// Returns an error if:
+/// - Failed to read test file
+/// - Failed to extract dependencies
 async fn find_test_dependencies(test_path: &Path, test_name: &Option<String>) -> Result<Vec<PathBuf>> {
     let test_content = fs::read_to_string(test_path).await?;
     
     if let Some(name) = test_name {
-        eprintln!("🔍 Looking for specific test: {}", name);
+        eprintln!("🔍 Looking for specific test: {name}");
     }
     
     let mut dependencies = Vec::new();
@@ -3021,6 +3421,10 @@ async fn find_test_dependencies(test_path: &Path, test_name: &Option<String>) ->
 }
 
 /// Extract dependencies from use statements
+///
+/// # Errors
+///
+/// Returns an error if the operation fails
 fn extract_import_dependencies(test_content: &str, test_path: &Path, dependencies: &mut Vec<PathBuf>) -> Result<()> {
     let import_regex = regex::Regex::new(r"use\s+(crate::|super::|self::)([^;]+);").unwrap();
     
@@ -3068,6 +3472,10 @@ fn resolve_import_path(import_path: &str, test_path: &Path) -> Option<PathBuf> {
 }
 
 /// Extract dependencies from direct file references
+///
+/// # Errors
+///
+/// Returns an error if the operation fails
 fn extract_file_ref_dependencies(test_content: &str, dependencies: &mut Vec<PathBuf>) -> Result<()> {
     let file_ref_regex = regex::Regex::new(r#"["']((?:src/|\\.\\./)\\S+\\.(?:rs|py|ts|js))["']"#).unwrap();
     
@@ -3088,6 +3496,10 @@ fn extract_file_ref_dependencies(test_content: &str, dependencies: &mut Vec<Path
     Ok(())
 }
 
+/// Find the workspace root by looking for Cargo.toml with [workspace]
+///
+/// # Errors
+///
 /// Returns an error if the operation fails
 fn find_workspace_root(start_path: &Path) -> Result<Option<PathBuf>> {
     let mut current = if start_path.is_file() {
@@ -3238,6 +3650,7 @@ async fn analyze_compilation_errors(
                 100 // Default if we can't read the file
             };
 
+            #[allow(clippy::cast_precision_loss)]
             let defect_density = (total_violations as f64) / (sloc as f64);
 
             LintHotspotJsonResponse {
@@ -3279,6 +3692,12 @@ async fn analyze_compilation_errors(
 }
 
 /// Find file with high complexity functions
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to read context
+/// - No files with high complexity found
 async fn find_file_with_high_complexity(
     project_path: &Path,
     completed_files: &[PathBuf],
@@ -3304,7 +3723,7 @@ async fn find_file_with_high_complexity(
                     let comp_str = &line[start + 13..];
                     if let Some(end) = comp_str.find(']') {
                         if let Ok(complexity) = comp_str[..end].parse::<u32>() {
-                            if complexity > QualityProfile::default().complexity_max as u32 {
+                            if complexity > u32::from(QualityProfile::default().complexity_max) {
                                 let file = current_file.as_ref().unwrap();
                                 // Skip test files - they often have intentionally complex test code
                                 let file_str = file.to_string_lossy();
@@ -3468,6 +3887,13 @@ fn extract_file_context(full_context: &str, target_file: &Path) -> String {
 }
 
 /// Apply automated refactoring to a file
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to read file contents
+/// - Failed to write refactored content
+/// - Failed to run clippy fix
 async fn apply_automated_refactoring(
     file_path: &Path,
     violations: &[ViolationDetail],
@@ -3598,6 +4024,13 @@ async fn apply_automated_refactoring(
 }
 
 /// Generate automated tests for a file
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to read source file
+/// - Failed to extract functions to test
+/// - Failed to write test file
 async fn generate_automated_tests(
     source_file: &Path,
     test_file: &Path,
@@ -3629,12 +4062,12 @@ async fn generate_automated_tests(
     if !test_file.exists() {
         // Create test module
         let test_module = format!(
-            r#"#[cfg(test)]
+            r##"#[cfg(test)]
 mod tests {{
     use super::*;
     
 {}
-}}"#,
+}}"##,
             test_content
         );
         fs::write(test_file, test_module).await?;
@@ -3768,12 +4201,12 @@ fn generate_test_stubs(functions: &[String], _source_file: &Path) -> Result<Stri
     for func in functions {
         writeln!(
             &mut tests,
-            r#"    #[test]
+            r##"    #[test]
     fn test_{}() {{
         // TODO: Implement test for {}
         assert_eq!(1 + 1, 2); // Placeholder test
     }}
-"#,
+"##,
             func, func
         )?;
     }
@@ -3802,6 +4235,12 @@ fn append_tests_to_module(existing: &str, new_tests: &str) -> Result<String> {
 }
 
 /// Create AI rewrite request with all context
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to read target file
+/// - Failed to read context file
 async fn create_ai_rewrite_request(
     target_file: &Path,
     violations: &[ViolationDetail],
@@ -4217,3 +4656,4 @@ fn determine_test_file_path(source_path: &Path) -> Result<PathBuf> {
             .join(format!("{}_test.rs", file_stem.to_string_lossy())))
     }
 }
+
