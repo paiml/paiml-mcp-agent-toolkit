@@ -18,6 +18,7 @@ pub mod refactor_auto_handlers;
 pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod utility_handlers;
+pub mod wasm_handlers;
 
 #[cfg(test)]
 pub mod refactor_auto_property_tests;
@@ -44,6 +45,7 @@ pub use refactor_handlers::{route_refactor_command, RefactorServeParams};
 pub use utility_handlers::{
     handle_context, handle_diagnose, handle_list, handle_search, handle_serve,
 };
+pub use wasm_handlers::{handle_analyze_assemblyscript, handle_analyze_webassembly};
 
 #[cfg(test)]
 mod tests {

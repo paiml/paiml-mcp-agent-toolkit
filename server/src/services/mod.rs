@@ -69,6 +69,7 @@ pub mod unified_ast_engine;
 pub mod unified_ast_parser;
 pub mod unified_refactor_analyzer;
 pub mod verified_complexity;
+pub mod wasm;
 
 #[cfg(test)]
 mod tests {

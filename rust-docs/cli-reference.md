@@ -11,7 +11,7 @@ subcommand  ::= "generate" | "scaffold" | "list" | "search" | "validate" | "cont
 analyze     ::= "analyze" ("churn" | "complexity" | "dag" | "dead-code" | "deep-context" | 
                            "big-o" | "makefile-lint" | "proof-annotations" | "graph-metrics" |
                            "name-similarity" | "defect-prediction" | "incremental-coverage" |
-                           "symbol-table" | "satd" | "tdg")
+                           "symbol-table" | "satd" | "tdg" | "assemblyscript" | "webassembly")
 ```
 
 ## Memory Model
@@ -987,6 +987,59 @@ pmat quality-gate \
   --fail-on-violation \
   --format junit \
   -o quality-results.xml
+```
+
+##### `analyze assemblyscript`
+
+**NEW in v0.26.2**: Analyze AssemblyScript source code with WebAssembly-specific metrics.
+
+**Arguments:**
+- **-p, --project-path**: Project path to analyze (default: current directory)
+- **-f, --format**: Output format (`summary`, `full`, `json`, `sarif`)
+- **--wasm-complexity**: Include WASM complexity analysis
+- **--memory-analysis**: Memory analysis with pool optimization
+- **--security**: Security validation checks
+- **-o, --output**: Output file path
+- **--timeout**: Maximum parsing time in seconds (default: 30)
+- **--perf**: Show performance metrics
+
+**Examples:**
+```bash
+# Basic AssemblyScript analysis
+pmat analyze assemblyscript
+
+# Full analysis with all features
+pmat analyze assemblyscript --wasm-complexity --memory-analysis --security
+
+# JSON output for tooling
+pmat analyze assemblyscript --format json -o analysis.json
+```
+
+##### `analyze webassembly`
+
+**NEW in v0.26.2**: Analyze WebAssembly binary and text formats.
+
+**Arguments:**
+- **-p, --project-path**: Project path to analyze (default: current directory)
+- **-f, --format**: Output format (`summary`, `full`, `json`, `sarif`)
+- **--include-binary**: Include binary WASM (.wasm) files (default: true)
+- **--include-text**: Include text WASM (.wat) files (default: true)
+- **--memory-analysis**: Memory usage analysis
+- **--security**: Security validation
+- **--complexity**: Complexity analysis
+- **-o, --output**: Output file path
+- **--perf**: Show performance metrics
+
+**Examples:**
+```bash
+# Analyze all WebAssembly files
+pmat analyze webassembly
+
+# Only analyze binary WASM files
+pmat analyze webassembly --include-binary --no-include-text
+
+# Comprehensive analysis
+pmat analyze webassembly --memory-analysis --security --complexity
 ```
 
 ## Environment Variable Expansion

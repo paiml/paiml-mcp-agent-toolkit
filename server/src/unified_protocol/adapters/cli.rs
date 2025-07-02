@@ -744,6 +744,22 @@ impl CliAdapter {
                     None,
                 ))
             }
+            AnalyzeCommands::AssemblyScript { .. } => {
+                Ok((
+                    Method::POST,
+                    "/api/v1/analyze/assemblyscript".to_string(),
+                    json!({}),
+                    None,
+                ))
+            }
+            AnalyzeCommands::WebAssembly { .. } => {
+                Ok((
+                    Method::POST,
+                    "/api/v1/analyze/webassembly".to_string(),
+                    json!({}),
+                    None,
+                ))
+            }
         }
     }
 
@@ -1163,6 +1179,8 @@ impl CliInput {
             AnalyzeCommands::IncrementalCoverage { .. } => "analyze-incremental-coverage",
             AnalyzeCommands::SymbolTable { .. } => "analyze-symbol-table",
             AnalyzeCommands::BigO { .. } => "analyze-big-o",
+            AnalyzeCommands::AssemblyScript { .. } => "analyze-assemblyscript",
+            AnalyzeCommands::WebAssembly { .. } => "analyze-webassembly",
         }
     }
 

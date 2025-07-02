@@ -37,6 +37,8 @@ pub enum Language {
     Cpp = 11,
     Cython = 12,
     Kotlin = 13,
+    AssemblyScript = 14,
+    WebAssembly = 15,
 }
 
 /// Node flags for quick filtering
