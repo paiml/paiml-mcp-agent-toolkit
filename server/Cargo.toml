@@ -79,7 +79,7 @@ crossbeam-channel = "0.5"
 # For TypeScript/JavaScript parsing (conditional) - use compatible versions
 swc_ecma_parser = { version = "0.145", optional = true }
 swc_common = { version = "0.33", optional = true }
-swc_ecma_ast = { version = "0.114", optional = true }
+swc_ecma_ast = { version = "13.0", optional = true }
 swc_ecma_visit = { version = "0.100", optional = true }
 # For Python parsing (conditional)
 rustpython-parser = { version = "0.4", optional = true }
