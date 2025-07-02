@@ -25,16 +25,16 @@ pub async fn handle_analyze_tdg(
     eprintln!("📊 Threshold: {}", threshold);
     eprintln!("🔝 Top: {} files", top);
     eprintln!("📄 Format: {:?}", format);
-    
+
     // Placeholder implementation
     eprintln!("✅ TDG analysis complete (stub implementation)");
-    
+
     if let Some(output_path) = output {
         let content = "TDG analysis results (stub)";
         tokio::fs::write(&output_path, content).await?;
         eprintln!("📝 Written to {}", output_path.display());
     }
-    
+
     Ok(())
 }
 
@@ -337,16 +337,16 @@ pub async fn handle_analyze_defect_prediction(
     eprintln!("🎯 High risk only: {}", high_risk_only);
     eprintln!("📊 Include low confidence: {}", include_low_confidence);
     eprintln!("📄 Format: {:?}", format);
-    
+
     // Placeholder implementation
     eprintln!("✅ Defect prediction complete (stub implementation)");
-    
+
     if let Some(output_path) = output {
         let content = "Defect prediction results (stub)";
         tokio::fs::write(&output_path, content).await?;
         eprintln!("📝 Written to {}", output_path.display());
     }
-    
+
     Ok(())
 }
 #[allow(clippy::too_many_arguments)]
@@ -423,19 +423,22 @@ pub async fn handle_analyze_incremental_coverage(
     eprintln!("📊 Analyzing incremental coverage...");
     eprintln!("📁 Project path: {}", project_path.display());
     eprintln!("🌿 Base branch: {}", base_branch);
-    eprintln!("🎯 Target branch: {}", target_branch.as_deref().unwrap_or("HEAD"));
+    eprintln!(
+        "🎯 Target branch: {}",
+        target_branch.as_deref().unwrap_or("HEAD")
+    );
     eprintln!("📈 Coverage threshold: {:.1}%", coverage_threshold * 100.0);
     eprintln!("📄 Format: {:?}", format);
-    
+
     // Placeholder implementation
     eprintln!("✅ Incremental coverage analysis complete (stub implementation)");
-    
+
     if let Some(output_path) = output {
         let content = "Incremental coverage results (stub)";
         tokio::fs::write(&output_path, content).await?;
         eprintln!("📝 Written to {}", output_path.display());
     }
-    
+
     Ok(())
 }
 pub async fn handle_analyze_churn(
@@ -446,7 +449,6 @@ pub async fn handle_analyze_churn(
 ) -> Result<()> {
     use crate::models::churn::ChurnOutputFormat;
     use crate::services::git_analysis::GitAnalysisService;
-    use std::fmt::Write;
 
     eprintln!("📊 Analyzing code churn for the last {} days...", days);
 
@@ -458,185 +460,244 @@ pub async fn handle_analyze_churn(
 
     // Format output based on requested format
     let content = match format {
-        ChurnOutputFormat::Json => serde_json::to_string_pretty(&analysis)?,
-        ChurnOutputFormat::Summary => {
-            let mut output = String::new();
-            writeln!(&mut output, "# Code Churn Analysis Summary\n")?;
-            writeln!(
-                &mut output,
-                "**Period**: Last {} days",
-                analysis.period_days
-            )?;
-            writeln!(
-                &mut output,
-                "**Total commits**: {}",
-                analysis.summary.total_commits
-            )?;
-            writeln!(
-                &mut output,
-                "**Files changed**: {}",
-                analysis.summary.total_files_changed
-            )?;
-
-            if !analysis.summary.hotspot_files.is_empty() {
-                writeln!(&mut output, "\n## Hotspot Files (High Churn)\n")?;
-                for (i, file) in analysis.summary.hotspot_files.iter().take(10).enumerate() {
-                    writeln!(&mut output, "{}. {}", i + 1, file.display())?;
-                }
-            }
-
-            if !analysis.summary.stable_files.is_empty() {
-                writeln!(&mut output, "\n## Stable Files (Low Churn)\n")?;
-                for (i, file) in analysis.summary.stable_files.iter().take(10).enumerate() {
-                    writeln!(&mut output, "{}. {}", i + 1, file.display())?;
-                }
-            }
-
-            if !analysis.summary.author_contributions.is_empty() {
-                writeln!(&mut output, "\n## Top Contributors\n")?;
-                let mut authors: Vec<_> = analysis.summary.author_contributions.iter().collect();
-                authors.sort_by(|a, b| b.1.cmp(a.1));
-                for (author, files) in authors.iter().take(10) {
-                    writeln!(&mut output, "- {}: {} files", author, files)?;
-                }
-            }
-
-            output
-        }
-        ChurnOutputFormat::Markdown => {
-            let mut output = String::new();
-            writeln!(&mut output, "# Code Churn Analysis Report\n")?;
-            writeln!(
-                &mut output,
-                "Generated: {}",
-                analysis.generated_at.format("%Y-%m-%d %H:%M:%S UTC")
-            )?;
-            writeln!(
-                &mut output,
-                "Repository: {}",
-                analysis.repository_root.display()
-            )?;
-            writeln!(
-                &mut output,
-                "Analysis Period: {} days\n",
-                analysis.period_days
-            )?;
-
-            writeln!(&mut output, "## Summary Statistics\n")?;
-            writeln!(&mut output, "| Metric | Value |")?;
-            writeln!(&mut output, "|--------|-------|")?;
-            writeln!(
-                &mut output,
-                "| Total Commits | {} |",
-                analysis.summary.total_commits
-            )?;
-            writeln!(
-                &mut output,
-                "| Files Changed | {} |",
-                analysis.summary.total_files_changed
-            )?;
-            writeln!(
-                &mut output,
-                "| Hotspot Files | {} |",
-                analysis.summary.hotspot_files.len()
-            )?;
-            writeln!(
-                &mut output,
-                "| Stable Files | {} |",
-                analysis.summary.stable_files.len()
-            )?;
-            writeln!(
-                &mut output,
-                "| Contributing Authors | {} |",
-                analysis.summary.author_contributions.len()
-            )?;
-
-            if !analysis.files.is_empty() {
-                writeln!(&mut output, "\n## File Churn Details\n")?;
-                writeln!(&mut output, "| File | Commits | Authors | Additions | Deletions | Churn Score | Last Modified |")?;
-                writeln!(&mut output, "|------|---------|---------|-----------|-----------|-------------|----------------|")?;
-
-                // Sort by churn score descending
-                let mut sorted_files = analysis.files.clone();
-                sorted_files.sort_by(|a, b| b.churn_score.partial_cmp(&a.churn_score).unwrap());
-
-                for file in sorted_files.iter().take(20) {
-                    writeln!(
-                        &mut output,
-                        "| {} | {} | {} | {} | {} | {:.2} | {} |",
-                        file.relative_path,
-                        file.commit_count,
-                        file.unique_authors.len(),
-                        file.additions,
-                        file.deletions,
-                        file.churn_score,
-                        file.last_modified.format("%Y-%m-%d")
-                    )?;
-                }
-            }
-
-            if !analysis.summary.author_contributions.is_empty() {
-                writeln!(&mut output, "\n## Author Contributions\n")?;
-                writeln!(&mut output, "| Author | Files Modified |")?;
-                writeln!(&mut output, "|--------|----------------|")?;
-
-                let mut authors: Vec<_> = analysis.summary.author_contributions.iter().collect();
-                authors.sort_by(|a, b| b.1.cmp(a.1));
-
-                for (author, count) in authors.iter().take(15) {
-                    writeln!(&mut output, "| {} | {} |", author, count)?;
-                }
-            }
-
-            writeln!(&mut output, "\n## Recommendations\n")?;
-            writeln!(&mut output, "1. **Review Hotspot Files**: Files with high churn scores may benefit from refactoring")?;
-            writeln!(
-                &mut output,
-                "2. **Add Tests**: High-churn files should have comprehensive test coverage"
-            )?;
-            writeln!(
-                &mut output,
-                "3. **Code Review**: Frequently modified files may indicate design issues"
-            )?;
-            writeln!(
-                &mut output,
-                "4. **Documentation**: Document the reasons for frequent changes in hotspot files"
-            )?;
-
-            output
-        }
-        ChurnOutputFormat::Csv => {
-            let mut output = String::new();
-            writeln!(&mut output, "file_path,relative_path,commit_count,unique_authors,additions,deletions,churn_score,last_modified,first_seen")?;
-
-            for file in &analysis.files {
-                writeln!(
-                    &mut output,
-                    "{},{},{},{},{},{},{:.3},{},{}",
-                    file.path.display(),
-                    file.relative_path,
-                    file.commit_count,
-                    file.unique_authors.len(),
-                    file.additions,
-                    file.deletions,
-                    file.churn_score,
-                    file.last_modified.to_rfc3339(),
-                    file.first_seen.to_rfc3339()
-                )?;
-            }
-
-            output
-        }
+        ChurnOutputFormat::Json => format_churn_as_json(&analysis)?,
+        ChurnOutputFormat::Summary => format_churn_as_summary(&analysis)?,
+        ChurnOutputFormat::Markdown => format_churn_as_markdown(&analysis)?,
+        ChurnOutputFormat::Csv => format_churn_as_csv(&analysis)?,
     };
 
     // Write output
+    write_churn_output(content, output).await?;
+    Ok(())
+}
+
+// Helper function to format churn analysis as JSON
+fn format_churn_as_json(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
+    Ok(serde_json::to_string_pretty(analysis)?)
+}
+
+// Helper function to format churn analysis as summary
+fn format_churn_as_summary(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
+    let mut output = String::new();
+    
+    write_summary_header(&mut output, analysis)?;
+    write_summary_hotspot_files(&mut output, &analysis.summary)?;
+    write_summary_stable_files(&mut output, &analysis.summary)?;
+    write_summary_top_contributors(&mut output, &analysis.summary)?;
+    
+    Ok(output)
+}
+
+// Helper function to write summary header
+fn write_summary_header(
+    output: &mut String, 
+    analysis: &crate::models::churn::CodeChurnAnalysis
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "# Code Churn Analysis Summary\n")?;
+    writeln!(output, "**Period**: Last {} days", analysis.period_days)?;
+    writeln!(output, "**Total commits**: {}", analysis.summary.total_commits)?;
+    writeln!(output, "**Files changed**: {}", analysis.summary.total_files_changed)?;
+    Ok(())
+}
+
+// Helper function to write hotspot files
+fn write_summary_hotspot_files(
+    output: &mut String,
+    summary: &crate::models::churn::ChurnSummary,
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    if !summary.hotspot_files.is_empty() {
+        writeln!(output, "\n## Hotspot Files (High Churn)\n")?;
+        for (i, file) in summary.hotspot_files.iter().take(10).enumerate() {
+            writeln!(output, "{}. {}", i + 1, file.display())?;
+        }
+    }
+    Ok(())
+}
+
+// Helper function to write stable files
+fn write_summary_stable_files(
+    output: &mut String,
+    summary: &crate::models::churn::ChurnSummary,
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    if !summary.stable_files.is_empty() {
+        writeln!(output, "\n## Stable Files (Low Churn)\n")?;
+        for (i, file) in summary.stable_files.iter().take(10).enumerate() {
+            writeln!(output, "{}. {}", i + 1, file.display())?;
+        }
+    }
+    Ok(())
+}
+
+// Helper function to write top contributors
+fn write_summary_top_contributors(
+    output: &mut String,
+    summary: &crate::models::churn::ChurnSummary,
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    if !summary.author_contributions.is_empty() {
+        writeln!(output, "\n## Top Contributors\n")?;
+        let mut authors: Vec<_> = summary.author_contributions.iter().collect();
+        authors.sort_by(|a, b| b.1.cmp(a.1));
+        for (author, files) in authors.iter().take(10) {
+            writeln!(output, "- {}: {} files", author, files)?;
+        }
+    }
+    Ok(())
+}
+
+// Helper function to format churn analysis as markdown
+fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
+    let mut output = String::new();
+    
+    write_markdown_header(&mut output, analysis)?;
+    write_markdown_summary_table(&mut output, &analysis.summary)?;
+    write_markdown_file_details(&mut output, &analysis.files)?;
+    write_markdown_author_contributions(&mut output, &analysis.summary)?;
+    write_markdown_recommendations(&mut output)?;
+    
+    Ok(output)
+}
+
+// Helper function to write markdown header
+fn write_markdown_header(
+    output: &mut String,
+    analysis: &crate::models::churn::CodeChurnAnalysis,
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "# Code Churn Analysis Report\n")?;
+    writeln!(output, "Generated: {}", analysis.generated_at.format("%Y-%m-%d %H:%M:%S UTC"))?;
+    writeln!(output, "Repository: {}", analysis.repository_root.display())?;
+    writeln!(output, "Analysis Period: {} days\n", analysis.period_days)?;
+    Ok(())
+}
+
+// Helper function to write markdown summary table
+fn write_markdown_summary_table(
+    output: &mut String,
+    summary: &crate::models::churn::ChurnSummary,
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "## Summary Statistics\n")?;
+    writeln!(output, "| Metric | Value |")?;
+    writeln!(output, "|--------|-------|")?;
+    writeln!(output, "| Total Commits | {} |", summary.total_commits)?;
+    writeln!(output, "| Files Changed | {} |", summary.total_files_changed)?;
+    writeln!(output, "| Hotspot Files | {} |", summary.hotspot_files.len())?;
+    writeln!(output, "| Stable Files | {} |", summary.stable_files.len())?;
+    writeln!(output, "| Contributing Authors | {} |", summary.author_contributions.len())?;
+    Ok(())
+}
+
+// Helper function to write markdown file details
+fn write_markdown_file_details(
+    output: &mut String,
+    files: &[crate::models::churn::FileChurnMetrics],
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    if !files.is_empty() {
+        writeln!(output, "\n## File Churn Details\n")?;
+        writeln!(output, "| File | Commits | Authors | Additions | Deletions | Churn Score | Last Modified |")?;
+        writeln!(output, "|------|---------|---------|-----------|-----------|-------------|----------------|")?;
+
+        // Sort by churn score descending
+        let mut sorted_files = files.to_vec();
+        sorted_files.sort_by(|a, b| b.churn_score.partial_cmp(&a.churn_score).unwrap());
+
+        for file in sorted_files.iter().take(20) {
+            writeln!(
+                output,
+                "| {} | {} | {} | {} | {} | {:.2} | {} |",
+                file.relative_path,
+                file.commit_count,
+                file.unique_authors.len(),
+                file.additions,
+                file.deletions,
+                file.churn_score,
+                file.last_modified.format("%Y-%m-%d")
+            )?;
+        }
+    }
+    Ok(())
+}
+
+// Helper function to write markdown author contributions
+fn write_markdown_author_contributions(
+    output: &mut String,
+    summary: &crate::models::churn::ChurnSummary,
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    if !summary.author_contributions.is_empty() {
+        writeln!(output, "\n## Author Contributions\n")?;
+        writeln!(output, "| Author | Files Modified |")?;
+        writeln!(output, "|--------|----------------|")?;
+
+        let mut authors: Vec<_> = summary.author_contributions.iter().collect();
+        authors.sort_by(|a, b| b.1.cmp(a.1));
+
+        for (author, count) in authors.iter().take(15) {
+            writeln!(output, "| {} | {} |", author, count)?;
+        }
+    }
+    Ok(())
+}
+
+// Helper function to write markdown recommendations
+fn write_markdown_recommendations(output: &mut String) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "\n## Recommendations\n")?;
+    writeln!(output, "1. **Review Hotspot Files**: Files with high churn scores may benefit from refactoring")?;
+    writeln!(output, "2. **Add Tests**: High-churn files should have comprehensive test coverage")?;
+    writeln!(output, "3. **Code Review**: Frequently modified files may indicate design issues")?;
+    writeln!(output, "4. **Documentation**: Document the reasons for frequent changes in hotspot files")?;
+    Ok(())
+}
+
+// Helper function to format churn analysis as CSV
+fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
+    use std::fmt::Write;
+    let mut output = String::new();
+    
+    writeln!(&mut output, "file_path,relative_path,commit_count,unique_authors,additions,deletions,churn_score,last_modified,first_seen")?;
+
+    for file in &analysis.files {
+        writeln!(
+            &mut output,
+            "{},{},{},{},{},{},{:.3},{},{}",
+            file.path.display(),
+            file.relative_path,
+            file.commit_count,
+            file.unique_authors.len(),
+            file.additions,
+            file.deletions,
+            file.churn_score,
+            file.last_modified.to_rfc3339(),
+            file.first_seen.to_rfc3339()
+        )?;
+    }
+
+    Ok(output)
+}
+
+// Helper function to write output
+async fn write_churn_output(content: String, output: Option<PathBuf>) -> Result<()> {
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("✅ Churn analysis written to: {}", output_path.display());
     } else {
         println!("{}", content);
     }
-
     Ok(())
 }
 

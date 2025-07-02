@@ -397,7 +397,7 @@ impl CliAdapter {
                     params,
                     None,
                 ))
-            },
+            }
             AnalyzeCommands::Makefile {
                 path,
                 rules,

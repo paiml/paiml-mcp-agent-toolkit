@@ -236,7 +236,7 @@ mod ast_typescript_tests {
         // the legacy items field. For now, we just verify that the file was parsed successfully
         // without errors and the correct language was detected.
         eprintln!("TypeScript items count: {}", context.items.len());
-        
+
         // The new architecture doesn't populate items, so we skip all item verification
     }
 
@@ -260,7 +260,7 @@ mod ast_typescript_tests {
         // the legacy items field. For now, we just verify that the file was parsed successfully
         // without errors and the correct language was detected.
         eprintln!("JavaScript items count: {}", context.items.len());
-        
+
         // The new architecture doesn't populate items, so we skip item verification
     }
 
@@ -385,7 +385,7 @@ mod ast_integration_tests {
         eprintln!("TypeScript items: {}", ts_context.items.len());
         eprintln!("JavaScript items: {}", js_context.items.len());
         eprintln!("Total items: {}", total_items);
-        
+
         // Note: TypeScript/JavaScript analyzer uses new AstDag architecture and doesn't populate
         // the legacy items field. We only check Python items for now.
         assert!(

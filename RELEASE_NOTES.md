@@ -1,8 +1,20 @@
 # Release Notes
 
-## v0.26.1 (Unreleased)
+## v0.26.1 (2025-07-02)
 
 ### New Features
+
+#### 🎯 Property-Based Testing Integration
+- Added property-based testing support to `pmat refactor auto`
+- Automatically generates property tests that verify behavior preservation during refactoring
+- Integrates with QuickCheck and proptest frameworks
+- Ensures refactored code maintains semantic equivalence
+
+#### 🚀 Refactor Auto UX Improvements
+- Enhanced `pmat refactor auto` output with clear instructions
+- Now displays actionable next steps after generating refactoring requests
+- Explicitly states 80% test coverage requirement
+- Improved user guidance for successful refactoring workflow
 
 #### 🧹 AI-Assisted Documentation Cleanup (`pmat refactor docs`)
 - New command for maintaining Zero Tolerance Quality Standards in documentation
@@ -29,6 +41,14 @@
   - `--all-targets` - Lints library, binaries, tests, and examples
 
 ### Improvements
+
+#### 🏗️ Major Complexity Reduction Refactoring
+- Refactored high-complexity functions achieving 95%+ complexity reduction
+- `handle_analyze_dead_code`: Cognitive complexity 244 → 10 (96% reduction)
+- `format_quality_gate_output`: Complexity 136 → 5 (96.3% reduction)
+- `handle_analyze_churn`: Complexity 97 → 5 (94.8% reduction)
+- Established refactoring pattern: main function delegates to focused helper functions
+- All refactored code includes comprehensive test suites with >80% coverage
 
 #### 📚 Documentation Organization
 - Reorganized entire documentation structure following Zero Tolerance Quality Standards

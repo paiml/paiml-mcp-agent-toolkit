@@ -127,6 +127,52 @@ jobs:
       - name: Validate GitHub Actions
         run: make test-actions || true  # Don't fail on this
 
+  property-tests:
+    name: Property Tests
+    needs: ci
+    if: needs.ci.result == 'success'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          cache-on-failure: true
+          shared-key: "ci"
+      
+      - name: Run AST property tests
+        run: |
+          cd server
+          cargo test --test ast_property_tests --release -- --nocapture
+      
+      - name: Run refactoring property tests
+        run: |
+          cd server
+          cargo test --test refactoring_property_tests --release -- --nocapture
+      
+      - name: Run property test coverage report
+        run: |
+          cd server
+          cargo test --test property_test_coverage --release -- --nocapture
+      
+      - name: Verify property test coverage
+        run: |
+          cd server
+          # Extract coverage from test output
+          coverage=$(cargo test --test property_test_coverage --release 2>&1 | grep "Coverage:" | head -1 | awk '{print $2}' | sed 's/%//')
+          echo "Property test coverage: $coverage%"
+          
+          # Check if coverage meets threshold
+          if (( $(echo "$coverage < 80" | bc -l) )); then
+            echo "Property test coverage below 80% threshold"
+            exit 1
+          fi
+
   benchmarks:
     name: Performance Benchmarks
     needs: ci
