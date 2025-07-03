@@ -61,7 +61,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmat = "0.26.3"
+pmat = "0.27.0"
 ```
 
 Basic usage:
@@ -145,7 +145,7 @@ pmat analyze big-o                            # Big-O complexity analysis
 pmat analyze makefile-lint                    # Makefile quality linting
 pmat analyze proof-annotations                # Provability analysis
 
-# New in v0.26.0
+# Analysis commands
 pmat analyze graph-metrics                    # Graph centrality metrics (PageRank, betweenness, closeness)
 pmat analyze name-similarity "function_name"  # Fuzzy name matching with phonetic support
 pmat analyze symbol-table                     # Symbol extraction with cross-references
@@ -153,7 +153,7 @@ pmat analyze duplicates --min-lines 10        # Code duplication detection
 pmat quality-gate --strict                    # Comprehensive quality enforcement
 pmat diagnose --verbose                       # Self-diagnostics and health checks
 
-# New in v0.26.2 - WebAssembly Support
+# WebAssembly Support
 pmat analyze assemblyscript --wasm-complexity  # AssemblyScript analysis with WASM metrics
 pmat analyze webassembly --include-binary      # WebAssembly binary and text format analysis
 
@@ -193,7 +193,7 @@ pmat enforce extreme                          # Enforce extreme quality standard
 
 ```bash
 # Add to Claude Code
-claude mcp add paiml-toolkit ~/.local/bin/pmat
+claude mcp add pmat ~/.local/bin/pmat
 ```
 <details>
 <summary><i>💫 See Claude Code usage in action</i></summary>
