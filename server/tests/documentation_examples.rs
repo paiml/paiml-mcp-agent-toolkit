@@ -7,15 +7,15 @@ fn get_binary_path() -> String {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let workspace_root = Path::new(manifest_dir).parent().unwrap();
 
-    let release_binary = workspace_root.join("target/release/paiml-mcp-agent-toolkit");
-    let debug_binary = workspace_root.join("target/debug/paiml-mcp-agent-toolkit");
+    let release_binary = workspace_root.join("target/release/pmat");
+    let debug_binary = workspace_root.join("target/debug/pmat");
 
     if release_binary.exists() {
         release_binary.to_string_lossy().to_string()
     } else if debug_binary.exists() {
         debug_binary.to_string_lossy().to_string()
     } else {
-        "paiml-mcp-agent-toolkit".to_string()
+        "pmat".to_string()
     }
 }
 
@@ -24,12 +24,12 @@ fn test_cli_examples_are_valid() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/todo/active/cli-mcp.md");
+        .join("rust-docs/cli-reference.md");
 
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-mcp.md not found at {:?}", doc_path);
+            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
             return;
         }
     };
@@ -50,7 +50,7 @@ fn process_bash_code_block(code_block: &str, binary_path: &str) {
         }
 
         let full_command = handle_multiline_command(line, code_block);
-        let test_command = full_command.replace("paiml-mcp-agent-toolkit", binary_path);
+        let test_command = full_command.replace("pmat", binary_path);
 
         validate_command(&test_command, binary_path, line);
     }
@@ -58,13 +58,13 @@ fn process_bash_code_block(code_block: &str, binary_path: &str) {
 
 fn should_skip_line(line: &str) -> bool {
     // Skip comments, empty lines, and non-command lines
-    if line.starts_with('#') || line.is_empty() || !line.contains("paiml-mcp-agent-toolkit") {
+    if line.starts_with('#') || line.is_empty() || !line.contains("pmat") {
         return true;
     }
 
-    // Check if paiml-mcp-agent-toolkit is actually the command
+    // Check if pmat is actually the command
     let first_word = line.split_whitespace().next().unwrap_or("");
-    if !first_word.contains("paiml-mcp-agent-toolkit") && !first_word.contains('=') {
+    if !first_word.contains("pmat") && !first_word.contains('=') {
         return true;
     }
 
@@ -129,10 +129,10 @@ fn validate_command(test_command: &str, binary_path: &str, original_line: &str) 
 
 fn validate_binary_path(command: &str, expected_binary_path: &str) {
     let is_valid_binary =
-        command == expected_binary_path || command.ends_with("paiml-mcp-agent-toolkit");
+        command == expected_binary_path || command.ends_with("pmat");
     assert!(
         is_valid_binary,
-        "Example command doesn't use the expected binary: {command} (expected {expected_binary_path} or ending with paiml-mcp-agent-toolkit)"
+        "Example command doesn't use the expected binary: {command} (expected {expected_binary_path} or ending with pmat)"
     );
 }
 
@@ -151,6 +151,11 @@ fn validate_command_arguments(parts: &[&str], original_line: &str) {
         "analyze",
         "demo",
         "serve",
+        "refactor",
+        "quality-gate",
+        "diagnose",
+        "report",
+        "enforce",
         "--help",
         "--version",
         "--mode",
@@ -168,12 +173,12 @@ fn test_mcp_json_examples_are_valid() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/todo/active/cli-mcp.md");
+        .join("rust-docs/cli-reference.md");
 
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-mcp.md not found at {:?}", doc_path);
+            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
             return;
         }
     };
@@ -247,12 +252,12 @@ fn test_yaml_examples_are_valid() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/todo/active/cli-mcp.md");
+        .join("rust-docs/cli-reference.md");
 
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-mcp.md not found at {:?}", doc_path);
+            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
             return;
         }
     };
@@ -273,7 +278,7 @@ fn test_yaml_examples_are_valid() {
         if yaml_block.contains("name:") && yaml_block.contains("run:") {
             // This looks like a GitHub Actions snippet
             assert!(
-                yaml_block.contains("paiml-mcp-agent-toolkit") || yaml_block.contains("cargo test"),
+                yaml_block.contains("pmat") || yaml_block.contains("cargo test"),
                 "GitHub Actions example should reference the tool or tests"
             );
         }
@@ -285,12 +290,12 @@ fn test_jsonc_examples_are_valid() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/todo/active/cli-mcp.md");
+        .join("rust-docs/cli-reference.md");
 
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-mcp.md not found at {:?}", doc_path);
+            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
             return;
         }
     };
@@ -315,8 +320,8 @@ fn test_jsonc_examples_are_valid() {
                 if let Some(obj) = json.as_object() {
                     if obj.contains_key("label") && obj.contains_key("command") {
                         assert!(
-                            obj["command"].as_str() == Some("paiml-mcp-agent-toolkit"),
-                            "VS Code task should use paiml-mcp-agent-toolkit command"
+                            obj["command"].as_str() == Some("pmat"),
+                            "VS Code task should use pmat command"
                         );
                     }
                 }
@@ -325,7 +330,7 @@ fn test_jsonc_examples_are_valid() {
                 // JSONC might have trailing commas or other relaxed syntax
                 // Just ensure it's not completely broken
                 assert!(
-                    jsonc_block.contains("paiml-mcp-agent-toolkit"),
+                    jsonc_block.contains("pmat"),
                     "JSONC example should reference the tool. Parse error: {e}"
                 );
             }
@@ -338,12 +343,12 @@ fn test_template_uri_examples_are_valid() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/todo/active/cli-mcp.md");
+        .join("rust-docs/cli-reference.md");
 
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-mcp.md not found at {:?}", doc_path);
+            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
             return;
         }
     };
@@ -382,12 +387,12 @@ fn test_performance_numbers_are_reasonable() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/todo/active/cli-mcp.md");
+        .join("rust-docs/cli-reference.md");
 
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-mcp.md not found at {:?}", doc_path);
+            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
             return;
         }
     };
