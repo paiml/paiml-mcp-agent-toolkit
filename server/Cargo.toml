@@ -234,7 +234,7 @@ codegen-units = 1
 
 [package.metadata.docs.rs]
 # Enable most features for documentation (excluding python-ast due to malachite-bigint build issues)
-features = ["default", "rust-ast", "typescript-ast", "c-ast", "cpp-ast", "kotlin-ast", "demo"]
+features = ["rust-ast", "typescript-ast", "c-ast", "cpp-ast", "kotlin-ast", "demo"]
 # Set DOCS_RS environment variable to skip network operations
 rustdoc-args = ["--cfg", "docsrs"]
 rustc-args = ["--cfg", "docsrs"]
