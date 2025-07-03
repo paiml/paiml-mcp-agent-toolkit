@@ -102,7 +102,7 @@ fn process_assets(assets: &[(&str, &str)]) {
             continue;
         }
 
-        ensure_asset_downloaded(&path, url, filename);
+        ensure_asset_downloaded(&path, &gz_path, url, filename);
         compress_asset(&path, &gz_path, filename);
     }
 }
@@ -111,13 +111,15 @@ fn should_skip_asset(gz_path: &Path) -> bool {
     gz_path.exists()
 }
 
-fn ensure_asset_downloaded(path: &Path, url: &str, filename: &str) {
+fn ensure_asset_downloaded(path: &Path, gz_path: &Path, url: &str, filename: &str) {
     if !path.exists() {
         // Check if we're in a docs.rs build environment
         if env::var("DOCS_RS").is_ok() {
             println!("cargo:warning=Skipping asset download in docs.rs environment: {filename}");
             // Create a placeholder file for docs.rs builds
             let _ = fs::write(path, b"/* Asset skipped in docs.rs build */");
+            // Also create an empty gzipped placeholder to satisfy include_bytes!
+            let _ = fs::write(gz_path, b"");
         } else {
             download_asset(url, path, filename);
         }
