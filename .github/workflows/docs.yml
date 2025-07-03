@@ -28,9 +28,13 @@ jobs:
         
       - name: Build Documentation
         run: |
-          cargo doc --no-deps --all-features
-          echo '<meta http-equiv="refresh" content="0; url=paiml_mcp_agent_toolkit/index.html">' > target/doc/index.html
-          cp -r rust-docs target/doc/
+          # Build docs with same features as docs.rs (excluding python-ast)
+          cargo doc --no-deps --features "default,rust-ast,typescript-ast,c-ast,cpp-ast,kotlin-ast,demo" --manifest-path server/Cargo.toml
+          echo '<meta http-equiv="refresh" content="0; url=pmat/index.html">' > target/doc/index.html
+          # Only copy rust-docs if it exists
+          if [ -d "rust-docs" ]; then
+            cp -r rust-docs target/doc/
+          fi
           
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
