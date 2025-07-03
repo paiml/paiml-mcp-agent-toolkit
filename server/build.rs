@@ -113,7 +113,14 @@ fn should_skip_asset(gz_path: &Path) -> bool {
 
 fn ensure_asset_downloaded(path: &Path, url: &str, filename: &str) {
     if !path.exists() {
-        download_asset(url, path, filename);
+        // Check if we're in a docs.rs build environment
+        if env::var("DOCS_RS").is_ok() {
+            println!("cargo:warning=Skipping asset download in docs.rs environment: {filename}");
+            // Create a placeholder file for docs.rs builds
+            let _ = fs::write(path, b"/* Asset skipped in docs.rs build */");
+        } else {
+            download_asset(url, path, filename);
+        }
     }
 }
 
