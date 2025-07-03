@@ -444,6 +444,7 @@ pub async fn handle_analyze_satd(
     severity: Option<SatdSeverity>,
     critical_only: bool,
     include_tests: bool,
+    strict: bool,
     evolution: bool,
     days: u32,
     metrics: bool,
@@ -452,9 +453,16 @@ pub async fn handle_analyze_satd(
     use crate::services::satd_detector::{SATDDetector, Severity as DetectorSeverity};
 
     eprintln!("🔍 Analyzing self-admitted technical debt...");
+    if strict {
+        eprintln!("📝 Using strict mode (only explicit SATD markers)");
+    }
 
     // Create SATD detector
-    let detector = SATDDetector::new();
+    let detector = if strict {
+        SATDDetector::new_strict()
+    } else {
+        SATDDetector::new()
+    };
 
     // Run analysis
     let mut result = detector.analyze_project(&path, include_tests).await?;

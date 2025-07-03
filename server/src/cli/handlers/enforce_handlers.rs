@@ -304,6 +304,7 @@ async fn run_enforcement_step(
                 None,  // severity filter
                 false, // critical_only
                 false, // include_tests
+                true,  // strict - use strict mode by default
                 false, // evolution
                 30,    // days
                 true,  // metrics
@@ -567,6 +568,7 @@ async fn list_all_violations(
         None,  // severity filter
         false, // critical_only
         false, // include_tests
+        true,  // strict - use strict mode by default
         false, // evolution
         30,    // days
         true,  // metrics

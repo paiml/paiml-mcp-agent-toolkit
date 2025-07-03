@@ -516,6 +516,10 @@ pub enum AnalyzeCommands {
         /// Include test files in analysis
         #[arg(long)]
         include_tests: bool,
+        
+        /// Use strict mode (only TODO/FIXME/HACK/BUG comments)
+        #[arg(long)]
+        strict: bool,
 
         /// Track debt evolution over time (requires git history)
         #[arg(long)]
