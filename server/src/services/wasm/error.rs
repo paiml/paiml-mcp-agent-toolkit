@@ -9,16 +9,16 @@ use thiserror::Error;
 pub enum WasmError {
     #[error("Parse error: {0}")]
     ParseError(String),
-    
+
     #[error("Invalid format: {0}")]
     InvalidFormat(String),
-    
+
     #[error("Analysis error: {0}")]
     AnalysisError(String),
-    
+
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
-    
+
     #[error("Other error: {0}")]
     Other(String),
 }
@@ -31,12 +31,12 @@ impl WasmError {
     pub fn parse(msg: impl Into<String>) -> Self {
         Self::ParseError(msg.into())
     }
-    
+
     /// Create a new format error
     pub fn format(msg: impl Into<String>) -> Self {
         Self::InvalidFormat(msg.into())
     }
-    
+
     /// Create a new analysis error
     pub fn analysis(msg: impl Into<String>) -> Self {
         Self::AnalysisError(msg.into())

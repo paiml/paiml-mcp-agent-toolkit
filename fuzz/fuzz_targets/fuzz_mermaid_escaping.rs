@@ -2,8 +2,8 @@
 
 use libfuzzer_sys::fuzz_target;
 use arbitrary::{Arbitrary, Unstructured};
-use paiml_mcp_agent_toolkit::models::dag::{DependencyGraph, NodeInfo, NodeType};
-use paiml_mcp_agent_toolkit::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
+use pmat::models::dag::{DependencyGraph, NodeInfo, NodeType};
+use pmat::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
 
 // Focus on special character handling
 #[derive(Arbitrary, Debug)]

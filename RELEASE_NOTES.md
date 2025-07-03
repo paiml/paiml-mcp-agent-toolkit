@@ -1,5 +1,108 @@
 # Release Notes
 
+This document details the latest changes, features, and bug fixes for the `pmat` crate.
+
+## v0.27.0 (2025-07-03) - Stateful MCP Server & Enhanced Testing
+
+### 🚀 Major Features
+
+#### 1. **Stateful MCP Server for Refactor Auto**
+- New persistent refactoring sessions via Model Context Protocol (MCP)
+- State snapshots enable resumable refactoring workflows
+- JSON-RPC API with four core methods: `start`, `nextIteration`, `getState`, `stop`
+- Cap'n Proto schema prepared for future binary serialization
+- Environment-based activation: `PMAT_REFACTOR_MCP=1`
+
+#### 2. **GitHub Issue Integration**
+- New `--github-issue <url>` flag for `refactor auto` command
+- Automatically fetches issue context to guide refactoring decisions
+- Intelligent keyword extraction and severity scoring
+- Enhanced AI prompts with issue-specific context
+
+#### 3. **Comprehensive Property-Based Testing**
+- Added 500+ property tests across 6 critical components
+- Covers AST parsers (Rust, TypeScript), state machines, caching, DAG operations
+- Discovered and fixed multiple edge cases
+- Significantly improved robustness and reliability
+
+### New Files
+- `server/src/mcp_server/` - Complete MCP server implementation
+- `server/src/services/github_integration.rs` - GitHub API integration
+- `server/src/services/ast_typescript_property_tests.rs` - TypeScript parser tests
+- `server/src/schema/refactor_state.capnp` - Cap'n Proto schema
+- `docs/mcp-stateful-server.md` - MCP server documentation
+- `examples/mcp-refactor-demo.sh` - Demo script
+
+### Improvements
+- Enhanced error handling in snapshot operations
+- Better test isolation with temp directories
+- Atomic file operations for state persistence
+- Thread-safe concurrent access patterns
+
+### Bug Fixes
+- Fixed SATD parser severity ordering
+- Resolved DAG property test ownership issues
+- Fixed proptest macro syntax errors
+- Corrected string lifetime issues in tests
+
+### Breaking Changes
+- None - all changes are backward compatible
+
+### Migration Guide
+No migration needed. New features are opt-in:
+- MCP server requires `PMAT_REFACTOR_MCP=1` environment variable
+- GitHub integration requires explicit `--github-issue` flag
+
+## v0.26.4 (2025-07-02) - Simplified Package Name
+
+### 🎉 Major Change: Crate Renamed to `pmat`
+
+The crate has been renamed from `paiml-mcp-agent-toolkit` to simply `pmat` for easier installation:
+
+```bash
+# Before
+cargo install paiml-mcp-agent-toolkit
+
+# Now
+cargo install pmat
+```
+
+### Breaking Changes
+- **Package name changed** from `paiml-mcp-agent-toolkit` to `pmat`
+- **Import paths changed** from `use paiml_mcp_agent_toolkit::` to `use pmat::`
+- Binary name remains `pmat` (no change)
+
+### Documentation Updates
+- All documentation updated to reflect new installation command
+- Updated crates.io badges and links
+- Updated API usage examples with new import paths
+
+### Migration Guide
+For existing users:
+1. Update your `Cargo.toml`:
+   ```toml
+   # Old
+   paiml-mcp-agent-toolkit = "0.26"
+   
+   # New
+   pmat = "0.26"
+   ```
+
+2. Update your imports:
+   ```rust
+   // Old
+   use paiml_mcp_agent_toolkit::services::CodeAnalysisService;
+   
+   // New
+   use pmat::services::CodeAnalysisService;
+   ```
+
+3. Reinstall the CLI tool:
+   ```bash
+   cargo uninstall paiml-mcp-agent-toolkit
+   cargo install pmat
+   ```
+
 ## v0.26.3 (2025-07-02) - Quality Uplift
 
 ### 🏆 Major Achievement: Zero Tolerance Quality Standards

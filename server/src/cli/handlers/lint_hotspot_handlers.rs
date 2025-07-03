@@ -243,7 +243,8 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
         if params.format != LintHotspotOutputFormat::Json {
             eprintln!("📄 Analyzing single file: {}", file_path.display());
         }
-        run_clippy_analysis_single_file(&params.project_path, file_path, &params.clippy_flags).await?
+        run_clippy_analysis_single_file(&params.project_path, file_path, &params.clippy_flags)
+            .await?
     } else {
         // Normal mode - find the hotspot
         run_clippy_analysis(&params.project_path, &params.clippy_flags).await?
@@ -519,16 +520,22 @@ async fn run_clippy_analysis_single_file(
     for line in std::io::BufRead::lines(reader) {
         let line = line?;
         if let Ok(msg) = serde_json::from_str::<ClippyMessage>(&line) {
-            if let (Some("compiler-message"), Some(diagnostic)) = (msg.reason.as_deref(), &msg.message) {
+            if let (Some("compiler-message"), Some(diagnostic)) =
+                (msg.reason.as_deref(), &msg.message)
+            {
                 // Check if this diagnostic is for our target file
-                if let Some(span) = diagnostic.spans.iter().find(|s| s.is_primary || diagnostic.spans.len() == 1) {
+                if let Some(span) = diagnostic
+                    .spans
+                    .iter()
+                    .find(|s| s.is_primary || diagnostic.spans.len() == 1)
+                {
                     let diagnostic_path = PathBuf::from(&span.file_name);
-                    
+
                     // Check if this is our target file (handle both absolute and relative paths)
-                    let matches = diagnostic_path == abs_file_path || 
-                                 diagnostic_path == *file_path ||
-                                 diagnostic_path.ends_with(file_path);
-                    
+                    let matches = diagnostic_path == abs_file_path
+                        || diagnostic_path == *file_path
+                        || diagnostic_path.ends_with(file_path);
+
                     if matches {
                         // Create violation detail
                         let violation = ViolationDetail {
@@ -537,18 +544,24 @@ async fn run_clippy_analysis_single_file(
                             column: span.column_start,
                             end_line: span.line_end,
                             end_column: span.column_end,
-                            lint_name: diagnostic.code.as_ref().map(|c| c.code.clone()).unwrap_or_default(),
+                            lint_name: diagnostic
+                                .code
+                                .as_ref()
+                                .map(|c| c.code.clone())
+                                .unwrap_or_default(),
                             message: diagnostic.message.clone(),
                             severity: diagnostic.level.clone(),
                             suggestion: span.suggested_replacement.clone(),
-                            machine_applicable: span.suggestion_applicability.as_ref()
+                            machine_applicable: span
+                                .suggestion_applicability
+                                .as_ref()
                                 .map(|a| a == "machine-applicable" || a == "maybe-incorrect")
                                 .unwrap_or(false),
                         };
-                        
+
                         file_violations.push(violation.clone());
                         all_violations.push(violation);
-                        
+
                         // Update severity distribution
                         match diagnostic.level.as_str() {
                             "error" => severity_dist.error += 1,
@@ -562,7 +575,9 @@ async fn run_clippy_analysis_single_file(
     }
 
     // Count lines in the file
-    let sloc = count_source_lines(project_path, file_path).await.unwrap_or(100);
+    let sloc = count_source_lines(project_path, file_path)
+        .await
+        .unwrap_or(100);
     let total_violations = file_violations.len();
     let defect_density = (total_violations as f64 / sloc as f64) * 100.0;
 
@@ -606,11 +621,11 @@ async fn run_clippy_analysis_single_file(
 /// Count top lint types from violations
 fn count_top_lints(violations: &[ViolationDetail]) -> Vec<(String, usize)> {
     let mut lint_counts: HashMap<String, usize> = HashMap::new();
-    
+
     for violation in violations {
         *lint_counts.entry(violation.lint_name.clone()).or_insert(0) += 1;
     }
-    
+
     let mut counts: Vec<_> = lint_counts.into_iter().collect();
     counts.sort_by(|a, b| b.1.cmp(&a.1));
     counts.truncate(10); // Top 10 lints
@@ -624,12 +639,13 @@ async fn count_source_lines(project_path: &Path, file_path: &Path) -> Result<usi
     } else {
         project_path.join(file_path)
     };
-    
+
     let content = tokio::fs::read_to_string(&full_path).await?;
-    let non_empty_lines = content.lines()
+    let non_empty_lines = content
+        .lines()
         .filter(|line| !line.trim().is_empty() && !line.trim().starts_with("//"))
         .count();
-    
+
     Ok(non_empty_lines.max(1)) // At least 1 to avoid division by zero
 }
 
@@ -1170,4 +1186,3 @@ fn find_workspace_root(start_path: &Path) -> Result<Option<PathBuf>> {
 
     Ok(None)
 }
-

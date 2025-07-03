@@ -32,21 +32,50 @@ The Model Context Protocol (MCP) implementation in PMAT provides a standardized 
 
 ### For Claude Desktop
 
-1. Install PMAT:
+1. Install PMAT using one of these methods:
+
+**Option A: Install from crates.io (Recommended)**
+```bash
+cargo install pmat
+```
+
+**Option B: Quick install script**
 ```bash
 curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
 ```
 
-2. Configure Claude Desktop (`claude_desktop_config.json`):
+2. Configure Claude Desktop:
+
+Find your Claude Desktop configuration file:
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+Add the PMAT MCP server:
 ```json
 {
   "mcpServers": {
-    "pmat": {
+    "paiml-toolkit": {
       "command": "pmat",
-      "args": ["--mode", "mcp"]
+      "args": ["--mode", "mcp"],
+      "env": {
+        "RUST_LOG": "info"
+      }
     }
   }
 }
+```
+
+3. Restart Claude Desktop to load the configuration.
+
+### For Claude Code
+
+```bash
+# Add to Claude Code
+claude mcp add paiml-toolkit ~/.cargo/bin/pmat
+
+# Or if installed elsewhere
+claude mcp add paiml-toolkit /usr/local/bin/pmat
 ```
 
 ### For Other MCP Clients
@@ -57,6 +86,9 @@ pmat --mode mcp
 
 # Or with specific configuration
 pmat --mode mcp --config mcp-config.toml
+
+# With environment variables
+RUST_LOG=debug pmat --mode mcp
 ```
 
 ## Protocol Specification
@@ -577,6 +609,24 @@ RUST_LOG=debug pmat --mode mcp
 RUST_LOG=paiml_mcp_agent_toolkit::handlers=trace pmat --mode mcp
 ```
 
+## Version Compatibility
+
+### Minimum Requirements
+- **PMAT**: v0.26.0 or later
+- **MCP Protocol**: v1.0
+- **Claude Desktop**: Latest version
+- **Claude Code**: v0.5.0 or later
+
+### Feature Availability by Version
+
+| Feature | Version | Notes |
+|---------|---------|-------|
+| Basic MCP support | v0.26.0+ | All core tools |
+| Single file mode | v0.26.3+ | `--file` parameter |
+| WebAssembly analysis | v0.26.2+ | WASM/AssemblyScript |
+| Graph metrics | v0.26.1+ | PageRank, centrality |
+| Streaming support | v0.27.0+ | Large result sets |
+
 ## Future Enhancements
 
 - **WebSocket Transport**: Alternative to stdio
@@ -584,3 +634,10 @@ RUST_LOG=paiml_mcp_agent_toolkit::handlers=trace pmat --mode mcp
 - **Subscription Support**: Real-time updates
 - **Plugin System**: Custom tool development
 - **Multi-Language Support**: Beyond current languages
+
+## Additional Resources
+
+- [MCP Specification](https://modelcontextprotocol.io)
+- [PMAT on crates.io](https://crates.io/crates/pmat)
+- [API Documentation](https://docs.rs/pmat)
+- [GitHub Repository](https://github.com/paiml/paiml-mcp-agent-toolkit)
