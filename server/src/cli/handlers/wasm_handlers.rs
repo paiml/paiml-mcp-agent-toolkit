@@ -41,13 +41,13 @@ pub async fn handle_analyze_assemblyscript(
                 match parser.parse_file(&file_path, &content).await {
                     Ok(ast) => {
                         eprintln!("✅ Parsed: {}", file_path.display());
-                        
+
                         if wasm_complexity {
                             let complexity_analyzer = WasmComplexityAnalyzer::new();
                             let complexity = complexity_analyzer.analyze_ast(&ast)?;
                             results.push((file_path.clone(), complexity));
                         }
-                        
+
                         if security {
                             let security_validator = WasmSecurityValidator::new();
                             if let Err(e) = security_validator.validate_ast(&ast) {
@@ -122,16 +122,20 @@ pub async fn handle_analyze_webassembly(
                     match parser.parse(&content) {
                         Ok(ast) => {
                             eprintln!("✅ Parsed WAT: {}", file_path.display());
-                            
+
                             if complexity {
                                 let complexity_analyzer = WasmComplexityAnalyzer::new();
                                 let _complexity = complexity_analyzer.analyze_ast(&ast)?;
                             }
-                            
+
                             if security {
                                 let security_validator = WasmSecurityValidator::new();
                                 if let Err(e) = security_validator.validate_ast(&ast) {
-                                    eprintln!("⚠️  Security issue in {}: {}", file_path.display(), e);
+                                    eprintln!(
+                                        "⚠️  Security issue in {}: {}",
+                                        file_path.display(),
+                                        e
+                                    );
                                 }
                             }
                         }
@@ -165,7 +169,7 @@ pub async fn handle_analyze_webassembly(
 /// Collect AssemblyScript files (.as, .ts with AS context)
 fn collect_assemblyscript_files(project_path: &PathBuf) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
-    
+
     for entry in WalkDir::new(project_path)
         .into_iter()
         .filter_map(|e| e.ok())
@@ -178,11 +182,12 @@ fn collect_assemblyscript_files(project_path: &PathBuf) -> Result<Vec<PathBuf>> 
                 "ts" => {
                     // Check if TypeScript file is actually AssemblyScript
                     if let Ok(content) = std::fs::read_to_string(path) {
-                        if content.contains("@global") || 
-                           content.contains("@inline") ||
-                           content.contains("i32") ||
-                           content.contains("f64") ||
-                           content.contains("memory.") {
+                        if content.contains("@global")
+                            || content.contains("@inline")
+                            || content.contains("i32")
+                            || content.contains("f64")
+                            || content.contains("memory.")
+                        {
                             files.push(path.to_path_buf());
                         }
                     }
@@ -191,7 +196,7 @@ fn collect_assemblyscript_files(project_path: &PathBuf) -> Result<Vec<PathBuf>> 
             }
         }
     }
-    
+
     Ok(files)
 }
 
@@ -202,7 +207,7 @@ fn collect_wasm_files(
     include_text: bool,
 ) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
-    
+
     for entry in WalkDir::new(project_path)
         .into_iter()
         .filter_map(|e| e.ok())
@@ -217,7 +222,7 @@ fn collect_wasm_files(
             }
         }
     }
-    
+
     Ok(files)
 }
 
@@ -251,18 +256,30 @@ fn format_assemblyscript_results(
         _ => {
             let mut output = String::from("# AssemblyScript Analysis Report\n\n");
             output.push_str(&format!("📁 **Files analyzed**: {}\n", results.len()));
-            output.push_str(&format!("⏱️  **Analysis time**: {:.2}s\n\n", elapsed.as_secs_f64()));
-            
+            output.push_str(&format!(
+                "⏱️  **Analysis time**: {:.2}s\n\n",
+                elapsed.as_secs_f64()
+            ));
+
             if !results.is_empty() {
                 output.push_str("## Results\n\n");
                 for (path, complexity) in results {
                     output.push_str(&format!("### {}\n", path.display()));
-                    output.push_str(&format!("- **Cyclomatic complexity**: {}\n", complexity.cyclomatic));
-                    output.push_str(&format!("- **Cognitive complexity**: {}\n", complexity.cognitive));
-                    output.push_str(&format!("- **Memory pressure**: {:.2}\n\n", complexity.memory_pressure));
+                    output.push_str(&format!(
+                        "- **Cyclomatic complexity**: {}\n",
+                        complexity.cyclomatic
+                    ));
+                    output.push_str(&format!(
+                        "- **Cognitive complexity**: {}\n",
+                        complexity.cognitive
+                    ));
+                    output.push_str(&format!(
+                        "- **Memory pressure**: {:.2}\n\n",
+                        complexity.memory_pressure
+                    ));
                 }
             }
-            
+
             Ok(output)
         }
     }
@@ -298,8 +315,11 @@ fn format_webassembly_results(
         _ => {
             let mut output = String::from("# WebAssembly Analysis Report\n\n");
             output.push_str(&format!("📁 **Files analyzed**: {}\n", results.len()));
-            output.push_str(&format!("⏱️  **Analysis time**: {:.2}s\n\n", elapsed.as_secs_f64()));
-            
+            output.push_str(&format!(
+                "⏱️  **Analysis time**: {:.2}s\n\n",
+                elapsed.as_secs_f64()
+            ));
+
             if !results.is_empty() {
                 output.push_str("## Results\n\n");
                 for (path, metrics) in results {
@@ -307,10 +327,13 @@ fn format_webassembly_results(
                     output.push_str(&format!("- **Functions**: {}\n", metrics.function_count));
                     output.push_str(&format!("- **Imports**: {}\n", metrics.import_count));
                     output.push_str(&format!("- **Exports**: {}\n", metrics.export_count));
-                    output.push_str(&format!("- **Memory pages**: {}\n\n", metrics.linear_memory_pages));
+                    output.push_str(&format!(
+                        "- **Memory pages**: {}\n\n",
+                        metrics.linear_memory_pages
+                    ));
                 }
             }
-            
+
             Ok(output)
         }
     }
@@ -328,9 +351,15 @@ mod tests {
         let ts_file = temp_dir.path().join("assembly.ts");
         let other_file = temp_dir.path().join("test.txt");
 
-        tokio::fs::write(&as_file, "function test(): i32 { return 42; }").await.unwrap();
-        tokio::fs::write(&ts_file, "const value: i32 = 42; @global let ptr: usize;").await.unwrap();
-        tokio::fs::write(&other_file, "not assemblyscript").await.unwrap();
+        tokio::fs::write(&as_file, "function test(): i32 { return 42; }")
+            .await
+            .unwrap();
+        tokio::fs::write(&ts_file, "const value: i32 = 42; @global let ptr: usize;")
+            .await
+            .unwrap();
+        tokio::fs::write(&other_file, "not assemblyscript")
+            .await
+            .unwrap();
 
         let files = collect_assemblyscript_files(&temp_dir.path().to_path_buf()).unwrap();
         assert_eq!(files.len(), 2);
@@ -343,7 +372,9 @@ mod tests {
         let wat_file = temp_dir.path().join("test.wat");
         let other_file = temp_dir.path().join("test.txt");
 
-        tokio::fs::write(&wasm_file, b"\0asm\x01\x00\x00\x00").await.unwrap();
+        tokio::fs::write(&wasm_file, b"\0asm\x01\x00\x00\x00")
+            .await
+            .unwrap();
         tokio::fs::write(&wat_file, "(module)").await.unwrap();
         tokio::fs::write(&other_file, "not wasm").await.unwrap();
 

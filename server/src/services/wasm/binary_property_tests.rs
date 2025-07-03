@@ -62,11 +62,12 @@ mod tests {
             (
                 prop::collection::vec(any::<u8>().prop_filter("not wasm magic", |&b| b != 0x00), 4),
                 prop::collection::vec(any::<u8>(), 4..100)
-            ).prop_map(|(magic, rest)| {
-                let mut binary = magic;
-                binary.extend(rest);
-                binary
-            }),
+            )
+                .prop_map(|(magic, rest)| {
+                    let mut binary = magic;
+                    binary.extend(rest);
+                    binary
+                }),
             // Valid magic but no version
             Just(vec![0x00, 0x61, 0x73, 0x6D]),
         ]
@@ -107,10 +108,10 @@ mod tests {
 
             let analyzer = WasmBinaryAnalyzer::new();
             let result = runtime.block_on(analyzer.analyze_file(temp_file.path()));
-            
+
             // Should successfully analyze valid WASM
             prop_assert!(result.is_ok(), "Failed to analyze valid WASM: {:?}", result);
-            
+
             if let Ok(metrics) = result {
                 // Basic invariants - these are u32 so always >= 0
                 // Just check the metrics are populated
@@ -133,7 +134,7 @@ mod tests {
 
             let analyzer = WasmBinaryAnalyzer::new();
             let result = runtime.block_on(analyzer.analyze_file(temp_file.path()));
-            
+
             // Should reject invalid WASM
             prop_assert!(result.is_err(), "Accepted invalid WASM data");
         }
@@ -145,7 +146,7 @@ mod tests {
         ) {
             let runtime = tokio::runtime::Runtime::new().unwrap();
             let temp_file = NamedTempFile::new().unwrap();
-            
+
             // Create large file by repeating data
             let mut large_data = vec![0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
             let target_size = size_mb * 1024 * 1024;
@@ -153,14 +154,14 @@ mod tests {
                 large_data.extend(&data);
             }
             large_data.truncate(target_size);
-            
+
             runtime.block_on(async {
                 tokio::fs::write(temp_file.path(), &large_data).await.unwrap()
             });
 
             let analyzer = WasmBinaryAnalyzer::new();
             let result = runtime.block_on(analyzer.analyze_file(temp_file.path()));
-            
+
             if size_mb > 10 {
                 // Should reject files larger than 10MB
                 prop_assert!(result.is_err());
@@ -178,10 +179,10 @@ mod tests {
             data in prop::collection::vec(any::<u8>(), 0..1000)
         ) {
             let analyzer = WasmBinaryAnalyzer::new();
-            
+
             // Test the internal analyze_bytes method
             let result = analyzer.analyze_bytes(&data);
-            
+
             if data.len() < 8 || &data[0..4] != b"\0asm" {
                 prop_assert!(result.is_err());
             } else {
@@ -199,7 +200,7 @@ mod tests {
             needle in prop::collection::vec(any::<u8>(), 1..10)
         ) {
             let count = count_occurrences(&haystack, &needle);
-            
+
             // Manual verification
             let mut manual_count = 0;
             let mut i = 0;
@@ -211,7 +212,7 @@ mod tests {
                     i += 1;
                 }
             }
-            
+
             prop_assert_eq!(count, manual_count);
         }
 
@@ -221,10 +222,10 @@ mod tests {
         ) {
             // Build a real WASM binary more carefully
             let analyzer = WasmBinaryAnalyzer::new();
-            
+
             // Just test the analyze_bytes method directly
             let mut wasm_data = vec![0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
-            
+
             for (section_id, size) in &sections {
                 wasm_data.push(*section_id);
                 // Encode size as LEB128
@@ -234,18 +235,18 @@ mod tests {
                     size_val >>= 7;
                 }
                 wasm_data.push(size_val as u8);
-                
+
                 // Add dummy section data
                 wasm_data.resize(wasm_data.len() + *size, 0xFF);
             }
-            
+
             let result = analyzer.analyze_bytes(&wasm_data);
             prop_assert!(result.is_ok());
-            
+
             if let Ok(analysis) = result {
                 // Check that we parsed the right number of sections
                 prop_assert_eq!(analysis.sections.len(), sections.len());
-                
+
                 // Check each section
                 for (i, section) in analysis.sections.iter().enumerate() {
                     prop_assert_eq!(section.id, sections[i].0);

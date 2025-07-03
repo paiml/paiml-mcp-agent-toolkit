@@ -1,6 +1,7 @@
 pub mod cli;
 pub mod demo;
 pub mod handlers;
+pub mod mcp_server;
 pub mod models;
 pub mod services;
 pub mod stateless_server;

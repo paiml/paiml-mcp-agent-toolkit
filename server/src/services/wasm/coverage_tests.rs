@@ -129,7 +129,10 @@ mod security_coverage_tests {
         let tiny_wasm = b"\0as";
         let result = validator.validate(tiny_wasm).unwrap();
         assert!(!result.passed);
-        assert!(result.issues.iter().any(|i| i.severity == Severity::Critical));
+        assert!(result
+            .issues
+            .iter()
+            .any(|i| i.severity == Severity::Critical));
     }
 
     #[test]
@@ -190,7 +193,7 @@ mod security_coverage_tests {
             SecurityCategory::CodeInjection,
             SecurityCategory::Other,
         ];
-        
+
         for cat in categories {
             // Ensure Debug trait works
             let _ = format!("{:?}", cat);
@@ -200,8 +203,8 @@ mod security_coverage_tests {
 
 #[cfg(test)]
 mod traits_coverage_tests {
-    use crate::services::wasm::traits::{ParsedAst, WasmAnalysisCapabilities};
     use crate::models::unified_ast::{AstDag, Language};
+    use crate::services::wasm::traits::{ParsedAst, WasmAnalysisCapabilities};
     use std::collections::HashMap;
 
     #[test]
@@ -261,7 +264,7 @@ mod types_coverage_tests {
             WebAssemblyVariant::Wat,
             WebAssemblyVariant::Wasm,
         ];
-        
+
         for variant in variants {
             // Test Debug and PartialEq
             let _ = format!("{:?}", variant);
@@ -459,7 +462,7 @@ mod types_coverage_tests {
             WasmOpcode::GlobalSet,
             WasmOpcode::Other(0x99),
         ];
-        
+
         for opcode in opcodes {
             // Test PartialEq and Hash traits
             assert_eq!(opcode, opcode);
@@ -474,16 +477,22 @@ mod types_coverage_tests {
         let mut metrics = WasmMetrics::default();
         metrics.instruction_histogram.insert(WasmOpcode::Call, 10);
         metrics.instruction_histogram.insert(WasmOpcode::I32Load, 5);
-        
-        assert_eq!(metrics.instruction_histogram.get(&WasmOpcode::Call), Some(&10));
-        assert_eq!(metrics.instruction_histogram.get(&WasmOpcode::I32Load), Some(&5));
+
+        assert_eq!(
+            metrics.instruction_histogram.get(&WasmOpcode::Call),
+            Some(&10)
+        );
+        assert_eq!(
+            metrics.instruction_histogram.get(&WasmOpcode::I32Load),
+            Some(&5)
+        );
     }
 }
 
 #[cfg(test)]
 mod complexity_coverage_tests {
+    use crate::models::unified_ast::{AstDag, AstKind, FunctionKind, Language, UnifiedAstNode};
     use crate::services::wasm::complexity::{MemoryCostModel, WasmComplexityAnalyzer};
-    use crate::models::unified_ast::{AstDag, UnifiedAstNode, AstKind, FunctionKind, Language};
 
     #[test]
     fn test_memory_cost_model_default() {
@@ -532,7 +541,7 @@ mod complexity_coverage_tests {
             Language::WebAssembly,
         );
         let func_id = dag.add_node(func_node);
-        
+
         let complexity = analyzer.analyze_function(&dag, func_id);
         assert_eq!(complexity.cyclomatic, 1);
         assert_eq!(complexity.cognitive, 1);
@@ -583,7 +592,7 @@ mod complexity_coverage_tests {
             content.push_str(&format!("  (func $f{} (result i32) i32.const {})\n", i, i));
         }
         content.push(')');
-        
+
         let result = analyzer.analyze_text(&content);
         assert!(result.is_ok());
         let complexity = result.unwrap();

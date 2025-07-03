@@ -552,11 +552,11 @@ fn format_gm_as_json(result: GraphMetricsResult) -> Result<String> {
 // Helper: Format as human-readable
 fn format_gm_as_human(result: GraphMetricsResult) -> Result<String> {
     let mut output = String::new();
-    
+
     write_gm_human_header(&mut output)?;
     write_gm_statistics(&mut output, &result)?;
     write_gm_top_nodes(&mut output, &result)?;
-    
+
     Ok(output)
 }
 
@@ -576,7 +576,11 @@ fn write_gm_statistics(output: &mut String, result: &GraphMetricsResult) -> Resu
     writeln!(output, "- Density: {:.3}", result.density)?;
     writeln!(output, "- Average degree: {:.2}", result.average_degree)?;
     writeln!(output, "- Max degree: {}", result.max_degree)?;
-    writeln!(output, "- Connected components: {}", result.connected_components)?;
+    writeln!(
+        output,
+        "- Connected components: {}",
+        result.connected_components
+    )?;
     Ok(())
 }
 
@@ -584,11 +588,11 @@ fn write_gm_statistics(output: &mut String, result: &GraphMetricsResult) -> Resu
 fn write_gm_top_nodes(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, "\n## Top Nodes by Centrality\n")?;
-    
+
     for (i, node) in result.nodes.iter().enumerate() {
         write_gm_node_details(output, i + 1, node)?;
     }
-    
+
     Ok(())
 }
 
@@ -596,9 +600,16 @@ fn write_gm_top_nodes(output: &mut String, result: &GraphMetricsResult) -> Resul
 fn write_gm_node_details(output: &mut String, index: usize, node: &NodeMetrics) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, "{}. {} ", index, node.name)?;
-    writeln!(output, "   - Degree: {:.3} (in: {}, out: {})",
-        node.degree_centrality, node.in_degree, node.out_degree)?;
-    writeln!(output, "   - Betweenness: {:.3}", node.betweenness_centrality)?;
+    writeln!(
+        output,
+        "   - Degree: {:.3} (in: {}, out: {})",
+        node.degree_centrality, node.in_degree, node.out_degree
+    )?;
+    writeln!(
+        output,
+        "   - Betweenness: {:.3}",
+        node.betweenness_centrality
+    )?;
     writeln!(output, "   - Closeness: {:.3}", node.closeness_centrality)?;
     writeln!(output, "   - PageRank: {:.3}", node.pagerank)?;
     writeln!(output)?;
@@ -609,13 +620,18 @@ fn write_gm_node_details(output: &mut String, index: usize, node: &NodeMetrics) 
 fn format_gm_as_csv(result: GraphMetricsResult) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     // Write header
-    writeln!(output, "name,degree_centrality,betweenness,closeness,pagerank,in_degree,out_degree")?;
-    
+    writeln!(
+        output,
+        "name,degree_centrality,betweenness,closeness,pagerank,in_degree,out_degree"
+    )?;
+
     // Write data rows
     for node in result.nodes {
-        writeln!(output, "{},{:.3},{:.3},{:.3},{:.3},{},{}",
+        writeln!(
+            output,
+            "{},{:.3},{:.3},{:.3},{:.3},{},{}",
             node.name,
             node.degree_centrality,
             node.betweenness_centrality,
@@ -625,18 +641,18 @@ fn format_gm_as_csv(result: GraphMetricsResult) -> Result<String> {
             node.out_degree
         )?;
     }
-    
+
     Ok(output)
 }
 
 // Helper: Format as Markdown
 fn format_gm_as_markdown(result: GraphMetricsResult) -> Result<String> {
     let mut output = String::new();
-    
+
     write_gm_markdown_header(&mut output)?;
     write_gm_markdown_summary(&mut output, &result)?;
     write_gm_markdown_top_nodes(&mut output, &result)?;
-    
+
     Ok(output)
 }
 
@@ -658,7 +674,11 @@ fn write_gm_markdown_summary(output: &mut String, result: &GraphMetricsResult) -
     writeln!(output, "| Density | {:.3} |", result.density)?;
     writeln!(output, "| Average Degree | {:.2} |", result.average_degree)?;
     writeln!(output, "| Max Degree | {} |", result.max_degree)?;
-    writeln!(output, "| Connected Components | {} |", result.connected_components)?;
+    writeln!(
+        output,
+        "| Connected Components | {} |",
+        result.connected_components
+    )?;
     Ok(())
 }
 
@@ -666,11 +686,19 @@ fn write_gm_markdown_summary(output: &mut String, result: &GraphMetricsResult) -
 fn write_gm_markdown_top_nodes(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, "\n## Top Nodes\n")?;
-    writeln!(output, "| Node | Degree | Betweenness | Closeness | PageRank |")?;
-    writeln!(output, "|------|--------|-------------|-----------|----------|")?;
-    
+    writeln!(
+        output,
+        "| Node | Degree | Betweenness | Closeness | PageRank |"
+    )?;
+    writeln!(
+        output,
+        "|------|--------|-------------|-----------|----------|"
+    )?;
+
     for node in result.nodes.iter().take(10) {
-        writeln!(output, "| {} | {:.3} | {:.3} | {:.3} | {:.3} |",
+        writeln!(
+            output,
+            "| {} | {:.3} | {:.3} | {:.3} | {:.3} |",
             node.name,
             node.degree_centrality,
             node.betweenness_centrality,
@@ -678,7 +706,7 @@ fn write_gm_markdown_top_nodes(output: &mut String, result: &GraphMetricsResult)
             node.pagerank
         )?;
     }
-    
+
     Ok(())
 }
 

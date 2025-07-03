@@ -1,7 +1,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use paiml_mcp_agent_toolkit::services::git_clone::{GitCloner, ParsedGitHubUrl};
+use pmat::services::git_clone::{GitCloner, ParsedGitHubUrl};
 use std::path::PathBuf;
 
 fuzz_target!(|data: &[u8]| {

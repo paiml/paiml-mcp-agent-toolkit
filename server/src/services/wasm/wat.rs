@@ -2,8 +2,8 @@
 //!
 //! This module provides parsing for WebAssembly text format files.
 
-use anyhow::Result;
 use crate::models::unified_ast::AstDag;
+use anyhow::Result;
 
 /// WAT (WebAssembly Text) parser
 pub struct WatParser {
@@ -21,7 +21,10 @@ impl WatParser {
     /// Parse WAT content
     pub fn parse(&mut self, content: &str) -> Result<AstDag> {
         if content.len() > self.max_file_size {
-            return Err(anyhow::anyhow!("Content too large: {} bytes", content.len()));
+            return Err(anyhow::anyhow!(
+                "Content too large: {} bytes",
+                content.len()
+            ));
         }
 
         // Basic validation
@@ -51,7 +54,7 @@ mod tests {
     fn test_wat_parser() {
         let mut parser = WatParser::new();
         let content = "(module (func $test (result i32) i32.const 42))";
-        
+
         let result = parser.parse(content);
         assert!(result.is_ok());
     }
@@ -60,7 +63,7 @@ mod tests {
     fn test_wat_parser_invalid() {
         let mut parser = WatParser::new();
         let content = "invalid wat content";
-        
+
         let result = parser.parse(content);
         assert!(result.is_err());
     }

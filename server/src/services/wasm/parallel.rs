@@ -165,21 +165,21 @@ impl Default for ParallelWasmAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[tokio::test]
     async fn test_parallel_analyzer() {
         let analyzer = ParallelWasmAnalyzer::default();
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Create test files
         fs::write(temp_dir.path().join("test.wasm"), b"\0asm\x01\x00\x00\x00").unwrap();
         fs::write(temp_dir.path().join("test.wat"), "(module)").unwrap();
-        
+
         let result = analyzer.analyze_directory(temp_dir.path()).await;
         assert!(result.is_ok());
-        
+
         let analysis = result.unwrap();
         assert_eq!(analysis.total_files, 2);
     }
@@ -187,7 +187,7 @@ mod tests {
     #[test]
     fn test_file_relevance() {
         let analyzer = ParallelWasmAnalyzer::default();
-        
+
         assert!(analyzer.is_relevant_file(Path::new("test.wasm")));
         assert!(analyzer.is_relevant_file(Path::new("test.wat")));
         assert!(analyzer.is_relevant_file(Path::new("test.ts")));

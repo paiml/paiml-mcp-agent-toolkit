@@ -2,8 +2,8 @@
 
 use libfuzzer_sys::fuzz_target;
 use arbitrary::{Arbitrary, Unstructured};
-use paiml_mcp_agent_toolkit::models::dag::{DependencyGraph, NodeInfo, Edge, EdgeType, NodeType};
-use paiml_mcp_agent_toolkit::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
+use pmat::models::dag::{DependencyGraph, NodeInfo, Edge, EdgeType, NodeType};
+use pmat::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
 
 // Structure-aware fuzzing input
 #[derive(Arbitrary, Debug)]

@@ -12,28 +12,26 @@ This directory contains comprehensive documentation for all features of the PAIM
 - [**Refactor Auto**](./refactor-auto.md) - AI-powered automated refactoring with extreme quality standards ⭐
 - [**Single File Mode**](./single-file-mode.md) - Targeted quality improvements following Toyota Way principles ⭐
 - [**Emit-Refactor Engine**](./emit-refactor-engine.md) - Real-time defect emission and interactive refactoring
-- [**Complexity Analysis**](./complexity-analysis.md) - Cyclomatic and cognitive complexity metrics
-
 ### 📊 Analysis Tools
 - [**Deep Context Analysis**](./deep-context-analysis.md) - Comprehensive codebase analysis with AST
 - [**Technical Debt Gradient (TDG)**](./technical-debt-gradient.md) - Quantitative technical debt measurement
 - [**SATD Detection**](./satd-detection.md) - Self-Admitted Technical Debt identification
-- [**Dead Code Analysis**](./dead-code-analysis.md) - Unused code detection and ranking
-- [**Provability Analysis**](./provability-analysis.md) - Lightweight formal verification
+<!-- TODO: Add dedicated documentation files for Complexity Analysis -->
+
 
 ### 🌐 Protocol Support
 - [**MCP Protocol**](./mcp-protocol.md) - Model Context Protocol implementation
-- [**HTTP API**](./http-api.md) - RESTful API interface
-- [**CLI Interface**](./cli-interface.md) - Command-line interface reference
+- [**HTTP API**](../../rust-docs/http-api.md) - RESTful API interface
+- [**CLI Interface**](../../rust-docs/cli-reference.md) - Command-line interface reference
 
 ### 📈 Visualization & Reporting
-- [**Mermaid Diagram Generation**](./mermaid-generation.md) - Automatic diagram creation
-- [**DAG Visualization**](./dag-visualization.md) - Dependency graph analysis
-- [**Demo Mode**](./demo-mode.md) - Interactive demonstrations
+<!-- TODO: Add dedicated documentation for Mermaid Diagram Generation -->
+<!-- TODO: Add dedicated documentation for DAG Visualization -->
+<!-- TODO: Add dedicated documentation for Demo Mode -->
 
 ### 🏗️ Project Management
-- [**Scaffolding**](./scaffolding.md) - Project template generation
-- [**Git Integration**](./git-integration.md) - Repository analysis and cloning
+<!-- TODO: Add dedicated documentation for Scaffolding -->
+<!-- TODO: Add dedicated documentation for Git Integration -->
 
 ### 🌐 Language Support
 - **Rust** - Complete AST analysis with syn
@@ -66,20 +64,21 @@ Each feature document includes:
 
 | Feature | Status | Version | Description |
 |---------|--------|---------|-------------|
-| Refactor Auto | ✅ Stable | 0.26.1 | AI-powered automated refactoring |
+| Refactor Auto | ✅ Stable | 0.26.3 | AI-powered automated refactoring |
 | Single File Mode | ✅ Stable | 0.26.3 | Targeted incremental improvements |
-| Makefile Linter | ✅ Stable | 0.25.0 | 50+ rules for Makefile quality |
-| Emit-Refactor Engine | ✅ Stable | 0.25.0 | Dual-mode refactoring system |
-| Deep Context | ✅ Stable | 0.25.0 | AST-based analysis |
-| TDG Calculator | ✅ Stable | 0.25.0 | Technical debt metrics |
-| Provability Analysis | ✅ Stable | 0.25.0 | Formal verification |
-| MCP Protocol | ✅ Stable | 0.25.0 | AI agent integration |
+| Makefile Linter | ✅ Stable | 0.26.1 | 50+ rules for Makefile quality |
+| Emit-Refactor Engine | ✅ Stable | 0.26.1 | Dual-mode refactoring system |
+| Deep Context | ✅ Stable | 0.26.0 | AST-based analysis |
+| TDG Calculator | ✅ Stable | 0.26.0 | Technical debt metrics |
+| Provability Analysis | ✅ Stable | 0.26.1 | Formal verification |
+| MCP Protocol | ✅ Stable | 0.26.0 | AI agent integration |
 | Kotlin AST Parser | ✅ Stable | 0.26.0 | Full AST with memory safety |
 | Memory Safety | ✅ Stable | 0.26.0 | System stability guarantees |
+| WebAssembly Support | ✅ Stable | 0.26.2 | WASM and AssemblyScript analysis |
 
 ## 🔗 Related Documentation
 
-- [Architecture Overview](../ARCHITECTURE.md)
-- [Contributing Guide](../CONTRIBUTING.md)
-- [API Reference](../API.md)
+- [**Architecture Overview**](../architecture/ARCHITECTURE.md)
+- [**Contributing Guide**](../../CONTRIBUTING.md)
+- [**API Reference**](../api-guide.md)
 - [Examples](../examples/)

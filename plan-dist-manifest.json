@@ -1,0 +1,256 @@
+{
+  "dist_version": "0.24.1",
+  "announcement_tag": "v0.26.4",
+  "announcement_tag_is_implicit": false,
+  "announcement_is_prerelease": false,
+  "announcement_title": "v0.26.4",
+  "announcement_github_body": "## Install pmat 0.26.4\n\n### Install prebuilt binaries via shell script\n\n```sh\ncurl --proto '=https' --tlsv1.2 -LsSf https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.26.4/pmat-installer.sh | sh\n```\n\n### Install prebuilt binaries via powershell script\n\n```sh\npowershell -ExecutionPolicy ByPass -c \"irm https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.26.4/pmat-installer.ps1 | iex\"\n```\n\n## Download pmat 0.26.4\n\n|  File  | Platform | Checksum |\n|--------|----------|----------|\n| [pmat-aarch64-apple-darwin.tar.xz](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.26.4/pmat-aarch64-apple-darwin.tar.xz) | Apple Silicon macOS | [checksum](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.26.4/pmat-aarch64-apple-darwin.tar.xz.sha256) |\n| [pmat-x86_64-apple-darwin.tar.xz](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.26.4/pmat-x86_64-apple-darwin.tar.xz) | Intel macOS | [checksum](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.26.4/pmat-x86_64-apple-darwin.tar.xz.sha256) |\n| [pmat-x86_64-pc-windows-msvc.zip](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.26.4/pmat-x86_64-pc-windows-msvc.zip) | x64 Windows | [checksum](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.26.4/pmat-x86_64-pc-windows-msvc.zip.sha256) |\n| [pmat-x86_64-unknown-linux-gnu.tar.xz](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.26.4/pmat-x86_64-unknown-linux-gnu.tar.xz) | x64 Linux | [checksum](https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.26.4/pmat-x86_64-unknown-linux-gnu.tar.xz.sha256) |\n\n",
+  "releases": [
+    {
+      "app_name": "pmat",
+      "app_version": "0.26.4",
+      "env": {
+        "install_dir_env_var": "PMAT_INSTALL_DIR",
+        "unmanaged_dir_env_var": "PMAT_UNMANAGED_INSTALL",
+        "disable_update_env_var": "PMAT_DISABLE_UPDATE",
+        "no_modify_path_env_var": "PMAT_NO_MODIFY_PATH"
+      },
+      "display_name": "pmat",
+      "display": true,
+      "artifacts": [
+        "source.tar.gz",
+        "source.tar.gz.sha256",
+        "pmat-installer.sh",
+        "pmat-installer.ps1",
+        "sha256.sum",
+        "pmat-aarch64-apple-darwin.tar.xz",
+        "pmat-aarch64-apple-darwin.tar.xz.sha256",
+        "pmat-x86_64-apple-darwin.tar.xz",
+        "pmat-x86_64-apple-darwin.tar.xz.sha256",
+        "pmat-x86_64-pc-windows-msvc.zip",
+        "pmat-x86_64-pc-windows-msvc.zip.sha256",
+        "pmat-x86_64-unknown-linux-gnu.tar.xz",
+        "pmat-x86_64-unknown-linux-gnu.tar.xz.sha256"
+      ],
+      "hosting": {
+        "github": {
+          "artifact_download_url": "https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.26.4",
+          "owner": "paiml",
+          "repo": "paiml-mcp-agent-toolkit"
+        }
+      }
+    }
+  ],
+  "artifacts": {
+    "pmat-aarch64-apple-darwin.tar.xz": {
+      "name": "pmat-aarch64-apple-darwin.tar.xz",
+      "kind": "executable-zip",
+      "target_triples": [
+        "aarch64-apple-darwin"
+      ],
+      "assets": [
+        {
+          "name": "README.md",
+          "path": "README.md",
+          "kind": "readme"
+        },
+        {
+          "id": "pmat-aarch64-apple-darwin-exe-pmat",
+          "name": "pmat",
+          "path": "pmat",
+          "kind": "executable"
+        }
+      ],
+      "checksum": "pmat-aarch64-apple-darwin.tar.xz.sha256"
+    },
+    "pmat-aarch64-apple-darwin.tar.xz.sha256": {
+      "name": "pmat-aarch64-apple-darwin.tar.xz.sha256",
+      "kind": "checksum",
+      "target_triples": [
+        "aarch64-apple-darwin"
+      ]
+    },
+    "pmat-installer.ps1": {
+      "name": "pmat-installer.ps1",
+      "kind": "installer",
+      "target_triples": [
+        "aarch64-pc-windows-msvc",
+        "x86_64-pc-windows-msvc"
+      ],
+      "install_hint": "powershell -ExecutionPolicy ByPass -c \"irm https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.26.4/pmat-installer.ps1 | iex\"",
+      "description": "Install prebuilt binaries via powershell script"
+    },
+    "pmat-installer.sh": {
+      "name": "pmat-installer.sh",
+      "kind": "installer",
+      "target_triples": [
+        "aarch64-apple-darwin",
+        "x86_64-apple-darwin",
+        "x86_64-pc-windows-gnu",
+        "x86_64-unknown-linux-gnu"
+      ],
+      "install_hint": "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.26.4/pmat-installer.sh | sh",
+      "description": "Install prebuilt binaries via shell script"
+    },
+    "pmat-x86_64-apple-darwin.tar.xz": {
+      "name": "pmat-x86_64-apple-darwin.tar.xz",
+      "kind": "executable-zip",
+      "target_triples": [
+        "x86_64-apple-darwin"
+      ],
+      "assets": [
+        {
+          "name": "README.md",
+          "path": "README.md",
+          "kind": "readme"
+        },
+        {
+          "id": "pmat-x86_64-apple-darwin-exe-pmat",
+          "name": "pmat",
+          "path": "pmat",
+          "kind": "executable"
+        }
+      ],
+      "checksum": "pmat-x86_64-apple-darwin.tar.xz.sha256"
+    },
+    "pmat-x86_64-apple-darwin.tar.xz.sha256": {
+      "name": "pmat-x86_64-apple-darwin.tar.xz.sha256",
+      "kind": "checksum",
+      "target_triples": [
+        "x86_64-apple-darwin"
+      ]
+    },
+    "pmat-x86_64-pc-windows-msvc.zip": {
+      "name": "pmat-x86_64-pc-windows-msvc.zip",
+      "kind": "executable-zip",
+      "target_triples": [
+        "x86_64-pc-windows-msvc"
+      ],
+      "assets": [
+        {
+          "name": "README.md",
+          "path": "README.md",
+          "kind": "readme"
+        },
+        {
+          "id": "pmat-x86_64-pc-windows-msvc-exe-pmat",
+          "name": "pmat",
+          "path": "pmat.exe",
+          "kind": "executable"
+        }
+      ],
+      "checksum": "pmat-x86_64-pc-windows-msvc.zip.sha256"
+    },
+    "pmat-x86_64-pc-windows-msvc.zip.sha256": {
+      "name": "pmat-x86_64-pc-windows-msvc.zip.sha256",
+      "kind": "checksum",
+      "target_triples": [
+        "x86_64-pc-windows-msvc"
+      ]
+    },
+    "pmat-x86_64-unknown-linux-gnu.tar.xz": {
+      "name": "pmat-x86_64-unknown-linux-gnu.tar.xz",
+      "kind": "executable-zip",
+      "target_triples": [
+        "x86_64-unknown-linux-gnu"
+      ],
+      "assets": [
+        {
+          "name": "README.md",
+          "path": "README.md",
+          "kind": "readme"
+        },
+        {
+          "id": "pmat-x86_64-unknown-linux-gnu-exe-pmat",
+          "name": "pmat",
+          "path": "pmat",
+          "kind": "executable"
+        }
+      ],
+      "checksum": "pmat-x86_64-unknown-linux-gnu.tar.xz.sha256"
+    },
+    "pmat-x86_64-unknown-linux-gnu.tar.xz.sha256": {
+      "name": "pmat-x86_64-unknown-linux-gnu.tar.xz.sha256",
+      "kind": "checksum",
+      "target_triples": [
+        "x86_64-unknown-linux-gnu"
+      ]
+    },
+    "sha256.sum": {
+      "name": "sha256.sum",
+      "kind": "unified-checksum"
+    },
+    "source.tar.gz": {
+      "name": "source.tar.gz",
+      "kind": "source-tarball",
+      "checksum": "source.tar.gz.sha256"
+    },
+    "source.tar.gz.sha256": {
+      "name": "source.tar.gz.sha256",
+      "kind": "checksum"
+    }
+  },
+  "systems": {
+    "plan:all:": {
+      "id": "plan:all:",
+      "cargo_version_line": "cargo 1.87.0 (99624be96 2025-05-06)",
+      "build_environment": {
+        "linux": {
+          "glibc_version": {
+            "major": 2,
+            "series": 39
+          }
+        }
+      }
+    }
+  },
+  "publish_prereleases": false,
+  "force_latest": false,
+  "ci": {
+    "github": {
+      "artifacts_matrix": {
+        "include": [
+          {
+            "targets": [
+              "aarch64-apple-darwin"
+            ],
+            "runner": "macos-13",
+            "install_dist": "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.24.1/cargo-dist-installer.sh | sh",
+            "dist_args": "--artifacts=local --target=aarch64-apple-darwin",
+            "cache_provider": "github"
+          },
+          {
+            "targets": [
+              "x86_64-apple-darwin"
+            ],
+            "runner": "macos-13",
+            "install_dist": "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.24.1/cargo-dist-installer.sh | sh",
+            "dist_args": "--artifacts=local --target=x86_64-apple-darwin",
+            "cache_provider": "github"
+          },
+          {
+            "targets": [
+              "x86_64-pc-windows-msvc"
+            ],
+            "runner": "windows-2019",
+            "install_dist": "powershell -c \"irm https://github.com/axodotdev/cargo-dist/releases/download/v0.24.1/cargo-dist-installer.ps1 | iex\"",
+            "dist_args": "--artifacts=local --target=x86_64-pc-windows-msvc",
+            "cache_provider": "github"
+          },
+          {
+            "targets": [
+              "x86_64-unknown-linux-gnu"
+            ],
+            "runner": "ubuntu-20.04",
+            "install_dist": "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.24.1/cargo-dist-installer.sh | sh",
+            "dist_args": "--artifacts=local --target=x86_64-unknown-linux-gnu",
+            "cache_provider": "github"
+          }
+        ]
+      },
+      "pr_run_mode": "plan"
+    }
+  },
+  "linkage": [],
+  "upload_files": []
+}

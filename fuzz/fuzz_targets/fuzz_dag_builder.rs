@@ -2,9 +2,9 @@
 
 use libfuzzer_sys::fuzz_target;
 use arbitrary::{Arbitrary, Unstructured};
-use paiml_mcp_agent_toolkit::services::context::{ProjectContext, FileContext, AstItem, ProjectSummary};
-use paiml_mcp_agent_toolkit::services::dag_builder::DagBuilder;
-use paiml_mcp_agent_toolkit::models::dag::EdgeType;
+use pmat::services::context::{ProjectContext, FileContext, AstItem, ProjectSummary};
+use pmat::services::dag_builder::DagBuilder;
+use pmat::models::dag::EdgeType;
 
 #[derive(Arbitrary, Debug)]
 struct FuzzProject {
@@ -216,7 +216,7 @@ fn convert_visibility(vis: FuzzVisibility) -> String {
     }
 }
 
-fn assert_dag_invariants(graph: &paiml_mcp_agent_toolkit::models::dag::DependencyGraph) {
+fn assert_dag_invariants(graph: &pmat::models::dag::DependencyGraph) {
     // All edges should reference existing nodes
     for edge in &graph.edges {
         assert!(

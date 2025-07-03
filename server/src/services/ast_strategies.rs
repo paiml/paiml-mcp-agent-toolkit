@@ -529,27 +529,23 @@ impl AstStrategy for KotlinAstStrategy {
                                 line: line_number,
                             }
                         }
-                        crate::models::unified_ast::AstKind::Type(type_kind) => {
-                            match type_kind {
-                                crate::models::unified_ast::TypeKind::Enum => {
-                                    crate::services::context::AstItem::Enum {
-                                        name: name.unwrap_or_else(|| "AnonymousEnum".to_string()),
-                                        visibility: "public".to_string(),
-                                        variants_count: 0,
-                                        line: line_number,
-                                    }
-                                }
-                                _ => {
-                                    crate::services::context::AstItem::Struct {
-                                        name: name.unwrap_or_else(|| "AnonymousClass".to_string()),
-                                        visibility: "public".to_string(),
-                                        fields_count: 0,
-                                        derives: vec![],
-                                        line: line_number,
-                                    }
+                        crate::models::unified_ast::AstKind::Type(type_kind) => match type_kind {
+                            crate::models::unified_ast::TypeKind::Enum => {
+                                crate::services::context::AstItem::Enum {
+                                    name: name.unwrap_or_else(|| "AnonymousEnum".to_string()),
+                                    visibility: "public".to_string(),
+                                    variants_count: 0,
+                                    line: line_number,
                                 }
                             }
-                        }
+                            _ => crate::services::context::AstItem::Struct {
+                                name: name.unwrap_or_else(|| "AnonymousClass".to_string()),
+                                visibility: "public".to_string(),
+                                fields_count: 0,
+                                derives: vec![],
+                                line: line_number,
+                            },
+                        },
                         _ => continue,
                     };
                     items.push(item);
@@ -609,7 +605,7 @@ impl KotlinAstStrategy {
 
     /// Extract function name from Kotlin source text
     fn extract_function_name(source_text: &str) -> Option<String> {
-        // Look for pattern: fun name(...) 
+        // Look for pattern: fun name(...)
         if let Some(fun_pos) = source_text.find("fun ") {
             let after_fun = &source_text[fun_pos + 4..];
             if let Some(paren_pos) = after_fun.find('(') {
@@ -626,7 +622,7 @@ impl KotlinAstStrategy {
         // Look for patterns like "class Name", "interface Name", "object Name", "data class Name", "enum class Name"
         let lines = source_text.lines().next()?; // Get first line
         let words: Vec<&str> = lines.split_whitespace().collect();
-        
+
         // Handle enum class first
         if words.len() >= 3 && words[0] == "enum" && words[1] == "class" {
             let name_with_extras = words[2];
@@ -637,7 +633,7 @@ impl KotlinAstStrategy {
                 .trim();
             return Some(name.to_string());
         }
-        
+
         // Handle data class
         if words.len() >= 3 && words[0] == "data" && words[1] == "class" {
             let name_with_extras = words[2];
@@ -647,7 +643,7 @@ impl KotlinAstStrategy {
                 .unwrap_or(name_with_extras);
             return Some(name.to_string());
         }
-        
+
         // Handle regular class/interface/object
         for i in 0..words.len() {
             if matches!(words[i], "class" | "interface" | "object") && i + 1 < words.len() {
@@ -660,7 +656,7 @@ impl KotlinAstStrategy {
                 return Some(name.to_string());
             }
         }
-        
+
         None
     }
 

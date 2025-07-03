@@ -26,6 +26,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tokio::fs;
 use tokio::process::Command;
+use walkdir::WalkDir;
 
 /// Quality profile configuration for refactor auto
 #[derive(Debug, Clone)]
@@ -150,19 +151,19 @@ async fn handle_single_file_refactor(
     _max_iterations: u32,
 ) -> Result<()> {
     eprintln!("🎯 Analyzing single file: {}", file_path.display());
-    
+
     // Get lint violations for this specific file
     let lint_violations = get_single_file_lint_violations(&file_path).await?;
     eprintln!("📊 Found {} lint violations", lint_violations.len());
-    
+
     // Get complexity metrics
     let complexity_metrics = analyze_file_complexity(&file_path).await?;
     eprintln!("🔢 Max complexity: {}", complexity_metrics.max_complexity);
-    
+
     // Check for SATD
     let satd_count = count_file_satd(&file_path).await?;
     eprintln!("💭 SATD comments: {satd_count}");
-    
+
     // Generate refactoring request
     let refactor_request = generate_single_file_refactor_request(
         &file_path,
@@ -170,7 +171,7 @@ async fn handle_single_file_refactor(
         complexity_metrics,
         satd_count,
     )?;
-    
+
     // Output the request
     match format {
         RefactorAutoOutputFormat::Json => {
@@ -183,11 +184,11 @@ async fn handle_single_file_refactor(
             print_single_file_detailed(&refactor_request);
         }
     }
-    
+
     if !dry_run {
         eprintln!("💡 To apply fixes, use the generated refactoring request with an AI assistant.");
     }
-    
+
     Ok(())
 }
 
@@ -270,29 +271,27 @@ pub async fn handle_refactor_auto(
     ignore_file: Option<PathBuf>,
     test_file: Option<PathBuf>,
     test_name: Option<String>,
+    github_issue_url: Option<String>,
 ) -> Result<()> {
     let start_time = Instant::now();
 
     eprintln!("🚀 Starting automated refactoring...");
     eprintln!("📁 Project: {}", project_path.display());
-    
+
     // Handle single file mode
     if single_file_mode || file.is_some() {
         if let Some(target_file) = file {
             eprintln!("📄 Single file mode: {}", target_file.display());
-            return handle_single_file_refactor(
-                target_file,
-                format,
-                dry_run,
-                max_iterations,
-            ).await;
+            return handle_single_file_refactor(target_file, format, dry_run, max_iterations).await;
         }
-        return Err(anyhow::anyhow!("Single file mode requires --file parameter"));
+        return Err(anyhow::anyhow!(
+            "Single file mode requires --file parameter"
+        ));
     }
-    
+
     // Load ignore patterns
     let mut all_exclude_patterns = exclude_patterns.clone();
-    
+
     // Load patterns from ignore file if provided
     if let Some(ignore_path) = &ignore_file {
         if ignore_path.exists() {
@@ -303,10 +302,14 @@ pub async fn handle_refactor_auto(
                     all_exclude_patterns.push(trimmed.to_string());
                 }
             }
-            eprintln!("📝 Loaded {} patterns from {}", all_exclude_patterns.len(), ignore_path.display());
+            eprintln!(
+                "📝 Loaded {} patterns from {}",
+                all_exclude_patterns.len(),
+                ignore_path.display()
+            );
         }
     }
-    
+
     // Default ignore patterns for test/benchmark files if not explicitly included
     if include_patterns.is_empty() {
         all_exclude_patterns.extend(vec![
@@ -317,31 +320,86 @@ pub async fn handle_refactor_auto(
             "**/fixtures/**".to_string(),
         ]);
     }
-    
+
     if !all_exclude_patterns.is_empty() {
         eprintln!("🚫 Excluding patterns: {all_exclude_patterns:?}");
+    }
+
+    // Handle GitHub issue-driven refactoring
+    let mut github_issue_context = None;
+    let mut issue_target_files = Vec::new();
+    
+    if let Some(issue_url) = &github_issue_url {
+        eprintln!("🐙 GitHub issue mode: {}", issue_url);
+        
+        // Fetch and parse the GitHub issue
+        use crate::services::github_integration::{GitHubClient, parse_issue};
+        
+        let client = GitHubClient::new()?;
+        let issue = client.fetch_issue(issue_url).await
+            .context("Failed to fetch GitHub issue")?;
+        
+        let parsed_issue = parse_issue(issue);
+        
+        eprintln!("📋 Issue: {}", parsed_issue.issue.title);
+        eprintln!("🏷️  Keywords: {:?}", parsed_issue.keywords);
+        
+        // Extract target files from the issue
+        if !parsed_issue.file_paths.is_empty() {
+            eprintln!("📁 Files mentioned in issue:");
+            for path in &parsed_issue.file_paths {
+                eprintln!("  📄 {}", path);
+                // Check if file exists in the project
+                let full_path = project_path.join(path);
+                if full_path.exists() {
+                    issue_target_files.push(full_path);
+                } else {
+                    // Try without leading directories
+                    let path_buf = PathBuf::from(path);
+                    if let Some(file_name) = path_buf.file_name() {
+                        // Search for the file in the project
+                        if let Ok(found_files) = find_files_by_name(&project_path, file_name.to_str().unwrap()).await {
+                            issue_target_files.extend(found_files);
+                        }
+                    }
+                }
+            }
+        }
+        
+        github_issue_context = Some(parsed_issue);
     }
     
     // Handle test-specific refactoring
     let mut target_files = Vec::new();
     if let Some(test_path) = &test_file {
         eprintln!("🧪 Test-specific mode: {}", test_path.display());
-        
+
         // Add the test file itself
         target_files.push(test_path.clone());
-        
+
         // Find the source files that the test depends on
         let source_files = find_test_dependencies(test_path, &test_name).await?;
-        eprintln!("📦 Found {} source files related to test", source_files.len());
-        
+        eprintln!(
+            "📦 Found {} source files related to test",
+            source_files.len()
+        );
+
         for src_file in &source_files {
             eprintln!("  📄 {}", src_file.display());
         }
         target_files.extend(source_files);
-        
+
         // Override patterns to focus only on these files
         all_exclude_patterns.clear();
     }
+    // Merge GitHub issue target files with other target files
+    if !issue_target_files.is_empty() {
+        target_files.extend(issue_target_files);
+        target_files.sort();
+        target_files.dedup();
+        eprintln!("🎯 Total target files from GitHub issue: {}", target_files.len());
+    }
+    
     if !include_patterns.is_empty() {
         eprintln!("✅ Including patterns: {include_patterns:?}");
     }
@@ -446,9 +504,12 @@ pub async fn handle_refactor_auto(
             state.start_time,
         )
         .await?;
-        
+
         // Display progress with visual bar
-        eprintln!("\n📊 Progress Update - Iteration {}/{}", state.iteration, max_iterations);
+        eprintln!(
+            "\n📊 Progress Update - Iteration {}/{}",
+            state.iteration, max_iterations
+        );
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let progress_bar = "█".repeat((progress.overall_completion_percent / 5.0) as usize);
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -457,16 +518,19 @@ pub async fn handle_refactor_auto(
             "🎯 Overall: {:.1}% [{}{}]",
             progress.overall_completion_percent, progress_bar, empty_bar
         );
-        eprintln!("   📊 Lint: {:.1}% | 🔧 Complexity: {:.1}% | 🧹 SATD: {:.1}% | 📈 Coverage: {:.1}%",
+        eprintln!(
+            "   📊 Lint: {:.1}% | 🔧 Complexity: {:.1}% | 🧹 SATD: {:.1}% | 📈 Coverage: {:.1}%",
             progress.lint_completion_percent,
             progress.complexity_completion_percent,
             progress.satd_completion_percent,
             progress.coverage_completion_percent
         );
         eprintln!("   🔄 Phase: {:?}", progress.current_phase);
-        eprintln!("   📁 Files: {} completed, {} remaining", 
-            progress.files_completed, progress.files_remaining);
-            
+        eprintln!(
+            "   📁 Files: {} completed, {} remaining",
+            progress.files_completed, progress.files_remaining
+        );
+
         // Step 5: Check if we meet all quality gates
         eprintln!("\n📊 Quality metrics: {:?}", state.quality_metrics);
         if meets_quality_gates(&state.quality_metrics) {
@@ -479,29 +543,44 @@ pub async fn handle_refactor_auto(
         // Priority 2: BUILD ERRORS (if build fails)
         // Priority 3: COVERAGE < 80% (any file)
         // Priority 4: ENFORCE EXTREME (complexity, SATD, etc)
-        
+
         // Special handling for test mode
         let target_file = if !target_files.is_empty() {
             // In test mode, process the target files in order
-            let remaining_targets: Vec<_> = target_files.iter()
+            let remaining_targets: Vec<_> = target_files
+                .iter()
                 .filter(|f| !state.files_completed.contains(f))
                 .collect();
-            
+
             if remaining_targets.is_empty() {
                 eprintln!("✅ All target files processed!");
                 break;
             }
-            
+
             let file = remaining_targets[0].clone();
-            eprintln!("
-🧪 Test mode: Processing {}", file.display());
-            eprintln!("   {} of {} target files completed", 
-                target_files.len() - remaining_targets.len() + 1, target_files.len());
+            eprintln!(
+                "
+🧪 Test mode: Processing {}",
+                file.display()
+            );
+            eprintln!(
+                "   {} of {} target files completed",
+                target_files.len() - remaining_targets.len() + 1,
+                target_files.len()
+            );
             file
         } else if lint_analysis.total_project_violations > 0 {
-            eprintln!("\n🎯 PRIORITY 1: Fixing lint violations ({} total)", 
-                lint_analysis.total_project_violations);
-            match select_target_file(&lint_analysis, &state.files_completed, &all_exclude_patterns, &include_patterns) {
+            eprintln!(
+                "\n🎯 PRIORITY 1: Fixing lint violations ({} total)",
+                lint_analysis.total_project_violations
+            );
+            match select_target_file(
+                &lint_analysis,
+                &state.files_completed,
+                &all_exclude_patterns,
+                &include_patterns,
+                github_issue_context.as_ref(),
+            ) {
                 Ok(file) => {
                     // Skip build.rs
                     if file.file_name().and_then(|n| n.to_str()) == Some("build.rs") {
@@ -522,43 +601,78 @@ pub async fn handle_refactor_auto(
                 }
                 Err(_) => {
                     eprintln!("   ✅ No more lint violations - checking build...");
-                    
+
                     // Priority 2: Check for build errors
                     eprintln!("\n🔨 PRIORITY 2: Checking for build errors...");
                     if !verify_build(&project_path).await? {
                         eprintln!("   ❌ Build failed - analyzing compilation errors");
-                        let build_errors = analyze_compilation_errors(&project_path, &project_path).await?;
+                        let build_errors =
+                            analyze_compilation_errors(&project_path, &project_path).await?;
                         if build_errors.total_project_violations > 0 {
-                            eprintln!("   Found {} compilation errors", build_errors.total_project_violations);
+                            eprintln!(
+                                "   Found {} compilation errors",
+                                build_errors.total_project_violations
+                            );
                             build_errors.hotspot.file
                         } else {
                             eprintln!("   ⚠️  Build failed but no specific errors found");
-                            select_coverage_or_extreme_target(&project_path, &state, &state.files_completed, &all_exclude_patterns, &include_patterns).await?
+                            select_coverage_or_extreme_target(
+                                &project_path,
+                                &state,
+                                &state.files_completed,
+                                &all_exclude_patterns,
+                                &include_patterns,
+                            )
+                            .await?
                         }
                     } else {
                         eprintln!("   ✅ Build passes - checking coverage...");
-                        select_coverage_or_extreme_target(&project_path, &state, &state.files_completed, &all_exclude_patterns, &include_patterns).await?
+                        select_coverage_or_extreme_target(
+                            &project_path,
+                            &state,
+                            &state.files_completed,
+                            &all_exclude_patterns,
+                            &include_patterns,
+                        )
+                        .await?
                     }
                 }
             }
         } else {
             eprintln!("\n✅ No lint violations - checking next priority...");
-            
+
             // Priority 2: Check for build errors
             eprintln!("\n🔨 PRIORITY 2: Checking for build errors...");
             if !verify_build(&project_path).await? {
                 eprintln!("   ❌ Build failed - analyzing compilation errors");
                 let build_errors = analyze_compilation_errors(&project_path, &project_path).await?;
                 if build_errors.total_project_violations > 0 {
-                    eprintln!("   Found {} compilation errors", build_errors.total_project_violations);
+                    eprintln!(
+                        "   Found {} compilation errors",
+                        build_errors.total_project_violations
+                    );
                     build_errors.hotspot.file
                 } else {
                     eprintln!("   ⚠️  Build failed but no specific errors found");
-                    select_coverage_or_extreme_target(&project_path, &state, &state.files_completed, &all_exclude_patterns, &include_patterns).await?
+                    select_coverage_or_extreme_target(
+                        &project_path,
+                        &state,
+                        &state.files_completed,
+                        &all_exclude_patterns,
+                        &include_patterns,
+                    )
+                    .await?
                 }
             } else {
                 eprintln!("   ✅ Build passes - checking coverage...");
-                select_coverage_or_extreme_target(&project_path, &state, &state.files_completed, &all_exclude_patterns, &include_patterns).await?
+                select_coverage_or_extreme_target(
+                    &project_path,
+                    &state,
+                    &state.files_completed,
+                    &all_exclude_patterns,
+                    &include_patterns,
+                )
+                .await?
             }
         };
 
@@ -567,8 +681,16 @@ pub async fn handle_refactor_auto(
 
         // Update progress for the selected file
         state.progress.current_phase = match () {
-            () if lint_analysis.all_violations.iter().any(|v| v.file == target_file) => RefactorPhase::LintFixes,
-            () if target_file.to_string_lossy().contains("compilation_error") => RefactorPhase::BuildFixes,
+            () if lint_analysis
+                .all_violations
+                .iter()
+                .any(|v| v.file == target_file) =>
+            {
+                RefactorPhase::LintFixes
+            }
+            () if target_file.to_string_lossy().contains("compilation_error") => {
+                RefactorPhase::BuildFixes
+            }
             () if state.quality_metrics.coverage_percent < 80.0 => RefactorPhase::CoverageDriven,
             () => RefactorPhase::QualityValidation,
         };
@@ -627,6 +749,7 @@ pub async fn handle_refactor_auto(
                     needs_tests,
                     file_coverage,
                     &state.context_path,
+                    github_issue_context.as_ref(),
                 )
                 .await?;
 
@@ -709,9 +832,7 @@ pub async fn handle_refactor_auto(
         let file_meets_goals;
         if !dry_run {
             let new_file_coverage = check_file_coverage(&project_path, &target_file).await?;
-            eprintln!(
-                "📊 New file coverage: {new_file_coverage:.1}% (was {file_coverage:.1}%)"
-            );
+            eprintln!("📊 New file coverage: {new_file_coverage:.1}% (was {file_coverage:.1}%)");
 
             // Check if this file meets ALL quality goals
             // Re-analyze to check for remaining violations
@@ -770,27 +891,30 @@ pub async fn handle_refactor_auto(
             state.start_time,
         )
         .await?;
-        
+
         // Display iteration summary
         eprintln!("\n📊 Iteration {} Summary:", state.iteration);
         eprintln!("   ✅ Completed: {} files", state.files_completed.len());
-        eprintln!("   📈 Progress: {:.1}% → {:.1}% (+{:.1}%)",
+        eprintln!(
+            "   📈 Progress: {:.1}% → {:.1}% (+{:.1}%)",
             progress.overall_completion_percent,
             updated_progress.overall_completion_percent,
             updated_progress.overall_completion_percent - progress.overall_completion_percent
         );
-        
+
         if updated_progress.estimated_time_remaining_minutes > 0 {
             if updated_progress.estimated_time_remaining_minutes < 60 {
-                eprintln!("   ⏱️  Est. time remaining: {} minutes", 
-                    updated_progress.estimated_time_remaining_minutes);
+                eprintln!(
+                    "   ⏱️  Est. time remaining: {} minutes",
+                    updated_progress.estimated_time_remaining_minutes
+                );
             } else {
                 let hours = updated_progress.estimated_time_remaining_minutes / 60;
                 let minutes = updated_progress.estimated_time_remaining_minutes % 60;
                 eprintln!("   ⏱️  Est. time remaining: {hours}h {minutes}m");
             }
         }
-        
+
         // Output detailed progress if requested
         if matches!(format, RefactorAutoOutputFormat::Detailed) {
             output_progress(&state, &lint_analysis, format, max_iterations)?;
@@ -1224,7 +1348,11 @@ fn meets_quality_gates(metrics: &QualityMetrics) -> bool {
 }
 
 /// Calculate severity score for a file based on violation types
-fn calculate_file_severity_score(file: &Path, all_violations: &[ViolationDetail]) -> u32 {
+fn calculate_file_severity_score(
+    file: &Path, 
+    all_violations: &[ViolationDetail],
+    github_issue_context: Option<&crate::services::github_integration::ParsedIssue>,
+) -> u32 {
     let mut severity_score = 0u32;
 
     for violation in all_violations {
@@ -1238,7 +1366,7 @@ fn calculate_file_severity_score(file: &Path, all_violations: &[ViolationDetail]
             };
 
             // Extra weight for certain critical lints
-            let multiplier = if violation.lint_name.contains("unsafe")
+            let mut multiplier = if violation.lint_name.contains("unsafe")
                 || violation.lint_name.contains("panic")
                 || violation.lint_name.contains("unwrap")
                 || violation.lint_name.contains("expect")
@@ -1251,6 +1379,19 @@ fn calculate_file_severity_score(file: &Path, all_violations: &[ViolationDetail]
             } else {
                 1
             };
+            
+            // Apply GitHub issue keyword weighting
+            if let Some(issue) = github_issue_context {
+                // Check if violation type matches issue keywords
+                if violation.lint_name.contains("security") && issue.keywords.contains_key("Security") {
+                    multiplier *= 4; // Highest priority for security issues
+                } else if (violation.lint_name.contains("complexity") && issue.keywords.contains_key("Complexity"))
+                    || (violation.lint_name.contains("performance") && issue.keywords.contains_key("Performance"))
+                    || ((violation.lint_name.contains("bug") || violation.lint_name.contains("correct")) 
+                        && issue.keywords.contains_key("Correctness")) {
+                    multiplier *= 3; // High priority for other matched issues
+                }
+            }
 
             severity_score += base_score * multiplier;
         }
@@ -1281,14 +1422,15 @@ fn get_cached_file_coverage(_file: &Path) -> Option<f64> {
 async fn get_single_file_lint_violations(file_path: &Path) -> Result<Vec<ViolationDetailJson>> {
     // Get the current executable path
     let current_exe = std::env::current_exe()?;
-    
+
     let output = Command::new(current_exe)
         .args([
             "analyze",
             "lint-hotspot",
             "--file",
             file_path.to_str().unwrap(),
-            "-f", "json",
+            "-f",
+            "json",
         ])
         .output()
         .await?;
@@ -1298,7 +1440,8 @@ async fn get_single_file_lint_violations(file_path: &Path) -> Result<Vec<Violati
         if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&output.stdout) {
             if let Some(hotspot) = json["hotspot"].as_object() {
                 if let Some(violations) = hotspot["detailed_violations"].as_array() {
-                    let parsed: Vec<ViolationDetailJson> = violations.iter()
+                    let parsed: Vec<ViolationDetailJson> = violations
+                        .iter()
                         .filter_map(|v| serde_json::from_value(v.clone()).ok())
                         .collect();
                     return Ok(parsed);
@@ -1306,7 +1449,7 @@ async fn get_single_file_lint_violations(file_path: &Path) -> Result<Vec<Violati
             }
         }
     }
-    
+
     Ok(vec![])
 }
 
@@ -1329,14 +1472,19 @@ async fn analyze_file_complexity(file_path: &Path) -> Result<QualityMetrics> {
             "analyze",
             "complexity",
             "--project-path",
-            file_path.parent().unwrap_or_else(|| Path::new(".")).to_str().unwrap(),
-            "-f", "json",
+            file_path
+                .parent()
+                .unwrap_or_else(|| Path::new("."))
+                .to_str()
+                .unwrap(),
+            "-f",
+            "json",
         ])
         .output()
         .await?;
-    
+
     let mut metrics = QualityMetrics::default();
-    
+
     if output.status.success() {
         if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&output.stdout) {
             // Find metrics for our specific file
@@ -1348,7 +1496,8 @@ async fn analyze_file_complexity(file_path: &Path) -> Result<QualityMetrics> {
                         }
                         if let Some(functions) = file_entry["functions"].as_array() {
                             metrics.total_functions = functions.len();
-                            metrics.functions_with_high_complexity = functions.iter()
+                            metrics.functions_with_high_complexity = functions
+                                .iter()
                                 .filter(|f| f["complexity"].as_u64().unwrap_or(0) > 10)
                                 .count();
                         }
@@ -1358,7 +1507,7 @@ async fn analyze_file_complexity(file_path: &Path) -> Result<QualityMetrics> {
             }
         }
     }
-    
+
     Ok(metrics)
 }
 
@@ -1372,7 +1521,7 @@ async fn count_file_satd(file_path: &PathBuf) -> Result<usize> {
     let content = tokio::fs::read_to_string(file_path).await?;
     let satd_patterns = ["TODO:", "FIXME:", "HACK:", "XXX:"];
     let mut count = 0;
-    
+
     for line in content.lines() {
         for pattern in &satd_patterns {
             if line.contains(pattern) {
@@ -1381,7 +1530,7 @@ async fn count_file_satd(file_path: &PathBuf) -> Result<usize> {
             }
         }
     }
-    
+
     Ok(count)
 }
 
@@ -1393,17 +1542,20 @@ fn generate_single_file_refactor_request(
     _satd_count: usize,
 ) -> Result<FileRewritePlan> {
     let content = std::fs::read_to_string(file_path)?;
-    
+
     Ok(FileRewritePlan {
         file_path: file_path.clone(),
-        violations: violations.into_iter().map(|v| ViolationWithContext {
-            lint_name: v.lint_name,
-            line: v.line,
-            column: v.column,
-            message: v.message,
-            ast_node_id: None,
-            fix_strategy: FixStrategy::ApplySuggestion(v.suggestion.unwrap_or_default()),
-        }).collect(),
+        violations: violations
+            .into_iter()
+            .map(|v| ViolationWithContext {
+                lint_name: v.lint_name,
+                line: v.line,
+                column: v.column,
+                message: v.message,
+                ast_node_id: None,
+                fix_strategy: FixStrategy::ApplySuggestion(v.suggestion.unwrap_or_default()),
+            })
+            .collect(),
         ast_metadata: AstMetadata {
             functions: vec![],
             imports: vec![],
@@ -1418,7 +1570,7 @@ fn extract_context_lines(content: &str, line: u32, context: u32) -> Vec<String> 
     let lines: Vec<&str> = content.lines().collect();
     let start = (line.saturating_sub(context + 1)) as usize;
     let end = ((line + context) as usize).min(lines.len());
-    
+
     lines[start..end].iter().map(|&s| s.to_string()).collect()
 }
 
@@ -1427,17 +1579,17 @@ fn print_single_file_summary(request: &FileRewritePlan) {
     println!("📄 File: {}", request.file_path.display());
     println!("🚨 Violations: {}", request.violations.len());
     println!();
-    
+
     // Group violations by type
     let mut violation_counts: HashMap<String, usize> = HashMap::new();
     for v in &request.violations {
         *violation_counts.entry(v.lint_name.clone()).or_insert(0) += 1;
     }
-    
+
     println!("Top violations:");
     let mut counts: Vec<_> = violation_counts.into_iter().collect();
     counts.sort_by(|a, b| b.1.cmp(&a.1));
-    
+
     for (lint, count) in counts.iter().take(5) {
         println!("  - {lint}: {count} occurrences");
     }
@@ -1450,15 +1602,15 @@ fn print_single_file_detailed(request: &FileRewritePlan) {
     println!("## Summary");
     println!("Total violations: {}", request.violations.len());
     println!();
-    
+
     println!("## Violations by Line");
     let mut violations_by_line: Vec<_> = request.violations.iter().collect();
     violations_by_line.sort_by_key(|v| v.line);
-    
+
     for v in violations_by_line.iter().take(20) {
         println!("- Line {}: [{}] {}", v.line, v.lint_name, v.message);
     }
-    
+
     if request.violations.len() > 20 {
         println!("... and {} more violations", request.violations.len() - 20);
     }
@@ -1471,27 +1623,24 @@ fn should_process_file(
     include_patterns: &[String],
 ) -> bool {
     let path_str = file_path.to_string_lossy();
-    
+
     // If include patterns are specified, the file must match at least one
     if !include_patterns.is_empty() {
-        let included = include_patterns.iter().any(|pattern| {
-            glob::Pattern::new(pattern)
-                .is_ok_and(|p| p.matches(&path_str))
-        });
+        let included = include_patterns
+            .iter()
+            .any(|pattern| glob::Pattern::new(pattern).is_ok_and(|p| p.matches(&path_str)));
         if !included {
             return false;
         }
     }
-    
+
     // Check exclude patterns
     for pattern in exclude_patterns {
-        if glob::Pattern::new(pattern)
-            .is_ok_and(|p| p.matches(&path_str))
-        {
+        if glob::Pattern::new(pattern).is_ok_and(|p| p.matches(&path_str)) {
             return false;
         }
     }
-    
+
     true
 }
 
@@ -1508,15 +1657,16 @@ fn select_target_file(
     completed_files: &[PathBuf],
     exclude_patterns: &[String],
     include_patterns: &[String],
+    github_issue_context: Option<&crate::services::github_integration::ParsedIssue>,
 ) -> Result<PathBuf> {
     // First, prioritize files with violations that haven't been completed
     let mut candidates: Vec<_> = lint_analysis
         .all_violations
         .iter()
         .filter(|v| {
-            !completed_files.contains(&v.file) && 
-            v.file.exists() &&
-            should_process_file(&v.file, exclude_patterns, include_patterns)
+            !completed_files.contains(&v.file)
+                && v.file.exists()
+                && should_process_file(&v.file, exclude_patterns, include_patterns)
         })
         .map(|v| &v.file)
         .collect::<std::collections::HashSet<_>>() // Unique files
@@ -1545,9 +1695,9 @@ fn select_target_file(
                     // If equal counts, use extreme quality metrics as tiebreaker
                     // Calculate severity score based on violation types
                     let severity_a =
-                        calculate_file_severity_score(a, &lint_analysis.all_violations);
+                        calculate_file_severity_score(a, &lint_analysis.all_violations, github_issue_context);
                     let severity_b =
-                        calculate_file_severity_score(b, &lint_analysis.all_violations);
+                        calculate_file_severity_score(b, &lint_analysis.all_violations, github_issue_context);
 
                     match severity_b.cmp(&severity_a) {
                         std::cmp::Ordering::Equal => {
@@ -1890,10 +2040,12 @@ async fn load_ast_metadata_from_context(file: &Path, context_path: &Path) -> Res
                         line[func_name_start + 1..func_name_start + 1 + func_name_end].to_string();
 
                     // Extract complexity
-                    let complexity = line.find("[complexity: ")
+                    let complexity = line
+                        .find("[complexity: ")
                         .and_then(|comp_start| {
                             let comp_str = &line[comp_start + 12..];
-                            comp_str.find(']')
+                            comp_str
+                                .find(']')
                                 .and_then(|comp_end| comp_str[..comp_end].parse().ok())
                         })
                         .unwrap_or(0);
@@ -1954,7 +2106,10 @@ async fn generate_refactored_content(
     sorted_violations.sort_by(|a, b| b.line.cmp(&a.line));
 
     // Apply fixes based on violation type
-    let lines: Vec<String> = content.lines().map(std::string::ToString::to_string).collect();
+    let lines: Vec<String> = content
+        .lines()
+        .map(std::string::ToString::to_string)
+        .collect();
     let mut fixed_lines = lines.clone();
 
     for violation in &sorted_violations {
@@ -2124,6 +2279,7 @@ async fn output_ai_rewrite_request(
     target_file: &Path,
     lint_analysis: &LintHotspotResult,
     context_path: &Path,
+    github_issue_context: Option<&crate::services::github_integration::ParsedIssue>,
 ) -> Result<()> {
     use serde_json::json;
 
@@ -2147,7 +2303,7 @@ async fn output_ai_rewrite_request(
         .collect();
 
     // Create the AI request
-    let ai_request = json!({
+    let mut ai_request = json!({
         "action": "rewrite_file",
         "file_path": target_file,
         "current_content": current_content,
@@ -2179,6 +2335,16 @@ async fn output_ai_rewrite_request(
         "instructions": "Apply RIGID EXTREME quality enforcement. Fix ALL violations:\n1. Lint violations - ALL clippy lints including pedantic, nursery, and restriction\n2. Complexity - Break down ANY function with complexity > 10 (target: 5)\n3. SATD - Remove ALL TODO, FIXME, HACK comments (zero tolerance)\n4. Coverage - MUST achieve ≥80% test coverage with meaningful tests\n5. TDG - Technical Debt Gradient MUST be < 1.0\n6. Duplication - ZERO duplicate code allowed\n7. Big-O - All algorithms MUST be O(n) or better\n8. Provability - Achieve ≥90% provability score\n9. Documentation - Every public item MUST have comprehensive doc comments\n10. Error handling - No unwrap/expect, use proper Result types\n\nThis file MUST meet RIGID extreme quality standards. No exceptions.\nWrite the complete fixed file content to the path specified in 'output_path'.",
         "output_path": format!("{}.fixed", target_file.display()),
     });
+    
+    // Add GitHub issue context if available
+    if let Some(issue_context) = github_issue_context {
+        ai_request["issue_context"] = json!({
+            "title": issue_context.issue.title,
+            "summary": issue_context.summary,
+            "keywords": issue_context.keywords,
+            "priority_areas": issue_context.keywords.keys().collect::<Vec<_>>(),
+        });
+    }
 
     // Output as formatted JSON for AI consumption
     println!("\n🤖 AI_REWRITE_REQUEST_START");
@@ -2362,10 +2528,12 @@ fn parse_new_function_line(line: &str) -> Option<FunctionInfo> {
     let name = line[name_start + 1..name_end].to_string();
 
     // Extract complexity
-    let complexity = line.find("[complexity: ")
+    let complexity = line
+        .find("[complexity: ")
         .and_then(|comp_start| {
             let comp_str = &line[comp_start + 12..];
-            comp_str.find(']')
+            comp_str
+                .find(']')
                 .and_then(|comp_end| comp_str[..comp_end].parse().ok())
         })
         .unwrap_or(1);
@@ -2388,10 +2556,12 @@ fn parse_function_line(line: &str) -> Option<FunctionInfo> {
         let name = line[..name_end].to_string();
 
         // Extract complexity
-        let complexity = line.find("complexity: ")
+        let complexity = line
+            .find("complexity: ")
             .and_then(|comp_start| {
                 let comp_str = &line[comp_start + 12..];
-                comp_str.find(|c: char| !c.is_numeric())
+                comp_str
+                    .find(|c: char| !c.is_numeric())
                     .and_then(|comp_end| comp_str[..comp_end].parse().ok())
                     .or_else(|| comp_str.parse().ok())
             })
@@ -2489,7 +2659,7 @@ async fn find_file_with_lowest_coverage(
         if is_non_refactorable_file(&file) {
             continue;
         }
-        
+
         // Apply include/exclude patterns
         if !should_process_file(&file, exclude_patterns, include_patterns) {
             continue;
@@ -2516,9 +2686,7 @@ async fn find_file_with_lowest_coverage(
             .to_string_lossy()
             .to_string();
         file_coverage_data.push((file, coverage, file_size));
-        eprintln!(
-            "  📈 {file_name} - {coverage:.1}% coverage, {file_size} lines"
-        );
+        eprintln!("  📈 {file_name} - {coverage:.1}% coverage, {file_size} lines");
     }
 
     if file_coverage_data.is_empty() {
@@ -2580,20 +2748,40 @@ async fn select_coverage_or_extreme_target(
 ) -> Result<PathBuf> {
     // Priority 3: Coverage < 80%
     eprintln!("\n📊 PRIORITY 3: Checking for files with coverage < 80%...");
-    eprintln!("   Current overall coverage: {:.1}%", state.quality_metrics.coverage_percent);
-    
+    eprintln!(
+        "   Current overall coverage: {:.1}%",
+        state.quality_metrics.coverage_percent
+    );
+
     // Try to find a file with coverage < 80%
-    match find_file_with_low_coverage(project_path, completed_files, exclude_patterns, include_patterns).await {
+    match find_file_with_low_coverage(
+        project_path,
+        completed_files,
+        exclude_patterns,
+        include_patterns,
+    )
+    .await
+    {
         Ok(file) => {
-            eprintln!("   Found file needing coverage improvement: {}", file.display());
+            eprintln!(
+                "   Found file needing coverage improvement: {}",
+                file.display()
+            );
             Ok(file)
         }
         Err(_) => {
             eprintln!("   ✅ All files have ≥ 80% coverage - checking extreme quality...");
-            
+
             // Priority 4: Enforce extreme (complexity, SATD, other standards)
             eprintln!("\n🏆 PRIORITY 4: Enforcing extreme quality standards...");
-            select_extreme_quality_target(project_path, state, completed_files, exclude_patterns, include_patterns).await
+            select_extreme_quality_target(
+                project_path,
+                state,
+                completed_files,
+                exclude_patterns,
+                include_patterns,
+            )
+            .await
         }
     }
 }
@@ -2612,30 +2800,33 @@ async fn find_file_with_low_coverage(
     include_patterns: &[String],
 ) -> Result<PathBuf> {
     let rust_files = find_rust_files(project_path).await?;
-    
+
     for file in rust_files {
         if completed_files.contains(&file) {
             continue;
         }
-        
+
         if is_non_refactorable_file(&file) {
             continue;
         }
-        
+
         if !should_process_file(&file, exclude_patterns, include_patterns) {
             continue;
         }
-        
+
         let coverage = check_file_coverage(project_path, &file)
             .await
             .unwrap_or(0.0);
-            
+
         if coverage < 80.0 {
-            eprintln!("   📊 {} has {coverage:.1}% coverage (< 80%)", file.display());
+            eprintln!(
+                "   📊 {} has {coverage:.1}% coverage (< 80%)",
+                file.display()
+            );
             return Ok(file);
         }
     }
-    
+
     anyhow::bail!("No files with coverage < 80% found")
 }
 
@@ -2655,26 +2846,46 @@ async fn select_extreme_quality_target(
     include_patterns: &[String],
 ) -> Result<PathBuf> {
     let profile = QualityProfile::default();
-    
+
     // Check for high complexity
     if state.quality_metrics.max_complexity > u32::from(profile.complexity_max) {
-        eprintln!("   🔧 Found functions with complexity > {} (max allowed: {})",
-            state.quality_metrics.max_complexity, profile.complexity_max);
-        return find_file_with_high_complexity(project_path, completed_files, exclude_patterns, include_patterns).await;
+        eprintln!(
+            "   🔧 Found functions with complexity > {} (max allowed: {})",
+            state.quality_metrics.max_complexity, profile.complexity_max
+        );
+        return find_file_with_high_complexity(
+            project_path,
+            completed_files,
+            exclude_patterns,
+            include_patterns,
+        )
+        .await;
     }
-    
+
     // Check for SATD
     if state.quality_metrics.satd_count > 0 {
-        eprintln!("   🧹 Found {} SATD items (TODO/FIXME/HACK)", state.quality_metrics.satd_count);
-        return find_file_with_satd(project_path, completed_files, exclude_patterns, include_patterns).await;
+        eprintln!(
+            "   🧹 Found {} SATD items (TODO/FIXME/HACK)",
+            state.quality_metrics.satd_count
+        );
+        return find_file_with_satd(
+            project_path,
+            completed_files,
+            exclude_patterns,
+            include_patterns,
+        )
+        .await;
     }
-    
+
     // All quality standards met
     eprintln!("\n🎉 All quality standards achieved!");
     eprintln!("   ✅ No lint violations");
     eprintln!("   ✅ Build passes");
     eprintln!("   ✅ All files have ≥ 80% coverage");
-    eprintln!("   ✅ All functions have complexity ≤ {}", profile.complexity_max);
+    eprintln!(
+        "   ✅ All functions have complexity ≤ {}",
+        profile.complexity_max
+    );
     eprintln!("   ✅ Zero SATD items");
     anyhow::bail!("All quality gates met - refactoring complete!")
 }
@@ -2698,10 +2909,22 @@ async fn select_fallback_target(
 
     if state.quality_metrics.max_complexity > u32::from(profile.complexity_max) {
         eprintln!("🔧 FALLBACK MODE 1: Targeting high complexity functions");
-        find_file_with_high_complexity(project_path, completed_files, exclude_patterns, include_patterns).await
+        find_file_with_high_complexity(
+            project_path,
+            completed_files,
+            exclude_patterns,
+            include_patterns,
+        )
+        .await
     } else if state.quality_metrics.satd_count > 0 {
         eprintln!("🔧 FALLBACK MODE 2: Targeting SATD (technical debt) items");
-        find_file_with_satd(project_path, completed_files, exclude_patterns, include_patterns).await
+        find_file_with_satd(
+            project_path,
+            completed_files,
+            exclude_patterns,
+            include_patterns,
+        )
+        .await
     } else if state.quality_metrics.coverage_percent < 80.0 {
         eprintln!("🔧 FALLBACK MODE 3: COVERAGE-DRIVEN REFACTORING");
         eprintln!(
@@ -2709,7 +2932,13 @@ async fn select_fallback_target(
             state.quality_metrics.coverage_percent
         );
         eprintln!("   🎯 Finding largest file with lowest coverage for maximum impact...");
-        find_file_with_lowest_coverage(project_path, completed_files, exclude_patterns, include_patterns).await
+        find_file_with_lowest_coverage(
+            project_path,
+            completed_files,
+            exclude_patterns,
+            include_patterns,
+        )
+        .await
     } else {
         eprintln!("✅ All quality gates passed!");
         anyhow::bail!("All quality gates met - refactoring complete!")
@@ -2999,6 +3228,7 @@ async fn output_ai_unified_rewrite_request(
     needs_tests: bool,
     current_coverage: f64,
     context_path: &Path,
+    github_issue_context: Option<&crate::services::github_integration::ParsedIssue>,
 ) -> Result<()> {
     // Print clear instructions BEFORE the JSON
     eprintln!();
@@ -3006,14 +3236,17 @@ async fn output_ai_unified_rewrite_request(
     eprintln!("================================");
     eprintln!();
     eprintln!("🎯 What you need to do:");
-    eprintln!("   1. Refactor {} to meet EXTREME quality standards", file_path.display());
+    eprintln!(
+        "   1. Refactor {} to meet EXTREME quality standards",
+        file_path.display()
+    );
     eprintln!("   2. Create comprehensive unit tests achieving ≥80% coverage");
     eprintln!("   3. Fix all {} lint violations", violations.len());
     eprintln!("   4. Ensure all functions have complexity ≤ 10 (target: 5)");
     eprintln!();
     eprintln!("📁 Files to create/modify:");
     eprintln!("   • {} (refactored source)", file_path.display());
-    
+
     // Determine test file location
     let test_file_path = if file_path.to_string_lossy().contains("/src/") {
         // For files in src/, tests go alongside
@@ -3024,8 +3257,11 @@ async fn output_ai_unified_rewrite_request(
         let stem = file_path.file_stem().unwrap().to_string_lossy();
         PathBuf::from("tests").join(format!("{}_test.rs", stem))
     };
-    eprintln!("   • {} (unit tests with >80% coverage)", test_file_path.display());
-    
+    eprintln!(
+        "   • {} (unit tests with >80% coverage)",
+        test_file_path.display()
+    );
+
     eprintln!();
     eprintln!("✅ Success Criteria:");
     eprintln!("   • All functions have complexity ≤ 10 (target: 5)");
@@ -3050,7 +3286,7 @@ async fn output_ai_unified_rewrite_request(
     };
 
     // Create the unified request
-    let request = serde_json::json!({
+    let mut request = serde_json::json!({
         "task": "unified_rewrite",
         "file": file_path.to_string_lossy(),
         "current_content": current_content,
@@ -3093,6 +3329,20 @@ async fn output_ai_unified_rewrite_request(
             }
         ]
     });
+    
+    // Add GitHub issue context if available
+    if let Some(issue_context) = github_issue_context {
+        request["issue_context"] = serde_json::json!({
+            "title": issue_context.issue.title,
+            "summary": issue_context.summary,
+            "keywords": issue_context.keywords,
+            "priority_areas": issue_context.keywords.keys().collect::<Vec<_>>(),
+            "instructions": format!(
+                "PRIORITY: Focus on fixing issues related to: {}. The user has specifically identified these areas as problematic in the GitHub issue.",
+                issue_context.keywords.keys().cloned().collect::<Vec<_>>().join(", ")
+            ),
+        });
+    }
 
     // Output as JSON for AI consumption
     println!("{}", serde_json::to_string_pretty(&request)?);
@@ -3104,10 +3354,16 @@ async fn output_ai_unified_rewrite_request(
     eprintln!("   1. Save the above JSON as refactor_request.json");
     eprintln!("   2. Use your AI tool to process the request");
     eprintln!("   3. Apply the generated refactoring and tests");
-    eprintln!("   4. Run: cargo test --lib -- {}::tests", file_path.file_stem().unwrap().to_string_lossy());
+    eprintln!(
+        "   4. Run: cargo test --lib -- {}::tests",
+        file_path.file_stem().unwrap().to_string_lossy()
+    );
     eprintln!("   5. Run: cargo tarpaulin --lib --out Html --output-dir coverage");
     eprintln!("   6. Verify coverage meets 80% threshold");
-    eprintln!("   7. Run: pmat analyze complexity {} --max-cyclomatic 10", file_path.display());
+    eprintln!(
+        "   7. Run: pmat analyze complexity {} --max-cyclomatic 10",
+        file_path.display()
+    );
     eprintln!("   8. Commit when all quality gates pass");
     eprintln!();
 
@@ -3196,7 +3452,7 @@ pub async fn calculate_refactor_progress(
     } else {
         elapsed_seconds as f64 * 20.0 // Conservative estimate if just started
     };
-    let estimated_remaining_minutes = 
+    let estimated_remaining_minutes =
         ((estimated_total_time - elapsed_seconds as f64) / 60.0).max(0.0) as u32;
 
     // Quality gates
@@ -3398,25 +3654,28 @@ pub async fn display_refactor_progress(
 /// Returns an error if:
 /// - Failed to read test file
 /// - Failed to extract dependencies
-async fn find_test_dependencies(test_path: &Path, test_name: &Option<String>) -> Result<Vec<PathBuf>> {
+async fn find_test_dependencies(
+    test_path: &Path,
+    test_name: &Option<String>,
+) -> Result<Vec<PathBuf>> {
     let test_content = fs::read_to_string(test_path).await?;
-    
+
     if let Some(name) = test_name {
         eprintln!("🔍 Looking for specific test: {name}");
     }
-    
+
     let mut dependencies = Vec::new();
-    
+
     // Extract import-based dependencies
     extract_import_dependencies(&test_content, test_path, &mut dependencies)?;
-    
+
     // Extract file reference dependencies
     extract_file_ref_dependencies(&test_content, &mut dependencies)?;
-    
+
     // Remove duplicates
     dependencies.sort();
     dependencies.dedup();
-    
+
     Ok(dependencies)
 }
 
@@ -3425,9 +3684,13 @@ async fn find_test_dependencies(test_path: &Path, test_name: &Option<String>) ->
 /// # Errors
 ///
 /// Returns an error if the operation fails
-fn extract_import_dependencies(test_content: &str, test_path: &Path, dependencies: &mut Vec<PathBuf>) -> Result<()> {
+fn extract_import_dependencies(
+    test_content: &str,
+    test_path: &Path,
+    dependencies: &mut Vec<PathBuf>,
+) -> Result<()> {
     let import_regex = regex::Regex::new(r"use\s+(crate::|super::|self::)([^;]+);").unwrap();
-    
+
     for cap in import_regex.captures_iter(test_content) {
         if let Some(import_path) = cap.get(2).map(|m| m.as_str()) {
             if let Some(dep_path) = resolve_import_path(import_path, test_path) {
@@ -3435,7 +3698,7 @@ fn extract_import_dependencies(test_content: &str, test_path: &Path, dependencie
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -3444,12 +3707,12 @@ fn resolve_import_path(import_path: &str, test_path: &Path) -> Option<PathBuf> {
     if !import_path.contains("::") {
         return None;
     }
-    
+
     let parts: Vec<&str> = import_path.split("::").collect();
     if parts.is_empty() {
         return None;
     }
-    
+
     let mut path = PathBuf::from("src");
     for part in &parts {
         if part.contains('{') {
@@ -3458,17 +3721,24 @@ fn resolve_import_path(import_path: &str, test_path: &Path) -> Option<PathBuf> {
         path.push(part.trim());
     }
     path.set_extension("rs");
-    
+
     // Try various base paths
     let test_dir = test_path.parent().unwrap_or(Path::new("."));
     let potential_paths = vec![
         test_dir.join(&path),
         test_dir.parent().unwrap_or(Path::new(".")).join(&path),
-        test_dir.parent().unwrap_or(Path::new(".")).parent().unwrap_or(Path::new(".")).join(&path),
+        test_dir
+            .parent()
+            .unwrap_or(Path::new("."))
+            .parent()
+            .unwrap_or(Path::new("."))
+            .join(&path),
         PathBuf::from("server").join(&path),
     ];
-    
-    potential_paths.into_iter().find(|p| p.exists() && p.is_file())
+
+    potential_paths
+        .into_iter()
+        .find(|p| p.exists() && p.is_file())
 }
 
 /// Extract dependencies from direct file references
@@ -3476,9 +3746,13 @@ fn resolve_import_path(import_path: &str, test_path: &Path) -> Option<PathBuf> {
 /// # Errors
 ///
 /// Returns an error if the operation fails
-fn extract_file_ref_dependencies(test_content: &str, dependencies: &mut Vec<PathBuf>) -> Result<()> {
-    let file_ref_regex = regex::Regex::new(r#"["']((?:src/|\\.\\./)\\S+\\.(?:rs|py|ts|js))["']"#).unwrap();
-    
+fn extract_file_ref_dependencies(
+    test_content: &str,
+    dependencies: &mut Vec<PathBuf>,
+) -> Result<()> {
+    let file_ref_regex =
+        regex::Regex::new(r#"["']((?:src/|\\.\\./)\\S+\\.(?:rs|py|ts|js))["']"#).unwrap();
+
     for cap in file_ref_regex.captures_iter(test_content) {
         if let Some(file_path) = cap.get(1).map(|m| m.as_str()) {
             let path = if file_path.starts_with("src/") {
@@ -3486,13 +3760,13 @@ fn extract_file_ref_dependencies(test_content: &str, dependencies: &mut Vec<Path
             } else {
                 PathBuf::from(file_path)
             };
-            
+
             if path.exists() && path.is_file() {
                 dependencies.push(path);
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -3553,7 +3827,7 @@ async fn analyze_compilation_errors(
 
     // Parse short format messages to find files with most errors
     let mut file_errors: HashMap<PathBuf, Vec<CompilationError>> = HashMap::new();
-    
+
     #[derive(Debug)]
     struct CompilationError {
         line: u32,
@@ -3566,7 +3840,7 @@ async fn analyze_compilation_errors(
 
     // Combine stdout and stderr for error messages
     let error_output = String::from_utf8_lossy(&output.stderr);
-    
+
     // Parse error lines in format: src/file.rs:10:5: error: message
     for line in error_output.lines() {
         if line.contains(": error:") || line.contains(": error[") {
@@ -3580,20 +3854,21 @@ async fn analyze_compilation_errors(
                         let file_path = PathBuf::from(parts[0]);
                         let line_num = parts[1].parse::<u32>().unwrap_or(1);
                         let column = parts[2].parse::<u32>().unwrap_or(1);
-                        
+
                         // Extract error message
                         let message_start = line.find("error:").unwrap_or(0) + 6;
                         let message = line[message_start..].trim().to_string();
-                        
+
                         // Strip workspace prefix if needed
-                        let relative_path = if let Ok(stripped) = file_path.strip_prefix("server/") {
+                        let relative_path = if let Ok(stripped) = file_path.strip_prefix("server/")
+                        {
                             PathBuf::from(stripped)
                         } else if file_path.starts_with("src/") {
                             file_path.clone()
                         } else {
                             continue;
                         };
-                        
+
                         let error = CompilationError {
                             line: line_num,
                             column,
@@ -3602,7 +3877,7 @@ async fn analyze_compilation_errors(
                             message,
                             level: "error".to_string(),
                         };
-                        
+
                         file_errors.entry(relative_path).or_default().push(error);
                     }
                 }
@@ -3740,8 +4015,9 @@ async fn find_file_with_high_complexity(
                                     eprintln!("⏭️  Skipping test/fuzz/bench file with high complexity: {}", file.display());
                                     continue;
                                 }
-                                if !completed_files.contains(file) && 
-                                   should_process_file(file, exclude_patterns, include_patterns) {
+                                if !completed_files.contains(file)
+                                    && should_process_file(file, exclude_patterns, include_patterns)
+                                {
                                     return Ok(file.clone());
                                 }
                             }
@@ -3761,7 +4037,7 @@ async fn find_file_with_high_complexity(
 ///
 /// Returns an error if the operation fails
 async fn find_file_with_satd(
-    project_path: &Path, 
+    project_path: &Path,
     completed_files: &[PathBuf],
     exclude_patterns: &[String],
     include_patterns: &[String],
@@ -3789,8 +4065,9 @@ async fn find_file_with_satd(
                 for item in items {
                     if let Some(file_str) = item["file"].as_str() {
                         let file = PathBuf::from(file_str.trim_start_matches("./"));
-                        if !completed_files.contains(&file) &&
-                           should_process_file(&file, exclude_patterns, include_patterns) {
+                        if !completed_files.contains(&file)
+                            && should_process_file(&file, exclude_patterns, include_patterns)
+                        {
                             return Ok(file);
                         }
                     }
@@ -4516,7 +4793,7 @@ async fn find_test_binary(coverage_dir: &Path) -> Result<PathBuf> {
             if let Some(name) = path.file_name() {
                 let name_str = name.to_string_lossy();
                 // Look for test binaries (they have hash suffixes)
-                if name_str.contains("paiml_mcp_agent_toolkit-") && !name_str.ends_with(".d") {
+                if name_str.contains("pmat-") && !name_str.ends_with(".d") {
                     return Ok(path);
                 }
             }
@@ -4657,3 +4934,21 @@ fn determine_test_file_path(source_path: &Path) -> Result<PathBuf> {
     }
 }
 
+/// Find files by name in the project directory
+async fn find_files_by_name(project_path: &Path, file_name: &str) -> Result<Vec<PathBuf>> {
+    let mut found_files = Vec::new();
+    
+    for entry in WalkDir::new(project_path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| !e.file_type().is_dir())
+    {
+        if let Some(name) = entry.file_name().to_str() {
+            if name == file_name {
+                found_files.push(entry.path().to_path_buf());
+            }
+        }
+    }
+    
+    Ok(found_files)
+}

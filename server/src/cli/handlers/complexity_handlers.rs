@@ -56,11 +56,9 @@ pub async fn handle_analyze_complexity(
     // Format output
     let formatted_output = match format {
         ComplexityOutputFormat::Summary => Ok(format_complexity_summary(&summary)),
-        ComplexityOutputFormat::Full => {
-            Ok(format_complexity_report(&summary))
-        }
+        ComplexityOutputFormat::Full => Ok(format_complexity_report(&summary)),
         ComplexityOutputFormat::Sarif => format_as_sarif(&summary)
-                .map_err(|e| anyhow::anyhow!("SARIF serialization failed: {}", e)),
+            .map_err(|e| anyhow::anyhow!("SARIF serialization failed: {}", e)),
         ComplexityOutputFormat::Json => {
             let json_output = serde_json::json!({
                 "summary": summary,
@@ -151,7 +149,10 @@ async fn run_dead_code_analysis(
 
     let mut analysis_result = analyzer.analyze_with_ranking(path, config).await?;
 
-    eprintln!("🔍 Found {} ranked files", analysis_result.ranked_files.len());
+    eprintln!(
+        "🔍 Found {} ranked files",
+        analysis_result.ranked_files.len()
+    );
     eprintln!(
         "🔍 Total files analyzed: {}",
         analysis_result.summary.total_files_analyzed
@@ -172,7 +173,10 @@ async fn run_dead_code_analysis(
 }
 
 /// Format dead code result based on output format
-fn format_dead_code_result(result: &crate::models::dead_code::DeadCodeResult, format: &DeadCodeOutputFormat) -> Result<String> {
+fn format_dead_code_result(
+    result: &crate::models::dead_code::DeadCodeResult,
+    format: &DeadCodeOutputFormat,
+) -> Result<String> {
     match format {
         DeadCodeOutputFormat::Json => format_dead_code_as_json(result),
         DeadCodeOutputFormat::Sarif => format_dead_code_as_sarif(result),
@@ -190,7 +194,7 @@ fn format_dead_code_as_json(result: &crate::models::dead_code::DeadCodeResult) -
 fn format_dead_code_as_sarif(result: &crate::models::dead_code::DeadCodeResult) -> Result<String> {
     use crate::models::dead_code::{ConfidenceLevel, DeadCodeType};
     use serde_json::json;
-    
+
     let sarif = json!({
         "version": "2.1.0",
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
@@ -255,80 +259,166 @@ fn format_dead_code_as_sarif(result: &crate::models::dead_code::DeadCodeResult) 
 }
 
 /// Format result as summary
-fn format_dead_code_as_summary(result: &crate::models::dead_code::DeadCodeResult) -> Result<String> {
+fn format_dead_code_as_summary(
+    result: &crate::models::dead_code::DeadCodeResult,
+) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     writeln!(&mut output, "# Dead Code Analysis Summary\n")?;
     writeln!(&mut output, "📊 **Files analyzed**: {}", result.total_files)?;
-    writeln!(&mut output, "☠️  **Files with dead code**: {}", result.summary.files_with_dead_code)?;
-    writeln!(&mut output, "📏 **Total dead lines**: {}", result.summary.total_dead_lines)?;
-    writeln!(&mut output, "📈 **Dead code percentage**: {:.2}%\n", result.summary.dead_percentage)?;
+    writeln!(
+        &mut output,
+        "☠️  **Files with dead code**: {}",
+        result.summary.files_with_dead_code
+    )?;
+    writeln!(
+        &mut output,
+        "📏 **Total dead lines**: {}",
+        result.summary.total_dead_lines
+    )?;
+    writeln!(
+        &mut output,
+        "📈 **Dead code percentage**: {:.2}%\n",
+        result.summary.dead_percentage
+    )?;
 
     if result.summary.dead_functions > 0 {
         writeln!(&mut output, "## Dead Code by Type\n")?;
-        writeln!(&mut output, "- **Dead functions**: {}", result.summary.dead_functions)?;
-        writeln!(&mut output, "- **Dead classes**: {}", result.summary.dead_classes)?;
-        writeln!(&mut output, "- **Dead variables**: {}", result.summary.dead_modules)?;
-        writeln!(&mut output, "- **Unreachable blocks**: {}", result.summary.unreachable_blocks)?;
+        writeln!(
+            &mut output,
+            "- **Dead functions**: {}",
+            result.summary.dead_functions
+        )?;
+        writeln!(
+            &mut output,
+            "- **Dead classes**: {}",
+            result.summary.dead_classes
+        )?;
+        writeln!(
+            &mut output,
+            "- **Dead variables**: {}",
+            result.summary.dead_modules
+        )?;
+        writeln!(
+            &mut output,
+            "- **Unreachable blocks**: {}",
+            result.summary.unreachable_blocks
+        )?;
     }
 
     if !result.files.is_empty() {
         writeln!(&mut output, "\n## Top Files with Dead Code\n")?;
         for (i, file) in result.files.iter().take(10).enumerate() {
-            writeln!(&mut output, "{}. `{}` - {:.1}% dead ({} lines)", 
-                i + 1, file.path, file.dead_percentage, file.dead_lines)?;
+            writeln!(
+                &mut output,
+                "{}. `{}` - {:.1}% dead ({} lines)",
+                i + 1,
+                file.path,
+                file.dead_percentage,
+                file.dead_lines
+            )?;
         }
     }
-    
+
     Ok(output)
 }
 
 /// Format result as markdown
-fn format_dead_code_as_markdown(result: &crate::models::dead_code::DeadCodeResult) -> Result<String> {
+fn format_dead_code_as_markdown(
+    result: &crate::models::dead_code::DeadCodeResult,
+) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     writeln!(&mut output, "# Dead Code Analysis Report\n")?;
     writeln!(&mut output, "## Summary\n")?;
     writeln!(&mut output, "| Metric | Value |")?;
     writeln!(&mut output, "|--------|-------|")?;
     writeln!(&mut output, "| Files Analyzed | {} |", result.total_files)?;
-    writeln!(&mut output, "| Files with Dead Code | {} |", result.summary.files_with_dead_code)?;
-    writeln!(&mut output, "| Total Dead Lines | {} |", result.summary.total_dead_lines)?;
-    writeln!(&mut output, "| Dead Code Percentage | {:.2}% |", result.summary.dead_percentage)?;
+    writeln!(
+        &mut output,
+        "| Files with Dead Code | {} |",
+        result.summary.files_with_dead_code
+    )?;
+    writeln!(
+        &mut output,
+        "| Total Dead Lines | {} |",
+        result.summary.total_dead_lines
+    )?;
+    writeln!(
+        &mut output,
+        "| Dead Code Percentage | {:.2}% |",
+        result.summary.dead_percentage
+    )?;
     writeln!(&mut output)?;
-    
+
     if result.summary.dead_functions > 0 {
         writeln!(&mut output, "## Dead Code Breakdown\n")?;
         writeln!(&mut output, "| Type | Count |")?;
         writeln!(&mut output, "|------|-------|")?;
-        writeln!(&mut output, "| Functions | {} |", result.summary.dead_functions)?;
+        writeln!(
+            &mut output,
+            "| Functions | {} |",
+            result.summary.dead_functions
+        )?;
         writeln!(&mut output, "| Classes | {} |", result.summary.dead_classes)?;
-        writeln!(&mut output, "| Variables | {} |", result.summary.dead_modules)?;
-        writeln!(&mut output, "| Unreachable Blocks | {} |", result.summary.unreachable_blocks)?;
+        writeln!(
+            &mut output,
+            "| Variables | {} |",
+            result.summary.dead_modules
+        )?;
+        writeln!(
+            &mut output,
+            "| Unreachable Blocks | {} |",
+            result.summary.unreachable_blocks
+        )?;
         writeln!(&mut output)?;
     }
-    
+
     if !result.files.is_empty() {
         writeln!(&mut output, "## File Details\n")?;
-        writeln!(&mut output, "| File | Dead % | Dead Lines | Confidence | Items |")?;
-        writeln!(&mut output, "|------|--------|------------|------------|-------|")?;
-        
+        writeln!(
+            &mut output,
+            "| File | Dead % | Dead Lines | Confidence | Items |"
+        )?;
+        writeln!(
+            &mut output,
+            "|------|--------|------------|------------|-------|"
+        )?;
+
         for file in result.files.iter().take(20) {
-            writeln!(&mut output, "| {} | {:.1}% | {} | {:?} | {} |",
-                file.path, file.dead_percentage, file.dead_lines, 
-                file.confidence, file.items.len())?;
+            writeln!(
+                &mut output,
+                "| {} | {:.1}% | {} | {:?} | {} |",
+                file.path,
+                file.dead_percentage,
+                file.dead_lines,
+                file.confidence,
+                file.items.len()
+            )?;
         }
         writeln!(&mut output)?;
     }
-    
+
     writeln!(&mut output, "## Recommendations\n")?;
-    writeln!(&mut output, "1. **Review High Confidence Dead Code**: Start with files marked as high confidence.")?;
-    writeln!(&mut output, "2. **Check Test Coverage**: Dead code often indicates missing tests.")?;
-    writeln!(&mut output, "3. **Consider Refactoring**: Large amounts of dead code may indicate design issues.")?;
-    writeln!(&mut output, "4. **Remove Carefully**: Ensure code is truly dead before removal.")?;
-    
+    writeln!(
+        &mut output,
+        "1. **Review High Confidence Dead Code**: Start with files marked as high confidence."
+    )?;
+    writeln!(
+        &mut output,
+        "2. **Check Test Coverage**: Dead code often indicates missing tests."
+    )?;
+    writeln!(
+        &mut output,
+        "3. **Consider Refactoring**: Large amounts of dead code may indicate design issues."
+    )?;
+    writeln!(
+        &mut output,
+        "4. **Remove Carefully**: Ensure code is truly dead before removal."
+    )?;
+
     Ok(output)
 }
 
@@ -821,5 +911,3 @@ mod tests {
         assert_eq!(1 + 1, 2);
     }
 }
-
-

@@ -42,6 +42,7 @@ pub mod file_discovery;
 pub mod fixed_graph_builder;
 pub mod git_analysis;
 pub mod git_clone;
+pub mod github_integration;
 pub mod incremental_churn;
 pub mod incremental_coverage_analyzer;
 pub mod lightweight_provability_analyzer;
@@ -70,6 +71,15 @@ pub mod unified_ast_parser;
 pub mod unified_refactor_analyzer;
 pub mod verified_complexity;
 pub mod wasm;
+
+#[cfg(test)]
+mod ast_rust_property_tests;
+
+#[cfg(all(test, feature = "typescript-ast"))]
+mod ast_typescript_property_tests;
+
+#[cfg(test)]
+mod satd_property_tests;
 
 #[cfg(test)]
 mod tests {

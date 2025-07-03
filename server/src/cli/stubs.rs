@@ -78,7 +78,13 @@ pub async fn handle_analyze_makefile(
     let filtered_violations = filter_makefile_violations(&lint_result.violations, &rules);
 
     // Format output based on requested format
-    let content = format_makefile_output(&path, &filtered_violations, &lint_result, gnu_version.as_ref(), format)?;
+    let content = format_makefile_output(
+        &path,
+        &filtered_violations,
+        &lint_result,
+        gnu_version.as_ref(),
+        format,
+    )?;
 
     // Print output
     println!("{}", content);
@@ -130,8 +136,12 @@ fn format_makefile_output(
     format: MakefileOutputFormat,
 ) -> Result<String> {
     match format {
-        MakefileOutputFormat::Json => format_makefile_as_json(path, filtered_violations, lint_result, gnu_version),
-        MakefileOutputFormat::Human => format_makefile_as_human(path, filtered_violations, lint_result, gnu_version),
+        MakefileOutputFormat::Json => {
+            format_makefile_as_json(path, filtered_violations, lint_result, gnu_version)
+        }
+        MakefileOutputFormat::Human => {
+            format_makefile_as_human(path, filtered_violations, lint_result, gnu_version)
+        }
         MakefileOutputFormat::Sarif => format_makefile_as_sarif(path, filtered_violations),
         MakefileOutputFormat::Gcc => format_makefile_as_gcc(path, filtered_violations),
     }
@@ -160,11 +170,11 @@ fn format_makefile_as_human(
     gnu_version: Option<&String>,
 ) -> Result<String> {
     let mut output = String::new();
-    
+
     write_makefile_human_header(&mut output, path, lint_result, gnu_version)?;
     write_makefile_violations_table(&mut output, filtered_violations)?;
     write_makefile_fix_suggestions(&mut output, filtered_violations)?;
-    
+
     Ok(output)
 }
 
@@ -178,7 +188,11 @@ fn write_makefile_human_header(
     use std::fmt::Write;
     writeln!(output, "# Makefile Analysis Report\n")?;
     writeln!(output, "**File**: {}", path.display())?;
-    writeln!(output, "**Quality Score**: {:.1}%", lint_result.quality_score * 100.0)?;
+    writeln!(
+        output,
+        "**Quality Score**: {:.1}%",
+        lint_result.quality_score * 100.0
+    )?;
     if let Some(ver) = gnu_version {
         writeln!(output, "**GNU Make Version**: {ver}")?;
     }
@@ -192,7 +206,7 @@ fn write_makefile_violations_table(
     filtered_violations: &[makefile_linter::Violation],
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     if filtered_violations.is_empty() {
         writeln!(output, "✅ No violations found!")?;
     } else {
@@ -231,7 +245,7 @@ fn write_makefile_fix_suggestions(
     filtered_violations: &[makefile_linter::Violation],
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     let violations_with_fixes: Vec<_> = filtered_violations
         .iter()
         .filter(|v| v.fix_hint.is_some())
@@ -278,7 +292,8 @@ fn format_makefile_as_sarif(
 
 // Helper: Build SARIF rules
 fn build_sarif_rules(filtered_violations: &[makefile_linter::Violation]) -> Vec<serde_json::Value> {
-    filtered_violations.iter()
+    filtered_violations
+        .iter()
         .map(|v| &v.rule)
         .collect::<std::collections::HashSet<_>>()
         .into_iter()
@@ -299,34 +314,37 @@ fn build_sarif_results(
     path: &Path,
     filtered_violations: &[makefile_linter::Violation],
 ) -> Vec<serde_json::Value> {
-    filtered_violations.iter().map(|violation| {
-        let level = get_sarif_level(&violation.severity);
-        serde_json::json!({
-            "ruleId": &violation.rule,
-            "level": level,
-            "message": {
-                "text": &violation.message
-            },
-            "locations": [{
-                "physicalLocation": {
-                    "artifactLocation": {
-                        "uri": path.display().to_string()
-                    },
-                    "region": {
-                        "startLine": violation.span.line,
-                        "startColumn": violation.span.column
+    filtered_violations
+        .iter()
+        .map(|violation| {
+            let level = get_sarif_level(&violation.severity);
+            serde_json::json!({
+                "ruleId": &violation.rule,
+                "level": level,
+                "message": {
+                    "text": &violation.message
+                },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": path.display().to_string()
+                        },
+                        "region": {
+                            "startLine": violation.span.line,
+                            "startColumn": violation.span.column
+                        }
                     }
-                }
-            }],
-            "fixes": violation.fix_hint.as_ref().map(|hint| vec![
-                serde_json::json!({
-                    "description": {
-                        "text": hint
-                    }
-                })
-            ])
+                }],
+                "fixes": violation.fix_hint.as_ref().map(|hint| vec![
+                    serde_json::json!({
+                        "description": {
+                            "text": hint
+                        }
+                    })
+                ])
+            })
         })
-    }).collect::<Vec<_>>()
+        .collect::<Vec<_>>()
 }
 
 // Helper: Get SARIF level
@@ -346,7 +364,7 @@ fn format_makefile_as_gcc(
 ) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     for violation in filtered_violations {
         writeln!(
             &mut output,
@@ -359,7 +377,7 @@ fn format_makefile_as_gcc(
             violation.rule
         )?;
     }
-    
+
     Ok(output)
 }
 
@@ -612,26 +630,34 @@ fn format_churn_as_json(analysis: &crate::models::churn::CodeChurnAnalysis) -> R
 // Helper function to format churn analysis as summary
 fn format_churn_as_summary(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
     let mut output = String::new();
-    
+
     write_summary_header(&mut output, analysis)?;
     write_summary_hotspot_files(&mut output, &analysis.summary)?;
     write_summary_stable_files(&mut output, &analysis.summary)?;
     write_summary_top_contributors(&mut output, &analysis.summary)?;
-    
+
     Ok(output)
 }
 
 // Helper function to write summary header
 fn write_summary_header(
-    output: &mut String, 
-    analysis: &crate::models::churn::CodeChurnAnalysis
+    output: &mut String,
+    analysis: &crate::models::churn::CodeChurnAnalysis,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "# Code Churn Analysis Summary\n")?;
     writeln!(output, "**Period**: Last {} days", analysis.period_days)?;
-    writeln!(output, "**Total commits**: {}", analysis.summary.total_commits)?;
-    writeln!(output, "**Files changed**: {}", analysis.summary.total_files_changed)?;
+    writeln!(
+        output,
+        "**Total commits**: {}",
+        analysis.summary.total_commits
+    )?;
+    writeln!(
+        output,
+        "**Files changed**: {}",
+        analysis.summary.total_files_changed
+    )?;
     Ok(())
 }
 
@@ -641,7 +667,7 @@ fn write_summary_hotspot_files(
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     if !summary.hotspot_files.is_empty() {
         writeln!(output, "\n## Hotspot Files (High Churn)\n")?;
         for (i, file) in summary.hotspot_files.iter().take(10).enumerate() {
@@ -657,7 +683,7 @@ fn write_summary_stable_files(
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     if !summary.stable_files.is_empty() {
         writeln!(output, "\n## Stable Files (Low Churn)\n")?;
         for (i, file) in summary.stable_files.iter().take(10).enumerate() {
@@ -673,7 +699,7 @@ fn write_summary_top_contributors(
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     if !summary.author_contributions.is_empty() {
         writeln!(output, "\n## Top Contributors\n")?;
         let mut authors: Vec<_> = summary.author_contributions.iter().collect();
@@ -688,13 +714,13 @@ fn write_summary_top_contributors(
 // Helper function to format churn analysis as markdown
 fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
     let mut output = String::new();
-    
+
     write_markdown_header(&mut output, analysis)?;
     write_markdown_summary_table(&mut output, &analysis.summary)?;
     write_markdown_file_details(&mut output, &analysis.files)?;
     write_markdown_author_contributions(&mut output, &analysis.summary)?;
     write_markdown_recommendations(&mut output)?;
-    
+
     Ok(output)
 }
 
@@ -704,9 +730,13 @@ fn write_markdown_header(
     analysis: &crate::models::churn::CodeChurnAnalysis,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "# Code Churn Analysis Report\n")?;
-    writeln!(output, "Generated: {}", analysis.generated_at.format("%Y-%m-%d %H:%M:%S UTC"))?;
+    writeln!(
+        output,
+        "Generated: {}",
+        analysis.generated_at.format("%Y-%m-%d %H:%M:%S UTC")
+    )?;
     writeln!(output, "Repository: {}", analysis.repository_root.display())?;
     writeln!(output, "Analysis Period: {} days\n", analysis.period_days)?;
     Ok(())
@@ -718,15 +748,27 @@ fn write_markdown_summary_table(
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "## Summary Statistics\n")?;
     writeln!(output, "| Metric | Value |")?;
     writeln!(output, "|--------|-------|")?;
     writeln!(output, "| Total Commits | {} |", summary.total_commits)?;
-    writeln!(output, "| Files Changed | {} |", summary.total_files_changed)?;
-    writeln!(output, "| Hotspot Files | {} |", summary.hotspot_files.len())?;
+    writeln!(
+        output,
+        "| Files Changed | {} |",
+        summary.total_files_changed
+    )?;
+    writeln!(
+        output,
+        "| Hotspot Files | {} |",
+        summary.hotspot_files.len()
+    )?;
     writeln!(output, "| Stable Files | {} |", summary.stable_files.len())?;
-    writeln!(output, "| Contributing Authors | {} |", summary.author_contributions.len())?;
+    writeln!(
+        output,
+        "| Contributing Authors | {} |",
+        summary.author_contributions.len()
+    )?;
     Ok(())
 }
 
@@ -736,11 +778,17 @@ fn write_markdown_file_details(
     files: &[crate::models::churn::FileChurnMetrics],
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     if !files.is_empty() {
         writeln!(output, "\n## File Churn Details\n")?;
-        writeln!(output, "| File | Commits | Authors | Additions | Deletions | Churn Score | Last Modified |")?;
-        writeln!(output, "|------|---------|---------|-----------|-----------|-------------|----------------|")?;
+        writeln!(
+            output,
+            "| File | Commits | Authors | Additions | Deletions | Churn Score | Last Modified |"
+        )?;
+        writeln!(
+            output,
+            "|------|---------|---------|-----------|-----------|-------------|----------------|"
+        )?;
 
         // Sort by churn score descending
         let mut sorted_files = files.to_vec();
@@ -769,7 +817,7 @@ fn write_markdown_author_contributions(
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     if !summary.author_contributions.is_empty() {
         writeln!(output, "\n## Author Contributions\n")?;
         writeln!(output, "| Author | Files Modified |")?;
@@ -788,12 +836,24 @@ fn write_markdown_author_contributions(
 // Helper function to write markdown recommendations
 fn write_markdown_recommendations(output: &mut String) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "\n## Recommendations\n")?;
-    writeln!(output, "1. **Review Hotspot Files**: Files with high churn scores may benefit from refactoring")?;
-    writeln!(output, "2. **Add Tests**: High-churn files should have comprehensive test coverage")?;
-    writeln!(output, "3. **Code Review**: Frequently modified files may indicate design issues")?;
-    writeln!(output, "4. **Documentation**: Document the reasons for frequent changes in hotspot files")?;
+    writeln!(
+        output,
+        "1. **Review Hotspot Files**: Files with high churn scores may benefit from refactoring"
+    )?;
+    writeln!(
+        output,
+        "2. **Add Tests**: High-churn files should have comprehensive test coverage"
+    )?;
+    writeln!(
+        output,
+        "3. **Code Review**: Frequently modified files may indicate design issues"
+    )?;
+    writeln!(
+        output,
+        "4. **Documentation**: Document the reasons for frequent changes in hotspot files"
+    )?;
     Ok(())
 }
 
@@ -801,7 +861,7 @@ fn write_markdown_recommendations(output: &mut String) -> Result<()> {
 fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     writeln!(&mut output, "file_path,relative_path,commit_count,unique_authors,additions,deletions,churn_score,last_modified,first_seen")?;
 
     for file in &analysis.files {
@@ -1366,9 +1426,7 @@ async fn check_entropy(_project_path: &Path, min_entropy: f64) -> Result<Vec<Qua
             severity: "warning".to_string(),
             file: "project".to_string(),
             line: None,
-            message: format!(
-                "Code entropy {entropy:.2} is below minimum {min_entropy:.2}"
-            ),
+            message: format!("Code entropy {entropy:.2} is below minimum {min_entropy:.2}"),
         });
     }
 
@@ -1530,7 +1588,10 @@ fn format_quality_gate_output(
 }
 
 // Helper: Format as JSON
-fn format_qg_as_json(results: &QualityGateResults, violations: &[QualityViolation]) -> Result<String> {
+fn format_qg_as_json(
+    results: &QualityGateResults,
+    violations: &[QualityViolation],
+) -> Result<String> {
     Ok(serde_json::to_string_pretty(&serde_json::json!({
         "results": results,
         "violations": violations,
@@ -1538,21 +1599,24 @@ fn format_qg_as_json(results: &QualityGateResults, violations: &[QualityViolatio
 }
 
 // Helper: Format as human-readable
-fn format_qg_as_human(results: &QualityGateResults, violations: &[QualityViolation]) -> Result<String> {
+fn format_qg_as_human(
+    results: &QualityGateResults,
+    violations: &[QualityViolation],
+) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     write_qg_human_header(&mut output, results)?;
     write_qg_violation_counts(&mut output, results)?;
-    
+
     if let Some(score) = results.provability_score {
         writeln!(&mut output, "\nProvability score: {score:.2}")?;
     }
-    
+
     if !violations.is_empty() {
         write_qg_violations_list(&mut output, violations)?;
     }
-    
+
     Ok(output)
 }
 
@@ -1560,8 +1624,14 @@ fn format_qg_as_human(results: &QualityGateResults, violations: &[QualityViolati
 fn write_qg_human_header(output: &mut String, results: &QualityGateResults) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, "# Quality Gate Report\n")?;
-    writeln!(output, "Status: {}",
-        if results.passed { "✅ PASSED" } else { "❌ FAILED" }
+    writeln!(
+        output,
+        "Status: {}",
+        if results.passed {
+            "✅ PASSED"
+        } else {
+            "❌ FAILED"
+        }
     )?;
     writeln!(output, "Total violations: {}\n", results.total_violations)?;
     Ok(())
@@ -1578,7 +1648,7 @@ fn write_qg_violation_counts(output: &mut String, results: &QualityGateResults) 
         ("Security", results.security_violations),
         ("Duplicate code", results.duplicate_violations),
     ];
-    
+
     for (name, count) in counts {
         if count > 0 {
             writeln!(output, "## {name} violations: {count}")?;
@@ -1592,7 +1662,11 @@ fn write_qg_violations_list(output: &mut String, violations: &[QualityViolation]
     use std::fmt::Write;
     writeln!(output, "\n## Violations:\n")?;
     for v in violations {
-        writeln!(output, "- [{}] {} - {}", v.severity, v.check_type, v.message)?;
+        writeln!(
+            output,
+            "- [{}] {} - {}",
+            v.severity, v.check_type, v.message
+        )?;
         if let Some(line) = v.line {
             writeln!(output, "  File: {}:{}", v.file, line)?;
         } else {
@@ -1606,26 +1680,30 @@ fn write_qg_violations_list(output: &mut String, violations: &[QualityViolation]
 fn format_qg_as_junit(violations: &[QualityViolation]) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     writeln!(&mut output, r#"<?xml version="1.0" encoding="UTF-8"?>"#)?;
     writeln!(&mut output, r#"<testsuites name="Quality Gate">"#)?;
-    writeln!(&mut output, 
+    writeln!(
+        &mut output,
         r#"  <testsuite name="Quality Checks" tests="{}" failures="{}">"#,
-        violations.len(), violations.len()
+        violations.len(),
+        violations.len()
     )?;
-    
+
     for v in violations {
-        writeln!(&mut output, 
+        writeln!(
+            &mut output,
             r#"    <testcase name="{}" classname="{}">"#,
             v.message, v.check_type
         )?;
-        writeln!(&mut output, 
+        writeln!(
+            &mut output,
             r#"      <failure message="{}" type="{}"/>"#,
             v.message, v.severity
         )?;
         writeln!(&mut output, r"    </testcase>")?;
     }
-    
+
     writeln!(&mut output, r"  </testsuite>")?;
     writeln!(&mut output, r"</testsuites>")?;
     Ok(output)
@@ -1635,24 +1713,33 @@ fn format_qg_as_junit(violations: &[QualityViolation]) -> Result<String> {
 fn format_qg_as_summary(results: &QualityGateResults) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    writeln!(&mut output, "Quality Gate: {}",
+    writeln!(
+        &mut output,
+        "Quality Gate: {}",
         if results.passed { "PASSED" } else { "FAILED" }
     )?;
-    writeln!(&mut output, "Total violations: {}", results.total_violations)?;
+    writeln!(
+        &mut output,
+        "Total violations: {}",
+        results.total_violations
+    )?;
     Ok(output)
 }
 
 // Helper: Format as detailed
-fn format_qg_as_detailed(results: &QualityGateResults, violations: &[QualityViolation]) -> Result<String> {
+fn format_qg_as_detailed(
+    results: &QualityGateResults,
+    violations: &[QualityViolation],
+) -> Result<String> {
     let mut output = String::new();
-    
+
     write_qg_detailed_header(&mut output, results)?;
     write_qg_detailed_summary(&mut output, results)?;
-    
+
     if !violations.is_empty() {
         write_qg_detailed_violations(&mut output, violations)?;
     }
-    
+
     Ok(output)
 }
 
@@ -1660,8 +1747,14 @@ fn format_qg_as_detailed(results: &QualityGateResults, violations: &[QualityViol
 fn write_qg_detailed_header(output: &mut String, results: &QualityGateResults) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, "# Quality Gate Detailed Report\n")?;
-    writeln!(output, "Status: {}",
-        if results.passed { "✅ PASSED" } else { "❌ FAILED" }
+    writeln!(
+        output,
+        "Status: {}",
+        if results.passed {
+            "✅ PASSED"
+        } else {
+            "❌ FAILED"
+        }
     )?;
     writeln!(output, "Total violations: {}\n", results.total_violations)?;
     Ok(())
@@ -1682,7 +1775,7 @@ fn write_qg_detailed_summary(output: &mut String, results: &QualityGateResults) 
         ("Sections", results.section_violations),
         ("Provability", results.provability_violations),
     ];
-    
+
     for (name, count) in items {
         writeln!(output, "- {}: {}", name, count)?;
     }
@@ -1690,11 +1783,21 @@ fn write_qg_detailed_summary(output: &mut String, results: &QualityGateResults) 
 }
 
 // Helper: Write detailed violations
-fn write_qg_detailed_violations(output: &mut String, violations: &[QualityViolation]) -> Result<()> {
+fn write_qg_detailed_violations(
+    output: &mut String,
+    violations: &[QualityViolation],
+) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, "\n## All Violations\n")?;
     for (i, v) in violations.iter().enumerate() {
-        writeln!(output, "{}. [{}] {}: {}", i + 1, v.severity, v.check_type, v.message)?;
+        writeln!(
+            output,
+            "{}. [{}] {}: {}",
+            i + 1,
+            v.severity,
+            v.check_type,
+            v.message
+        )?;
         if let Some(line) = v.line {
             writeln!(output, "   File: {}:{}", v.file, line)?;
         } else {
@@ -1708,17 +1811,27 @@ fn write_qg_detailed_violations(output: &mut String, violations: &[QualityViolat
 fn format_qg_as_markdown(results: &QualityGateResults) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     writeln!(output, "# Quality Gate Report\n")?;
-    writeln!(output, "**Status**: {}\n",
-        if results.passed { "✅ PASSED" } else { "❌ FAILED" }
+    writeln!(
+        output,
+        "**Status**: {}\n",
+        if results.passed {
+            "✅ PASSED"
+        } else {
+            "❌ FAILED"
+        }
     )?;
-    writeln!(output, "**Total violations**: {}\n", results.total_violations)?;
-    
+    writeln!(
+        output,
+        "**Total violations**: {}\n",
+        results.total_violations
+    )?;
+
     writeln!(output, "## Summary\n")?;
     writeln!(output, "| Check Type | Violations |")?;
     writeln!(output, "|------------|------------|")?;
-    
+
     let rows = [
         ("Complexity", results.complexity_violations),
         ("Dead Code", results.dead_code_violations),
@@ -1730,11 +1843,11 @@ fn format_qg_as_markdown(results: &QualityGateResults) -> Result<String> {
         ("Sections", results.section_violations),
         ("Provability", results.provability_violations),
     ];
-    
+
     for (name, count) in rows {
         writeln!(output, "| {} | {} |", name, count)?;
     }
-    
+
     Ok(output)
 }
 
@@ -2632,7 +2745,8 @@ fn estimate_cyclomatic_complexity(content: &str) -> u32 {
         }
 
         // Count logical operators
-        complexity += u32::try_from(trimmed.matches("&&").count() + trimmed.matches("||").count()).unwrap_or(0);
+        complexity += u32::try_from(trimmed.matches("&&").count() + trimmed.matches("||").count())
+            .unwrap_or(0);
     }
 
     complexity.min(50) // Cap at 50 for reasonable values
@@ -2886,18 +3000,21 @@ fn format_comp_as_json(report: &ComprehensiveReport) -> Result<String> {
 }
 
 // Helper: Format comprehensive report as Markdown
-fn format_comp_as_markdown(report: &ComprehensiveReport, executive_summary: bool) -> Result<String> {
+fn format_comp_as_markdown(
+    report: &ComprehensiveReport,
+    executive_summary: bool,
+) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     writeln!(&mut output, "# Comprehensive Code Analysis Report\n")?;
-    
+
     if executive_summary {
         write_comp_executive_summary(&mut output)?;
     }
-    
+
     write_comp_analysis_sections(&mut output, report)?;
-    
+
     Ok(output)
 }
 
@@ -2905,7 +3022,10 @@ fn format_comp_as_markdown(report: &ComprehensiveReport, executive_summary: bool
 fn write_comp_executive_summary(output: &mut String) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, "## Executive Summary\n")?;
-    writeln!(output, "This report provides a comprehensive analysis of code quality metrics.\n")?;
+    writeln!(
+        output,
+        "This report provides a comprehensive analysis of code quality metrics.\n"
+    )?;
     Ok(())
 }
 
@@ -2914,27 +3034,27 @@ fn write_comp_analysis_sections(output: &mut String, report: &ComprehensiveRepor
     if let Some(complexity) = &report.complexity {
         write_comp_complexity_section(output, complexity)?;
     }
-    
+
     if let Some(satd) = &report.satd {
         write_comp_satd_section(output, satd)?;
     }
-    
+
     if let Some(tdg) = &report.tdg {
         write_comp_tdg_section(output, tdg)?;
     }
-    
+
     if let Some(dead_code) = &report.dead_code {
         write_comp_dead_code_section(output, dead_code)?;
     }
-    
+
     if let Some(defects) = &report.defects {
         write_comp_defects_section(output, defects)?;
     }
-    
+
     if let Some(duplicates) = &report.duplicates {
         write_comp_duplicates_section(output, duplicates)?;
     }
-    
+
     Ok(())
 }
 
@@ -2943,8 +3063,16 @@ fn write_comp_complexity_section(output: &mut String, complexity: &ComplexityRep
     use std::fmt::Write;
     writeln!(output, "## Complexity Analysis\n")?;
     writeln!(output, "- Total functions: {}", complexity.total_functions)?;
-    writeln!(output, "- High complexity functions: {}", complexity.high_complexity_count)?;
-    writeln!(output, "- Average complexity: {:.2}", complexity.average_complexity)?;
+    writeln!(
+        output,
+        "- High complexity functions: {}",
+        complexity.high_complexity_count
+    )?;
+    writeln!(
+        output,
+        "- Average complexity: {:.2}",
+        complexity.average_complexity
+    )?;
     writeln!(output, "- P99 complexity: {}\n", complexity.p99_complexity)?;
     Ok(())
 }
@@ -2977,7 +3105,11 @@ fn write_comp_dead_code_section(output: &mut String, dead_code: &DeadCodeReport)
     use std::fmt::Write;
     writeln!(output, "## Dead Code\n")?;
     writeln!(output, "- Total items: {}", dead_code.total_items)?;
-    writeln!(output, "- Percentage: {:.1}%\n", dead_code.dead_code_percentage)?;
+    writeln!(
+        output,
+        "- Percentage: {:.1}%\n",
+        dead_code.dead_code_percentage
+    )?;
     Ok(())
 }
 
@@ -2994,9 +3126,17 @@ fn write_comp_defects_section(output: &mut String, defects: &DefectReport) -> Re
 fn write_comp_duplicates_section(output: &mut String, duplicates: &DuplicateReport) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, "## Code Duplication\n")?;
-    writeln!(output, "- Duplicate blocks: {}", duplicates.duplicate_blocks)?;
+    writeln!(
+        output,
+        "- Duplicate blocks: {}",
+        duplicates.duplicate_blocks
+    )?;
     writeln!(output, "- Duplicate lines: {}", duplicates.duplicate_lines)?;
-    writeln!(output, "- Percentage: {:.1}%\n", duplicates.duplicate_percentage)?;
+    writeln!(
+        output,
+        "- Percentage: {:.1}%\n",
+        duplicates.duplicate_percentage
+    )?;
     Ok(())
 }
 

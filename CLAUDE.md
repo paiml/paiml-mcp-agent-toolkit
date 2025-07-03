@@ -1,60 +1,79 @@
-# CLAUDE.md
+# Claude Agent Guide: paiml-mcp-agent-toolkit (pmat)
 
-## System Architecture Overview
+This guide provides the essential operational instructions for working on the `pmat` codebase, grounded in the principles of the Toyota Way.
 
-This document serves as the operational guide for the paiml-mcp-agent-toolkit (pmat), a unified protocol implementation supporting CLI, MCP, and HTTP interfaces through a single binary architecture.
+## The Toyota Way: Our Guiding Philosophy
 
-**Core Design Principle**: Protocol-agnostic service layer with deterministic behavior across all interfaces.
-- Jidoka (自働化): Build quality in through proper error handling and verification (Never use TODO or leave unfinished code)
-- Genchi Genbutsu (現地現物): Go and see the actual root causes instead of statistical approximations
-- Hansei (反省): Focus on fixing existing broken functionality rather than adding new features
-- Kaizen (改善): Continuous incremental improvement, especially through single file mode refactoring
+-   **Kaizen (改善): Continuous, Incremental Improvement.** We improve the codebase one file at a time. This ensures that every change is small, verifiable, and moves us toward our quality goals. Avoid large, sweeping changes.
+-   **Genchi Genbutsu (現地現物): Go and See.** We don't guess where problems are. We use `pmat`'s analysis tools to find the *actual* root cause of quality issues, such as complexity hotspots or technical debt.
+-   **Jidoka (自働化): Automation with a Human Touch.** We use `pmat refactor auto` to automate the creation of a refactoring plan, but an intelligent agent (you) must verify and apply the changes, ensuring correctness.
 
-## Operational Guidelines
+## Absolute Rules
 
-### ABSOLUTE RULES
-- NEVER work out of the server directory
+1.  **NEVER `cd server`:** All commands **MUST** be run from the project root (`/home/noah/src/paiml-mcp-agent-toolkit`). The `Makefile` is configured to correctly handle the workspace structure.
+2.  **ALWAYS Use Workspace Commands:** If you must run `cargo` commands directly, use workspace flags to target the `server` package (e.g., `cargo check --package pmat`). The `make` commands handle this for you.
 
-### CRITICAL TOOLS FOR QUALITY ENFORCEMENT
+## The Kaizen Refactoring Loop (The "Kata")
 
-#### Single File Mode (Toyota Way - Kaizen)
-Single file mode is CRITICAL for incremental quality improvements. These three commands work together:
+This is the core workflow for improving the codebase. Treat it as a repeatable practice (a kata) to drive quality.
 
-1. **pmat refactor auto --single-file-mode --file <path>**
-   - Targets individual files for AI-powered refactoring
-   - Achieves extreme quality standards incrementally
-   - Use when: A file has high complexity, SATD, or lint violations
+### Step 1: Find the Target (Genchi Genbutsu)
 
-2. **pmat lint-hotspot --file <path>**
-   - Analyzes single file for all quality violations
-   - Returns JSON format for parsing by refactor auto
-   - Use when: Need to understand specific file's issues
+First, "go and see" the problems. Use `pmat`'s analysis tools to identify the most critical area for improvement. Choose **one** of the following commands to find a target file:
 
-3. **pmat enforce extreme --file <path>**
-   - Verifies single file meets all quality standards
-   - Exit code 0 only if file passes all checks
-   - Use when: Validating refactoring success
+-   **For General Quality Issues:**
+    ```bash
+    pmat analyze lint-hotspot --top-files 5
+    ```
+-   **For High Complexity:**
+    ```bash
+    pmat analyze complexity --top-files 5
+    ```
+-   **For Technical Debt:**
+    ```bash
+    pmat analyze satd
+    ```
+-   **For Unused Code:**
+    ```bash
+    pmat analyze dead-code
+    ```
 
-**IMPORTANT**: Always use single file mode for refactoring to follow Toyota Way principles of incremental improvement. Never attempt to refactor entire codebase at once.
+### Step 2: Create the Refactoring Plan (Jidoka)
 
-### Quality Standards (Zero Tolerance)
-- Cyclomatic Complexity: Max 20 (target 5)
-- Test Coverage: Min 80% per file
-- SATD: Zero (no TODO, FIXME, HACK comments)
-- Lint: All clippy pedantic + nursery must pass
+Once you have identified a target file, use `pmat refactor auto` to generate an automated, AI-driven refactoring plan.
 
-### Workflow for Fixing Quality Violations
-1. Run `pmat lint-hotspot` to find worst file
-2. Use `pmat refactor auto --single-file-mode --file <worst-file>`
-3. Verify with `pmat enforce extreme --file <worst-file>`
-4. Commit changes
-5. Repeat for next worst file
-
-### Running Quality Checks
-After making any code changes, ALWAYS run:
 ```bash
-make lint        # Extreme clippy standards
-make typecheck   # Type checking
+# Generate a refactoring plan for the chosen file
+pmat refactor auto --file <path/to/target/file.rs>
 ```
 
-If these commands are not found, ask user for the correct commands and update this document.
+### Step 3: Verify the Improvement
+
+After applying the refactoring, you **MUST** verify that the change improved quality and did not introduce regressions.
+
+1.  **Run Quality Gate:** Ensure the specific file now meets our zero-tolerance standards.
+    ```bash
+    pmat quality-gate --file <path/to/target/file.rs>
+    ```
+2.  **Run Fast Tests:** Confirm that the changes have not broken any existing functionality.
+    ```bash
+    make test-fast
+    ```
+
+Once both checks pass, commit the changes and return to Step 1 to find the next target.
+
+## Mandatory Checks Before Committing
+
+After making **any** code changes, you **MUST** run the following commands from the project root. A commit will not be accepted otherwise.
+
+```bash
+make lint
+make test-fast
+```
+
+## Quality Standards (Zero Tolerance)
+
+-   **Complexity:** Maximum cyclomatic complexity of **20** per function (target: 5).
+-   **Test Coverage:** Minimum of **80%** per file.
+-   **Technical Debt:** **Zero** self-admitted technical debt (no `TODO`, `FIXME`, `HACK` comments).
+-   **Linting:** Must pass all `clippy::pedantic` and `clippy::nursery` lints.
