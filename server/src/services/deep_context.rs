@@ -887,7 +887,7 @@ impl DeepContextAnalyzer {
             "runs": [{
                 "tool": {
                     "driver": {
-                        "name": "paiml-mcp-agent-toolkit",
+                        "name": "pmat",
                         "version": context.metadata.tool_version,
                         "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
                         "shortDescription": {"text": "Professional project scaffolding and analysis toolkit"},

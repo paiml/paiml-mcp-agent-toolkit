@@ -502,7 +502,7 @@ pub fn format_sarif_output(filtered_predictions: &[(String, DefectScore)]) -> Re
         "runs": [{
             "tool": {
                 "driver": {
-                    "name": "paiml-mcp-agent-toolkit",
+                    "name": "pmat",
                     "version": env!("CARGO_PKG_VERSION"),
                     "informationUri": "https://github.com/paiml/mcp-agent-toolkit"
                 }

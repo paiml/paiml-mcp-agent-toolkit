@@ -685,7 +685,7 @@ pub fn format_as_sarif(report: &ComplexityReport) -> Result<String, serde_json::
         "runs": [{
             "tool": {
                 "driver": {
-                    "name": "paiml-mcp-agent-toolkit",
+                    "name": "pmat",
                     "version": env!("CARGO_PKG_VERSION"),
                     "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
                     "rules": rules
@@ -1556,7 +1556,7 @@ mod tests {
         assert!(sarif_output.contains("\"runs\""));
         assert!(sarif_output.contains("\"tool\""));
         assert!(sarif_output.contains("\"driver\""));
-        assert!(sarif_output.contains("\"name\": \"paiml-mcp-agent-toolkit\""));
+        assert!(sarif_output.contains("\"name\": \"pmat\""));
         assert!(sarif_output.contains("\"rules\""));
         assert!(sarif_output.contains("\"results\""));
 

@@ -201,7 +201,7 @@ fn format_dead_code_as_sarif(result: &crate::models::dead_code::DeadCodeResult) 
         "runs": [{
             "tool": {
                 "driver": {
-                    "name": "paiml-mcp-agent-toolkit",
+                    "name": "pmat",
                     "version": env!("CARGO_PKG_VERSION"),
                     "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
                     "rules": [{
@@ -519,7 +519,7 @@ fn generate_satd_sarif(
         "runs": [{
             "tool": {
                 "driver": {
-                    "name": "paiml-mcp-agent-toolkit",
+                    "name": "pmat",
                     "version": env!("CARGO_PKG_VERSION"),
                     "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
                     "rules": [{

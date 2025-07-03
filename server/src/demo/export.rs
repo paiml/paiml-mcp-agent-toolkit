@@ -200,7 +200,7 @@ impl Exporter for SarifExporter {
             "runs": [{
                 "tool": {
                     "driver": {
-                        "name": "paiml-mcp-agent-toolkit",
+                        "name": "pmat",
                         "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
                         "version": env!("CARGO_PKG_VERSION"),
                         "rules": [{
