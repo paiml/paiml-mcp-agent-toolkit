@@ -21,9 +21,9 @@ The Model Context Protocol (MCP) implementation in PMAT provides a standardized 
 │  └──────────────┘  └────────────────────────┘  │
 │  ┌──────────────────────────────────────────┐  │
 │  │              Tool Registry               │  │
-│  │  • analyze_ast    • analyze_complexity  │  │
-│  │  • analyze_churn  • generate_context    │  │
-│  │  • analyze_dag    • analyze_deep        │  │
+│  │  • Template Tools (6)  • Analysis (17) │  │
+│  │  • Vectorized (7)      • Core (4)      │  │
+│  │  • Total: 34 available MCP tools       │  │
 │  └──────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────┘
 ```
@@ -114,35 +114,75 @@ All messages follow JSON-RPC 2.0 specification:
 
 ### Available Tools
 
-#### 1. `analyze_ast`
-Performs Abstract Syntax Tree analysis on source code.
+**Total: 34 MCP Tools Available**
+
+## Template Management Tools (6 tools)
+
+#### 1. `generate_template`
+Generate project templates (Makefile, README, .gitignore).
 
 **Parameters:**
 ```typescript
 {
-  path: string;           // Project path
-  language?: string;      // Force specific language
-  include_metrics?: boolean;
+  template_type: "makefile" | "readme" | "gitignore" | "all";
+  path: string;
+  project_name?: string;
+  language?: string;
 }
 ```
 
-**Response:**
-```json
+#### 2. `list_templates`
+List all available project templates.
+
+**Parameters:**
+```typescript
 {
-  "ast": {
-    "total_nodes": 1523,
-    "depth": 12,
-    "functions": 87,
-    "classes": 23,
-    "complexity": {
-      "average": 8.5,
-      "max": 45
-    }
-  }
+  filter?: string;  // Optional filter by type
 }
 ```
 
-#### 2. `analyze_complexity`
+#### 3. `validate_template`
+Validate template parameters before generation.
+
+**Parameters:**
+```typescript
+{
+  template_type: string;
+  parameters: Record<string, any>;
+}
+```
+
+#### 4. `scaffold_project`
+Create complete project structure with templates.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  project_type: "rust" | "typescript" | "python" | "cpp";
+  features?: string[];
+}
+```
+
+#### 5. `search_templates`
+Search available templates by keyword.
+
+**Parameters:**
+```typescript
+{
+  query: string;
+  limit?: number;
+}
+```
+
+#### 6. `get_server_info`
+Get MCP server information and capabilities.
+
+**Parameters:** None
+
+## Core Analysis Tools (4 tools)
+
+#### 7. `analyze_complexity`
 Analyzes code complexity metrics.
 
 **Parameters:**
@@ -175,7 +215,7 @@ Analyzes code complexity metrics.
 }
 ```
 
-#### 3. `analyze_churn`
+#### 8. `analyze_code_churn`
 Analyzes git history for code churn patterns.
 
 **Parameters:**
@@ -184,6 +224,7 @@ Analyzes git history for code churn patterns.
   path: string;
   days?: number;         // Default: 30
   threshold?: number;    // Minimum commits
+  format?: "table" | "json" | "csv";
 }
 ```
 
@@ -208,7 +249,7 @@ Analyzes git history for code churn patterns.
 }
 ```
 
-#### 4. `generate_context`
+#### 9. `generate_context`
 Generates comprehensive project context for AI understanding.
 
 **Parameters:**
@@ -235,7 +276,7 @@ Generates comprehensive project context for AI understanding.
 }
 ```
 
-#### 5. `analyze_dag`
+#### 10. `analyze_dag`
 Generates dependency analysis graphs.
 
 **Parameters:**
@@ -258,6 +299,242 @@ Generates dependency analysis graphs.
     "max_depth": 8,
     "visualization": "graph TD\n  A[main] --> B[lib]\n  ..."
   }
+}
+```
+
+## Advanced Analysis Tools (17 tools)
+
+#### 11. `analyze_system_architecture`
+Analyze high-level system architecture and component relationships.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  output_format?: "mermaid" | "json";
+  include_metrics?: boolean;
+}
+```
+
+#### 12. `analyze_dead_code`
+Detect unused and unreachable code.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  aggressive?: boolean;
+  exclude_tests?: boolean;
+}
+```
+
+#### 13. `analyze_deep_context`
+Comprehensive analysis with defect detection.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  include_ml_predictions?: boolean;
+  max_depth?: number;
+}
+```
+
+#### 14. `analyze_tdg`
+Technical Debt Gradient analysis.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  strict?: boolean;
+  include_predictions?: boolean;
+}
+```
+
+#### 15. `analyze_makefile_lint`
+Makefile quality and best practices analysis.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  strict_mode?: boolean;
+}
+```
+
+#### 16. `analyze_provability`
+Abstract interpretation and formal verification analysis.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  verification_level?: "basic" | "advanced";
+}
+```
+
+#### 17. `analyze_defect_prediction`
+ML-based defect probability analysis.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  model?: "default" | "advanced";
+  confidence_threshold?: number;
+}
+```
+
+#### 18. `analyze_comprehensive`
+Multi-dimensional analysis combining all analysis types.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  include_all?: boolean;
+  output_format?: "json" | "report";
+}
+```
+
+#### 19. `analyze_graph_metrics`
+Graph centrality and network analysis metrics.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  metrics?: ("pagerank" | "betweenness" | "closeness" | "degree")[];
+}
+```
+
+#### 20. `analyze_name_similarity`
+Name similarity analysis with embeddings.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  similarity_threshold?: number;
+  include_suggestions?: boolean;
+}
+```
+
+#### 21. `analyze_proof_annotations`
+Collect and analyze proof annotations in code.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  annotation_types?: string[];
+}
+```
+
+#### 22. `analyze_incremental_coverage`
+Incremental coverage analysis with caching.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  baseline_ref?: string;
+  cache_enabled?: boolean;
+}
+```
+
+#### 23. `analyze_symbol_table`
+Symbol analysis with cross-references.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  include_cross_refs?: boolean;
+  export_format?: "json" | "csv";
+}
+```
+
+#### 24. `analyze_big_o`
+Algorithmic complexity analysis.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  include_worst_case?: boolean;
+  analysis_depth?: "shallow" | "deep";
+}
+```
+
+#### 25. `analyze_assemblyscript`
+AssemblyScript code analysis.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  optimization_level?: "O0" | "O1" | "O2" | "O3";
+}
+```
+
+#### 26. `analyze_webassembly`
+WebAssembly binary and text format analysis.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  format?: "binary" | "text" | "auto";
+  include_imports?: boolean;
+}
+```
+
+#### 27. `analyze_duplicates`
+Duplicate code detection with multiple algorithms.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  algorithm?: "exact" | "fuzzy" | "semantic" | "all";
+  min_lines?: number;
+}
+```
+
+## Vectorized/SIMD Tools (7 tools)
+
+*High-performance parallel analysis tools using SIMD instructions*
+
+#### 28. `analyze_duplicates_vectorized`
+SIMD-accelerated duplicate detection.
+
+#### 29. `analyze_graph_metrics_vectorized`
+Vectorized graph analysis with parallel processing.
+
+#### 30. `analyze_name_similarity_vectorized`
+SIMD-based name similarity computation.
+
+#### 31. `analyze_symbol_table_vectorized`
+Parallel symbol table analysis.
+
+#### 32. `analyze_incremental_coverage_vectorized`
+Vectorized coverage analysis.
+
+#### 33. `analyze_big_o_vectorized`
+Parallel Big-O complexity analysis.
+
+#### 34. `generate_enhanced_report`
+Generate comprehensive enhanced analysis reports.
+
+**Parameters:**
+```typescript
+{
+  path: string;
+  analysis_types?: string[];
+  output_format?: "markdown" | "html" | "json";
+  include_visualizations?: boolean;
 }
 ```
 
@@ -526,56 +803,72 @@ strategy = "lru"
 "generate_context" = { enabled = false }
 ```
 
-## Security
+## Configuration
 
-### Authentication
+### Environment Variables
 
-```toml
-[security]
-require_auth = true
-auth_token = "${MCP_AUTH_TOKEN}"
-allowed_paths = ["/home/user/projects"]
+| Variable | Purpose | Default |
+|----------|---------|----------|
+| `MCP_VERSION` | Force MCP mode | `false` |
+| `PMAT_REFACTOR_MCP` | Enable refactor MCP server | `false` |
+| `RUST_LOG` | Logging level | `info` |
+| `DOCS_RS` | Docs.rs build mode | `false` |
+
+### MCP Server Modes
+
+PMAT supports two MCP server implementations:
+
+1. **Standard MCP Server** - Full analysis capabilities
+2. **Refactor MCP Server** - Specialized for refactoring workflows
+
+```bash
+# Standard mode
+pmat --mode mcp
+
+# Refactor mode
+PMAT_REFACTOR_MCP=1 pmat --mode mcp
 ```
 
-### Rate Limiting
+### Cache Configuration
 
 ```toml
-[rate_limit]
+# .pmat.toml
+[cache]
+strategy = "normal"  # normal, force-refresh, offline
 enabled = true
-max_requests_per_minute = 100
-burst_size = 20
+max_size = "1GB"
+ttl = "1h"
 ```
 
-## Monitoring
+## Performance Features
 
-### Metrics
+### SIMD/Vectorized Analysis
 
-The MCP server exposes Prometheus metrics:
+PMAT includes high-performance vectorized tools that use SIMD instructions for parallel processing:
 
+- **analyze_duplicates_vectorized** - Up to 8x faster duplicate detection
+- **analyze_graph_metrics_vectorized** - Parallel graph analysis
+- **analyze_big_o_vectorized** - Concurrent complexity analysis
+
+### Parallel Processing
+
+Most analysis tools support parallel execution:
+
+```typescript
+{
+  path: string;
+  parallel_workers?: number;  // Default: CPU cores
+  chunk_size?: number;        // Files per worker
+}
 ```
-# HELP mcp_requests_total Total MCP requests
-# TYPE mcp_requests_total counter
-mcp_requests_total{method="tools/call",tool="analyze_complexity"} 1523
 
-# HELP mcp_request_duration_seconds Request duration
-# TYPE mcp_request_duration_seconds histogram
-mcp_request_duration_seconds_bucket{le="0.1"} 1420
-mcp_request_duration_seconds_bucket{le="0.5"} 1510
-```
+### GPU Acceleration
 
-### Logging
+Some tools support GPU acceleration when available:
 
-```toml
-[logging]
-level = "info"
-format = "json"
-output = "stdout"
-
-[logging.filters]
-# Log all errors
-error = "always"
-# Sample 10% of successful requests
-success = { sample_rate = 0.1 }
+```bash
+# Enable GPU acceleration
+PMAT_GPU_ENABLED=1 pmat --mode mcp
 ```
 
 ## Best Practices
@@ -621,19 +914,24 @@ RUST_LOG=paiml_mcp_agent_toolkit::handlers=trace pmat --mode mcp
 
 | Feature | Version | Notes |
 |---------|---------|-------|
-| Basic MCP support | v0.26.0+ | All core tools |
-| Single file mode | v0.26.3+ | `--file` parameter |
+| Template tools | v0.26.0+ | 6 template management tools |
+| Core analysis | v0.26.0+ | 4 fundamental analysis tools |
+| Advanced analysis | v0.26.1+ | 17 specialized analysis tools |
+| Vectorized tools | v0.27.0+ | 7 SIMD-accelerated tools |
 | WebAssembly analysis | v0.26.2+ | WASM/AssemblyScript |
 | Graph metrics | v0.26.1+ | PageRank, centrality |
-| Streaming support | v0.27.0+ | Large result sets |
+| Refactor MCP mode | v0.27.2+ | Specialized refactoring server |
+| Enhanced reports | v0.27.3+ | Multi-format comprehensive reports |
 
 ## Future Enhancements
 
-- **WebSocket Transport**: Alternative to stdio
+- **WebSocket Transport**: Alternative to stdio transport
 - **Batch Processing**: Multiple tools in one request
-- **Subscription Support**: Real-time updates
-- **Plugin System**: Custom tool development
-- **Multi-Language Support**: Beyond current languages
+- **Subscription Support**: Real-time file system updates
+- **Plugin System**: Custom tool development framework
+- **Additional Languages**: Go, Java, C#, Swift support
+- **Distributed Analysis**: Multi-node processing
+- **Real-time Collaboration**: Live analysis sharing
 
 ## Additional Resources
 
