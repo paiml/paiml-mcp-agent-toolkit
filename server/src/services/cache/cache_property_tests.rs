@@ -303,10 +303,13 @@ mod tests {
                 let manager = UnifiedCacheManager::new(config).unwrap();
                 
                 // Test AST cache operations using get_or_compute
-                for (key, _value) in operations {
-                    let path = std::path::Path::new(&key);
+                for (key, content) in operations {
+                    // Create a real file in temp directory to avoid mtime issues
+                    let file_path = temp_dir.path().join(&key);
+                    std::fs::write(&file_path, &content).unwrap();
+                    
                     let file_context = crate::services::context::FileContext {
-                        path: path.to_string_lossy().to_string(),
+                        path: file_path.to_string_lossy().to_string(),
                         language: "rust".to_string(),
                         items: vec![],
                         complexity_metrics: None,
@@ -314,7 +317,7 @@ mod tests {
                     
                     // Store via get_or_compute
                     let context_clone = file_context.clone();
-                    let result = manager.get_or_compute_ast(path, || async move {
+                    let result = manager.get_or_compute_ast(&file_path, || async move {
                         Ok(context_clone)
                     }).await;
                     
@@ -324,7 +327,7 @@ mod tests {
                     let cached_hit = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
                     let cached_hit_clone = cached_hit.clone();
                     let context_clone2 = file_context.clone();
-                    let retrieved = manager.get_or_compute_ast(path, || async move {
+                    let retrieved = manager.get_or_compute_ast(&file_path, || async move {
                         // This shouldn't be called if cache hit
                         cached_hit_clone.store(true, std::sync::atomic::Ordering::Relaxed);
                         Ok(context_clone2)
