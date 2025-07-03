@@ -751,6 +751,34 @@ cargo-doc:
 cargo-geiger:
 	cargo geiger --features "default,rust-ast,typescript-ast,c-ast,cpp-ast,kotlin-ast,demo" --manifest-path server/Cargo.toml
 
+# Publish crate to crates.io
+crate-release:
+	@echo "📦 Publishing pmat to crates.io..."
+	@echo "Current version: $$(grep '^version' server/Cargo.toml | cut -d'"' -f2)"
+	@echo ""
+	@echo "Pre-publish checklist:"
+	@echo "  ✓ Version bumped in server/Cargo.toml"
+	@echo "  ✓ CHANGELOG updated"
+	@echo "  ✓ Tests passing (make test)"
+	@echo "  ✓ Documentation builds (make crate-docs)"
+	@echo ""
+	@printf "Continue with publish? [y/N] "; \
+	read REPLY; \
+	case "$$REPLY" in \
+		[yY]*) cargo publish --package pmat ;; \
+		*) echo "❌ Publish cancelled" ;; \
+	esac
+
+# Build and verify crate documentation
+crate-docs:
+	@echo "📚 Building crate documentation..."
+	@echo "Testing with docs.rs configuration..."
+	RUSTDOCFLAGS="--cfg docsrs" cargo doc --package pmat --no-deps
+	@echo ""
+	@echo "✅ Documentation builds successfully!"
+	@echo "Opening documentation in browser..."
+	@cargo doc --package pmat --no-deps --open
+
 # Update dependencies
 update-deps:
 	cargo update --manifest-path server/Cargo.toml
