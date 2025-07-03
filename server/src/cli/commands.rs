@@ -1510,6 +1510,10 @@ pub enum RefactorCommands {
         /// GitHub issue URL to guide the refactoring process
         #[arg(long)]
         github_issue: Option<String>,
+        
+        /// Bug report markdown file path to analyze and fix
+        #[arg(long)]
+        bug_report_path: Option<PathBuf>,
     },
 
     /// AI-assisted documentation cleanup and refactoring

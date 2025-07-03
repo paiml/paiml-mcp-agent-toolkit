@@ -152,6 +152,72 @@ async fn handle_single_file_refactor(
 ) -> Result<()> {
     eprintln!("🎯 Analyzing single file: {}", file_path.display());
 
+    // Check if it's a markdown file
+    if file_path.extension().and_then(|s| s.to_str()) == Some("md") {
+        eprintln!("📝 Detected markdown file - analyzing for quality issues...");
+        
+        let content = tokio::fs::read_to_string(&file_path).await
+            .context("Failed to read markdown file")?;
+        
+        // Analyze markdown for issues
+        let mut issues = Vec::new();
+        
+        // Check for common markdown issues
+        if !content.contains("# ") && !content.contains("## ") {
+            issues.push("Missing proper header structure");
+        }
+        
+        // Check for code blocks without language specification
+        if content.contains("```\n") && !content.contains("```rust") && !content.contains("```bash") {
+            issues.push("Code blocks without language specification");
+        }
+        
+        // Check for broken relative links
+        for line in content.lines() {
+            if line.contains("](../") || line.contains("](./") {
+                let path_match = line.split("](").nth(1).and_then(|s| s.split(')').next());
+                if let Some(path) = path_match {
+                    let full_path = file_path.parent().unwrap_or_else(|| Path::new(".")).join(path);
+                    if !full_path.exists() {
+                        issues.push("Contains broken relative links");
+                        break;
+                    }
+                }
+            }
+        }
+        
+        eprintln!("📊 Found {} quality issues in markdown", issues.len());
+        
+        // Generate markdown-specific refactor request
+        let refactor_request = serde_json::json!({
+            "file_path": file_path,
+            "file_type": "markdown",
+            "issues": issues,
+            "content": content,
+            "instructions": "Analyze and fix this markdown file. Ensure proper formatting, clear structure, accurate technical details, and working links.",
+        });
+        
+        match format {
+            RefactorAutoOutputFormat::Json => {
+                println!("{}", serde_json::to_string_pretty(&refactor_request)?);
+            }
+            _ => {
+                eprintln!("📄 Markdown Analysis:");
+                for issue in &issues {
+                    eprintln!("  ⚠️  {}", issue);
+                }
+                eprintln!("\n💡 Suggested fixes:");
+                eprintln!("  • Add proper header hierarchy");
+                eprintln!("  • Specify languages for all code blocks");
+                eprintln!("  • Fix any broken links");
+                eprintln!("  • Ensure consistent formatting");
+            }
+        }
+        
+        return Ok(());
+    }
+
+    // For non-markdown files, proceed with regular analysis
     // Get lint violations for this specific file
     let lint_violations = get_single_file_lint_violations(&file_path).await?;
     eprintln!("📊 Found {} lint violations", lint_violations.len());
@@ -272,11 +338,20 @@ pub async fn handle_refactor_auto(
     test_file: Option<PathBuf>,
     test_name: Option<String>,
     github_issue_url: Option<String>,
+    bug_report_path: Option<PathBuf>,
 ) -> Result<()> {
     let start_time = Instant::now();
 
     eprintln!("🚀 Starting automated refactoring...");
     eprintln!("📁 Project: {}", project_path.display());
+
+    // Handle bug report path - treat it as single file mode for markdown
+    if let Some(bug_path) = &bug_report_path {
+        if bug_path.extension().and_then(|s| s.to_str()) == Some("md") {
+            eprintln!("🐞 Bug report markdown mode: {}", bug_path.display());
+            return handle_single_file_refactor(bug_path.clone(), format, dry_run, max_iterations).await;
+        }
+    }
 
     // Handle single file mode
     if single_file_mode || file.is_some() {
@@ -367,6 +442,97 @@ pub async fn handle_refactor_auto(
         }
         
         github_issue_context = Some(parsed_issue);
+    }
+    
+    // Handle bug report markdown file
+    let mut bug_report_context = None;
+    if let Some(bug_path) = &bug_report_path {
+        eprintln!("🐞 Bug report mode: {}", bug_path.display());
+        
+        if !bug_path.exists() {
+            return Err(anyhow::anyhow!(
+                "Bug report file not found: {}",
+                bug_path.display()
+            ));
+        }
+        
+        // Read and analyze the bug report
+        let bug_content = tokio::fs::read_to_string(bug_path).await
+            .context("Failed to read bug report file")?;
+        
+        eprintln!("📄 Analyzing bug report markdown file...");
+        
+        // Extract file paths and code snippets from the markdown
+        let mut mentioned_files = Vec::new();
+        let mut in_code_block = false;
+        let mut code_block_lang = String::new();
+        
+        for line in bug_content.lines() {
+            // Check for code block markers
+            if line.starts_with("```") {
+                if !in_code_block {
+                    in_code_block = true;
+                    code_block_lang = line.trim_start_matches("```").trim().to_string();
+                } else {
+                    in_code_block = false;
+                    code_block_lang.clear();
+                }
+                continue;
+            }
+            
+            // Look for file paths in the content
+            if !in_code_block {
+                // Common patterns for file paths in bug reports
+                if line.contains("src/") || line.contains("server/") || line.contains("docs/") {
+                    // Extract potential file paths
+                    let words: Vec<&str> = line.split_whitespace().collect();
+                    for word in words {
+                        if (word.contains(".rs") || word.contains(".ts") || word.contains(".js") || 
+                            word.contains(".py") || word.contains(".md")) &&
+                           !word.starts_with("http") {
+                            let cleaned = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '/' && c != '.' && c != '_' && c != '-');
+                            if !cleaned.is_empty() {
+                                mentioned_files.push(cleaned.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Remove duplicates
+        mentioned_files.sort();
+        mentioned_files.dedup();
+        
+        if !mentioned_files.is_empty() {
+            eprintln!("📁 Files mentioned in bug report:");
+            for path in &mentioned_files {
+                eprintln!("  📄 {}", path);
+                
+                // Check if file exists in the project
+                let full_path = project_path.join(path);
+                if full_path.exists() {
+                    issue_target_files.push(full_path);
+                } else {
+                    // Try to find the file
+                    let path_buf = PathBuf::from(path);
+                    if let Some(file_name) = path_buf.file_name() {
+                        if let Ok(found_files) = find_files_by_name(&project_path, file_name.to_str().unwrap()).await {
+                            issue_target_files.extend(found_files);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Store the bug report content as context
+        bug_report_context = Some(bug_content);
+        
+        // If it's specifically the bug report itself that needs fixing
+        if bug_path.extension().and_then(|s| s.to_str()) == Some("md") {
+            eprintln!("📝 Bug report is a markdown file - will analyze and suggest fixes");
+            issue_target_files.push(bug_path.clone());
+        }
     }
     
     // Handle test-specific refactoring
@@ -580,6 +746,7 @@ pub async fn handle_refactor_auto(
                 &all_exclude_patterns,
                 &include_patterns,
                 github_issue_context.as_ref(),
+                bug_report_context.as_deref(),
             ) {
                 Ok(file) => {
                     // Skip build.rs
@@ -750,6 +917,7 @@ pub async fn handle_refactor_auto(
                     file_coverage,
                     &state.context_path,
                     github_issue_context.as_ref(),
+                    bug_report_context.as_deref(),
                 )
                 .await?;
 
@@ -1658,6 +1826,7 @@ fn select_target_file(
     exclude_patterns: &[String],
     include_patterns: &[String],
     github_issue_context: Option<&crate::services::github_integration::ParsedIssue>,
+    _bug_report_context: Option<&str>,
 ) -> Result<PathBuf> {
     // First, prioritize files with violations that haven't been completed
     let mut candidates: Vec<_> = lint_analysis
@@ -3229,6 +3398,7 @@ async fn output_ai_unified_rewrite_request(
     current_coverage: f64,
     context_path: &Path,
     github_issue_context: Option<&crate::services::github_integration::ParsedIssue>,
+    bug_report_context: Option<&str>,
 ) -> Result<()> {
     // Print clear instructions BEFORE the JSON
     eprintln!();
@@ -3341,6 +3511,16 @@ async fn output_ai_unified_rewrite_request(
                 "PRIORITY: Focus on fixing issues related to: {}. The user has specifically identified these areas as problematic in the GitHub issue.",
                 issue_context.keywords.keys().cloned().collect::<Vec<_>>().join(", ")
             ),
+        });
+    }
+    
+    // Add bug report context if available
+    if let Some(bug_content) = bug_report_context {
+        request["bug_report_context"] = serde_json::json!({
+            "type": "markdown_bug_report",
+            "content": bug_content,
+            "instructions": "This is a bug report file that needs to be analyzed. If this is a markdown file that needs fixing, ensure proper formatting, clear structure, and accurate technical details. If the bug report mentions specific files or code issues, prioritize fixing those referenced problems.",
+            "priority": "Fix the issues described in this bug report",
         });
     }
 
