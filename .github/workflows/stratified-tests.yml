@@ -30,15 +30,14 @@ jobs:
       
       - name: Run unit tests
         run: |
-          cd server
-          cargo test --test unit_core -- --test-threads=$(nproc)
+          cargo test --package pmat --test unit_core -- --test-threads=$(nproc)
       
       - name: Upload unit test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-results
-          path: server/target/test-results/
+          path: target/test-results/
 
   service-integration:
     name: Service Integration (<30s)
@@ -62,10 +61,9 @@ jobs:
       
       - name: Run service integration tests with coverage
         run: |
-          cd server
-          cargo llvm-cov test --test services_integration \
+          cargo llvm-cov test --package pmat --test services_integration \
             --features integration-tests \
-            --json --output-path ../coverage-service.json \
+            --json --output-path coverage-service.json \
             -- --test-threads=4
       
       - name: Upload coverage
@@ -94,18 +92,16 @@ jobs:
       
       - name: Run protocol adapter tests
         run: |
-          cd server
-          cargo test --test protocol_adapters \
+          cargo test --package pmat --test protocol_adapters \
             --features integration-tests \
             -- --test-threads=2
       
       - name: Validate protocol equivalence
         run: |
-          cd server
           # Run a quick protocol equivalence check
-          cargo run --release -- analyze complexity . --json > /tmp/cli.json
+          cargo run --package pmat --release -- analyze complexity . --json > /tmp/cli.json
           echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"analyze_complexity","arguments":{"path":"."}},"id":1}' | \
-            cargo run --release -- --protocol mcp | \
+            cargo run --package pmat --release -- --protocol mcp | \
             jq -r '.result.content[0].text' > /tmp/mcp.json
           # Basic validation that outputs exist
           test -s /tmp/cli.json && test -s /tmp/mcp.json
@@ -127,13 +123,11 @@ jobs:
       
       - name: Build release binary
         run: |
-          cd server
-          cargo build --release
+          cargo build --package pmat --release
       
       - name: Run E2E system tests
         run: |
-          cd server
-          cargo test --test e2e_system \
+          cargo test --package pmat --test e2e_system \
             --features e2e-tests \
             -- --test-threads=1
       
@@ -164,19 +158,18 @@ jobs:
       - name: Checkout base branch
         run: |
           git checkout ${{ github.base_ref }}
-          cd server && cargo build --release
+          cargo build --package pmat --release
           mv target/release/pmat /tmp/pmat-base
       
       - name: Checkout PR branch
         run: |
           git checkout ${{ github.head_ref }}
-          cd server && cargo build --release
+          cargo build --package pmat --release
       
       - name: Run performance comparison
         run: |
-          cd server
           # Run performance tests
-          cargo test --test performance_regression \
+          cargo test --package pmat --test performance_regression \
             --features perf-tests \
             -- --test-threads=1
           
@@ -197,8 +190,8 @@ jobs:
         with:
           name: performance-results
           path: |
-            server/target/criterion/
-            server/target/performance/
+            target/criterion/
+            target/performance/
 
   coverage-summary:
     name: Coverage Summary
