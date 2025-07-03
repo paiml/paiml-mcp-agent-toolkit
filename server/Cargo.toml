@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "0.27.3"
+version = "0.27.4"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -163,8 +163,9 @@ hex = "0.4"
 capnpc = "0.20"
 
 [features]
-default = ["all-languages", "demo"]
+default = ["most-languages", "demo"]
 all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "kotlin-ast"]
+most-languages = ["rust-ast", "typescript-ast", "c-ast", "cpp-ast", "kotlin-ast"]
 rust-only = ["rust-ast"]
 skip-slow-tests = []
 rust-ast = ["syn", "quote", "proc-macro2"]
@@ -233,8 +234,8 @@ lto = true
 codegen-units = 1
 
 [package.metadata.docs.rs]
-# Enable most features for documentation (excluding python-ast due to malachite-bigint build issues)
-features = ["rust-ast", "typescript-ast", "c-ast", "cpp-ast", "kotlin-ast", "demo"]
+# Use default features for documentation (which excludes python-ast due to malachite-bigint build issues)
+features = ["default"]
 # Set DOCS_RS environment variable to skip network operations
 rustdoc-args = ["--cfg", "docsrs"]
 rustc-args = ["--cfg", "docsrs"]
