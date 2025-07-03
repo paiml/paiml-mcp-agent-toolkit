@@ -179,6 +179,7 @@ impl Default for DebtClassifier {
 
 impl DebtClassifier {
     pub fn new() -> Self {
+        // Default mode includes all patterns
         let patterns = vec![
             // High-confidence patterns with word boundaries
             DebtPattern {
@@ -255,6 +256,46 @@ impl DebtClassifier {
             compiled_patterns,
         }
     }
+    
+    pub fn new_strict() -> Self {
+        // Strict mode only includes explicit SATD markers
+        let patterns = vec![
+            // Only explicit TODO/FIXME/HACK/BUG patterns
+            DebtPattern {
+                regex: r"(?i)\b(TODO|FIXME|XXX|BUG|HACK|KLUDGE|REFACTOR):".to_string(),
+                category: DebtCategory::Requirement,
+                severity: Severity::Low,
+                description: "Explicit SATD marker".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\b(FIXME|BUG):".to_string(),
+                category: DebtCategory::Defect,
+                severity: Severity::High,
+                description: "Known defect".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\b(HACK|KLUDGE):".to_string(),
+                category: DebtCategory::Design,
+                severity: Severity::Medium,
+                description: "Architectural compromise".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\b(SECURITY|VULN|CVE):".to_string(),
+                category: DebtCategory::Security,
+                severity: Severity::Critical,
+                description: "Security concern".to_string(),
+            },
+        ];
+        
+        let regex_strings: Vec<&str> = patterns.iter().map(|p| p.regex.as_str()).collect();
+        let compiled_patterns =
+            RegexSet::new(&regex_strings).expect("Failed to compile strict SATD patterns");
+
+        Self {
+            patterns,
+            compiled_patterns,
+        }
+    }
 
     /// Classify a comment text and return debt information
     pub fn classify_comment(&self, text: &str) -> Option<(DebtCategory, Severity)> {
@@ -294,7 +335,19 @@ impl Default for SATDDetector {
 
 impl SATDDetector {
     pub fn new() -> Self {
-        let debt_classifier = DebtClassifier::new();
+        Self::with_config(false)
+    }
+    
+    pub fn new_strict() -> Self {
+        Self::with_config(true)
+    }
+    
+    fn with_config(strict_mode: bool) -> Self {
+        let debt_classifier = if strict_mode {
+            DebtClassifier::new_strict()
+        } else {
+            DebtClassifier::new()
+        };
         let patterns = debt_classifier.compiled_patterns.clone();
 
         Self {
