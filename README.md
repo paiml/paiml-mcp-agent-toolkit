@@ -63,7 +63,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmat = "0.27.0"
+pmat = "0.27.1"
 ```
 
 Basic usage:
@@ -293,18 +293,18 @@ This project follows strict quality standards:
 Explore our comprehensive documentation to get the most out of `pmat`.
 
 ### Getting Started
-- **[Architecture](docs/architecture/ARCHITECTURE.md)**: Understand the system design and principles.
-- **[CLI Reference](docs/cli-reference.md)**: View the full command-line interface guide.
+- **[Architecture](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/docs/architecture/ARCHITECTURE.md)**: Understand the system design and principles.
+- **[CLI Reference](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/docs/cli-reference.md)**: View the full command-line interface guide.
 - **[API Documentation](https://docs.rs/pmat)**: Browse the complete Rust API documentation on docs.rs.
 
 ### Usage Guides
-- **[Feature Overview](docs/features/README.md)**: Discover all available features.
-- **[MCP Integration](docs/features/mcp-protocol.md)**: Learn how to integrate `pmat` with AI agents.
-- **[CI/CD Integration](docs/integrations/ci-cd-integration.md)**: Set up quality gates in your CI/CD pipeline.
+- **[Feature Overview](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/docs/features/README.md)**: Discover all available features.
+- **[MCP Integration](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/docs/features/mcp-protocol.md)**: Learn how to integrate `pmat` with AI agents.
+- **[CI/CD Integration](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/docs/integrations/ci-cd-integration.md)**: Set up quality gates in your CI/CD pipeline.
 
 ### Development
-- **[Contributing Guide](CONTRIBUTING.md)**: Read our guidelines for contributing to the project.
-- **[Release Process](docs/release-process.md)**: Follow our step-by-step release workflow.
+- **[Contributing Guide](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/CONTRIBUTING.md)**: Read our guidelines for contributing to the project.
+- **[Release Process](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/docs/release-process.md)**: Follow our step-by-step release workflow.
 
 ## 🛠️ System Operations
 
@@ -338,7 +338,7 @@ make coverage-stratified
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+We welcome contributions! Please see our [Contributing Guide](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/CONTRIBUTING.md) for details.
 
 ### Quick Start for Contributors
 
@@ -367,13 +367,13 @@ make coverage       # Generate coverage report
 4. Run `make lint` and `make test-fast` before committing
 5. Submit a pull request with a clear description of changes
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+See [CONTRIBUTING.md](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/CONTRIBUTING.md) for detailed guidelines.
 
 ## 📄 License
 
 Licensed under either of:
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
-- MIT license ([LICENSE-MIT](LICENSE-MIT))
+- Apache License, Version 2.0 ([LICENSE-APACHE](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/LICENSE-MIT))
 
 at your option.
 
