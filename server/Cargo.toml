@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "0.27.1"
+version = "0.27.2"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -231,3 +231,10 @@ required-features = ["perf-tests"]
 [profile.release]
 lto = true
 codegen-units = 1
+
+[package.metadata.docs.rs]
+# Enable all features for documentation
+all-features = true
+# Set DOCS_RS environment variable to skip network operations
+rustdoc-args = ["--cfg", "docsrs"]
+rustc-args = ["--cfg", "docsrs"]
