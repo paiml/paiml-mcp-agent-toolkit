@@ -10,7 +10,7 @@ mod integration_tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
     use tokio;
-    
+
     #[tokio::test]
     /// test_assemblyscript_detection
     ///
@@ -19,25 +19,26 @@ mod integration_tests {
     /// May panic if internal assertions fail
     async fn test_assemblyscript_detection() {
         let detector = language_detection::WasmLanguageDetector::new();
-        
+
         // Test .as extension
         let _as_path = PathBuf::from("test.as");
         let as_content = b"export function add(a: i32, b: i32): i32 { return a + b; }";
         let result = detector.is_assemblyscript(std::str::from_utf8(as_content).unwrap());
         assert!(result);
-        
+
         // Test .ts with AS markers
         let _ts_path = PathBuf::from("index.ts");
-        let ts_content = b"import { memory } from './runtime';\n@inline\nexport function test(): void {}";
+        let ts_content =
+            b"import { memory } from './runtime';\n@inline\nexport function test(): void {}";
         let result = detector.is_assemblyscript(std::str::from_utf8(ts_content).unwrap());
         assert!(result);
-        
+
         // Test regular TypeScript (should fail)
         let regular_ts = b"import React from 'react';\nconst App = () => <div>Hello</div>;";
         let result = detector.is_assemblyscript(std::str::from_utf8(regular_ts).unwrap());
         assert!(!result);
     }
-    
+
     #[tokio::test]
     /// test_wat_detection
     ///
@@ -47,18 +48,18 @@ mod integration_tests {
     async fn test_wat_detection() {
         let detector = language_detection::WasmLanguageDetector::new();
         let _wat_path = PathBuf::from("test.wat");
-        
+
         // Valid WAT content
         let wat_content = b"(module\n  (func $add (param $a i32) (param $b i32) (result i32)\n    local.get $a\n    local.get $b\n    i32.add))";
         let result = detector.is_wat(std::str::from_utf8(wat_content).unwrap());
         assert!(result);
-        
+
         // WAT with leading whitespace
         let wat_whitespace = b"   \n\t(module (func))";
         let result = detector.is_wat(std::str::from_utf8(wat_whitespace).unwrap());
         assert!(result);
     }
-    
+
     #[tokio::test]
     /// test_wasm_binary_detection
     ///
@@ -68,23 +69,23 @@ mod integration_tests {
     async fn test_wasm_binary_detection() {
         let detector = language_detection::WasmLanguageDetector::new();
         let _wasm_path = PathBuf::from("test.wasm");
-        
+
         // Valid WASM binary
         let valid_wasm = b"\0asm\x01\x00\x00\x00";
         let result = detector.is_wasm_binary(valid_wasm);
         assert!(result);
-        
+
         // Invalid magic number
         let invalid_wasm = b"WASM\x01\x00\x00\x00";
         let result = detector.is_wasm_binary(invalid_wasm);
         assert!(!result);
-        
+
         // Too small file
         let small_wasm = b"\0as";
         let result = detector.is_wasm_binary(small_wasm);
         assert!(!result);
     }
-    
+
     #[tokio::test]
     /// test_assemblyscript_parser
     ///
@@ -103,12 +104,12 @@ mod integration_tests {
                 return a * b;
             }
         ";
-        
+
         // AssemblyScriptParser doesn't have parse_content method
         // Verify parser was created successfully
         let _ = _parser;
     }
-    
+
     #[tokio::test]
     /// test_wat_parser
     ///
@@ -125,12 +126,12 @@ mod integration_tests {
                 i32.add)
               (export "add" (func $add)))
         "#;
-        
+
         // WatParser doesn't have parse_content method
         // Verify parser was created successfully
         let _ = _parser;
     }
-    
+
     #[tokio::test]
     /// test_wasm_binary_analyzer
     ///
@@ -139,7 +140,7 @@ mod integration_tests {
     /// May panic if internal assertions fail
     async fn test_wasm_binary_analyzer() {
         let analyzer = binary::WasmBinaryAnalyzer::new();
-        
+
         // Minimal valid WASM module
         let wasm_module = vec![
             0x00, 0x61, 0x73, 0x6D, // Magic number
@@ -151,14 +152,14 @@ mod integration_tests {
             0x02, 0x7F, 0x7F, // 2 params, both i32
             0x01, 0x7F, // 1 result, i32
         ];
-        
+
         let result = analyzer.analyze_bytes(&wasm_module);
         assert!(result.is_ok());
-        
+
         let analysis = result.unwrap();
         assert!(!analysis.sections.is_empty());
     }
-    
+
     #[tokio::test]
     /// test_complexity_analyzer
     ///
@@ -168,23 +169,23 @@ mod integration_tests {
     async fn test_complexity_analyzer() {
         let analyzer = complexity::WasmComplexityAnalyzer::new();
         let mut dag = crate::models::unified_ast::AstDag::new();
-// Add a simple function node
+        // Add a simple function node
         let func_node = crate::models::unified_ast::UnifiedAstNode::new(
             crate::models::unified_ast::AstKind::Function(
-                crate::models::unified_ast::FunctionKind::Regular
+                crate::models::unified_ast::FunctionKind::Regular,
             ),
             crate::models::unified_ast::Language::WebAssembly,
         );
         let func_id = dag.add_node(func_node);
-        
+
         let complexity = analyzer.analyze_function(&dag, func_id);
-        
+
         // Check complexity is within limits
         assert!(complexity.cyclomatic <= 20);
         assert_eq!(complexity.cyclomatic, 1); // Base complexity
         assert_eq!(complexity.max_loop_depth, 0); // No loops
     }
-    
+
     #[tokio::test]
     /// test_security_validator
     ///
@@ -193,25 +194,26 @@ mod integration_tests {
     /// May panic if internal assertions fail
     async fn test_security_validator() {
         let validator = security::WasmSecurityValidator::new();
-        
+
         // Valid small WASM
         let valid_wasm = b"\0asm\x01\x00\x00\x00\x10\x00\x00\x00";
         let result = validator.validate(valid_wasm);
         assert!(result.is_ok());
         let validation = result.unwrap();
         assert!(validation.passed);
-        
+
         // Invalid magic number
         let invalid_wasm = b"WASM\x01\x00\x00\x00";
         let result = validator.validate(invalid_wasm);
         assert!(result.is_ok());
         let validation = result.unwrap();
         assert!(!validation.passed);
-        assert!(validation.issues.iter().any(|i| {
-            i.severity == types::Severity::Critical
-        }));
+        assert!(validation
+            .issues
+            .iter()
+            .any(|i| { i.severity == types::Severity::Critical }));
     }
-    
+
     // #[tokio::test]
     // /// test_memory_pool
     // ///
@@ -223,20 +225,20 @@ mod integration_tests {
 
     //     // Pre-warm pool
     //     pool.pre_warm(memory_pool::ParserType::AssemblyScript, 2).unwrap();
-        
+
     //     let mut stats = pool.stats();
     //     assert_eq!(stats.total_created, 2);
     //     assert_eq!(stats.as_pool_size, 2);
-        
+
     //     // Acquire parser
     //     let mut parser = pool.acquire(memory_pool::ParserType::AssemblyScript);
     //     assert!(parser.is_ok());
-        
+
     //     // Pool should have one less
     //     let mut stats = pool.stats();
     //     assert_eq!(stats.as_pool_size, 1);
     // }
-    
+
     #[tokio::test]
     /// test_parallel_analyzer
     ///
@@ -245,22 +247,24 @@ mod integration_tests {
     /// May panic if internal assertions fail
     async fn test_parallel_analyzer() {
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Create test files
         let wasm_file = temp_dir.path().join("test.wasm");
         let wat_file = temp_dir.path().join("test.wat");
-        
-        tokio::fs::write(&wasm_file, b"\0asm\x01\x00\x00\x00").await.unwrap();
+
+        tokio::fs::write(&wasm_file, b"\0asm\x01\x00\x00\x00")
+            .await
+            .unwrap();
         tokio::fs::write(&wat_file, "(module)").await.unwrap();
-        
+
         let analyzer = parallel::ParallelWasmAnalyzer::new(parallel::ParallelConfig::default());
         let result = analyzer.analyze_directory(temp_dir.path()).await;
-        
+
         assert!(result.is_ok());
         let aggregated = result.unwrap();
         assert_eq!(aggregated.total_files, 2);
     }
-    
+
     // #[tokio::test]
     // /// test_error_severity
     // ///
@@ -269,17 +273,17 @@ mod integration_tests {
     // /// May panic if internal assertions fail
     // async fn test_error_severity() {
     //     use error::WasmError;
-        
+
     //     let security_error = WasmError::security("Test violation");
     //     assert_eq!(security_error.severity(), error::ErrorSeverity::Critical);
-        
+
     //     let timeout_error = WasmError::Timeout { elapsed_secs: 30 };
     //     assert_eq!(timeout_error.severity(), error::ErrorSeverity::Medium);
-        
+
     //     let detection_error = WasmError::DetectionFailed { path: "test.wasm".into() };
     //     assert_eq!(detection_error.severity(), error::ErrorSeverity::Low);
     // }
-    
+
     #[tokio::test]
     /// test_opcode_conversion
     ///
@@ -288,14 +292,14 @@ mod integration_tests {
     /// May panic if internal assertions fail
     async fn test_opcode_conversion() {
         use types::WasmOpcode;
-        
+
         assert_eq!(WasmOpcode::from(0x00), WasmOpcode::Unreachable);
         assert_eq!(WasmOpcode::from(0x01), WasmOpcode::Nop);
         assert_eq!(WasmOpcode::from(0x10), WasmOpcode::Call);
         assert_eq!(WasmOpcode::from(0x28), WasmOpcode::I32Load);
         assert_eq!(WasmOpcode::from(0xFF), WasmOpcode::Other(0xFF));
     }
-    
+
     #[tokio::test]
     /// test_memory_cost_model
     ///
@@ -313,7 +317,7 @@ mod integration_tests {
 #[cfg(test)]
 mod unit_tests {
     use super::super::*;
-    
+
     #[tokio::test]
     /// test_webassembly_variant_display
     ///
@@ -322,12 +326,15 @@ mod unit_tests {
     /// May panic if internal assertions fail
     async fn test_webassembly_variant_display() {
         use types::WebAssemblyVariant;
-        
-        assert_eq!(format!("{:?}", WebAssemblyVariant::AssemblyScript), "AssemblyScript");
+
+        assert_eq!(
+            format!("{:?}", WebAssemblyVariant::AssemblyScript),
+            "AssemblyScript"
+        );
         assert_eq!(format!("{:?}", WebAssemblyVariant::Wat), "Wat");
         assert_eq!(format!("{:?}", WebAssemblyVariant::Wasm), "Wasm");
     }
-    
+
     #[tokio::test]
     /// test_severity_ordering
     ///
@@ -336,12 +343,12 @@ mod unit_tests {
     /// May panic if internal assertions fail
     async fn test_severity_ordering() {
         use types::Severity;
-        
+
         assert!(Severity::Low < Severity::Medium);
         assert!(Severity::Medium < Severity::High);
         assert!(Severity::High < Severity::Critical);
     }
-    
+
     #[tokio::test]
     /// test_difficulty_levels
     ///
@@ -350,12 +357,12 @@ mod unit_tests {
     /// May panic if internal assertions fail
     async fn test_difficulty_levels() {
         use types::Difficulty;
-        
+
         assert_eq!(format!("{:?}", Difficulty::Easy), "Easy");
         assert_eq!(format!("{:?}", Difficulty::Medium), "Medium");
         assert_eq!(format!("{:?}", Difficulty::Hard), "Hard");
     }
-    
+
     #[tokio::test]
     /// test_optimization_types
     ///
@@ -364,11 +371,11 @@ mod unit_tests {
     /// May panic if internal assertions fail
     async fn test_optimization_types() {
         use types::OptimizationType;
-        
+
         let opt = OptimizationType::ReduceAllocations;
         assert_eq!(format!("{:?}", opt), "ReduceAllocations");
     }
-    
+
     // #[tokio::test]
     // /// test_allocation_strategy
     // ///
@@ -377,11 +384,11 @@ mod unit_tests {
     // /// May panic if internal assertions fail
     // async fn test_allocation_strategy() {
     //     use memory_pool::AllocationStrategy;
-        
+
     //     let strat = AllocationStrategy::Dynamic;
     //     assert!(matches!(strat, AllocationStrategy::Dynamic));
     // }
-    
+
     // #[tokio::test]
     // /// test_parser_type
     // ///
@@ -390,11 +397,11 @@ mod unit_tests {
     // /// May panic if internal assertions fail
     // async fn test_parser_type() {
     //     use memory_pool::ParserType;
-        
+
     //     assert_eq!(ParserType::AssemblyScript, ParserType::AssemblyScript);
     //     assert_ne!(ParserType::Wat, ParserType::WasmBinary);
     // }
-    
+
     #[tokio::test]
     /// test_security_category
     ///
@@ -403,11 +410,11 @@ mod unit_tests {
     /// May panic if internal assertions fail
     async fn test_security_category() {
         use security::SecurityCategory;
-        
+
         let cat = SecurityCategory::ResourceExhaustion;
         assert_eq!(format!("{:?}", cat), "ResourceExhaustion");
     }
-    
+
     #[tokio::test]
     /// test_wasm_analysis_capabilities
     ///
@@ -416,7 +423,7 @@ mod unit_tests {
     /// May panic if internal assertions fail
     async fn test_wasm_analysis_capabilities() {
         let caps = traits::WasmAnalysisCapabilities::default();
-        
+
         assert!(caps.memory_analysis);
         assert!(caps.gas_estimation);
         assert!(caps.security_analysis);

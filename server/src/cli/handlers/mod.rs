@@ -15,11 +15,12 @@ pub mod generation_handlers;
 pub mod lint_hotspot_handlers;
 pub mod name_similarity_analysis;
 pub mod refactor_auto_handlers;
+#[cfg(test)]
+pub mod refactor_auto_property_tests;
 pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod utility_handlers;
 pub mod wasm_handlers;
-
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{

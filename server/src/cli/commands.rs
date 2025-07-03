@@ -1506,6 +1506,10 @@ pub enum RefactorCommands {
         /// Test name pattern to fix (e.g., "test_mixed_language_project_context")
         #[arg(long)]
         test_name: Option<String>,
+        
+        /// GitHub issue URL to guide the refactoring process
+        #[arg(long)]
+        github_issue: Option<String>,
     },
 
     /// AI-assisted documentation cleanup and refactoring

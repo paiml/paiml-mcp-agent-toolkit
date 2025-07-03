@@ -2,9 +2,9 @@
 //!
 //! This module provides complexity analysis for WebAssembly modules.
 
-use anyhow::Result;
-use crate::models::unified_ast::{AstDag, NodeKey};
 use super::types::WasmComplexity;
+use crate::models::unified_ast::{AstDag, NodeKey};
+use anyhow::Result;
 
 /// Memory cost model for complexity calculation
 #[derive(Debug, Clone)]
@@ -61,7 +61,7 @@ impl WasmComplexityAnalyzer {
         // we'll use a simple heuristic
         let cyclomatic = 1; // Base complexity
         let max_depth = 0u32;
-        
+
         WasmComplexity {
             cyclomatic,
             cognitive: cyclomatic,
@@ -105,7 +105,7 @@ mod tests {
     fn test_complexity_analyzer() {
         let analyzer = WasmComplexityAnalyzer::new();
         let content = "(module (func $test (result i32) i32.const 42))";
-        
+
         let complexity = analyzer.analyze_text(content).unwrap();
         assert!(complexity.cyclomatic > 0);
         assert!(complexity.cognitive > 0);

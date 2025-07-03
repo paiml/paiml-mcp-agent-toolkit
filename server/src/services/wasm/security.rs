@@ -2,9 +2,9 @@
 //!
 //! This module provides security validation for WebAssembly modules.
 
-use anyhow::Result;
-use crate::models::unified_ast::AstDag;
 use super::types::Severity;
+use crate::models::unified_ast::AstDag;
+use anyhow::Result;
 
 /// Security validation result
 #[derive(Debug, Clone)]
@@ -53,7 +53,7 @@ impl WasmSecurityValidator {
     /// Validate WebAssembly binary
     pub fn validate(&self, data: &[u8]) -> Result<SecurityValidation> {
         let mut issues = Vec::new();
-        
+
         // Check magic number
         if data.len() < 8 {
             issues.push(SecurityIssue {
@@ -68,7 +68,7 @@ impl WasmSecurityValidator {
                 category: SecurityCategory::InvalidFormat,
             });
         }
-        
+
         // Check file size for potential DoS
         if data.len() > 100 * 1024 * 1024 {
             issues.push(SecurityIssue {
@@ -77,7 +77,7 @@ impl WasmSecurityValidator {
                 category: SecurityCategory::ResourceExhaustion,
             });
         }
-        
+
         Ok(SecurityValidation {
             passed: issues.is_empty(),
             issues,
