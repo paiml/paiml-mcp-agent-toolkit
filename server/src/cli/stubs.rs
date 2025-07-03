@@ -2330,7 +2330,7 @@ pub fn format_dead_code_output(
                 "runs": [{
                     "tool": {
                         "driver": {
-                            "name": "paiml-mcp-agent-toolkit",
+                            "name": "pmat",
                             "version": env!("CARGO_PKG_VERSION"),
                             "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
                             "rules": [{
