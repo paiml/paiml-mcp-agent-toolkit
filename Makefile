@@ -745,11 +745,11 @@ build-target:
 
 # Run cargo doc
 cargo-doc:
-	cargo doc --all-features --no-deps --manifest-path server/Cargo.toml
+	cargo doc --features "default,rust-ast,typescript-ast,c-ast,cpp-ast,kotlin-ast,demo" --no-deps --manifest-path server/Cargo.toml
 
 # Run cargo geiger for security audit
 cargo-geiger:
-	cargo geiger --all-features --manifest-path server/Cargo.toml
+	cargo geiger --features "default,rust-ast,typescript-ast,c-ast,cpp-ast,kotlin-ast,demo" --manifest-path server/Cargo.toml
 
 # Update dependencies
 update-deps:
@@ -931,7 +931,7 @@ test-curl-install:
 
 # Check documentation with rustdoc
 cargo-rustdoc:
-	cargo rustdoc --all-features --manifest-path server/Cargo.toml -- -D missing_docs || true
+	cargo rustdoc --features "default,rust-ast,typescript-ast,c-ast,cpp-ast,kotlin-ast,demo" --manifest-path server/Cargo.toml -- -D missing_docs || true
 
 # Install development tools
 install-dev-tools:
