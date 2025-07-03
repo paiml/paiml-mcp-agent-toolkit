@@ -17,12 +17,12 @@ fn parse_documented_cli_commands() -> Vec<DocumentedCommand> {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/todo/active/cli-mcp.md");
+        .join("rust-docs/cli-reference.md");
 
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-mcp.md not found at {:?}", doc_path);
+            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
             return vec![];
         }
     };
@@ -303,7 +303,7 @@ fn test_no_undocumented_commands() {
 
         assert!(
             documented_names.contains(actual_cmd),
-            "Command '{actual_cmd}' exists in CLI but is not documented in cli-mcp.md"
+            "Command '{actual_cmd}' exists in CLI but is not documented in cli-reference.md"
         );
     }
 }
@@ -313,12 +313,12 @@ fn test_documentation_examples_are_valid() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/todo/active/cli-mcp.md");
+        .join("rust-docs/cli-reference.md");
 
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-mcp.md not found at {:?}", doc_path);
+            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
             return;
         }
     };

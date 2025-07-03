@@ -36,12 +36,12 @@ fn parse_documented_mcp_tools() -> Vec<DocumentedTool> {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/todo/active/cli-mcp.md");
+        .join("docs/mcp-methods.md");
 
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-mcp.md not found at {:?}", doc_path);
+            eprintln!("Skipping test: mcp-methods.md not found at {:?}", doc_path);
             return vec![];
         }
     };
@@ -346,12 +346,12 @@ fn test_mcp_methods_match_documentation() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/todo/active/cli-mcp.md");
+        .join("docs/mcp-methods.md");
 
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-mcp.md not found at {:?}", doc_path);
+            eprintln!("Skipping test: mcp-methods.md not found at {:?}", doc_path);
             return;
         }
     };
@@ -393,12 +393,12 @@ fn test_mcp_error_codes_are_complete() {
     let doc_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("docs/todo/active/cli-mcp.md");
+        .join("docs/mcp-methods.md");
 
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-mcp.md not found at {:?}", doc_path);
+            eprintln!("Skipping test: mcp-methods.md not found at {:?}", doc_path);
             return;
         }
     };
@@ -472,7 +472,7 @@ fn test_no_undocumented_mcp_tools() {
 
             assert!(
                 documented_names.iter().any(|doc_name| doc_name == name),
-                "MCP tool '{name}' exists but is not documented in cli-mcp.md"
+                "MCP tool '{name}' exists but is not documented in mcp-methods.md"
             );
         }
     }
