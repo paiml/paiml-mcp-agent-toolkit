@@ -207,7 +207,7 @@ mod export_integration_tests {
 
         // Verify tool information
         let driver = &sarif["runs"][0]["tool"]["driver"];
-        assert_eq!(driver["name"], "paiml-mcp-agent-toolkit");
+        assert_eq!(driver["name"], "pmat");
         assert!(driver["informationUri"]
             .as_str()
             .unwrap()
