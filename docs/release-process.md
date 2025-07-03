@@ -41,21 +41,21 @@ pmat analyze complexity --max-complexity 20
 ```bash
 # Update version in server/Cargo.toml
 cd server
-cargo set-version 0.26.4  # Use appropriate version
+cargo set-version 0.27.0  # Use appropriate version
 
 # Update lock file
 cargo update -p pmat
 
 # Commit version change
 git add Cargo.toml Cargo.lock
-git commit -m "chore: Bump version to v0.26.4"
+git commit -m "chore: Bump version to v0.27.0"
 ```
 
 ### Step 3: Update Documentation
 
 1. **RELEASE_NOTES.md**
    ```markdown
-   ## v0.26.4 - 2025-07-02
+   ## v0.27.0 - 2025-07-03
 
    ### Features
    - Feature description
@@ -85,7 +85,7 @@ git commit -m "chore: Bump version to v0.26.4"
 git add RELEASE_NOTES.md README.md docs/
 
 # Create release commit
-git commit -m "release: Prepare v0.26.4
+git commit -m "release: Prepare v0.27.0
 
 - Update release notes
 - Update documentation
@@ -103,12 +103,12 @@ git push origin master
 
 ```bash
 # Create annotated tag
-git tag -a v0.26.4 -m "Release v0.26.4
+git tag -a v0.27.0 -m "Release v0.27.0
 
 See RELEASE_NOTES.md for details"
 
 # Push tag
-git push origin v0.26.4
+git push origin v0.27.0
 ```
 
 ### Step 6: Build Release Artifacts
@@ -145,8 +145,8 @@ open https://crates.io/crates/pmat
 
 1. Go to [GitHub Releases](https://github.com/paiml/pmat/releases)
 2. Click "Draft a new release"
-3. Select the tag `v0.26.4`
-4. Title: `v0.26.4`
+3. Select the tag `v0.27.0`
+4. Title: `v0.27.0`
 5. Copy content from RELEASE_NOTES.md
 6. Upload pre-built binaries:
    - `pmat-linux-x86_64.tar.gz`
@@ -165,7 +165,7 @@ cargo install pmat --force
 pmat --version
 
 # 2. Test binary downloads
-curl -L https://github.com/paiml/pmat/releases/download/v0.26.4/pmat-linux-x86_64.tar.gz | tar xz
+curl -L https://github.com/paiml/pmat/releases/download/v0.27.0/pmat-linux-x86_64.tar.gz | tar xz
 ./pmat --version
 
 # 3. Verify documentation
@@ -262,17 +262,17 @@ If a critical issue is found after release:
 
 ```bash
 # Yank from crates.io
-cargo yank --version 0.26.4
+cargo yank --version 0.27.0
 
 # Create patch release immediately
-# Follow normal release process for 0.26.5
+# Follow normal release process for 0.27.1
 ```
 
 ### Hotfix Process
 
 1. Create hotfix branch from tag
    ```bash
-   git checkout -b hotfix/v0.26.5 v0.26.4
+   git checkout -b hotfix/v0.27.1 v0.27.0
    ```
 
 2. Apply fix and test thoroughly
@@ -283,7 +283,7 @@ cargo yank --version 0.26.4
 
 ## Version Naming Convention
 
-- **Stable**: `0.26.4`
+- **Stable**: `0.27.0`
 - **Pre-release**: `0.27.0-alpha.1`, `0.27.0-beta.1`, `0.27.0-rc.1`
 - **Nightly**: `0.27.0-nightly.20250702`
 

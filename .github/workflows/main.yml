@@ -119,13 +119,13 @@ jobs:
           deno-version: v2.x
       
       - name: Check documentation
-        run: make validate-docs || true  # Don't fail on doc validation for now
+        run: make validate-docs
       
       - name: Check naming conventions
         run: make validate-naming
       
       - name: Validate GitHub Actions
-        run: make test-actions || true  # Don't fail on this
+        run: make test-actions
 
   property-tests:
     name: Property Tests
