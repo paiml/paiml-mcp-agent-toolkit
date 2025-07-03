@@ -96,6 +96,7 @@ pub async fn route_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::R
             test,
             test_name,
             github_issue,
+            bug_report_path,
         } => {
             super::refactor_auto_handlers::handle_refactor_auto(
                 project_path,
@@ -112,6 +113,7 @@ pub async fn route_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::R
                 test,
                 test_name,
                 github_issue,
+                bug_report_path,
             )
             .await
         }
