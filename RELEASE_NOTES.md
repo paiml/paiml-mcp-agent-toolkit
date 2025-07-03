@@ -2,6 +2,51 @@
 
 This document details the latest changes, features, and bug fixes for the `pmat` crate.
 
+## v0.27.5 (2025-07-03) - Documentation & Build Fixes
+
+### 🚀 Highlights
+
+This release focuses on documentation improvements, build fixes, and enhanced developer experience.
+
+### ✨ New Features
+
+#### Documentation
+- **Demo Interface Documentation** - Comprehensive guide for web demo, TUI, and protocol demonstrations
+- **TUI Interface Documentation** - Complete terminal UI guide with keyboard shortcuts and navigation
+- **Interfaces Overview Guide** - Helps users choose the right interface (CLI, HTTP, MCP, Rust API, Web, TUI)
+- **Enhanced CLI Reference** - Updated and moved to proper location in docs
+
+#### Developer Experience
+- **New Makefile Targets**:
+  - `make crate-release` - Interactive publishing to crates.io with pre-publish checklist
+  - `make crate-docs` - Build and verify documentation with docs.rs configuration
+
+### 🐛 Bug Fixes
+
+#### Build & CI
+- **Fixed docs.rs build failures** - Wrapped demo asset includes with `#[cfg(not(docsrs))]` to handle missing files in docs.rs environment
+- **Fixed CI workflow timeout** - Removed nested timeout command that was causing premature test termination
+- **Fixed build.rs asset handling** - Create empty gzipped placeholders for docs.rs builds
+
+### 📚 Documentation
+
+All six PMAT interfaces are now fully documented:
+1. **CLI** - Command-line interface (`/docs/cli-reference.md`)
+2. **HTTP API** - REST endpoints (`/rust-docs/http-api.md`)
+3. **MCP** - Model Context Protocol (`/docs/features/mcp-protocol.md`)
+4. **Rust API** - Library integration (`/docs/api-guide.md`)
+5. **Web Demo** - Interactive browser UI (`/docs/features/demo-interface.md`)
+6. **TUI** - Terminal user interface (`/docs/features/tui-interface.md`)
+
+### 🔧 Technical Details
+
+- Version bump to 0.27.5 for crates.io publication
+- Successfully building on docs.rs
+- CI pipeline improvements for better reliability
+
+### Breaking Changes
+None - all changes are backward compatible
+
 ## v0.27.0 (2025-07-03) - Stateful MCP Server & Enhanced Testing
 
 ### 🚀 Major Features
