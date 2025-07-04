@@ -621,7 +621,61 @@ fn generate_satd_sarif(
 }
 
 /// Format SATD summary
-fn format_satd_summary(
+/// 
+/// # Example
+/// 
+/// ```
+/// use pmat::services::satd_detector::{SATDAnalysisResult, SATDSummary, TechnicalDebt, DebtCategory, Severity};
+/// use pmat::cli::handlers::complexity_handlers::format_satd_summary;
+/// use std::collections::HashMap;
+/// use std::path::PathBuf;
+/// use chrono::Utc;
+/// 
+/// let result = SATDAnalysisResult {
+///     items: vec![
+///         TechnicalDebt {
+///             category: DebtCategory::Defect,
+///             severity: Severity::High,
+///             text: "FIXME: Handle error properly".to_string(),
+///             file: PathBuf::from("src/main.rs"),
+///             line: 42,
+///             column: 8,
+///             context_hash: [0; 16],
+///         },
+///         TechnicalDebt {
+///             category: DebtCategory::Requirement,
+///             severity: Severity::Medium,
+///             text: "TODO: Add validation".to_string(),
+///             file: PathBuf::from("src/lib.rs"),
+///             line: 25,
+///             column: 4,
+///             context_hash: [1; 16],
+///         },
+///     ],
+///     summary: SATDSummary {
+///         total_items: 2,
+///         by_severity: HashMap::new(),
+///         by_category: HashMap::new(),
+///         files_with_satd: 2,
+///         avg_age_days: 30.0,
+///     },
+///     total_files_analyzed: 10,
+///     files_with_debt: 2,
+///     analysis_timestamp: Utc::now(),
+/// };
+/// 
+/// let summary = format_satd_summary(&result, false);
+/// 
+/// assert!(summary.contains("# SATD Analysis Summary"));
+/// assert!(summary.contains("**Files analyzed**: 10"));
+/// assert!(summary.contains("**Files with SATD**: 2"));
+/// assert!(summary.contains("**Total SATD items**: 2"));
+/// assert!(summary.contains("## Top Files with SATD"));
+/// // Note: Files are sorted by SATD count, then alphabetically
+/// assert!(summary.contains("- 1 SATD items"));
+/// assert!(summary.contains("- 1 SATD items"));
+/// ```
+pub fn format_satd_summary(
     result: &crate::services::satd_detector::SATDAnalysisResult,
     metrics: bool,
 ) -> String {
@@ -662,7 +716,36 @@ fn format_satd_summary(
         }
     }
 
-    // Show top items
+    // Show top files with SATD
+    if !result.items.is_empty() {
+        writeln!(&mut output, "\n## Top Files with SATD\n").unwrap();
+        
+        // Group items by file and count them
+        use std::collections::HashMap;
+        let mut file_counts: HashMap<&std::path::Path, usize> = HashMap::new();
+        for item in &result.items {
+            *file_counts.entry(&item.file).or_insert(0) += 1;
+        }
+        
+        // Sort files by SATD count (descending)
+        let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
+        sorted_files.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
+        
+        // Show top 10 files with their SATD counts
+        for (i, (file, count)) in sorted_files.iter().take(10).enumerate() {
+            let filename = file.file_name().unwrap_or_default().to_string_lossy();
+            writeln!(
+                &mut output,
+                "{}. `{}` - {} SATD items",
+                i + 1,
+                filename,
+                count
+            )
+            .unwrap();
+        }
+    }
+
+    // Show critical items
     if !result.items.is_empty() {
         writeln!(&mut output, "\n## Critical Items\n").unwrap();
         for item in result
