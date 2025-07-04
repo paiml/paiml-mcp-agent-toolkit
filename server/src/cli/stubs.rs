@@ -491,6 +491,7 @@ fn get_gcc_level(severity: &makefile_linter::Severity) -> &'static str {
 ///
 /// # Errors
 /// Returns an error if the analysis fails
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_provability(
     project_path: PathBuf,
     functions: Vec<String>,
@@ -3724,7 +3725,7 @@ fn write_comp_duplicates_section(output: &mut String, duplicates: &DuplicateRepo
 
 // Incremental coverage stub data structures
 #[derive(Debug, Serialize)]
-struct IncrementalCoverageReport {
+pub struct IncrementalCoverageReport {
     base_branch: String,
     target_branch: String,
     coverage_threshold: f64,
@@ -3733,7 +3734,7 @@ struct IncrementalCoverageReport {
 }
 
 #[derive(Debug, Serialize, Clone)]
-struct FileCoverageMetrics {
+pub struct FileCoverageMetrics {
     path: PathBuf,
     base_coverage: f64,
     target_coverage: f64,
@@ -3744,7 +3745,7 @@ struct FileCoverageMetrics {
 }
 
 #[derive(Debug, Serialize)]
-struct CoverageSummary {
+pub struct CoverageSummary {
     total_files_changed: usize,
     files_improved: usize,
     files_degraded: usize,
@@ -4009,6 +4010,7 @@ mod tests {
             false, // high_confidence_only
             false, // include_evidence
             None,  // output path
+            10,    // top_files
         )
         .await;
 
@@ -4102,6 +4104,7 @@ mod tests {
             false, // _perf
             None,  // cache_dir
             false, // force_refresh
+            10,    // top_files
         )
         .await;
 
