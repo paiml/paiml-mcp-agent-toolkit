@@ -459,6 +459,46 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 }
 
 /// Format complexity summary for CLI output
+///
+/// # Examples
+///
+/// ```
+/// use pmat::services::complexity::*;
+/// 
+/// let file_metrics = vec![
+///     FileComplexityMetrics {
+///         path: "src/main.rs".to_string(),
+///         total_complexity: ComplexityMetrics {
+///             cyclomatic: 5,
+///             cognitive: 7,
+///             nesting_max: 2,
+///             lines: 30,
+///         },
+///         functions: vec![],
+///         classes: vec![],
+///     },
+///     FileComplexityMetrics {
+///         path: "src/lib.rs".to_string(),
+///         total_complexity: ComplexityMetrics {
+///             cyclomatic: 3,
+///             cognitive: 4,
+///             nesting_max: 1,
+///             lines: 20,
+///         },
+///         functions: vec![],
+///         classes: vec![],
+///     },
+/// ];
+/// 
+/// let report = aggregate_results(file_metrics);
+/// let summary = format_complexity_summary(&report);
+/// 
+/// assert!(summary.contains("# Complexity Analysis Summary"));
+/// assert!(summary.contains("**Files analyzed**: 2"));
+/// assert!(summary.contains("## Top Files by Complexity"));
+/// assert!(summary.contains("main.rs")); // First file (higher complexity)
+/// assert!(summary.contains("lib.rs"));  // Second file
+/// ```
 pub fn format_complexity_summary(report: &ComplexityReport) -> String {
     let mut output = String::new();
 
@@ -525,6 +565,36 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
         }
         if warning_count > 0 {
             output.push_str(&format!("⚠️  **Warnings**: {warning_count}\n"));
+        }
+        output.push('\n');
+    }
+
+    // Top files by complexity
+    if !report.files.is_empty() {
+        output.push_str("## Top Files by Complexity\n\n");
+        
+        // Sort files by total complexity (cyclomatic + cognitive)
+        let mut files_with_score: Vec<_> = report.files.iter()
+            .map(|f| {
+                let total_score = f.total_complexity.cyclomatic as f64 + f.total_complexity.cognitive as f64;
+                (f, total_score)
+            })
+            .collect();
+        files_with_score.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        
+        for (i, (file, _score)) in files_with_score.iter().take(10).enumerate() {
+            let filename = std::path::Path::new(&file.path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(&file.path);
+            output.push_str(&format!(
+                "{}. `{}` - Cyclomatic: {}, Cognitive: {}, Functions: {}\n",
+                i + 1,
+                filename,
+                file.total_complexity.cyclomatic,
+                file.total_complexity.cognitive,
+                file.functions.len()
+            ));
         }
         output.push('\n');
     }
