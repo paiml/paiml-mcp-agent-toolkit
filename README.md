@@ -19,10 +19,12 @@ Install `pmat` using one of the following methods:
   cargo install pmat
   ```
 
-- **With the Quick Install Script (Linux/macOS):**
+- **With the Quick Install Script (Linux only):**
   ```bash
   curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
   ```
+  
+  **macOS users:** Please use `cargo install pmat` instead. Pre-built binaries are only available for Linux.
 
 - **From Source:**
   ```bash
@@ -32,7 +34,7 @@ Install `pmat` using one of the following methods:
   ```
 
 - **From GitHub Releases:**
-  Pre-built binaries for Linux, macOS, and Windows are available on the [releases page](https://github.com/paiml/paiml-mcp-agent-toolkit/releases).
+  Pre-built binaries for Linux are available on the [releases page](https://github.com/paiml/paiml-mcp-agent-toolkit/releases). macOS and Windows users should use `cargo install pmat`.
 
 ### Requirements
 - **Rust:** 1.80.0 or later
