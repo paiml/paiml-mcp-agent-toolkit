@@ -452,7 +452,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             output,
             perf,
             executive_summary,
-            top_files,
+            top_files: _,
         } => {
             super::advanced_analysis_handlers::handle_analyze_comprehensive(
                 project_path,
