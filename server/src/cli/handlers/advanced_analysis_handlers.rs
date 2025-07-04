@@ -151,7 +151,7 @@ pub async fn handle_analyze_provability(
     high_confidence_only: bool,
     include_evidence: bool,
     output: Option<PathBuf>,
-    _top_files: usize,
+    top_files: usize,
 ) -> Result<()> {
     // Delegate to stub implementation for now - will be fully extracted later
     super::super::stubs::handle_analyze_provability(
@@ -162,6 +162,7 @@ pub async fn handle_analyze_provability(
         high_confidence_only,
         include_evidence,
         output,
+        top_files,
     )
     .await
 }
