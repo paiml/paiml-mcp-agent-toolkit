@@ -1768,19 +1768,19 @@ pub async fn handle_analyze_comprehensive(
 
 // Quality Gate types and helpers
 #[derive(Debug, Default, serde::Serialize)]
-struct QualityGateResults {
-    passed: bool,
-    total_violations: usize,
-    complexity_violations: usize,
-    dead_code_violations: usize,
-    satd_violations: usize,
-    entropy_violations: usize,
-    security_violations: usize,
-    duplicate_violations: usize,
-    coverage_violations: usize,
-    section_violations: usize,
-    provability_violations: usize,
-    provability_score: Option<f64>,
+pub struct QualityGateResults {
+    pub passed: bool,
+    pub total_violations: usize,
+    pub complexity_violations: usize,
+    pub dead_code_violations: usize,
+    pub satd_violations: usize,
+    pub entropy_violations: usize,
+    pub security_violations: usize,
+    pub duplicate_violations: usize,
+    pub coverage_violations: usize,
+    pub section_violations: usize,
+    pub provability_violations: usize,
+    pub provability_score: Option<f64>,
 }
 
 // Comprehensive analysis types
@@ -1887,12 +1887,12 @@ struct DuplicateBlock {
 }
 
 #[derive(Debug, serde::Serialize)]
-struct QualityViolation {
-    check_type: String,
-    severity: String,
-    file: String,
-    line: Option<usize>,
-    message: String,
+pub struct QualityViolation {
+    pub check_type: String,
+    pub severity: String,
+    pub file: String,
+    pub line: Option<usize>,
+    pub message: String,
 }
 
 // Helper function to check if file is source code
@@ -2154,8 +2154,51 @@ async fn calculate_provability_score(_project_path: &Path) -> Result<f64> {
     Ok(0.85) // Placeholder score
 }
 
-// Refactored format_quality_gate_output with reduced complexity
-fn format_quality_gate_output(
+/// Format quality gate output for CI/CD integration
+///
+/// # Examples
+///
+/// ```
+/// use pmat::cli::stubs::{format_quality_gate_output, QualityGateResults, QualityViolation};
+/// use pmat::cli::QualityGateOutputFormat;
+/// 
+/// let mut results = QualityGateResults::default();
+/// results.passed = false;
+/// results.total_violations = 2;
+/// results.complexity_violations = 1;
+/// results.dead_code_violations = 1;
+/// 
+/// let violations = vec![
+///     QualityViolation {
+///         check_type: "complexity".to_string(),
+///         severity: "error".to_string(),
+///         file: "src/main.rs".to_string(),
+///         line: Some(42),
+///         message: "Function exceeds complexity threshold".to_string(),
+///     },
+///     QualityViolation {
+///         check_type: "dead_code".to_string(),
+///         severity: "warning".to_string(),
+///         file: "src/lib.rs".to_string(),
+///         line: Some(10),
+///         message: "Unused function detected".to_string(),
+///     },
+/// ];
+/// 
+/// // Test human-readable format
+/// let output = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Human).unwrap();
+/// assert!(output.contains("❌ FAILED"));
+/// assert!(output.contains("Total violations: 2"));
+/// 
+/// // Test JSON format
+/// let json_output = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Json).unwrap();
+/// assert!(json_output.contains("\"passed\":false"));
+/// 
+/// // Test summary format
+/// let summary = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Summary).unwrap();
+/// assert!(summary.contains("Status: FAILED"));
+/// ```
+pub fn format_quality_gate_output(
     results: &QualityGateResults,
     violations: &[QualityViolation],
     format: QualityGateOutputFormat,
