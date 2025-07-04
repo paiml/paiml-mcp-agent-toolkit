@@ -488,12 +488,12 @@ fn compile_capnp_schema() {
     // Only compile schema if MCP server feature is enabled or explicitly requested
     if env::var("CARGO_FEATURE_MCP_SERVER").is_ok() || env::var("PMAT_BUILD_MCP").is_ok() {
         let schema_path = Path::new("src/schema/refactor_state.capnp");
-        
+
         if schema_path.exists() {
             println!("cargo:warning=Compiling Cap'n Proto schema for MCP server");
-            
+
             let out_dir = env::var("OUT_DIR").expect("OUT_DIR environment variable must be set");
-            
+
             // Use capnpc to compile the schema
             match capnpc::CompilerCommand::new()
                 .src_prefix("src/schema")

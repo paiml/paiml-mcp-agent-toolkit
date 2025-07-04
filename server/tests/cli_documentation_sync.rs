@@ -22,7 +22,10 @@ fn parse_documented_cli_commands() -> Vec<DocumentedCommand> {
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
+            eprintln!(
+                "Skipping test: cli-reference.md not found at {:?}",
+                doc_path
+            );
             return vec![];
         }
     };
@@ -266,7 +269,7 @@ fn test_no_undocumented_commands() {
         eprintln!("No documented commands found, skipping test");
         return;
     }
-    
+
     let binary_path = get_binary_path();
 
     // Get actual commands from CLI
@@ -318,7 +321,10 @@ fn test_documentation_examples_are_valid() {
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
+            eprintln!(
+                "Skipping test: cli-reference.md not found at {:?}",
+                doc_path
+            );
             return;
         }
     };

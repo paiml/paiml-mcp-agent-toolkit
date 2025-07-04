@@ -2,9 +2,9 @@
 mod tests {
     use crate::services::satd_detector::*;
     use proptest::prelude::*;
+    use std::io::Write;
     use std::path::Path;
     use tempfile::NamedTempFile;
-    use std::io::Write;
 
     // Strategy for generating valid SATD markers
     prop_compose! {
@@ -54,10 +54,10 @@ mod tests {
              extra_spaces in 0usize..5)
             -> String
         {
-            format!("{}{}{}: {}", 
-                style, 
+            format!("{}{}{}: {}",
+                style,
                 " ".repeat(extra_spaces),
-                marker, 
+                marker,
                 message)
         }
     }
@@ -72,7 +72,7 @@ mod tests {
         {
             let mut lines = vec![];
             let satd_map: std::collections::HashMap<_, _> = satd_lines.into_iter().collect();
-            
+
             for i in 0..num_lines {
                 if let Some(satd) = satd_map.get(&i) {
                     lines.push(satd.clone());
@@ -82,7 +82,7 @@ mod tests {
                     lines.push(String::new());
                 }
             }
-            
+
             lines.join("\n")
         }
     }
@@ -130,15 +130,15 @@ mod tests {
             let detector = SATDDetector::new();
             let filename = format!("test.{}", ext);
             let path = Path::new(&filename);
-            
+
             let result1 = detector.extract_from_content(&source, path);
             let result2 = detector.extract_from_content(&source, path);
-            
+
             match (result1, result2) {
                 (Ok(debts1), Ok(debts2)) => {
-                    prop_assert_eq!(debts1.len(), debts2.len(), 
+                    prop_assert_eq!(debts1.len(), debts2.len(),
                         "Different number of SATD items on repeated parse");
-                    
+
                     for (d1, d2) in debts1.iter().zip(debts2.iter()) {
                         prop_assert_eq!(d1.category, d2.category);
                         prop_assert_eq!(d1.severity, d2.severity);
@@ -160,13 +160,13 @@ mod tests {
             // Property: All detected SATD items have valid line numbers
             let detector = SATDDetector::new();
             let result = detector.extract_from_content(&source, Path::new("test.rs"));
-            
+
             if let Ok(debts) = result {
                 let total_lines = source.lines().count() as u32;
-                
+
                 for debt in debts {
                     prop_assert!(debt.line > 0, "Line number must be positive");
-                    prop_assert!(debt.line <= total_lines, 
+                    prop_assert!(debt.line <= total_lines,
                         "Line number {} exceeds total lines {}", debt.line, total_lines);
                 }
             }
@@ -180,10 +180,10 @@ mod tests {
             let detector = SATDDetector::new();
             let comment1 = format!("// {}: test issue", marker);
             let comment2 = format!("# {}: different message", marker);
-            
+
             let result1 = detector.extract_from_content(&comment1, Path::new("test.rs"));
             let result2 = detector.extract_from_content(&comment2, Path::new("test.py"));
-            
+
             if let (Ok(debts1), Ok(debts2)) = (result1, result2) {
                 if !debts1.is_empty() && !debts2.is_empty() {
                     prop_assert_eq!(debts1[0].category, debts2[0].category,
@@ -199,18 +199,18 @@ mod tests {
         // Note: The enum derives Ord, so ordering is based on declaration order
         // Critical is declared first, so it has the lowest discriminant
         use Severity::*;
-        
+
         // The actual ordering based on enum declaration
         assert!(Critical < High);
         assert!(High < Medium);
         assert!(Medium < Low);
-        
+
         // Test escalation
         assert_eq!(Low.escalate(), Medium);
         assert_eq!(Medium.escalate(), High);
         assert_eq!(High.escalate(), Critical);
         assert_eq!(Critical.escalate(), Critical); // Can't escalate beyond Critical
-        
+
         // Test reduction
         assert_eq!(Critical.reduce(), High);
         assert_eq!(High.reduce(), Medium);
@@ -226,10 +226,10 @@ mod tests {
             // Property: Empty or whitespace-only input is handled gracefully
             let content = whitespace.join("");
             let detector = SATDDetector::new();
-            
+
             let result = detector.extract_from_content(&content, Path::new("test.rs"));
             prop_assert!(result.is_ok(), "Should handle empty input");
-            
+
             if let Ok(debts) = result {
                 prop_assert_eq!(debts.len(), 0, "Empty input should produce no SATD items");
             }
@@ -246,11 +246,11 @@ mod tests {
             // Property: Malformed comments don't crash the parser
             let malformed = format!("{}{}{}", prefix, marker, suffix);
             let detector = SATDDetector::new();
-            
+
             let result = std::panic::catch_unwind(|| {
                 detector.extract_from_content(&malformed, Path::new("test.rs"))
             });
-            
+
             prop_assert!(result.is_ok(), "Parser should not panic on malformed input");
         });
     }
@@ -264,17 +264,17 @@ mod tests {
             // Property: Content extraction preserves line structure
             let detector = SATDDetector::new();
             let mut source_lines = lines.clone();
-            
+
             // Insert SATD comments at specified indices
             for &idx in &satd_indices {
                 if idx < source_lines.len() {
                     source_lines[idx] = format!("// TODO: issue at line {}", idx);
                 }
             }
-            
+
             let source = source_lines.join("\n");
             let result = detector.extract_from_content(&source, Path::new("test.rs"));
-            
+
             if let Ok(debts) = result {
                 // All detected debts should have correct line numbers
                 for debt in debts {
@@ -293,19 +293,19 @@ mod tests {
         proptest!(|(source in arb_source_with_satd())| {
             // Property: File I/O integration works correctly
             let detector = SATDDetector::new();
-            
+
             // Create temporary file
             let mut temp_file = NamedTempFile::new().unwrap();
             temp_file.write_all(source.as_bytes()).unwrap();
             temp_file.flush().unwrap();
             let path = temp_file.path();
-            
+
             // Read file and analyze
             let file_content = std::fs::read_to_string(path).unwrap();
             prop_assert_eq!(&file_content, &source, "File content should match written content");
-            
+
             let result = detector.extract_from_content(&file_content, path);
-            prop_assert!(result.is_ok() || file_content.len() > 10000, 
+            prop_assert!(result.is_ok() || file_content.len() > 10000,
                 "Should successfully analyze file content");
         });
     }
@@ -319,30 +319,30 @@ mod tests {
         )| {
             // Property: SATD in test blocks should be excluded (Rust files)
             let mut lines = vec![];
-            
+
             // Add pre-test code
             lines.extend(pre_test);
-            
+
             // Add test block
             lines.push("#[cfg(test)]".to_string());
             lines.push("mod tests {".to_string());
             let test_content_len = test_content.len();
             lines.extend(test_content);
             lines.push("}".to_string());
-            
+
             // Add post-test code
             lines.extend(post_test);
-            
+
             let source = lines.join("\n");
             let detector = SATDDetector::new();
-            
+
             let result = detector.extract_from_content(&source, Path::new("test.rs"));
-            
+
             if let Ok(debts) = result {
                 // No SATD should be detected within the test block lines
                 let test_start_line = lines.iter().position(|l| l.contains("#[cfg(test)]")).unwrap() + 1;
                 let test_end_line = test_start_line + 3 + test_content_len;
-                
+
                 for debt in debts {
                     prop_assert!(
                         debt.line <= test_start_line as u32 || debt.line > test_end_line as u32,
@@ -363,11 +363,11 @@ mod tests {
             // Property: Unicode in comments is handled properly
             let content = format!("// {} {}: {}", prefix, marker, suffix);
             let detector = SATDDetector::new();
-            
+
             let result = std::panic::catch_unwind(|| {
                 detector.extract_from_content(&content, Path::new("test.rs"))
             });
-            
+
             prop_assert!(result.is_ok(), "Should handle Unicode without panicking");
         });
     }
@@ -380,7 +380,7 @@ mod tests {
         )| {
             // Property: Performance scales linearly with file size
             let detector = SATDDetector::new();
-            
+
             // Create a large file by repeating lines
             let mut lines = vec![];
             for i in 0..num_repetitions {
@@ -391,9 +391,9 @@ mod tests {
                 }
             }
             let content = lines.join("\n");
-            
+
             let result = detector.extract_from_content(&content, Path::new("test.rs"));
-            
+
             if let Ok(debts) = result {
                 // Should find approximately num_repetitions / 10 SATD items
                 let expected = num_repetitions / 10;
@@ -414,7 +414,7 @@ mod tests {
         )| {
             // Property: Nested comment styles are parsed correctly
             let mut content = String::new();
-            
+
             // Create nested comment structure
             for _ in 0..depth {
                 content.push_str("/* ");
@@ -423,10 +423,10 @@ mod tests {
             for _ in 0..depth {
                 content.push_str(" */");
             }
-            
+
             let detector = SATDDetector::new();
             let result = detector.extract_from_content(&content, Path::new("test.c"));
-            
+
             prop_assert!(result.is_ok(), "Should handle nested comments");
         });
     }
@@ -444,12 +444,12 @@ mod tests {
                 content.push(format!(" * {}", line));
             }
             content.push(" */".to_string());
-            
+
             let source = content.join("\n");
             let detector = SATDDetector::new();
-            
+
             let result = detector.extract_from_content(&source, Path::new("test.c"));
-            
+
             if let Ok(debts) = result {
                 if !debts.is_empty() {
                     // Should detect the SATD on the correct line

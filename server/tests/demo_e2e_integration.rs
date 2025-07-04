@@ -61,17 +61,20 @@ impl DemoServer {
             // In CI, check for the built binary
             let ci_binary = "target/release/pmat";
             if !std::path::Path::new(ci_binary).exists() {
-                eprintln!("[TEST] Skipping demo test - binary not found at {}", ci_binary);
+                eprintln!(
+                    "[TEST] Skipping demo test - binary not found at {}",
+                    ci_binary
+                );
                 anyhow::bail!("Demo binary not available in CI");
             }
         }
-        
+
         // Use cargo's TARGET_DIR or fallback to workspace target directory
         let binary_path = std::env::var("CARGO_BIN_EXE_pmat").unwrap_or_else(|_| {
             // In CI, we build to target/release/pmat from workspace root
             let workspace_release = "target/release/pmat";
             let workspace_debug = "target/debug/pmat";
-            
+
             if std::path::Path::new(workspace_release).exists() {
                 workspace_release.to_string()
             } else if std::path::Path::new(workspace_debug).exists() {
@@ -84,18 +87,20 @@ impl DemoServer {
 
         eprintln!("[TEST] Spawning demo server with binary: {}", binary_path);
         eprintln!("[TEST] Demo path: {}", repo_path);
-        
+
         let mut process = Command::new(&binary_path)
             .args(["demo", "--path", repo_path, "--no-browser"])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .map_err(|e| anyhow::anyhow!("Failed to spawn demo server at {}: {}", binary_path, e))?;
+            .map_err(|e| {
+                anyhow::anyhow!("Failed to spawn demo server at {}: {}", binary_path, e)
+            })?;
 
         // Read stdout until we find the server URL
         let stdout = process.stdout.take().expect("Failed to capture stdout");
         let stderr = process.stderr.take().expect("Failed to capture stderr");
-        
+
         // Start monitoring stderr in background
         tokio::spawn(async move {
             use tokio::io::{AsyncBufReadExt, BufReader};
@@ -105,7 +110,7 @@ impl DemoServer {
                 eprintln!("[DEMO STDERR] {}", line);
             }
         });
-        
+
         let port = Self::parse_port_from_output(stdout).await?;
 
         let base_url = format!("http://127.0.0.1:{port}");
@@ -136,12 +141,12 @@ impl DemoServer {
                     Ok(bytes_read) if bytes_read > 0 => {
                         buffer.extend_from_slice(&temp_buffer[..bytes_read]);
                         let output = String::from_utf8_lossy(&buffer);
-                        
+
                         // Print output for debugging
                         if !output.trim().is_empty() {
                             eprintln!("[DEMO STDOUT] {}", output.trim());
                         }
-                        
+
                         if let Some(captures) = PORT_REGEX.captures(&output) {
                             if let Some(port_str) = captures.get(1) {
                                 eprintln!("[TEST] Found port: {}", port_str.as_str());
@@ -350,7 +355,7 @@ pub fn format_number(n: i32) -> String {
 #[tokio::test]
 async fn test_demo_server_happy_path() -> Result<()> {
     skip_in_ci!();
-    
+
     let repo_path = TEST_REPO.path().to_str().unwrap();
     let server = DemoServer::spawn(repo_path).await?;
 
@@ -378,7 +383,7 @@ async fn test_demo_server_happy_path() -> Result<()> {
 #[tokio::test]
 async fn test_api_contract_compliance() -> Result<()> {
     skip_in_ci!();
-    
+
     let repo_path = TEST_REPO.path().to_str().unwrap();
     let server = DemoServer::spawn(repo_path).await?;
 
@@ -443,7 +448,7 @@ async fn test_api_contract_compliance() -> Result<()> {
 #[tokio::test]
 async fn test_concurrent_requests() -> Result<()> {
     skip_in_ci!();
-    
+
     let repo_path = TEST_REPO.path().to_str().unwrap();
     let server = DemoServer::spawn(repo_path).await?;
 
@@ -482,7 +487,7 @@ async fn test_concurrent_requests() -> Result<()> {
 #[serial]
 async fn test_performance_assertions() -> Result<()> {
     skip_in_ci!();
-    
+
     let repo_path = TEST_REPO.path().to_str().unwrap();
 
     // Measure startup time
@@ -525,7 +530,7 @@ async fn test_performance_assertions() -> Result<()> {
 #[serial]
 async fn test_error_handling() -> Result<()> {
     skip_in_ci!();
-    
+
     let repo_path = TEST_REPO.path().to_str().unwrap();
     let server = DemoServer::spawn(repo_path).await?;
 
@@ -552,7 +557,7 @@ async fn test_error_handling() -> Result<()> {
 #[tokio::test]
 async fn test_analysis_pipeline_integrity() -> Result<()> {
     skip_in_ci!();
-    
+
     let repo_path = TEST_REPO.path().to_str().unwrap();
 
     // Capture process output to verify analysis steps
@@ -627,7 +632,7 @@ async fn test_analysis_pipeline_integrity() -> Result<()> {
 #[tokio::test]
 async fn test_data_source_indicators() -> Result<()> {
     skip_in_ci!();
-    
+
     let repo_path = TEST_REPO.path().to_str().unwrap();
     let server = DemoServer::spawn(repo_path).await?;
 
@@ -669,7 +674,7 @@ async fn test_data_source_indicators() -> Result<()> {
 #[tokio::test]
 async fn test_mermaid_diagram_rendering() -> Result<()> {
     skip_in_ci!();
-    
+
     let repo_path = TEST_REPO.path().to_str().unwrap();
     let server = DemoServer::spawn(repo_path).await?;
 

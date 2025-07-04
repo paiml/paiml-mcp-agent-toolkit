@@ -41,7 +41,38 @@ pub enum Language {
     WebAssembly = 15,
 }
 
-/// Node flags for quick filtering
+/// Node flags for quick filtering and AST node categorization
+///
+/// Provides efficient bitwise operations for marking AST nodes with language-specific
+/// attributes like async/await, visibility modifiers, and semantic properties.
+///
+/// # Examples
+///
+/// Basic flag manipulation:
+/// ```rust
+/// use pmat::models::unified_ast::NodeFlags;
+///
+/// let mut flags = NodeFlags::new();
+/// assert!(!flags.has(NodeFlags::ASYNC));
+///
+/// flags.set(NodeFlags::ASYNC);
+/// assert!(flags.has(NodeFlags::ASYNC));
+///
+/// flags.unset(NodeFlags::ASYNC);
+/// assert!(!flags.has(NodeFlags::ASYNC));
+/// ```
+///
+/// Combining multiple flags:
+/// ```rust
+/// use pmat::models::unified_ast::NodeFlags;
+///
+/// let mut flags = NodeFlags::new();
+/// flags.set(NodeFlags::ASYNC | NodeFlags::EXPORTED);
+///
+/// assert!(flags.has(NodeFlags::ASYNC));
+/// assert!(flags.has(NodeFlags::EXPORTED));
+/// assert!(!flags.has(NodeFlags::PRIVATE));
+/// ```
 #[derive(Debug, Clone, Copy, Default)]
 #[repr(transparent)]
 pub struct NodeFlags(u8);
@@ -70,18 +101,73 @@ impl NodeFlags {
     pub const CONSTEXPR: u8 = 0b00010000; // constexpr
     pub const NOEXCEPT: u8 = 0b00100000; // noexcept
 
+    /// Creates a new NodeFlags instance with no flags set
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pmat::models::unified_ast::NodeFlags;
+    ///
+    /// let flags = NodeFlags::new();
+    /// assert!(!flags.has(NodeFlags::ASYNC));
+    /// assert!(!flags.has(NodeFlags::EXPORTED));
+    /// ```
     pub fn new() -> Self {
         Self(0)
     }
 
+    /// Sets the specified flag(s) using bitwise OR
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pmat::models::unified_ast::NodeFlags;
+    ///
+    /// let mut flags = NodeFlags::new();
+    /// flags.set(NodeFlags::ASYNC);
+    /// assert!(flags.has(NodeFlags::ASYNC));
+    ///
+    /// // Set multiple flags at once
+    /// flags.set(NodeFlags::EXPORTED | NodeFlags::CONST);
+    /// assert!(flags.has(NodeFlags::EXPORTED));
+    /// assert!(flags.has(NodeFlags::CONST));
+    /// ```
     pub fn set(&mut self, flag: u8) {
         self.0 |= flag;
     }
 
+    /// Unsets the specified flag(s) using bitwise AND NOT
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pmat::models::unified_ast::NodeFlags;
+    ///
+    /// let mut flags = NodeFlags::new();
+    /// flags.set(NodeFlags::ASYNC | NodeFlags::EXPORTED);
+    /// assert!(flags.has(NodeFlags::ASYNC));
+    /// assert!(flags.has(NodeFlags::EXPORTED));
+    ///
+    /// flags.unset(NodeFlags::ASYNC);
+    /// assert!(!flags.has(NodeFlags::ASYNC));
+    /// assert!(flags.has(NodeFlags::EXPORTED)); // Other flags preserved
+    /// ```
     pub fn unset(&mut self, flag: u8) {
         self.0 &= !flag;
     }
 
+    /// Checks if any of the specified flag(s) are set
+    ///
+    /// # Examples
+    /// ```rust
+    /// use pmat::models::unified_ast::NodeFlags;
+    ///
+    /// let mut flags = NodeFlags::new();
+    /// flags.set(NodeFlags::ASYNC);
+    ///
+    /// assert!(flags.has(NodeFlags::ASYNC));
+    /// assert!(!flags.has(NodeFlags::EXPORTED));
+    ///
+    /// // Check multiple flags (returns true if ANY are set)
+    /// assert!(flags.has(NodeFlags::ASYNC | NodeFlags::EXPORTED));
+    /// ```
     pub fn has(&self, flag: u8) -> bool {
         self.0 & flag != 0
     }
@@ -335,6 +421,31 @@ impl std::hash::Hash for Location {
 }
 
 impl Location {
+    /// Creates a new location from a file path and byte positions.
+    ///
+    /// # Parameters
+    ///
+    /// * `file_path` - The path to the source file
+    /// * `start` - Starting byte position in the file
+    /// * `end` - Ending byte position in the file
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::Location;
+    /// use std::path::PathBuf;
+    ///
+    /// let location = Location::new(
+    ///     PathBuf::from("src/main.rs"),
+    ///     100,
+    ///     150
+    /// );
+    ///
+    /// assert_eq!(location.file_path, PathBuf::from("src/main.rs"));
+    /// assert_eq!(location.span.start.0, 100);
+    /// assert_eq!(location.span.end.0, 150);
+    /// assert_eq!(location.span.len(), 50);
+    /// ```
     pub fn new(file_path: PathBuf, start: u32, end: u32) -> Self {
         Self {
             file_path,
@@ -345,12 +456,54 @@ impl Location {
         }
     }
 
+    /// Checks if this location completely contains another location.
+    ///
+    /// Two locations must be in the same file, and this location's span
+    /// must completely encompass the other location's span.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::Location;
+    /// use std::path::PathBuf;
+    ///
+    /// let file = PathBuf::from("test.rs");
+    /// let outer = Location::new(file.clone(), 0, 100);
+    /// let inner = Location::new(file.clone(), 10, 50);
+    /// let separate = Location::new(PathBuf::from("other.rs"), 0, 100);
+    ///
+    /// assert!(outer.contains(&inner));
+    /// assert!(!inner.contains(&outer));
+    /// assert!(!outer.contains(&separate)); // Different files
+    /// ```
     pub fn contains(&self, other: &Location) -> bool {
         self.file_path == other.file_path
             && self.span.start <= other.span.start
             && self.span.end >= other.span.end
     }
 
+    /// Checks if this location overlaps with another location.
+    ///
+    /// Two locations overlap if they are in the same file and their
+    /// byte ranges intersect (even partially).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::Location;
+    /// use std::path::PathBuf;
+    ///
+    /// let file = PathBuf::from("test.rs");
+    /// let loc1 = Location::new(file.clone(), 0, 50);
+    /// let loc2 = Location::new(file.clone(), 25, 75); // Overlaps
+    /// let loc3 = Location::new(file.clone(), 100, 150); // No overlap
+    /// let loc4 = Location::new(PathBuf::from("other.rs"), 0, 100); // Different file
+    ///
+    /// assert!(loc1.overlaps(&loc2));
+    /// assert!(loc2.overlaps(&loc1));
+    /// assert!(!loc1.overlaps(&loc3));
+    /// assert!(!loc1.overlaps(&loc4));
+    /// ```
     pub fn overlaps(&self, other: &Location) -> bool {
         self.file_path == other.file_path
             && self.span.start < other.span.end
@@ -398,6 +551,28 @@ pub struct QualifiedName {
 }
 
 impl QualifiedName {
+    /// Creates a new qualified name from module path and name components.
+    ///
+    /// # Parameters
+    ///
+    /// * `module_path` - Vector of module/namespace components
+    /// * `name` - The final name component (function, type, etc.)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::QualifiedName;
+    ///
+    /// let qname = QualifiedName::new(
+    ///     vec!["std".to_string(), "collections".to_string()],
+    ///     "HashMap".to_string()
+    /// );
+    ///
+    /// assert_eq!(qname.module_path, vec!["std", "collections"]);
+    /// assert_eq!(qname.name, "HashMap");
+    /// assert!(qname.disambiguator.is_none());
+    /// assert_eq!(qname.to_qualified_string(), "std::collections::HashMap");
+    /// ```
     pub fn new(module_path: Vec<String>, name: String) -> Self {
         Self {
             module_path,
@@ -411,7 +586,29 @@ impl QualifiedName {
         self
     }
 
-    /// Create a qualified name from a string like "crate::module::Type::method"
+    /// Creates a qualified name from a string representation.
+    ///
+    /// Parses strings in the format "module::submodule::Name" where
+    /// "::" separates module components from the final name.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::QualifiedName;
+    ///
+    /// // Simple name without module path
+    /// let simple = QualifiedName::from_string("main").unwrap();
+    /// assert_eq!(simple.name, "main");
+    /// assert!(simple.module_path.is_empty());
+    ///
+    /// // Fully qualified name
+    /// let qualified = QualifiedName::from_string("std::collections::HashMap").unwrap();
+    /// assert_eq!(qualified.module_path, vec!["std", "collections"]);
+    /// assert_eq!(qualified.name, "HashMap");
+    ///
+    /// // Error case
+    /// assert!(QualifiedName::from_string("").is_err());
+    /// ```
     pub fn from_string(qualified_str: &str) -> Result<Self, &'static str> {
         let parts: Vec<&str> = qualified_str.split("::").collect();
         if parts.is_empty() {
@@ -431,7 +628,30 @@ impl QualifiedName {
         })
     }
 
-    /// Convert to fully qualified string representation
+    /// Converts the qualified name back to its string representation.
+    ///
+    /// Creates a string in the format "module::submodule::Name", with
+    /// optional disambiguator suffix "#N" for overloaded names.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::QualifiedName;
+    ///
+    /// let qname = QualifiedName::new(
+    ///     vec!["crate".to_string(), "module".to_string()],
+    ///     "function".to_string()
+    /// );
+    /// assert_eq!(qname.to_qualified_string(), "crate::module::function");
+    ///
+    /// // With disambiguator
+    /// let overloaded = qname.with_disambiguator(1);
+    /// assert_eq!(overloaded.to_qualified_string(), "crate::module::function#1");
+    ///
+    /// // Simple name without modules
+    /// let simple = QualifiedName::new(vec![], "main".to_string());
+    /// assert_eq!(simple.to_qualified_string(), "main");
+    /// ```
     pub fn to_qualified_string(&self) -> String {
         let mut result = self.module_path.join("::");
         if !result.is_empty() {
@@ -535,6 +755,46 @@ pub struct UnifiedAstNode {
 }
 
 impl UnifiedAstNode {
+    /// Creates a new unified AST node with the specified kind and language.
+    ///
+    /// Initializes all fields to default values. The node is created with:
+    /// - No parent, children, or siblings (all keys set to 0)
+    /// - Empty source range (0..0)
+    /// - Zero semantic and structural hashes
+    /// - Default flags and metadata
+    /// - No proof annotations
+    ///
+    /// # Performance
+    ///
+    /// - Memory: 64-128 bytes (cache-line aligned)
+    /// - Time: O(1) initialization
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::{
+    ///     UnifiedAstNode, AstKind, FunctionKind, Language
+    /// };
+    ///
+    /// let func_node = UnifiedAstNode::new(
+    ///     AstKind::Function(FunctionKind::Regular),
+    ///     Language::Rust
+    /// );
+    ///
+    /// assert!(func_node.is_function());
+    /// assert_eq!(func_node.lang, Language::Rust);
+    /// assert_eq!(func_node.parent, 0);
+    /// assert_eq!(func_node.source_range, 0..0);
+    /// assert!(!func_node.has_proof_annotations());
+    ///
+    /// let class_node = UnifiedAstNode::new(
+    ///     AstKind::Class(pmat::models::unified_ast::ClassKind::Struct),
+    ///     Language::TypeScript
+    /// );
+    ///
+    /// assert!(class_node.is_type_definition());
+    /// assert!(!class_node.is_function());
+    /// ```
     pub fn new(kind: AstKind, lang: Language) -> Self {
         Self {
             kind,
@@ -552,12 +812,83 @@ impl UnifiedAstNode {
         }
     }
 
-    /// Check if this node represents a function-like construct
+    /// Checks if this node represents a function-like construct.
+    ///
+    /// Returns true for any node with `AstKind::Function`, regardless
+    /// of the specific function kind (regular, method, constructor, etc.).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::{
+    ///     UnifiedAstNode, AstKind, FunctionKind, ClassKind, Language
+    /// };
+    ///
+    /// let function = UnifiedAstNode::new(
+    ///     AstKind::Function(FunctionKind::Regular),
+    ///     Language::Rust
+    /// );
+    /// assert!(function.is_function());
+    ///
+    /// let method = UnifiedAstNode::new(
+    ///     AstKind::Function(FunctionKind::Method),
+    ///     Language::TypeScript
+    /// );
+    /// assert!(method.is_function());
+    ///
+    /// let class = UnifiedAstNode::new(
+    ///     AstKind::Class(ClassKind::Struct),
+    ///     Language::Rust
+    /// );
+    /// assert!(!class.is_function());
+    /// ```
     pub fn is_function(&self) -> bool {
         matches!(self.kind, AstKind::Function(_))
     }
 
-    /// Check if this node represents a type definition
+    /// Checks if this node represents a type definition.
+    ///
+    /// Returns true for classes, type aliases, modules, and other
+    /// type-defining constructs across all supported languages.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::{
+    ///     UnifiedAstNode, AstKind, ClassKind, TypeKind,
+    ///     ModuleKind, FunctionKind, Language
+    /// };
+    ///
+    /// let struct_node = UnifiedAstNode::new(
+    ///     AstKind::Class(ClassKind::Struct),
+    ///     Language::Rust
+    /// );
+    /// assert!(struct_node.is_type_definition());
+    ///
+    /// let interface = UnifiedAstNode::new(
+    ///     AstKind::Class(ClassKind::Interface),
+    ///     Language::TypeScript
+    /// );
+    /// assert!(interface.is_type_definition());
+    ///
+    /// let type_alias = UnifiedAstNode::new(
+    ///     AstKind::Type(TypeKind::Alias),
+    ///     Language::Rust
+    /// );
+    /// assert!(type_alias.is_type_definition());
+    ///
+    /// let module = UnifiedAstNode::new(
+    ///     AstKind::Module(ModuleKind::File),
+    ///     Language::Python
+    /// );
+    /// assert!(module.is_type_definition());
+    ///
+    /// let function = UnifiedAstNode::new(
+    ///     AstKind::Function(FunctionKind::Regular),
+    ///     Language::Rust
+    /// );
+    /// assert!(!function.is_type_definition());
+    /// ```
     pub fn is_type_definition(&self) -> bool {
         matches!(
             self.kind,
@@ -575,7 +906,50 @@ impl UnifiedAstNode {
         self.metadata.complexity = complexity as u64;
     }
 
-    /// Add a proof annotation to this node
+    /// Adds a formal verification proof annotation to this node.
+    ///
+    /// Proof annotations provide metadata about formally verified properties
+    /// of the code represented by this AST node. Multiple annotations can
+    /// be added to track different verified properties.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::{
+    ///     UnifiedAstNode, AstKind, FunctionKind, Language,
+    ///     ProofAnnotation, PropertyType, VerificationMethod,
+    ///     ConfidenceLevel, EvidenceType
+    /// };
+    /// use uuid::Uuid;
+    /// use chrono::Utc;
+    ///
+    /// let mut node = UnifiedAstNode::new(
+    ///     AstKind::Function(FunctionKind::Regular),
+    ///     Language::Rust
+    /// );
+    ///
+    /// assert!(!node.has_proof_annotations());
+    ///
+    /// let annotation = ProofAnnotation {
+    ///     annotation_id: Uuid::new_v4(),
+    ///     property_proven: PropertyType::MemorySafety,
+    ///     specification_id: Some("memory_safety_spec_v1".to_string()),
+    ///     method: VerificationMethod::BorrowChecker,
+    ///     tool_name: "rustc".to_string(),
+    ///     tool_version: "1.70.0".to_string(),
+    ///     confidence_level: ConfidenceLevel::High,
+    ///     assumptions: vec![],
+    ///     evidence_type: EvidenceType::ImplicitTypeSystemGuarantee,
+    ///     evidence_location: None,
+    ///     date_verified: Utc::now(),
+    /// };
+    ///
+    /// node.add_proof_annotation(annotation);
+    ///
+    /// assert!(node.has_proof_annotations());
+    /// assert_eq!(node.proof_annotations().len(), 1);
+    /// assert_eq!(node.proof_annotations()[0].property_proven, PropertyType::MemorySafety);
+    /// ```
     pub fn add_proof_annotation(&mut self, annotation: ProofAnnotation) {
         match &mut self.proof_annotations {
             Some(annotations) => annotations.push(annotation),
@@ -691,6 +1065,46 @@ impl Default for AstDag {
 }
 
 impl AstDag {
+    /// Creates a new AST DAG with default configuration.
+    ///
+    /// Initializes an empty DAG with:
+    /// - Column store with 10,000 initial node capacity
+    /// - Empty roaring bitmap for dirty node tracking
+    /// - Generation counter starting at 0
+    /// - Default language parsers
+    ///
+    /// # Performance Characteristics
+    ///
+    /// - Memory: ~40MB initial allocation for node storage
+    /// - Insertion: O(1) amortized with occasional reallocation
+    /// - Lookup: O(1) by node key
+    /// - Dirty tracking: O(1) insertion/removal with compressed bitmaps
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::{
+    ///     AstDag, UnifiedAstNode, AstKind, FunctionKind, Language
+    /// };
+    ///
+    /// let mut dag = AstDag::new();
+    ///
+    /// // Initially empty
+    /// assert_eq!(dag.nodes.len(), 0);
+    /// assert!(dag.nodes.is_empty());
+    /// assert_eq!(dag.generation(), 0);
+    ///
+    /// // Add a node
+    /// let node = UnifiedAstNode::new(
+    ///     AstKind::Function(FunctionKind::Regular),
+    ///     Language::Rust
+    /// );
+    /// let key = dag.add_node(node);
+    ///
+    /// assert_eq!(dag.nodes.len(), 1);
+    /// assert_eq!(dag.generation(), 1);
+    /// assert!(dag.dirty_nodes().any(|k| k == key));
+    /// ```
     pub fn new() -> Self {
         Self {
             nodes: ColumnStore::new(10000), // Initial capacity
@@ -700,7 +1114,56 @@ impl AstDag {
         }
     }
 
-    /// Add a new node to the DAG
+    /// Adds a new node to the DAG and returns its unique key.
+    ///
+    /// The node is automatically marked as dirty and the generation
+    /// counter is incremented for cache invalidation.
+    ///
+    /// # Performance
+    ///
+    /// - Time: O(1) amortized, O(n) worst case during reallocation
+    /// - Space: Constant overhead per node
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::{
+    ///     AstDag, UnifiedAstNode, AstKind, FunctionKind, ClassKind, Language
+    /// };
+    ///
+    /// let mut dag = AstDag::new();
+    /// let initial_gen = dag.generation();
+    ///
+    /// // Add multiple nodes
+    /// let func_node = UnifiedAstNode::new(
+    ///     AstKind::Function(FunctionKind::Regular),
+    ///     Language::Rust
+    /// );
+    /// let class_node = UnifiedAstNode::new(
+    ///     AstKind::Class(ClassKind::Struct),
+    ///     Language::Rust
+    /// );
+    ///
+    /// let func_key = dag.add_node(func_node);
+    /// let class_key = dag.add_node(class_node);
+    ///
+    /// // Keys are unique and sequential
+    /// assert_ne!(func_key, class_key);
+    /// assert_eq!(dag.nodes.len(), 2);
+    ///
+    /// // Generation incremented for each addition
+    /// assert_eq!(dag.generation(), initial_gen + 2);
+    ///
+    /// // Both nodes are dirty
+    /// let dirty: Vec<_> = dag.dirty_nodes().collect();
+    /// assert_eq!(dirty.len(), 2);
+    /// assert!(dirty.contains(&func_key));
+    /// assert!(dirty.contains(&class_key));
+    ///
+    /// // Nodes can be retrieved by key
+    /// assert!(dag.nodes.get(func_key).unwrap().is_function());
+    /// assert!(dag.nodes.get(class_key).unwrap().is_type_definition());
+    /// ```
     pub fn add_node(&mut self, node: UnifiedAstNode) -> NodeKey {
         let key = self.nodes.push(node);
         self.dirty_nodes.insert(key);
@@ -709,17 +1172,133 @@ impl AstDag {
         key
     }
 
-    /// Mark a node as clean (processed)
+    /// Marks a node as clean (processed) by removing it from the dirty set.
+    ///
+    /// This is typically called after processing a node for incremental
+    /// analysis to avoid reprocessing unchanged nodes.
+    ///
+    /// # Performance
+    ///
+    /// - Time: O(1) for roaring bitmap removal
+    /// - Space: No additional allocation
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::{
+    ///     AstDag, UnifiedAstNode, AstKind, FunctionKind, Language
+    /// };
+    ///
+    /// let mut dag = AstDag::new();
+    ///
+    /// let node = UnifiedAstNode::new(
+    ///     AstKind::Function(FunctionKind::Regular),
+    ///     Language::Rust
+    /// );
+    /// let key = dag.add_node(node);
+    ///
+    /// // Node starts dirty
+    /// assert!(dag.dirty_nodes().any(|k| k == key));
+    ///
+    /// // Mark as processed
+    /// dag.mark_clean(key);
+    ///
+    /// // No longer in dirty set
+    /// assert!(!dag.dirty_nodes().any(|k| k == key));
+    ///
+    /// // Node still exists in the DAG
+    /// assert!(dag.nodes.get(key).is_some());
+    /// ```
     pub fn mark_clean(&mut self, key: NodeKey) {
         self.dirty_nodes.remove(key);
     }
 
-    /// Get all dirty nodes for incremental processing
+    /// Returns an iterator over all dirty (unprocessed) node keys.
+    ///
+    /// Dirty nodes are those that have been added or modified since
+    /// the last processing cycle. This enables efficient incremental
+    /// analysis by only processing changed nodes.
+    ///
+    /// # Performance
+    ///
+    /// - Time: O(1) to create iterator, O(k) to iterate where k = dirty count
+    /// - Space: No additional allocation (streaming iterator)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::{
+    ///     AstDag, UnifiedAstNode, AstKind, FunctionKind, Language
+    /// };
+    ///
+    /// let mut dag = AstDag::new();
+    ///
+    /// // Initially no dirty nodes
+    /// assert_eq!(dag.dirty_nodes().count(), 0);
+    ///
+    /// // Add some nodes
+    /// let keys: Vec<_> = (0..3).map(|_| {
+    ///     dag.add_node(UnifiedAstNode::new(
+    ///         AstKind::Function(FunctionKind::Regular),
+    ///         Language::Rust
+    ///     ))
+    /// }).collect();
+    ///
+    /// // All nodes are dirty
+    /// assert_eq!(dag.dirty_nodes().count(), 3);
+    ///
+    /// // Process some nodes
+    /// dag.mark_clean(keys[0]);
+    /// dag.mark_clean(keys[2]);
+    ///
+    /// // Only unprocessed nodes remain dirty
+    /// let dirty: Vec<_> = dag.dirty_nodes().collect();
+    /// assert_eq!(dirty.len(), 1);
+    /// assert_eq!(dirty[0], keys[1]);
+    /// ```
     pub fn dirty_nodes(&self) -> impl Iterator<Item = NodeKey> + '_ {
         self.dirty_nodes.iter()
     }
 
-    /// Get the current generation number
+    /// Returns the current generation number for cache invalidation.
+    ///
+    /// The generation number is incremented each time a node is added
+    /// to the DAG, providing a monotonic cache invalidation key.
+    ///
+    /// # Performance
+    ///
+    /// - Time: O(1) atomic load with relaxed ordering
+    /// - Thread-safe: Can be called from multiple threads
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::{
+    ///     AstDag, UnifiedAstNode, AstKind, FunctionKind, Language
+    /// };
+    ///
+    /// let mut dag = AstDag::new();
+    ///
+    /// // Starts at generation 0
+    /// assert_eq!(dag.generation(), 0);
+    ///
+    /// // Generation increments with each node addition
+    /// dag.add_node(UnifiedAstNode::new(
+    ///     AstKind::Function(FunctionKind::Regular),
+    ///     Language::Rust
+    /// ));
+    /// assert_eq!(dag.generation(), 1);
+    ///
+    /// dag.add_node(UnifiedAstNode::new(
+    ///     AstKind::Function(FunctionKind::Method),
+    ///     Language::TypeScript
+    /// ));
+    /// assert_eq!(dag.generation(), 2);
+    ///
+    /// // Marking clean does not change generation
+    /// dag.mark_clean(0);
+    /// assert_eq!(dag.generation(), 2);
+    /// ```
     pub fn generation(&self) -> u32 {
         self.generation.load(std::sync::atomic::Ordering::Relaxed)
     }
