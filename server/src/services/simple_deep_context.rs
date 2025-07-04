@@ -42,7 +42,7 @@ pub struct FileComplexityDetail {
     pub function_count: usize,
     pub high_complexity_functions: usize,
     pub avg_complexity: f64,
-    pub complexity_score: f64,  // Weighted score for ranking
+    pub complexity_score: f64, // Weighted score for ranking
 }
 
 impl SimpleDeepContext {
@@ -62,7 +62,8 @@ impl SimpleDeepContext {
         info!("📁 Discovered {} source files", source_files.len());
 
         // Phase 2: Basic analysis
-        let (complexity_metrics, file_complexity_details) = self.analyze_complexity(&source_files).await?;
+        let (complexity_metrics, file_complexity_details) =
+            self.analyze_complexity(&source_files).await?;
 
         // Phase 3: Generate recommendations
         let recommendations = self.generate_recommendations(&complexity_metrics);
@@ -149,7 +150,10 @@ impl SimpleDeepContext {
     }
 
     /// Analyze complexity of source files
-    async fn analyze_complexity(&self, files: &[PathBuf]) -> Result<(ComplexityMetrics, Vec<FileComplexityDetail>)> {
+    async fn analyze_complexity(
+        &self,
+        files: &[PathBuf],
+    ) -> Result<(ComplexityMetrics, Vec<FileComplexityDetail>)> {
         let mut total_functions = 0;
         let mut high_complexity_count = 0;
         let mut complexity_sum = 0.0;
@@ -160,12 +164,12 @@ impl SimpleDeepContext {
             total_functions += metrics.function_count;
             high_complexity_count += metrics.high_complexity_functions;
             complexity_sum += metrics.avg_complexity * metrics.function_count as f64;
-            
+
             // Calculate complexity score for ranking (weighted by functions and complexity)
-            let complexity_score = (metrics.avg_complexity * 0.7) + 
-                                   (metrics.high_complexity_functions as f64 * 2.0) + 
-                                   (metrics.function_count as f64 * 0.3);
-            
+            let complexity_score = (metrics.avg_complexity * 0.7)
+                + (metrics.high_complexity_functions as f64 * 2.0)
+                + (metrics.function_count as f64 * 0.3);
+
             file_details.push(FileComplexityDetail {
                 file_path: file.clone(),
                 function_count: metrics.function_count,
@@ -299,14 +303,14 @@ impl SimpleDeepContext {
     }
 
     /// Format report as Markdown
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use pmat::services::simple_deep_context::{SimpleDeepContext, SimpleAnalysisReport, ComplexityMetrics, FileComplexityDetail};
     /// use std::path::PathBuf;
     /// use std::time::Duration;
-    /// 
+    ///
     /// let analyzer = SimpleDeepContext::new();
     /// let report = SimpleAnalysisReport {
     ///     file_count: 5,
@@ -334,9 +338,9 @@ impl SimpleDeepContext {
     ///         },
     ///     ],
     /// };
-    /// 
+    ///
     /// let output = analyzer.format_as_markdown(&report, 10);
-    /// 
+    ///
     /// assert!(output.contains("# Deep Context Analysis Report"));
     /// assert!(output.contains("**Files Analyzed**: 5"));
     /// assert!(output.contains("## Top Files by Complexity"));
@@ -369,14 +373,20 @@ impl SimpleDeepContext {
         // Show top files by complexity
         if !report.file_complexity_details.is_empty() {
             markdown.push_str("## Top Files by Complexity\n\n");
-            
+
             // Sort files by complexity score (descending)
             let mut sorted_files = report.file_complexity_details.clone();
-            sorted_files.sort_by(|a, b| b.complexity_score.partial_cmp(&a.complexity_score).unwrap_or(std::cmp::Ordering::Equal));
-            
+            sorted_files.sort_by(|a, b| {
+                b.complexity_score
+                    .partial_cmp(&a.complexity_score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+
             let files_to_show = if top_files == 0 { 10 } else { top_files };
             for (i, file_detail) in sorted_files.iter().take(files_to_show).enumerate() {
-                let filename = file_detail.file_path.file_name()
+                let filename = file_detail
+                    .file_path
+                    .file_name()
                     .and_then(|n| n.to_str())
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| file_detail.file_path.to_string_lossy().to_string());

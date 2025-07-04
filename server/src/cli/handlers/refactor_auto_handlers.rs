@@ -1651,28 +1651,71 @@ async fn get_single_file_lint_violations(file_path: &Path) -> Result<Vec<Violati
 
 /// Analyze complexity for a single file
 ///
+/// This function runs the pmat complexity analyzer on a single file to gather
+/// quality metrics including cyclomatic complexity, cognitive complexity, and
+/// function counts.
+///
+/// # Arguments
+///
+/// * `file_path` - The path to the file to analyze
+///
+/// # Returns
+///
+/// Returns a `QualityMetrics` struct containing:
+/// - Total violations count
+/// - Coverage percentage
+/// - Maximum complexity found
+/// - SATD (Self-Admitted Technical Debt) count
+/// - Number of files with issues
+/// - Total files analyzed
+/// - Functions with high complexity
+/// - Total functions analyzed
+///
 /// # Errors
 ///
 /// Returns an error if:
 /// - Failed to get current executable
 /// - Failed to run complexity analysis command
+/// - Failed to parse JSON output from the complexity analyzer
 ///
 /// # Panics
 ///
 /// Panics if:
 /// - File parent directory cannot be determined or converted to string
-async fn analyze_file_complexity(file_path: &Path) -> Result<QualityMetrics> {
+///
+/// # Examples
+///
+/// ```no_run
+/// # use std::path::Path;
+/// # use anyhow::Result;
+/// # async fn example() -> Result<()> {
+/// use std::path::Path;
+/// use pmat::cli::handlers::refactor_auto_handlers::analyze_file_complexity;
+///
+/// // Analyze a single Rust file
+/// let file_path = Path::new("src/main.rs");
+/// let metrics = analyze_file_complexity(file_path).await?;
+///
+/// println!("Max complexity: {}", metrics.max_complexity);
+/// println!("Functions with high complexity: {}", metrics.functions_with_high_complexity);
+/// println!("Total functions: {}", metrics.total_functions);
+/// # Ok(())
+/// # }
+/// ```
+pub async fn analyze_file_complexity(file_path: &Path) -> Result<QualityMetrics> {
+    // Get current executable path
+    let current_exe = std::env::current_exe().context("Failed to get current executable")?;
+
+    // Find the project root (where Cargo.toml is located)
+    let project_root = find_project_root(file_path)?;
+    
     // Use pmat complexity command for the file
-    let output = Command::new("./target/debug/pmat")
+    let output = Command::new(&current_exe)
         .args([
             "analyze",
             "complexity",
             "--project-path",
-            file_path
-                .parent()
-                .unwrap_or_else(|| Path::new("."))
-                .to_str()
-                .unwrap(),
+            project_root.to_str().unwrap(),
             "-f",
             "json",
         ])
@@ -4015,6 +4058,34 @@ fn find_workspace_root(start_path: &Path) -> Result<Option<PathBuf>> {
     }
 
     Ok(None)
+}
+
+/// Find the project root by looking for Cargo.toml
+fn find_project_root(start_path: &Path) -> Result<PathBuf> {
+    let mut current = if start_path.is_file() {
+        start_path.parent().unwrap_or(start_path)
+    } else {
+        start_path
+    };
+
+    loop {
+        let cargo_toml = current.join("Cargo.toml");
+        if cargo_toml.exists() {
+            return Ok(current.to_path_buf());
+        }
+
+        // Move up one directory
+        match current.parent() {
+            Some(parent) => current = parent,
+            None => break,
+        }
+    }
+
+    // If no Cargo.toml found, return the original directory
+    Ok(start_path
+        .parent()
+        .unwrap_or_else(|| Path::new("."))
+        .to_path_buf())
 }
 
 /// Analyze compilation errors when clippy fails

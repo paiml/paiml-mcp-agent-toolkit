@@ -59,6 +59,7 @@ After applying the refactoring, you **MUST** verify that the change improved qua
     ```bash
     make test-fast
     ```
+3.  **Add doctest:** update or add doctest for added functionality
 
 Once both checks pass, commit the changes and return to Step 1 to find the next target.
 

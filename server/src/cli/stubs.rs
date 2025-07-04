@@ -8,10 +8,10 @@ use crate::cli::{
     PropertyTypeFilter, ProvabilityOutputFormat, QualityCheckType, QualityGateOutputFormat,
     SatdOutputFormat, SatdSeverity, TdgOutputFormat, VerificationMethodFilter,
 };
-use serde::Serialize;
 use crate::services::lightweight_provability_analyzer::ProofSummary;
 use crate::services::makefile_linter;
 use anyhow::Result;
+use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
@@ -585,8 +585,14 @@ pub async fn handle_analyze_defect_prediction(
     eprintln!("📄 Format: {:?}", format);
 
     // Stub implementation with simulated data
-    let report = generate_stub_defect_report(&project_path, confidence_threshold, high_risk_only, include_low_confidence).await?;
-    
+    let report = generate_stub_defect_report(
+        &project_path,
+        confidence_threshold,
+        high_risk_only,
+        include_low_confidence,
+    )
+    .await?;
+
     // Format output
     let content = match format {
         DefectPredictionOutputFormat::Summary => format_defect_summary(&report, top_files)?,
@@ -916,16 +922,29 @@ pub async fn handle_analyze_incremental_coverage(
     eprintln!("📄 Format: {:?}", format);
 
     // Generate stub incremental coverage data
-    let report = generate_stub_incremental_coverage(&project_path, &base_branch, target_branch.as_deref(), coverage_threshold)?;
-    
+    let report = generate_stub_incremental_coverage(
+        &project_path,
+        &base_branch,
+        target_branch.as_deref(),
+        coverage_threshold,
+    )?;
+
     // Format output
     let content = match format {
-        IncrementalCoverageOutputFormat::Summary => format_incremental_coverage_summary(&report, top_files)?,
-        IncrementalCoverageOutputFormat::Detailed => format_incremental_coverage_detailed(&report, top_files)?,
+        IncrementalCoverageOutputFormat::Summary => {
+            format_incremental_coverage_summary(&report, top_files)?
+        }
+        IncrementalCoverageOutputFormat::Detailed => {
+            format_incremental_coverage_detailed(&report, top_files)?
+        }
         IncrementalCoverageOutputFormat::Json => serde_json::to_string_pretty(&report)?,
-        IncrementalCoverageOutputFormat::Markdown => format_incremental_coverage_markdown(&report, top_files)?,
+        IncrementalCoverageOutputFormat::Markdown => {
+            format_incremental_coverage_markdown(&report, top_files)?
+        }
         IncrementalCoverageOutputFormat::Lcov => "# LCOV format stub\n".to_string(),
-        IncrementalCoverageOutputFormat::Delta => format_incremental_coverage_delta(&report, top_files)?,
+        IncrementalCoverageOutputFormat::Delta => {
+            format_incremental_coverage_delta(&report, top_files)?
+        }
         IncrementalCoverageOutputFormat::Sarif => "{ \"sarif\": \"stub\" }".to_string(),
     };
 
@@ -994,7 +1013,7 @@ fn format_churn_as_json(analysis: &crate::models::churn::CodeChurnAnalysis) -> R
 /// use pmat::cli::stubs::format_churn_as_summary;
 /// use chrono::Utc;
 /// use std::path::PathBuf;
-/// 
+///
 /// let analysis = CodeChurnAnalysis {
 ///     generated_at: Utc::now(),
 ///     period_days: 30,
@@ -1031,7 +1050,7 @@ fn format_churn_as_json(analysis: &crate::models::churn::CodeChurnAnalysis) -> R
 ///         top_contributors: vec![("dev1".to_string(), 15), ("dev2".to_string(), 8)],
 ///     },
 /// };
-/// 
+///
 /// // This test would require the function to be public, which it's not for this internal function
 /// // Just testing the structure compiles correctly
 /// assert!(analysis.files.len() == 2);
@@ -1080,19 +1099,23 @@ fn write_summary_top_files(
 
     if !analysis.files.is_empty() {
         writeln!(output, "\n## Top Files by Churn\n")?;
-        
+
         // Sort files by churn score or commit count (descending)
         let mut sorted_files: Vec<_> = analysis.files.iter().collect();
         sorted_files.sort_by(|a, b| {
             // Primary sort by commit count, secondary by churn score
             match b.commit_count.cmp(&a.commit_count) {
-                std::cmp::Ordering::Equal => b.churn_score.partial_cmp(&a.churn_score).unwrap_or(std::cmp::Ordering::Equal),
+                std::cmp::Ordering::Equal => b
+                    .churn_score
+                    .partial_cmp(&a.churn_score)
+                    .unwrap_or(std::cmp::Ordering::Equal),
                 other => other,
             }
         });
-        
+
         for (i, file) in sorted_files.iter().take(10).enumerate() {
-            let filename = file.path
+            let filename = file
+                .path
                 .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or(&file.relative_path);
@@ -2161,13 +2184,13 @@ async fn calculate_provability_score(_project_path: &Path) -> Result<f64> {
 /// ```
 /// use pmat::cli::stubs::{format_quality_gate_output, QualityGateResults, QualityViolation};
 /// use pmat::cli::QualityGateOutputFormat;
-/// 
+///
 /// let mut results = QualityGateResults::default();
 /// results.passed = false;
 /// results.total_violations = 2;
 /// results.complexity_violations = 1;
 /// results.dead_code_violations = 1;
-/// 
+///
 /// let violations = vec![
 ///     QualityViolation {
 ///         check_type: "complexity".to_string(),
@@ -2184,16 +2207,16 @@ async fn calculate_provability_score(_project_path: &Path) -> Result<f64> {
 ///         message: "Unused function detected".to_string(),
 ///     },
 /// ];
-/// 
+///
 /// // Test human-readable format
 /// let output = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Human).unwrap();
 /// assert!(output.contains("❌ FAILED"));
 /// assert!(output.contains("Total violations: 2"));
-/// 
+///
 /// // Test JSON format
 /// let json_output = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Json).unwrap();
 /// assert!(json_output.contains("\"passed\":false"));
-/// 
+///
 /// // Test summary format
 /// let summary = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Summary).unwrap();
 /// assert!(summary.contains("Status: FAILED"));
@@ -3855,7 +3878,9 @@ fn generate_stub_incremental_coverage(
     let files_improved = files.iter().filter(|f| f.coverage_delta > 0.0).count();
     let files_degraded = files.iter().filter(|f| f.coverage_delta < 0.0).count();
     let overall_delta = files.iter().map(|f| f.coverage_delta).sum::<f64>() / files.len() as f64;
-    let meets_threshold = files.iter().all(|f| f.target_coverage >= coverage_threshold * 100.0);
+    let meets_threshold = files
+        .iter()
+        .all(|f| f.target_coverage >= coverage_threshold * 100.0);
 
     Ok(IncrementalCoverageReport {
         base_branch: base_branch.to_string(),
@@ -3879,7 +3904,7 @@ fn generate_stub_incremental_coverage(
 /// ```
 /// use pmat::cli::stubs::format_incremental_coverage_summary;
 /// use std::path::PathBuf;
-/// 
+///
 /// // Create test data (would normally come from generate_stub_incremental_coverage)
 /// let report = r#"{
 ///     "base_branch": "main",
@@ -3904,40 +3929,86 @@ fn generate_stub_incremental_coverage(
 ///         "meets_threshold": true
 ///     }
 /// }"#;
-/// 
+///
 /// // In real usage, this would be an IncrementalCoverageReport struct
 /// // let output = format_incremental_coverage_summary(&report, 10).unwrap();
 /// // assert!(output.contains("Top Files by Coverage Change"));
 /// ```
-pub fn format_incremental_coverage_summary(report: &IncrementalCoverageReport, top_files: usize) -> Result<String> {
+pub fn format_incremental_coverage_summary(
+    report: &IncrementalCoverageReport,
+    top_files: usize,
+) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     writeln!(&mut output, "# Incremental Coverage Analysis\n")?;
     writeln!(&mut output, "**Base Branch**: {}", report.base_branch)?;
     writeln!(&mut output, "**Target Branch**: {}", report.target_branch)?;
-    writeln!(&mut output, "**Coverage Threshold**: {:.1}%", report.coverage_threshold * 100.0)?;
-    writeln!(&mut output, "**Overall Delta**: {:+.1}%", report.summary.overall_delta)?;
-    writeln!(&mut output, "**Meets Threshold**: {}\n", if report.summary.meets_threshold { "✅ Yes" } else { "❌ No" })?;
-    
+    writeln!(
+        &mut output,
+        "**Coverage Threshold**: {:.1}%",
+        report.coverage_threshold * 100.0
+    )?;
+    writeln!(
+        &mut output,
+        "**Overall Delta**: {:+.1}%",
+        report.summary.overall_delta
+    )?;
+    writeln!(
+        &mut output,
+        "**Meets Threshold**: {}\n",
+        if report.summary.meets_threshold {
+            "✅ Yes"
+        } else {
+            "❌ No"
+        }
+    )?;
+
     writeln!(&mut output, "## Summary\n")?;
-    writeln!(&mut output, "- Files Changed: {}", report.summary.total_files_changed)?;
-    writeln!(&mut output, "- Files Improved: {} 📈", report.summary.files_improved)?;
-    writeln!(&mut output, "- Files Degraded: {} 📉\n", report.summary.files_degraded)?;
-    
+    writeln!(
+        &mut output,
+        "- Files Changed: {}",
+        report.summary.total_files_changed
+    )?;
+    writeln!(
+        &mut output,
+        "- Files Improved: {} 📈",
+        report.summary.files_improved
+    )?;
+    writeln!(
+        &mut output,
+        "- Files Degraded: {} 📉\n",
+        report.summary.files_degraded
+    )?;
+
     // Show top files by coverage change
     writeln!(&mut output, "## Top Files by Coverage Change\n")?;
-    
+
     let mut sorted_files = report.files.clone();
-    sorted_files.sort_by(|a, b| b.coverage_delta.abs().partial_cmp(&a.coverage_delta.abs()).unwrap_or(std::cmp::Ordering::Equal));
-    
-    let files_to_show = if top_files == 0 { sorted_files.len() } else { top_files.min(sorted_files.len()) };
-    
+    sorted_files.sort_by(|a, b| {
+        b.coverage_delta
+            .abs()
+            .partial_cmp(&a.coverage_delta.abs())
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    let files_to_show = if top_files == 0 {
+        sorted_files.len()
+    } else {
+        top_files.min(sorted_files.len())
+    };
+
     for (i, file) in sorted_files.iter().take(files_to_show).enumerate() {
-        let filename = file.path.file_name()
+        let filename = file
+            .path
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("unknown");
-        let emoji = if file.coverage_delta > 0.0 { "📈" } else { "📉" };
+        let emoji = if file.coverage_delta > 0.0 {
+            "📈"
+        } else {
+            "📉"
+        };
         writeln!(
             &mut output,
             "{}. `{}` - {:.1}% → {:.1}% ({:+.1}%) {}",
@@ -3949,28 +4020,37 @@ pub fn format_incremental_coverage_summary(report: &IncrementalCoverageReport, t
             emoji
         )?;
     }
-    
+
     Ok(output)
 }
 
-fn format_incremental_coverage_detailed(report: &IncrementalCoverageReport, top_files: usize) -> Result<String> {
+fn format_incremental_coverage_detailed(
+    report: &IncrementalCoverageReport,
+    top_files: usize,
+) -> Result<String> {
     format_incremental_coverage_summary(report, top_files) // For stub, reuse summary
 }
 
-fn format_incremental_coverage_markdown(report: &IncrementalCoverageReport, top_files: usize) -> Result<String> {
+fn format_incremental_coverage_markdown(
+    report: &IncrementalCoverageReport,
+    top_files: usize,
+) -> Result<String> {
     format_incremental_coverage_summary(report, top_files) // For stub, reuse summary
 }
 
-fn format_incremental_coverage_delta(report: &IncrementalCoverageReport, _top_files: usize) -> Result<String> {
+fn format_incremental_coverage_delta(
+    report: &IncrementalCoverageReport,
+    _top_files: usize,
+) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     writeln!(&mut output, "Coverage Delta Report\n")?;
     for file in &report.files {
         let filename = file.path.display();
         writeln!(&mut output, "{}: {:+.1}%", filename, file.coverage_delta)?;
     }
-    
+
     Ok(output)
 }
 
@@ -4563,44 +4643,46 @@ async fn generate_stub_defect_report(
     include_low_confidence: bool,
 ) -> Result<DefectPredictionReport> {
     use walkdir::WalkDir;
-    
+
     // Simulate analyzing files
     let mut file_predictions = Vec::new();
     let mut file_count = 0;
-    
+
     for entry in WalkDir::new(project_path)
         .into_iter()
         .filter_map(|e| e.ok())
         .filter(|e| e.file_type().is_file())
         .filter(|e| {
-            e.path().extension()
+            e.path()
+                .extension()
                 .and_then(|s| s.to_str())
                 .map(|ext| matches!(ext, "rs" | "js" | "ts" | "py" | "java" | "cpp" | "c"))
                 .unwrap_or(false)
         })
-        .take(50) // Limit for stub implementation
+        .take(50)
+    // Limit for stub implementation
     {
         file_count += 1;
         let path = entry.path();
         let file_name = path.file_name().unwrap_or_default().to_string_lossy();
-        
+
         // Simulate risk scoring based on file characteristics
         let risk_score = calculate_stub_risk_score(&file_name);
-        
+
         if risk_score < confidence_threshold && !include_low_confidence {
             continue;
         }
-        
+
         let risk_level = match risk_score {
             s if s >= 0.8 => "high",
             s if s >= 0.5 => "medium",
             _ => "low",
         };
-        
+
         if high_risk_only && risk_level != "high" {
             continue;
         }
-        
+
         file_predictions.push(FilePrediction {
             file_path: path.to_string_lossy().to_string(),
             risk_score,
@@ -4612,14 +4694,27 @@ async fn generate_stub_defect_report(
             ],
         });
     }
-    
+
     // Sort by risk score descending
-    file_predictions.sort_by(|a, b| b.risk_score.partial_cmp(&a.risk_score).unwrap_or(std::cmp::Ordering::Equal));
-    
-    let high_risk_files = file_predictions.iter().filter(|p| p.risk_level == "high").count();
-    let medium_risk_files = file_predictions.iter().filter(|p| p.risk_level == "medium").count();
-    let low_risk_files = file_predictions.iter().filter(|p| p.risk_level == "low").count();
-    
+    file_predictions.sort_by(|a, b| {
+        b.risk_score
+            .partial_cmp(&a.risk_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    let high_risk_files = file_predictions
+        .iter()
+        .filter(|p| p.risk_level == "high")
+        .count();
+    let medium_risk_files = file_predictions
+        .iter()
+        .filter(|p| p.risk_level == "medium")
+        .count();
+    let low_risk_files = file_predictions
+        .iter()
+        .filter(|p| p.risk_level == "low")
+        .count();
+
     Ok(DefectPredictionReport {
         total_files: file_count,
         high_risk_files,
@@ -4633,7 +4728,10 @@ fn calculate_stub_risk_score(filename: &str) -> f32 {
     // Stub implementation - simulate risk based on filename patterns
     if filename.contains("test") || filename.contains("spec") {
         0.2
-    } else if filename.contains("main") || filename.contains("handler") || filename.contains("controller") {
+    } else if filename.contains("main")
+        || filename.contains("handler")
+        || filename.contains("controller")
+    {
         0.75
     } else if filename.contains("util") || filename.contains("helper") {
         0.4
@@ -4673,7 +4771,7 @@ fn calculate_stub_risk_score(filename: &str) -> f32 {
 /// };
 ///
 /// let output = format_defect_summary(&report, 5).unwrap();
-/// 
+///
 /// assert!(output.contains("# Defect Prediction Analysis"));
 /// assert!(output.contains("Total files analyzed: 100"));
 /// assert!(output.contains("## Top Files by Defect Risk"));
@@ -4682,20 +4780,33 @@ fn calculate_stub_risk_score(filename: &str) -> f32 {
 pub fn format_defect_summary(report: &DefectPredictionReport, top_files: usize) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     writeln!(&mut output, "# Defect Prediction Analysis\n")?;
     writeln!(&mut output, "## Summary")?;
-    writeln!(&mut output, "- Total files analyzed: {}", report.total_files)?;
+    writeln!(
+        &mut output,
+        "- Total files analyzed: {}",
+        report.total_files
+    )?;
     writeln!(&mut output, "- High risk files: {}", report.high_risk_files)?;
-    writeln!(&mut output, "- Medium risk files: {}", report.medium_risk_files)?;
+    writeln!(
+        &mut output,
+        "- Medium risk files: {}",
+        report.medium_risk_files
+    )?;
     writeln!(&mut output, "- Low risk files: {}\n", report.low_risk_files)?;
-    
+
     // Show top files by risk
     if !report.file_predictions.is_empty() {
         writeln!(&mut output, "## Top Files by Defect Risk\n")?;
-        
+
         let files_to_show = if top_files == 0 { 10 } else { top_files };
-        for (i, prediction) in report.file_predictions.iter().take(files_to_show).enumerate() {
+        for (i, prediction) in report
+            .file_predictions
+            .iter()
+            .take(files_to_show)
+            .enumerate()
+        {
             let filename = std::path::Path::new(&prediction.file_path)
                 .file_name()
                 .and_then(|n| n.to_str())
@@ -4710,37 +4821,60 @@ pub fn format_defect_summary(report: &DefectPredictionReport, top_files: usize) 
             )?;
         }
     }
-    
+
     Ok(output)
 }
 
 fn format_defect_full(report: &DefectPredictionReport, top_files: usize) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     writeln!(&mut output, "# Defect Prediction Analysis - Full Report\n")?;
     writeln!(&mut output, "## Summary Statistics")?;
-    writeln!(&mut output, "- Total files analyzed: {}", report.total_files)?;
-    writeln!(&mut output, "- High risk files: {} ({:.1}%)", 
+    writeln!(
+        &mut output,
+        "- Total files analyzed: {}",
+        report.total_files
+    )?;
+    writeln!(
+        &mut output,
+        "- High risk files: {} ({:.1}%)",
         report.high_risk_files,
         (report.high_risk_files as f32 / report.total_files as f32) * 100.0
     )?;
-    writeln!(&mut output, "- Medium risk files: {} ({:.1}%)",
+    writeln!(
+        &mut output,
+        "- Medium risk files: {} ({:.1}%)",
         report.medium_risk_files,
         (report.medium_risk_files as f32 / report.total_files as f32) * 100.0
     )?;
-    writeln!(&mut output, "- Low risk files: {} ({:.1}%)\n",
+    writeln!(
+        &mut output,
+        "- Low risk files: {} ({:.1}%)\n",
         report.low_risk_files,
         (report.low_risk_files as f32 / report.total_files as f32) * 100.0
     )?;
-    
+
     // Show detailed file predictions
     writeln!(&mut output, "## Detailed File Predictions\n")?;
-    
-    let files_to_show = if top_files == 0 { report.file_predictions.len() } else { top_files };
-    for (i, prediction) in report.file_predictions.iter().take(files_to_show).enumerate() {
+
+    let files_to_show = if top_files == 0 {
+        report.file_predictions.len()
+    } else {
+        top_files
+    };
+    for (i, prediction) in report
+        .file_predictions
+        .iter()
+        .take(files_to_show)
+        .enumerate()
+    {
         writeln!(&mut output, "### {}. {}", i + 1, prediction.file_path)?;
-        writeln!(&mut output, "- **Risk Score**: {:.1}%", prediction.risk_score * 100.0)?;
+        writeln!(
+            &mut output,
+            "- **Risk Score**: {:.1}%",
+            prediction.risk_score * 100.0
+        )?;
         writeln!(&mut output, "- **Risk Level**: {}", prediction.risk_level)?;
         writeln!(&mut output, "- **Risk Factors**:")?;
         for factor in &prediction.factors {
@@ -4748,7 +4882,7 @@ fn format_defect_full(report: &DefectPredictionReport, top_files: usize) -> Resu
         }
         writeln!(&mut output)?;
     }
-    
+
     Ok(output)
 }
 
@@ -4769,7 +4903,7 @@ fn format_defect_sarif(report: &DefectPredictionReport) -> Result<String> {
                     "ruleId": "high-defect-risk",
                     "level": "warning",
                     "message": {
-                        "text": format!("High defect risk ({:.1}%) - Factors: {}", 
+                        "text": format!("High defect risk ({:.1}%) - Factors: {}",
                             prediction.risk_score * 100.0,
                             prediction.factors.join(", ")
                         )
@@ -4785,16 +4919,16 @@ fn format_defect_sarif(report: &DefectPredictionReport) -> Result<String> {
             }).collect::<Vec<_>>()
         }]
     });
-    
+
     Ok(serde_json::to_string_pretty(&sarif)?)
 }
 
 fn format_defect_csv(report: &DefectPredictionReport) -> Result<String> {
     let mut output = String::new();
-    
+
     // CSV header
     output.push_str("file_path,risk_score,risk_level,factors\n");
-    
+
     // CSV rows
     for prediction in &report.file_predictions {
         output.push_str(&format!(
@@ -4805,6 +4939,6 @@ fn format_defect_csv(report: &DefectPredictionReport) -> Result<String> {
             prediction.factors.join("; ")
         ));
     }
-    
+
     Ok(output)
 }
