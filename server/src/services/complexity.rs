@@ -464,7 +464,7 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 ///
 /// ```
 /// use pmat::services::complexity::*;
-/// 
+///
 /// let file_metrics = vec![
 ///     FileComplexityMetrics {
 ///         path: "src/main.rs".to_string(),
@@ -489,10 +489,10 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 ///         classes: vec![],
 ///     },
 /// ];
-/// 
+///
 /// let report = aggregate_results(file_metrics);
 /// let summary = format_complexity_summary(&report);
-/// 
+///
 /// assert!(summary.contains("# Complexity Analysis Summary"));
 /// assert!(summary.contains("**Files analyzed**: 2"));
 /// assert!(summary.contains("## Top Files by Complexity"));
@@ -572,16 +572,19 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
     // Top files by complexity
     if !report.files.is_empty() {
         output.push_str("## Top Files by Complexity\n\n");
-        
+
         // Sort files by total complexity (cyclomatic + cognitive)
-        let mut files_with_score: Vec<_> = report.files.iter()
+        let mut files_with_score: Vec<_> = report
+            .files
+            .iter()
             .map(|f| {
-                let total_score = f.total_complexity.cyclomatic as f64 + f.total_complexity.cognitive as f64;
+                let total_score =
+                    f.total_complexity.cyclomatic as f64 + f.total_complexity.cognitive as f64;
                 (f, total_score)
             })
             .collect();
         files_with_score.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        
+
         for (i, (file, _score)) in files_with_score.iter().take(10).enumerate() {
             let filename = std::path::Path::new(&file.path)
                 .file_name()

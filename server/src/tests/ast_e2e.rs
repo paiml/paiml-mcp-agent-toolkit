@@ -2,10 +2,10 @@
 use crate::services::ast_python;
 #[cfg(feature = "typescript-ast")]
 use crate::services::ast_typescript;
-#[cfg(any(feature = "python-ast", feature = "typescript-ast"))]
-use std::path::Path;
 #[cfg(test)]
 use crate::services::context::AstItem;
+#[cfg(any(feature = "python-ast", feature = "typescript-ast"))]
+use std::path::Path;
 
 #[cfg(all(test, feature = "python-ast"))]
 mod ast_python_tests {

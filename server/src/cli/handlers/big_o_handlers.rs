@@ -164,7 +164,7 @@ pub async fn handle_analyze_big_o(
 /// use pmat::services::big_o_analyzer::{BigOAnalysisReport, FunctionComplexity};
 /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
 /// use std::path::PathBuf;
-/// 
+///
 /// let report = BigOAnalysisReport {
 ///     analyzed_functions: 100,
 ///     high_complexity_functions: vec![
@@ -197,12 +197,14 @@ pub async fn handle_analyze_big_o(
 ///     pattern_matches: vec![],
 ///     recommendations: vec!["Consider optimizing quadratic algorithms".to_string()],
 /// };
-/// 
+///
 /// let output = format_big_o_summary(&report);
 /// assert!(output.contains("Top Files by Complexity"));
 /// assert!(output.contains("utils.rs"));
 /// ```
-pub fn format_big_o_summary(report: &crate::services::big_o_analyzer::BigOAnalysisReport) -> String {
+pub fn format_big_o_summary(
+    report: &crate::services::big_o_analyzer::BigOAnalysisReport,
+) -> String {
     let mut output = String::with_capacity(1024);
 
     output.push_str("Big-O Complexity Analysis Summary\n");
@@ -247,12 +249,12 @@ pub fn format_big_o_summary(report: &crate::services::big_o_analyzer::BigOAnalys
     // Show top files by complexity
     if !report.high_complexity_functions.is_empty() {
         output.push_str("\nTop Files by Complexity:\n");
-        
+
         // Group functions by file
         use std::collections::HashMap;
         let mut file_scores: HashMap<&std::path::Path, f64> = HashMap::new();
         let mut file_function_counts: HashMap<&std::path::Path, usize> = HashMap::new();
-        
+
         for func in &report.high_complexity_functions {
             let score = match func.time_complexity.class {
                 crate::models::complexity_bound::BigOClass::Constant => 1.0,
@@ -268,11 +270,11 @@ pub fn format_big_o_summary(report: &crate::services::big_o_analyzer::BigOAnalys
             *file_scores.entry(&func.file_path).or_insert(0.0) += score;
             *file_function_counts.entry(&func.file_path).or_insert(0) += 1;
         }
-        
+
         // Sort files by total complexity score
         let mut sorted_files: Vec<_> = file_scores.into_iter().collect();
         sorted_files.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        
+
         // Display top 10 files
         for (i, (file_path, score)) in sorted_files.iter().take(10).enumerate() {
             let filename = file_path

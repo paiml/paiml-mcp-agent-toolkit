@@ -439,6 +439,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         }
         AnalyzeCommands::Comprehensive {
             project_path,
+            file,
             format,
             include_duplicates,
             include_dead_code,
@@ -456,6 +457,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         } => {
             super::advanced_analysis_handlers::handle_analyze_comprehensive(
                 project_path,
+                file,
                 format,
                 include_duplicates,
                 include_dead_code,

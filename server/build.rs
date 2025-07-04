@@ -13,7 +13,7 @@ fn main() {
     println!("cargo:rerun-if-changed=../assets/demo/");
     println!("cargo:rerun-if-changed=templates/");
     println!("cargo:rerun-if-changed=src/schema/refactor_state.capnp");
-    
+
     // Declare custom cfg flag for cargo publish detection
     println!("cargo:rustc-check-cfg=cfg(cargo_publish)");
 
@@ -37,15 +37,15 @@ fn main() {
 /// Check if we're in a cargo publish context
 fn is_publishing() -> bool {
     // During cargo publish, the package is extracted to a temp directory
-    let is_publish = env::var("CARGO_PKG_VERSION").is_ok() && 
-        env::current_dir()
+    let is_publish = env::var("CARGO_PKG_VERSION").is_ok()
+        && env::current_dir()
             .map(|dir| dir.to_string_lossy().contains("/target/package/"))
             .unwrap_or(false);
-    
+
     if is_publish {
         println!("cargo:rustc-cfg=cargo_publish");
     }
-    
+
     is_publish
 }
 
