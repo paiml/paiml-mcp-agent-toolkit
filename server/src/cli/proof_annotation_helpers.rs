@@ -251,6 +251,36 @@ pub fn format_as_summary(
         }
     }
 
+    // Show top files with most proof annotations
+    if !annotations.is_empty() {
+        writeln!(&mut output, "\n## Top Files with Proof Annotations\n")?;
+        
+        // Count annotations per file
+        let mut file_counts: std::collections::HashMap<&std::path::Path, usize> = std::collections::HashMap::new();
+        for (location, _) in annotations {
+            *file_counts.entry(&location.file_path).or_insert(0) += 1;
+        }
+        
+        // Sort files by annotation count
+        let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
+        sorted_files.sort_by(|a, b| b.1.cmp(&a.1));
+        
+        // Display top 10 files
+        for (i, (file_path, count)) in sorted_files.iter().take(10).enumerate() {
+            let filename = file_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(file_path.to_str().unwrap_or("unknown"));
+            writeln!(
+                &mut output,
+                "{}. `{}` - {} annotations",
+                i + 1,
+                filename,
+                count
+            )?;
+        }
+    }
+
     Ok(output)
 }
 
