@@ -454,7 +454,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             executive_summary,
             top_files,
         } => {
-            super::super::stubs::handle_analyze_comprehensive(
+            super::advanced_analysis_handlers::handle_analyze_comprehensive(
                 project_path,
                 format,
                 include_duplicates,
@@ -469,7 +469,6 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 output,
                 perf,
                 executive_summary,
-                top_files,
             )
             .await
         }
