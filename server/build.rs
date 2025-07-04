@@ -13,6 +13,9 @@ fn main() {
     println!("cargo:rerun-if-changed=../assets/demo/");
     println!("cargo:rerun-if-changed=templates/");
     println!("cargo:rerun-if-changed=src/schema/refactor_state.capnp");
+    
+    // Declare custom cfg flag for cargo publish detection
+    println!("cargo:rustc-check-cfg=cfg(cargo_publish)");
 
     // Verify critical dependencies at build time
     verify_dependency_versions();
