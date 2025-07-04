@@ -256,7 +256,7 @@ impl DebtClassifier {
             compiled_patterns,
         }
     }
-    
+
     pub fn new_strict() -> Self {
         // Strict mode only includes explicit SATD markers
         let patterns = vec![
@@ -286,7 +286,7 @@ impl DebtClassifier {
                 description: "Security concern".to_string(),
             },
         ];
-        
+
         let regex_strings: Vec<&str> = patterns.iter().map(|p| p.regex.as_str()).collect();
         let compiled_patterns =
             RegexSet::new(&regex_strings).expect("Failed to compile strict SATD patterns");
@@ -337,11 +337,11 @@ impl SATDDetector {
     pub fn new() -> Self {
         Self::with_config(false)
     }
-    
+
     pub fn new_strict() -> Self {
         Self::with_config(true)
     }
-    
+
     fn with_config(strict_mode: bool) -> Self {
         let debt_classifier = if strict_mode {
             DebtClassifier::new_strict()

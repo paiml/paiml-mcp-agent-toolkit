@@ -106,7 +106,7 @@ fn test_detect_primary_language_rust() {
     let test_dir = TempDir::new().unwrap();
     let src_dir = test_dir.path().join("src");
     std::fs::create_dir(&src_dir).unwrap();
-    
+
     // Create Cargo.toml to identify this as a Rust project
     std::fs::write(
         test_dir.path().join("Cargo.toml"),

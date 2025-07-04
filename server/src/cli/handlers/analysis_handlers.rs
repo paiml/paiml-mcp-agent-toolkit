@@ -6,7 +6,125 @@
 use crate::cli::{self, AnalyzeCommands};
 use anyhow::Result;
 
-/// Router for all analysis commands
+/// Router for all analysis commands - central dispatch for CLI analyze subcommands.
+///
+/// This function serves as the main entry point for all `pmat analyze` subcommands,
+/// routing each command variant to its specific handler implementation. Critical for
+/// API stability as it defines the complete analyze command interface.
+///
+/// # Parameters
+///
+/// * `cmd` - The specific analyze command variant with all parsed arguments
+///
+/// # Returns
+///
+/// * `Ok(())` - Command completed successfully
+/// * `Err(anyhow::Error)` - Command execution failed with detailed error context
+///
+/// # API Stability Contract
+///
+/// This router maintains the CLI API contract by:
+/// - Ensuring all AnalyzeCommands variants are handled
+/// - Providing consistent parameter forwarding to handlers
+/// - Maintaining backward compatibility for existing commands
+/// - Preventing API drift through comprehensive parameter mapping
+///
+/// # Supported Commands
+///
+/// ## Core Analysis Commands
+/// - `complexity` - Cyclomatic and cognitive complexity analysis
+/// - `churn` - Code change frequency analysis over time
+/// - `dead-code` - Unused code detection and reporting
+/// - `dag` - Dependency graph generation and visualization
+/// - `satd` - Self-admitted technical debt detection
+///
+/// ## Advanced Analysis Commands  
+/// - `deep-context` - Comprehensive project context analysis
+/// - `tdg` - Technical debt gravity calculation
+/// - `lint-hotspot` - Linting issue density analysis
+/// - `makefile` - Makefile structure and rule analysis
+/// - `provability` - Formal verification potential assessment
+/// - `duplicates` - Code duplication detection
+/// - `defect-prediction` - AI-powered defect probability analysis
+/// - `comprehensive` - Full multi-faceted analysis suite
+/// - `graph-metrics` - Graph centrality and topology metrics
+/// - `name-similarity` - Identifier similarity analysis
+/// - `proof-annotations` - Proof annotation extraction
+/// - `incremental-coverage` - Differential coverage analysis
+/// - `symbol-table` - Symbol visibility and reference analysis
+/// - `big-o` - Algorithmic complexity analysis
+/// - `assemblyscript` - AssemblyScript-specific analysis
+/// - `webassembly` - WebAssembly module analysis
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::cli::handlers::analysis_handlers::route_analyze_command;
+/// use pmat::cli::AnalyzeCommands;
+/// use std::path::PathBuf;
+///
+/// # tokio_test::block_on(async {
+/// // Complexity analysis command
+/// let complexity_cmd = AnalyzeCommands::Complexity {
+///     project_path: Some(PathBuf::from("/tmp/project")),
+///     toolchain: None,
+///     format: None,
+///     output: None,
+///     max_cyclomatic: None,
+///     max_cognitive: None,
+///     include: None,
+///     watch: false,
+///     top_files: None,
+/// };
+///
+/// // This would normally execute the command
+/// // let result = route_analyze_command(complexity_cmd).await;
+/// // assert!(result.is_ok());
+///
+/// // Dead code analysis command
+/// let dead_code_cmd = AnalyzeCommands::DeadCode {
+///     path: Some(PathBuf::from("/tmp/project")),
+///     format: None,
+///     top_files: None,
+///     include_unreachable: false,
+///     min_dead_lines: None,
+///     include_tests: false,
+///     output: None,
+/// };
+///
+/// // DAG analysis command
+/// let dag_cmd = AnalyzeCommands::Dag {
+///     dag_type: pmat::cli::DagType::CallGraph,
+///     project_path: Some(PathBuf::from("/tmp/project")),
+///     output: None,
+///     max_depth: Some(5),
+///     target_nodes: vec![],
+///     filter_external: false,
+///     show_complexity: false,
+///     include_duplicates: false,
+///     include_dead_code: false,
+///     enhanced: false,
+/// };
+///
+/// // All commands follow the same routing pattern
+/// // Each command variant maps to a specific handler function
+/// # });
+/// ```
+///
+/// # Error Handling
+///
+/// The router implements comprehensive error handling:
+/// - Parameter validation errors are propagated from handlers
+/// - I/O errors from file operations are wrapped with context
+/// - Parse errors include file location information
+/// - Analysis failures preserve original error chains
+///
+/// # Performance Characteristics
+///
+/// - Route dispatch: O(1) pattern matching
+/// - Parameter forwarding: O(1) move semantics
+/// - Memory: Minimal overhead, parameters moved to handlers
+/// - Concurrency: Handlers may implement parallel processing internally
 pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
     use cli::*;
     match cmd {
@@ -39,9 +157,16 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             days,
             format,
             output,
+            top_files,
         } => {
-            super::complexity_handlers::handle_analyze_churn(project_path, days, format, output)
-                .await
+            super::complexity_handlers::handle_analyze_churn(
+                project_path,
+                days,
+                format,
+                output,
+                top_files,
+            )
+            .await
         }
         AnalyzeCommands::DeadCode {
             path,
@@ -100,6 +225,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             days,
             metrics,
             output,
+            top_files,
         } => {
             super::complexity_handlers::handle_analyze_satd(
                 path,
@@ -112,6 +238,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 days,
                 metrics,
                 output,
+                top_files,
             )
             .await
         }
@@ -130,6 +257,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             cache_strategy,
             parallel,
             verbose,
+            top_files,
         } => {
             super::advanced_analysis_handlers::handle_analyze_deep_context(
                 project_path,
@@ -155,13 +283,14 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 }),
                 parallel.is_some(),
                 verbose,
+                top_files,
             )
             .await
         }
         AnalyzeCommands::Tdg {
             path,
             threshold,
-            top,
+            top_files,
             format,
             include_components,
             output,
@@ -171,7 +300,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             super::advanced_analysis_handlers::handle_analyze_tdg(
                 path,
                 Some(threshold),
-                Some(top),
+                Some(top_files),
                 format,
                 include_components,
                 output,
@@ -192,6 +321,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             output,
             perf,
             clippy_flags,
+            top_files,
         } => {
             super::lint_hotspot_handlers::handle_analyze_lint_hotspot(
                 project_path,
@@ -205,6 +335,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 output,
                 perf,
                 clippy_flags,
+                top_files,
             )
             .await
         }
@@ -214,6 +345,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             format,
             fix,
             gnu_version,
+            top_files,
         } => {
             super::advanced_analysis_handlers::handle_analyze_makefile(
                 path,
@@ -221,6 +353,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 format,
                 fix,
                 Some(gnu_version),
+                top_files,
             )
             .await
         }
@@ -232,6 +365,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             high_confidence_only,
             include_evidence,
             output,
+            top_files,
         } => {
             super::advanced_analysis_handlers::handle_analyze_provability(
                 project_path,
@@ -241,6 +375,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 high_confidence_only,
                 include_evidence,
                 output,
+                top_files,
             )
             .await
         }
@@ -255,6 +390,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             include,
             exclude,
             output,
+            top_files,
         } => {
             let config = super::duplication_analysis::DuplicateAnalysisConfig {
                 project_path,
@@ -267,6 +403,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 include,
                 exclude,
                 output,
+                top_files,
             };
             super::duplication_analysis::handle_analyze_duplicates(config).await
         }
@@ -282,6 +419,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             exclude,
             output,
             perf,
+            top_files,
         } => {
             super::advanced_analysis_handlers::handle_analyze_defect_prediction(
                 project_path,
@@ -295,6 +433,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 exclude.map(|s| vec![s]).unwrap_or_default(),
                 output,
                 perf,
+                top_files,
             )
             .await
         }
@@ -313,6 +452,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             output,
             perf,
             executive_summary,
+            top_files,
         } => {
             super::super::stubs::handle_analyze_comprehensive(
                 project_path,
@@ -329,6 +469,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 output,
                 perf,
                 executive_summary,
+                top_files,
             )
             .await
         }
@@ -408,6 +549,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             output,
             perf,
             clear_cache,
+            top_files: _top_files,
         } => {
             super::super::stubs::handle_analyze_proof_annotations(
                 project_path,
@@ -434,6 +576,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             perf,
             cache_dir,
             force_refresh,
+            top_files: _top_files,
         } => {
             super::super::stubs::handle_analyze_incremental_coverage(
                 project_path,
@@ -461,6 +604,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             show_references,
             output,
             perf,
+            top_files: _top_files,
         } => {
             super::advanced_analysis_handlers::handle_analyze_symbol_table(
                 project_path,
@@ -486,6 +630,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             high_complexity_only,
             output,
             perf,
+            top_files,
         } => {
             super::big_o_handlers::handle_analyze_big_o(
                 project_path,
@@ -497,6 +642,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 high_complexity_only,
                 output,
                 perf,
+                top_files,
             )
             .await
         }
@@ -509,6 +655,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             output,
             timeout,
             perf,
+            top_files: _top_files,
         } => {
             super::wasm_handlers::handle_analyze_assemblyscript(
                 project_path,
@@ -532,6 +679,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             complexity,
             output,
             perf,
+            top_files: _top_files,
         } => {
             super::wasm_handlers::handle_analyze_webassembly(
                 project_path,

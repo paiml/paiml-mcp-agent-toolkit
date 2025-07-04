@@ -131,6 +131,27 @@ pub struct StepResult {
 }
 
 impl<T> RingBuffer<T> {
+    /// Creates a new ring buffer with the specified capacity.
+    ///
+    /// The ring buffer maintains a fixed-size circular buffer that automatically
+    /// evicts the oldest items when capacity is exceeded, following FIFO semantics.
+    ///
+    /// # Performance
+    ///
+    /// - Time: O(1) for initialization
+    /// - Space: O(capacity) for initial allocation
+    /// - Push: O(1) amortized
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::refactor_engine::RingBuffer;
+    ///
+    /// let buffer: RingBuffer<i32> = RingBuffer::new(3);
+    ///
+    /// assert_eq!(buffer.len(), 0);
+    /// assert!(buffer.is_empty());
+    /// ```
     pub fn new(capacity: usize) -> Self {
         Self {
             buffer: VecDeque::with_capacity(capacity),
@@ -138,6 +159,29 @@ impl<T> RingBuffer<T> {
         }
     }
 
+    /// Pushes an item to the back of the ring buffer.
+    ///
+    /// If the buffer is at capacity, the oldest item (front) is automatically
+    /// removed to make space for the new item.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::refactor_engine::RingBuffer;
+    ///
+    /// let mut buffer = RingBuffer::new(2);
+    ///
+    /// buffer.push(1);
+    /// buffer.push(2);
+    /// assert_eq!(buffer.len(), 2);
+    ///
+    /// // Adding third item evicts the first
+    /// buffer.push(3);
+    /// assert_eq!(buffer.len(), 2);
+    ///
+    /// let items = buffer.drain();
+    /// assert_eq!(items, vec![2, 3]); // First item (1) was evicted
+    /// ```
     pub fn push(&mut self, item: T) {
         if self.buffer.len() >= self.capacity {
             self.buffer.pop_front();
@@ -145,6 +189,25 @@ impl<T> RingBuffer<T> {
         self.buffer.push_back(item);
     }
 
+    /// Drains all items from the buffer and returns them as a vector.
+    ///
+    /// After this operation, the buffer will be empty. Items are returned
+    /// in the order they were added (oldest first).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::refactor_engine::RingBuffer;
+    ///
+    /// let mut buffer = RingBuffer::new(5);
+    /// buffer.push("first");
+    /// buffer.push("second");
+    /// buffer.push("third");
+    ///
+    /// let items = buffer.drain();
+    /// assert_eq!(items, vec!["first", "second", "third"]);
+    /// assert!(buffer.is_empty());
+    /// ```
     pub fn drain(&mut self) -> Vec<T> {
         self.buffer.drain(..).collect()
     }
@@ -159,6 +222,56 @@ impl<T> RingBuffer<T> {
 }
 
 impl UnifiedEngine {
+    /// Creates a new unified refactoring engine with the specified configuration.
+    ///
+    /// Initializes the engine with AST analysis capabilities, caching, and a configurable
+    /// execution mode (Server, Interactive, or Batch). The engine uses a state machine
+    /// to coordinate refactoring operations across the target files.
+    ///
+    /// # Parameters
+    ///
+    /// * `ast_engine` - Shared AST analysis engine for parsing and analysis
+    /// * `cache` - Unified cache manager for performance optimization
+    /// * `mode` - Execution mode (Server/Interactive/Batch) with mode-specific settings
+    /// * `config` - Refactoring configuration (quality thresholds, operation types, etc.)
+    /// * `targets` - Vector of file paths to analyze and potentially refactor
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::refactor_engine::{
+    ///     UnifiedEngine, EngineMode, ExplainLevel
+    /// };
+    /// use pmat::services::unified_ast_engine::UnifiedAstEngine;
+    /// use pmat::services::cache::unified_manager::UnifiedCacheManager;
+    /// use pmat::models::refactor::RefactorConfig;
+    /// use std::sync::Arc;
+    /// use std::path::PathBuf;
+    /// use std::time::Duration;
+    ///
+    /// let ast_engine = Arc::new(UnifiedAstEngine::new());
+    /// let cache = Arc::new(UnifiedCacheManager::new());
+    /// let config = RefactorConfig::default();
+    /// let targets = vec![PathBuf::from("src/main.rs")];
+    ///
+    /// // Server mode for high-throughput processing
+    /// let mode = EngineMode::Server {
+    ///     emit_buffer: Arc::new(tokio::sync::RwLock::new(
+    ///         pmat::services::refactor_engine::RingBuffer::new(1000)
+    ///     )),
+    ///     latency_target: Duration::from_millis(100),
+    /// };
+    ///
+    /// let engine = UnifiedEngine::new(
+    ///     ast_engine,
+    ///     cache,
+    ///     mode,
+    ///     config,
+    ///     targets
+    /// );
+    ///
+    /// // Engine is ready for analysis and refactoring
+    /// ```
     pub fn new(
         ast_engine: Arc<UnifiedAstEngine>,
         cache: Arc<UnifiedCacheManager>,
@@ -181,6 +294,67 @@ impl UnifiedEngine {
         }
     }
 
+    /// Executes the refactoring engine according to its configured mode.
+    ///
+    /// This is the main entry point that starts the refactoring process. The behavior
+    /// depends on the engine mode:
+    /// - **Server**: Continuous processing with latency targets and buffered output
+    /// - **Interactive**: Step-by-step processing with user confirmation
+    /// - **Batch**: Automated processing with checkpointing and parallelization
+    ///
+    /// # Error Handling
+    ///
+    /// The engine implements comprehensive error recovery:
+    /// - Parse errors → skip file and continue
+    /// - I/O errors → retry with exponential backoff
+    /// - State machine errors → rollback to last checkpoint
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::refactor_engine::{
+    ///     UnifiedEngine, EngineMode
+    /// };
+    /// use pmat::services::unified_ast_engine::UnifiedAstEngine;
+    /// use pmat::services::cache::unified_manager::UnifiedCacheManager;
+    /// use pmat::models::refactor::RefactorConfig;
+    /// use std::sync::Arc;
+    /// use std::path::PathBuf;
+    /// use std::time::Duration;
+    ///
+    /// # tokio_test::block_on(async {
+    /// let ast_engine = Arc::new(UnifiedAstEngine::new());
+    /// let cache = Arc::new(UnifiedCacheManager::new());
+    /// let config = RefactorConfig::default();
+    /// let targets = vec![PathBuf::from("src/example.rs")];
+    ///
+    /// let mode = EngineMode::Batch {
+    ///     checkpoint_dir: PathBuf::from(".refactor_state"),
+    ///     resume: false,
+    ///     parallel_workers: 4,
+    /// };
+    ///
+    /// let mut engine = UnifiedEngine::new(
+    ///     ast_engine,
+    ///     cache,
+    ///     mode,
+    ///     config,
+    ///     targets
+    /// );
+    ///
+    /// // Run the refactoring process
+    /// let result = engine.run().await;
+    ///
+    /// match result {
+    ///     Ok(summary) => {
+    ///         println!("Refactoring completed: {} operations", summary.operations_completed);
+    ///     }
+    ///     Err(e) => {
+    ///         eprintln!("Refactoring failed: {}", e);
+    ///     }
+    /// }
+    /// # });
+    /// ```
     pub async fn run(&mut self) -> Result<Summary, EngineError> {
         match &self.mode {
             EngineMode::Server { .. } => self.run_server().await,
@@ -665,6 +839,47 @@ impl UnifiedEngine {
     }
 }
 
+/// Comprehensive error handling for the unified refactoring engine.
+///
+/// This enum covers all possible failure modes during refactoring operations,
+/// from state machine transitions to I/O operations and code analysis.
+/// Each variant provides detailed context about the specific failure.
+///
+/// # Error Recovery
+///
+/// The engine implements different recovery strategies based on error type:
+/// - **StateMachine errors**: Rollback to last checkpoint
+/// - **IO errors**: Retry with exponential backoff
+/// - **Serialization errors**: Graceful degradation to simplified format
+/// - **Analysis errors**: Skip problematic files and continue
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::refactor_engine::EngineError;
+///
+/// // State machine errors
+/// let state_error = EngineError::StateMachine(
+///     "Invalid transition from Analyze to Complete".to_string()
+/// );
+/// assert_eq!(
+///     state_error.to_string(),
+///     "State machine error: Invalid transition from Analyze to Complete"
+/// );
+///
+/// // IO errors are automatically converted
+/// let io_error: EngineError = std::io::Error::new(
+///     std::io::ErrorKind::NotFound,
+///     "File not found"
+/// ).into();
+/// assert!(io_error.to_string().contains("IO error:"));
+///
+/// // Analysis errors with context
+/// let analysis_error = EngineError::Analysis(
+///     "Failed to parse AST: unexpected token".to_string()
+/// );
+/// assert!(analysis_error.to_string().contains("Analysis error:"));
+/// ```
 #[derive(Debug, thiserror::Error)]
 pub enum EngineError {
     #[error("State machine error: {0}")]

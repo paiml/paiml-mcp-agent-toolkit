@@ -7,6 +7,7 @@ pub mod advanced_analysis_handlers;
 pub mod analysis_handlers;
 pub mod big_o_handlers;
 pub mod complexity_handlers;
+pub mod comprehensive_handler;
 pub mod demo_handlers;
 pub mod duplication_analysis;
 pub mod enforce_handlers;

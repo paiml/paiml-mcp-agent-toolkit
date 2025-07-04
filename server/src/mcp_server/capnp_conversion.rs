@@ -7,15 +7,13 @@ pub fn serialize_state_to_capnp(state: &RefactorStateMachine) -> Result<Vec<u8>,
     // For now, use JSON serialization as it's the most reliable
     // Cap'n Proto implementation can be added when the capnp compiler is available
     // This provides a clean interface for future Cap'n Proto integration
-    serde_json::to_vec(state)
-        .map_err(|e| format!("Serialization error: {}", e))
+    serde_json::to_vec(state).map_err(|e| format!("Serialization error: {}", e))
 }
 
 pub fn deserialize_state_from_capnp(data: &[u8]) -> Result<RefactorStateMachine, String> {
     // For now, use JSON deserialization as it's the most reliable
     // Cap'n Proto implementation can be added when the capnp compiler is available
-    serde_json::from_slice(data)
-        .map_err(|e| format!("Deserialization error: {}", e))
+    serde_json::from_slice(data).map_err(|e| format!("Deserialization error: {}", e))
 }
 
 // Helper functions for testing and development
@@ -40,16 +38,17 @@ mod tests {
 
     #[test]
     fn test_json_fallback_serialization() {
-        let state = RefactorStateMachine::new(
-            vec![PathBuf::from("test.rs")],
-            RefactorConfig::default(),
-        );
+        let state =
+            RefactorStateMachine::new(vec![PathBuf::from("test.rs")], RefactorConfig::default());
 
         let serialized = serialize_state_to_capnp(&state).unwrap();
         let deserialized = deserialize_state_from_capnp(&serialized).unwrap();
 
         assert_eq!(state.targets.len(), deserialized.targets.len());
-        assert_eq!(state.config.target_complexity, deserialized.config.target_complexity);
+        assert_eq!(
+            state.config.target_complexity,
+            deserialized.config.target_complexity
+        );
     }
 
     #[test]

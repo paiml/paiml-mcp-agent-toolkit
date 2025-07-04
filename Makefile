@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint lint-main check test test-fast coverage build release clean install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-refactor overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-all coverage-stratified
+.PHONY: all validate format lint lint-main check test test-fast coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-refactor overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-all coverage-stratified
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -77,34 +77,15 @@ check: check-scripts
 
 # Fast tests without coverage (optimized for speed) - MUST complete under 3 minutes
 test-fast:
-	@echo "⚡ Running fast tests with optimized parallelism..."
-	@# System health check removed - script archived
-	@echo "🚀 Setting SKIP_SLOW_TESTS=1 to ensure tests complete quickly..."
-	@echo "🔥 Using high parallelism for maximum performance..."
-	@# Optimized settings for systems with adequate memory
-	@export CARGO_BUILD_JOBS=$${CARGO_BUILD_JOBS:-8}; \
-	export CARGO_INCREMENTAL=0; \
-	export CARGO_PROFILE_TEST_CODEGEN_UNITS=4; \
-	CPU_CORES=$$(nproc); \
-	if [ "$${CI:-}" = "true" ]; then \
-		echo "🔧 CI environment detected - using moderate parallelism"; \
-		TEST_THREADS=8; \
-		CARGO_BUILD_JOBS=4; \
-	else \
-		echo "📊 System resources: $$CPU_CORES cores"; \
-		OPTIMAL_THREADS=$$((CPU_CORES > 16 ? 16 : CPU_CORES > 8 ? CPU_CORES - 2 : CPU_CORES)); \
-		echo "🚀 Using optimized parallelism ($$CARGO_BUILD_JOBS build jobs, $$OPTIMAL_THREADS test threads)"; \
-		echo "   Override with: CARGO_BUILD_JOBS=n THREADS=n make test-fast"; \
-		TEST_THREADS=$${THREADS:-$$OPTIMAL_THREADS}; \
-	fi; \
-	echo "🔨 Building with $$CARGO_BUILD_JOBS jobs, testing with $$TEST_THREADS threads..."; \
-	if command -v cargo-nextest >/dev/null 2>&1; then \
-		echo "⚡ Using cargo-nextest for faster test execution..."; \
-		SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$$TEST_THREADS CARGO_BUILD_JOBS=$$CARGO_BUILD_JOBS cargo nextest run --profile fast --workspace --features skip-slow-tests --filter-expr 'not test(slow_integration)' --jobs $$CARGO_BUILD_JOBS; \
-	else \
-		echo "📦 Using standard cargo test..."; \
-		SKIP_SLOW_TESTS=1 CARGO_BUILD_JOBS=$$CARGO_BUILD_JOBS cargo test --workspace --features skip-slow-tests --jobs $$CARGO_BUILD_JOBS -- --test-threads=$$TEST_THREADS; \
+	@echo "⚡ Running fast tests with cargo-nextest..."
+	@echo "   (Leveraging incremental compilation and optimal parallelism)"
+	@# This simplified target relies on .cargo/config.toml for optimizations
+	@# and lets nextest handle job management.
+	@if ! command -v cargo-nextest >/dev/null 2>&1; then \
+		echo "📦 Installing cargo-nextest for optimal performance..."; \
+		cargo install cargo-nextest; \
 	fi
+	@cargo nextest run --workspace --features skip-slow-tests --profile fast
 	@echo "✅ Fast tests completed!"
 
 # Stratified test targets for distributed test architecture
@@ -164,44 +145,23 @@ test-safe:
 # Run tests - ALWAYS FAST (zero tolerance for slow tests) with coverage summary
 test:
 	@echo "🧪 Running fast tests with coverage..."
-	@echo "🚀 Using memory-safe parallelism for coverage tests..."
-	@# Memory-safe settings to prevent OOM
-	@export CARGO_BUILD_JOBS=$${CARGO_BUILD_JOBS:-2}; \
-	export CARGO_INCREMENTAL=0; \
-	export CARGO_PROFILE_TEST_CODEGEN_UNITS=1; \
-	CORES=$$(nproc); \
-	if [ "$${CI:-}" = "true" ]; then \
-		THREADS=4; CARGO_BUILD_JOBS=4; \
-	else \
-		THREADS=$${THREADS:-2}; \
-	fi; \
-	echo "🔨 Building with $$CARGO_BUILD_JOBS jobs, testing with $$THREADS threads..."; \
-	cd server && SKIP_SLOW_TESTS=1 CARGO_BUILD_JOBS=$$CARGO_BUILD_JOBS cargo llvm-cov test \
+	@echo "🚀 Leveraging incremental compilation and optimal parallelism..."
+	@cd server && SKIP_SLOW_TESTS=1 cargo llvm-cov test \
 		--lib --bins \
 		--features skip-slow-tests \
 		--no-fail-fast \
-		--jobs $$CARGO_BUILD_JOBS \
-		-- --test-threads=$$THREADS 2>&1 | grep -E "test result:|passed|failed|TOTAL|%"
+		-- 2>&1 | grep -E "test result:|passed|failed|TOTAL|%"
 	@echo "✅ All fast tests completed with coverage summary!"
 
 # Fast coverage - default target, MUST be < 30 seconds
 coverage:
 	@echo "⚡ Running FAST coverage (target: < 30 seconds)..."
 	@mkdir -p coverage/
-	@# Try to reuse existing test results first
-	@if [ -d "target/llvm-cov-target" ]; then \
-		echo "🔄 Found existing test results, generating report..."; \
-		cd server && cargo llvm-cov report --html --output-dir ../coverage/ 2>/dev/null && \
-		cargo llvm-cov report --summary-only | grep -E "TOTAL|%" || \
-		(echo "🚀 No valid coverage data, running fast lib tests..." && \
-		 SKIP_SLOW_TESTS=1 cargo llvm-cov test --lib --features skip-slow-tests --html --output-dir ../coverage/ -- --test-threads=$$(nproc)); \
-	else \
-		echo "🚀 Running fast lib tests with coverage..."; \
-		cd server && SKIP_SLOW_TESTS=1 cargo llvm-cov test --lib \
-			--features skip-slow-tests \
-			--html --output-dir ../coverage/ \
-			-- --test-threads=$$(nproc); \
-	fi
+	@echo "🚀 Running fast lib tests with coverage..."
+	@echo "   (Leveraging incremental compilation and optimal parallelism)"
+	@cd server && SKIP_SLOW_TESTS=1 cargo llvm-cov test --lib \
+		--features skip-slow-tests \
+		--html --output-dir ../coverage/
 	@echo "📁 HTML report: coverage/index.html"
 	@cd server && cargo llvm-cov report --summary-only | grep -E "TOTAL|%" || true
 	@echo "✅ Fast coverage complete! Use 'make coverage-full' for comprehensive coverage."
@@ -325,6 +285,37 @@ clean:
 	@cargo clean --manifest-path server/Cargo.toml
 	@rm -rf coverage/ artifacts/ target/
 	@echo "✅ Clean completed successfully!"
+
+# Clean /tmp aggressively - remove most temporary files
+clean-tmp:
+	@echo "🧹 Aggressively cleaning /tmp..."
+	@echo "📊 /tmp usage before cleanup:"
+	@df -h /tmp
+	@echo ""
+	@echo "🗑️ Removing ALL temporary files and directories (preserving system essential files)..."
+	@# Remove all user-owned files first
+	@find /tmp -user $(shell whoami) -delete 2>/dev/null || true
+	@echo "🗑️ Removing compilation artifacts (all users)..."
+	@if command -v sudo >/dev/null 2>&1; then \
+		sudo find /tmp -name "cc*" -type f -delete 2>/dev/null || true; \
+		sudo find /tmp -name "rust*" -delete 2>/dev/null || true; \
+		sudo find /tmp -name "*cargo*" -delete 2>/dev/null || true; \
+		sudo find /tmp -name "tmp*" -type f -delete 2>/dev/null || true; \
+		sudo find /tmp -name "*.profraw" -delete 2>/dev/null || true; \
+		sudo find /tmp -name "*.profdata" -delete 2>/dev/null || true; \
+		sudo find /tmp -name "*.tmp" -delete 2>/dev/null || true; \
+		sudo find /tmp -name "*.temp" -delete 2>/dev/null || true; \
+		echo "🗑️ Removing old files (older than 1 hour)..."; \
+		sudo find /tmp -type f -amin +60 -delete 2>/dev/null || true; \
+		echo "🗑️ Removing empty directories..."; \
+		sudo find /tmp -type d -empty -delete 2>/dev/null || true; \
+	else \
+		echo "⚠️  No sudo available - only cleaned user files"; \
+	fi
+	@echo ""
+	@echo "📊 /tmp usage after cleanup:"
+	@df -h /tmp
+	@echo "✅ Aggressive /tmp cleanup completed!"
 
 # Clear swap memory (useful between test runs to prevent swap buildup)
 clear-swap:
@@ -1083,6 +1074,7 @@ help:
 	@echo "  build        - Build all projects (binaries only)"
 	@echo "  release      - Build optimized release binary (workspace-wide)"
 	@echo "  clean        - Clean all build artifacts"
+	@echo "  clean-tmp    - Aggressively clean /tmp (removes most temporary files)"
 	@echo "  clear-swap   - Clear swap memory (useful between test runs)"
 	@echo ""
 	@echo "Distributed Testing (stratified architecture):"

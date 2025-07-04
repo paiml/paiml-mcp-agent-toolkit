@@ -8,7 +8,7 @@ mod tests {
     use tempfile::TempDir;
 
     // Test-specific structures that mirror the refactor auto state machine
-    
+
     #[derive(Debug, Clone, Serialize, Deserialize)]
     struct TestRefactorState {
         iteration: u32,
@@ -157,17 +157,17 @@ mod tests {
         ) {
             // Property: State transitions are always valid
             let mut state = initial_state.clone();
-            
+
             // Simulate state transitions
             state.iteration += 1;
             prop_assert!(state.iteration > initial_state.iteration);
-            
+
             // Context should be generated after first iteration
             if state.iteration > 0 {
                 state.context_generated = true; // Simulate context generation
             }
             prop_assert!(!state.context_generated || state.iteration > 0);
-            
+
             // Progress metrics should be consistent
             prop_assert!(state.progress.files_processed <= state.progress.total_files);
             prop_assert!(state.progress.files_improved <= state.progress.files_processed);
@@ -198,19 +198,19 @@ mod tests {
                 .into_iter()
                 .map(|(k, v)| (k.to_string(), v))
                 .collect();
-            
+
             // Calculate base score
             let base_score = calculate_test_severity_score(&violations, None);
-            
+
             // Calculate score with issue context
             let issue_score = calculate_test_severity_score(&violations, Some(&issue_keywords));
-            
+
             // Property: Issue context should never decrease severity score
-            prop_assert!(issue_score >= base_score, 
+            prop_assert!(issue_score >= base_score,
                 "Issue context decreased score: {} -> {}", base_score, issue_score);
-            
+
             // Property: Security issues should increase score the most
-            if issue_keywords.contains_key("Security") && 
+            if issue_keywords.contains_key("Security") &&
                violations.iter().any(|v| v.lint_name.contains("security")) {
                 prop_assert!(issue_score >= base_score * 2.0,
                     "Security issues should significantly increase score");
@@ -237,15 +237,15 @@ mod tests {
                     (PathBuf::from(path), *score, *complexity, *violations)
                 })
                 .collect();
-            
+
             // Select files twice with same parameters
             let selected1 = select_test_files_by_severity(&file_metrics, max_files);
             let selected2 = select_test_files_by_severity(&file_metrics, max_files);
-            
+
             // Property: File selection is deterministic
-            prop_assert_eq!(&selected1, &selected2, 
+            prop_assert_eq!(&selected1, &selected2,
                 "File selection should be deterministic");
-            
+
             // Property: Selected files are the highest severity
             if file_metrics.len() > max_files {
                 let min_selected_score = selected1
@@ -253,14 +253,14 @@ mod tests {
                     .map(|(_, s, _, _)| *s)
                     .min_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap_or(0.0);
-                    
+
                 let max_unselected_score = file_metrics
                     .iter()
                     .filter(|(p, _, _, _)| !selected1.iter().any(|(sp, _, _, _)| sp == p))
                     .map(|(_, s, _, _)| *s)
                     .max_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap_or(0.0);
-                    
+
                 prop_assert!(min_selected_score >= max_unselected_score,
                     "Selected files should have highest severity scores");
             }
@@ -271,11 +271,11 @@ mod tests {
             // Property: State can be serialized and deserialized without loss
             let serialized = serde_json::to_string(&state).unwrap();
             let deserialized: TestRefactorState = serde_json::from_str(&serialized).unwrap();
-            
+
             prop_assert_eq!(state.iteration, deserialized.iteration);
             prop_assert_eq!(state.context_generated, deserialized.context_generated);
             prop_assert_eq!(state.files_completed.len(), deserialized.files_completed.len());
-            prop_assert_eq!(state.quality_metrics.total_violations, 
+            prop_assert_eq!(state.quality_metrics.total_violations,
                 deserialized.quality_metrics.total_violations);
         }
 
@@ -294,11 +294,11 @@ mod tests {
                 violations_fixed,
                 complexity_reduced,
             };
-            
+
             // Property: Progress metrics are internally consistent
             prop_assert!(progress.files_improved <= progress.files_processed);
             prop_assert!(progress.files_processed <= progress.total_files);
-            
+
             // Property: Completion percentage is valid
             let completion = (progress.files_processed as f64 / progress.total_files as f64) * 100.0;
             prop_assert!((0.0..=100.0).contains(&completion));
@@ -312,12 +312,12 @@ mod tests {
             let initial_files_len = initial_state.files_completed.len();
             let mut state = initial_state;
             let mut iterations = vec![state.iteration];
-            
+
             // Simulate multiple iterations
             for _ in 0..num_iterations {
                 state.iteration += 1;
                 iterations.push(state.iteration);
-                
+
                 // Simulate some files being completed
                 if state.iteration % 3 == 0 {
                     state.files_completed.push(
@@ -325,13 +325,13 @@ mod tests {
                     );
                 }
             }
-            
+
             // Property: Iterations always increase
             for window in iterations.windows(2) {
-                prop_assert!(window[1] > window[0], 
+                prop_assert!(window[1] > window[0],
                     "Iterations must monotonically increase");
             }
-            
+
             // Property: Files completed grows monotonically
             prop_assert!(state.files_completed.len() >= initial_files_len);
         }
@@ -357,7 +357,7 @@ mod tests {
                     satd_allowed: 0,
                 }
             );
-            
+
             // Property: Request contains all required fields
             prop_assert!(request.contains("file_path"));
             prop_assert!(request.contains(&file_path));
@@ -365,13 +365,13 @@ mod tests {
             prop_assert!(request.contains(&complexity.to_string()));
             prop_assert!(request.contains("current_coverage"));
             prop_assert!(request.contains("quality_targets"));
-            
+
             // Property: Issue context is included when provided
             if let Some(summary) = &issue_summary {
                 prop_assert!(request.contains("github_issue_context"));
                 prop_assert!(request.contains(summary));
             }
-            
+
             // Property: Request is valid JSON
             let parsed: serde_json::Value = serde_json::from_str(&request).unwrap();
             prop_assert!(parsed.is_object());
@@ -385,19 +385,19 @@ mod tests {
             })
         ) {
             let checkpoint_path = temp_dir.path().join("checkpoint.json");
-            
+
             // Save state
             let saved = serde_json::to_string_pretty(&state).unwrap();
             std::fs::write(&checkpoint_path, &saved).unwrap();
-            
+
             // Load state
             let loaded_content = std::fs::read_to_string(&checkpoint_path).unwrap();
             let loaded_state: TestRefactorState = serde_json::from_str(&loaded_content).unwrap();
-            
+
             // Property: State survives save/load cycle
             prop_assert_eq!(state.iteration, loaded_state.iteration);
             prop_assert_eq!(state.files_completed.len(), loaded_state.files_completed.len());
-            prop_assert_eq!(state.quality_metrics.total_violations, 
+            prop_assert_eq!(state.quality_metrics.total_violations,
                 loaded_state.quality_metrics.total_violations);
         }
 
@@ -410,7 +410,7 @@ mod tests {
             )
         ) {
             let mut state = initial_state;
-            
+
             for update in updates {
                 match update {
                     "add_file" => {
@@ -419,7 +419,7 @@ mod tests {
                         state.progress.files_processed += 1;
                     },
                     "update_metrics" => {
-                        state.quality_metrics.total_violations = 
+                        state.quality_metrics.total_violations =
                             state.quality_metrics.total_violations.saturating_sub(10);
                         state.progress.violations_fixed += 10;
                     },
@@ -428,10 +428,10 @@ mod tests {
                     },
                     _ => unreachable!(),
                 }
-                
+
                 // Property: State remains consistent after each update
                 prop_assert!(state.progress.files_processed <= state.progress.total_files);
-                prop_assert!(state.progress.violations_fixed <= 
+                prop_assert!(state.progress.violations_fixed <=
                     state.quality_metrics.total_violations + state.progress.violations_fixed);
             }
         }
@@ -440,32 +440,34 @@ mod tests {
     // Helper functions for testing
     fn calculate_test_severity_score(
         violations: &[TestViolationDetail],
-        issue_keywords: Option<&HashMap<String, f32>>
+        issue_keywords: Option<&HashMap<String, f32>>,
     ) -> f64 {
         let mut score = violations.len() as f64;
-        
+
         if let Some(keywords) = issue_keywords {
             for violation in violations {
                 let mut multiplier = 1.0;
-                
+
                 if violation.lint_name.contains("security") && keywords.contains_key("Security") {
                     multiplier *= 4.0;
-                } else if violation.lint_name.contains("complex") && keywords.contains_key("Complexity") {
+                } else if violation.lint_name.contains("complex")
+                    && keywords.contains_key("Complexity")
+                {
                     multiplier *= 2.0;
                 } else if keywords.contains_key("Performance") {
                     multiplier *= 1.5;
                 }
-                
+
                 score += multiplier;
             }
         }
-        
+
         score
     }
 
     fn select_test_files_by_severity(
         files: &[(PathBuf, f64, u32, usize)],
-        max_files: usize
+        max_files: usize,
     ) -> Vec<(PathBuf, f64, u32, usize)> {
         let mut sorted = files.to_vec();
         sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
@@ -479,7 +481,7 @@ mod tests {
         complexity: u32,
         coverage: f64,
         issue_summary: Option<&str>,
-        profile: &TestQualityProfile
+        profile: &TestQualityProfile,
     ) -> String {
         let mut request = json!({
             "file_path": file_path.to_string_lossy(),
@@ -493,11 +495,11 @@ mod tests {
                 "satd_allowed": profile.satd_allowed
             }
         });
-        
+
         if let Some(summary) = issue_summary {
             request["github_issue_context"] = json!(summary);
         }
-        
+
         serde_json::to_string_pretty(&request).unwrap()
     }
 }

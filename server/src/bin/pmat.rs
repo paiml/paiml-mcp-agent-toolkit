@@ -78,7 +78,10 @@ async fn main() -> Result<()> {
             if std::env::var("PMAT_REFACTOR_MCP").is_ok() {
                 info!("Running in Refactor MCP server mode");
                 let refactor_server = pmat::mcp_server::McpServer::new();
-                refactor_server.run().await.map_err(|e| anyhow::anyhow!("{}", e))
+                refactor_server
+                    .run()
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{}", e))
             } else {
                 info!("Running in standard MCP server mode");
                 pmat::run_mcp_server(server).await

@@ -26,6 +26,7 @@ pub async fn handle_analyze_deep_context(
     _cache_strategy: Option<String>,
     _parallel: bool,
     verbose: bool,
+    _top_files: usize,
 ) -> Result<()> {
     info!("🔍 Starting deep context analysis");
     info!("📂 Project path: {}", project_path.display());
@@ -133,12 +134,15 @@ pub async fn handle_analyze_makefile(
     format: MakefileOutputFormat,
     fix: bool,
     gnu_version: Option<String>,
+    top_files: usize,
 ) -> Result<()> {
     // Delegate to stub implementation for now - will be fully extracted later
-    super::super::stubs::handle_analyze_makefile(path, rules, format, fix, gnu_version).await
+    super::super::stubs::handle_analyze_makefile(path, rules, format, fix, gnu_version, top_files)
+        .await
 }
 
 /// Handle provability analysis command
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_provability(
     project_path: PathBuf,
     functions: Vec<String>,
@@ -147,6 +151,7 @@ pub async fn handle_analyze_provability(
     high_confidence_only: bool,
     include_evidence: bool,
     output: Option<PathBuf>,
+    _top_files: usize,
 ) -> Result<()> {
     // Delegate to stub implementation for now - will be fully extracted later
     super::super::stubs::handle_analyze_provability(
@@ -175,6 +180,7 @@ pub async fn handle_analyze_defect_prediction(
     exclude: Vec<String>,
     output: Option<PathBuf>,
     perf: bool,
+    top_files: usize,
 ) -> Result<()> {
     // Delegate to stub implementation for now - will be fully extracted later
     super::super::stubs::handle_analyze_defect_prediction(
@@ -189,6 +195,7 @@ pub async fn handle_analyze_defect_prediction(
         Some(exclude.join(",")),
         output,
         perf,
+        top_files,
     )
     .await
 }
@@ -211,8 +218,8 @@ pub async fn handle_analyze_comprehensive(
     perf: bool,
     executive_summary: bool,
 ) -> Result<()> {
-    // Delegate to stub implementation for now - will be fully extracted later
-    super::super::stubs::handle_analyze_comprehensive(
+    // Use the new comprehensive handler implementation
+    super::comprehensive_handler::handle_analyze_comprehensive(
         project_path,
         format,
         include_duplicates,

@@ -18,7 +18,7 @@ pub async fn handle_analyze_complexity(
     max_cognitive: Option<u16>,
     include: Vec<String>,
     watch: bool,
-    _top_files: usize,
+    top_files: usize,
 ) -> Result<()> {
     use crate::services::complexity::{
         aggregate_results, format_as_sarif, format_complexity_report, format_complexity_summary,
@@ -41,7 +41,7 @@ pub async fn handle_analyze_complexity(
         super::super::stubs::build_complexity_thresholds(max_cyclomatic, max_cognitive);
 
     // Analyze files
-    let file_metrics = super::super::stubs::analyze_project_files(
+    let mut file_metrics = super::super::stubs::analyze_project_files(
         &project_path,
         Some(&detected_toolchain),
         &include,
@@ -49,6 +49,23 @@ pub async fn handle_analyze_complexity(
         15,
     )
     .await?;
+
+    // Apply top_files filtering if specified
+    if top_files > 0 {
+        // Sort files by complexity (descending)
+        file_metrics.sort_by(|a, b| {
+            let a_complexity =
+                a.total_complexity.cyclomatic as f64 + a.total_complexity.cognitive as f64;
+            let b_complexity =
+                b.total_complexity.cyclomatic as f64 + b.total_complexity.cognitive as f64;
+            b_complexity
+                .partial_cmp(&a_complexity)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        // Keep only top N files
+        file_metrics.truncate(top_files);
+    }
 
     // Aggregate results
     let summary = aggregate_results(file_metrics.clone());
@@ -63,6 +80,7 @@ pub async fn handle_analyze_complexity(
             let json_output = serde_json::json!({
                 "summary": summary,
                 "files": file_metrics,
+                "top_files_limit": if top_files > 0 { Some(top_files) } else { None },
             });
             serde_json::to_string_pretty(&json_output)
                 .map_err(|e| anyhow::anyhow!("JSON serialization failed: {}", e))
@@ -86,9 +104,10 @@ pub async fn handle_analyze_churn(
     days: u32,
     format: crate::models::churn::ChurnOutputFormat,
     output: Option<PathBuf>,
+    top_files: usize,
 ) -> Result<()> {
     // Delegate to main implementation for now - will be extracted in Phase 3 Day 8
-    super::super::stubs::handle_analyze_churn(project_path, days, format, output).await
+    super::super::stubs::handle_analyze_churn(project_path, days, format, output, top_files).await
 }
 
 /// Handle dead code analysis command - REFACTORED
@@ -449,6 +468,7 @@ pub async fn handle_analyze_satd(
     days: u32,
     metrics: bool,
     output: Option<PathBuf>,
+    top_files: usize,
 ) -> Result<()> {
     use crate::services::satd_detector::{SATDDetector, Severity as DetectorSeverity};
 
@@ -486,6 +506,31 @@ pub async fn handle_analyze_satd(
         result
             .items
             .retain(|item| item.severity == DetectorSeverity::Critical);
+    }
+
+    // Apply top_files filtering if specified
+    if top_files > 0 {
+        // Group items by file
+        use std::collections::HashMap;
+        let mut file_counts: HashMap<std::path::PathBuf, usize> = HashMap::new();
+        for item in &result.items {
+            *file_counts.entry(item.file.clone()).or_insert(0) += 1;
+        }
+
+        // Sort files by SATD count (descending)
+        let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
+        sorted_files.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
+
+        // Keep only items from top N files
+        let top_file_paths: std::collections::HashSet<_> = sorted_files
+            .into_iter()
+            .take(top_files)
+            .map(|(path, _)| path)
+            .collect();
+
+        result
+            .items
+            .retain(|item| top_file_paths.contains(&item.file));
     }
 
     eprintln!(

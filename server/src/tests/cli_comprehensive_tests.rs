@@ -422,11 +422,13 @@ fn test_analyze_churn_full_options() {
             days,
             format,
             output,
+            top_files,
         }) => {
             assert_eq!(project_path, PathBuf::from("/tmp/repo"));
             assert_eq!(days, 60);
             assert_eq!(format, ChurnOutputFormat::Csv);
             assert_eq!(output, Some(PathBuf::from("churn.csv")));
+            assert_eq!(top_files, 10); // Default value
         }
         _ => panic!("Expected Analyze Churn command"),
     }

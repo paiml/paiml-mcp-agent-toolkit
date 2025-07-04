@@ -298,8 +298,20 @@ pub enum Commands {
         project_path: PathBuf,
 
         /// Output format
-        #[arg(short = 'f', long, value_enum, default_value = "markdown")]
+        #[arg(short = 'f', long, value_enum, default_value = "json")]
         output_format: ReportOutputFormat,
+
+        /// Generate text report (shortcut for --format text)
+        #[arg(long = "txt", conflicts_with = "output_format")]
+        text: bool,
+
+        /// Generate markdown report (shortcut for --format markdown)
+        #[arg(long = "md", conflicts_with = "output_format")]
+        markdown: bool,
+
+        /// Generate CSV report (shortcut for --format csv)
+        #[arg(long = "csv", conflicts_with = "output_format")]
+        csv: bool,
 
         /// Include visualizations in the report
         #[arg(long)]
@@ -378,6 +390,10 @@ pub enum AnalyzeCommands {
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// Number of top files to show by churn (0 = show all)
+        #[arg(long, default_value_t = 10)]
+        top_files: usize,
     },
 
     /// Analyze code complexity
@@ -415,7 +431,7 @@ pub enum AnalyzeCommands {
         watch: bool,
 
         /// Number of top complex files to show (0 = show all violations)
-        #[arg(long, default_value_t = 0)]
+        #[arg(long, default_value_t = 10)]
         top_files: usize,
     },
 
@@ -516,7 +532,7 @@ pub enum AnalyzeCommands {
         /// Include test files in analysis
         #[arg(long)]
         include_tests: bool,
-        
+
         /// Use strict mode (only TODO/FIXME/HACK/BUG comments)
         #[arg(long)]
         strict: bool,
@@ -536,6 +552,10 @@ pub enum AnalyzeCommands {
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// Number of top files with most SATD to show (0 = show all)
+        #[arg(long, default_value_t = 10)]
+        top_files: usize,
     },
 
     /// Generate comprehensive deep context analysis with defect detection
@@ -596,6 +616,10 @@ pub enum AnalyzeCommands {
         /// Enable verbose logging
         #[arg(long)]
         verbose: bool,
+
+        /// Number of top files to show (0 = all)
+        #[arg(long, default_value = "10")]
+        top_files: usize,
     },
 
     /// Analyze Technical Debt Gradient (TDG) scores
@@ -610,8 +634,8 @@ pub enum AnalyzeCommands {
         threshold: f64,
 
         /// Number of top files to show
-        #[arg(short = 'n', long, default_value = "20")]
-        top: usize,
+        #[arg(short = 'n', long, default_value = "10")]
+        top_files: usize,
 
         /// Output format
         #[arg(short, long, value_enum, default_value = "table")]
@@ -683,6 +707,10 @@ pub enum AnalyzeCommands {
             default_value = "-D warnings -D clippy::pedantic -D clippy::nursery -D clippy::cargo"
         )]
         clippy_flags: String,
+
+        /// Number of top files to show by defect density (0 = all)
+        #[arg(long, default_value = "10")]
+        top_files: usize,
     },
 
     /// Analyze Makefile quality and compliance
@@ -715,6 +743,10 @@ pub enum AnalyzeCommands {
             help = "GNU Make version to check compatibility against"
         )]
         gnu_version: String,
+
+        /// Number of top files to show (0 = all)
+        #[arg(long, default_value = "10")]
+        top_files: usize,
     },
 
     /// Analyze provability properties using abstract interpretation
@@ -746,6 +778,10 @@ pub enum AnalyzeCommands {
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// Number of top files to show (0 = all)
+        #[arg(long, default_value = "10")]
+        top_files: usize,
     },
 
     /// Detect duplicate code using vectorized MinHash and AST embeddings
@@ -789,6 +825,10 @@ pub enum AnalyzeCommands {
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// Number of top files to show by duplication (0 = all)
+        #[arg(long, default_value = "10")]
+        top_files: usize,
     },
 
     /// Predict defect probability using ML-based analysis
@@ -836,6 +876,10 @@ pub enum AnalyzeCommands {
         /// Show performance metrics
         #[arg(long)]
         perf: bool,
+
+        /// Number of top files to show by defect probability (0 = all)
+        #[arg(long, default_value = "10")]
+        top_files: usize,
     },
 
     /// Run comprehensive multi-dimensional analysis combining all analysis types
@@ -895,6 +939,10 @@ pub enum AnalyzeCommands {
         /// Generate executive summary only (faster analysis)
         #[arg(long)]
         executive_summary: bool,
+
+        /// Number of top files to show (0 = all)
+        #[arg(long, default_value = "10")]
+        top_files: usize,
     },
 
     /// Analyze graph metrics and centrality measures
@@ -1047,6 +1095,10 @@ pub enum AnalyzeCommands {
         /// Clear cache before analysis
         #[arg(long)]
         clear_cache: bool,
+
+        /// Number of top files to show (0 = all)
+        #[arg(long, default_value = "10")]
+        top_files: usize,
     },
 
     /// Analyze incremental coverage changes with caching
@@ -1094,6 +1146,10 @@ pub enum AnalyzeCommands {
         /// Force refresh of coverage cache
         #[arg(long)]
         force_refresh: bool,
+
+        /// Number of top files to show (0 = all)
+        #[arg(long, default_value = "10")]
+        top_files: usize,
     },
 
     /// Analyze symbol table with cross-references and usage patterns
@@ -1137,6 +1193,10 @@ pub enum AnalyzeCommands {
         /// Show performance metrics
         #[arg(long)]
         perf: bool,
+
+        /// Number of top files to show (0 = all)
+        #[arg(long, default_value = "10")]
+        top_files: usize,
     },
 
     /// Analyze algorithmic complexity (Big-O) of functions
@@ -1176,6 +1236,10 @@ pub enum AnalyzeCommands {
         /// Show performance metrics
         #[arg(long)]
         perf: bool,
+
+        /// Number of top files to show by complexity (0 = all)
+        #[arg(long, default_value = "10")]
+        top_files: usize,
     },
 
     /// Analyze AssemblyScript code
@@ -1211,6 +1275,10 @@ pub enum AnalyzeCommands {
         /// Show performance metrics
         #[arg(long)]
         perf: bool,
+
+        /// Number of top files to show (0 = all)
+        #[arg(long, default_value = "10")]
+        top_files: usize,
     },
 
     /// Analyze WebAssembly binary and text format
@@ -1250,6 +1318,10 @@ pub enum AnalyzeCommands {
         /// Show performance metrics
         #[arg(long)]
         perf: bool,
+
+        /// Number of top files to show (0 = all)
+        #[arg(long, default_value = "10")]
+        top_files: usize,
     },
 }
 
@@ -1510,11 +1582,11 @@ pub enum RefactorCommands {
         /// Test name pattern to fix (e.g., "test_mixed_language_project_context")
         #[arg(long)]
         test_name: Option<String>,
-        
+
         /// GitHub issue URL to guide the refactoring process
         #[arg(long)]
         github_issue: Option<String>,
-        
+
         /// Bug report markdown file path to analyze and fix
         #[arg(long)]
         bug_report_path: Option<PathBuf>,
@@ -1623,8 +1695,16 @@ mod tests {
     #[test]
     fn test_cli_parse_empty() {
         // Test that CLI can be parsed with minimal args
-        let cli = Cli::try_parse_from(["pmat", "list"]);
-        assert!(cli.is_ok());
+        let result = Cli::try_parse_from(["pmat", "list"]);
+        match result {
+            Ok(_) => {
+                // Success case - don't try to debug print the large structure
+                assert!(true);
+            }
+            Err(e) => {
+                panic!("CLI parsing failed: {}", e);
+            }
+        }
     }
 
     #[test]

@@ -155,29 +155,34 @@ async fn handle_single_file_refactor(
     // Check if it's a markdown file
     if file_path.extension().and_then(|s| s.to_str()) == Some("md") {
         eprintln!("📝 Detected markdown file - analyzing for quality issues...");
-        
-        let content = tokio::fs::read_to_string(&file_path).await
+
+        let content = tokio::fs::read_to_string(&file_path)
+            .await
             .context("Failed to read markdown file")?;
-        
+
         // Analyze markdown for issues
         let mut issues = Vec::new();
-        
+
         // Check for common markdown issues
         if !content.contains("# ") && !content.contains("## ") {
             issues.push("Missing proper header structure");
         }
-        
+
         // Check for code blocks without language specification
-        if content.contains("```\n") && !content.contains("```rust") && !content.contains("```bash") {
+        if content.contains("```\n") && !content.contains("```rust") && !content.contains("```bash")
+        {
             issues.push("Code blocks without language specification");
         }
-        
+
         // Check for broken relative links
         for line in content.lines() {
             if line.contains("](../") || line.contains("](./") {
                 let path_match = line.split("](").nth(1).and_then(|s| s.split(')').next());
                 if let Some(path) = path_match {
-                    let full_path = file_path.parent().unwrap_or_else(|| Path::new(".")).join(path);
+                    let full_path = file_path
+                        .parent()
+                        .unwrap_or_else(|| Path::new("."))
+                        .join(path);
                     if !full_path.exists() {
                         issues.push("Contains broken relative links");
                         break;
@@ -185,9 +190,9 @@ async fn handle_single_file_refactor(
                 }
             }
         }
-        
+
         eprintln!("📊 Found {} quality issues in markdown", issues.len());
-        
+
         // Generate markdown-specific refactor request
         let refactor_request = serde_json::json!({
             "file_path": file_path,
@@ -196,7 +201,7 @@ async fn handle_single_file_refactor(
             "content": content,
             "instructions": "Analyze and fix this markdown file. Ensure proper formatting, clear structure, accurate technical details, and working links.",
         });
-        
+
         match format {
             RefactorAutoOutputFormat::Json => {
                 println!("{}", serde_json::to_string_pretty(&refactor_request)?);
@@ -213,7 +218,7 @@ async fn handle_single_file_refactor(
                 eprintln!("  • Ensure consistent formatting");
             }
         }
-        
+
         return Ok(());
     }
 
@@ -349,7 +354,8 @@ pub async fn handle_refactor_auto(
     if let Some(bug_path) = &bug_report_path {
         if bug_path.extension().and_then(|s| s.to_str()) == Some("md") {
             eprintln!("🐞 Bug report markdown mode: {}", bug_path.display());
-            return handle_single_file_refactor(bug_path.clone(), format, dry_run, max_iterations).await;
+            return handle_single_file_refactor(bug_path.clone(), format, dry_run, max_iterations)
+                .await;
         }
     }
 
@@ -403,22 +409,24 @@ pub async fn handle_refactor_auto(
     // Handle GitHub issue-driven refactoring
     let mut github_issue_context = None;
     let mut issue_target_files = Vec::new();
-    
+
     if let Some(issue_url) = &github_issue_url {
         eprintln!("🐙 GitHub issue mode: {}", issue_url);
-        
+
         // Fetch and parse the GitHub issue
-        use crate::services::github_integration::{GitHubClient, parse_issue};
-        
+        use crate::services::github_integration::{parse_issue, GitHubClient};
+
         let client = GitHubClient::new()?;
-        let issue = client.fetch_issue(issue_url).await
+        let issue = client
+            .fetch_issue(issue_url)
+            .await
             .context("Failed to fetch GitHub issue")?;
-        
+
         let parsed_issue = parse_issue(issue);
-        
+
         eprintln!("📋 Issue: {}", parsed_issue.issue.title);
         eprintln!("🏷️  Keywords: {:?}", parsed_issue.keywords);
-        
+
         // Extract target files from the issue
         if !parsed_issue.file_paths.is_empty() {
             eprintln!("📁 Files mentioned in issue:");
@@ -433,40 +441,43 @@ pub async fn handle_refactor_auto(
                     let path_buf = PathBuf::from(path);
                     if let Some(file_name) = path_buf.file_name() {
                         // Search for the file in the project
-                        if let Ok(found_files) = find_files_by_name(&project_path, file_name.to_str().unwrap()).await {
+                        if let Ok(found_files) =
+                            find_files_by_name(&project_path, file_name.to_str().unwrap()).await
+                        {
                             issue_target_files.extend(found_files);
                         }
                     }
                 }
             }
         }
-        
+
         github_issue_context = Some(parsed_issue);
     }
-    
+
     // Handle bug report markdown file
     let mut bug_report_context = None;
     if let Some(bug_path) = &bug_report_path {
         eprintln!("🐞 Bug report mode: {}", bug_path.display());
-        
+
         if !bug_path.exists() {
             return Err(anyhow::anyhow!(
                 "Bug report file not found: {}",
                 bug_path.display()
             ));
         }
-        
+
         // Read and analyze the bug report
-        let bug_content = tokio::fs::read_to_string(bug_path).await
+        let bug_content = tokio::fs::read_to_string(bug_path)
+            .await
             .context("Failed to read bug report file")?;
-        
+
         eprintln!("📄 Analyzing bug report markdown file...");
-        
+
         // Extract file paths and code snippets from the markdown
         let mut mentioned_files = Vec::new();
         let mut in_code_block = false;
         let mut code_block_lang = String::new();
-        
+
         for line in bug_content.lines() {
             // Check for code block markers
             if line.starts_with("```") {
@@ -479,7 +490,7 @@ pub async fn handle_refactor_auto(
                 }
                 continue;
             }
-            
+
             // Look for file paths in the content
             if !in_code_block {
                 // Common patterns for file paths in bug reports
@@ -487,10 +498,16 @@ pub async fn handle_refactor_auto(
                     // Extract potential file paths
                     let words: Vec<&str> = line.split_whitespace().collect();
                     for word in words {
-                        if (word.contains(".rs") || word.contains(".ts") || word.contains(".js") || 
-                            word.contains(".py") || word.contains(".md")) &&
-                           !word.starts_with("http") {
-                            let cleaned = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '/' && c != '.' && c != '_' && c != '-');
+                        if (word.contains(".rs")
+                            || word.contains(".ts")
+                            || word.contains(".js")
+                            || word.contains(".py")
+                            || word.contains(".md"))
+                            && !word.starts_with("http")
+                        {
+                            let cleaned = word.trim_matches(|c: char| {
+                                !c.is_alphanumeric() && c != '/' && c != '.' && c != '_' && c != '-'
+                            });
                             if !cleaned.is_empty() {
                                 mentioned_files.push(cleaned.to_string());
                             }
@@ -499,16 +516,16 @@ pub async fn handle_refactor_auto(
                 }
             }
         }
-        
+
         // Remove duplicates
         mentioned_files.sort();
         mentioned_files.dedup();
-        
+
         if !mentioned_files.is_empty() {
             eprintln!("📁 Files mentioned in bug report:");
             for path in &mentioned_files {
                 eprintln!("  📄 {}", path);
-                
+
                 // Check if file exists in the project
                 let full_path = project_path.join(path);
                 if full_path.exists() {
@@ -517,24 +534,26 @@ pub async fn handle_refactor_auto(
                     // Try to find the file
                     let path_buf = PathBuf::from(path);
                     if let Some(file_name) = path_buf.file_name() {
-                        if let Ok(found_files) = find_files_by_name(&project_path, file_name.to_str().unwrap()).await {
+                        if let Ok(found_files) =
+                            find_files_by_name(&project_path, file_name.to_str().unwrap()).await
+                        {
                             issue_target_files.extend(found_files);
                         }
                     }
                 }
             }
         }
-        
+
         // Store the bug report content as context
         bug_report_context = Some(bug_content);
-        
+
         // If it's specifically the bug report itself that needs fixing
         if bug_path.extension().and_then(|s| s.to_str()) == Some("md") {
             eprintln!("📝 Bug report is a markdown file - will analyze and suggest fixes");
             issue_target_files.push(bug_path.clone());
         }
     }
-    
+
     // Handle test-specific refactoring
     let mut target_files = Vec::new();
     if let Some(test_path) = &test_file {
@@ -563,9 +582,12 @@ pub async fn handle_refactor_auto(
         target_files.extend(issue_target_files);
         target_files.sort();
         target_files.dedup();
-        eprintln!("🎯 Total target files from GitHub issue: {}", target_files.len());
+        eprintln!(
+            "🎯 Total target files from GitHub issue: {}",
+            target_files.len()
+        );
     }
-    
+
     if !include_patterns.is_empty() {
         eprintln!("✅ Including patterns: {include_patterns:?}");
     }
@@ -1517,7 +1539,7 @@ fn meets_quality_gates(metrics: &QualityMetrics) -> bool {
 
 /// Calculate severity score for a file based on violation types
 fn calculate_file_severity_score(
-    file: &Path, 
+    file: &Path,
     all_violations: &[ViolationDetail],
     github_issue_context: Option<&crate::services::github_integration::ParsedIssue>,
 ) -> u32 {
@@ -1547,16 +1569,22 @@ fn calculate_file_severity_score(
             } else {
                 1
             };
-            
+
             // Apply GitHub issue keyword weighting
             if let Some(issue) = github_issue_context {
                 // Check if violation type matches issue keywords
-                if violation.lint_name.contains("security") && issue.keywords.contains_key("Security") {
+                if violation.lint_name.contains("security")
+                    && issue.keywords.contains_key("Security")
+                {
                     multiplier *= 4; // Highest priority for security issues
-                } else if (violation.lint_name.contains("complexity") && issue.keywords.contains_key("Complexity"))
-                    || (violation.lint_name.contains("performance") && issue.keywords.contains_key("Performance"))
-                    || ((violation.lint_name.contains("bug") || violation.lint_name.contains("correct")) 
-                        && issue.keywords.contains_key("Correctness")) {
+                } else if (violation.lint_name.contains("complexity")
+                    && issue.keywords.contains_key("Complexity"))
+                    || (violation.lint_name.contains("performance")
+                        && issue.keywords.contains_key("Performance"))
+                    || ((violation.lint_name.contains("bug")
+                        || violation.lint_name.contains("correct"))
+                        && issue.keywords.contains_key("Correctness"))
+                {
                     multiplier *= 3; // High priority for other matched issues
                 }
             }
@@ -1863,10 +1891,16 @@ fn select_target_file(
                 std::cmp::Ordering::Equal => {
                     // If equal counts, use extreme quality metrics as tiebreaker
                     // Calculate severity score based on violation types
-                    let severity_a =
-                        calculate_file_severity_score(a, &lint_analysis.all_violations, github_issue_context);
-                    let severity_b =
-                        calculate_file_severity_score(b, &lint_analysis.all_violations, github_issue_context);
+                    let severity_a = calculate_file_severity_score(
+                        a,
+                        &lint_analysis.all_violations,
+                        github_issue_context,
+                    );
+                    let severity_b = calculate_file_severity_score(
+                        b,
+                        &lint_analysis.all_violations,
+                        github_issue_context,
+                    );
 
                     match severity_b.cmp(&severity_a) {
                         std::cmp::Ordering::Equal => {
@@ -2504,7 +2538,7 @@ async fn output_ai_rewrite_request(
         "instructions": "Apply RIGID EXTREME quality enforcement. Fix ALL violations:\n1. Lint violations - ALL clippy lints including pedantic, nursery, and restriction\n2. Complexity - Break down ANY function with complexity > 10 (target: 5)\n3. SATD - Remove ALL TODO, FIXME, HACK comments (zero tolerance)\n4. Coverage - MUST achieve ≥80% test coverage with meaningful tests\n5. TDG - Technical Debt Gradient MUST be < 1.0\n6. Duplication - ZERO duplicate code allowed\n7. Big-O - All algorithms MUST be O(n) or better\n8. Provability - Achieve ≥90% provability score\n9. Documentation - Every public item MUST have comprehensive doc comments\n10. Error handling - No unwrap/expect, use proper Result types\n\nThis file MUST meet RIGID extreme quality standards. No exceptions.\nWrite the complete fixed file content to the path specified in 'output_path'.",
         "output_path": format!("{}.fixed", target_file.display()),
     });
-    
+
     // Add GitHub issue context if available
     if let Some(issue_context) = github_issue_context {
         ai_request["issue_context"] = json!({
@@ -3499,7 +3533,7 @@ async fn output_ai_unified_rewrite_request(
             }
         ]
     });
-    
+
     // Add GitHub issue context if available
     if let Some(issue_context) = github_issue_context {
         request["issue_context"] = serde_json::json!({
@@ -3513,7 +3547,7 @@ async fn output_ai_unified_rewrite_request(
             ),
         });
     }
-    
+
     // Add bug report context if available
     if let Some(bug_content) = bug_report_context {
         request["bug_report_context"] = serde_json::json!({
@@ -5117,7 +5151,7 @@ fn determine_test_file_path(source_path: &Path) -> Result<PathBuf> {
 /// Find files by name in the project directory
 async fn find_files_by_name(project_path: &Path, file_name: &str) -> Result<Vec<PathBuf>> {
     let mut found_files = Vec::new();
-    
+
     for entry in WalkDir::new(project_path)
         .into_iter()
         .filter_map(|e| e.ok())
@@ -5129,6 +5163,6 @@ async fn find_files_by_name(project_path: &Path, file_name: &str) -> Result<Vec<
             }
         }
     }
-    
+
     Ok(found_files)
 }

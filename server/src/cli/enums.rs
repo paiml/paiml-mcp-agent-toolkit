@@ -946,19 +946,30 @@ impl fmt::Display for QualityGateOutputFormat {
 /// Report output format
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
 pub enum ReportOutputFormat {
-    Html,
-    Markdown,
+    /// JSON format (default)
     Json,
+    /// CSV format for spreadsheet analysis
+    Csv,
+    /// Markdown format with tables and visualizations
+    Markdown,
+    /// Plain text format
+    Text,
+    /// HTML format (legacy)
+    Html,
+    /// PDF format (legacy)
     Pdf,
+    /// Dashboard format (legacy)
     Dashboard,
 }
 
 impl fmt::Display for ReportOutputFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ReportOutputFormat::Html => write!(f, "html"),
-            ReportOutputFormat::Markdown => write!(f, "markdown"),
             ReportOutputFormat::Json => write!(f, "json"),
+            ReportOutputFormat::Csv => write!(f, "csv"),
+            ReportOutputFormat::Markdown => write!(f, "markdown"),
+            ReportOutputFormat::Text => write!(f, "text"),
+            ReportOutputFormat::Html => write!(f, "html"),
             ReportOutputFormat::Pdf => write!(f, "pdf"),
             ReportOutputFormat::Dashboard => write!(f, "dashboard"),
         }

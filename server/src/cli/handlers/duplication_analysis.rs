@@ -18,6 +18,7 @@ pub struct DuplicateAnalysisConfig {
     pub include: Option<String>,
     pub exclude: Option<String>,
     pub output: Option<PathBuf>,
+    pub top_files: usize,
 }
 
 /// Refactored duplicate analysis handler - temporarily delegates to main module
@@ -34,6 +35,7 @@ pub async fn handle_analyze_duplicates(config: DuplicateAnalysisConfig) -> Resul
         config.include,
         config.exclude,
         config.output,
+        config.top_files,
     )
     .await
 }
@@ -57,6 +59,7 @@ mod tests {
             include: Some("*.rs".to_string()),
             exclude: Some("test_*.rs".to_string()),
             output: None,
+            top_files: 10,
         };
 
         assert_eq!(config.threshold, 0.8);
@@ -81,6 +84,7 @@ mod tests {
             include: None,
             exclude: None,
             output: Some(output_path.clone()),
+            top_files: 10,
         };
 
         assert_eq!(config.output.unwrap(), output_path);
@@ -101,6 +105,7 @@ mod tests {
             include: None,
             exclude: None,
             output: None,
+            top_files: 10,
         };
 
         assert!(config.include.is_none());
@@ -122,6 +127,7 @@ mod tests {
             include: None,
             exclude: None,
             output: None,
+            top_files: 10,
         };
 
         // This will fail since the directory is empty, but that's expected

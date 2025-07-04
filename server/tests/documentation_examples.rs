@@ -29,7 +29,10 @@ fn test_cli_examples_are_valid() {
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
+            eprintln!(
+                "Skipping test: cli-reference.md not found at {:?}",
+                doc_path
+            );
             return;
         }
     };
@@ -128,8 +131,7 @@ fn validate_command(test_command: &str, binary_path: &str, original_line: &str) 
 }
 
 fn validate_binary_path(command: &str, expected_binary_path: &str) {
-    let is_valid_binary =
-        command == expected_binary_path || command.ends_with("pmat");
+    let is_valid_binary = command == expected_binary_path || command.ends_with("pmat");
     assert!(
         is_valid_binary,
         "Example command doesn't use the expected binary: {command} (expected {expected_binary_path} or ending with pmat)"
@@ -178,7 +180,10 @@ fn test_mcp_json_examples_are_valid() {
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
+            eprintln!(
+                "Skipping test: cli-reference.md not found at {:?}",
+                doc_path
+            );
             return;
         }
     };
@@ -257,7 +262,10 @@ fn test_yaml_examples_are_valid() {
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
+            eprintln!(
+                "Skipping test: cli-reference.md not found at {:?}",
+                doc_path
+            );
             return;
         }
     };
@@ -295,7 +303,10 @@ fn test_jsonc_examples_are_valid() {
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
+            eprintln!(
+                "Skipping test: cli-reference.md not found at {:?}",
+                doc_path
+            );
             return;
         }
     };
@@ -348,7 +359,10 @@ fn test_template_uri_examples_are_valid() {
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
+            eprintln!(
+                "Skipping test: cli-reference.md not found at {:?}",
+                doc_path
+            );
             return;
         }
     };
@@ -392,7 +406,10 @@ fn test_performance_numbers_are_reasonable() {
     let content = match fs::read_to_string(&doc_path) {
         Ok(content) => content,
         Err(_) => {
-            eprintln!("Skipping test: cli-reference.md not found at {:?}", doc_path);
+            eprintln!(
+                "Skipping test: cli-reference.md not found at {:?}",
+                doc_path
+            );
             return;
         }
     };

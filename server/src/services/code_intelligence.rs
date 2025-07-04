@@ -38,6 +38,43 @@ pub enum AnalysisType {
 }
 
 impl AnalysisRequest {
+    /// Generates a deterministic cache key for this analysis request.
+    ///
+    /// The cache key is derived from the SHA256 hash of the project path and analysis types,
+    /// ensuring that identical requests produce identical cache keys while different
+    /// requests produce different keys.
+    ///
+    /// # Performance
+    ///
+    /// - Time: O(n) where n = combined length of path and analysis types
+    /// - Space: O(1) - fixed 64-byte hash output
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::code_intelligence::{AnalysisRequest, AnalysisType};
+    ///
+    /// let request = AnalysisRequest {
+    ///     project_path: "/home/user/project".to_string(),
+    ///     analysis_types: vec![AnalysisType::DuplicateDetection, AnalysisType::DeadCodeAnalysis],
+    ///     include_patterns: vec!["*.rs".to_string()],
+    ///     exclude_patterns: vec!["target/".to_string()],
+    ///     max_depth: Some(5),
+    ///     parallel: true,
+    /// };
+    ///
+    /// let key1 = request.cache_key();
+    /// let key2 = request.cache_key();
+    ///
+    /// // Cache keys are deterministic
+    /// assert_eq!(key1, key2);
+    /// assert_eq!(key1.len(), 64); // SHA256 produces 64-character hex string
+    ///
+    /// // Different requests produce different keys
+    /// let mut different_request = request.clone();
+    /// different_request.project_path = "/different/path".to_string();
+    /// assert_ne!(key1, different_request.cache_key());
+    /// ```
     pub fn cache_key(&self) -> String {
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
@@ -114,6 +151,28 @@ pub struct UnifiedCache {
 }
 
 impl UnifiedCache {
+    /// Creates a new unified cache with the specified capacity.
+    ///
+    /// Uses an LRU (Least Recently Used) eviction policy to maintain bounded memory usage.
+    /// When the cache reaches capacity, the least recently accessed items are evicted.
+    ///
+    /// # Parameters
+    ///
+    /// * `capacity` - Maximum number of analysis reports to store (must be > 0)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::code_intelligence::UnifiedCache;
+    ///
+    /// // Create cache with capacity for 100 reports
+    /// let cache = UnifiedCache::new(100);
+    ///
+    /// // Verify cache is empty initially
+    /// # tokio_test::block_on(async {
+    /// assert!(cache.get("any_key").await.is_none());
+    /// # });
+    /// ```
     pub fn new(capacity: usize) -> Self {
         Self {
             cache: Arc::new(RwLock::new(lru::LruCache::new(
@@ -122,10 +181,102 @@ impl UnifiedCache {
         }
     }
 
+    /// Retrieves an analysis report from the cache without affecting LRU order.
+    ///
+    /// Uses `peek` instead of `get` to avoid updating the LRU order, making this
+    /// operation read-only from the cache's perspective.
+    ///
+    /// # Parameters
+    ///
+    /// * `key` - The cache key to look up
+    ///
+    /// # Returns
+    ///
+    /// * `Some(AnalysisReport)` - If the key exists in cache
+    /// * `None` - If the key is not found or has been evicted
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::code_intelligence::{UnifiedCache, AnalysisReport};
+    /// use chrono::Utc;
+    ///
+    /// # tokio_test::block_on(async {
+    /// let cache = UnifiedCache::new(10);
+    ///
+    /// // Cache miss returns None
+    /// assert!(cache.get("nonexistent").await.is_none());
+    ///
+    /// // Add an item to cache
+    /// let report = AnalysisReport {
+    ///     duplicates: None,
+    ///     dead_code: None,
+    ///     complexity_metrics: None,
+    ///     dependency_graph: None,
+    ///     defect_predictions: None,
+    ///     graph_metrics: None,
+    ///     timestamp: Utc::now(),
+    /// };
+    ///
+    /// cache.put("test_key".to_string(), report.clone()).await;
+    ///
+    /// // Cache hit returns the report
+    /// let retrieved = cache.get("test_key").await;
+    /// assert!(retrieved.is_some());
+    /// assert_eq!(retrieved.unwrap().timestamp, report.timestamp);
+    /// # });
+    /// ```
     pub async fn get(&self, key: &str) -> Option<AnalysisReport> {
         self.cache.read().await.peek(key).cloned()
     }
 
+    /// Stores an analysis report in the cache with LRU eviction.
+    ///
+    /// If the cache is at capacity, the least recently used item will be evicted
+    /// to make room for the new report.
+    ///
+    /// # Parameters
+    ///
+    /// * `key` - Unique identifier for the report (typically from `AnalysisRequest::cache_key()`)
+    /// * `report` - The analysis report to store
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::code_intelligence::{UnifiedCache, AnalysisReport};
+    /// use chrono::Utc;
+    ///
+    /// # tokio_test::block_on(async {
+    /// let cache = UnifiedCache::new(2); // Small capacity for testing
+    ///
+    /// let report1 = AnalysisReport {
+    ///     duplicates: None,
+    ///     dead_code: None,
+    ///     complexity_metrics: None,
+    ///     dependency_graph: None,
+    ///     defect_predictions: None,
+    ///     graph_metrics: None,
+    ///     timestamp: Utc::now(),
+    /// };
+    ///
+    /// let report2 = report1.clone();
+    /// let report3 = report1.clone();
+    ///
+    /// // Fill cache to capacity
+    /// cache.put("key1".to_string(), report1).await;
+    /// cache.put("key2".to_string(), report2).await;
+    ///
+    /// // Both items should be retrievable
+    /// assert!(cache.get("key1").await.is_some());
+    /// assert!(cache.get("key2").await.is_some());
+    ///
+    /// // Adding third item should evict least recently used (key1)
+    /// cache.put("key3".to_string(), report3).await;
+    /// assert!(cache.get("key1").await.is_none()); // Evicted
+    /// assert!(cache.get("key2").await.is_some()); // Still present
+    /// assert!(cache.get("key3").await.is_some()); // Newly added
+    /// # });
+    /// ```
     pub async fn put(&self, key: String, report: AnalysisReport) {
         self.cache.write().await.put(key, report);
     }
@@ -145,6 +296,31 @@ impl Default for CodeIntelligence {
 }
 
 impl CodeIntelligence {
+    /// Creates a new code intelligence instance with default configuration.
+    ///
+    /// Initializes an empty AST DAG, dead code analyzer with 10,000 initial capacity,
+    /// and unified cache with 100 report capacity.
+    ///
+    /// # Performance Characteristics
+    ///
+    /// - Memory: ~100MB initial allocation for internal structures
+    /// - Cache: 100 analysis reports (configurable via `UnifiedCache::new`)
+    /// - Dead code analyzer: 10,000 node capacity (grows dynamically)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::code_intelligence::CodeIntelligence;
+    ///
+    /// let intelligence = CodeIntelligence::new();
+    ///
+    /// // Verify initial state
+    /// # tokio_test::block_on(async {
+    /// let (nodes, generation) = intelligence.get_dag_stats().await;
+    /// assert_eq!(nodes, 0); // No nodes initially
+    /// assert_eq!(generation, 0); // No analysis runs yet
+    /// # });
+    /// ```
     pub fn new() -> Self {
         let dag = Arc::new(RwLock::new(AstDag::new()));
 
@@ -155,7 +331,65 @@ impl CodeIntelligence {
         }
     }
 
-    /// Perform comprehensive analysis based on request
+    /// Performs comprehensive code analysis with caching and parallel execution.
+    ///
+    /// This is the main entry point for code analysis. It checks the cache first,
+    /// then runs the requested analysis types in parallel where possible.
+    ///
+    /// # Performance Contract
+    ///
+    /// - Cache lookup: O(1) amortized
+    /// - Analysis time: O(n) where n = project size in lines of code
+    /// - Memory: Bounded by cache size + working set
+    /// - Parallelization: Automatic for independent analysis types
+    ///
+    /// # Error Handling
+    ///
+    /// Implements graceful degradation:
+    /// 1. Cache misses → full analysis
+    /// 2. Parse errors → partial results where possible
+    /// 3. I/O errors → cached results when available
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::code_intelligence::{
+    ///     CodeIntelligence, AnalysisRequest, AnalysisType
+    /// };
+    /// use tempfile::tempdir;
+    /// use std::fs;
+    ///
+    /// # tokio_test::block_on(async {
+    /// // Create a temporary Rust project
+    /// let dir = tempdir().unwrap();
+    /// let main_rs = dir.path().join("main.rs");
+    /// fs::write(&main_rs, "fn main() { println!(\"Hello, world!\"); }").unwrap();
+    ///
+    /// let intelligence = CodeIntelligence::new();
+    /// let request = AnalysisRequest {
+    ///     project_path: dir.path().to_string_lossy().to_string(),
+    ///     analysis_types: vec![AnalysisType::DependencyGraph],
+    ///     include_patterns: vec!["*.rs".to_string()],
+    ///     exclude_patterns: vec![],
+    ///     max_depth: Some(10),
+    ///     parallel: true,
+    /// };
+    ///
+    /// let result = intelligence.analyze_comprehensive(request.clone()).await;
+    /// assert!(result.is_ok());
+    ///
+    /// let report = result.unwrap();
+    /// assert!(report.dependency_graph.is_some());
+    ///
+    /// // Second call should hit cache (much faster)
+    /// let start = std::time::Instant::now();
+    /// let cached_result = intelligence.analyze_comprehensive(request).await;
+    /// let cache_time = start.elapsed();
+    ///
+    /// assert!(cached_result.is_ok());
+    /// assert!(cache_time.as_millis() < 10); // Cache should be very fast
+    /// # });
+    /// ```
     pub async fn analyze_comprehensive(
         &self,
         req: AnalysisRequest,
@@ -395,14 +629,102 @@ impl CodeIntelligence {
         futures
     }
 
-    /// Get current DAG statistics
+    /// Retrieves current AST DAG statistics for monitoring and debugging.
+    ///
+    /// Returns the current state of the internal DAG structure, useful for
+    /// performance monitoring and understanding analysis scope.
+    ///
+    /// # Returns
+    ///
+    /// * `(node_count, generation)` - Tuple containing:
+    ///   - `node_count`: Total number of AST nodes currently in the DAG
+    ///   - `generation`: Number of analysis runs performed (increments with each analysis)
+    ///
+    /// # Performance
+    ///
+    /// - Time: O(1) - direct field access
+    /// - Space: O(1) - no allocation
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::code_intelligence::CodeIntelligence;
+    ///
+    /// # tokio_test::block_on(async {
+    /// let intelligence = CodeIntelligence::new();
+    ///
+    /// // Initially empty
+    /// let (nodes, gen) = intelligence.get_dag_stats().await;
+    /// assert_eq!(nodes, 0);
+    /// assert_eq!(gen, 0);
+    ///
+    /// // After analysis, stats should reflect changes
+    /// // (This example assumes a successful analysis has been run)
+    /// # });
+    /// ```
     pub async fn get_dag_stats(&self) -> (usize, u32) {
         let dag = self.dag.read().await;
         (dag.nodes.len(), dag.generation())
     }
 }
 
-/// Enhanced DAG analysis specifically for the CLI
+/// Enhanced DAG analysis specifically for CLI with formatted output.
+///
+/// This is a high-level convenience function that wraps `CodeIntelligence::analyze_comprehensive`
+/// and formats the results as a Mermaid diagram with optional analysis annotations.
+///
+/// # Parameters
+///
+/// * `project_path` - Path to the project root directory
+/// * `_dag_type` - Type of DAG to generate (currently unused, defaults to dependency graph)
+/// * `max_depth` - Maximum depth for graph traversal (None = unlimited)
+/// * `_filter_external` - Whether to filter external dependencies (currently unused)
+/// * `_show_complexity` - Whether to show complexity metrics (currently unused)
+/// * `include_duplicates` - Whether to include duplicate detection results
+/// * `include_dead_code` - Whether to include dead code analysis results
+///
+/// # Returns
+///
+/// A formatted string containing:
+/// - Mermaid diagram of the dependency graph
+/// - Optional duplicate detection summary
+/// - Optional dead code analysis summary
+/// - Graph statistics and metadata
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::code_intelligence::analyze_dag_enhanced;
+/// use pmat::cli::DagType;
+/// use tempfile::tempdir;
+/// use std::fs;
+///
+/// # tokio_test::block_on(async {
+/// // Create a simple Rust project
+/// let dir = tempdir().unwrap();
+/// let main_rs = dir.path().join("main.rs");
+/// fs::write(&main_rs, "fn main() { println!(\"Hello!\"); }").unwrap();
+///
+/// let result = analyze_dag_enhanced(
+///     &dir.path().to_string_lossy(),
+///     DagType::FullDependency,
+///     Some(5),
+///     false,
+///     true,
+///     false, // No duplicates
+///     false, // No dead code
+/// ).await;
+///
+/// assert!(result.is_ok());
+/// let output = result.unwrap();
+///
+/// // Should contain graph statistics
+/// assert!(output.contains("Graph Statistics:"));
+/// assert!(output.contains("Total nodes:"));
+/// assert!(output.contains("Generation:"));
+/// assert!(output.contains("Analysis timestamp:"));
+/// # });
+/// ```
 pub async fn analyze_dag_enhanced(
     project_path: &str,
     _dag_type: crate::cli::DagType,

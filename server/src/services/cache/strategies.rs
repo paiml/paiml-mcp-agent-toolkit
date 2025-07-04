@@ -8,7 +8,53 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{Duration, UNIX_EPOCH};
 
-/// AST cache strategy for file analysis results
+/// AST cache strategy for file analysis results with file modification tracking.
+///
+/// This strategy caches parsed AST data and FileContext information, automatically
+/// invalidating entries when the source files are modified. Uses file modification
+/// times (mtime) for cache validation.
+///
+/// # Cache Characteristics
+///
+/// - **TTL**: 5 minutes
+/// - **Max Size**: 100 entries
+/// - **Key**: File path + modification time
+/// - **Validation**: File exists and mtime unchanged
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::cache::strategies::AstCacheStrategy;
+/// use pmat::services::cache::base::CacheStrategy;
+/// use pmat::services::context::FileContext;
+/// use std::path::PathBuf;
+/// use tempfile::tempdir;
+/// use std::fs;
+///
+/// let strategy = AstCacheStrategy;
+/// let dir = tempdir().unwrap();
+/// let file_path = dir.path().join("test.rs");
+/// fs::write(&file_path, "fn main() {}").unwrap();
+///
+/// // Generate cache key
+/// let key = strategy.cache_key(&file_path);
+/// assert!(key.starts_with("ast:"));
+/// assert!(key.contains("test.rs"));
+///
+/// // Create a dummy FileContext for validation
+/// let file_context = FileContext {
+///     path: file_path.to_string_lossy().to_string(),
+///     items: vec![],
+///     language: "rust".to_string(),
+/// };
+///
+/// // Should validate if file exists and hasn't changed
+/// assert!(strategy.validate(&file_path, &file_context));
+///
+/// // TTL should be 5 minutes
+/// assert_eq!(strategy.ttl().unwrap().as_secs(), 300);
+/// assert_eq!(strategy.max_size(), 100);
+/// ```
 #[derive(Clone)]
 pub struct AstCacheStrategy;
 
@@ -75,7 +121,45 @@ impl CacheStrategy for AstCacheStrategy {
     }
 }
 
-/// Template cache strategy
+/// Template cache strategy for embedded template resources.
+///
+/// Caches template resources that are embedded in the binary. Since templates
+/// are immutable, validation always returns true for better performance.
+///
+/// # Cache Characteristics
+///
+/// - **TTL**: 10 minutes
+/// - **Max Size**: 50 entries
+/// - **Key**: Template URI prefixed with "template:"
+/// - **Validation**: Always valid (templates don't change)
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::cache::strategies::TemplateCacheStrategy;
+/// use pmat::services::cache::base::CacheStrategy;
+/// use pmat::models::template::TemplateResource;
+///
+/// let strategy = TemplateCacheStrategy;
+/// let template_uri = "template://makefile/rust.mk".to_string();
+///
+/// // Generate cache key
+/// let key = strategy.cache_key(&template_uri);
+/// assert_eq!(key, "template:template://makefile/rust.mk");
+///
+/// // Create a dummy template resource
+/// let template = TemplateResource {
+///     content: "test content".to_string(),
+///     // ... other fields
+/// };
+///
+/// // Templates are always valid (embedded, immutable)
+/// assert!(strategy.validate(&template_uri, &template));
+///
+/// // TTL should be 10 minutes
+/// assert_eq!(strategy.ttl().unwrap().as_secs(), 600);
+/// assert_eq!(strategy.max_size(), 50);
+/// ```
 #[derive(Clone)]
 pub struct TemplateCacheStrategy;
 
@@ -101,7 +185,53 @@ impl CacheStrategy for TemplateCacheStrategy {
     }
 }
 
-/// DAG cache strategy
+/// DAG cache strategy for dependency graph analysis results.
+///
+/// Caches dependency graphs with intelligent invalidation based on source file
+/// modification times. Uses a conservative approach that invalidates the cache
+/// if any tracked files have been modified recently.
+///
+/// # Cache Characteristics
+///
+/// - **TTL**: 3 minutes
+/// - **Max Size**: 20 entries (DAGs can be large)
+/// - **Key**: Project path + DAG type
+/// - **Validation**: No recent file modifications detected
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::cache::strategies::DagCacheStrategy;
+/// use pmat::services::cache::base::CacheStrategy;
+/// use pmat::models::dag::DependencyGraph;
+/// use pmat::cli::DagType;
+/// use std::path::PathBuf;
+/// use std::collections::HashMap;
+/// use tempfile::tempdir;
+///
+/// let strategy = DagCacheStrategy;
+/// let dir = tempdir().unwrap();
+/// let key = (dir.path().to_path_buf(), DagType::CallGraph);
+///
+/// // Generate cache key
+/// let cache_key = strategy.cache_key(&key);
+/// assert!(cache_key.starts_with("dag:"));
+/// assert!(cache_key.contains("CallGraph"));
+///
+/// // Create a dummy dependency graph
+/// let dag = DependencyGraph {
+///     nodes: HashMap::new(),
+///     edges: vec![],
+/// };
+///
+/// // Validation depends on file modification times
+/// let is_valid = strategy.validate(&key, &dag);
+/// // Result depends on actual file system state
+///
+/// // TTL should be 3 minutes
+/// assert_eq!(strategy.ttl().unwrap().as_secs(), 180);
+/// assert_eq!(strategy.max_size(), 20);
+/// ```
 #[derive(Clone)]
 pub struct DagCacheStrategy;
 
@@ -155,7 +285,48 @@ impl CacheStrategy for DagCacheStrategy {
     }
 }
 
-/// Code churn cache strategy
+/// Code churn cache strategy with Git commit tracking.
+///
+/// Caches code churn analysis results and automatically invalidates when the
+/// Git HEAD commit changes. Uses Git SHA for precise invalidation detection.
+///
+/// # Cache Characteristics
+///
+/// - **TTL**: 30 minutes (Git data is stable)
+/// - **Max Size**: 20 entries (memory-intensive)
+/// - **Key**: Repository path + period + HEAD commit SHA
+/// - **Validation**: HEAD commit unchanged
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::cache::strategies::ChurnCacheStrategy;
+/// use pmat::services::cache::base::CacheStrategy;
+/// use pmat::models::churn::CodeChurnAnalysis;
+/// use std::path::PathBuf;
+/// use tempfile::tempdir;
+///
+/// let strategy = ChurnCacheStrategy;
+/// let repo_dir = tempdir().unwrap();
+/// let key = (repo_dir.path().to_path_buf(), 30); // 30 days
+///
+/// // Generate cache key (includes Git HEAD)
+/// let cache_key = strategy.cache_key(&key);
+/// assert!(cache_key.starts_with("churn:"));
+/// assert!(cache_key.contains(":30:"));
+///
+/// // Create a dummy churn analysis
+/// let churn = CodeChurnAnalysis {
+///     // ... fields depending on actual structure
+/// };
+///
+/// // Validation depends on Git state
+/// // let is_valid = strategy.validate(&key, &churn);
+///
+/// // TTL should be 30 minutes
+/// assert_eq!(strategy.ttl().unwrap().as_secs(), 1800);
+/// assert_eq!(strategy.max_size(), 20);
+/// ```
 #[derive(Clone)]
 pub struct ChurnCacheStrategy;
 
@@ -201,10 +372,77 @@ impl ChurnCacheStrategy {
     }
 }
 
-/// Git statistics cache strategy
+/// Git statistics cache strategy for repository metadata.
+///
+/// Caches Git repository statistics (commits, authors, branches) with validation
+/// based on HEAD commit SHA. Provides fast access to repository metadata.
+///
+/// # Cache Characteristics
+///
+/// - **TTL**: 15 minutes
+/// - **Max Size**: 10 entries
+/// - **Key**: Repository path + current branch
+/// - **Validation**: HEAD commit unchanged
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::cache::strategies::{
+///     GitStatsCacheStrategy, GitStats
+/// };
+/// use pmat::services::cache::base::CacheStrategy;
+/// use std::path::PathBuf;
+/// use tempfile::tempdir;
+///
+/// let strategy = GitStatsCacheStrategy;
+/// let repo_dir = tempdir().unwrap();
+///
+/// // Generate cache key
+/// let cache_key = strategy.cache_key(&repo_dir.path().to_path_buf());
+/// assert!(cache_key.starts_with("git_stats:"));
+///
+/// // Create sample Git stats
+/// let stats = GitStats {
+///     total_commits: 42,
+///     authors: vec!["alice".to_string(), "bob".to_string()],
+///     branch: "main".to_string(),
+///     head_commit: "abc123".to_string(),
+/// };
+///
+/// // Validation depends on Git HEAD
+/// // let is_valid = strategy.validate(&repo_dir.path().to_path_buf(), &stats);
+///
+/// // TTL should be 15 minutes
+/// assert_eq!(strategy.ttl().unwrap().as_secs(), 900);
+/// assert_eq!(strategy.max_size(), 10);
+/// ```
 #[derive(Clone)]
 pub struct GitStatsCacheStrategy;
 
+/// Git repository statistics structure.
+///
+/// Contains metadata about a Git repository including commit count,
+/// authors, current branch, and HEAD commit SHA.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::cache::strategies::GitStats;
+///
+/// let stats = GitStats {
+///     total_commits: 150,
+///     authors: vec![
+///         "alice@example.com".to_string(),
+///         "bob@example.com".to_string(),
+///     ],
+///     branch: "main".to_string(),
+///     head_commit: "a1b2c3d4e5f6".to_string(),
+/// };
+///
+/// assert_eq!(stats.total_commits, 150);
+/// assert_eq!(stats.authors.len(), 2);
+/// assert_eq!(stats.branch, "main");
+/// ```
 #[derive(Clone)]
 pub struct GitStats {
     pub total_commits: usize,

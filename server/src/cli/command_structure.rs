@@ -218,6 +218,9 @@ impl CommandExecutor {
             Commands::Report {
                 project_path,
                 output_format,
+                text,
+                markdown,
+                csv,
                 include_visualizations,
                 include_executive_summary,
                 include_recommendations,
@@ -229,6 +232,9 @@ impl CommandExecutor {
                 crate::cli::handlers::enhanced_reporting_handlers::handle_generate_report(
                     project_path,
                     output_format,
+                    text,
+                    markdown,
+                    csv,
                     include_visualizations,
                     include_executive_summary,
                     include_recommendations,

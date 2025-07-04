@@ -1,8 +1,8 @@
 pub mod adapters;
 pub mod base;
-pub mod cache_trait;
 #[cfg(test)]
 pub mod cache_property_tests;
+pub mod cache_trait;
 pub mod config;
 pub mod content_cache;
 pub mod diagnostics;
