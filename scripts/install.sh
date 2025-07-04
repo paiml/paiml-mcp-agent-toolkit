@@ -62,11 +62,14 @@ detect_platform() {
             esac
             ;;
         Darwin*)
-            case "$arch" in
-                x86_64)  echo "x86_64-apple-darwin";;
-                arm64)   echo "aarch64-apple-darwin";;
-                *)       error "Unsupported macOS architecture: $arch";;
-            esac
+            warn "Pre-built binaries are not available for macOS."
+            warn "Please install using cargo:"
+            warn ""
+            warn "  cargo install pmat"
+            warn ""
+            warn "Or from the latest git version:"
+            warn "  cargo install --git https://github.com/paiml/paiml-mcp-agent-toolkit.git pmat"
+            exit 0
             ;;
         MINGW*|CYGWIN*|MSYS*)
             echo "x86_64-pc-windows-msvc"
