@@ -143,9 +143,53 @@ pub fn format_provability_json(
 }
 
 /// Format provability results as summary
+/// 
+/// # Example
+/// 
+/// ```
+/// use pmat::cli::provability_helpers::format_provability_summary;
+/// use pmat::services::lightweight_provability_analyzer::{FunctionId, ProofSummary};
+/// use std::path::PathBuf;
+/// 
+/// let function_ids = vec![
+///     FunctionId {
+///         file_path: "src/main.rs".to_string(),
+///         function_name: "high_score_func".to_string(),
+///         line_number: 10,
+///     },
+///     FunctionId {
+///         file_path: "src/lib.rs".to_string(),
+///         function_name: "low_score_func".to_string(),
+///         line_number: 20,
+///     },
+/// ];
+/// 
+/// let summaries = vec![
+///     ProofSummary {
+///         provability_score: 0.9,
+///         analysis_time_us: 1000,
+///         verified_properties: vec![],
+///         version: 1,
+///     },
+///     ProofSummary {
+///         provability_score: 0.3,
+///         analysis_time_us: 500,
+///         verified_properties: vec![],
+///         version: 1,
+///     },
+/// ];
+/// 
+/// let output = format_provability_summary(&function_ids, &summaries, 5).unwrap();
+/// 
+/// assert!(output.contains("# Provability Analysis Summary"));
+/// assert!(output.contains("Total functions analyzed: 2"));
+/// assert!(output.contains("## Top Files by Provability"));
+/// assert!(output.contains("1. `main.rs` - 90.0% avg score"));
+/// ```
 pub fn format_provability_summary(
     function_ids: &[FunctionId],
     summaries: &[ProofSummary],
+    top_files: usize,
 ) -> Result<String> {
     let mut output = String::new();
 
@@ -189,6 +233,42 @@ pub fn format_provability_summary(
         "\nAverage provability score: {:.1}%",
         avg_score * 100.0
     )?;
+
+    // Show top files by provability
+    if !function_ids.is_empty() {
+        writeln!(&mut output, "\n## Top Files by Provability\n")?;
+        
+        // Group by file and calculate average score per file
+        let mut file_scores: HashMap<&str, Vec<f64>> = HashMap::new();
+        for (func_id, summary) in function_ids.iter().zip(summaries.iter()) {
+            file_scores.entry(&func_id.file_path).or_default().push(summary.provability_score);
+        }
+        
+        // Calculate average scores and sort
+        let mut file_avg_scores: Vec<_> = file_scores.iter()
+            .map(|(file_path, scores)| {
+                let avg_score = scores.iter().sum::<f64>() / scores.len() as f64;
+                (file_path, avg_score, scores.len())
+            })
+            .collect();
+        file_avg_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        
+        let files_to_show = if top_files == 0 { 10 } else { top_files };
+        for (i, (file_path, avg_score, function_count)) in file_avg_scores.iter().take(files_to_show).enumerate() {
+            let filename = std::path::Path::new(file_path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(file_path);
+            writeln!(
+                &mut output,
+                "{}. `{}` - {:.1}% avg score ({} functions)",
+                i + 1,
+                filename,
+                avg_score * 100.0,
+                function_count
+            )?;
+        }
+    }
 
     Ok(output)
 }
