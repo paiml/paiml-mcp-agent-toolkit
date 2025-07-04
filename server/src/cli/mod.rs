@@ -126,17 +126,17 @@ pub fn detect_primary_language(path: &Path) -> Option<String> {
     if path.join("Cargo.toml").exists() {
         return Some("rust".to_string());
     }
-    
+
     // Check for Python project files
     if path.join("pyproject.toml").exists() || path.join("setup.py").exists() {
         return Some("python-uv".to_string());
     }
-    
+
     // Check for Kotlin/Gradle build files
     if path.join("build.gradle").exists() || path.join("build.gradle.kts").exists() {
         return Some("kotlin".to_string());
     }
-    
+
     // Check for JavaScript/TypeScript projects
     if path.join("package.json").exists() {
         // Could be Node.js or Deno - check for deno.json/deno.jsonc
@@ -155,14 +155,14 @@ pub fn detect_primary_language(path: &Path) -> Option<String> {
         .into_iter()
         .filter_entry(|e| {
             let file_name = e.file_name().to_str().unwrap_or("");
-            !file_name.starts_with('.') 
-                && file_name != "target" 
+            !file_name.starts_with('.')
+                && file_name != "target"
                 && file_name != "node_modules"
                 && file_name != "build"
                 && file_name != "dist"
                 && file_name != "archive"
         })
-        .flatten() 
+        .flatten()
     {
         if entry.file_type().is_file() {
             if let Some(ext) = entry.path().extension() {
@@ -194,15 +194,15 @@ pub fn detect_primary_language_with_confidence(path: &Path) -> Option<(String, f
     if path.join("Cargo.toml").exists() {
         return Some(("rust".to_string(), 100.0));
     }
-    
+
     if path.join("pyproject.toml").exists() || path.join("setup.py").exists() {
         return Some(("python-uv".to_string(), 100.0));
     }
-    
+
     if path.join("build.gradle").exists() || path.join("build.gradle.kts").exists() {
         return Some(("kotlin".to_string(), 100.0));
     }
-    
+
     if path.join("package.json").exists() {
         if path.join("deno.json").exists() || path.join("deno.jsonc").exists() {
             return Some(("deno".to_string(), 100.0));
@@ -220,14 +220,14 @@ pub fn detect_primary_language_with_confidence(path: &Path) -> Option<(String, f
         .into_iter()
         .filter_entry(|e| {
             let file_name = e.file_name().to_str().unwrap_or("");
-            !file_name.starts_with('.') 
-                && file_name != "target" 
+            !file_name.starts_with('.')
+                && file_name != "target"
                 && file_name != "node_modules"
                 && file_name != "build"
                 && file_name != "dist"
                 && file_name != "archive"
         })
-        .flatten() 
+        .flatten()
     {
         if entry.file_type().is_file() {
             if let Some(ext) = entry.path().extension() {
@@ -427,6 +427,7 @@ pub async fn handle_analyze_duplicates(config: DuplicateHandlerConfig) -> anyhow
         include: config.include,
         exclude: config.exclude,
         output: config.output,
+        top_files: 10, // Default to 10
     };
     handlers::handle_analyze_duplicates(analysis_config).await
 }

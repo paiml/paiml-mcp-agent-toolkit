@@ -309,6 +309,7 @@ async fn run_enforcement_step(
                 30,    // days
                 true,  // metrics
                 None,  // output
+                0,     // top_files (0 = all)
             )
             .await?;
 
@@ -573,6 +574,7 @@ async fn list_all_violations(
         30,    // days
         true,  // metrics
         None,  // output
+        0,     // top_files (0 = all)
     )
     .await
     {
@@ -661,6 +663,7 @@ async fn list_all_violations(
         include: None,
         exclude: None,
         output: None,
+        top_files: 0, // 0 = all files
     };
     match handle_analyze_duplicates(dup_config).await {
         Ok(_) => {

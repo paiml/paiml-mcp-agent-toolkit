@@ -19,11 +19,13 @@ mod tests {
                         project_path,
                         format,
                         output,
+                        top_files,
                     } => {
                         assert_eq!(days, 30); // Default value
                         assert_eq!(project_path, PathBuf::from(".")); // Default value
                         assert_eq!(format, ChurnOutputFormat::Summary); // Default
                         assert!(output.is_none());
+                        assert_eq!(top_files, 10); // Default value
                     }
                     AnalyzeCommands::Dag { .. } => {
                         panic!("Expected Churn command, got Dag");
@@ -115,11 +117,13 @@ mod tests {
                     project_path,
                     format,
                     output,
+                    top_files,
                 } => {
                     assert_eq!(days, 90);
                     assert_eq!(project_path, PathBuf::from("/tmp/test"));
                     assert_eq!(format, ChurnOutputFormat::Markdown);
                     assert_eq!(output, Some(PathBuf::from("report.md")));
+                    assert_eq!(top_files, 10); // Default value
                 }
                 AnalyzeCommands::Dag { .. } => {
                     panic!("Expected Churn command, got Dag");
@@ -230,11 +234,13 @@ mod tests {
                 project_path,
                 format,
                 output,
+                top_files,
             }) => {
                 assert_eq!(days, 7);
                 assert_eq!(project_path, PathBuf::from("/tmp"));
                 assert_eq!(format, ChurnOutputFormat::Csv);
                 assert_eq!(output, Some(PathBuf::from("out.csv")));
+                assert_eq!(top_files, 10); // Default value
             }
             _ => panic!("Expected Analyze command"),
         }

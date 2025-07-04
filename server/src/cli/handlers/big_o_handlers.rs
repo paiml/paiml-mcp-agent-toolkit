@@ -21,6 +21,7 @@ pub async fn handle_analyze_big_o(
     high_complexity_only: bool,
     output: Option<PathBuf>,
     perf: bool,
+    top_files: usize,
 ) -> Result<()> {
     let start_time = std::time::Instant::now();
 
@@ -67,6 +68,54 @@ pub async fn handle_analyze_big_o(
                 report.high_complexity_functions.len()
             );
         }
+    }
+
+    // Apply top_files filtering if specified
+    if top_files > 0 {
+        // Group functions by file
+        use std::collections::HashMap;
+        let mut file_functions: HashMap<PathBuf, Vec<_>> = HashMap::new();
+        for func in report.high_complexity_functions.clone() {
+            file_functions
+                .entry(func.file_path.clone())
+                .or_default()
+                .push(func);
+        }
+
+        // Sort files by complexity score (sum of function complexities)
+        let mut file_scores: Vec<(PathBuf, f64)> = file_functions
+            .iter()
+            .map(|(path, funcs)| {
+                let score: f64 = funcs
+                    .iter()
+                    .map(|f| match f.time_complexity.class {
+                        crate::models::complexity_bound::BigOClass::Constant => 1.0,
+                        crate::models::complexity_bound::BigOClass::Logarithmic => 2.0,
+                        crate::models::complexity_bound::BigOClass::Linear => 3.0,
+                        crate::models::complexity_bound::BigOClass::Linearithmic => 4.0,
+                        crate::models::complexity_bound::BigOClass::Quadratic => 5.0,
+                        crate::models::complexity_bound::BigOClass::Cubic => 6.0,
+                        crate::models::complexity_bound::BigOClass::Exponential => 7.0,
+                        crate::models::complexity_bound::BigOClass::Factorial => 8.0,
+                        crate::models::complexity_bound::BigOClass::Unknown => 3.0,
+                    })
+                    .sum();
+                (path.clone(), score)
+            })
+            .collect();
+
+        file_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Keep only functions from top N files
+        let top_file_paths: std::collections::HashSet<_> = file_scores
+            .into_iter()
+            .take(top_files)
+            .map(|(path, _)| path)
+            .collect();
+
+        report
+            .high_complexity_functions
+            .retain(|f| top_file_paths.contains(&f.file_path));
     }
 
     // Format output

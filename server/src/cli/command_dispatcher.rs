@@ -174,10 +174,16 @@ impl CommandDispatcher {
                 confidence_threshold,
                 output,
                 perf,
+                text,
+                markdown,
+                csv,
             } => {
                 handlers::enhanced_reporting_handlers::handle_generate_report(
                     project_path,
                     output_format,
+                    text,
+                    markdown,
+                    csv,
                     include_visualizations,
                     include_executive_summary,
                     include_recommendations,

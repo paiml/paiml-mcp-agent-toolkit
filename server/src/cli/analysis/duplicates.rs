@@ -52,11 +52,12 @@ pub async fn handle_analyze_duplicates(
     include: Option<String>,
     exclude: Option<String>,
     output: Option<PathBuf>,
+    top_files: usize,
 ) -> Result<()> {
     eprintln!("🔍 Detecting duplicate code blocks...");
 
     // Find duplicate blocks
-    let report = detect_duplicates(
+    let mut report = detect_duplicates(
         &project_path,
         detection_type,
         threshold,
@@ -66,6 +67,44 @@ pub async fn handle_analyze_duplicates(
         &exclude,
     )
     .await?;
+
+    // Apply top_files filtering if specified
+    if top_files > 0 {
+        // Sort files by duplication percentage (descending)
+        let mut file_stats: Vec<_> = report.file_statistics.iter().collect();
+        file_stats.sort_by(|a, b| {
+            b.1.duplication_percentage
+                .partial_cmp(&a.1.duplication_percentage)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        // Keep only top N files
+        let top_file_names: std::collections::HashSet<_> = file_stats
+            .into_iter()
+            .take(top_files)
+            .map(|(name, _)| name.clone())
+            .collect();
+
+        // Filter duplicate blocks to only include those in top files
+        report.duplicate_blocks.retain(|block| {
+            block
+                .locations
+                .iter()
+                .any(|loc| top_file_names.contains(&loc.file))
+        });
+
+        // Recalculate statistics
+        let mut duplicate_lines = 0;
+        for block in &report.duplicate_blocks {
+            duplicate_lines += block.lines * block.locations.len();
+        }
+        report.duplicate_lines = duplicate_lines;
+        report.total_duplicates = report.duplicate_blocks.len();
+        if report.total_lines > 0 {
+            report.duplication_percentage =
+                (duplicate_lines as f32 / report.total_lines as f32) * 100.0;
+        }
+    }
 
     eprintln!("✅ Found {} duplicate blocks", report.total_duplicates);
     eprintln!(

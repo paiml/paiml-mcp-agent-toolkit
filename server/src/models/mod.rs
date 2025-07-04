@@ -5,6 +5,7 @@ pub mod dag;
 pub mod dag_property_tests;
 pub mod dead_code;
 pub mod deep_context_config;
+pub mod defect_report;
 pub mod error;
 pub mod mcp;
 pub mod project_meta;

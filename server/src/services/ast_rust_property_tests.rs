@@ -1,4 +1,3 @@
-
 #[cfg(test)]
 mod tests {
     use crate::services::ast_rust::analyze_rust_file_with_complexity;
@@ -109,7 +108,7 @@ mod tests {
             -> String
         {
             let mut code = String::new();
-            
+
             // Generate structs
             for i in 0..num_structs {
                 code.push_str(&format!("struct Struct{} {{\n", i));
@@ -117,7 +116,7 @@ mod tests {
                 code.push_str("    field2: String,\n");
                 code.push_str("}\n\n");
             }
-            
+
             // Generate enums
             for i in 0..num_enums {
                 code.push_str(&format!("enum Enum{} {{\n", i));
@@ -125,29 +124,29 @@ mod tests {
                 code.push_str("    Variant2(i32),\n");
                 code.push_str("}\n\n");
             }
-            
+
             // Generate functions with varying complexity
             for i in 0..num_functions {
                 code.push_str(&format!("fn func{}() {{\n", i));
-                
+
                 // Add some complexity based on index
                 if i % 2 == 0 {
                     code.push_str("    if true {\n");
                     code.push_str("        println!(\"branch\");\n");
                     code.push_str("    }\n");
                 }
-                
+
                 if i % 3 == 0 {
                     code.push_str("    for i in 0..10 {\n");
                     code.push_str("        println!(\"{}\", i);\n");
                     code.push_str("    }\n");
                 }
-                
+
                 code.push_str(&format!("    let _x = {};\n", i));
-                
+
                 code.push_str("}\n\n");
             }
-            
+
             code
         }
     }
@@ -193,11 +192,11 @@ mod tests {
                 let mut visitor1 = TestComplexityVisitor::new();
                 visitor1.visit_file(&ast1);
                 let c1 = visitor1.cyclomatic;
-                
+
                 let mut visitor2 = TestComplexityVisitor::new();
                 visitor2.visit_file(&ast2);
                 let c2 = visitor2.cyclomatic;
-                
+
                 // Complexity is monotonic: adding code never decreases complexity
                 prop_assert!(c2 >= c1, "Complexity decreased after adding code: {} -> {}", c1, c2);
             }
@@ -253,7 +252,7 @@ mod tests {
             let result = runtime.block_on(async {
                 parser.parse_content(&code, Path::new("test.rs"), &config).await
             });
-            
+
             prop_assert!(
                 result.is_ok(),
                 "Parser failed on valid but unconventionally formatted code. Error: {:?}",
@@ -266,12 +265,12 @@ mod tests {
             if let Ok(ast) = parse_file(&source) {
                 let mut visitor = TestComplexityVisitor::new();
                 visitor.visit_file(&ast);
-                
+
                 // Property: All metrics should be reasonable for generated code
                 prop_assert!(visitor.cyclomatic <= 1000, "Cyclomatic complexity too high: {}", visitor.cyclomatic);
                 prop_assert!(visitor.cognitive <= 1000, "Cognitive complexity too high: {}", visitor.cognitive);
                 prop_assert!(visitor.nesting_max <= 10, "Nesting level too high: {}", visitor.nesting_max);
-                
+
                 // Property: Cyclomatic >= 1 for any non-empty file
                 if !source.trim().is_empty() {
                     prop_assert!(visitor.cyclomatic >= 1, "Cyclomatic complexity should be at least 1");
@@ -287,16 +286,16 @@ mod tests {
                 ..Default::default()
             };
             let runtime = tokio::runtime::Runtime::new().unwrap();
-            
+
             // Parse the same source twice
             let result1 = runtime.block_on(async {
                 parser.parse_content(&source, Path::new("test.rs"), &config).await
             });
-            
+
             let result2 = runtime.block_on(async {
                 parser.parse_content(&source, Path::new("test.rs"), &config).await
             });
-            
+
             // Property: Parsing is deterministic
             match (result1, result2) {
                 (Ok(r1), Ok(r2)) => {
@@ -319,24 +318,24 @@ mod tests {
             prop::sample::select(vec![" ", "\t", "\n", "\r\n"]), 0..100
         )) {
             let code = whitespace.join("");
-            
+
             let parser = RustAstParser::new();
             let config = ParserConfig {
                 extract_complexity: false, // Don't try to read from disk
                 ..Default::default()
             };
             let runtime = tokio::runtime::Runtime::new().unwrap();
-            
+
             let result = runtime.block_on(async {
                 parser.parse_content(&code, Path::new("test.rs"), &config).await
             });
-            
+
             // Empty or whitespace-only files should parse successfully
             prop_assert!(result.is_ok(), "Failed to parse empty/whitespace file");
-            
+
             if let Ok(parse_result) = result {
                 // Should produce minimal AST
-                prop_assert!(parse_result.unified_nodes.len() <= 1, 
+                prop_assert!(parse_result.unified_nodes.len() <= 1,
                     "Too many nodes for empty file: {}", parse_result.unified_nodes.len());
             }
         }
@@ -346,10 +345,10 @@ mod tests {
             // Create a temporary file
             let temp_file = NamedTempFile::new().unwrap();
             let path = temp_file.path();
-            
+
             // Write content to file
             std::fs::write(path, &content).unwrap();
-            
+
             // Test the file-based parser
             let result = panic::catch_unwind(|| {
                 let runtime = tokio::runtime::Runtime::new().unwrap();
@@ -357,9 +356,9 @@ mod tests {
                     analyze_rust_file_with_complexity(path).await
                 })
             });
-            
+
             prop_assert!(result.is_ok(), "File parser panicked");
-            
+
             if let Ok(Ok(metrics)) = result {
                 // Verify we got valid metrics
                 // Cyclomatic complexity is always non-negative by definition
@@ -373,32 +372,32 @@ mod tests {
         #[test]
         fn handles_deeply_nested_structures(depth in 1usize..20) {
             let mut code = String::new();
-            
+
             // Generate deeply nested if statements
             for i in 0..depth {
                 code.push_str(&format!("{}if true {{\n", "    ".repeat(i)));
             }
-            
+
             code.push_str(&format!("{}println!(\"deep\");\n", "    ".repeat(depth)));
-            
+
             for i in (0..depth).rev() {
                 code.push_str(&format!("{}}}\n", "    ".repeat(i)));
             }
-            
+
             let code = format!("fn deeply_nested() {{\n{}}}", code);
-            
+
             let result = parse_file(&code);
             prop_assert!(result.is_ok(), "Failed to parse deeply nested code");
-            
+
             if let Ok(ast) = result {
                 let mut visitor = TestComplexityVisitor::new();
                 let visitor_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                     visitor.visit_file(&ast);
                     visitor
                 }));
-                
+
                 prop_assert!(visitor_result.is_ok(), "Visitor panicked on deeply nested code");
-                
+
                 if let Ok(visitor) = visitor_result {
                     prop_assert_eq!(visitor.nesting_max as usize, depth,
                         "Incorrect nesting level calculation");
@@ -409,20 +408,19 @@ mod tests {
         #[test]
         fn handles_unicode_identifiers(
             prefix in "[a-zA-Z_]",
-            unicode_chars in prop::collection::vec(any::<char>().prop_filter("Valid identifier char", 
+            unicode_chars in prop::collection::vec(any::<char>().prop_filter("Valid identifier char",
                 |c| c.is_alphanumeric() && !c.is_ascii()), 0..10)
         ) {
             let ident = format!("{}{}", prefix, unicode_chars.into_iter().collect::<String>());
             let code = format!("fn {}() {{ }}", ident);
-            
+
             // Note: Rust doesn't actually support arbitrary Unicode in identifiers,
             // but the parser should handle this gracefully
             let _result = parse_file(&code);
-            
+
             // Either parses successfully or gives a proper error (not panic)
             let did_not_panic = panic::catch_unwind(|| parse_file(&code)).is_ok();
             prop_assert!(did_not_panic, "Parser panicked on Unicode identifier");
         }
     }
 }
-

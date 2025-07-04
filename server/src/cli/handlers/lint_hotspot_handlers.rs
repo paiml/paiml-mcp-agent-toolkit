@@ -32,6 +32,7 @@ pub struct LintHotspotParams {
     pub output: Option<PathBuf>,
     pub perf: bool,
     pub clippy_flags: String,
+    pub top_files: usize,
 }
 
 /// Lint hotspot analysis result
@@ -207,6 +208,7 @@ pub async fn handle_analyze_lint_hotspot(
     output: Option<PathBuf>,
     perf: bool,
     clippy_flags: String,
+    top_files: usize,
 ) -> Result<()> {
     let params = LintHotspotParams {
         project_path,
@@ -220,6 +222,7 @@ pub async fn handle_analyze_lint_hotspot(
         output,
         perf,
         clippy_flags,
+        top_files,
     };
 
     handle_analyze_lint_hotspot_with_params(params).await
@@ -290,6 +293,7 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
         params.format,
         params.perf,
         start_time.elapsed(),
+        params.top_files,
     )?;
 
     if let Some(output_path) = params.output {
@@ -927,10 +931,11 @@ fn format_output(
     format: LintHotspotOutputFormat,
     perf: bool,
     elapsed: std::time::Duration,
+    top_files: usize,
 ) -> Result<String> {
     match format {
-        LintHotspotOutputFormat::Summary => format_summary(result, perf, elapsed),
-        LintHotspotOutputFormat::Detailed => format_detailed(result, perf, elapsed),
+        LintHotspotOutputFormat::Summary => format_summary(result, perf, elapsed, top_files),
+        LintHotspotOutputFormat::Detailed => format_detailed(result, perf, elapsed, top_files),
         LintHotspotOutputFormat::Json => format_json(result, false),
         LintHotspotOutputFormat::EnforcementJson => format_json(result, true),
         LintHotspotOutputFormat::Sarif => format_sarif(result),
@@ -942,6 +947,7 @@ fn format_summary(
     result: &LintHotspotResult,
     perf: bool,
     elapsed: std::time::Duration,
+    _top_files: usize,
 ) -> Result<String> {
     let mut output = String::new();
 
@@ -1031,8 +1037,9 @@ fn format_detailed(
     result: &LintHotspotResult,
     perf: bool,
     elapsed: std::time::Duration,
+    top_files: usize,
 ) -> Result<String> {
-    let mut output = format_summary(result, perf, elapsed)?;
+    let mut output = format_summary(result, perf, elapsed, top_files)?;
 
     // Add detailed violations for the hotspot file
     output.push_str("\n## Detailed Violations in Hotspot File\n");
@@ -1055,7 +1062,12 @@ fn format_detailed(
     let mut sorted_files: Vec<_> = result.summary_by_file.iter().collect();
     sorted_files.sort_by(|a, b| b.1.total_violations.cmp(&a.1.total_violations));
 
-    for (file, summary) in sorted_files.iter().take(10) {
+    let files_to_show = if top_files == 0 {
+        sorted_files.len()
+    } else {
+        top_files
+    };
+    for (file, summary) in sorted_files.iter().take(files_to_show) {
         output.push_str(&format!(
             "- {}: {} violations ({} errors, {} warnings, density: {:.2})\n",
             file.display(),
