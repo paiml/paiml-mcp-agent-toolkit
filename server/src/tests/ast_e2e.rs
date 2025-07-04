@@ -8,6 +8,7 @@ use std::path::Path;
 #[cfg(all(test, feature = "python-ast"))]
 mod ast_python_tests {
     use super::*;
+    use crate::services::context::AstItem;
 
     #[tokio::test]
     async fn test_analyze_python_file_comprehensive() {
@@ -213,6 +214,7 @@ mod ast_python_tests {
 #[cfg(all(test, feature = "typescript-ast"))]
 mod ast_typescript_tests {
     use super::*;
+    use crate::services::context::AstItem;
 
     #[tokio::test]
     async fn test_analyze_typescript_file_comprehensive() {
@@ -352,6 +354,7 @@ mod ast_typescript_tests {
 #[cfg(all(test, feature = "python-ast", feature = "typescript-ast"))]
 mod ast_integration_tests {
     use super::*;
+    use crate::services::context::AstItem;
 
     #[tokio::test]
     async fn test_mixed_language_project_context() {
