@@ -943,15 +943,15 @@ fn format_output(
 }
 
 /// Format summary output
-/// 
+///
 /// # Example
-/// 
+///
 /// ```
 /// use pmat::cli::handlers::lint_hotspot_handlers::{LintHotspotResult, LintHotspot, FileSummary, SeverityDistribution, QualityGateStatus};
 /// use std::collections::HashMap;
 /// use std::path::PathBuf;
 /// use std::time::Duration;
-/// 
+///
 /// let hotspot = LintHotspot {
 ///     file: PathBuf::from("src/main.rs"),
 ///     defect_density: 0.05,
@@ -969,7 +969,7 @@ fn format_output(
 ///     ],
 ///     detailed_violations: vec![],
 /// };
-/// 
+///
 /// let mut summary_by_file = HashMap::new();
 /// summary_by_file.insert(
 ///     PathBuf::from("src/main.rs"),
@@ -981,7 +981,7 @@ fn format_output(
 ///         defect_density: 0.05,
 ///     }
 /// );
-/// 
+///
 /// let result = LintHotspotResult {
 ///     hotspot,
 ///     all_violations: vec![],
@@ -995,9 +995,9 @@ fn format_output(
 ///         blocking: false,
 ///     },
 /// };
-/// 
+///
 /// let output = pmat::cli::handlers::lint_hotspot_handlers::format_summary(&result, false, Duration::from_secs(1), 10).unwrap();
-/// 
+///
 /// assert!(output.contains("# Lint Hotspot Analysis"));
 /// assert!(output.contains("**Total Project Violations**: 5"));
 /// assert!(output.contains("## Top Files with Lint Issues"));
@@ -1026,8 +1026,12 @@ pub fn format_summary(
     // Show top files with lint issues (consistent with other analyze commands)
     output.push_str("## Top Files with Lint Issues\n\n");
     let mut sorted_files: Vec<_> = result.summary_by_file.iter().collect();
-    sorted_files.sort_by(|a, b| b.1.defect_density.partial_cmp(&a.1.defect_density).unwrap_or(std::cmp::Ordering::Equal));
-    
+    sorted_files.sort_by(|a, b| {
+        b.1.defect_density
+            .partial_cmp(&a.1.defect_density)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
     let files_to_show = if _top_files == 0 { 10 } else { _top_files };
     for (i, (file, summary)) in sorted_files.iter().take(files_to_show).enumerate() {
         let filename = file.file_name().unwrap_or_default().to_string_lossy();

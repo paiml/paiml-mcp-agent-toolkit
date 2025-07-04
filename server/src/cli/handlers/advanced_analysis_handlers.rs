@@ -205,6 +205,7 @@ pub async fn handle_analyze_defect_prediction(
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_comprehensive(
     project_path: PathBuf,
+    file: Option<PathBuf>,
     format: ComprehensiveOutputFormat,
     include_duplicates: bool,
     include_dead_code: bool,
@@ -222,6 +223,7 @@ pub async fn handle_analyze_comprehensive(
     // Use the new comprehensive handler implementation
     super::comprehensive_handler::handle_analyze_comprehensive(
         project_path,
+        file,
         format,
         include_duplicates,
         include_dead_code,

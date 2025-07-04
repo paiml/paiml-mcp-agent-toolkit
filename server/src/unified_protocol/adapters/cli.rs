@@ -521,6 +521,7 @@ impl CliAdapter {
             }
             AnalyzeCommands::Comprehensive {
                 project_path,
+                file,
                 format,
                 include_duplicates,
                 include_dead_code,
@@ -538,6 +539,7 @@ impl CliAdapter {
             } => {
                 let params = json!({
                     "project_path": project_path,
+                    "file": file,
                     "format": format,
                     "include_duplicates": include_duplicates,
                     "include_dead_code": include_dead_code,

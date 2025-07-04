@@ -489,14 +489,23 @@ Multi-dimensional analysis combining all analysis types.
 pmat analyze comprehensive [OPTIONS] <PATH>
 
 Options:
+  --file <FILE>              Single file to analyze (overrides project path)
   --include-all              Include all analysis types
   --quick                    Quick analysis mode
   --depth <NUM>              Analysis depth level (1-3)
   --report-format <FORMAT>   Comprehensive report format
+  --confidence-threshold <NUM> Minimum confidence threshold (0.0-1.0)
+  --include-duplicates       Include duplicate detection
+  --include-dead-code        Include dead code analysis
+  --include-defects          Include defect prediction
+  --include-complexity       Include complexity metrics
+  --include-tdg              Include Technical Debt Gradient
 
 Examples:
   pmat analyze comprehensive . --include-all
   pmat analyze comprehensive ./src --quick --format html
+  pmat analyze comprehensive . --file src/main.rs --format json
+  pmat analyze comprehensive . --file lib/parser.rs --confidence-threshold 0.8
 ```
 
 ### Graph and Network Analysis

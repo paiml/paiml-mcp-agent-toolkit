@@ -531,7 +531,7 @@ pub fn format_human_output(report: &DuplicateReport) -> Result<String> {
     // Show top files by duplication
     if !report.file_statistics.is_empty() {
         writeln!(&mut output, "## Top Files by Duplication\n")?;
-        
+
         // Sort files by duplication percentage (descending)
         let mut file_stats: Vec<_> = report.file_statistics.iter().collect();
         file_stats.sort_by(|a, b| {
@@ -539,7 +539,7 @@ pub fn format_human_output(report: &DuplicateReport) -> Result<String> {
                 .partial_cmp(&a.1.duplication_percentage)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        
+
         for (i, (file_path, stats)) in file_stats.iter().take(10).enumerate() {
             let filename = std::path::Path::new(file_path)
                 .file_name()

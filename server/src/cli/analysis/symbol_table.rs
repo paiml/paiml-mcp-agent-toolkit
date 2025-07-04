@@ -346,7 +346,7 @@ fn apply_filters(
 /// ```
 /// use pmat::cli::analysis::symbol_table::{format_output, SymbolTable, Symbol, SymbolKind, Visibility, Reference, ReferenceKind};
 /// use pmat::cli::SymbolTableOutputFormat;
-/// 
+///
 /// let table = SymbolTable {
 ///     symbols: vec![
 ///         Symbol {
@@ -377,7 +377,7 @@ fn apply_filters(
 ///     unreferenced_symbols: vec!["TestStruct".to_string()],
 ///     most_referenced: vec![("test_function".to_string(), 1)],
 /// };
-/// 
+///
 /// let output = format_output(table, SymbolTableOutputFormat::Summary, true, false).unwrap();
 /// assert!(output.contains("Top Files by Symbol Count"));
 /// assert!(output.contains("main.rs"));
@@ -434,30 +434,24 @@ pub fn format_output(
             // Show top files by symbol count
             if !table.symbols.is_empty() {
                 writeln!(&mut output, "\n## Top Files by Symbol Count\n")?;
-                
+
                 // Count symbols per file
                 let mut file_counts: HashMap<&str, usize> = HashMap::new();
                 for symbol in &table.symbols {
                     *file_counts.entry(&symbol.file).or_insert(0) += 1;
                 }
-                
+
                 // Sort files by symbol count
                 let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
                 sorted_files.sort_by(|a, b| b.1.cmp(&a.1));
-                
+
                 // Display top 10 files
                 for (i, (file_path, count)) in sorted_files.iter().take(10).enumerate() {
                     let filename = Path::new(file_path)
                         .file_name()
                         .and_then(|n| n.to_str())
                         .unwrap_or(file_path);
-                    writeln!(
-                        &mut output,
-                        "{}. `{}` - {} symbols",
-                        i + 1,
-                        filename,
-                        count
-                    )?;
+                    writeln!(&mut output, "{}. `{}` - {} symbols", i + 1, filename, count)?;
                 }
             }
 

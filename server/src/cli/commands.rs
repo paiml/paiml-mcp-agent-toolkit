@@ -888,6 +888,10 @@ pub enum AnalyzeCommands {
         #[arg(long, short = 'p', default_value = ".")]
         project_path: PathBuf,
 
+        /// Single file to analyze (overrides project path)
+        #[arg(long)]
+        file: Option<PathBuf>,
+
         /// Output format
         #[arg(long, short = 'f', value_enum, default_value = "summary")]
         format: ComprehensiveOutputFormat,

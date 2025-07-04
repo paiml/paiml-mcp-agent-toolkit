@@ -621,16 +621,16 @@ fn generate_satd_sarif(
 }
 
 /// Format SATD summary
-/// 
+///
 /// # Example
-/// 
+///
 /// ```
 /// use pmat::services::satd_detector::{SATDAnalysisResult, SATDSummary, TechnicalDebt, DebtCategory, Severity};
 /// use pmat::cli::handlers::complexity_handlers::format_satd_summary;
 /// use std::collections::HashMap;
 /// use std::path::PathBuf;
 /// use chrono::Utc;
-/// 
+///
 /// let result = SATDAnalysisResult {
 ///     items: vec![
 ///         TechnicalDebt {
@@ -663,9 +663,9 @@ fn generate_satd_sarif(
 ///     files_with_debt: 2,
 ///     analysis_timestamp: Utc::now(),
 /// };
-/// 
+///
 /// let summary = format_satd_summary(&result, false);
-/// 
+///
 /// assert!(summary.contains("# SATD Analysis Summary"));
 /// assert!(summary.contains("**Files analyzed**: 10"));
 /// assert!(summary.contains("**Files with SATD**: 2"));
@@ -719,18 +719,18 @@ pub fn format_satd_summary(
     // Show top files with SATD
     if !result.items.is_empty() {
         writeln!(&mut output, "\n## Top Files with SATD\n").unwrap();
-        
+
         // Group items by file and count them
         use std::collections::HashMap;
         let mut file_counts: HashMap<&std::path::Path, usize> = HashMap::new();
         for item in &result.items {
             *file_counts.entry(&item.file).or_insert(0) += 1;
         }
-        
+
         // Sort files by SATD count (descending)
         let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
         sorted_files.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
-        
+
         // Show top 10 files with their SATD counts
         for (i, (file, count)) in sorted_files.iter().take(10).enumerate() {
             let filename = file.file_name().unwrap_or_default().to_string_lossy();
@@ -866,7 +866,7 @@ fn format_satd_markdown(
 ///
 /// # tokio_test::block_on(async {
 /// let dir = tempdir().unwrap();
-/// 
+///
 /// // Generate a full dependency graph
 /// let result = handle_analyze_dag(
 ///     DagType::FullDependency,
@@ -880,7 +880,7 @@ fn format_satd_markdown(
 ///     false, // no dead code analysis
 ///     false, // not enhanced
 /// ).await;
-/// 
+///
 /// assert!(result.is_ok());
 /// # });
 /// ```
@@ -1103,14 +1103,12 @@ mod tests {
                     unreachable_blocks: 0,
                     dead_score: 0.0,
                     confidence: crate::models::dead_code::ConfidenceLevel::High,
-                    items: vec![
-                        crate::models::dead_code::DeadCodeItem {
-                            name: "dead_function".to_string(),
-                            item_type: crate::models::dead_code::DeadCodeType::Function,
-                            line: 10,
-                            reason: "Never called".to_string(),
-                        },
-                    ],
+                    items: vec![crate::models::dead_code::DeadCodeItem {
+                        name: "dead_function".to_string(),
+                        item_type: crate::models::dead_code::DeadCodeType::Function,
+                        line: 10,
+                        reason: "Never called".to_string(),
+                    }],
                 },
                 crate::models::dead_code::FileDeadCodeMetrics {
                     path: "src/lib.rs".to_string(),
@@ -1123,14 +1121,12 @@ mod tests {
                     unreachable_blocks: 0,
                     dead_score: 0.0,
                     confidence: crate::models::dead_code::ConfidenceLevel::Medium,
-                    items: vec![
-                        crate::models::dead_code::DeadCodeItem {
-                            name: "unused_struct".to_string(),
-                            item_type: crate::models::dead_code::DeadCodeType::Class,
-                            line: 5,
-                            reason: "Never instantiated".to_string(),
-                        },
-                    ],
+                    items: vec![crate::models::dead_code::DeadCodeItem {
+                        name: "unused_struct".to_string(),
+                        item_type: crate::models::dead_code::DeadCodeType::Class,
+                        line: 5,
+                        reason: "Never instantiated".to_string(),
+                    }],
                 },
             ],
             total_files: 5,
@@ -1138,7 +1134,7 @@ mod tests {
         };
 
         let summary = format_dead_code_as_summary(&result).unwrap();
-        
+
         // Verify the summary contains the expected sections
         assert!(summary.contains("# Dead Code Analysis Summary"));
         assert!(summary.contains("**Files analyzed**: 5"));
@@ -1170,7 +1166,7 @@ mod tests {
         };
 
         let summary = format_dead_code_as_summary(&result).unwrap();
-        
+
         // Should not contain Top Files section when no files have dead code
         assert!(summary.contains("# Dead Code Analysis Summary"));
         assert!(summary.contains("**Files analyzed**: 10"));

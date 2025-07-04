@@ -240,6 +240,12 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 
 ## Recent Updates
 
+### 🔍 v0.28.3 - Enhanced Single-File Analysis
+- **Single File Analysis**: Added `--file` flag to `pmat analyze comprehensive` for analyzing individual files.
+- **Bug Fix**: Fixed "No such file or directory" error in single-file refactor mode by using dynamic executable path detection.
+- **Test Improvements**: Fixed stack overflow issues in CLI tests by using wildcard pattern matching.
+- **Documentation**: Updated CLI reference with new single-file analysis capabilities.
+
 ### 🚦 v0.28.2 - Quality Gate Improvements
 - **Quality Gate Tests**: Added comprehensive integration tests for CI/CD quality gates.
 - **Public API**: Made quality gate structs public for better testing support.
