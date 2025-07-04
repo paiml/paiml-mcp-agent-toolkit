@@ -943,7 +943,69 @@ fn format_output(
 }
 
 /// Format summary output
-fn format_summary(
+/// 
+/// # Example
+/// 
+/// ```
+/// use pmat::cli::handlers::lint_hotspot_handlers::{LintHotspotResult, LintHotspot, FileSummary, SeverityDistribution, QualityGateStatus};
+/// use std::collections::HashMap;
+/// use std::path::PathBuf;
+/// use std::time::Duration;
+/// 
+/// let hotspot = LintHotspot {
+///     file: PathBuf::from("src/main.rs"),
+///     defect_density: 0.05,
+///     total_violations: 5,
+///     sloc: 100,
+///     severity_distribution: SeverityDistribution {
+///         error: 2,
+///         warning: 3,
+///         suggestion: 0,
+///         note: 0,
+///     },
+///     top_lints: vec![
+///         ("clippy::too_many_arguments".to_string(), 2),
+///         ("unused_variable".to_string(), 3),
+///     ],
+///     detailed_violations: vec![],
+/// };
+/// 
+/// let mut summary_by_file = HashMap::new();
+/// summary_by_file.insert(
+///     PathBuf::from("src/main.rs"),
+///     FileSummary {
+///         total_violations: 5,
+///         errors: 2,
+///         warnings: 3,
+///         sloc: 100,
+///         defect_density: 0.05,
+///     }
+/// );
+/// 
+/// let result = LintHotspotResult {
+///     hotspot,
+///     all_violations: vec![],
+///     summary_by_file,
+///     total_project_violations: 5,
+///     enforcement: None,
+///     refactor_chain: None,
+///     quality_gate: QualityGateStatus {
+///         passed: true,
+///         violations: vec![],
+///         blocking: false,
+///     },
+/// };
+/// 
+/// let output = pmat::cli::handlers::lint_hotspot_handlers::format_summary(&result, false, Duration::from_secs(1), 10).unwrap();
+/// 
+/// assert!(output.contains("# Lint Hotspot Analysis"));
+/// assert!(output.contains("**Total Project Violations**: 5"));
+/// assert!(output.contains("## Top Files with Lint Issues"));
+/// assert!(output.contains("1. `main.rs` - 0.05 violations/SLOC"));
+/// assert!(output.contains("## Hottest File Details"));
+/// assert!(output.contains("**File**: src/main.rs"));
+/// ```
+pub fn format_summary(
     result: &LintHotspotResult,
     perf: bool,
     elapsed: std::time::Duration,
@@ -961,7 +1023,26 @@ fn format_summary(
         result.summary_by_file.len()
     ));
 
-    output.push_str("## Hottest File\n");
+    // Show top files with lint issues (consistent with other analyze commands)
+    output.push_str("## Top Files with Lint Issues\n\n");
+    let mut sorted_files: Vec<_> = result.summary_by_file.iter().collect();
+    sorted_files.sort_by(|a, b| b.1.defect_density.partial_cmp(&a.1.defect_density).unwrap_or(std::cmp::Ordering::Equal));
+    
+    let files_to_show = if _top_files == 0 { 10 } else { _top_files };
+    for (i, (file, summary)) in sorted_files.iter().take(files_to_show).enumerate() {
+        let filename = file.file_name().unwrap_or_default().to_string_lossy();
+        output.push_str(&format!(
+            "{}. `{}` - {:.2} violations/SLOC ({} violations, {} SLOC)\n",
+            i + 1,
+            filename,
+            summary.defect_density,
+            summary.total_violations,
+            summary.sloc
+        ));
+    }
+    output.push('\n');
+
+    output.push_str("## Hottest File Details\n");
     output.push_str(&format!("**File**: {}\n", result.hotspot.file.display()));
     output.push_str(&format!(
         "**Defect Density**: {:.2} violations/SLOC\n",
