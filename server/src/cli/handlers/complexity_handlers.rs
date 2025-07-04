@@ -956,11 +956,113 @@ pub async fn handle_analyze_dag(
 
 #[cfg(test)]
 mod tests {
-    // use super::*; // Unused in simple tests
+    use super::*;
 
     #[test]
     fn test_complexity_handlers_basic() {
         // Basic test
         assert_eq!(1 + 1, 2);
+    }
+
+    #[test]
+    fn test_dead_code_summary_shows_top_files() {
+        // Create mock dead code result with files
+        let result = crate::models::dead_code::DeadCodeResult {
+            summary: crate::models::dead_code::DeadCodeSummary {
+                total_files_analyzed: 5,
+                files_with_dead_code: 2,
+                total_dead_lines: 45,
+                dead_percentage: 15.5,
+                dead_functions: 3,
+                dead_classes: 1,
+                dead_modules: 2,
+                unreachable_blocks: 1,
+            },
+            files: vec![
+                crate::models::dead_code::FileDeadCodeMetrics {
+                    path: "src/main.rs".to_string(),
+                    dead_lines: 25,
+                    total_lines: 100,
+                    dead_percentage: 25.0,
+                    dead_functions: 1,
+                    dead_classes: 0,
+                    dead_modules: 0,
+                    unreachable_blocks: 0,
+                    dead_score: 0.0,
+                    confidence: crate::models::dead_code::ConfidenceLevel::High,
+                    items: vec![
+                        crate::models::dead_code::DeadCodeItem {
+                            name: "dead_function".to_string(),
+                            item_type: crate::models::dead_code::DeadCodeType::Function,
+                            line: 10,
+                            reason: "Never called".to_string(),
+                        },
+                    ],
+                },
+                crate::models::dead_code::FileDeadCodeMetrics {
+                    path: "src/lib.rs".to_string(),
+                    dead_lines: 20,
+                    total_lines: 150,
+                    dead_percentage: 13.3,
+                    dead_functions: 0,
+                    dead_classes: 1,
+                    dead_modules: 0,
+                    unreachable_blocks: 0,
+                    dead_score: 0.0,
+                    confidence: crate::models::dead_code::ConfidenceLevel::Medium,
+                    items: vec![
+                        crate::models::dead_code::DeadCodeItem {
+                            name: "unused_struct".to_string(),
+                            item_type: crate::models::dead_code::DeadCodeType::Class,
+                            line: 5,
+                            reason: "Never instantiated".to_string(),
+                        },
+                    ],
+                },
+            ],
+            total_files: 5,
+            analyzed_files: 5,
+        };
+
+        let summary = format_dead_code_as_summary(&result).unwrap();
+        
+        // Verify the summary contains the expected sections
+        assert!(summary.contains("# Dead Code Analysis Summary"));
+        assert!(summary.contains("**Files analyzed**: 5"));
+        assert!(summary.contains("**Files with dead code**: 2"));
+        assert!(summary.contains("## Top Files with Dead Code"));
+        assert!(summary.contains("1. `src/main.rs` - 25.0% dead (25 lines)"));
+        assert!(summary.contains("2. `src/lib.rs` - 13.3% dead (20 lines)"));
+        assert!(summary.contains("## Dead Code by Type"));
+        assert!(summary.contains("**Dead functions**: 3"));
+    }
+
+    #[test]
+    fn test_dead_code_summary_empty_files() {
+        // Test with no dead code files
+        let result = crate::models::dead_code::DeadCodeResult {
+            summary: crate::models::dead_code::DeadCodeSummary {
+                total_files_analyzed: 10,
+                files_with_dead_code: 0,
+                total_dead_lines: 0,
+                dead_percentage: 0.0,
+                dead_functions: 0,
+                dead_classes: 0,
+                dead_modules: 0,
+                unreachable_blocks: 0,
+            },
+            files: vec![],
+            total_files: 10,
+            analyzed_files: 10,
+        };
+
+        let summary = format_dead_code_as_summary(&result).unwrap();
+        
+        // Should not contain Top Files section when no files have dead code
+        assert!(summary.contains("# Dead Code Analysis Summary"));
+        assert!(summary.contains("**Files analyzed**: 10"));
+        assert!(summary.contains("**Files with dead code**: 0"));
+        assert!(!summary.contains("## Top Files with Dead Code"));
+        assert!(!summary.contains("## Dead Code by Type"));
     }
 }
