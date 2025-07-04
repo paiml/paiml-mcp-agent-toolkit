@@ -575,7 +575,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             perf,
             cache_dir,
             force_refresh,
-            top_files: _top_files,
+            top_files,
         } => {
             super::super::stubs::handle_analyze_incremental_coverage(
                 project_path,
@@ -589,6 +589,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 perf,
                 cache_dir,
                 force_refresh,
+                top_files,
             )
             .await
         }
