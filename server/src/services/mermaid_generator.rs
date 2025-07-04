@@ -387,6 +387,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Artifact files removed"]
     fn test_reference_standards_are_valid() {
         let reference = load_reference_standard();
         let complex = load_complex_styled_standard();
@@ -404,6 +405,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Artifact files removed"]
     fn test_invalid_example_is_correctly_identified() {
         let invalid_content = load_invalid_example();
 
@@ -427,6 +429,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Artifact files removed"]
     fn test_generated_output_matches_reference_syntax() {
         let mut graph = DependencyGraph::new();
 

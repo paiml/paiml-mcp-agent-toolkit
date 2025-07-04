@@ -854,6 +854,36 @@ fn format_satd_markdown(
 
 /// Handle DAG (Dependency Analysis Graph) generation command
 #[allow(clippy::too_many_arguments)]
+/// Generate dependency analysis graphs using Mermaid
+///
+/// # Examples
+///
+/// ```no_run
+/// use pmat::cli::handlers::complexity_handlers::handle_analyze_dag;
+/// use pmat::cli::DagType;
+/// use std::path::PathBuf;
+/// use tempfile::tempdir;
+///
+/// # tokio_test::block_on(async {
+/// let dir = tempdir().unwrap();
+/// 
+/// // Generate a full dependency graph
+/// let result = handle_analyze_dag(
+///     DagType::FullDependency,
+///     dir.path().to_path_buf(),
+///     None, // output to stdout
+///     None, // no max depth
+///     Some(10), // limit to 10 nodes
+///     false, // include external deps
+///     false, // don't show complexity
+///     false, // no duplicate analysis
+///     false, // no dead code analysis
+///     false, // not enhanced
+/// ).await;
+/// 
+/// assert!(result.is_ok());
+/// # });
+/// ```
 pub async fn handle_analyze_dag(
     dag_type: DagType,
     project_path: PathBuf,
