@@ -26,7 +26,7 @@ pub async fn handle_analyze_deep_context(
     _cache_strategy: Option<String>,
     _parallel: bool,
     verbose: bool,
-    _top_files: usize,
+    top_files: usize,
 ) -> Result<()> {
     info!("🔍 Starting deep context analysis");
     info!("📂 Project path: {}", project_path.display());
@@ -69,7 +69,7 @@ pub async fn handle_analyze_deep_context(
     // Format and output results
     let output_content = match format {
         DeepContextOutputFormat::Json => analyzer.format_as_json(&report)?,
-        DeepContextOutputFormat::Markdown => analyzer.format_as_markdown(&report),
+        DeepContextOutputFormat::Markdown => analyzer.format_as_markdown(&report, top_files),
         DeepContextOutputFormat::Sarif => {
             // TRACKED: Implement SARIF format
             analyzer.format_as_json(&report)?
