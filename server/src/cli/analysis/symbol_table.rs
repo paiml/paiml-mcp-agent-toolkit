@@ -339,8 +339,50 @@ fn apply_filters(
     Ok(table)
 }
 
-// Format output based on format type
-fn format_output(
+/// Format symbol table output based on format type
+///
+/// # Examples
+///
+/// ```
+/// use pmat::cli::analysis::symbol_table::{format_output, SymbolTable, Symbol, SymbolKind, Visibility, Reference, ReferenceKind};
+/// use pmat::cli::SymbolTableOutputFormat;
+/// 
+/// let table = SymbolTable {
+///     symbols: vec![
+///         Symbol {
+///             name: "test_function".to_string(),
+///             kind: SymbolKind::Function,
+///             file: "src/main.rs".to_string(),
+///             line: 10,
+///             column: 4,
+///             visibility: Visibility::Public,
+///             references: vec![Reference {
+///                 file: "src/main.rs".to_string(),
+///                 line: 10,
+///                 column: 4,
+///                 kind: ReferenceKind::Definition,
+///             }],
+///         },
+///         Symbol {
+///             name: "TestStruct".to_string(),
+///             kind: SymbolKind::Type,
+///             file: "src/lib.rs".to_string(),
+///             line: 5,
+///             column: 0,
+///             visibility: Visibility::Public,
+///             references: vec![],
+///         },
+///     ],
+///     total_symbols: 2,
+///     unreferenced_symbols: vec!["TestStruct".to_string()],
+///     most_referenced: vec![("test_function".to_string(), 1)],
+/// };
+/// 
+/// let output = format_output(table, SymbolTableOutputFormat::Summary, true, false).unwrap();
+/// assert!(output.contains("Top Files by Symbol Count"));
+/// assert!(output.contains("main.rs"));
+/// ```
+pub fn format_output(
     table: SymbolTable,
     format: crate::cli::SymbolTableOutputFormat,
     show_unreferenced: bool,
@@ -386,6 +428,36 @@ fn format_output(
                 writeln!(&mut output, "\n## Most Referenced Symbols\n")?;
                 for (name, count) in &table.most_referenced {
                     writeln!(&mut output, "  - {}: {} references", name, count)?;
+                }
+            }
+
+            // Show top files by symbol count
+            if !table.symbols.is_empty() {
+                writeln!(&mut output, "\n## Top Files by Symbol Count\n")?;
+                
+                // Count symbols per file
+                let mut file_counts: HashMap<&str, usize> = HashMap::new();
+                for symbol in &table.symbols {
+                    *file_counts.entry(&symbol.file).or_insert(0) += 1;
+                }
+                
+                // Sort files by symbol count
+                let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
+                sorted_files.sort_by(|a, b| b.1.cmp(&a.1));
+                
+                // Display top 10 files
+                for (i, (file_path, count)) in sorted_files.iter().take(10).enumerate() {
+                    let filename = Path::new(file_path)
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or(file_path);
+                    writeln!(
+                        &mut output,
+                        "{}. `{}` - {} symbols",
+                        i + 1,
+                        filename,
+                        count
+                    )?;
                 }
             }
 
