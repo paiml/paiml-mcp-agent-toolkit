@@ -63,7 +63,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmat = "0.27.3"
+pmat = "0.28.0"
 ```
 
 Basic usage:
