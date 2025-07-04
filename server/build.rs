@@ -21,13 +21,23 @@ fn main() {
     compress_templates();
 
     // Download and compress assets for demo mode
-    if env::var("CARGO_FEATURE_DEMO").is_ok() {
+    // Skip asset downloading during cargo publish to avoid modifying source directory
+    if env::var("CARGO_FEATURE_DEMO").is_ok() && !is_publishing() {
         download_and_compress_assets();
         minify_demo_assets();
     }
 
     // Compile Cap'n Proto schema for MCP server
     compile_capnp_schema();
+}
+
+/// Check if we're in a cargo publish context
+fn is_publishing() -> bool {
+    // During cargo publish, the package is extracted to a temp directory
+    env::var("CARGO_PKG_VERSION").is_ok() && 
+    env::current_dir()
+        .map(|dir| dir.to_string_lossy().contains("/target/package/"))
+        .unwrap_or(false)
 }
 
 /// Verifies critical dependencies exist in Cargo.lock
