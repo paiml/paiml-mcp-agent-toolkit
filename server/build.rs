@@ -34,10 +34,16 @@ fn main() {
 /// Check if we're in a cargo publish context
 fn is_publishing() -> bool {
     // During cargo publish, the package is extracted to a temp directory
-    env::var("CARGO_PKG_VERSION").is_ok() && 
-    env::current_dir()
-        .map(|dir| dir.to_string_lossy().contains("/target/package/"))
-        .unwrap_or(false)
+    let is_publish = env::var("CARGO_PKG_VERSION").is_ok() && 
+        env::current_dir()
+            .map(|dir| dir.to_string_lossy().contains("/target/package/"))
+            .unwrap_or(false);
+    
+    if is_publish {
+        println!("cargo:rustc-cfg=cargo_publish");
+    }
+    
+    is_publish
 }
 
 /// Verifies critical dependencies exist in Cargo.lock
