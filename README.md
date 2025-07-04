@@ -3,7 +3,6 @@
 [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
 [![Documentation](https://docs.rs/pmat/badge.svg)](https://docs.rs/pmat)
 [![CI/CD](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml)
-[![codecov](https://codecov.io/gh/paiml/paiml-mcp-agent-toolkit/branch/master/graph/badge.svg)](https://codecov.io/gh/paiml/paiml-mcp-agent-toolkit)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Downloads](https://img.shields.io/crates/d/pmat)](https://crates.io/crates/pmat)
@@ -177,7 +176,9 @@ pmat demo --web --port 8080                   # Web interface
 pmat demo --repo https://github.com/user/repo # Analyze GitHub repo
 
 # Quality enforcement
-pmat quality-gate --fail-on-violation         # Run all quality checks
+pmat quality-gate --fail-on-violation         # CI/CD quality gate
+pmat quality-gate --checks complexity,satd,security  # Specific checks
+pmat quality-gate --format human              # Human-readable output
 pmat enforce extreme                          # Enforce extreme quality standards
 ```
 
@@ -237,6 +238,12 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
 
 ## Recent Updates
 
+### 🚦 v0.28.2 - Quality Gate Improvements
+- **Quality Gate Tests**: Added comprehensive integration tests for CI/CD quality gates.
+- **Public API**: Made quality gate structs public for better testing support.
+- **Doctests**: Added doctests for quality gate and DAG generation functions.
+- **Bug Fixes**: Fixed mermaid test failures and unused import warnings.
+
 ### 🏆 v0.26.3 - Quality Uplift
 - **SATD Elimination**: Removed all TODO/FIXME/HACK comments from implementation.
 - **Complexity Reduction**: All functions now below a cyclomatic complexity of 20.
@@ -287,6 +294,30 @@ This project follows strict quality standards:
 - **Quality Gates**: Automated quality scoring
 - **Dependency Analysis**: Visual dependency graphs
 - **Project Health**: Comprehensive health metrics
+
+## 🚦 CI/CD Quality Gates
+
+### GitHub Actions Integration
+```yaml
+# .github/workflows/quality.yml
+- name: Run Quality Gate
+  run: |
+    pmat quality-gate \
+      --checks complexity,satd,security,dead-code \
+      --max-complexity-p99 20 \
+      --fail-on-violation
+```
+
+### Available Quality Checks
+- **complexity** - Cyclomatic complexity thresholds
+- **satd** - Self-admitted technical debt (TODO/FIXME/HACK)
+- **security** - Hardcoded passwords and API keys
+- **dead-code** - Unused functions and variables
+- **entropy** - Code diversity metrics
+- **duplicates** - Code duplication detection
+- **coverage** - Test coverage thresholds
+- **sections** - Required documentation sections
+- **provability** - Formal verification readiness
 
 ## 📚 Documentation
 
