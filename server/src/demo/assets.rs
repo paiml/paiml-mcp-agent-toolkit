@@ -21,8 +21,8 @@ pub enum AssetEncoding {
 static ASSETS: Lazy<HashMap<&'static str, EmbeddedAsset>> = Lazy::new(|| {
     let mut m = HashMap::with_capacity(8);
 
-    // Compressed vendor assets - only include if not building for docs.rs
-    #[cfg(not(docsrs))]
+    // Compressed vendor assets - only include if files exist (skip during cargo publish)
+    #[cfg(all(not(docsrs), not(cargo_publish)))]
     {
         m.insert(
             "/vendor/gridjs.min.js",
@@ -61,8 +61,8 @@ static ASSETS: Lazy<HashMap<&'static str, EmbeddedAsset>> = Lazy::new(|| {
         );
     }
 
-    // Demo-specific assets - only include if not building for docs.rs
-    #[cfg(not(docsrs))]
+    // Demo-specific assets - only include if files exist (skip during cargo publish)
+    #[cfg(all(not(docsrs), not(cargo_publish)))]
     {
         m.insert(
             "/demo.css",
