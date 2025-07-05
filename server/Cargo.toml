@@ -97,7 +97,7 @@ gimli = { version = "0.28", optional = true }
 goblin = { version = "0.7", optional = true }
 # Analysis infrastructure for C/C++
 fixedbitset = { version = "0.4", optional = true }
-rustc-hash = { version = "1.1" }
+rustc-hash = { version = "2.1" }
 
 # Installer generation
 # installer-macro = { path = "../installer-macro" } # Removed - using simple include_str! instead
