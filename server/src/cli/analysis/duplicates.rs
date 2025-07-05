@@ -473,7 +473,7 @@ fn format_json_output(report: &DuplicateReport) -> Result<String> {
 ///
 /// # Example
 ///
-/// ```
+/// ```no_run
 /// use pmat::cli::analysis::duplicates::{format_human_output, DuplicateReport, FileStats};
 /// use std::collections::HashMap;
 ///

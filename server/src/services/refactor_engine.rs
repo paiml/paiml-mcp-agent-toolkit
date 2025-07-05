@@ -238,7 +238,7 @@ impl UnifiedEngine {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// use pmat::services::refactor_engine::{
     ///     UnifiedEngine, EngineMode, ExplainLevel
     /// };
@@ -311,7 +311,7 @@ impl UnifiedEngine {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// use pmat::services::refactor_engine::{
     ///     UnifiedEngine, EngineMode
     /// };

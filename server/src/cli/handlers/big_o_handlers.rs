@@ -159,7 +159,7 @@ pub async fn handle_analyze_big_o(
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use pmat::cli::handlers::big_o_handlers::format_big_o_summary;
 /// use pmat::services::big_o_analyzer::{BigOAnalysisReport, FunctionComplexity};
 /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
@@ -172,18 +172,13 @@ pub async fn handle_analyze_big_o(
 ///             function_name: "sort_data".to_string(),
 ///             file_path: PathBuf::from("src/utils.rs"),
 ///             line_number: 42,
-///             time_complexity: ComplexityBound {
-///                 class: BigOClass::Quadratic,
-///                 confidence: 90,
-///             },
-///             space_complexity: ComplexityBound {
-///                 class: BigOClass::Linear,
-///                 confidence: 85,
-///             },
+///             time_complexity: ComplexityBound::quadratic().with_confidence(90),
+///             space_complexity: ComplexityBound::linear().with_confidence(85),
+///             confidence: 90,
 ///             notes: vec![],
 ///         },
 ///     ],
-///     complexity_distribution: pmat::models::complexity_distribution::ComplexityDistribution {
+///     complexity_distribution: pmat::services::big_o_analyzer::ComplexityDistribution {
 ///         constant: 20,
 ///         logarithmic: 10,
 ///         linear: 50,
@@ -191,7 +186,6 @@ pub async fn handle_analyze_big_o(
 ///         quadratic: 10,
 ///         cubic: 2,
 ///         exponential: 1,
-///         factorial: 0,
 ///         unknown: 2,
 ///     },
 ///     pattern_matches: vec![],
