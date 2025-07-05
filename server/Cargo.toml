@@ -86,7 +86,7 @@ swc_ecma_visit = { version = "0.100", optional = true }
 rustpython-parser = { version = "0.4", optional = true }
 # For C/C++ parsing (conditional)
 tree-sitter = { version = "0.22", optional = true }
-tree-sitter-c = { version = "0.21", optional = true }
+tree-sitter-c = { version = "0.24", optional = true }
 tree-sitter-cpp = { version = "0.22", optional = true }
 # For Kotlin parsing (conditional)
 tree-sitter-kotlin = { version = "0.3.8", optional = true }
