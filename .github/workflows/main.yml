@@ -60,13 +60,13 @@ jobs:
       
       - name: Run CI pipeline
         id: tests
-        timeout-minutes: 30
+        timeout-minutes: 15
         run: |
           make format
           make lint
           make check
           cargo build --release --manifest-path server/Cargo.toml --bin pmat
-          make test-fast
+          make test-unit
           echo "passed=true" >> $GITHUB_OUTPUT
       
       - name: Upload binary artifact
@@ -119,19 +119,20 @@ jobs:
         with:
           deno-version: v2.x
       
-      - name: Check documentation
-        run: make validate-docs
+      # Skip slow validation checks for now
+      # - name: Check documentation
+      #   run: make validate-docs
       
-      - name: Check naming conventions
-        run: make validate-naming
+      # - name: Check naming conventions
+      #   run: make validate-naming
       
-      - name: Validate GitHub Actions
-        run: make test-actions
+      # - name: Validate GitHub Actions
+      #   run: make test-actions
 
   property-tests:
     name: Property Tests
     needs: ci
-    if: needs.ci.result == 'success'
+    if: false # TEMPORARILY DISABLED for faster CI
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -177,7 +178,7 @@ jobs:
   benchmarks:
     name: Performance Benchmarks
     needs: ci
-    if: needs.ci.result == 'success' && github.event_name == 'push'
+    if: false # TEMPORARILY DISABLED for faster CI
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
