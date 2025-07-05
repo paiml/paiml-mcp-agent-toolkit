@@ -12,6 +12,11 @@ on:
           - minor
           - major
 
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  RUST_MIN_STACK: 8388608
+
 jobs:
   bump-version:
     runs-on: ubuntu-22.04

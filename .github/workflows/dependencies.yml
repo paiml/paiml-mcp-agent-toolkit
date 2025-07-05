@@ -18,6 +18,7 @@ on:
 env:
   RUST_BACKTRACE: 1
   CARGO_TERM_COLOR: always
+  RUST_MIN_STACK: 8388608
 
 jobs:
   analyze-dependencies:
