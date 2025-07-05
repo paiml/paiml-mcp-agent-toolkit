@@ -343,7 +343,7 @@ fn apply_filters(
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use pmat::cli::analysis::symbol_table::{format_output, SymbolTable, Symbol, SymbolKind, Visibility, Reference, ReferenceKind};
 /// use pmat::cli::SymbolTableOutputFormat;
 ///

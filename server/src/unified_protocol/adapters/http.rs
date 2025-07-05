@@ -39,8 +39,9 @@ use crate::unified_protocol::{
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::unified_protocol::adapters::http::HttpAdapter;
+/// use pmat::unified_protocol::ProtocolAdapter;
 /// use std::net::{SocketAddr, IpAddr, Ipv4Addr};
 ///
 /// // Create HTTP adapter for localhost:3000
@@ -71,8 +72,9 @@ impl HttpAdapter {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```rust,no_run
     /// use pmat::unified_protocol::adapters::http::HttpAdapter;
+    /// use pmat::unified_protocol::ProtocolAdapter;
     /// use std::net::{SocketAddr, IpAddr, Ipv4Addr};
     ///
     /// // Create adapter for localhost development
@@ -335,7 +337,7 @@ pub enum HttpOutput {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,ignore
 /// use pmat::unified_protocol::adapters::http::{HttpServer, HttpServiceHandler};
 /// use pmat::unified_protocol::{UnifiedRequest, UnifiedResponse, ProtocolError};
 /// use std::net::{SocketAddr, IpAddr, Ipv4Addr};

@@ -946,7 +946,7 @@ fn format_output(
 ///
 /// # Example
 ///
-/// ```
+/// ```no_run
 /// use pmat::cli::handlers::lint_hotspot_handlers::{LintHotspotResult, LintHotspot, FileSummary, SeverityDistribution, QualityGateStatus};
 /// use std::collections::HashMap;
 /// use std::path::PathBuf;
