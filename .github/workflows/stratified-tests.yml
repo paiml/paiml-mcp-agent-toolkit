@@ -10,6 +10,7 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
   RUSTFLAGS: "-D warnings"
+  RUST_MIN_STACK: 8388608
 
 jobs:
   unit-tests:
