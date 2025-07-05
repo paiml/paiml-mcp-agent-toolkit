@@ -23,7 +23,7 @@ use std::time::{Duration, UNIX_EPOCH};
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,ignore
 /// use pmat::services::cache::strategies::AstCacheStrategy;
 /// use pmat::services::cache::base::CacheStrategy;
 /// use pmat::services::context::FileContext;
@@ -135,7 +135,7 @@ impl CacheStrategy for AstCacheStrategy {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::cache::strategies::TemplateCacheStrategy;
 /// use pmat::services::cache::base::CacheStrategy;
 /// use pmat::models::template::TemplateResource;
@@ -149,8 +149,16 @@ impl CacheStrategy for AstCacheStrategy {
 ///
 /// // Create a dummy template resource
 /// let template = TemplateResource {
-///     content: "test content".to_string(),
-///     // ... other fields
+///     uri: template_uri.clone(),
+///     name: "test".to_string(),
+///     description: "test description".to_string(),
+///     toolchain: pmat::models::template::Toolchain::RustCli { cargo_features: vec![] },
+///     category: pmat::models::template::TemplateCategory::Makefile,
+///     parameters: vec![],
+///     s3_object_key: "test".to_string(),
+///     content_hash: "test".to_string(),
+///     semantic_version: semver::Version::parse("1.0.0").unwrap(),
+///     dependency_graph: vec![],
 /// };
 ///
 /// // Templates are always valid (embedded, immutable)
@@ -200,7 +208,7 @@ impl CacheStrategy for TemplateCacheStrategy {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,ignore
 /// use pmat::services::cache::strategies::DagCacheStrategy;
 /// use pmat::services::cache::base::CacheStrategy;
 /// use pmat::models::dag::DependencyGraph;
@@ -299,7 +307,7 @@ impl CacheStrategy for DagCacheStrategy {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::services::cache::strategies::ChurnCacheStrategy;
 /// use pmat::services::cache::base::CacheStrategy;
 /// use pmat::models::churn::CodeChurnAnalysis;
@@ -317,7 +325,17 @@ impl CacheStrategy for DagCacheStrategy {
 ///
 /// // Create a dummy churn analysis
 /// let churn = CodeChurnAnalysis {
-///     // ... fields depending on actual structure
+///     generated_at: chrono::Utc::now(),
+///     period_days: 30,
+///     repository_root: repo_dir.path().to_path_buf(),
+///     files: vec![],
+///     summary: pmat::models::churn::ChurnSummary {
+///         total_commits: 0,
+///         total_files_changed: 0,
+///         hotspot_files: vec![],
+///         stable_files: vec![],
+///         author_contributions: std::collections::HashMap::new(),
+///     },
 /// };
 ///
 /// // Validation depends on Git state

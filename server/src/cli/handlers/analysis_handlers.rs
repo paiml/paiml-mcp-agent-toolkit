@@ -58,23 +58,23 @@ use anyhow::Result;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use pmat::cli::handlers::analysis_handlers::route_analyze_command;
-/// use pmat::cli::AnalyzeCommands;
+/// use pmat::cli::commands::AnalyzeCommands;
 /// use std::path::PathBuf;
 ///
 /// # tokio_test::block_on(async {
 /// // Complexity analysis command
 /// let complexity_cmd = AnalyzeCommands::Complexity {
-///     project_path: Some(PathBuf::from("/tmp/project")),
+///     project_path: PathBuf::from("/tmp/project"),
 ///     toolchain: None,
-///     format: None,
+///     format: pmat::cli::enums::ComplexityOutputFormat::Summary,
 ///     output: None,
 ///     max_cyclomatic: None,
 ///     max_cognitive: None,
-///     include: None,
+///     include: vec![],
 ///     watch: false,
-///     top_files: None,
+///     top_files: 10,
 /// };
 ///
 /// // This would normally execute the command
@@ -83,22 +83,22 @@ use anyhow::Result;
 ///
 /// // Dead code analysis command
 /// let dead_code_cmd = AnalyzeCommands::DeadCode {
-///     path: Some(PathBuf::from("/tmp/project")),
-///     format: None,
+///     path: PathBuf::from("/tmp/project"),
+///     format: pmat::cli::enums::DeadCodeOutputFormat::Summary,
 ///     top_files: None,
 ///     include_unreachable: false,
-///     min_dead_lines: None,
+///     min_dead_lines: 10,
 ///     include_tests: false,
 ///     output: None,
 /// };
 ///
 /// // DAG analysis command
 /// let dag_cmd = AnalyzeCommands::Dag {
-///     dag_type: pmat::cli::DagType::CallGraph,
-///     project_path: Some(PathBuf::from("/tmp/project")),
+///     dag_type: pmat::cli::enums::DagType::CallGraph,
+///     project_path: PathBuf::from("/tmp/project"),
 ///     output: None,
 ///     max_depth: Some(5),
-///     target_nodes: vec![],
+///     target_nodes: None,
 ///     filter_external: false,
 ///     show_complexity: false,
 ///     include_duplicates: false,

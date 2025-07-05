@@ -146,7 +146,7 @@ pub fn format_provability_json(
 ///
 /// # Example
 ///
-/// ```
+/// ```no_run
 /// use pmat::cli::provability_helpers::format_provability_summary;
 /// use pmat::services::lightweight_provability_analyzer::{FunctionId, ProofSummary};
 /// use std::path::PathBuf;

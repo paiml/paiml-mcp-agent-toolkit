@@ -1,7 +1,7 @@
 #[cfg(test)]
 use crate::cli::{
     args::{expand_env_vars, parse_key_val, validate_params},
-    AnalyzeCommands, Cli, Commands, ComplexityOutputFormat, ComprehensiveOutputFormat, ContextFormat, DagType, OutputFormat,
+    AnalyzeCommands, Cli, Commands, ComplexityOutputFormat, ContextFormat, DagType, OutputFormat,
 };
 #[cfg(test)]
 use crate::models::{

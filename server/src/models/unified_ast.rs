@@ -432,7 +432,7 @@ impl Location {
     /// # Examples
     ///
     /// ```rust
-    /// use pmat::models::unified_ast::Location;
+    /// use pmat::models::unified_ast::{Location, BytePos, Span};
     /// use std::path::PathBuf;
     ///
     /// let location = Location::new(
@@ -490,7 +490,7 @@ impl Location {
     /// # Examples
     ///
     /// ```rust
-    /// use pmat::models::unified_ast::Location;
+    /// use pmat::models::unified_ast::{Location, BytePos, Span};
     /// use std::path::PathBuf;
     ///
     /// let file = PathBuf::from("test.rs");
@@ -610,12 +610,16 @@ impl QualifiedName {
     /// assert!(QualifiedName::from_string("").is_err());
     /// ```
     pub fn from_string(qualified_str: &str) -> Result<Self, &'static str> {
-        let parts: Vec<&str> = qualified_str.split("::").collect();
-        if parts.is_empty() {
+        if qualified_str.is_empty() {
             return Err("Empty qualified name");
         }
-
+        
+        let parts: Vec<&str> = qualified_str.split("::").collect();
         let name = parts.last().unwrap().to_string();
+        if name.is_empty() {
+            return Err("Empty qualified name");
+        }
+        
         let module_path = parts[..parts.len() - 1]
             .iter()
             .map(|s| s.to_string())

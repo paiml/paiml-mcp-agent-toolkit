@@ -146,14 +146,7 @@ impl StateManager {
     ///     PathBuf::from("/project/src/main.rs"),
     ///     PathBuf::from("/project/src/lib.rs"),
     /// ];
-    /// let config = RefactorConfig {
-    ///     target_complexity: 15,
-    ///     remove_satd: true,
-    ///     max_function_lines: 50,
-    ///     parallel_workers: 4,
-    ///     memory_limit_mb: 512,
-    ///     batch_size: 10,
-    /// };
+    /// let config = RefactorConfig::default();
     ///
     /// let result = manager.start_session(targets, config);
     /// assert!(result.is_ok());

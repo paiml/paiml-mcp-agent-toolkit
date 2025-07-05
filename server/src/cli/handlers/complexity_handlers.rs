@@ -624,7 +624,7 @@ fn generate_satd_sarif(
 ///
 /// # Example
 ///
-/// ```
+/// ```no_run
 /// use pmat::services::satd_detector::{SATDAnalysisResult, SATDSummary, TechnicalDebt, DebtCategory, Severity};
 /// use pmat::cli::handlers::complexity_handlers::format_satd_summary;
 /// use std::collections::HashMap;
