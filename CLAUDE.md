@@ -78,3 +78,56 @@ make test-fast
 -   **Test Coverage:** Minimum of **80%** per file.
 -   **Technical Debt:** **Zero** self-admitted technical debt (no `TODO`, `FIXME`, `HACK` comments).
 -   **Linting:** Must pass all `clippy::pedantic` and `clippy::nursery` lints.
+
+## Release Process (Jidoka - Quality at Every Step)
+
+When creating a new release, follow this exact process to ensure quality:
+
+### Step 1: Update Dependencies
+```bash
+make outdated          # Check what needs updating
+make update-deps       # Safe semver updates
+make test-unit         # Verify tests pass
+```
+
+### Step 2: Create GitHub Release
+```bash
+# Use Simple Release workflow (recommended)
+gh workflow run simple-release.yml -f version_bump=patch  # or minor/major
+
+# Alternative: Manual release
+make create-release
+```
+
+### Step 3: Publish to crates.io
+After the GitHub release is created and tagged:
+```bash
+# The publish-crates.yml workflow will trigger automatically on tag push
+# Or manually publish:
+cd server && cargo publish
+```
+
+### Step 4: Verify Both Installations Work
+**CRITICAL**: Always verify both installation methods work correctly:
+
+```bash
+# Test crates.io installation
+cargo install pmat --force
+pmat --version
+
+# Test GitHub release installation
+curl -fsSL https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.sh | bash
+pmat --version
+```
+
+### Release Checklist
+- [ ] All CI/CD workflows passing
+- [ ] Dependencies updated
+- [ ] Version bumped correctly
+- [ ] GitHub release created via simple-release.yml
+- [ ] Published to crates.io
+- [ ] Verified cargo install works
+- [ ] Verified curl install script works
+- [ ] Release notes updated
+
+**Remember**: Quality is built into every step. A release with any defect violates the Toyota Way.
