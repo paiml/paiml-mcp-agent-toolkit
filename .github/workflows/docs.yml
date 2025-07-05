@@ -5,6 +5,11 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  RUST_MIN_STACK: 8388608
+
 permissions:
   contents: read
   pages: write
