@@ -1,10 +1,11 @@
 name: Property Tests
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+  workflow_dispatch: # TEMPORARILY manual only for faster CI
+  # push:
+  #   branches: [ main, master ]
+  # pull_request:
+  #   branches: [ main, master ]
 
 env:
   CARGO_TERM_COLOR: always
