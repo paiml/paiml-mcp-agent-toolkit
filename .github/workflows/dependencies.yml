@@ -1,9 +1,9 @@
 name: Dependency Management
 
 on:
-  schedule:
-    - cron: '0 3 * * 1'  # Weekly on Monday at 3 AM
-  workflow_dispatch:
+  # schedule:
+  #   - cron: '0 3 * * 1'  # Weekly on Monday at 3 AM
+  workflow_dispatch:  # Manual only to avoid automated PRs
     inputs:
       update_type:
         description: 'Update type'
