@@ -434,6 +434,21 @@ impl ComplexityBound {
     }
 
     /// Check if this bound is better than another
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass, InputVariable};
+    /// 
+    /// let linear = ComplexityBound::linear();
+    /// let quadratic = ComplexityBound::quadratic();
+    /// assert!(linear.is_better_than(&quadratic));
+    /// 
+    /// // Same class but different coefficients
+    /// let fast = ComplexityBound::new(BigOClass::Linear, 2, InputVariable::N);
+    /// let slow = ComplexityBound::new(BigOClass::Linear, 5, InputVariable::N);
+    /// assert!(fast.is_better_than(&slow));
+    /// ```
     pub fn is_better_than(&self, other: &Self) -> bool {
         if self.class != other.class {
             self.class.is_better_than(&other.class)
