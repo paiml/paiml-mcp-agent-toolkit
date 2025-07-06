@@ -3098,6 +3098,17 @@ pub fn extract_identifiers(content: &str) -> Vec<super::NameInfo> {
     identifiers
 }
 
+/// Calculates normalized string similarity using Levenshtein distance
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::cli::stubs::calculate_string_similarity;
+/// 
+/// assert_eq!(calculate_string_similarity("hello", "hello"), 1.0);
+/// assert_eq!(calculate_string_similarity("", ""), 1.0);
+/// assert!(calculate_string_similarity("hello", "world") < 0.5);
+/// ```
 pub fn calculate_string_similarity(s1: &str, s2: &str) -> f32 {
     // Normalized Levenshtein distance for basic string similarity
     if s1.is_empty() && s2.is_empty() {
