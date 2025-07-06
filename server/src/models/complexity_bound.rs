@@ -34,10 +34,10 @@ impl BigOClass {
     /// Get a human-readable notation for the complexity class
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::BigOClass;
-    /// 
+    ///
     /// assert_eq!(BigOClass::Constant.notation(), "O(1)");
     /// assert_eq!(BigOClass::Linear.notation(), "O(n)");
     /// assert_eq!(BigOClass::Quadratic.notation(), "O(n²)");
@@ -59,10 +59,10 @@ impl BigOClass {
     /// Check if this complexity is better than another
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::BigOClass;
-    /// 
+    ///
     /// assert!(BigOClass::Constant.is_better_than(&BigOClass::Linear));
     /// assert!(BigOClass::Linear.is_better_than(&BigOClass::Quadratic));
     /// assert!(!BigOClass::Quadratic.is_better_than(&BigOClass::Linear));
@@ -74,10 +74,10 @@ impl BigOClass {
     /// Get approximate growth factor for small n
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::BigOClass;
-    /// 
+    ///
     /// assert_eq!(BigOClass::Constant.growth_factor(100.0), 1.0);
     /// assert_eq!(BigOClass::Linear.growth_factor(100.0), 100.0);
     /// assert_eq!(BigOClass::Quadratic.growth_factor(10.0), 100.0);
@@ -160,10 +160,10 @@ impl ComplexityFlags {
     /// Adds a flag to the complexity flags
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::ComplexityFlags;
-    /// 
+    ///
     /// let flags = ComplexityFlags::new()
     ///     .with(ComplexityFlags::WORST_CASE)
     ///     .with(ComplexityFlags::PROVEN);
@@ -178,10 +178,10 @@ impl ComplexityFlags {
     /// Checks if a flag is set
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::ComplexityFlags;
-    /// 
+    ///
     /// let flags = ComplexityFlags::new().with(ComplexityFlags::AMORTIZED);
     /// assert!(flags.has(ComplexityFlags::AMORTIZED));
     /// assert!(!flags.has(ComplexityFlags::WORST_CASE));
@@ -233,10 +233,10 @@ impl ComplexityBound {
     /// Create a constant time bound O(1)
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
-    /// 
+    ///
     /// let bound = ComplexityBound::constant();
     /// assert_eq!(bound.class, BigOClass::Constant);
     /// assert_eq!(bound.confidence, 100);
@@ -251,10 +251,10 @@ impl ComplexityBound {
     /// Create a linear time bound O(n)
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
-    /// 
+    ///
     /// let bound = ComplexityBound::linear();
     /// assert_eq!(bound.class, BigOClass::Linear);
     /// assert_eq!(bound.notation(), "O(n)");
@@ -266,10 +266,10 @@ impl ComplexityBound {
     /// Create a quadratic time bound O(n²)
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
-    /// 
+    ///
     /// let bound = ComplexityBound::quadratic();
     /// assert_eq!(bound.class, BigOClass::Quadratic);
     /// assert_eq!(bound.notation(), "O(n²)");
@@ -281,10 +281,10 @@ impl ComplexityBound {
     /// Create a logarithmic time bound O(log n)
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
-    /// 
+    ///
     /// let bound = ComplexityBound::logarithmic();
     /// assert_eq!(bound.class, BigOClass::Logarithmic);
     /// assert_eq!(bound.notation(), "O(log n)");
@@ -296,10 +296,10 @@ impl ComplexityBound {
     /// Create a linearithmic time bound O(n log n)
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
-    /// 
+    ///
     /// let bound = ComplexityBound::linearithmic();
     /// assert_eq!(bound.class, BigOClass::Linearithmic);
     /// assert_eq!(bound.notation(), "O(n log n)");
@@ -309,6 +309,19 @@ impl ComplexityBound {
     }
 
     /// Create a polynomial bound with given exponent
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
+    /// 
+    /// let constant = ComplexityBound::polynomial(0, 5);
+    /// assert_eq!(constant.class, BigOClass::Constant);
+    /// 
+    /// let cubic = ComplexityBound::polynomial(3, 2);
+    /// assert_eq!(cubic.class, BigOClass::Cubic);
+    /// assert_eq!(cubic.coefficient, 2);
+    /// ```
     pub fn polynomial(exponent: u32, coefficient: u16) -> Self {
         let class = match exponent {
             0 => BigOClass::Constant,
