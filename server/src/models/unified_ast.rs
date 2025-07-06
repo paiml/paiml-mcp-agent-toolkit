@@ -537,6 +537,16 @@ impl BytePos {
         self.0 as usize
     }
 
+    /// Creates a BytePos from a usize position
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::unified_ast::BytePos;
+    /// 
+    /// let pos = BytePos::from_usize(42);
+    /// assert_eq!(pos.to_usize(), 42);
+    /// ```
     pub fn from_usize(pos: usize) -> Self {
         Self(pos as u32)
     }
