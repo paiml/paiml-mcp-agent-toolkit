@@ -190,6 +190,21 @@ impl ComplexityFlags {
         self.0 & flag != 0
     }
 
+    /// Checks if this represents worst-case complexity
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::ComplexityFlags;
+    /// 
+    /// let flags = ComplexityFlags::new()
+    ///     .with(ComplexityFlags::WORST_CASE);
+    /// assert!(flags.is_worst_case());
+    /// 
+    /// let avg_case = ComplexityFlags::new()
+    ///     .with(ComplexityFlags::AVERAGE_CASE);
+    /// assert!(!avg_case.is_worst_case());
+    /// ```
     pub fn is_worst_case(&self) -> bool {
         self.has(Self::WORST_CASE)
     }
