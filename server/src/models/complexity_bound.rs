@@ -342,6 +342,17 @@ impl ComplexityBound {
     }
 
     /// Create an unknown complexity bound
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
+    /// 
+    /// let unknown = ComplexityBound::unknown();
+    /// assert_eq!(unknown.class, BigOClass::Unknown);
+    /// assert_eq!(unknown.confidence, 0);
+    /// assert_eq!(unknown.notation(), "O(?)");
+    /// ```
     pub fn unknown() -> Self {
         Self::new(BigOClass::Unknown, 0, InputVariable::N).with_confidence(0)
     }
