@@ -28,6 +28,23 @@ pub struct McpError {
 }
 
 impl McpResponse {
+    /// Creates a successful MCP response
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::mcp::McpResponse;
+    /// use serde_json::json;
+    /// 
+    /// let response = McpResponse::success(
+    ///     json!(1),
+    ///     json!({"status": "ok"})
+    /// );
+    /// 
+    /// assert_eq!(response.jsonrpc, "2.0");
+    /// assert!(response.result.is_some());
+    /// assert!(response.error.is_none());
+    /// ```
     pub fn success(id: Value, result: Value) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
