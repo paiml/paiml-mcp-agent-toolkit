@@ -17,6 +17,16 @@ pub fn deserialize_state_from_capnp(data: &[u8]) -> Result<RefactorStateMachine,
 }
 
 // Helper functions for testing and development
+/// Checks if Cap'n Proto serialization is available
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::mcp_server::capnp_conversion::is_capnp_available;
+/// 
+/// let available = is_capnp_available();
+/// assert!(!available); // Currently always returns false
+/// ```
 pub fn is_capnp_available() -> bool {
     // For now, Cap'n Proto is not available, using JSON fallback
     false
