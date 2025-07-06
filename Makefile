@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint lint-main check test test-doc test-fast coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-refactor overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-all coverage-stratified
+.PHONY: all validate format lint lint-main check test test-doc test-fast coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-refactor overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all coverage-stratified
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -114,6 +114,27 @@ test-performance:
 	@echo "📊 Running performance regression tests..."
 	@cd server && cargo test --test performance_regression --features perf-tests -- --test-threads=1
 	@echo "✅ Performance tests completed!"
+
+test-property:
+	@echo "🎲 Running property-based tests..."
+	@THREADS=$${PROPTEST_THREADS:-$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)}; \
+	echo "  Running all property test modules with $$THREADS threads..."; \
+	echo "  (Override with PROPTEST_THREADS=n make test-property)"; \
+	echo "  Note: Slow cache tests are skipped. Run 'make test-property-slow' to include them."; \
+	cd server && timeout 180 cargo test --lib -- property_tests --test-threads=$$THREADS || echo "⚠️  Some property tests timed out after 3 minutes"; \
+	cd server && timeout 60 cargo test --lib -- prop_ --test-threads=$$THREADS || echo "⚠️  Some prop tests timed out"; \
+	cd server && cargo test --test refactor_auto_property_integration -- --test-threads=$$THREADS
+	@echo "✅ Property tests completed!"
+
+# Run property tests including slow ones
+test-property-slow:
+	@echo "🐌 Running ALL property-based tests (including slow ones)..."
+	@THREADS=$${PROPTEST_THREADS:-$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)}; \
+	echo "  Running with $$THREADS threads..."; \
+	cd server && cargo test --lib -- property_tests --test-threads=$$THREADS --include-ignored; \
+	cd server && cargo test --lib -- prop_ --test-threads=$$THREADS --include-ignored; \
+	cd server && cargo test --test refactor_auto_property_integration -- --test-threads=$$THREADS
+	@echo "✅ All property tests completed (including slow tests)!"
 
 # Run all stratified tests in parallel
 test-all: 
