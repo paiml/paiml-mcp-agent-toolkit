@@ -175,6 +175,21 @@ impl<'a> ComplexityVisitor<'a> {
 }
 
 /// Cache key computation for complexity metrics
+/// Computes a cache key for complexity analysis based on file path and content
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::services::complexity::compute_complexity_cache_key;
+/// use std::path::Path;
+/// 
+/// let path = Path::new("src/main.rs");
+/// let content = b"fn main() { println!(\"Hello\"); }";
+/// 
+/// let key = compute_complexity_cache_key(path, content);
+/// assert!(key.starts_with("cx:"));
+/// assert!(key.len() > 10);
+/// ```
 pub fn compute_complexity_cache_key(path: &Path, content: &[u8]) -> String {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -322,6 +337,28 @@ impl ComplexityRule for CognitiveComplexityRule {
 /// let metrics = vec![];
 /// let report = aggregate_results(metrics);
 /// assert_eq!(report.summary.total_files, 0);
+/// ```
+/// Aggregates complexity metrics from multiple files into a summary report
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::services::complexity::{aggregate_results, FileComplexityMetrics, ComplexityMetrics};
+/// 
+/// let file = FileComplexityMetrics {
+///     path: "src/main.rs".to_string(),
+///     total_complexity: ComplexityMetrics {
+///         cyclomatic: 10,
+///         cognitive: 8,
+///         nesting_max: 3,
+///         lines: 50,
+///     },
+///     functions: vec![],
+///     classes: vec![],
+/// };
+/// 
+/// let report = aggregate_results(vec![file]);
+/// assert_eq!(report.files.len(), 1);
 /// ```
 pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> ComplexityReport {
     let mut all_cyclomatic: Vec<u16> = Vec::new();
