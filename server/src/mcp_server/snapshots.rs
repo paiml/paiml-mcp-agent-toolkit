@@ -79,6 +79,22 @@ impl SnapshotManager {
         Ok(())
     }
 
+    /// Loads a refactor state machine snapshot from disk
+    ///
+    /// # Examples
+    /// 
+    /// ```no_run
+    /// use pmat::mcp_server::snapshots::SnapshotManager;
+    /// use tempfile::tempdir;
+    /// 
+    /// let dir = tempdir().unwrap();
+    /// let manager = SnapshotManager::with_path(dir.path());
+    /// 
+    /// match manager.load_snapshot() {
+    ///     Ok(state) => println!("Loaded state"),
+    ///     Err(e) => println!("No snapshot found: {}", e),
+    /// }
+    /// ```
     pub fn load_snapshot(&self) -> Result<RefactorStateMachine, String> {
         debug!(
             "Loading refactor state snapshot from {:?} using {}",
