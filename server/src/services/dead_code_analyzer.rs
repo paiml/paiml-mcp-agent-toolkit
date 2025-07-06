@@ -26,6 +26,17 @@ impl HierarchicalBitSet {
         }
     }
 
+    /// Sets the bit at the given index
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::services::dead_code_analyzer::HierarchicalBitSet;
+    /// 
+    /// let mut bitset = HierarchicalBitSet::new(100);
+    /// bitset.set(42);
+    /// assert!(bitset.is_set(42));
+    /// ```
     pub fn set(&mut self, index: u32) {
         self.levels[0].insert(index);
     }
