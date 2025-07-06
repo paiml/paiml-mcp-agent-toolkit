@@ -78,6 +78,24 @@ impl DependencyGraph {
         self.nodes.insert(node.id.clone(), node);
     }
 
+    /// Adds an edge between two nodes in the dependency graph
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::dag::{DependencyGraph, Edge, EdgeType};
+    /// 
+    /// let mut graph = DependencyGraph::new();
+    /// graph.add_edge(Edge {
+    ///     from: "main::hello".to_string(),
+    ///     to: "utils::print".to_string(),
+    ///     edge_type: EdgeType::Calls,
+    ///     weight: 1,
+    /// });
+    /// 
+    /// assert_eq!(graph.edges.len(), 1);
+    /// assert_eq!(graph.edges[0].edge_type, EdgeType::Calls);
+    /// ```
     pub fn add_edge(&mut self, edge: Edge) {
         self.edges.push(edge);
     }
