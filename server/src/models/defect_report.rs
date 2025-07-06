@@ -117,6 +117,17 @@ pub enum DefectCategory {
 
 impl DefectCategory {
     /// Get all categories for iteration
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::defect_report::DefectCategory;
+    /// 
+    /// let categories = DefectCategory::all();
+    /// assert_eq!(categories.len(), 7);
+    /// assert!(categories.contains(&DefectCategory::Complexity));
+    /// assert!(categories.contains(&DefectCategory::TestCoverage));
+    /// ```
     pub fn all() -> Vec<Self> {
         vec![
             Self::Complexity,
@@ -161,6 +172,25 @@ impl Defect {
     }
 
     /// Calculate severity weight for scoring
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::defect_report::{PredictedDefect, Severity, DefectCategory};
+    /// 
+    /// let defect = PredictedDefect {
+    ///     id: "TEST-001".to_string(),
+    ///     category: DefectCategory::ResourceLeak,
+    ///     severity: Severity::High,
+    ///     confidence: 0.85,
+    ///     location: "src/main.rs:45".to_string(),
+    ///     description: "Potential memory leak".to_string(),
+    ///     evidence: vec![],
+    ///     recommendation: None,
+    /// };
+    /// 
+    /// assert_eq!(defect.severity_weight(), 5.0);
+    /// ```
     pub fn severity_weight(&self) -> f64 {
         match self.severity {
             Severity::Critical => 10.0,
