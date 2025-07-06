@@ -32,6 +32,16 @@ pub enum BigOClass {
 
 impl BigOClass {
     /// Get a human-readable notation for the complexity class
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::BigOClass;
+    /// 
+    /// assert_eq!(BigOClass::Constant.notation(), "O(1)");
+    /// assert_eq!(BigOClass::Linear.notation(), "O(n)");
+    /// assert_eq!(BigOClass::Quadratic.notation(), "O(n²)");
+    /// ```
     pub fn notation(&self) -> &'static str {
         match self {
             Self::Constant => "O(1)",
