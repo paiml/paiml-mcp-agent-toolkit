@@ -417,6 +417,18 @@ impl ComplexityBound {
     }
 
     /// Estimate operations for given input size
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::ComplexityBound;
+    /// 
+    /// let linear = ComplexityBound::linear();
+    /// assert_eq!(linear.estimate_operations(100.0), 100.0);
+    /// 
+    /// let quadratic = ComplexityBound::quadratic();
+    /// assert_eq!(quadratic.estimate_operations(10.0), 100.0);
+    /// ```
     pub fn estimate_operations(&self, n: f64) -> f64 {
         self.coefficient as f64 * self.class.growth_factor(n)
     }
