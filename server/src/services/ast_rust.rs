@@ -210,18 +210,17 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
             // Start with base complexity of 1 for any function
             let base_complexity = if is_async {
                 ComplexityMetrics {
-                    cyclomatic: 2,  // async adds one complexity point
-                    cognitive: 1,   // async adds cognitive load
+                    cyclomatic: 2, // async adds one complexity point
+                    cognitive: 1,  // async adds cognitive load
                     ..Default::default()
                 }
             } else {
                 ComplexityMetrics {
-                    cyclomatic: 1,  // base cyclomatic complexity
-                    cognitive: 0,   // base cognitive complexity (no mental burden)
+                    cyclomatic: 1, // base cyclomatic complexity
+                    cognitive: 0,  // base cognitive complexity (no mental burden)
                     ..Default::default()
                 }
             };
-
 
             self.current_function_complexity = Some(base_complexity);
             self.current_function_name = Some(name.clone());
@@ -330,14 +329,14 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
                             // Start with base complexity of 1 for any method
                             let base_complexity = if is_async {
                                 ComplexityMetrics {
-                                    cyclomatic: 2,  // async adds one complexity point
-                                    cognitive: 1,   // async adds cognitive load
+                                    cyclomatic: 2, // async adds one complexity point
+                                    cognitive: 1,  // async adds cognitive load
                                     ..Default::default()
                                 }
                             } else {
                                 ComplexityMetrics {
-                                    cyclomatic: 1,  // base cyclomatic complexity
-                                    cognitive: 0,   // base cognitive complexity (no mental burden)
+                                    cyclomatic: 1, // base cyclomatic complexity
+                                    cognitive: 0,  // base cognitive complexity (no mental burden)
                                     ..Default::default()
                                 }
                             };

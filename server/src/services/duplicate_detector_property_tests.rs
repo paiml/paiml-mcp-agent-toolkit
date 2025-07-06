@@ -206,13 +206,13 @@ mod tests {
         ) {
             let extractor = UniversalFeatureExtractor::new(config);
             let tokens = extractor.extract_features(&source, Language::Rust);
-            
+
             // Should have at least as many non-whitespace tokens as words
             let word_count = source.split_whitespace().count();
             let token_count = tokens.iter()
                 .filter(|t| !matches!(t.kind, TokenKind::Whitespace))
                 .count();
-            
+
             prop_assert!(token_count >= word_count.saturating_sub(word_count / 2));
         }
 
@@ -236,10 +236,10 @@ mod tests {
         ) {
             if tokens1.len() >= 3 && tokens2.len() >= 3 {
                 let generator = MinHashGenerator::new(200);
-                
+
                 let shingles1 = generator.generate_shingles(&tokens1, 3);
                 let shingles2 = generator.generate_shingles(&tokens2, 3);
-                
+
                 // Calculate actual Jaccard similarity
                 let set1: HashSet<_> = shingles1.iter().collect();
                 let set2: HashSet<_> = shingles2.iter().collect();
@@ -250,12 +250,12 @@ mod tests {
                 } else {
                     intersection_size as f64 / union_size as f64
                 };
-                
+
                 // Calculate MinHash approximation
                 let sig1 = generator.compute_signature(&shingles1);
                 let sig2 = generator.compute_signature(&shingles2);
                 let minhash_jaccard = sig1.jaccard_similarity(&sig2);
-                
+
                 // MinHash should approximate actual Jaccard (allow some error)
                 let error = (actual_jaccard - minhash_jaccard).abs();
                 prop_assert!(error <= 0.3); // Allow reasonable approximation error
@@ -270,10 +270,10 @@ mod tests {
         ) {
             let generator = MinHashGenerator::new(num_hashes);
             let shingles = generator.generate_shingles(&tokens, 3);
-            
+
             let sig1 = generator.compute_signature(&shingles);
             let sig2 = generator.compute_signature(&shingles);
-            
+
             prop_assert_eq!(sig1.values, sig2.values);
         }
 
@@ -287,7 +287,7 @@ mod tests {
             let generator = MinHashGenerator::new(100);
             let shingles1 = generator.generate_shingles(&tokens, k1);
             let shingles2 = generator.generate_shingles(&tokens, k2);
-            
+
             if tokens.len() >= k2 {
                 prop_assert!(shingles2.len() <= shingles1.len());
             }
@@ -347,7 +347,7 @@ mod tests {
             let large_source = "fn test() { return 42; }\n".repeat(repeat_count);
             let extractor = UniversalFeatureExtractor::new(config);
             let tokens = extractor.extract_features(&large_source, Language::Rust);
-            
+
             // Should handle large inputs gracefully
             prop_assert!(!tokens.is_empty());
             prop_assert!(tokens.len() < repeat_count * 20); // Reasonable upper bound
@@ -360,14 +360,16 @@ mod tests {
         let config = DuplicateDetectionConfig::default();
         assert!(config.similarity_threshold > 0.0);
         assert!(config.min_tokens > 0);
-        
+
         let generator = MinHashGenerator::new(100);
         // Test generator creation succeeds
         let shingles = vec![1u64, 2u64, 3u64];
         let sig = generator.compute_signature(&shingles);
         assert_eq!(sig.values.len(), 100);
-        
-        let signature = MinHashSignature { values: vec![1, 2, 3] };
+
+        let signature = MinHashSignature {
+            values: vec![1, 2, 3],
+        };
         assert_eq!(signature.jaccard_similarity(&signature), 1.0);
     }
 }

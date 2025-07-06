@@ -198,10 +198,10 @@ impl GitHubClient {
 /// Parses a GitHub issue to extract file paths and keywords
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::services::github_integration::{parse_issue, GitHubIssue};
-/// 
+///
 /// let issue = GitHubIssue {
 ///     number: 123,
 ///     title: "Optimize performance in src/main.rs".to_string(),
@@ -212,7 +212,7 @@ impl GitHubClient {
 ///     updated_at: "2024-01-01".to_string(),
 ///     labels: vec![],
 /// };
-/// 
+///
 /// let parsed = parse_issue(issue);
 /// assert!(parsed.file_paths.contains(&"src/main.rs".to_string()));
 /// assert!(!parsed.keywords.is_empty());

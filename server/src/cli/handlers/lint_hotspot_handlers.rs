@@ -346,12 +346,14 @@ async fn run_clippy_analysis(project_path: &Path, clippy_flags: &str) -> Result<
 
     let output = cmd.output().await.context("Failed to run cargo clippy")?;
 
-    // Check if clippy failed
-    if !output.status.success() {
+    // Check if clippy failed - but warnings are expected with -W flags
+    if !output.status.success() && output.status.code() != Some(101) {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        eprintln!("⚠️  Clippy failed with status: {:?}", output.status);
-        eprintln!("Stderr: {}", stderr);
-        // Continue anyway - we might have partial output
+        if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
+            eprintln!("⚠️  Clippy exited with status: {:?}", output.status);
+            eprintln!("Stderr: {}", stderr);
+        }
+        // Continue anyway - clippy returns non-zero on warnings with -W flags
     }
 
     // Parse JSON output line by line
@@ -492,10 +494,11 @@ async fn run_clippy_analysis_single_file(
     // Parse clippy flags
     let flags: Vec<&str> = clippy_flags.split_whitespace().collect();
 
-    // Run clippy with JSON output
+    // Run clippy with JSON output (include all targets for single file too)
     let mut cmd = Command::new("cargo");
     cmd.current_dir(project_path)
         .arg("clippy")
+        .arg("--all-targets")
         .arg("--message-format=json");
 
     // Add clippy flags after -- separator
@@ -668,9 +671,13 @@ fn process_diagnostic(
     if let Some(span) = primary_span {
         let mut file_path = PathBuf::from(&span.file_name);
 
-        // Handle workspace paths - if path starts with "server/", strip it
+        // Handle workspace paths - if path starts with "server/", strip it for consistent handling
+        // But preserve the original path structure for examples
         if let Ok(stripped) = file_path.strip_prefix("server/") {
             file_path = PathBuf::from(stripped);
+        } else if file_path.starts_with("examples/") {
+            // Keep examples/ paths as-is since they are relative to server/
+            file_path = PathBuf::from("server").join(&file_path);
         }
 
         // Skip non-Rust files (config files, etc.)

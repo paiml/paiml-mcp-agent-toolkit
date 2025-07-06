@@ -121,9 +121,9 @@ test-property:
 	echo "  Running all property test modules with $$THREADS threads..."; \
 	echo "  (Override with PROPTEST_THREADS=n make test-property)"; \
 	echo "  Note: Slow cache tests are skipped. Run 'make test-property-slow' to include them."; \
-	cd server && timeout 180 cargo test --lib -- property_tests --test-threads=$$THREADS || echo "⚠️  Some property tests timed out after 3 minutes"; \
-	cd server && timeout 60 cargo test --lib -- prop_ --test-threads=$$THREADS || echo "⚠️  Some prop tests timed out"; \
-	cd server && cargo test --test refactor_auto_property_integration -- --test-threads=$$THREADS
+	timeout 180 cargo test --manifest-path server/Cargo.toml --lib -- property_tests --test-threads=$$THREADS || echo "⚠️  Some property tests timed out after 3 minutes"; \
+	timeout 60 cargo test --manifest-path server/Cargo.toml --lib -- prop_ --test-threads=$$THREADS || echo "⚠️  Some prop tests timed out"; \
+	cargo test --manifest-path server/Cargo.toml --test refactor_auto_property_integration -- --test-threads=$$THREADS
 	@echo "✅ Property tests completed!"
 
 # Run property tests including slow ones
@@ -131,9 +131,9 @@ test-property-slow:
 	@echo "🐌 Running ALL property-based tests (including slow ones)..."
 	@THREADS=$${PROPTEST_THREADS:-$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)}; \
 	echo "  Running with $$THREADS threads..."; \
-	cd server && cargo test --lib -- property_tests --test-threads=$$THREADS --include-ignored; \
-	cd server && cargo test --lib -- prop_ --test-threads=$$THREADS --include-ignored; \
-	cd server && cargo test --test refactor_auto_property_integration -- --test-threads=$$THREADS
+	cargo test --manifest-path server/Cargo.toml --lib -- property_tests --test-threads=$$THREADS --include-ignored; \
+	cargo test --manifest-path server/Cargo.toml --lib -- prop_ --test-threads=$$THREADS --include-ignored; \
+	cargo test --manifest-path server/Cargo.toml --test refactor_auto_property_integration -- --test-threads=$$THREADS
 	@echo "✅ All property tests completed (including slow tests)!"
 
 # Run all stratified tests in parallel

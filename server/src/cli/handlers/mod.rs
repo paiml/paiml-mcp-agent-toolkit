@@ -14,6 +14,8 @@ pub mod enforce_handlers;
 pub mod enhanced_reporting_handlers;
 pub mod generation_handlers;
 pub mod lint_hotspot_handlers;
+#[cfg(test)]
+pub mod lint_hotspot_property_tests;
 pub mod name_similarity_analysis;
 pub mod refactor_auto_handlers;
 #[cfg(test)]

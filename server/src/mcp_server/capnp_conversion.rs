@@ -44,7 +44,7 @@ pub fn serialize_state_to_capnp(state: &RefactorStateMachine) -> Result<Vec<u8>,
 ///
 /// let serialized = serialize_state_to_capnp(&state).unwrap();
 /// let deserialized = deserialize_state_from_capnp(&serialized).unwrap();
-/// 
+///
 /// assert_eq!(state.targets.len(), deserialized.targets.len());
 /// ```
 pub fn deserialize_state_from_capnp(data: &[u8]) -> Result<RefactorStateMachine, String> {

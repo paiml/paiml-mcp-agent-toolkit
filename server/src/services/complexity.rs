@@ -178,14 +178,14 @@ impl<'a> ComplexityVisitor<'a> {
 /// Computes a cache key for complexity analysis based on file path and content
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::services::complexity::compute_complexity_cache_key;
 /// use std::path::Path;
-/// 
+///
 /// let path = Path::new("src/main.rs");
 /// let content = b"fn main() { println!(\"Hello\"); }";
-/// 
+///
 /// let key = compute_complexity_cache_key(path, content);
 /// assert!(key.starts_with("cx:"));
 /// assert!(key.len() > 10);
@@ -341,10 +341,10 @@ impl ComplexityRule for CognitiveComplexityRule {
 /// Aggregates complexity metrics from multiple files into a summary report
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::services::complexity::{aggregate_results, FileComplexityMetrics, ComplexityMetrics};
-/// 
+///
 /// let file = FileComplexityMetrics {
 ///     path: "src/main.rs".to_string(),
 ///     total_complexity: ComplexityMetrics {
@@ -356,7 +356,7 @@ impl ComplexityRule for CognitiveComplexityRule {
 ///     functions: vec![],
 ///     classes: vec![],
 /// };
-/// 
+///
 /// let report = aggregate_results(vec![file]);
 /// assert_eq!(report.files.len(), 1);
 /// ```
@@ -550,10 +550,10 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 /// Formats a complexity report as a summary
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::services::complexity::{format_complexity_summary, ComplexityReport, ComplexitySummary};
-/// 
+///
 /// let report = ComplexityReport {
 ///     summary: ComplexitySummary {
 ///         total_files: 10,
@@ -570,7 +570,7 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 ///     hotspots: vec![],
 ///     files: vec![],
 /// };
-/// 
+///
 /// let summary = format_complexity_summary(&report);
 /// assert!(summary.contains("Complexity Analysis Summary"));
 /// assert!(summary.contains("Files analyzed**: 10"));
@@ -759,10 +759,10 @@ pub fn format_complexity_report(report: &ComplexityReport) -> String {
 /// Formats a complexity report as SARIF (Static Analysis Results Interchange Format)
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::services::complexity::{format_as_sarif, ComplexityReport, ComplexitySummary};
-/// 
+///
 /// let report = ComplexityReport {
 ///     summary: ComplexitySummary {
 ///         total_files: 1,
@@ -779,7 +779,7 @@ pub fn format_complexity_report(report: &ComplexityReport) -> String {
 ///     hotspots: vec![],
 ///     files: vec![],
 /// };
-/// 
+///
 /// let sarif = format_as_sarif(&report).unwrap();
 /// assert!(sarif.contains("\"version\": \"2.1.0\""));
 /// assert!(sarif.contains("cyclomatic-complexity"));

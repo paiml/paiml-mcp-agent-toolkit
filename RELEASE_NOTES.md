@@ -2,6 +2,38 @@
 
 This document details the latest changes, features, and bug fixes for the `pmat` crate.
 
+## v0.28.7 (Unreleased) - Lint Hotspot Analysis Improvements
+
+### 🎯 Summary
+
+This release improves the `analyze lint-hotspot` command with bug fixes, enhanced UX, and comprehensive property-based testing.
+
+### ✨ Improvements
+
+- **Fixed clippy flag handling** - Changed from `-D warnings` to `-W warnings` to prevent early termination
+- **Single file mode fix** - Added `--all-targets` flag to properly analyze individual files including examples
+- **Enhanced error handling** - Improved handling of non-zero exit codes from clippy
+- **Property test coverage** - Added 9 comprehensive property tests for lint-hotspot functionality
+- **Documentation updates** - Updated CLI reference with accurate command options and examples
+
+### 🐛 Bug Fixes
+
+- **Fixed zero violations bug** - Single file analysis now correctly detects all violations
+- **Fixed Makefile errors** - Replaced `cd server &&` with `--manifest-path` for proper workspace handling
+- **Fixed property test timeouts** - Optimized WASM and Mermaid property tests from 1000 to 100 cases
+
+### 🧪 Testing
+
+- **Property Tests Added**:
+  - Defect density calculation correctness
+  - File summary consistency
+  - Severity distribution validation
+  - Top violations sorting
+  - Hotspot detection accuracy
+  - Machine-applicable suggestion validation
+  - Line range validation
+  - Zero SLOC handling
+
 ## v0.28.4 (2025-07-05) - Documentation Testing Infrastructure
 
 ### 🎯 Summary

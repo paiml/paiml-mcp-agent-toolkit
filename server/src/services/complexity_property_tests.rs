@@ -95,7 +95,7 @@ mod tests {
         ) {
             let mut metrics = ComplexityMetrics::default();
             let visitor = ComplexityVisitor::new(&mut metrics);
-            
+
             // Create a visitor with the specified nesting level
             let test_visitor = ComplexityVisitor {
                 complexity: visitor.complexity,
@@ -104,12 +104,12 @@ mod tests {
                 functions: Vec::new(),
                 classes: Vec::new(),
             };
-            
+
             let increment = test_visitor.calculate_cognitive_increment(is_nesting);
-            
+
             // Increment should be at least 1
             prop_assert!(increment >= 1);
-            
+
             // Increment should be bounded by nesting level
             if is_nesting && nesting_level > 0 {
                 prop_assert!(increment <= 1 + (nesting_level as u16).saturating_sub(1));
@@ -150,14 +150,14 @@ mod tests {
         fn visitor_nesting_saturation(initial_nesting in 0u8..250) {
             let mut metrics = ComplexityMetrics::default();
             let mut visitor = ComplexityVisitor::new(&mut metrics);
-            
+
             // Set initial nesting level
             visitor.nesting_level = initial_nesting;
-            
+
             // Test saturation by trying to increment
             let original_level = visitor.nesting_level;
             let incremented = original_level.saturating_add(1);
-            
+
             // Verify saturation behavior
             if original_level == u8::MAX {
                 prop_assert_eq!(incremented, u8::MAX);
@@ -179,15 +179,15 @@ mod tests {
                 nesting_max: 0,
                 lines: 0,
             };
-            
+
             // Test saturating addition
             let new_cyclomatic = metrics.cyclomatic.saturating_add(increment);
             let new_cognitive = metrics.cognitive.saturating_add(increment);
-            
+
             // Results should be >= original values
             prop_assert!(new_cyclomatic >= metrics.cyclomatic);
             prop_assert!(new_cognitive >= metrics.cognitive);
-            
+
             // Results should not overflow (but they're u16 so this is always true)
             // Just verify saturation worked
             prop_assert!(new_cyclomatic == metrics.cyclomatic.saturating_add(increment));
@@ -218,18 +218,18 @@ mod tests {
                 p90_cognitive,
                 technical_debt_hours: technical_debt_hours.abs() % 10000.0, // Ensure finite
             };
-            
+
             let violations = vec![];
             let hotspots = vec![];
             let files = vec![];
-            
+
             let report = ComplexityReport {
                 summary,
                 violations,
                 hotspots,
                 files,
             };
-            
+
             // These should never panic
             let _summary_str = format_complexity_summary(&report);
             let _full_report_str = format_complexity_report(&report);
@@ -249,7 +249,7 @@ mod tests {
                 line_end: line_end.max(line_start), // Ensure end >= start
                 metrics,
             };
-            
+
             prop_assert_eq!(func.name, name);
             prop_assert!(func.line_end >= func.line_start);
             prop_assert_eq!(func.metrics.cyclomatic, metrics.cyclomatic);
@@ -267,21 +267,21 @@ mod tests {
         ) {
             // Ensure line_end is far enough from line_start to accommodate methods
             let adjusted_line_end = line_end.max(line_start + (method_count as u32 * 10) + 10);
-            
+
             // Calculate available space for methods
             let class_body_start = line_start + 1;  // After class declaration
             let class_body_end = adjusted_line_end - 1;  // Before closing brace
             let available_lines = class_body_end.saturating_sub(class_body_start);
-            
+
             // Generate methods that fit within the class boundaries
             let methods: Vec<FunctionComplexity> = if method_count > 0 && available_lines >= (method_count as u32 * 5) {
                 let lines_per_method = available_lines / method_count as u32;
-                
+
                 (0..method_count)
                     .map(|i| {
                         let method_start = class_body_start + (i as u32 * lines_per_method);
                         let method_end = method_start + lines_per_method.min(5).saturating_sub(1);
-                        
+
                         FunctionComplexity {
                             name: format!("method_{}", i),
                             line_start: method_start,
@@ -298,7 +298,7 @@ mod tests {
             } else {
                 Vec::new()  // No space for methods
             };
-            
+
             let class = ClassComplexity {
                 name: class_name.clone(),
                 line_start,
@@ -306,11 +306,11 @@ mod tests {
                 metrics: class_metrics,
                 methods,
             };
-            
+
             prop_assert_eq!(class.name, class_name);
             prop_assert!(class.line_end >= class.line_start);
             prop_assert!(class.methods.len() <= method_count);  // May have fewer if no space
-            
+
             // Verify all methods have valid line numbers within class boundaries
             for (i, method) in class.methods.iter().enumerate() {
                 prop_assert!(method.line_start > class.line_start,
@@ -319,12 +319,12 @@ mod tests {
                     "Method {} end {} must be before class end {}", i, method.line_end, class.line_end);
                 prop_assert!(method.line_end >= method.line_start,
                     "Method {} end {} must be >= start {}", i, method.line_end, method.line_start);
-                
+
                 // Ensure methods don't overlap
                 if i > 0 {
                     let prev_method = &class.methods[i - 1];
                     prop_assert!(method.line_start > prev_method.line_end,
-                        "Method {} start {} must be after previous method end {}", 
+                        "Method {} start {} must be after previous method end {}",
                         i, method.line_start, prev_method.line_end);
                 }
             }
@@ -337,16 +337,16 @@ mod tests {
         let metrics = ComplexityMetrics::default();
         assert_eq!(metrics.cyclomatic, 0);
         assert_eq!(metrics.cognitive, 0);
-        
+
         let thresholds = ComplexityThresholds::default();
         assert!(thresholds.cyclomatic_warn < thresholds.cyclomatic_error);
         assert!(thresholds.cognitive_warn < thresholds.cognitive_error);
-        
+
         // Test visitor creation
         let mut metrics = ComplexityMetrics::default();
         let visitor = ComplexityVisitor::new(&mut metrics);
         assert_eq!(visitor.nesting_level, 0);
-        
+
         // Test cognitive increment calculation
         assert_eq!(visitor.calculate_cognitive_increment(false), 1);
         assert_eq!(visitor.calculate_cognitive_increment(true), 1); // First level
@@ -356,34 +356,34 @@ mod tests {
     fn test_complexity_visitor_cognitive_increment_with_nesting() {
         let mut metrics = ComplexityMetrics::default();
         let mut visitor = ComplexityVisitor::new(&mut metrics);
-        
+
         // Test various nesting levels
         visitor.nesting_level = 0;
         assert_eq!(visitor.calculate_cognitive_increment(true), 1);
-        
+
         visitor.nesting_level = 1;
         assert_eq!(visitor.calculate_cognitive_increment(true), 1);
-        
+
         visitor.nesting_level = 2;
         assert_eq!(visitor.calculate_cognitive_increment(true), 2);
-        
+
         visitor.nesting_level = 5;
         assert_eq!(visitor.calculate_cognitive_increment(true), 5);
     }
 
-    #[test] 
+    #[test]
     fn test_cache_key_generation() {
         let path = Path::new("test.rs");
         let content1 = b"fn test() {}";
         let content2 = b"fn test() { println!(\"hello\"); }";
-        
+
         let key1a = compute_complexity_cache_key(path, content1);
         let key1b = compute_complexity_cache_key(path, content1);
         let key2 = compute_complexity_cache_key(path, content2);
-        
+
         // Same content should produce same key
         assert_eq!(key1a, key1b);
-        
+
         // Different content should produce different keys
         assert_ne!(key1a, key2);
     }

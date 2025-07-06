@@ -232,10 +232,10 @@ thread_local! {
 /// Set the current protocol context (used by middleware)
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::unified_protocol::{Protocol, error::{set_protocol_context, clear_protocol_context}};
-/// 
+///
 /// set_protocol_context(Protocol::Http);
 /// // Protocol context is now set to HTTP
 /// clear_protocol_context();
@@ -248,10 +248,10 @@ pub fn set_protocol_context(protocol: Protocol) {
 /// Clear the protocol context
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::unified_protocol::{Protocol, error::{set_protocol_context, clear_protocol_context}};
-/// 
+///
 /// set_protocol_context(Protocol::Mcp);
 /// clear_protocol_context();
 /// // Protocol context is now None
