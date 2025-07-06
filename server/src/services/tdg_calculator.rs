@@ -54,6 +54,16 @@ pub struct TDGCalculator {
 }
 
 impl TDGCalculator {
+    /// Creates a new TDGCalculator with default configuration
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::services::tdg_calculator::TDGCalculator;
+    /// 
+    /// let calculator = TDGCalculator::new();
+    /// // Calculator ready to compute Technical Debt Gradient scores
+    /// ```
     pub fn new() -> Self {
         Self::with_config(TDGConfig::default())
     }
