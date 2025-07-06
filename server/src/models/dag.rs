@@ -53,6 +53,27 @@ impl DependencyGraph {
         }
     }
 
+    /// Adds a node to the dependency graph
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::dag::{DependencyGraph, NodeInfo, NodeType};
+    /// use rustc_hash::FxHashMap;
+    /// 
+    /// let mut graph = DependencyGraph::new();
+    /// graph.add_node(NodeInfo {
+    ///     id: "main::hello".to_string(),
+    ///     label: "hello".to_string(),
+    ///     node_type: NodeType::Function,
+    ///     file_path: "src/main.rs".to_string(),
+    ///     line_number: 10,
+    ///     complexity: 1,
+    ///     metadata: FxHashMap::default(),
+    /// });
+    /// 
+    /// assert_eq!(graph.nodes.len(), 1);
+    /// ```
     pub fn add_node(&mut self, node: NodeInfo) {
         self.nodes.insert(node.id.clone(), node);
     }
