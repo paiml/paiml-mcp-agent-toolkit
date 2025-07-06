@@ -52,6 +52,23 @@ impl Toolchain {
         }
     }
 
+    /// Returns the string identifier for the toolchain
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::template::Toolchain;
+    /// 
+    /// let rust = Toolchain::RustCli {
+    ///     cargo_features: vec![]
+    /// };
+    /// assert_eq!(rust.as_str(), "rust");
+    /// 
+    /// let python = Toolchain::PythonUv {
+    ///     python_version: "3.11".to_string()
+    /// };
+    /// assert_eq!(python.as_str(), "python-uv");
+    /// ```
     pub fn as_str(&self) -> &'static str {
         match self {
             Toolchain::RustCli { .. } => "rust",
