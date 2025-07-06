@@ -12,12 +12,17 @@ Rapidly create working examples for `pmat` CLI commands using a fast, iterative 
   - Fixed double-counting in visitor pattern
   - Fixed nesting level contamination between functions
   - Created validation examples: `complexity_demo.rs`, `complexity_validation.rs`
+- `pmat analyze lint-hotspot` - Fixed violation detection and clippy integration
+  - Fixed clippy flags (changed from `-D` to `-W` for better collection)
+  - Added `--all-targets` to single-file mode to include examples
+  - Improved error handling for non-zero clippy exit codes
+  - Created validation example: `lint_hotspot_demo.rs` (114 violations)
+  - Validated on real codebase: 13,204 violations across 301 files
 
 ### 🚧 In Progress
 - None currently
 
 ### 📋 Not Yet Started
-- `pmat analyze lint-hotspot`
 - `pmat analyze satd`
 - `pmat analyze dead-code`
 - `pmat analyze dag`

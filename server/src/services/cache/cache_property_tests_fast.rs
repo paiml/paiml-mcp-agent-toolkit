@@ -46,12 +46,12 @@ mod tests {
             for (key, value) in operations {
                 // Put value
                 cache.insert(key.clone(), value.clone());
-                
+
                 // Get should return what we put
                 let retrieved = cache.get(&key);
                 prop_assert!(retrieved.is_some(), "Value not found for key: {}", key);
                 prop_assert_eq!(retrieved.unwrap(), &value, "Retrieved value doesn't match");
-                
+
                 // Update stats
                 stats.total_requests += 1;
                 stats.cache_hits += 1;
@@ -74,7 +74,7 @@ mod tests {
             // Insert entries until we exceed capacity
             for (key, value) in entries {
                 cache.put(key, value);
-                
+
                 // Size should never exceed max after eviction
                 prop_assert!(cache.size_bytes() <= max_size,
                     "Cache size {} exceeds max {}", cache.size_bytes(), max_size);
@@ -100,14 +100,14 @@ mod tests {
             remove_indices in prop::collection::vec(any::<usize>(), 0..5)  // Reduced from 10
         ) {
             let mut cache = HashMap::new();
-            
+
             // Insert initial entries
             for (key, value) in &initial_entries {
                 cache.insert(key.clone(), value.clone());
             }
-            
+
             let initial_len = cache.len();
-            
+
             // Remove some entries
             let mut removed_count = 0;
             for idx in remove_indices {
@@ -115,14 +115,14 @@ mod tests {
                     let (key, _) = &initial_entries[idx % initial_entries.len()];
                     if cache.remove(key).is_some() {
                         removed_count += 1;
-                        
+
                         // Verify it's gone
-                        prop_assert!(cache.get(key).is_none(),
+                        prop_assert!(!cache.contains_key(key),
                             "Removed key {} still present", key);
                     }
                 }
             }
-            
+
             // Length should decrease appropriately
             prop_assert_eq!(cache.len(), initial_len.saturating_sub(removed_count),
                 "Cache length inconsistent after removals");
@@ -136,23 +136,23 @@ mod tests {
             )
         ) {
             let mut cache = HashMap::new();
-            
+
             // Insert entries
             for (key, value) in &entries {
                 cache.insert(key.clone(), value.clone());
             }
-            
+
             // Clear should empty the cache
             cache.clear();
             prop_assert_eq!(cache.len(), 0);
-            
+
             // Clear again should be idempotent
             cache.clear();
             prop_assert_eq!(cache.len(), 0);
-            
+
             // All entries should be gone
             for (key, _) in &entries {
-                prop_assert!(cache.get(key).is_none());
+                prop_assert!(!cache.contains_key(key));
             }
         }
 

@@ -1,13 +1,13 @@
 //! Complexity Analysis Demo
-//! 
-//! This example demonstrates various complexity patterns that `pmat analyze complexity` 
+//!
+//! This example demonstrates various complexity patterns that `pmat analyze complexity`
 //! can detect and analyze. Run with:
-//! 
+//!
 //! ```bash
 //! cargo run --example complexity_demo
 //! pmat analyze complexity --include "server/examples/complexity_demo.rs"
 //! ```
-//! 
+//!
 //! Expected complexity analysis results:
 //! - simple_function: Low complexity (1)
 //! - http_request_handler: Moderate complexity (~8-10)
@@ -191,7 +191,10 @@ pub fn order_processing_pipeline(
                 ));
             }
         } else {
-            return Err(format!("Product {} not found in inventory", item.product_id));
+            return Err(format!(
+                "Product {} not found in inventory",
+                item.product_id
+            ));
         }
     }
 
@@ -208,7 +211,7 @@ pub fn order_processing_pipeline(
                 if payment.len() < 10 {
                     return Err("Invalid payment information".to_string());
                 }
-                
+
                 // Different validation for different payment methods
                 if payment.starts_with("card_") {
                     if payment.len() != 20 {
@@ -256,7 +259,10 @@ pub fn order_processing_pipeline(
         UserRole::Guest => Duration::from_secs(7 * 24 * 3600), // 7 days
     };
 
-    println!("Order processed successfully. Estimated shipping time: {:?}", shipping_time);
+    println!(
+        "Order processed successfully. Estimated shipping time: {:?}",
+        shipping_time
+    );
 
     // Return updated order with processing status
     let mut processed_order = order;
@@ -300,7 +306,9 @@ pub fn user_authentication(
     let has_special = password.chars().any(|c| !c.is_alphanumeric());
 
     if !has_uppercase || !has_lowercase || !has_digit || !has_special {
-        return Err("Password must contain uppercase, lowercase, digit, and special character".to_string());
+        return Err(
+            "Password must contain uppercase, lowercase, digit, and special character".to_string(),
+        );
     }
 
     // Simulate user lookup (in real app, this would be a database query)
@@ -351,11 +359,11 @@ pub fn user_authentication(
     }
 
     // Check for suspicious activity based on IP and User-Agent
-    let is_suspicious_ip = ip_address.starts_with("192.168.") 
+    let is_suspicious_ip = ip_address.starts_with("192.168.")
         || ip_address.starts_with("10.")
         || ip_address == "127.0.0.1";
 
-    let is_suspicious_agent = user_agent.is_empty() 
+    let is_suspicious_agent = user_agent.is_empty()
         || user_agent.len() < 10
         || user_agent.to_lowercase().contains("bot")
         || user_agent.to_lowercase().contains("crawler");
@@ -395,28 +403,34 @@ pub fn user_authentication(
     // Generate session token based on user role and remember_me preference
     let token_duration = if remember_me {
         match user.role {
-            UserRole::Admin => "7d",      // 7 days for admin
-            UserRole::Premium => "30d",   // 30 days for premium
-            UserRole::Customer => "14d",  // 14 days for customer
-            UserRole::Guest => "1d",      // 1 day for guest
+            UserRole::Admin => "7d",     // 7 days for admin
+            UserRole::Premium => "30d",  // 30 days for premium
+            UserRole::Customer => "14d", // 14 days for customer
+            UserRole::Guest => "1d",     // 1 day for guest
         }
     } else {
         match user.role {
-            UserRole::Admin => "4h",      // 4 hours for admin
-            UserRole::Premium => "8h",    // 8 hours for premium
-            UserRole::Customer => "6h",   // 6 hours for customer
-            UserRole::Guest => "2h",      // 2 hours for guest
+            UserRole::Admin => "4h",    // 4 hours for admin
+            UserRole::Premium => "8h",  // 8 hours for premium
+            UserRole::Customer => "6h", // 6 hours for customer
+            UserRole::Guest => "2h",    // 2 hours for guest
         }
     };
 
     // Generate secure token (simplified for demo)
-    let session_token = format!("session_{}_{}_{}", user.id, token_duration, 
-        ip_address.replace('.', ""));
+    let session_token = format!(
+        "session_{}_{}_{}",
+        user.id,
+        token_duration,
+        ip_address.replace('.', "")
+    );
 
     // Additional logging for suspicious activity
     if is_suspicious_ip || is_suspicious_agent {
-        println!("Warning: Suspicious login detected for user {} from IP {} with agent '{}'", 
-            user.email, ip_address, user_agent);
+        println!(
+            "Warning: Suspicious login detected for user {} from IP {} with agent '{}'",
+            user.email, ip_address, user_agent
+        );
     }
 
     // Final validation based on time-based restrictions
@@ -429,7 +443,10 @@ pub fn user_authentication(
     };
 
     if !login_allowed {
-        return Err(format!("Login not allowed at this time for {:?} users", user.role));
+        return Err(format!(
+            "Login not allowed at this time for {:?} users",
+            user.role
+        ));
     }
 
     Ok((user, session_token))
@@ -440,7 +457,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔍 Complexity Analysis Demo");
     println!("=========================");
     println!();
-    
+
     println!("Testing simple_function...");
     let result = simple_function(5);
     println!("simple_function(5) = {}", result);
@@ -449,7 +466,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Testing http_request_handler...");
     let mut headers = HashMap::new();
     headers.insert("Content-Type".to_string(), "application/json".to_string());
-    
+
     match http_request_handler("GET", "/api/users/123", headers.clone(), None).await {
         Ok(response) => println!("GET request successful: {}", response),
         Err(e) => println!("GET request failed: {}", e),
@@ -487,8 +504,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     inventory.insert(1, 10);
     inventory.insert(2, 5);
 
-    match order_processing_pipeline(order, user, &mut inventory, Some("card_1234567890123456".to_string())) {
-        Ok(processed_order) => println!("Order processed successfully: {:?}", processed_order.status),
+    match order_processing_pipeline(
+        order,
+        user,
+        &mut inventory,
+        Some("card_1234567890123456".to_string()),
+    ) {
+        Ok(processed_order) => {
+            println!("Order processed successfully: {:?}", processed_order.status)
+        }
         Err(e) => println!("Order processing failed: {}", e),
     }
     println!();
@@ -502,7 +526,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         true,
     ) {
-        Ok((user, token)) => println!("Authentication successful for user: {} (token: {})", user.email, token),
+        Ok((user, token)) => println!(
+            "Authentication successful for user: {} (token: {})",
+            user.email, token
+        ),
         Err(e) => println!("Authentication failed: {}", e),
     }
 

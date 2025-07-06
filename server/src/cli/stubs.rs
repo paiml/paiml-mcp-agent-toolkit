@@ -2582,8 +2582,13 @@ pub async fn analyze_project_files(
         // Read file content
         if let Ok(content) = fs::read_to_string(path) {
             // Create basic complexity metrics (simplified analysis)
-            let file_metrics =
-                analyze_file_complexity_async(path, &content, cyclomatic_threshold, cognitive_threshold).await?;
+            let file_metrics = analyze_file_complexity_async(
+                path,
+                &content,
+                cyclomatic_threshold,
+                cognitive_threshold,
+            )
+            .await?;
             results.push(file_metrics);
         }
     }
@@ -2614,7 +2619,10 @@ async fn analyze_file_complexity_async(
             Ok(metrics) => return Ok(metrics),
             Err(_) => {
                 // Fall back to heuristic analysis if AST analysis fails
-                eprintln!("Warning: AST analysis failed for {}, using heuristic fallback", path.display());
+                eprintln!(
+                    "Warning: AST analysis failed for {}, using heuristic fallback",
+                    path.display()
+                );
             }
         }
     }

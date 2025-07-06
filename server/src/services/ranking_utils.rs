@@ -224,12 +224,12 @@ impl AnalysisResultBuilder {
 /// Formats ranked files as a table for display
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::services::ranking_utils::format_ranked_files_table;
 /// use pmat::services::defect_analyzer::RankedFile;
 /// use std::path::PathBuf;
-/// 
+///
 /// let files = vec![
 ///     RankedFile {
 ///         path: PathBuf::from("src/main.rs"),
@@ -238,7 +238,7 @@ impl AnalysisResultBuilder {
 ///         defects: vec![],
 ///     }
 /// ];
-/// 
+///
 /// let table = format_ranked_files_table(&files);
 /// assert!(table.contains("RANK"));
 /// assert!(table.contains("src/main.rs"));

@@ -26,9 +26,9 @@ pub mod cache;
 pub mod canonical_query;
 pub mod code_intelligence;
 pub mod complexity;
+pub mod complexity_patterns;
 #[cfg(test)]
 mod complexity_property_tests;
-pub mod complexity_patterns;
 pub mod context;
 pub mod coupling_analyzer;
 pub mod dag_builder;
