@@ -575,6 +575,17 @@ pub struct DeepContextAnalyzer {
 }
 
 impl DeepContextAnalyzer {
+    /// Creates a new DeepContextAnalyzer with the given configuration
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
+    /// 
+    /// let config = DeepContextConfig::default();
+    /// let analyzer = DeepContextAnalyzer::new(config);
+    /// // Analyzer is ready to perform deep context analysis
+    /// ```
     pub fn new(config: DeepContextConfig) -> Self {
         let semaphore = Semaphore::new(config.parallel);
         Self { config, semaphore }
