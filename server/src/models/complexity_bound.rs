@@ -396,6 +396,18 @@ impl ComplexityBound {
     }
 
     /// Get notation string for this bound
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass, InputVariable};
+    /// 
+    /// let simple = ComplexityBound::linear();
+    /// assert_eq!(simple.notation(), "O(n)");
+    /// 
+    /// let complex = ComplexityBound::new(BigOClass::Linear, 5, InputVariable::N);
+    /// assert_eq!(complex.notation(), "5·O(n)");
+    /// ```
     pub fn notation(&self) -> String {
         if self.coefficient <= 1 {
             format!("{}", self.class)
