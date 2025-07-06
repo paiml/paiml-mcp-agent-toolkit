@@ -358,6 +358,21 @@ impl ComplexityBound {
     }
 
     /// Set confidence level (0-100)
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::ComplexityBound;
+    /// 
+    /// let bound = ComplexityBound::linear()
+    ///     .with_confidence(85);
+    /// assert_eq!(bound.confidence, 85);
+    /// 
+    /// // Values over 100 are clamped
+    /// let clamped = ComplexityBound::linear()
+    ///     .with_confidence(150);
+    /// assert_eq!(clamped.confidence, 100);
+    /// ```
     pub fn with_confidence(mut self, confidence: u8) -> Self {
         self.confidence = confidence.min(100);
         self
