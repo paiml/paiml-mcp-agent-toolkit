@@ -294,6 +294,16 @@ impl ComplexityBound {
     }
 
     /// Create a linearithmic time bound O(n log n)
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
+    /// 
+    /// let bound = ComplexityBound::linearithmic();
+    /// assert_eq!(bound.class, BigOClass::Linearithmic);
+    /// assert_eq!(bound.notation(), "O(n log n)");
+    /// ```
     pub fn linearithmic() -> Self {
         Self::new(BigOClass::Linearithmic, 1, InputVariable::N)
     }
