@@ -366,6 +366,18 @@ pub fn build_deep_context_config(
     })
 }
 
+/// Converts CLI DAG type to internal model DAG type
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::cli::{convert_dag_type, DeepContextDagType};
+/// use pmat::models::dag::DagType;
+/// 
+/// let cli_type = DeepContextDagType::CallGraph;
+/// let model_type = convert_dag_type(cli_type);
+/// assert!(matches!(model_type, DagType::CallGraph));
+/// ```
 pub fn convert_dag_type(dag_type: DeepContextDagType) -> crate::models::dag::DagType {
     match dag_type {
         DeepContextDagType::CallGraph => crate::models::dag::DagType::CallGraph,
