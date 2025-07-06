@@ -231,6 +231,17 @@ impl ComplexityBound {
     }
 
     /// Create a constant time bound O(1)
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
+    /// 
+    /// let bound = ComplexityBound::constant();
+    /// assert_eq!(bound.class, BigOClass::Constant);
+    /// assert_eq!(bound.confidence, 100);
+    /// assert_eq!(bound.notation(), "O(1)");
+    /// ```
     pub fn constant() -> Self {
         Self::new(BigOClass::Constant, 1, InputVariable::N)
             .with_confidence(100)
