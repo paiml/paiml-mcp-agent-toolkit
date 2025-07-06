@@ -6,17 +6,17 @@ use crate::models::refactor::RefactorStateMachine;
 /// Serializes a RefactorStateMachine to binary format (currently JSON)
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::mcp_server::capnp_conversion::serialize_state_to_capnp;
 /// use pmat::models::refactor::{RefactorStateMachine, RefactorConfig};
 /// use std::path::PathBuf;
-/// 
+///
 /// let state = RefactorStateMachine::new(
 ///     vec![PathBuf::from("src/main.rs")],
 ///     RefactorConfig::default()
 /// );
-/// 
+///
 /// let result = serialize_state_to_capnp(&state);
 /// assert!(result.is_ok());
 /// assert!(!result.unwrap().is_empty());
@@ -28,6 +28,25 @@ pub fn serialize_state_to_capnp(state: &RefactorStateMachine) -> Result<Vec<u8>,
     serde_json::to_vec(state).map_err(|e| format!("Serialization error: {}", e))
 }
 
+/// Deserializes a RefactorStateMachine from binary format (currently JSON)
+///
+/// # Examples
+///
+/// ```
+/// use pmat::mcp_server::capnp_conversion::{serialize_state_to_capnp, deserialize_state_from_capnp};
+/// use pmat::models::refactor::{RefactorStateMachine, RefactorConfig};
+/// use std::path::PathBuf;
+///
+/// let state = RefactorStateMachine::new(
+///     vec![PathBuf::from("test.rs")],
+///     RefactorConfig::default()
+/// );
+///
+/// let serialized = serialize_state_to_capnp(&state).unwrap();
+/// let deserialized = deserialize_state_from_capnp(&serialized).unwrap();
+/// 
+/// assert_eq!(state.targets.len(), deserialized.targets.len());
+/// ```
 pub fn deserialize_state_from_capnp(data: &[u8]) -> Result<RefactorStateMachine, String> {
     // For now, use JSON deserialization as it's the most reliable
     // Cap'n Proto implementation can be added when the capnp compiler is available

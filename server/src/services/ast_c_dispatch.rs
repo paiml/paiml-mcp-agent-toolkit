@@ -579,10 +579,10 @@ impl CAstDispatchParser {
     /// Creates a new C AST parser with dispatch tables
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::services::ast_c_dispatch::CAstDispatchParser;
-    /// 
+    ///
     /// let parser = CAstDispatchParser::new();
     /// // Parser is ready to analyze C code
     /// ```

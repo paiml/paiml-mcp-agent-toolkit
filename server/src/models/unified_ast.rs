@@ -540,10 +540,10 @@ impl BytePos {
     /// Creates a BytePos from a usize position
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::unified_ast::BytePos;
-    /// 
+    ///
     /// let pos = BytePos::from_usize(42);
     /// assert_eq!(pos.to_usize(), 42);
     /// ```
@@ -623,13 +623,13 @@ impl QualifiedName {
         if qualified_str.is_empty() {
             return Err("Empty qualified name");
         }
-        
+
         let parts: Vec<&str> = qualified_str.split("::").collect();
         let name = parts.last().unwrap().to_string();
         if name.is_empty() {
             return Err("Empty qualified name");
         }
-        
+
         let module_path = parts[..parts.len() - 1]
             .iter()
             .map(|s| s.to_string())

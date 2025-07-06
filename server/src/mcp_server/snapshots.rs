@@ -31,21 +31,21 @@ impl SnapshotManager {
     /// Saves a refactor state machine snapshot to disk
     ///
     /// # Examples
-    /// 
+    ///
     /// ```no_run
     /// use pmat::mcp_server::snapshots::SnapshotManager;
     /// use pmat::models::refactor::{RefactorStateMachine, RefactorConfig};
     /// use std::path::PathBuf;
     /// use tempfile::tempdir;
-    /// 
+    ///
     /// let dir = tempdir().unwrap();
     /// let manager = SnapshotManager::with_path(dir.path());
-    /// 
+    ///
     /// let state = RefactorStateMachine::new(
     ///     vec![PathBuf::from("src/main.rs")],
     ///     RefactorConfig::default()
     /// );
-    /// 
+    ///
     /// let result = manager.save_snapshot(&state);
     /// assert!(result.is_ok());
     /// ```
@@ -82,14 +82,14 @@ impl SnapshotManager {
     /// Loads a refactor state machine snapshot from disk
     ///
     /// # Examples
-    /// 
+    ///
     /// ```no_run
     /// use pmat::mcp_server::snapshots::SnapshotManager;
     /// use tempfile::tempdir;
-    /// 
+    ///
     /// let dir = tempdir().unwrap();
     /// let manager = SnapshotManager::with_path(dir.path());
-    /// 
+    ///
     /// match manager.load_snapshot() {
     ///     Ok(state) => println!("Loaded state"),
     ///     Err(e) => println!("No snapshot found: {}", e),
@@ -122,14 +122,14 @@ impl SnapshotManager {
     /// Removes a saved snapshot from disk
     ///
     /// # Examples
-    /// 
+    ///
     /// ```no_run
     /// use pmat::mcp_server::snapshots::SnapshotManager;
     /// use tempfile::tempdir;
-    /// 
+    ///
     /// let dir = tempdir().unwrap();
     /// let manager = SnapshotManager::with_path(dir.path());
-    /// 
+    ///
     /// let result = manager.remove_snapshot();
     /// // Ok if file was removed or didn't exist
     /// ```
