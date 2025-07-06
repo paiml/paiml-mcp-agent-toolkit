@@ -237,6 +237,19 @@ impl MermaidGenerator {
     }
 
     #[inline]
+    /// Returns a color for visualizing complexity levels
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
+    /// 
+    /// let generator = MermaidGenerator::new(MermaidOptions::default());
+    /// assert_eq!(generator.get_complexity_color(2), "#90EE90"); // Light green
+    /// assert_eq!(generator.get_complexity_color(5), "#FFD700"); // Gold
+    /// assert_eq!(generator.get_complexity_color(10), "#FFA500"); // Orange
+    /// assert_eq!(generator.get_complexity_color(15), "#FF6347"); // Tomato
+    /// ```
     pub fn get_complexity_color(&self, complexity: u32) -> &'static str {
         match complexity {
             1..=3 => "#90EE90",  // Light green for low complexity
