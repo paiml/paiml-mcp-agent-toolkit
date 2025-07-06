@@ -264,6 +264,16 @@ impl ComplexityBound {
     }
 
     /// Create a quadratic time bound O(n²)
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
+    /// 
+    /// let bound = ComplexityBound::quadratic();
+    /// assert_eq!(bound.class, BigOClass::Quadratic);
+    /// assert_eq!(bound.notation(), "O(n²)");
+    /// ```
     pub fn quadratic() -> Self {
         Self::new(BigOClass::Quadratic, 1, InputVariable::N)
     }
