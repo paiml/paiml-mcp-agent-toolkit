@@ -32,6 +32,16 @@ pub fn is_capnp_available() -> bool {
     false
 }
 
+/// Returns the current serialization format being used
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::mcp_server::capnp_conversion::get_serialization_format;
+/// 
+/// let format = get_serialization_format();
+/// assert_eq!(format, "JSON");
+/// ```
 pub fn get_serialization_format() -> &'static str {
     if is_capnp_available() {
         "Cap'n Proto"
