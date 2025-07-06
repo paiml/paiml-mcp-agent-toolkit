@@ -686,6 +686,35 @@ pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) 
     output
 }
 
+/// Formats a code churn analysis as a Markdown report
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::handlers::tools::format_churn_as_markdown;
+/// use pmat::models::churn::{CodeChurnAnalysis, ChurnSummary};
+/// use std::path::PathBuf;
+/// use std::collections::HashMap;
+/// use chrono::Utc;
+/// 
+/// let analysis = CodeChurnAnalysis {
+///     generated_at: Utc::now(),
+///     period_days: 7,
+///     repository_root: PathBuf::from("/repo"),
+///     files: vec![],
+///     summary: ChurnSummary {
+///         total_commits: 25,
+///         total_files_changed: 12,
+///         hotspot_files: vec![],
+///         stable_files: vec![],
+///         author_contributions: HashMap::new(),
+///     },
+/// };
+/// 
+/// let markdown = format_churn_as_markdown(&analysis);
+/// assert!(markdown.contains("# Code Churn Analysis Report"));
+/// assert!(markdown.contains("**Period:** 7 days"));
+/// ```
 pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
     let mut output = String::with_capacity(1024);
 
