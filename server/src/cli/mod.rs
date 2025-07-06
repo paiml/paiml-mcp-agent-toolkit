@@ -78,6 +78,18 @@ pub struct EarlyCliArgs {
 }
 
 /// Parse CLI early to extract tracing configuration
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::cli::parse_early_for_tracing;
+/// 
+/// // This function reads from std::env::args() and RUST_LOG
+/// let args = parse_early_for_tracing();
+/// 
+/// // The function always returns valid EarlyCliArgs
+/// // Values depend on actual command line arguments
+/// ```
 pub fn parse_early_for_tracing() -> EarlyCliArgs {
     let args: Vec<String> = std::env::args().collect();
 
@@ -387,6 +399,19 @@ pub fn convert_dag_type(dag_type: DeepContextDagType) -> crate::models::dag::Dag
     }
 }
 
+/// Converts cache strategy (currently a pass-through)
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::cli::{convert_cache_strategy, DeepContextCacheStrategy};
+/// 
+/// let strategy = DeepContextCacheStrategy::Normal;
+/// let converted = convert_cache_strategy(strategy);
+/// 
+/// // Currently returns the same strategy
+/// assert_eq!(converted, DeepContextCacheStrategy::Normal);
+/// ```
 pub fn convert_cache_strategy(strategy: DeepContextCacheStrategy) -> DeepContextCacheStrategy {
     // Just return the same strategy for now - proper cache strategy conversion
     // would need to be implemented based on the actual cache system
