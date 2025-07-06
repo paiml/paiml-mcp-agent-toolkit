@@ -20,10 +20,14 @@ pub mod ast_typescript;
 #[cfg(feature = "typescript-ast")]
 pub mod ast_typescript_dispatch;
 pub mod big_o_analyzer;
+#[cfg(test)]
+mod big_o_analyzer_property_tests;
 pub mod cache;
 pub mod canonical_query;
 pub mod code_intelligence;
 pub mod complexity;
+#[cfg(test)]
+mod complexity_property_tests;
 pub mod complexity_patterns;
 pub mod context;
 pub mod coupling_analyzer;
@@ -39,9 +43,13 @@ pub mod defect_probability;
 pub mod deterministic_mermaid_engine;
 pub mod dogfooding_engine;
 pub mod duplicate_detector;
+#[cfg(test)]
+mod duplicate_detector_property_tests;
 pub mod embedded_templates;
 pub mod enhanced_reporting;
 pub mod file_classifier;
+#[cfg(test)]
+mod file_classifier_property_tests;
 pub mod file_discovery;
 pub mod fixed_graph_builder;
 pub mod git_analysis;

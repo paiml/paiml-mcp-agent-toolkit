@@ -3,6 +3,34 @@
 ## Objective
 Rapidly create working examples for `pmat` CLI commands using a fast, iterative approach. Focus on realistic usage scenarios that improve documentation and surface UX inconsistencies. Test each example immediately, then apply to our own codebase.
 
+## Commands Already Processed
+**Last Updated**: 2025-07-06
+
+### ✅ Completed Commands
+- `pmat analyze complexity` - Fixed AST analysis accuracy issues, validated metrics
+  - Fixed base cognitive complexity (was 1, now 0)
+  - Fixed double-counting in visitor pattern
+  - Fixed nesting level contamination between functions
+  - Created validation examples: `complexity_demo.rs`, `complexity_validation.rs`
+
+### 🚧 In Progress
+- None currently
+
+### 📋 Not Yet Started
+- `pmat analyze lint-hotspot`
+- `pmat analyze satd`
+- `pmat analyze dead-code`
+- `pmat analyze dag`
+- `pmat analyze churn`
+- `pmat analyze makefile`
+- `pmat quality-gate`
+- `pmat refactor auto`
+- `pmat refactor extract`
+- `pmat report comprehensive`
+- `pmat report sarif`
+- `pmat enforce standards`
+- `pmat diagnose`
+
 ## Fast Target Discovery (30 seconds max)
 
 ```bash
@@ -321,8 +349,8 @@ EOF
 # - Multiple complexity levels across functions
 # - Runnable main function (cargo run --example http_client_complexity)
 
-# Now test the command
-pmat analyze complexity --include "examples/analysis/*.rs"
+# Now test the command with local binary
+./target/debug/pmat analyze complexity --include "examples/analysis/*.rs"
 
 # Verify it's runnable (optional)
 cargo check --example complexity_demo
@@ -404,25 +432,141 @@ pmat analyze complexity --include "nonexistent.rs"
 pmat analyze complexity --include "server/src/lib.rs"
 ```
 
-### 7. Run Quality Checks (60 seconds)
+### 7. Run Quality Checks (2-3 minutes)
+**CRITICAL - Toyota Way Zero Tolerance**: ALL tests must pass. NO workarounds!
+
 ```bash
-# Run lint check on example code
-make lint
+# ALL of these must pass - fix any failures immediately
+make lint          # Zero clippy warnings
+make test-fast     # All unit tests pass
+make test-doc      # All doctests pass  
+make test-property # All property tests pass
 
-# Run fast tests to ensure nothing broken
-make test-fast
-
-# If all passes, proceed to commit
+# Verify no self-admitted technical debt
+rg "TODO|FIXME|HACK|XXX" server/src --type rust | grep -v "test" || echo "✅ No SATD found"
 ```
 
-### 8. Document Findings (30 seconds)
-Note any issues discovered:
-- Confusing error messages
-- Inconsistent output formats
-- Missing helpful context
-- Commands that don't work as expected
+**If ANY test fails**:
+1. **STOP** - Do not proceed
+2. **FIX** the root cause immediately
+3. **RE-RUN** all tests
+4. **REPEAT** until 100% pass rate
 
-### 9. Commit and Push (30 seconds)
+**Toyota Way Principles**:
+- **Jidoka**: Stop the line when defects found
+- **Zero Defects**: No compromises on quality
+- **Root Cause**: Fix the problem, not the symptom
+- **No Workarounds**: Temporary fixes are permanent problems
+
+### 8. Fix Issues Found (2-5 minutes per issue)
+**CRITICAL**: Don't just document issues - FIX them immediately!
+
+**IMPORTANT**: Always test with local binary after fixes:
+```bash
+# Build with fixes
+cargo build --package pmat
+
+# Test with local binary (NOT system PATH binary)
+./target/debug/pmat analyze complexity --include "server/examples/*.rs"
+```
+
+For each UX issue discovered:
+1. **Identify root cause** in codebase
+2. **Implement fix** with proper error handling
+3. **Add property test** to prevent regression
+4. **Add doctest** showing correct usage
+5. **Verify fix works** with original failing case
+
+Example fix workflow:
+```bash
+# Issue: --include pattern doesn't work
+# 1. Find the file pattern matching code
+rg "include.*pattern" server/src --type rust
+
+# 2. Fix the implementation
+# 3. Add property test
+# 4. Add doctest
+# 5. Test the fix with local binary
+./target/debug/pmat analyze complexity --include "server/examples/*.rs"
+```
+
+### 9. Validate Metric Accuracy (2-3 minutes)
+**CRITICAL**: Verify the analysis metrics are actually correct!
+
+For complexity analysis:
+1. **Manual calculation** of cyclomatic complexity for simple functions
+2. **Compare with established tools** (if available)
+3. **Verify cognitive complexity** against known algorithms
+4. **Check edge cases**: empty functions, single return, deep nesting
+
+Example validation:
+```rust
+// This function should have cyclomatic complexity = 4
+fn test_complexity(x: i32) -> i32 {
+    if x > 0 {        // +1
+        if x > 10 {   // +1
+            x * 2
+        } else {      // +1
+            x + 1
+        }
+    } else {          // +1
+        0
+    }
+}
+// Expected: Cyclomatic = 4, Cognitive = 2 (nesting)
+```
+
+### 10. Add Property Tests (1-2 minutes)
+Create property tests for the functionality:
+
+```rust
+use proptest::prelude::*;
+
+proptest! {
+    #[test]
+    fn complexity_analysis_never_panics(
+        code in ".*{1,1000}",
+        include_pattern in ".*{1,100}"
+    ) {
+        // Should never panic regardless of input
+        let result = analyze_complexity_with_pattern(&code, &include_pattern);
+        prop_assert!(result.is_ok() || result.is_err()); // Never panics
+    }
+    
+    #[test]
+    fn complexity_metrics_are_non_negative(
+        valid_rust_code in generate_valid_rust_functions()
+    ) {
+        let metrics = calculate_complexity(&valid_rust_code)?;
+        prop_assert!(metrics.cyclomatic >= 1); // Minimum complexity is 1
+        prop_assert!(metrics.cognitive >= 0);   // Can be 0 for simple functions
+    }
+}
+```
+
+### 11. Add Doctests (1 minute)
+Add doctests to the fixed functions:
+
+```rust
+/// Analyzes complexity of Rust code files matching the given pattern
+/// 
+/// # Examples
+/// 
+/// ```
+/// use pmat::analyze_complexity;
+/// 
+/// // Analyze all Rust files in examples directory
+/// let result = analyze_complexity("examples/*.rs")?;
+/// assert!(result.files_analyzed > 0);
+/// assert!(result.total_functions > 0);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn analyze_complexity(pattern: &str) -> Result<ComplexityResult, Error> {
+    // Implementation with proper pattern matching
+}
+```
+
+### 12. Commit and Push (30 seconds)
 ```bash
 # If creating example files
 git add examples/cli-usage/complexity-example.md

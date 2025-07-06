@@ -3,6 +3,7 @@ use crate::services::ast_python;
 #[cfg(feature = "typescript-ast")]
 use crate::services::ast_typescript;
 #[cfg(test)]
+#[allow(unused_imports)]
 use crate::services::context::AstItem;
 #[cfg(any(feature = "python-ast", feature = "typescript-ast"))]
 use std::path::Path;
