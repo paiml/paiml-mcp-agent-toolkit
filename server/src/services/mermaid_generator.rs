@@ -20,10 +20,10 @@ impl MermaidGenerator {
     /// Creates a new MermaidGenerator with the given options
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
-    /// 
+    ///
     /// let options = MermaidOptions::default();
     /// let generator = MermaidGenerator::new(options);
     /// // Generator ready to create Mermaid diagrams
@@ -200,11 +200,11 @@ impl MermaidGenerator {
     /// Returns the appropriate Mermaid arrow syntax for an edge type
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
     /// use pmat::models::dag::EdgeType;
-    /// 
+    ///
     /// let generator = MermaidGenerator::new(MermaidOptions::default());
     /// assert_eq!(generator.get_edge_arrow(&EdgeType::Calls), "-->");
     /// assert_eq!(generator.get_edge_arrow(&EdgeType::Imports), "-.->");
@@ -240,10 +240,10 @@ impl MermaidGenerator {
     /// Returns a color for visualizing complexity levels
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
-    /// 
+    ///
     /// let generator = MermaidGenerator::new(MermaidOptions::default());
     /// assert_eq!(generator.get_complexity_color(2), "#90EE90"); // Light green
     /// assert_eq!(generator.get_complexity_color(5), "#FFD700"); // Gold

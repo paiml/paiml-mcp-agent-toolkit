@@ -572,10 +572,10 @@ impl TsAstDispatchParser {
     /// Creates a new TypeScript AST parser with dispatch tables
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::services::ast_typescript_dispatch::TsAstDispatchParser;
-    /// 
+    ///
     /// let parser = TsAstDispatchParser::new();
     /// // Parser is ready to analyze TypeScript/JavaScript code
     /// ```

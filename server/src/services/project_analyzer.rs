@@ -14,11 +14,11 @@ impl Project {
     /// Create a new project instance
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::services::project_analyzer::Project;
     /// use std::path::Path;
-    /// 
+    ///
     /// let project = Project::new(Path::new(".")).unwrap();
     /// assert_eq!(project.root(), Path::new("."));
     /// ```

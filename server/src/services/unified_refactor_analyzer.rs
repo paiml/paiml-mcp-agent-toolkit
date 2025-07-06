@@ -344,10 +344,10 @@ impl Language {
     /// Creates a Language enum from a file extension
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::services::unified_refactor_analyzer::Language;
-    /// 
+    ///
     /// assert!(matches!(Language::from_extension("rs"), Language::Rust));
     /// assert!(matches!(Language::from_extension("py"), Language::Python));
     /// assert!(matches!(Language::from_extension("unknown"), Language::Other(_)));

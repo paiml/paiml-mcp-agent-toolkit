@@ -195,10 +195,10 @@ impl LightweightProvabilityAnalyzer {
     /// Creates a new LightweightProvabilityAnalyzer
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
-    /// 
+    ///
     /// let analyzer = LightweightProvabilityAnalyzer::new();
     /// // Analyzer is ready with default configuration
     /// ```

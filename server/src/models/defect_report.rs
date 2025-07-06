@@ -119,10 +119,10 @@ impl DefectCategory {
     /// Get all categories for iteration
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::defect_report::DefectCategory;
-    /// 
+    ///
     /// let categories = DefectCategory::all();
     /// assert_eq!(categories.len(), 7);
     /// assert!(categories.contains(&DefectCategory::Complexity));
@@ -170,13 +170,13 @@ impl Defect {
     /// Generates a unique defect ID with prefix and index
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::defect_report::Defect;
-    /// 
+    ///
     /// let id = Defect::generate_id("TEST", 0);
     /// assert_eq!(id, "TEST-001");
-    /// 
+    ///
     /// let id2 = Defect::generate_id("BUG", 99);
     /// assert_eq!(id2, "BUG-100");
     /// ```
@@ -187,10 +187,10 @@ impl Defect {
     /// Calculate severity weight for scoring
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::defect_report::{PredictedDefect, Severity, DefectCategory};
-    /// 
+    ///
     /// let defect = PredictedDefect {
     ///     id: "TEST-001".to_string(),
     ///     category: DefectCategory::ResourceLeak,
@@ -201,7 +201,7 @@ impl Defect {
     ///     evidence: vec![],
     ///     recommendation: None,
     /// };
-    /// 
+    ///
     /// assert_eq!(defect.severity_weight(), 5.0);
     /// ```
     pub fn severity_weight(&self) -> f64 {

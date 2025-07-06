@@ -63,16 +63,16 @@ impl FixedGraphBuilder {
     /// Sets the maximum number of nodes in the output graph
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::services::fixed_graph_builder::{FixedGraphBuilder, GraphConfig, GroupingStrategy};
-    /// 
+    ///
     /// let config = GraphConfig {
     ///     max_nodes: 100,
     ///     max_edges: 500,
     ///     grouping: GroupingStrategy::Module,
     /// };
-    /// 
+    ///
     /// let builder = FixedGraphBuilder::new(config)
     ///     .with_max_nodes(50);
     /// // Builder will now limit to 50 nodes instead of 100
@@ -85,16 +85,16 @@ impl FixedGraphBuilder {
     /// Sets the maximum number of edges in the output graph
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::services::fixed_graph_builder::{FixedGraphBuilder, GraphConfig, GroupingStrategy};
-    /// 
+    ///
     /// let config = GraphConfig {
     ///     max_nodes: 100,
     ///     max_edges: 500,
     ///     grouping: GroupingStrategy::Module,
     /// };
-    /// 
+    ///
     /// let builder = FixedGraphBuilder::new(config)
     ///     .with_max_edges(200);
     /// // Builder will now limit to 200 edges instead of 500

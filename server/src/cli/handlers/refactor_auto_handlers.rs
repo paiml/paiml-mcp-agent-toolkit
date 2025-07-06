@@ -1708,7 +1708,7 @@ pub async fn analyze_file_complexity(file_path: &Path) -> Result<QualityMetrics>
 
     // Find the project root (where Cargo.toml is located)
     let project_root = find_project_root(file_path)?;
-    
+
     // Use pmat complexity command for the file
     let output = Command::new(&current_exe)
         .args([

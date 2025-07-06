@@ -628,14 +628,14 @@ async fn handle_analyze_code_churn(
 /// Formats a code churn analysis into a human-readable summary
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::handlers::tools::format_churn_summary;
 /// use pmat::models::churn::{CodeChurnAnalysis, ChurnSummary};
 /// use std::path::PathBuf;
 /// use std::collections::HashMap;
 /// use chrono::Utc;
-/// 
+///
 /// let analysis = CodeChurnAnalysis {
 ///     generated_at: Utc::now(),
 ///     period_days: 30,
@@ -649,7 +649,7 @@ async fn handle_analyze_code_churn(
 ///         author_contributions: HashMap::new(),
 ///     },
 /// };
-/// 
+///
 /// let summary = format_churn_summary(&analysis);
 /// assert!(summary.contains("Period: 30 days"));
 /// assert!(summary.contains("Total commits: 150"));
@@ -689,14 +689,14 @@ pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) 
 /// Formats a code churn analysis as a Markdown report
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::handlers::tools::format_churn_as_markdown;
 /// use pmat::models::churn::{CodeChurnAnalysis, ChurnSummary};
 /// use std::path::PathBuf;
 /// use std::collections::HashMap;
 /// use chrono::Utc;
-/// 
+///
 /// let analysis = CodeChurnAnalysis {
 ///     generated_at: Utc::now(),
 ///     period_days: 7,
@@ -710,7 +710,7 @@ pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) 
 ///         author_contributions: HashMap::new(),
 ///     },
 /// };
-/// 
+///
 /// let markdown = format_churn_as_markdown(&analysis);
 /// assert!(markdown.contains("# Code Churn Analysis Report"));
 /// assert!(markdown.contains("**Period:** 7 days"));
@@ -765,14 +765,14 @@ pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalys
 /// Formats a code churn analysis as CSV data
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::handlers::tools::format_churn_as_csv;
 /// use pmat::models::churn::{CodeChurnAnalysis, ChurnSummary, FileChurnMetrics};
 /// use std::path::PathBuf;
 /// use std::collections::HashMap;
 /// use chrono::Utc;
-/// 
+///
 /// let analysis = CodeChurnAnalysis {
 ///     generated_at: Utc::now(),
 ///     period_days: 30,
@@ -796,7 +796,7 @@ pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalys
 ///         author_contributions: HashMap::new(),
 ///     },
 /// };
-/// 
+///
 /// let csv = format_churn_as_csv(&analysis);
 /// assert!(csv.starts_with("file_path,commits,additions,deletions,churn_score,unique_authors,last_modified"));
 /// assert!(csv.contains("src/main.rs,5,100,50,0.750,0"));

@@ -193,14 +193,14 @@ impl ComplexityFlags {
     /// Checks if this represents worst-case complexity
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::ComplexityFlags;
-    /// 
+    ///
     /// let flags = ComplexityFlags::new()
     ///     .with(ComplexityFlags::WORST_CASE);
     /// assert!(flags.is_worst_case());
-    /// 
+    ///
     /// let avg_case = ComplexityFlags::new()
     ///     .with(ComplexityFlags::AVERAGE_CASE);
     /// assert!(!avg_case.is_worst_case());
@@ -212,14 +212,14 @@ impl ComplexityFlags {
     /// Checks if this complexity has been formally proven
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::ComplexityFlags;
-    /// 
+    ///
     /// let proven = ComplexityFlags::new()
     ///     .with(ComplexityFlags::PROVEN);
     /// assert!(proven.is_proven());
-    /// 
+    ///
     /// let empirical = ComplexityFlags::new()
     ///     .with(ComplexityFlags::EMPIRICAL);
     /// assert!(!empirical.is_proven());
@@ -341,13 +341,13 @@ impl ComplexityBound {
     /// Create a polynomial bound with given exponent
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
-    /// 
+    ///
     /// let constant = ComplexityBound::polynomial(0, 5);
     /// assert_eq!(constant.class, BigOClass::Constant);
-    /// 
+    ///
     /// let cubic = ComplexityBound::polynomial(3, 2);
     /// assert_eq!(cubic.class, BigOClass::Cubic);
     /// assert_eq!(cubic.coefficient, 2);
@@ -374,10 +374,10 @@ impl ComplexityBound {
     /// Create an unknown complexity bound
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
-    /// 
+    ///
     /// let unknown = ComplexityBound::unknown();
     /// assert_eq!(unknown.class, BigOClass::Unknown);
     /// assert_eq!(unknown.confidence, 0);
@@ -390,14 +390,14 @@ impl ComplexityBound {
     /// Set confidence level (0-100)
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::ComplexityBound;
-    /// 
+    ///
     /// let bound = ComplexityBound::linear()
     ///     .with_confidence(85);
     /// assert_eq!(bound.confidence, 85);
-    /// 
+    ///
     /// // Values over 100 are clamped
     /// let clamped = ComplexityBound::linear()
     ///     .with_confidence(150);
@@ -411,10 +411,10 @@ impl ComplexityBound {
     /// Add flags to the bound
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::{ComplexityBound, ComplexityFlags};
-    /// 
+    ///
     /// let bound = ComplexityBound::linear()
     ///     .with_flags(ComplexityFlags::PROVEN | ComplexityFlags::TIGHT_BOUND);
     /// assert!(bound.flags.has(ComplexityFlags::PROVEN));
@@ -428,13 +428,13 @@ impl ComplexityBound {
     /// Get notation string for this bound
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass, InputVariable};
-    /// 
+    ///
     /// let simple = ComplexityBound::linear();
     /// assert_eq!(simple.notation(), "O(n)");
-    /// 
+    ///
     /// let complex = ComplexityBound::new(BigOClass::Linear, 5, InputVariable::N);
     /// assert_eq!(complex.notation(), "5·O(n)");
     /// ```
@@ -449,13 +449,13 @@ impl ComplexityBound {
     /// Estimate operations for given input size
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::ComplexityBound;
-    /// 
+    ///
     /// let linear = ComplexityBound::linear();
     /// assert_eq!(linear.estimate_operations(100.0), 100.0);
-    /// 
+    ///
     /// let quadratic = ComplexityBound::quadratic();
     /// assert_eq!(quadratic.estimate_operations(10.0), 100.0);
     /// ```
@@ -466,14 +466,14 @@ impl ComplexityBound {
     /// Check if this bound is better than another
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass, InputVariable};
-    /// 
+    ///
     /// let linear = ComplexityBound::linear();
     /// let quadratic = ComplexityBound::quadratic();
     /// assert!(linear.is_better_than(&quadratic));
-    /// 
+    ///
     /// // Same class but different coefficients
     /// let fast = ComplexityBound::new(BigOClass::Linear, 2, InputVariable::N);
     /// let slow = ComplexityBound::new(BigOClass::Linear, 5, InputVariable::N);
