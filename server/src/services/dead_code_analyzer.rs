@@ -41,6 +41,18 @@ impl HierarchicalBitSet {
         self.levels[0].insert(index);
     }
 
+    /// Checks if the bit at the given index is set
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::services::dead_code_analyzer::HierarchicalBitSet;
+    /// 
+    /// let mut bitset = HierarchicalBitSet::new(100);
+    /// assert!(!bitset.is_set(10));
+    /// bitset.set(10);
+    /// assert!(bitset.is_set(10));
+    /// ```
     pub fn is_set(&self, index: u32) -> bool {
         self.levels[0].contains(index)
     }
