@@ -118,6 +118,22 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
 
 use std::path::Path;
 
+/// Detects the primary programming language of a project based on marker files
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::cli::detect_primary_language;
+/// use std::path::Path;
+/// use tempfile::tempdir;
+/// use std::fs;
+/// 
+/// let dir = tempdir().unwrap();
+/// fs::write(dir.path().join("Cargo.toml"), "[package]").unwrap();
+/// 
+/// let lang = detect_primary_language(dir.path());
+/// assert_eq!(lang, Some("rust".to_string()));
+/// ```
 pub fn detect_primary_language(path: &Path) -> Option<String> {
     use walkdir::WalkDir;
 
