@@ -3,6 +3,24 @@ use crate::models::refactor::RefactorStateMachine;
 // Note: This module provides Cap'n Proto conversion functions
 // The actual capnp generated code would be included when capnp is available
 
+/// Serializes a RefactorStateMachine to binary format (currently JSON)
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::mcp_server::capnp_conversion::serialize_state_to_capnp;
+/// use pmat::models::refactor::{RefactorStateMachine, RefactorConfig};
+/// use std::path::PathBuf;
+/// 
+/// let state = RefactorStateMachine::new(
+///     vec![PathBuf::from("src/main.rs")],
+///     RefactorConfig::default()
+/// );
+/// 
+/// let result = serialize_state_to_capnp(&state);
+/// assert!(result.is_ok());
+/// assert!(!result.unwrap().is_empty());
+/// ```
 pub fn serialize_state_to_capnp(state: &RefactorStateMachine) -> Result<Vec<u8>, String> {
     // For now, use JSON serialization as it's the most reliable
     // Cap'n Proto implementation can be added when the capnp compiler is available
@@ -20,10 +38,10 @@ pub fn deserialize_state_from_capnp(data: &[u8]) -> Result<RefactorStateMachine,
 /// Checks if Cap'n Proto serialization is available
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::mcp_server::capnp_conversion::is_capnp_available;
-/// 
+///
 /// let available = is_capnp_available();
 /// assert!(!available); // Currently always returns false
 /// ```
@@ -35,10 +53,10 @@ pub fn is_capnp_available() -> bool {
 /// Returns the current serialization format being used
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::mcp_server::capnp_conversion::get_serialization_format;
-/// 
+///
 /// let format = get_serialization_format();
 /// assert_eq!(format, "JSON");
 /// ```
