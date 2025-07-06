@@ -64,6 +64,20 @@ impl HierarchicalBitSet {
         &mut []
     }
 
+    /// Returns the count of set bits
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::services::dead_code_analyzer::HierarchicalBitSet;
+    /// 
+    /// let mut bitset = HierarchicalBitSet::new(100);
+    /// assert_eq!(bitset.count_set(), 0);
+    /// bitset.set(10);
+    /// bitset.set(20);
+    /// bitset.set(30);
+    /// assert_eq!(bitset.count_set(), 3);
+    /// ```
     pub fn count_set(&self) -> usize {
         self.levels[0].len() as usize
     }
