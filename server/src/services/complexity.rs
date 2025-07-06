@@ -547,6 +547,34 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 /// assert!(summary.contains("main.rs")); // First file (higher complexity)
 /// assert!(summary.contains("lib.rs"));  // Second file
 /// ```
+/// Formats a complexity report as a summary
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::services::complexity::{format_complexity_summary, ComplexityReport, ComplexitySummary};
+/// 
+/// let report = ComplexityReport {
+///     summary: ComplexitySummary {
+///         total_files: 10,
+///         total_functions: 50,
+///         median_cyclomatic: 5.2,
+///         median_cognitive: 4.8,
+///         max_cyclomatic: 15,
+///         max_cognitive: 20,
+///         p90_cyclomatic: 12,
+///         p90_cognitive: 16,
+///         technical_debt_hours: 2.5,
+///     },
+///     violations: vec![],
+///     hotspots: vec![],
+///     files: vec![],
+/// };
+/// 
+/// let summary = format_complexity_summary(&report);
+/// assert!(summary.contains("Complexity Analysis Summary"));
+/// assert!(summary.contains("Files analyzed**: 10"));
+/// ```
 pub fn format_complexity_summary(report: &ComplexityReport) -> String {
     let mut output = String::new();
 
@@ -728,6 +756,34 @@ pub fn format_complexity_report(report: &ComplexityReport) -> String {
 }
 
 /// Format complexity report as SARIF for IDE integration
+/// Formats a complexity report as SARIF (Static Analysis Results Interchange Format)
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::services::complexity::{format_as_sarif, ComplexityReport, ComplexitySummary};
+/// 
+/// let report = ComplexityReport {
+///     summary: ComplexitySummary {
+///         total_files: 1,
+///         total_functions: 1,
+///         median_cyclomatic: 5.0,
+///         median_cognitive: 5.0,
+///         max_cyclomatic: 10,
+///         max_cognitive: 10,
+///         p90_cyclomatic: 8,
+///         p90_cognitive: 8,
+///         technical_debt_hours: 1.0,
+///     },
+///     violations: vec![],
+///     hotspots: vec![],
+///     files: vec![],
+/// };
+/// 
+/// let sarif = format_as_sarif(&report).unwrap();
+/// assert!(sarif.contains("\"version\": \"2.1.0\""));
+/// assert!(sarif.contains("cyclomatic-complexity"));
+/// ```
 pub fn format_as_sarif(report: &ComplexityReport) -> Result<String, serde_json::Error> {
     use serde_json::json;
 
