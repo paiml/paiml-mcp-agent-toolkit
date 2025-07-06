@@ -625,6 +625,35 @@ async fn handle_analyze_code_churn(
     }
 }
 
+/// Formats a code churn analysis into a human-readable summary
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::handlers::tools::format_churn_summary;
+/// use pmat::models::churn::{CodeChurnAnalysis, ChurnSummary};
+/// use std::path::PathBuf;
+/// use std::collections::HashMap;
+/// use chrono::Utc;
+/// 
+/// let analysis = CodeChurnAnalysis {
+///     generated_at: Utc::now(),
+///     period_days: 30,
+///     repository_root: PathBuf::from("/project"),
+///     files: vec![],
+///     summary: ChurnSummary {
+///         total_commits: 150,
+///         total_files_changed: 45,
+///         hotspot_files: vec![PathBuf::from("src/main.rs")],
+///         stable_files: vec![PathBuf::from("README.md")],
+///         author_contributions: HashMap::new(),
+///     },
+/// };
+/// 
+/// let summary = format_churn_summary(&analysis);
+/// assert!(summary.contains("Period: 30 days"));
+/// assert!(summary.contains("Total commits: 150"));
+/// ```
 pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
     let mut output = String::with_capacity(1024);
 
