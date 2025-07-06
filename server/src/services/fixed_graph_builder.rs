@@ -82,6 +82,23 @@ impl FixedGraphBuilder {
         self
     }
 
+    /// Sets the maximum number of edges in the output graph
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::services::fixed_graph_builder::{FixedGraphBuilder, GraphConfig, GroupingStrategy};
+    /// 
+    /// let config = GraphConfig {
+    ///     max_nodes: 100,
+    ///     max_edges: 500,
+    ///     grouping: GroupingStrategy::Module,
+    /// };
+    /// 
+    /// let builder = FixedGraphBuilder::new(config)
+    ///     .with_max_edges(200);
+    /// // Builder will now limit to 200 edges instead of 500
+    /// ```
     pub fn with_max_edges(mut self, max_edges: usize) -> Self {
         self.max_edges = max_edges;
         self
