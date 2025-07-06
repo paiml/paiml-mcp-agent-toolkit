@@ -157,6 +157,19 @@ impl ComplexityFlags {
         Self(0)
     }
 
+    /// Adds a flag to the complexity flags
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::ComplexityFlags;
+    /// 
+    /// let flags = ComplexityFlags::new()
+    ///     .with(ComplexityFlags::WORST_CASE)
+    ///     .with(ComplexityFlags::PROVEN);
+    /// assert!(flags.has(ComplexityFlags::WORST_CASE));
+    /// assert!(flags.has(ComplexityFlags::PROVEN));
+    /// ```
     pub fn with(mut self, flag: u8) -> Self {
         self.0 |= flag;
         self
