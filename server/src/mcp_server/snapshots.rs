@@ -119,6 +119,20 @@ impl SnapshotManager {
         Ok(state)
     }
 
+    /// Removes a saved snapshot from disk
+    ///
+    /// # Examples
+    /// 
+    /// ```no_run
+    /// use pmat::mcp_server::snapshots::SnapshotManager;
+    /// use tempfile::tempdir;
+    /// 
+    /// let dir = tempdir().unwrap();
+    /// let manager = SnapshotManager::with_path(dir.path());
+    /// 
+    /// let result = manager.remove_snapshot();
+    /// // Ok if file was removed or didn't exist
+    /// ```
     pub fn remove_snapshot(&self) -> Result<(), String> {
         if self.snapshot_path.exists() {
             fs::remove_file(&self.snapshot_path)
