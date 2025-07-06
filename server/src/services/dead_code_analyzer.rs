@@ -29,10 +29,10 @@ impl HierarchicalBitSet {
     /// Sets the bit at the given index
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::services::dead_code_analyzer::HierarchicalBitSet;
-    /// 
+    ///
     /// let mut bitset = HierarchicalBitSet::new(100);
     /// bitset.set(42);
     /// assert!(bitset.is_set(42));
@@ -44,10 +44,10 @@ impl HierarchicalBitSet {
     /// Checks if the bit at the given index is set
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::services::dead_code_analyzer::HierarchicalBitSet;
-    /// 
+    ///
     /// let mut bitset = HierarchicalBitSet::new(100);
     /// assert!(!bitset.is_set(10));
     /// bitset.set(10);
@@ -67,10 +67,10 @@ impl HierarchicalBitSet {
     /// Returns the count of set bits
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::services::dead_code_analyzer::HierarchicalBitSet;
-    /// 
+    ///
     /// let mut bitset = HierarchicalBitSet::new(100);
     /// assert_eq!(bitset.count_set(), 0);
     /// bitset.set(10);

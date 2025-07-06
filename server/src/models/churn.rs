@@ -38,12 +38,12 @@ impl FileChurnMetrics {
     /// Calculates a normalized churn score based on commits and changes
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::churn::FileChurnMetrics;
     /// use std::path::PathBuf;
     /// use chrono::Utc;
-    /// 
+    ///
     /// let mut metrics = FileChurnMetrics {
     ///     path: PathBuf::from("src/main.rs"),
     ///     relative_path: "src/main.rs".to_string(),
@@ -55,7 +55,7 @@ impl FileChurnMetrics {
     ///     last_modified: Utc::now(),
     ///     first_seen: Utc::now(),
     /// };
-    /// 
+    ///
     /// metrics.calculate_churn_score(20, 600);
     /// assert!(metrics.churn_score > 0.0 && metrics.churn_score <= 1.0);
     /// ```

@@ -56,11 +56,11 @@ impl DependencyGraph {
     /// Adds a node to the dependency graph
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::dag::{DependencyGraph, NodeInfo, NodeType};
     /// use rustc_hash::FxHashMap;
-    /// 
+    ///
     /// let mut graph = DependencyGraph::new();
     /// graph.add_node(NodeInfo {
     ///     id: "main::hello".to_string(),
@@ -71,7 +71,7 @@ impl DependencyGraph {
     ///     complexity: 1,
     ///     metadata: FxHashMap::default(),
     /// });
-    /// 
+    ///
     /// assert_eq!(graph.nodes.len(), 1);
     /// ```
     pub fn add_node(&mut self, node: NodeInfo) {
@@ -81,10 +81,10 @@ impl DependencyGraph {
     /// Adds an edge between two nodes in the dependency graph
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::dag::{DependencyGraph, Edge, EdgeType};
-    /// 
+    ///
     /// let mut graph = DependencyGraph::new();
     /// graph.add_edge(Edge {
     ///     from: "main::hello".to_string(),
@@ -92,7 +92,7 @@ impl DependencyGraph {
     ///     edge_type: EdgeType::Calls,
     ///     weight: 1,
     /// });
-    /// 
+    ///
     /// assert_eq!(graph.edges.len(), 1);
     /// assert_eq!(graph.edges[0].edge_type, EdgeType::Calls);
     /// ```
@@ -103,10 +103,10 @@ impl DependencyGraph {
     /// Creates a new graph containing only edges of the specified type
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::models::dag::{DependencyGraph, Edge, EdgeType};
-    /// 
+    ///
     /// let mut graph = DependencyGraph::new();
     /// graph.add_edge(Edge {
     ///     from: "a".to_string(),
@@ -120,7 +120,7 @@ impl DependencyGraph {
     ///     edge_type: EdgeType::Imports,
     ///     weight: 1,
     /// });
-    /// 
+    ///
     /// let calls_only = graph.filter_by_edge_type(EdgeType::Calls);
     /// assert_eq!(calls_only.edges.len(), 1);
     /// assert_eq!(calls_only.edges[0].edge_type, EdgeType::Calls);

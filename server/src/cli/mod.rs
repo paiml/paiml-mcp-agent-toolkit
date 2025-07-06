@@ -121,16 +121,16 @@ use std::path::Path;
 /// Detects the primary programming language of a project based on marker files
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::cli::detect_primary_language;
 /// use std::path::Path;
 /// use tempfile::tempdir;
 /// use std::fs;
-/// 
+///
 /// let dir = tempdir().unwrap();
 /// fs::write(dir.path().join("Cargo.toml"), "[package]").unwrap();
-/// 
+///
 /// let lang = detect_primary_language(dir.path());
 /// assert_eq!(lang, Some("rust".to_string()));
 /// ```
@@ -369,11 +369,11 @@ pub fn build_deep_context_config(
 /// Converts CLI DAG type to internal model DAG type
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::cli::{convert_dag_type, DeepContextDagType};
 /// use pmat::models::dag::DagType;
-/// 
+///
 /// let cli_type = DeepContextDagType::CallGraph;
 /// let model_type = convert_dag_type(cli_type);
 /// assert!(matches!(model_type, DagType::CallGraph));
@@ -413,10 +413,10 @@ pub fn parse_analysis_filters(
 /// Parses a string into an AnalysisType enum
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::cli::{parse_analysis_type, AnalysisType};
-/// 
+///
 /// assert_eq!(parse_analysis_type("complexity").unwrap(), AnalysisType::Complexity);
 /// assert_eq!(parse_analysis_type("tdg").unwrap(), AnalysisType::TechnicalDebt);
 /// assert_eq!(parse_analysis_type("big-o").unwrap(), AnalysisType::BigO);

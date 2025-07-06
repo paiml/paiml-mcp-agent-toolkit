@@ -104,7 +104,7 @@ pub async fn handle_analyze_comprehensive(
     let start_time = Instant::now();
 
     info!("🔍 Starting comprehensive analysis");
-    
+
     // Determine if we're analyzing a single file or whole project
     let (analysis_path, single_file_mode) = if let Some(ref file_path) = file {
         info!("📄 Single file mode: {}", file_path.display());
@@ -160,7 +160,7 @@ pub async fn handle_analyze_comprehensive(
                     }
                 }
             }
-            
+
             // Convert confidence from metrics if available
             let confidence = d.metrics.get("confidence").copied().unwrap_or(100.0) as f32;
             confidence >= confidence_threshold
@@ -311,7 +311,9 @@ pub async fn handle_analyze_comprehensive(
 /// Find the project root by looking for Cargo.toml
 fn find_project_root(start_path: &Path) -> Result<PathBuf> {
     let mut current = if start_path.is_file() {
-        start_path.parent().context("File has no parent directory")?
+        start_path
+            .parent()
+            .context("File has no parent directory")?
     } else {
         start_path
     };
@@ -359,30 +361,34 @@ mod tests {
         let project_root = temp_dir.path();
         let src_dir = project_root.join("src");
         let sub_dir = src_dir.join("module");
-        
+
         // Create directories
         fs::create_dir_all(&sub_dir).unwrap();
-        
+
         // Create Cargo.toml at project root
-        fs::write(project_root.join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
-        
+        fs::write(
+            project_root.join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
+
         // Create a test file deep in the structure
         let test_file = sub_dir.join("test.rs");
         fs::write(&test_file, "// test file").unwrap();
-        
+
         // Test finding project root from file
         let found_root = find_project_root(&test_file).unwrap();
         assert_eq!(found_root, project_root);
-        
+
         // Test finding project root from directory
         let found_root = find_project_root(&sub_dir).unwrap();
         assert_eq!(found_root, project_root);
-        
+
         // Test when no Cargo.toml exists
         let isolated_dir = TempDir::new().unwrap();
         let isolated_file = isolated_dir.path().join("isolated.rs");
         fs::write(&isolated_file, "// isolated file").unwrap();
-        
+
         let found_root = find_project_root(&isolated_file).unwrap();
         assert_eq!(found_root, isolated_dir.path());
     }

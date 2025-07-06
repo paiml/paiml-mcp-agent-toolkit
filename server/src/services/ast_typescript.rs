@@ -43,10 +43,10 @@ impl TypeScriptParser {
     /// Creates a new TypeScript parser
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use pmat::services::ast_typescript::TypeScriptParser;
-    /// 
+    ///
     /// let parser = TypeScriptParser::new();
     /// // Parser is ready to analyze TypeScript code
     /// ```
