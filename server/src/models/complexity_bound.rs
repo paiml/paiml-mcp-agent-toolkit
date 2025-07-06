@@ -175,6 +175,17 @@ impl ComplexityFlags {
         self
     }
 
+    /// Checks if a flag is set
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::ComplexityFlags;
+    /// 
+    /// let flags = ComplexityFlags::new().with(ComplexityFlags::AMORTIZED);
+    /// assert!(flags.has(ComplexityFlags::AMORTIZED));
+    /// assert!(!flags.has(ComplexityFlags::WORST_CASE));
+    /// ```
     pub fn has(&self, flag: u8) -> bool {
         self.0 & flag != 0
     }
