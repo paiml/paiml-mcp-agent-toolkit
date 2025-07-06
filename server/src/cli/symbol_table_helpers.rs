@@ -63,6 +63,17 @@ pub fn extract_symbol_from_ast_item(
 }
 
 /// Check if a symbol passes the type filter
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::cli::symbol_table_helpers::passes_type_filter;
+/// use pmat::cli::SymbolTypeFilter;
+/// 
+/// assert!(passes_type_filter("function", &Some(SymbolTypeFilter::Functions)));
+/// assert!(!passes_type_filter("class", &Some(SymbolTypeFilter::Functions)));
+/// assert!(passes_type_filter("anything", &None));
+/// ```
 pub fn passes_type_filter(kind: &str, filter: &Option<super::SymbolTypeFilter>) -> bool {
     match filter {
         Some(super::SymbolTypeFilter::Functions) => kind == "function",
