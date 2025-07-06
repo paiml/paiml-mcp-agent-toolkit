@@ -35,6 +35,30 @@ pub struct ChurnSummary {
 }
 
 impl FileChurnMetrics {
+    /// Calculates a normalized churn score based on commits and changes
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::churn::FileChurnMetrics;
+    /// use std::path::PathBuf;
+    /// use chrono::Utc;
+    /// 
+    /// let mut metrics = FileChurnMetrics {
+    ///     path: PathBuf::from("src/main.rs"),
+    ///     relative_path: "src/main.rs".to_string(),
+    ///     commit_count: 10,
+    ///     unique_authors: vec![],
+    ///     additions: 200,
+    ///     deletions: 100,
+    ///     churn_score: 0.0,
+    ///     last_modified: Utc::now(),
+    ///     first_seen: Utc::now(),
+    /// };
+    /// 
+    /// metrics.calculate_churn_score(20, 600);
+    /// assert!(metrics.churn_score > 0.0 && metrics.churn_score <= 1.0);
+    /// ```
     pub fn calculate_churn_score(&mut self, max_commits: usize, max_changes: usize) {
         let commit_factor = if max_commits > 0 {
             self.commit_count as f32 / max_commits as f32
