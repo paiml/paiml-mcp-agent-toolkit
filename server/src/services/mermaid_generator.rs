@@ -197,6 +197,18 @@ impl MermaidGenerator {
     }
 
     #[inline]
+    /// Returns the appropriate Mermaid arrow syntax for an edge type
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
+    /// use pmat::models::dag::EdgeType;
+    /// 
+    /// let generator = MermaidGenerator::new(MermaidOptions::default());
+    /// assert_eq!(generator.get_edge_arrow(&EdgeType::Calls), "-->");
+    /// assert_eq!(generator.get_edge_arrow(&EdgeType::Imports), "-.->");
+    /// ```
     pub fn get_edge_arrow(&self, edge_type: &EdgeType) -> &'static str {
         match edge_type {
             EdgeType::Calls => "-->",
