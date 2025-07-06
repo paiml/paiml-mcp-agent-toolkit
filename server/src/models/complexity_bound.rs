@@ -57,6 +57,16 @@ impl BigOClass {
     }
 
     /// Check if this complexity is better than another
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::BigOClass;
+    /// 
+    /// assert!(BigOClass::Constant.is_better_than(&BigOClass::Linear));
+    /// assert!(BigOClass::Linear.is_better_than(&BigOClass::Quadratic));
+    /// assert!(!BigOClass::Quadratic.is_better_than(&BigOClass::Linear));
+    /// ```
     pub fn is_better_than(&self, other: &Self) -> bool {
         (*self as u8) < (*other as u8)
     }
