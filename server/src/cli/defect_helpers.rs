@@ -61,6 +61,28 @@ pub async fn analyze_defect_probability(
 }
 
 /// Format defect predictions as JSON
+/// Formats defect predictions as JSON
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::cli::defect_helpers::format_defect_json;
+/// use pmat::services::defect_probability::{DefectScore, RiskLevel};
+/// 
+/// let predictions = vec![
+///     ("src/main.rs".to_string(), DefectScore {
+///         probability: 0.8,
+///         confidence: 0.9,
+///         contributing_factors: vec![("complexity".to_string(), 0.5)],
+///         risk_level: RiskLevel::High,
+///         recommendations: vec!["Reduce complexity".to_string()],
+///     })
+/// ];
+/// 
+/// let json = format_defect_json(&predictions).unwrap();
+/// assert!(json.contains("defect_predictions"));
+/// assert!(json.contains("src/main.rs"));
+/// ```
 pub fn format_defect_json(predictions: &[(String, DefectScore)]) -> Result<String> {
     let json_data = serde_json::json!({
         "defect_predictions": predictions.iter().map(|(file, score)| {
@@ -83,6 +105,28 @@ pub fn format_defect_json(predictions: &[(String, DefectScore)]) -> Result<Strin
 }
 
 /// Format defect predictions as summary
+/// Formats defect predictions as a summary
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::cli::defect_helpers::format_defect_summary;
+/// use pmat::services::defect_probability::{DefectScore, RiskLevel};
+/// 
+/// let predictions = vec![
+///     ("src/main.rs".to_string(), DefectScore {
+///         probability: 0.8,
+///         confidence: 0.9,
+///         contributing_factors: vec![],
+///         risk_level: RiskLevel::High,
+///         recommendations: vec![],
+///     })
+/// ];
+/// 
+/// let summary = format_defect_summary(&predictions).unwrap();
+/// assert!(summary.contains("Defect Prediction Summary"));
+/// assert!(summary.contains("**Total files analyzed**: 1"));
+/// ```
 pub fn format_defect_summary(predictions: &[(String, DefectScore)]) -> Result<String> {
     let mut output = String::new();
 
