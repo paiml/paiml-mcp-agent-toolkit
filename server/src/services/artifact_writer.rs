@@ -40,6 +40,16 @@ pub enum ArtifactType {
 
 impl ArtifactWriter {
     /// Create a new artifact writer for the given root directory
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::services::artifact_writer::ArtifactWriter;
+    /// use std::path::PathBuf;
+    /// 
+    /// let writer = ArtifactWriter::new(PathBuf::from("/tmp/artifacts")).unwrap();
+    /// // Writer is ready to store artifacts
+    /// ```
     pub fn new(root: PathBuf) -> Result<Self, TemplateError> {
         // Ensure root directory exists
         fs::create_dir_all(&root).map_err(TemplateError::Io)?;
