@@ -27,6 +27,23 @@ pub enum Toolchain {
 }
 
 impl Toolchain {
+    /// Returns the priority of the toolchain (lower number = higher priority)
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::template::Toolchain;
+    /// 
+    /// let rust = Toolchain::RustCli { 
+    ///     cargo_features: vec!["serde".to_string()]
+    /// };
+    /// assert_eq!(rust.priority(), 1);
+    /// 
+    /// let deno = Toolchain::DenoTypescript {
+    ///     deno_version: "1.38".to_string()
+    /// };
+    /// assert_eq!(deno.priority(), 2);
+    /// ```
     pub fn priority(&self) -> u8 {
         match self {
             Toolchain::RustCli { .. } => 1,
