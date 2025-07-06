@@ -72,6 +72,16 @@ impl BigOClass {
     }
 
     /// Get approximate growth factor for small n
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::BigOClass;
+    /// 
+    /// assert_eq!(BigOClass::Constant.growth_factor(100.0), 1.0);
+    /// assert_eq!(BigOClass::Linear.growth_factor(100.0), 100.0);
+    /// assert_eq!(BigOClass::Quadratic.growth_factor(10.0), 100.0);
+    /// ```
     pub fn growth_factor(&self, n: f64) -> f64 {
         match self {
             Self::Constant => 1.0,
