@@ -249,6 +249,16 @@ impl ComplexityBound {
     }
 
     /// Create a linear time bound O(n)
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
+    /// 
+    /// let bound = ComplexityBound::linear();
+    /// assert_eq!(bound.class, BigOClass::Linear);
+    /// assert_eq!(bound.notation(), "O(n)");
+    /// ```
     pub fn linear() -> Self {
         Self::new(BigOClass::Linear, 1, InputVariable::N)
     }
