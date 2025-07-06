@@ -86,6 +86,16 @@ pub fn passes_type_filter(kind: &str, filter: &Option<super::SymbolTypeFilter>) 
 }
 
 /// Check if a symbol passes the query filter
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::cli::symbol_table_helpers::passes_query_filter;
+/// 
+/// assert!(passes_query_filter("hello_world", &Some("hello".to_string())));
+/// assert!(!passes_query_filter("goodbye", &Some("hello".to_string())));
+/// assert!(passes_query_filter("anything", &None));
+/// ```
 pub fn passes_query_filter(name: &str, query: &Option<String>) -> bool {
     match query {
         Some(q) => name.to_lowercase().contains(&q.to_lowercase()),
