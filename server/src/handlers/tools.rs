@@ -762,6 +762,45 @@ pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalys
     output
 }
 
+/// Formats a code churn analysis as CSV data
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::handlers::tools::format_churn_as_csv;
+/// use pmat::models::churn::{CodeChurnAnalysis, ChurnSummary, FileChurnMetrics};
+/// use std::path::PathBuf;
+/// use std::collections::HashMap;
+/// use chrono::Utc;
+/// 
+/// let analysis = CodeChurnAnalysis {
+///     generated_at: Utc::now(),
+///     period_days: 30,
+///     repository_root: PathBuf::from("/repo"),
+///     files: vec![FileChurnMetrics {
+///         path: PathBuf::from("/repo/src/main.rs"),
+///         relative_path: "src/main.rs".to_string(),
+///         commit_count: 5,
+///         unique_authors: vec![],
+///         additions: 100,
+///         deletions: 50,
+///         churn_score: 0.75,
+///         last_modified: Utc::now(),
+///         first_seen: Utc::now(),
+///     }],
+///     summary: ChurnSummary {
+///         total_commits: 5,
+///         total_files_changed: 1,
+///         hotspot_files: vec![],
+///         stable_files: vec![],
+///         author_contributions: HashMap::new(),
+///     },
+/// };
+/// 
+/// let csv = format_churn_as_csv(&analysis);
+/// assert!(csv.starts_with("file_path,commits,additions,deletions,churn_score,unique_authors,last_modified"));
+/// assert!(csv.contains("src/main.rs,5,100,50,0.750,0"));
+/// ```
 pub fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
     let mut output = String::with_capacity(1024);
 
