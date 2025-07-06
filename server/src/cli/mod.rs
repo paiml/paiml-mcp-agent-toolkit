@@ -398,6 +398,18 @@ pub fn parse_analysis_filters(
     Ok((include_analysis, exclude_analysis))
 }
 
+/// Parses a string into an AnalysisType enum
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::cli::{parse_analysis_type, AnalysisType};
+/// 
+/// assert_eq!(parse_analysis_type("complexity").unwrap(), AnalysisType::Complexity);
+/// assert_eq!(parse_analysis_type("tdg").unwrap(), AnalysisType::TechnicalDebt);
+/// assert_eq!(parse_analysis_type("big-o").unwrap(), AnalysisType::BigO);
+/// assert!(parse_analysis_type("invalid").is_err());
+/// ```
 pub fn parse_analysis_type(s: &str) -> anyhow::Result<AnalysisType> {
     match s.to_lowercase().as_str() {
         "complexity" => Ok(AnalysisType::Complexity),
