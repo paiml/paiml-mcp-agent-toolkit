@@ -379,6 +379,17 @@ impl ComplexityBound {
     }
 
     /// Add flags to the bound
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::{ComplexityBound, ComplexityFlags};
+    /// 
+    /// let bound = ComplexityBound::linear()
+    ///     .with_flags(ComplexityFlags::PROVEN | ComplexityFlags::TIGHT_BOUND);
+    /// assert!(bound.flags.has(ComplexityFlags::PROVEN));
+    /// assert!(bound.flags.has(ComplexityFlags::TIGHT_BOUND));
+    /// ```
     pub fn with_flags(mut self, flags: u8) -> Self {
         self.flags = self.flags.with(flags);
         self
