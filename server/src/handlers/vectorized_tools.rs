@@ -584,6 +584,16 @@ async fn handle_enhanced_report(request_id: Value, args: Option<Value>) -> McpRe
 }
 
 /// Get available vectorized tools information
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::handlers::vectorized_tools::get_vectorized_tools_info;
+/// 
+/// let tools = get_vectorized_tools_info();
+/// assert!(tools.len() >= 7);
+/// assert!(tools[0]["name"].as_str().unwrap().contains("vectorized"));
+/// ```
 pub fn get_vectorized_tools_info() -> Vec<serde_json::Value> {
     vec![
         json!({
