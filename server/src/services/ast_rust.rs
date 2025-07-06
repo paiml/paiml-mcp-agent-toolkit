@@ -210,30 +210,33 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
             // Start with base complexity of 1 for any function
             let base_complexity = if is_async {
                 ComplexityMetrics {
-                    cyclomatic: 2,
-                    cognitive: 2,
+                    cyclomatic: 2,  // async adds one complexity point
+                    cognitive: 1,   // async adds cognitive load
                     ..Default::default()
                 }
             } else {
                 ComplexityMetrics {
-                    cyclomatic: 1,
-                    cognitive: 1,
+                    cyclomatic: 1,  // base cyclomatic complexity
+                    cognitive: 0,   // base cognitive complexity (no mental burden)
                     ..Default::default()
                 }
             };
 
+
             self.current_function_complexity = Some(base_complexity);
-            self.current_function_name = Some(name);
+            self.current_function_name = Some(name.clone());
             self.current_function_start = 1;
+            // CRITICAL: Reset nesting level for each function to prevent contamination
+            self.nesting_level = 0;
 
             // Visit function body to calculate complexity
             self.visit_block(&node.block);
 
             // Save function complexity
             if let Some(complexity) = self.current_function_complexity.take() {
-                if let Some(name) = self.current_function_name.take() {
+                if let Some(fn_name) = self.current_function_name.take() {
                     self.functions.push(FunctionComplexity {
-                        name,
+                        name: fn_name,
                         line_start: self.current_function_start,
                         line_end: self.current_function_start + 10, // Estimate
                         metrics: complexity,
@@ -327,14 +330,14 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
                             // Start with base complexity of 1 for any method
                             let base_complexity = if is_async {
                                 ComplexityMetrics {
-                                    cyclomatic: 2,
-                                    cognitive: 2,
+                                    cyclomatic: 2,  // async adds one complexity point
+                                    cognitive: 1,   // async adds cognitive load
                                     ..Default::default()
                                 }
                             } else {
                                 ComplexityMetrics {
-                                    cyclomatic: 1,
-                                    cognitive: 1,
+                                    cyclomatic: 1,  // base cyclomatic complexity
+                                    cognitive: 0,   // base cognitive complexity (no mental burden)
                                     ..Default::default()
                                 }
                             };
@@ -342,6 +345,8 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
                             self.current_function_complexity = Some(base_complexity);
                             self.current_function_name = Some(method_name.clone());
                             self.current_function_start = 1;
+                            // CRITICAL: Reset nesting level for each method to prevent contamination
+                            self.nesting_level = 0;
 
                             self.visit_block(&method.block);
 
@@ -376,45 +381,61 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
     fn visit_expr(&mut self, node: &'ast Expr) {
         if self.enable_complexity {
             match node {
-                Expr::If(_) => {
+                Expr::If(if_expr) => {
                     self.add_complexity(1, 1);
                     self.enter_nesting();
-                    syn::visit::visit_expr(self, node);
+                    // Visit only the inner parts, not the entire if expression again
+                    self.visit_expr(&if_expr.cond);
+                    self.visit_block(&if_expr.then_branch);
+                    if let Some((_, else_branch)) = &if_expr.else_branch {
+                        self.visit_expr(else_branch);
+                    }
                     self.exit_nesting();
-                    return;
+                    return; // Important: don't call default visitor
                 }
-                Expr::Match(_) => {
+                Expr::Match(match_expr) => {
                     self.add_complexity(1, 1);
                     self.enter_nesting();
-                    syn::visit::visit_expr(self, node);
+                    // Visit only the inner parts, not the entire match expression again
+                    self.visit_expr(&match_expr.expr);
+                    for arm in &match_expr.arms {
+                        self.visit_arm(arm);
+                    }
                     self.exit_nesting();
-                    return;
+                    return; // Important: don't call default visitor
                 }
-                Expr::While(_) => {
+                Expr::While(while_expr) => {
                     self.add_complexity(1, 1);
                     self.enter_nesting();
-                    syn::visit::visit_expr(self, node);
+                    // Visit only the inner parts, not the entire while expression again
+                    self.visit_expr(&while_expr.cond);
+                    self.visit_block(&while_expr.body);
                     self.exit_nesting();
-                    return;
+                    return; // Important: don't call default visitor
                 }
-                Expr::ForLoop(_) => {
+                Expr::ForLoop(for_expr) => {
                     self.add_complexity(1, 1);
                     self.enter_nesting();
-                    syn::visit::visit_expr(self, node);
+                    // Visit only the inner parts, not the entire for expression again
+                    self.visit_pat(&for_expr.pat);
+                    self.visit_expr(&for_expr.expr);
+                    self.visit_block(&for_expr.body);
                     self.exit_nesting();
-                    return;
+                    return; // Important: don't call default visitor
                 }
-                Expr::Loop(_) => {
+                Expr::Loop(loop_expr) => {
                     self.add_complexity(1, 1);
                     self.enter_nesting();
-                    syn::visit::visit_expr(self, node);
+                    // Visit only the inner parts, not the entire loop expression again
+                    self.visit_block(&loop_expr.body);
                     self.exit_nesting();
-                    return;
+                    return; // Important: don't call default visitor
                 }
-                Expr::Try(_) => {
+                Expr::Try(try_expr) => {
                     self.add_complexity(1, 1);
-                    syn::visit::visit_expr(self, node);
-                    return;
+                    // Visit only the inner expression, not the entire try expression again
+                    self.visit_expr(&try_expr.expr);
+                    return; // Important: don't call default visitor
                 }
                 Expr::Binary(bin_expr) => {
                     // Logical operators add complexity
@@ -424,19 +445,25 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
                         }
                         _ => {}
                     }
+                    // Continue to default visitor for binary expressions
                 }
                 Expr::Macro(_) => {
                     // Macros add complexity due to hidden control flow
                     self.add_complexity(1, 1);
+                    // Continue to default visitor for macros
                 }
                 Expr::Async(_) => {
                     // Async blocks add complexity
                     self.add_complexity(1, 1);
+                    // Continue to default visitor for async blocks
                 }
-                _ => {}
+                _ => {
+                    // All other expressions: continue to default visitor
+                }
             }
         }
 
+        // Only call default visitor if we didn't return early above
         syn::visit::visit_expr(self, node);
     }
 

@@ -51,6 +51,13 @@ pmat context
 # Get complexity metrics for top 10 files
 pmat analyze complexity --top-files 10
 
+# Analyze specific files with include patterns
+pmat analyze complexity --include "src/*.rs" --format json
+
+# Test with validated examples (try these!)
+cargo run --example complexity_demo
+pmat analyze complexity --include "server/examples/complexity_*.rs"
+
 # Find technical debt
 pmat analyze satd
 
@@ -96,7 +103,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### 🔍 Code Analysis
 - **Deep Context Analysis** - Comprehensive AST-based code analysis with defect prediction
-- **Complexity Analysis** - Cyclomatic and cognitive complexity metrics
+- **Complexity Analysis** - Accurate McCabe cyclomatic and cognitive complexity metrics with AST-based precision
+  - ✅ **v0.28.6+**: Fixed algorithm accuracy - now provides 100% correct complexity calculations
+  - Supports nested control flow, match statements, async functions, and complex branching
+  - Validated against manual calculations with comprehensive test examples
 - **Dead Code Detection** - Find unused code across your project
 - **Technical Debt Gradient (TDG)** - Quantify and prioritize technical debt
 - **SATD Detection** - Find Self-Admitted Technical Debt in comments

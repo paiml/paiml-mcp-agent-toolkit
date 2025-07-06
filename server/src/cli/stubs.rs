@@ -2583,7 +2583,7 @@ pub async fn analyze_project_files(
         if let Ok(content) = fs::read_to_string(path) {
             // Create basic complexity metrics (simplified analysis)
             let file_metrics =
-                analyze_file_complexity(path, &content, cyclomatic_threshold, cognitive_threshold)?;
+                analyze_file_complexity_async(path, &content, cyclomatic_threshold, cognitive_threshold).await?;
             results.push(file_metrics);
         }
     }
@@ -2591,9 +2591,9 @@ pub async fn analyze_project_files(
     Ok(results)
 }
 
-fn analyze_file_complexity(
+async fn analyze_file_complexity_async(
     path: &Path,
-    content: &str,
+    _content: &str,
     _cyclomatic_threshold: u16,
     _cognitive_threshold: u16,
 ) -> Result<crate::services::complexity::FileComplexityMetrics> {
@@ -2601,16 +2601,27 @@ fn analyze_file_complexity(
         ComplexityMetrics, FileComplexityMetrics, FunctionComplexity,
     };
 
-    // Simple heuristic-based complexity analysis
-    let lines: Vec<&str> = content.lines().collect();
-    let mut functions = Vec::new();
-
     // Detect language from file extension
     let is_rust = path
         .extension()
         .and_then(|e| e.to_str())
         .map(|e| e == "rs")
         .unwrap_or(false);
+
+    // For Rust files, use the real AST-based analysis
+    if is_rust {
+        match crate::services::ast_rust::analyze_rust_file_with_complexity(path).await {
+            Ok(metrics) => return Ok(metrics),
+            Err(_) => {
+                // Fall back to heuristic analysis if AST analysis fails
+                eprintln!("Warning: AST analysis failed for {}, using heuristic fallback", path.display());
+            }
+        }
+    }
+
+    // Simple heuristic-based complexity analysis (fallback for non-Rust or failed AST)
+    let lines: Vec<&str> = _content.lines().collect();
+    let mut functions = Vec::new();
     let is_typescript = path
         .extension()
         .and_then(|e| e.to_str())
