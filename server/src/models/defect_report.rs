@@ -167,6 +167,19 @@ pub struct FileHotspot {
 
 impl Defect {
     /// Create a new defect ID with the given prefix and index
+    /// Generates a unique defect ID with prefix and index
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::defect_report::Defect;
+    /// 
+    /// let id = Defect::generate_id("TEST", 0);
+    /// assert_eq!(id, "TEST-001");
+    /// 
+    /// let id2 = Defect::generate_id("BUG", 99);
+    /// assert_eq!(id2, "BUG-100");
+    /// ```
     pub fn generate_id(prefix: &str, index: usize) -> DefectId {
         format!("{}-{:03}", prefix, index + 1)
     }
