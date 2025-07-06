@@ -420,19 +420,66 @@ impl Default for DagBuilder {
 }
 
 // Helper functions for filtering graphs
+/// Filters dependency graph to only include call edges
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::services::dag_builder::filter_call_edges;
+/// use pmat::models::dag::{DependencyGraph, EdgeType};
+/// 
+/// let graph = DependencyGraph::new();
+/// let filtered = filter_call_edges(graph);
+/// // All edges in filtered graph will be EdgeType::Calls
+/// ```
 pub fn filter_call_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Calls)
 }
 
+/// Filters dependency graph to only include import edges
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::services::dag_builder::filter_import_edges;
+/// use pmat::models::dag::{DependencyGraph, EdgeType};
+/// 
+/// let graph = DependencyGraph::new();
+/// let filtered = filter_import_edges(graph);
+/// // All edges in filtered graph will be EdgeType::Imports
+/// ```
 pub fn filter_import_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Imports)
 }
 
+/// Filters dependency graph to only include inheritance edges
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::services::dag_builder::filter_inheritance_edges;
+/// use pmat::models::dag::{DependencyGraph, EdgeType};
+/// 
+/// let graph = DependencyGraph::new();
+/// let filtered = filter_inheritance_edges(graph);
+/// // All edges in filtered graph will be EdgeType::Inherits
+/// ```
 pub fn filter_inheritance_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Inherits)
 }
 
 /// Add PageRank scores to all nodes in the graph
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::services::dag_builder::add_pagerank_scores;
+/// use pmat::models::dag::DependencyGraph;
+/// 
+/// let graph = DependencyGraph::new();
+/// let scored_graph = add_pagerank_scores(&graph);
+/// // Graph nodes now have PageRank scores in metadata
+/// ```
 pub fn add_pagerank_scores(graph: &DependencyGraph) -> DependencyGraph {
     if graph.nodes.is_empty() {
         return graph.clone();
