@@ -209,6 +209,21 @@ impl ComplexityFlags {
         self.has(Self::WORST_CASE)
     }
 
+    /// Checks if this complexity has been formally proven
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::ComplexityFlags;
+    /// 
+    /// let proven = ComplexityFlags::new()
+    ///     .with(ComplexityFlags::PROVEN);
+    /// assert!(proven.is_proven());
+    /// 
+    /// let empirical = ComplexityFlags::new()
+    ///     .with(ComplexityFlags::EMPIRICAL);
+    /// assert!(!empirical.is_proven());
+    /// ```
     pub fn is_proven(&self) -> bool {
         self.has(Self::PROVEN)
     }
