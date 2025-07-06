@@ -98,6 +98,17 @@ impl SemanticNamer {
     }
 
     /// Get the language from a file extension
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::services::semantic_naming::SemanticNamer;
+    /// 
+    /// assert_eq!(SemanticNamer::detect_language("rs"), "rust");
+    /// assert_eq!(SemanticNamer::detect_language("py"), "python");
+    /// assert_eq!(SemanticNamer::detect_language("ts"), "typescript");
+    /// assert_eq!(SemanticNamer::detect_language("xyz"), "unknown");
+    /// ```
     pub fn detect_language(extension: &str) -> &'static str {
         match extension {
             "rs" => "rust",
