@@ -3163,6 +3163,17 @@ fn get_ngrams(s: &str, n: usize) -> HashSet<String> {
     ngrams
 }
 
+/// Calculates the Levenshtein edit distance between two strings
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::cli::stubs::calculate_edit_distance;
+/// 
+/// assert_eq!(calculate_edit_distance("kitten", "sitting"), 3);
+/// assert_eq!(calculate_edit_distance("hello", "hello"), 0);
+/// assert_eq!(calculate_edit_distance("", "abc"), 3);
+/// ```
 pub fn calculate_edit_distance(s1: &str, s2: &str) -> usize {
     // Levenshtein distance implementation
     let len1 = s1.chars().count();
