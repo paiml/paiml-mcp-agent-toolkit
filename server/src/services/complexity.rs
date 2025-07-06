@@ -312,6 +312,17 @@ impl ComplexityRule for CognitiveComplexityRule {
 }
 
 /// Aggregate complexity results from multiple files
+/// Aggregates file-level complexity metrics into a comprehensive report
+///
+/// # Examples
+/// 
+/// ```
+/// use pmat::services::complexity::{aggregate_results, FileComplexityMetrics};
+/// 
+/// let metrics = vec![];
+/// let report = aggregate_results(metrics);
+/// assert_eq!(report.summary.total_files, 0);
+/// ```
 pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> ComplexityReport {
     let mut all_cyclomatic: Vec<u16> = Vec::new();
     let mut all_cognitive: Vec<u16> = Vec::new();
