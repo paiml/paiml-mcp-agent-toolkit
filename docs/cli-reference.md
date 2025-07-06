@@ -399,19 +399,28 @@ Examples:
 ```
 
 #### `analyze lint-hotspot`
-Find files with highest defect density.
+Find the file with highest defect density (lint violations per line).
 
 ```bash
-pmat analyze lint-hotspot [OPTIONS] <PATH>
+pmat analyze lint-hotspot [OPTIONS] [PATH]
 
 Options:
-  --top-files <NUM>          Number of hotspots to show (default: 10)
-  --min-violations <NUM>     Minimum violations per file
-  --weight-by-complexity     Weight violations by complexity
+  --file <FILE>              Analyze a specific file instead of finding the hotspot
+  --format <FORMAT>          Output format (summary, detailed, json, sarif, enforcement-json)
+  --max-density <NUM>        Maximum allowed defect density (default: 5.0 violations/100 lines)
+  --clippy-flags <FLAGS>     Custom clippy flags (default: extreme quality mode)
+  --top-files <NUM>          Number of top files to show by density (0 = all, default: 10)
+  --enforce                  Enforce quality standards (exit non-zero if violations found)
+  --dry-run                  Show what would be fixed without making changes
+  --min-confidence <NUM>     Minimum confidence for automated fixes (0.0-1.0, default: 0.8)
+  --enforcement-metadata     Include enforcement metadata in output
 
 Examples:
-  pmat analyze lint-hotspot . --top-files 20
-  pmat analyze lint-hotspot ./src --weight-by-complexity
+  pmat analyze lint-hotspot                                    # Find hotspot in current directory
+  pmat analyze lint-hotspot ./src --top-files 5               # Show top 5 files by defect density
+  pmat analyze lint-hotspot --file src/main.rs --format detailed  # Analyze specific file
+  pmat analyze lint-hotspot . --enforce --max-density 3.0     # Enforce stricter quality gate
+  pmat analyze lint-hotspot . --format json                   # Machine-readable output
 ```
 
 #### `analyze makefile`

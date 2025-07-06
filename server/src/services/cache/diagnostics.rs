@@ -105,12 +105,12 @@ impl CacheDiagnosticReport {
 /// Formats cache diagnostics as Prometheus metrics
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::services::cache::diagnostics::{format_prometheus_metrics, CacheDiagnostics, CacheEffectiveness};
 /// use std::time::Duration;
 /// use uuid::Uuid;
-/// 
+///
 /// let diagnostics = CacheDiagnostics {
 ///     session_id: Uuid::new_v4(),
 ///     uptime: Duration::from_secs(300),
@@ -125,7 +125,7 @@ impl CacheDiagnosticReport {
 ///         most_valuable_caches: vec![],
 ///     },
 /// };
-/// 
+///
 /// let metrics = format_prometheus_metrics(&diagnostics);
 /// assert!(metrics.contains("cache_hits_total"));
 /// assert!(metrics.contains("cache_memory_bytes"));

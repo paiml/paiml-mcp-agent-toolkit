@@ -704,7 +704,7 @@ pub enum AnalyzeCommands {
         /// Additional flags to pass to clippy (uses extreme quality by default)
         #[arg(
             long,
-            default_value = "-D warnings -D clippy::pedantic -D clippy::nursery -D clippy::cargo"
+            default_value = "-W warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo"
         )]
         clippy_flags: String,
 

@@ -226,11 +226,11 @@ impl AstParserRegistry {
 /// Creates a default AST parser registry with all supported language parsers
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::services::unified_ast_parser::create_default_registry;
 /// use std::path::Path;
-/// 
+///
 /// let registry = create_default_registry();
 /// // Registry has Rust parser registered by default
 /// let parser = registry.find_parser(Path::new("src/main.rs"));

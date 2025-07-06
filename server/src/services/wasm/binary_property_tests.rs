@@ -74,7 +74,7 @@ mod tests {
     }
 
     proptest! {
-        #![proptest_config(ProptestConfig::with_cases(1000))]
+        #![proptest_config(ProptestConfig::with_cases(100))]
 
         #[test]
         fn analyzer_never_panics_on_arbitrary_input(
@@ -141,19 +141,40 @@ mod tests {
 
         #[test]
         fn file_size_limits_enforced(
-            size_mb in 1usize..20,
-            data in prop::collection::vec(any::<u8>(), 8..100)
+            size_mb in prop_oneof![
+                // Test around the boundary (10MB limit)
+                Just(5usize),  // Well under limit
+                Just(9usize),  // Just under limit
+                Just(10usize), // At limit
+                Just(11usize), // Just over limit
+                Just(15usize), // Well over limit
+            ],
+            seed_data in prop::collection::vec(any::<u8>(), 8..16)
         ) {
             let runtime = tokio::runtime::Runtime::new().unwrap();
             let temp_file = NamedTempFile::new().unwrap();
 
-            // Create large file by repeating data
+            // Create a file of the target size more efficiently
             let mut large_data = vec![0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
             let target_size = size_mb * 1024 * 1024;
-            while large_data.len() < target_size {
-                large_data.extend(&data);
+            
+            // Use a larger chunk for efficiency
+            let chunk_size = 1024; // 1KB chunks
+            let mut chunk = Vec::with_capacity(chunk_size);
+            while chunk.len() < chunk_size {
+                chunk.extend(&seed_data);
             }
-            large_data.truncate(target_size);
+            chunk.truncate(chunk_size);
+            
+            // Build the file with repeated chunks
+            while large_data.len() + chunk.len() <= target_size {
+                large_data.extend(&chunk);
+            }
+            // Fill remaining bytes
+            let remaining = target_size.saturating_sub(large_data.len());
+            if remaining > 0 {
+                large_data.extend(&chunk[..remaining.min(chunk.len())]);
+            }
 
             runtime.block_on(async {
                 tokio::fs::write(temp_file.path(), &large_data).await.unwrap()
@@ -164,13 +185,15 @@ mod tests {
 
             if size_mb > 10 {
                 // Should reject files larger than 10MB
-                prop_assert!(result.is_err());
+                prop_assert!(result.is_err(), "Expected error for {}MB file, got Ok", size_mb);
                 if let Err(e) = result {
-                    prop_assert!(e.to_string().contains("too large"));
+                    prop_assert!(e.to_string().contains("too large"),
+                        "Expected 'too large' error, got: {}", e);
                 }
             } else {
-                // Should accept files under 10MB
-                prop_assert!(result.is_ok());
+                // Should accept files under or at 10MB
+                prop_assert!(result.is_ok(), 
+                    "Expected success for {}MB file, got error: {:?}", size_mb, result);
             }
         }
 

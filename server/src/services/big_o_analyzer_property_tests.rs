@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::services::big_o_analyzer::*;
     use crate::models::complexity_bound::{BigOClass, ComplexityBound};
+    use crate::services::big_o_analyzer::*;
     use proptest::prelude::*;
     use std::path::PathBuf;
 
@@ -166,8 +166,8 @@ mod tests {
         fn complexity_distribution_valid(dist in arb_complexity_distribution()) {
             // All fields are usize so always >= 0
             // Just verify the distribution was created
-            let _total = dist.constant + dist.logarithmic + dist.linear + 
-                        dist.linearithmic + dist.quadratic + dist.cubic + 
+            let _total = dist.constant + dist.logarithmic + dist.linear +
+                        dist.linearithmic + dist.quadratic + dist.cubic +
                         dist.exponential + dist.unknown;
         }
 
@@ -177,12 +177,12 @@ mod tests {
             dist in arb_complexity_distribution(),
             extra_functions in 0usize..50
         ) {
-            let total_from_dist = dist.constant + dist.logarithmic + dist.linear + 
-                                  dist.linearithmic + dist.quadratic + dist.cubic + 
+            let total_from_dist = dist.constant + dist.logarithmic + dist.linear +
+                                  dist.linearithmic + dist.quadratic + dist.cubic +
                                   dist.exponential + dist.unknown;
-            
+
             let analyzed_functions = total_from_dist + extra_functions;
-            
+
             let report = BigOAnalysisReport {
                 analyzed_functions,
                 complexity_distribution: dist,
@@ -190,9 +190,9 @@ mod tests {
                 pattern_matches: vec![],
                 recommendations: vec![],
             };
-            
+
             // If analyzed_functions >= distribution total, it's consistent
-            let report_total = report.complexity_distribution.constant + 
+            let report_total = report.complexity_distribution.constant +
                               report.complexity_distribution.logarithmic +
                               report.complexity_distribution.linear +
                               report.complexity_distribution.linearithmic +
@@ -200,7 +200,7 @@ mod tests {
                               report.complexity_distribution.cubic +
                               report.complexity_distribution.exponential +
                               report.complexity_distribution.unknown;
-                              
+
             prop_assert!(report.analyzed_functions >= report_total);
         }
 
@@ -218,11 +218,11 @@ mod tests {
         ) {
             // Use public interface by testing on actual analyzer
             let analyzer = BigOAnalyzer::new();
-            
+
             // Test that analyzer can be created (public interface)
             // Since get_loop_keywords is private, we test the public behavior
             let _created = analyzer;
-            
+
             // Basic language detection - this is testing the concept
             match language {
                 "rust" | "javascript" | "typescript" | "python" => {
@@ -244,16 +244,16 @@ mod tests {
         ) {
             // Since detect_recursive_call is private, test the concept
             let analyzer = BigOAnalyzer::new();
-            
+
             // Test that we can create test code snippets for analysis
             let call_line = format!("{}{}()", prefix, function_name);
             let def_line = format!("fn {}() {{", function_name);
-            
+
             // These are valid code patterns we might analyze
             prop_assert!(!call_line.is_empty());
             prop_assert!(!def_line.is_empty());
             prop_assert!(!function_name.is_empty());
-            
+
             // Analyzer should exist
             let _ = analyzer;
         }
@@ -266,26 +266,26 @@ mod tests {
         ) {
             // Since detect_sorting_operation is private, test the concept
             let analyzer = BigOAnalyzer::new();
-            
+
             // Test that we can create code patterns that would contain sorting
             let sort_line1 = format!("{}.sort()", prefix);
             let sort_line2 = format!("{}sort({})", prefix, suffix);
             let no_sort_line = format!("{}println!()", prefix);
-            
+
             // These should be valid code patterns
             prop_assert!(!sort_line1.is_empty());
             prop_assert!(!sort_line2.is_empty());
             prop_assert!(!no_sort_line.is_empty());
-            
+
             // Test patterns contain expected substrings
             if !prefix.is_empty() {
                 prop_assert!(sort_line1.contains(".sort()") || sort_line1.trim() == ".sort()");
             }
-            
+
             let _ = analyzer;
         }
 
-        /// Property: Binary search detection concept validation  
+        /// Property: Binary search detection concept validation
         #[test]
         fn binary_search_detection_concept(
             prefix in "[a-zA-Z0-9 \\t]*",
@@ -293,22 +293,22 @@ mod tests {
         ) {
             // Since detect_binary_search is private, test the concept
             let analyzer = BigOAnalyzer::new();
-            
+
             // Test that we can create code patterns for binary search
             let binary_line1 = format!("{}binary_search{}", prefix, suffix);
             let binary_line2 = format!("{}binarySearch{}", prefix, suffix);
             let no_binary_line = format!("{}linear_search{}", prefix, suffix);
-            
+
             // These should be valid code patterns
             prop_assert!(!binary_line1.is_empty());
             prop_assert!(!binary_line2.is_empty());
             prop_assert!(!no_binary_line.is_empty());
-            
+
             // Test patterns contain expected substrings
             prop_assert!(binary_line1.contains("binary_search"));
             prop_assert!(binary_line2.contains("binarySearch"));
             prop_assert!(no_binary_line.contains("linear_search"));
-            
+
             let _ = analyzer;
         }
 
@@ -335,12 +335,12 @@ mod tests {
         fn complexity_bound_mathematically_valid(bound in arb_complexity_bound()) {
             // Coefficient should be positive for meaningful bounds
             prop_assert!(bound.coefficient > 0);
-            
+
             // Confidence should be bounded
             prop_assert!(bound.confidence <= 100);
-            
+
             // The bound should have a valid class
-            prop_assert!(matches!(bound.class, 
+            prop_assert!(matches!(bound.class,
                 BigOClass::Constant | BigOClass::Logarithmic | BigOClass::Linear |
                 BigOClass::Linearithmic | BigOClass::Quadratic | BigOClass::Cubic |
                 BigOClass::Exponential | BigOClass::Factorial | BigOClass::Unknown
@@ -359,7 +359,7 @@ mod tests {
             let expected_high_complexity_count = high_complexity_functions.len();
             let expected_pattern_count = pattern_matches.len();
             let expected_recommendation_count = recommendations.len();
-            
+
             let report = BigOAnalysisReport {
                 analyzed_functions,
                 complexity_distribution: dist,
@@ -367,13 +367,13 @@ mod tests {
                 pattern_matches,
                 recommendations,
             };
-            
+
             // All counts are usize so always >= 0
             prop_assert!(report.analyzed_functions == analyzed_functions);
             prop_assert!(report.high_complexity_functions.len() == expected_high_complexity_count);
             prop_assert!(report.pattern_matches.len() == expected_pattern_count);
             prop_assert!(report.recommendations.len() == expected_recommendation_count);
-            
+
             // High complexity functions should have reasonable confidence
             for func in &report.high_complexity_functions {
                 prop_assert!(func.confidence <= 100);
@@ -388,7 +388,7 @@ mod tests {
                 // occurrences is usize so always >= 0
                 prop_assert!(!pattern.pattern_name.is_empty());
             }
-            
+
             // Total occurrences should be sum of individual occurrences
             let total_occurrences: usize = patterns.iter().map(|p| p.occurrences).sum();
             prop_assert!(total_occurrences <= patterns.len() * 100); // Reasonable upper bound
@@ -411,7 +411,7 @@ mod tests {
         // Test basic analyzer creation
         let analyzer = BigOAnalyzer::new();
         // Analyzer should be created successfully - if we get here, creation worked
-        
+
         // Test that we can call public methods
         let config = BigOAnalysisConfig {
             project_path: std::path::PathBuf::from("/tmp"),
@@ -420,7 +420,7 @@ mod tests {
             confidence_threshold: 50,
             analyze_space_complexity: true,
         };
-        
+
         // Test that we can format reports
         let report = BigOAnalysisReport {
             analyzed_functions: 0,
@@ -438,11 +438,11 @@ mod tests {
             pattern_matches: vec![],
             recommendations: vec![],
         };
-        
+
         // Test public interface methods
         let _json = analyzer.format_as_json(&report).unwrap();
         let _markdown = analyzer.format_as_markdown(&report);
-        
+
         // Test config validation
         assert!(!config.project_path.as_os_str().is_empty());
         assert!(config.confidence_threshold <= 100);
@@ -460,11 +460,16 @@ mod tests {
             exponential: 0,
             unknown: 5,
         };
-        
-        let total = dist.constant + dist.logarithmic + dist.linear + 
-                   dist.linearithmic + dist.quadratic + dist.cubic + 
-                   dist.exponential + dist.unknown;
-        
+
+        let total = dist.constant
+            + dist.logarithmic
+            + dist.linear
+            + dist.linearithmic
+            + dist.quadratic
+            + dist.cubic
+            + dist.exponential
+            + dist.unknown;
+
         assert_eq!(total, 30);
         assert!(dist.constant <= total);
         assert!(dist.linear <= total);
@@ -476,16 +481,30 @@ mod tests {
             file_path: PathBuf::from("src/lib.rs"),
             function_name: "fibonacci".to_string(),
             line_number: 42,
-            time_complexity: ComplexityBound::new(BigOClass::Exponential, 1, crate::models::complexity_bound::InputVariable::N),
-            space_complexity: ComplexityBound::new(BigOClass::Linear, 1, crate::models::complexity_bound::InputVariable::N),
+            time_complexity: ComplexityBound::new(
+                BigOClass::Exponential,
+                1,
+                crate::models::complexity_bound::InputVariable::N,
+            ),
+            space_complexity: ComplexityBound::new(
+                BigOClass::Linear,
+                1,
+                crate::models::complexity_bound::InputVariable::N,
+            ),
             confidence: 85,
             notes: vec!["Recursive implementation".to_string()],
         };
-        
+
         assert_eq!(complexity.function_name, "fibonacci");
         assert_eq!(complexity.line_number, 42);
         assert_eq!(complexity.confidence, 85);
-        assert!(matches!(complexity.time_complexity.class, BigOClass::Exponential));
-        assert!(matches!(complexity.space_complexity.class, BigOClass::Linear));
+        assert!(matches!(
+            complexity.time_complexity.class,
+            BigOClass::Exponential
+        ));
+        assert!(matches!(
+            complexity.space_complexity.class,
+            BigOClass::Linear
+        ));
     }
 }

@@ -18,18 +18,18 @@ pub struct SymbolInfo {
 /// Extract symbol information from an AST item
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::cli::symbol_table_helpers::extract_symbol_from_ast_item;
 /// use pmat::services::context::AstItem;
-/// 
+///
 /// let item = AstItem::Function {
 ///     name: "main".to_string(),
 ///     visibility: "public".to_string(),
 ///     is_async: false,
 ///     line: 1,
 /// };
-/// 
+///
 /// let result = extract_symbol_from_ast_item(&item);
 /// assert!(result.is_some());
 /// let (name, kind, line, visibility, is_async) = result.unwrap();
@@ -98,20 +98,20 @@ pub fn extract_symbol_from_ast_item(
 /// Checks if a symbol kind passes the type filter
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::cli::symbol_table_helpers::passes_type_filter;
 /// use pmat::cli::SymbolTypeFilter;
-/// 
+///
 /// // Function passes function filter
 /// assert!(passes_type_filter("function", &Some(SymbolTypeFilter::Functions)));
-/// 
+///
 /// // Struct passes types filter
 /// assert!(passes_type_filter("struct", &Some(SymbolTypeFilter::Types)));
-/// 
+///
 /// // Anything passes when no filter
 /// assert!(passes_type_filter("enum", &None));
-/// 
+///
 /// // Function doesn't pass classes filter
 /// assert!(!passes_type_filter("function", &Some(SymbolTypeFilter::Classes)));
 /// ```
@@ -185,11 +185,11 @@ pub fn extract_symbols_from_context(
 /// Count symbols by their type/kind
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use pmat::cli::symbol_table_helpers::{count_by_type, SymbolInfo};
 /// use std::path::PathBuf;
-/// 
+///
 /// let symbols = vec![
 ///     SymbolInfo {
 ///         name: "main".to_string(),
@@ -208,7 +208,7 @@ pub fn extract_symbols_from_context(
 ///         is_async: false,
 ///     },
 /// ];
-/// 
+///
 /// let counts = count_by_type(&symbols);
 /// assert_eq!(counts.get("function"), Some(&1));
 /// assert_eq!(counts.get("struct"), Some(&1));

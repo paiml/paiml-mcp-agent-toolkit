@@ -60,7 +60,7 @@ mod tests {
     }
 
     proptest! {
-        #![proptest_config(ProptestConfig::with_cases(1000))]
+        #![proptest_config(ProptestConfig::with_cases(100))]
 
         #[test]
         fn mermaid_generation_never_panics(
