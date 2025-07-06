@@ -279,6 +279,16 @@ impl ComplexityBound {
     }
 
     /// Create a logarithmic time bound O(log n)
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
+    /// 
+    /// let bound = ComplexityBound::logarithmic();
+    /// assert_eq!(bound.class, BigOClass::Logarithmic);
+    /// assert_eq!(bound.notation(), "O(log n)");
+    /// ```
     pub fn logarithmic() -> Self {
         Self::new(BigOClass::Logarithmic, 1, InputVariable::N)
     }
