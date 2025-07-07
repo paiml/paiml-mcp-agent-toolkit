@@ -189,6 +189,7 @@ impl CommandExecutor {
             }
             Commands::QualityGate {
                 project_path,
+                file,
                 format,
                 fail_on_violation,
                 checks,
@@ -203,6 +204,7 @@ impl CommandExecutor {
                     .demo_handlers
                     .handle_quality_gate(
                         project_path,
+                        file,
                         format,
                         fail_on_violation,
                         checks,
@@ -444,6 +446,7 @@ impl DemoCommandGroup {
     pub async fn handle_quality_gate(
         &self,
         project_path: std::path::PathBuf,
+        file: Option<std::path::PathBuf>,
         format: crate::cli::QualityGateOutputFormat,
         fail_on_violation: bool,
         checks: Vec<crate::cli::QualityCheckType>,
@@ -457,6 +460,7 @@ impl DemoCommandGroup {
         // Use dedicated demo handlers module
         crate::cli::handlers::demo_handlers::handle_quality_gate(
             project_path,
+            file,
             format,
             fail_on_violation,
             checks,

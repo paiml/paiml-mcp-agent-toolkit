@@ -82,6 +82,7 @@ async fn test_execute_analyze_complexity_basic() {
 
     let analyze_cmd = AnalyzeCommands::Complexity {
         project_path: test_dir.path().to_path_buf(),
+        file: None,
         toolchain: None,
         format: ComplexityOutputFormat::Summary,
         output: None,

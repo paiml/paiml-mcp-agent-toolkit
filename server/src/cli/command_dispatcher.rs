@@ -140,6 +140,7 @@ impl CommandDispatcher {
             }
             Commands::QualityGate {
                 project_path,
+                file,
                 format,
                 fail_on_violation,
                 checks,
@@ -152,6 +153,7 @@ impl CommandDispatcher {
             } => {
                 handlers::handle_quality_gate(
                     project_path,
+                    file,
                     format,
                     fail_on_violation,
                     checks,

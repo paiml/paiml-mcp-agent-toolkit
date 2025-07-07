@@ -11,6 +11,7 @@ use std::path::PathBuf;
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_complexity(
     project_path: PathBuf,
+    file: Option<PathBuf>,
     toolchain: Option<String>,
     format: ComplexityOutputFormat,
     output: Option<PathBuf>,
@@ -34,21 +35,58 @@ pub async fn handle_analyze_complexity(
         .or_else(|| super::super::stubs::detect_toolchain(&project_path))
         .unwrap_or_else(|| "rust".to_string());
 
-    eprintln!("🔍 Analyzing {detected_toolchain} project complexity...");
-
     // Custom thresholds
     let _thresholds =
         super::super::stubs::build_complexity_thresholds(max_cyclomatic, max_cognitive);
 
     // Analyze files
-    let mut file_metrics = super::super::stubs::analyze_project_files(
-        &project_path,
-        Some(&detected_toolchain),
-        &include,
-        10,
-        15,
-    )
-    .await?;
+    let mut file_metrics = if let Some(single_file) = file {
+        // Single file mode
+        eprintln!("🔍 Analyzing complexity of file: {}", single_file.display());
+        
+        // Ensure file exists and is within project
+        let full_path = if single_file.is_absolute() {
+            single_file
+        } else {
+            project_path.join(&single_file)
+        };
+        
+        if !full_path.exists() {
+            anyhow::bail!("File not found: {}", full_path.display());
+        }
+        
+        // Analyze single file
+        match detected_toolchain.as_str() {
+            "rust" => {
+                use crate::services::ast_rust::analyze_rust_file_with_complexity;
+                let metrics = analyze_rust_file_with_complexity(&full_path).await?;
+                vec![metrics]
+            }
+            _ => {
+                // For other toolchains, use the generic analyzer with a single-file include pattern
+                let include_pattern = vec![full_path.to_string_lossy().to_string()];
+                super::super::stubs::analyze_project_files(
+                    &project_path,
+                    Some(&detected_toolchain),
+                    &include_pattern,
+                    max_cyclomatic.unwrap_or(10),
+                    max_cognitive.unwrap_or(15),
+                )
+                .await?
+            }
+        }
+    } else {
+        // Project mode
+        eprintln!("🔍 Analyzing {detected_toolchain} project complexity...");
+        super::super::stubs::analyze_project_files(
+            &project_path,
+            Some(&detected_toolchain),
+            &include,
+            max_cyclomatic.unwrap_or(10),
+            max_cognitive.unwrap_or(15),
+        )
+        .await?
+    };
 
     // Apply top_files filtering if specified
     if top_files > 0 {
