@@ -10,6 +10,8 @@
 
 **Zero-configuration AI context generation system** that analyzes any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com) with extreme quality standards and zero tolerance for technical debt.
 
+> **Latest Quality Improvements**: All clippy lint issues resolved, property tests enhanced, and code quality checks now pass ✅
+
 ## 🚀 Installation
 
 Install `pmat` using one of the following methods:
@@ -219,17 +221,51 @@ claude mcp add pmat ~/.local/bin/pmat
 Available MCP tools:
 - `generate_template` - Generate project files from templates
 - `scaffold_project` - Generate complete project structure  
-- `analyze_complexity` - Code complexity metrics
+- `analyze_complexity` - Code complexity metrics **with tool composition**
 - `analyze_code_churn` - Git history analysis
 - `analyze_dag` - Dependency graph generation
 - `analyze_dead_code` - Dead code detection
-- `analyze_deep_context` - Comprehensive analysis
+- `analyze_deep_context` - Comprehensive analysis **with tool composition**
 - `generate_context` - Zero-config context generation
 - `analyze_big_o` - Big-O complexity analysis with confidence scores
 - `analyze_makefile_lint` - Lint Makefiles with 50+ quality rules
 - `analyze_proof_annotations` - Lightweight formal verification
 - `analyze_graph_metrics` - Graph centrality and PageRank analysis
 - `refactor_interactive` - Interactive refactoring with explanations
+
+#### 🔗 MCP Tool Composition (NEW)
+
+AI agents can now chain analysis tools using the `--files` parameter:
+
+```bash
+# Step 1: Find complexity hotspots
+pmat analyze complexity --top-files 5 --format json
+
+# Step 2: Deep analyze those specific files (MCP composition)
+pmat analyze comprehensive --files src/complex.rs,src/legacy.rs
+
+# Step 3: Target refactoring on problematic files
+pmat refactor auto --files src/complex.rs
+```
+
+**MCP Agent Workflow Example:**
+```javascript
+// AI agent discovers hotspots
+const hotspots = await callTool("pmat_analyze_complexity", {
+  top_files: 5, 
+  format: "json"
+});
+
+// Agent extracts file paths and performs deep analysis
+const detailed = await callTool("pmat_analyze_comprehensive", {
+  files: hotspots.files.map(f => f.path)
+});
+
+// Agent generates targeted refactoring plan
+const refactor = await callTool("pmat_refactor_auto", {
+  files: detailed.high_risk_files
+});
+```
 
 ### HTTP API
 

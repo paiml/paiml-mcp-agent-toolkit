@@ -79,9 +79,15 @@ impl DemoServer {
                 workspace_release.to_string()
             } else if std::path::Path::new(workspace_debug).exists() {
                 workspace_debug.to_string()
-            } else {
+            } else if std::path::Path::new("../target/release/pmat").exists() {
                 // Fallback for running from server directory
                 "../target/release/pmat".to_string()
+            } else if std::path::Path::new("../target/debug/pmat").exists() {
+                // Use debug build if release not available
+                "../target/debug/pmat".to_string()
+            } else {
+                // Final fallback
+                panic!("Could not find pmat binary. Please run 'cargo build' or 'cargo build --release' from workspace root.")
             }
         });
 
@@ -562,12 +568,21 @@ async fn test_analysis_pipeline_integrity() -> Result<()> {
 
     // Capture process output to verify analysis steps
     let binary_path = std::env::var("CARGO_BIN_EXE_pmat").unwrap_or_else(|_| {
-        // Try debug binary first, then release
-        if std::path::Path::new("target/debug/pmat").exists() {
-            "target/debug/pmat".to_string()
-        } else {
-            "../target/release/pmat".to_string()
+        // Try different locations for the binary
+        let paths = [
+            "target/release/pmat",
+            "target/debug/pmat",
+            "../target/release/pmat",
+            "../target/debug/pmat",
+        ];
+        
+        for path in &paths {
+            if std::path::Path::new(path).exists() {
+                return path.to_string();
+            }
         }
+        
+        panic!("Could not find pmat binary. Please run 'cargo build' or 'cargo build --release' from workspace root.")
     });
 
     let mut process = Command::new(&binary_path)

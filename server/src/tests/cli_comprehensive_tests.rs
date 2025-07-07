@@ -493,6 +493,7 @@ fn test_analyze_complexity_full_options() {
         Commands::Analyze(AnalyzeCommands::Complexity {
             project_path,
             file,
+            files: _,
             toolchain,
             format,
             output,
@@ -511,7 +512,7 @@ fn test_analyze_complexity_full_options() {
             assert_eq!(max_cognitive, Some(20));
             assert_eq!(include, vec!["**/*.rs", "src/**/*.rs"]);
             assert!(watch);
-            assert_eq!(top_files, 0); // Default value
+            assert_eq!(top_files, 10); // Default value changed to 10
         }
         _ => panic!("Expected Analyze Complexity command"),
     }

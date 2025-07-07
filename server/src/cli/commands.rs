@@ -400,7 +400,12 @@ pub enum AnalyzeCommands {
         top_files: usize,
     },
 
-    /// Analyze code complexity
+    /// Analyze code complexity with MCP tool composition support
+    /// 
+    /// MCP Usage Examples:
+    /// 1. Find hotspots: pmat analyze complexity --top-files 5 --format json
+    /// 2. Analyze specific files: pmat analyze complexity --files src/main.rs,src/lib.rs
+    /// 3. Chain with other tools using JSON output for AI agent workflows
     Complexity {
         /// Project path to analyze
         #[arg(short = 'p', long, default_value = ".")]
@@ -409,6 +414,18 @@ pub enum AnalyzeCommands {
         /// Analyze a specific file instead of the whole project
         #[arg(long, conflicts_with = "include")]
         file: Option<PathBuf>,
+
+        /// Analyze specific files (comma-separated list for MCP tool composition)
+        /// 
+        /// Enable AI agents to chain analysis tools by passing file lists between commands.
+        /// Example: --files src/main.rs,src/lib.rs,tests/integration.rs
+        /// 
+        /// MCP Tool Chaining:
+        /// 1. Get top complex files from one analysis
+        /// 2. Pass those files to another analysis command
+        /// 3. Build focused refactoring workflows
+        #[arg(long, value_delimiter = ',', conflicts_with_all = ["file", "include"])]
+        files: Vec<PathBuf>,
 
         /// Filter by toolchain (rust, deno, python-uv)
         #[arg(long)]
@@ -890,15 +907,32 @@ pub enum AnalyzeCommands {
         top_files: usize,
     },
 
-    /// Run comprehensive multi-dimensional analysis combining all analysis types
+    /// Run comprehensive multi-dimensional analysis with MCP tool composition
+    /// 
+    /// Perfect for AI agents to get complete code health metrics. Combines:
+    /// - Complexity analysis
+    /// - Technical debt detection
+    /// - Defect prediction
+    /// - Dead code analysis
+    /// - Duplicate detection
+    /// 
+    /// MCP Workflow: Use after complexity analysis to get detailed insights on problematic files
     Comprehensive {
         /// Project path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
         project_path: PathBuf,
 
         /// Single file to analyze (overrides project path)
-        #[arg(long)]
+        #[arg(long, conflicts_with = "files")]
         file: Option<PathBuf>,
+
+        /// Analyze specific files (MCP tool composition from complexity hotspots)
+        /// 
+        /// Enable AI agents to perform comprehensive analysis on files identified
+        /// by previous complexity analysis. Perfect for multi-stage analysis workflows.
+        /// Example: --files src/complex.rs,src/legacy.rs,src/problematic.rs
+        #[arg(long, value_delimiter = ',', conflicts_with = "file")]
+        files: Vec<PathBuf>,
 
         /// Output format
         #[arg(long, short = 'f', value_enum, default_value = "summary")]

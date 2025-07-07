@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use super::super::lint_hotspot_handlers::{
-        FileSummary, SeverityDistribution, ViolationDetail,
-    };
+    use super::super::lint_hotspot_handlers::{FileSummary, SeverityDistribution, ViolationDetail};
     use proptest::prelude::*;
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -124,10 +122,10 @@ mod tests {
             sloc in 1usize..10000,
         ) {
             let density = calculate_defect_density(total_violations, sloc);
-            
+
             prop_assert!(density >= 0.0, "Density should be non-negative");
             prop_assert!(density.is_finite(), "Density should be finite");
-            
+
             // Verify the formula: violations per 100 lines
             let expected = (total_violations as f64 / sloc as f64) * 100.0;
             prop_assert!((density - expected).abs() < f64::EPSILON);
@@ -143,10 +141,10 @@ mod tests {
                 sloc: 100,
                 defect_density: 0.0,
             };
-            
+
             prop_assert_eq!(summary.total_violations, 0);
             prop_assert_eq!(summary.defect_density, 0.0);
-            
+
             let calculated_density = calculate_defect_density(summary.total_violations, summary.sloc);
             prop_assert_eq!(calculated_density, 0.0);
         }
@@ -157,7 +155,7 @@ mod tests {
             violations in prop::collection::vec(arb_violation_detail(), 0..100)
         ) {
             let mut severity_counts = SeverityDistribution::default();
-            
+
             for v in &violations {
                 match v.severity.as_str() {
                     "error" => severity_counts.error += 1,
@@ -166,7 +164,7 @@ mod tests {
                     _ => severity_counts.note += 1,
                 }
             }
-            
+
             // Count actual severities
             let actual_errors = violations.iter().filter(|v| v.severity == "error").count();
             let actual_warnings = violations.iter().filter(|v| v.severity == "warning").count();
@@ -176,7 +174,7 @@ mod tests {
             let actual_notes = violations.iter()
                 .filter(|v| !["error", "warning", "help", "suggestion"].contains(&v.severity.as_str()))
                 .count();
-            
+
             prop_assert_eq!(severity_counts.error, actual_errors);
             prop_assert_eq!(severity_counts.warning, actual_warnings);
             prop_assert_eq!(severity_counts.suggestion, actual_suggestions);
@@ -194,11 +192,11 @@ mod tests {
             limit in 1usize..10,
         ) {
             let top_lints = get_top_lints(&violations, limit);
-            
+
             // Should not exceed limit
             prop_assert!(top_lints.len() <= limit);
             prop_assert!(top_lints.len() <= violations.len());
-            
+
             // Should be sorted by count (descending)
             for i in 1..top_lints.len() {
                 prop_assert!(
@@ -208,7 +206,7 @@ mod tests {
                     top_lints[i].0, top_lints[i].1
                 );
             }
-            
+
             // Verify counts match original data
             for (lint_name, count) in &top_lints {
                 prop_assert_eq!(violations.get(lint_name), Some(count));
@@ -219,7 +217,7 @@ mod tests {
         #[test]
         fn file_summary_density_consistent(summary in arb_file_summary()) {
             let calculated_density = calculate_defect_density(summary.total_violations, summary.sloc);
-            
+
             // Allow small floating point differences
             prop_assert!(
                 (summary.defect_density - calculated_density).abs() < 0.001,
@@ -227,7 +225,7 @@ mod tests {
                 summary.defect_density,
                 calculated_density
             );
-            
+
             // Verify total is at least errors + warnings
             prop_assert!(
                 summary.total_violations >= summary.errors + summary.warnings,
@@ -250,27 +248,27 @@ mod tests {
             // Find the actual hotspot manually
             let mut max_density = 0.0;
             let mut hotspot_path = None;
-            
+
             for (path, summary) in &file_summaries {
                 if summary.sloc == 0 || summary.total_violations == 0 {
                     continue;
                 }
-                
+
                 let density = calculate_defect_density(summary.total_violations, summary.sloc);
-                
+
                 if density > max_density {
                     max_density = density;
                     hotspot_path = Some(path.clone());
                 }
             }
-            
+
             // If there's a hotspot, verify properties
             if let Some(expected_path) = hotspot_path {
                 let summary = file_summaries.get(&expected_path).unwrap();
-                
+
                 prop_assert!(summary.total_violations > 0);
                 prop_assert!(summary.sloc > 0);
-                
+
                 let density = calculate_defect_density(summary.total_violations, summary.sloc);
                 prop_assert!(
                     (density - max_density).abs() < 0.001,
@@ -278,7 +276,7 @@ mod tests {
                     density,
                     max_density
                 );
-                
+
                 // Verify this is actually the max
                 for other_summary in file_summaries.values() {
                     if other_summary.total_violations > 0 && other_summary.sloc > 0 {
@@ -306,7 +304,7 @@ mod tests {
                 prop_assert!(violation.suggestion.is_some(),
                     "Machine applicable violation must have suggestion");
             }
-            
+
             // If no suggestion, machine_applicable should be false
             violation.suggestion = None;
             violation.machine_applicable = false;
@@ -320,7 +318,7 @@ mod tests {
             prop_assert!(violation.column > 0, "Column must be positive");
             prop_assert!(violation.end_line >= violation.line,
                 "End line must be >= start line");
-            
+
             if violation.end_line == violation.line {
                 prop_assert!(violation.end_column >= violation.column,
                     "End column must be >= start column on same line");
@@ -345,13 +343,10 @@ mod tests {
     }
 
     fn get_top_lints(violations: &HashMap<String, usize>, limit: usize) -> Vec<(String, usize)> {
-        let mut sorted: Vec<_> = violations.iter()
-            .map(|(k, v)| (k.clone(), *v))
-            .collect();
-        
+        let mut sorted: Vec<_> = violations.iter().map(|(k, v)| (k.clone(), *v)).collect();
+
         sorted.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
         sorted.truncate(limit);
         sorted
     }
-
 }
