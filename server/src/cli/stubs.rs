@@ -2105,7 +2105,7 @@ async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
     use walkdir::WalkDir;
 
     let mut violations = Vec::new();
-    let satd_pattern = Regex::new(r"(?i)(TODO|FIXME|HACK|XXX):\s*(.+)").unwrap();
+    let satd_pattern = Regex::new(r"(?i)\b(TODO|FIXME|HACK|XXX|BUG|REFACTOR):\s*(.+)").unwrap();
 
     for entry in WalkDir::new(project_path) {
         let entry = entry?;
@@ -5205,7 +5205,7 @@ async fn check_single_file_satd(
     use regex::Regex;
     
     let mut violations = Vec::new();
-    let satd_pattern = Regex::new(r"(?i)(TODO|FIXME|HACK|XXX|BUG|REFACTOR):\s*(.+)")?;
+    let satd_pattern = Regex::new(r"(?i)\b(TODO|FIXME|HACK|XXX|BUG|REFACTOR):\s*(.+)")?;
     
     // Make file path absolute
     let abs_file_path = if file_path.is_absolute() {
