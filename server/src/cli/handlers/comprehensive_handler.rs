@@ -87,6 +87,7 @@ use tracing::{info, warn};
 pub async fn handle_analyze_comprehensive(
     project_path: PathBuf,
     file: Option<PathBuf>,
+    files: Vec<PathBuf>,
     format: ComprehensiveOutputFormat,
     include_duplicates: bool,
     include_dead_code: bool,
@@ -105,15 +106,19 @@ pub async fn handle_analyze_comprehensive(
 
     info!("🔍 Starting comprehensive analysis");
 
-    // Determine if we're analyzing a single file or whole project
-    let (analysis_path, single_file_mode) = if let Some(ref file_path) = file {
+    // Determine analysis mode: single file, multiple files (MCP), or whole project
+    let (analysis_path, single_file_mode, target_files) = if let Some(ref file_path) = file {
         info!("📄 Single file mode: {}", file_path.display());
         // For single file, we need to find the project root
         let project_root = find_project_root(file_path)?;
-        (project_root, true)
+        (project_root, true, vec![file_path.clone()])
+    } else if !files.is_empty() {
+        info!("📋 Multi-file mode (MCP composition): {} files", files.len());
+        // For multiple files, use project root and filter by target files
+        (project_path.clone(), true, files.clone())
     } else {
         info!("📂 Project path: {}", project_path.display());
-        (project_path.clone(), false)
+        (project_path.clone(), false, vec![])
     };
 
     // Log enabled analyses
@@ -147,17 +152,21 @@ pub async fn handle_analyze_comprehensive(
     // Generate comprehensive report
     let report = service.generate_report(&analysis_path).await?;
 
-    // Apply filters based on confidence threshold and single file mode
+    // Apply filters based on confidence threshold and file targeting
     let filtered_defects: Vec<_> = report
         .defects
         .iter()
         .filter(|d| {
-            // Filter by single file if in single file mode
-            if single_file_mode {
-                if let Some(ref target_file) = file {
-                    if d.file_path != *target_file {
-                        return false;
-                    }
+            // Filter by target files if in single/multi-file mode (MCP composition)
+            if single_file_mode && !target_files.is_empty() {
+                // Check if defect file matches any of our target files
+                let matches_target = target_files.iter().any(|target| {
+                    d.file_path == *target || 
+                    d.file_path.ends_with(target) ||
+                    target.ends_with(&d.file_path)
+                });
+                if !matches_target {
+                    return false;
                 }
             }
 

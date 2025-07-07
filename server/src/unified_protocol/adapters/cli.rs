@@ -238,6 +238,7 @@ impl CliAdapter {
             AnalyzeCommands::Complexity {
                 project_path,
                 file,
+                files,
                 toolchain,
                 format,
                 output,
@@ -249,6 +250,7 @@ impl CliAdapter {
             } => Self::decode_analyze_complexity(
                 project_path,
                 file,
+                files,
                 toolchain,
                 format,
                 output,
@@ -524,6 +526,7 @@ impl CliAdapter {
             AnalyzeCommands::Comprehensive {
                 project_path,
                 file,
+                files,
                 format,
                 include_duplicates,
                 include_dead_code,
@@ -542,6 +545,7 @@ impl CliAdapter {
                 let params = json!({
                     "project_path": project_path,
                     "file": file,
+                    "files": files.iter().map(|f| f.to_string_lossy()).collect::<Vec<_>>(),
                     "format": format,
                     "include_duplicates": include_duplicates,
                     "include_dead_code": include_dead_code,
@@ -817,6 +821,7 @@ impl CliAdapter {
     fn decode_analyze_complexity(
         project_path: &std::path::Path,
         file: &Option<std::path::PathBuf>,
+        files: &[std::path::PathBuf],
         toolchain: &Option<String>,
         format: &ComplexityOutputFormat,
         output: &Option<std::path::PathBuf>,
@@ -829,6 +834,7 @@ impl CliAdapter {
         let body = json!({
             "project_path": project_path.to_string_lossy(),
             "file": file.as_ref().map(|f| f.to_string_lossy()),
+            "files": files.iter().map(|f| f.to_string_lossy()).collect::<Vec<_>>(),
             "toolchain": toolchain,
             "format": complexity_format_to_string(format),
             "output_path": output,
@@ -1639,6 +1645,7 @@ mod tests {
         let command = Commands::Analyze(AnalyzeCommands::Complexity {
             project_path: PathBuf::from("."),
             file: None,
+            files: vec![],
             toolchain: Some("rust".to_string()),
             format: ComplexityOutputFormat::Json,
             output: None,

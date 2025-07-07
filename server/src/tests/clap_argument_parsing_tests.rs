@@ -329,7 +329,7 @@ mod custom_validator_tests {
                 Commands::Analyze(AnalyzeCommands::Complexity {
                     top_files, format, ..
                 }) => {
-                    assert_eq!(top_files, 0); // Default value
+                    assert_eq!(top_files, 10); // Default value
                     assert_eq!(format, ComplexityOutputFormat::Summary); // Default format
                 }
                 _ => panic!("Expected Analyze::Complexity command"),

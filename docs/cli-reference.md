@@ -2,6 +2,8 @@
 
 Complete reference for all PMAT command-line interface commands and options.
 
+> **v0.28.6+**: Comprehensive clippy lint improvements completed - all Rust code quality checks now pass ✅
+
 ## Table of Contents
 
 - [Installation](#installation)
@@ -268,12 +270,14 @@ All analyze commands support these common options:
 ### Core Analysis
 
 #### `analyze complexity`
-Analyze code complexity metrics.
+Analyze code complexity metrics with MCP tool composition support.
 
 ```bash
 pmat analyze complexity [OPTIONS] <PATH>
 
 Options:
+  --file <FILE>              Analyze single file (conflicts with --files)
+  --files <FILES>            Analyze specific files (comma-separated, for MCP composition)
   --max-complexity <NUM>     Maximum acceptable complexity (default: 10)
   --cognitive                Include cognitive complexity
   --functions-only           Only analyze functions (not files)
@@ -285,6 +289,10 @@ Examples:
   pmat analyze complexity .
   pmat analyze complexity ./src --max-complexity 15 --top-files 10
   pmat analyze complexity . --format json --cognitive
+  
+  # MCP Tool Composition
+  pmat analyze complexity . --files src/complex.rs,src/legacy.rs --format json
+  pmat analyze complexity . --file src/hotspot.rs
 ```
 
 #### `analyze churn`
@@ -492,13 +500,14 @@ Examples:
 ```
 
 #### `analyze comprehensive`
-Multi-dimensional analysis combining all analysis types.
+Multi-dimensional analysis combining all analysis types with MCP tool composition support.
 
 ```bash
 pmat analyze comprehensive [OPTIONS] <PATH>
 
 Options:
-  --file <FILE>              Single file to analyze (overrides project path)
+  --file <FILE>              Single file to analyze (conflicts with --files)
+  --files <FILES>            Multiple files to analyze (comma-separated, for MCP composition)
   --include-all              Include all analysis types
   --quick                    Quick analysis mode
   --depth <NUM>              Analysis depth level (1-3)
@@ -515,6 +524,10 @@ Examples:
   pmat analyze comprehensive ./src --quick --format html
   pmat analyze comprehensive . --file src/main.rs --format json
   pmat analyze comprehensive . --file lib/parser.rs --confidence-threshold 0.8
+  
+  # MCP Tool Composition (NEW)
+  pmat analyze comprehensive . --files src/complex.rs,src/legacy.rs --include-all
+  pmat analyze comprehensive . --files hotspot1.rs,hotspot2.rs --format json
 ```
 
 ### Graph and Network Analysis

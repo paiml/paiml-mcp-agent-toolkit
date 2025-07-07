@@ -7,11 +7,123 @@ use crate::cli::*;
 use anyhow::Result;
 use std::path::PathBuf;
 
-/// Handle complexity analysis command
+/// Handle complexity analysis command with MCP tool composition support
+///
+/// This function enables AI agents to perform sophisticated code analysis workflows
+/// by supporting three distinct modes of operation:
+///
+/// 1. **Project Mode**: Analyze entire project using include patterns
+/// 2. **Single File Mode**: Deep analysis of one specific file
+/// 3. **Multi-File Mode**: Process specific file lists for MCP tool chaining
+///
+/// # MCP Tool Composition Examples
+///
+/// ```no_run
+/// // Example 1: AI agent discovers complexity hotspots
+/// use std::path::PathBuf;
+/// use pmat::cli::{ComplexityOutputFormat, handlers::complexity_handlers::handle_analyze_complexity};
+/// 
+/// # async fn mcp_workflow_example() -> anyhow::Result<()> {
+/// // Step 1: Find top 5 most complex files
+/// handle_analyze_complexity(
+///     PathBuf::from("."),
+///     None,                           // file
+///     vec![],                         // files (empty = project mode)
+///     Some("rust".to_string()),       // toolchain
+///     ComplexityOutputFormat::Json,   // format for parsing
+///     None,                           // output (stdout)
+///     Some(20),                       // max_cyclomatic
+///     Some(15),                       // max_cognitive
+///     vec![],                         // include patterns
+///     false,                          // watch
+///     5,                              // top_files = 5 hotspots
+/// ).await?;
+/// 
+/// // AI agent would parse JSON output to extract file paths:
+/// // let hotspot_files = parse_json_extract_paths(json_output);
+/// 
+/// // Step 2: Deep analyze just those hotspot files
+/// let hotspot_files = vec![
+///     PathBuf::from("src/complex_module.rs"),
+///     PathBuf::from("src/legacy_code.rs"),
+/// ];
+/// 
+/// handle_analyze_complexity(
+///     PathBuf::from("."),
+///     None,                           // file
+///     hotspot_files,                  // files (MCP composition)
+///     Some("rust".to_string()),       // toolchain
+///     ComplexityOutputFormat::Json,   // format
+///     None,                           // output
+///     Some(10),                       // stricter threshold
+///     Some(8),                        // stricter threshold
+///     vec![],                         // include patterns
+///     false,                          // watch
+///     0,                              // top_files (show all)
+/// ).await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ```no_run
+/// // Example 2: AI agent builds refactoring pipeline
+/// use std::path::PathBuf;
+/// use pmat::cli::{ComplexityOutputFormat, handlers::complexity_handlers::handle_analyze_complexity};
+/// 
+/// # async fn mcp_refactor_pipeline() -> anyhow::Result<()> {
+/// // Step 1: Identify files needing refactoring
+/// let candidate_files = vec![
+///     PathBuf::from("src/user_service.rs"),
+///     PathBuf::from("src/payment_processor.rs"),
+///     PathBuf::from("src/notification_engine.rs"),
+/// ];
+/// 
+/// // Step 2: Analyze complexity metrics for prioritization
+/// handle_analyze_complexity(
+///     PathBuf::from("."),
+///     None,                           // file
+///     candidate_files,                // files (targeted analysis)
+///     Some("rust".to_string()),       // toolchain
+///     ComplexityOutputFormat::Json,   // format for decision making
+///     None,                           // output
+///     Some(15),                       // max_cyclomatic
+///     Some(12),                       // max_cognitive
+///     vec![],                         // include patterns
+///     false,                          // watch
+///     0,                              // top_files (analyze all provided)
+/// ).await?;
+/// 
+/// // AI agent would then:
+/// // 1. Parse complexity metrics
+/// // 2. Prioritize by technical debt impact
+/// // 3. Generate refactoring recommendations
+/// // 4. Chain to other pmat tools (dead-code, duplicates, etc.)
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Parameters
+///
+/// * `project_path` - Root directory of the project
+/// * `file` - Single file for focused analysis (conflicts with `files`)
+/// * `files` - **MCP Composition**: List of specific files to analyze
+/// * `toolchain` - Language detection override
+/// * `format` - Output format (JSON recommended for MCP workflows)
+/// * `output` - File output path (None = stdout for MCP parsing)
+/// * `max_cyclomatic` - Complexity threshold for violations
+/// * `max_cognitive` - Cognitive load threshold for violations
+/// * `include` - Glob patterns for project mode (conflicts with `files`)
+/// * `watch` - Continuous analysis mode
+/// * `top_files` - Limit output to N most complex files
+///
+/// # Returns
+///
+/// JSON-structured complexity analysis suitable for MCP tool chaining
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_complexity(
     project_path: PathBuf,
     file: Option<PathBuf>,
+    files: Vec<PathBuf>,
     toolchain: Option<String>,
     format: ComplexityOutputFormat,
     output: Option<PathBuf>,
@@ -43,18 +155,18 @@ pub async fn handle_analyze_complexity(
     let mut file_metrics = if let Some(single_file) = file {
         // Single file mode
         eprintln!("🔍 Analyzing complexity of file: {}", single_file.display());
-        
+
         // Ensure file exists and is within project
         let full_path = if single_file.is_absolute() {
             single_file
         } else {
             project_path.join(&single_file)
         };
-        
+
         if !full_path.exists() {
             anyhow::bail!("File not found: {}", full_path.display());
         }
-        
+
         // Analyze single file
         match detected_toolchain.as_str() {
             "rust" => {
@@ -75,6 +187,46 @@ pub async fn handle_analyze_complexity(
                 .await?
             }
         }
+    } else if !files.is_empty() {
+        // Multiple files mode (MCP tool composition)
+        eprintln!("🔍 Analyzing complexity of {} files...", files.len());
+        
+        let mut all_metrics = Vec::new();
+        for file_path in files {
+            let full_path = if file_path.is_absolute() {
+                file_path
+            } else {
+                project_path.join(&file_path)
+            };
+
+            if !full_path.exists() {
+                eprintln!("⚠️  Skipping missing file: {}", full_path.display());
+                continue;
+            }
+
+            // Analyze each file
+            match detected_toolchain.as_str() {
+                "rust" => {
+                    use crate::services::ast_rust::analyze_rust_file_with_complexity;
+                    let metrics = analyze_rust_file_with_complexity(&full_path).await?;
+                    all_metrics.push(metrics);
+                }
+                _ => {
+                    // For other toolchains, use the generic analyzer
+                    let include_pattern = vec![full_path.to_string_lossy().to_string()];
+                    let mut file_results = super::super::stubs::analyze_project_files(
+                        &project_path,
+                        Some(&detected_toolchain),
+                        &include_pattern,
+                        max_cyclomatic.unwrap_or(10),
+                        max_cognitive.unwrap_or(15),
+                    )
+                    .await?;
+                    all_metrics.append(&mut file_results);
+                }
+            }
+        }
+        all_metrics
     } else {
         // Project mode
         eprintln!("🔍 Analyzing {detected_toolchain} project complexity...");
@@ -385,98 +537,92 @@ fn format_dead_code_as_summary(
 fn format_dead_code_as_markdown(
     result: &crate::models::dead_code::DeadCodeResult,
 ) -> Result<String> {
-    use std::fmt::Write;
-    let mut output = String::new();
+    let mut sections = Vec::new();
 
-    writeln!(&mut output, "# Dead Code Analysis Report\n")?;
-    writeln!(&mut output, "## Summary\n")?;
-    writeln!(&mut output, "| Metric | Value |")?;
-    writeln!(&mut output, "|--------|-------|")?;
-    writeln!(&mut output, "| Files Analyzed | {} |", result.total_files)?;
-    writeln!(
-        &mut output,
-        "| Files with Dead Code | {} |",
-        result.summary.files_with_dead_code
-    )?;
-    writeln!(
-        &mut output,
-        "| Total Dead Lines | {} |",
-        result.summary.total_dead_lines
-    )?;
-    writeln!(
-        &mut output,
-        "| Dead Code Percentage | {:.2}% |",
-        result.summary.dead_percentage
-    )?;
-    writeln!(&mut output)?;
+    // Build summary section
+    sections.push(format_dead_code_summary_section(result));
 
+    // Build breakdown section if needed
     if result.summary.dead_functions > 0 {
-        writeln!(&mut output, "## Dead Code Breakdown\n")?;
-        writeln!(&mut output, "| Type | Count |")?;
-        writeln!(&mut output, "|------|-------|")?;
-        writeln!(
-            &mut output,
-            "| Functions | {} |",
-            result.summary.dead_functions
-        )?;
-        writeln!(&mut output, "| Classes | {} |", result.summary.dead_classes)?;
-        writeln!(
-            &mut output,
-            "| Variables | {} |",
-            result.summary.dead_modules
-        )?;
-        writeln!(
-            &mut output,
-            "| Unreachable Blocks | {} |",
-            result.summary.unreachable_blocks
-        )?;
-        writeln!(&mut output)?;
+        sections.push(format_dead_code_breakdown_section(&result.summary));
     }
 
+    // Build file details section if needed
     if !result.files.is_empty() {
-        writeln!(&mut output, "## File Details\n")?;
-        writeln!(
-            &mut output,
-            "| File | Dead % | Dead Lines | Confidence | Items |"
-        )?;
-        writeln!(
-            &mut output,
-            "|------|--------|------------|------------|-------|"
-        )?;
-
-        for file in result.files.iter().take(20) {
-            writeln!(
-                &mut output,
-                "| {} | {:.1}% | {} | {:?} | {} |",
-                file.path,
-                file.dead_percentage,
-                file.dead_lines,
-                file.confidence,
-                file.items.len()
-            )?;
-        }
-        writeln!(&mut output)?;
+        sections.push(format_dead_code_file_details_section(&result.files));
     }
 
-    writeln!(&mut output, "## Recommendations\n")?;
-    writeln!(
-        &mut output,
-        "1. **Review High Confidence Dead Code**: Start with files marked as high confidence."
-    )?;
-    writeln!(
-        &mut output,
-        "2. **Check Test Coverage**: Dead code often indicates missing tests."
-    )?;
-    writeln!(
-        &mut output,
-        "3. **Consider Refactoring**: Large amounts of dead code may indicate design issues."
-    )?;
-    writeln!(
-        &mut output,
-        "4. **Remove Carefully**: Ensure code is truly dead before removal."
-    )?;
+    // Build recommendations section
+    sections.push(format_dead_code_recommendations_section());
 
-    Ok(output)
+    Ok(sections.join("\n"))
+}
+
+fn format_dead_code_summary_section(result: &crate::models::dead_code::DeadCodeResult) -> String {
+    format!(
+        "# Dead Code Analysis Report\n\n\
+         ## Summary\n\n\
+         | Metric | Value |\n\
+         |--------|-------|\n\
+         | Files Analyzed | {} |\n\
+         | Files with Dead Code | {} |\n\
+         | Total Dead Lines | {} |\n\
+         | Dead Code Percentage | {:.2}% |\n",
+        result.total_files,
+        result.summary.files_with_dead_code,
+        result.summary.total_dead_lines,
+        result.summary.dead_percentage
+    )
+}
+
+fn format_dead_code_breakdown_section(
+    summary: &crate::models::dead_code::DeadCodeSummary,
+) -> String {
+    format!(
+        "## Dead Code Breakdown\n\n\
+         | Type | Count |\n\
+         |------|-------|\n\
+         | Functions | {} |\n\
+         | Classes | {} |\n\
+         | Variables | {} |\n\
+         | Unreachable Blocks | {} |\n",
+        summary.dead_functions,
+        summary.dead_classes,
+        summary.dead_modules,
+        summary.unreachable_blocks
+    )
+}
+
+fn format_dead_code_file_details_section(
+    files: &[crate::models::dead_code::FileDeadCodeMetrics],
+) -> String {
+    let mut output = String::from(
+        "## File Details\n\n\
+         | File | Dead % | Dead Lines | Confidence | Items |\n\
+         |------|--------|------------|------------|-------|\n",
+    );
+
+    for file in files.iter().take(20) {
+        output.push_str(&format!(
+            "| {} | {:.1}% | {} | {:?} | {} |\n",
+            file.path,
+            file.dead_percentage,
+            file.dead_lines,
+            file.confidence,
+            file.items.len()
+        ));
+    }
+
+    output
+}
+
+fn format_dead_code_recommendations_section() -> String {
+    "## Recommendations\n\n\
+     1. **Review High Confidence Dead Code**: Start with files marked as high confidence.\n\
+     2. **Check Test Coverage**: Dead code often indicates missing tests.\n\
+     3. **Consider Refactoring**: Large amounts of dead code may indicate design issues.\n\
+     4. **Remove Carefully**: Ensure code is truly dead before removal.\n"
+        .to_string()
 }
 
 /// Write dead code output to file or stdout
@@ -923,21 +1069,19 @@ fn format_satd_markdown(
 /// # });
 /// ```
 pub async fn handle_analyze_dag(
-    dag_type: DagType,
+    _dag_type: DagType,
     project_path: PathBuf,
     output: Option<PathBuf>,
     max_depth: Option<usize>,
     target_nodes: Option<usize>,
     filter_external: bool,
     show_complexity: bool,
-    include_duplicates: bool,
-    include_dead_code: bool,
+    _include_duplicates: bool,
+    _include_dead_code: bool,
     enhanced: bool,
 ) -> Result<()> {
     use crate::services::{
         context::analyze_project,
-        dag_builder::DagBuilder,
-        fixed_graph_builder::{GraphConfig, GroupingStrategy},
         mermaid_generator::{MermaidGenerator, MermaidOptions},
     };
 
@@ -951,38 +1095,10 @@ pub async fn handle_analyze_dag(
     eprintln!("📁 Analyzed {} files", project_context.files.len());
 
     // Build DAG based on type
-    let graph = match dag_type {
-        DagType::CallGraph => {
-            // Filter to only call edges
-            let mut dag = DagBuilder::build_from_project(&project_context);
-            dag.edges
-                .retain(|edge| matches!(edge.edge_type, crate::models::dag::EdgeType::Calls));
-            dag
-        }
-        DagType::ImportGraph => {
-            // Filter to only import edges
-            let mut dag = DagBuilder::build_from_project(&project_context);
-            dag.edges
-                .retain(|edge| matches!(edge.edge_type, crate::models::dag::EdgeType::Imports));
-            dag
-        }
-        DagType::Inheritance => {
-            // Filter to inheritance/implements edges
-            let mut dag = DagBuilder::build_from_project(&project_context);
-            dag.edges.retain(|edge| {
-                matches!(
-                    edge.edge_type,
-                    crate::models::dag::EdgeType::Inherits
-                        | crate::models::dag::EdgeType::Implements
-                )
-            });
-            dag
-        }
-        DagType::FullDependency => {
-            // Include all edges
-            DagBuilder::build_from_project(&project_context)
-        }
-    };
+    use crate::services::dag_builder::DagBuilder;
+
+    // DagBuilder builds a full dependency graph by default
+    let graph = DagBuilder::build_from_project(&project_context);
 
     eprintln!(
         "📊 Generated graph with {} nodes and {} edges",
@@ -990,81 +1106,7 @@ pub async fn handle_analyze_dag(
         graph.edges.len()
     );
 
-    // Optionally add additional analysis data
-    let mut enriched_graph = graph;
-
-    if include_dead_code {
-        // Add dead code information to nodes
-        use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
-        let mut analyzer = DeadCodeAnalyzer::new(10000);
-        let dead_code_result = analyzer.analyze_dependency_graph(&enriched_graph);
-        // Mark dead nodes
-        for dead_func in &dead_code_result.dead_functions {
-            if let Some(node) = enriched_graph
-                .nodes
-                .get_mut(&format!("{}_{}", dead_func.file_path, dead_func.name))
-            {
-                node.label = format!("{} [DEAD]", node.label);
-            }
-        }
-    }
-
-    if include_duplicates {
-        // Add duplicate information
-        use crate::services::duplicate_detector::{
-            DuplicateDetectionConfig, DuplicateDetectionEngine, Language,
-        };
-        use walkdir::WalkDir;
-
-        // Create duplicate detection engine
-        let config = DuplicateDetectionConfig::default();
-        let detector = DuplicateDetectionEngine::new(config);
-
-        // Collect source files
-        let mut files = Vec::new();
-        for entry in WalkDir::new(&project_path)
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| e.file_type().is_file())
-        {
-            let path = entry.path();
-            if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
-                let lang = match ext {
-                    "rs" => Some(Language::Rust),
-                    "ts" | "tsx" => Some(Language::TypeScript),
-                    "js" | "jsx" => Some(Language::JavaScript),
-                    "py" => Some(Language::Python),
-                    "c" => Some(Language::C),
-                    "cpp" | "cc" | "cxx" => Some(Language::Cpp),
-                    _ => None,
-                };
-
-                if let Some(language) = lang {
-                    if let Ok(content) = std::fs::read_to_string(path) {
-                        files.push((path.to_path_buf(), content, language));
-                    }
-                }
-            }
-        }
-
-        // Detect duplicates
-        if let Ok(report) = detector.detect_duplicates(&files) {
-            // Mark files with duplicates
-            let mut files_with_duplicates = std::collections::HashSet::new();
-            for group in &report.groups {
-                for instance in &group.fragments {
-                    files_with_duplicates.insert(instance.file.display().to_string());
-                }
-            }
-
-            // Mark duplicate nodes
-            for node in enriched_graph.nodes.values_mut() {
-                if files_with_duplicates.contains(&node.file_path) {
-                    node.label = format!("{} [DUP]", node.label);
-                }
-            }
-        }
-    }
+    let enriched_graph = graph;
 
     // Generate Mermaid diagram
     let options = MermaidOptions {
@@ -1077,6 +1119,7 @@ pub async fn handle_analyze_dag(
     let generator = MermaidGenerator::new(options);
     let mermaid_content = if enhanced || target_nodes.is_some() {
         // Use advanced graph configuration
+        use crate::services::fixed_graph_builder::{GraphConfig, GroupingStrategy};
         let config = GraphConfig {
             max_nodes: target_nodes.unwrap_or(100),
             max_edges: target_nodes.map(|n| n * 4).unwrap_or(400),

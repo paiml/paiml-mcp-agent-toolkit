@@ -1425,211 +1425,296 @@ pub async fn handle_quality_gate(
     output: Option<PathBuf>,
     _perf: bool,
 ) -> Result<()> {
-    if let Some(single_file) = &file {
-        eprintln!("🔍 Running quality gate checks on file: {}...", single_file.display());
+    // Print initial status message
+    print_quality_gate_start_message(&file);
+
+    // Handle single file or project-wide quality gate
+    if let Some(single_file) = file {
+        handle_single_file_quality_gate(
+            project_path,
+            single_file,
+            format,
+            fail_on_violation,
+            checks,
+            max_complexity_p99,
+            output,
+        )
+        .await
+    } else {
+        handle_project_quality_gate(
+            project_path,
+            format,
+            fail_on_violation,
+            checks,
+            max_dead_code,
+            min_entropy,
+            max_complexity_p99,
+            include_provability,
+            output,
+        )
+        .await
+    }
+}
+
+/// Prints the initial quality gate status message
+fn print_quality_gate_start_message(file: &Option<PathBuf>) {
+    if let Some(single_file) = file {
+        eprintln!(
+            "🔍 Running quality gate checks on file: {}...",
+            single_file.display()
+        );
     } else {
         eprintln!("🔍 Running quality gate checks...");
     }
+}
+
+/// Handles quality gate checks for a single file
+async fn handle_single_file_quality_gate(
+    project_path: PathBuf,
+    single_file: PathBuf,
+    format: QualityGateOutputFormat,
+    fail_on_violation: bool,
+    checks: Vec<QualityCheckType>,
+    max_complexity_p99: u32,
+    output: Option<PathBuf>,
+) -> Result<()> {
+    eprintln!("📄 Analyzing single file: {}", single_file.display());
 
     let mut violations = Vec::new();
     let mut results = QualityGateResults::default();
 
-    // For single file mode, we need to implement different logic
-    if let Some(single_file) = file {
-        // Single file quality gate - run checks on just this file
-        eprintln!("📄 Analyzing single file: {}", single_file.display());
-        
-        let mut single_file_violations = Vec::new();
-        let mut single_file_results = QualityGateResults::default();
-        
-        // Determine which checks to run (default to All if none specified)
-        let checks_to_run = if checks.is_empty() {
-            vec![QualityCheckType::All]
-        } else {
-            checks
-        };
-        
-        // Run checks on the single file
-        for check in &checks_to_run {
-            match check {
-                QualityCheckType::Complexity => {
-                    // Run complexity check on single file
-                    let violations_found = check_single_file_complexity(&project_path, &single_file, max_complexity_p99).await?;
-                    single_file_results.complexity_violations = violations_found.len();
-                    single_file_violations.extend(violations_found);
-                }
-                QualityCheckType::DeadCode => {
-                    // Single file dead code detection
-                    let violations_found = check_single_file_dead_code(&project_path, &single_file).await?;
-                    single_file_results.dead_code_violations = violations_found.len();
-                    single_file_violations.extend(violations_found);
-                }
-                QualityCheckType::Satd => {
-                    // Check for self-admitted technical debt in file
-                    let violations_found = check_single_file_satd(&project_path, &single_file).await?;
-                    single_file_results.satd_violations = violations_found.len();
-                    single_file_violations.extend(violations_found);
-                }
-                QualityCheckType::Security => {
-                    // Security checks for single file
-                    let violations_found = check_single_file_security(&project_path, &single_file).await?;
-                    single_file_results.security_violations = violations_found.len();
-                    single_file_violations.extend(violations_found);
-                }
-                QualityCheckType::All => {
-                    // Run all applicable single file checks
-                    let complexity_violations = check_single_file_complexity(&project_path, &single_file, max_complexity_p99).await?;
-                    single_file_results.complexity_violations = complexity_violations.len();
-                    single_file_violations.extend(complexity_violations);
-                    
-                    let dead_code_violations = check_single_file_dead_code(&project_path, &single_file).await?;
-                    single_file_results.dead_code_violations = dead_code_violations.len();
-                    single_file_violations.extend(dead_code_violations);
-                    
-                    let satd_violations = check_single_file_satd(&project_path, &single_file).await?;
-                    single_file_results.satd_violations = satd_violations.len();
-                    single_file_violations.extend(satd_violations);
-                    
-                    let security_violations = check_single_file_security(&project_path, &single_file).await?;
-                    single_file_results.security_violations = security_violations.len();
-                    single_file_violations.extend(security_violations);
-                }
-                _ => {
-                    // Skip checks that don't apply to single files (e.g., entropy, duplicates across project)
-                    eprintln!("⚠️  Skipping {} check - not applicable to single file", check);
-                }
-            }
-        }
-        
-        // Calculate overall status
-        let passed = single_file_violations.is_empty();
-        single_file_results.passed = passed;
-        single_file_results.total_violations = single_file_violations.len();
-        
-        // Format output
-        let output_content = match format {
-            QualityGateOutputFormat::Summary => {
-                format_single_file_summary(&single_file, &single_file_results, &single_file_violations)
-            }
-            QualityGateOutputFormat::Json => {
-                serde_json::to_string_pretty(&json!({
-                    "file": single_file,
-                    "passed": passed,
-                    "results": single_file_results,
-                    "violations": single_file_violations,
-                })).unwrap()
-            }
-            QualityGateOutputFormat::Markdown => {
-                format_single_file_summary(&single_file, &single_file_results, &single_file_violations)
-            }
-            _ => {
-                format_single_file_summary(&single_file, &single_file_results, &single_file_violations)
-            }
-        };
-        
-        if let Some(output_path) = output {
-            std::fs::write(output_path, &output_content)?;
-        } else {
-            println!("{}", output_content);
-        }
-        
-        // Exit with error code if quality gate failed and fail_on_violation is set
-        if fail_on_violation && !passed {
-            std::process::exit(1);
-        }
-        
-        return Ok(());
-    }
+    // Determine which checks to run (default to All if none specified)
+    let checks_to_run = if checks.is_empty() {
+        vec![QualityCheckType::All]
+    } else {
+        checks
+    };
 
-    // Run selected checks
-    for check in &checks {
+    // Run checks on the single file
+    run_single_file_checks(
+        &project_path,
+        &single_file,
+        &checks_to_run,
+        max_complexity_p99,
+        &mut violations,
+        &mut results,
+    )
+    .await?;
+
+    // Calculate overall status
+    results.passed = violations.is_empty();
+    results.total_violations = violations.len();
+
+    // Format and output results
+    output_single_file_results(&single_file, &results, &violations, format, output).await?;
+
+    // Handle exit status
+    handle_quality_gate_exit_status(fail_on_violation, results.passed);
+
+    Ok(())
+}
+
+/// Runs quality checks on a single file
+async fn run_single_file_checks(
+    project_path: &Path,
+    single_file: &Path,
+    checks_to_run: &[QualityCheckType],
+    max_complexity_p99: u32,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    for check in checks_to_run {
         match check {
             QualityCheckType::Complexity => {
-                let violations_found = check_complexity(&project_path, max_complexity_p99).await?;
-                results.complexity_violations = violations_found.len();
-                violations.extend(violations_found);
+                run_single_file_complexity_check(
+                    project_path,
+                    single_file,
+                    max_complexity_p99,
+                    violations,
+                    results,
+                )
+                .await?;
             }
             QualityCheckType::DeadCode => {
-                let violations_found = check_dead_code(&project_path, max_dead_code).await?;
-                results.dead_code_violations = violations_found.len();
-                violations.extend(violations_found);
+                run_single_file_dead_code_check(project_path, single_file, violations, results)
+                    .await?;
             }
             QualityCheckType::Satd => {
-                let violations_found = check_satd(&project_path).await?;
-                results.satd_violations = violations_found.len();
-                violations.extend(violations_found);
-            }
-            QualityCheckType::Entropy => {
-                let violations_found = check_entropy(&project_path, min_entropy).await?;
-                results.entropy_violations = violations_found.len();
-                violations.extend(violations_found);
+                run_single_file_satd_check(project_path, single_file, violations, results).await?;
             }
             QualityCheckType::Security => {
-                let violations_found = check_security(&project_path).await?;
-                results.security_violations = violations_found.len();
-                violations.extend(violations_found);
-            }
-            QualityCheckType::Duplicates => {
-                let violations_found = check_duplicates(&project_path).await?;
-                results.duplicate_violations = violations_found.len();
-                violations.extend(violations_found);
-            }
-            QualityCheckType::Coverage => {
-                let violations_found = check_coverage(&project_path, 80.0).await?;
-                results.coverage_violations = violations_found.len();
-                violations.extend(violations_found);
-            }
-            QualityCheckType::Sections => {
-                let violations_found = check_sections(&project_path).await?;
-                results.section_violations = violations_found.len();
-                violations.extend(violations_found);
-            }
-            QualityCheckType::Provability => {
-                let violations_found = check_provability(&project_path, 0.7).await?;
-                results.provability_violations = violations_found.len();
-                violations.extend(violations_found);
+                run_single_file_security_check(project_path, single_file, violations, results)
+                    .await?;
             }
             QualityCheckType::All => {
-                // Run all checks
-                let complexity_violations =
-                    check_complexity(&project_path, max_complexity_p99).await?;
-                results.complexity_violations = complexity_violations.len();
-                violations.extend(complexity_violations);
-
-                let dead_code_violations = check_dead_code(&project_path, max_dead_code).await?;
-                results.dead_code_violations = dead_code_violations.len();
-                violations.extend(dead_code_violations);
-
-                let satd_violations = check_satd(&project_path).await?;
-                results.satd_violations = satd_violations.len();
-                violations.extend(satd_violations);
-
-                let entropy_violations = check_entropy(&project_path, min_entropy).await?;
-                results.entropy_violations = entropy_violations.len();
-                violations.extend(entropy_violations);
-
-                let security_violations = check_security(&project_path).await?;
-                results.security_violations = security_violations.len();
-                violations.extend(security_violations);
-
-                let duplicate_violations = check_duplicates(&project_path).await?;
-                results.duplicate_violations = duplicate_violations.len();
-                violations.extend(duplicate_violations);
-
-                let coverage_violations = check_coverage(&project_path, 80.0).await?;
-                results.coverage_violations = coverage_violations.len();
-                violations.extend(coverage_violations);
-
-                let section_violations = check_sections(&project_path).await?;
-                results.section_violations = section_violations.len();
-                violations.extend(section_violations);
-
-                let provability_violations = check_provability(&project_path, 0.7).await?;
-                results.provability_violations = provability_violations.len();
-                violations.extend(provability_violations);
+                // Run all applicable single file checks
+                run_all_single_file_checks(
+                    project_path,
+                    single_file,
+                    max_complexity_p99,
+                    violations,
+                    results,
+                )
+                .await?;
+            }
+            _ => {
+                // Skip checks that don't apply to single files
+                eprintln!(
+                    "⚠️  Skipping {} check - not applicable to single file",
+                    check
+                );
             }
         }
     }
+    Ok(())
+}
+
+/// Runs all single file checks
+async fn run_all_single_file_checks(
+    project_path: &Path,
+    single_file: &Path,
+    max_complexity_p99: u32,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    run_single_file_complexity_check(
+        project_path,
+        single_file,
+        max_complexity_p99,
+        violations,
+        results,
+    )
+    .await?;
+    run_single_file_dead_code_check(project_path, single_file, violations, results).await?;
+    run_single_file_satd_check(project_path, single_file, violations, results).await?;
+    run_single_file_security_check(project_path, single_file, violations, results).await?;
+    Ok(())
+}
+
+/// Runs complexity check on a single file
+async fn run_single_file_complexity_check(
+    project_path: &Path,
+    single_file: &Path,
+    max_complexity_p99: u32,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    let violations_found =
+        check_single_file_complexity(project_path, single_file, max_complexity_p99).await?;
+    results.complexity_violations = violations_found.len();
+    violations.extend(violations_found);
+    Ok(())
+}
+
+/// Runs dead code check on a single file
+async fn run_single_file_dead_code_check(
+    project_path: &Path,
+    single_file: &Path,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    let violations_found = check_single_file_dead_code(project_path, single_file).await?;
+    results.dead_code_violations = violations_found.len();
+    violations.extend(violations_found);
+    Ok(())
+}
+
+/// Runs SATD check on a single file
+async fn run_single_file_satd_check(
+    project_path: &Path,
+    single_file: &Path,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    let violations_found = check_single_file_satd(project_path, single_file).await?;
+    results.satd_violations = violations_found.len();
+    violations.extend(violations_found);
+    Ok(())
+}
+
+/// Runs security check on a single file
+async fn run_single_file_security_check(
+    project_path: &Path,
+    single_file: &Path,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    let violations_found = check_single_file_security(project_path, single_file).await?;
+    results.security_violations = violations_found.len();
+    violations.extend(violations_found);
+    Ok(())
+}
+
+/// Formats and outputs single file results
+async fn output_single_file_results(
+    single_file: &Path,
+    results: &QualityGateResults,
+    violations: &[QualityViolation],
+    format: QualityGateOutputFormat,
+    output: Option<PathBuf>,
+) -> Result<()> {
+    let output_content = format_single_file_output(single_file, results, violations, format)?;
+
+    if let Some(output_path) = output {
+        std::fs::write(output_path, &output_content)?;
+    } else {
+        println!("{}", output_content);
+    }
+
+    Ok(())
+}
+
+/// Formats single file output based on the requested format
+fn format_single_file_output(
+    single_file: &Path,
+    results: &QualityGateResults,
+    violations: &[QualityViolation],
+    format: QualityGateOutputFormat,
+) -> Result<String> {
+    match format {
+        QualityGateOutputFormat::Json => Ok(serde_json::to_string_pretty(&json!({
+            "file": single_file,
+            "passed": results.passed,
+            "results": results,
+            "violations": violations,
+        }))?),
+        QualityGateOutputFormat::Summary
+        | QualityGateOutputFormat::Markdown
+        | QualityGateOutputFormat::Detailed
+        | QualityGateOutputFormat::Human
+        | QualityGateOutputFormat::Junit => {
+            Ok(format_single_file_summary(single_file, results, violations))
+        }
+    }
+}
+
+/// Handles project-wide quality gate checks
+#[allow(clippy::too_many_arguments)]
+async fn handle_project_quality_gate(
+    project_path: PathBuf,
+    format: QualityGateOutputFormat,
+    fail_on_violation: bool,
+    checks: Vec<QualityCheckType>,
+    max_dead_code: f64,
+    min_entropy: f64,
+    max_complexity_p99: u32,
+    include_provability: bool,
+    output: Option<PathBuf>,
+) -> Result<()> {
+    let mut violations = Vec::new();
+    let mut results = QualityGateResults::default();
+
+    // Run selected checks
+    run_project_checks(
+        &project_path,
+        &checks,
+        max_dead_code,
+        min_entropy,
+        max_complexity_p99,
+        &mut violations,
+        &mut results,
+    )
+    .await?;
 
     // Add provability if requested
     if include_provability {
@@ -1641,10 +1726,172 @@ pub async fn handle_quality_gate(
     results.passed = violations.is_empty();
     results.total_violations = violations.len();
 
-    // Format output
-    let content = format_quality_gate_output(&results, &violations, format)?;
+    // Format and output results
+    output_project_results(&results, &violations, format, output).await?;
 
-    // Write output
+    // Print final status
+    print_quality_gate_final_status(&results, &violations);
+
+    // Handle exit status
+    handle_quality_gate_exit_status(fail_on_violation, results.passed);
+
+    Ok(())
+}
+
+/// Runs project-wide quality checks
+async fn run_project_checks(
+    project_path: &Path,
+    checks: &[QualityCheckType],
+    max_dead_code: f64,
+    min_entropy: f64,
+    max_complexity_p99: u32,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    for check in checks {
+        run_single_project_check(
+            check,
+            project_path,
+            max_dead_code,
+            min_entropy,
+            max_complexity_p99,
+            violations,
+            results,
+        )
+        .await?;
+    }
+    Ok(())
+}
+
+/// Runs a single project-wide check
+async fn run_single_project_check(
+    check: &QualityCheckType,
+    project_path: &Path,
+    max_dead_code: f64,
+    min_entropy: f64,
+    max_complexity_p99: u32,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    match check {
+        QualityCheckType::Complexity => {
+            let violations_found = check_complexity(project_path, max_complexity_p99).await?;
+            results.complexity_violations = violations_found.len();
+            violations.extend(violations_found);
+        }
+        QualityCheckType::DeadCode => {
+            let violations_found = check_dead_code(project_path, max_dead_code).await?;
+            results.dead_code_violations = violations_found.len();
+            violations.extend(violations_found);
+        }
+        QualityCheckType::Satd => {
+            let violations_found = check_satd(project_path).await?;
+            results.satd_violations = violations_found.len();
+            violations.extend(violations_found);
+        }
+        QualityCheckType::Entropy => {
+            let violations_found = check_entropy(project_path, min_entropy).await?;
+            results.entropy_violations = violations_found.len();
+            violations.extend(violations_found);
+        }
+        QualityCheckType::Security => {
+            let violations_found = check_security(project_path).await?;
+            results.security_violations = violations_found.len();
+            violations.extend(violations_found);
+        }
+        QualityCheckType::Duplicates => {
+            let violations_found = check_duplicates(project_path).await?;
+            results.duplicate_violations = violations_found.len();
+            violations.extend(violations_found);
+        }
+        QualityCheckType::Coverage => {
+            let violations_found = check_coverage(project_path, 80.0).await?;
+            results.coverage_violations = violations_found.len();
+            violations.extend(violations_found);
+        }
+        QualityCheckType::Sections => {
+            let violations_found = check_sections(project_path).await?;
+            results.section_violations = violations_found.len();
+            violations.extend(violations_found);
+        }
+        QualityCheckType::Provability => {
+            let violations_found = check_provability(project_path, 0.7).await?;
+            results.provability_violations = violations_found.len();
+            violations.extend(violations_found);
+        }
+        QualityCheckType::All => {
+            run_all_project_checks(
+                project_path,
+                max_dead_code,
+                min_entropy,
+                max_complexity_p99,
+                violations,
+                results,
+            )
+            .await?;
+        }
+    }
+    Ok(())
+}
+
+/// Runs all project-wide checks
+async fn run_all_project_checks(
+    project_path: &Path,
+    max_dead_code: f64,
+    min_entropy: f64,
+    max_complexity_p99: u32,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    // Run all checks
+    let complexity_violations = check_complexity(project_path, max_complexity_p99).await?;
+    results.complexity_violations = complexity_violations.len();
+    violations.extend(complexity_violations);
+
+    let dead_code_violations = check_dead_code(project_path, max_dead_code).await?;
+    results.dead_code_violations = dead_code_violations.len();
+    violations.extend(dead_code_violations);
+
+    let satd_violations = check_satd(project_path).await?;
+    results.satd_violations = satd_violations.len();
+    violations.extend(satd_violations);
+
+    let entropy_violations = check_entropy(project_path, min_entropy).await?;
+    results.entropy_violations = entropy_violations.len();
+    violations.extend(entropy_violations);
+
+    let security_violations = check_security(project_path).await?;
+    results.security_violations = security_violations.len();
+    violations.extend(security_violations);
+
+    let duplicate_violations = check_duplicates(project_path).await?;
+    results.duplicate_violations = duplicate_violations.len();
+    violations.extend(duplicate_violations);
+
+    let coverage_violations = check_coverage(project_path, 80.0).await?;
+    results.coverage_violations = coverage_violations.len();
+    violations.extend(coverage_violations);
+
+    let section_violations = check_sections(project_path).await?;
+    results.section_violations = section_violations.len();
+    violations.extend(section_violations);
+
+    let provability_violations = check_provability(project_path, 0.7).await?;
+    results.provability_violations = provability_violations.len();
+    violations.extend(provability_violations);
+
+    Ok(())
+}
+
+/// Formats and outputs project results
+async fn output_project_results(
+    results: &QualityGateResults,
+    violations: &[QualityViolation],
+    format: QualityGateOutputFormat,
+    output: Option<PathBuf>,
+) -> Result<()> {
+    let content = format_quality_gate_output(results, violations, format)?;
+
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
         eprintln!(
@@ -1655,20 +1902,24 @@ pub async fn handle_quality_gate(
         println!("{}", content);
     }
 
-    // Exit with error if failed and fail_on_violation is set
-    if fail_on_violation && !results.passed {
-        eprintln!(
-            "\n❌ Quality gate FAILED with {} violations",
-            violations.len()
-        );
-        std::process::exit(1);
-    } else if results.passed {
+    Ok(())
+}
+
+/// Prints the final quality gate status
+fn print_quality_gate_final_status(results: &QualityGateResults, violations: &[QualityViolation]) {
+    if results.passed {
         eprintln!("\n✅ Quality gate PASSED");
     } else {
         eprintln!("\n⚠️ Quality gate found {} violations", violations.len());
     }
+}
 
-    Ok(())
+/// Handles the exit status based on quality gate results
+fn handle_quality_gate_exit_status(fail_on_violation: bool, passed: bool) {
+    if fail_on_violation && !passed {
+        eprintln!("\n❌ Quality gate FAILED");
+        std::process::exit(1);
+    }
 }
 
 /// Starts an HTTP server
@@ -2636,6 +2887,7 @@ pub async fn analyze_project_files(
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
     use std::fs;
     use walkdir::WalkDir;
+    use glob::Pattern;
 
     let mut results = Vec::new();
     let toolchain = toolchain.unwrap_or("rust");
@@ -2668,13 +2920,20 @@ pub async fn analyze_project_files(
         // Apply include patterns if specified
         if !include.is_empty() {
             let path_str = path.to_string_lossy();
+            let relative_path = path.strip_prefix(_project_path).unwrap_or(path);
+            let relative_str = relative_path.to_string_lossy();
+            
             let matches_include = include.iter().any(|pattern| {
-                // Simple pattern matching (not full glob support)
-                if pattern.contains("**") {
-                    let clean_pattern = pattern.replace("**/*.", "");
-                    path_str.ends_with(&clean_pattern)
-                } else {
-                    path_str.contains(pattern)
+                // Use glob pattern matching on both absolute and relative paths
+                match Pattern::new(pattern) {
+                    Ok(glob_pattern) => {
+                        // Try matching against relative path first, then absolute
+                        glob_pattern.matches(&relative_str) || glob_pattern.matches(&path_str)
+                    }
+                    Err(_) => {
+                        // If pattern is invalid, fall back to simple contains check
+                        path_str.contains(pattern)
+                    }
                 }
             });
             if !matches_include {
@@ -3510,7 +3769,6 @@ pub fn print_table(items: &[std::sync::Arc<crate::models::template::TemplateReso
 }
 
 // Helper functions for defect prediction complexity estimation
-#[allow(dead_code)]
 fn estimate_cyclomatic_complexity(content: &str) -> u32 {
     let mut complexity = 1u32; // Base complexity
 
@@ -3555,46 +3813,6 @@ fn estimate_cyclomatic_complexity(content: &str) -> u32 {
     }
 
     complexity.min(50) // Cap at 50 for reasonable values
-}
-
-#[allow(dead_code)]
-fn estimate_cognitive_complexity(content: &str) -> u32 {
-    let mut complexity = 0u32;
-    let mut nesting_level = 0u32;
-
-    for line in content.lines() {
-        let trimmed = line.trim();
-
-        // Track nesting
-        if trimmed.ends_with('{') {
-            nesting_level += 1;
-        } else if trimmed.starts_with('}') {
-            nesting_level = nesting_level.saturating_sub(1);
-        }
-
-        // Add complexity with nesting penalty
-        if trimmed.starts_with("if ") || trimmed.contains(" if ") {
-            complexity += 1 + nesting_level;
-        }
-
-        if trimmed.starts_with("for ") || trimmed.starts_with("while ") {
-            complexity += 1 + nesting_level;
-        }
-
-        // Nested functions/closures add more complexity
-        if (trimmed.contains("fn ") || trimmed.contains("function") || trimmed.contains("=>"))
-            && nesting_level > 0
-        {
-            complexity += nesting_level;
-        }
-
-        // Early returns in nested contexts
-        if trimmed.contains("return") && nesting_level > 1 {
-            complexity += 1;
-        }
-    }
-
-    complexity.min(60) // Cap at 60 for reasonable values
 }
 
 // Comprehensive analysis helper functions
@@ -4213,6 +4431,45 @@ fn format_incremental_coverage_delta(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn estimate_cognitive_complexity(content: &str) -> u32 {
+        let mut complexity = 0u32;
+        let mut nesting_level = 0u32;
+
+        for line in content.lines() {
+            let trimmed = line.trim();
+
+            // Track nesting
+            if trimmed.ends_with('{') {
+                nesting_level += 1;
+            } else if trimmed.starts_with('}') {
+                nesting_level = nesting_level.saturating_sub(1);
+            }
+
+            // Add complexity with nesting penalty
+            if trimmed.starts_with("if ") || trimmed.contains(" if ") {
+                complexity += 1 + nesting_level;
+            }
+
+            if trimmed.starts_with("for ") || trimmed.starts_with("while ") {
+                complexity += 1 + nesting_level;
+            }
+
+            // Nested functions/closures add more complexity
+            if (trimmed.contains("fn ") || trimmed.contains("function") || trimmed.contains("=>"))
+                && nesting_level > 0
+            {
+                complexity += nesting_level;
+            }
+
+            // Early returns in nested contexts
+            if trimmed.contains("return") && nesting_level > 1 {
+                complexity += 1;
+            }
+        }
+
+        complexity.min(60) // Cap at 60 for reasonable values
+    }
     use std::io::Write;
     use tempfile::TempDir;
 
@@ -5102,32 +5359,35 @@ fn format_defect_csv(report: &DefectPredictionReport) -> Result<String> {
 // Single file quality gate check functions
 
 async fn check_single_file_complexity(
-    project_path: &Path, 
+    project_path: &Path,
     file_path: &Path,
     max_complexity_p99: u32,
 ) -> Result<Vec<QualityViolation>> {
     use crate::services::ast_rust::analyze_rust_file_with_complexity;
-    
+
     let mut violations = Vec::new();
-    
+
     // Make file path absolute if needed
     let abs_file_path = if file_path.is_absolute() {
         file_path.to_path_buf()
     } else {
         project_path.join(file_path)
     };
-    
+
     // Check if file exists
     if !abs_file_path.exists() {
-        return Err(anyhow::anyhow!("File not found: {}", abs_file_path.display()));
+        return Err(anyhow::anyhow!(
+            "File not found: {}",
+            abs_file_path.display()
+        ));
     }
-    
+
     // Analyze complexity based on file extension
     if let Some(ext) = abs_file_path.extension() {
         if ext == "rs" {
             // Rust file analysis
             let metrics = analyze_rust_file_with_complexity(&abs_file_path).await?;
-            
+
             // Check each function for complexity violations
             for func in &metrics.functions {
                 if func.metrics.cyclomatic > max_complexity_p99 as u16 {
@@ -5146,7 +5406,7 @@ async fn check_single_file_complexity(
         }
         // Add support for other languages as needed
     }
-    
+
     Ok(violations)
 }
 
@@ -5155,23 +5415,23 @@ async fn check_single_file_dead_code(
     file_path: &Path,
 ) -> Result<Vec<QualityViolation>> {
     use regex::Regex;
-    
+
     let mut violations = Vec::new();
-    
+
     // Make file path absolute
     let abs_file_path = if file_path.is_absolute() {
         file_path.to_path_buf()
     } else {
         project_path.join(file_path)
     };
-    
+
     if !abs_file_path.exists() {
         return Ok(violations); // No violations if file doesn't exist
     }
-    
+
     // Read file content
     let content = tokio::fs::read_to_string(&abs_file_path).await?;
-    
+
     // Check for common dead code patterns
     let dead_code_patterns = vec![
         (r"#\[allow\(dead_code\)\]", "Dead code attribute found"),
@@ -5179,7 +5439,7 @@ async fn check_single_file_dead_code(
         (r"^\s*//\s*struct\s+\w+", "Commented out struct"),
         (r"^\s*//\s*impl\s+", "Commented out implementation"),
     ];
-    
+
     for (pattern_str, message) in dead_code_patterns {
         let regex = Regex::new(pattern_str)?;
         for (line_no, line) in content.lines().enumerate() {
@@ -5194,7 +5454,7 @@ async fn check_single_file_dead_code(
             }
         }
     }
-    
+
     Ok(violations)
 }
 
@@ -5203,28 +5463,28 @@ async fn check_single_file_satd(
     file_path: &Path,
 ) -> Result<Vec<QualityViolation>> {
     use regex::Regex;
-    
+
     let mut violations = Vec::new();
     let satd_pattern = Regex::new(r"(?i)\b(TODO|FIXME|HACK|XXX|BUG|REFACTOR):\s*(.+)")?;
-    
+
     // Make file path absolute
     let abs_file_path = if file_path.is_absolute() {
         file_path.to_path_buf()
     } else {
         project_path.join(file_path)
     };
-    
+
     if !abs_file_path.exists() {
         return Ok(violations);
     }
-    
+
     let content = tokio::fs::read_to_string(&abs_file_path).await?;
-    
+
     for (line_no, line) in content.lines().enumerate() {
         if let Some(captures) = satd_pattern.captures(line) {
             let satd_type = captures.get(1).unwrap().as_str();
             let text = captures.get(2).unwrap().as_str();
-            
+
             violations.push(QualityViolation {
                 check_type: "satd".to_string(),
                 severity: "warning".to_string(),
@@ -5234,7 +5494,7 @@ async fn check_single_file_satd(
             });
         }
     }
-    
+
     Ok(violations)
 }
 
@@ -5243,32 +5503,47 @@ async fn check_single_file_security(
     file_path: &Path,
 ) -> Result<Vec<QualityViolation>> {
     use regex::Regex;
-    
+
     let mut violations = Vec::new();
-    
+
     // Security patterns to check
     let security_patterns = vec![
-        (r#"(?i)password\s*=\s*["'][^"']+["']"#, "Hardcoded password detected"),
-        (r#"(?i)api_key\s*=\s*["'][^"']+["']"#, "Hardcoded API key detected"),
-        (r#"(?i)secret\s*=\s*["'][^"']+["']"#, "Hardcoded secret detected"),
-        (r#"(?i)token\s*=\s*["'][^"']+["']"#, "Hardcoded token detected"),
+        (
+            r#"(?i)password\s*=\s*["'][^"']+["']"#,
+            "Hardcoded password detected",
+        ),
+        (
+            r#"(?i)api_key\s*=\s*["'][^"']+["']"#,
+            "Hardcoded API key detected",
+        ),
+        (
+            r#"(?i)secret\s*=\s*["'][^"']+["']"#,
+            "Hardcoded secret detected",
+        ),
+        (
+            r#"(?i)token\s*=\s*["'][^"']+["']"#,
+            "Hardcoded token detected",
+        ),
         (r"(?i)unsafe\s*\{", "Unsafe code block detected"),
-        (r"std::env::var\(.*\)\.unwrap\(\)", "Unsafe environment variable access"),
+        (
+            r"std::env::var\(.*\)\.unwrap\(\)",
+            "Unsafe environment variable access",
+        ),
     ];
-    
+
     // Make file path absolute
     let abs_file_path = if file_path.is_absolute() {
         file_path.to_path_buf()
     } else {
         project_path.join(file_path)
     };
-    
+
     if !abs_file_path.exists() {
         return Ok(violations);
     }
-    
+
     let content = tokio::fs::read_to_string(&abs_file_path).await?;
-    
+
     for (pattern_str, message) in security_patterns {
         let regex = Regex::new(pattern_str)?;
         for (line_no, line) in content.lines().enumerate() {
@@ -5283,7 +5558,7 @@ async fn check_single_file_security(
             }
         }
     }
-    
+
     Ok(violations)
 }
 
@@ -5293,43 +5568,68 @@ fn format_single_file_summary(
     violations: &[QualityViolation],
 ) -> String {
     let mut output = String::new();
-    
-    output.push_str(&format!("# Quality Gate Report: {}\n\n", file_path.display()));
-    
+
+    output.push_str(&format!(
+        "# Quality Gate Report: {}\n\n",
+        file_path.display()
+    ));
+
     if results.passed {
         output.push_str("✅ **Quality Gate: PASSED**\n\n");
     } else {
         output.push_str("❌ **Quality Gate: FAILED**\n\n");
     }
-    
+
     output.push_str("## Summary\n\n");
-    output.push_str(&format!("- Total Violations: {}\n", results.total_violations));
-    output.push_str(&format!("- Complexity Issues: {}\n", results.complexity_violations));
+    output.push_str(&format!(
+        "- Total Violations: {}\n",
+        results.total_violations
+    ));
+    output.push_str(&format!(
+        "- Complexity Issues: {}\n",
+        results.complexity_violations
+    ));
     output.push_str(&format!("- Dead Code: {}\n", results.dead_code_violations));
-    output.push_str(&format!("- Technical Debt (SATD): {}\n", results.satd_violations));
-    output.push_str(&format!("- Security Issues: {}\n", results.security_violations));
-    
+    output.push_str(&format!(
+        "- Technical Debt (SATD): {}\n",
+        results.satd_violations
+    ));
+    output.push_str(&format!(
+        "- Security Issues: {}\n",
+        results.security_violations
+    ));
+
     if !violations.is_empty() {
         output.push_str("\n## Violations\n\n");
-        
+
         // Group violations by type
         let mut by_type: HashMap<String, Vec<&QualityViolation>> = HashMap::new();
         for violation in violations {
-            by_type.entry(violation.check_type.clone()).or_default().push(violation);
+            by_type
+                .entry(violation.check_type.clone())
+                .or_default()
+                .push(violation);
         }
-        
+
         for (check_type, type_violations) in by_type {
-            output.push_str(&format!("### {} ({})\n\n", check_type.to_uppercase(), type_violations.len()));
-            
+            output.push_str(&format!(
+                "### {} ({})\n\n",
+                check_type.to_uppercase(),
+                type_violations.len()
+            ));
+
             for violation in type_violations {
                 let severity_icon = match violation.severity.as_str() {
                     "error" => "🔴",
                     "warning" => "🟡",
                     _ => "🟢",
                 };
-                
+
                 if let Some(line) = violation.line {
-                    output.push_str(&format!("- {} Line {}: {}\n", severity_icon, line, violation.message));
+                    output.push_str(&format!(
+                        "- {} Line {}: {}\n",
+                        severity_icon, line, violation.message
+                    ));
                 } else {
                     output.push_str(&format!("- {} {}\n", severity_icon, violation.message));
                 }
@@ -5337,7 +5637,6 @@ fn format_single_file_summary(
             output.push('\n');
         }
     }
-    
+
     output
 }
-

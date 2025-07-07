@@ -183,16 +183,34 @@ Get MCP server information and capabilities.
 ## Core Analysis Tools (4 tools)
 
 #### 7. `analyze_complexity`
-Analyzes code complexity metrics.
+Analyzes code complexity metrics with tool composition support.
 
 **Parameters:**
 ```typescript
 {
   path: string;
+  file?: string;           // Single file analysis (conflicts with files)
+  files?: string[];        // Multi-file analysis for MCP composition
   max_cyclomatic?: number;
   max_cognitive?: number;
   format?: "summary" | "full" | "json";
 }
+```
+
+**MCP Tool Composition:**
+```javascript
+// AI agent discovers complexity hotspots
+const hotspots = await callTool("analyze_complexity", {
+  path: "/project",
+  top_files: 5,
+  format: "json"
+});
+
+// Agent performs targeted analysis on specific files
+const targeted = await callTool("analyze_complexity", {
+  path: "/project",
+  files: hotspots.files.map(f => f.path)
+});
 ```
 
 **Response:**
@@ -387,15 +405,36 @@ ML-based defect probability analysis.
 ```
 
 #### 18. `analyze_comprehensive`
-Multi-dimensional analysis combining all analysis types.
+Multi-dimensional analysis combining all analysis types with tool composition support.
 
 **Parameters:**
 ```typescript
 {
   path: string;
+  file?: string;           // Single file analysis (conflicts with files)  
+  files?: string[];        // Multi-file analysis for MCP composition
   include_all?: boolean;
   output_format?: "json" | "report";
 }
+```
+
+**MCP Tool Composition:**
+```javascript
+// AI agent chains analysis workflows
+const complexity = await callTool("analyze_complexity", {
+  path: "/project", 
+  top_files: 5
+});
+
+const comprehensive = await callTool("analyze_comprehensive", {
+  path: "/project",
+  files: complexity.high_complexity_files.map(f => f.path),
+  include_all: true
+});
+
+const refactor = await callTool("refactor_auto", {
+  files: comprehensive.high_risk_files
+});
 ```
 
 #### 19. `analyze_graph_metrics`
