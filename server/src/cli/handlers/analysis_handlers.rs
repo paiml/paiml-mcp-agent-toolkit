@@ -67,6 +67,8 @@ use anyhow::Result;
 /// // Complexity analysis command
 /// let complexity_cmd = AnalyzeCommands::Complexity {
 ///     project_path: PathBuf::from("/tmp/project"),
+///     file: None,
+///     files: vec![],
 ///     toolchain: None,
 ///     format: pmat::cli::enums::ComplexityOutputFormat::Summary,
 ///     output: None,
