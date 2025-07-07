@@ -575,13 +575,12 @@ async fn test_analysis_pipeline_integrity() -> Result<()> {
             "../target/release/pmat",
             "../target/debug/pmat",
         ];
-        
         for path in &paths {
             if std::path::Path::new(path).exists() {
                 return path.to_string();
             }
         }
-        
+
         panic!("Could not find pmat binary. Please run 'cargo build' or 'cargo build --release' from workspace root.")
     });
 
