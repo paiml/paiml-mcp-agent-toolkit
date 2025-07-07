@@ -96,6 +96,9 @@ mod ast_typescript_property_tests;
 mod satd_property_tests;
 
 #[cfg(test)]
+mod mcp_property_tests;
+
+#[cfg(test)]
 mod tests {
     #[test]
     fn test_mod_basic() {

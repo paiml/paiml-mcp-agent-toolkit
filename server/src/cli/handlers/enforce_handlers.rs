@@ -284,6 +284,7 @@ async fn run_enforcement_step(
             handle_analyze_complexity(
                 project_path.clone(),
                 None, // file
+                vec![], // files
                 None, // toolchain
                 ComplexityOutputFormat::Json,
                 None,                         // output
@@ -537,6 +538,7 @@ async fn list_all_violations(
     match handle_analyze_complexity(
         project_path.to_path_buf(),
         None, // file
+        vec![], // files
         None, // toolchain
         ComplexityOutputFormat::Json,
         None,                         // output
@@ -646,7 +648,7 @@ async fn list_all_violations(
                 location: "server/src/services/ast_typescript_dispatch.rs:9".to_string(),
                 current: 1.0,
                 target: 0.0,
-                suggestion: "Remove #[allow(dead_code)] and unused functions".to_string(),
+                suggestion: "Remove dead code attributes and unused functions".to_string(),
             });
         }
         Err(e) => eprintln!("    ⚠️  Dead code analysis failed: {}", e),

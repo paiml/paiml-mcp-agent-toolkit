@@ -206,6 +206,7 @@ pub async fn handle_analyze_defect_prediction(
 pub async fn handle_analyze_comprehensive(
     project_path: PathBuf,
     file: Option<PathBuf>,
+    files: Vec<PathBuf>,
     format: ComprehensiveOutputFormat,
     include_duplicates: bool,
     include_dead_code: bool,
@@ -224,6 +225,7 @@ pub async fn handle_analyze_comprehensive(
     super::comprehensive_handler::handle_analyze_comprehensive(
         project_path,
         file,
+        files, // files (MCP composition support)
         format,
         include_duplicates,
         include_dead_code,

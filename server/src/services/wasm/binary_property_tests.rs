@@ -157,7 +157,7 @@ mod tests {
             // Create a file of the target size more efficiently
             let mut large_data = vec![0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
             let target_size = size_mb * 1024 * 1024;
-            
+
             // Use a larger chunk for efficiency
             let chunk_size = 1024; // 1KB chunks
             let mut chunk = Vec::with_capacity(chunk_size);
@@ -165,7 +165,7 @@ mod tests {
                 chunk.extend(&seed_data);
             }
             chunk.truncate(chunk_size);
-            
+
             // Build the file with repeated chunks
             while large_data.len() + chunk.len() <= target_size {
                 large_data.extend(&chunk);
@@ -192,7 +192,7 @@ mod tests {
                 }
             } else {
                 // Should accept files under or at 10MB
-                prop_assert!(result.is_ok(), 
+                prop_assert!(result.is_ok(),
                     "Expected success for {}MB file, got error: {:?}", size_mb, result);
             }
         }

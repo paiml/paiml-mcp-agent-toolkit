@@ -177,9 +177,8 @@ struct DiagnosticSpan {
     column_end: u32,
     #[serde(default)]
     is_primary: bool,
-    #[serde(default)]
-    #[allow(dead_code)] // Deserialized from JSON but not used in current implementation
-    text: Vec<DiagnosticText>,
+    #[serde(default, rename = "text")]
+    _text: Vec<DiagnosticText>,
     #[serde(default)]
     suggested_replacement: Option<String>,
     #[serde(default)]
@@ -187,11 +186,10 @@ struct DiagnosticSpan {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)] // Deserialized from JSON but not used in current implementation
 struct DiagnosticText {
-    text: String,
-    highlight_start: u32,
-    highlight_end: u32,
+    _text: String,
+    _highlight_start: u32,
+    _highlight_end: u32,
 }
 
 /// Handle analyze lint-hotspot command
@@ -729,7 +727,6 @@ fn process_diagnostic(
         metrics.detailed_violations.push(violation);
     }
 }
-
 
 /// Find the file with highest defect density (including detailed violations)
 ///
