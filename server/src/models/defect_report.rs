@@ -189,17 +189,23 @@ impl Defect {
     /// # Examples
     ///
     /// ```
-    /// use pmat::models::defect_report::{PredictedDefect, Severity, DefectCategory};
+    /// use pmat::models::defect_report::{Defect, Severity, DefectCategory};
+    /// use std::path::PathBuf;
+    /// use std::collections::HashMap;
     ///
-    /// let defect = PredictedDefect {
+    /// let defect = Defect {
     ///     id: "TEST-001".to_string(),
-    ///     category: DefectCategory::ResourceLeak,
     ///     severity: Severity::High,
-    ///     confidence: 0.85,
-    ///     location: "src/main.rs:45".to_string(),
-    ///     description: "Potential memory leak".to_string(),
-    ///     evidence: vec![],
-    ///     recommendation: None,
+    ///     category: DefectCategory::TechnicalDebt,
+    ///     file_path: PathBuf::from("src/main.rs"),
+    ///     line_start: 45,
+    ///     line_end: None,
+    ///     column_start: None,
+    ///     column_end: None,
+    ///     message: "Potential memory leak".to_string(),
+    ///     rule_id: "MEM001".to_string(),
+    ///     fix_suggestion: None,
+    ///     metrics: HashMap::new(),
     /// };
     ///
     /// assert_eq!(defect.severity_weight(), 5.0);

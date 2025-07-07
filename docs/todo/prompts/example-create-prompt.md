@@ -18,6 +18,13 @@ Rapidly create working examples for `pmat` CLI commands using a fast, iterative 
   - Improved error handling for non-zero clippy exit codes
   - Created validation example: `lint_hotspot_demo.rs` (114 violations)
   - Validated on real codebase: 13,204 violations across 301 files
+- `pmat analyze tdg` - Implemented full interface parity with complexity handler
+  - Replaced stub implementation with full TDGCalculator integration
+  - Added support for single file, multiple files, and project modes
+  - Implemented all output formats (Table, JSON, Markdown, SARIF)
+  - Fixed function signature to match complexity handler interface
+  - Added proper error handling and progress indicators
+  - Validated on real codebase: 454 files analyzed, 25 warning files
 - `make lint` - Comprehensive clippy issue resolution
   - Fixed dead code warnings in MCP property tests
   - Replaced len() comparisons with !is_empty() for better clarity
@@ -456,6 +463,13 @@ make test-property # All property tests pass
 
 # Verify no self-admitted technical debt
 rg "TODO|FIXME|HACK|XXX" server/src --type rust | grep -v "test" || echo "✅ No SATD found"
+
+# CRITICAL: Interface Parity Check for Analysis Commands
+# When implementing any analysis handler, ALWAYS verify interface consistency
+# Example: TDG should match complexity handler interface
+rg "handle_analyze_complexity" server/src/cli/handlers --type rust -A 10 | grep -E "(file:|files:|include:|watch:)"
+rg "handle_analyze_tdg" server/src/cli/handlers --type rust -A 10 | grep -E "(file:|files:|include:|watch:)"
+# Both should have identical parameter patterns for MCP tool composition
 ```
 
 **If ANY test fails**:
@@ -470,7 +484,112 @@ rg "TODO|FIXME|HACK|XXX" server/src --type rust | grep -v "test" || echo "✅ No
 - **Root Cause**: Fix the problem, not the symptom
 - **No Workarounds**: Temporary fixes are permanent problems
 
-### 8. Fix Issues Found (2-5 minutes per issue)
+### 8. Ensure Interface Parity (2-3 minutes)
+**CRITICAL**: All analysis handlers MUST maintain interface consistency for MCP tool composition!
+
+When implementing or fixing any analysis command handler, verify it supports ALL three modes:
+1. **Single File Mode** - via `file: Option<PathBuf>` parameter
+2. **Multi-File Mode** - via `files: Vec<PathBuf>` parameter (MCP tool chaining)
+3. **Project Mode** - when both file and files are empty/None
+
+```bash
+# Interface Parity Checklist:
+# 1. Compare handler signatures
+rg "pub async fn handle_analyze_" server/src/cli/handlers --type rust -A 15
+
+# 2. Verify all handlers have these parameters:
+# - project_path: PathBuf
+# - file: Option<PathBuf>
+# - files: Vec<PathBuf>
+# - include: Vec<String> (for pattern filtering)
+# - watch: bool (for continuous mode)
+# - format: <SpecificOutputFormat>
+# - output: Option<PathBuf>
+
+# 3. Example of correct interface (complexity handler):
+pub async fn handle_analyze_complexity(
+    project_path: PathBuf,
+    file: Option<PathBuf>,      // Single file mode
+    files: Vec<PathBuf>,        // Multi-file mode (MCP)
+    toolchain: Option<String>,
+    format: ComplexityOutputFormat,
+    output: Option<PathBuf>,
+    max_cyclomatic: Option<usize>,
+    max_cognitive: Option<usize>,
+    include: Vec<String>,       // Pattern filtering
+    watch: bool,                // Watch mode
+    top_files: usize,
+) -> Result<()>
+
+# 4. Ensure handler implementation follows this pattern:
+if let Some(single_file) = file {
+    // Single file mode
+} else if !files.is_empty() {
+    // Multiple files mode (MCP composition)
+} else {
+    // Project mode
+}
+```
+
+### 9. Interface Parity Requirements for Analysis Handlers
+**MANDATORY**: This is a P0 requirement - NO EXCEPTIONS!
+
+All analysis command handlers (`handle_analyze_*`) MUST support these three modes:
+
+#### Mode 1: Single File Analysis
+```rust
+// Handler MUST accept: file: Option<PathBuf>
+// Usage: pmat analyze tdg --file src/main.rs
+if let Some(single_file) = file {
+    // Analyze just this one file
+}
+```
+
+#### Mode 2: Multiple Files (MCP Tool Composition)
+```rust
+// Handler MUST accept: files: Vec<PathBuf>
+// Usage: Called programmatically by AI agents chaining tools
+if !files.is_empty() {
+    // Analyze specific list of files
+    // This enables: complexity -> find hotspots -> tdg on those files
+}
+```
+
+#### Mode 3: Project-Wide Analysis
+```rust
+// When both file and files are empty/None
+else {
+    // Analyze entire project using include patterns
+}
+```
+
+#### Required Parameters for ALL Analysis Handlers:
+```rust
+pub async fn handle_analyze_xxx(
+    project_path: PathBuf,        // Required: Project root
+    file: Option<PathBuf>,        // Required: Single file mode
+    files: Vec<PathBuf>,          // Required: Multi-file mode (MCP)
+    // ... command-specific params ...
+    format: XxxOutputFormat,      // Required: Output format enum
+    output: Option<PathBuf>,      // Required: Output file option
+    include: Vec<String>,         // Required: Include patterns
+    watch: bool,                  // Required: Watch mode flag
+    // ... more command-specific params ...
+) -> Result<()>
+```
+
+#### Testing Interface Parity:
+```bash
+# Quick check - all handlers should have similar signatures
+diff -u <(rg "handle_analyze_complexity\(" -A 12 server/src) \
+        <(rg "handle_analyze_tdg\(" -A 12 server/src)
+
+# Verify mode support in implementation
+rg "if let Some.*file.*\{" server/src/cli/handlers
+rg "if.*files\.is_empty" server/src/cli/handlers
+```
+
+### 10. Fix Issues Found (2-5 minutes per issue)
 **CRITICAL**: Don't just document issues - FIX them immediately!
 
 **IMPORTANT**: Always test with local binary after fixes:
@@ -502,7 +621,7 @@ rg "include.*pattern" server/src --type rust
 ./target/debug/pmat analyze complexity --include "server/examples/*.rs"
 ```
 
-### 9. Validate Metric Accuracy (2-3 minutes)
+### 11. Validate Metric Accuracy (2-3 minutes)
 **CRITICAL**: Verify the analysis metrics are actually correct!
 
 For complexity analysis:
@@ -528,7 +647,7 @@ fn test_complexity(x: i32) -> i32 {
 // Expected: Cyclomatic = 4, Cognitive = 2 (nesting)
 ```
 
-### 10. Add Property Tests (1-2 minutes)
+### 12. Add Property Tests (1-2 minutes)
 Create property tests for the functionality:
 
 ```rust
@@ -556,7 +675,7 @@ proptest! {
 }
 ```
 
-### 11. Add Doctests (1 minute)
+### 13. Add Doctests (1 minute)
 Add doctests to the fixed functions:
 
 ```rust
@@ -578,7 +697,7 @@ pub fn analyze_complexity(pattern: &str) -> Result<ComplexityResult, Error> {
 }
 ```
 
-### 12. Commit and Push (30 seconds)
+### 14. Commit and Push (30 seconds)
 ```bash
 # If creating example files
 git add examples/cli-usage/complexity-example.md
