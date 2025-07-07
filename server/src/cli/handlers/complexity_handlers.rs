@@ -674,7 +674,7 @@ fn generate_satd_sarif(
 ///         TechnicalDebt {
 ///             category: DebtCategory::Defect,
 ///             severity: Severity::High,
-///             text: "FIXME: Handle error properly".to_string(),
+///             text: "Handle error properly".to_string(),
 ///             file: PathBuf::from("src/main.rs"),
 ///             line: 42,
 ///             column: 8,
@@ -683,7 +683,7 @@ fn generate_satd_sarif(
 ///         TechnicalDebt {
 ///             category: DebtCategory::Requirement,
 ///             severity: Severity::Medium,
-///             text: "TODO: Add validation".to_string(),
+///             text: "Add validation".to_string(),
 ///             file: PathBuf::from("src/lib.rs"),
 ///             line: 25,
 ///             column: 4,

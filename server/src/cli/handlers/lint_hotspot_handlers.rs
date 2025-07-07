@@ -178,7 +178,7 @@ struct DiagnosticSpan {
     #[serde(default)]
     is_primary: bool,
     #[serde(default)]
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Deserialized from JSON but not used in current implementation
     text: Vec<DiagnosticText>,
     #[serde(default)]
     suggested_replacement: Option<String>,
@@ -187,7 +187,7 @@ struct DiagnosticSpan {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+#[allow(dead_code)] // Deserialized from JSON but not used in current implementation
 struct DiagnosticText {
     text: String,
     highlight_start: u32,
@@ -730,49 +730,6 @@ fn process_diagnostic(
     }
 }
 
-/// Find the file with highest defect density
-///
-/// # Errors
-///
-/// Returns an error if the operation fails
-#[allow(dead_code)]
-fn find_hotspot(file_metrics: HashMap<PathBuf, FileMetrics>) -> Result<LintHotspot> {
-    let mut hotspot_file = None;
-    let mut max_density = 0.0;
-
-    for (file_path, metrics) in file_metrics {
-        if metrics.sloc == 0 {
-            continue;
-        }
-
-        let total_violations = metrics.severity_counts.error
-            + metrics.severity_counts.warning
-            + metrics.severity_counts.suggestion;
-
-        let density = (total_violations as f64) / (metrics.sloc as f64);
-
-        if density > max_density {
-            max_density = density;
-
-            // Get top 10 lint violations
-            let mut top_lints: Vec<_> = metrics.violations.into_iter().collect();
-            top_lints.sort_by(|a, b| b.1.cmp(&a.1));
-            top_lints.truncate(10);
-
-            hotspot_file = Some(LintHotspot {
-                file: file_path,
-                defect_density: density,
-                total_violations,
-                sloc: metrics.sloc,
-                severity_distribution: metrics.severity_counts,
-                top_lints,
-                detailed_violations: vec![], // Old function doesn't collect detailed violations
-            });
-        }
-    }
-
-    hotspot_file.ok_or_else(|| anyhow::anyhow!("No lint violations found"))
-}
 
 /// Find the file with highest defect density (including detailed violations)
 ///
