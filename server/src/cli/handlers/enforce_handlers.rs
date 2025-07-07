@@ -283,6 +283,7 @@ async fn run_enforcement_step(
             // 1. Run complexity analysis
             handle_analyze_complexity(
                 project_path.clone(),
+                None, // file
                 None, // toolchain
                 ComplexityOutputFormat::Json,
                 None,                         // output
@@ -535,6 +536,7 @@ async fn list_all_violations(
     eprintln!("  🔍 Analyzing complexity...");
     match handle_analyze_complexity(
         project_path.to_path_buf(),
+        None, // file
         None, // toolchain
         ComplexityOutputFormat::Json,
         None,                         // output

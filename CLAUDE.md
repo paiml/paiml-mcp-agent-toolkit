@@ -12,6 +12,8 @@ This guide provides the essential operational instructions for working on the `p
 
 1.  **NEVER `cd server`:** All commands **MUST** be run from the project root (`/home/noah/src/paiml-mcp-agent-toolkit`). The `Makefile` is configured to correctly handle the workspace structure.
 2.  **ALWAYS Use Workspace Commands:** If you must run `cargo` commands directly, use workspace flags to target the `server` package (e.g., `cargo check --package pmat`). The `make` commands handle this for you.
+3.  **Binary Location:** The `pmat` binary is ALWAYS at `./target/debug/pmat` (workspace root), NOT in `server/target/`. This is a workspace project!
+4.  **NEVER Leave Stub Implementations:** This is a P0 (highest priority) rule. Never leave stub implementations with messages like "not yet implemented" or "TODO". Every feature must be fully functional. If you add a new command option or feature, you MUST implement it completely.
 
 ## The Kaizen Refactoring Loop (The "Kata")
 

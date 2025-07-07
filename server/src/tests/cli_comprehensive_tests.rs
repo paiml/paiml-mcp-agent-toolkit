@@ -492,6 +492,7 @@ fn test_analyze_complexity_full_options() {
     match cli.command {
         Commands::Analyze(AnalyzeCommands::Complexity {
             project_path,
+            file,
             toolchain,
             format,
             output,
@@ -502,6 +503,7 @@ fn test_analyze_complexity_full_options() {
             top_files,
         }) => {
             assert_eq!(project_path, PathBuf::from("/workspace"));
+            assert_eq!(file, None); // No file specified in this test
             assert_eq!(toolchain, Some("rust".to_string()));
             assert_eq!(format, ComplexityOutputFormat::Sarif);
             assert_eq!(output, Some(PathBuf::from("complexity.sarif")));
