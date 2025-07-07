@@ -237,6 +237,7 @@ impl CliAdapter {
             } => Self::decode_analyze_churn(project_path, *days, format, output, *top_files),
             AnalyzeCommands::Complexity {
                 project_path,
+                file,
                 toolchain,
                 format,
                 output,
@@ -247,6 +248,7 @@ impl CliAdapter {
                 top_files,
             } => Self::decode_analyze_complexity(
                 project_path,
+                file,
                 toolchain,
                 format,
                 output,
@@ -814,6 +816,7 @@ impl CliAdapter {
     #[allow(clippy::too_many_arguments)]
     fn decode_analyze_complexity(
         project_path: &std::path::Path,
+        file: &Option<std::path::PathBuf>,
         toolchain: &Option<String>,
         format: &ComplexityOutputFormat,
         output: &Option<std::path::PathBuf>,
@@ -825,6 +828,7 @@ impl CliAdapter {
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         let body = json!({
             "project_path": project_path.to_string_lossy(),
+            "file": file.as_ref().map(|f| f.to_string_lossy()),
             "toolchain": toolchain,
             "format": complexity_format_to_string(format),
             "output_path": output,
@@ -1634,6 +1638,7 @@ mod tests {
         let adapter = CliAdapter::new();
         let command = Commands::Analyze(AnalyzeCommands::Complexity {
             project_path: PathBuf::from("."),
+            file: None,
             toolchain: Some("rust".to_string()),
             format: ComplexityOutputFormat::Json,
             output: None,

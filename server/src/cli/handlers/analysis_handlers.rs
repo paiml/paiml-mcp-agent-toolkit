@@ -130,6 +130,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
     match cmd {
         AnalyzeCommands::Complexity {
             project_path,
+            file,
             toolchain,
             format,
             output,
@@ -141,6 +142,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         } => {
             super::complexity_handlers::handle_analyze_complexity(
                 project_path,
+                file,
                 toolchain,
                 format,
                 output,

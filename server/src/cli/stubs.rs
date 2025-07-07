@@ -12,6 +12,7 @@ use crate::services::lightweight_provability_analyzer::ProofSummary;
 use crate::services::makefile_linter;
 use anyhow::Result;
 use serde::Serialize;
+use serde_json::json;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
@@ -1413,6 +1414,7 @@ pub async fn handle_analyze_dag(
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_quality_gate(
     project_path: PathBuf,
+    file: Option<PathBuf>,
     format: QualityGateOutputFormat,
     fail_on_violation: bool,
     checks: Vec<QualityCheckType>,
@@ -1423,10 +1425,121 @@ pub async fn handle_quality_gate(
     output: Option<PathBuf>,
     _perf: bool,
 ) -> Result<()> {
-    eprintln!("🔍 Running quality gate checks...");
+    if let Some(single_file) = &file {
+        eprintln!("🔍 Running quality gate checks on file: {}...", single_file.display());
+    } else {
+        eprintln!("🔍 Running quality gate checks...");
+    }
 
     let mut violations = Vec::new();
     let mut results = QualityGateResults::default();
+
+    // For single file mode, we need to implement different logic
+    if let Some(single_file) = file {
+        // Single file quality gate - run checks on just this file
+        eprintln!("📄 Analyzing single file: {}", single_file.display());
+        
+        let mut single_file_violations = Vec::new();
+        let mut single_file_results = QualityGateResults::default();
+        
+        // Determine which checks to run (default to All if none specified)
+        let checks_to_run = if checks.is_empty() {
+            vec![QualityCheckType::All]
+        } else {
+            checks
+        };
+        
+        // Run checks on the single file
+        for check in &checks_to_run {
+            match check {
+                QualityCheckType::Complexity => {
+                    // Run complexity check on single file
+                    let violations_found = check_single_file_complexity(&project_path, &single_file, max_complexity_p99).await?;
+                    single_file_results.complexity_violations = violations_found.len();
+                    single_file_violations.extend(violations_found);
+                }
+                QualityCheckType::DeadCode => {
+                    // Single file dead code detection
+                    let violations_found = check_single_file_dead_code(&project_path, &single_file).await?;
+                    single_file_results.dead_code_violations = violations_found.len();
+                    single_file_violations.extend(violations_found);
+                }
+                QualityCheckType::Satd => {
+                    // Check for self-admitted technical debt in file
+                    let violations_found = check_single_file_satd(&project_path, &single_file).await?;
+                    single_file_results.satd_violations = violations_found.len();
+                    single_file_violations.extend(violations_found);
+                }
+                QualityCheckType::Security => {
+                    // Security checks for single file
+                    let violations_found = check_single_file_security(&project_path, &single_file).await?;
+                    single_file_results.security_violations = violations_found.len();
+                    single_file_violations.extend(violations_found);
+                }
+                QualityCheckType::All => {
+                    // Run all applicable single file checks
+                    let complexity_violations = check_single_file_complexity(&project_path, &single_file, max_complexity_p99).await?;
+                    single_file_results.complexity_violations = complexity_violations.len();
+                    single_file_violations.extend(complexity_violations);
+                    
+                    let dead_code_violations = check_single_file_dead_code(&project_path, &single_file).await?;
+                    single_file_results.dead_code_violations = dead_code_violations.len();
+                    single_file_violations.extend(dead_code_violations);
+                    
+                    let satd_violations = check_single_file_satd(&project_path, &single_file).await?;
+                    single_file_results.satd_violations = satd_violations.len();
+                    single_file_violations.extend(satd_violations);
+                    
+                    let security_violations = check_single_file_security(&project_path, &single_file).await?;
+                    single_file_results.security_violations = security_violations.len();
+                    single_file_violations.extend(security_violations);
+                }
+                _ => {
+                    // Skip checks that don't apply to single files (e.g., entropy, duplicates across project)
+                    eprintln!("⚠️  Skipping {} check - not applicable to single file", check);
+                }
+            }
+        }
+        
+        // Calculate overall status
+        let passed = single_file_violations.is_empty();
+        single_file_results.passed = passed;
+        single_file_results.total_violations = single_file_violations.len();
+        
+        // Format output
+        let output_content = match format {
+            QualityGateOutputFormat::Summary => {
+                format_single_file_summary(&single_file, &single_file_results, &single_file_violations)
+            }
+            QualityGateOutputFormat::Json => {
+                serde_json::to_string_pretty(&json!({
+                    "file": single_file,
+                    "passed": passed,
+                    "results": single_file_results,
+                    "violations": single_file_violations,
+                })).unwrap()
+            }
+            QualityGateOutputFormat::Markdown => {
+                format_single_file_summary(&single_file, &single_file_results, &single_file_violations)
+            }
+            _ => {
+                format_single_file_summary(&single_file, &single_file_results, &single_file_violations)
+            }
+        };
+        
+        if let Some(output_path) = output {
+            std::fs::write(output_path, &output_content)?;
+        } else {
+            println!("{}", output_content);
+        }
+        
+        // Exit with error code if quality gate failed and fail_on_violation is set
+        if fail_on_violation && !passed {
+            std::process::exit(1);
+        }
+        
+        return Ok(());
+    }
 
     // Run selected checks
     for check in &checks {
@@ -4985,3 +5098,246 @@ fn format_defect_csv(report: &DefectPredictionReport) -> Result<String> {
 
     Ok(output)
 }
+
+// Single file quality gate check functions
+
+async fn check_single_file_complexity(
+    project_path: &Path, 
+    file_path: &Path,
+    max_complexity_p99: u32,
+) -> Result<Vec<QualityViolation>> {
+    use crate::services::ast_rust::analyze_rust_file_with_complexity;
+    
+    let mut violations = Vec::new();
+    
+    // Make file path absolute if needed
+    let abs_file_path = if file_path.is_absolute() {
+        file_path.to_path_buf()
+    } else {
+        project_path.join(file_path)
+    };
+    
+    // Check if file exists
+    if !abs_file_path.exists() {
+        return Err(anyhow::anyhow!("File not found: {}", abs_file_path.display()));
+    }
+    
+    // Analyze complexity based on file extension
+    if let Some(ext) = abs_file_path.extension() {
+        if ext == "rs" {
+            // Rust file analysis
+            let metrics = analyze_rust_file_with_complexity(&abs_file_path).await?;
+            
+            // Check each function for complexity violations
+            for func in &metrics.functions {
+                if func.metrics.cyclomatic > max_complexity_p99 as u16 {
+                    violations.push(QualityViolation {
+                        check_type: "complexity".to_string(),
+                        severity: "error".to_string(),
+                        file: file_path.to_string_lossy().to_string(),
+                        line: Some(func.line_start as usize),
+                        message: format!(
+                            "Function '{}' has cyclomatic complexity {} (max: {})",
+                            func.name, func.metrics.cyclomatic, max_complexity_p99
+                        ),
+                    });
+                }
+            }
+        }
+        // Add support for other languages as needed
+    }
+    
+    Ok(violations)
+}
+
+async fn check_single_file_dead_code(
+    project_path: &Path,
+    file_path: &Path,
+) -> Result<Vec<QualityViolation>> {
+    use regex::Regex;
+    
+    let mut violations = Vec::new();
+    
+    // Make file path absolute
+    let abs_file_path = if file_path.is_absolute() {
+        file_path.to_path_buf()
+    } else {
+        project_path.join(file_path)
+    };
+    
+    if !abs_file_path.exists() {
+        return Ok(violations); // No violations if file doesn't exist
+    }
+    
+    // Read file content
+    let content = tokio::fs::read_to_string(&abs_file_path).await?;
+    
+    // Check for common dead code patterns
+    let dead_code_patterns = vec![
+        (r"#\[allow\(dead_code\)\]", "Dead code attribute found"),
+        (r"^\s*//\s*fn\s+\w+", "Commented out function"),
+        (r"^\s*//\s*struct\s+\w+", "Commented out struct"),
+        (r"^\s*//\s*impl\s+", "Commented out implementation"),
+    ];
+    
+    for (pattern_str, message) in dead_code_patterns {
+        let regex = Regex::new(pattern_str)?;
+        for (line_no, line) in content.lines().enumerate() {
+            if regex.is_match(line) {
+                violations.push(QualityViolation {
+                    check_type: "dead_code".to_string(),
+                    severity: "warning".to_string(),
+                    file: file_path.to_string_lossy().to_string(),
+                    line: Some(line_no + 1),
+                    message: message.to_string(),
+                });
+            }
+        }
+    }
+    
+    Ok(violations)
+}
+
+async fn check_single_file_satd(
+    project_path: &Path,
+    file_path: &Path,
+) -> Result<Vec<QualityViolation>> {
+    use regex::Regex;
+    
+    let mut violations = Vec::new();
+    let satd_pattern = Regex::new(r"(?i)(TODO|FIXME|HACK|XXX|BUG|REFACTOR):\s*(.+)")?;
+    
+    // Make file path absolute
+    let abs_file_path = if file_path.is_absolute() {
+        file_path.to_path_buf()
+    } else {
+        project_path.join(file_path)
+    };
+    
+    if !abs_file_path.exists() {
+        return Ok(violations);
+    }
+    
+    let content = tokio::fs::read_to_string(&abs_file_path).await?;
+    
+    for (line_no, line) in content.lines().enumerate() {
+        if let Some(captures) = satd_pattern.captures(line) {
+            let satd_type = captures.get(1).unwrap().as_str();
+            let text = captures.get(2).unwrap().as_str();
+            
+            violations.push(QualityViolation {
+                check_type: "satd".to_string(),
+                severity: "warning".to_string(),
+                file: file_path.to_string_lossy().to_string(),
+                line: Some(line_no + 1),
+                message: format!("Self-admitted technical debt: {} - {}", satd_type, text),
+            });
+        }
+    }
+    
+    Ok(violations)
+}
+
+async fn check_single_file_security(
+    project_path: &Path,
+    file_path: &Path,
+) -> Result<Vec<QualityViolation>> {
+    use regex::Regex;
+    
+    let mut violations = Vec::new();
+    
+    // Security patterns to check
+    let security_patterns = vec![
+        (r#"(?i)password\s*=\s*["'][^"']+["']"#, "Hardcoded password detected"),
+        (r#"(?i)api_key\s*=\s*["'][^"']+["']"#, "Hardcoded API key detected"),
+        (r#"(?i)secret\s*=\s*["'][^"']+["']"#, "Hardcoded secret detected"),
+        (r#"(?i)token\s*=\s*["'][^"']+["']"#, "Hardcoded token detected"),
+        (r"(?i)unsafe\s*\{", "Unsafe code block detected"),
+        (r"std::env::var\(.*\)\.unwrap\(\)", "Unsafe environment variable access"),
+    ];
+    
+    // Make file path absolute
+    let abs_file_path = if file_path.is_absolute() {
+        file_path.to_path_buf()
+    } else {
+        project_path.join(file_path)
+    };
+    
+    if !abs_file_path.exists() {
+        return Ok(violations);
+    }
+    
+    let content = tokio::fs::read_to_string(&abs_file_path).await?;
+    
+    for (pattern_str, message) in security_patterns {
+        let regex = Regex::new(pattern_str)?;
+        for (line_no, line) in content.lines().enumerate() {
+            if regex.is_match(line) {
+                violations.push(QualityViolation {
+                    check_type: "security".to_string(),
+                    severity: "error".to_string(),
+                    file: file_path.to_string_lossy().to_string(),
+                    line: Some(line_no + 1),
+                    message: message.to_string(),
+                });
+            }
+        }
+    }
+    
+    Ok(violations)
+}
+
+fn format_single_file_summary(
+    file_path: &Path,
+    results: &QualityGateResults,
+    violations: &[QualityViolation],
+) -> String {
+    let mut output = String::new();
+    
+    output.push_str(&format!("# Quality Gate Report: {}\n\n", file_path.display()));
+    
+    if results.passed {
+        output.push_str("✅ **Quality Gate: PASSED**\n\n");
+    } else {
+        output.push_str("❌ **Quality Gate: FAILED**\n\n");
+    }
+    
+    output.push_str("## Summary\n\n");
+    output.push_str(&format!("- Total Violations: {}\n", results.total_violations));
+    output.push_str(&format!("- Complexity Issues: {}\n", results.complexity_violations));
+    output.push_str(&format!("- Dead Code: {}\n", results.dead_code_violations));
+    output.push_str(&format!("- Technical Debt (SATD): {}\n", results.satd_violations));
+    output.push_str(&format!("- Security Issues: {}\n", results.security_violations));
+    
+    if !violations.is_empty() {
+        output.push_str("\n## Violations\n\n");
+        
+        // Group violations by type
+        let mut by_type: HashMap<String, Vec<&QualityViolation>> = HashMap::new();
+        for violation in violations {
+            by_type.entry(violation.check_type.clone()).or_default().push(violation);
+        }
+        
+        for (check_type, type_violations) in by_type {
+            output.push_str(&format!("### {} ({})\n\n", check_type.to_uppercase(), type_violations.len()));
+            
+            for violation in type_violations {
+                let severity_icon = match violation.severity.as_str() {
+                    "error" => "🔴",
+                    "warning" => "🟡",
+                    _ => "🟢",
+                };
+                
+                if let Some(line) = violation.line {
+                    output.push_str(&format!("- {} Line {}: {}\n", severity_icon, line, violation.message));
+                } else {
+                    output.push_str(&format!("- {} {}\n", severity_icon, violation.message));
+                }
+            }
+            output.push('\n');
+        }
+    }
+    
+    output
+}
+

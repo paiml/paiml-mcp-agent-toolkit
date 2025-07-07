@@ -254,6 +254,10 @@ pub enum Commands {
         #[arg(short = 'p', long, default_value = ".")]
         project_path: PathBuf,
 
+        /// Analyze a specific file instead of the whole project
+        #[arg(long)]
+        file: Option<PathBuf>,
+
         /// Output format
         #[arg(short = 'f', long, value_enum, default_value = "summary")]
         format: QualityGateOutputFormat,
@@ -401,6 +405,10 @@ pub enum AnalyzeCommands {
         /// Project path to analyze
         #[arg(short = 'p', long, default_value = ".")]
         project_path: PathBuf,
+
+        /// Analyze a specific file instead of the whole project
+        #[arg(long, conflicts_with = "include")]
+        file: Option<PathBuf>,
 
         /// Filter by toolchain (rust, deno, python-uv)
         #[arg(long)]
