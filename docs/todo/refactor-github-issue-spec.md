@@ -21,7 +21,7 @@ The primary change will be the addition of a new flag to the `pmat refactor auto
 `--github-issue <URL>`
 
 -   **Description:** Specifies the URL of a GitHub issue to guide the refactoring process.
--   **Example:** `pmat refactor auto --github-issue https://github.com/paiml/mcp-agent-toolkit/issues/123`
+-   **Example:** `pmat refactor auto --github-issue https://github.com/paiml/paiml-mcp-agent-toolkit/issues/123`
 
 When this flag is used, `pmat` will ignore its default file-discovery and prioritization logic and instead focus exclusively on the context provided by the issue.
 

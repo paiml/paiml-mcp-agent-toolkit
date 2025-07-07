@@ -28,9 +28,9 @@ impl ProgressTracker {
     /// # Examples
     ///
     /// ```
-    /// use pmat::services::progress::ProgressManager;
+    /// use pmat::services::progress::ProgressTracker;
     ///
-    /// let progress = ProgressManager::new(false);
+    /// let progress = ProgressTracker::new(false);
     /// let spinner = progress.create_spinner("Processing...");
     /// assert!(spinner.is_hidden());
     /// ```

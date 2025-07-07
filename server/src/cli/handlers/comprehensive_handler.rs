@@ -47,6 +47,7 @@ use tracing::{info, warn};
 /// handle_analyze_comprehensive(
 ///     PathBuf::from("."),
 ///     None,
+///     vec![],  // files
 ///     ComprehensiveOutputFormat::Summary,
 ///     true,  // include_duplicates
 ///     true,  // include_dead_code
@@ -66,6 +67,7 @@ use tracing::{info, warn};
 /// handle_analyze_comprehensive(
 ///     PathBuf::from("."),
 ///     Some(PathBuf::from("src/main.rs")),
+///     vec![],  // files
 ///     ComprehensiveOutputFormat::Detailed,
 ///     true,  // include_duplicates
 ///     true,  // include_dead_code
