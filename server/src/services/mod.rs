@@ -77,6 +77,8 @@ pub mod rust_borrow_checker;
 pub mod satd_detector;
 pub mod semantic_naming;
 pub mod simple_deep_context;
+#[cfg(test)]
+mod deep_context_property_tests;
 pub mod symbol_table;
 pub mod tdg_calculator;
 pub mod template_service;

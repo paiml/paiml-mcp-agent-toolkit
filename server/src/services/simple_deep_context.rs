@@ -52,6 +52,48 @@ impl SimpleDeepContext {
     }
 
     /// Perform simplified deep context analysis
+    ///
+    /// This function analyzes a Rust project to identify complexity patterns and
+    /// provide refactoring recommendations. After fixing issue #33, it now uses
+    /// proper AST-based complexity analysis instead of heuristic estimation.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use pmat::services::simple_deep_context::{SimpleDeepContext, SimpleAnalysisConfig};
+    /// use std::path::PathBuf;
+    ///
+    /// # async fn example() -> anyhow::Result<()> {
+    /// let analyzer = SimpleDeepContext::new();
+    /// let config = SimpleAnalysisConfig {
+    ///     project_path: PathBuf::from("./my-rust-project"),
+    ///     include_features: vec![],
+    ///     exclude_patterns: vec![],
+    ///     enable_verbose: false,
+    /// };
+    ///
+    /// let report = analyzer.analyze(config).await?;
+    ///
+    /// // Issue #33 fix: Complexity values are now accurate, not fixed at 1.0
+    /// assert!(report.complexity_metrics.total_functions > 0);
+    /// assert!(report.complexity_metrics.avg_complexity >= 1.0);
+    ///
+    /// // High complexity functions are properly detected
+    /// if report.complexity_metrics.high_complexity_count > 0 {
+    ///     println!("Found {} high-complexity functions", 
+    ///         report.complexity_metrics.high_complexity_count);
+    /// }
+    ///
+    /// // File-level complexity details are accurate
+    /// for detail in &report.file_complexity_details {
+    ///     println!("File: {} - {} functions, avg complexity: {:.2}", 
+    ///         detail.file_path.display(),
+    ///         detail.function_count,
+    ///         detail.avg_complexity);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn analyze(&self, config: SimpleAnalysisConfig) -> Result<SimpleAnalysisReport> {
         let start_time = Instant::now();
         info!("🔍 Starting simplified deep context analysis");
@@ -573,7 +615,9 @@ fn func_{i}() {{
                 
                 // Property: function count should match
                 prop_assert_eq!(report.complexity_metrics.total_functions, num_functions);
-            });
+                
+                Ok(())
+            })?;
         }
     }
 }

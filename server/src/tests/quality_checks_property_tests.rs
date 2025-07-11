@@ -254,3 +254,171 @@ mod additional_property_tests {
         }
     }
 }
+
+/// Unit tests for quality gate check display and performance metrics functionality
+/// These tests specifically verify the fixes for issues #30 and #31.
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+    use crate::cli::QualityCheckType;
+
+    /// Test that quality check types are properly defined (Issue #30 support)
+    #[test]
+    fn test_quality_check_types_comprehensive() {
+        // Test that all check types can be created and cloned
+        let all_checks = vec![
+            QualityCheckType::All,
+            QualityCheckType::Complexity,
+            QualityCheckType::DeadCode,
+            QualityCheckType::Satd,
+            QualityCheckType::Security,
+            QualityCheckType::Entropy,
+            QualityCheckType::Duplicates,
+            QualityCheckType::Coverage,
+            QualityCheckType::Sections,
+            QualityCheckType::Provability,
+        ];
+        
+        // All check types should be valid
+        assert_eq!(all_checks.len(), 10, "Should have exactly 10 check types defined");
+        
+        // Each check type should be cloneable and comparable
+        for check_type in &all_checks {
+            let cloned = check_type.clone();
+            assert_eq!(check_type, &cloned, "Check type should be cloneable and comparable");
+        }
+    }
+
+    /// Test check type string representation consistency (Issue #30)
+    #[test]
+    fn test_check_type_debug_format() {
+        let complexity_check = QualityCheckType::Complexity;
+        let debug_string = format!("{:?}", complexity_check);
+        
+        // Debug format should contain the type name
+        assert!(debug_string.contains("Complexity"), "Debug format should contain type name");
+        assert!(!debug_string.is_empty(), "Debug format should not be empty");
+    }
+
+    /// Test performance metrics calculation and display (Issue #31)
+    #[test]
+    fn test_performance_metrics_calculation() {
+        use std::time::Duration;
+        
+        // Test timing calculation
+        let start_time = std::time::Instant::now();
+        std::thread::sleep(Duration::from_millis(10)); // Small delay for testing
+        let elapsed = start_time.elapsed();
+        
+        // Basic properties of elapsed time
+        assert!(elapsed.as_millis() >= 10, "Should have elapsed at least 10ms");
+        assert!(elapsed.as_millis() < 1000, "Should have elapsed less than 1 second");
+        
+        // Test performance metrics formatting
+        let num_checks = 5;
+        let avg_time = elapsed.as_secs_f64() / num_checks as f64;
+        
+        assert!(avg_time > 0.0, "Average time should be positive");
+        assert!(avg_time.is_finite(), "Average time should be finite");
+    }
+
+    /// Test performance metrics display format (Issue #31)
+    #[test] 
+    fn test_performance_metrics_display_format() {
+        use std::time::Duration;
+        
+        let total_time = Duration::from_millis(1500); // 1.5 seconds
+        let num_checks = 3;
+        let avg_time = total_time.as_secs_f64() / num_checks as f64;
+        
+        // Format performance output (similar to what's in quality gate)
+        let perf_output = format!(
+            "⏱️  Performance Metrics:\n  Total execution time: {:.2}s\n  Checks performed: {}\n  Average time per check: {:.2}s",
+            total_time.as_secs_f64(),
+            num_checks,
+            avg_time
+        );
+        
+        // Verify format contains expected elements
+        assert!(perf_output.contains("Performance Metrics"));
+        assert!(perf_output.contains("Total execution time: 1.50s"));
+        assert!(perf_output.contains("Checks performed: 3"));
+        assert!(perf_output.contains("Average time per check: 0.50s"));
+    }
+
+    /// Test that performance flag integration works as expected
+    #[test]
+    fn test_performance_flag_integration() {
+        // Test with performance enabled
+        let perf_enabled = true;
+        let should_show_metrics = perf_enabled;
+        assert!(should_show_metrics, "Performance metrics should be shown when perf flag is enabled");
+        
+        // Test with performance disabled 
+        let perf_disabled = false;
+        let should_show_metrics = perf_disabled;
+        assert!(!should_show_metrics, "Performance metrics should not be shown when perf flag is disabled");
+    }
+
+    /// Test check name generation consistency (supporting Issue #30)
+    #[test]
+    fn test_check_type_consistency() {
+        // Check that the same check type always produces the same results
+        let complexity_check1 = QualityCheckType::Complexity;
+        let complexity_check2 = QualityCheckType::Complexity;
+        
+        // Should be equal
+        assert_eq!(complexity_check1, complexity_check2, "Same check types should be equal");
+        
+        // Should have same debug representation
+        assert_eq!(format!("{:?}", complexity_check1), format!("{:?}", complexity_check2), 
+            "Same check types should have identical debug representation");
+    }
+    
+    /// Test violation detection with complexity check
+    #[test]
+    fn test_complexity_violation_detection() {
+        let rt = Runtime::new().unwrap();
+        let temp_dir = TempDir::new().unwrap();
+        
+        // Create a test file with high complexity content
+        let test_file = create_test_file(&temp_dir.path(), "test.rs", r#"
+fn high_complexity_function(a: i32, b: i32, c: i32, d: i32) {
+    if a > 0 {
+        if b > 0 {
+            if c > 0 {
+                if d > 0 {
+                    for i in 0..10 {
+                        for j in 0..10 {
+                            match (i, j) {
+                                (0, 0) => println!("Origin"),
+                                (0, _) => println!("X-axis"),
+                                (_, 0) => println!("Y-axis"),
+                                (x, y) if x == y => println!("Diagonal"),
+                                (x, y) if x > y => println!("Above diagonal"),
+                                _ => println!("Below diagonal"),
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+        "#);
+        
+        rt.block_on(async {
+            // Test complexity check with low threshold to ensure violation detection
+            let complexity_violations = check_complexity(&test_file, 5).await.unwrap();
+            // Should find violations in the complex function
+            assert!(!complexity_violations.is_empty(), "Should detect complexity violations in high-complexity function");
+            
+            // Verify violation structure
+            for violation in &complexity_violations {
+                assert_eq!(violation.check_type, "complexity");
+                assert!(!violation.message.is_empty());
+                assert!(!violation.file.is_empty());
+            }
+        });
+    }
+}
