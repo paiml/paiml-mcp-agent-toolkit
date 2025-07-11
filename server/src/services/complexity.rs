@@ -361,13 +361,77 @@ impl ComplexityRule for CognitiveComplexityRule {
 /// assert_eq!(report.files.len(), 1);
 /// ```
 pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> ComplexityReport {
+    aggregate_results_with_thresholds(file_metrics, None, None)
+}
+
+/// Aggregate complexity results with custom thresholds
+///
+/// This function allows customizing the complexity thresholds used to determine violations,
+/// addressing issue #32 where `--max-cyclomatic` didn't affect report output.
+///
+/// # Arguments
+/// 
+/// * `file_metrics` - Vector of file complexity metrics to aggregate
+/// * `max_cyclomatic` - Optional custom maximum cyclomatic complexity threshold
+/// * `max_cognitive` - Optional custom maximum cognitive complexity threshold
+///
+/// # Examples
+///
+/// ```
+/// use pmat::services::complexity::*;
+///
+/// let metrics = ComplexityMetrics {
+///     cyclomatic: 25,
+///     cognitive: 30,
+///     nesting_max: 3,
+///     lines: 100,
+/// };
+///
+/// let func = FunctionComplexity {
+///     name: "complex_function".to_string(),
+///     line_start: 10,
+///     line_end: 50,
+///     metrics,
+/// };
+///
+/// let file = FileComplexityMetrics {
+///     path: "src/main.rs".to_string(),
+///     total_complexity: metrics,
+///     functions: vec![func],
+///     classes: vec![],
+/// };
+///
+/// // With custom threshold of 20, the function with complexity 25 will be a violation
+/// let report = aggregate_results_with_thresholds(vec![file], Some(20), None);
+/// assert_eq!(report.violations.len(), 1);
+/// assert!(matches!(report.violations[0], Violation::Error { .. }));
+///
+/// // With threshold of 30, no violations
+/// let report2 = aggregate_results_with_thresholds(vec![file], Some(30), None);
+/// assert_eq!(report2.violations.len(), 0);
+/// ```
+pub fn aggregate_results_with_thresholds(
+    file_metrics: Vec<FileComplexityMetrics>,
+    max_cyclomatic: Option<u16>,
+    max_cognitive: Option<u16>,
+) -> ComplexityReport {
     let mut all_cyclomatic: Vec<u16> = Vec::new();
     let mut all_cognitive: Vec<u16> = Vec::new();
     let mut violations = Vec::new();
     let mut hotspots = Vec::new();
     let mut total_functions = 0;
 
-    let thresholds = ComplexityThresholds::default();
+    // Use custom thresholds if provided
+    let mut thresholds = ComplexityThresholds::default();
+    if let Some(max_cyc) = max_cyclomatic {
+        thresholds.cyclomatic_warn = max_cyc.saturating_sub(5).max(1);
+        thresholds.cyclomatic_error = max_cyc;
+    }
+    if let Some(max_cog) = max_cognitive {
+        thresholds.cognitive_warn = max_cog.saturating_sub(5).max(1);
+        thresholds.cognitive_error = max_cog;
+    }
+    
     let cyclomatic_rule = CyclomaticComplexityRule::new(&thresholds);
     let cognitive_rule = CognitiveComplexityRule::new(&thresholds);
 
