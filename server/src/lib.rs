@@ -228,6 +228,9 @@ mod tests {
     #[path = "../tests/helpers.rs"]
     mod helpers;
 
+    #[path = "../tests/quality_checks_property_tests.rs"]
+    mod quality_checks_property_tests;
+
     #[path = "../tests/prompts.rs"]
     mod prompts;
 
