@@ -382,7 +382,7 @@ mod unit_tests {
         let temp_dir = TempDir::new().unwrap();
         
         // Create a test file with high complexity content
-        let test_file = create_test_file(&temp_dir.path(), "test.rs", r#"
+        let test_file = create_test_file(temp_dir.path(), "test.rs", r#"
 fn high_complexity_function(a: i32, b: i32, c: i32, d: i32) {
     if a > 0 {
         if b > 0 {
