@@ -17,6 +17,8 @@ pub mod lint_hotspot_handlers;
 #[cfg(test)]
 pub mod lint_hotspot_property_tests;
 pub mod name_similarity_analysis;
+#[cfg(test)]
+pub mod quality_gate_property_tests;
 pub mod refactor_auto_handlers;
 #[cfg(test)]
 pub mod refactor_auto_property_tests;
