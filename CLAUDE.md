@@ -15,6 +15,8 @@ This guide provides the essential operational instructions for working on the `p
 3.  **Binary Location:** The `pmat` binary is ALWAYS at `./target/debug/pmat` (workspace root), NOT in `server/target/`. This is a workspace project!
 4.  **NEVER Leave Stub Implementations:** This is a P0 (highest priority) rule. Never leave stub implementations with messages like "not yet implemented" or "TODO". Every feature must be fully functional. If you add a new command option or feature, you MUST implement it completely.
 5.  **NEVER Add SATD Comments:** Zero tolerance for self-admitted technical debt. Never add comments like "TODO", "FIXME", "For now", "In a full implementation", etc. Every implementation must be complete.
+6.  **NEVER Use Simple Heuristics:** Zero tolerance for heuristics, stubs, or approximations. Always use proper AST-based analysis, full implementations, and accurate algorithms. If a function is named `estimate_*` or uses simple pattern matching instead of proper parsing, it must be replaced with the real implementation.
+7.  **NEVER Duplicate Core Logic:** There must be ONE implementation for each core feature. All providers (MCP, HTTP, CLI) must use the same underlying logic. If multiple tools need the same functionality, they must call the same service/function. No duplicate implementations allowed.
 
 ## The Kaizen Refactoring Loop (The "Kata")
 

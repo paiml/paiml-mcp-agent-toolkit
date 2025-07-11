@@ -1015,6 +1015,23 @@ pub enum QualityCheckType {
     All,
 }
 
+impl QualityCheckType {
+    /// Returns the default checks to run
+    pub fn default_checks() -> Vec<Self> {
+        vec![
+            QualityCheckType::Complexity,
+            QualityCheckType::DeadCode,
+            QualityCheckType::Satd,
+            QualityCheckType::Entropy,
+            QualityCheckType::Security,
+            QualityCheckType::Duplicates,
+            QualityCheckType::Coverage,
+            QualityCheckType::Sections,
+            QualityCheckType::Provability,
+        ]
+    }
+}
+
 impl fmt::Display for QualityCheckType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

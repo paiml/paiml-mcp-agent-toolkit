@@ -387,4 +387,147 @@ mod tests {
         // Different content should produce different keys
         assert_ne!(key1a, key2);
     }
+
+    // Property tests for aggregate_results_with_thresholds functionality
+    proptest! {
+        /// Property: Custom thresholds correctly override defaults
+        #[test]
+        fn custom_thresholds_override_defaults(
+            cyclomatic_complexity in 0u16..100,
+            cognitive_complexity in 0u16..100,
+            custom_cyclomatic_threshold in 1u16..50,
+            custom_cognitive_threshold in 1u16..50,
+        ) {
+            let metrics = ComplexityMetrics {
+                cyclomatic: cyclomatic_complexity,
+                cognitive: cognitive_complexity,
+                nesting_max: 3,
+                lines: 100,
+            };
+
+            let func = FunctionComplexity {
+                name: "test_function".to_string(),
+                line_start: 10,
+                line_end: 50,
+                metrics,
+            };
+
+            let file = FileComplexityMetrics {
+                path: "src/main.rs".to_string(),
+                total_complexity: metrics,
+                functions: vec![func],
+                classes: vec![],
+            };
+
+            // Test with custom thresholds
+            let report = aggregate_results_with_thresholds(
+                vec![file.clone()],
+                Some(custom_cyclomatic_threshold),
+                Some(custom_cognitive_threshold),
+            );
+
+            // Verify violations are based on custom thresholds
+            let has_cyclomatic_violation = cyclomatic_complexity > custom_cyclomatic_threshold;
+            let has_cognitive_violation = cognitive_complexity > custom_cognitive_threshold;
+            let expected_violations = has_cyclomatic_violation || has_cognitive_violation;
+
+            if expected_violations {
+                prop_assert!(!report.violations.is_empty());
+            } else {
+                prop_assert!(report.violations.is_empty());
+            }
+        }
+
+        /// Property: aggregate_results_with_thresholds produces consistent results
+        #[test]
+        fn aggregate_with_thresholds_deterministic(
+            file_count in 1usize..10,
+            max_cyclomatic_threshold in 10u16..50,
+            max_cognitive_threshold in 10u16..50,
+        ) {
+            // Generate random file metrics
+            let mut files = Vec::new();
+            for i in 0..file_count {
+                let metrics = ComplexityMetrics {
+                    cyclomatic: (i as u16 * 5) % 60,
+                    cognitive: (i as u16 * 7) % 60,
+                    nesting_max: (i % 10) as u8,
+                    lines: 100 + (i as u16 * 10),
+                };
+
+                let file = FileComplexityMetrics {
+                    path: format!("src/file_{}.rs", i),
+                    total_complexity: metrics,
+                    functions: vec![],
+                    classes: vec![],
+                };
+                files.push(file);
+            }
+
+            // Run twice with same inputs
+            let report1 = aggregate_results_with_thresholds(
+                files.clone(),
+                Some(max_cyclomatic_threshold),
+                Some(max_cognitive_threshold),
+            );
+
+            let report2 = aggregate_results_with_thresholds(
+                files,
+                Some(max_cyclomatic_threshold),
+                Some(max_cognitive_threshold),
+            );
+
+            // Results should be identical
+            prop_assert_eq!(report1.violations.len(), report2.violations.len());
+            prop_assert_eq!(report1.summary.total_files, report2.summary.total_files);
+            prop_assert_eq!(report1.summary.total_functions, report2.summary.total_functions);
+        }
+
+        /// Property: None thresholds use defaults
+        #[test]
+        fn none_thresholds_use_defaults(
+            cyclomatic_complexity in 0u16..100,
+            cognitive_complexity in 0u16..100,
+        ) {
+            let metrics = ComplexityMetrics {
+                cyclomatic: cyclomatic_complexity,
+                cognitive: cognitive_complexity,
+                nesting_max: 3,
+                lines: 100,
+            };
+
+            let func = FunctionComplexity {
+                name: "test_function".to_string(),
+                line_start: 10,
+                line_end: 50,
+                metrics,
+            };
+
+            let file = FileComplexityMetrics {
+                path: "src/main.rs".to_string(),
+                total_complexity: metrics,
+                functions: vec![func],
+                classes: vec![],
+            };
+
+            // Test with None thresholds (should use defaults)
+            let report = aggregate_results_with_thresholds(
+                vec![file.clone()],
+                None,
+                None,
+            );
+
+            // Default thresholds from ComplexityThresholds::default()
+            let default_thresholds = ComplexityThresholds::default();
+            let has_cyclomatic_violation = cyclomatic_complexity > default_thresholds.cyclomatic_error;
+            let has_cognitive_violation = cognitive_complexity > default_thresholds.cognitive_error;
+            let expected_violations = has_cyclomatic_violation || has_cognitive_violation;
+
+            if expected_violations {
+                prop_assert!(!report.violations.is_empty());
+            } else {
+                prop_assert!(report.violations.is_empty());
+            }
+        }
+    }
 }
