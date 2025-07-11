@@ -33,7 +33,7 @@ proptest! {
             create_test_file(temp_dir.path(), &format!("test{}.rs", i), &content);
         }
         
-        rt.block_on(async {
+        let _ = rt.block_on(async {
             let violations = check_complexity(temp_dir.path(), threshold).await.unwrap();
             
             // Verify all violations are for files exceeding threshold
@@ -80,7 +80,7 @@ proptest! {
         
         create_test_file(temp_dir.path(), "lib.rs", &content);
         
-        rt.block_on(async {
+        let _ = rt.block_on(async {
             let violations = check_dead_code(temp_dir.path(), max_percentage).await.unwrap();
             
             // Property: Violations occur only when dead code exceeds threshold
@@ -128,7 +128,7 @@ proptest! {
         
         create_test_file(temp_dir.path(), "test.rs", &content);
         
-        rt.block_on(async {
+        let _ = rt.block_on(async {
             let violations = check_satd(temp_dir.path()).await.unwrap();
             
             // Property: Number of violations matches number of SATD comments
@@ -172,7 +172,7 @@ proptest! {
             create_test_file(temp_dir.path(), &format!("file{}.rs", i), file_content);
         }
         
-        rt.block_on(async {
+        let _ = rt.block_on(async {
             let violations = check_duplicates(temp_dir.path()).await.unwrap();
             
             // Property: Duplicates are detected symmetrically
@@ -215,11 +215,7 @@ fn generate_code_with_complexity(target_complexity: u32) -> String {
 
 /// Extract file names from duplicate violation message
 fn extract_files_from_duplicate_message(message: &str) -> Option<Vec<String>> {
-    if let Some(files_part) = message.split("found in: ").nth(1) {
-        Some(files_part.split(", ").map(String::from).collect())
-    } else {
-        None
-    }
+    message.split("found in: ").nth(1).map(|files_part| files_part.split(", ").map(String::from).collect())
 }
 
 #[cfg(test)]

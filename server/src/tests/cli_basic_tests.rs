@@ -92,6 +92,7 @@ async fn test_execute_analyze_complexity_basic() {
         include: vec![],
         watch: false,
         top_files: 10,
+        fail_on_violation: false,
     };
 
     let command = Commands::Analyze(analyze_cmd);

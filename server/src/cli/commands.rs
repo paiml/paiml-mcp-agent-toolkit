@@ -458,6 +458,10 @@ pub enum AnalyzeCommands {
         /// Number of top complex files to show (0 = show all violations)
         #[arg(long, default_value_t = 10)]
         top_files: usize,
+
+        /// Exit with non-zero code if violations are found
+        #[arg(long)]
+        fail_on_violation: bool,
     },
 
     /// Generate dependency graphs using Mermaid
@@ -533,6 +537,14 @@ pub enum AnalyzeCommands {
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// Exit with non-zero code if violations are found
+        #[arg(long)]
+        fail_on_violation: bool,
+
+        /// Maximum allowed dead code percentage (default: 15.0)
+        #[arg(long, default_value = "15.0")]
+        max_percentage: f64,
     },
 
     /// Analyze Self-Admitted Technical Debt (SATD) in comments
@@ -581,6 +593,10 @@ pub enum AnalyzeCommands {
         /// Number of top files with most SATD to show (0 = show all)
         #[arg(long, default_value_t = 10)]
         top_files: usize,
+
+        /// Exit with non-zero code if violations are found
+        #[arg(long)]
+        fail_on_violation: bool,
     },
 
     /// Generate comprehensive deep context analysis with defect detection
