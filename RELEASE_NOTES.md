@@ -2,7 +2,67 @@
 
 This document details the latest changes, features, and bug fixes for the `pmat` crate.
 
-## v0.28.7 (Unreleased) - Lint Hotspot Analysis Improvements
+## v0.28.9 - CI/CD Integration & Exit Codes
+
+### 🎯 Summary
+
+This release adds comprehensive CI/CD support to all analyze commands, enabling seamless integration with GitHub Actions, GitLab CI, Jenkins, and other CI/CD platforms.
+
+### ✨ New Features
+
+- **Exit Code Support** - All `analyze` commands now support `--fail-on-violation` flag
+  - Exit code 0: Success - no violations found or within thresholds
+  - Exit code 1: Failure - violations exceed configured thresholds
+- **Configurable Thresholds**
+  - Complexity: `--max-cyclomatic` (default: 20), `--max-cognitive` (default: 15)
+  - Dead Code: `--max-percentage` (default: 15.0%)
+  - SATD: Zero tolerance when using `--fail-on-violation`
+- **New Examples** - Added 5 comprehensive CI/CD integration examples
+- **Documentation** - Complete CI/CD integration guide for all major platforms
+
+### 📚 Documentation Updates
+
+- Updated README.md with CI/CD integration section
+- Updated CLI reference with all new flags
+- Created comprehensive CI/CD integration guide
+- Added examples README with running instructions
+
+### 💡 Usage Examples
+
+```bash
+# GitHub Actions
+pmat analyze complexity --max-cyclomatic 15 --fail-on-violation
+
+# GitLab CI  
+pmat analyze satd --strict --fail-on-violation
+
+# Pre-commit hook
+pmat analyze dead-code --max-percentage 10.0 --fail-on-violation
+```
+
+## v0.28.8 - Comprehensive Quality Improvements and Documentation Updates
+
+### 🎯 Summary
+
+This release represents a major quality uplift with comprehensive clippy lint improvements, property test enhancements, and complete documentation updates. All Rust code quality checks now pass with zero warnings.
+
+### ✨ Improvements
+
+- **Clippy Lint Resolution** - Fixed all 180+ clippy warnings across the codebase
+- **Property Test Enhancement** - Improved all property tests with better strategies and coverage
+- **SATD Detector Improvements** - Enhanced pattern matching and Unicode support
+- **Dead Code Analysis** - More accurate detection with better ranking algorithms
+- **Documentation Updates** - Comprehensive updates to all documentation
+
+### 🐛 Bug Fixes
+
+- Fixed Unicode handling in SATD detector
+- Fixed dead code percentage calculations
+- Fixed property test edge cases
+- Fixed memory allocations in hot paths
+- Fixed error handling in analysis commands
+
+## v0.28.7 - Lint Hotspot Analysis Improvements
 
 ### 🎯 Summary
 

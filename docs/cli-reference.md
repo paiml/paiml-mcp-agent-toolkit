@@ -278,17 +278,22 @@ pmat analyze complexity [OPTIONS] <PATH>
 Options:
   --file <FILE>              Analyze single file (conflicts with --files)
   --files <FILES>            Analyze specific files (comma-separated, for MCP composition)
-  --max-complexity <NUM>     Maximum acceptable complexity (default: 10)
-  --cognitive                Include cognitive complexity
+  --max-cyclomatic <NUM>     Maximum cyclomatic complexity (default: 20)
+  --max-cognitive <NUM>      Maximum cognitive complexity (default: 15)
   --functions-only           Only analyze functions (not files)
   --top-files <NUM>          Show top N most complex files
   --threshold <NUM>          Complexity threshold for reporting
   --profile <PROFILE>        Quality profile (standard, strict, extreme)
+  --fail-on-violation        Exit with code 1 if violations found (CI/CD mode)
 
 Examples:
   pmat analyze complexity .
-  pmat analyze complexity ./src --max-complexity 15 --top-files 10
-  pmat analyze complexity . --format json --cognitive
+  pmat analyze complexity ./src --max-cyclomatic 15 --top-files 10
+  pmat analyze complexity . --format json --max-cognitive 10
+  
+  # CI/CD Integration
+  pmat analyze complexity . --max-cyclomatic 15 --fail-on-violation
+  pmat analyze complexity . --max-cognitive 10 --fail-on-violation --format json
   
   # MCP Tool Composition
   pmat analyze complexity . --files src/complex.rs,src/legacy.rs --format json
@@ -340,15 +345,21 @@ Detect unused and unreachable code.
 pmat analyze dead-code [OPTIONS] <PATH>
 
 Options:
-  --aggressive               Use aggressive analysis
-  --exclude-tests            Exclude test files from analysis
-  --public-only              Only check public items
-  --confidence <LEVEL>       Confidence level (low, medium, high)
+  --top-files <NUM>          Show top N files by dead code (default: show all)
+  --include-unreachable      Include unreachable code detection
+  --min-dead-lines <NUM>     Minimum dead lines to report (default: 5)
+  --include-tests            Include test files in analysis
+  --fail-on-violation        Exit with code 1 if violations found (CI/CD mode)
+  --max-percentage <NUM>     Maximum dead code percentage allowed (default: 15.0)
 
 Examples:
   pmat analyze dead-code .
-  pmat analyze dead-code ./src --aggressive --exclude-tests
-  pmat analyze dead-code . --public-only --format json
+  pmat analyze dead-code ./src --top-files 10 --include-unreachable
+  pmat analyze dead-code . --min-dead-lines 3 --format json
+  
+  # CI/CD Integration
+  pmat analyze dead-code . --max-percentage 10.0 --fail-on-violation
+  pmat analyze dead-code . --max-percentage 5.0 --fail-on-violation --format json
 ```
 
 ### Advanced Analysis
@@ -360,15 +371,25 @@ Detect Self-Admitted Technical Debt in comments.
 pmat analyze satd [OPTIONS] <PATH>
 
 Options:
-  --strict                   Use strict detection mode
-  --patterns <FILE>          Custom SATD patterns file
-  --confidence <NUM>         Minimum confidence score (0.0-1.0)
-  --include-resolved         Include resolved debt markers
+  --severity <LEVEL>         Filter by severity (low, medium, high, critical)
+  --critical-only            Show only critical SATD
+  --include-tests            Include test files in analysis
+  --strict                   Use strict detection mode (catches more patterns)
+  --evolution                Track SATD evolution over time
+  --days <NUM>               Days to look back for evolution (default: 30)
+  --metrics                  Include detailed metrics
+  --top-files <NUM>          Show top N files by SATD count (0 = all)
+  --fail-on-violation        Exit with code 1 if ANY SATD found (CI/CD mode)
 
 Examples:
   pmat analyze satd .
   pmat analyze satd . --strict --format json
-  pmat analyze satd ./src --confidence 0.8
+  pmat analyze satd ./src --critical-only
+  pmat analyze satd . --evolution --days 60
+  
+  # CI/CD Integration (zero tolerance)
+  pmat analyze satd . --strict --fail-on-violation
+  pmat analyze satd . --critical-only --fail-on-violation --format json
 ```
 
 #### `analyze deep-context`
@@ -953,6 +974,73 @@ level = "info"
 file = "pmat.log"
 rotate = true
 max_size = "100MB"
+```
+
+## CI/CD Integration
+
+All analyze commands support `--fail-on-violation` for seamless CI/CD integration. When this flag is set, commands will exit with code 1 if violations exceed configured thresholds.
+
+### Exit Codes
+- **0**: Success - no violations found or within thresholds
+- **1**: Failure - violations exceed configured thresholds
+
+### GitHub Actions
+```yaml
+name: Code Quality
+on: [push, pull_request]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install pmat
+        run: cargo install pmat
+        
+      - name: Check Complexity
+        run: |
+          pmat analyze complexity \
+            --max-cyclomatic 15 \
+            --max-cognitive 10 \
+            --fail-on-violation
+            
+      - name: Check Technical Debt  
+        run: pmat analyze satd --strict --fail-on-violation
+        
+      - name: Check Dead Code
+        run: |
+          pmat analyze dead-code \
+            --max-percentage 10.0 \
+            --fail-on-violation
+```
+
+### GitLab CI
+```yaml
+quality-check:
+  stage: test
+  script:
+    - cargo install pmat
+    - pmat quality-gate --fail-on-violation --format json --output report.json
+  artifacts:
+    reports:
+      codequality: report.json
+```
+
+### Pre-commit Hook
+```bash
+#!/bin/bash
+# .git/hooks/pre-commit
+pmat analyze satd --strict --fail-on-violation || exit 1
+pmat analyze complexity --max-cyclomatic 15 --fail-on-violation || exit 1
+```
+
+### Makefile Integration
+```makefile
+.PHONY: quality-check
+quality-check:
+	pmat analyze complexity --max-cyclomatic 15 --fail-on-violation
+	pmat analyze satd --strict --fail-on-violation
+	pmat analyze dead-code --max-percentage 10 --fail-on-violation
 ```
 
 ## Examples
