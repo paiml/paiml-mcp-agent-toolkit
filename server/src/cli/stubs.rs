@@ -2473,7 +2473,6 @@ async fn run_single_project_check(
     results: &mut QualityGateResults,
     perf: bool,
 ) -> Result<()> {
-    use std::time::Instant;
     match check {
         QualityCheckType::Complexity => {
             eprint!("  🔍 Checking complexity...");
