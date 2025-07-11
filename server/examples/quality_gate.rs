@@ -16,7 +16,7 @@ async fn main() -> Result<()> {
 
     // Example 1: Run all quality checks on current directory
     println!("Example 1: Running all quality checks on current directory");
-    println!("=" .repeat(60));
+    println!("{}", "=".repeat(60));
     
     let result = handle_quality_gate(
         PathBuf::from("."),
@@ -39,7 +39,7 @@ async fn main() -> Result<()> {
 
     // Example 2: Run specific checks with stricter thresholds
     println!("\nExample 2: Running specific checks with stricter thresholds");
-    println!("=" .repeat(60));
+    println!("{}", "=".repeat(60));
     
     let strict_result = handle_quality_gate(
         PathBuf::from("."),
@@ -66,7 +66,7 @@ async fn main() -> Result<()> {
 
     // Example 3: Analyze a specific file
     println!("\nExample 3: Analyzing a specific file");
-    println!("=" .repeat(60));
+    println!("{}", "=".repeat(60));
     
     let file_result = handle_quality_gate(
         PathBuf::from("."),
@@ -89,7 +89,7 @@ async fn main() -> Result<()> {
 
     // Example 4: Save results to file
     println!("\nExample 4: Saving quality gate results to file");
-    println!("=" .repeat(60));
+    println!("{}", "=".repeat(60));
     
     let output_path = PathBuf::from("quality-report.json");
     let output_result = handle_quality_gate(

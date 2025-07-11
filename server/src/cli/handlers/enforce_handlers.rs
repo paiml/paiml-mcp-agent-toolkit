@@ -293,6 +293,7 @@ async fn run_enforcement_step(
                 vec![],                       // include
                 false,                        // watch
                 10,                           // top_files
+                false,                        // fail_on_violation (enforce mode handles this)
             )
             .await?;
 
@@ -312,6 +313,7 @@ async fn run_enforcement_step(
                 true,  // metrics
                 None,  // output
                 0,     // top_files (0 = all)
+                false, // fail_on_violation (enforce mode handles this)
             )
             .await?;
 
@@ -547,6 +549,7 @@ async fn list_all_violations(
         vec![],                       // include
         false,                        // watch
         10,                           // top_files
+        false,                        // fail_on_violation
     )
     .await
     {
@@ -579,6 +582,7 @@ async fn list_all_violations(
         true,  // metrics
         None,  // output
         0,     // top_files (0 = all)
+        false, // fail_on_violation
     )
     .await
     {
@@ -637,6 +641,8 @@ async fn list_all_violations(
         5,        // min_dead_lines
         false,    // include_tests
         None,     // output
+        false,    // fail_on_violation
+        15.0,     // max_percentage
     )
     .await
     {

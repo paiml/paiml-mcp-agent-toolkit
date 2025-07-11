@@ -247,6 +247,7 @@ impl CliAdapter {
                 include,
                 watch,
                 top_files,
+                fail_on_violation: _, // Ignore for MCP - not applicable
             } => Self::decode_analyze_complexity(
                 project_path,
                 file,
@@ -291,6 +292,8 @@ impl CliAdapter {
                 min_dead_lines,
                 include_tests,
                 output,
+                fail_on_violation: _, // Ignore for MCP
+                max_percentage: _, // Ignore for MCP
             } => Self::decode_analyze_dead_code(
                 path,
                 format,
@@ -312,6 +315,7 @@ impl CliAdapter {
                 metrics,
                 output,
                 top_files,
+                fail_on_violation: _, // Ignore for MCP
             } => Self::decode_analyze_satd(
                 path,
                 format,
@@ -1654,6 +1658,7 @@ mod tests {
             include: vec!["**/*.rs".to_string()],
             watch: false,
             top_files: 0,
+            fail_on_violation: false,
         });
 
         let input = CliInput::from_commands(command);

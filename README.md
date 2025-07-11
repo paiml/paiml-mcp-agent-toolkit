@@ -122,12 +122,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - **Enforcement Mode** - Enforce extreme quality standards using state machines
   - **Single File Mode** - `pmat enforce extreme --file path/to/file.rs` for file-specific enforcement
 
-### 📊 Quality Gates
+### 📊 Quality Gates & CI/CD Integration
 - **Lint Hotspot Analysis** - Find files with highest defect density using EXTREME Clippy standards
   - **Single File Mode** - `pmat lint-hotspot --file path/to/file.rs` for targeted analysis
 - **Provability Analysis** - Lightweight formal verification with property analysis
 - **Defect Prediction** - ML-based prediction of defect-prone code
 - **Quality Enforcement** - Exit with error codes for CI/CD integration
+  - **NEW**: All analyze commands now support `--fail-on-violation` for CI/CD pipelines
+  - Exit code 0 on success, 1 when violations exceed thresholds
+  - Perfect for GitHub Actions, GitLab CI, Jenkins, and other CI/CD systems
 
 ### 🔧 Language Support
 - **Rust** - Full support with cargo integration
@@ -151,10 +154,13 @@ pmat context rust                              # Force language
 
 # Code analysis
 pmat analyze complexity --top-files 5         # Complexity analysis
+pmat analyze complexity --fail-on-violation   # CI/CD mode - exit(1) if violations
 pmat analyze churn --days 30                  # Git history analysis  
 pmat analyze dag --target-nodes 25            # Dependency graph
 pmat analyze dead-code --format json          # Dead code detection
+pmat analyze dead-code --fail-on-violation --max-percentage 10  # CI/CD mode
 pmat analyze satd --top-files 10              # Technical debt
+pmat analyze satd --strict --fail-on-violation  # Zero tolerance for debt
 pmat analyze deep-context --format json       # Comprehensive analysis
 pmat analyze big-o                            # Big-O complexity analysis
 pmat analyze makefile-lint                    # Makefile quality linting
@@ -284,7 +290,64 @@ curl -X POST "http://localhost:8080/api/v1/analyze/deep-context" \
   -d '{"project_path":"./","include":["ast","complexity","churn"]}'
 ```
 
+## 🚀 CI/CD Integration
+
+All analyze commands now support `--fail-on-violation` for seamless CI/CD integration:
+
+### GitHub Actions Example
+```yaml
+name: Code Quality
+on: [push, pull_request]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install pmat
+        run: cargo install pmat
+        
+      - name: Check Complexity
+        run: |
+          pmat analyze complexity \
+            --max-cyclomatic 15 \
+            --max-cognitive 10 \
+            --fail-on-violation
+            
+      - name: Check Technical Debt
+        run: pmat analyze satd --strict --fail-on-violation
+        
+      - name: Check Dead Code
+        run: |
+          pmat analyze dead-code \
+            --max-percentage 10.0 \
+            --fail-on-violation
+            
+      - name: Run Quality Gate
+        run: pmat quality-gate --fail-on-violation
+```
+
+### Configurable Thresholds
+- **Complexity**: `--max-cyclomatic` (default: 20), `--max-cognitive` (default: 15)
+- **Dead Code**: `--max-percentage` (default: 15.0%)
+- **SATD**: Fails on ANY technical debt when using `--fail-on-violation`
+
+### Exit Codes
+- **0**: Success - no violations found or within thresholds
+- **1**: Failure - violations exceed configured thresholds
+
+See `examples/ci_integration.rs` for more CI/CD patterns including GitLab CI, Jenkins, and pre-commit hooks.
+
 ## Recent Updates
+
+### 🚦 v0.28.9 - CI/CD Integration & Exit Codes
+- **CI/CD Support**: All analyze commands now support `--fail-on-violation` flag
+- **Exit Codes**: Commands exit with code 1 when violations exceed thresholds
+- **Configurable Thresholds**: Added `--max-percentage` for dead-code analysis
+- **Examples**: Added comprehensive CI/CD examples for GitHub Actions, GitLab CI, Jenkins
+- **Documentation**: Updated all documentation with CI/CD integration patterns
 
 ### 🔍 v0.28.3 - Enhanced Single-File Analysis
 - **Single File Analysis**: Added `--file` flag to `pmat analyze comprehensive` for analyzing individual files.

@@ -132,6 +132,7 @@ pub async fn handle_analyze_complexity(
     include: Vec<String>,
     watch: bool,
     top_files: usize,
+    fail_on_violation: bool,
 ) -> Result<()> {
     use crate::services::complexity::{
         aggregate_results, format_as_sarif, format_complexity_report, format_complexity_summary,
@@ -285,6 +286,24 @@ pub async fn handle_analyze_complexity(
         println!("{}", formatted_output);
     }
 
+    // Check for violations and exit with error code if requested
+    if fail_on_violation {
+        let has_violations = file_metrics.iter().any(|file| {
+            let cyclomatic_exceeded = file.functions.iter().any(|func| {
+                func.metrics.cyclomatic > max_cyclomatic.unwrap_or(20)
+            });
+            let cognitive_exceeded = file.functions.iter().any(|func| {
+                func.metrics.cognitive > max_cognitive.unwrap_or(15)
+            });
+            cyclomatic_exceeded || cognitive_exceeded
+        });
+
+        if has_violations {
+            eprintln!("\n❌ Complexity violations found");
+            std::process::exit(1);
+        }
+    }
+
     Ok(())
 }
 
@@ -302,6 +321,7 @@ pub async fn handle_analyze_churn(
 
 /// Handle dead code analysis command - REFACTORED
 /// Cognitive complexity reduced from 244 to ~10
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_dead_code(
     path: PathBuf,
     format: DeadCodeOutputFormat,
@@ -310,6 +330,8 @@ pub async fn handle_analyze_dead_code(
     min_dead_lines: usize,
     include_tests: bool,
     output: Option<PathBuf>,
+    fail_on_violation: bool,
+    max_percentage: f64,
 ) -> Result<()> {
     eprintln!("☠️ Analyzing dead code in project...");
 
@@ -333,6 +355,18 @@ pub async fn handle_analyze_dead_code(
 
     // Write output
     write_dead_code_output(formatted_output, output).await?;
+
+    // Check for violations and exit with error code if requested
+    if fail_on_violation {
+        let dead_code_percentage = result.summary.dead_percentage;
+        if dead_code_percentage > max_percentage as f32 {
+            eprintln!(
+                "\n❌ Dead code violations found: {:.1}% exceeds threshold of {:.1}%",
+                dead_code_percentage, max_percentage
+            );
+            std::process::exit(1);
+        }
+    }
 
     Ok(())
 }
@@ -653,6 +687,7 @@ pub async fn handle_analyze_satd(
     metrics: bool,
     output: Option<PathBuf>,
     top_files: usize,
+    fail_on_violation: bool,
 ) -> Result<()> {
     use crate::services::satd_detector::{SATDDetector, Severity as DetectorSeverity};
 
@@ -741,6 +776,15 @@ pub async fn handle_analyze_satd(
         eprintln!("✅ SATD analysis written to: {}", output_path.display());
     } else {
         println!("{}", content);
+    }
+
+    // Check for violations and exit with error code if requested
+    if fail_on_violation && !result.items.is_empty() {
+        eprintln!(
+            "\n❌ SATD violations found: {} technical debt items",
+            result.items.len()
+        );
+        std::process::exit(1);
     }
 
     Ok(())

@@ -1945,6 +1945,14 @@ pub async fn handle_quality_gate(
 ) -> Result<()> {
     // Print initial status message
     print_quality_gate_start_message(&file);
+    
+    // Show which checks will be run
+    let checks_to_run = if checks.is_empty() {
+        vec![QualityCheckType::All]
+    } else {
+        checks.clone()
+    };
+    print_checks_to_run(&checks_to_run);
 
     // Handle single file or project-wide quality gate
     if let Some(single_file) = file {
@@ -1984,6 +1992,35 @@ fn print_quality_gate_start_message(file: &Option<PathBuf>) {
     } else {
         eprintln!("🔍 Running quality gate checks...");
     }
+}
+
+/// Prints which checks will be run
+fn print_checks_to_run(checks: &[QualityCheckType]) {
+    eprintln!("\n📋 Checks to run:");
+    
+    if checks.contains(&QualityCheckType::All) {
+        eprintln!("  ✓ Complexity analysis");
+        eprintln!("  ✓ Dead code detection");
+        eprintln!("  ✓ Self-admitted technical debt (SATD)");
+        eprintln!("  ✓ Security vulnerabilities");
+        eprintln!("  ✓ Code entropy");
+        eprintln!("  ✓ Duplicate code");
+        eprintln!("  ✓ Test coverage");
+    } else {
+        for check in checks {
+            match check {
+                QualityCheckType::Complexity => eprintln!("  ✓ Complexity analysis"),
+                QualityCheckType::DeadCode => eprintln!("  ✓ Dead code detection"),
+                QualityCheckType::Satd => eprintln!("  ✓ Self-admitted technical debt (SATD)"),
+                QualityCheckType::Security => eprintln!("  ✓ Security vulnerabilities"),
+                QualityCheckType::Entropy => eprintln!("  ✓ Code entropy"),
+                QualityCheckType::Duplicates => eprintln!("  ✓ Duplicate code"),
+                QualityCheckType::Coverage => eprintln!("  ✓ Test coverage"),
+                _ => {}
+            }
+        }
+    }
+    eprintln!();
 }
 
 /// Handles quality gate checks for a single file
@@ -2293,51 +2330,70 @@ async fn run_single_project_check(
 ) -> Result<()> {
     match check {
         QualityCheckType::Complexity => {
+            eprint!("  🔍 Checking complexity...");
             let violations_found = check_complexity(project_path, max_complexity_p99).await?;
             results.complexity_violations = violations_found.len();
             violations.extend(violations_found);
+            eprintln!(" {} violations found", results.complexity_violations);
         }
         QualityCheckType::DeadCode => {
+            eprint!("  🔍 Checking dead code...");
             let violations_found = check_dead_code(project_path, max_dead_code).await?;
             results.dead_code_violations = violations_found.len();
             violations.extend(violations_found);
+            eprintln!(" {} violations found", results.dead_code_violations);
         }
         QualityCheckType::Satd => {
+            eprint!("  🔍 Checking technical debt...");
             let violations_found = check_satd(project_path).await?;
             results.satd_violations = violations_found.len();
             violations.extend(violations_found);
+            eprintln!(" {} violations found", results.satd_violations);
         }
         QualityCheckType::Entropy => {
+            eprint!("  🔍 Checking code entropy...");
             let violations_found = check_entropy(project_path, min_entropy).await?;
             results.entropy_violations = violations_found.len();
             violations.extend(violations_found);
+            eprintln!(" {} violations found", results.entropy_violations);
         }
         QualityCheckType::Security => {
+            eprint!("  🔍 Checking security...");
             let violations_found = check_security(project_path).await?;
             results.security_violations = violations_found.len();
             violations.extend(violations_found);
+            eprintln!(" {} violations found", results.security_violations);
         }
         QualityCheckType::Duplicates => {
+            eprint!("  🔍 Checking duplicates...");
             let violations_found = check_duplicates(project_path).await?;
             results.duplicate_violations = violations_found.len();
             violations.extend(violations_found);
+            eprintln!(" {} violations found", results.duplicate_violations);
         }
         QualityCheckType::Coverage => {
+            eprint!("  🔍 Checking test coverage...");
             let violations_found = check_coverage(project_path, 80.0).await?;
             results.coverage_violations = violations_found.len();
             violations.extend(violations_found);
+            eprintln!(" {} violations found", results.coverage_violations);
         }
         QualityCheckType::Sections => {
+            eprint!("  🔍 Checking documentation sections...");
             let violations_found = check_sections(project_path).await?;
             results.section_violations = violations_found.len();
             violations.extend(violations_found);
+            eprintln!(" {} violations found", results.section_violations);
         }
         QualityCheckType::Provability => {
+            eprint!("  🔍 Checking provability...");
             let violations_found = check_provability(project_path, 0.7).await?;
             results.provability_violations = violations_found.len();
             violations.extend(violations_found);
+            eprintln!(" {} violations found", results.provability_violations);
         }
         QualityCheckType::All => {
+            eprintln!("\n  Running all quality checks:");
             run_all_project_checks(
                 project_path,
                 max_dead_code,
@@ -2362,41 +2418,59 @@ async fn run_all_project_checks(
     results: &mut QualityGateResults,
 ) -> Result<()> {
     // Run all checks
+    eprint!("  🔍 Checking complexity...");
     let complexity_violations = check_complexity(project_path, max_complexity_p99).await?;
     results.complexity_violations = complexity_violations.len();
     violations.extend(complexity_violations);
+    eprintln!(" {} violations found", results.complexity_violations);
 
+    eprint!("  🔍 Checking dead code...");
     let dead_code_violations = check_dead_code(project_path, max_dead_code).await?;
     results.dead_code_violations = dead_code_violations.len();
     violations.extend(dead_code_violations);
+    eprintln!(" {} violations found", results.dead_code_violations);
 
+    eprint!("  🔍 Checking technical debt...");
     let satd_violations = check_satd(project_path).await?;
     results.satd_violations = satd_violations.len();
     violations.extend(satd_violations);
+    eprintln!(" {} violations found", results.satd_violations);
 
+    eprint!("  🔍 Checking code entropy...");
     let entropy_violations = check_entropy(project_path, min_entropy).await?;
     results.entropy_violations = entropy_violations.len();
     violations.extend(entropy_violations);
+    eprintln!(" {} violations found", results.entropy_violations);
 
+    eprint!("  🔍 Checking security...");
     let security_violations = check_security(project_path).await?;
     results.security_violations = security_violations.len();
     violations.extend(security_violations);
+    eprintln!(" {} violations found", results.security_violations);
 
+    eprint!("  🔍 Checking duplicates...");
     let duplicate_violations = check_duplicates(project_path).await?;
     results.duplicate_violations = duplicate_violations.len();
     violations.extend(duplicate_violations);
+    eprintln!(" {} violations found", results.duplicate_violations);
 
+    eprint!("  🔍 Checking test coverage...");
     let coverage_violations = check_coverage(project_path, 80.0).await?;
     results.coverage_violations = coverage_violations.len();
     violations.extend(coverage_violations);
+    eprintln!(" {} violations found", results.coverage_violations);
 
+    eprint!("  🔍 Checking documentation sections...");
     let section_violations = check_sections(project_path).await?;
     results.section_violations = section_violations.len();
     violations.extend(section_violations);
+    eprintln!(" {} violations found", results.section_violations);
 
+    eprint!("  🔍 Checking provability...");
     let provability_violations = check_provability(project_path, 0.7).await?;
     results.provability_violations = provability_violations.len();
     violations.extend(provability_violations);
+    eprintln!(" {} violations found", results.provability_violations);
 
     Ok(())
 }
