@@ -11,6 +11,12 @@ This release fixes critical issues with the quality gate and complexity analysis
 - **Added**: Clear "📋 Checks to run:" section showing all active checks
 - **Impact**: Users can now see exactly what quality gate is checking
 
+#### Issue #31: --perf in quality-gate doesn't do anything
+- **Fixed**: --perf flag now shows performance metrics for quality gate
+- **Added**: Individual timing for each check (e.g., "2 violations found (0.123s)")
+- **Added**: Overall performance summary with total time and average per check
+- **Impact**: Users can identify slow checks and optimize their quality gate pipeline
+
 #### Issue #32: --max-cyclomatic doesn't affect report
 - **Fixed**: Custom complexity thresholds now properly affect violation detection
 - **Added**: New `aggregate_results_with_thresholds` function that respects user-provided thresholds
