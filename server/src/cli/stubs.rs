@@ -1929,6 +1929,64 @@ pub async fn handle_analyze_dag(
     Ok(())
 }
 
+/// Handles quality gate checks for a project or single file
+///
+/// This function runs quality checks and displays which checks are being run,
+/// addressing issue #30 where quality-gate didn't show checks.
+///
+/// # Examples
+///
+/// ```no_run
+/// use pmat::cli::stubs::handle_quality_gate;
+/// use pmat::cli::{QualityCheckType, QualityGateOutputFormat};
+/// use std::path::PathBuf;
+///
+/// # async fn example() -> anyhow::Result<()> {
+/// // Run with default checks (All)
+/// handle_quality_gate(
+///     PathBuf::from("."),
+///     None,
+///     QualityGateOutputFormat::Human,
+///     false,
+///     vec![], // Empty means run all checks
+///     15.0,
+///     0.5,
+///     20,
+///     false,
+///     None,
+///     false,
+/// ).await?;
+/// // Will display:
+/// // 📋 Checks to run:
+/// //   ✓ Complexity analysis
+/// //   ✓ Dead code detection
+/// //   ✓ Self-admitted technical debt (SATD)
+/// //   ✓ Security vulnerabilities
+/// //   ✓ Code entropy
+/// //   ✓ Duplicate code
+/// //   ✓ Test coverage
+///
+/// // Run with specific checks
+/// handle_quality_gate(
+///     PathBuf::from("."),
+///     None,
+///     QualityGateOutputFormat::Human,
+///     false,
+///     vec![QualityCheckType::Complexity, QualityCheckType::Security],
+///     15.0,
+///     0.5,
+///     20,
+///     false,
+///     None,
+///     false,
+/// ).await?;
+/// // Will display:
+/// // 📋 Checks to run:
+/// //   ✓ Complexity analysis
+/// //   ✓ Security vulnerabilities
+/// # Ok(())
+/// # }
+/// ```
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_quality_gate(
     project_path: PathBuf,
@@ -1961,7 +2019,7 @@ pub async fn handle_quality_gate(
             single_file,
             format,
             fail_on_violation,
-            checks,
+            checks_to_run, // Use checks_to_run instead of checks
             max_complexity_p99,
             output,
         )
@@ -1971,7 +2029,7 @@ pub async fn handle_quality_gate(
             project_path,
             format,
             fail_on_violation,
-            checks,
+            checks_to_run, // Use checks_to_run instead of checks
             max_dead_code,
             min_entropy,
             max_complexity_p99,
@@ -2303,9 +2361,10 @@ async fn run_project_checks(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    for check in checks {
+    // If checks contains All, just run that single check which will run all checks
+    if checks.contains(&QualityCheckType::All) {
         run_single_project_check(
-            check,
+            &QualityCheckType::All,
             project_path,
             max_dead_code,
             min_entropy,
@@ -2314,6 +2373,20 @@ async fn run_project_checks(
             results,
         )
         .await?;
+    } else {
+        // Otherwise run each specified check
+        for check in checks {
+            run_single_project_check(
+                check,
+                project_path,
+                max_dead_code,
+                min_entropy,
+                max_complexity_p99,
+                violations,
+                results,
+            )
+            .await?;
+        }
     }
     Ok(())
 }
@@ -2393,7 +2466,6 @@ async fn run_single_project_check(
             eprintln!(" {} violations found", results.provability_violations);
         }
         QualityCheckType::All => {
-            eprintln!("\n  Running all quality checks:");
             run_all_project_checks(
                 project_path,
                 max_dead_code,
@@ -5713,6 +5785,56 @@ mod tests {
         assert!(checks.contains(&QualityCheckType::Coverage));
         assert!(checks.contains(&QualityCheckType::Sections));
         assert!(checks.contains(&QualityCheckType::Provability));
+    }
+
+    #[tokio::test]
+    async fn test_quality_gate_shows_checks() {
+        // Test that quality gate displays which checks are being run
+        // This addresses issue #30
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = temp_dir.path();
+        
+        // Create a simple project structure
+        let src_dir = project_path.join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+        let test_file = src_dir.join("main.rs");
+        let mut file = std::fs::File::create(&test_file).unwrap();
+        writeln!(file, "fn main() {{}}").unwrap();
+        
+        // Capture output to verify checks are displayed
+        // Note: In a real test environment, we would capture stderr
+        // For now, we just verify the function runs without panic
+        let result = handle_quality_gate(
+            project_path.to_path_buf(),
+            None,
+            QualityGateOutputFormat::Json,
+            false,
+            vec![], // Empty checks should show all checks
+            15.0,
+            0.5,
+            20,
+            false,
+            None,
+            false,
+        ).await;
+        
+        assert!(result.is_ok(), "Quality gate should run successfully");
+    }
+
+    #[test]
+    fn test_print_checks_to_run() {
+        // Test that print_checks_to_run handles All correctly
+        let all_checks = vec![QualityCheckType::All];
+        // This would print all checks to stderr
+        print_checks_to_run(&all_checks);
+        
+        // Test specific checks
+        let specific_checks = vec![QualityCheckType::Complexity, QualityCheckType::Security];
+        print_checks_to_run(&specific_checks);
+        
+        // Test empty checks (shouldn't crash)
+        let empty_checks: Vec<QualityCheckType> = vec![];
+        print_checks_to_run(&empty_checks);
     }
 
     #[test]

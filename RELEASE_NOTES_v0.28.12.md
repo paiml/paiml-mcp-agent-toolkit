@@ -6,6 +6,11 @@
 
 This release fixes critical issues with the quality gate and complexity analysis commands:
 
+#### Issue #30: quality-gate doesn't show checks
+- **Fixed**: Quality gate now displays which checks are being run
+- **Added**: Clear "📋 Checks to run:" section showing all active checks
+- **Impact**: Users can now see exactly what quality gate is checking
+
 #### Issue #32: --max-cyclomatic doesn't affect report
 - **Fixed**: Custom complexity thresholds now properly affect violation detection
 - **Added**: New `aggregate_results_with_thresholds` function that respects user-provided thresholds
