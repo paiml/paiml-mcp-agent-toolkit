@@ -1933,6 +1933,7 @@ pub async fn handle_analyze_dag(
 ///
 /// This function runs quality checks and displays which checks are being run,
 /// addressing issue #30 where quality-gate didn't show checks.
+/// With the --perf flag (issue #31), it also shows performance metrics.
 ///
 /// # Examples
 ///
@@ -1954,7 +1955,7 @@ pub async fn handle_analyze_dag(
 ///     20,
 ///     false,
 ///     None,
-///     false,
+///     false, // perf = false
 /// ).await?;
 /// // Will display:
 /// // 📋 Checks to run:
@@ -1966,7 +1967,7 @@ pub async fn handle_analyze_dag(
 /// //   ✓ Duplicate code
 /// //   ✓ Test coverage
 ///
-/// // Run with specific checks
+/// // Run with performance metrics
 /// handle_quality_gate(
 ///     PathBuf::from("."),
 ///     None,
@@ -1978,12 +1979,19 @@ pub async fn handle_analyze_dag(
 ///     20,
 ///     false,
 ///     None,
-///     false,
+///     true, // perf = true
 /// ).await?;
 /// // Will display:
 /// // 📋 Checks to run:
 /// //   ✓ Complexity analysis
 /// //   ✓ Security vulnerabilities
+/// //   🔍 Checking complexity... 2 violations found (0.123s)
+/// //   🔍 Checking security... 0 violations found (0.045s)
+/// // 
+/// // ⏱️  Performance Metrics:
+/// //   Total execution time: 0.17s
+/// //   Checks performed: 2
+/// //   Average time per check: 0.08s
 /// # Ok(())
 /// # }
 /// ```
@@ -1999,8 +2007,12 @@ pub async fn handle_quality_gate(
     max_complexity_p99: u32,
     include_provability: bool,
     output: Option<PathBuf>,
-    _perf: bool,
+    perf: bool,
 ) -> Result<()> {
+    use std::time::Instant;
+    
+    let start_time = if perf { Some(Instant::now()) } else { None };
+    
     // Print initial status message
     print_quality_gate_start_message(&file);
     
@@ -2013,15 +2025,16 @@ pub async fn handle_quality_gate(
     print_checks_to_run(&checks_to_run);
 
     // Handle single file or project-wide quality gate
-    if let Some(single_file) = file {
+    let result = if let Some(single_file) = file {
         handle_single_file_quality_gate(
             project_path,
             single_file,
             format,
             fail_on_violation,
-            checks_to_run, // Use checks_to_run instead of checks
+            checks_to_run.clone(), // Use checks_to_run instead of checks
             max_complexity_p99,
             output,
+            perf,
         )
         .await
     } else {
@@ -2029,15 +2042,27 @@ pub async fn handle_quality_gate(
             project_path,
             format,
             fail_on_violation,
-            checks_to_run, // Use checks_to_run instead of checks
+            checks_to_run.clone(), // Use checks_to_run instead of checks
             max_dead_code,
             min_entropy,
             max_complexity_p99,
             include_provability,
             output,
+            perf,
         )
         .await
+    };
+    
+    // Show performance metrics if requested
+    if let Some(start) = start_time {
+        let duration = start.elapsed();
+        eprintln!("\n⏱️  Performance Metrics:");
+        eprintln!("  Total execution time: {:.2}s", duration.as_secs_f64());
+        eprintln!("  Checks performed: {}", checks_to_run.len());
+        eprintln!("  Average time per check: {:.2}s", duration.as_secs_f64() / checks_to_run.len() as f64);
     }
+    
+    result
 }
 
 /// Prints the initial quality gate status message
@@ -2090,7 +2115,9 @@ async fn handle_single_file_quality_gate(
     checks: Vec<QualityCheckType>,
     max_complexity_p99: u32,
     output: Option<PathBuf>,
+    perf: bool,
 ) -> Result<()> {
+    use std::time::Instant;
     eprintln!("📄 Analyzing single file: {}", single_file.display());
 
     let mut violations = Vec::new();
@@ -2104,6 +2131,8 @@ async fn handle_single_file_quality_gate(
     };
 
     // Run checks on the single file
+    let check_start = if perf { Some(Instant::now()) } else { None };
+    
     run_single_file_checks(
         &project_path,
         &single_file,
@@ -2113,6 +2142,11 @@ async fn handle_single_file_quality_gate(
         &mut results,
     )
     .await?;
+    
+    if let Some(start) = check_start {
+        let duration = start.elapsed();
+        eprintln!("\n⏱️  File analysis took: {:.3}s", duration.as_secs_f64());
+    }
 
     // Calculate overall status
     results.passed = violations.is_empty();
@@ -2313,11 +2347,15 @@ async fn handle_project_quality_gate(
     max_complexity_p99: u32,
     include_provability: bool,
     output: Option<PathBuf>,
+    perf: bool,
 ) -> Result<()> {
+    use std::time::Instant;
     let mut violations = Vec::new();
     let mut results = QualityGateResults::default();
 
     // Run selected checks
+    let checks_start = if perf { Some(Instant::now()) } else { None };
+    
     run_project_checks(
         &project_path,
         &checks,
@@ -2326,13 +2364,24 @@ async fn handle_project_quality_gate(
         max_complexity_p99,
         &mut violations,
         &mut results,
+        perf,
     )
     .await?;
 
     // Add provability if requested
     if include_provability {
+        let prov_start = if perf { Some(Instant::now()) } else { None };
         let provability_score = calculate_provability_score(&project_path).await?;
         results.provability_score = Some(provability_score);
+        
+        if let Some(start) = prov_start {
+            eprintln!("  ⏱️  Provability analysis: {:.3}s", start.elapsed().as_secs_f64());
+        }
+    }
+    
+    if let Some(start) = checks_start {
+        let duration = start.elapsed();
+        eprintln!("\n⏱️  All checks completed in: {:.3}s", duration.as_secs_f64());
     }
 
     // Calculate overall pass/fail
@@ -2360,7 +2409,9 @@ async fn run_project_checks(
     max_complexity_p99: u32,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
+    perf: bool,
 ) -> Result<()> {
+    use std::time::Instant;
     // If checks contains All, just run that single check which will run all checks
     if checks.contains(&QualityCheckType::All) {
         run_single_project_check(
@@ -2371,11 +2422,14 @@ async fn run_project_checks(
             max_complexity_p99,
             violations,
             results,
+            perf,
         )
         .await?;
     } else {
         // Otherwise run each specified check
         for check in checks {
+            let check_start = if perf { Some(Instant::now()) } else { None };
+            
             run_single_project_check(
                 check,
                 project_path,
@@ -2384,8 +2438,25 @@ async fn run_project_checks(
                 max_complexity_p99,
                 violations,
                 results,
+                perf,
             )
             .await?;
+            
+            if let Some(start) = check_start {
+                let check_name = match check {
+                    QualityCheckType::Complexity => "Complexity",
+                    QualityCheckType::DeadCode => "Dead code",
+                    QualityCheckType::Satd => "SATD",
+                    QualityCheckType::Security => "Security",
+                    QualityCheckType::Entropy => "Entropy",
+                    QualityCheckType::Duplicates => "Duplicates",
+                    QualityCheckType::Coverage => "Coverage",
+                    QualityCheckType::Sections => "Sections",
+                    QualityCheckType::Provability => "Provability",
+                    QualityCheckType::All => "All",
+                };
+                eprintln!("    ⏱️  {} check: {:.3}s", check_name, start.elapsed().as_secs_f64());
+            }
         }
     }
     Ok(())
@@ -2400,7 +2471,9 @@ async fn run_single_project_check(
     max_complexity_p99: u32,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
+    perf: bool,
 ) -> Result<()> {
+    use std::time::Instant;
     match check {
         QualityCheckType::Complexity => {
             eprint!("  🔍 Checking complexity...");
@@ -2473,6 +2546,7 @@ async fn run_single_project_check(
                 max_complexity_p99,
                 violations,
                 results,
+                perf,
             )
             .await?;
         }
@@ -2488,61 +2562,46 @@ async fn run_all_project_checks(
     max_complexity_p99: u32,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
+    perf: bool,
 ) -> Result<()> {
+    use std::time::Instant;
+    
     // Run all checks
     eprint!("  🔍 Checking complexity...");
+    let start = if perf { Some(Instant::now()) } else { None };
     let complexity_violations = check_complexity(project_path, max_complexity_p99).await?;
     results.complexity_violations = complexity_violations.len();
     violations.extend(complexity_violations);
-    eprintln!(" {} violations found", results.complexity_violations);
+    if let Some(s) = start {
+        eprintln!(" {} violations found ({:.3}s)", results.complexity_violations, s.elapsed().as_secs_f64());
+    } else {
+        eprintln!(" {} violations found", results.complexity_violations);
+    }
 
-    eprint!("  🔍 Checking dead code...");
-    let dead_code_violations = check_dead_code(project_path, max_dead_code).await?;
-    results.dead_code_violations = dead_code_violations.len();
-    violations.extend(dead_code_violations);
-    eprintln!(" {} violations found", results.dead_code_violations);
+    // Macro to handle timing for each check
+    macro_rules! run_check {
+        ($name:expr, $check_expr:expr, $result_field:ident) => {{
+            eprint!("  🔍 Checking {}...", $name);
+            let start = if perf { Some(Instant::now()) } else { None };
+            let check_violations = $check_expr.await?;
+            results.$result_field = check_violations.len();
+            violations.extend(check_violations);
+            if let Some(s) = start {
+                eprintln!(" {} violations found ({:.3}s)", results.$result_field, s.elapsed().as_secs_f64());
+            } else {
+                eprintln!(" {} violations found", results.$result_field);
+            }
+        }};
+    }
 
-    eprint!("  🔍 Checking technical debt...");
-    let satd_violations = check_satd(project_path).await?;
-    results.satd_violations = satd_violations.len();
-    violations.extend(satd_violations);
-    eprintln!(" {} violations found", results.satd_violations);
-
-    eprint!("  🔍 Checking code entropy...");
-    let entropy_violations = check_entropy(project_path, min_entropy).await?;
-    results.entropy_violations = entropy_violations.len();
-    violations.extend(entropy_violations);
-    eprintln!(" {} violations found", results.entropy_violations);
-
-    eprint!("  🔍 Checking security...");
-    let security_violations = check_security(project_path).await?;
-    results.security_violations = security_violations.len();
-    violations.extend(security_violations);
-    eprintln!(" {} violations found", results.security_violations);
-
-    eprint!("  🔍 Checking duplicates...");
-    let duplicate_violations = check_duplicates(project_path).await?;
-    results.duplicate_violations = duplicate_violations.len();
-    violations.extend(duplicate_violations);
-    eprintln!(" {} violations found", results.duplicate_violations);
-
-    eprint!("  🔍 Checking test coverage...");
-    let coverage_violations = check_coverage(project_path, 80.0).await?;
-    results.coverage_violations = coverage_violations.len();
-    violations.extend(coverage_violations);
-    eprintln!(" {} violations found", results.coverage_violations);
-
-    eprint!("  🔍 Checking documentation sections...");
-    let section_violations = check_sections(project_path).await?;
-    results.section_violations = section_violations.len();
-    violations.extend(section_violations);
-    eprintln!(" {} violations found", results.section_violations);
-
-    eprint!("  🔍 Checking provability...");
-    let provability_violations = check_provability(project_path, 0.7).await?;
-    results.provability_violations = provability_violations.len();
-    violations.extend(provability_violations);
-    eprintln!(" {} violations found", results.provability_violations);
+    run_check!("dead code", check_dead_code(project_path, max_dead_code), dead_code_violations);
+    run_check!("technical debt", check_satd(project_path), satd_violations);
+    run_check!("code entropy", check_entropy(project_path, min_entropy), entropy_violations);
+    run_check!("security", check_security(project_path), security_violations);
+    run_check!("duplicates", check_duplicates(project_path), duplicate_violations);
+    run_check!("test coverage", check_coverage(project_path, 80.0), coverage_violations);
+    run_check!("documentation sections", check_sections(project_path), section_violations);
+    run_check!("provability", check_provability(project_path, 0.7), provability_violations);
 
     Ok(())
 }
@@ -5835,6 +5894,39 @@ mod tests {
         // Test empty checks (shouldn't crash)
         let empty_checks: Vec<QualityCheckType> = vec![];
         print_checks_to_run(&empty_checks);
+    }
+
+    #[tokio::test]
+    async fn test_quality_gate_perf_flag() {
+        // Test that quality gate with perf=true shows performance metrics
+        // This addresses issue #31
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = temp_dir.path();
+        
+        // Create a simple test file
+        let src_dir = project_path.join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+        let test_file = src_dir.join("main.rs");
+        let mut file = std::fs::File::create(&test_file).unwrap();
+        writeln!(file, "fn main() {{ println!(\"Hello\"); }}").unwrap();
+        
+        // Run with perf=true
+        let result = handle_quality_gate(
+            project_path.to_path_buf(),
+            None,
+            QualityGateOutputFormat::Json,
+            false,
+            vec![QualityCheckType::Complexity],
+            15.0,
+            0.5,
+            20,
+            false,
+            None,
+            true, // perf = true
+        ).await;
+        
+        assert!(result.is_ok(), "Quality gate with perf should succeed");
+        // In a real test, we would capture stderr and verify timing output
     }
 
     #[test]
