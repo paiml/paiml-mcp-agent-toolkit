@@ -2975,14 +2975,78 @@ async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
     Ok(violations)
 }
 
-async fn check_duplicates(_project_path: &Path) -> Result<Vec<QualityViolation>> {
-    // Simplified duplicate detection
-    let violations = Vec::new();
-
-    // Would use duplicate detector service
-    // For now, return empty to indicate no duplicates
+async fn check_duplicates(project_path: &Path) -> Result<Vec<QualityViolation>> {
+    use std::collections::HashMap;
+    use walkdir::WalkDir;
+    
+    let mut violations = Vec::new();
+    let mut file_hashes: HashMap<u64, Vec<PathBuf>> = HashMap::new();
+    
+    // Simple duplicate detection using file content hashing
+    for entry in WalkDir::new(project_path) {
+        let entry = entry?;
+        let path = entry.path();
+        
+        if path.is_file() && is_source_file(path) {
+            if let Ok(content) = tokio::fs::read_to_string(path).await {
+                // Normalize content by removing whitespace and comments
+                let normalized = normalize_code_content(&content);
+                
+                if normalized.len() > 50 { // Skip very small files
+                    let hash = calculate_content_hash(&normalized);
+                    
+                    file_hashes.entry(hash)
+                        .or_default()
+                        .push(path.to_path_buf());
+                }
+            }
+        }
+    }
+    
+    // Report duplicates
+    for (_, paths) in file_hashes.iter() {
+        if paths.len() > 1 {
+            let files_str = paths.iter()
+                .map(|p| p.to_string_lossy().to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+                
+            for path in paths {
+                violations.push(QualityViolation {
+                    check_type: "duplicate".to_string(),
+                    severity: "warning".to_string(),
+                    file: path.to_string_lossy().to_string(),
+                    line: None,
+                    message: format!("Duplicate code found in: {}", files_str),
+                });
+            }
+        }
+    }
 
     Ok(violations)
+}
+
+// Helper function to normalize code content
+fn normalize_code_content(content: &str) -> String {
+    content
+        .lines()
+        .filter(|line| {
+            let trimmed = line.trim();
+            !trimmed.is_empty() && !trimmed.starts_with("//") && !trimmed.starts_with("/*")
+        })
+        .map(|line| line.trim())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+// Helper function to calculate content hash
+fn calculate_content_hash(content: &str) -> u64 {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    
+    let mut hasher = DefaultHasher::new();
+    content.hash(&mut hasher);
+    hasher.finish()
 }
 
 async fn check_coverage(project_path: &Path, min_coverage: f64) -> Result<Vec<QualityViolation>> {
