@@ -135,7 +135,7 @@ pub async fn handle_analyze_complexity(
     fail_on_violation: bool,
 ) -> Result<()> {
     use crate::services::complexity::{
-        aggregate_results, format_as_sarif, format_complexity_report, format_complexity_summary,
+        aggregate_results_with_thresholds, format_as_sarif, format_complexity_report, format_complexity_summary,
     };
 
     if watch {
@@ -258,8 +258,12 @@ pub async fn handle_analyze_complexity(
         file_metrics.truncate(top_files);
     }
 
-    // Aggregate results
-    let summary = aggregate_results(file_metrics.clone());
+    // Aggregate results with custom thresholds
+    let summary = aggregate_results_with_thresholds(
+        file_metrics.clone(),
+        max_cyclomatic,
+        max_cognitive,
+    );
 
     // Format output
     let formatted_output = match format {

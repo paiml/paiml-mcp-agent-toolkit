@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc ac32c775c10a59000a7464866c3dd2b8523dae6972924a531131d56772c5faa8 # shrinks to segments = ["A"], extension = "rs", lines = ["0"]
+cc d81ced518484908ffee7a4a8881ac84a610302fd3ffcbd46712edca9e85b4499 # shrinks to path = "a", size = 512001

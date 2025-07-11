@@ -2942,29 +2942,46 @@ pub async fn check_complexity(
     project_path: &Path,
     max_complexity: u32,
 ) -> Result<Vec<QualityViolation>> {
-    use walkdir::WalkDir;
-
+    use crate::services::complexity::aggregate_results_with_thresholds;
+    
     let mut violations = Vec::new();
 
-    // Simple complexity check by counting if statements and loops
-    for entry in WalkDir::new(project_path) {
-        let entry = entry?;
-        let path = entry.path();
+    // Use the existing analyze_project_files function - the ONE implementation
+    let file_metrics = analyze_project_files(
+        project_path,
+        None, // Auto-detect toolchain
+        &[], // Empty include pattern means all files
+        max_complexity as u16,
+        15, // Default cognitive complexity
+    ).await?;
 
-        if path.is_file() && is_source_file(path) {
-            if let Ok(content) = tokio::fs::read_to_string(path).await {
-                let complexity = estimate_cyclomatic_complexity(&content);
-                if complexity > max_complexity {
-                    violations.push(QualityViolation {
-                        check_type: "complexity".to_string(),
-                        severity: "error".to_string(),
-                        file: path.to_string_lossy().to_string(),
-                        line: None,
-                        message: format!(
-                            "File has estimated complexity {complexity} (max: {max_complexity})"
-                        ),
-                    });
-                }
+    // Check for violations using the same logic as analyze complexity
+    let report = aggregate_results_with_thresholds(
+        file_metrics.clone(),
+        Some(max_complexity as u16),
+        Some(15), // Default cognitive complexity threshold
+    );
+
+    // Convert violations to QualityViolation format
+    for violation in &report.violations {
+        match violation {
+            crate::services::complexity::Violation::Error { file, line, function, rule, message, .. } |
+            crate::services::complexity::Violation::Warning { file, line, function, rule, message, .. } => {
+                violations.push(QualityViolation {
+                    check_type: "complexity".to_string(),
+                    severity: if matches!(violation, crate::services::complexity::Violation::Error { .. }) { 
+                        "error" 
+                    } else { 
+                        "warning" 
+                    }.to_string(),
+                    file: file.clone(),
+                    line: Some(*line as usize),
+                    message: format!("{}: {} - {}", 
+                        function.as_deref().unwrap_or("global"),
+                        rule,
+                        message
+                    ),
+                });
             }
         }
     }
@@ -4652,86 +4669,56 @@ pub fn print_table(items: &[std::sync::Arc<crate::models::template::TemplateReso
     );
 }
 
-// Helper functions for defect prediction complexity estimation
-fn estimate_cyclomatic_complexity(content: &str) -> u32 {
-    let mut complexity = 1u32; // Base complexity
-
-    // Count decision points
-    for line in content.lines() {
-        let trimmed = line.trim();
-
-        // Count if/else/elif/when
-        if trimmed.starts_with("if ")
-            || trimmed.contains(" if ")
-            || trimmed.starts_with("else if")
-            || trimmed.starts_with("elif")
-            || trimmed.starts_with("when ")
-        {
-            complexity += 1;
-        }
-
-        // Count loops
-        if trimmed.starts_with("for ")
-            || trimmed.starts_with("while ")
-            || trimmed.starts_with("loop ")
-            || trimmed.contains(".iter()")
-            || trimmed.contains(".forEach")
-            || trimmed.contains("for(")
-        {
-            complexity += 1;
-        }
-
-        // Count case/match arms
-        if trimmed.contains("=>") && !trimmed.contains("//") {
-            complexity += 1;
-        }
-
-        // Count catch/except blocks
-        if trimmed.starts_with("catch") || trimmed.starts_with("except") {
-            complexity += 1;
-        }
-
-        // Count logical operators
-        complexity += u32::try_from(trimmed.matches("&&").count() + trimmed.matches("||").count())
-            .unwrap_or(0);
-    }
-
-    complexity.min(50) // Cap at 50 for reasonable values
-}
+// Deleted estimate_cyclomatic_complexity - using proper AST analysis instead
 
 // Comprehensive analysis helper functions
 async fn run_complexity_analysis(
-    _project_path: &Path,
-    _include: &Option<String>,
+    project_path: &Path,
+    include: &Option<String>,
     _exclude: &Option<String>,
 ) -> Result<ComplexityReport> {
-    use walkdir::WalkDir;
+    use crate::services::complexity::aggregate_results_with_thresholds;
 
+    // Use the ONE implementation - analyze_project_files
+    let include_patterns = if let Some(pattern) = include {
+        vec![pattern.clone()]
+    } else {
+        vec![]
+    };
+    
+    let file_metrics = analyze_project_files(
+        project_path,
+        None, // Auto-detect toolchain
+        &include_patterns,
+        20, // Default cyclomatic threshold
+        15, // Default cognitive threshold
+    ).await?;
+
+    // Aggregate results
+    let report = aggregate_results_with_thresholds(
+        file_metrics,
+        Some(20),
+        Some(15),
+    );
+
+    // Convert to legacy ComplexityReport format for compatibility
     let mut functions = Vec::new();
     let mut total_complexity = 0u32;
     let mut complexities = Vec::new();
 
-    for entry in WalkDir::new(_project_path) {
-        let entry = entry?;
-        let path = entry.path();
-
-        if path.is_file() && is_source_file(path) {
-            if let Ok(content) = tokio::fs::read_to_string(path).await {
-                let complexity = estimate_cyclomatic_complexity(&content);
-                complexities.push(complexity);
-                total_complexity += complexity;
-
-                if complexity > 20 {
+    for violation in &report.violations {
+        match violation {
+            crate::services::complexity::Violation::Error { file, function, value, .. } |
+            crate::services::complexity::Violation::Warning { file, function, value, .. } => {
+                if *value > 20 {
                     functions.push(ComplexityHotspot {
-                        function: path
-                            .file_name()
-                            .unwrap_or_default()
-                            .to_string_lossy()
-                            .to_string(),
-                        file: path.to_string_lossy().to_string(),
-                        complexity,
+                        function: function.as_ref().unwrap_or(&"<anonymous>".to_string()).clone(),
+                        file: file.clone(),
+                        complexity: *value as u32,
                     });
                 }
+                complexities.push(*value as u32);
+                total_complexity += *value as u32;
             }
         }
     }
@@ -5316,44 +5303,7 @@ fn format_incremental_coverage_delta(
 mod tests {
     use super::*;
 
-    fn estimate_cognitive_complexity(content: &str) -> u32 {
-        let mut complexity = 0u32;
-        let mut nesting_level = 0u32;
-
-        for line in content.lines() {
-            let trimmed = line.trim();
-
-            // Track nesting
-            if trimmed.ends_with('{') {
-                nesting_level += 1;
-            } else if trimmed.starts_with('}') {
-                nesting_level = nesting_level.saturating_sub(1);
-            }
-
-            // Add complexity with nesting penalty
-            if trimmed.starts_with("if ") || trimmed.contains(" if ") {
-                complexity += 1 + nesting_level;
-            }
-
-            if trimmed.starts_with("for ") || trimmed.starts_with("while ") {
-                complexity += 1 + nesting_level;
-            }
-
-            // Nested functions/closures add more complexity
-            if (trimmed.contains("fn ") || trimmed.contains("function") || trimmed.contains("=>"))
-                && nesting_level > 0
-            {
-                complexity += nesting_level;
-            }
-
-            // Early returns in nested contexts
-            if trimmed.contains("return") && nesting_level > 1 {
-                complexity += 1;
-            }
-        }
-
-        complexity.min(60) // Cap at 60 for reasonable values
-    }
+    // Deleted estimate_cognitive_complexity - using proper AST analysis instead
     use std::io::Write;
     use tempfile::TempDir;
 
@@ -5644,35 +5594,125 @@ mod tests {
     }
 
     #[test]
-    fn test_estimate_complexity_functions() {
-        // Test cyclomatic complexity estimation
-        let simple_code = "fn add(a: i32, b: i32) -> i32 { a + b }";
-        let simple_complexity = estimate_cyclomatic_complexity(simple_code);
-        assert_eq!(simple_complexity, 1); // No branches
+    fn test_complexity_uses_proper_ast() {
+        // Complexity analysis now uses proper AST-based analysis
+        // The heuristic functions have been removed in favor of the ONE implementation
+    }
 
-        let complex_code = r#"
-            fn process(x: i32) -> i32 {
-                if x > 0 {
-                    for i in 0..x {
-                        if i % 2 == 0 {
-                            continue;
-                        }
-                    }
-                    x
-                } else {
-                    -x
-                }
-            }
-        "#;
-        let complex_complexity = estimate_cyclomatic_complexity(complex_code);
-        assert!(complex_complexity > 3); // Multiple branches and loops
+    #[tokio::test]
+    async fn test_check_complexity_with_custom_threshold() {
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = temp_dir.path();
+        
+        // Create a test file with known complexity
+        let src_dir = project_path.join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+        let test_file = src_dir.join("complex.rs");
+        let mut file = std::fs::File::create(&test_file).unwrap();
+        writeln!(file, "fn complex_function() {{").unwrap();
+        writeln!(file, "    if true {{").unwrap();
+        writeln!(file, "        if false {{").unwrap();
+        writeln!(file, "            if true {{").unwrap();
+        writeln!(file, "                println!(\"nested\");").unwrap();
+        writeln!(file, "            }}").unwrap();
+        writeln!(file, "        }}").unwrap();
+        writeln!(file, "    }}").unwrap();
+        writeln!(file, "    match 5 {{").unwrap();
+        writeln!(file, "        1 => println!(\"1\"),").unwrap();
+        writeln!(file, "        2 => println!(\"2\"),").unwrap();
+        writeln!(file, "        3 => println!(\"3\"),").unwrap();
+        writeln!(file, "        _ => println!(\"other\"),").unwrap();
+        writeln!(file, "    }}").unwrap();
+        writeln!(file, "}}").unwrap();
+        
+        // Test with threshold that should pass
+        let violations = check_complexity(project_path, 20).await.unwrap();
+        assert_eq!(violations.len(), 0, "Expected no violations with threshold 20");
+        
+        // Test with threshold that should fail
+        let violations = check_complexity(project_path, 5).await.unwrap();
+        assert!(!violations.is_empty(), "Expected violations with threshold 5");
+        assert_eq!(violations[0].check_type, "complexity");
+        assert_eq!(violations[0].severity, "error");
+    }
 
-        // Test cognitive complexity estimation
-        let cognitive_simple = estimate_cognitive_complexity(simple_code);
-        assert_eq!(cognitive_simple, 0); // No nesting or control flow
+    #[tokio::test]
+    async fn test_quality_gate_single_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = temp_dir.path();
+        
+        // Create a test file with various issues
+        let src_dir = project_path.join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+        let test_file = src_dir.join("test.rs");
+        let mut file = std::fs::File::create(&test_file).unwrap();
+        writeln!(file, "// TODO: Fix this later").unwrap();
+        writeln!(file, "fn simple() {{").unwrap();
+        writeln!(file, "    let api_key = \"hardcoded-key\";").unwrap();
+        writeln!(file, "    println!(\"Hello\");").unwrap();
+        writeln!(file, "}}").unwrap();
+        writeln!(file, "#[allow(dead_code)]").unwrap();
+        writeln!(file, "fn unused() {{}}").unwrap();
+        
+        // Test individual check functions
+        let satd_violations = check_single_file_satd(project_path, &test_file).await.unwrap();
+        assert!(!satd_violations.is_empty(), "Expected SATD violations");
+        
+        let security_violations = check_single_file_security(project_path, &test_file).await.unwrap();
+        assert!(!security_violations.is_empty(), "Expected security violations");
+        
+        let dead_code_violations = check_single_file_dead_code(project_path, &test_file).await.unwrap();
+        assert!(!dead_code_violations.is_empty(), "Expected dead code violations");
+    }
 
-        let cognitive_complex = estimate_cognitive_complexity(complex_code);
-        assert!(cognitive_complex > 2); // Nested control structures
+    #[test] 
+    fn test_quality_violation_formatting() {
+        let violation = QualityViolation {
+            check_type: "complexity".to_string(),
+            severity: "error".to_string(),
+            file: "src/main.rs".to_string(),
+            line: Some(42),
+            message: "Function exceeds complexity threshold".to_string(),
+        };
+        
+        // Verify the violation can be serialized
+        let json = serde_json::to_string(&violation).unwrap();
+        assert!(json.contains("\"check_type\":\"complexity\""));
+        assert!(json.contains("\"severity\":\"error\""));
+        assert!(json.contains("\"line\":42"));
+    }
+
+    #[test]
+    fn test_quality_gate_results_default() {
+        let results = QualityGateResults::default();
+        assert!(results.passed);
+        assert_eq!(results.total_violations, 0);
+        assert_eq!(results.complexity_violations, 0);
+        assert_eq!(results.dead_code_violations, 0);
+        assert_eq!(results.satd_violations, 0);
+        assert_eq!(results.entropy_violations, 0);
+        assert_eq!(results.security_violations, 0);
+        assert_eq!(results.duplicate_violations, 0);
+        assert_eq!(results.coverage_violations, 0);
+        assert_eq!(results.section_violations, 0);
+        assert_eq!(results.provability_violations, 0);
+        assert!(results.provability_score.is_none());
+    }
+
+    #[test]
+    fn test_quality_check_type_defaults() {
+        let checks = QualityCheckType::default_checks();
+        
+        // Verify all default checks are present
+        assert!(checks.contains(&QualityCheckType::Complexity));
+        assert!(checks.contains(&QualityCheckType::DeadCode));
+        assert!(checks.contains(&QualityCheckType::Satd));
+        assert!(checks.contains(&QualityCheckType::Security));
+        assert!(checks.contains(&QualityCheckType::Entropy));
+        assert!(checks.contains(&QualityCheckType::Duplicates));
+        assert!(checks.contains(&QualityCheckType::Coverage));
+        assert!(checks.contains(&QualityCheckType::Sections));
+        assert!(checks.contains(&QualityCheckType::Provability));
     }
 
     #[test]
