@@ -19,7 +19,7 @@ pub enum AssetEncoding {
 // Compile-time embedded assets with zero runtime overhead
 #[cfg(feature = "demo")]
 static ASSETS: Lazy<HashMap<&'static str, EmbeddedAsset>> = Lazy::new(|| {
-    let mut m = HashMap::with_capacity(8);
+    let m = HashMap::with_capacity(8);
 
     // Compressed vendor assets - only include if files exist (skip during cargo publish)
     #[cfg(all(not(docsrs), not(cargo_publish)))]
