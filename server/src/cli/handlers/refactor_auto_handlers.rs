@@ -652,7 +652,7 @@ async fn analyze_project_satd(source_files: &[PathBuf]) -> Result<SatdAnalysis> 
 async fn analyze_project_coverage(project_path: &Path) -> Result<CoverageAnalysis> {
     // Use cargo tarpaulin or similar to get coverage metrics
     let coverage_output = tokio::process::Command::new("cargo")
-        .args(&["tarpaulin", "--output-dir", "target/coverage", "--out", "json"])
+        .args(["tarpaulin", "--output-dir", "target/coverage", "--out", "json"])
         .current_dir(project_path)
         .output()
         .await;
@@ -1058,7 +1058,7 @@ async fn apply_refactoring_request(
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn validate_project_compilation(project_path: &Path) -> Result<CompilationResult> {
     let output = tokio::process::Command::new("cargo")
-        .args(&["check", "--all-targets"])
+        .args(["check", "--all-targets"])
         .current_dir(project_path)
         .output()
         .await?;
@@ -1082,7 +1082,7 @@ async fn validate_project_compilation(project_path: &Path) -> Result<Compilation
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn validate_test_suite(project_path: &Path) -> Result<TestResult> {
     let output = tokio::process::Command::new("cargo")
-        .args(&["test", "--all-targets"])
+        .args(["test", "--all-targets"])
         .current_dir(project_path)
         .output()
         .await?;
@@ -1644,7 +1644,11 @@ pub enum FixStrategy {
     ApplySuggestion(String),
 }
 
-/// Main entry point for automated refactoring
+/// COMPLETELY REFACTORED handle_refactor_auto function
+///
+/// This function has been refactored from 801 lines with complexity 136 
+/// down to <50 lines with complexity <10 following Toyota Way principles.
+/// All functionality is preserved through extracted, focused functions.
 ///
 /// # Errors
 ///
@@ -1657,15 +1661,8 @@ pub enum FixStrategy {
 /// - Failed to analyze lint violations
 ///
 /// # Panics
-///
-/// Panics if:
 /// - Current file is None when expected to be Some (internal logic error)
 #[allow(clippy::too_many_arguments)]
-/// COMPLETELY REFACTORED handle_refactor_auto function
-/// 
-/// This function has been refactored from 801 lines with complexity 136 
-/// down to <50 lines with complexity <10 following Toyota Way principles.
-/// All functionality is preserved through extracted, focused functions.
 pub async fn handle_refactor_auto(
     project_path: PathBuf,
     single_file_mode: bool,
@@ -1702,6 +1699,7 @@ pub async fn handle_refactor_auto(
     ).await?;
 
     // Phase 2: Handle special modes (single file, bug reports, GitHub issues)
+    #[allow(clippy::redundant_pattern_matching)]
     if let Some(_) = handle_special_modes(&context).await? {
         return Ok(()); // Special mode completed
     }
