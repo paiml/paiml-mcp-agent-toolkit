@@ -165,7 +165,7 @@ pmat analyze graph-metrics                    # Graph centrality metrics (PageRa
 pmat analyze name-similarity "function_name"  # Fuzzy name matching with phonetic support
 pmat analyze symbol-table                     # Symbol extraction with cross-references
 pmat analyze duplicates --min-lines 10        # Code duplication detection
-pmat quality-gate --strict                    # Comprehensive quality enforcement
+pmat quality-gate --fail-on-violation         # Comprehensive quality enforcement
 pmat diagnose --verbose                       # Self-diagnostics and health checks
 
 # WebAssembly Support
