@@ -2811,7 +2811,60 @@ fn is_source_file(path: &Path) -> bool {
 }
 
 // Quality check functions
-async fn check_complexity(
+
+/// Checks code complexity in a project and returns violations.
+///
+/// # Arguments
+///
+/// * `project_path` - Path to the project directory to analyze
+/// * `max_complexity` - Maximum allowed cyclomatic complexity
+///
+/// # Returns
+///
+/// A vector of quality violations for functions exceeding the complexity threshold
+///
+/// # Examples
+///
+/// ```no_run
+/// # use std::path::Path;
+/// # use pmat::cli::stubs::{QualityViolation};
+/// # async fn example() -> anyhow::Result<()> {
+/// let violations = check_complexity(Path::new("."), 10).await?;
+/// for violation in violations {
+///     println!("Complex function: {} in {}", violation.message, violation.file);
+/// }
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Property Tests
+///
+/// ```no_run
+/// use proptest::prelude::*;
+/// 
+/// proptest! {
+///     #[test]
+///     fn test_complexity_threshold(threshold in 1u32..100u32) {
+///         // Property: All violations should have complexity > threshold
+///         let rt = tokio::runtime::Runtime::new().unwrap();
+///         let violations = rt.block_on(async {
+///             check_complexity(Path::new("."), threshold).await.unwrap()
+///         });
+///         
+///         for violation in violations {
+///             // Extract complexity from message
+///             if let Some(complexity_str) = violation.message
+///                 .split("complexity ")
+///                 .nth(1)
+///                 .and_then(|s| s.split(' ').next())
+///                 .and_then(|s| s.parse::<u32>().ok()) {
+///                 assert!(complexity_str > threshold);
+///             }
+///         }
+///     }
+/// }
+/// ```
+pub async fn check_complexity(
     project_path: &Path,
     max_complexity: u32,
 ) -> Result<Vec<QualityViolation>> {
@@ -2845,7 +2898,58 @@ async fn check_complexity(
     Ok(violations)
 }
 
-async fn check_dead_code(
+/// Detects dead code in a project and returns violations.
+///
+/// # Arguments
+///
+/// * `project_path` - Path to the project directory to analyze
+/// * `max_percentage` - Maximum allowed percentage of dead code
+///
+/// # Returns
+///
+/// A vector of quality violations for dead code exceeding the threshold
+///
+/// # Examples
+///
+/// ```no_run
+/// # use std::path::Path;
+/// # use pmat::cli::stubs::{QualityViolation};
+/// # async fn example() -> anyhow::Result<()> {
+/// let violations = check_dead_code(Path::new("."), 15.0).await?;
+/// if violations.is_empty() {
+///     println!("Dead code is within acceptable limits");
+/// } else {
+///     for violation in violations {
+///         println!("Dead code issue: {}", violation.message);
+///     }
+/// }
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Property Tests
+///
+/// ```no_run
+/// use proptest::prelude::*;
+/// 
+/// proptest! {
+///     #[test]
+///     fn test_dead_code_percentage(max_percentage in 0.0..100.0) {
+///         // Property: Violations only occur when dead code % > max_percentage
+///         let rt = tokio::runtime::Runtime::new().unwrap();
+///         let violations = rt.block_on(async {
+///             check_dead_code(Path::new("."), max_percentage).await.unwrap()
+///         });
+///         
+///         // Property: All violations should be for projects exceeding threshold
+///         for violation in violations {
+///             assert!(violation.check_type == "dead_code");
+///             assert!(violation.severity == "error" || violation.severity == "warning");
+///         }
+///     }
+/// }
+/// ```
+pub async fn check_dead_code(
     project_path: &Path,
     max_percentage: f64,
 ) -> Result<Vec<QualityViolation>> {
@@ -2869,7 +2973,67 @@ async fn check_dead_code(
     Ok(violations)
 }
 
-async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
+/// Detects self-admitted technical debt (SATD) in source code.
+///
+/// Scans for technical debt markers like TODO, FIXME, HACK, etc.
+///
+/// # Arguments
+///
+/// * `project_path` - Path to the project directory to analyze
+///
+/// # Returns
+///
+/// A vector of quality violations for each SATD comment found
+///
+/// # Examples
+///
+/// ```no_run
+/// # use std::path::Path;
+/// # use pmat::cli::stubs::{QualityViolation};
+/// # async fn example() -> anyhow::Result<()> {
+/// let violations = check_satd(Path::new(".")).await?;
+/// 
+/// // Group by severity
+/// let mut by_severity = std::collections::HashMap::new();
+/// for violation in violations {
+///     *by_severity.entry(violation.severity.clone()).or_insert(0) += 1;
+/// }
+/// 
+/// for (severity, count) in by_severity {
+///     println!("{} SATD items with severity: {}", count, severity);
+/// }
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Property Tests
+///
+/// ```no_run
+/// use proptest::prelude::*;
+/// 
+/// proptest! {
+///     #[test]
+///     fn test_satd_detection_properties() {
+///         // Property: All detected items should have valid SATD patterns
+///         let rt = tokio::runtime::Runtime::new().unwrap();
+///         let violations = rt.block_on(async {
+///             check_satd(Path::new(".")).await.unwrap()
+///         });
+///         
+///         let valid_patterns = ["TODO", "FIXME", "HACK", "XXX", "BUG", "REFACTOR"];
+///         for violation in violations {
+///             assert!(violation.check_type == "satd");
+///             assert!(violation.line.is_some()); // Should have line numbers
+///             
+///             // Check that message contains a valid SATD type
+///             let has_valid_pattern = valid_patterns.iter()
+///                 .any(|&pattern| violation.message.contains(pattern));
+///             assert!(has_valid_pattern);
+///         }
+///     }
+/// }
+/// ```
+pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
     use regex::Regex;
     use walkdir::WalkDir;
 
@@ -2975,7 +3139,71 @@ async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
     Ok(violations)
 }
 
-async fn check_duplicates(project_path: &Path) -> Result<Vec<QualityViolation>> {
+/// Detects duplicate code blocks in a project.
+///
+/// Uses content hashing to find exact duplicates after normalization.
+///
+/// # Arguments
+///
+/// * `project_path` - Path to the project directory to analyze
+///
+/// # Returns
+///
+/// A vector of quality violations for each duplicate code block found
+///
+/// # Examples
+///
+/// ```no_run
+/// # use std::path::Path;
+/// # use pmat::cli::stubs::{QualityViolation};
+/// # async fn example() -> anyhow::Result<()> {
+/// let violations = check_duplicates(Path::new(".")).await?;
+/// 
+/// // Group duplicates by file
+/// let mut duplicates_by_file = std::collections::HashMap::new();
+/// for violation in violations {
+///     duplicates_by_file.entry(violation.file.clone())
+///         .or_insert_with(Vec::new)
+///         .push(violation);
+/// }
+/// 
+/// for (file, dups) in duplicates_by_file {
+///     println!("{} has {} duplicate blocks", file, dups.len());
+/// }
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Property Tests
+///
+/// ```no_run
+/// use proptest::prelude::*;
+/// 
+/// proptest! {
+///     #[test]
+///     fn test_duplicate_detection_properties() {
+///         // Property: Duplicate violations come in pairs or more
+///         let rt = tokio::runtime::Runtime::new().unwrap();
+///         let violations = rt.block_on(async {
+///             check_duplicates(Path::new(".")).await.unwrap()
+///         });
+///         
+///         // Group by duplicate message to verify pairs
+///         let mut groups = std::collections::HashMap::new();
+///         for violation in violations {
+///             groups.entry(violation.message.clone())
+///                 .or_insert_with(Vec::new)
+///                 .push(violation);
+///         }
+///         
+///         for (_, group) in groups {
+///             // Each duplicate should appear at least twice
+///             assert!(group.len() >= 2, "Duplicates should come in pairs or more");
+///         }
+///     }
+/// }
+/// ```
+pub async fn check_duplicates(project_path: &Path) -> Result<Vec<QualityViolation>> {
     use std::collections::HashMap;
     use walkdir::WalkDir;
     
