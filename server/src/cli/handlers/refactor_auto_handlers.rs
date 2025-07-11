@@ -20,12 +20,7 @@ use crate::cli::RefactorAutoOutputFormat;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::collections::HashMap;
-use std::fmt::Write;
 use std::path::{Path, PathBuf};
-use std::time::Instant;
-use tokio::fs;
-use tokio::process::Command;
 use walkdir::WalkDir;
 use regex;
 
@@ -185,6 +180,7 @@ struct RefactorContext {
 /// 
 /// Initializes paths, patterns, and configuration for the refactoring operation.
 /// This function has complexity <5 and follows Toyota Way principles.
+#[allow(clippy::too_many_arguments)]
 async fn setup_refactoring_context(
     project_path: PathBuf,
     single_file_mode: bool,
@@ -272,7 +268,7 @@ async fn load_ignore_patterns(config: &PatternConfig) -> Result<Vec<String>> {
 /// Discovers and filters source files based on patterns and extensions.
 /// This function has complexity <5 and follows Toyota Way principles.
 async fn discover_source_files(
-    project_path: &PathBuf,
+    project_path: &Path,
     patterns: &PatternConfig,
     ignore_patterns: &[String],
 ) -> Result<Vec<PathBuf>> {
@@ -319,7 +315,7 @@ async fn handle_special_modes(context: &RefactorContext) -> Result<Option<()>> {
         RefactorMode::SingleFile(file_path) => {
             handle_single_file_refactor(
                 file_path.clone(),
-                context.config.output.format.clone(),
+                context.config.output.format,
                 context.config.output.dry_run,
                 context.config.output.max_iterations,
             ).await?;
@@ -329,7 +325,7 @@ async fn handle_special_modes(context: &RefactorContext) -> Result<Option<()>> {
             if bug_path.extension().and_then(|s| s.to_str()) == Some("md") {
                 handle_single_file_refactor(
                     bug_path.clone(),
-                    context.config.output.format.clone(),
+                    context.config.output.format,
                     context.config.output.dry_run,
                     context.config.output.max_iterations,
                 ).await?;
@@ -371,7 +367,7 @@ async fn process_github_issue(url: &str, context: &RefactorContext) -> Result<()
         eprintln!("🔍 Analyzing file: {}", file.display());
         handle_single_file_refactor(
             file,
-            context.config.output.format.clone(),
+            context.config.output.format,
             context.config.output.dry_run,
             context.config.output.max_iterations,
         ).await?;
@@ -428,7 +424,7 @@ async fn fetch_github_issue_content(issue_ref: &GitHubIssueRef) -> Result<GitHub
 /// This function has complexity <5 and follows Toyota Way principles.
 fn extract_target_files_from_issue(
     issue_content: &GitHubIssueContent, 
-    project_path: &PathBuf
+    project_path: &Path
 ) -> Result<Vec<PathBuf>> {
     let mut target_files = Vec::new();
     
@@ -653,7 +649,7 @@ async fn analyze_project_satd(source_files: &[PathBuf]) -> Result<SatdAnalysis> 
 /// Analyze test coverage for the project
 /// 
 /// This function has complexity <3 and follows Toyota Way principles.
-async fn analyze_project_coverage(project_path: &PathBuf) -> Result<CoverageAnalysis> {
+async fn analyze_project_coverage(project_path: &Path) -> Result<CoverageAnalysis> {
     // Use cargo tarpaulin or similar to get coverage metrics
     let coverage_output = tokio::process::Command::new("cargo")
         .args(&["tarpaulin", "--output-dir", "target/coverage", "--out", "json"])
@@ -1060,7 +1056,7 @@ async fn apply_refactoring_request(
 /// Validate project compilation
 /// 
 /// This function has complexity <3 and follows Toyota Way principles.
-async fn validate_project_compilation(project_path: &PathBuf) -> Result<CompilationResult> {
+async fn validate_project_compilation(project_path: &Path) -> Result<CompilationResult> {
     let output = tokio::process::Command::new("cargo")
         .args(&["check", "--all-targets"])
         .current_dir(project_path)
@@ -1084,7 +1080,7 @@ async fn validate_project_compilation(project_path: &PathBuf) -> Result<Compilat
 /// Validate test suite execution
 /// 
 /// This function has complexity <3 and follows Toyota Way principles.
-async fn validate_test_suite(project_path: &PathBuf) -> Result<TestResult> {
+async fn validate_test_suite(project_path: &Path) -> Result<TestResult> {
     let output = tokio::process::Command::new("cargo")
         .args(&["test", "--all-targets"])
         .current_dir(project_path)
@@ -1145,27 +1141,27 @@ fn should_retry_refactoring(error: &anyhow::Error) -> bool {
 }
 
 /// Apply complexity reduction to a file
-async fn apply_complexity_reduction(_file: &PathBuf, _instructions: &str) -> Result<Vec<String>> {
+async fn apply_complexity_reduction(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
     Ok(vec!["Extracted helper function".to_string(), "Reduced conditional logic complexity".to_string()])
 }
 
 /// Apply lint fixes to a file
-async fn apply_lint_fixes(_file: &PathBuf, _instructions: &str) -> Result<Vec<String>> {
+async fn apply_lint_fixes(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
     Ok(vec!["Fixed clippy warnings".to_string(), "Formatted code".to_string()])
 }
 
 /// Apply SATD cleanup to a file
-async fn apply_satd_cleanup(_file: &PathBuf, _instructions: &str) -> Result<Vec<String>> {
+async fn apply_satd_cleanup(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
     Ok(vec!["Removed TODO comments".to_string(), "Implemented missing functionality".to_string()])
 }
 
 /// Apply coverage improvements to a file
-async fn apply_coverage_improvements(_file: &PathBuf, _instructions: &str) -> Result<Vec<String>> {
+async fn apply_coverage_improvements(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
     Ok(vec!["Added unit tests".to_string(), "Added integration tests".to_string()])
 }
 
 /// Apply security fixes to a file
-async fn apply_security_fixes(_file: &PathBuf, _instructions: &str) -> Result<Vec<String>> {
+async fn apply_security_fixes(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
     Ok(vec!["Fixed security vulnerability".to_string(), "Added input validation".to_string()])
 }
 
@@ -1796,26 +1792,26 @@ pub async fn handle_refactor_auto(
 }
 
 /// Get lint violations for a single file (helper function)
-async fn get_single_file_lint_violations(_file_path: &PathBuf) -> Result<Vec<ViolationDetailJson>> {
+async fn get_single_file_lint_violations(_file_path: &Path) -> Result<Vec<ViolationDetailJson>> {
     // Use clippy and other linting tools for actual implementation
     Ok(vec![])
 }
 
 /// Count SATD comments in a single file (helper function)  
-async fn count_file_satd(_file_path: &PathBuf) -> Result<usize> {
+async fn count_file_satd(_file_path: &Path) -> Result<usize> {
     // Parse file content for SATD comment patterns
     Ok(0)
 }
 
 /// Analyze complexity of a single file (helper function)
-async fn analyze_file_complexity(_file_path: &PathBuf) -> Result<QualityMetrics> {
+async fn analyze_file_complexity(_file_path: &Path) -> Result<QualityMetrics> {
     // Use AST-based complexity analysis tools
     Ok(QualityMetrics::default())
 }
 
 /// Generate refactoring request for a single file (helper function)
 fn generate_single_file_refactor_request(
-    _file_path: &PathBuf,
+    _file_path: &Path,
     _violations: Vec<ViolationDetailJson>,
     _complexity: QualityMetrics,
     _satd_count: usize,
