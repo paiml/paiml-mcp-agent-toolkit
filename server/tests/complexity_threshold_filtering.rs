@@ -73,7 +73,7 @@ fn test_max_cyclomatic_filters_correctly() {
     // Test with threshold of 20 - should only show complex.rs and very_complex.rs
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
-        .args(&["analyze", "complexity", "--max-cyclomatic", "20", "--format", "json"]);
+        .args(["analyze", "complexity", "--max-cyclomatic", "20", "--format", "json"]);
     
     let output = cmd.output().unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
@@ -102,7 +102,7 @@ fn test_max_cyclomatic_with_top_files() {
     // Should show only file4.rs and file5.rs (the top 2 files above threshold)
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
-        .args(&["analyze", "complexity", "--max-cyclomatic", "20", "--top-files", "2", "--format", "json"]);
+        .args(["analyze", "complexity", "--max-cyclomatic", "20", "--top-files", "2", "--format", "json"]);
     
     let output = cmd.output().unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
@@ -129,7 +129,7 @@ fn test_exact_threshold_boundary() {
     // Test with threshold of 15
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
-        .args(&["analyze", "complexity", "--max-cyclomatic", "15", "--format", "json"]);
+        .args(["analyze", "complexity", "--max-cyclomatic", "15", "--format", "json"]);
     
     let output = cmd.output().unwrap();
     let stdout = String::from_utf8(output.stdout).unwrap();
@@ -154,7 +154,7 @@ fn test_no_files_above_threshold() {
     // Test with high threshold - no files should match
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
-        .args(&["analyze", "complexity", "--max-cyclomatic", "50"]);
+        .args(["analyze", "complexity", "--max-cyclomatic", "50"]);
     
     cmd.assert()
         .success()
