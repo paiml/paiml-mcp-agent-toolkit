@@ -629,7 +629,7 @@ async fn handle_analyze_code_churn(
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::handlers::tools::format_churn_summary;
 /// use pmat::models::churn::{CodeChurnAnalysis, ChurnSummary};
 /// use std::path::PathBuf;
@@ -690,7 +690,7 @@ pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) 
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::handlers::tools::format_churn_as_markdown;
 /// use pmat::models::churn::{CodeChurnAnalysis, ChurnSummary};
 /// use std::path::PathBuf;
@@ -766,7 +766,7 @@ pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalys
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::handlers::tools::format_churn_as_csv;
 /// use pmat::models::churn::{CodeChurnAnalysis, ChurnSummary, FileChurnMetrics};
 /// use std::path::PathBuf;

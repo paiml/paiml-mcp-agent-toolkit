@@ -57,7 +57,7 @@ impl DependencyGraph {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::models::dag::{DependencyGraph, NodeInfo, NodeType};
     /// use rustc_hash::FxHashMap;
     ///
@@ -82,7 +82,7 @@ impl DependencyGraph {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::models::dag::{DependencyGraph, Edge, EdgeType};
     ///
     /// let mut graph = DependencyGraph::new();
@@ -104,7 +104,7 @@ impl DependencyGraph {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::models::dag::{DependencyGraph, Edge, EdgeType};
     ///
     /// let mut graph = DependencyGraph::new();

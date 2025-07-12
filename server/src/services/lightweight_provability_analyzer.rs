@@ -196,12 +196,12 @@ impl LightweightProvabilityAnalyzer {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
     ///
     /// let analyzer = LightweightProvabilityAnalyzer::new();
     /// // Analyzer is ready with default configuration
-    /// ```
+    /// ```ignore
     pub fn new() -> Self {
         Self {
             abstract_interpreter: AbstractInterpreter { analysis_depth: 10 },

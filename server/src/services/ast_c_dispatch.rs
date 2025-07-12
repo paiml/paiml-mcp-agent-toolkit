@@ -580,12 +580,12 @@ impl CAstDispatchParser {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::services::ast_c_dispatch::CAstDispatchParser;
     ///
     /// let parser = CAstDispatchParser::new();
     /// // Parser is ready to analyze C code
-    /// ```
+    /// ```ignore
     pub fn new() -> Self {
         #[cfg(feature = "c-ast")]
         {

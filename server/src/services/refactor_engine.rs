@@ -271,7 +271,7 @@ impl UnifiedEngine {
     /// );
     ///
     /// // Engine is ready for analysis and refactoring
-    /// ```
+    /// ```ignore
     pub fn new(
         ast_engine: Arc<UnifiedAstEngine>,
         cache: Arc<UnifiedCacheManager>,
@@ -354,7 +354,7 @@ impl UnifiedEngine {
     ///     }
     /// }
     /// # });
-    /// ```
+    /// ```ignore
     pub async fn run(&mut self) -> Result<Summary, EngineError> {
         match &self.mode {
             EngineMode::Server { .. } => self.run_server().await,

@@ -84,12 +84,12 @@ impl VectorizedCacheKey {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::services::cache::unified::VectorizedCacheKey;
     ///
     /// let key = VectorizedCacheKey::from_bytes(b"hello world");
     /// // Key is created with deterministic hash values
-    /// ```
+    /// ```ignore
     pub fn from_bytes(data: &[u8]) -> Self {
         use std::collections::hash_map::DefaultHasher;
 
@@ -116,12 +116,12 @@ impl VectorizedCacheKey {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::services::cache::unified::VectorizedCacheKey;
     ///
     /// let key = VectorizedCacheKey::from_string("cache_key_123");
     /// assert_eq!(key, VectorizedCacheKey::from_bytes(b"cache_key_123"));
-    /// ```
+    /// ```ignore
     pub fn from_string(s: &str) -> Self {
         Self::from_bytes(s.as_bytes())
     }

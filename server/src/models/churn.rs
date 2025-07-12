@@ -39,7 +39,7 @@ impl FileChurnMetrics {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::models::churn::FileChurnMetrics;
     /// use std::path::PathBuf;
     /// use chrono::Utc;

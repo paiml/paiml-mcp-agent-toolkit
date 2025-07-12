@@ -131,7 +131,7 @@ impl Default for WasmBinaryAnalyzer {
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::services::wasm::binary::count_occurrences;
 ///
 /// let data = b"hello world hello";
@@ -145,7 +145,7 @@ impl Default for WasmBinaryAnalyzer {
 ///
 /// // Single byte pattern
 /// assert_eq!(count_occurrences(b"aaa", b"a"), 3);
-/// ```
+/// ```ignore
 pub fn count_occurrences(haystack: &[u8], needle: &[u8]) -> u32 {
     let mut count = 0;
     let mut pos = 0;

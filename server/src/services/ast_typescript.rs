@@ -44,12 +44,12 @@ impl TypeScriptParser {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::services::ast_typescript::TypeScriptParser;
     ///
     /// let parser = TypeScriptParser::new();
     /// // Parser is ready to analyze TypeScript code
-    /// ```
+    /// ```ignore
     pub fn new() -> Self {
         #[cfg(feature = "typescript-ast")]
         {

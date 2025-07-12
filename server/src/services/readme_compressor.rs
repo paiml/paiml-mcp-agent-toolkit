@@ -443,7 +443,7 @@ A powerful tool for developers that simplifies complex workflows.
 
 ```bash
 npm install -g myproject
-```
+```ignore
 
 ## Usage
 
@@ -451,7 +451,7 @@ Basic usage:
 
 ```bash
 myproject analyze --path ./src
-```
+```ignore
 
 ## Architecture
 
@@ -648,7 +648,7 @@ Another paragraph.
 fn main() {
     println!("Hello");
 }
-```
+```ignore
 "#;
 
         let sections = compressor.parse_markdown_sections(content);
