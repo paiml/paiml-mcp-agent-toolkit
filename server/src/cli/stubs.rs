@@ -3190,7 +3190,7 @@ pub async fn handle_analyze_comprehensive(
 }
 
 // Quality Gate types and helpers
-#[derive(Debug, Default, serde::Serialize)]
+#[derive(Debug, serde::Serialize)]
 pub struct QualityGateResults {
     pub passed: bool,
     pub total_violations: usize,
@@ -3204,6 +3204,25 @@ pub struct QualityGateResults {
     pub section_violations: usize,
     pub provability_violations: usize,
     pub provability_score: Option<f64>,
+}
+
+impl Default for QualityGateResults {
+    fn default() -> Self {
+        Self {
+            passed: true,  // Default to passed when no violations
+            total_violations: 0,
+            complexity_violations: 0,
+            dead_code_violations: 0,
+            satd_violations: 0,
+            entropy_violations: 0,
+            security_violations: 0,
+            duplicate_violations: 0,
+            coverage_violations: 0,
+            section_violations: 0,
+            provability_violations: 0,
+            provability_score: None,
+        }
+    }
 }
 
 // Comprehensive analysis types

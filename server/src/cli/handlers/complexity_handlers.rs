@@ -7,6 +7,9 @@ use crate::cli::*;
 use anyhow::Result;
 use std::path::PathBuf;
 
+#[cfg(test)]
+mod complexity_handlers_tests;
+
 /// Handle complexity analysis command with MCP tool composition support
 ///
 /// This function enables AI agents to perform sophisticated code analysis workflows
@@ -15,6 +18,13 @@ use std::path::PathBuf;
 /// 1. **Project Mode**: Analyze entire project using include patterns
 /// 2. **Single File Mode**: Deep analysis of one specific file
 /// 3. **Multi-File Mode**: Process specific file lists for MCP tool chaining
+///
+/// # Filtering Behavior
+///
+/// When `max_cyclomatic` or `max_cognitive` thresholds are specified:
+/// - Only files containing functions that EXCEED the thresholds are included
+/// - This filtering happens BEFORE the `top_files` limit is applied
+/// - A file with all functions below the threshold will be excluded from results
 ///
 /// # MCP Tool Composition Examples
 ///
@@ -98,6 +108,68 @@ use std::path::PathBuf;
 /// // 2. Prioritize by technical debt impact
 /// // 3. Generate refactoring recommendations
 /// // 4. Chain to other pmat tools (dead-code, duplicates, etc.)
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Threshold Filtering Examples
+///
+/// ```no_run
+/// // Example: Filtering behavior with --max-cyclomatic
+/// use std::path::PathBuf;
+/// use pmat::cli::{ComplexityOutputFormat, handlers::complexity_handlers::handle_analyze_complexity};
+///
+/// # async fn threshold_filtering_example() -> anyhow::Result<()> {
+/// // Scenario: Find only files with functions exceeding cyclomatic complexity of 20
+/// handle_analyze_complexity(
+///     PathBuf::from("."),
+///     None,                           // file
+///     vec![],                         // files
+///     Some("rust".to_string()),       // toolchain
+///     ComplexityOutputFormat::Json,   // format
+///     None,                           // output
+///     Some(20),                       // max_cyclomatic - only show files with functions > 20
+///     None,                           // max_cognitive
+///     vec!["src/**/*.rs".to_string()],// include patterns
+///     false,                          // watch
+///     10,                             // top_files
+///     false,                          // fail_on_violation
+/// ).await?;
+/// 
+/// // Expected behavior:
+/// // - File with functions [5, 10, 15] complexity -> EXCLUDED (all below 20)
+/// // - File with functions [5, 25, 10] complexity -> INCLUDED (one function > 20)
+/// // - File with functions [21, 30, 40] complexity -> INCLUDED (all above 20)
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ```no_run
+/// // Example: Combined threshold filtering
+/// use std::path::PathBuf;
+/// use pmat::cli::{ComplexityOutputFormat, handlers::complexity_handlers::handle_analyze_complexity};
+///
+/// # async fn combined_threshold_example() -> anyhow::Result<()> {
+/// // Scenario: Find files with either high cyclomatic OR high cognitive complexity
+/// handle_analyze_complexity(
+///     PathBuf::from("."),
+///     None,                           // file
+///     vec![],                         // files
+///     Some("rust".to_string()),       // toolchain
+///     ComplexityOutputFormat::Json,   // format
+///     None,                           // output
+///     Some(15),                       // max_cyclomatic
+///     Some(12),                       // max_cognitive
+///     vec!["src/**/*.rs".to_string()],// include patterns
+///     false,                          // watch
+///     5,                              // top_files - applied AFTER filtering
+///     false,                          // fail_on_violation
+/// ).await?;
+/// 
+/// // Expected behavior:
+/// // - Files are first filtered to only include those with functions exceeding either threshold
+/// // - Then the top 5 most complex files from the filtered set are returned
+/// // - A file needs at least ONE function with cyclomatic > 15 OR cognitive > 12 to be included
 /// # Ok(())
 /// # }
 /// ```
@@ -241,8 +313,24 @@ pub async fn handle_analyze_complexity(
         .await?
     };
 
+    // Apply filtering based on max thresholds if specified
+    if max_cyclomatic.is_some() || max_cognitive.is_some() {
+        // Filter files to only include those with functions exceeding the thresholds
+        file_metrics.retain(|file| {
+            file.functions.iter().any(|func| {
+                let exceeds_cyclomatic = max_cyclomatic
+                    .map(|threshold| func.metrics.cyclomatic > threshold)
+                    .unwrap_or(false);
+                let exceeds_cognitive = max_cognitive
+                    .map(|threshold| func.metrics.cognitive > threshold)
+                    .unwrap_or(false);
+                exceeds_cyclomatic || exceeds_cognitive
+            })
+        });
+    }
+
     // Apply top_files filtering if specified
-    if top_files > 0 {
+    if top_files > 0 && !file_metrics.is_empty() {
         // Sort files by complexity (descending)
         file_metrics.sort_by(|a, b| {
             let a_complexity =
