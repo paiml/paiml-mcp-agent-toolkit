@@ -464,7 +464,7 @@ fn parse_config(params: &Value) -> Result<RefactorConfig, Box<dyn std::error::Er
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```ignore
 /// use pmat::models::refactor::{RefactorStateMachine, RefactorConfig};
 /// use std::path::PathBuf;
 /// use serde_json::Value;

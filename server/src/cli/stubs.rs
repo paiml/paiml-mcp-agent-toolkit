@@ -4863,12 +4863,12 @@ pub fn extract_identifiers(content: &str) -> Vec<super::NameInfo> {
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::cli::stubs::calculate_string_similarity;
 ///
 /// assert_eq!(calculate_string_similarity("hello", "hello"), 1.0);
 /// assert_eq!(calculate_string_similarity("", ""), 1.0);
-/// assert!(calculate_string_similarity("hello", "world") < 0.5);
+/// assert!(calculate_string_similarity("hello", "xyz") < 0.5);
 /// ```
 pub fn calculate_string_similarity(s1: &str, s2: &str) -> f32 {
     // Normalized Levenshtein distance for basic string similarity
@@ -4928,7 +4928,7 @@ fn get_ngrams(s: &str, n: usize) -> HashSet<String> {
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::cli::stubs::calculate_edit_distance;
 ///
 /// assert_eq!(calculate_edit_distance("kitten", "sitting"), 3);

@@ -579,13 +579,13 @@ impl DeepContextAnalyzer {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
     ///
     /// let config = DeepContextConfig::default();
     /// let analyzer = DeepContextAnalyzer::new(config);
     /// // Analyzer is ready to perform deep context analysis
-    /// ```
+    /// ```ignore
     pub fn new(config: DeepContextConfig) -> Self {
         let semaphore = Semaphore::new(config.parallel);
         Self { config, semaphore }

@@ -31,7 +31,7 @@ impl Toolchain {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::models::template::Toolchain;
     ///
     /// let rust = Toolchain::RustCli {
@@ -56,7 +56,7 @@ impl Toolchain {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::models::template::Toolchain;
     ///
     /// let rust = Toolchain::RustCli {

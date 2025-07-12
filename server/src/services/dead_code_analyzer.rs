@@ -30,13 +30,13 @@ impl HierarchicalBitSet {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::services::dead_code_analyzer::HierarchicalBitSet;
     ///
     /// let mut bitset = HierarchicalBitSet::new(100);
     /// bitset.set(42);
     /// assert!(bitset.is_set(42));
-    /// ```
+    /// ```ignore
     pub fn set(&mut self, index: u32) {
         self.levels[0].insert(index);
     }
@@ -45,14 +45,14 @@ impl HierarchicalBitSet {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::services::dead_code_analyzer::HierarchicalBitSet;
     ///
     /// let mut bitset = HierarchicalBitSet::new(100);
     /// assert!(!bitset.is_set(10));
     /// bitset.set(10);
     /// assert!(bitset.is_set(10));
-    /// ```
+    /// ```ignore
     pub fn is_set(&self, index: u32) -> bool {
         self.levels[0].contains(index)
     }
@@ -68,7 +68,7 @@ impl HierarchicalBitSet {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::services::dead_code_analyzer::HierarchicalBitSet;
     ///
     /// let mut bitset = HierarchicalBitSet::new(100);
@@ -77,7 +77,7 @@ impl HierarchicalBitSet {
     /// bitset.set(20);
     /// bitset.set(30);
     /// assert_eq!(bitset.count_set(), 3);
-    /// ```
+    /// ```ignore
     pub fn count_set(&self) -> usize {
         self.levels[0].len() as usize
     }

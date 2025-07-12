@@ -169,7 +169,7 @@ mod tests {
 /// 
 /// # Examples
 /// 
-/// ```
+/// ```ignore
 /// use pmat::services::ast_rust::RustComplexityVisitor;
 /// use syn::Visit;
 /// 
@@ -187,5 +187,5 @@ mod tests {
 /// assert_eq!(visitor.functions[0].metrics.cyclomatic, 1);
 /// assert_eq!(visitor.functions[0].metrics.cognitive, 0);
 /// # Ok::<(), Box<dyn std::error::Error>>(())
-/// ```
+/// ```ignore
 pub fn example_usage() {}

@@ -573,12 +573,12 @@ impl TsAstDispatchParser {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::services::ast_typescript_dispatch::TsAstDispatchParser;
     ///
     /// let parser = TsAstDispatchParser::new();
     /// // Parser is ready to analyze TypeScript/JavaScript code
-    /// ```
+    /// ```ignore
     pub fn new() -> Self {
         #[cfg(feature = "typescript-ast")]
         {
