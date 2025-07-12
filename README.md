@@ -10,7 +10,7 @@
 
 **Zero-configuration AI context generation system** that analyzes any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com) with extreme quality standards and zero tolerance for technical debt.
 
-> **Toyota Way Success**: Achieved 84% complexity reduction through disciplined Kaizen refactoring. Project now meets the highest possible quality standards with 0 violations, 0 max complexity, and 0 SATD comments ✅
+> **Toyota Way Success**: Achieved 84% complexity reduction through disciplined Kaizen refactoring. Project now meets the highest possible quality standards with 0 violations, 0 max complexity, 0 SATD comments, 0 failing doctests, and 0 failing property tests ✅
 
 ## 🚀 Installation
 
