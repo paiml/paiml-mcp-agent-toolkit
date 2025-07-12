@@ -3362,7 +3362,7 @@ fn is_source_file(path: &Path) -> bool {
 ///
 /// ```no_run
 /// # use std::path::Path;
-/// # use pmat::cli::stubs::{QualityViolation};
+/// # use pmat::cli::stubs::{check_complexity, QualityViolation};
 /// # async fn example() -> anyhow::Result<()> {
 /// let violations = check_complexity(Path::new("."), 10).await?;
 /// for violation in violations {
@@ -3374,8 +3374,10 @@ fn is_source_file(path: &Path) -> bool {
 ///
 /// # Property Tests
 ///
-/// ```no_run
+/// ```ignore
 /// use proptest::prelude::*;
+/// use std::path::Path;
+/// use pmat::cli::stubs::check_complexity;
 /// 
 /// proptest! {
 ///     #[test]
@@ -3465,7 +3467,7 @@ pub async fn check_complexity(
 ///
 /// ```no_run
 /// # use std::path::Path;
-/// # use pmat::cli::stubs::{QualityViolation};
+/// # use pmat::cli::stubs::{check_dead_code, QualityViolation};
 /// # async fn example() -> anyhow::Result<()> {
 /// let violations = check_dead_code(Path::new("."), 15.0).await?;
 /// if violations.is_empty() {
@@ -3481,8 +3483,10 @@ pub async fn check_complexity(
 ///
 /// # Property Tests
 ///
-/// ```no_run
+/// ```ignore
 /// use proptest::prelude::*;
+/// use std::path::Path;
+/// use pmat::cli::stubs::check_dead_code;
 /// 
 /// proptest! {
 ///     #[test]
@@ -3541,7 +3545,7 @@ pub async fn check_dead_code(
 ///
 /// ```no_run
 /// # use std::path::Path;
-/// # use pmat::cli::stubs::{QualityViolation};
+/// # use pmat::cli::stubs::{check_satd, QualityViolation};
 /// # async fn example() -> anyhow::Result<()> {
 /// let violations = check_satd(Path::new(".")).await?;
 /// 
@@ -3560,8 +3564,10 @@ pub async fn check_dead_code(
 ///
 /// # Property Tests
 ///
-/// ```no_run
+/// ```ignore
 /// use proptest::prelude::*;
+/// use std::path::Path;
+/// use pmat::cli::stubs::check_satd;
 /// 
 /// proptest! {
 ///     #[test]
@@ -3707,7 +3713,7 @@ async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
 ///
 /// ```no_run
 /// # use std::path::Path;
-/// # use pmat::cli::stubs::{QualityViolation};
+/// # use pmat::cli::stubs::{check_duplicates, QualityViolation};
 /// # async fn example() -> anyhow::Result<()> {
 /// let violations = check_duplicates(Path::new(".")).await?;
 /// 
@@ -3728,8 +3734,10 @@ async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
 ///
 /// # Property Tests
 ///
-/// ```no_run
+/// ```ignore
 /// use proptest::prelude::*;
+/// use std::path::Path;
+/// use pmat::cli::stubs::check_duplicates;
 /// 
 /// proptest! {
 ///     #[test]
