@@ -36,10 +36,9 @@ proptest! {
         let _ = rt.block_on(async {
             let violations = check_complexity(temp_dir.path(), threshold).await.unwrap();
             
-            // Verify all violations are for files exceeding threshold
+            // Verify all violations are for files with complexity issues
             for violation in violations {
                 assert_eq!(violation.check_type, "complexity");
-                assert_eq!(violation.severity, "error");
                 
                 // Extract complexity from message
                 if let Some(complexity_str) = violation.message
@@ -47,7 +46,17 @@ proptest! {
                     .nth(1)
                     .and_then(|s| s.split(' ').next())
                     .and_then(|s| s.parse::<u32>().ok()) {
-                    prop_assert!(complexity_str > threshold);
+                    // Warnings are for complexity > (threshold - 5) but <= threshold
+                    // Errors are for complexity > threshold
+                    if violation.severity == "warning" {
+                        let warn_threshold = threshold.saturating_sub(5).max(1);
+                        prop_assert!(complexity_str > warn_threshold);
+                        prop_assert!(complexity_str <= threshold);
+                    } else if violation.severity == "error" {
+                        prop_assert!(complexity_str > threshold);
+                    } else {
+                        panic!("Unexpected severity: {}", violation.severity);
+                    }
                 }
             }
             Ok(())
