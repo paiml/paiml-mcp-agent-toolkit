@@ -9,7 +9,76 @@ use anyhow::Result;
 use std::path::PathBuf;
 use tracing::{debug, info};
 
-/// Handle deep context analysis command  
+/// Handle deep context analysis command
+///
+/// Performs comprehensive analysis of project context, including code relationships,
+/// dependencies, and architectural patterns. This addresses issue #33 where the
+/// command wasn't finding anything by implementing proper file discovery and analysis.
+///
+/// # Examples
+///
+/// ```no_run
+/// use pmat::cli::{DeepContextOutputFormat, DagType};
+/// use pmat::cli::handlers::advanced_analysis_handlers::handle_analyze_deep_context;
+/// use std::path::PathBuf;
+///
+/// # async fn example() -> anyhow::Result<()> {
+/// // Basic deep context analysis
+/// handle_analyze_deep_context(
+///     PathBuf::from("."),
+///     None,                              // output
+///     DeepContextOutputFormat::Json,     // format
+///     false,                             // full
+///     vec![],                            // include
+///     vec![],                            // exclude
+///     30,                                // period_days
+///     None,                              // dag_type
+///     None,                              // max_depth
+///     vec![],                            // include_patterns
+///     vec![],                            // exclude_patterns
+///     None,                              // cache_strategy
+///     false,                             // parallel
+///     false,                             // verbose
+///     10,                                // top_files
+/// ).await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ```no_run
+/// # use pmat::cli::{DeepContextOutputFormat, DagType};
+/// # use pmat::cli::handlers::advanced_analysis_handlers::handle_analyze_deep_context;
+/// # use std::path::PathBuf;
+/// # async fn example() -> anyhow::Result<()> {
+/// // Full analysis with specific includes
+/// handle_analyze_deep_context(
+///     PathBuf::from("./src"),
+///     Some(PathBuf::from("context.json")),
+///     DeepContextOutputFormat::Json,
+///     true,                              // full analysis
+///     vec!["complexity".to_string(), "dependencies".to_string()],
+///     vec![],
+///     90,                                // 90 day history
+///     Some(DagType::Enhanced),
+///     Some(5),                           // max depth 5
+///     vec!["**/*.rs".to_string()],       // only Rust files
+///     vec!["**/tests/**".to_string()],   // exclude tests
+///     Some("persistent".to_string()),
+///     true,                              // parallel processing
+///     true,                              // verbose output
+///     20,                                // top 20 files
+/// ).await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Returns
+///
+/// Returns `Ok(())` if analysis completes successfully, or an error if:
+/// - Project path doesn't exist
+/// - No files found to analyze
+/// - Output file cannot be written
+/// - Analysis encounters errors
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_deep_context(
     project_path: PathBuf,

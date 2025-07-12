@@ -188,6 +188,20 @@ mod complexity_handlers_tests;
 /// * `watch` - Continuous analysis mode
 /// * `top_files` - Limit output to N most complex files
 ///
+/// # Exit Status
+///
+/// The command returns different exit codes based on results (addressing issue #28):
+/// - `0`: Success - no violations found, all violations below threshold, or --fail-on-violation not specified
+/// - `1`: Failure - violations found that exceed thresholds AND --fail-on-violation flag is used
+///
+/// ```bash
+/// # Exit with code 0 even if violations found (default behavior)
+/// pmat analyze complexity --max-cyclomatic 10
+/// 
+/// # Exit with code 1 if violations exceed threshold
+/// pmat analyze complexity --max-cyclomatic 10 --fail-on-violation
+/// ```
+///
 /// # Returns
 ///
 /// JSON-structured complexity analysis suitable for MCP tool chaining
