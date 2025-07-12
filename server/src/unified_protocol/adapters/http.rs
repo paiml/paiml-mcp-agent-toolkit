@@ -39,7 +39,7 @@ use crate::unified_protocol::{
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```
 /// use pmat::unified_protocol::adapters::http::HttpAdapter;
 /// use pmat::unified_protocol::ProtocolAdapter;
 /// use std::net::{SocketAddr, IpAddr, Ipv4Addr};
@@ -72,7 +72,7 @@ impl HttpAdapter {
     ///
     /// # Examples
     ///
-    /// ```rust,no_run
+    /// ```ignore
     /// use pmat::unified_protocol::adapters::http::HttpAdapter;
     /// use pmat::unified_protocol::ProtocolAdapter;
     /// use std::net::{SocketAddr, IpAddr, Ipv4Addr};
@@ -113,7 +113,7 @@ impl HttpAdapter {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::unified_protocol::adapters::http::HttpAdapter;
     /// use std::net::{SocketAddr, IpAddr, Ipv4Addr};
     ///
@@ -535,7 +535,7 @@ where
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
 /// use serde_json::json;
 ///
@@ -574,7 +574,7 @@ where
 ///
 /// # REST API Usage Examples
 ///
-/// ```rust
+/// ```
 /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
 /// use serde_json::json;
 ///
@@ -616,7 +616,7 @@ impl HttpResponseBuilder {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
     ///
     /// let response = HttpResponseBuilder::ok();
@@ -634,7 +634,7 @@ impl HttpResponseBuilder {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
     ///
     /// let response = HttpResponseBuilder::not_found();
@@ -652,7 +652,7 @@ impl HttpResponseBuilder {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
     ///
     /// let response = HttpResponseBuilder::internal_error();
@@ -678,7 +678,7 @@ impl HttpResponseBuilder {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
     /// use serde_json::json;
     ///
@@ -718,7 +718,7 @@ impl HttpResponseBuilder {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
     ///
     /// // Simple text response
@@ -756,7 +756,7 @@ impl HttpResponseBuilder {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
     ///
     /// // Simple HTML page

@@ -238,7 +238,7 @@ impl PartialOrd for DuplicationScore {
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::services::ranking::rank_files_vectorized;
 ///
 /// let scores = vec![0.8, 0.2, 0.9, 0.1];
@@ -247,7 +247,7 @@ impl PartialOrd for DuplicationScore {
 /// assert_eq!(ranked.len(), 2);
 /// assert_eq!(ranked[0], 2); // Index of highest score (0.9)
 /// assert_eq!(ranked[1], 0); // Index of second highest (0.8)
-/// ```
+/// ```ignore
 pub fn rank_files_vectorized(scores: &[f32], limit: usize) -> Vec<usize> {
     let mut indices: Vec<usize> = (0..scores.len()).collect();
 

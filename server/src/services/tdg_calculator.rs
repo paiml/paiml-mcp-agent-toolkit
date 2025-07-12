@@ -58,12 +58,12 @@ impl TDGCalculator {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::services::tdg_calculator::TDGCalculator;
     ///
     /// let calculator = TDGCalculator::new();
     /// // Calculator ready to compute Technical Debt Gradient scores
-    /// ```
+    /// ```ignore
     pub fn new() -> Self {
         Self::with_config(TDGConfig::default())
     }

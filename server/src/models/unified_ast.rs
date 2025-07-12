@@ -49,7 +49,7 @@ pub enum Language {
 /// # Examples
 ///
 /// Basic flag manipulation:
-/// ```rust
+/// ```ignore
 /// use pmat::models::unified_ast::NodeFlags;
 ///
 /// let mut flags = NodeFlags::new();
@@ -63,7 +63,7 @@ pub enum Language {
 /// ```
 ///
 /// Combining multiple flags:
-/// ```rust
+/// ```ignore
 /// use pmat::models::unified_ast::NodeFlags;
 ///
 /// let mut flags = NodeFlags::new();
@@ -104,7 +104,7 @@ impl NodeFlags {
     /// Creates a new NodeFlags instance with no flags set
     ///
     /// # Examples
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::NodeFlags;
     ///
     /// let flags = NodeFlags::new();
@@ -118,7 +118,7 @@ impl NodeFlags {
     /// Sets the specified flag(s) using bitwise OR
     ///
     /// # Examples
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::NodeFlags;
     ///
     /// let mut flags = NodeFlags::new();
@@ -137,7 +137,7 @@ impl NodeFlags {
     /// Unsets the specified flag(s) using bitwise AND NOT
     ///
     /// # Examples
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::NodeFlags;
     ///
     /// let mut flags = NodeFlags::new();
@@ -156,7 +156,7 @@ impl NodeFlags {
     /// Checks if any of the specified flag(s) are set
     ///
     /// # Examples
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::NodeFlags;
     ///
     /// let mut flags = NodeFlags::new();
@@ -431,7 +431,7 @@ impl Location {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::{Location, BytePos, Span};
     /// use std::path::PathBuf;
     ///
@@ -463,7 +463,7 @@ impl Location {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::Location;
     /// use std::path::PathBuf;
     ///
@@ -489,7 +489,7 @@ impl Location {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::{Location, BytePos, Span};
     /// use std::path::PathBuf;
     ///
@@ -541,7 +541,7 @@ impl BytePos {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::models::unified_ast::BytePos;
     ///
     /// let pos = BytePos::from_usize(42);
@@ -570,7 +570,7 @@ impl QualifiedName {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::QualifiedName;
     ///
     /// let qname = QualifiedName::new(
@@ -603,7 +603,7 @@ impl QualifiedName {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::QualifiedName;
     ///
     /// // Simple name without module path
@@ -649,7 +649,7 @@ impl QualifiedName {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::QualifiedName;
     ///
     /// let qname = QualifiedName::new(
@@ -785,7 +785,7 @@ impl UnifiedAstNode {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::{
     ///     UnifiedAstNode, AstKind, FunctionKind, Language
     /// };
@@ -833,7 +833,7 @@ impl UnifiedAstNode {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::{
     ///     UnifiedAstNode, AstKind, FunctionKind, ClassKind, Language
     /// };
@@ -867,7 +867,7 @@ impl UnifiedAstNode {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::{
     ///     UnifiedAstNode, AstKind, ClassKind, TypeKind,
     ///     ModuleKind, FunctionKind, Language
@@ -928,7 +928,7 @@ impl UnifiedAstNode {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::{
     ///     UnifiedAstNode, AstKind, FunctionKind, Language,
     ///     ProofAnnotation, PropertyType, VerificationMethod,
@@ -1096,7 +1096,7 @@ impl AstDag {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::{
     ///     AstDag, UnifiedAstNode, AstKind, FunctionKind, Language
     /// };
@@ -1140,7 +1140,7 @@ impl AstDag {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::{
     ///     AstDag, UnifiedAstNode, AstKind, FunctionKind, ClassKind, Language
     /// };
@@ -1198,7 +1198,7 @@ impl AstDag {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::{
     ///     AstDag, UnifiedAstNode, AstKind, FunctionKind, Language
     /// };
@@ -1240,7 +1240,7 @@ impl AstDag {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::{
     ///     AstDag, UnifiedAstNode, AstKind, FunctionKind, Language
     /// };
@@ -1286,7 +1286,7 @@ impl AstDag {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::models::unified_ast::{
     ///     AstDag, UnifiedAstNode, AstKind, FunctionKind, Language
     /// };

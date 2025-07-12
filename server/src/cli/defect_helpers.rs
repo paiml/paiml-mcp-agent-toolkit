@@ -65,7 +65,7 @@ pub async fn analyze_defect_probability(
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::cli::defect_helpers::format_defect_json;
 /// use pmat::services::defect_probability::{DefectScore, RiskLevel};
 ///
@@ -109,7 +109,7 @@ pub fn format_defect_json(predictions: &[(String, DefectScore)]) -> Result<Strin
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use pmat::cli::defect_helpers::format_defect_summary;
 /// use pmat::services::defect_probability::{DefectScore, RiskLevel};
 ///

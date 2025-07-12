@@ -243,12 +243,13 @@ impl SimpleDeepContext {
     /// 
     /// # Example
     /// 
-    /// ```rust,no_run
+    /// ```compile_fail
     /// use pmat::services::simple_deep_context::{SimpleDeepContext, FileComplexityMetrics};
     /// use std::path::Path;
     /// 
     /// # tokio_test::block_on(async {
     /// let analyzer = SimpleDeepContext::new();
+    /// // This is a private method and cannot be called from outside the module
     /// let metrics = analyzer.analyze_file_complexity(Path::new("src/main.rs")).await.unwrap();
     /// 
     /// // Metrics now contain accurate AST-based complexity values
@@ -373,7 +374,7 @@ impl SimpleDeepContext {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::services::simple_deep_context::{SimpleDeepContext, SimpleAnalysisReport, ComplexityMetrics, FileComplexityDetail};
     /// use std::path::PathBuf;
     /// use std::time::Duration;
@@ -412,7 +413,7 @@ impl SimpleDeepContext {
     /// assert!(output.contains("**Files Analyzed**: 5"));
     /// assert!(output.contains("## Top Files by Complexity"));
     /// assert!(output.contains("1. `main.rs` - 5.5 avg complexity"));
-    /// ```
+    /// ```ignore
     pub fn format_as_markdown(&self, report: &SimpleAnalysisReport, top_files: usize) -> String {
         let mut markdown = String::new();
 

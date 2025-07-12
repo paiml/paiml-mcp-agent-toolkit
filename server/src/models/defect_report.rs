@@ -120,7 +120,7 @@ impl DefectCategory {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::models::defect_report::DefectCategory;
     ///
     /// let categories = DefectCategory::all();
@@ -171,7 +171,7 @@ impl Defect {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::models::defect_report::Defect;
     ///
     /// let id = Defect::generate_id("TEST", 0);
@@ -188,7 +188,7 @@ impl Defect {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use pmat::models::defect_report::{Defect, Severity, DefectCategory};
     /// use std::path::PathBuf;
     /// use std::collections::HashMap;

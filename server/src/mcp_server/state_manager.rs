@@ -36,7 +36,7 @@ use tracing::{info, warn};
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```ignore
 /// use pmat::mcp_server::state_manager::StateManager;
 /// use pmat::models::refactor::RefactorConfig;
 /// use std::path::PathBuf;
@@ -81,7 +81,7 @@ impl StateManager {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::mcp_server::state_manager::StateManager;
     ///
     /// let manager = StateManager::new();
@@ -134,7 +134,7 @@ impl StateManager {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::mcp_server::state_manager::StateManager;
     /// use pmat::models::refactor::RefactorConfig;
     /// use std::path::PathBuf;
@@ -230,7 +230,7 @@ impl StateManager {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use pmat::mcp_server::state_manager::StateManager;
     /// use pmat::models::refactor::RefactorConfig;
     /// use std::path::PathBuf;

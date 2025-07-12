@@ -23,7 +23,8 @@ pub use diagnostics::{CacheDiagnostics, CacheEffectiveness};
 pub use manager::SessionCacheManager;
 pub use persistent_manager::PersistentCacheManager;
 pub use strategies::{
-    AstCacheStrategy, ChurnCacheStrategy, DagCacheStrategy, TemplateCacheStrategy,
+    AstCacheStrategy, ChurnCacheStrategy, DagCacheStrategy, GitStats, GitStatsCacheStrategy,
+    TemplateCacheStrategy,
 };
 pub use unified::{LayeredCache, UnifiedCache, UnifiedCacheConfig, VectorizedCacheKey};
 pub use unified_manager::{UnifiedCacheDiagnostics, UnifiedCacheManager};
