@@ -47,6 +47,7 @@ mod complexity_handlers_tests;
 ///     vec![],                         // include patterns
 ///     false,                          // watch
 ///     5,                              // top_files = 5 hotspots
+///     false,                          // fail_on_violation
 /// ).await?;
 /// 
 /// // AI agent would parse JSON output to extract file paths:
@@ -70,6 +71,7 @@ mod complexity_handlers_tests;
 ///     vec![],                         // include patterns
 ///     false,                          // watch
 ///     0,                              // top_files (show all)
+///     false,                          // fail_on_violation
 /// ).await?;
 /// # Ok(())
 /// # }
@@ -101,6 +103,7 @@ mod complexity_handlers_tests;
 ///     vec![],                         // include patterns
 ///     false,                          // watch
 ///     0,                              // top_files (analyze all provided)
+///     false,                          // fail_on_violation
 /// ).await?;
 /// 
 /// // AI agent would then:

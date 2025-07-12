@@ -77,6 +77,7 @@ use anyhow::Result;
 ///     include: vec![],
 ///     watch: false,
 ///     top_files: 10,
+///     fail_on_violation: false,
 /// };
 ///
 /// // This would normally execute the command
@@ -92,6 +93,8 @@ use anyhow::Result;
 ///     min_dead_lines: 10,
 ///     include_tests: false,
 ///     output: None,
+///     fail_on_violation: false,
+///     max_percentage: 100.0,
 /// };
 ///
 /// // DAG analysis command

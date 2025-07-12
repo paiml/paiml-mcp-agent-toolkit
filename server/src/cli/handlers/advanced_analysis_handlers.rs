@@ -59,7 +59,7 @@ use tracing::{debug, info};
 ///     vec!["complexity".to_string(), "dependencies".to_string()],
 ///     vec![],
 ///     90,                                // 90 day history
-///     Some(DagType::Enhanced),
+///     Some(DagType::CallGraph),
 ///     Some(5),                           // max depth 5
 ///     vec!["**/*.rs".to_string()],       // only Rust files
 ///     vec!["**/tests/**".to_string()],   // exclude tests
