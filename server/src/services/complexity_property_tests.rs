@@ -429,9 +429,16 @@ mod tests {
             // Verify violations are based on custom thresholds
             let has_cyclomatic_violation = cyclomatic_complexity > custom_cyclomatic_threshold;
             let has_cognitive_violation = cognitive_complexity > custom_cognitive_threshold;
-            let expected_violations = has_cyclomatic_violation || has_cognitive_violation;
+            let expected_error_violations = has_cyclomatic_violation || has_cognitive_violation;
+            
+            // Check for warnings (threshold - 5)
+            let warn_cyclomatic_threshold = custom_cyclomatic_threshold.saturating_sub(5).max(1);
+            let warn_cognitive_threshold = custom_cognitive_threshold.saturating_sub(5).max(1);
+            let has_cyclomatic_warning = cyclomatic_complexity > warn_cyclomatic_threshold && cyclomatic_complexity <= custom_cyclomatic_threshold;
+            let has_cognitive_warning = cognitive_complexity > warn_cognitive_threshold && cognitive_complexity <= custom_cognitive_threshold;
+            let expected_any_violations = expected_error_violations || has_cyclomatic_warning || has_cognitive_warning;
 
-            if expected_violations {
+            if expected_any_violations {
                 prop_assert!(!report.violations.is_empty());
             } else {
                 prop_assert!(report.violations.is_empty());
@@ -519,9 +526,11 @@ mod tests {
 
             // Default thresholds from ComplexityThresholds::default()
             let default_thresholds = ComplexityThresholds::default();
-            let has_cyclomatic_violation = cyclomatic_complexity > default_thresholds.cyclomatic_error;
-            let has_cognitive_violation = cognitive_complexity > default_thresholds.cognitive_error;
-            let expected_violations = has_cyclomatic_violation || has_cognitive_violation;
+            let has_cyclomatic_error = cyclomatic_complexity > default_thresholds.cyclomatic_error;
+            let has_cognitive_error = cognitive_complexity > default_thresholds.cognitive_error;
+            let has_cyclomatic_warning = cyclomatic_complexity > default_thresholds.cyclomatic_warn && cyclomatic_complexity <= default_thresholds.cyclomatic_error;
+            let has_cognitive_warning = cognitive_complexity > default_thresholds.cognitive_warn && cognitive_complexity <= default_thresholds.cognitive_error;
+            let expected_violations = has_cyclomatic_error || has_cognitive_error || has_cyclomatic_warning || has_cognitive_warning;
 
             if expected_violations {
                 prop_assert!(!report.violations.is_empty());
