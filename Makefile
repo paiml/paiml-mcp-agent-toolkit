@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint lint-main check test test-doc test-fast coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-refactor overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all coverage-stratified
+.PHONY: all validate format lint lint-main check test test-doc test-fast coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-refactor overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all coverage-stratified coverage-full coverage-report crate-release crate-docs
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -751,6 +751,7 @@ client-%:
 # Build for specific target (for cross-compilation in CI)
 # Usage: make build-target TARGET=x86_64-unknown-linux-gnu
 # The TARGET variable must be provided by the user
+TARGET ?= 
 build-target:
 	@if [ -z "$(TARGET)" ]; then \
 		echo "Error: TARGET not specified"; \
@@ -1213,6 +1214,7 @@ test-all-interfaces: release
 # Test specific feature across all interfaces
 # Usage: make test-feature-all-interfaces FEATURE=complexity
 # The FEATURE variable must be provided by the user
+FEATURE ?= 
 test-feature-all-interfaces: release
 	@if [ -z "$(FEATURE)" ]; then \
 		echo "Error: FEATURE not specified"; \
@@ -1610,20 +1612,6 @@ dogfood-all: release
 	@echo ""
 	@echo "🎉 All fixes successfully dogfooded on our own codebase!"
 
-# Quick dogfooding for CI - subset of most critical fixes
-dogfood-ci: release
-	@echo "🚀 CI/CD DOGFOODING - Testing critical fixes for CI integration"
-	@echo ""
-	@echo "🔍 Quality Gate with Performance Metrics (Issues #30, #31)..."
-	@./target/release/pmat quality-gate --perf --checks complexity,dead-code,satd
-	@echo ""
-	@echo "🧮 Complexity Analysis with Custom Thresholds (Issue #32)..."
-	@./target/release/pmat analyze complexity --max-cyclomatic 10 --max-cognitive 15
-	@echo ""
-	@echo "🎯 Lint Hotspot Analysis (Issue #34 fix available but not enforced in CI)..."
-	@./target/release/pmat analyze lint-hotspot --top-files 3
-	@echo ""
-	@echo "✅ Core fixes verified in CI environment"
 
 # Enforcement mode for strict CI - will fail build on violations
 dogfood-enforce: release
