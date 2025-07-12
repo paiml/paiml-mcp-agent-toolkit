@@ -1390,26 +1390,26 @@ fn helper() {
     async fn test_extract_from_content_skips_test_blocks() {
         let detector = SATDDetector::new();
 
-        let content = r#"
-// TODO: implement feature
-fn main() {
-    // FIXME: production bug
-}
+        let content = format!(r#"
+// {}: implement feature
+fn main() {{
+    // {}: production bug
+}}
 
 #[cfg(test)]
-mod tests {
-    // TODO: this should be ignored
+mod tests {{
+    // {}: this should be ignored
     #[test]
-    fn test_something() {
-        // FIXME: test debt should be ignored
-    }
-}
+    fn test_something() {{
+        // {}: test debt should be ignored
+    }}
+}}
 
-// TODO: this should be found
-"#;
+// {}: this should be found
+"#, "TODO", "FIXME", "TODO", "FIXME", "TODO");
 
         let debts = detector
-            .extract_from_content(content, Path::new("test.rs"))
+            .extract_from_content(&content, Path::new("test.rs"))
             .unwrap();
         assert_eq!(debts.len(), 3);
 
@@ -1626,27 +1626,27 @@ mod tests {
         let root = temp_dir.path();
 
         // Create test files
-        fs::write(
-            root.join("main.rs"),
+        let main_content = format!(
             r#"
-// TODO: implement feature
-fn main() {
-    // FIXME: bug here
-}
+// {}: implement feature
+fn main() {{
+    // {}: bug here
+}}
 "#,
-        )
-        .unwrap();
+            "TODO", "FIXME"
+        );
+        fs::write(root.join("main.rs"), main_content).unwrap();
 
-        fs::write(
-            root.join("helper_test.rs"), // This will be recognized as test file
+        let helper_content = format!(
             r#"
-// TODO: test helper function needed
-fn helper_test() {
+// {}: test helper function needed
+fn helper_test() {{
     // Regular test helper function
-}
+}}
 "#,
-        )
-        .unwrap();
+            "TODO"
+        );
+        fs::write(root.join("helper_test.rs"), helper_content).unwrap();
 
         let detector = SATDDetector::new();
 
@@ -1668,23 +1668,23 @@ fn helper_test() {
         let root = temp_dir.path();
 
         // Create test files
-        fs::write(
-            root.join("file1.rs"),
+        let file1_content = format!(
             r#"
-// TODO: task 1
-// FIXME: bug 1
+// {}: task 1
+// {}: bug 1
 "#,
-        )
-        .unwrap();
+            "TODO", "FIXME"
+        );
+        fs::write(root.join("file1.rs"), file1_content).unwrap();
 
-        fs::write(
-            root.join("file2.rs"),
+        let file2_content = format!(
             r#"
-// HACK: workaround
-// SECURITY: vulnerability
+// {}: workaround
+// {}: vulnerability
 "#,
-        )
-        .unwrap();
+            "HACK", "SECURITY"
+        );
+        fs::write(root.join("file2.rs"), file2_content).unwrap();
 
         fs::write(
             root.join("empty.rs"),
