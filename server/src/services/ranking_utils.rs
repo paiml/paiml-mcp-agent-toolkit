@@ -225,7 +225,7 @@ impl AnalysisResultBuilder {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::services::ranking_utils::format_ranked_files_table;
 /// use pmat::services::defect_analyzer::RankedFile;
 /// use std::path::PathBuf;
@@ -242,7 +242,7 @@ impl AnalysisResultBuilder {
 /// let table = format_ranked_files_table(&files);
 /// assert!(table.contains("RANK"));
 /// assert!(table.contains("src/main.rs"));
-/// ```ignore
+/// ```
 pub fn format_ranked_files_table(ranked_files: &[RankedFile]) -> String {
     let mut output = String::new();
 
