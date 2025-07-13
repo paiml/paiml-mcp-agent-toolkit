@@ -199,7 +199,7 @@ impl GitHubClient {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::services::github_integration::{parse_issue, GitHubIssue};
 ///
 /// let issue = GitHubIssue {
@@ -216,7 +216,7 @@ impl GitHubClient {
 /// let parsed = parse_issue(issue);
 /// assert!(parsed.file_paths.contains(&"src/main.rs".to_string()));
 /// assert!(!parsed.keywords.is_empty());
-/// ```ignore
+/// ```
 pub fn parse_issue(issue: GitHubIssue) -> ParsedIssue {
     let mut file_paths = Vec::new();
     let mut keywords = HashMap::new();
