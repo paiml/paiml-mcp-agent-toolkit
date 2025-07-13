@@ -35,7 +35,7 @@ impl BigOClass {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::BigOClass;
     ///
     /// assert_eq!(BigOClass::Constant.notation(), "O(1)");
@@ -60,7 +60,7 @@ impl BigOClass {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::BigOClass;
     ///
     /// assert!(BigOClass::Constant.is_better_than(&BigOClass::Linear));
@@ -75,7 +75,7 @@ impl BigOClass {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::BigOClass;
     ///
     /// assert_eq!(BigOClass::Constant.growth_factor(100.0), 1.0);
@@ -161,7 +161,7 @@ impl ComplexityFlags {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::ComplexityFlags;
     ///
     /// let flags = ComplexityFlags::new()
@@ -179,7 +179,7 @@ impl ComplexityFlags {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::ComplexityFlags;
     ///
     /// let flags = ComplexityFlags::new().with(ComplexityFlags::AMORTIZED);
@@ -194,7 +194,7 @@ impl ComplexityFlags {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::ComplexityFlags;
     ///
     /// let flags = ComplexityFlags::new()
@@ -213,7 +213,7 @@ impl ComplexityFlags {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::ComplexityFlags;
     ///
     /// let proven = ComplexityFlags::new()
@@ -264,7 +264,7 @@ impl ComplexityBound {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
     ///
     /// let bound = ComplexityBound::constant();
@@ -282,7 +282,7 @@ impl ComplexityBound {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
     ///
     /// let bound = ComplexityBound::linear();
@@ -297,7 +297,7 @@ impl ComplexityBound {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
     ///
     /// let bound = ComplexityBound::quadratic();
@@ -312,7 +312,7 @@ impl ComplexityBound {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
     ///
     /// let bound = ComplexityBound::logarithmic();
@@ -327,7 +327,7 @@ impl ComplexityBound {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
     ///
     /// let bound = ComplexityBound::linearithmic();
@@ -342,7 +342,7 @@ impl ComplexityBound {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
     ///
     /// let constant = ComplexityBound::polynomial(0, 5);
@@ -375,7 +375,7 @@ impl ComplexityBound {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass};
     ///
     /// let unknown = ComplexityBound::unknown();
@@ -391,7 +391,7 @@ impl ComplexityBound {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::ComplexityBound;
     ///
     /// let bound = ComplexityBound::linear()
@@ -412,7 +412,7 @@ impl ComplexityBound {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::{ComplexityBound, ComplexityFlags};
     ///
     /// let bound = ComplexityBound::linear()
@@ -429,7 +429,7 @@ impl ComplexityBound {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass, InputVariable};
     ///
     /// let simple = ComplexityBound::linear();
@@ -450,7 +450,7 @@ impl ComplexityBound {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::ComplexityBound;
     ///
     /// let linear = ComplexityBound::linear();
@@ -467,7 +467,7 @@ impl ComplexityBound {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::complexity_bound::{ComplexityBound, BigOClass, InputVariable};
     ///
     /// let linear = ComplexityBound::linear();

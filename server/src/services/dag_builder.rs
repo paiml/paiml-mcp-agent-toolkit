@@ -424,14 +424,14 @@ impl Default for DagBuilder {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::services::dag_builder::filter_call_edges;
 /// use pmat::models::dag::{DependencyGraph, EdgeType};
 ///
 /// let graph = DependencyGraph::new();
 /// let filtered = filter_call_edges(graph);
 /// // All edges in filtered graph will be EdgeType::Calls
-/// ```ignore
+/// ```
 pub fn filter_call_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Calls)
 }
@@ -440,14 +440,14 @@ pub fn filter_call_edges(graph: DependencyGraph) -> DependencyGraph {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::services::dag_builder::filter_import_edges;
 /// use pmat::models::dag::{DependencyGraph, EdgeType};
 ///
 /// let graph = DependencyGraph::new();
 /// let filtered = filter_import_edges(graph);
 /// // All edges in filtered graph will be EdgeType::Imports
-/// ```ignore
+/// ```
 pub fn filter_import_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Imports)
 }
@@ -456,14 +456,14 @@ pub fn filter_import_edges(graph: DependencyGraph) -> DependencyGraph {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::services::dag_builder::filter_inheritance_edges;
 /// use pmat::models::dag::{DependencyGraph, EdgeType};
 ///
 /// let graph = DependencyGraph::new();
 /// let filtered = filter_inheritance_edges(graph);
 /// // All edges in filtered graph will be EdgeType::Inherits
-/// ```ignore
+/// ```
 pub fn filter_inheritance_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Inherits)
 }
@@ -472,14 +472,14 @@ pub fn filter_inheritance_edges(graph: DependencyGraph) -> DependencyGraph {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::services::dag_builder::add_pagerank_scores;
 /// use pmat::models::dag::DependencyGraph;
 ///
 /// let graph = DependencyGraph::new();
 /// let scored_graph = add_pagerank_scores(&graph);
 /// // Graph nodes now have PageRank scores in metadata
-/// ```ignore
+/// ```
 pub fn add_pagerank_scores(graph: &DependencyGraph) -> DependencyGraph {
     if graph.nodes.is_empty() {
         return graph.clone();
