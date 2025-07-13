@@ -385,7 +385,7 @@ impl SimpleDeepContext {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::services::simple_deep_context::{SimpleDeepContext, SimpleAnalysisReport, ComplexityMetrics, FileComplexityDetail};
     /// use std::path::PathBuf;
     /// use std::time::Duration;
@@ -424,7 +424,7 @@ impl SimpleDeepContext {
     /// assert!(output.contains("**Files Analyzed**: 5"));
     /// assert!(output.contains("## Top Files by Complexity"));
     /// assert!(output.contains("1. `main.rs` - 5.5 avg complexity"));
-    /// ```ignore
+    /// ```
     pub fn format_as_markdown(&self, report: &SimpleAnalysisReport, top_files: usize) -> String {
         let mut markdown = String::new();
 
