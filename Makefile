@@ -164,15 +164,25 @@ test-safe:
 	@echo "✅ Safe test run completed!"
 
 # Run tests - ALWAYS FAST (zero tolerance for slow tests) with coverage summary
-test:
-	@echo "🧪 Running fast tests with coverage..."
-	@echo "🚀 Leveraging incremental compilation and optimal parallelism..."
-	@cd server && SKIP_SLOW_TESTS=1 cargo llvm-cov test \
-		--lib --bins \
-		--features skip-slow-tests \
-		--no-fail-fast \
-		-- 2>&1 | grep -E "test result:|passed|failed|TOTAL|%"
-	@echo "✅ All fast tests completed with coverage summary!"
+# Run all examples
+test-examples:
+	@echo "📘 Running all cargo examples..."
+	@cd server && \
+	for example in examples/*.rs; do \
+		if [ -f "$$example" ]; then \
+			example_name=$$(basename "$$example" .rs); \
+			echo "  Running example: $$example_name"; \
+			cargo run --example "$$example_name" --quiet || { \
+				echo "  ❌ Example $$example_name failed"; \
+				exit 1; \
+			}; \
+		fi \
+	done
+	@echo "✅ All examples completed successfully!"
+
+# Main test target - runs all required tests
+test: test-fast test-doc test-property test-examples
+	@echo "✅ All tests completed successfully!"
 
 # Run doctests only
 test-doc:
