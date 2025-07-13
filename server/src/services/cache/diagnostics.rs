@@ -106,7 +106,7 @@ impl CacheDiagnosticReport {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::services::cache::diagnostics::{format_prometheus_metrics, CacheDiagnostics, CacheEffectiveness};
 /// use std::time::Duration;
 /// use uuid::Uuid;
@@ -129,7 +129,7 @@ impl CacheDiagnosticReport {
 /// let metrics = format_prometheus_metrics(&diagnostics);
 /// assert!(metrics.contains("cache_hits_total"));
 /// assert!(metrics.contains("cache_memory_bytes"));
-/// ```ignore
+/// ```
 pub fn format_prometheus_metrics(diagnostics: &CacheDiagnostics) -> String {
     let mut output = String::new();
 
