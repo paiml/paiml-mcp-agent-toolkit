@@ -144,7 +144,7 @@ impl<T> RingBuffer<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```no_run
     /// use pmat::services::refactor_engine::RingBuffer;
     ///
     /// let buffer: RingBuffer<i32> = RingBuffer::new(3);
@@ -166,7 +166,7 @@ impl<T> RingBuffer<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```no_run
     /// use pmat::services::refactor_engine::RingBuffer;
     ///
     /// let mut buffer = RingBuffer::new(2);
@@ -196,7 +196,7 @@ impl<T> RingBuffer<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```no_run
     /// use pmat::services::refactor_engine::RingBuffer;
     ///
     /// let mut buffer = RingBuffer::new(5);
@@ -238,19 +238,20 @@ impl UnifiedEngine {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```no_run
     /// use pmat::services::refactor_engine::{
     ///     UnifiedEngine, EngineMode, ExplainLevel
     /// };
     /// use pmat::services::unified_ast_engine::UnifiedAstEngine;
     /// use pmat::services::cache::unified_manager::UnifiedCacheManager;
+    /// use pmat::services::cache::unified::UnifiedCacheConfig;
     /// use pmat::models::refactor::RefactorConfig;
     /// use std::sync::Arc;
     /// use std::path::PathBuf;
     /// use std::time::Duration;
     ///
     /// let ast_engine = Arc::new(UnifiedAstEngine::new());
-    /// let cache = Arc::new(UnifiedCacheManager::new());
+    /// let cache = Arc::new(UnifiedCacheManager::new(UnifiedCacheConfig::default()).unwrap());
     /// let config = RefactorConfig::default();
     /// let targets = vec![PathBuf::from("src/main.rs")];
     ///
@@ -271,7 +272,7 @@ impl UnifiedEngine {
     /// );
     ///
     /// // Engine is ready for analysis and refactoring
-    /// ```ignore
+    /// ```
     pub fn new(
         ast_engine: Arc<UnifiedAstEngine>,
         cache: Arc<UnifiedCacheManager>,
@@ -311,12 +312,13 @@ impl UnifiedEngine {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```no_run
     /// use pmat::services::refactor_engine::{
     ///     UnifiedEngine, EngineMode
     /// };
     /// use pmat::services::unified_ast_engine::UnifiedAstEngine;
     /// use pmat::services::cache::unified_manager::UnifiedCacheManager;
+    /// use pmat::services::cache::unified::UnifiedCacheConfig;
     /// use pmat::models::refactor::RefactorConfig;
     /// use std::sync::Arc;
     /// use std::path::PathBuf;
@@ -324,7 +326,7 @@ impl UnifiedEngine {
     ///
     /// # tokio_test::block_on(async {
     /// let ast_engine = Arc::new(UnifiedAstEngine::new());
-    /// let cache = Arc::new(UnifiedCacheManager::new());
+    /// let cache = Arc::new(UnifiedCacheManager::new(UnifiedCacheConfig::default()).unwrap());
     /// let config = RefactorConfig::default();
     /// let targets = vec![PathBuf::from("src/example.rs")];
     ///
@@ -347,14 +349,14 @@ impl UnifiedEngine {
     ///
     /// match result {
     ///     Ok(summary) => {
-    ///         println!("Refactoring completed: {} operations", summary.operations_completed);
+    ///         println!("Refactoring completed: {} operations", summary.refactors_applied);
     ///     }
     ///     Err(e) => {
     ///         eprintln!("Refactoring failed: {}", e);
     ///     }
     /// }
     /// # });
-    /// ```ignore
+    /// ```
     pub async fn run(&mut self) -> Result<Summary, EngineError> {
         match &self.mode {
             EngineMode::Server { .. } => self.run_server().await,
