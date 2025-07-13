@@ -175,7 +175,7 @@ impl McpServer {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::mcp_server::server::McpServer;
     ///
     /// # tokio_test::block_on(async {
@@ -332,7 +332,7 @@ impl McpServer {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::mcp_server::server::McpServer;
     ///
     /// # tokio_test::block_on(async {
