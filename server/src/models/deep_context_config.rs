@@ -66,7 +66,7 @@ impl DeepContextConfig {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::deep_context_config::DeepContextConfig;
     ///
     /// let mut config = DeepContextConfig::default();
