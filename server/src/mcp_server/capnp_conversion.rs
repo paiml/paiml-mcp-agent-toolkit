@@ -7,7 +7,7 @@ use crate::models::refactor::RefactorStateMachine;
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::mcp_server::capnp_conversion::serialize_state_to_capnp;
 /// use pmat::models::refactor::{RefactorStateMachine, RefactorConfig};
 /// use std::path::PathBuf;
@@ -32,7 +32,7 @@ pub fn serialize_state_to_capnp(state: &RefactorStateMachine) -> Result<Vec<u8>,
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::mcp_server::capnp_conversion::{serialize_state_to_capnp, deserialize_state_from_capnp};
 /// use pmat::models::refactor::{RefactorStateMachine, RefactorConfig};
 /// use std::path::PathBuf;
@@ -58,7 +58,7 @@ pub fn deserialize_state_from_capnp(data: &[u8]) -> Result<RefactorStateMachine,
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::mcp_server::capnp_conversion::is_capnp_available;
 ///
 /// let available = is_capnp_available();
@@ -73,7 +73,7 @@ pub fn is_capnp_available() -> bool {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::mcp_server::capnp_conversion::get_serialization_format;
 ///
 /// let format = get_serialization_format();
