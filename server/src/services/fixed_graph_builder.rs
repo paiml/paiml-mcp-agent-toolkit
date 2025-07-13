@@ -64,7 +64,7 @@ impl FixedGraphBuilder {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::services::fixed_graph_builder::{FixedGraphBuilder, GraphConfig, GroupingStrategy};
     ///
     /// let config = GraphConfig {
@@ -76,7 +76,7 @@ impl FixedGraphBuilder {
     /// let builder = FixedGraphBuilder::new(config)
     ///     .with_max_nodes(50);
     /// // Builder will now limit to 50 nodes instead of 100
-    /// ```ignore
+    /// ```
     pub fn with_max_nodes(mut self, max_nodes: usize) -> Self {
         self.max_nodes = max_nodes;
         self
@@ -86,7 +86,7 @@ impl FixedGraphBuilder {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::services::fixed_graph_builder::{FixedGraphBuilder, GraphConfig, GroupingStrategy};
     ///
     /// let config = GraphConfig {
@@ -98,7 +98,7 @@ impl FixedGraphBuilder {
     /// let builder = FixedGraphBuilder::new(config)
     ///     .with_max_edges(200);
     /// // Builder will now limit to 200 edges instead of 500
-    /// ```ignore
+    /// ```
     pub fn with_max_edges(mut self, max_edges: usize) -> Self {
         self.max_edges = max_edges;
         self
