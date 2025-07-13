@@ -179,7 +179,7 @@ impl<'a> ComplexityVisitor<'a> {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::services::complexity::compute_complexity_cache_key;
 /// use std::path::Path;
 ///
@@ -189,7 +189,7 @@ impl<'a> ComplexityVisitor<'a> {
 /// let key = compute_complexity_cache_key(path, content);
 /// assert!(key.starts_with("cx:"));
 /// assert!(key.len() > 10);
-/// ```ignore
+/// ```
 pub fn compute_complexity_cache_key(path: &Path, content: &[u8]) -> String {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -331,18 +331,18 @@ impl ComplexityRule for CognitiveComplexityRule {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::services::complexity::{aggregate_results, FileComplexityMetrics};
 ///
 /// let metrics = vec![];
 /// let report = aggregate_results(metrics);
 /// assert_eq!(report.summary.total_files, 0);
-/// ```ignore
+/// ```
 /// Aggregates complexity metrics from multiple files into a summary report
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::services::complexity::{aggregate_results, FileComplexityMetrics, ComplexityMetrics};
 ///
 /// let file = FileComplexityMetrics {
@@ -359,7 +359,7 @@ impl ComplexityRule for CognitiveComplexityRule {
 ///
 /// let report = aggregate_results(vec![file]);
 /// assert_eq!(report.files.len(), 1);
-/// ```ignore
+/// ```
 pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> ComplexityReport {
     aggregate_results_with_thresholds(file_metrics, None, None)
 }
@@ -377,7 +377,7 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::services::complexity::*;
 ///
 /// let metrics = ComplexityMetrics {
@@ -402,14 +402,14 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 /// };
 ///
 /// // With custom threshold of 20, the function with complexity 25 will be a violation
-/// let report = aggregate_results_with_thresholds(vec![file], Some(20), None);
+/// let report = aggregate_results_with_thresholds(vec![file.clone()], Some(20), None);
 /// assert_eq!(report.violations.len(), 1);
 /// assert!(matches!(report.violations[0], Violation::Error { .. }));
 ///
 /// // With threshold of 30, no violations
 /// let report2 = aggregate_results_with_thresholds(vec![file], Some(30), None);
 /// assert_eq!(report2.violations.len(), 0);
-/// ```ignore
+/// ```
 pub fn aggregate_results_with_thresholds(
     file_metrics: Vec<FileComplexityMetrics>,
     max_cyclomatic: Option<u16>,
@@ -574,7 +574,7 @@ pub fn aggregate_results_with_thresholds(
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::services::complexity::*;
 ///
 /// let file_metrics = vec![
@@ -610,35 +610,7 @@ pub fn aggregate_results_with_thresholds(
 /// assert!(summary.contains("## Top Files by Complexity"));
 /// assert!(summary.contains("main.rs")); // First file (higher complexity)
 /// assert!(summary.contains("lib.rs"));  // Second file
-/// ```ignore
-/// Formats a complexity report as a summary
-///
-/// # Examples
-///
-/// ```ignore
-/// use pmat::services::complexity::{format_complexity_summary, ComplexityReport, ComplexitySummary};
-///
-/// let report = ComplexityReport {
-///     summary: ComplexitySummary {
-///         total_files: 10,
-///         total_functions: 50,
-///         median_cyclomatic: 5.2,
-///         median_cognitive: 4.8,
-///         max_cyclomatic: 15,
-///         max_cognitive: 20,
-///         p90_cyclomatic: 12,
-///         p90_cognitive: 16,
-///         technical_debt_hours: 2.5,
-///     },
-///     violations: vec![],
-///     hotspots: vec![],
-///     files: vec![],
-/// };
-///
-/// let summary = format_complexity_summary(&report);
-/// assert!(summary.contains("Complexity Analysis Summary"));
-/// assert!(summary.contains("Files analyzed**: 10"));
-/// ```ignore
+/// ```
 pub fn format_complexity_summary(report: &ComplexityReport) -> String {
     let mut output = String::new();
 
@@ -824,7 +796,7 @@ pub fn format_complexity_report(report: &ComplexityReport) -> String {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::services::complexity::{format_as_sarif, ComplexityReport, ComplexitySummary};
 ///
 /// let report = ComplexityReport {
@@ -847,7 +819,7 @@ pub fn format_complexity_report(report: &ComplexityReport) -> String {
 /// let sarif = format_as_sarif(&report).unwrap();
 /// assert!(sarif.contains("\"version\": \"2.1.0\""));
 /// assert!(sarif.contains("cyclomatic-complexity"));
-/// ```ignore
+/// ```
 pub fn format_as_sarif(report: &ComplexityReport) -> Result<String, serde_json::Error> {
     use serde_json::json;
 

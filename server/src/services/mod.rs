@@ -103,6 +103,9 @@ mod satd_property_tests;
 mod mcp_property_tests;
 
 #[cfg(test)]
+mod git_clone_property_tests;
+
+#[cfg(test)]
 mod tests {
     #[test]
     fn test_mod_basic() {
