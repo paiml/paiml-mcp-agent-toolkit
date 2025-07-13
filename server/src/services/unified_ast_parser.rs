@@ -227,7 +227,7 @@ impl AstParserRegistry {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::services::unified_ast_parser::create_default_registry;
 /// use std::path::Path;
 ///
@@ -235,7 +235,7 @@ impl AstParserRegistry {
 /// // Registry has Rust parser registered by default
 /// let parser = registry.find_parser(Path::new("src/main.rs"));
 /// assert!(parser.is_some());
-/// ```ignore
+/// ```
 pub fn create_default_registry() -> AstParserRegistry {
     let mut registry = AstParserRegistry::new();
 
