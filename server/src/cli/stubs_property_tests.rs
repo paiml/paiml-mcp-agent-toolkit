@@ -2,7 +2,7 @@
 
 use proptest::prelude::*;
 use std::path::Path;
-use crate::cli::stubs::{check_dead_code, check_entropy, calculate_provability_score, QualityViolation};
+use crate::cli::stubs::{check_dead_code, check_entropy, calculate_provability_score};
 
 proptest! {
     /// Test that dead code violations respect the threshold
