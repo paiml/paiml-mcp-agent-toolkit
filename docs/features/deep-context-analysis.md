@@ -17,45 +17,70 @@ Deep Context Analysis provides comprehensive codebase understanding by combining
 ### Command Line
 
 ```bash
-# Full deep context analysis
+# Basic deep context analysis (terse by default)
 pmat analyze deep-context
+
+# Full detailed analysis
+pmat analyze deep-context --full
 
 # Specific output format
 pmat analyze deep-context --format json
 pmat analyze deep-context --format markdown
+pmat analyze deep-context --format sarif    # SARIF format for CI/CD
 
-# Include specific analyses
-pmat analyze deep-context --include ast,complexity,churn,dependencies
+# Analyze specific path
+pmat analyze deep-context -p ./src
 
-# Incremental mode (only analyze changes)
-pmat analyze deep-context --incremental
+# Control analysis period
+pmat analyze deep-context --period-days 90
+
+# Select specific analyses to include
+pmat analyze deep-context --include "complexity,churn,dependencies"
+
+# Cache control
+pmat analyze deep-context --cache-strategy normal         # Default caching
+pmat analyze deep-context --cache-strategy force-refresh  # Force fresh analysis
+pmat analyze deep-context --cache-strategy offline        # Use cache only
 
 # Save to file
 pmat analyze deep-context --output deep-context.md
+
+# Include/exclude patterns
+pmat analyze deep-context --include-pattern "*.rs" --exclude-pattern "**/tests/**"
+
+# Show more files in summary
+pmat analyze deep-context --top-files 20
+
+# Enable verbose output
+pmat analyze deep-context --verbose
 ```
 
 ### Configuration
 
-```toml
-# deep-context.toml
-[analysis]
-include = ["ast", "complexity", "churn", "dependencies", "quality"]
-exclude_paths = ["tests/", "vendor/", "node_modules/"]
-max_file_size = "1MB"
+The deep context analysis can be configured through command-line options:
 
-[output]
-format = "markdown"
-include_snippets = true
-max_snippet_lines = 50
+- **Output Format**: `--format` (markdown, json, sarif)
+- **Report Detail**: `--full` for comprehensive analysis
+- **Analysis Period**: `--period-days` for git history window
+- **Include/Exclude Analyses**: `--include` and `--exclude` for specific analysis types
+- **DAG Type**: `--dag-type` (call-graph, import-graph, inheritance, full-dependency)
+- **Cache Strategy**: `--cache-strategy` (normal, force-refresh, offline)
+- **File Patterns**: `--include-pattern` and `--exclude-pattern`
+- **Parallelism**: `--parallel` for concurrent analysis
+- **Top Files**: `--top-files` to control how many files to show in summary
 
-[cache]
-enabled = true
-path = ".pmat-cache"
-ttl = "24h"
-
-[incremental]
-enabled = true
-baseline = ".pmat-baseline.json"
+Example with multiple options:
+```bash
+pmat analyze deep-context \
+  --full \
+  --format json \
+  --period-days 60 \
+  --include "complexity,churn,dependencies" \
+  --cache-strategy normal \
+  --parallel \
+  --top-files 15 \
+  --include-pattern "*.rs" \
+  --output analysis.json
 ```
 
 ## Output Structure

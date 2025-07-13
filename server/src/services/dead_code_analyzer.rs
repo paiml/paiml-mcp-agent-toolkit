@@ -501,7 +501,217 @@ impl DeadCodeAnalyzer {
         references.edges.push(edge);
     }
 
+    /// Analyze dead code using project context directly
+    /// Analyze dead code within a project context
+    ///
+    /// Performs reachability analysis on the given project context to identify
+    /// unused functions and other dead code elements.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// // Private method example - not runnable as doctest
+    /// use pmat::services::dead_code_analyzer::DeadCodeAnalyzer;
+    /// use pmat::services::context::{ProjectContext, FileContext, AstItem, ProjectSummary};
+    ///
+    /// let mut analyzer = DeadCodeAnalyzer::new(100);
+    /// let project_context = ProjectContext {
+    ///     project_type: "rust".to_string(),
+    ///     files: vec![
+    ///         FileContext {
+    ///             path: "test.rs".to_string(),
+    ///             language: "rust".to_string(),
+    ///             items: vec![
+    ///                 AstItem::Function {
+    ///                     name: "main".to_string(),
+    ///                     visibility: "private".to_string(),
+    ///                     is_async: false,
+    ///                     line: 1,
+    ///                 },
+    ///                 AstItem::Function {
+    ///                     name: "unused_fn".to_string(),
+    ///                     visibility: "private".to_string(),
+    ///                     is_async: false,
+    ///                     line: 5,
+    ///                 },
+    ///             ],
+    ///             complexity_metrics: None,
+    ///         }
+    ///     ],
+    ///     summary: ProjectSummary {
+    ///         total_files: 1,
+    ///         total_functions: 2,
+    ///         total_structs: 0,
+    ///         total_enums: 0,
+    ///         total_traits: 0,
+    ///         total_impls: 0,
+    ///         dependencies: vec![],
+    ///     },
+    /// };
+    ///
+    /// // Note: This is a private method, accessed internally by analyze_with_ranking
+    /// let result = analyzer.analyze_project_context(&project_context).unwrap();
+    /// assert!(!result.dead_items.is_empty());
+    /// ```
+    fn analyze_project_context(
+        &mut self,
+        project_context: &crate::services::context::ProjectContext,
+    ) -> anyhow::Result<DeadCodeReport> {
+        use crate::services::context::AstItem;
+        use std::collections::{HashMap, HashSet};
+
+        // Collect all functions and their call relationships
+        let mut all_functions: HashMap<String, (String, u32)> = HashMap::new(); // name -> (file_path, line)
+        let mut function_calls: HashMap<String, HashSet<String>> = HashMap::new(); // caller -> callees
+        let mut entry_points: HashSet<String> = HashSet::new();
+
+        // First pass: collect all functions
+        for file in &project_context.files {
+            for item in &file.items {
+                if let AstItem::Function { name, line, .. } = item {
+                    let qualified_name = format!("{}::{}", file.path, name);
+                    all_functions.insert(qualified_name.clone(), (file.path.clone(), *line as u32));
+                    
+                    // Mark main functions and exported functions as entry points
+                    if name == "main" || name.starts_with("pub ") {
+                        entry_points.insert(qualified_name.clone());
+                    }
+                    
+                }
+            }
+        }
+
+        // Second pass: detect function calls by reading file content
+        for file in &project_context.files {
+            // Read the file content to analyze function calls
+            if let Ok(content) = std::fs::read_to_string(&file.path) {
+                // Parse the content line by line to detect function calls more accurately
+                let lines: Vec<&str> = content.lines().collect();
+                
+                for (i, line) in lines.iter().enumerate() {
+                    let line_number = i + 1;
+                    
+                    // Find which function this line belongs to
+                    let mut current_function = None;
+                    for (qualified_name, (_, func_line)) in &all_functions {
+                        if qualified_name.starts_with(&file.path) {
+                            // Simple heuristic: if this line is after the function declaration,
+                            // it might be inside that function
+                            if line_number >= *func_line as usize {
+                                current_function = Some(qualified_name.clone());
+                            }
+                        }
+                    }
+                    
+                    if let Some(caller) = current_function {
+                        // Look for function calls in this line
+                        for callee_qualified in all_functions.keys() {
+                            let callee_name = callee_qualified.split("::").last().unwrap();
+                            // More specific matching: function name followed by opening parenthesis
+                            // and not part of a function definition
+                            if line.contains(&format!("{}(", callee_name)) 
+                                && !line.contains(&format!("fn {}", callee_name))
+                                && caller != *callee_qualified  // Don't count self-calls
+                            {
+                                function_calls.entry(caller.clone()).or_default().insert(callee_qualified.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Perform reachability analysis
+        let mut reachable: HashSet<String> = entry_points.clone();
+        let mut changed = true;
+        
+        while changed {
+            changed = false;
+            let current_reachable = reachable.clone();
+            
+            for reachable_func in &current_reachable {
+                if let Some(callees) = function_calls.get(reachable_func) {
+                    for callee in callees {
+                        if !reachable.contains(callee) {
+                            reachable.insert(callee.clone());
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Identify dead functions
+        let mut dead_functions = Vec::new();
+        
+        for (qualified_name, (file_path, line)) in &all_functions {
+            if !reachable.contains(qualified_name) {
+                let function_name = qualified_name.split("::").last().unwrap().to_string();
+                dead_functions.push(DeadCodeItem {
+                    node_key: 0, // Not used in this implementation
+                    name: function_name,
+                    file_path: file_path.clone(),
+                    line_number: *line,
+                    dead_type: DeadCodeType::UnusedFunction,
+                    confidence: 0.95,
+                    reason: "Not reachable from any entry point".to_string(),
+                });
+            }
+        }
+
+        let total_functions = all_functions.len();
+        let dead_count = dead_functions.len();
+        let percentage_dead = if total_functions > 0 {
+            (dead_count as f32 / total_functions as f32) * 100.0
+        } else {
+            0.0
+        };
+
+        Ok(DeadCodeReport {
+            dead_functions,
+            dead_classes: Vec::new(),
+            dead_variables: Vec::new(),
+            unreachable_code: Vec::new(),
+            summary: DeadCodeSummary {
+                total_dead_code_lines: dead_count * 5, // Estimate
+                percentage_dead,
+                dead_by_type: HashMap::new(),
+                confidence_level: 0.85,
+            },
+        })
+    }
+
     /// Analyze dead code with ranking functionality
+    ///
+    /// Performs comprehensive dead code analysis on a project directory,
+    /// identifying unused functions, classes, and other code elements.
+    /// Returns ranked results with scoring and filtering capabilities.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::dead_code_analyzer::DeadCodeAnalyzer;
+    /// use pmat::models::dead_code::DeadCodeAnalysisConfig;
+    /// use std::path::Path;
+    /// use tempfile::TempDir;
+    /// use std::fs;
+    ///
+    /// # tokio_test::block_on(async {
+    /// let temp_dir = TempDir::new().unwrap();
+    /// let test_file = temp_dir.path().join("test.rs");
+    /// fs::write(&test_file, r#"
+    /// fn used_function() -> i32 { 42 }
+    /// fn unused_function() -> i32 { 100 }
+    /// fn main() { println!("{}", used_function()); }
+    /// "#).unwrap();
+    ///
+    /// let mut analyzer = DeadCodeAnalyzer::new(1000);
+    /// let config = DeadCodeAnalysisConfig::default();
+    /// let result = analyzer.analyze_with_ranking(temp_dir.path(), config).await.unwrap();
+    ///
+    /// assert!(result.summary.total_files_analyzed > 0);
+    /// # });
+    /// ```
     pub async fn analyze_with_ranking(
         &mut self,
         project_path: &Path,
@@ -516,14 +726,14 @@ impl DeadCodeAnalyzer {
         // Track total files analyzed
         let total_files_in_project = project_context.files.len();
 
-        // 2. Convert to AstDag format
-        let dag = crate::services::dag_builder::DagBuilder::build_from_project(&project_context);
+        // 2. (DAG building not needed for this implementation)
 
-        // 3. Perform dead code analysis using the dependency graph
-        let report = self.analyze_dependency_graph(&dag);
+        // 3. Perform dead code analysis using the project context directly
+        let report = self.analyze_project_context(&project_context)?;
 
         // 4. Aggregate by file and create ranking metrics
         let mut file_metrics = self.aggregate_by_file(&report, &project_context, &config)?;
+        
 
         // 5. Calculate scores and sort
         for metrics in &mut file_metrics {
