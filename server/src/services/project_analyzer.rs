@@ -15,13 +15,13 @@ impl Project {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::services::project_analyzer::Project;
     /// use std::path::Path;
     ///
     /// let project = Project::new(Path::new(".")).unwrap();
     /// assert_eq!(project.root(), Path::new("."));
-    /// ```ignore
+    /// ```
     pub fn new(root: &Path) -> Result<Self> {
         Ok(Self {
             root: root.to_path_buf(),
