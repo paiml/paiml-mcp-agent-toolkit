@@ -137,9 +137,9 @@ async fn main() -> Result<()> {
     }
     
     // Final Report
-    println!("\n" + "=".repeat(50).as_str());
+    println!("\n{}", "=".repeat(50));
     println!("📊 QUALITY GATE SUMMARY");
-    println!("=".repeat(50).as_str());
+    println!("{}", "=".repeat(50));
     
     let passed_checks = report.checks.values().filter(|c| c.passed).count();
     let total_checks = report.checks.len();
