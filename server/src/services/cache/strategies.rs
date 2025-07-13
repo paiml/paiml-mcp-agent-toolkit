@@ -23,7 +23,7 @@ use std::time::{Duration, UNIX_EPOCH};
 ///
 /// # Examples
 ///
-/// ```rust,ignore
+/// ```rust
 /// use pmat::services::cache::strategies::AstCacheStrategy;
 /// use pmat::services::cache::base::CacheStrategy;
 /// use pmat::services::context::FileContext;
@@ -46,6 +46,7 @@ use std::time::{Duration, UNIX_EPOCH};
 ///     path: file_path.to_string_lossy().to_string(),
 ///     items: vec![],
 ///     language: "rust".to_string(),
+///     complexity_metrics: None,
 /// };
 ///
 /// // Should validate if file exists and hasn't changed
@@ -54,7 +55,7 @@ use std::time::{Duration, UNIX_EPOCH};
 /// // TTL should be 5 minutes
 /// assert_eq!(strategy.ttl().unwrap().as_secs(), 300);
 /// assert_eq!(strategy.max_size(), 100);
-/// ```ignore
+/// ```
 #[derive(Clone)]
 pub struct AstCacheStrategy;
 
@@ -208,7 +209,7 @@ impl CacheStrategy for TemplateCacheStrategy {
 ///
 /// # Examples
 ///
-/// ```rust,ignore
+/// ```rust
 /// use pmat::services::cache::strategies::DagCacheStrategy;
 /// use pmat::services::cache::base::CacheStrategy;
 /// use pmat::models::dag::DependencyGraph;
@@ -228,7 +229,7 @@ impl CacheStrategy for TemplateCacheStrategy {
 ///
 /// // Create a dummy dependency graph
 /// let dag = DependencyGraph {
-///     nodes: HashMap::new(),
+///     nodes: rustc_hash::FxHashMap::default(),
 ///     edges: vec![],
 /// };
 ///
@@ -239,7 +240,7 @@ impl CacheStrategy for TemplateCacheStrategy {
 /// // TTL should be 3 minutes
 /// assert_eq!(strategy.ttl().unwrap().as_secs(), 180);
 /// assert_eq!(strategy.max_size(), 20);
-/// ```ignore
+/// ```
 #[derive(Clone)]
 pub struct DagCacheStrategy;
 
