@@ -118,10 +118,22 @@ impl FileDeadCodeMetrics {
     /// Add a dead code item
     pub fn add_item(&mut self, item: DeadCodeItem) {
         match item.item_type {
-            DeadCodeType::Function => self.dead_functions += 1,
-            DeadCodeType::Class => self.dead_classes += 1,
-            DeadCodeType::Variable => self.dead_modules += 1, // Using modules for variables for now
-            DeadCodeType::UnreachableCode => self.unreachable_blocks += 1,
+            DeadCodeType::Function => {
+                self.dead_functions += 1;
+                self.dead_lines += 10; // Estimate 10 lines per function
+            }
+            DeadCodeType::Class => {
+                self.dead_classes += 1;
+                self.dead_lines += 10; // Estimate 10 lines per class
+            }
+            DeadCodeType::Variable => {
+                self.dead_modules += 1; // Using modules for variables for now
+                self.dead_lines += 1; // Estimate 1 line per variable
+            }
+            DeadCodeType::UnreachableCode => {
+                self.unreachable_blocks += 1;
+                self.dead_lines += 3; // Estimate 3 lines per unreachable block
+            }
         }
         self.items.push(item);
     }

@@ -30,6 +30,7 @@ async fn main() -> anyhow::Result<()> {
     let config = SimpleAnalysisConfig {
         project_path: project_path.to_path_buf(),
         include_features: vec!["all".to_string()],
+        include_patterns: vec![],
         exclude_patterns: vec![],
         enable_verbose: false,
     };

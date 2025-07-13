@@ -10,7 +10,7 @@
 
 **Zero-configuration AI context generation system** that analyzes any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com) with extreme quality standards and zero tolerance for technical debt.
 
-> **Toyota Way Success**: Achieved 84% complexity reduction through disciplined Kaizen refactoring. Project now meets the highest possible quality standards with 0 violations, 0 max complexity, 0 SATD comments, 0 failing doctests, and 0 failing property tests ✅
+> **Toyota Way Success**: Achieved 84% complexity reduction through disciplined Kaizen refactoring. Project now meets the highest possible quality standards with 0 violations, 0 max complexity, 0 SATD comments, 0 failing doctests, 0 failing property tests, and 64+ comprehensive property tests across all major components ✅
 
 ## 🚀 Installation
 
@@ -150,7 +150,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 # Zero-configuration context generation
 pmat context                                    # Auto-detects language
 pmat context --format json                     # JSON output
-pmat context rust                              # Force language
+pmat context -t rust                           # Force toolchain
+pmat context --skip-expensive-metrics          # Fast mode
 
 # Code analysis
 pmat analyze complexity --top-files 5         # Complexity analysis
@@ -162,6 +163,8 @@ pmat analyze dead-code --fail-on-violation --max-percentage 10  # CI/CD mode
 pmat analyze satd --top-files 10              # Technical debt
 pmat analyze satd --strict --fail-on-violation  # Zero tolerance for debt
 pmat analyze deep-context --format json       # Comprehensive analysis
+pmat analyze deep-context --full               # Full detailed report
+pmat analyze deep-context --include-pattern "*.rs" # Filter by file pattern
 pmat analyze big-o                            # Big-O complexity analysis
 pmat analyze makefile-lint                    # Makefile quality linting
 pmat analyze proof-annotations                # Provability analysis
