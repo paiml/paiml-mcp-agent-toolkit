@@ -31,6 +31,7 @@ lru = { version = "0.14", features = ["hashbrown"] }
 # Error handling
 thiserror = "2.0"
 anyhow = "1.0"
+tempfile = "3.8"
 
 # Logging
 tracing = { version = "0.1", default-features = false, features = ["std"] }

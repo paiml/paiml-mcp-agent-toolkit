@@ -396,10 +396,54 @@ impl GitCloner {
             .collect()
     }
 
-    pub async fn check_repo_size(&self, _parsed_url: &ParsedGitHubUrl) -> Result<u64> {
-        // This would require GitHub API access
-        // For now, return a dummy value
-        Ok(0)
+    pub async fn check_repo_size(&self, parsed_url: &ParsedGitHubUrl) -> Result<u64> {
+        use anyhow::anyhow;
+        use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, USER_AGENT};
+        
+        // Build GitHub API URL
+        let api_url = format!(
+            "https://api.github.com/repos/{}/{}",
+            parsed_url.owner, parsed_url.repo
+        );
+        
+        // Create HTTP client with headers
+        let client = reqwest::Client::new();
+        let mut headers = HeaderMap::new();
+        headers.insert(USER_AGENT, HeaderValue::from_static("pmat-cli"));
+        headers.insert(ACCEPT, HeaderValue::from_static("application/vnd.github.v3+json"));
+        
+        // Add auth token if available
+        if let Ok(token) = std::env::var("GITHUB_TOKEN") {
+            headers.insert(
+                AUTHORIZATION,
+                HeaderValue::from_str(&format!("token {}", token))?,
+            );
+        }
+        
+        // Make API request
+        let response = client
+            .get(&api_url)
+            .headers(headers)
+            .send()
+            .await?;
+            
+        if !response.status().is_success() {
+            return Err(anyhow!(
+                "GitHub API request failed with status: {}",
+                response.status()
+            ));
+        }
+        
+        // Parse response
+        #[derive(serde::Deserialize)]
+        struct RepoInfo {
+            size: u64, // Size in KB from GitHub API
+        }
+        
+        let repo_info: RepoInfo = response.json().await?;
+        
+        // Convert KB to bytes
+        Ok(repo_info.size * 1024)
     }
 }
 
