@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed HashMap mutability issue in demo assets preventing crates.io installation
+- Eliminated all 51+ stub implementations across the codebase
+- Fixed hardcoded values in quality gate checks (dead code, entropy, provability)
+- Implemented real GitHub API integration for repository size checking
+- Fixed dead code prover function name extraction
+- Fixed all clippy warnings to ensure `make lint` passes
+
+### Added
+- HTTP and MCP protocol support for SATD analysis
+- HTTP and MCP protocol support for lint-hotspot analysis
+- Unified `make test` command that runs all test types
+- Comprehensive test coverage in GitHub Actions
+
+### Changed
+- Consolidated testing into single `make test` command (runs test-fast, test-doc, test-property, test-examples)
+- Enabled property tests in CI (previously disabled)
+- Simplified GitHub Actions workflow to use unified test command
+- Applied DRY principle across all protocol implementations
+
+### Documentation
+- Added comprehensive QA report documenting implementation status
+- Updated CLAUDE.md to reflect simplified testing approach
+- Added stub elimination update documentation
 
 ## [0.29.3] - 2025-01-13
 

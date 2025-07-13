@@ -540,8 +540,18 @@ make coverage       # Generate coverage report
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes following our Zero Tolerance Quality Standards
-4. Run `make lint` and `make test-fast` before committing
+4. Run quality checks before committing:
+   ```bash
+   make lint  # Check code quality
+   make test  # Run all tests (fast, doctests, property tests, examples)
+   ```
 5. Submit a pull request with a clear description of changes
+
+**Note**: The `make test` command runs comprehensive testing including:
+- ⚡ Fast unit and integration tests
+- 📚 Documentation tests (doctests)
+- 🎲 Property-based tests
+- 📘 All cargo examples
 
 See [CONTRIBUTING.md](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/CONTRIBUTING.md) for detailed guidelines.
 
