@@ -233,14 +233,14 @@ thread_local! {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::unified_protocol::{Protocol, error::{set_protocol_context, clear_protocol_context}};
 ///
 /// set_protocol_context(Protocol::Http);
 /// // Protocol context is now set to HTTP
 /// clear_protocol_context();
 /// // Protocol context is now cleared
-/// ```ignore
+/// ```
 pub fn set_protocol_context(protocol: Protocol) {
     CURRENT_PROTOCOL.with(|p| p.set(Some(protocol)));
 }
@@ -249,13 +249,13 @@ pub fn set_protocol_context(protocol: Protocol) {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use pmat::unified_protocol::{Protocol, error::{set_protocol_context, clear_protocol_context}};
 ///
 /// set_protocol_context(Protocol::Mcp);
 /// clear_protocol_context();
 /// // Protocol context is now None
-/// ```ignore
+/// ```
 pub fn clear_protocol_context() {
     CURRENT_PROTOCOL.with(|p| p.set(None));
 }
