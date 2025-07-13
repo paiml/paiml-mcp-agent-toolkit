@@ -90,8 +90,8 @@ impl ReachabilityAnalyzer {
     }
 
     fn extract_function_name(&self, _node: &UnifiedAstNode) -> Option<String> {
-        // Simplified name extraction - would need proper AST traversal
-        // For now, return None to avoid false positives in tests
+        // The new UnifiedAstNode doesn't have a direct name field
+        // Would need to extract from metadata or use a different approach
         None
     }
 

@@ -257,8 +257,8 @@ pub async fn handle_analyze_defect_prediction(
     perf: bool,
     top_files: usize,
 ) -> Result<()> {
-    // Delegate to stub implementation for now - will be fully extracted later
-    super::super::stubs::handle_analyze_defect_prediction(
+    // Delegate to the real implementation
+    crate::cli::analysis::defect_prediction::handle_analyze_defect_prediction(
         project_path,
         confidence_threshold.unwrap_or(0.5) as f32,
         min_lines.unwrap_or(100),

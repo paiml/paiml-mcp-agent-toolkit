@@ -67,7 +67,7 @@ jobs:
           make lint
           make check
           cargo build --release --manifest-path server/Cargo.toml --bin pmat
-          make test-unit
+          make test
           echo "passed=true" >> $GITHUB_OUTPUT
       
       - name: Upload binary artifact
@@ -133,7 +133,7 @@ jobs:
   property-tests:
     name: Property Tests
     needs: ci
-    if: false # TEMPORARILY DISABLED for faster CI
+    if: needs.ci.result == 'success'
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4

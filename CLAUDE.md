@@ -74,10 +74,14 @@ After making **any** code changes, you **MUST** run the following commands from 
 
 ```bash
 make lint
-make test-fast
-make test-doc
-cargo test property
+make test
 ```
+
+The `make test` command runs all required tests:
+- `make test-fast` - Fast unit and integration tests
+- `make test-doc` - All doctests
+- `make test-property` - Property-based tests
+- `make test-examples` - All cargo examples
 
 ## Quality Standards (Toyota Way Excellence Achieved)
 
