@@ -32,7 +32,7 @@ impl McpResponse {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::mcp::McpResponse;
     /// use serde_json::json;
     ///
@@ -58,7 +58,7 @@ impl McpResponse {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::models::mcp::McpResponse;
     /// use serde_json::json;
     ///
