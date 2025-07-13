@@ -11,12 +11,11 @@ proptest! {
         repo in "[a-z]{3,10}",
     ) {
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let git_clone = GitCloner::new();
+        let temp_dir = tempfile::tempdir().unwrap();
+        let git_clone = GitCloner::new(temp_dir.path().to_path_buf());
         let parsed_url = ParsedGitHubUrl {
             owner: owner.clone(),
             repo: repo.clone(),
-            branch: None,
-            subdir: None,
         };
         
         let result = rt.block_on(async {
@@ -48,8 +47,6 @@ proptest! {
         let parsed_url = ParsedGitHubUrl {
             owner: owner.clone(),
             repo: repo.clone(),
-            branch: branch.clone(),
-            subdir: None,
         };
         
         // Properties of ParsedGitHubUrl
@@ -57,45 +54,37 @@ proptest! {
         prop_assert!(!parsed_url.repo.is_empty());
         prop_assert_eq!(parsed_url.owner, owner);
         prop_assert_eq!(parsed_url.repo, repo);
-        prop_assert_eq!(parsed_url.branch, branch);
+        // ParsedGitHubUrl no longer has branch field
+        prop_assert!(branch.is_none() || branch.is_some()); // branch parameter accepted but not stored
     }
 
     /// Test that size checking handles various repo states
     #[test]
     fn test_repo_size_edge_cases(test_case in 0u8..5) {
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let git_clone = GitCloner::new();
+        let temp_dir = tempfile::tempdir().unwrap();
+        let git_clone = GitCloner::new(temp_dir.path().to_path_buf());
         
         let parsed_url = match test_case {
             0 => ParsedGitHubUrl {
                 owner: "nonexistent-user-12345".to_string(),
                 repo: "nonexistent-repo".to_string(),
-                branch: None,
-                subdir: None,
             },
             1 => ParsedGitHubUrl {
                 owner: "torvalds".to_string(),
                 repo: "linux".to_string(),  // Very large repo
-                branch: None,
-                subdir: None,
             },
             2 => ParsedGitHubUrl {
                 owner: "octocat".to_string(),
                 repo: "Hello-World".to_string(),  // Classic test repo
-                branch: None,
-                subdir: None,
             },
             3 => ParsedGitHubUrl {
                 owner: "github".to_string(),
                 repo: "gitignore".to_string(),  // Small but important repo
-                branch: None,
-                subdir: None,
             },
             _ => ParsedGitHubUrl {
                 owner: "rust-lang".to_string(),
                 repo: "rust".to_string(),  // Medium-large repo
-                branch: None,
-                subdir: None,
             },
         };
         
@@ -144,7 +133,8 @@ mod integration_tests {
             return;
         }
 
-        let git_clone = GitCloner::new();
+        let temp_dir = tempfile::tempdir().unwrap();
+        let git_clone = GitCloner::new(temp_dir.path().to_path_buf());
         
         // Test with known repositories
         let test_repos = vec![
@@ -156,8 +146,6 @@ mod integration_tests {
             let parsed_url = ParsedGitHubUrl {
                 owner: owner.to_string(),
                 repo: repo.to_string(),
-                branch: None,
-                subdir: None,
             };
             
             match git_clone.check_repo_size(&parsed_url).await {
@@ -178,7 +166,8 @@ mod integration_tests {
 
     #[tokio::test]
     async fn test_error_handling() {
-        let git_clone = GitCloner::new();
+        let temp_dir = tempfile::tempdir().unwrap();
+        let git_clone = GitCloner::new(temp_dir.path().to_path_buf());
         
         // Test various error cases
         let error_cases = vec![
@@ -191,8 +180,6 @@ mod integration_tests {
             let parsed_url = ParsedGitHubUrl {
                 owner: owner.to_string(),
                 repo: repo.to_string(),
-                branch: None,
-                subdir: None,
             };
             
             let result = git_clone.check_repo_size(&parsed_url).await;

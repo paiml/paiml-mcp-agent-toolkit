@@ -43,7 +43,8 @@ async fn main() -> Result<()> {
         return Ok(());
     }
     
-    let git_clone = GitCloner::new();
+    let temp_dir = tempfile::tempdir()?;
+    let git_clone = GitCloner::new(temp_dir.path().to_path_buf());
     let mut total_size = 0u64;
     
     println!("Checking {} repositories...\n", repos.len());
@@ -52,8 +53,6 @@ async fn main() -> Result<()> {
         let parsed_url = ParsedGitHubUrl {
             owner: owner.clone(),
             repo: repo.clone(),
-            branch: None,
-            subdir: None,
         };
         
         print!("📊 {}/{}... ", owner, repo);
