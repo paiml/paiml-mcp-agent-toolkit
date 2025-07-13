@@ -90,7 +90,7 @@ pub async fn handle_analyze_deep_context(
     period_days: u32,
     _dag_type: Option<DagType>,
     _max_depth: Option<usize>,
-    _include_patterns: Vec<String>,
+    include_patterns: Vec<String>,
     exclude_patterns: Vec<String>,
     _cache_strategy: Option<String>,
     _parallel: bool,
@@ -124,6 +124,7 @@ pub async fn handle_analyze_deep_context(
     let config = SimpleAnalysisConfig {
         project_path: project_path.clone(),
         include_features,
+        include_patterns,
         exclude_patterns: combined_exclude,
         enable_verbose: verbose,
     };

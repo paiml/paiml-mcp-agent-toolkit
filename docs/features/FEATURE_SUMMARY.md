@@ -39,11 +39,13 @@ This document provides a comprehensive summary of all features implemented in PM
 - Risk level classification
 
 #### **Dead Code Detection** (`analyze dead-code`)
-- Unused function detection
+- Unused function detection with AST-based reachability analysis
+- Entry point detection (main functions, public APIs)
+- Function call tracing and dependency graph analysis
 - Unreachable code identification
-- Unused imports and variables
-- Ranking by impact
-- Test code filtering
+- File-level aggregation with scoring
+- Exit status support for CI/CD integration (`--fail-on-violation`)
+- Comprehensive property testing (9 tests) and full integration (CLI, MCP, Quality Gates)
 
 #### **SATD Detection** (`analyze satd`)
 - Self-admitted technical debt identification

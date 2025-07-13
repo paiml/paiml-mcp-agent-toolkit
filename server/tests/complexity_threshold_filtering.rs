@@ -12,48 +12,157 @@ use tempfile::TempDir;
 /// Create a test file with known complexity values
 fn create_test_file(dir: &TempDir, name: &str, complexity: u16) -> std::path::PathBuf {
     let path = dir.path().join(name);
-    let content = if complexity <= 5 {
-        // Simple function
-        String::from(r#"
+    let content = match complexity {
+        1..=5 => {
+            // Simple function (complexity 1)
+            String::from(r#"
 fn simple_function(x: i32) -> i32 {
     x + 1
 }
 "#)
-    } else if complexity <= 15 {
-        // Medium complexity function
-        String::from(r#"
+        }
+        6..=10 => {
+            // Medium complexity function (complexity ~8)
+            String::from(r#"
 fn medium_function(x: i32) -> i32 {
     if x > 0 {
         if x > 10 {
-            x * 2
+            if x > 20 {
+                x * 3
+            } else {
+                x * 2
+            }
         } else {
             x + 1
         }
     } else if x < 0 {
-        -x
+        if x < -10 {
+            -x * 2
+        } else {
+            -x
+        }
     } else {
         0
     }
 }
 "#)
+        }
+        11..=15 => {
+            // Higher complexity function (complexity ~14)
+            String::from(r#"
+fn high_function(x: i32) -> i32 {
+    if x > 0 {
+        if x > 10 {
+            if x > 20 {
+                if x > 30 {
+                    x * 4
+                } else {
+                    x * 3
+                }
+            } else {
+                x * 2
+            }
+        } else if x > 5 {
+            x + 10
+        } else {
+            x + 1
+        }
+    } else if x < 0 {
+        if x < -10 {
+            if x < -20 {
+                -x * 3
+            } else {
+                -x * 2
+            }
+        } else {
+            -x
+        }
     } else {
-        // High complexity function - generate nested conditions
-        format!(r#"
-fn complex_function(x: i32) -> i32 {{
-    let mut result = x;
+        match x {
+            0 => 0,
+            _ => unreachable!(),
+        }
+    }
+}
+"#)
+        }
+        16..=20 => {
+            // Very high complexity function (complexity ~16)
+            String::from(r#"
+fn very_high_function(x: i32) -> i32 {
+    if x > 0 {
+        if x > 10 {
+            if x > 20 {
+                if x > 30 {
+                    if x > 40 {
+                        x * 5
+                    } else {
+                        x * 4
+                    }
+                } else {
+                    x * 3
+                }
+            } else {
+                x * 2
+            }
+        } else if x > 5 {
+            if x > 7 {
+                x + 20
+            } else {
+                x + 10
+            }
+        } else {
+            x + 1
+        }
+    } else if x < 0 {
+        if x < -10 {
+            if x < -20 {
+                if x < -30 {
+                    -x * 4
+                } else {
+                    -x * 3
+                }
+            } else {
+                -x * 2
+            }
+        } else {
+            -x
+        }
+    } else {
+        match x {
+            0 => 0,
+            _ => unreachable!(),
+        }
+    }
+}
+"#)
+        }
+        21..=25 => {
+            // Extremely high complexity function (complexity ~25)
+            let if_statements = (0..15).map(|i| {
+                format!("    if x == {} {{\n        return {};\n    }}", i, i * 2)
+            }).collect::<Vec<_>>().join("\n");
+            
+            format!(r#"
+fn extremely_complex_function(x: i32) -> i32 {{
 {}
-    result
+    x
 }}
-"#, 
-            (0..complexity / 3).map(|i| {
-                format!("    if result > {} {{
-        result = result * {};
-        if result % {} == 0 {{
-            result = result / {};
-        }}
-    }}", i, i + 1, i + 2, i + 2)
-            }).collect::<Vec<_>>().join("\n")
-        )
+"#, if_statements)
+        }
+        _ => {
+            // Ultra high complexity function - generate many linear if statements
+            let if_statements = (0..complexity.saturating_sub(1)).map(|i| {
+                format!("    if x == {} {{\n        return {};\n    }}", i, i * 2)
+            }).collect::<Vec<_>>().join("\n");
+            
+            format!(r#"
+fn ultra_complex_function(x: i32) -> i32 {{
+{}
+    x
+}}
+"#, if_statements)
+        }
     };
     
     fs::write(&path, content).unwrap();
@@ -158,5 +267,5 @@ fn test_no_files_above_threshold() {
     
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Files analyzed: 0"));
+        .stdout(predicate::str::contains("**Files analyzed**: 0"));
 }

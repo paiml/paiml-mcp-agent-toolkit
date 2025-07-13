@@ -135,19 +135,22 @@ Examples:
 Generate comprehensive project context for AI understanding.
 
 ```bash
-pmat context [OPTIONS] <PATH>
+pmat context [OPTIONS]
 
 Options:
-  --format <FORMAT>           Output format (markdown, json, yaml)
-  --include-dependencies      Include dependency analysis
-  --max-depth <DEPTH>         Maximum analysis depth
-  --exclude <PATTERNS>        Exclude patterns (comma-separated)
-  --language <LANG>           Force specific language detection
+  -t, --toolchain <TOOLCHAIN>    Target toolchain (auto-detected if not specified)
+  -p, --project-path <PATH>      Project path to analyze (default: .)
+  -o, --output <FILE>            Output file path
+  --format <FORMAT>              Output format (markdown, json, yaml) (default: markdown)
+  --include-large-files          Include large files (>500KB) that are normally skipped
+  --skip-expensive-metrics       Skip expensive metrics (TDG, complexity analysis) for faster execution
 
 Examples:
-  pmat context . --format markdown
-  pmat context ./src --include-dependencies
-  pmat context . --exclude "tests,examples" --max-depth 3
+  pmat context                                   # Analyze current directory
+  pmat context --format json                     # JSON output
+  pmat context -p ./src --output context.md      # Analyze specific path
+  pmat context --skip-expensive-metrics          # Fast mode for large projects
+  pmat context --include-large-files             # Include large files in analysis
 ```
 
 #### `demo`
@@ -393,20 +396,37 @@ Examples:
 ```
 
 #### `analyze deep-context`
-Comprehensive analysis with ML-based defect detection.
+Generate comprehensive deep context analysis with defect detection.
 
 ```bash
-pmat analyze deep-context [OPTIONS] <PATH>
+pmat analyze deep-context [OPTIONS]
 
 Options:
-  --include-ml               Include ML predictions
-  --max-depth <NUM>          Analysis depth
-  --defect-threshold <NUM>   Defect probability threshold
-  --model <MODEL>            ML model to use
+  -p, --project-path <PATH>      Project path to analyze (default: .)
+  -o, --output <FILE>            Output file path
+  --format <FORMAT>              Output format (markdown, json, sarif) (default: markdown)
+  --full                         Enable full detailed report (default is terse)
+  --include <LIST>               Comma-separated list of analyses to include
+  --exclude <LIST>               Comma-separated list of analyses to exclude
+  --period-days <NUM>            Days of history for git analysis (default: 30)
+  --dag-type <TYPE>              DAG type for dependency analysis (call-graph, import-graph, inheritance, full-dependency) (default: call-graph)
+  --max-depth <NUM>              Maximum directory traversal depth
+  --include-pattern <PATTERNS>   Include file patterns (can be specified multiple times)
+  --exclude-pattern <PATTERNS>   Exclude file patterns (can be specified multiple times)
+  --cache-strategy <STRATEGY>    Cache usage strategy (normal, force-refresh, offline) (default: normal)
+  --parallel                     Enable parallel processing
+  --verbose                      Enable verbose logging
+  --top-files <NUM>              Number of top files to show in summary (default: 10)
 
 Examples:
-  pmat analyze deep-context . --include-ml
-  pmat analyze deep-context ./src --max-depth 5 --format json
+  pmat analyze deep-context                          # Basic analysis of current directory
+  pmat analyze deep-context --full                   # Full detailed analysis
+  pmat analyze deep-context --format json            # JSON output for tool integration
+  pmat analyze deep-context --output report.md       # Save to file
+  pmat analyze deep-context --period-days 90         # Analyze 90 days of git history
+  pmat analyze deep-context --include-pattern "*.rs" # Only analyze Rust files
+  pmat analyze deep-context --exclude-pattern "**/tests/**" # Exclude test directories
+  pmat analyze deep-context --top-files 20           # Show top 20 files by complexity
 ```
 
 #### `analyze tdg`

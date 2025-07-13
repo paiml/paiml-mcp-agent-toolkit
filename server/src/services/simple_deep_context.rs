@@ -15,6 +15,7 @@ pub struct SimpleDeepContext;
 pub struct SimpleAnalysisConfig {
     pub project_path: PathBuf,
     pub include_features: Vec<String>,
+    pub include_patterns: Vec<String>,
     pub exclude_patterns: Vec<String>,
     pub enable_verbose: bool,
 }
@@ -68,6 +69,7 @@ impl SimpleDeepContext {
     /// let config = SimpleAnalysisConfig {
     ///     project_path: PathBuf::from("./my-rust-project"),
     ///     include_features: vec![],
+    ///     include_patterns: vec![],
     ///     exclude_patterns: vec![],
     ///     enable_verbose: false,
     /// };
@@ -100,7 +102,7 @@ impl SimpleDeepContext {
         info!("📂 Project path: {}", config.project_path.display());
 
         // Phase 1: File discovery
-        let source_files = self.discover_source_files(&config.project_path).await?;
+        let source_files = self.discover_source_files(&config).await?;
         info!("📁 Discovered {} source files", source_files.len());
 
         // Phase 2: Basic analysis
@@ -125,7 +127,7 @@ impl SimpleDeepContext {
     }
 
     /// Discover source files in the project
-    async fn discover_source_files(&self, project_path: &PathBuf) -> Result<Vec<PathBuf>> {
+    async fn discover_source_files(&self, config: &SimpleAnalysisConfig) -> Result<Vec<PathBuf>> {
         use walkdir::WalkDir;
 
         let source_extensions = ["rs", "js", "ts", "jsx", "tsx", "py", "cpp", "c", "h"];
@@ -134,10 +136,10 @@ impl SimpleDeepContext {
         let mut files = Vec::new();
 
         // Resolve the project path to an absolute path
-        let abs_project_path = if project_path.is_absolute() {
-            project_path.clone()
+        let abs_project_path = if config.project_path.is_absolute() {
+            config.project_path.clone()
         } else {
-            std::env::current_dir()?.join(project_path)
+            std::env::current_dir()?.join(&config.project_path)
         };
 
         info!("🔍 Searching for files in: {}", abs_project_path.display());
@@ -166,7 +168,24 @@ impl SimpleDeepContext {
             // Check extensions
             if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
                 if source_extensions.contains(&ext) {
-                    files.push(path.to_path_buf());
+                    // Apply include patterns if specified
+                    if !config.include_patterns.is_empty() {
+                        let path_str = path.to_string_lossy();
+                        let matches_include = config.include_patterns.iter().any(|pattern| {
+                            // Simple pattern matching - check if filename contains the pattern
+                            if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                                file_name.contains(pattern) || path_str.contains(pattern)
+                            } else {
+                                false
+                            }
+                        });
+                        if matches_include {
+                            files.push(path.to_path_buf());
+                        }
+                    } else {
+                        // No include patterns specified, include all files with valid extensions
+                        files.push(path.to_path_buf());
+                    }
                 }
             }
         }
@@ -257,63 +276,46 @@ impl SimpleDeepContext {
     /// # });
     /// ```
     async fn analyze_file_complexity(&self, file_path: &Path) -> Result<FileComplexityMetrics> {
-        // Use the proper AST-based complexity analysis from the stubs module
-        // This is the ONE implementation for complexity analysis - no heuristics!
-        use crate::cli::stubs::analyze_project_files;
+        // Use the same AST analysis pathway as the complexity command (Toyota Way: ONE implementation)
+        use crate::services::ast_rust::analyze_rust_file_with_complexity;
         
         // Detect the file type based on extension
         let extension = file_path.extension()
             .and_then(|e| e.to_str())
             .unwrap_or("");
             
-        let toolchain = match extension {
-            "rs" => "rust",
-            "py" => "python",
-            "js" | "jsx" | "ts" | "tsx" => "typescript",
-            "cpp" | "c" | "h" | "hpp" => "cpp",
-            _ => "rust", // default
-        };
-        
-        // Create a temporary vector with just this file
-        let include_patterns = vec![file_path.to_string_lossy().to_string()];
-        
-        // Call the unified complexity analyzer
-        let metrics = analyze_project_files(
-            file_path.parent().unwrap_or(std::path::Path::new(".")),
-            Some(toolchain),
-            &include_patterns,
-            20,  // cyclomatic threshold
-            15,  // cognitive threshold
-        ).await?;
-        
-        // Find metrics for this specific file
-        let file_metric = metrics.iter()
-            .find(|m| m.path == file_path.to_string_lossy())
-            .cloned()
-            .unwrap_or_else(|| {
-                // If no metrics found, return empty metrics
-                crate::services::complexity::FileComplexityMetrics {
-                    path: file_path.to_string_lossy().to_string(),
-                    functions: vec![],
-                    total_complexity: crate::services::complexity::ComplexityMetrics::default(),
-                    classes: vec![],
+        let (function_count, high_complexity_functions, avg_complexity) = if extension == "rs" {
+            // Use proper AST complexity analysis for Rust files
+            match analyze_rust_file_with_complexity(file_path).await {
+                Ok(file_complexity_metrics) => {
+                    let functions = &file_complexity_metrics.functions;
+                    let function_count = functions.len();
+                    
+                    if function_count == 0 {
+                        (0, 0, 0.0)
+                    } else {
+                        let high_complexity_functions = functions.iter()
+                            .filter(|f| f.metrics.cyclomatic > 10)
+                            .count();
+                        
+                        let total_cyclomatic: u32 = functions.iter()
+                            .map(|f| f.metrics.cyclomatic as u32)
+                            .sum();
+                        
+                        let avg_complexity = total_cyclomatic as f64 / function_count as f64;
+                        
+                        (function_count, high_complexity_functions, avg_complexity)
+                    }
                 }
-            });
-        
-        // Convert from FileComplexityMetrics to our internal format
-        let function_count = file_metric.functions.len();
-        let high_complexity_functions = file_metric.functions.iter()
-            .filter(|f| f.metrics.cyclomatic > 10)
-            .count();
-        
-        // Calculate average complexity across all functions
-        let total_cyclomatic: u32 = file_metric.functions.iter()
-            .map(|f| f.metrics.cyclomatic as u32)
-            .sum();
-        let avg_complexity = if function_count > 0 {
-            total_cyclomatic as f64 / function_count as f64
+                Err(_) => {
+                    // Return zeros for files that can't be analyzed
+                    (0, 0, 0.0)
+                }
+            }
         } else {
-            0.0
+            // For non-Rust files, return zeros for now
+            // TODO: Add support for other languages using their respective AST analyzers
+            (0, 0, 0.0)
         };
 
         Ok(FileComplexityMetrics {
@@ -364,6 +366,15 @@ impl SimpleDeepContext {
                 "high_complexity_functions": report.complexity_metrics.high_complexity_count,
                 "avg_complexity": report.complexity_metrics.avg_complexity
             },
+            "files": report.file_complexity_details.iter().map(|file| {
+                serde_json::json!({
+                    "path": file.file_path.to_string_lossy(),
+                    "function_count": file.function_count,
+                    "high_complexity_functions": file.high_complexity_functions,
+                    "avg_complexity": file.avg_complexity,
+                    "complexity_score": file.complexity_score
+                })
+            }).collect::<Vec<_>>(),
             "recommendations": report.recommendations
         });
 
@@ -530,6 +541,7 @@ fn complex() {
         let config = SimpleAnalysisConfig {
             project_path: temp_dir.path().to_path_buf(),
             include_features: vec!["all".to_string()],
+            include_patterns: vec![],
             exclude_patterns: vec![],
             enable_verbose: false,
         };
@@ -602,6 +614,7 @@ fn func_{i}() {{
                 let config = SimpleAnalysisConfig {
                     project_path: temp_dir.path().to_path_buf(),
                     include_features: vec![],
+                    include_patterns: vec![],
                     exclude_patterns: vec![],
                     enable_verbose: false,
                 };

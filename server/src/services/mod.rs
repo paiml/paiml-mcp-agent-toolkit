@@ -33,6 +33,8 @@ pub mod context;
 pub mod coupling_analyzer;
 pub mod dag_builder;
 pub mod dead_code_analyzer;
+#[cfg(test)]
+mod dead_code_property_tests;
 pub mod dead_code_prover;
 pub mod deep_context;
 pub mod defect_analyzer;

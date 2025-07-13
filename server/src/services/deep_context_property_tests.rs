@@ -65,6 +65,7 @@ fn complex_function_{}(a: i32, b: i32) {{
             let config = SimpleAnalysisConfig {
                 project_path: temp_dir.path().to_path_buf(),
                 include_features: vec![],
+                include_patterns: vec![],
                 exclude_patterns: vec![],
                 enable_verbose: false,
             };
@@ -152,6 +153,7 @@ async fn analyze_code_complexity(content: &str) -> anyhow::Result<crate::service
     let config = SimpleAnalysisConfig {
         project_path: temp_dir.path().to_path_buf(),
         include_features: vec![],
+        include_patterns: vec![],
         exclude_patterns: vec![],
         enable_verbose: false,
     };

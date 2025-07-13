@@ -131,9 +131,9 @@ fn test_analyze_deep_context_finds_relationships() {
     
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("user"))
-        .stdout(predicate::str::contains("database"))
-        .stdout(predicate::str::contains("api"));
+        .stdout(predicate::str::contains("user.rs"))
+        .stdout(predicate::str::contains("database.rs"))
+        .stdout(predicate::str::contains("api.rs"));
 }
 
 #[test]
@@ -144,12 +144,12 @@ fn test_analyze_deep_context_with_specific_file() {
     // Run analyze deep-context on specific file
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
-        .args(["analyze", "deep-context", "--file", "user.rs", "--format", "json"]);
+        .args(["analyze", "deep-context", "--include-pattern", "user.rs", "--format", "json"]);
     
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("User"))
-        .stdout(predicate::str::contains("email"));
+        .stdout(predicate::str::contains("user.rs"))
+        .stdout(predicate::str::contains("function_count"));
 }
 
 #[test]
@@ -165,7 +165,7 @@ fn test_analyze_deep_context_human_format() {
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("Deep Context Analysis"))
-        .stdout(predicate::str::contains("Files analyzed"));
+        .stdout(predicate::str::contains("**Files Analyzed**"));
 }
 
 #[test]
@@ -200,6 +200,6 @@ fn test_analyze_deep_context_with_output_file() {
     // Verify output file was created
     assert!(output_path.exists());
     let content = fs::read_to_string(&output_path).unwrap();
-    assert!(content.contains("user"));
-    assert!(content.contains("database"));
+    assert!(content.contains("user.rs"));
+    assert!(content.contains("database.rs"));
 }
