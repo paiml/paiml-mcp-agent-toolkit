@@ -396,6 +396,70 @@ impl GitCloner {
             .collect()
     }
 
+    /// Check the size of a GitHub repository using the GitHub API
+    ///
+    /// This function queries the GitHub API to get repository metadata
+    /// and returns the size in kilobytes.
+    ///
+    /// # Arguments
+    /// * `parsed_url` - A parsed GitHub URL containing owner and repo information
+    ///
+    /// # Returns
+    /// The repository size in kilobytes
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use pmat::services::git_clone::{GitCloner, ParsedGitHubUrl};
+    /// # 
+    /// # #[tokio::test]
+    /// # async fn test_repo_size() -> anyhow::Result<()> {
+    /// let git_clone = GitCloner::new();
+    /// let parsed_url = ParsedGitHubUrl {
+    ///     owner: "rust-lang".to_string(),
+    ///     repo: "rust".to_string(),
+    ///     branch: None,
+    ///     subdir: None,
+    /// };
+    /// 
+    /// let size_kb = git_clone.check_repo_size(&parsed_url).await?;
+    /// assert!(size_kb > 0, "Repository should have non-zero size");
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Property Tests
+    ///
+    /// ```no_run
+    /// # use pmat::services::git_clone::{GitCloner, ParsedGitHubUrl};
+    /// # 
+    /// # #[tokio::test]
+    /// # async fn test_repo_size_properties() -> anyhow::Result<()> {
+    /// let git_clone = GitCloner::new();
+    /// 
+    /// // Test with well-known repositories
+    /// let repos = vec![
+    ///     ("rust-lang", "rust"),
+    ///     ("torvalds", "linux"),
+    /// ];
+    /// 
+    /// for (owner, repo) in repos {
+    ///     let parsed_url = ParsedGitHubUrl {
+    ///         owner: owner.to_string(),
+    ///         repo: repo.to_string(),
+    ///         branch: None,
+    ///         subdir: None,
+    ///     };
+    ///     
+    ///     let size = git_clone.check_repo_size(&parsed_url).await?;
+    ///     
+    ///     // Properties: Size should be positive and reasonable
+    ///     assert!(size > 0, "Size should be positive");
+    ///     assert!(size < 10_000_000, "Size should be reasonable (< 10GB)");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn check_repo_size(&self, parsed_url: &ParsedGitHubUrl) -> Result<u64> {
         use anyhow::anyhow;
         use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, USER_AGENT};

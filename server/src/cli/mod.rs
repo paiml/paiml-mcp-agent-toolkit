@@ -593,3 +593,6 @@ pub async fn handle_analyze_comprehensive(
     tracing::info!("Comprehensive analysis not yet implemented (from CLI mod)");
     Ok(())
 }
+
+#[cfg(test)]
+mod stubs_property_tests;

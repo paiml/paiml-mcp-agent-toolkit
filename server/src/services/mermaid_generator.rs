@@ -21,13 +21,13 @@ impl MermaidGenerator {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```rust
     /// use pmat::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
     ///
     /// let options = MermaidOptions::default();
     /// let generator = MermaidGenerator::new(options);
     /// // Generator ready to create Mermaid diagrams
-    /// ```ignore
+    /// ```
     pub fn new(options: MermaidOptions) -> Self {
         Self {
             options,
