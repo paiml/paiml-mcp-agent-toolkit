@@ -3605,6 +3605,16 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
         let entry = entry?;
         let path = entry.path();
 
+        // Skip test files and directories
+        if path.to_string_lossy().contains("/tests/") || 
+           path.to_string_lossy().contains("/test/") ||
+           path.file_name().map_or(false, |f| f.to_string_lossy().ends_with("_test.rs") || 
+                                               f.to_string_lossy().ends_with("_tests.rs") ||
+                                               f.to_string_lossy() == "test.rs" ||
+                                               f.to_string_lossy() == "tests.rs") {
+            continue;
+        }
+
         if path.is_file() && is_source_file(path) {
             if let Ok(content) = tokio::fs::read_to_string(path).await {
                 for (line_no, line) in content.lines().enumerate() {

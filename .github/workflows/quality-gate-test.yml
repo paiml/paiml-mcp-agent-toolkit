@@ -41,6 +41,9 @@ jobs:
             --max-dead-code 15.0 \
             --format human
             
-      - name: Run quality gate with strict mode
+      - name: Run quality gate with all checks
         run: |
-          pmat quality-gate --strict --format json
+          pmat quality-gate \
+            --fail-on-violation \
+            --checks complexity,satd,dead-code,lint,entropy,provability \
+            --format json
