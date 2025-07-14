@@ -262,7 +262,7 @@ impl DebtClassifier {
         let patterns = vec![
             // Only explicit TODO/FIXME/HACK/BUG patterns
             DebtPattern {
-                regex: r"(?i)\b(TODO|FIXME|XXX|BUG|HACK|KLUDGE|REFACTOR):".to_string(),
+                regex: r"(?i)\b(TODO|FIXME|XXX|BUG|HACK|KLUDGE|REFACTOR):\s".to_string(),
                 category: DebtCategory::Requirement,
                 severity: Severity::Low,
                 description: "Explicit SATD marker".to_string(),
