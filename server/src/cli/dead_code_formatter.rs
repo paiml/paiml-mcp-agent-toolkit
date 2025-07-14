@@ -6,7 +6,7 @@
 
 use anyhow::Result;
 use std::path::PathBuf;
-use crate::models::dead_code::{DeadCodeResult, DeadCodeType, ConfidenceLevel};
+use crate::models::dead_code::{DeadCodeResult, DeadCodeType};
 
 /// Trait for dead code report formatters
 pub trait DeadCodeFormatter {
@@ -164,7 +164,7 @@ impl MarkdownFormatter {
             
             for file in &result.files {
                 output.push_str(&format!(
-                    "| {} | {:.1}% | {} | {} | {} | {} |\n",
+                    "| {} | {:.1}% | {} | {} | {} | {:?} |\n",
                     file.path,
                     file.dead_percentage,
                     file.dead_lines,
@@ -210,7 +210,7 @@ impl CsvFormatter {
                 file.dead_classes,
                 file.dead_modules,
                 file.unreachable_blocks,
-                file.confidence,
+                format!("{:?}", file.confidence),
                 file.dead_score
             ));
         }
@@ -237,12 +237,18 @@ impl DeadCodeFormatter for GccFormatter {
 impl GccFormatter {
     fn write_item(&self, output: &mut String, file_path: &str, item: &crate::models::dead_code::DeadCodeItem) {
         let level = self.get_level(&item.item_type);
+        let type_str = match &item.item_type {
+            DeadCodeType::Function => "function",
+            DeadCodeType::Class => "class",
+            DeadCodeType::Variable => "variable",
+            DeadCodeType::UnreachableCode => "unreachable",
+        };
         output.push_str(&format!(
             "{}:{}:0: {}: {} '{}' - {}\n",
             file_path,
             item.line,
             level,
-            item.item_type,
+            type_str,
             item.name,
             item.reason
         ));
@@ -253,8 +259,7 @@ impl GccFormatter {
             DeadCodeType::Function => "warning",
             DeadCodeType::Class => "warning",
             DeadCodeType::Variable => "note",
-            DeadCodeType::Module => "warning",
-            DeadCodeType::UnreachableBlock => "warning",
+            DeadCodeType::UnreachableCode => "warning",
         }
     }
 }
@@ -269,8 +274,7 @@ impl DeadCodeFormatterFactory {
             crate::cli::DeadCodeOutputFormat::Summary => Box::new(SummaryFormatter),
             crate::cli::DeadCodeOutputFormat::Json => Box::new(JsonFormatter),
             crate::cli::DeadCodeOutputFormat::Markdown => Box::new(MarkdownFormatter),
-            crate::cli::DeadCodeOutputFormat::Csv => Box::new(CsvFormatter),
-            crate::cli::DeadCodeOutputFormat::Gcc => Box::new(GccFormatter),
+            crate::cli::DeadCodeOutputFormat::Sarif => Box::new(GccFormatter), // Use GCC formatter for SARIF temporarily
         }
     }
 }
@@ -296,7 +300,7 @@ pub fn format_and_output_dead_code(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::dead_code::{DeadCodeSummary, FileDeadCodeMetrics, DeadCodeItem};
+    use crate::models::dead_code::{DeadCodeSummary, FileDeadCodeMetrics, DeadCodeItem, ConfidenceLevel};
     
     fn create_test_result() -> DeadCodeResult {
         DeadCodeResult {
