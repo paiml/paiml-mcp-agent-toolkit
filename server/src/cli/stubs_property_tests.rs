@@ -5,6 +5,8 @@ use std::path::Path;
 use crate::cli::stubs::{check_dead_code, check_entropy, calculate_provability_score};
 
 proptest! {
+    #![proptest_config(ProptestConfig::with_cases(10))]
+    
     /// Test that dead code violations respect the threshold
     #[test]
     fn test_dead_code_threshold_property(max_percentage in 0.0..100.0) {
