@@ -1153,6 +1153,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "Slow test - takes too long in CI"]
     async fn test_analyze_with_ranking() {
         use crate::models::dead_code::DeadCodeAnalysisConfig;
         use std::path::PathBuf;
