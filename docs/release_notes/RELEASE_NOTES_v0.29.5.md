@@ -80,7 +80,7 @@ cargo install pmat
 
 **Verify Installation:**
 ```bash
-pmat --version  # Should show v0.29.4
+pmat --version  # Should show v0.29.5
 ```
 
 This release represents the culmination of disciplined Toyota Way engineering principles applied to software development, resulting in a dramatically simplified and more maintainable codebase.
