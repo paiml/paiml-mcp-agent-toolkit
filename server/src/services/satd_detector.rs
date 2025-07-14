@@ -782,6 +782,13 @@ impl SATDDetector {
 
     /// Check if a file is a test file
     fn is_test_file(&self, path: &Path) -> bool {
+        // Check if path contains test directories
+        let path_str = path.to_string_lossy();
+        if path_str.contains("/tests/") || path_str.contains("/test/") 
+            || path_str.contains("\\tests\\") || path_str.contains("\\test\\") {
+            return true;
+        }
+        
         if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
             // Common test file patterns
             file_name.contains("test")
