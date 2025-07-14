@@ -65,6 +65,9 @@ Analyze self-admitted technical debt in code comments.
 ### analyze_tdg
 Calculate technical debt gradient based on complexity and churn.
 
+### analyze_lint_hotspot
+Analyze lint violation hotspots to identify files with the most linting issues.
+
 ### analyze_duplicates_vectorized
 Analyze code duplicates using SIMD optimizations.
 
