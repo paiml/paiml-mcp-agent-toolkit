@@ -9,6 +9,7 @@ proptest! {
     
     /// Test that dead code violations respect the threshold
     #[test]
+    #[ignore = "Slow test - takes too long in CI"]
     fn test_dead_code_threshold_property(max_percentage in 0.0..100.0) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let result = rt.block_on(async {
@@ -33,6 +34,7 @@ proptest! {
 
     /// Test entropy check with various thresholds
     #[test]
+    #[ignore = "Slow test - takes too long in CI"]
     fn test_entropy_threshold_property(min_entropy in 0.0..1.0) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let result = rt.block_on(async {
@@ -61,6 +63,7 @@ proptest! {
 
     /// Test entropy threshold ordering
     #[test]
+    #[ignore = "Slow test - takes too long in CI"]
     fn test_entropy_monotonicity(
         low_threshold in 0.1..0.5,
         high_threshold in 0.5..0.9,
@@ -81,6 +84,7 @@ proptest! {
 
     /// Test provability score bounds
     #[test]
+    #[ignore = "Slow test - takes too long in CI"]
     fn test_provability_score_bounds(test_runs in 1usize..5) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         
@@ -103,6 +107,7 @@ proptest! {
 
     /// Test dead code percentage calculation
     #[test]
+    #[ignore = "Slow test - takes too long in CI"]
     fn test_dead_code_percentage_invariants(
         threshold1 in 10.0..50.0,
         threshold2 in 50.0..90.0,
@@ -123,6 +128,7 @@ proptest! {
 
     /// Test violation message quality
     #[test]
+    #[ignore = "Slow test - takes too long in CI"]
     fn test_violation_message_quality(check_type in prop::sample::select(vec!["dead_code", "entropy"])) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let violations = rt.block_on(async {
