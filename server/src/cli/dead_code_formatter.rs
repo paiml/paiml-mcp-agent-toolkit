@@ -348,8 +348,8 @@ mod tests {
         let output = formatter.format(&result).unwrap();
         
         assert!(output.contains("Dead Code Analysis Summary"));
-        assert!(output.contains("Files analyzed: 100"));
-        assert!(output.contains("Dead functions: 15"));
+        assert!(output.contains("**Files analyzed**: 100"));
+        assert!(output.contains("**Dead functions**: 15"));
     }
     
     #[test]
