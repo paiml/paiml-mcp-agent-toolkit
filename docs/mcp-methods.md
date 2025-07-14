@@ -62,9 +62,6 @@ Perform deep contextual analysis of the codebase with defect detection.
 ### analyze_satd
 Analyze self-admitted technical debt in code comments.
 
-### analyze_tdg
-Calculate technical debt gradient based on complexity and churn.
-
 ### analyze_lint_hotspot
 Analyze lint violation hotspots to identify files with the most linting issues.
 
