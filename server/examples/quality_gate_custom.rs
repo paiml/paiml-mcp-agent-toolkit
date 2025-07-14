@@ -32,8 +32,7 @@ async fn main() -> Result<()> {
     
     println!("Running quality gate for: {}\n", project_path.display());
     
-    let mut report = QualityReport::default();
-    report.passed = true; // Assume passing until proven otherwise
+    let mut report = QualityReport { passed: true, ..Default::default() };
     
     // Define custom thresholds
     let dead_code_threshold = 10.0; // Max 10% dead code
@@ -162,7 +161,7 @@ async fn main() -> Result<()> {
         for (check_name, result) in &report.checks {
             if !result.passed {
                 println!("   - {}: {}", check_name, result.message);
-                if result.violations.len() > 0 {
+                if !result.violations.is_empty() {
                     println!("     First few violations:");
                     for violation in result.violations.iter().take(3) {
                         println!("     • {} - {}", violation.file, violation.message);
