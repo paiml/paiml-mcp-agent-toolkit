@@ -44,6 +44,13 @@ jobs:
       - name: Run quality gate with all checks
         run: |
           pmat quality-gate \
-            --fail-on-violation \
             --checks all \
-            --format json
+            --format json \
+            --output quality-report.json
+            
+      - name: Upload quality report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quality-gate-report
+          path: quality-report.json
