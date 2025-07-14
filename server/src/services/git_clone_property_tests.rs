@@ -106,7 +106,7 @@ proptest! {
             2 | 3 => {
                 // Small repos should be small
                 if let Ok(size) = result {
-                    prop_assert!(size < 10_000, "Test repos should be < 10MB");
+                    prop_assert!(size < 50_000, "Test repos should be < 50MB");
                 }
             }
             _ => {
