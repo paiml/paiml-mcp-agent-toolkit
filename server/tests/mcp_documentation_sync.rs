@@ -66,6 +66,9 @@ fn parse_documented_mcp_tools() -> Vec<DocumentedTool> {
         ("generate_context", "Generate project context"),
         ("analyze_dead_code", "Analyze dead code"),
         ("analyze_deep_context", "Analyze deep context"),
+        ("analyze_satd", "Analyze self-admitted technical debt"),
+        ("analyze_tdg", "Calculate technical debt gradient"),
+        ("analyze_lint_hotspot", "Analyze lint violation hotspots"),
         // Vectorized tools
         (
             "analyze_duplicates_vectorized",
