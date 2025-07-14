@@ -1,4 +1,4 @@
-# Release Notes v0.29.4 - Toyota Way Modular Architecture Complete
+# Release Notes v0.29.5 - Toyota Way Modular Architecture Complete
 
 **Release Date:** January 14, 2025  
 **Focus:** Complete Toyota Way Kaizen refactoring with modular architecture
