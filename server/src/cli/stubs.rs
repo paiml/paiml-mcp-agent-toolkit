@@ -3363,14 +3363,12 @@ fn is_source_file(path: &Path) -> bool {
         return false;
     }
     
-    // Exclude test files by name
+    // Exclude test files by name pattern (but not simple test.rs in non-test dirs)
     if let Some(file_name) = path.file_name() {
         let fname = file_name.to_string_lossy();
         if fname.ends_with("_test.rs") || 
            fname.ends_with("_tests.rs") ||
-           fname == "test.rs" ||
-           fname == "tests.rs" ||
-           fname.contains("test_") ||
+           fname.starts_with("test_") ||
            fname.contains("_test_") {
             return false;
         }
@@ -4554,9 +4552,7 @@ pub async fn analyze_project_files(
                 let fname = f.to_string_lossy();
                 fname.ends_with("_test.rs") || 
                 fname.ends_with("_tests.rs") ||
-                fname == "test.rs" ||
-                fname == "tests.rs" ||
-                fname.contains("test_") ||
+                fname.starts_with("test_") ||
                 fname.contains("_test_")
             })
         {
