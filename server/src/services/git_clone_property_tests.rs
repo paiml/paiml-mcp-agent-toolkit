@@ -24,7 +24,7 @@ proptest! {
         
         match result {
             Ok(size) => {
-                prop_assert!(size >= 0, "Repository size should be non-negative");
+                // Size is usize, which is always non-negative by definition
                 // GitHub reports sizes in KB, so even empty repos have some size
                 if owner == "github" && repo == "gitignore" {
                     // Well-known small repo
