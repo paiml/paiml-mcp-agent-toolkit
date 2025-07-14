@@ -149,6 +149,14 @@ async fn main() -> Result<()> {
         if report.passed { "✅ PASSED" } else { "❌ FAILED" }
     );
     
+    // Display scores for checks that have them
+    println!("\n📈 Check scores:");
+    for (check_name, result) in &report.checks {
+        if let Some(score) = result.score {
+            println!("   - {}: {:.2}", check_name, score);
+        }
+    }
+    
     if !report.passed {
         println!("\n📋 Failed checks:");
         for (check_name, result) in &report.checks {
