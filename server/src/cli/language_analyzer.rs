@@ -513,6 +513,6 @@ async fn async_function() {
         
         assert!(metrics.cyclomatic > 1);
         assert!(metrics.cognitive > 0);
-        assert_eq!(metrics.max_nesting, 2);
+        assert_eq!(metrics.nesting_max, 2);
     }
 }
