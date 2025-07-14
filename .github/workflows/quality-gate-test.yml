@@ -1,0 +1,46 @@
+name: Quality Gate Test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  quality-check:
+    name: Run Quality Gate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: Cache cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          
+      - name: Install pmat
+        run: |
+          cargo install --path server --locked
+          
+      - name: Run quality gate
+        run: |
+          pmat quality-gate \
+            --checks complexity,satd,dead-code \
+            --max-complexity-p99 20 \
+            --max-dead-code 15.0 \
+            --format human
+            
+      - name: Run quality gate with strict mode
+        run: |
+          pmat quality-gate --strict --format json
