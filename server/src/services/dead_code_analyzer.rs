@@ -549,7 +549,7 @@ impl DeadCodeAnalyzer {
     /// };
     ///
     /// let result = analyzer.analyze_project_context(&project_context).unwrap();
-    /// assert!(!result.dead_items.is_empty());
+    /// assert!(!result.dead_functions.is_empty() || !result.dead_classes.is_empty() || !result.dead_variables.is_empty());
     /// ```
     pub fn analyze_project_context(
         &mut self,

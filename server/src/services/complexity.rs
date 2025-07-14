@@ -403,11 +403,11 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 ///
 /// // With custom threshold of 20, the function with complexity 25 will be a violation
 /// let report = aggregate_results_with_thresholds(vec![file.clone()], Some(20), None);
-/// assert_eq!(report.violations.len(), 1);
+/// assert_eq!(report.violations.len(), 2); // Both cyclomatic (25) and cognitive (30) exceed 20
 /// assert!(matches!(report.violations[0], Violation::Error { .. }));
 ///
-/// // With threshold of 30, no violations
-/// let report2 = aggregate_results_with_thresholds(vec![file], Some(30), None);
+/// // With cyclomatic threshold of 35 and cognitive threshold of 35, no violations
+/// let report2 = aggregate_results_with_thresholds(vec![file], Some(35), Some(35));
 /// assert_eq!(report2.violations.len(), 0);
 /// ```
 pub fn aggregate_results_with_thresholds(
