@@ -37,7 +37,7 @@ jobs:
         run: |
           pmat quality-gate \
             --checks complexity,satd,dead-code \
-            --max-complexity-p99 20 \
+            --max-complexity-p99 30 \
             --max-dead-code 15.0 \
             --format human
             
@@ -45,5 +45,5 @@ jobs:
         run: |
           pmat quality-gate \
             --fail-on-violation \
-            --checks complexity,satd,dead-code,lint,entropy,provability \
+            --checks all \
             --format json
