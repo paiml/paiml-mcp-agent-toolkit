@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
         "exclude_tests": true,
         "critical_only": false,
         "format": "json"
-    }).to_string());
+    }));
     println!();
     println!("   POST http://localhost:8080/api/v1/analyze/lint-hotspot");
     println!("   Body: {}", json!({
@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
         "top_files": 10,
         "min_violations": 1,
         "format": "json"
-    }).to_string());
+    }));
     println!();
     
     // Example 3: MCP tool usage
@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
         "exclude_tests": true,
         "critical_only": false,
         "format": "summary"
-    }).to_string());
+    }));
     println!();
     println!("   Tool: analyze_lint_hotspot");
     println!("   Arguments: {}", json!({
@@ -63,7 +63,7 @@ async fn main() -> Result<()> {
         "min_violations": 1,
         "include": "**/*.rs",
         "exclude": "**/tests/**"
-    }).to_string());
+    }));
     println!();
     
     // Example 4: Practical integration example
