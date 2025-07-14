@@ -23,7 +23,7 @@ The Model Context Protocol (MCP) implementation in PMAT provides a standardized 
 │  │              Tool Registry               │  │
 │  │  • Template Tools (6)  • Analysis (17) │  │
 │  │  • Vectorized (7)      • Core (4)      │  │
-│  │  • Total: 34 available MCP tools       │  │
+│  │  • Total: 33 available MCP tools       │  │
 │  └──────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────┘
 ```
@@ -114,7 +114,7 @@ All messages follow JSON-RPC 2.0 specification:
 
 ### Available Tools
 
-**Total: 34 MCP Tools Available**
+**Total: 33 MCP Tools Available**
 
 ## Template Management Tools (6 tools)
 
@@ -358,19 +358,7 @@ Comprehensive analysis with defect detection.
 }
 ```
 
-#### 14. `analyze_tdg`
-Technical Debt Gradient analysis.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  strict?: boolean;
-  include_predictions?: boolean;
-}
-```
-
-#### 15. `analyze_makefile_lint`
+#### 14. `analyze_makefile_lint`
 Makefile quality and best practices analysis.
 
 **Parameters:**
@@ -381,7 +369,7 @@ Makefile quality and best practices analysis.
 }
 ```
 
-#### 16. `analyze_provability`
+#### 15. `analyze_provability`
 Abstract interpretation and formal verification analysis.
 
 **Parameters:**
@@ -392,7 +380,7 @@ Abstract interpretation and formal verification analysis.
 }
 ```
 
-#### 17. `analyze_defect_prediction`
+#### 16. `analyze_defect_prediction`
 ML-based defect probability analysis.
 
 **Parameters:**
@@ -404,7 +392,7 @@ ML-based defect probability analysis.
 }
 ```
 
-#### 18. `analyze_comprehensive`
+#### 17. `analyze_comprehensive`
 Multi-dimensional analysis combining all analysis types with tool composition support.
 
 **Parameters:**
@@ -437,7 +425,7 @@ const refactor = await callTool("refactor_auto", {
 });
 ```
 
-#### 19. `analyze_graph_metrics`
+#### 18. `analyze_graph_metrics`
 Graph centrality and network analysis metrics.
 
 **Parameters:**
@@ -448,7 +436,7 @@ Graph centrality and network analysis metrics.
 }
 ```
 
-#### 20. `analyze_name_similarity`
+#### 19. `analyze_name_similarity`
 Name similarity analysis with embeddings.
 
 **Parameters:**
@@ -460,7 +448,7 @@ Name similarity analysis with embeddings.
 }
 ```
 
-#### 21. `analyze_proof_annotations`
+#### 20. `analyze_proof_annotations`
 Collect and analyze proof annotations in code.
 
 **Parameters:**
@@ -471,7 +459,7 @@ Collect and analyze proof annotations in code.
 }
 ```
 
-#### 22. `analyze_incremental_coverage`
+#### 21. `analyze_incremental_coverage`
 Incremental coverage analysis with caching.
 
 **Parameters:**
@@ -483,7 +471,7 @@ Incremental coverage analysis with caching.
 }
 ```
 
-#### 23. `analyze_symbol_table`
+#### 22. `analyze_symbol_table`
 Symbol analysis with cross-references.
 
 **Parameters:**
@@ -495,7 +483,7 @@ Symbol analysis with cross-references.
 }
 ```
 
-#### 24. `analyze_big_o`
+#### 23. `analyze_big_o`
 Algorithmic complexity analysis.
 
 **Parameters:**
@@ -507,7 +495,7 @@ Algorithmic complexity analysis.
 }
 ```
 
-#### 25. `analyze_assemblyscript`
+#### 24. `analyze_assemblyscript`
 AssemblyScript code analysis.
 
 **Parameters:**
@@ -518,7 +506,7 @@ AssemblyScript code analysis.
 }
 ```
 
-#### 26. `analyze_webassembly`
+#### 25. `analyze_webassembly`
 WebAssembly binary and text format analysis.
 
 **Parameters:**
@@ -530,7 +518,7 @@ WebAssembly binary and text format analysis.
 }
 ```
 
-#### 27. `analyze_duplicates`
+#### 26. `analyze_duplicates`
 Duplicate code detection with multiple algorithms.
 
 **Parameters:**
@@ -546,25 +534,25 @@ Duplicate code detection with multiple algorithms.
 
 *High-performance parallel analysis tools using SIMD instructions*
 
-#### 28. `analyze_duplicates_vectorized`
+#### 27. `analyze_duplicates_vectorized`
 SIMD-accelerated duplicate detection.
 
-#### 29. `analyze_graph_metrics_vectorized`
+#### 28. `analyze_graph_metrics_vectorized`
 Vectorized graph analysis with parallel processing.
 
-#### 30. `analyze_name_similarity_vectorized`
+#### 29. `analyze_name_similarity_vectorized`
 SIMD-based name similarity computation.
 
-#### 31. `analyze_symbol_table_vectorized`
+#### 30. `analyze_symbol_table_vectorized`
 Parallel symbol table analysis.
 
-#### 32. `analyze_incremental_coverage_vectorized`
+#### 31. `analyze_incremental_coverage_vectorized`
 Vectorized coverage analysis.
 
-#### 33. `analyze_big_o_vectorized`
+#### 32. `analyze_big_o_vectorized`
 Parallel Big-O complexity analysis.
 
-#### 34. `generate_enhanced_report`
+#### 33. `generate_enhanced_report`
 Generate comprehensive enhanced analysis reports.
 
 **Parameters:**
@@ -701,13 +689,9 @@ class PMATMCPClient:
             "format": "json"
         })
         
-        # Check for technical debt
-        tdg = self.call_tool("analyze_tdg", {"path": path})
-        
         return {
             "context": context,
-            "complexity": complexity,
-            "technical_debt": tdg
+            "complexity": complexity
         }
 ```
 
