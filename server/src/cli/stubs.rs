@@ -3339,10 +3339,44 @@ pub struct QualityViolation {
 
 // Helper function to check if file is source code
 fn is_source_file(path: &Path) -> bool {
-    matches!(
+    // Check if it has a source code extension
+    let has_source_extension = matches!(
         path.extension().and_then(|s| s.to_str()),
         Some("rs" | "js" | "ts" | "py" | "java" | "cpp" | "c")
-    )
+    );
+    
+    if !has_source_extension {
+        return false;
+    }
+    
+    // Exclude test and example files
+    let path_str = path.to_string_lossy();
+    if path_str.contains("/tests/") || 
+       path_str.contains("/test/") ||
+       path_str.contains("/examples/") ||
+       path_str.contains("/benches/") ||
+       path_str.contains("/fixtures/") ||
+       path_str.contains("/testdata/") ||
+       path_str.contains("/test_data/") ||
+       path_str.contains("/debug_test/") ||
+       path_str.contains("/test-") {
+        return false;
+    }
+    
+    // Exclude test files by name
+    if let Some(file_name) = path.file_name() {
+        let fname = file_name.to_string_lossy();
+        if fname.ends_with("_test.rs") || 
+           fname.ends_with("_tests.rs") ||
+           fname == "test.rs" ||
+           fname == "tests.rs" ||
+           fname.contains("test_") ||
+           fname.contains("_test_") {
+            return false;
+        }
+    }
+    
+    true
 }
 
 // Quality check functions
@@ -3604,16 +3638,6 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
     for entry in WalkDir::new(project_path) {
         let entry = entry?;
         let path = entry.path();
-
-        // Skip test files and directories
-        if path.to_string_lossy().contains("/tests/") || 
-           path.to_string_lossy().contains("/test/") ||
-           path.file_name().map_or(false, |f| f.to_string_lossy().ends_with("_test.rs") || 
-                                               f.to_string_lossy().ends_with("_tests.rs") ||
-                                               f.to_string_lossy() == "test.rs" ||
-                                               f.to_string_lossy() == "tests.rs") {
-            continue;
-        }
 
         if path.is_file() && is_source_file(path) {
             if let Ok(content) = tokio::fs::read_to_string(path).await {
@@ -4510,12 +4534,31 @@ pub async fn analyze_project_files(
             }
         }
 
-        // Skip common vendor/build directories
+        // Skip common vendor/build/test/example directories
         let path_str = path.to_string_lossy();
         if path_str.contains("/target/")
             || path_str.contains("/node_modules/")
             || path_str.contains("/.git/")
             || path_str.contains("/vendor/")
+            || path_str.contains("/tests/")
+            || path_str.contains("/test/")
+            || path_str.contains("/examples/")
+            || path_str.contains("/benches/")
+            || path_str.contains("/benchmarks/")
+            || path_str.contains("/fixtures/")
+            || path_str.contains("/testdata/")
+            || path_str.contains("/test_data/")
+            || path_str.contains("/debug_test/")
+            || path_str.contains("/test-")
+            || path.file_name().map_or(false, |f| {
+                let fname = f.to_string_lossy();
+                fname.ends_with("_test.rs") || 
+                fname.ends_with("_tests.rs") ||
+                fname == "test.rs" ||
+                fname == "tests.rs" ||
+                fname.contains("test_") ||
+                fname.contains("_test_")
+            })
         {
             continue;
         }
