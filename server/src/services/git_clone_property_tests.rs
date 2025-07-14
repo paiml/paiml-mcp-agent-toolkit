@@ -60,6 +60,7 @@ proptest! {
 
     /// Test that size checking handles various repo states
     #[test]
+    #[ignore = "Flaky test - depends on external repo sizes that change"]
     fn test_repo_size_edge_cases(test_case in 0u8..5) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let temp_dir = tempfile::tempdir().unwrap();
