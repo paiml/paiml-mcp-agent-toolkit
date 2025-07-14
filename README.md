@@ -3,6 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
 [![Documentation](https://docs.rs/pmat/badge.svg)](https://docs.rs/pmat)
 [![CI/CD](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml)
+[![Quality Gate](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/quality-gate-test.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/quality-gate-test.yml)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Downloads](https://img.shields.io/crates/d/pmat)](https://crates.io/crates/pmat)
