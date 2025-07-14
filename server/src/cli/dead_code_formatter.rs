@@ -201,7 +201,7 @@ impl CsvFormatter {
     fn write_rows(&self, output: &mut String, result: &DeadCodeResult) {
         for file in &result.files {
             output.push_str(&format!(
-                "{},{:.2},{},{},{},{},{},{},{},{:.2}\n",
+                "{},{:.2},{},{},{},{},{},{},{:?},{:.2}\n",
                 file.path,
                 file.dead_percentage,
                 file.dead_lines,
@@ -210,7 +210,7 @@ impl CsvFormatter {
                 file.dead_classes,
                 file.dead_modules,
                 file.unreachable_blocks,
-                format!("{:?}", file.confidence),
+                file.confidence,
                 file.dead_score
             ));
         }
