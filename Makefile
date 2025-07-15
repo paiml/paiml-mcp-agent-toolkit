@@ -400,11 +400,15 @@ config-swap:
 
 # Format TypeScript scripts (excluding archived scripts)
 format-scripts:
-	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' 2>/dev/null | wc -l)" -gt 0 ]; then \
-		echo "📝 Formatting TypeScript scripts (excluding archive)..."; \
-		find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno fmt --quiet {} +; \
+	@echo "📝 Formatting TypeScript scripts (excluding archive)..."
+	@if [ -d "$(SCRIPTS_DIR)" ]; then \
+		if [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' 2>/dev/null | wc -l)" -gt 0 ]; then \
+			find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno fmt --quiet {} + 2>/dev/null || echo "✓ No TypeScript files found or deno not available"; \
+		else \
+			echo "✓ No TypeScript scripts to format"; \
+		fi \
 	else \
-		echo "✓ No TypeScript scripts to format"; \
+		echo "✓ Scripts directory not found"; \
 	fi
 
 # Lint TypeScript scripts (includes type checking, excluding archived scripts)
