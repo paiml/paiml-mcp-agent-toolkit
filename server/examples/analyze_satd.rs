@@ -54,16 +54,18 @@ async fn main() -> Result<()> {
         true,      // Include metrics
         None,
         0,         // Check all files
-        true,      // FAIL ON VIOLATION - exit(1) if ANY debt found
+        false,     // Don't fail on violation in example (to avoid CI failure)
     ).await;
 
     match strict_result {
-        Ok(_) => println!("✅ No technical debt found!"),
+        Ok(_) => println!("✅ SATD analysis completed!"),
         Err(e) => {
-            println!("⚠️  Technical debt detected (expected in demo): {}", e);
-            // In real CI, this would have exited with code 1
+            println!("❌ Analysis failed: {}", e);
+            return Err(e);
         }
     }
+    
+    println!("Note: In real CI, you would use --fail-on-violation to exit(1) on any debt found");
 
     // Example 3: Critical debt only
     println!("\nExample 3: Check for critical technical debt only");
