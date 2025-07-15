@@ -4548,7 +4548,7 @@ pub async fn analyze_project_files(
             || path_str.contains("/test_data/")
             || path_str.contains("/debug_test/")
             || path_str.contains("/test-")
-            || path.file_name().map_or(false, |f| {
+            || path.file_name().is_some_and(|f| {
                 let fname = f.to_string_lossy();
                 fname.ends_with("_test.rs") || 
                 fname.ends_with("_tests.rs") ||
