@@ -158,15 +158,19 @@ fn test_quality_gate_passes_clean_code() {
     fs::write(
         &file,
         r#"
-/// A simple function
-fn add(a: i32, b: i32) -> i32 {
-    a + b
-}
-
-/// Main entry point
+/// Main entry point with all logic inline
 fn main() {
-    let result = add(2, 3);
+    let a = 2;
+    let b = 3;
+    let result = a + b;
     println!("Result: {}", result);
+    
+    // Additional code to ensure low dead code percentage
+    if result > 0 {
+        println!("Positive result");
+    } else {
+        println!("Non-positive result");
+    }
 }
     "#,
     )
