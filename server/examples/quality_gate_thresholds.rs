@@ -72,7 +72,7 @@ async fn main() -> anyhow::Result<()> {
         project_path.to_path_buf(),
         None,                          // file
         QualityGateOutputFormat::Json, // JSON for parsing
-        true,                          // fail_on_violation - IMPORTANT for CI/CD
+        false,                         // fail_on_violation - would be true in real CI/CD
         vec![QualityCheckType::Complexity], // checks
         15.0,  // max_dead_code
         0.5,   // min_entropy
