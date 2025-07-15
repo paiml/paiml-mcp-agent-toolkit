@@ -4530,33 +4530,34 @@ pub async fn analyze_project_files(
             if !matches_include {
                 continue;
             }
-        }
-
-        // Skip common vendor/build/test/example directories
-        let path_str = path.to_string_lossy();
-        if path_str.contains("/target/")
-            || path_str.contains("/node_modules/")
-            || path_str.contains("/.git/")
-            || path_str.contains("/vendor/")
-            || path_str.contains("/tests/")
-            || path_str.contains("/test/")
-            || path_str.contains("/examples/")
-            || path_str.contains("/benches/")
-            || path_str.contains("/benchmarks/")
-            || path_str.contains("/fixtures/")
-            || path_str.contains("/testdata/")
-            || path_str.contains("/test_data/")
-            || path_str.contains("/debug_test/")
-            || path_str.contains("/test-")
-            || path.file_name().is_some_and(|f| {
-                let fname = f.to_string_lossy();
-                fname.ends_with("_test.rs") || 
-                fname.ends_with("_tests.rs") ||
-                fname.starts_with("test_") ||
-                fname.contains("_test_")
-            })
-        {
-            continue;
+        } else {
+            // Only apply default exclusions when no include patterns are specified
+            // Skip common vendor/build/test/example directories
+            let path_str = path.to_string_lossy();
+            if path_str.contains("/target/")
+                || path_str.contains("/node_modules/")
+                || path_str.contains("/.git/")
+                || path_str.contains("/vendor/")
+                || path_str.contains("/tests/")
+                || path_str.contains("/test/")
+                || path_str.contains("/examples/")
+                || path_str.contains("/benches/")
+                || path_str.contains("/benchmarks/")
+                || path_str.contains("/fixtures/")
+                || path_str.contains("/testdata/")
+                || path_str.contains("/test_data/")
+                || path_str.contains("/debug_test/")
+                || path_str.contains("/test-")
+                || path.file_name().is_some_and(|f| {
+                    let fname = f.to_string_lossy();
+                    fname.ends_with("_test.rs") || 
+                    fname.ends_with("_tests.rs") ||
+                    fname.starts_with("test_") ||
+                    fname.contains("_test_")
+                })
+            {
+                continue;
+            }
         }
 
         // Read file content
