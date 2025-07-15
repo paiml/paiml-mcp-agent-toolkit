@@ -59,6 +59,29 @@ jobs:
           cache-on-failure: true
           shared-key: "ci"
       
+      - name: Free disk space
+        run: |
+          echo "=== Before cleanup ==="
+          df -h
+          
+          # Remove pre-installed software we don't need
+          sudo apt-get clean
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /usr/local/.ghcup
+          
+          # Clean docker images
+          docker rmi $(docker images -q) 2>/dev/null || true
+          
+          # Clean apt cache
+          sudo apt-get autoremove -y
+          sudo apt-get autoclean -y
+          
+          echo "=== After cleanup ==="
+          df -h
+      
       - name: Run CI pipeline
         id: tests
         timeout-minutes: 30
@@ -147,6 +170,16 @@ jobs:
           workspaces: ". -> target"
           cache-on-failure: true
           shared-key: "ci"
+      
+      - name: Free disk space
+        run: |
+          echo "=== Freeing disk space for property tests ==="
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          docker rmi $(docker images -q) 2>/dev/null || true
+          df -h
       
       - name: Run AST property tests
         run: |
