@@ -170,8 +170,9 @@ async fn main() -> Result<()> {
             }
         }
         
-        // Exit with non-zero code for CI/CD integration
-        std::process::exit(1);
+        // In a real CI/CD scenario, you would exit with non-zero code here
+        // std::process::exit(1);
+        println!("\n💡 Note: In CI/CD, this would exit with code 1");
     }
     
     Ok(())
