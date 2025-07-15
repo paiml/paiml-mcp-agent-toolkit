@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.6] - 2025-01-15
+
+### Fixed
+- **Critical Bug Fix**: Fixed quality gate dead code detection always reporting violations
+  - `check_dead_code` now properly analyzes dead code percentage instead of always returning a violation
+  - Quality gate now correctly passes when dead code is below the threshold
+  - Fixed test `test_quality_gate_passes_clean_code` to use code that won't be incorrectly flagged
+- **Include Pattern Fix**: Fixed --include patterns being ignored for test directories
+  - When explicit include patterns are provided (e.g., `--include "tests/**/*.rs"`), test files are now correctly included
+  - Default exclusions only apply when no include patterns are specified
+- **Clippy Fix**: Replaced deprecated `map_or` with `is_some_and` to fix clippy lint warning
+
 ## [0.29.5] - 2025-01-14
 
 ### Refactored

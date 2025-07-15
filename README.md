@@ -346,6 +346,11 @@ See `examples/ci_integration.rs` for more CI/CD patterns including GitLab CI, Je
 
 ## Recent Updates
 
+### 🐛 v0.29.6 - Critical Bug Fixes
+- **Fixed Quality Gate Bug**: Quality gate dead code detection now correctly analyzes code instead of always reporting violations
+- **Fixed Include Patterns**: `--include` patterns now properly work with test directories (e.g., `--include "tests/**/*.rs"`)
+- **Fixed Clippy Warning**: Replaced deprecated `map_or` with `is_some_and` for cleaner code
+
 ### 🏆 v0.28.14 - Toyota Way Kaizen Success
 - **Massive Complexity Reduction**: Core `handle_refactor_auto` function complexity reduced from 136 → 21 (84% reduction)
 - **Zero Quality Violations**: Project now maintains 0 lint violations, 0 max complexity, 0 SATD comments
