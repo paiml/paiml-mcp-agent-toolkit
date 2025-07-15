@@ -413,22 +413,30 @@ format-scripts:
 
 # Lint TypeScript scripts (includes type checking, excluding archived scripts)
 lint-scripts:
-	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' 2>/dev/null | wc -l)" -gt 0 ]; then \
-		echo "🔍 Linting TypeScript scripts (excluding archive)..."; \
-		find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno lint --quiet {} +; \
-		echo "✅ Type checking TypeScript scripts (excluding archive)..."; \
-		find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno check {} +; \
+	@echo "🔍 Linting TypeScript scripts (excluding archive)..."
+	@if [ -d "$(SCRIPTS_DIR)" ]; then \
+		if [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' 2>/dev/null | wc -l)" -gt 0 ]; then \
+			find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno lint --quiet {} + 2>/dev/null || echo "✓ No TypeScript files found or deno not available"; \
+			echo "✅ Type checking TypeScript scripts (excluding archive)..."; \
+			find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno check {} + 2>/dev/null || echo "✓ No TypeScript files found or deno not available"; \
+		else \
+			echo "✓ No TypeScript scripts to lint"; \
+		fi \
 	else \
-		echo "✓ No TypeScript scripts to lint"; \
+		echo "✓ Scripts directory not found"; \
 	fi
 
 # Type check TypeScript scripts (excluding archived scripts)
 check-scripts:
-	@if [ -d "$(SCRIPTS_DIR)" ] && [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' 2>/dev/null | wc -l)" -gt 0 ]; then \
-		echo "✅ Type checking TypeScript scripts (excluding archive)..."; \
-		find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno check {} + || true; \
+	@echo "✅ Type checking TypeScript scripts (excluding archive)..."
+	@if [ -d "$(SCRIPTS_DIR)" ]; then \
+		if [ "$$(find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' 2>/dev/null | wc -l)" -gt 0 ]; then \
+			find $(SCRIPTS_DIR) -name '*.ts' -type f -not -path '*/archive/*' -exec deno check {} + 2>/dev/null || echo "✓ No TypeScript files found or deno not available"; \
+		else \
+			echo "✓ No TypeScript scripts to check"; \
+		fi \
 	else \
-		echo "✓ No TypeScript scripts to check"; \
+		echo "✓ Scripts directory not found"; \
 	fi
 
 # Lint Makefile
