@@ -83,12 +83,15 @@ async fn main() -> Result<()> {
         false,     // No detailed metrics
         None,
         5,         // Top 5 files
-        true,      // Fail if critical debt found
+        false,     // Don't fail on violation in example
     ).await;
 
     match critical_result {
-        Ok(_) => println!("✅ No critical technical debt found!"),
-        Err(e) => println!("⚠️  Critical debt found: {}", e),
+        Ok(_) => println!("✅ Critical debt analysis completed!"),
+        Err(e) => {
+            println!("❌ Critical debt analysis failed: {}", e);
+            return Err(e);
+        }
     }
 
     // Example 4: Evolution tracking
