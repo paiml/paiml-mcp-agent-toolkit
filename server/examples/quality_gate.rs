@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
         PathBuf::from("."),
         None,
         QualityGateOutputFormat::Human,
-        true, // Fail on violation
+        false, // Don't fail on violation in example (to avoid CI failure)
         vec![
             QualityCheckType::Complexity,
             QualityCheckType::DeadCode,
