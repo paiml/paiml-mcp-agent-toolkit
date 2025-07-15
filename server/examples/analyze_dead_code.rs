@@ -47,17 +47,19 @@ async fn main() -> Result<()> {
         3,         // Report even small dead code blocks
         false,     // Exclude tests
         None,      // Output to stdout
-        true,      // FAIL ON VIOLATION - exit(1) if threshold exceeded
+        false,     // Don't fail on violation in example (to avoid CI failure)
         5.0,       // Max 5% dead code allowed (strict!)
     ).await;
 
     match strict_result {
-        Ok(_) => println!("✅ Dead code is below 5% threshold!"),
+        Ok(_) => println!("✅ Dead code analysis completed!"),
         Err(e) => {
-            println!("⚠️  Dead code exceeds threshold (expected in demo): {}", e);
-            // In real CI, this would have exited with code 1
+            println!("❌ Analysis failed: {}", e);
+            return Err(e);
         }
     }
+    
+    println!("Note: In real CI, you would use --fail-on-violation to exit(1) on threshold exceeded");
 
     // Example 3: Summary format with moderate threshold
     println!("\nExample 3: Summary format with moderate threshold");
