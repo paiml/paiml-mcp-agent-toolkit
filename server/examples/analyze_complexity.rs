@@ -65,7 +65,7 @@ async fn main() -> Result<()> {
         }
     }
     
-    println!("Note: In real CI, you would use --fail-on-violation to exit(1) on violations")
+    println!("Note: In real CI, you would use --fail-on-violation to exit(1) on violations");
 
     // Example 3: Analyze specific files
     println!("\nExample 3: Analyzing specific files with custom thresholds");
