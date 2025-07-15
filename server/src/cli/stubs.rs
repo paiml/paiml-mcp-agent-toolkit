@@ -3532,37 +3532,45 @@ pub async fn check_dead_code(
     project_path: &Path,
     max_percentage: f64,
 ) -> Result<Vec<QualityViolation>> {
-    use crate::cli::handlers::complexity_handlers::handle_analyze_dead_code;
-    use crate::cli::DeadCodeOutputFormat;
-    use std::path::PathBuf;
+    use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
+    use crate::models::dead_code::DeadCodeAnalysisConfig;
     
     let mut violations = Vec::new();
     
-    // Use the existing dead code handler - DRY principle
-    let result = handle_analyze_dead_code(
-        PathBuf::from(project_path),
-        DeadCodeOutputFormat::Json,
-        Some(10), // top_files
-        true, // include_unreachable
-        0, // min_dead_lines
-        false, // include_tests
-        None, // output
-        false, // fail_on_violation
-        max_percentage, // max_percentage
-    ).await;
+    // Create analyzer and run analysis
+    let mut analyzer = DeadCodeAnalyzer::new(10000);
+    let config = DeadCodeAnalysisConfig {
+        include_tests: false,
+        include_unreachable: true,
+        min_dead_lines: 0,
+    };
     
-    // Parse the results from the handler
-    if let Ok(()) = result {
-        // The handler outputs to stdout/file, but for quality gate we need to calculate percentage
-        // For now, we'll use a simplified check
-        // In a full implementation, we'd capture the JSON output and parse it
+    let result = analyzer.analyze_with_ranking(project_path, config).await?;
+    
+    // Check if dead code percentage exceeds threshold
+    let dead_percentage = result.summary.dead_percentage as f64;
+    
+    if dead_percentage > max_percentage {
         violations.push(QualityViolation {
             check_type: "dead_code".to_string(),
-            severity: "info".to_string(),
+            severity: "error".to_string(),
             file: project_path.to_string_lossy().to_string(),
             line: None,
-            message: "Dead code analysis completed - run 'pmat analyze dead-code' for details".to_string(),
+            message: format!("Dead code percentage {:.1}% exceeds maximum allowed {:.1}%", dead_percentage, max_percentage),
         });
+    }
+    
+    // Add a warning for each file with significant dead code
+    for file in result.ranked_files.iter().take(5) {
+        if file.dead_percentage > 20.0 {
+            violations.push(QualityViolation {
+                check_type: "dead_code".to_string(),
+                severity: "warning".to_string(),
+                file: file.path.clone(),
+                line: None,
+                message: format!("File has {:.1}% dead code ({} dead lines)", file.dead_percentage, file.dead_lines),
+            });
+        }
     }
     
     Ok(violations)
