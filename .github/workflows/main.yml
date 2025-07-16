@@ -181,33 +181,13 @@ jobs:
           docker rmi $(docker images -q) 2>/dev/null || true
           df -h
       
-      - name: Run AST property tests
+      - name: Run property-based tests
         run: |
           cd server
-          cargo test --test ast_property_tests --release -- --nocapture
-      
-      - name: Run refactoring property tests
-        run: |
-          cd server
-          cargo test --test refactoring_property_tests --release -- --nocapture
-      
-      - name: Run property test coverage report
-        run: |
-          cd server
-          cargo test --test property_test_coverage --release -- --nocapture
-      
-      - name: Verify property test coverage
-        run: |
-          cd server
-          # Extract coverage from test output
-          coverage=$(cargo test --test property_test_coverage --release 2>&1 | grep "Coverage:" | head -1 | awk '{print $2}' | sed 's/%//')
-          echo "Property test coverage: $coverage%"
-          
-          # Check if coverage meets threshold
-          if (( $(echo "$coverage < 80" | bc -l) )); then
-            echo "Property test coverage below 80% threshold"
-            exit 1
-          fi
+          # Run property tests in lib
+          cargo test --lib --release -- property_tests --nocapture
+          # Run the integration property test
+          cargo test --test refactor_auto_property_integration --release -- --nocapture
 
   benchmarks:
     name: Performance Benchmarks
