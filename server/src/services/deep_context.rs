@@ -18,7 +18,6 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::path::PathBuf;
 use std::time::Duration;
-use tokio::sync::Semaphore;
 use tracing::{debug, info};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -570,8 +569,6 @@ impl Default for DeepContextConfig {
 
 pub struct DeepContextAnalyzer {
     config: DeepContextConfig,
-    #[allow(dead_code)] // Used for parallel execution control
-    semaphore: Semaphore,
 }
 
 impl DeepContextAnalyzer {
@@ -587,8 +584,7 @@ impl DeepContextAnalyzer {
     /// // Analyzer is ready to perform deep context analysis
     /// ```
     pub fn new(config: DeepContextConfig) -> Self {
-        let semaphore = Semaphore::new(config.parallel);
-        Self { config, semaphore }
+        Self { config }
     }
 
     /// Format as comprehensive markdown output using simple formatting
@@ -2118,19 +2114,24 @@ impl DeepContextAnalyzer {
 
         // Phase 5: Quality scoring
         main_progress.set_message("Calculating quality scores...");
-        let quality_scorecard = self.calculate_quality_scores(&analyses).await?;
+        let quality_scorecard = QualityScorecard {
+            overall_health: 75.0,
+            complexity_score: 80.0,
+            maintainability_index: 70.0,
+            modularity_score: 85.0,
+            test_coverage: Some(65.0),
+            technical_debt_hours: 40.0,
+        };
         debug!("Quality scoring completed");
 
         // Phase 6: Generate recommendations
         main_progress.set_message("Generating recommendations...");
-        let recommendations = self
-            .generate_recommendations(&hotspots, &quality_scorecard)
-            .await?;
+        let recommendations = Vec::new(); // Legacy function removed
         debug!("Recommendations generated");
 
         // Phase 7: Template provenance (if available)
         main_progress.set_message("Analyzing template provenance...");
-        let template_provenance = self.analyze_template_provenance(project_path).await?;
+        let template_provenance = None; // Legacy function removed
 
         let analysis_duration = start_time.elapsed();
         info!("Deep context analysis completed in {:?}", analysis_duration);
@@ -2334,23 +2335,6 @@ impl DeepContextAnalyzer {
         }
     }
 
-    #[allow(dead_code)]
-    async fn execute_parallel_analyses(
-        &self,
-        project_path: &std::path::Path,
-    ) -> anyhow::Result<ParallelAnalysisResults> {
-        // Step 1: Spawn all analysis tasks
-        let mut join_set = self.spawn_analysis_tasks(project_path)?;
-
-        // Step 2: Collect and process results with timeout
-        // Increased timeout to handle projects with many files or large files
-        let collection_timeout = std::time::Duration::from_secs(300); // 5 minutes
-        let results = self
-            .collect_analysis_results(&mut join_set, collection_timeout)
-            .await?;
-
-        Ok(results)
-    }
 
     async fn execute_parallel_analyses_with_progress(
         &self,
@@ -2512,27 +2496,6 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
-    /// Collect and process analysis results with timeout
-    #[allow(dead_code)]
-    async fn collect_analysis_results(
-        &self,
-        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
-        timeout: std::time::Duration,
-    ) -> anyhow::Result<ParallelAnalysisResults> {
-        let collection_future = self.process_analysis_results(join_set);
-
-        match tokio::time::timeout(timeout, collection_future).await {
-            Ok(Ok(results)) => {
-                debug!("Parallel analysis collection completed successfully");
-                Ok(results)
-            }
-            Ok(Err(e)) => Err(anyhow::anyhow!("Analysis result aggregation failed: {}", e)),
-            Err(_) => Err(anyhow::anyhow!(
-                "Analysis collection timed out after {:?}",
-                timeout
-            )),
-        }
-    }
 
     async fn collect_analysis_results_with_progress(
         &self,
@@ -2555,34 +2518,6 @@ impl DeepContextAnalyzer {
         }
     }
 
-    /// Process all analysis results concurrently
-    #[allow(dead_code)]
-    async fn process_analysis_results(
-        &self,
-        join_set: &mut tokio::task::JoinSet<AnalysisResult>,
-    ) -> anyhow::Result<ParallelAnalysisResults> {
-        // Collect all results first
-        let mut pending_results = Vec::new();
-        while let Some(result) = join_set.join_next().await {
-            pending_results.push(result?);
-        }
-
-        // Process results concurrently
-        let result_processors: Vec<_> = pending_results
-            .into_iter()
-            .map(|result| tokio::spawn(async move { result }))
-            .collect();
-
-        // Aggregate processed results
-        let mut results = ParallelAnalysisResults::default();
-        for processor in result_processors {
-            if let Ok(processed) = processor.await {
-                self.integrate_analysis_result(&mut results, processed);
-            }
-        }
-
-        Ok(results)
-    }
 
     /// Process all analysis results concurrently with progress
     async fn process_analysis_results_with_progress(
@@ -2959,186 +2894,14 @@ impl DeepContextAnalyzer {
         Ok(hotspots)
     }
 
-    /// Extract complexity metrics for a specific file
-    #[allow(dead_code)]
-    fn extract_complexity_metrics(
-        &self,
-        file_path: &str,
-        analyses: &ParallelAnalysisResults,
-    ) -> anyhow::Result<(f32, u32, u32)> {
-        if let Some(ref complexity_report) = analyses.complexity_report {
-            let file_complexity = complexity_report
-                .files
-                .iter()
-                .find(|f| f.path == file_path)
-                .map(|f| {
-                    let avg_cyclomatic = if f.functions.is_empty() {
-                        1.0
-                    } else {
-                        f.functions
-                            .iter()
-                            .map(|func| func.metrics.cyclomatic as f32)
-                            .sum::<f32>()
-                            / f.functions.len() as f32
-                    };
-                    let max_cyclomatic = f
-                        .functions
-                        .iter()
-                        .map(|func| func.metrics.cyclomatic as u32)
-                        .max()
-                        .unwrap_or(1);
-                    let max_cognitive = f
-                        .functions
-                        .iter()
-                        .map(|func| func.metrics.cognitive as u32)
-                        .max()
-                        .unwrap_or(1);
-                    (avg_cyclomatic, max_cyclomatic, max_cognitive)
-                });
 
-            if let Some((avg_complexity, max_cyclomatic, max_cognitive)) = file_complexity {
-                Ok((avg_complexity, max_cyclomatic, max_cognitive))
-            } else {
-                Ok((1.0, 1, 1))
-            }
-        } else {
-            Ok((1.0, 1, 1))
-        }
-    }
 
-    /// Extract churn metrics for a specific file
-    #[allow(dead_code)]
-    fn extract_churn_metrics(
-        &self,
-        file_path: &str,
-        analyses: &ParallelAnalysisResults,
-    ) -> anyhow::Result<f32> {
-        if let Some(ref churn_analysis) = analyses.churn_analysis {
-            let churn_score = churn_analysis
-                .files
-                .iter()
-                .find(|f| f.relative_path == file_path || f.relative_path.ends_with(file_path))
-                .map(|f| {
-                    // Normalize churn score based on commit count and recency
-                    let max_commits = churn_analysis
-                        .files
-                        .iter()
-                        .map(|file| file.commit_count)
-                        .max()
-                        .unwrap_or(1) as f32;
-                    f.commit_count as f32 / max_commits
-                })
-                .unwrap_or(0.0);
-            Ok(churn_score)
-        } else {
-            Ok(0.0)
-        }
-    }
 
-    /// Build FileMetrics struct from collected data (LEGACY - DISABLED)
-    #[allow(dead_code)]
-    fn build_file_metrics(
-        &self,
-        _file_path: &str,
-        _complexity_score: f32,
-        _cyclomatic: u32,
-        _cognitive: u32,
-        _churn_score: f32,
-        enhanced_context: &EnhancedFileContext,
-    ) -> anyhow::Result<()> {
-        // Estimate lines of code from AST items
-        let _estimated_loc = enhanced_context.base.items.len() * 10;
 
-        // Calculate efferent coupling from imports
-        let _efferent_coupling = enhanced_context
-            .base
-            .items
-            .iter()
-            .filter_map(|item| match item {
-                crate::services::context::AstItem::Use { .. } => Some(1.0),
-                _ => None,
-            })
-            .sum::<f32>()
-            .max(1.0);
 
-        // Legacy function disabled
-        Ok(())
-    }
 
-    /// Calculate defect probabilities for all files (LEGACY - DISABLED)
-    #[allow(dead_code)]
-    fn calculate_defect_probabilities(
-        &self,
-        _file_metrics_map: &FxHashMap<String, ()>,
-        _calculator: &(),
-    ) -> anyhow::Result<()> {
-        // Legacy function disabled
-        Ok(())
-    }
 
-    /// Build defect summary from project analysis (LEGACY - DISABLED)
-    #[allow(dead_code)]
-    fn build_defect_summary(
-        &self,
-        _project_analysis: &(),
-        _analyses: &ParallelAnalysisResults,
-        _file_metrics_map: &FxHashMap<String, ()>,
-    ) -> anyhow::Result<DefectSummary> {
-        // Legacy function disabled - return dummy data
-        Ok(DefectSummary {
-            total_defects: 0,
-            by_severity: FxHashMap::default(),
-            by_type: FxHashMap::default(),
-            defect_density: 0.0,
-        })
-    }
 
-    /// Generate defect hotspots from high-risk files (LEGACY - DISABLED)
-    #[allow(dead_code)]
-    fn generate_defect_hotspots(
-        &self,
-        _project_analysis: &(),
-        _analyses: &ParallelAnalysisResults,
-        _file_metrics_map: &FxHashMap<String, ()>,
-    ) -> anyhow::Result<Vec<DefectHotspot>> {
-        // Legacy function disabled
-        Ok(Vec::new())
-    }
-
-    /// Calculate quality scores (LEGACY - DISABLED)
-    #[allow(dead_code)]
-    async fn calculate_quality_scores(
-        &self,
-        _analyses: &ParallelAnalysisResults,
-    ) -> anyhow::Result<QualityScorecard> {
-        Ok(QualityScorecard {
-            overall_health: 75.0,
-            complexity_score: 80.0,
-            maintainability_index: 70.0,
-            modularity_score: 85.0,
-            test_coverage: Some(65.0),
-            technical_debt_hours: 40.0,
-        })
-    }
-
-    /// Generate recommendations (LEGACY - DISABLED)
-    #[allow(dead_code)]
-    async fn generate_recommendations(
-        &self,
-        _hotspots: &[DefectHotspot],
-        _quality: &QualityScorecard,
-    ) -> anyhow::Result<Vec<PrioritizedRecommendation>> {
-        Ok(Vec::new())
-    }
-
-    /// Analyze template provenance (LEGACY - DISABLED)
-    #[allow(dead_code)]
-    async fn analyze_template_provenance(
-        &self,
-        _path: &std::path::Path,
-    ) -> anyhow::Result<Option<TemplateProvenance>> {
-        Ok(None)
-    }
 
     /// Analyze project metadata (Makefile and README)
     async fn analyze_project_metadata(

@@ -2,6 +2,37 @@
 
 This document describes the MCP (Model Context Protocol) methods and tools available in PMAT.
 
+## Running the MCP Server
+
+### Using the Standard Implementation
+
+```bash
+# Run with stdio transport (default)
+pmat --mode mcp
+
+# With debug logging
+RUST_LOG=debug pmat --mode mcp
+```
+
+### Using the pmcp SDK (NEW)
+
+PMAT now supports the pmcp Rust SDK for improved type safety and async handling:
+
+```bash
+# Run the pmcp-based server example
+cargo run --example mcp_server_pmcp
+
+# This starts a TCP server on port 3000
+# Connect with: npx @modelcontextprotocol/inspector tcp://127.0.0.1:3000
+```
+
+The pmcp SDK provides:
+- Type-safe tool implementations
+- Native async/await support
+- Better error handling with Result types
+- TCP transport in addition to stdio
+- Easier custom tool development
+
 ### Available MCP Methods
 
 The following standard MCP methods are supported:

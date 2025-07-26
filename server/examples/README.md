@@ -79,6 +79,24 @@ Demonstrates lint hotspot analysis with intentional code quality issues.
 cargo run --example lint_hotspot_demo
 ```
 
+### MCP Server Examples
+
+#### `mcp_server_pmcp` (NEW)
+Demonstrates running the pmat MCP server using the pmcp Rust SDK.
+```bash
+# Start the MCP server
+cargo run --example mcp_server_pmcp
+
+# Connect with an MCP client in another terminal
+npx @modelcontextprotocol/inspector tcp://127.0.0.1:3000
+```
+
+This example shows:
+- Setting up an MCP server with the pmcp SDK
+- Registering all pmat analysis tools
+- Handling TCP connections
+- Type-safe tool implementations
+
 ### Other Examples
 
 #### `complexity_validation`
