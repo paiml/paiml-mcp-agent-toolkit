@@ -506,8 +506,8 @@ impl GitCloner {
         
         let repo_info: RepoInfo = response.json().await?;
         
-        // Convert KB to bytes
-        Ok(repo_info.size * 1024)
+        // Return size in KB as received from GitHub API
+        Ok(repo_info.size)
     }
 }
 

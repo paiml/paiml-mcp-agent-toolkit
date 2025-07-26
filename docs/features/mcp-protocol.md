@@ -956,9 +956,100 @@ RUST_LOG=paiml_mcp_agent_toolkit::handlers=trace pmat --mode mcp
 - **Distributed Analysis**: Multi-node processing
 - **Real-time Collaboration**: Live analysis sharing
 
+## Using the pmcp Rust SDK
+
+PMAT now supports running the MCP server using the [pmcp](https://github.com/paiml/pmcp) Rust SDK, which provides a more idiomatic Rust interface with improved type safety and async support.
+
+### Benefits of pmcp SDK
+
+- **Type Safety**: Strongly typed tool definitions and handlers
+- **Async First**: Built on tokio for efficient async I/O
+- **Better Error Handling**: Rust's Result type throughout
+- **Connection Management**: Automatic lifecycle handling
+- **Extensibility**: Easy to add custom tools
+
+### Running with pmcp
+
+```bash
+# Run the example MCP server
+cargo run --example mcp_server_pmcp
+
+# Connect with an MCP client
+npx @modelcontextprotocol/inspector tcp://127.0.0.1:3000
+```
+
+### Integration Example
+
+```rust
+use pmat::mcp_pmcp::{handlers::*, PmcpServer};
+use pmcp::{Server, ServerBuilder, ToolHandler};
+
+// Create server with all pmat tools
+let server = ServerBuilder::new("pmat-mcp", "1.0.0")
+    .with_tool("analyze_complexity", 
+               "Analyze code complexity metrics", 
+               Box::new(AnalyzeComplexityTool))
+    .with_tool("analyze_satd", 
+               "Detect self-admitted technical debt",
+               Box::new(AnalyzeSatdTool))
+    .with_tool("quality_gate",
+               "Run comprehensive quality checks",
+               Box::new(QualityGateTool))
+    // Add more tools...
+    .build();
+
+// Handle connections
+let listener = TcpListener::bind("127.0.0.1:3000").await?;
+loop {
+    let (stream, addr) = listener.accept().await?;
+    let server = server.clone();
+    tokio::spawn(async move {
+        server.handle_connection(stream).await
+    });
+}
+```
+
+### Custom Tool Implementation
+
+```rust
+use pmcp::{ToolHandler, PmcpResult};
+use async_trait::async_trait;
+use serde_json::Value;
+
+struct MyCustomTool;
+
+#[async_trait]
+impl ToolHandler for MyCustomTool {
+    async fn handle(&self, args: Value) -> PmcpResult<Value> {
+        // Parse arguments
+        let path = args["path"].as_str()
+            .ok_or_else(|| pmcp::Error::InvalidParams("path required"))?;
+        
+        // Perform analysis
+        let result = analyze_something(path).await?;
+        
+        // Return JSON result
+        Ok(serde_json::to_value(result)?)
+    }
+}
+```
+
+### Migration from stdio to pmcp
+
+The pmcp SDK maintains compatibility with existing MCP clients while providing a cleaner implementation:
+
+| Feature | stdio Implementation | pmcp SDK |
+|---------|---------------------|----------|
+| Protocol | Manual JSON-RPC | Built-in |
+| Transport | stdio only | TCP, stdio, WebSocket (planned) |
+| Error Handling | Custom enums | Standard Result<T, E> |
+| Async | Tokio channels | Native async/await |
+| Type Safety | Runtime validation | Compile-time types |
+
 ## Additional Resources
 
 - [MCP Specification](https://modelcontextprotocol.io)
 - [PMAT on crates.io](https://crates.io/crates/pmat)
+- [pmcp SDK](https://github.com/paiml/pmcp)
 - [API Documentation](https://docs.rs/pmat)
 - [GitHub Repository](https://github.com/paiml/paiml-mcp-agent-toolkit)
