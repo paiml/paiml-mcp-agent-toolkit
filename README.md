@@ -216,7 +216,9 @@ pmat enforce extreme                          # Enforce extreme quality standard
 <img src="https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/assets/demo3.gif" width=875>
 </details>
 
-### MCP Integration (Claude Code)
+### MCP Integration
+
+#### Using with Claude Code
 
 ```bash
 # Add to Claude Code
@@ -227,6 +229,37 @@ claude mcp add pmat ~/.local/bin/pmat
 <br>
 <img src="https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/assets/demo1.gif" width=875>
 </details>
+
+#### Using the pmcp Rust SDK (NEW)
+
+The MCP server can now be run using the [pmcp](https://github.com/paiml/pmcp) Rust SDK for better type safety and async support:
+
+```rust
+// Run the MCP server with pmcp SDK
+cargo run --example mcp_server_pmcp
+
+// Or use as a library
+use pmat::mcp_pmcp::{handlers::*, PmcpServer};
+use pmcp::{Server, ServerBuilder};
+
+let server = ServerBuilder::new("pmat-mcp", "1.0.0")
+    .with_tool("analyze_complexity", "Analyze code complexity", 
+        Box::new(AnalyzeComplexityTool))
+    .with_tool("analyze_satd", "Detect technical debt",
+        Box::new(AnalyzeSatdTool))
+    // ... add more tools
+    .build();
+
+// Handle connections
+server.handle_connection(stream).await?;
+```
+
+The pmcp SDK provides:
+- Type-safe tool definitions with proper async handling
+- Built-in JSON-RPC 2.0 protocol implementation
+- Automatic request/response serialization
+- Connection lifecycle management
+- Error handling and logging
 
 Available MCP tools:
 - `generate_template` - Generate project files from templates

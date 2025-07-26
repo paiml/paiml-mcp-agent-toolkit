@@ -25,6 +25,9 @@ serde_json = { version = "1.0", default-features = false, features = ["std"] }
 # Template engine
 handlebars = { version = "6.3", default-features = false, features = ["string_helpers"] }
 
+# MCP SDK
+# pmcp = { path = "../../pmcp", features = ["full"] }
+
 # Caching
 lru = { version = "0.14", features = ["hashbrown"] }
 

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - 2025-01-26
+
+### Added
+- **MCP Server pmcp SDK Example**: New `cargo run --example mcp_server_pmcp` demonstrating future pmcp SDK integration
+- **pmcp SDK Documentation**: Comprehensive documentation for using the pmcp Rust SDK with PMAT
+  - Added pmcp integration section to README.md
+  - Enhanced MCP protocol documentation with pmcp SDK usage
+  - Updated examples README with new MCP server example
+  - Added migration guide from stdio to pmcp implementation
+
+### Fixed
+- **Git Clone Test**: Fixed `test_real_repo_sizes` by correcting size unit mismatch (bytes vs KB)
+- **Dead Code Cleanup**: Removed 13 legacy dead code functions from `services/deep_context.rs`
+  - Removed unused Semaphore import
+  - Fixed compilation by replacing removed function calls with inline implementations
+
+### Changed
+- **Documentation Updates**: Enhanced all MCP-related documentation with pmcp SDK integration details
+- **Code Quality**: Maintained zero-tolerance standards with 0 SATD comments and 0 lint violations
+
 ## [0.29.6] - 2025-01-15
 
 ### Fixed
