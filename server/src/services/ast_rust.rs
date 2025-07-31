@@ -1,3 +1,43 @@
+//! Rust AST analysis for complexity metrics and context extraction.
+//!
+//! This module provides deep analysis of Rust source code using the `syn` crate
+//! for AST parsing. It extracts complexity metrics, identifies code structures,
+//! and generates context information suitable for AI/LLM consumption.
+//!
+//! # Features
+//!
+//! - **Cyclomatic Complexity**: Calculates complexity based on control flow
+//! - **Cognitive Complexity**: Measures code understandability
+//! - **Struct/Enum Analysis**: Extracts type definitions and their fields
+//! - **Function Analysis**: Identifies functions, methods, and their signatures
+//! - **Trait Analysis**: Extracts trait definitions and implementations
+//! - **Caching**: Integrated caching for performance optimization
+//!
+//! # Complexity Calculation
+//!
+//! The complexity calculation follows these rules:
+//! - +1 for each `if`, `match` arm, `while`, `for` loop
+//! - +1 for each `&&` and `||` operator
+//! - +1 for nested control structures (cognitive complexity)
+//! - +1 for each `?` operator and `.unwrap()` call
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::ast_rust::analyze_rust_file_with_complexity;
+//! use std::path::Path;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let metrics = analyze_rust_file_with_complexity(Path::new("src/main.rs")).await?;
+//! 
+//! println!("File complexity: {}", metrics.total_complexity);
+//! for func in &metrics.functions {
+//!     println!("Function {}: complexity {}", func.name, func.cyclomatic_complexity);
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::models::error::TemplateError;
 use crate::services::complexity::{
     ClassComplexity, ComplexityMetrics, FileComplexityMetrics, FunctionComplexity,

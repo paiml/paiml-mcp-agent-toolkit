@@ -1,3 +1,47 @@
+//! Python AST analysis for complexity metrics and context extraction.
+//!
+//! This module provides deep analysis of Python source code using the `rustpython_parser`
+//! crate for AST parsing. It extracts complexity metrics, identifies code structures,
+//! and generates context information suitable for AI/LLM consumption.
+//!
+//! This module is only available when the `python-ast` feature is enabled.
+//!
+//! # Features
+//!
+//! - **Cyclomatic Complexity**: Calculates complexity based on control flow
+//! - **Class Analysis**: Extracts class definitions, methods, and attributes
+//! - **Function Analysis**: Identifies functions, decorators, and signatures
+//! - **Import Analysis**: Tracks module dependencies
+//! - **Async Support**: Detects async functions and methods
+//!
+//! # Complexity Calculation
+//!
+//! The complexity calculation follows these rules:
+//! - +1 for each `if`, `elif`, `while`, `for` loop
+//! - +1 for each `except` clause
+//! - +1 for each boolean operator (`and`, `or`)
+//! - +1 for nested control structures
+//! - +1 for comprehensions (list, dict, set)
+//!
+//! # Example
+//!
+//! ```no_run
+//! # #[cfg(feature = "python-ast")]
+//! use pmat::services::ast_python::analyze_python_file_with_complexity;
+//! use std::path::Path;
+//!
+//! # #[cfg(feature = "python-ast")]
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let metrics = analyze_python_file_with_complexity(Path::new("main.py")).await?;
+//! 
+//! println!("File complexity: {}", metrics.total_complexity);
+//! for class in &metrics.classes {
+//!     println!("Class {}: complexity {}", class.name, class.complexity);
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 // This file is conditionally compiled only when python-ast feature is enabled
 
 use crate::models::error::TemplateError;
