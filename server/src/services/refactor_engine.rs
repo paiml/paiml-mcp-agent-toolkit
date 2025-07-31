@@ -1,3 +1,45 @@
+//! Automated refactoring engine with state machine workflow.
+//!
+//! This module implements PMAT's intelligent refactoring system that follows
+//! the Toyota Way principles of continuous improvement (Kaizen). The engine
+//! uses a state machine to orchestrate the refactoring process through
+//! analysis, planning, execution, and validation phases.
+//!
+//! # Architecture
+//!
+//! The refactoring engine supports three operation modes:
+//! - **Server**: Low-latency mode for MCP/HTTP protocols
+//! - **Interactive**: CLI mode with user confirmation steps
+//! - **Batch**: High-throughput mode for CI/CD pipelines
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::refactor_engine::{UnifiedEngine, EngineMode};
+//! use pmat::models::refactor::RefactorConfig;
+//! use std::path::PathBuf;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create refactoring engine in interactive mode
+//! let engine = UnifiedEngine::new_interactive(
+//!     PathBuf::from("checkpoint.json"),
+//!     Default::default()
+//! )?;
+//!
+//! // Start refactoring session
+//! let targets = vec![PathBuf::from("src/complex_module.rs")];
+//! let config = RefactorConfig::default();
+//! 
+//! engine.start_session(targets, config).await?;
+//! 
+//! // Run refactoring workflow
+//! while !engine.is_complete().await {
+//!     engine.advance().await?;
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::models::refactor::{
     DefectPayload, RefactorConfig, RefactorStateMachine, RefactorType, State, Summary,
 };
