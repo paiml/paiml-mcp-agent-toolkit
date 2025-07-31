@@ -1,3 +1,53 @@
+//! Dead code prover using reachability analysis and formal verification.
+//!
+//! This module implements sophisticated dead code detection that goes beyond
+//! simple unused symbol detection. It performs whole-program reachability
+//! analysis to prove that code is truly unreachable, considering various
+//! entry points including FFI exports, dynamic dispatch, and reflection.
+//!
+//! # Analysis Approach
+//!
+//! 1. **Entry Point Discovery**: Identifies all program entry points
+//!    - Main functions, tests, benchmarks
+//!    - FFI exports (`#[no_mangle]`, `extern "C"`)
+//!    - Dynamic dispatch targets (trait objects, function pointers)
+//!    - Reflection and macro-generated code
+//!
+//! 2. **Reachability Propagation**: Traces execution paths from entry points
+//!    - Direct function calls
+//!    - Method invocations
+//!    - Closure captures
+//!    - Const evaluation paths
+//!
+//! 3. **Proof Generation**: Provides evidence for dead code claims
+//!    - Call graph showing unreachability
+//!    - Entry point analysis results
+//!    - Confidence scores based on analysis completeness
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::dead_code_prover::ReachabilityAnalyzer;
+//! use pmat::models::unified_ast::UnifiedAstNode;
+//!
+//! # fn example(ast: &UnifiedAstNode) {
+//! let mut analyzer = ReachabilityAnalyzer::new();
+//! 
+//! // Analyze AST to find entry points
+//! analyzer.find_entry_points(ast);
+//! 
+//! // Perform reachability analysis
+//! let dead_code = analyzer.analyze_reachability(ast);
+//! 
+//! // Generate proof for dead code
+//! for item in &dead_code {
+//!     println!("Dead code: {} (confidence: {}%)", 
+//!              item.name, item.confidence);
+//!     println!("Reason: {}", item.reason);
+//! }
+//! # }
+//! ```
+
 use crate::models::unified_ast::{AstKind, FunctionKind, UnifiedAstNode};
 use crate::services::dead_code_analyzer::{DeadCodeItem, DeadCodeReport, DeadCodeType};
 use serde::{Deserialize, Serialize};
