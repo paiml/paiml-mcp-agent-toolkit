@@ -1,7 +1,51 @@
 //! Big-O Complexity Analyzer - Phase 5 implementation
 //!
 //! Provides algorithmic complexity analysis for functions using
-//! pattern matching and heuristic analysis.
+//! pattern matching and heuristic analysis. This analyzer examines source code
+//! to estimate the time and space complexity of functions across multiple
+//! programming languages.
+//!
+//! # Key Features
+//!
+//! - **Multi-language Support**: Analyzes Rust, JavaScript, TypeScript, Python, Go, Java, C/C++
+//! - **Time Complexity Detection**: Identifies O(1), O(log n), O(n), O(n log n), O(n²), O(n³), O(2^n)
+//! - **Space Complexity Analysis**: Detects dynamic memory allocation patterns
+//! - **Pattern Recognition**: Identifies common algorithmic patterns (sorting, searching, recursion)
+//! - **Confidence Scoring**: Provides confidence levels for complexity estimates
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::big_o_analyzer::{BigOAnalyzer, BigOAnalysisConfig};
+//! use std::path::PathBuf;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let analyzer = BigOAnalyzer::new();
+//! 
+//! let config = BigOAnalysisConfig {
+//!     project_path: PathBuf::from("./src"),
+//!     include_patterns: vec!["*.rs".to_string()],
+//!     exclude_patterns: vec!["test_*.rs".to_string()],
+//!     confidence_threshold: 70,
+//!     analyze_space_complexity: true,
+//! };
+//! 
+//! let report = analyzer.analyze(config).await?;
+//! 
+//! println!("Analyzed {} functions", report.analyzed_functions);
+//! println!("Found {} high-complexity functions", report.high_complexity_functions.len());
+//! 
+//! // Print complexity distribution
+//! println!("O(n²) functions: {}", report.complexity_distribution.quadratic);
+//! println!("O(n) functions: {}", report.complexity_distribution.linear);
+//! 
+//! // Get recommendations
+//! for recommendation in &report.recommendations {
+//!     println!("⚠️  {}", recommendation);
+//! }
+//! # Ok(())
+//! # }
+//! ```
 
 use crate::models::complexity_bound::{BigOClass, ComplexityBound};
 use crate::services::complexity_patterns::{ComplexityAnalysisResult, ComplexityPatternMatcher};

@@ -1,3 +1,41 @@
+//! Git repository analysis and code churn metrics.
+//!
+//! This module provides analysis of git repositories to extract code churn
+//! metrics, contribution patterns, and file activity over time. Code churn
+//! is a key indicator of technical debt and maintenance burden.
+//!
+//! # Metrics Calculated
+//!
+//! - **File Churn**: Additions, deletions, and modifications per file
+//! - **Author Activity**: Contributions by developer over time
+//! - **Hotspots**: Files with high change frequency
+//! - **Stability**: Files that haven't changed recently
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::git_analysis::GitAnalysisService;
+//! use std::path::Path;
+//!
+//! # fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Analyze code churn for the last 30 days
+//! let project_path = Path::new(".");
+//! let analysis = GitAnalysisService::analyze_code_churn(project_path, 30)?;
+//! 
+//! println!("Total commits: {}", analysis.summary.total_commits);
+//! println!("Files changed: {}", analysis.summary.files_changed);
+//! println!("Active authors: {}", analysis.summary.active_authors);
+//! 
+//! // Find hotspots (files with high churn)
+//! for file in &analysis.files {
+//!     if file.commits > 10 {
+//!         println!("Hotspot: {} ({} commits)", file.file_path.display(), file.commits);
+//!     }
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::models::churn::{ChurnSummary, CodeChurnAnalysis, FileChurnMetrics};
 use crate::models::error::TemplateError;
 use chrono::{DateTime, Duration, Utc};

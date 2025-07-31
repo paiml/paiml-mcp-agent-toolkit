@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.5] - 2025-07-31
+
+### Added
+- **Enhanced Service Documentation**: Added comprehensive module-level documentation to core service files
+  - Added module documentation to `services/quality_gates.rs` with quality gate enforcement examples
+  - Added module documentation to `services/file_classifier.rs` with file classification patterns
+  - Added module documentation to `services/git_analysis.rs` with code churn analysis examples
+  - Added module documentation to `services/template_service.rs` with template generation workflow
+  - Added module documentation to `services/big_o_analyzer.rs` with complexity analysis features
+  - Added module documentation to `services/renderer.rs` with Handlebars template rendering
+  - Added module documentation to `services/ast_rust.rs` with Rust AST analysis details
+  - Added module documentation to `services/ast_python.rs` with Python AST analysis features
+  - Added module documentation to `services/ast_based_dependency_analyzer.rs` with dependency tracking
+  - Added module documentation to `models/refactor.rs` with refactoring state machine flow
+- **Documentation Coverage Improvement**: Continued systematic improvement toward 80% coverage target
+  - Phase 2 of documentation improvement plan in progress
+  - Added 10 more module-level documentation blocks with examples
+  - Focus on core services and analysis modules
+
 ## [0.30.4] - 2025-07-31
 
 ### Added
