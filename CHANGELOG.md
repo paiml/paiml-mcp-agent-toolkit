@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Enhanced Documentation Coverage**: Improved documentation from 52% to include more core modules
+  - Added comprehensive module-level documentation to `unified_protocol/mod.rs`
+  - Added module documentation to `models/mod.rs` with example usage
+  - Added module documentation to `services/mod.rs` with service categories
+  - Added module documentation to `demo/mod.rs` with architecture overview
+  - Added module documentation to `utils/mod.rs` with utility examples
+  - Enhanced `services/context.rs` with AI-ready context generation examples
+  - Enhanced `services/refactor_engine.rs` with state machine workflow documentation
+- **Documentation Improvement Plan**: Created `docs/todo/increase-docs.md` with granular tasks
+  - Target: 80%+ documentation coverage (335+ files)
+  - Target: 30%+ doctest coverage (125+ files)
+  - Comprehensive roadmap for documentation improvements
+
 ## [0.30.3] - 2025-07-31
 
 ### Added

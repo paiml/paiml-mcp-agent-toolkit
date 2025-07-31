@@ -1,3 +1,45 @@
+//! Core services for code analysis and refactoring.
+//!
+//! This module contains all the analysis engines, detectors, and services that power
+//! PMAT's code quality toolkit. Services are designed following the Toyota Way
+//! principles of modularity and single responsibility.
+//!
+//! # Service Categories
+//!
+//! ## Analysis Services
+//! - **complexity**: Cyclomatic complexity analysis
+//! - **satd_detector**: Self-Admitted Technical Debt detection
+//! - **dead_code_detector**: Unused code identification
+//! - **duplicate_detector**: Code duplication analysis
+//! - **big_o_analyzer**: Algorithmic complexity analysis
+//! - **coupling_analyzer**: Module coupling metrics
+//!
+//! ## AST Services
+//! - **ast_rust**: Rust AST analysis
+//! - **ast_typescript**: TypeScript/JavaScript analysis
+//! - **ast_python**: Python code analysis
+//! - **ast_c/ast_cpp**: C/C++ analysis
+//! - **ast_kotlin**: Kotlin analysis
+//!
+//! ## Core Services
+//! - **context_generator**: AI-ready context generation
+//! - **refactor_engine**: Automated refactoring
+//! - **quality_gate**: Code quality enforcement
+//! - **template_engine**: Code generation templates
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::complexity::analyze_file_complexity;
+//! use std::path::Path;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let result = analyze_file_complexity(Path::new("src/main.rs")).await?;
+//! println!("Complexity: {}", result.complexity);
+//! # Ok(())
+//! # }
+//! ```
+
 pub mod artifact_writer;
 pub mod ast_based_dependency_analyzer;
 #[cfg(feature = "c-ast")]

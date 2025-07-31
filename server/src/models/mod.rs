@@ -1,3 +1,46 @@
+//! Core data models for PMAT.
+//!
+//! This module contains all the data structures and models used throughout PMAT.
+//! Each submodule represents a specific domain within the codebase analysis toolkit.
+//!
+//! # Models Overview
+//!
+//! - **churn**: Code churn metrics and repository activity analysis
+//! - **complexity_bound**: Complexity metrics and bounds for code analysis
+//! - **dag**: Directed Acyclic Graph structures for dependency analysis
+//! - **dead_code**: Dead code detection and representation
+//! - **deep_context_config**: Configuration for deep context analysis
+//! - **defect_report**: Defect reporting structures (SATD, lint issues)
+//! - **error**: Error types and handling
+//! - **mcp**: Model Context Protocol specific structures
+//! - **project_meta**: Project metadata and configuration
+//! - **refactor**: Refactoring state machine and operations
+//! - **tdg**: Task Dependency Graph for workflow analysis
+//! - **template**: Template structures for code generation
+//! - **unified_ast**: Unified AST representation across languages
+//!
+//! # Example
+//!
+//! ```
+//! use pmat::models::complexity_bound::ComplexityBound;
+//! use pmat::models::defect_report::{DefectReport, DefectType};
+//!
+//! // Create a complexity bound
+//! let bound = ComplexityBound {
+//!     threshold: 20,
+//!     strict: false,
+//! };
+//!
+//! // Create a defect report
+//! let report = DefectReport {
+//!     file_path: "src/main.rs".to_string(),
+//!     line_number: 42,
+//!     defect_type: DefectType::SelfAdmittedTechnicalDebt,
+//!     message: "TODO: Refactor this function".to_string(),
+//!     severity: "warning".to_string(),
+//! };
+//! ```
+
 pub mod churn;
 pub mod complexity_bound;
 pub mod dag;
