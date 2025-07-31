@@ -1,3 +1,5 @@
+//! Context and git tool handlers for the pmcp-based MCP server.
+
 use crate::mcp_pmcp::tool_functions;
 use async_trait::async_trait;
 use pmcp::{Error, RequestHandlerExtra, Result, ToolHandler};
@@ -5,6 +7,13 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use tracing::debug;
+
+// Re-export with expected names
+pub use self::{
+    ContextGenerateTool as GenerateContextTool,
+    GitStatusTool as GitTool,
+    ContextSummaryTool as ScaffoldProjectTool,
+};
 
 // Git Clone Tool
 

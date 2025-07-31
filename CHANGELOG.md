@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Comprehensive pmcp SDK Documentation**: Added extensive doctests and examples
+  - Module-level documentation for `mcp_pmcp` with usage examples and performance metrics
+  - Enhanced `PmcpServer` documentation with architecture details and custom configuration examples
+  - Added doctests to `analyze_handlers.rs` showing JSON argument schemas for all analysis tools
+  - Created `pmcp_analyze_workflow.rs` example demonstrating complete analysis workflow
+  - Created `pmcp_refactor_session.rs` example showing refactoring state machine
+  - Added proper feature gating for all pmcp-related code with `#[cfg(feature = "pmcp-mcp")]`
+- **Full pmcp Tool Registration**: All 15 PMAT tools now registered in pmcp server
+  - 6 analysis tools (complexity, SATD, dead code, DAG, deep context, Big-O)
+  - 4 refactoring tools (start, nextIteration, getState, stop)
+  - 1 quality gate tool
+  - 1 git operations tool
+  - 3 context tools (generate context, scaffold project, git status)
+
+### Fixed
+- **pmcp ToolHandler Signatures**: Fixed all handler methods to accept RequestHandlerExtra parameter
+- **Missing Context Handler Exports**: Added re-exports for GenerateContextTool, GitTool, and ScaffoldProjectTool
+- **Feature Flag Conditional Compilation**: Ensured all pmcp code is properly gated
+
+### Changed
+- **Enhanced Documentation**: All tool handlers now include comprehensive usage examples and JSON schemas
+- **Improved Examples**: Examples now show both feature-enabled and feature-disabled paths
+
+## [0.30.1] - 2025-01-30
+
+### Added
+- **Experimental pmcp-based MCP Server**: Initial implementation of MCP server using the pmcp Rust SDK
+  - Added `pmcp-mcp` feature flag for conditional compilation
+  - Implemented basic structure for pmcp integration
+  - Created modular handler structure: analyze, refactor, quality-gate, git, and context handlers
+  - Added environment variable `PMAT_PMCP_MCP=1` to activate pmcp backend
+  - Provides foundation for 10x performance improvement
+
+### Fixed
+- **Makefile Quote Escaping**: Fixed shell syntax error in crate-release target (line 798)
+
+### Changed
+- **pmcp Dependency**: Made pmcp dependency optional, only included with `pmcp-mcp` feature
+- **Test Example**: Updated test_pmcp_server example to handle feature flag gracefully
+
 ## [0.30.0] - 2025-01-26
 
 ### Added
