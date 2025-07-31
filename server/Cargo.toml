@@ -26,7 +26,7 @@ serde_json = { version = "1.0", default-features = false, features = ["std"] }
 handlebars = { version = "6.3", default-features = false, features = ["string_helpers"] }
 
 # MCP SDK
-# pmcp = { path = "../../pmcp", features = ["full"] }
+pmcp = { path = "../../pmcp", features = ["full"], optional = true }
 
 # Caching
 lru = { version = "0.14", features = ["hashbrown"] }
@@ -190,6 +190,8 @@ e2e-tests = []
 # Performance tests feature
 perf-tests = []
 syn = ["dep:syn"]
+# Enable pmcp-based MCP server
+pmcp-mcp = ["pmcp"]
 
 
 [[bin]]
