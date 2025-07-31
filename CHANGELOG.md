@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.30.3] - 2025-07-31
 
 ### Added
 - **Comprehensive pmcp SDK Documentation**: Added extensive doctests and examples
@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **pmcp ToolHandler Signatures**: Fixed all handler methods to accept RequestHandlerExtra parameter
 - **Missing Context Handler Exports**: Added re-exports for GenerateContextTool, GitTool, and ScaffoldProjectTool
 - **Feature Flag Conditional Compilation**: Ensured all pmcp code is properly gated
+- **CI Build Failure**: Removed pmcp path dependency to fix GitHub Actions builds
+- **Clippy Warning**: Fixed unused variable warning in pmcp_analyze_workflow example
 
 ### Changed
 - **Enhanced Documentation**: All tool handlers now include comprehensive usage examples and JSON schemas
