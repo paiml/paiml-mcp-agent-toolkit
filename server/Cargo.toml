@@ -26,7 +26,7 @@ serde_json = { version = "1.0", default-features = false, features = ["std"] }
 handlebars = { version = "6.3", default-features = false, features = ["string_helpers"] }
 
 # MCP SDK
-pmcp = { path = "../../pmcp", features = ["full"], optional = true }
+pmcp = { version = "0.3.1", features = ["full"], optional = true }
 
 # Caching
 lru = { version = "0.14", features = ["hashbrown"] }
