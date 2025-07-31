@@ -1,7 +1,7 @@
 use crate::mcp_server::state_manager::StateManager;
 use crate::models::refactor::RefactorConfig;
 use async_trait::async_trait;
-use pmcp::{Error as PmcpError, Result as PmcpResult, ToolHandler};
+use pmcp::{Error as PmcpError, RequestHandlerExtra, Result as PmcpResult, ToolHandler};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -33,7 +33,7 @@ impl RefactorStartTool {
 
 #[async_trait]
 impl ToolHandler for RefactorStartTool {
-    async fn handle(&self, args: Value) -> PmcpResult<Value> {
+    async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> PmcpResult<Value> {
         debug!("Handling refactor.start with args: {}", args);
 
         let params: RefactorStartArgs = serde_json::from_value(args)
@@ -79,7 +79,7 @@ impl RefactorNextIterationTool {
 
 #[async_trait]
 impl ToolHandler for RefactorNextIterationTool {
-    async fn handle(&self, _args: Value) -> PmcpResult<Value> {
+    async fn handle(&self, _args: Value, _extra: RequestHandlerExtra) -> PmcpResult<Value> {
         debug!("Handling refactor.nextIteration");
 
         let mut manager = self.state_manager.lock().await;
@@ -108,7 +108,7 @@ impl RefactorGetStateTool {
 
 #[async_trait]
 impl ToolHandler for RefactorGetStateTool {
-    async fn handle(&self, _args: Value) -> PmcpResult<Value> {
+    async fn handle(&self, _args: Value, _extra: RequestHandlerExtra) -> PmcpResult<Value> {
         debug!("Handling refactor.getState");
 
         let manager = self.state_manager.lock().await;
@@ -133,7 +133,7 @@ impl RefactorStopTool {
 
 #[async_trait]
 impl ToolHandler for RefactorStopTool {
-    async fn handle(&self, _args: Value) -> PmcpResult<Value> {
+    async fn handle(&self, _args: Value, _extra: RequestHandlerExtra) -> PmcpResult<Value> {
         debug!("Handling refactor.stop");
 
         let mut manager = self.state_manager.lock().await;
