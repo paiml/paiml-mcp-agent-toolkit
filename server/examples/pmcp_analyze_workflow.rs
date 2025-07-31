@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create the pmcp server
     println!("1. Creating pmcp-based MCP server...");
-    let server = PmcpServer::new();
+    let _server = PmcpServer::new();
     println!("   ✓ Server created successfully");
 
     // In a real scenario, the server would be running and accepting requests
