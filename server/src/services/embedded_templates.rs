@@ -1,3 +1,50 @@
+//! Embedded code generation templates for zero-dependency operation.
+//!
+//! This module provides a comprehensive set of code generation templates that are
+//! embedded directly into the binary at compile time. This enables offline operation
+//! and eliminates runtime dependencies on external template files or network access.
+//!
+//! # Template Categories
+//!
+//! - **Makefile Templates**: Build automation for Rust, Python, Deno projects
+//! - **README Templates**: Project documentation with badges and structure
+//! - **Gitignore Templates**: Language-specific ignore patterns
+//! - **Project Templates**: Full project scaffolding configurations
+//! - **CI/CD Templates**: GitHub Actions, GitLab CI configurations
+//! - **Configuration Templates**: Docker, deployment configs
+//!
+//! # Design Philosophy
+//!
+//! All templates are:
+//! - Embedded at compile time using `include_str!`
+//! - Compressed automatically during build
+//! - Validated for syntax and completeness
+//! - Versioned for compatibility tracking
+//!
+//! # Example
+//!
+//! ```
+//! use pmat::services::embedded_templates::EmbeddedTemplateProvider;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let provider = EmbeddedTemplateProvider::new();
+//! 
+//! // List all available templates
+//! let templates = provider.list_templates("makefile/").await?;
+//! for template in templates {
+//!     println!("{}: {}", template.name, template.description);
+//! }
+//! 
+//! // Get a specific template
+//! let makefile_content = provider
+//!     .get_template_content("template://makefile/rust/cli")
+//!     .await?;
+//!     
+//! println!("Template size: {} bytes", makefile_content.len());
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::models::error::TemplateError;
 use crate::models::template::{
     ParameterSpec, ParameterType, TemplateCategory, TemplateResource, Toolchain,

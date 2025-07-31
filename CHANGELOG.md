@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.6] - 2025-07-31
+
+### Added
+- **Advanced Service Documentation**: Added comprehensive module-level documentation to 10 more core service files
+  - Added module documentation to `services/canonical_query.rs` with query framework architecture
+  - Added module documentation to `services/coupling_analyzer.rs` with coupling metrics and stability analysis
+  - Added module documentation to `services/dag_builder.rs` with dependency graph construction process
+  - Added module documentation to `services/deep_context.rs` with multi-dimensional analysis orchestration
+  - Added module documentation to `services/dead_code_prover.rs` with reachability analysis approach
+  - Added module documentation to `services/defect_analyzers.rs` with defect analyzer implementations
+  - Added module documentation to `services/defect_probability.rs` with defect prediction model
+  - Added module documentation to `services/embedded_templates.rs` with template embedding philosophy
+- **Documentation Coverage Progress**: Phase 3 of systematic documentation improvement
+  - All documented modules include working examples
+  - Focus on advanced analysis and prediction services
+  - Continued progress toward 80% documentation coverage target
+
 ## [0.30.5] - 2025-07-31
 
 ### Added

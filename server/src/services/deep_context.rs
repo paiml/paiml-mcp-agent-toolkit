@@ -1,3 +1,60 @@
+//! Deep context analysis for comprehensive code understanding.
+//!
+//! This module orchestrates multiple analysis techniques to generate rich,
+//! multi-dimensional context about a codebase. It combines static analysis,
+//! historical metrics, and quality indicators to provide AI/LLM systems with
+//! deep understanding of code structure, quality, and evolution.
+//!
+//! # Analysis Dimensions
+//!
+//! - **Structure**: AST analysis, dependency graphs, call hierarchies
+//! - **Quality**: Complexity metrics, technical debt, code smells
+//! - **Evolution**: Code churn, hotspots, stability analysis
+//! - **Semantics**: Dead code detection, SATD comments, provability
+//! - **Performance**: Big-O complexity, resource usage patterns
+//!
+//! # Parallelization
+//!
+//! The analyzer uses Rayon for parallel processing of independent analyses,
+//! significantly reducing analysis time for large codebases while maintaining
+//! deterministic results through careful aggregation.
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::deep_context::{DeepContext, DeepContextConfig, AnalysisType};
+//! use std::path::Path;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let config = DeepContextConfig {
+//!     include_analyses: vec![
+//!         AnalysisType::Ast,
+//!         AnalysisType::Complexity,
+//!         AnalysisType::Churn,
+//!         AnalysisType::TechnicalDebtGradient,
+//!     ],
+//!     period_days: 30,
+//!     dag_type: DagType::Full,
+//!     complexity_thresholds: None,
+//!     max_depth: Some(3),
+//!     include_patterns: vec!["**/*.rs".to_string()],
+//!     exclude_patterns: vec!["**/tests/**".to_string()],
+//!     cache_strategy: CacheStrategy::Persistent,
+//!     parallel: 4,
+//!     file_classifier_config: None,
+//! };
+//! 
+//! let analyzer = DeepContext::new(config);
+//! let context = analyzer.analyze(Path::new("src/")).await?;
+//! 
+//! // Access multi-dimensional analysis results
+//! println!("Total complexity: {}", context.complexity_report.unwrap().total_complexity);
+//! println!("Code churn hotspots: {}", context.churn_analysis.unwrap().summary.hotspot_files.len());
+//! println!("Technical debt score: {:.2}", context.tdg_analysis.unwrap().summary.overall_tdg_score);
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::models::{
     churn::CodeChurnAnalysis,
     dag::DependencyGraph,
