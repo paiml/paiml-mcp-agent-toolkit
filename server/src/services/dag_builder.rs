@@ -1,3 +1,49 @@
+//! Dependency graph builder for constructing code structure DAGs.
+//!
+//! This module builds directed acyclic graphs (DAGs) representing the structure
+//! and dependencies within a codebase. It processes AST items to create nodes
+//! and edges that capture relationships like function calls, type inheritance,
+//! module imports, and data flow.
+//!
+//! # Graph Construction Process
+//!
+//! 1. **Node Collection**: First pass collects all entities (functions, types, modules)
+//! 2. **Relationship Analysis**: Second pass creates edges based on code relationships
+//! 3. **Graph Optimization**: Prunes edges to stay within visualization limits
+//! 4. **Semantic Naming**: Applies deterministic naming for stable graph generation
+//!
+//! # Edge Types
+//!
+//! - **Calls**: Function/method invocations
+//! - **Imports**: Module dependencies
+//! - **Inherits**: Class/trait inheritance
+//! - **Implements**: Interface implementations
+//! - **Uses**: Type usage relationships
+//! - **DataFlow**: Data dependencies between components
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::dag_builder::DagBuilder;
+//! use pmat::services::context::ProjectContext;
+//!
+//! # fn example(project: &ProjectContext) {
+//! // Build dependency graph from project context
+//! let graph = DagBuilder::build_from_project(project);
+//! 
+//! println!("Graph has {} nodes and {} edges", 
+//!          graph.nodes.len(), graph.edges.len());
+//! 
+//! // Find all functions that call a specific function
+//! let callers = graph.edges.iter()
+//!     .filter(|e| e.to == "myFunction" && e.edge_type == EdgeType::Calls)
+//!     .map(|e| &e.from)
+//!     .collect::<Vec<_>>();
+//!     
+//! println!("Functions calling myFunction: {:?}", callers);
+//! # }
+//! ```
+
 use crate::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
 use crate::services::context::{AstItem, FileContext, ProjectContext};
 use crate::services::semantic_naming::SemanticNamer;

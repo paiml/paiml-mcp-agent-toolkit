@@ -1,3 +1,54 @@
+//! Concrete implementations of defect analyzers for various quality issues.
+//!
+//! This module provides specific analyzers that implement the `DefectAnalyzer`
+//! trait to detect different types of code quality issues. Each analyzer focuses
+//! on a specific category of defects and can be composed to provide comprehensive
+//! code quality assessment.
+//!
+//! # Analyzer Types
+//!
+//! - **ComplexityDefectAnalyzer**: Detects overly complex code using TDG metrics
+//! - **DeadCodeDefectAnalyzer**: Identifies unreachable and unused code
+//! - **DuplicateDefectAnalyzer**: Finds duplicated code blocks and patterns
+//! - **PerformanceDefectAnalyzer**: Detects performance anti-patterns
+//! - **SecurityDefectAnalyzer**: Identifies potential security vulnerabilities
+//! - **TechnicalDebtAnalyzer**: Tracks self-admitted technical debt (SATD)
+//!
+//! # Severity Mapping
+//!
+//! Each analyzer maps its findings to standardized severity levels:
+//! - **Critical**: Immediate action required (security, crashes)
+//! - **High**: Should be fixed soon (performance, maintainability)
+//! - **Medium**: Should be scheduled for fixing
+//! - **Low**: Nice to fix, low priority
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::defect_analyzers::{ComplexityDefectAnalyzer, ComplexityConfig};
+//! use pmat::services::defect_analyzer::DefectAnalyzer;
+//! use std::path::Path;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let analyzer = ComplexityDefectAnalyzer;
+//! let config = ComplexityConfig {
+//!     cyclomatic_threshold: 20,
+//!     cognitive_threshold: 30,
+//!     nesting_threshold: 5,
+//! };
+//! 
+//! let defects = analyzer.analyze(Path::new("src/"), config).await?;
+//! 
+//! // Group defects by severity
+//! let critical_count = defects.iter()
+//!     .filter(|d| d.severity == Severity::Critical)
+//!     .count();
+//!     
+//! println!("Found {} critical complexity issues", critical_count);
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::models::defect_report::{Defect, DefectCategory, Severity};
 use crate::models::tdg::{TDGScore, TDGSeverity};
 use crate::services::{

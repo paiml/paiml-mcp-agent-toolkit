@@ -1,3 +1,57 @@
+//! Canonical query framework for standardized code analysis.
+//!
+//! This module provides a unified interface for executing various code analysis
+//! queries in a consistent, cacheable manner. It enables building complex
+//! analysis pipelines by composing simple, reusable query components.
+//!
+//! # Architecture
+//!
+//! The framework consists of:
+//! - `CanonicalQuery` trait: Standard interface for all analysis queries
+//! - `AnalysisContext`: Shared context containing AST, call graphs, and metrics
+//! - Query implementations: Specific analyses (complexity, coupling, defects)
+//! - Result caching: Automatic caching based on query ID and project path
+//!
+//! # Query Types
+//!
+//! - **Structural Queries**: AST analysis, dependency graphs, call graphs
+//! - **Metric Queries**: Complexity, coupling, cohesion measurements
+//! - **Quality Queries**: Defect prediction, code smell detection
+//! - **Evolution Queries**: Code churn, hotspot analysis
+//!
+//! # Example
+//!
+//! ```
+//! use pmat::services::canonical_query::{CanonicalQuery, AnalysisContext, QueryResult};
+//! use std::path::Path;
+//!
+//! // Define a custom query
+//! struct HighComplexityQuery {
+//!     threshold: u32,
+//! }
+//!
+//! impl CanonicalQuery for HighComplexityQuery {
+//!     fn query_id(&self) -> &'static str {
+//!         "high_complexity_functions"
+//!     }
+//!
+//!     fn execute(&self, ctx: &AnalysisContext) -> anyhow::Result<QueryResult> {
+//!         let mut results = Vec::new();
+//!         
+//!         for (name, metrics) in &ctx.complexity_map {
+//!             if metrics.cyclomatic_complexity > self.threshold {
+//!                 results.push(serde_json::json!({
+//!                     "function": name,
+//!                     "complexity": metrics.cyclomatic_complexity,
+//!                 }));
+//!             }
+//!         }
+//!         
+//!         Ok(QueryResult::Collection(results))
+//!     }
+//! }
+//! ```
+
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use rustc_hash::FxHashMap;
