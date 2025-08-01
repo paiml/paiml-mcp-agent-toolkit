@@ -16,20 +16,21 @@
 //! # Example
 //!
 //! ```no_run
-//! use pmat::services::git_clone::GitCloneService;
+//! use pmat::services::git_clone::{GitCloner, ClonedRepo};
+//! use std::path::PathBuf;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! let service = GitCloneService::new();
+//! let cloner = GitCloner::new(PathBuf::from(".cache"));
 //! 
 //! // Clone a repository
-//! let result = service.clone_repo("https://github.com/rust-lang/rust").await?;
+//! let result = cloner.clone_or_update("https://github.com/rust-lang/rust").await?;
 //! 
 //! println!("Cloned to: {}", result.path.display());
-//! println!("Took: {:?}", result.duration);
+//! println!("From cache: {}", result.cached);
 //! 
 //! // Subsequent calls use cache
-//! let cached = service.clone_repo("https://github.com/rust-lang/rust").await?;
-//! assert!(cached.was_cached);
+//! let cached = cloner.clone_or_update("https://github.com/rust-lang/rust").await?;
+//! assert!(cached.cached);
 //! # Ok(())
 //! # }
 //! ```
@@ -447,15 +448,14 @@ impl GitCloner {
     ///
     /// ```no_run
     /// # use pmat::services::git_clone::{GitCloner, ParsedGitHubUrl};
+    /// # use std::path::PathBuf;
     /// # 
     /// # #[tokio::test]
     /// # async fn test_repo_size() -> anyhow::Result<()> {
-    /// let git_clone = GitCloner::new();
+    /// let git_clone = GitCloner::new(PathBuf::from(".cache"));
     /// let parsed_url = ParsedGitHubUrl {
     ///     owner: "rust-lang".to_string(),
     ///     repo: "rust".to_string(),
-    ///     branch: None,
-    ///     subdir: None,
     /// };
     /// 
     /// let size_kb = git_clone.check_repo_size(&parsed_url).await?;
@@ -468,10 +468,11 @@ impl GitCloner {
     ///
     /// ```no_run
     /// # use pmat::services::git_clone::{GitCloner, ParsedGitHubUrl};
+    /// # use std::path::PathBuf;
     /// # 
     /// # #[tokio::test]
     /// # async fn test_repo_size_properties() -> anyhow::Result<()> {
-    /// let git_clone = GitCloner::new();
+    /// let git_clone = GitCloner::new(PathBuf::from(".cache"));
     /// 
     /// // Test with well-known repositories
     /// let repos = vec![
@@ -483,8 +484,6 @@ impl GitCloner {
     ///     let parsed_url = ParsedGitHubUrl {
     ///         owner: owner.to_string(),
     ///         repo: repo.to_string(),
-    ///         branch: None,
-    ///         subdir: None,
     ///     };
     ///     
     ///     let size = git_clone.check_repo_size(&parsed_url).await?;
