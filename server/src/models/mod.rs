@@ -22,22 +22,24 @@
 //! # Example
 //!
 //! ```
-//! use pmat::models::complexity_bound::ComplexityBound;
-//! use pmat::models::defect_report::{DefectReport, DefectType};
+//! use pmat::models::defect_report::{Defect, DefectCategory, Severity};
+//! use pmat::models::dag::DependencyGraph;
+//! use std::path::PathBuf;
 //!
-//! // Create a complexity bound
-//! let bound = ComplexityBound {
-//!     threshold: 20,
-//!     strict: false,
-//! };
-//!
-//! // Create a defect report
-//! let report = DefectReport {
-//!     file_path: "src/main.rs".to_string(),
-//!     line_number: 42,
-//!     defect_type: DefectType::SelfAdmittedTechnicalDebt,
+//! // Create a defect
+//! let defect = Defect {
+//!     id: "SATD-001".to_string(),
+//!     severity: Severity::Medium,
+//!     category: DefectCategory::SelfAdmittedTechnicalDebt,
+//!     file_path: PathBuf::from("src/main.rs"),
+//!     line_start: 42,
+//!     line_end: Some(45),
+//!     column_start: Some(5),
+//!     column_end: Some(80),
 //!     message: "TODO: Refactor this function".to_string(),
-//!     severity: "warning".to_string(),
+//!     rule_id: "satd-todo".to_string(),
+//!     fix_suggestion: None,
+//!     metrics: Default::default(),
 //! };
 //! ```
 

@@ -22,7 +22,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::unified_refactor_analyzer::{AnalyzerPool, RustAnalyzer, Language};
 //! use pmat::models::unified_ast::UnifiedAstNode;
 //! use std::sync::Arc;

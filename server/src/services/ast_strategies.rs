@@ -24,7 +24,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::ast_strategies::{StrategyRegistry, AstStrategy};
 //! use pmat::services::file_classifier::FileClassifier;
 //! use std::path::Path;

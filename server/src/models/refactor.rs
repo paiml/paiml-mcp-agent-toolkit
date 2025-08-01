@@ -24,7 +24,7 @@
 //! let config = RefactorConfig::default();
 //! let targets = vec![PathBuf::from("src/complex_module.rs")];
 //! 
-//! let mut state_machine = RefactorStateMachine::new(config, targets);
+//! let mut state_machine = RefactorStateMachine::new(targets, config);
 //! 
 //! // Start with scanning
 //! match &state_machine.current {
