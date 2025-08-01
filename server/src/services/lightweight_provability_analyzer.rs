@@ -1,3 +1,65 @@
+//! Lightweight provability analysis using abstract interpretation
+//!
+//! This module provides fast, incremental provability analysis using abstract
+//! interpretation techniques instead of heavyweight SMT solvers. It analyzes
+//! code properties like null safety, bounds checking, aliasing, and purity
+//! to compute a provability score that feeds into the TDG calculation.
+//!
+//! # Approach
+//!
+//! The analyzer uses abstract domains to track program properties:
+//! - **Nullability Analysis**: Tracks potential null/undefined values
+//! - **Interval Analysis**: Bounds checking and numeric ranges
+//! - **Alias Analysis**: Detects potential aliasing issues
+//! - **Purity Analysis**: Identifies side-effect free functions
+//!
+//! # Abstract Interpretation
+//!
+//! Instead of precise symbolic execution, we use:
+//! - **Lattice-based Domains**: Fast join/meet operations
+//! - **Widening**: Ensures termination for loops
+//! - **Incremental Analysis**: Only re-analyze changed functions
+//! - **Caching**: Persistent results across analysis runs
+//!
+//! # Integration with TDG
+//!
+//! The provability score (0.0-1.0) is converted to a factor (0.0-5.0) for TDG:
+//! - Higher provability → Lower TDG score (more maintainable code)
+//! - Lower provability → Higher TDG score (harder to reason about)
+//!
+//! # Example
+//!
+//! ```rust
+//! use pmat::services::lightweight_provability_analyzer::{
+//!     LightweightProvabilityAnalyzer, FunctionId
+//! };
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let analyzer = LightweightProvabilityAnalyzer::new();
+//! 
+//! // Analyze specific functions incrementally
+//! let changed_functions = vec![
+//!     FunctionId {
+//!         file_path: "src/main.rs".to_string(),
+//!         function_name: "process_data".to_string(),
+//!         line_number: 42,
+//!     }
+//! ];
+//! 
+//! let summaries = analyzer.analyze_incrementally(&changed_functions).await;
+//! 
+//! for summary in summaries {
+//!     println!("Provability score: {:.2}", summary.provability_score);
+//!     println!("Verified properties:");
+//!     for prop in &summary.verified_properties {
+//!         println!("  - {:?} (confidence: {:.0}%)", 
+//!                  prop.property_type, prop.confidence * 100.0);
+//!     }
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 use std::sync::Arc;
 
 use dashmap::DashMap;

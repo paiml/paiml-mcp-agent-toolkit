@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.8] - 2025-08-01
+
+### Added
+- **Complete Service Documentation**: Added comprehensive module-level documentation to 9 more core service files
+  - Added module documentation to `services/file_discovery.rs` with intelligent file filtering and categorization
+  - Added module documentation to `services/tdg_calculator.rs` with Technical Debt Gradient scoring system
+  - Added module documentation to `services/verified_complexity.rs` with multiple complexity metrics
+  - Added module documentation to `services/mermaid_generator.rs` with diagram generation and simplification
+  - Added module documentation to `services/semantic_naming.rs` with language-aware naming conventions
+  - Added module documentation to `services/ranking.rs` with generic file ranking framework
+  - Enhanced module documentation for `services/lightweight_provability_analyzer.rs` with abstract interpretation details
+  - Added module documentation to `services/makefile_compressor.rs` with intelligent compression strategies
+  - Added module documentation to `services/fixed_graph_builder.rs` with PageRank-based node selection
+- **Documentation Completion**: Achieved comprehensive documentation coverage
+  - All critical service modules now have detailed documentation
+  - Each module includes working examples and clear explanations
+  - Documentation follows consistent style with features, architecture, and usage examples
+
 ## [0.30.7] - 2025-08-01
 
 ### Added

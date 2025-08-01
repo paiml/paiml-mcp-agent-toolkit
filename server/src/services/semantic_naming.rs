@@ -1,3 +1,48 @@
+//! Semantic naming service for code elements
+//!
+//! This module provides intelligent naming conversion for code elements across
+//! different programming languages. It ensures graph nodes have meaningful,
+//! language-appropriate names that are both human-readable and deterministic,
+//! improving the clarity of generated diagrams and reports.
+//!
+//! # Naming Strategies
+//!
+//! The service applies a priority-based naming strategy:
+//! 1. **Explicit Labels**: Use provided labels if meaningful
+//! 2. **Module Notation**: Convert file paths to language-specific module names
+//! 3. **ID Cleaning**: Sanitize raw identifiers as a fallback
+//!
+//! # Language Support
+//!
+//! Supports language-specific naming conventions:
+//! - **Rust**: `module::submodule::item` (double colon)
+//! - **Python**: `module.submodule.item` (dot notation)
+//! - **TypeScript/JavaScript**: `module.submodule.item` (dot notation)
+//! - **Go**: `package/subpackage/item` (slash notation)
+//! - **Java/Kotlin**: `com.package.subpackage.Item` (dot notation)
+//!
+//! # Example
+//!
+//! ```rust
+//! use pmat::services::semantic_naming::SemanticNamer;
+//! use pmat::models::dag::NodeInfo;
+//!
+//! let namer = SemanticNamer::new();
+//! 
+//! // Convert file path to module notation
+//! let node = NodeInfo {
+//!     file_path: "src/services/analyzer.rs".to_string(),
+//!     ..Default::default()
+//! };
+//! 
+//! let name = namer.get_semantic_name("node_123", &node);
+//! assert_eq!(name, "services::analyzer");
+//! 
+//! // Clean up raw identifiers
+//! let clean_name = namer.clean_id("file:///src/main.rs#function_name");
+//! assert_eq!(clean_name, "main::function_name");
+//! ```
+
 use rustc_hash::FxHashMap;
 use std::path::Path;
 
