@@ -1,3 +1,58 @@
+//! Unified refactoring analyzer for multi-language code transformation
+//!
+//! This module provides a language-agnostic framework for analyzing code metrics
+//! and suggesting automated refactoring operations. It uses the Unified AST model
+//! to work across different programming languages with consistent transformations.
+//!
+//! # Architecture
+//!
+//! - **UnifiedAnalyzer Trait**: Common interface for all language analyzers
+//! - **AnalyzerPool**: Registry for language-specific analyzer implementations
+//! - **Metrics-Driven**: Refactoring suggestions based on complexity metrics
+//! - **Risk Assessment**: Each refactoring plan includes risk level evaluation
+//! - **Incremental Updates**: Efficient metric updates after transformations
+//!
+//! # Supported Refactorings
+//!
+//! - **Extract Function**: Split complex functions into smaller units
+//! - **Flatten Nesting**: Reduce deep nesting levels
+//! - **Simplify Expression**: Replace complex expressions with simpler ones
+//! - **Remove SATD**: Eliminate self-admitted technical debt
+//! - **Dead Code Removal**: Clean up unused code
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::unified_refactor_analyzer::{AnalyzerPool, RustAnalyzer, Language};
+//! use pmat::models::unified_ast::UnifiedAstNode;
+//! use std::sync::Arc;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create analyzer pool
+//! let mut pool = AnalyzerPool::new();
+//! pool.register(Arc::new(RustAnalyzer::new()));
+//! 
+//! // Get analyzer for Rust
+//! let analyzer = pool.get(Language::Rust).unwrap();
+//! 
+//! // Analyze a function node
+//! let ast_node = UnifiedAstNode::default(); // Would be actual AST
+//! let metrics = analyzer.compute_metrics(&ast_node).await?;
+//! 
+//! // Get refactoring suggestions
+//! let plans = analyzer.suggest_refactors(&metrics).await?;
+//! 
+//! for plan in &plans {
+//!     println!("Suggested: {} (confidence: {})", 
+//!              plan.explanation, plan.confidence);
+//!     println!("Risk level: {:?}", plan.risk_level);
+//!     println!("Expected complexity reduction: {:?}", 
+//!              plan.estimated_improvement.complexity_reduction);
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::models::refactor::{MetricSet, RefactorOp};
 use crate::models::unified_ast::UnifiedAstNode;
 use async_trait::async_trait;
