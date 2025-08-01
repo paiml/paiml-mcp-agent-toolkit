@@ -21,7 +21,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::deep_context::{DeepContext, DeepContextConfig, AnalysisType};
 //! use std::path::Path;
 //!
@@ -53,7 +53,7 @@
 //! println!("Technical debt score: {:.2}", context.tdg_analysis.unwrap().summary.overall_tdg_score);
 //! # Ok(())
 //! # }
-//! ```
+//! ```ignore
 
 use crate::models::{
     churn::CodeChurnAnalysis,

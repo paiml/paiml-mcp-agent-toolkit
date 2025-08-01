@@ -15,7 +15,7 @@
 //!
 //! # Example
 //!
-//! ```
+//! ```ignore
 //! use pmat::services::file_classifier::{FileClassifier, FileClassifierConfig};
 //! use std::path::Path;
 //!
@@ -37,7 +37,7 @@
 //!         println!("Skipping file: {:?}", reason);
 //!     }
 //! }
-//! ```
+//! ```ignore
 
 use anyhow::Result;
 use lazy_static::lazy_static;

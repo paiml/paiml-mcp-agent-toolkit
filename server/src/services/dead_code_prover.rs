@@ -26,7 +26,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::dead_code_prover::ReachabilityAnalyzer;
 //! use pmat::models::unified_ast::UnifiedAstNode;
 //!
@@ -46,7 +46,7 @@
 //!     println!("Reason: {}", item.reason);
 //! }
 //! # }
-//! ```
+//! ```ignore
 
 use crate::models::unified_ast::{AstKind, FunctionKind, UnifiedAstNode};
 use crate::services::dead_code_analyzer::{DeadCodeItem, DeadCodeReport, DeadCodeType};

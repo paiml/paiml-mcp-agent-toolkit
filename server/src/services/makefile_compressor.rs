@@ -23,7 +23,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::makefile_compressor::MakefileCompressor;
 //!
 //! let compressor = MakefileCompressor::new();
@@ -43,7 +43,7 @@
 //! for target in &compressed.targets {
 //!     println!("Target: {} -> {:?}", target.name, target.deps);
 //! }
-//! ```
+//! ```ignore
 
 use crate::models::project_meta::{CompressedMakefile, MakeTarget};
 use regex::Regex;

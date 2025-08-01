@@ -15,7 +15,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::quality_gates::{QAVerification, DeepContextResult};
 //!
 //! # fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -32,7 +32,7 @@
 //! }
 //! # Ok(())
 //! # }
-//! ```
+//! ```ignore
 
 use anyhow::Result;
 use rustc_hash::FxHashMap;

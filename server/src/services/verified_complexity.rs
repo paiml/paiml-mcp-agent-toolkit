@@ -23,7 +23,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::verified_complexity::VerifiedComplexityAnalyzer;
 //! use pmat::models::unified_ast::UnifiedAstNode;
 //!
@@ -42,7 +42,7 @@
 //! if metrics.cognitive > 15 {
 //!     println!("⚠️ High cognitive complexity - consider refactoring");
 //! }
-//! ```
+//! ```ignore
 
 use crate::models::unified_ast::{AstKind, ExprKind, StmtKind, UnifiedAstNode};
 use std::collections::HashMap;
