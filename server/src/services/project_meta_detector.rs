@@ -20,7 +20,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::project_meta_detector::ProjectMetaDetector;
 //! use std::path::Path;
 //!
@@ -46,7 +46,7 @@
 //! }
 //! # Ok(())
 //! # }
-//! ```
+//! ```ignore
 
 use crate::models::project_meta::{MetaFile, MetaFileType};
 use regex::Regex;

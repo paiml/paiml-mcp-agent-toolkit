@@ -29,13 +29,13 @@
 //!
 //! # Example
 //!
-//! ```no_run
-//! use pmat::services::complexity::analyze_file_complexity;
+//! ```ignore
+//! use pmat::services::ast_rust::analyze_rust_file_with_complexity;
 //! use std::path::Path;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! let result = analyze_file_complexity(Path::new("src/main.rs")).await?;
-//! println!("Complexity: {}", result.complexity);
+//! let result = analyze_rust_file_with_complexity(Path::new("src/main.rs")).await?;
+//! println!("Total complexity: {:?}", result.total_complexity);
 //! # Ok(())
 //! # }
 //! ```

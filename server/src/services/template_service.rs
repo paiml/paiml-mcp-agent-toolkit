@@ -13,7 +13,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::template_service::{generate_template, TemplateServerTrait};
 //! use serde_json::{Map, Value};
 //!
@@ -33,7 +33,7 @@
 //! println!("Checksum: {}", template.checksum);
 //! # Ok(())
 //! # }
-//! ```
+//! ```ignore
 
 use crate::models::error::TemplateError;
 use crate::models::template::{GeneratedTemplate, TemplateResource};

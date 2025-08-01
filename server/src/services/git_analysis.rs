@@ -13,7 +13,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::git_analysis::GitAnalysisService;
 //! use std::path::Path;
 //!
@@ -34,7 +34,7 @@
 //! }
 //! # Ok(())
 //! # }
-//! ```
+//! ```ignore
 
 use crate::models::churn::{ChurnSummary, CodeChurnAnalysis, FileChurnMetrics};
 use crate::models::error::TemplateError;

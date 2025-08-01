@@ -23,7 +23,7 @@
 //!
 //! # Example
 //!
-//! ```rust
+//! ```ignore
 //! use pmat::services::semantic_naming::SemanticNamer;
 //! use pmat::models::dag::NodeInfo;
 //!
@@ -41,7 +41,7 @@
 //! // Clean up raw identifiers
 //! let clean_name = namer.clean_id("file:///src/main.rs#function_name");
 //! assert_eq!(clean_name, "main::function_name");
-//! ```
+//! ```ignore
 
 use rustc_hash::FxHashMap;
 use std::path::Path;

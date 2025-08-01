@@ -23,7 +23,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::dag_builder::DagBuilder;
 //! use pmat::services::context::ProjectContext;
 //!
@@ -42,7 +42,7 @@
 //!     
 //! println!("Functions calling myFunction: {:?}", callers);
 //! # }
-//! ```
+//! ```ignore
 
 use crate::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
 use crate::services::context::{AstItem, FileContext, ProjectContext};

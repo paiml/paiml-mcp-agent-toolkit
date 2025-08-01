@@ -30,9 +30,10 @@
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let metrics = analyze_rust_file_with_complexity(Path::new("src/main.rs")).await?;
 //! 
-//! println!("File complexity: {}", metrics.total_complexity);
+//! println!("File complexity: {:?}", metrics.total_complexity);
 //! for func in &metrics.functions {
-//!     println!("Function {}: complexity {}", func.name, func.cyclomatic_complexity);
+//!     println!("Function {}: cyclomatic {}, cognitive {}", 
+//!              func.name, func.metrics.cyclomatic, func.metrics.cognitive);
 //! }
 //! # Ok(())
 //! # }

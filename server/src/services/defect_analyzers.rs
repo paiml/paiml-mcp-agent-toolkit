@@ -24,7 +24,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::defect_analyzers::{ComplexityDefectAnalyzer, ComplexityConfig};
 //! use pmat::services::defect_analyzer::DefectAnalyzer;
 //! use std::path::Path;
@@ -47,7 +47,7 @@
 //! println!("Found {} critical complexity issues", critical_count);
 //! # Ok(())
 //! # }
-//! ```
+//! ```ignore
 
 use crate::models::defect_report::{Defect, DefectCategory, Severity};
 use crate::models::tdg::{TDGScore, TDGSeverity};

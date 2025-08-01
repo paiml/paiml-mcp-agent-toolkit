@@ -39,10 +39,10 @@
 //!         let mut results = Vec::new();
 //!         
 //!         for (name, metrics) in &ctx.complexity_map {
-//!             if metrics.cyclomatic_complexity > self.threshold {
+//!             if metrics.cyclomatic > self.threshold {
 //!                 results.push(serde_json::json!({
 //!                     "function": name,
-//!                     "complexity": metrics.cyclomatic_complexity,
+//!                     "complexity": metrics.cyclomatic,
 //!                 }));
 //!             }
 //!         }

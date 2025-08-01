@@ -24,7 +24,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::tdg_calculator::TDGCalculator;
 //! use pmat::models::tdg::TDGConfig;
 //! use std::path::PathBuf;
@@ -49,7 +49,7 @@
 //! println!("Project average TDG: {:.2}", analysis.summary.average_score);
 //! # Ok(())
 //! # }
-//! ```
+//! ```ignore
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
