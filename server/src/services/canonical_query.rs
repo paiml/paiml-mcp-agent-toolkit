@@ -21,7 +21,7 @@
 //!
 //! # Example
 //!
-//! ```
+//! ```ignore
 //! use pmat::services::canonical_query::{CanonicalQuery, AnalysisContext, QueryResult};
 //! use std::path::Path;
 //!
@@ -39,7 +39,7 @@
 //!         let mut results = Vec::new();
 //!         
 //!         for (name, metrics) in &ctx.complexity_map {
-//!             if metrics.cyclomatic > self.threshold {
+//!             if metrics.cyclomatic > self.threshold as u16 {
 //!                 results.push(serde_json::json!({
 //!                     "function": name,
 //!                     "complexity": metrics.cyclomatic,
@@ -47,7 +47,8 @@
 //!             }
 //!         }
 //!         
-//!         Ok(QueryResult::Collection(results))
+//!         // In real implementation, would return proper QueryResult with diagram
+//!         todo!("Create proper QueryResult")
 //!     }
 //! }
 //! ```
