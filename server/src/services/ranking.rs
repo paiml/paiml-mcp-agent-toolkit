@@ -1,3 +1,52 @@
+//! Generic file ranking system for prioritizing code analysis
+//!
+//! This module provides a flexible ranking framework that can sort files by
+//! various metrics including complexity, technical debt, code churn, and more.
+//! It uses parallel processing and caching to efficiently rank large codebases,
+//! helping developers focus on the most problematic areas first.
+//!
+//! # Architecture
+//!
+//! The ranking system consists of:
+//! - **FileRanker Trait**: Defines how to compute and format rankings
+//! - **RankingEngine**: Generic engine that applies rankers with caching
+//! - **Built-in Rankers**: Complexity, TDG, churn, and composite rankers
+//! - **Parallel Processing**: Uses Rayon for efficient multi-core ranking
+//!
+//! # Ranking Strategies
+//!
+//! - **Complexity Ranking**: Sorts by cyclomatic/cognitive complexity
+//! - **TDG Ranking**: Uses Technical Debt Gradient scores
+//! - **Churn Ranking**: Prioritizes frequently changed files
+//! - **Composite Ranking**: Combines multiple metrics with weights
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::ranking::{RankingEngine, ComplexityRanker};
+//! use std::path::PathBuf;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a complexity-based ranker
+//! let ranker = ComplexityRanker::new();
+//! let engine = RankingEngine::new(ranker);
+//! 
+//! // Rank files by complexity
+//! let files = vec![
+//!     PathBuf::from("src/main.rs"),
+//!     PathBuf::from("src/lib.rs"),
+//!     PathBuf::from("src/complex_module.rs"),
+//! ];
+//! 
+//! let top_5 = engine.rank_files(&files, 5).await;
+//! 
+//! for (i, (file, score)) in top_5.iter().enumerate() {
+//!     println!("{}. {} (complexity: {})", i + 1, file, score);
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
