@@ -1,3 +1,61 @@
+//! AST parsing strategies for multi-language code analysis
+//!
+//! This module provides language-specific Abstract Syntax Tree (AST) parsing
+//! strategies for analyzing code structure across different programming languages.
+//! It serves as the foundation for complexity analysis, dead code detection,
+//! and other static analysis features.
+//!
+//! # Architecture
+//!
+//! The module uses a strategy pattern with language-specific implementations:
+//! - **RustStrategy**: Uses `syn` for accurate Rust AST parsing
+//! - **TypeScriptStrategy**: Uses `swc` for JS/TS parsing
+//! - **PythonStrategy**: Uses regex-based parsing for Python
+//! - **C/C++ Strategy**: Uses tree-sitter for C/C++ parsing
+//! - **KotlinStrategy**: Uses tree-sitter for Kotlin parsing
+//!
+//! # Features
+//!
+//! - **Multi-language Support**: Rust, TypeScript, JavaScript, Python, Java, C/C++, Kotlin
+//! - **Unified AST Model**: Consistent representation across languages
+//! - **Function Detection**: Identifies all functions with line ranges
+//! - **Type Detection**: Finds structs, classes, enums, interfaces
+//! - **Error Resilience**: Gracefully handles parsing failures
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::ast_strategies::{StrategyRegistry, AstStrategy};
+//! use pmat::services::file_classifier::FileClassifier;
+//! use std::path::Path;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let registry = StrategyRegistry::new();
+//! let classifier = FileClassifier::default();
+//! 
+//! // Get strategy for a specific file
+//! if let Some(strategy) = registry.get_strategy("rs") {
+//!     let file_context = strategy.analyze(Path::new("main.rs"), &classifier).await?;
+//!     
+//!     println!("Language: {}", file_context.language);
+//!     println!("Found {} items", file_context.items.len());
+//!     
+//!     for item in &file_context.items {
+//!         match item {
+//!             pmat::services::context::AstItem::Function { name, line, .. } => {
+//!                 println!("Function {} at line {}", name, line);
+//!             }
+//!             pmat::services::context::AstItem::Struct { name, fields_count, .. } => {
+//!                 println!("Struct {} with {} fields", name, fields_count);
+//!             }
+//!             _ => {}
+//!         }
+//!     }
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 use anyhow::Result;
 use async_trait::async_trait;
 use rustc_hash::FxHashMap;

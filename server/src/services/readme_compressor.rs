@@ -1,3 +1,50 @@
+//! README file compression for efficient context generation
+//!
+//! This module intelligently compresses README files by identifying and
+//! preserving the most important sections while filtering out less relevant
+//! content. It uses importance scoring to ensure critical project information
+//! is retained while reducing file size for AI context windows.
+//!
+//! # Compression Strategy
+//!
+//! The compressor assigns importance scores to different section types:
+//! - **High Priority (0.9)**: Overview, Architecture, API, Core Concepts
+//! - **Medium Priority (0.6)**: Features, Usage, Installation, Configuration
+//! - **Low Priority (0.3)**: Examples, Troubleshooting, FAQ
+//! - **Filtered (0.1)**: Badges, License, Contributing, Changelog
+//!
+//! # Features
+//!
+//! - **Markdown Parsing**: Properly handles markdown structure
+//! - **Section Detection**: Identifies sections by headers
+//! - **Smart Filtering**: Removes low-value content (badges, sponsors)
+//! - **Code Block Handling**: Preserves important code examples
+//! - **Size Control**: Limits section size to prevent bloat
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::readme_compressor::ReadmeCompressor;
+//!
+//! let compressor = ReadmeCompressor::new();
+//! let readme_content = std::fs::read_to_string("README.md").unwrap();
+//! 
+//! let compressed = compressor.compress(&readme_content);
+//! 
+//! println!("Original size: {} bytes", readme_content.len());
+//! println!("Compressed size: {} bytes", compressed.content.len());
+//! println!("Sections preserved: {}", compressed.sections.len());
+//! 
+//! // Access compressed sections
+//! for section in &compressed.sections {
+//!     println!("- {} (importance: {})", section.name, section.importance);
+//! }
+//! 
+//! // High compression ratio while keeping essential info
+//! let ratio = 1.0 - (compressed.content.len() as f64 / readme_content.len() as f64);
+//! println!("Compression ratio: {:.1}%", ratio * 100.0);
+//! ```
+
 use crate::models::project_meta::{CompressedReadme, CompressedSection};
 use pulldown_cmark::{Event, Parser, Tag, TagEnd};
 use std::collections::HashMap;
