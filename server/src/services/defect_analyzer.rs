@@ -78,6 +78,15 @@ pub struct RankedFile {
 
 impl FileRankingEngine {
     /// Create a new ranking engine with the given scorer
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::defect_analyzer::{FileRankingEngine, SimpleScorer};
+    ///
+    /// let scorer = Box::new(SimpleScorer);
+    /// let engine = FileRankingEngine::new(scorer);
+    /// ```
     pub fn new(scorer: Box<dyn FileScorer + Send + Sync>) -> Self {
         Self {
             scorer,

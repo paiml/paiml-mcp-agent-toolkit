@@ -30,6 +30,16 @@ impl Project {
     }
 
     /// Get the project root path
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::project_analyzer::Project;
+    /// use std::path::Path;
+    ///
+    /// let project = Project::new(Path::new("/home/user/myproject")).unwrap();
+    /// assert_eq!(project.root(), Path::new("/home/user/myproject"));
+    /// ```
     pub fn root(&self) -> &Path {
         &self.root
     }
