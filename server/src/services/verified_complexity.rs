@@ -1,3 +1,49 @@
+//! Verified complexity analyzer with multiple complexity metrics
+//!
+//! This module provides accurate complexity analysis using industry-standard
+//! metrics including cyclomatic complexity, cognitive complexity (Sonar rules),
+//! essential complexity, and Halstead software science metrics. It operates
+//! on the unified AST to provide consistent analysis across languages.
+//!
+//! # Complexity Metrics
+//!
+//! - **Cyclomatic Complexity**: Measures independent paths through code (McCabe)
+//! - **Cognitive Complexity**: Measures how difficult code is to understand (Sonar)
+//! - **Essential Complexity**: Measures irreducible complexity after simplification
+//! - **Halstead Metrics**: Software science metrics based on operators and operands
+//!
+//! # Cognitive Complexity Rules
+//!
+//! Following Sonar's cognitive complexity specification:
+//! - +1 for each control flow statement (if, while, for, etc.)
+//! - +1 for each logical operator in boolean expressions
+//! - +nesting level for nested structures
+//! - +1 for switch/match cases
+//! - +1 for recursive calls
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::verified_complexity::VerifiedComplexityAnalyzer;
+//! use pmat::models::unified_ast::UnifiedAstNode;
+//!
+//! let mut analyzer = VerifiedComplexityAnalyzer::new();
+//! 
+//! // Analyze a function AST node
+//! let ast = UnifiedAstNode::default(); // Your AST here
+//! let metrics = analyzer.analyze_function(&ast);
+//! 
+//! println!("Cyclomatic Complexity: {}", metrics.cyclomatic);
+//! println!("Cognitive Complexity: {}", metrics.cognitive);
+//! println!("Halstead Volume: {:.2}", metrics.halstead.volume());
+//! println!("Halstead Difficulty: {:.2}", metrics.halstead.difficulty());
+//! 
+//! // Thresholds for code quality
+//! if metrics.cognitive > 15 {
+//!     println!("⚠️ High cognitive complexity - consider refactoring");
+//! }
+//! ```
+
 use crate::models::unified_ast::{AstKind, ExprKind, StmtKind, UnifiedAstNode};
 use std::collections::HashMap;
 
