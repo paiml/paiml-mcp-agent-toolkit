@@ -111,6 +111,15 @@ pub struct PatternMatch {
 
 impl BigOAnalyzer {
     /// Create new Big-O analyzer
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::big_o_analyzer::BigOAnalyzer;
+    ///
+    /// let analyzer = BigOAnalyzer::new();
+    /// // Analyzer is ready to analyze code complexity
+    /// ```
     pub fn new() -> Self {
         Self {
             pattern_matcher: ComplexityPatternMatcher::new(),
@@ -500,6 +509,33 @@ impl BigOAnalyzer {
     }
 
     /// Format report as JSON
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::big_o_analyzer::{BigOAnalyzer, BigOAnalysisReport, ComplexityDistribution};
+    ///
+    /// let analyzer = BigOAnalyzer::new();
+    /// let report = BigOAnalysisReport {
+    ///     analyzed_functions: 10,
+    ///     complexity_distribution: ComplexityDistribution {
+    ///         constant: 3,
+    ///         logarithmic: 1,
+    ///         linear: 4,
+    ///         linearithmic: 1,
+    ///         quadratic: 1,
+    ///         cubic: 0,
+    ///         exponential: 0,
+    ///         unknown: 0,
+    ///     },
+    ///     high_complexity_functions: vec![],
+    ///     pattern_matches: vec![],
+    ///     recommendations: vec![],
+    /// };
+    /// 
+    /// let json = analyzer.format_as_json(&report).unwrap();
+    /// assert!(json.contains("\"analyzed_functions\": 10"));
+    /// ```
     pub fn format_as_json(&self, report: &BigOAnalysisReport) -> Result<String> {
         let json = serde_json::json!({
             "summary": {

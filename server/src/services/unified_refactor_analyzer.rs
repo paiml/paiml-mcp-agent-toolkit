@@ -116,20 +116,65 @@ pub struct AnalyzerPool {
 }
 
 impl AnalyzerPool {
+    /// Create a new analyzer pool
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::unified_refactor_analyzer::AnalyzerPool;
+    ///
+    /// let pool = AnalyzerPool::new();
+    /// assert_eq!(pool.languages().len(), 0);
+    /// ```
     pub fn new() -> Self {
         Self {
             analyzers: std::collections::HashMap::new(),
         }
     }
 
+    /// Register an analyzer for a specific language
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::unified_refactor_analyzer::{AnalyzerPool, RustAnalyzer, Language};
+    /// use std::sync::Arc;
+    ///
+    /// let mut pool = AnalyzerPool::new();
+    /// let rust_analyzer = Arc::new(RustAnalyzer::new());
+    /// pool.register(rust_analyzer);
+    /// assert!(pool.get(Language::Rust).is_some());
+    /// ```
     pub fn register(&mut self, analyzer: Arc<dyn UnifiedAnalyzer>) {
         self.analyzers.insert(analyzer.language(), analyzer);
     }
 
+    /// Get an analyzer for a specific language
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::unified_refactor_analyzer::{AnalyzerPool, Language};
+    ///
+    /// let pool = AnalyzerPool::new();
+    /// assert!(pool.get(Language::Rust).is_none());
+    /// ```
     pub fn get(&self, language: Language) -> Option<Arc<dyn UnifiedAnalyzer>> {
         self.analyzers.get(&language).cloned()
     }
 
+    /// Get all registered languages
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::unified_refactor_analyzer::{AnalyzerPool, RustAnalyzer};
+    /// use std::sync::Arc;
+    ///
+    /// let mut pool = AnalyzerPool::new();
+    /// pool.register(Arc::new(RustAnalyzer::new()));
+    /// assert_eq!(pool.languages().len(), 1);
+    /// ```
     pub fn languages(&self) -> Vec<Language> {
         self.analyzers.keys().copied().collect()
     }

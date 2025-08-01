@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.7] - 2025-08-01
+
+### Added
+- **Doctests for Analysis Service Modules**: Added executable documentation examples to critical analyzer functions
+  - Added doctests to `services/satd_detector.rs` for Severity escalation/reduction and classification methods
+  - Added doctests to `services/project_analyzer.rs` for Project construction and root path access
+  - Added doctests to `services/defect_analyzer.rs` for FileRankingEngine initialization
+  - Added doctests to `services/big_o_analyzer.rs` for BigOAnalyzer creation and JSON formatting
+  - Added doctests to `services/unified_refactor_analyzer.rs` for AnalyzerPool operations
+  - Added doctests to `services/dead_code_analyzer.rs` for HierarchicalBitSet and DeadCodeAnalyzer methods
+  - Added doctests to `services/lightweight_provability_analyzer.rs` for PropertyDomain and provability calculations
+- **Documentation Coverage Enhancement**: Final phase of systematic documentation improvement
+  - All documented functions include working examples that are tested during build
+  - Focus on public API functions to improve usability
+  - Achieved significant progress toward 80% documentation coverage target
+
 ## [0.30.6] - 2025-07-31
 
 ### Added

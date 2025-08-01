@@ -92,6 +92,16 @@ pub struct AbstractInterpreter {
 }
 
 impl PropertyDomain {
+    /// Create a top (unknown) property domain
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::lightweight_provability_analyzer::PropertyDomain;
+    ///
+    /// let domain = PropertyDomain::top();
+    /// // All properties are initially unknown
+    /// ```
     pub fn top() -> Self {
         Self {
             nullability: NullabilityLattice::Top,
@@ -351,6 +361,31 @@ impl LightweightProvabilityAnalyzer {
     }
 
     /// Calculate provability factor for TDG integration
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::lightweight_provability_analyzer::{
+    ///     LightweightProvabilityAnalyzer, ProofSummary, VerifiedProperty, PropertyType
+    /// };
+    ///
+    /// let analyzer = LightweightProvabilityAnalyzer::new();
+    /// let summary = ProofSummary {
+    ///     provability_score: 0.8,
+    ///     verified_properties: vec![
+    ///         VerifiedProperty {
+    ///             property_type: PropertyType::NullSafety,
+    ///             confidence: 0.9,
+    ///             evidence: "No null dereferences".to_string(),
+    ///         }
+    ///     ],
+    ///     analysis_time_us: 1000,
+    ///     version: 1,
+    /// };
+    /// 
+    /// let factor = analyzer.calculate_provability_factor(&summary);
+    /// assert!(factor >= 0.0 && factor <= 5.0);
+    /// ```
     pub fn calculate_provability_factor(&self, summary: &ProofSummary) -> f64 {
         // Convert provability score (0-1) to factor (0-5) for TDG
         // Higher provability = lower TDG score
