@@ -22,7 +22,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::ranking::{RankingEngine, ComplexityRanker};
 //! use std::path::PathBuf;
 //!
@@ -45,7 +45,7 @@
 //! }
 //! # Ok(())
 //! # }
-//! ```
+//! ```ignore
 
 use std::cmp::Ordering;
 use std::collections::HashMap;

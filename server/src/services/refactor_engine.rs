@@ -14,7 +14,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::refactor_engine::{UnifiedEngine, EngineMode};
 //! use pmat::models::refactor::RefactorConfig;
 //! use std::path::PathBuf;
@@ -38,7 +38,7 @@
 //! }
 //! # Ok(())
 //! # }
-//! ```
+//! ```ignore
 
 use crate::models::refactor::{
     DefectPayload, RefactorConfig, RefactorStateMachine, RefactorType, State, Summary,

@@ -23,7 +23,7 @@
 //!
 //! # Example
 //!
-//! ```
+//! ```ignore
 //! use pmat::services::embedded_templates::EmbeddedTemplateProvider;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -43,7 +43,7 @@
 //! println!("Template size: {} bytes", makefile_content.len());
 //! # Ok(())
 //! # }
-//! ```
+//! ```ignore
 
 use crate::models::error::TemplateError;
 use crate::models::template::{

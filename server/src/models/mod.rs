@@ -30,7 +30,7 @@
 //! let defect = Defect {
 //!     id: "SATD-001".to_string(),
 //!     severity: Severity::Medium,
-//!     category: DefectCategory::SelfAdmittedTechnicalDebt,
+//!     category: DefectCategory::TechnicalDebt,
 //!     file_path: PathBuf::from("src/main.rs"),
 //!     line_start: 42,
 //!     line_end: Some(45),

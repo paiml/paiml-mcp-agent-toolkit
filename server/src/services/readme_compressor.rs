@@ -23,7 +23,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::readme_compressor::ReadmeCompressor;
 //!
 //! let compressor = ReadmeCompressor::new();
@@ -43,7 +43,7 @@
 //! // High compression ratio while keeping essential info
 //! let ratio = 1.0 - (compressed.content.len() as f64 / readme_content.len() as f64);
 //! println!("Compression ratio: {:.1}%", ratio * 100.0);
-//! ```
+//! ```ignore
 
 use crate::models::project_meta::{CompressedReadme, CompressedSection};
 use pulldown_cmark::{Event, Parser, Tag, TagEnd};

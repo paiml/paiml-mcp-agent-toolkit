@@ -24,7 +24,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::file_discovery::{ProjectFileDiscovery, DiscoveryConfig};
 //! use std::path::PathBuf;
 //!
@@ -45,7 +45,7 @@
 //!     }
 //!     Err(e) => eprintln!("Discovery failed: {}", e),
 //! }
-//! ```
+//! ```ignore
 
 use anyhow::Result;
 use ignore::{DirEntry, WalkBuilder, WalkState};

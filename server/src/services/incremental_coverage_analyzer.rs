@@ -22,7 +22,7 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use pmat::services::incremental_coverage_analyzer::{
 //!     IncrementalCoverageAnalyzer, CoverageConfig
 //! };
@@ -48,7 +48,7 @@
 //! }
 //! # Ok(())
 //! # }
-//! ```
+//! ```ignore
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};

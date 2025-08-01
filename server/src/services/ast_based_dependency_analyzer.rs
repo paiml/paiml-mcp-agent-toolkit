@@ -33,7 +33,7 @@
 //! 
 //! println!("External dependencies: {}", analysis.external.len());
 //! for dep in &analysis.external {
-//!     println!("  - {} ({})", dep.name, dep.import_type);
+//!     println!("  - {} ({:?})", dep.name, dep.import_type);
 //! }
 //! 
 //! // Check for boundary violations
