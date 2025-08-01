@@ -1,3 +1,54 @@
+//! Project analyzer for codebase exploration and dependency analysis
+//!
+//! This module provides the core project analysis functionality, serving as
+//! the entry point for analyzing codebases. It coordinates file discovery,
+//! source file identification, and dependency graph construction to provide
+//! a comprehensive view of project structure.
+//!
+//! # Features
+//!
+//! - **Automatic File Discovery**: Finds all relevant source files in a project
+//! - **Language Detection**: Identifies programming languages by file extension
+//! - **Dependency Graph Building**: Constructs relationships between code elements
+//! - **Gitignore Respect**: Automatically excludes ignored files
+//! - **Cross-language Support**: Handles mixed-language projects
+//!
+//! # Supported Languages
+//!
+//! - Rust (.rs)
+//! - Python (.py)
+//! - JavaScript/TypeScript (.js, .ts, .jsx, .tsx)
+//! - Java (.java)
+//! - Kotlin (.kt)
+//! - C/C++ (.c, .cpp, .h, .hpp)
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::project_analyzer::Project;
+//! use std::path::Path;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let project = Project::new(Path::new("./src"))?;
+//! 
+//! // Get all source files in the project
+//! let source_files = project.source_files();
+//! println!("Found {} source files", source_files.len());
+//! 
+//! // Build dependency graph for analysis
+//! let dependency_graph = project.build_dependency_graph().await?;
+//! println!("Graph has {} nodes and {} edges", 
+//!          dependency_graph.nodes.len(), 
+//!          dependency_graph.edges.len());
+//! 
+//! // Analyze specific aspects
+//! for file in source_files.iter().take(5) {
+//!     println!("  - {}", file.display());
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::models::dag::DependencyGraph;
 use crate::services::dag_builder::DagBuilder;
 use crate::services::file_discovery::ProjectFileDiscovery;

@@ -1,3 +1,39 @@
+//! Git repository cloning and caching service
+//!
+//! This module provides efficient Git repository cloning with caching,
+//! progress tracking, and automatic cleanup. It supports both HTTPS and SSH
+//! URLs, handles authentication, and prevents redundant clones through
+//! intelligent caching strategies.
+//!
+//! # Features
+//!
+//! - **URL Normalization**: Handles various GitHub URL formats
+//! - **Smart Caching**: Avoids re-cloning already cached repositories
+//! - **Progress Tracking**: Real-time clone progress reporting
+//! - **Automatic Cleanup**: Removes old clones to save disk space
+//! - **Concurrent Cloning**: Thread-safe operations with proper locking
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::git_clone::GitCloneService;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let service = GitCloneService::new();
+//! 
+//! // Clone a repository
+//! let result = service.clone_repo("https://github.com/rust-lang/rust").await?;
+//! 
+//! println!("Cloned to: {}", result.path.display());
+//! println!("Took: {:?}", result.duration);
+//! 
+//! // Subsequent calls use cache
+//! let cached = service.clone_repo("https://github.com/rust-lang/rust").await?;
+//! assert!(cached.was_cached);
+//! # Ok(())
+//! # }
+//! ```
+
 use anyhow::Result;
 use git2::{build::RepoBuilder, FetchOptions, Progress, RemoteCallbacks, Repository};
 use lazy_static::lazy_static;
