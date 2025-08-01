@@ -90,6 +90,17 @@ pub enum Severity {
 
 impl Severity {
     /// Escalate severity by one level
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::satd_detector::Severity;
+    ///
+    /// assert_eq!(Severity::Low.escalate(), Severity::Medium);
+    /// assert_eq!(Severity::Medium.escalate(), Severity::High);
+    /// assert_eq!(Severity::High.escalate(), Severity::Critical);
+    /// assert_eq!(Severity::Critical.escalate(), Severity::Critical); // Already at max
+    /// ```
     pub fn escalate(self) -> Self {
         match self {
             Severity::Low => Severity::Medium,
@@ -100,6 +111,17 @@ impl Severity {
     }
 
     /// Reduce severity by one level
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::satd_detector::Severity;
+    ///
+    /// assert_eq!(Severity::Critical.reduce(), Severity::High);
+    /// assert_eq!(Severity::High.reduce(), Severity::Medium);
+    /// assert_eq!(Severity::Medium.reduce(), Severity::Low);
+    /// assert_eq!(Severity::Low.reduce(), Severity::Low); // Already at min
+    /// ```
     pub fn reduce(self) -> Self {
         match self {
             Severity::Critical => Severity::High,
@@ -298,6 +320,26 @@ impl DebtClassifier {
     }
 
     /// Classify a comment text and return debt information
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::satd_detector::{DebtClassifier, DebtCategory, Severity};
+    ///
+    /// let classifier = DebtClassifier::new();
+    /// 
+    /// // TODO comments are classified as requirements
+    /// let result = classifier.classify_comment("TODO: implement this feature");
+    /// assert_eq!(result, Some((DebtCategory::Requirement, Severity::Low)));
+    /// 
+    /// // FIXME comments are defects with higher severity
+    /// let result = classifier.classify_comment("FIXME: this crashes sometimes");
+    /// assert_eq!(result, Some((DebtCategory::Defect, Severity::High)));
+    /// 
+    /// // Normal comments return None
+    /// let result = classifier.classify_comment("This is a regular comment");
+    /// assert_eq!(result, None);
+    /// ```
     pub fn classify_comment(&self, text: &str) -> Option<(DebtCategory, Severity)> {
         let matches = self.compiled_patterns.matches(text);
 

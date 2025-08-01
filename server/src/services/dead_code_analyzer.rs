@@ -234,6 +234,16 @@ pub struct DeadCodeAnalyzer {
 }
 
 impl DeadCodeAnalyzer {
+    /// Create a new dead code analyzer
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::dead_code_analyzer::DeadCodeAnalyzer;
+    ///
+    /// let analyzer = DeadCodeAnalyzer::new(1000);
+    /// // Analyzer is ready to analyze up to 1000 nodes
+    /// ```
     pub fn new(total_nodes: usize) -> Self {
         Self {
             reachability: Arc::new(RwLock::new(HierarchicalBitSet::new(total_nodes))),
@@ -248,6 +258,24 @@ impl DeadCodeAnalyzer {
         }
     }
 
+    /// Add coverage data to improve dead code detection accuracy
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::dead_code_analyzer::{DeadCodeAnalyzer, CoverageData};
+    /// use std::collections::{HashMap, HashSet};
+    ///
+    /// let mut covered_lines = HashMap::new();
+    /// covered_lines.insert("main.rs".to_string(), HashSet::new());
+    /// 
+    /// let coverage = CoverageData {
+    ///     covered_lines,
+    ///     execution_counts: HashMap::new(),
+    /// };
+    /// 
+    /// let analyzer = DeadCodeAnalyzer::new(100).with_coverage(coverage);
+    /// ```
     pub fn with_coverage(mut self, coverage: CoverageData) -> Self {
         self.coverage_map = Some(Arc::new(coverage));
         self
