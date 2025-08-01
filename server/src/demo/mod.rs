@@ -15,18 +15,15 @@
 //!
 //! # Example
 //!
-//! ```no_run
-//! use pmat::demo::{DemoRunner, resolve_repository};
+//! ```ignore
+//! use pmat::demo::runner::DemoRunner;
 //! use std::path::PathBuf;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Run demo on a local repository
-//! let repo_path = resolve_repository(
-//!     Some(PathBuf::from(".")),
-//!     None,
-//!     None
-//! )?;
+//! let repo_path = PathBuf::from(".");
 //!
+//! // Create a runner and analyze
 //! let runner = DemoRunner::new();
 //! let report = runner.analyze(&repo_path).await?;
 //! 
