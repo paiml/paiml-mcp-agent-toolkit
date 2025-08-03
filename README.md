@@ -598,6 +598,10 @@ See [CONTRIBUTING.md](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/mast
 
 Licensed under either of:
 - Apache License, Version 2.0 ([LICENSE-APACHE](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/LICENSE-APACHE))
+
+## References
+
+* [Real-world AI needs eventual provability](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5289884)
 - MIT license ([LICENSE-MIT](https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/LICENSE-MIT))
 
 at your option.
