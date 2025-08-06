@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "0.30.9"
+version = "0.31.0"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -56,6 +56,11 @@ roaring = "0.10"
 rand = "0.9"
 rayon = "1.10"
 git2 = { version = "0.20", default-features = false, features = ["https"] }
+
+# CLI utilities
+dialoguer = "0.11"
+console = "0.15"
+url = "2.5"
 
 # Storage
 # rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
@@ -235,6 +240,23 @@ required-features = ["e2e-tests"]
 name = "performance_regression"
 path = "tests/performance/regression.rs"
 required-features = ["perf-tests"]
+
+# Examples for deterministic MCP agents course
+[[example]]
+name = "scaffold_agent_basics"
+path = "examples/scaffold_agent_basics.rs"
+
+[[example]]
+name = "scaffold_agent_interactive"
+path = "examples/scaffold_agent_interactive.rs"
+
+[[example]]
+name = "scaffold_agent_hybrid"
+path = "examples/scaffold_agent_hybrid.rs"
+
+[[example]]
+name = "scaffold_agent_course_project"
+path = "examples/scaffold_agent_course_project.rs"
 
 # Profile configuration moved to workspace root
 

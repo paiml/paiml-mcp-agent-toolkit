@@ -108,6 +108,7 @@ fn test_scaffold_command_parsing() {
     let args = vec![
         "pmat",
         "scaffold",
+        "project",
         "rust",
         "--templates",
         "makefile,readme,gitignore",
@@ -121,19 +122,24 @@ fn test_scaffold_command_parsing() {
 
     let cli = Cli::try_parse_from(&args).unwrap();
     match cli.command {
-        Commands::Scaffold {
-            toolchain,
-            templates,
-            params,
-            parallel,
-        } => {
-            assert_eq!(toolchain, "rust");
-            assert_eq!(templates, vec!["makefile", "readme", "gitignore"]);
-            assert_eq!(parallel, 4);
+        Commands::Scaffold { command } => {
+            match command {
+                crate::cli::commands::ScaffoldCommands::Project {
+                    toolchain,
+                    templates,
+                    params,
+                    parallel,
+                } => {
+                    assert_eq!(toolchain, "rust");
+                    assert_eq!(templates, vec!["makefile", "readme", "gitignore"]);
+                    assert_eq!(parallel, 4);
 
-            let param_map: std::collections::HashMap<String, Value> = params.into_iter().collect();
-            assert_eq!(param_map["project_name"], json!("scaffold-test"));
-            assert_eq!(param_map["description"], json!("Test scaffolding"));
+                    let param_map: std::collections::HashMap<String, Value> = params.into_iter().collect();
+                    assert_eq!(param_map["project_name"], json!("scaffold-test"));
+                    assert_eq!(param_map["description"], json!("Test scaffolding"));
+                }
+                _ => panic!("Expected Project subcommand"),
+            }
         }
         _ => panic!("Expected Scaffold command"),
     }
@@ -145,6 +151,7 @@ fn test_scaffold_template_delimiter() {
     let args = vec![
         "pmat",
         "scaffold",
+        "project",
         "deno",
         "-t",
         "makefile,readme",
@@ -154,10 +161,15 @@ fn test_scaffold_template_delimiter() {
 
     let cli = Cli::try_parse_from(&args).unwrap();
     match cli.command {
-        Commands::Scaffold { templates, .. } => {
-            assert_eq!(templates.len(), 2);
-            assert_eq!(templates[0], "makefile");
-            assert_eq!(templates[1], "readme");
+        Commands::Scaffold { command } => {
+            match command {
+                crate::cli::commands::ScaffoldCommands::Project { templates, .. } => {
+                    assert_eq!(templates.len(), 2);
+                    assert_eq!(templates[0], "makefile");
+                    assert_eq!(templates[1], "readme");
+                }
+                _ => panic!("Expected Project subcommand"),
+            }
         }
         _ => panic!("Expected Scaffold command"),
     }
@@ -168,6 +180,7 @@ fn test_scaffold_default_parallel() {
     let args = vec![
         "pmat",
         "scaffold",
+        "project",
         "python-uv",
         "-t",
         "readme",
@@ -177,9 +190,14 @@ fn test_scaffold_default_parallel() {
 
     let cli = Cli::try_parse_from(&args).unwrap();
     match cli.command {
-        Commands::Scaffold { parallel, .. } => {
-            // Should default to number of CPUs
-            assert_eq!(parallel, num_cpus::get());
+        Commands::Scaffold { command } => {
+            match command {
+                crate::cli::commands::ScaffoldCommands::Project { parallel, .. } => {
+                    // Should default to number of CPUs
+                    assert_eq!(parallel, num_cpus::get());
+                }
+                _ => panic!("Expected Project subcommand"),
+            }
         }
         _ => panic!("Expected Scaffold command"),
     }

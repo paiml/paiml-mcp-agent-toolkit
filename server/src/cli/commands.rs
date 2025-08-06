@@ -89,22 +89,11 @@ pub enum Commands {
         create_dirs: bool,
     },
 
-    /// Scaffold complete project
+    /// Scaffold complete project or agent
     Scaffold {
-        /// Target toolchain
-        toolchain: String,
-
-        /// Templates to generate
-        #[arg(short, long, value_delimiter = ',')]
-        templates: Vec<String>,
-
-        /// Parameters
-        #[arg(short = 'p', long = "param", value_parser = crate::cli::args::parse_key_val)]
-        params: Vec<(String, Value)>,
-
-        /// Parallelism level
-        #[arg(long, default_value_t = num_cpus::get())]
-        parallel: usize,
+        /// Scaffold subcommand
+        #[command(subcommand)]
+        command: ScaffoldCommands,
     },
 
     /// List available templates
@@ -1755,6 +1744,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_mode_enum() {
+        assert_eq!(Mode::Cli, Mode::Cli);
+        assert_ne!(Mode::Cli, Mode::Mcp);
+    }
+
+    #[test]
     #[ignore = "Stack overflow issue - needs investigation"]
     fn test_cli_parse_empty() {
         // Test that CLI can be parsed with minimal args
@@ -1768,10 +1763,80 @@ mod tests {
             }
         }
     }
-
-    #[test]
-    fn test_mode_enum() {
-        assert_eq!(Mode::Cli, Mode::Cli);
-        assert_ne!(Mode::Cli, Mode::Mcp);
-    }
 }
+
+/// Scaffold subcommands
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum ScaffoldCommands {
+    /// Scaffold a complete project with templates
+    Project {
+        /// Target toolchain
+        toolchain: String,
+
+        /// Templates to generate
+        #[arg(short, long, value_delimiter = ',')]
+        templates: Vec<String>,
+
+        /// Parameters
+        #[arg(short = 'p', long = "param", value_parser = crate::cli::args::parse_key_val)]
+        params: Vec<(String, Value)>,
+
+        /// Parallelism level
+        #[arg(long, default_value_t = num_cpus::get())]
+        parallel: usize,
+    },
+
+    /// Scaffold a deterministic MCP agent
+    Agent {
+        /// Agent name
+        #[arg(short, long)]
+        name: String,
+
+        /// Template type (mcp-server, state-machine, hybrid, calculator, custom:<path>)
+        #[arg(short, long)]
+        template: String,
+
+        /// Features to include (comma-separated)
+        #[arg(short, long, value_delimiter = ',')]
+        features: Vec<String>,
+
+        /// Quality level (standard, strict, extreme)
+        #[arg(short = 'q', long, default_value = "strict")]
+        quality: String,
+
+        /// Output directory
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Overwrite existing directory
+        #[arg(long)]
+        force: bool,
+
+        /// Show what would be generated without creating files
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Interactive mode for guided creation
+        #[arg(short, long)]
+        interactive: bool,
+
+        /// Deterministic core specification (for hybrid agents)
+        #[arg(long)]
+        deterministic_core: Option<String>,
+
+        /// Probabilistic wrapper specification (for hybrid agents)
+        #[arg(long)]
+        probabilistic_wrapper: Option<String>,
+    },
+
+    /// List available agent templates
+    ListTemplates,
+
+    /// Validate an agent template
+    ValidateTemplate {
+        /// Path to template file
+        path: PathBuf,
+    },
+}
+
