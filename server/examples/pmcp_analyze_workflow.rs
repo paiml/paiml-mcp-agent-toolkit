@@ -12,7 +12,6 @@
 
 #[cfg(feature = "pmcp-mcp")]
 use pmat::mcp_pmcp::PmcpServer;
-use serde_json::json;
 
 #[cfg(not(feature = "pmcp-mcp"))]
 fn main() {

@@ -927,6 +927,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "dialoguer"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "658bce805d770f407bc62102fca7c2c64ceef2fbcb2b8bd19d2765ce093980de"
+dependencies = [
+ "console",
+ "shell-words",
+ "tempfile",
+ "thiserror 1.0.69",
+ "zeroize",
+]
+
+[[package]]
 name = "diff"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2783,7 +2796,7 @@ dependencies = [
 
 [[package]]
 name = "pmat"
-version = "0.30.9"
+version = "0.31.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -2796,12 +2809,14 @@ dependencies = [
  "capnpc",
  "chrono",
  "clap",
+ "console",
  "cpp_demangle",
  "criterion",
  "crossbeam-channel",
  "crossterm 0.29.0",
  "csv",
  "dashmap",
+ "dialoguer",
  "dirs",
  "fixedbitset 0.4.2",
  "flate2",
@@ -2872,6 +2887,7 @@ dependencies = [
  "tree-sitter-cpp",
  "tree-sitter-kotlin",
  "ureq",
+ "url",
  "uuid",
  "walkdir",
  "webbrowser",
@@ -3818,6 +3834,12 @@ checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
 dependencies = [
  "lazy_static",
 ]
+
+[[package]]
+name = "shell-words"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24188a676b6ae68c3b2cb3a01be17fbf7240ce009799bb56d5b1409051e78fde"
 
 [[package]]
 name = "shlex"

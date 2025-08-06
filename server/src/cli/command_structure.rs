@@ -10,6 +10,7 @@
 //! - ModularHandlers: Individual command implementation modules
 
 use crate::cli::{AnalyzeCommands, Commands};
+use crate::cli::commands::ScaffoldCommands;
 use crate::stateless_server::StatelessTemplateServer;
 use anyhow::Result;
 use std::sync::Arc;
@@ -73,16 +74,25 @@ impl CommandExecutor {
                     )
                     .await
             }
-            Commands::Scaffold {
-                toolchain,
-                templates,
-                params,
-                parallel,
-            } => {
-                self.registry
-                    .generate_handlers
-                    .handle_scaffold(self.server.clone(), toolchain, templates, params, parallel)
-                    .await
+            Commands::Scaffold { command } => {
+                match command {
+                    ScaffoldCommands::Project {
+                        toolchain,
+                        templates,
+                        params,
+                        parallel,
+                    } => {
+                        self.registry
+                            .generate_handlers
+                            .handle_scaffold(self.server.clone(), toolchain, templates, params, parallel)
+                            .await
+                    }
+                    _ => {
+                        // Handle other scaffold subcommands (agent scaffolding)
+                        // Note: Agent scaffolding is handled in the main CLI dispatcher
+                        anyhow::bail!("Agent scaffolding should be handled via the main CLI dispatcher")
+                    }
+                }
             }
             Commands::Validate { uri, params } => {
                 self.registry

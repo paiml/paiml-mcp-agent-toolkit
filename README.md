@@ -74,7 +74,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmat = "0.28.0"
+pmat = "0.31.0"
 ```
 
 Basic usage:
@@ -133,6 +133,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   - Exit code 0 on success, 1 when violations exceed thresholds
   - Perfect for GitHub Actions, GitLab CI, Jenkins, and other CI/CD systems
 
+### 🤖 Agent Scaffolding (NEW)
+- **MCP Agent Templates** - Generate deterministic MCP-compatible agents
+  - MCP Tool Server - Standard async MCP server with tool handlers
+  - State Machine Workflow - Agents with state transitions and invariants
+  - Deterministic Calculator - Pure computation agents
+  - Hybrid Analyzer - Deterministic core with AI wrapper
+- **Interactive Mode** - Guided agent creation wizard
+- **Quality Enforcement** - All generated agents meet Toyota Way standards
+  - Zero SATD comments
+  - Maximum complexity 10
+  - Comprehensive property tests
+- **Feature-Rich Templates** - Support for monitoring, tracing, health checks
+
 ### 🔧 Language Support
 - **Rust** - Full support with cargo integration
 - **TypeScript/JavaScript** - Modern AST-based analysis
@@ -183,8 +196,11 @@ pmat analyze assemblyscript --wasm-complexity  # AssemblyScript analysis with WA
 pmat analyze webassembly --include-binary      # WebAssembly binary and text format analysis
 
 # Project scaffolding
-pmat scaffold rust --templates makefile,readme,gitignore
+pmat scaffold project rust --templates makefile,readme,gitignore  # Scaffold a Rust project
+pmat scaffold agent --name my_agent --template mcp-server         # Create MCP agent
+pmat scaffold agent --interactive                                 # Interactive agent creation
 pmat list                                      # Available templates
+pmat list-agents                                # Available agent templates
 
 # Refactoring engine
 pmat refactor interactive                      # Interactive refactoring
@@ -264,6 +280,7 @@ The pmcp SDK provides:
 Available MCP tools:
 - `generate_template` - Generate project files from templates
 - `scaffold_project` - Generate complete project structure  
+- `scaffold_agent` - Create MCP-compatible agents with templates
 - `analyze_complexity` - Code complexity metrics **with tool composition**
 - `analyze_code_churn` - Git history analysis
 - `analyze_dag` - Dependency graph generation
