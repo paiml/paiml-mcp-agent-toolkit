@@ -5,6 +5,7 @@ pub mod handlers;
 pub mod mcp_pmcp;
 pub mod mcp_server;
 pub mod models;
+pub mod scaffold;
 pub mod services;
 pub mod stateless_server;
 // #[cfg(test)]

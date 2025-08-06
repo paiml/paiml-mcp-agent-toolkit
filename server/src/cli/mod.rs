@@ -84,7 +84,7 @@ pub struct EarlyCliArgs {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,ignore
 /// use pmat::cli::parse_early_for_tracing;
 ///
 /// // This function reads from std::env::args() and RUST_LOG

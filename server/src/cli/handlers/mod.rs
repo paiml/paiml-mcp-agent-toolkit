@@ -41,7 +41,10 @@ pub use complexity_handlers::{
 pub use demo_handlers::{handle_demo, handle_quality_gate};
 pub use duplication_analysis::handle_analyze_duplicates;
 pub use enforce_handlers::route_enforce_command;
-pub use generation_handlers::{handle_generate, handle_scaffold, handle_validate};
+pub use generation_handlers::{
+    handle_generate, handle_list_agent_templates, handle_scaffold, handle_scaffold_agent,
+    handle_validate, handle_validate_agent_template, ScaffoldAgentParams,
+};
 pub use lint_hotspot_handlers::handle_analyze_lint_hotspot;
 pub use name_similarity_analysis::handle_analyze_name_similarity;
 pub use refactor_docs_handlers::handle_refactor_docs;
