@@ -7,19 +7,12 @@
 //!
 //! Run with:
 //! ```bash
-//! cargo run --example pmcp_analyze_workflow --features pmcp-mcp
+//! cargo run --example pmcp_analyze_workflow
 //! ```
 
-#[cfg(feature = "pmcp-mcp")]
 use pmat::mcp_pmcp::PmcpServer;
+use serde_json::json;
 
-#[cfg(not(feature = "pmcp-mcp"))]
-fn main() {
-    println!("This example requires the pmcp-mcp feature to be enabled.");
-    println!("Run with: cargo run --example pmcp_analyze_workflow --features pmcp-mcp");
-}
-
-#[cfg(feature = "pmcp-mcp")]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
