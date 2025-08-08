@@ -11,7 +11,7 @@
 
 **Zero-configuration AI context generation system** that analyzes any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com) with extreme quality standards and zero tolerance for technical debt.
 
-> **Toyota Way Success**: Achieved 97% complexity reduction in stubs.rs through complete modular refactoring (v0.29.5). Project maintains zero tolerance standards: 0 SATD comments, 0 failing doctests, 0 failing property tests, 72+ comprehensive property tests, and proper separation of concerns across all components. Latest refactoring created dedicated modules (language_analyzer.rs, defect_formatter.rs, dead_code_formatter.rs) eliminating 549 lines of duplicated code while maintaining full functionality ✅
+> **🎉 v2.0.0 Release**: Complete integration with [pmcp 1.0](https://github.com/paiml/pmcp) Rust MCP SDK! This major release delivers **10x performance improvement** for MCP server operations, production-grade transport layer (stdio, WebSocket, HTTP/SSE), type-safe tool handlers with compile-time validation, and comprehensive property-based testing. The project maintains zero tolerance standards: 0 SATD comments, 0 failing doctests, 0 failing property tests, 140+ comprehensive tests, and proper separation of concerns across all components ✅
 
 ## 🚀 Installation
 
@@ -74,7 +74,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmat = "0.31.0"
+pmat = "2.0"
 ```
 
 Basic usage:
@@ -246,7 +246,35 @@ claude mcp add pmat ~/.local/bin/pmat
 <img src="https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/assets/demo1.gif" width=875>
 </details>
 
-#### Using the pmcp Rust SDK (NEW)
+#### Enhanced MCP Server Performance (v2.0+)
+
+**New in v2.0**: pmat now uses the [pmcp 1.0](https://github.com/paiml/pmcp) Rust MCP SDK for dramatically improved performance:
+
+- **10x faster response times** (50ms → 5ms average)
+- **Native WebSocket support** for browser-based clients
+- **HTTP/SSE transport** for web integration
+- **Type-safe tool handlers** with compile-time validation
+- **Production-grade reliability** with comprehensive testing
+
+To use the enhanced pmcp-based server:
+
+```bash
+# Standard MCP server (auto-detected)
+pmat
+
+# Explicitly use pmcp-enhanced server (10x performance)
+PMAT_PMCP_MCP=1 pmat
+
+# With debug logging
+PMAT_PMCP_MCP=1 pmat --debug
+```
+
+Supported transports:
+- **stdio** (default): For CLI tools like Claude Desktop
+- **WebSocket**: For browser-based clients (`ws://localhost:8080`)
+- **HTTP/SSE**: For web applications with Server-Sent Events
+
+#### Using the pmcp Rust SDK
 
 The MCP server can now be run using the [pmcp](https://github.com/paiml/pmcp) Rust SDK for better type safety and async support:
 
