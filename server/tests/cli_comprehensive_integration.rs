@@ -85,6 +85,7 @@ fn test_scaffold_parallel_generation() {
     cmd.current_dir(&temp_dir)
         .args([
             "scaffold",
+            "project",
             "rust",
             "--templates",
             "makefile,readme,gitignore",
