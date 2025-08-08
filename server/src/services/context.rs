@@ -787,7 +787,7 @@ struct GroupedItems<'a> {
     modules: Vec<&'a AstItem>,
 }
 
-fn group_items_by_type(items: &[AstItem]) -> GroupedItems {
+fn group_items_by_type(items: &[AstItem]) -> GroupedItems<'_> {
     let mut grouped = GroupedItems {
         functions: Vec::new(),
         structs: Vec::new(),

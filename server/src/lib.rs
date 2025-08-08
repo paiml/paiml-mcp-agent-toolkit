@@ -1,8 +1,7 @@
 pub mod cli;
 pub mod demo;
 pub mod handlers;
-#[cfg(feature = "pmcp-mcp")]
-pub mod mcp_pmcp;
+pub mod mcp_pmcp; // Now always available with pmcp 1.0
 pub mod mcp_server;
 pub mod models;
 pub mod scaffold;
