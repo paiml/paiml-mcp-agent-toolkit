@@ -4,6 +4,8 @@
 //! a deterministic core provides guaranteed correctness while an AI wrapper
 //! adds flexibility and natural language processing capabilities.
 
+#![allow(unused_variables)]
+
 use pmat::scaffold::agent::{
     AgentContextBuilder, QualityLevel,
     CoreSpec, WrapperSpec, VerificationMethod, ModelType, FallbackStrategy,

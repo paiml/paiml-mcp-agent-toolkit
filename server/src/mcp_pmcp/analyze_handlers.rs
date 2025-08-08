@@ -48,8 +48,6 @@ struct ComplexityArgs {
 /// # Examples
 ///
 /// ```rust
-/// # #[cfg(feature = "pmcp-mcp")]
-/// # {
 /// use pmat::mcp_pmcp::analyze_handlers::AnalyzeComplexityTool;
 /// use pmcp::ToolHandler;
 /// use serde_json::json;
@@ -65,7 +63,6 @@ struct ComplexityArgs {
 /// // In practice, this would be called by the MCP server
 /// // let result = tool.handle(args, Default::default()).await?;
 /// # Ok(())
-/// # }
 /// # }
 /// ```
 pub struct ComplexityTool;
