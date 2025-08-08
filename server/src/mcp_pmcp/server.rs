@@ -33,8 +33,6 @@ use tracing::info;
 /// ## Basic Usage
 ///
 /// ```rust,no_run
-/// # #[cfg(feature = "pmcp-mcp")]
-/// # {
 /// use pmat::mcp_pmcp::PmcpServer;
 ///
 /// #[tokio::main]
@@ -43,14 +41,11 @@ use tracing::info;
 ///     server.run().await?;
 ///     Ok(())
 /// }
-/// # }
 /// ```
 ///
 /// ## Custom Configuration
 ///
 /// ```rust,no_run
-/// # #[cfg(feature = "pmcp-mcp")]
-/// # {
 /// use pmat::mcp_pmcp::PmcpServer;
 /// use std::time::Duration;
 ///
@@ -68,7 +63,6 @@ use tracing::info;
 ///     server.run().await?;
 ///     Ok(())
 /// }
-/// # }
 /// ```
 pub struct PmcpServer {
     state_manager: Arc<Mutex<StateManager>>,
