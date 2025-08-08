@@ -14,14 +14,8 @@
 //! 
 //! # Usage
 //! 
-//! The pmcp-based server is activated using the `pmcp-mcp` feature flag and
-//! the `PMAT_PMCP_MCP` environment variable.
-//! 
-//! ## Building with pmcp support
-//! 
-//! ```bash
-//! cargo build --features pmcp-mcp
-//! ```
+//! The pmcp-based server is activated using the `PMAT_PMCP_MCP` environment variable.
+//! With pmcp 1.0, this is now always available as a core feature.
 //! 
 //! ## Running the pmcp server
 //! 
@@ -32,8 +26,6 @@
 //! # Example
 //! 
 //! ```rust,no_run
-//! # #[cfg(feature = "pmcp-mcp")]
-//! # {
 //! use pmat::mcp_pmcp::PmcpServer;
 //! 
 //! #[tokio::main]
@@ -46,7 +38,6 @@
 //!     
 //!     Ok(())
 //! }
-//! # }
 //! ```
 //! 
 //! # Available Tools

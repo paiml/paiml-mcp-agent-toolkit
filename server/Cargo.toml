@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "0.31.0"
+version = "1.0.0"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -25,8 +25,8 @@ serde_json = { version = "1.0", default-features = false, features = ["std"] }
 # Template engine
 handlebars = { version = "6.3", default-features = false, features = ["string_helpers"] }
 
-# MCP SDK
-pmcp = { version = "0.3.1", features = ["full"], optional = true }
+# MCP SDK - now core dependency for MCP server functionality
+pmcp = { version = "1.0", features = ["full", "validation"] }
 
 # Caching
 lru = { version = "0.14", features = ["hashbrown"] }
@@ -195,8 +195,6 @@ e2e-tests = []
 # Performance tests feature
 perf-tests = []
 syn = ["dep:syn"]
-# Enable pmcp-based MCP server
-pmcp-mcp = ["pmcp"]
 
 
 [[bin]]
