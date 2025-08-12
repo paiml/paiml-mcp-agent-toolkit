@@ -7,6 +7,7 @@ use crate::mcp_pmcp::handlers::{
     RefactorGetStateTool, RefactorNextIterationTool, RefactorStartTool, RefactorStopTool,
 };
 use crate::mcp_pmcp::quality_handlers::QualityGateTool;
+use crate::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
 use crate::mcp_server::state_manager::StateManager;
 use pmcp::{Server, ServerCapabilities, ToolCapabilities};
 use std::sync::Arc;
@@ -150,6 +151,7 @@ impl PmcpServer {
             )
             // Quality tools
             .tool("quality_gate", QualityGateTool)
+            .tool("quality_proxy", QualityProxyTool)
             // Git tools
             .tool("git_operation", GitTool)
             // Context tools
@@ -157,7 +159,7 @@ impl PmcpServer {
             .tool("scaffold_project", ScaffoldProjectTool)
             .build()?;
 
-        info!("PMAT MCP server ready with {} tools, listening on stdio", 15);
+        info!("PMAT MCP server ready with {} tools, listening on stdio", 16);
 
         // Run server with stdio transport
         server.run_stdio().await?;

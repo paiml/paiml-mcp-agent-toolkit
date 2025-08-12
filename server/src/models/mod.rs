@@ -54,6 +54,7 @@ pub mod defect_report;
 pub mod error;
 pub mod mcp;
 pub mod project_meta;
+pub mod proxy;
 pub mod refactor;
 pub mod tdg;
 pub mod template;

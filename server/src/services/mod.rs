@@ -112,6 +112,8 @@ pub mod project_analyzer;
 pub mod project_meta_detector;
 pub mod proof_annotator;
 pub mod quality_gates;
+pub use quality_gates as quality_gate;
+pub mod quality_proxy;
 pub mod ranking;
 pub mod ranking_utils;
 pub mod readme_compressor;
@@ -146,6 +148,9 @@ mod mcp_property_tests;
 
 #[cfg(test)]
 mod git_clone_property_tests;
+
+#[cfg(test)]
+mod quality_proxy_property_tests;
 
 #[cfg(test)]
 mod tests {
