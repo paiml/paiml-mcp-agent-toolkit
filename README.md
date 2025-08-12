@@ -66,6 +66,9 @@ pmat analyze satd
 
 # Run comprehensive quality checks
 pmat quality-gate --strict
+
+# NEW: Quality Proxy - Enforce quality standards on AI-generated code
+cargo run --example quality_proxy_demo
 ```
 
 ### Using as a Library
@@ -115,13 +118,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - **SATD Detection** - Find Self-Admitted Technical Debt in comments
 - **Code Duplication** - Detect exact, renamed, gapped, and semantic clones
 
-### 🛠️ Refactoring Tools
+### 🛠️ Refactoring & Quality Tools
 - **AI-Powered Auto Refactoring** - `pmat refactor auto` achieves extreme quality standards
   - **Single File Mode** - `pmat refactor auto --single-file-mode --file path/to/file.rs` for targeted refactoring
 - **Documentation Cleanup** - `pmat refactor docs` maintains Zero Tolerance Quality Standards
 - **Interactive Refactoring** - Step-by-step guided refactoring with explanations
 - **Enforcement Mode** - Enforce extreme quality standards using state machines
   - **Single File Mode** - `pmat enforce extreme --file path/to/file.rs` for file-specific enforcement
+- **Quality Proxy** (NEW v2.1) - Intercept and validate AI-generated code before it's written
+  - Enforces complexity thresholds, SATD detection, and documentation requirements
+  - Three modes: Strict (reject), Advisory (warn), and Auto-Fix (refactor automatically)
+  - Perfect for CI/CD pipelines and AI agent integrations
 
 ### 📊 Quality Gates & CI/CD Integration
 - **Lint Hotspot Analysis** - Find files with highest defect density using EXTREME Clippy standards
@@ -320,6 +327,7 @@ Available MCP tools:
 - `analyze_proof_annotations` - Lightweight formal verification
 - `analyze_graph_metrics` - Graph centrality and PageRank analysis
 - `refactor_interactive` - Interactive refactoring with explanations
+- `quality_proxy` - **NEW** Proxy AI-generated code through quality gates
 
 #### 🔗 MCP Tool Composition (NEW)
 
