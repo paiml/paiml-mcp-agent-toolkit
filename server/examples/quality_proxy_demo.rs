@@ -10,12 +10,11 @@
 
 use pmat::models::proxy::{ProxyMode, ProxyOperation, ProxyRequest, ProxyStatus, QualityConfig};
 use pmat::services::quality_proxy::QualityProxyService;
-use colored::Colorize;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    println!("{}", "Quality Proxy Demo".bold().blue());
-    println!("{}", "==================".blue());
+    println!("Quality Proxy Demo");
+    println!("==================");
     println!();
 
     let service = QualityProxyService::new();
@@ -39,8 +38,8 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn demo_high_quality_code(service: &QualityProxyService) -> anyhow::Result<()> {
-    println!("{}", "Demo 1: High-Quality Code (Strict Mode)".green().bold());
-    println!("{}", "---------------------------------------".green());
+    println!("Demo 1: High-Quality Code (Strict Mode)");
+    println!("---------------------------------------");
     
     let code = r#"/// Calculate the factorial of a number
 /// 
@@ -59,7 +58,7 @@ pub fn factorial(n: u32) -> u32 {
 }"#;
 
     println!("Input code:");
-    println!("{}", code.dimmed());
+    println!("{}", code);
     println!();
 
     let request = ProxyRequest {
@@ -81,8 +80,8 @@ pub fn factorial(n: u32) -> u32 {
 }
 
 async fn demo_satd_rejection(service: &QualityProxyService) -> anyhow::Result<()> {
-    println!("{}", "Demo 2: SATD Rejection (Strict Mode)".yellow().bold());
-    println!("{}", "------------------------------------".yellow());
+    println!("Demo 2: SATD Rejection (Strict Mode)");
+    println!("------------------------------------");
     
     let code = r#"fn process_payment(amount: f64) -> Result<(), String> {
     // TODO: implement actual payment processing
@@ -94,7 +93,7 @@ async fn demo_satd_rejection(service: &QualityProxyService) -> anyhow::Result<()
 }"#;
 
     println!("Input code:");
-    println!("{}", code.dimmed());
+    println!("{}", code);
     println!();
 
     let request = ProxyRequest {
@@ -116,15 +115,15 @@ async fn demo_satd_rejection(service: &QualityProxyService) -> anyhow::Result<()
 }
 
 async fn demo_advisory_mode(service: &QualityProxyService) -> anyhow::Result<()> {
-    println!("{}", "Demo 3: Advisory Mode (Warnings Only)".cyan().bold());
-    println!("{}", "-------------------------------------".cyan());
+    println!("Demo 3: Advisory Mode (Warnings Only)");
+    println!("-------------------------------------");
     
     let code = r#"pub fn calculate_discount(price: f64, percentage: f64) -> f64 {
     price * (1.0 - percentage / 100.0)
 }"#;
 
     println!("Input code (missing documentation):");
-    println!("{}", code.dimmed());
+    println!("{}", code);
     println!();
 
     let request = ProxyRequest {
@@ -146,8 +145,8 @@ async fn demo_advisory_mode(service: &QualityProxyService) -> anyhow::Result<()>
 }
 
 async fn demo_auto_fix(service: &QualityProxyService) -> anyhow::Result<()> {
-    println!("{}", "Demo 4: Auto-Fix Mode".magenta().bold());
-    println!("{}", "--------------------".magenta());
+    println!("Demo 4: Auto-Fix Mode");
+    println!("--------------------");
     
     let code = r#"pub struct UserData {
     name: String,
@@ -160,7 +159,7 @@ fn validate_email(email: &str) -> bool {
 }"#;
 
     println!("Input code (with SATD and missing docs):");
-    println!("{}", code.dimmed());
+    println!("{}", code);
     println!();
 
     let request = ProxyRequest {
@@ -184,8 +183,8 @@ fn validate_email(email: &str) -> bool {
     
     if response.refactoring_applied {
         println!();
-        println!("{}", "Fixed code:".green());
-        println!("{}", response.final_content.dimmed());
+        println!("Fixed code:");
+        println!("{}", response.final_content);
     }
     println!();
     
@@ -193,8 +192,8 @@ fn validate_email(email: &str) -> bool {
 }
 
 async fn demo_complexity_check(service: &QualityProxyService) -> anyhow::Result<()> {
-    println!("{}", "Demo 5: Complexity Check".red().bold());
-    println!("{}", "------------------------".red());
+    println!("Demo 5: Complexity Check");
+    println!("------------------------");
     
     let code = r#"fn complex_calculation(a: i32, b: i32, c: i32, d: i32) -> i32 {
     let mut result = 0;
@@ -232,7 +231,7 @@ async fn demo_complexity_check(service: &QualityProxyService) -> anyhow::Result<
 }"#;
 
     println!("Input code (high complexity):");
-    println!("{}", code.dimmed());
+    println!("{}", code);
     println!();
 
     let request = ProxyRequest {
@@ -259,9 +258,9 @@ async fn demo_complexity_check(service: &QualityProxyService) -> anyhow::Result<
 fn print_response(response: &pmat::models::proxy::ProxyResponse) {
     // Print status
     let status_str = match response.status {
-        ProxyStatus::Accepted => "ACCEPTED".green(),
-        ProxyStatus::Rejected => "REJECTED".red(),
-        ProxyStatus::Modified => "MODIFIED".yellow(),
+        ProxyStatus::Accepted => "ACCEPTED",
+        ProxyStatus::Rejected => "REJECTED",
+        ProxyStatus::Modified => "MODIFIED",
     };
     println!("Status: {}", status_str);
     
@@ -269,9 +268,9 @@ fn print_response(response: &pmat::models::proxy::ProxyResponse) {
     println!("Quality Report:");
     println!("  Passed: {}", 
         if response.quality_report.passed { 
-            "Yes".green() 
+            "Yes" 
         } else { 
-            "No".red() 
+            "No" 
         }
     );
     
@@ -286,8 +285,8 @@ fn print_response(response: &pmat::models::proxy::ProxyResponse) {
         println!("  Violations:");
         for violation in &response.quality_report.violations {
             let severity = match violation.severity {
-                pmat::models::proxy::ViolationSeverity::Error => "ERROR".red(),
-                pmat::models::proxy::ViolationSeverity::Warning => "WARNING".yellow(),
+                pmat::models::proxy::ViolationSeverity::Error => "ERROR",
+                pmat::models::proxy::ViolationSeverity::Warning => "WARNING",
             };
             
             println!("    [{:>7}] {} at {}", 
@@ -297,14 +296,14 @@ fn print_response(response: &pmat::models::proxy::ProxyResponse) {
             );
             
             if let Some(suggestion) = &violation.suggestion {
-                println!("              Suggestion: {}", suggestion.dimmed());
+                println!("              Suggestion: {}", suggestion);
             }
         }
     }
     
     // Print refactoring info
     if response.refactoring_applied {
-        println!("  {}", "Automatic refactoring applied".green());
+        println!("  Automatic refactoring applied");
         if let Some(plan) = &response.refactoring_plan {
             println!("  Refactoring steps: {}", plan.len());
         }

@@ -233,6 +233,139 @@ async fn refactor_file(file: &str) -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+## Quality Proxy
+
+**NEW in v2.1** - Programmatically validate and enforce quality standards on code before it's written.
+
+### Basic Usage
+
+```rust
+use pmat::{
+    services::quality_proxy::QualityProxyService,
+    models::proxy::{
+        ProxyRequest, ProxyOperation, ProxyMode, 
+        QualityConfig, ProxyStatus
+    },
+};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let service = QualityProxyService::new();
+    
+    // Validate code before writing
+    let request = ProxyRequest {
+        operation: ProxyOperation::Write,
+        file_path: "src/new_feature.rs".to_string(),
+        content: Some(generated_code),
+        old_content: None,
+        new_content: None,
+        mode: ProxyMode::Strict,
+        quality_config: QualityConfig::default(),
+    };
+    
+    let response = service.proxy_operation(request).await?;
+    
+    match response.status {
+        ProxyStatus::Accepted => {
+            println!("✅ Code meets quality standards");
+            // Safe to write the code
+        },
+        ProxyStatus::Rejected => {
+            println!("❌ Code quality violations:");
+            for violation in response.quality_report.violations {
+                println!("  - {}: {}", violation.location, violation.message);
+            }
+        },
+        ProxyStatus::Modified => {
+            println!("🔧 Code auto-fixed and accepted");
+            // Use response.final_content for the fixed version
+        }
+    }
+    
+    Ok(())
+}
+```
+
+### Configuration Options
+
+```rust
+use pmat::models::proxy::QualityConfig;
+
+let config = QualityConfig {
+    max_complexity: 15,        // Stricter complexity limit
+    allow_satd: false,         // No TODO/FIXME comments
+    require_docs: true,        // Enforce documentation
+    auto_format: true,         // Apply rustfmt
+};
+```
+
+### Auto-Fix Mode
+
+```rust
+// Automatically fix quality issues
+let request = ProxyRequest {
+    operation: ProxyOperation::Write,
+    file_path: "src/utils.rs".to_string(),
+    content: Some(code_with_issues),
+    mode: ProxyMode::AutoFix,  // Enable auto-fixing
+    quality_config: QualityConfig::default(),
+    ..Default::default()
+};
+
+let response = service.proxy_operation(request).await?;
+
+if response.refactoring_applied {
+    println!("Applied fixes:");
+    for step in response.refactoring_plan.unwrap() {
+        println!("  - {:?}", step);
+    }
+    
+    // Use the fixed content
+    std::fs::write("src/utils.rs", response.final_content)?;
+}
+```
+
+### Integration with AI Agents
+
+```rust
+use pmat::services::quality_proxy::QualityProxyService;
+
+/// Middleware for AI code generation
+async fn validate_ai_code(
+    ai_generated: String,
+    target_file: String,
+) -> Result<String, Vec<String>> {
+    let service = QualityProxyService::new();
+    
+    let request = ProxyRequest {
+        operation: ProxyOperation::Write,
+        file_path: target_file,
+        content: Some(ai_generated),
+        mode: ProxyMode::AutoFix,
+        quality_config: QualityConfig {
+            max_complexity: 10,  // Very strict for AI code
+            allow_satd: false,
+            require_docs: true,
+            auto_format: true,
+        },
+        ..Default::default()
+    };
+    
+    let response = service.proxy_operation(request).await
+        .map_err(|e| vec![e.to_string()])?;
+    
+    if response.quality_report.passed || response.status == ProxyStatus::Modified {
+        Ok(response.final_content)
+    } else {
+        let errors: Vec<String> = response.quality_report.violations
+            .iter()
+            .map(|v| format!("{}: {}", v.location, v.message))
+            .collect();
+        Err(errors)
+    }
+}
+```
+
 ## Template Generation
 
 ### Scaffolding Projects
