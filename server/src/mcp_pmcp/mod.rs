@@ -42,7 +42,7 @@
 //! 
 //! # Available Tools
 //! 
-//! The pmcp server implements 19 MCP tools across different categories:
+//! The pmcp server implements 20 MCP tools across different categories:
 //! 
 //! ## Analysis Tools
 //! - `analyze_complexity` - Analyze code complexity metrics
@@ -60,6 +60,7 @@
 //! 
 //! ## Quality Tools
 //! - `quality_gate` - Run comprehensive quality checks
+//! - `quality_proxy` - Proxy code changes through quality gates
 //! 
 //! ## Git Tools
 //! - `git_operation` - Perform git operations
@@ -87,6 +88,7 @@ pub mod analyze_handlers;
 pub mod context_handlers;
 pub mod handlers;
 pub mod quality_handlers;
+pub mod quality_proxy_handler;
 pub mod server;
 pub mod tool_functions;
 
