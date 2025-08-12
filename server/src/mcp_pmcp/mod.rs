@@ -90,6 +90,10 @@ pub mod handlers;
 pub mod quality_handlers;
 pub mod quality_proxy_handler;
 pub mod server;
+pub mod simple_unified_server;
 pub mod tool_functions;
 
+// Export the simple unified server as the primary interface
+pub use simple_unified_server::SimpleUnifiedServer as UnifiedServer;
+// Keep PmcpServer for backward compatibility (will be removed)
 pub use server::PmcpServer;
