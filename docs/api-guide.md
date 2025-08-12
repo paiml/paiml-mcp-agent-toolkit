@@ -8,7 +8,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmat = "0.26.3"
+pmat = "2.2"
 
 # Optional: for async runtime
 tokio = { version = "1", features = ["full"] }

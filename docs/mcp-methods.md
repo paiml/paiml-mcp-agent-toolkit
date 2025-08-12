@@ -4,34 +4,41 @@ This document describes the MCP (Model Context Protocol) methods and tools avail
 
 ## Running the MCP Server
 
-### Using the Standard Implementation
+### Unified MCP Server Architecture (v2.2.0+)
+
+PMAT now uses a single, unified MCP server implementation based on the pmcp SDK:
 
 ```bash
-# Run with stdio transport (default)
-pmat --mode mcp
+# Run the unified MCP server (auto-detected)
+pmat
 
 # With debug logging
-RUST_LOG=debug pmat --mode mcp
+RUST_LOG=debug pmat
+
+# The server automatically detects MCP mode when:
+# - stdin is not a terminal
+# - MCP_VERSION environment variable is set
 ```
 
-### Using the pmcp SDK (NEW)
+The unified server provides:
+- **Single Implementation**: All tools in one place, no duplicate code
+- **10x Performance**: High-performance pmcp SDK for all operations
+- **Type Safety**: Compile-time validation of all tool interfaces
+- **Quality Integration**: Built-in quality proxy for all operations
+- **All Transports**: stdio (default), WebSocket, and HTTP/SSE support
 
-PMAT now supports the pmcp Rust SDK for improved type safety and async handling:
+### Programmatic Usage
 
-```bash
-# Run the pmcp-based server example
-cargo run --example mcp_server_pmcp
+```rust
+use pmat::mcp_pmcp::UnifiedServer;
 
-# This starts a TCP server on port 3000
-# Connect with: npx @modelcontextprotocol/inspector tcp://127.0.0.1:3000
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let server = UnifiedServer::new()?;
+    server.run().await?;
+    Ok(())
+}
 ```
-
-The pmcp SDK provides:
-- Type-safe tool implementations
-- Native async/await support
-- Better error handling with Result types
-- TCP transport in addition to stdio
-- Easier custom tool development
 
 ### Available MCP Methods
 

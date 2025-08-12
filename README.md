@@ -11,7 +11,12 @@
 
 **Zero-configuration AI context generation system** that analyzes any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com) with extreme quality standards and zero tolerance for technical debt.
 
-> **🎉 v2.0.0 Release**: Complete integration with [pmcp 1.0](https://github.com/paiml/pmcp) Rust MCP SDK! This major release delivers **10x performance improvement** for MCP server operations, production-grade transport layer (stdio, WebSocket, HTTP/SSE), type-safe tool handlers with compile-time validation, and comprehensive property-based testing. The project maintains zero tolerance standards: 0 SATD comments, 0 failing doctests, 0 failing property tests, 140+ comprehensive tests, and proper separation of concerns across all components ✅
+> **🎉 v2.2.0 Release**: **Unified MCP Server Architecture!** All MCP implementations consolidated into ONE high-performance pmcp SDK-based server. Features include:
+> - **Quality Proxy**: Intercept and validate AI-generated code with strict quality enforcement
+> - **Single Implementation**: Eliminated duplicate MCP servers, now ONE unified pmcp-based server
+> - **10x Performance**: All MCP operations use high-performance pmcp SDK exclusively  
+> - **17 Core Tools**: Analysis, refactoring, quality gates, and context generation in one place
+> - **Zero Tolerance**: 0 SATD comments, 0 failing tests, comprehensive property-based testing
 
 ## 🚀 Installation
 
@@ -77,7 +82,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmat = "2.0"
+pmat = "2.2"
 ```
 
 Basic usage:
@@ -125,9 +130,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - **Interactive Refactoring** - Step-by-step guided refactoring with explanations
 - **Enforcement Mode** - Enforce extreme quality standards using state machines
   - **Single File Mode** - `pmat enforce extreme --file path/to/file.rs` for file-specific enforcement
-- **Quality Proxy** (NEW v2.1) - Intercept and validate AI-generated code before it's written
+- **Quality Proxy** (v2.2) - Intercept and validate AI-generated code before it's written
   - Enforces complexity thresholds, SATD detection, and documentation requirements
   - Three modes: Strict (reject), Advisory (warn), and Auto-Fix (refactor automatically)
+  - Integrated into unified MCP server for all operations
   - Perfect for CI/CD pipelines and AI agent integrations
 
 ### 📊 Quality Gates & CI/CD Integration
@@ -263,17 +269,14 @@ claude mcp add pmat ~/.local/bin/pmat
 - **Type-safe tool handlers** with compile-time validation
 - **Production-grade reliability** with comprehensive testing
 
-To use the enhanced pmcp-based server:
+The unified MCP server uses the high-performance [pmcp](https://github.com/paiml/pmcp) Rust SDK exclusively:
 
 ```bash
-# Standard MCP server (auto-detected)
+# Run the unified MCP server (auto-detected)
 pmat
 
-# Explicitly use pmcp-enhanced server (10x performance)
-PMAT_PMCP_MCP=1 pmat
-
 # With debug logging
-PMAT_PMCP_MCP=1 pmat --debug
+pmat --debug
 ```
 
 Supported transports:
@@ -281,36 +284,30 @@ Supported transports:
 - **WebSocket**: For browser-based clients (`ws://localhost:8080`)
 - **HTTP/SSE**: For web applications with Server-Sent Events
 
-#### Using the pmcp Rust SDK
+#### Architecture
 
-The MCP server can now be run using the [pmcp](https://github.com/paiml/pmcp) Rust SDK for better type safety and async support:
+All MCP operations now flow through a single, unified server implementation:
 
 ```rust
-// Run the MCP server with pmcp SDK
-cargo run --example mcp_server_pmcp
+// The unified server provides all tools in one place
+use pmat::mcp_pmcp::UnifiedServer;
 
-// Or use as a library
-use pmat::mcp_pmcp::{handlers::*, PmcpServer};
-use pmcp::{Server, ServerBuilder};
+let server = UnifiedServer::new()?;
+server.run().await?;
 
-let server = ServerBuilder::new("pmat-mcp", "1.0.0")
-    .with_tool("analyze_complexity", "Analyze code complexity", 
-        Box::new(AnalyzeComplexityTool))
-    .with_tool("analyze_satd", "Detect technical debt",
-        Box::new(AnalyzeSatdTool))
-    // ... add more tools
-    .build();
-
-// Handle connections
-server.handle_connection(stream).await?;
+// Includes 17 core tools:
+// - Analysis: complexity, SATD, dead code, DAG, deep context, Big-O
+// - Refactoring: start, nextIteration, getState, stop
+// - Quality: quality_gate, quality_proxy
+// - Context: git_operation, generate_context, scaffold_project
 ```
 
-The pmcp SDK provides:
-- Type-safe tool definitions with proper async handling
-- Built-in JSON-RPC 2.0 protocol implementation
-- Automatic request/response serialization
-- Connection lifecycle management
-- Error handling and logging
+The unified architecture provides:
+- **Single Implementation**: No duplicate code or multiple server variants
+- **10x Performance**: All operations use pmcp SDK's optimized runtime
+- **Type Safety**: Compile-time validation of all tool interfaces
+- **Quality Integration**: Built-in quality proxy for all operations
+- **Consistent Behavior**: One code path for all MCP tools
 
 Available MCP tools:
 - `generate_template` - Generate project files from templates
