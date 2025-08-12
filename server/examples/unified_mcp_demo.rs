@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Create the unified server
     println!("Creating unified MCP server...");
-    let server = UnifiedServer::new()?;
+    let _server = UnifiedServer::new()?;
     
     println!("✅ Server created successfully");
     println!("\nThe unified server provides:");
