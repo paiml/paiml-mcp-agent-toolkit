@@ -878,6 +878,123 @@ Examples:
   pmat refactor docs ./docs --fix-links --update-examples
 ```
 
+## Quality Proxy
+
+**NEW in v2.1** - Intercept and validate AI-generated code before it's written to ensure quality standards.
+
+The Quality Proxy acts as a gatekeeper between AI agents (like Claude Code, GitHub Copilot, etc.) and your codebase, enforcing quality standards on all generated code.
+
+### Features
+
+- **Real-time validation** - Check code quality before it's written
+- **Three enforcement modes** - Strict (reject), Advisory (warn), Auto-Fix (refactor)
+- **Comprehensive checks** - Complexity, SATD, documentation, lint violations
+- **AI agent integration** - Works with MCP protocol and HTTP API
+- **Automatic refactoring** - Fix issues automatically in Auto-Fix mode
+
+### Usage via MCP
+
+When using with AI agents through MCP:
+
+```json
+{
+  "tool": "quality_proxy",
+  "arguments": {
+    "operation": "write",
+    "file_path": "src/example.rs",
+    "content": "// Code to validate",
+    "mode": "strict",
+    "quality_config": {
+      "max_complexity": 20,
+      "allow_satd": false,
+      "require_docs": true,
+      "auto_format": true
+    }
+  }
+}
+```
+
+### Usage via Library
+
+```rust
+use pmat::services::quality_proxy::QualityProxyService;
+use pmat::models::proxy::{ProxyRequest, ProxyOperation, ProxyMode, QualityConfig};
+
+let service = QualityProxyService::new();
+let request = ProxyRequest {
+    operation: ProxyOperation::Write,
+    file_path: "example.rs".to_string(),
+    content: Some(code),
+    mode: ProxyMode::Strict,
+    quality_config: QualityConfig::default(),
+};
+
+let response = service.proxy_operation(request).await?;
+```
+
+### Modes
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| **Strict** | Reject code that doesn't meet standards | Production, CI/CD |
+| **Advisory** | Warn but allow code through | Development, debugging |
+| **Auto-Fix** | Automatically fix issues | Rapid prototyping |
+
+### Quality Checks
+
+1. **Complexity Analysis**
+   - McCabe cyclomatic complexity
+   - Cognitive complexity
+   - Configurable thresholds (default: 20)
+
+2. **SATD Detection**
+   - TODO, FIXME, HACK comments
+   - Incomplete implementations
+   - Zero tolerance in strict mode
+
+3. **Documentation**
+   - Public API documentation
+   - Function/struct/enum docs
+   - Configurable requirement
+
+4. **Lint Violations**
+   - Clippy checks
+   - Format validation
+   - Style consistency
+
+### Example Output
+
+```json
+{
+  "status": "rejected",
+  "quality_report": {
+    "passed": false,
+    "metrics": {
+      "max_complexity": 35,
+      "satd_count": 2,
+      "lint_violations": 3
+    },
+    "violations": [
+      {
+        "type": "complexity",
+        "severity": "error",
+        "location": "src/main.rs:45",
+        "message": "Function complexity 35 exceeds threshold 20",
+        "suggestion": "Split into smaller functions"
+      }
+    ]
+  }
+}
+```
+
+### Demo
+
+Run the interactive demo to see all features:
+
+```bash
+cargo run --example quality_proxy_demo
+```
+
 ## Enforce Commands
 
 ### `enforce extreme`

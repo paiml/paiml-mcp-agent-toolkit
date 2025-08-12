@@ -40,6 +40,20 @@ Shows Self-Admitted Technical Debt detection with various modes.
 cargo run --example analyze_satd
 ```
 
+#### `quality_proxy_demo`
+**NEW** - Interactive demonstration of the Quality Proxy service for enforcing code quality on AI-generated code.
+Shows all three enforcement modes (Strict, Advisory, Auto-Fix) with real examples.
+```bash
+cargo run --example quality_proxy_demo
+```
+
+Features demonstrated:
+- High-quality code acceptance in strict mode
+- SATD rejection and automatic removal
+- Advisory mode with warnings
+- Auto-fix mode with refactoring
+- Complexity threshold enforcement
+
 ### CI/CD Integration Examples
 
 #### `ci_integration`
