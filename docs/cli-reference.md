@@ -2,7 +2,7 @@
 
 Complete reference for all PMAT command-line interface commands and options.
 
-> **v0.28.6+**: Comprehensive clippy lint improvements completed - all Rust code quality checks now pass ✅
+> **v2.2.0+**: Unified MCP server architecture with integrated quality proxy and single pmcp-based implementation ✅
 
 ## Table of Contents
 
@@ -1050,7 +1050,6 @@ PMAT supports extensive output formats across commands:
 |----------|---------|---------|
 | `RUST_LOG` | Logging level and filters | `info` |
 | `MCP_VERSION` | Force MCP mode detection | Not set |
-| `PMAT_REFACTOR_MCP` | Enable refactor MCP server | Not set |
 | `DOCS_RS` | Docs.rs build environment | Not set |
 | `PMAT_CONFIG` | Configuration file path | `.pmat.toml` |
 | `PMAT_CACHE_DIR` | Cache directory location | `~/.cache/pmat` |
