@@ -95,7 +95,19 @@ cargo run --example lint_hotspot_demo
 
 ### MCP Server Examples
 
-#### `mcp_server_pmcp` (NEW)
+#### `unified_mcp_demo` (NEW v2.2.0)
+Demonstrates the unified MCP server architecture showing consolidation of all tools.
+```bash
+cargo run --example unified_mcp_demo
+```
+
+This example shows:
+- Unified server with 17 core tools
+- Quality proxy integration
+- Single pmcp SDK implementation
+- Architecture benefits and tool organization
+
+#### `mcp_server_pmcp`
 Demonstrates running the pmat MCP server using the pmcp Rust SDK.
 ```bash
 # Start the MCP server
