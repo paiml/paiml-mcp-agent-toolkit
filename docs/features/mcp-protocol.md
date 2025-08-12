@@ -21,9 +21,9 @@ The Model Context Protocol (MCP) implementation in PMAT provides a standardized 
 │  └──────────────┘  └────────────────────────┘  │
 │  ┌──────────────────────────────────────────┐  │
 │  │              Tool Registry               │  │
-│  │  • Template Tools (6)  • Analysis (17) │  │
+│  │  • Template Tools (6)  • Analysis (18) │  │
 │  │  • Vectorized (7)      • Core (4)      │  │
-│  │  • Total: 33 available MCP tools       │  │
+│  │  • Total: 34 available MCP tools       │  │
 │  └──────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────┘
 ```
@@ -114,7 +114,7 @@ All messages follow JSON-RPC 2.0 specification:
 
 ### Available Tools
 
-**Total: 33 MCP Tools Available**
+**Total: 34 MCP Tools Available**
 
 ## Template Management Tools (6 tools)
 
@@ -562,6 +562,79 @@ Generate comprehensive enhanced analysis reports.
   analysis_types?: string[];
   output_format?: "markdown" | "html" | "json";
   include_visualizations?: boolean;
+}
+```
+
+#### 34. `quality_proxy`
+**NEW in v2.1** - Intercept and validate AI-generated code before it's written.
+
+Acts as a quality gatekeeper between AI agents and your codebase, enforcing standards on all generated code.
+
+**Parameters:**
+```typescript
+{
+  operation: "write" | "edit" | "append";
+  file_path: string;
+  content?: string;          // For write/append operations
+  old_content?: string;      // For edit operations
+  new_content?: string;      // For edit operations
+  mode?: "strict" | "advisory" | "auto_fix";  // Default: "strict"
+  quality_config?: {
+    max_complexity?: number;    // Default: 20
+    allow_satd?: boolean;       // Default: false
+    require_docs?: boolean;     // Default: true
+    auto_format?: boolean;      // Default: true
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "status": "accepted" | "rejected" | "modified",
+  "quality_report": {
+    "passed": boolean,
+    "metrics": {
+      "max_complexity": 15,
+      "satd_count": 0,
+      "lint_violations": 0
+    },
+    "violations": [
+      {
+        "type": "complexity" | "satd" | "docs" | "lint",
+        "severity": "error" | "warning",
+        "location": "file.rs:45",
+        "message": "Function complexity exceeds threshold",
+        "suggestion": "Split into smaller functions"
+      }
+    ]
+  },
+  "final_content": "// Validated or auto-fixed content",
+  "refactoring_applied": boolean,
+  "refactoring_plan": []  // Steps taken in auto-fix mode
+}
+```
+
+**Usage Example:**
+```javascript
+// AI agent validates code before writing
+const result = await callTool("quality_proxy", {
+  operation: "write",
+  file_path: "src/new_feature.rs",
+  content: generatedCode,
+  mode: "auto_fix",  // Automatically fix issues
+  quality_config: {
+    max_complexity: 15,  // Stricter than default
+    require_docs: true
+  }
+});
+
+if (result.status === "accepted" || result.status === "modified") {
+  // Code meets standards, safe to write
+  await writeFile(result.final_content);
+} else {
+  // Code rejected, show violations to user
+  console.error("Quality violations:", result.quality_report.violations);
 }
 ```
 

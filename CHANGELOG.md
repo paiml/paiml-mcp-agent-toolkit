@@ -5,7 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-08-08
+## [2.1.0] - TBD
+
+### Added
+- **Quality Proxy Service**: New service to intercept and validate AI-generated code before it's written
+  - Three enforcement modes: Strict (reject), Advisory (warn), Auto-Fix (refactor automatically)
+  - Comprehensive quality checks: complexity, SATD, documentation, lint violations
+  - MCP tool integration for AI agents (Claude Code, GitHub Copilot, etc.)
+  - Automatic refactoring in Auto-Fix mode with SATD removal and documentation generation
+  - Property-based testing with 9 comprehensive test scenarios
+  - Full integration with pmcp SDK for high-performance MCP handling
+- **New MCP Tool**: `quality_proxy` tool for validating code through MCP protocol
+  - Supports write, edit, and append operations
+  - Configurable quality thresholds and enforcement modes
+  - Returns detailed quality reports with violations and suggestions
+- **Example**: Added `quality_proxy_demo` showcasing all features and modes
+
+### Documentation
+- Added comprehensive Quality Proxy documentation to CLI reference
+- Updated MCP protocol documentation with quality_proxy tool (now 34 total MCP tools)
+- Added Quality Proxy API documentation with usage examples
+- Updated README with Quality Proxy feature description
+
+## [2.0.0] - 2025-08-08
 
 ### Added
 - **pmcp 1.0 Integration**: Complete integration with the pmcp Rust MCP SDK

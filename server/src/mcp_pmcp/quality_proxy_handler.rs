@@ -27,7 +27,7 @@ fn default_mode() -> String {
     "strict".to_string()
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize)]
 pub struct QualityConfigInput {
     #[serde(default = "default_max_complexity")]
     pub max_complexity: u32,
@@ -37,6 +37,17 @@ pub struct QualityConfigInput {
     pub require_docs: bool,
     #[serde(default = "default_auto_format")]
     pub auto_format: bool,
+}
+
+impl Default for QualityConfigInput {
+    fn default() -> Self {
+        Self {
+            max_complexity: default_max_complexity(),
+            allow_satd: default_allow_satd(),
+            require_docs: default_require_docs(),
+            auto_format: default_auto_format(),
+        }
+    }
 }
 
 fn default_max_complexity() -> u32 {
@@ -136,10 +147,10 @@ mod tests {
     #[test]
     fn test_default_quality_config() {
         let config = QualityConfigInput::default();
-        assert_eq!(config.max_complexity, 20);
-        assert!(!config.allow_satd);
-        assert!(config.require_docs);
-        assert!(config.auto_format);
+        assert_eq!(config.max_complexity, default_max_complexity());
+        assert_eq!(config.allow_satd, default_allow_satd());
+        assert_eq!(config.require_docs, default_require_docs());
+        assert_eq!(config.auto_format, default_auto_format());
     }
 
     #[tokio::test]

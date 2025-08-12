@@ -9,18 +9,13 @@ pub enum ProxyOperation {
     Append,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ProxyMode {
+    #[default]
     Strict,
     Advisory,
     AutoFix,
-}
-
-impl Default for ProxyMode {
-    fn default() -> Self {
-        ProxyMode::Strict
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
