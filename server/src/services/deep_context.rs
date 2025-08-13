@@ -43,10 +43,10 @@
 //!     parallel: 4,
 //!     file_classifier_config: None,
 //! };
-//! 
+//!
 //! let analyzer = DeepContext::new(config);
 //! let context = analyzer.analyze(Path::new("src/")).await?;
-//! 
+//!
 //! // Access multi-dimensional analysis results
 //! println!("Total complexity: {}", context.complexity_report.unwrap().total_complexity);
 //! println!("Code churn hotspots: {}", context.churn_analysis.unwrap().summary.hotspot_files.len());
@@ -2392,7 +2392,6 @@ impl DeepContextAnalyzer {
         }
     }
 
-
     async fn execute_parallel_analyses_with_progress(
         &self,
         project_path: &std::path::Path,
@@ -2553,7 +2552,6 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
-
     async fn collect_analysis_results_with_progress(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -2574,7 +2572,6 @@ impl DeepContextAnalyzer {
             )),
         }
     }
-
 
     /// Process all analysis results concurrently with progress
     async fn process_analysis_results_with_progress(
@@ -2950,15 +2947,6 @@ impl DeepContextAnalyzer {
 
         Ok(hotspots)
     }
-
-
-
-
-
-
-
-
-
 
     /// Analyze project metadata (Makefile and README)
     async fn analyze_project_metadata(

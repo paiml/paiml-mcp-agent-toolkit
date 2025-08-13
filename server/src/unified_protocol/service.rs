@@ -90,10 +90,7 @@ impl UnifiedService {
                 "/api/v1/analyze/provability",
                 post(handlers::analyze_provability),
             )
-            .route(
-                "/api/v1/analyze/satd",
-                post(handlers::analyze_satd),
-            )
+            .route("/api/v1/analyze/satd", post(handlers::analyze_satd))
             .route(
                 "/api/v1/analyze/lint-hotspot",
                 post(handlers::analyze_lint_hotspot),
@@ -736,50 +733,70 @@ pub mod handlers {
     ) -> Result<Json<SatdAnalysis>, AppError> {
         use crate::services::satd_detector::SATDDetector;
         use std::path::Path;
-        
+
         let detector = if params.strict.unwrap_or(false) {
             SATDDetector::new_strict()
         } else {
             SATDDetector::new()
         };
-        
+
         let project_path = Path::new(&params.project_path);
-        let result = detector.analyze_project(
-            project_path,
-            !params.exclude_tests.unwrap_or(true),
-        ).await
-        .map_err(|e| AppError::Analysis(format!("SATD analysis failed: {}", e)))?;
-        
+        let result = detector
+            .analyze_project(project_path, !params.exclude_tests.unwrap_or(true))
+            .await
+            .map_err(|e| AppError::Analysis(format!("SATD analysis failed: {}", e)))?;
+
         // Group items by file
-        let mut files_map: std::collections::HashMap<String, Vec<crate::services::satd_detector::TechnicalDebt>> = std::collections::HashMap::new();
+        let mut files_map: std::collections::HashMap<
+            String,
+            Vec<crate::services::satd_detector::TechnicalDebt>,
+        > = std::collections::HashMap::new();
         for item in result.items {
-            files_map.entry(item.file.display().to_string()).or_default().push(item);
+            files_map
+                .entry(item.file.display().to_string())
+                .or_default()
+                .push(item);
         }
-        
+
         // Convert to API response format
         let analysis = SatdAnalysis {
             project_path: params.project_path,
             total_debt_items: result.summary.total_items,
-            debt_density: (result.summary.total_items as f64 / result.total_files_analyzed.max(1) as f64),
-            critical_items: result.summary.by_severity.get("Critical").copied().unwrap_or(0),
-            categories: result.summary.by_category.into_iter()
+            debt_density: (result.summary.total_items as f64
+                / result.total_files_analyzed.max(1) as f64),
+            critical_items: result
+                .summary
+                .by_severity
+                .get("Critical")
+                .copied()
+                .unwrap_or(0),
+            categories: result
+                .summary
+                .by_category
+                .into_iter()
                 .map(|(k, v)| (format!("{:?}", k), v))
                 .collect(),
-            files: files_map.into_iter().map(|(path, items)| {
-                SatdFile {
-                    path,
-                    debt_count: items.len(),
-                    items: items.into_iter().map(|item| SatdItem {
-                        line: item.line as usize,
-                        category: format!("{:?}", item.category),
-                        severity: format!("{:?}", item.severity),
-                        text: item.text,
-                        context: None, // Not available in current structure
-                    }).collect(),
-                }
-            }).collect(),
+            files: files_map
+                .into_iter()
+                .map(|(path, items)| {
+                    SatdFile {
+                        path,
+                        debt_count: items.len(),
+                        items: items
+                            .into_iter()
+                            .map(|item| SatdItem {
+                                line: item.line as usize,
+                                category: format!("{:?}", item.category),
+                                severity: format!("{:?}", item.severity),
+                                text: item.text,
+                                context: None, // Not available in current structure
+                            })
+                            .collect(),
+                    }
+                })
+                .collect(),
         };
-        
+
         Ok(Json(analysis))
     }
 
@@ -791,45 +808,50 @@ pub mod handlers {
         use crate::cli::handlers::lint_hotspot_handlers::handle_analyze_lint_hotspot;
         use crate::cli::LintHotspotOutputFormat;
         use std::path::PathBuf;
-        
+
         let project_path = PathBuf::from(params.project_path.clone());
-        
+
         // Create a temporary file to capture output
         let temp_file = tempfile::NamedTempFile::new()
             .map_err(|e| AppError::Analysis(format!("Failed to create temporary file: {}", e)))?;
         let output_path = temp_file.path().to_path_buf();
-        
+
         // Run lint hotspot analysis using the CLI handler with JSON output
         handle_analyze_lint_hotspot(
             project_path,
             None, // file
             LintHotspotOutputFormat::Json,
-            100.0, // max_density
-            0.0, // min_confidence
-            false, // enforce
-            false, // dry_run
-            false, // enforcement_metadata
+            100.0,                     // max_density
+            0.0,                       // min_confidence
+            false,                     // enforce
+            false,                     // dry_run
+            false,                     // enforcement_metadata
             Some(output_path.clone()), // output to temp file
-            false, // perf
-            String::new(), // clippy_flags
+            false,                     // perf
+            String::new(),             // clippy_flags
             params.top_files.unwrap_or(10),
-        ).await
+        )
+        .await
         .map_err(|e| AppError::Analysis(format!("Lint hotspot analysis failed: {}", e)))?;
-        
+
         // Read and parse the JSON output
-        let json_output = tokio::fs::read_to_string(&output_path).await
+        let json_output = tokio::fs::read_to_string(&output_path)
+            .await
             .map_err(|e| AppError::Analysis(format!("Failed to read output file: {}", e)))?;
         let lint_data: serde_json::Value = serde_json::from_str(&json_output)
             .map_err(|e| AppError::Analysis(format!("Failed to parse JSON output: {}", e)))?;
-        
+
         // Extract data from JSON
         let hotspots_data = lint_data["hotspots"].as_array().unwrap_or(&vec![]).clone();
         let total_files = lint_data["total_files_analyzed"].as_u64().unwrap_or(0) as usize;
         let total_violations = lint_data["total_violations"].as_u64().unwrap_or(0) as usize;
-        let average_violations_per_file = lint_data["average_violations_per_file"].as_f64().unwrap_or(0.0);
-        
+        let average_violations_per_file = lint_data["average_violations_per_file"]
+            .as_f64()
+            .unwrap_or(0.0);
+
         // Convert hotspots to typed structure
-        let hotspots: Vec<LintHotspot> = hotspots_data.iter()
+        let hotspots: Vec<LintHotspot> = hotspots_data
+            .iter()
             .filter_map(|h| {
                 Some(LintHotspot {
                     file_path: h["file_path"].as_str()?.to_string(),
@@ -844,7 +866,7 @@ pub mod handlers {
                 })
             })
             .collect();
-        
+
         // Convert to API response format
         let analysis = LintHotspotAnalysis {
             project_path: params.project_path,
@@ -853,7 +875,7 @@ pub mod handlers {
             average_violations_per_file,
             hotspots,
         };
-        
+
         Ok(Json(analysis))
     }
 
@@ -898,18 +920,13 @@ pub mod handlers {
             }
             "analyze_satd" => {
                 let satd_params: SatdParams = serde_json::from_value(params)?;
-                let result = analyze_satd(
-                    Extension(state.clone()),
-                    Json(satd_params),
-                ).await?;
+                let result = analyze_satd(Extension(state.clone()), Json(satd_params)).await?;
                 Ok(Json(serde_json::to_value(result.0)?))
             }
             "analyze_lint_hotspot" => {
                 let lint_params: LintHotspotParams = serde_json::from_value(params)?;
-                let result = analyze_lint_hotspot(
-                    Extension(state.clone()),
-                    Json(lint_params),
-                ).await?;
+                let result =
+                    analyze_lint_hotspot(Extension(state.clone()), Json(lint_params)).await?;
                 Ok(Json(serde_json::to_value(result.0)?))
             }
             _ => Err(AppError::NotFound(format!("Unknown MCP method: {method}"))),

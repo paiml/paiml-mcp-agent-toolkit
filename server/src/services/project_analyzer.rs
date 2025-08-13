@@ -30,17 +30,17 @@
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let project = Project::new(Path::new("./src"))?;
-//! 
+//!
 //! // Get all source files in the project
 //! let source_files = project.source_files();
 //! println!("Found {} source files", source_files.len());
-//! 
+//!
 //! // Build dependency graph for analysis
 //! let dependency_graph = project.build_dependency_graph().await?;
-//! println!("Graph has {} nodes and {} edges", 
-//!          dependency_graph.nodes.len(), 
+//! println!("Graph has {} nodes and {} edges",
+//!          dependency_graph.nodes.len(),
 //!          dependency_graph.edges.len());
-//! 
+//!
 //! // Analyze specific aspects
 //! for file in source_files.iter().take(5) {
 //!     println!("  - {}", file.display());

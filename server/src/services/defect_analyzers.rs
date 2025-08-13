@@ -36,9 +36,9 @@
 //!     cognitive_threshold: 30,
 //!     nesting_threshold: 5,
 //! };
-//! 
+//!
 //! let defects = analyzer.analyze(Path::new("src/"), config).await?;
-//! 
+//!
 //! // Group defects by severity
 //! let critical_count = defects.iter()
 //!     .filter(|d| d.severity == Severity::Critical)

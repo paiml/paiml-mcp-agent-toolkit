@@ -159,7 +159,10 @@ impl PmcpServer {
             .tool("scaffold_project", ScaffoldProjectTool)
             .build()?;
 
-        info!("PMAT MCP server ready with {} tools, listening on stdio", 16);
+        info!(
+            "PMAT MCP server ready with {} tools, listening on stdio",
+            16
+        );
 
         // Run server with stdio transport
         server.run_stdio().await?;

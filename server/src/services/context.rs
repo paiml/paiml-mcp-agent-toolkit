@@ -21,7 +21,7 @@
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Generate context for a Rust project
 //! let context = analyze_project(Path::new("src/"), "rust").await?;
-//! 
+//!
 //! println!("Project type: {}", context.project_type);
 //! println!("Total files: {}", context.summary.total_files);
 //! println!("Total functions: {}", context.summary.total_functions);

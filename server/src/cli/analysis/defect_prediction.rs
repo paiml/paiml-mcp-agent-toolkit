@@ -221,7 +221,11 @@ fn format_defect_detailed(
             },
             score.probability * 100.0
         )?;
-        writeln!(&mut output, "   Confidence: {:.1}%", score.confidence * 100.0)?;
+        writeln!(
+            &mut output,
+            "   Confidence: {:.1}%",
+            score.confidence * 100.0
+        )?;
 
         if !score.contributing_factors.is_empty() {
             writeln!(&mut output, "   Contributing Factors:")?;
@@ -279,7 +283,7 @@ fn format_defect_sarif(predictions: &[(String, DefectScore)]) -> Result<String> 
                         crate::services::defect_probability::RiskLevel::Low => "note",
                     },
                     "message": {
-                        "text": format!("Defect probability: {:.1}% (confidence: {:.1}%)", 
+                        "text": format!("Defect probability: {:.1}% (confidence: {:.1}%)",
                             score.probability * 100.0, score.confidence * 100.0)
                     },
                     "locations": [{

@@ -33,7 +33,7 @@
 //!     top_files: 10,
 //!     min_score: Some(5.0),
 //! };
-//! 
+//!
 //! // Create analysis results
 //! let results = vec![
 //!     AnalysisResultBuilder::new(PathBuf::from("complex.rs"))
@@ -45,10 +45,10 @@
 //!         .with_entity("helper", "function")
 //!         .build(),
 //! ];
-//! 
+//!
 //! // Apply ranking
 //! let ranked = apply_file_ranking(results, &config, |r| r.clone());
-//! 
+//!
 //! // Top file should be complex.rs
 //! assert_eq!(ranked[0].1, 1); // rank 1
 //! # }

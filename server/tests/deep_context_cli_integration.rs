@@ -1,18 +1,20 @@
 //! Integration tests for analyze deep-context CLI command (Issue #33)
-//! 
+//!
 //! These tests verify that the analyze deep-context command properly finds
 //! and reports context issues, addressing GitHub issue #33.
 
 use assert_cmd::Command;
 use predicates::prelude::*;
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 /// Create a test project with multiple related files
 fn create_test_project(dir: &TempDir) {
     // Create main module
     let main_path = dir.path().join("main.rs");
-    fs::write(&main_path, r#"
+    fs::write(
+        &main_path,
+        r#"
 mod user;
 mod database;
 mod api;
@@ -27,11 +29,15 @@ fn main() {
     let server = ApiServer::new(db);
     server.register_user(user);
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Create user module
     let user_path = dir.path().join("user.rs");
-    fs::write(&user_path, r#"
+    fs::write(
+        &user_path,
+        r#"
 pub struct User {
     pub name: String,
     pub email: String,
@@ -55,11 +61,15 @@ impl User {
         self.email.contains('@')
     }
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Create database module
     let db_path = dir.path().join("database.rs");
-    fs::write(&db_path, r#"
+    fs::write(
+        &db_path,
+        r#"
 use crate::user::User;
 
 pub struct Database {
@@ -87,11 +97,15 @@ impl Database {
         self.users.iter().find(|u| u.email == email)
     }
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Create API module
     let api_path = dir.path().join("api.rs");
-    fs::write(&api_path, r#"
+    fs::write(
+        &api_path,
+        r#"
 use crate::user::User;
 use crate::database::Database;
 
@@ -116,19 +130,21 @@ impl ApiServer {
         Ok(self.db.add_user(user))
     }
 }
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 }
 
 #[test]
 fn test_analyze_deep_context_finds_relationships() {
     let temp_dir = TempDir::new().unwrap();
     create_test_project(&temp_dir);
-    
+
     // Run analyze deep-context
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
         .args(["analyze", "deep-context", "--format", "json"]);
-    
+
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("user.rs"))
@@ -140,12 +156,18 @@ fn test_analyze_deep_context_finds_relationships() {
 fn test_analyze_deep_context_with_specific_file() {
     let temp_dir = TempDir::new().unwrap();
     create_test_project(&temp_dir);
-    
+
     // Run analyze deep-context on specific file
     let mut cmd = Command::cargo_bin("pmat").unwrap();
-    cmd.current_dir(&temp_dir)
-        .args(["analyze", "deep-context", "--include-pattern", "user.rs", "--format", "json"]);
-    
+    cmd.current_dir(&temp_dir).args([
+        "analyze",
+        "deep-context",
+        "--include-pattern",
+        "user.rs",
+        "--format",
+        "json",
+    ]);
+
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("user.rs"))
@@ -156,12 +178,11 @@ fn test_analyze_deep_context_with_specific_file() {
 fn test_analyze_deep_context_human_format() {
     let temp_dir = TempDir::new().unwrap();
     create_test_project(&temp_dir);
-    
+
     // Run analyze deep-context with human format
     let mut cmd = Command::cargo_bin("pmat").unwrap();
-    cmd.current_dir(&temp_dir)
-        .args(["analyze", "deep-context"]);
-    
+    cmd.current_dir(&temp_dir).args(["analyze", "deep-context"]);
+
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("Deep Context Analysis"))
@@ -171,12 +192,11 @@ fn test_analyze_deep_context_human_format() {
 #[test]
 fn test_analyze_deep_context_empty_project() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Run analyze deep-context on empty directory
     let mut cmd = Command::cargo_bin("pmat").unwrap();
-    cmd.current_dir(&temp_dir)
-        .args(["analyze", "deep-context"]);
-    
+    cmd.current_dir(&temp_dir).args(["analyze", "deep-context"]);
+
     // Should succeed but indicate no files found
     cmd.assert()
         .success()
@@ -187,16 +207,22 @@ fn test_analyze_deep_context_empty_project() {
 fn test_analyze_deep_context_with_output_file() {
     let temp_dir = TempDir::new().unwrap();
     create_test_project(&temp_dir);
-    
+
     let output_path = temp_dir.path().join("context.json");
-    
+
     // Run analyze deep-context with output file
     let mut cmd = Command::cargo_bin("pmat").unwrap();
-    cmd.current_dir(&temp_dir)
-        .args(["analyze", "deep-context", "--format", "json", "-o", output_path.to_str().unwrap()]);
-    
+    cmd.current_dir(&temp_dir).args([
+        "analyze",
+        "deep-context",
+        "--format",
+        "json",
+        "-o",
+        output_path.to_str().unwrap(),
+    ]);
+
     cmd.assert().success();
-    
+
     // Verify output file was created
     assert!(output_path.exists());
     let content = fs::read_to_string(&output_path).unwrap();

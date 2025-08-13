@@ -9,8 +9,8 @@
 //! - CommandGroup: Logical grouping of related commands
 //! - ModularHandlers: Individual command implementation modules
 
-use crate::cli::{AnalyzeCommands, Commands};
 use crate::cli::commands::ScaffoldCommands;
+use crate::cli::{AnalyzeCommands, Commands};
 use crate::stateless_server::StatelessTemplateServer;
 use anyhow::Result;
 use std::sync::Arc;
@@ -84,13 +84,21 @@ impl CommandExecutor {
                     } => {
                         self.registry
                             .generate_handlers
-                            .handle_scaffold(self.server.clone(), toolchain, templates, params, parallel)
+                            .handle_scaffold(
+                                self.server.clone(),
+                                toolchain,
+                                templates,
+                                params,
+                                parallel,
+                            )
                             .await
                     }
                     _ => {
                         // Handle other scaffold subcommands (agent scaffolding)
                         // Note: Agent scaffolding is handled in the main CLI dispatcher
-                        anyhow::bail!("Agent scaffolding should be handled via the main CLI dispatcher")
+                        anyhow::bail!(
+                            "Agent scaffolding should be handled via the main CLI dispatcher"
+                        )
                     }
                 }
             }

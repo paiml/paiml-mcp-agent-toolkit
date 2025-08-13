@@ -64,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 4: Example state responses
     println!("\n4. Example state responses:");
-    
+
     println!("\n   a) Analyze state:");
     let analyze_state = json!({
         "current": "Analyze",

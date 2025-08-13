@@ -18,11 +18,11 @@
 use crate::cli::RefactorAutoOutputFormat;
 
 use anyhow::{Context, Result};
+use regex;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
-use regex;
 
 /// Quality profile configuration for refactor auto
 #[derive(Debug, Clone)]
@@ -177,7 +177,7 @@ struct RefactorContext {
 }
 
 /// Setup refactoring context from command line arguments (Phase 1: Extract Setup)
-/// 
+///
 /// Initializes paths, patterns, and configuration for the refactoring operation.
 /// This function has complexity <5 and follows Toyota Way principles.
 #[allow(clippy::too_many_arguments)]
@@ -195,7 +195,7 @@ async fn setup_refactoring_context(
     bug_report_path: Option<PathBuf>,
 ) -> Result<RefactorContext> {
     let start_time = std::time::Instant::now();
-    
+
     // Determine refactoring mode
     let mode = if let Some(bug_path) = bug_report_path {
         RefactorMode::BugReport(bug_path)
@@ -205,12 +205,14 @@ async fn setup_refactoring_context(
         if let Some(target_file) = file {
             RefactorMode::SingleFile(target_file)
         } else {
-            return Err(anyhow::anyhow!("Single file mode requires --file parameter"));
+            return Err(anyhow::anyhow!(
+                "Single file mode requires --file parameter"
+            ));
         }
     } else {
         RefactorMode::ProjectWide
     };
-    
+
     // Create configuration
     let config = RefactorConfig {
         project_path: project_path.clone(),
@@ -229,7 +231,7 @@ async fn setup_refactoring_context(
             verbose: false,
         },
     };
-    
+
     Ok(RefactorContext {
         config,
         ignore_patterns: vec![], // Will be loaded separately
@@ -239,18 +241,21 @@ async fn setup_refactoring_context(
 }
 
 /// Load ignore patterns from configuration (Phase 1: Extract Setup)
-/// 
+///
 /// Loads and consolidates ignore patterns from command line and ignore files.
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn load_ignore_patterns(config: &PatternConfig) -> Result<Vec<String>> {
     let mut all_patterns = config.exclude_patterns.clone();
-    
+
     if let Some(ignore_path) = &config.ignore_file_path {
         if ignore_path.exists() {
             let ignore_content = tokio::fs::read_to_string(ignore_path)
                 .await
-                .context(format!("Failed to read ignore file: {}", ignore_path.display()))?;
-            
+                .context(format!(
+                    "Failed to read ignore file: {}",
+                    ignore_path.display()
+                ))?;
+
             for line in ignore_content.lines() {
                 let trimmed = line.trim();
                 if !trimmed.is_empty() && !trimmed.starts_with('#') {
@@ -259,12 +264,12 @@ async fn load_ignore_patterns(config: &PatternConfig) -> Result<Vec<String>> {
             }
         }
     }
-    
+
     Ok(all_patterns)
 }
 
 /// Discover source files for analysis (Phase 1: Extract Setup)
-/// 
+///
 /// Discovers and filters source files based on patterns and extensions.
 /// This function has complexity <5 and follows Toyota Way principles.
 async fn discover_source_files(
@@ -273,7 +278,7 @@ async fn discover_source_files(
     ignore_patterns: &[String],
 ) -> Result<Vec<PathBuf>> {
     let mut source_files = Vec::new();
-    
+
     for entry in WalkDir::new(project_path)
         .follow_links(false)
         .into_iter()
@@ -281,7 +286,7 @@ async fn discover_source_files(
         .filter(|e| e.file_type().is_file())
     {
         let path = entry.path();
-        
+
         // Check file extension
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             if !patterns.file_extensions.contains(&ext.to_string()) {
@@ -290,24 +295,24 @@ async fn discover_source_files(
         } else {
             continue;
         }
-        
+
         // Check ignore patterns
         let path_str = path.to_string_lossy();
-        let should_ignore = ignore_patterns.iter().any(|pattern| {
-            path_str.contains(pattern) || path.to_string_lossy().contains(pattern)
-        });
-        
+        let should_ignore = ignore_patterns
+            .iter()
+            .any(|pattern| path_str.contains(pattern) || path.to_string_lossy().contains(pattern));
+
         if !should_ignore {
             source_files.push(path.to_path_buf());
         }
     }
-    
+
     source_files.sort();
     Ok(source_files)
 }
 
 /// Handle special refactoring modes (Phase 2: Extract Special Modes)
-/// 
+///
 /// Routes to appropriate handlers for single file, bug reports, and GitHub issues.
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn handle_special_modes(context: &RefactorContext) -> Result<Option<()>> {
@@ -318,7 +323,8 @@ async fn handle_special_modes(context: &RefactorContext) -> Result<Option<()>> {
                 context.config.output.format,
                 context.config.output.dry_run,
                 context.config.output.max_iterations,
-            ).await?;
+            )
+            .await?;
             Ok(Some(()))
         }
         RefactorMode::BugReport(bug_path) => {
@@ -328,7 +334,8 @@ async fn handle_special_modes(context: &RefactorContext) -> Result<Option<()>> {
                     context.config.output.format,
                     context.config.output.dry_run,
                     context.config.output.max_iterations,
-                ).await?;
+                )
+                .await?;
                 Ok(Some(()))
             } else {
                 Ok(None) // Continue with normal processing
@@ -343,25 +350,28 @@ async fn handle_special_modes(context: &RefactorContext) -> Result<Option<()>> {
 }
 
 /// Process GitHub issue integration (Phase 2: Extract Special Modes)
-/// 
+///
 /// Handles GitHub issue processing and integration with FULL implementation.
 /// This function has complexity <5 and follows Toyota Way principles.
 async fn process_github_issue(url: &str, context: &RefactorContext) -> Result<()> {
     eprintln!("🔗 GitHub issue mode: {}", url);
-    
+
     // Parse GitHub URL to extract owner, repo, and issue number
     let parsed_url = parse_github_issue_url(url)?;
-    eprintln!("📋 Processing issue #{} from {}/{}", 
-        parsed_url.issue_number, parsed_url.owner, parsed_url.repo);
-    
+    eprintln!(
+        "📋 Processing issue #{} from {}/{}",
+        parsed_url.issue_number, parsed_url.owner, parsed_url.repo
+    );
+
     // Fetch issue content (using the existing GitHub integration)
     let issue_content = fetch_github_issue_content(&parsed_url).await?;
     eprintln!("📄 Issue title: {}", issue_content.title);
-    
+
     // Extract target files mentioned in the issue
-    let target_files = extract_target_files_from_issue(&issue_content, &context.config.project_path)?;
+    let target_files =
+        extract_target_files_from_issue(&issue_content, &context.config.project_path)?;
     eprintln!("🎯 Target files identified: {}", target_files.len());
-    
+
     // Generate focused refactoring requests for the identified files
     for file in target_files {
         eprintln!("🔍 Analyzing file: {}", file.display());
@@ -370,28 +380,30 @@ async fn process_github_issue(url: &str, context: &RefactorContext) -> Result<()
             context.config.output.format,
             context.config.output.dry_run,
             context.config.output.max_iterations,
-        ).await?;
+        )
+        .await?;
     }
-    
+
     Ok(())
 }
 
 /// Parse GitHub issue URL to extract repository and issue information
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 fn parse_github_issue_url(url: &str) -> Result<GitHubIssueRef> {
     // Expected format: https://github.com/owner/repo/issues/number
     let url_parts: Vec<&str> = url.split('/').collect();
-    
+
     if url_parts.len() < 7 || url_parts[2] != "github.com" || url_parts[5] != "issues" {
         return Err(anyhow::anyhow!("Invalid GitHub issue URL format. Expected: https://github.com/owner/repo/issues/number"));
     }
-    
+
     let owner = url_parts[3].to_string();
     let repo = url_parts[4].to_string();
-    let issue_number = url_parts[6].parse::<u64>()
+    let issue_number = url_parts[6]
+        .parse::<u64>()
         .context("Issue number must be a valid integer")?;
-    
+
     Ok(GitHubIssueRef {
         owner,
         repo,
@@ -400,18 +412,22 @@ fn parse_github_issue_url(url: &str) -> Result<GitHubIssueRef> {
 }
 
 /// Fetch GitHub issue content using the existing GitHub integration
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn fetch_github_issue_content(issue_ref: &GitHubIssueRef) -> Result<GitHubIssueContent> {
-    use crate::services::github_integration::{GitHubClient};
-    
+    use crate::services::github_integration::GitHubClient;
+
     let client = GitHubClient::new()?;
-    let issue_url = format!("https://github.com/{}/{}/issues/{}", 
-        issue_ref.owner, issue_ref.repo, issue_ref.issue_number);
-    
-    let issue = client.fetch_issue(&issue_url).await
+    let issue_url = format!(
+        "https://github.com/{}/{}/issues/{}",
+        issue_ref.owner, issue_ref.repo, issue_ref.issue_number
+    );
+
+    let issue = client
+        .fetch_issue(&issue_url)
+        .await
         .context("Failed to fetch GitHub issue")?;
-    
+
     Ok(GitHubIssueContent {
         title: issue.title.clone(),
         body: issue.body.unwrap_or_default(),
@@ -420,26 +436,26 @@ async fn fetch_github_issue_content(issue_ref: &GitHubIssueRef) -> Result<GitHub
 }
 
 /// Extract target files mentioned in GitHub issue content
-/// 
+///
 /// This function has complexity <5 and follows Toyota Way principles.
 fn extract_target_files_from_issue(
-    issue_content: &GitHubIssueContent, 
-    project_path: &Path
+    issue_content: &GitHubIssueContent,
+    project_path: &Path,
 ) -> Result<Vec<PathBuf>> {
     let mut target_files = Vec::new();
-    
+
     // Search for file paths in issue body using regex patterns
     let file_patterns = [
-        r"src/[a-zA-Z0-9_/]+\.rs",           // Rust source files
-        r"[a-zA-Z0-9_/]+\.rs",               // Any Rust files
-        r"`[^`]+\.rs`",                      // Files in backticks
-        r"server/src/[a-zA-Z0-9_/]+\.rs",    // Server-specific files
+        r"src/[a-zA-Z0-9_/]+\.rs",        // Rust source files
+        r"[a-zA-Z0-9_/]+\.rs",            // Any Rust files
+        r"`[^`]+\.rs`",                   // Files in backticks
+        r"server/src/[a-zA-Z0-9_/]+\.rs", // Server-specific files
     ];
-    
+
     for pattern in &file_patterns {
-        let re = regex::Regex::new(pattern)
-            .context(format!("Invalid regex pattern: {}", pattern))?;
-        
+        let re =
+            regex::Regex::new(pattern).context(format!("Invalid regex pattern: {}", pattern))?;
+
         for capture in re.find_iter(&issue_content.body) {
             let file_path_str = capture.as_str().trim_matches('`');
             let full_path = if file_path_str.starts_with('/') {
@@ -447,13 +463,13 @@ fn extract_target_files_from_issue(
             } else {
                 project_path.join(file_path_str)
             };
-            
+
             if full_path.exists() && !target_files.contains(&full_path) {
                 target_files.push(full_path);
             }
         }
     }
-    
+
     // If no specific files found, analyze the most likely candidates
     if target_files.is_empty() {
         eprintln!("⚠️  No specific files mentioned in issue, analyzing main source files");
@@ -463,14 +479,14 @@ fn extract_target_files_from_issue(
             project_path.join("server/src/main.rs"),
             project_path.join("server/src/lib.rs"),
         ];
-        
+
         for candidate in &main_candidates {
             if candidate.exists() {
                 target_files.push(candidate.clone());
             }
         }
     }
-    
+
     Ok(target_files)
 }
 
@@ -491,33 +507,37 @@ struct GitHubIssueContent {
 }
 
 /// Analyze project quality comprehensively (Phase 3: Extract Core Logic)
-/// 
+///
 /// Coordinates all quality analysis activities including lint, complexity, SATD, and coverage.
 /// This function has complexity <5 and follows Toyota Way principles.
-async fn analyze_project_quality(
-    context: &RefactorContext,
-) -> Result<ProjectQualityAnalysis> {
+async fn analyze_project_quality(context: &RefactorContext) -> Result<ProjectQualityAnalysis> {
     eprintln!("🔍 Analyzing project quality comprehensively...");
-    
+
     // Analyze lint violations across the project
     let lint_violations = analyze_project_lint_violations(&context.source_files).await?;
     eprintln!("📊 Found {} lint violations", lint_violations.len());
-    
+
     // Analyze complexity metrics
     let complexity_analysis = analyze_project_complexity(&context.source_files).await?;
-    eprintln!("🔢 Complexity analysis completed: {} high-complexity functions", 
-        complexity_analysis.high_complexity_count);
-    
+    eprintln!(
+        "🔢 Complexity analysis completed: {} high-complexity functions",
+        complexity_analysis.high_complexity_count
+    );
+
     // Analyze SATD (Self-Admitted Technical Debt)
     let satd_analysis = analyze_project_satd(&context.source_files).await?;
-    eprintln!("💭 SATD analysis completed: {} technical debt comments", 
-        satd_analysis.total_satd_count);
-    
+    eprintln!(
+        "💭 SATD analysis completed: {} technical debt comments",
+        satd_analysis.total_satd_count
+    );
+
     // Analyze test coverage (if applicable)
     let coverage_analysis = analyze_project_coverage(&context.config.project_path).await?;
-    eprintln!("🧪 Coverage analysis completed: {:.1}% coverage", 
-        coverage_analysis.overall_coverage_percent);
-    
+    eprintln!(
+        "🧪 Coverage analysis completed: {:.1}% coverage",
+        coverage_analysis.overall_coverage_percent
+    );
+
     Ok(ProjectQualityAnalysis {
         lint_violations,
         complexity_analysis,
@@ -529,7 +549,7 @@ async fn analyze_project_quality(
 }
 
 /// Generate comprehensive refactoring requests (Phase 3: Extract Core Logic)
-/// 
+///
 /// Creates detailed, actionable refactoring requests based on quality analysis.
 /// This function has complexity <5 and follows Toyota Way principles.
 async fn generate_refactoring_requests(
@@ -537,60 +557,71 @@ async fn generate_refactoring_requests(
     context: &RefactorContext,
 ) -> Result<Vec<RefactoringRequest>> {
     eprintln!("🎯 Generating targeted refactoring requests...");
-    
+
     let mut requests = Vec::new();
-    
+
     // Generate requests for high-complexity functions
-    for violation in &quality_analysis.complexity_analysis.high_complexity_violations {
+    for violation in &quality_analysis
+        .complexity_analysis
+        .high_complexity_violations
+    {
         let request = create_complexity_reduction_request(violation, context).await?;
         requests.push(request);
     }
-    
+
     // Generate requests for lint violations
-    let lint_requests = create_lint_fix_requests(&quality_analysis.lint_violations, context).await?;
+    let lint_requests =
+        create_lint_fix_requests(&quality_analysis.lint_violations, context).await?;
     requests.extend(lint_requests);
-    
+
     // Generate requests for SATD cleanup
-    let satd_requests = create_satd_cleanup_requests(&quality_analysis.satd_analysis, context).await?;
+    let satd_requests =
+        create_satd_cleanup_requests(&quality_analysis.satd_analysis, context).await?;
     requests.extend(satd_requests);
-    
+
     // Generate requests for coverage improvements
-    if quality_analysis.coverage_analysis.overall_coverage_percent < context.config.quality_profile.coverage_min {
-        let coverage_requests = create_coverage_improvement_requests(&quality_analysis.coverage_analysis, context).await?;
+    if quality_analysis.coverage_analysis.overall_coverage_percent
+        < context.config.quality_profile.coverage_min
+    {
+        let coverage_requests =
+            create_coverage_improvement_requests(&quality_analysis.coverage_analysis, context)
+                .await?;
         requests.extend(coverage_requests);
     }
-    
+
     eprintln!("📋 Generated {} refactoring requests", requests.len());
     Ok(requests)
 }
 
 /// Analyze lint violations across all project files
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
-async fn analyze_project_lint_violations(source_files: &[PathBuf]) -> Result<Vec<ViolationDetailJson>> {
+async fn analyze_project_lint_violations(
+    source_files: &[PathBuf],
+) -> Result<Vec<ViolationDetailJson>> {
     let mut all_violations = Vec::new();
-    
+
     for file in source_files {
         let file_violations = get_single_file_lint_violations(file).await?;
         all_violations.extend(file_violations);
     }
-    
+
     Ok(all_violations)
 }
 
 /// Analyze complexity metrics across all project files
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn analyze_project_complexity(source_files: &[PathBuf]) -> Result<ComplexityAnalysis> {
     let mut high_complexity_violations = Vec::new();
     let mut total_functions = 0;
     let mut total_complexity_sum = 0.0;
-    
+
     for file in source_files {
         let file_metrics = analyze_file_complexity(file).await?;
         total_functions += file_metrics.functions_with_high_complexity;
         total_complexity_sum += file_metrics.max_complexity as f64;
-        
+
         // Create complexity violations for high-complexity functions
         if file_metrics.max_complexity > 10 {
             let violation = ComplexityViolation {
@@ -603,15 +634,15 @@ async fn analyze_project_complexity(source_files: &[PathBuf]) -> Result<Complexi
             high_complexity_violations.push(violation);
         }
     }
-    
+
     let average_complexity = if total_functions > 0 {
         total_complexity_sum / total_functions as f64
     } else {
         0.0
     };
-    
+
     let high_complexity_count = high_complexity_violations.len();
-    
+
     Ok(ComplexityAnalysis {
         high_complexity_violations,
         high_complexity_count,
@@ -621,24 +652,24 @@ async fn analyze_project_complexity(source_files: &[PathBuf]) -> Result<Complexi
 }
 
 /// Analyze SATD comments across all project files
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn analyze_project_satd(source_files: &[PathBuf]) -> Result<SatdAnalysis> {
     let mut total_satd_count = 0;
     let mut files_with_satd = std::collections::HashSet::new();
-    
+
     for file in source_files {
         let file_satd_count = count_file_satd(file).await?;
         total_satd_count += file_satd_count;
-        
+
         if file_satd_count > 0 {
             files_with_satd.insert(file.clone());
         }
     }
-    
+
     // SATD comments collected during file parsing above
     let satd_comments = vec![];
-    
+
     Ok(SatdAnalysis {
         satd_comments,
         total_satd_count,
@@ -647,16 +678,22 @@ async fn analyze_project_satd(source_files: &[PathBuf]) -> Result<SatdAnalysis> 
 }
 
 /// Analyze test coverage for the project
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn analyze_project_coverage(project_path: &Path) -> Result<CoverageAnalysis> {
     // Use cargo tarpaulin or similar to get coverage metrics
     let coverage_output = tokio::process::Command::new("cargo")
-        .args(["tarpaulin", "--output-dir", "target/coverage", "--out", "json"])
+        .args([
+            "tarpaulin",
+            "--output-dir",
+            "target/coverage",
+            "--out",
+            "json",
+        ])
         .current_dir(project_path)
         .output()
         .await;
-    
+
     let overall_coverage_percent = match coverage_output {
         Ok(output) if output.status.success() => {
             // Parse coverage JSON output
@@ -667,7 +704,7 @@ async fn analyze_project_coverage(project_path: &Path) -> Result<CoverageAnalysi
             0.0
         }
     };
-    
+
     Ok(CoverageAnalysis {
         overall_coverage_percent,
         files_with_low_coverage: Vec::new(),
@@ -780,15 +817,15 @@ enum RefactoringPriority {
 /// Refactoring effort estimation
 #[derive(Debug, Clone)]
 enum RefactoringEffort {
-    Trivial,      // < 30 minutes
-    Minor,        // 30 minutes - 2 hours
-    Moderate,     // 2 - 8 hours
-    Major,        // 8 - 24 hours
-    Extensive,    // > 24 hours
+    Trivial,   // < 30 minutes
+    Minor,     // 30 minutes - 2 hours
+    Moderate,  // 2 - 8 hours
+    Major,     // 8 - 24 hours
+    Extensive, // > 24 hours
 }
 
 /// Create complexity reduction request for a high-complexity function
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn create_complexity_reduction_request(
     violation: &ComplexityViolation,
@@ -809,7 +846,9 @@ async fn create_complexity_reduction_request(
         ai_instructions: format!(
             "Extract smaller functions, simplify conditional logic, and improve readability. \
              Current complexity: {}. Target: ≤10. Location: {}:{}",
-            violation.complexity, violation.file.display(), violation.line_number
+            violation.complexity,
+            violation.file.display(),
+            violation.line_number
         ),
         estimated_effort: if violation.complexity > 50 {
             RefactoringEffort::Major
@@ -822,14 +861,14 @@ async fn create_complexity_reduction_request(
 }
 
 /// Create lint fix requests for violations
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn create_lint_fix_requests(
     violations: &[ViolationDetailJson],
     _context: &RefactorContext,
 ) -> Result<Vec<RefactoringRequest>> {
     let mut requests = Vec::new();
-    
+
     for violation in violations {
         let request = RefactoringRequest {
             request_type: RefactoringType::LintFix,
@@ -844,25 +883,28 @@ async fn create_lint_fix_requests(
                 "Fix the lint violation '{}' at line {}. Suggestion: {}",
                 violation.message,
                 violation.line,
-                violation.suggestion.as_deref().unwrap_or("Apply automatic fix")
+                violation
+                    .suggestion
+                    .as_deref()
+                    .unwrap_or("Apply automatic fix")
             ),
             estimated_effort: RefactoringEffort::Trivial,
         };
         requests.push(request);
     }
-    
+
     Ok(requests)
 }
 
 /// Create SATD cleanup requests
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn create_satd_cleanup_requests(
     satd_analysis: &SatdAnalysis,
     _context: &RefactorContext,
 ) -> Result<Vec<RefactoringRequest>> {
     let mut requests = Vec::new();
-    
+
     for satd_comment in &satd_analysis.satd_comments {
         let request = RefactoringRequest {
             request_type: RefactoringType::SatdCleanup,
@@ -882,19 +924,19 @@ async fn create_satd_cleanup_requests(
         };
         requests.push(request);
     }
-    
+
     Ok(requests)
 }
 
 /// Create coverage improvement requests
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn create_coverage_improvement_requests(
     coverage_analysis: &CoverageAnalysis,
     _context: &RefactorContext,
 ) -> Result<Vec<RefactoringRequest>> {
     let mut requests = Vec::new();
-    
+
     for uncovered_file in &coverage_analysis.files_with_low_coverage {
         let request = RefactoringRequest {
             request_type: RefactoringType::CoverageImprovement,
@@ -910,12 +952,12 @@ async fn create_coverage_improvement_requests(
         };
         requests.push(request);
     }
-    
+
     Ok(requests)
 }
 
 /// Execute refactoring iteration with complete implementation (Phase 4: Extract Iteration)
-/// 
+///
 /// Processes refactoring requests through validation, application, and verification.
 /// This function has complexity <5 and follows Toyota Way principles.
 async fn execute_refactoring_iteration(
@@ -924,15 +966,19 @@ async fn execute_refactoring_iteration(
     iteration_number: u32,
 ) -> Result<IterationResult> {
     eprintln!("🔄 Executing refactoring iteration #{}", iteration_number);
-    
+
     let mut successful_requests = Vec::new();
     let mut failed_requests = Vec::new();
     let iteration_start = std::time::Instant::now();
-    
+
     for (index, request) in requests.iter().enumerate() {
-        eprintln!("📝 Processing request {}/{}: {}", 
-            index + 1, requests.len(), request.description);
-        
+        eprintln!(
+            "📝 Processing request {}/{}: {}",
+            index + 1,
+            requests.len(),
+            request.description
+        );
+
         // Apply the refactoring request
         match apply_refactoring_request(request, context).await {
             Ok(result) => {
@@ -940,7 +986,10 @@ async fn execute_refactoring_iteration(
                 successful_requests.push(result);
             }
             Err(error) => {
-                eprintln!("❌ Failed to apply: {} - Error: {}", request.description, error);
+                eprintln!(
+                    "❌ Failed to apply: {} - Error: {}",
+                    request.description, error
+                );
                 failed_requests.push(RefactoringFailure {
                     request: request.clone(),
                     error_message: error.to_string(),
@@ -949,12 +998,12 @@ async fn execute_refactoring_iteration(
             }
         }
     }
-    
+
     let iteration_duration = iteration_start.elapsed();
     eprintln!("⏱️  Iteration completed in {:?}", iteration_duration);
-    
+
     let quality_improvement = calculate_quality_improvement(&successful_requests).await?;
-    
+
     Ok(IterationResult {
         iteration_number,
         successful_requests,
@@ -965,20 +1014,25 @@ async fn execute_refactoring_iteration(
 }
 
 /// Validate refactoring results with comprehensive checking (Phase 4: Extract Validation)
-/// 
+///
 /// Ensures all refactoring meets quality standards and passes all checks.
 /// This function has complexity <5 and follows Toyota Way principles.
 async fn validate_refactoring_results(
     iteration_result: &IterationResult,
     context: &RefactorContext,
 ) -> Result<ValidationResult> {
-    eprintln!("🔍 Validating refactoring results for iteration #{}", 
-        iteration_result.iteration_number);
-    
+    eprintln!(
+        "🔍 Validating refactoring results for iteration #{}",
+        iteration_result.iteration_number
+    );
+
     // Validate compilation
     let compilation_result = validate_project_compilation(&context.config.project_path).await?;
     if !compilation_result.success {
-        eprintln!("❌ Compilation validation failed: {}", compilation_result.error_message);
+        eprintln!(
+            "❌ Compilation validation failed: {}",
+            compilation_result.error_message
+        );
         return Ok(ValidationResult {
             overall_success: false,
             compilation_passed: false,
@@ -987,43 +1041,67 @@ async fn validate_refactoring_results(
             issues_found: vec![compilation_result.error_message],
         });
     }
-    
+
     // Validate test suite
     let test_result = validate_test_suite(&context.config.project_path).await?;
     if !test_result.success {
-        eprintln!("❌ Test validation failed: {} tests failed", test_result.failed_count);
+        eprintln!(
+            "❌ Test validation failed: {} tests failed",
+            test_result.failed_count
+        );
     }
-    
+
     // Validate quality improvement
     let quality_improved = iteration_result.quality_improvement.complexity_reduced > 0
         || iteration_result.quality_improvement.violations_fixed > 0
         || iteration_result.quality_improvement.satd_resolved > 0;
-    
+
     let overall_success = compilation_result.success && test_result.success && quality_improved;
-    
+
     eprintln!("📊 Validation Summary:");
-    eprintln!("  ✅ Compilation: {}", if compilation_result.success { "PASSED" } else { "FAILED" });
-    eprintln!("  ✅ Tests: {} passed, {} failed", test_result.passed_count, test_result.failed_count);
-    eprintln!("  ✅ Quality: {}", if quality_improved { "IMPROVED" } else { "NO CHANGE" });
-    
+    eprintln!(
+        "  ✅ Compilation: {}",
+        if compilation_result.success {
+            "PASSED"
+        } else {
+            "FAILED"
+        }
+    );
+    eprintln!(
+        "  ✅ Tests: {} passed, {} failed",
+        test_result.passed_count, test_result.failed_count
+    );
+    eprintln!(
+        "  ✅ Quality: {}",
+        if quality_improved {
+            "IMPROVED"
+        } else {
+            "NO CHANGE"
+        }
+    );
+
     Ok(ValidationResult {
         overall_success,
         compilation_passed: compilation_result.success,
         tests_passed: test_result.success,
         quality_improved,
-        issues_found: if overall_success { vec![] } else { vec!["Quality standards not met".to_string()] },
+        issues_found: if overall_success {
+            vec![]
+        } else {
+            vec!["Quality standards not met".to_string()]
+        },
     })
 }
 
 /// Apply a single refactoring request with full implementation
-/// 
+///
 /// This function has complexity <5 and follows Toyota Way principles.
 async fn apply_refactoring_request(
     request: &RefactoringRequest,
     _context: &RefactorContext,
 ) -> Result<RefactoringSuccess> {
     let start_time = std::time::Instant::now();
-    
+
     // Simulate applying the refactoring based on type
     let changes_made = match &request.request_type {
         RefactoringType::ComplexityReduction => {
@@ -1042,9 +1120,9 @@ async fn apply_refactoring_request(
             apply_security_fixes(&request.target_file, &request.ai_instructions).await?
         }
     };
-    
+
     let application_duration = start_time.elapsed();
-    
+
     Ok(RefactoringSuccess {
         request: request.clone(),
         changes_made,
@@ -1054,7 +1132,7 @@ async fn apply_refactoring_request(
 }
 
 /// Validate project compilation
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn validate_project_compilation(project_path: &Path) -> Result<CompilationResult> {
     let output = tokio::process::Command::new("cargo")
@@ -1062,14 +1140,14 @@ async fn validate_project_compilation(project_path: &Path) -> Result<Compilation
         .current_dir(project_path)
         .output()
         .await?;
-    
+
     let success = output.status.success();
     let error_message = if success {
         String::new()
     } else {
         String::from_utf8_lossy(&output.stderr).to_string()
     };
-    
+
     Ok(CompilationResult {
         success,
         error_message,
@@ -1078,7 +1156,7 @@ async fn validate_project_compilation(project_path: &Path) -> Result<Compilation
 }
 
 /// Validate test suite execution
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn validate_test_suite(project_path: &Path) -> Result<TestResult> {
     let output = tokio::process::Command::new("cargo")
@@ -1086,14 +1164,14 @@ async fn validate_test_suite(project_path: &Path) -> Result<TestResult> {
         .current_dir(project_path)
         .output()
         .await?;
-    
+
     let success = output.status.success();
     let output_str = String::from_utf8_lossy(&output.stdout);
-    
+
     // Parse test results from output
     let passed_count = if success { 10 } else { 5 };
     let failed_count = if success { 0 } else { 2 };
-    
+
     Ok(TestResult {
         success,
         passed_count,
@@ -1103,7 +1181,7 @@ async fn validate_test_suite(project_path: &Path) -> Result<TestResult> {
 }
 
 /// Calculate quality improvement from successful refactorings
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn calculate_quality_improvement(
     successful_requests: &[RefactoringSuccess],
@@ -1112,7 +1190,7 @@ async fn calculate_quality_improvement(
     let mut violations_fixed = 0;
     let mut satd_resolved = 0;
     let mut coverage_increased = 0.0;
-    
+
     for success in successful_requests {
         match &success.request.request_type {
             RefactoringType::ComplexityReduction => complexity_reduced += 1,
@@ -1122,47 +1200,65 @@ async fn calculate_quality_improvement(
             RefactoringType::SecurityFix => violations_fixed += 1,
         }
     }
-    
+
     Ok(QualityImprovement {
         complexity_reduced,
         violations_fixed,
         satd_resolved,
         coverage_increased,
-        overall_score: (complexity_reduced + violations_fixed + satd_resolved) as f64 + coverage_increased,
+        overall_score: (complexity_reduced + violations_fixed + satd_resolved) as f64
+            + coverage_increased,
     })
 }
 
 /// Determine if a refactoring should be retried
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 fn should_retry_refactoring(error: &anyhow::Error) -> bool {
     let error_str = error.to_string().to_lowercase();
-    error_str.contains("timeout") || error_str.contains("network") || error_str.contains("temporary")
+    error_str.contains("timeout")
+        || error_str.contains("network")
+        || error_str.contains("temporary")
 }
 
 /// Apply complexity reduction to a file
 async fn apply_complexity_reduction(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
-    Ok(vec!["Extracted helper function".to_string(), "Reduced conditional logic complexity".to_string()])
+    Ok(vec![
+        "Extracted helper function".to_string(),
+        "Reduced conditional logic complexity".to_string(),
+    ])
 }
 
 /// Apply lint fixes to a file
 async fn apply_lint_fixes(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
-    Ok(vec!["Fixed clippy warnings".to_string(), "Formatted code".to_string()])
+    Ok(vec![
+        "Fixed clippy warnings".to_string(),
+        "Formatted code".to_string(),
+    ])
 }
 
 /// Apply SATD cleanup to a file
 async fn apply_satd_cleanup(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
-    Ok(vec!["Removed TODO comments".to_string(), "Implemented missing functionality".to_string()])
+    Ok(vec![
+        "Removed TODO comments".to_string(),
+        "Implemented missing functionality".to_string(),
+    ])
 }
 
 /// Apply coverage improvements to a file
 async fn apply_coverage_improvements(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
-    Ok(vec!["Added unit tests".to_string(), "Added integration tests".to_string()])
+    Ok(vec![
+        "Added unit tests".to_string(),
+        "Added integration tests".to_string(),
+    ])
 }
 
 /// Apply security fixes to a file
 async fn apply_security_fixes(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
-    Ok(vec!["Fixed security vulnerability".to_string(), "Added input validation".to_string()])
+    Ok(vec![
+        "Fixed security vulnerability".to_string(),
+        "Added input validation".to_string(),
+    ])
 }
 
 /// Result of a refactoring iteration
@@ -1238,7 +1334,7 @@ struct TestResult {
 }
 
 /// Format and output refactoring results (Phase 5: Extract Output Formatting)
-/// 
+///
 /// Generates final output in the requested format with comprehensive results.
 /// This function has complexity <5 and follows Toyota Way principles.
 async fn format_and_output_results(
@@ -1247,7 +1343,7 @@ async fn format_and_output_results(
     context: &RefactorContext,
 ) -> Result<()> {
     eprintln!("📋 Formatting and outputting refactoring results...");
-    
+
     match &context.config.output.format {
         RefactorAutoOutputFormat::Json => {
             output_json_results(iteration_results, final_validation, context).await?;
@@ -1259,13 +1355,13 @@ async fn format_and_output_results(
             output_text_results(iteration_results, final_validation, context).await?;
         }
     }
-    
+
     eprintln!("✅ Results output completed");
     Ok(())
 }
 
 /// Output results in JSON format
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn output_json_results(
     iteration_results: &[IterationResult],
@@ -1273,7 +1369,7 @@ async fn output_json_results(
     context: &RefactorContext,
 ) -> Result<()> {
     let summary = create_refactoring_summary(iteration_results, final_validation, context).await?;
-    
+
     let json_output = serde_json::json!({
         "refactoring_session": {
             "project_path": context.config.project_path,
@@ -1302,13 +1398,13 @@ async fn output_json_results(
             }).collect::<Vec<_>>()
         }
     });
-    
+
     println!("{}", serde_json::to_string_pretty(&json_output)?);
     Ok(())
 }
 
 /// Output results in Markdown format
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn output_markdown_results(
     iteration_results: &[IterationResult],
@@ -1316,48 +1412,100 @@ async fn output_markdown_results(
     context: &RefactorContext,
 ) -> Result<()> {
     let summary = create_refactoring_summary(iteration_results, final_validation, context).await?;
-    
+
     println!("# Automated Refactoring Report\n");
-    
+
     println!("## Project Information");
-    println!("- **Project Path**: `{}`", context.config.project_path.display());
-    println!("- **Execution Time**: {:.2}s", context.start_time.elapsed().as_secs_f64());
+    println!(
+        "- **Project Path**: `{}`",
+        context.config.project_path.display()
+    );
+    println!(
+        "- **Execution Time**: {:.2}s",
+        context.start_time.elapsed().as_secs_f64()
+    );
     println!("- **Total Iterations**: {}\n", iteration_results.len());
-    
+
     println!("## Summary");
-    println!("- **Overall Success**: {}", if final_validation.overall_success { "✅ YES" } else { "❌ NO" });
-    println!("- **Compilation**: {}", if final_validation.compilation_passed { "✅ PASSED" } else { "❌ FAILED" });
-    println!("- **Tests**: {}", if final_validation.tests_passed { "✅ PASSED" } else { "❌ FAILED" });
-    println!("- **Quality Improved**: {}", if final_validation.quality_improved { "✅ YES" } else { "❌ NO" });
-    println!("- **Total Refactorings**: {}", summary.total_successful_requests);
+    println!(
+        "- **Overall Success**: {}",
+        if final_validation.overall_success {
+            "✅ YES"
+        } else {
+            "❌ NO"
+        }
+    );
+    println!(
+        "- **Compilation**: {}",
+        if final_validation.compilation_passed {
+            "✅ PASSED"
+        } else {
+            "❌ FAILED"
+        }
+    );
+    println!(
+        "- **Tests**: {}",
+        if final_validation.tests_passed {
+            "✅ PASSED"
+        } else {
+            "❌ FAILED"
+        }
+    );
+    println!(
+        "- **Quality Improved**: {}",
+        if final_validation.quality_improved {
+            "✅ YES"
+        } else {
+            "❌ NO"
+        }
+    );
+    println!(
+        "- **Total Refactorings**: {}",
+        summary.total_successful_requests
+    );
     println!("- **Quality Score**: {:.1}\n", summary.total_quality_score);
-    
+
     println!("## Iteration Details\n");
     for result in iteration_results {
         println!("### Iteration #{}", result.iteration_number);
         println!("- **Duration**: {:?}", result.iteration_duration);
-        println!("- **Successful**: {} requests", result.successful_requests.len());
+        println!(
+            "- **Successful**: {} requests",
+            result.successful_requests.len()
+        );
         println!("- **Failed**: {} requests", result.failed_requests.len());
         println!("- **Quality Improvement**:");
-        println!("  - Complexity reduced: {}", result.quality_improvement.complexity_reduced);
-        println!("  - Violations fixed: {}", result.quality_improvement.violations_fixed);
-        println!("  - SATD resolved: {}", result.quality_improvement.satd_resolved);
-        println!("  - Coverage increased: {:.1}%", result.quality_improvement.coverage_increased);
+        println!(
+            "  - Complexity reduced: {}",
+            result.quality_improvement.complexity_reduced
+        );
+        println!(
+            "  - Violations fixed: {}",
+            result.quality_improvement.violations_fixed
+        );
+        println!(
+            "  - SATD resolved: {}",
+            result.quality_improvement.satd_resolved
+        );
+        println!(
+            "  - Coverage increased: {:.1}%",
+            result.quality_improvement.coverage_increased
+        );
         println!();
     }
-    
+
     if !final_validation.issues_found.is_empty() {
         println!("## Issues Found\n");
         for issue in &final_validation.issues_found {
             println!("- ❌ {}", issue);
         }
     }
-    
+
     Ok(())
 }
 
 /// Output results in plain text format
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn output_text_results(
     iteration_results: &[IterationResult],
@@ -1365,29 +1513,61 @@ async fn output_text_results(
     context: &RefactorContext,
 ) -> Result<()> {
     let summary = create_refactoring_summary(iteration_results, final_validation, context).await?;
-    
+
     println!("🚀 AUTOMATED REFACTORING REPORT");
     println!("=====================================");
     println!("📁 Project: {}", context.config.project_path.display());
-    println!("⏱️  Total Time: {:.2}s", context.start_time.elapsed().as_secs_f64());
+    println!(
+        "⏱️  Total Time: {:.2}s",
+        context.start_time.elapsed().as_secs_f64()
+    );
     println!("🔄 Iterations: {}", iteration_results.len());
     println!();
-    
+
     println!("📊 FINAL RESULTS");
     println!("=====================================");
-    println!("Overall Success:    {}", if final_validation.overall_success { "✅ YES" } else { "❌ NO" });
-    println!("Compilation:        {}", if final_validation.compilation_passed { "✅ PASSED" } else { "❌ FAILED" });
-    println!("Tests:              {}", if final_validation.tests_passed { "✅ PASSED" } else { "❌ FAILED" });
-    println!("Quality Improved:   {}", if final_validation.quality_improved { "✅ YES" } else { "❌ NO" });
+    println!(
+        "Overall Success:    {}",
+        if final_validation.overall_success {
+            "✅ YES"
+        } else {
+            "❌ NO"
+        }
+    );
+    println!(
+        "Compilation:        {}",
+        if final_validation.compilation_passed {
+            "✅ PASSED"
+        } else {
+            "❌ FAILED"
+        }
+    );
+    println!(
+        "Tests:              {}",
+        if final_validation.tests_passed {
+            "✅ PASSED"
+        } else {
+            "❌ FAILED"
+        }
+    );
+    println!(
+        "Quality Improved:   {}",
+        if final_validation.quality_improved {
+            "✅ YES"
+        } else {
+            "❌ NO"
+        }
+    );
     println!("Total Refactorings: {}", summary.total_successful_requests);
     println!("Quality Score:      {:.1}", summary.total_quality_score);
     println!();
-    
+
     if !iteration_results.is_empty() {
         println!("🔄 ITERATION BREAKDOWN");
         println!("=====================================");
         for result in iteration_results {
-            println!("Iteration #{}: {} successful, {} failed ({:?})", 
+            println!(
+                "Iteration #{}: {} successful, {} failed ({:?})",
                 result.iteration_number,
                 result.successful_requests.len(),
                 result.failed_requests.len(),
@@ -1395,7 +1575,7 @@ async fn output_text_results(
             );
         }
     }
-    
+
     if !final_validation.issues_found.is_empty() {
         println!();
         println!("❌ ISSUES FOUND");
@@ -1404,46 +1584,53 @@ async fn output_text_results(
             println!("• {}", issue);
         }
     }
-    
+
     Ok(())
 }
 
 /// Create comprehensive refactoring summary
-/// 
+///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn create_refactoring_summary(
     iteration_results: &[IterationResult],
     _final_validation: &ValidationResult,
     _context: &RefactorContext,
 ) -> Result<RefactoringSummary> {
-    let total_successful_requests = iteration_results.iter()
+    let total_successful_requests = iteration_results
+        .iter()
         .map(|r| r.successful_requests.len())
         .sum::<usize>();
-    
-    let total_failed_requests = iteration_results.iter()
+
+    let total_failed_requests = iteration_results
+        .iter()
         .map(|r| r.failed_requests.len())
         .sum::<usize>();
-    
-    let total_quality_score = iteration_results.iter()
+
+    let total_quality_score = iteration_results
+        .iter()
         .map(|r| r.quality_improvement.overall_score)
         .sum::<f64>();
-    
-    let total_complexity_reduced = iteration_results.iter()
+
+    let total_complexity_reduced = iteration_results
+        .iter()
         .map(|r| r.quality_improvement.complexity_reduced)
         .sum::<u32>();
-    
-    let total_violations_fixed = iteration_results.iter()
+
+    let total_violations_fixed = iteration_results
+        .iter()
         .map(|r| r.quality_improvement.violations_fixed)
         .sum::<u32>();
-    
-    let total_satd_resolved = iteration_results.iter()
+
+    let total_satd_resolved = iteration_results
+        .iter()
         .map(|r| r.quality_improvement.satd_resolved)
         .sum::<u32>();
-    
-    let total_coverage_increased = iteration_results.iter()
+
+    let total_coverage_increased = iteration_results
+        .iter()
         .map(|r| r.quality_improvement.coverage_increased)
         .sum::<f64>();
-    
+
     Ok(RefactoringSummary {
         total_successful_requests,
         total_failed_requests,
@@ -1646,7 +1833,7 @@ pub enum FixStrategy {
 
 /// COMPLETELY REFACTORED handle_refactor_auto function
 ///
-/// This function has been refactored from 801 lines with complexity 136 
+/// This function has been refactored from 801 lines with complexity 136
 /// down to <50 lines with complexity <10 following Toyota Way principles.
 /// All functionality is preserved through extracted, focused functions.
 ///
@@ -1696,7 +1883,8 @@ pub async fn handle_refactor_auto(
         ignore_file,
         github_issue_url,
         bug_report_path,
-    ).await?;
+    )
+    .await?;
 
     // Phase 2: Handle special modes (single file, bug reports, GitHub issues)
     #[allow(clippy::redundant_pattern_matching)]
@@ -1710,9 +1898,13 @@ pub async fn handle_refactor_auto(
         &context.config.project_path,
         &context.config.patterns,
         &context.ignore_patterns,
-    ).await?;
+    )
+    .await?;
 
-    eprintln!("📁 Discovered {} source files for analysis", context.source_files.len());
+    eprintln!(
+        "📁 Discovered {} source files for analysis",
+        context.source_files.len()
+    );
 
     // Phase 4: Analyze project quality comprehensively
     let quality_analysis = analyze_project_quality(&context).await?;
@@ -1734,11 +1926,8 @@ pub async fn handle_refactor_auto(
             break;
         }
 
-        let iteration_result = execute_refactoring_iteration(
-            &remaining_requests,
-            &context,
-            iteration,
-        ).await?;
+        let iteration_result =
+            execute_refactoring_iteration(&remaining_requests, &context, iteration).await?;
 
         let validation_result = validate_refactoring_results(&iteration_result, &context).await?;
 
@@ -1749,7 +1938,8 @@ pub async fn handle_refactor_auto(
 
         // Filter out successful requests for next iteration
         remaining_requests.retain(|req| {
-            !iteration_result.successful_requests
+            !iteration_result
+                .successful_requests
                 .iter()
                 .any(|success| success.request.target_file == req.target_file)
         });
@@ -1778,7 +1968,10 @@ pub async fn handle_refactor_auto(
     format_and_output_results(&iteration_results, &final_validation, &context).await?;
 
     let total_time = context.start_time.elapsed();
-    eprintln!("🎉 Automated refactoring completed in {:.2}s", total_time.as_secs_f64());
+    eprintln!(
+        "🎉 Automated refactoring completed in {:.2}s",
+        total_time.as_secs_f64()
+    );
 
     if final_validation.overall_success {
         eprintln!("✅ All quality standards met!");

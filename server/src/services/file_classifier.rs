@@ -24,9 +24,9 @@
 //!     max_line_length: 10_000,
 //!     max_file_size: 1_048_576,
 //! };
-//! 
+//!
 //! let classifier = FileClassifier::from_config(&config);
-//! 
+//!
 //! // Check if a file should be analyzed
 //! let path = Path::new("src/main.rs");
 //! match classifier.classify(path) {

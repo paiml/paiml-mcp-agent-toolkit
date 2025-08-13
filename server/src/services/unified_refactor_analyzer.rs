@@ -31,22 +31,22 @@
 //! // Create analyzer pool
 //! let mut pool = AnalyzerPool::new();
 //! pool.register(Arc::new(RustAnalyzer::new()));
-//! 
+//!
 //! // Get analyzer for Rust
 //! let analyzer = pool.get(Language::Rust).unwrap();
-//! 
+//!
 //! // Analyze a function node
 //! let ast_node = UnifiedAstNode::default(); // Would be actual AST
 //! let metrics = analyzer.compute_metrics(&ast_node).await?;
-//! 
+//!
 //! // Get refactoring suggestions
 //! let plans = analyzer.suggest_refactors(&metrics).await?;
-//! 
+//!
 //! for plan in &plans {
-//!     println!("Suggested: {} (confidence: {})", 
+//!     println!("Suggested: {} (confidence: {})",
 //!              plan.explanation, plan.confidence);
 //!     println!("Risk level: {:?}", plan.risk_level);
-//!     println!("Expected complexity reduction: {:?}", 
+//!     println!("Expected complexity reduction: {:?}",
 //!              plan.estimated_improvement.complexity_reduction);
 //! }
 //! # Ok(())

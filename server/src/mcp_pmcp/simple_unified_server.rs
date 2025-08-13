@@ -73,9 +73,7 @@ impl SimpleUnifiedServer {
             .tool("scaffold_project", ScaffoldProjectTool)
             .build()?;
 
-        info!(
-            "PMAT Simple Unified MCP server ready with 17 core tools, listening on stdio"
-        );
+        info!("PMAT Simple Unified MCP server ready with 17 core tools, listening on stdio");
 
         // Run server with stdio transport
         server.run_stdio().await?;

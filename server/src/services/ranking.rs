@@ -30,16 +30,16 @@
 //! // Create a complexity-based ranker
 //! let ranker = ComplexityRanker::new();
 //! let engine = RankingEngine::new(ranker);
-//! 
+//!
 //! // Rank files by complexity
 //! let files = vec![
 //!     PathBuf::from("src/main.rs"),
 //!     PathBuf::from("src/lib.rs"),
 //!     PathBuf::from("src/complex_module.rs"),
 //! ];
-//! 
+//!
 //! let top_5 = engine.rank_files(&files, 5).await;
-//! 
+//!
 //! for (i, (file, score)) in top_5.iter().enumerate() {
 //!     println!("{}. {} (complexity: {})", i + 1, file, score);
 //! }

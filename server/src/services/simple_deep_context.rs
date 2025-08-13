@@ -4,7 +4,10 @@
 //! integrating with existing services without complex dependencies.
 
 use anyhow::Result;
-use std::{path::{Path, PathBuf}, time::Instant};
+use std::{
+    path::{Path, PathBuf},
+    time::Instant,
+};
 use tracing::info;
 
 /// Simplified deep context analysis service
@@ -82,13 +85,13 @@ impl SimpleDeepContext {
     ///
     /// // High complexity functions are properly detected
     /// if report.complexity_metrics.high_complexity_count > 0 {
-    ///     println!("Found {} high-complexity functions", 
+    ///     println!("Found {} high-complexity functions",
     ///         report.complexity_metrics.high_complexity_count);
     /// }
     ///
     /// // File-level complexity details are accurate
     /// for detail in &report.file_complexity_details {
-    ///     println!("File: {} - {} functions, avg complexity: {:.2}", 
+    ///     println!("File: {} - {} functions, avg complexity: {:.2}",
     ///         detail.file_path.display(),
     ///         detail.function_count,
     ///         detail.avg_complexity);
@@ -256,21 +259,21 @@ impl SimpleDeepContext {
     }
 
     /// Analyze complexity of a single file using proper AST-based analysis
-    /// 
+    ///
     /// This method uses the unified AST-based complexity analyzer instead of heuristics,
     /// ensuring accurate complexity measurements across all analysis commands.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```compile_fail
     /// use pmat::services::simple_deep_context::{SimpleDeepContext, FileComplexityMetrics};
     /// use std::path::Path;
-    /// 
+    ///
     /// # tokio_test::block_on(async {
     /// let analyzer = SimpleDeepContext::new();
     /// // This is a private method and cannot be called from outside the module
     /// let metrics = analyzer.analyze_file_complexity(Path::new("src/main.rs")).await.unwrap();
-    /// 
+    ///
     /// // Metrics now contain accurate AST-based complexity values
     /// assert!(metrics.avg_complexity > 0.0);
     /// # });
@@ -278,32 +281,30 @@ impl SimpleDeepContext {
     async fn analyze_file_complexity(&self, file_path: &Path) -> Result<FileComplexityMetrics> {
         // Use the same AST analysis pathway as the complexity command (Toyota Way: ONE implementation)
         use crate::services::ast_rust::analyze_rust_file_with_complexity;
-        
+
         // Detect the file type based on extension
-        let extension = file_path.extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("");
-            
+        let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+
         let (function_count, high_complexity_functions, avg_complexity) = if extension == "rs" {
             // Use proper AST complexity analysis for Rust files
             match analyze_rust_file_with_complexity(file_path).await {
                 Ok(file_complexity_metrics) => {
                     let functions = &file_complexity_metrics.functions;
                     let function_count = functions.len();
-                    
+
                     if function_count == 0 {
                         (0, 0, 0.0)
                     } else {
-                        let high_complexity_functions = functions.iter()
+                        let high_complexity_functions = functions
+                            .iter()
                             .filter(|f| f.metrics.cyclomatic > 10)
                             .count();
-                        
-                        let total_cyclomatic: u32 = functions.iter()
-                            .map(|f| f.metrics.cyclomatic as u32)
-                            .sum();
-                        
+
+                        let total_cyclomatic: u32 =
+                            functions.iter().map(|f| f.metrics.cyclomatic as u32).sum();
+
                         let avg_complexity = total_cyclomatic as f64 / function_count as f64;
-                        
+
                         (function_count, high_complexity_functions, avg_complexity)
                     }
                 }
@@ -315,9 +316,12 @@ impl SimpleDeepContext {
         } else {
             // For non-Rust files, use heuristic-based analysis
             // This provides basic metrics until full AST support is added for each language
-            match self.analyze_file_complexity_heuristic(file_path, extension).await {
+            match self
+                .analyze_file_complexity_heuristic(file_path, extension)
+                .await
+            {
                 Ok((count, high, avg)) => (count, high, avg),
-                Err(_) => (0, 0, 0.0)
+                Err(_) => (0, 0, 0.0),
             }
         };
 
@@ -330,39 +334,43 @@ impl SimpleDeepContext {
 
     /// Analyze file complexity using heuristics for non-Rust languages
     async fn analyze_file_complexity_heuristic(
-        &self, 
+        &self,
         file_path: &Path,
-        extension: &str
+        extension: &str,
     ) -> Result<(usize, usize, f64)> {
         use tokio::fs;
-        
+
         // Read file content
         let content = fs::read_to_string(file_path).await?;
-        
+
         // Function detection patterns based on language
         let function_patterns = match extension {
             "py" => vec![r"(?m)^\s*def\s+\w+", r"(?m)^\s*async\s+def\s+\w+"],
-            "js" | "ts" => vec![r"function\s+\w+", r"(?m)^\s*const\s+\w+\s*=.*=>", r"(?m)^\s*\w+\s*\([^)]*\)\s*\{"],
+            "js" | "ts" => vec![
+                r"function\s+\w+",
+                r"(?m)^\s*const\s+\w+\s*=.*=>",
+                r"(?m)^\s*\w+\s*\([^)]*\)\s*\{",
+            ],
             "java" => vec![r"(public|private|protected)\s+\w+\s+\w+\s*\("],
             "go" => vec![r"(?m)^func\s+(\(\w+\s+\*?\w+\)\s+)?\w+\s*\("],
             "c" | "cpp" | "cc" | "cxx" => vec![r"(?m)^\w+\s+\w+\s*\([^)]*\)\s*\{"],
-            _ => vec![]
+            _ => vec![],
         };
-        
+
         if function_patterns.is_empty() {
             return Ok((0, 0, 0.0));
         }
-        
+
         // Count functions using regex
         let mut function_count = 0;
         let mut complexity_sum = 0;
         let mut high_complexity_count = 0;
-        
+
         for pattern in function_patterns {
             if let Ok(re) = regex::Regex::new(pattern) {
                 for cap in re.captures_iter(&content) {
                     function_count += 1;
-                    
+
                     // Simple heuristic for complexity: count control flow keywords
                     if let Some(func_match) = cap.get(0) {
                         let start = func_match.start();
@@ -379,16 +387,16 @@ impl SimpleDeepContext {
                 }
             }
         }
-        
+
         let avg_complexity = if function_count > 0 {
             complexity_sum as f64 / function_count as f64
         } else {
             0.0
         };
-        
+
         Ok((function_count, high_complexity_count, avg_complexity))
     }
-    
+
     /// Find the end of a function body
     fn find_function_end(&self, content: &str, extension: &str) -> Option<usize> {
         match extension {
@@ -398,7 +406,7 @@ impl SimpleDeepContext {
                 if lines.is_empty() {
                     return None;
                 }
-                
+
                 let first_indent = lines[0].len() - lines[0].trim_start().len();
                 for (i, line) in lines.iter().enumerate().skip(1) {
                     if !line.trim().is_empty() {
@@ -415,13 +423,13 @@ impl SimpleDeepContext {
                 let mut brace_count = 0;
                 let mut in_string = false;
                 let mut escape = false;
-                
+
                 for (i, ch) in content.chars().enumerate() {
                     if escape {
                         escape = false;
                         continue;
                     }
-                    
+
                     match ch {
                         '\\' => escape = true,
                         '"' if !in_string => in_string = true,
@@ -440,25 +448,31 @@ impl SimpleDeepContext {
             }
         }
     }
-    
+
     /// Estimate complexity based on control flow keywords
     fn estimate_complexity(&self, func_body: &str, extension: &str) -> usize {
         let control_flow_keywords = match extension {
-            "py" => vec!["if ", "elif ", "else:", "for ", "while ", "try:", "except:", "finally:"],
-            "js" | "ts" => vec!["if ", "else ", "for ", "while ", "do ", "switch ", "case ", "catch ", "finally "],
-            "java" | "c" | "cpp" | "go" => vec!["if ", "else ", "for ", "while ", "do ", "switch ", "case ", "catch ", "finally "],
-            _ => vec![]
+            "py" => vec![
+                "if ", "elif ", "else:", "for ", "while ", "try:", "except:", "finally:",
+            ],
+            "js" | "ts" => vec![
+                "if ", "else ", "for ", "while ", "do ", "switch ", "case ", "catch ", "finally ",
+            ],
+            "java" | "c" | "cpp" | "go" => vec![
+                "if ", "else ", "for ", "while ", "do ", "switch ", "case ", "catch ", "finally ",
+            ],
+            _ => vec![],
         };
-        
+
         let mut complexity = 1; // Base complexity
         for keyword in control_flow_keywords {
             complexity += func_body.matches(keyword).count();
         }
-        
+
         // Add complexity for logical operators
         complexity += func_body.matches("&&").count();
         complexity += func_body.matches("||").count();
-        
+
         complexity
     }
 
@@ -643,19 +657,21 @@ impl Default for SimpleDeepContext {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
-    
+    use tempfile::TempDir;
+
     #[tokio::test]
     async fn test_complexity_analysis_uses_ast() {
         // Create a test project
         let temp_dir = TempDir::new().unwrap();
         let src_dir = temp_dir.path().join("src");
         fs::create_dir_all(&src_dir).unwrap();
-        
+
         // Write a file with known complexity
         let test_file = src_dir.join("test.rs");
-        fs::write(&test_file, r#"
+        fs::write(
+            &test_file,
+            r#"
 fn simple() {
     println!("hello");
 }
@@ -671,8 +687,10 @@ fn complex() {
         }
     }
 }
-"#).unwrap();
-        
+"#,
+        )
+        .unwrap();
+
         // Analyze the project
         let analyzer = SimpleDeepContext::new();
         let config = SimpleAnalysisConfig {
@@ -682,30 +700,32 @@ fn complex() {
             exclude_patterns: vec![],
             enable_verbose: false,
         };
-        
+
         let report = analyzer.analyze(config).await.unwrap();
-        
+
         // Verify we got real complexity values, not heuristic 1.0
         assert_eq!(report.file_count, 1);
         assert_eq!(report.complexity_metrics.total_functions, 2);
         assert!(report.complexity_metrics.avg_complexity > 1.0);
         assert!(report.complexity_metrics.avg_complexity < 10.0);
-        
+
         // Verify file details
         assert_eq!(report.file_complexity_details.len(), 1);
         let file_detail = &report.file_complexity_details[0];
         assert_eq!(file_detail.function_count, 2);
         assert!(file_detail.avg_complexity > 1.0);
     }
-    
+
     #[tokio::test]
     async fn test_analyze_file_complexity_heuristic() {
         let analyzer = SimpleDeepContext;
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Test Python file
         let py_file = temp_dir.path().join("test.py");
-        fs::write(&py_file, r#"
+        fs::write(
+            &py_file,
+            r#"
 def simple_function():
     return 42
 
@@ -724,18 +744,25 @@ def complex_function(x):
             return 1 / x
         except:
             return 0
-"#).unwrap();
-        
-        let (count, high, avg) = analyzer.analyze_file_complexity_heuristic(&py_file, "py").await.unwrap();
+"#,
+        )
+        .unwrap();
+
+        let (count, high, avg) = analyzer
+            .analyze_file_complexity_heuristic(&py_file, "py")
+            .await
+            .unwrap();
         assert_eq!(count, 2);
         // The heuristic might not detect all complexity patterns perfectly
         // Let's adjust expectations based on the actual implementation
         assert!(high <= 1); // At most 1 high complexity function
         assert!(avg >= 1.0); // Average complexity should be at least 1
-        
+
         // Test JavaScript file
         let js_file = temp_dir.path().join("test.js");
-        fs::write(&js_file, r#"
+        fs::write(
+            &js_file,
+            r#"
 function simpleFunc() {
     return 42;
 }
@@ -750,19 +777,24 @@ const complexFunc = (x) => {
     }
     return x;
 };
-"#).unwrap();
-        
-        let (count, high, avg) = analyzer.analyze_file_complexity_heuristic(&js_file, "js").await.unwrap();
+"#,
+        )
+        .unwrap();
+
+        let (count, high, avg) = analyzer
+            .analyze_file_complexity_heuristic(&js_file, "js")
+            .await
+            .unwrap();
         // JavaScript regex patterns might match more than expected
         assert!(count >= 2); // At least our 2 functions
         assert!(high <= count); // High complexity count should not exceed total
         assert!(avg >= 1.0); // Average should be at least 1
     }
-    
+
     #[test]
     fn test_estimate_complexity() {
         let analyzer = SimpleDeepContext;
-        
+
         // Test Python complexity
         let py_code = r#"
 if x > 0:
@@ -775,7 +807,7 @@ elif x < 0:
         let complexity = analyzer.estimate_complexity(py_code, "py");
         // Actually counts: 1 base + 2 "if " + 1 "for " + 1 "elif " + 1 "else:" = 6
         assert_eq!(complexity, 6);
-        
+
         // Test JavaScript complexity with logical operators
         let js_code = r#"
 if (x > 0 && y < 10) {
@@ -800,10 +832,10 @@ if (x > 0 && y < 10) {
 #[cfg(test)]
 mod property_tests {
     use super::*;
-    use tempfile::TempDir;
-    use std::fs;
     use proptest::prelude::*;
-    
+    use std::fs;
+    use tempfile::TempDir;
+
     proptest! {
         #[test]
         fn prop_complexity_never_returns_fixed_one(
@@ -815,7 +847,7 @@ mod property_tests {
                 let temp_dir = TempDir::new().unwrap();
                 let src_dir = temp_dir.path().join("src");
                 fs::create_dir_all(&src_dir).unwrap();
-                
+
                 // Generate test file with variable complexity
                 let mut code = String::new();
                 for i in 0..num_functions {
@@ -835,10 +867,10 @@ fn func_{i}() {{
 "#));
                     }
                 }
-                
+
                 let test_file = src_dir.join("test.rs");
                 fs::write(&test_file, code).unwrap();
-                
+
                 let analyzer = SimpleDeepContext::new();
                 let config = SimpleAnalysisConfig {
                     project_path: temp_dir.path().to_path_buf(),
@@ -847,18 +879,18 @@ fn func_{i}() {{
                     exclude_patterns: vec![],
                     enable_verbose: false,
                 };
-                
+
                 let report = analyzer.analyze(config).await.unwrap();
-                
+
                 // Property: complexity values should vary, not all be 1.0
                 if has_conditions && num_functions > 1 {
                     // With conditions, average should be > 1.0
                     prop_assert!(report.complexity_metrics.avg_complexity > 1.0);
                 }
-                
+
                 // Property: function count should match
                 prop_assert_eq!(report.complexity_metrics.total_functions, num_functions);
-                
+
                 Ok(())
             })?;
         }

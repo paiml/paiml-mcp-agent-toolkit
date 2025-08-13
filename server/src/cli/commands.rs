@@ -390,7 +390,7 @@ pub enum AnalyzeCommands {
     },
 
     /// Analyze code complexity with MCP tool composition support
-    /// 
+    ///
     /// MCP Usage Examples:
     /// 1. Find hotspots: pmat analyze complexity --top-files 5 --format json
     /// 2. Analyze specific files: pmat analyze complexity --files src/main.rs,src/lib.rs
@@ -405,10 +405,10 @@ pub enum AnalyzeCommands {
         file: Option<PathBuf>,
 
         /// Analyze specific files (comma-separated list for MCP tool composition)
-        /// 
+        ///
         /// Enable AI agents to chain analysis tools by passing file lists between commands.
         /// Example: --files src/main.rs,src/lib.rs,tests/integration.rs
-        /// 
+        ///
         /// MCP Tool Chaining:
         /// 1. Get top complex files from one analysis
         /// 2. Pass those files to another analysis command
@@ -913,14 +913,14 @@ pub enum AnalyzeCommands {
     },
 
     /// Run comprehensive multi-dimensional analysis with MCP tool composition
-    /// 
+    ///
     /// Perfect for AI agents to get complete code health metrics. Combines:
     /// - Complexity analysis
     /// - Technical debt detection
     /// - Defect prediction
     /// - Dead code analysis
     /// - Duplicate detection
-    /// 
+    ///
     /// MCP Workflow: Use after complexity analysis to get detailed insights on problematic files
     Comprehensive {
         /// Project path to analyze (defaults to current directory)
@@ -932,7 +932,7 @@ pub enum AnalyzeCommands {
         file: Option<PathBuf>,
 
         /// Analyze specific files (MCP tool composition from complexity hotspots)
-        /// 
+        ///
         /// Enable AI agents to perform comprehensive analysis on files identified
         /// by previous complexity analysis. Perfect for multi-stage analysis workflows.
         /// Example: --files src/complex.rs,src/legacy.rs,src/problematic.rs
@@ -1839,4 +1839,3 @@ pub enum ScaffoldCommands {
         path: PathBuf,
     },
 }
-

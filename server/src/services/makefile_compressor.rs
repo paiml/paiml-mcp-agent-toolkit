@@ -28,18 +28,18 @@
 //!
 //! let compressor = MakefileCompressor::new();
 //! let makefile_content = std::fs::read_to_string("Makefile").unwrap();
-//! 
+//!
 //! let compressed = compressor.compress(&makefile_content);
-//! 
+//!
 //! println!("Original size: {} bytes", makefile_content.len());
 //! println!("Compressed size: {} bytes", compressed.content.len());
-//! println!("Compression ratio: {:.1}%", 
+//! println!("Compression ratio: {:.1}%",
 //!          (1.0 - compressed.content.len() as f64 / makefile_content.len() as f64) * 100.0);
-//! 
+//!
 //! // Access extracted metadata
 //! println!("Found {} targets", compressed.targets.len());
 //! println!("Found {} variables", compressed.variables.len());
-//! 
+//!
 //! for target in &compressed.targets {
 //!     println!("Target: {} -> {:?}", target.name, target.deps);
 //! }

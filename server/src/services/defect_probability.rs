@@ -27,7 +27,7 @@
 //! use pmat::services::defect_probability::{DefectProbabilityCalculator, FileMetrics};
 //!
 //! let calculator = DefectProbabilityCalculator::new();
-//! 
+//!
 //! let metrics = FileMetrics {
 //!     file_path: "src/complex_module.rs".to_string(),
 //!     churn_score: 0.7,
@@ -39,12 +39,12 @@
 //!     cyclomatic_complexity: 25,
 //!     cognitive_complexity: 35,
 //! };
-//! 
+//!
 //! let score = calculator.calculate(&metrics);
-//! 
+//!
 //! println!("Defect probability: {:.2}%", score.probability * 100.0);
 //! println!("Risk level: {:?}", score.risk_level);
-//! 
+//!
 //! // Show contributing factors
 //! for (factor, contribution) in &score.contributing_factors {
 //!     println!("{}: {:.2}%", factor, contribution * 100.0);

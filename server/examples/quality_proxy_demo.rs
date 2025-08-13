@@ -21,16 +21,16 @@ async fn main() -> anyhow::Result<()> {
 
     // Demo 1: High-quality code in strict mode
     demo_high_quality_code(&service).await?;
-    
+
     // Demo 2: Code with SATD in strict mode
     demo_satd_rejection(&service).await?;
-    
+
     // Demo 3: Advisory mode with warnings
     demo_advisory_mode(&service).await?;
-    
+
     // Demo 4: Auto-fix mode
     demo_auto_fix(&service).await?;
-    
+
     // Demo 5: Complex code rejection
     demo_complexity_check(&service).await?;
 
@@ -40,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
 async fn demo_high_quality_code(service: &QualityProxyService) -> anyhow::Result<()> {
     println!("Demo 1: High-Quality Code (Strict Mode)");
     println!("---------------------------------------");
-    
+
     let code = r#"/// Calculate the factorial of a number
 /// 
 /// # Arguments
@@ -72,17 +72,17 @@ pub fn factorial(n: u32) -> u32 {
     };
 
     let response = service.proxy_operation(request).await?;
-    
+
     print_response(&response);
     println!();
-    
+
     Ok(())
 }
 
 async fn demo_satd_rejection(service: &QualityProxyService) -> anyhow::Result<()> {
     println!("Demo 2: SATD Rejection (Strict Mode)");
     println!("------------------------------------");
-    
+
     let code = r#"fn process_payment(amount: f64) -> Result<(), String> {
     // TODO: implement actual payment processing
     // FIXME: this is just a stub for now
@@ -107,17 +107,17 @@ async fn demo_satd_rejection(service: &QualityProxyService) -> anyhow::Result<()
     };
 
     let response = service.proxy_operation(request).await?;
-    
+
     print_response(&response);
     println!();
-    
+
     Ok(())
 }
 
 async fn demo_advisory_mode(service: &QualityProxyService) -> anyhow::Result<()> {
     println!("Demo 3: Advisory Mode (Warnings Only)");
     println!("-------------------------------------");
-    
+
     let code = r#"pub fn calculate_discount(price: f64, percentage: f64) -> f64 {
     price * (1.0 - percentage / 100.0)
 }"#;
@@ -137,17 +137,17 @@ async fn demo_advisory_mode(service: &QualityProxyService) -> anyhow::Result<()>
     };
 
     let response = service.proxy_operation(request).await?;
-    
+
     print_response(&response);
     println!();
-    
+
     Ok(())
 }
 
 async fn demo_auto_fix(service: &QualityProxyService) -> anyhow::Result<()> {
     println!("Demo 4: Auto-Fix Mode");
     println!("--------------------");
-    
+
     let code = r#"pub struct UserData {
     name: String,
     email: String,
@@ -178,23 +178,23 @@ fn validate_email(email: &str) -> bool {
     };
 
     let response = service.proxy_operation(request).await?;
-    
+
     print_response(&response);
-    
+
     if response.refactoring_applied {
         println!();
         println!("Fixed code:");
         println!("{}", response.final_content);
     }
     println!();
-    
+
     Ok(())
 }
 
 async fn demo_complexity_check(service: &QualityProxyService) -> anyhow::Result<()> {
     println!("Demo 5: Complexity Check");
     println!("------------------------");
-    
+
     let code = r#"fn complex_calculation(a: i32, b: i32, c: i32, d: i32) -> i32 {
     let mut result = 0;
     
@@ -248,10 +248,10 @@ async fn demo_complexity_check(service: &QualityProxyService) -> anyhow::Result<
     };
 
     let response = service.proxy_operation(request).await?;
-    
+
     print_response(&response);
     println!();
-    
+
     Ok(())
 }
 
@@ -263,23 +263,33 @@ fn print_response(response: &pmat::models::proxy::ProxyResponse) {
         ProxyStatus::Modified => "MODIFIED",
     };
     println!("Status: {}", status_str);
-    
+
     // Print quality report
     println!("Quality Report:");
-    println!("  Passed: {}", 
-        if response.quality_report.passed { 
-            "Yes" 
-        } else { 
-            "No" 
+    println!(
+        "  Passed: {}",
+        if response.quality_report.passed {
+            "Yes"
+        } else {
+            "No"
         }
     );
-    
+
     // Print metrics
     println!("  Metrics:");
-    println!("    Max Complexity: {}", response.quality_report.metrics.max_complexity);
-    println!("    SATD Count: {}", response.quality_report.metrics.satd_count);
-    println!("    Lint Violations: {}", response.quality_report.metrics.lint_violations);
-    
+    println!(
+        "    Max Complexity: {}",
+        response.quality_report.metrics.max_complexity
+    );
+    println!(
+        "    SATD Count: {}",
+        response.quality_report.metrics.satd_count
+    );
+    println!(
+        "    Lint Violations: {}",
+        response.quality_report.metrics.lint_violations
+    );
+
     // Print violations
     if !response.quality_report.violations.is_empty() {
         println!("  Violations:");
@@ -288,19 +298,18 @@ fn print_response(response: &pmat::models::proxy::ProxyResponse) {
                 pmat::models::proxy::ViolationSeverity::Error => "ERROR",
                 pmat::models::proxy::ViolationSeverity::Warning => "WARNING",
             };
-            
-            println!("    [{:>7}] {} at {}", 
-                severity, 
-                violation.message, 
-                violation.location
+
+            println!(
+                "    [{:>7}] {} at {}",
+                severity, violation.message, violation.location
             );
-            
+
             if let Some(suggestion) = &violation.suggestion {
                 println!("              Suggestion: {}", suggestion);
             }
         }
     }
-    
+
     // Print refactoring info
     if response.refactoring_applied {
         println!("  Automatic refactoring applied");

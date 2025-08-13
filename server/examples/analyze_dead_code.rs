@@ -17,18 +17,19 @@ async fn main() -> Result<()> {
     // Example 1: Basic dead code analysis
     println!("Example 1: Basic dead code analysis");
     println!("{}", "=".repeat(60));
-    
+
     let result = handle_analyze_dead_code(
         PathBuf::from("."),
         DeadCodeOutputFormat::Summary,
-        Some(10),  // Top 10 files
-        true,      // Include unreachable code
-        5,         // Min 5 dead lines to report
-        false,     // Exclude tests
-        None,      // Output to stdout
-        false,     // Don't fail on violation
-        15.0,      // Default max percentage
-    ).await;
+        Some(10), // Top 10 files
+        true,     // Include unreachable code
+        5,        // Min 5 dead lines to report
+        false,    // Exclude tests
+        None,     // Output to stdout
+        false,    // Don't fail on violation
+        15.0,     // Default max percentage
+    )
+    .await;
 
     match result {
         Ok(_) => println!("✅ Dead code analysis completed\n"),
@@ -38,18 +39,19 @@ async fn main() -> Result<()> {
     // Example 2: Strict CI/CD mode with custom threshold
     println!("\nExample 2: CI/CD mode with strict dead code threshold");
     println!("{}", "=".repeat(60));
-    
+
     let strict_result = handle_analyze_dead_code(
         PathBuf::from("."),
-        DeadCodeOutputFormat::Json,  // JSON for CI parsing
-        None,      // Analyze all files
-        true,      // Include unreachable
-        3,         // Report even small dead code blocks
-        false,     // Exclude tests
-        None,      // Output to stdout
-        false,     // Don't fail on violation in example (to avoid CI failure)
-        5.0,       // Max 5% dead code allowed (strict!)
-    ).await;
+        DeadCodeOutputFormat::Json, // JSON for CI parsing
+        None,                       // Analyze all files
+        true,                       // Include unreachable
+        3,                          // Report even small dead code blocks
+        false,                      // Exclude tests
+        None,                       // Output to stdout
+        false,                      // Don't fail on violation in example (to avoid CI failure)
+        5.0,                        // Max 5% dead code allowed (strict!)
+    )
+    .await;
 
     match strict_result {
         Ok(_) => println!("✅ Dead code analysis completed!"),
@@ -58,24 +60,27 @@ async fn main() -> Result<()> {
             return Err(e);
         }
     }
-    
-    println!("Note: In real CI, you would use --fail-on-violation to exit(1) on threshold exceeded");
+
+    println!(
+        "Note: In real CI, you would use --fail-on-violation to exit(1) on threshold exceeded"
+    );
 
     // Example 3: Summary format with moderate threshold
     println!("\nExample 3: Summary format with moderate threshold");
     println!("{}", "=".repeat(60));
-    
+
     let summary_result = handle_analyze_dead_code(
         PathBuf::from("."),
         DeadCodeOutputFormat::Summary,
-        Some(5),   // Top 5 files
-        false,     // Don't include unreachable
-        10,        // Only report significant dead code
-        false,     // Exclude tests
+        Some(5), // Top 5 files
+        false,   // Don't include unreachable
+        10,      // Only report significant dead code
+        false,   // Exclude tests
         None,
-        false,     // Don't fail
-        10.0,      // 10% threshold (moderate)
-    ).await;
+        false, // Don't fail
+        10.0,  // 10% threshold (moderate)
+    )
+    .await;
 
     match summary_result {
         Ok(_) => println!("✅ Summary analysis complete!"),
@@ -85,19 +90,20 @@ async fn main() -> Result<()> {
     // Example 4: Save results to file
     println!("\nExample 4: Save dead code report to file");
     println!("{}", "=".repeat(60));
-    
+
     let output_path = PathBuf::from("dead-code-report.json");
     let file_result = handle_analyze_dead_code(
         PathBuf::from("."),
         DeadCodeOutputFormat::Json,
-        None,      // All files
-        true,      // Include unreachable
-        5,         // Standard threshold
-        true,      // Include tests this time
+        None, // All files
+        true, // Include unreachable
+        5,    // Standard threshold
+        true, // Include tests this time
         Some(output_path.clone()),
         false,
-        15.0,      // Default threshold
-    ).await;
+        15.0, // Default threshold
+    )
+    .await;
 
     match file_result {
         Ok(_) => println!("✅ Dead code report saved to: {}", output_path.display()),

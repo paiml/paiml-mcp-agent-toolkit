@@ -36,7 +36,7 @@
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let analyzer = LightweightProvabilityAnalyzer::new();
-//! 
+//!
 //! // Analyze specific functions incrementally
 //! let changed_functions = vec![
 //!     FunctionId {
@@ -45,14 +45,14 @@
 //!         line_number: 42,
 //!     }
 //! ];
-//! 
+//!
 //! let summaries = analyzer.analyze_incrementally(&changed_functions).await;
-//! 
+//!
 //! for summary in summaries {
 //!     println!("Provability score: {:.2}", summary.provability_score);
 //!     println!("Verified properties:");
 //!     for prop in &summary.verified_properties {
-//!         println!("  - {:?} (confidence: {:.0}%)", 
+//!         println!("  - {:?} (confidence: {:.0}%)",
 //!                  prop.property_type, prop.confidence * 100.0);
 //!     }
 //! }
@@ -444,7 +444,7 @@ impl LightweightProvabilityAnalyzer {
     ///     analysis_time_us: 1000,
     ///     version: 1,
     /// };
-    /// 
+    ///
     /// let factor = analyzer.calculate_provability_factor(&summary);
     /// assert!(factor >= 0.0 && factor <= 5.0);
     /// ```

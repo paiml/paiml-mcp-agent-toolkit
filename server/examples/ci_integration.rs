@@ -229,6 +229,6 @@ fn main() -> Result<()> {
     println!("- Exit code 0 means success, 1 means violations found");
     println!("- Use JSON format for parsing results in CI pipelines");
     println!("- Set appropriate thresholds for your project");
-    
+
     Ok(())
 }

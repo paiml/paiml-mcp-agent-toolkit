@@ -4,7 +4,7 @@ use pmat::services::quality_proxy::QualityProxyService;
 #[tokio::test]
 async fn test_quality_proxy_service_integration() {
     let service = QualityProxyService::new();
-    
+
     // Test 1: High-quality code should pass
     let good_code = r#"/// A simple greeting function
 /// 
@@ -32,7 +32,7 @@ pub fn greet(name: &str) -> String {
 #[tokio::test]
 async fn test_quality_proxy_rejects_satd() {
     let service = QualityProxyService::new();
-    
+
     // Test code with SATD
     let bad_code = r#"fn process_data() {
     // TODO: actually implement this
@@ -57,7 +57,7 @@ async fn test_quality_proxy_rejects_satd() {
     assert!(matches!(response.status, ProxyStatus::Rejected));
     assert!(!response.quality_report.passed);
     assert!(response.quality_report.metrics.satd_count > 0);
-    
+
     // Check that violations are reported
     let satd_violations = response
         .quality_report
@@ -71,7 +71,7 @@ async fn test_quality_proxy_rejects_satd() {
 #[tokio::test]
 async fn test_quality_proxy_advisory_mode() {
     let service = QualityProxyService::new();
-    
+
     // Code with issues
     let code = r#"pub fn undocumented_function() {
     // TODO: add documentation
@@ -89,7 +89,7 @@ async fn test_quality_proxy_advisory_mode() {
     };
 
     let response = service.proxy_operation(request).await.unwrap();
-    
+
     // Advisory mode should accept but report violations
     assert!(matches!(response.status, ProxyStatus::Accepted));
     assert!(!response.quality_report.violations.is_empty());
@@ -98,7 +98,7 @@ async fn test_quality_proxy_advisory_mode() {
 #[tokio::test]
 async fn test_quality_proxy_auto_fix_mode() {
     let service = QualityProxyService::new();
-    
+
     // Code with SATD that can be removed
     let code = r#"fn calculate() -> i32 {
     // TODO: optimize this calculation
@@ -121,13 +121,13 @@ async fn test_quality_proxy_auto_fix_mode() {
     };
 
     let response = service.proxy_operation(request).await.unwrap();
-    
+
     // Should either fix or reject
     assert!(
-        matches!(response.status, ProxyStatus::Modified) ||
-        matches!(response.status, ProxyStatus::Rejected)
+        matches!(response.status, ProxyStatus::Modified)
+            || matches!(response.status, ProxyStatus::Rejected)
     );
-    
+
     if matches!(response.status, ProxyStatus::Modified) {
         assert!(response.refactoring_applied);
         assert!(!response.final_content.contains("TODO"));
@@ -137,12 +137,12 @@ async fn test_quality_proxy_auto_fix_mode() {
 #[tokio::test]
 async fn test_quality_proxy_edit_operation() {
     let service = QualityProxyService::new();
-    
+
     let original = r#"/// Original function
 pub fn original() {
     println!("Original");
 }"#;
-    
+
     let request = ProxyRequest {
         operation: ProxyOperation::Edit,
         file_path: "edit.rs".to_string(),
@@ -162,7 +162,7 @@ pub fn original() {
 #[tokio::test]
 async fn test_quality_proxy_complexity_check() {
     let service = QualityProxyService::new();
-    
+
     // Create code with high complexity
     let complex_code = r#"fn complex_logic(a: i32, b: i32, c: i32) -> i32 {
     if a > 0 {
@@ -199,7 +199,7 @@ async fn test_quality_proxy_complexity_check() {
         new_content: None,
         mode: ProxyMode::Strict,
         quality_config: QualityConfig {
-            max_complexity: 10,  // Low threshold
+            max_complexity: 10, // Low threshold
             allow_satd: true,
             require_docs: false,
             auto_format: false,
@@ -207,14 +207,16 @@ async fn test_quality_proxy_complexity_check() {
     };
 
     let response = service.proxy_operation(request).await.unwrap();
-    
+
     // With complexity of 8 and threshold of 10, it should be accepted
     assert!(matches!(response.status, ProxyStatus::Accepted));
     assert!(response.quality_report.passed);
-    
+
     // Complexity should be within threshold, but may have doc warnings
     // Only check that there are no error-level violations
-    let has_errors = response.quality_report.violations
+    let has_errors = response
+        .quality_report
+        .violations
         .iter()
         .any(|v| matches!(v.severity, pmat::models::proxy::ViolationSeverity::Error));
     assert!(!has_errors, "Should have no error-level violations");
@@ -223,7 +225,7 @@ async fn test_quality_proxy_complexity_check() {
 #[tokio::test]
 async fn test_quality_proxy_documentation_check() {
     let service = QualityProxyService::new();
-    
+
     // Public function without documentation
     let code = r#"pub fn important_calculation(x: i32, y: i32) -> i32 {
     x * y + (x - y)
@@ -253,7 +255,7 @@ pub enum Status {
     };
 
     let response = service.proxy_operation(request).await.unwrap();
-    
+
     // Should have documentation violations
     let doc_violations = response
         .quality_report
@@ -261,24 +263,24 @@ pub enum Status {
         .iter()
         .filter(|v| matches!(v.violation_type, pmat::models::proxy::ViolationType::Docs))
         .count();
-    
+
     assert!(doc_violations >= 3); // Function, struct, and enum
 }
 
 #[tokio::test]
 async fn test_quality_proxy_append_operation() {
     let service = QualityProxyService::new();
-    
+
     let existing = r#"/// Existing function
 pub fn existing() {
     println!("Existing");
 }"#;
-    
+
     let new_content = r#"/// New function
 pub fn new_function() {
     println!("New");
 }"#;
-    
+
     let request = ProxyRequest {
         operation: ProxyOperation::Append,
         file_path: "append.rs".to_string(),

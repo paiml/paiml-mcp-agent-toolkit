@@ -21,7 +21,7 @@
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let analyzer = BigOAnalyzer::new();
-//! 
+//!
 //! let config = BigOAnalysisConfig {
 //!     project_path: PathBuf::from("./src"),
 //!     include_patterns: vec!["*.rs".to_string()],
@@ -29,16 +29,16 @@
 //!     confidence_threshold: 70,
 //!     analyze_space_complexity: true,
 //! };
-//! 
+//!
 //! let report = analyzer.analyze(config).await?;
-//! 
+//!
 //! println!("Analyzed {} functions", report.analyzed_functions);
 //! println!("Found {} high-complexity functions", report.high_complexity_functions.len());
-//! 
+//!
 //! // Print complexity distribution
 //! println!("O(n²) functions: {}", report.complexity_distribution.quadratic);
 //! println!("O(n) functions: {}", report.complexity_distribution.linear);
-//! 
+//!
 //! // Get recommendations
 //! for recommendation in &report.recommendations {
 //!     println!("⚠️  {}", recommendation);
@@ -532,7 +532,7 @@ impl BigOAnalyzer {
     ///     pattern_matches: vec![],
     ///     recommendations: vec![],
     /// };
-    /// 
+    ///
     /// let json = analyzer.format_as_json(&report).unwrap();
     /// assert!(json.contains("\"analyzed_functions\": 10"));
     /// ```

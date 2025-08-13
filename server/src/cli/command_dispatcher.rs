@@ -3,8 +3,8 @@
 //! This module implements a dispatch table pattern to reduce cyclomatic complexity
 //! in the CLI module by delegating command execution to specialized handlers.
 
-use super::{AnalyzeCommands, Commands, DemoProtocol, RefactorCommands};
 use super::commands::ScaffoldCommands;
+use super::{AnalyzeCommands, Commands, DemoProtocol, RefactorCommands};
 use crate::stateless_server::StatelessTemplateServer;
 use std::sync::Arc;
 
@@ -44,15 +44,28 @@ impl CommandDispatcher {
                 handlers::handle_generate(server, category, template, params, output, create_dirs)
                     .await
             }
-            Commands::Scaffold { command } => {
-                match command {
-                    ScaffoldCommands::Project {
-                        toolchain,
-                        templates,
-                        params,
-                        parallel,
-                    } => handlers::handle_scaffold(server, toolchain, templates, params, parallel).await,
-                    ScaffoldCommands::Agent {
+            Commands::Scaffold { command } => match command {
+                ScaffoldCommands::Project {
+                    toolchain,
+                    templates,
+                    params,
+                    parallel,
+                } => {
+                    handlers::handle_scaffold(server, toolchain, templates, params, parallel).await
+                }
+                ScaffoldCommands::Agent {
+                    name,
+                    template,
+                    features,
+                    quality,
+                    output,
+                    force,
+                    dry_run,
+                    interactive,
+                    deterministic_core,
+                    probabilistic_wrapper,
+                } => {
+                    let params = handlers::generation_handlers::ScaffoldAgentParams {
                         name,
                         template,
                         features,
@@ -63,29 +76,14 @@ impl CommandDispatcher {
                         interactive,
                         deterministic_core,
                         probabilistic_wrapper,
-                    } => {
-                        let params = handlers::generation_handlers::ScaffoldAgentParams {
-                            name,
-                            template,
-                            features,
-                            quality,
-                            output,
-                            force,
-                            dry_run,
-                            interactive,
-                            deterministic_core,
-                            probabilistic_wrapper,
-                        };
-                        handlers::handle_scaffold_agent(params).await
-                    },
-                    ScaffoldCommands::ListTemplates => {
-                        handlers::handle_list_agent_templates().await
-                    },
-                    ScaffoldCommands::ValidateTemplate { path } => {
-                        handlers::handle_validate_agent_template(path).await
-                    },
+                    };
+                    handlers::handle_scaffold_agent(params).await
                 }
-            }
+                ScaffoldCommands::ListTemplates => handlers::handle_list_agent_templates().await,
+                ScaffoldCommands::ValidateTemplate { path } => {
+                    handlers::handle_validate_agent_template(path).await
+                }
+            },
             Commands::List {
                 toolchain,
                 category,

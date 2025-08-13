@@ -29,9 +29,9 @@
 //! // Start refactoring session
 //! let targets = vec![PathBuf::from("src/complex_module.rs")];
 //! let config = RefactorConfig::default();
-//! 
+//!
 //! engine.start_session(targets, config).await?;
-//! 
+//!
 //! // Run refactoring workflow
 //! while !engine.is_complete().await {
 //!     engine.advance().await?;

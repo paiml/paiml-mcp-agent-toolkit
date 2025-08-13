@@ -17,21 +17,22 @@ async fn main() -> Result<()> {
     // Example 1: Basic SATD analysis
     println!("Example 1: Basic SATD analysis");
     println!("{}", "=".repeat(60));
-    
+
     let result = handle_analyze_satd(
         PathBuf::from("."),
         SatdOutputFormat::Summary,
-        None,      // All severities
-        false,     // Not critical only
-        false,     // Exclude tests
-        false,     // Not strict mode
-        false,     // No evolution tracking
-        30,        // 30 days for evolution
-        true,      // Include metrics
-        None,      // Output to stdout
-        10,        // Top 10 files
-        false,     // Don't fail on violation
-    ).await;
+        None,  // All severities
+        false, // Not critical only
+        false, // Exclude tests
+        false, // Not strict mode
+        false, // No evolution tracking
+        30,    // 30 days for evolution
+        true,  // Include metrics
+        None,  // Output to stdout
+        10,    // Top 10 files
+        false, // Don't fail on violation
+    )
+    .await;
 
     match result {
         Ok(_) => println!("✅ SATD analysis completed\n"),
@@ -41,21 +42,22 @@ async fn main() -> Result<()> {
     // Example 2: Zero-tolerance CI/CD mode
     println!("\nExample 2: Zero-tolerance mode for CI/CD");
     println!("{}", "=".repeat(60));
-    
+
     let strict_result = handle_analyze_satd(
         PathBuf::from("."),
-        SatdOutputFormat::Json,  // JSON for CI parsing
-        None,      // All severities
-        false,     // All debt, not just critical
-        false,     // Exclude tests
-        true,      // STRICT MODE - catches all debt patterns
-        false,     // No evolution
+        SatdOutputFormat::Json, // JSON for CI parsing
+        None,                   // All severities
+        false,                  // All debt, not just critical
+        false,                  // Exclude tests
+        true,                   // STRICT MODE - catches all debt patterns
+        false,                  // No evolution
         30,
-        true,      // Include metrics
+        true, // Include metrics
         None,
-        0,         // Check all files
-        false,     // Don't fail on violation in example (to avoid CI failure)
-    ).await;
+        0,     // Check all files
+        false, // Don't fail on violation in example (to avoid CI failure)
+    )
+    .await;
 
     match strict_result {
         Ok(_) => println!("✅ SATD analysis completed!"),
@@ -64,27 +66,28 @@ async fn main() -> Result<()> {
             return Err(e);
         }
     }
-    
+
     println!("Note: In real CI, you would use --fail-on-violation to exit(1) on any debt found");
 
     // Example 3: Critical debt only
     println!("\nExample 3: Check for critical technical debt only");
     println!("{}", "=".repeat(60));
-    
+
     let critical_result = handle_analyze_satd(
         PathBuf::from("."),
         SatdOutputFormat::Summary,
-        Some(SatdSeverity::Critical),  // Only critical severity
-        true,      // Critical only flag too
-        false,     // Exclude tests
-        false,     // Normal mode
-        false,     // No evolution
+        Some(SatdSeverity::Critical), // Only critical severity
+        true,                         // Critical only flag too
+        false,                        // Exclude tests
+        false,                        // Normal mode
+        false,                        // No evolution
         30,
-        false,     // No detailed metrics
+        false, // No detailed metrics
         None,
-        5,         // Top 5 files
-        false,     // Don't fail on violation in example
-    ).await;
+        5,     // Top 5 files
+        false, // Don't fail on violation in example
+    )
+    .await;
 
     match critical_result {
         Ok(_) => println!("✅ Critical debt analysis completed!"),
@@ -97,7 +100,7 @@ async fn main() -> Result<()> {
     // Example 4: Evolution tracking
     println!("\nExample 4: Track debt evolution over time");
     println!("{}", "=".repeat(60));
-    
+
     let evolution_result = handle_analyze_satd(
         PathBuf::from("."),
         SatdOutputFormat::Summary,
@@ -105,13 +108,14 @@ async fn main() -> Result<()> {
         false,
         false,
         false,
-        true,      // Enable evolution tracking
-        60,        // Look back 60 days
-        true,      // Include metrics
+        true, // Enable evolution tracking
+        60,   // Look back 60 days
+        true, // Include metrics
         None,
         10,
         false,
-    ).await;
+    )
+    .await;
 
     match evolution_result {
         Ok(_) => println!("✅ Debt evolution analysis complete!"),
@@ -121,22 +125,23 @@ async fn main() -> Result<()> {
     // Example 5: Save detailed report
     println!("\nExample 5: Save detailed SATD report");
     println!("{}", "=".repeat(60));
-    
+
     let output_path = PathBuf::from("satd-report.json");
     let report_result = handle_analyze_satd(
         PathBuf::from("."),
         SatdOutputFormat::Json,
-        None,      // All severities
+        None, // All severities
         false,
-        true,      // Include tests this time
-        true,      // Strict mode for comprehensive detection
+        true, // Include tests this time
+        true, // Strict mode for comprehensive detection
         false,
         30,
-        true,      // Detailed metrics
+        true, // Detailed metrics
         Some(output_path.clone()),
-        0,         // All files
+        0, // All files
         false,
-    ).await;
+    )
+    .await;
 
     match report_result {
         Ok(_) => println!("✅ SATD report saved to: {}", output_path.display()),

@@ -28,16 +28,16 @@
 //! use pmat::models::dag::NodeInfo;
 //!
 //! let namer = SemanticNamer::new();
-//! 
+//!
 //! // Convert file path to module notation
 //! let node = NodeInfo {
 //!     file_path: "src/services/analyzer.rs".to_string(),
 //!     ..Default::default()
 //! };
-//! 
+//!
 //! let name = namer.get_semantic_name("node_123", &node);
 //! assert_eq!(name, "services::analyzer");
-//! 
+//!
 //! // Clean up raw identifiers
 //! let clean_name = namer.clean_id("file:///src/main.rs#function_name");
 //! assert_eq!(clean_name, "main::function_name");

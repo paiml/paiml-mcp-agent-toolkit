@@ -26,19 +26,19 @@
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let detector = ProjectMetaDetector::new();
-//! 
+//!
 //! // Detect metadata files in project
 //! let meta_files = detector.detect(Path::new("./")).await;
-//! 
+//!
 //! for file in &meta_files {
-//!     println!("Found {} at {}", 
+//!     println!("Found {} at {}",
 //!              match file.file_type {
 //!                  MetaFileType::Readme => "README",
 //!                  MetaFileType::Makefile => "Makefile",
 //!              },
 //!              file.path.display());
 //! }
-//! 
+//!
 //! // Process detected files
 //! if let Some(makefile) = meta_files.iter()
 //!     .find(|f| matches!(f.file_type, MetaFileType::Makefile)) {

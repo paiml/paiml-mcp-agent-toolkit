@@ -183,33 +183,44 @@ pub async fn handle_scaffold_agent(params: ScaffoldAgentParams) -> Result<()> {
         probabilistic_wrapper,
     } = params;
     use crate::scaffold::agent::{
-        AgentContextBuilder, AgentFeature, InteractiveScaffolder, QualityLevel, scaffold_agent,
+        scaffold_agent, AgentContextBuilder, AgentFeature, InteractiveScaffolder, QualityLevel,
     };
 
     // Use interactive mode if requested
     if interactive {
         let mut scaffolder = InteractiveScaffolder::new();
         let context = scaffolder.run()?;
-        
+
         let output_path = output.unwrap_or_else(|| PathBuf::from(&context.name));
-        
+
         if !dry_run {
             if output_path.exists() && !force {
-                anyhow::bail!("Directory {} already exists. Use --force to overwrite.", output_path.display());
+                anyhow::bail!(
+                    "Directory {} already exists. Use --force to overwrite.",
+                    output_path.display()
+                );
             }
-            
+
             scaffold_agent(&context, &output_path).await?;
-            eprintln!("✅ Agent '{}' scaffolded successfully at {}", context.name, output_path.display());
+            eprintln!(
+                "✅ Agent '{}' scaffolded successfully at {}",
+                context.name,
+                output_path.display()
+            );
         } else {
-            eprintln!("🔍 Dry run - would generate agent '{}' at {}", context.name, output_path.display());
+            eprintln!(
+                "🔍 Dry run - would generate agent '{}' at {}",
+                context.name,
+                output_path.display()
+            );
         }
-        
+
         return Ok(());
     }
 
     // Build context from CLI arguments
     let mut builder = AgentContextBuilder::new(&name, &template);
-    
+
     // Parse and add features
     for feature_str in &features {
         if let Ok(feature) = feature_str.parse::<AgentFeature>() {
@@ -218,7 +229,7 @@ pub async fn handle_scaffold_agent(params: ScaffoldAgentParams) -> Result<()> {
             eprintln!("⚠️ Warning: Unknown feature '{}', skipping", feature_str);
         }
     }
-    
+
     // Parse quality level
     let quality_level = match quality.to_lowercase().as_str() {
         "standard" => QualityLevel::Standard,
@@ -230,7 +241,7 @@ pub async fn handle_scaffold_agent(params: ScaffoldAgentParams) -> Result<()> {
         }
     };
     builder = builder.with_quality_level(quality_level);
-    
+
     // Handle hybrid agent specifications
     if let Some(_core_spec) = deterministic_core {
         // Parse deterministic core spec (simplified for now)
@@ -242,10 +253,10 @@ pub async fn handle_scaffold_agent(params: ScaffoldAgentParams) -> Result<()> {
         };
         builder = builder.with_deterministic_core(core);
     }
-    
+
     if let Some(_wrapper_spec) = probabilistic_wrapper {
         // Parse probabilistic wrapper spec (simplified for now)
-        use crate::scaffold::agent::hybrid::{WrapperSpec, ModelType, FallbackStrategy};
+        use crate::scaffold::agent::hybrid::{FallbackStrategy, ModelType, WrapperSpec};
         let wrapper = WrapperSpec {
             model_type: ModelType::GPT4,
             fallback_strategy: FallbackStrategy::Deterministic,
@@ -253,10 +264,10 @@ pub async fn handle_scaffold_agent(params: ScaffoldAgentParams) -> Result<()> {
         };
         builder = builder.with_probabilistic_wrapper(wrapper);
     }
-    
+
     let context = builder.build()?;
     let output_path = output.unwrap_or_else(|| PathBuf::from(&name));
-    
+
     if dry_run {
         eprintln!("🔍 Dry run mode - would generate the following:");
         eprintln!("  Agent: {}", context.name);
@@ -266,23 +277,30 @@ pub async fn handle_scaffold_agent(params: ScaffoldAgentParams) -> Result<()> {
         eprintln!("  Output: {}", output_path.display());
     } else {
         if output_path.exists() && !force {
-            anyhow::bail!("Directory {} already exists. Use --force to overwrite.", output_path.display());
+            anyhow::bail!(
+                "Directory {} already exists. Use --force to overwrite.",
+                output_path.display()
+            );
         }
-        
+
         scaffold_agent(&context, &output_path).await?;
-        eprintln!("✅ Agent '{}' scaffolded successfully at {}", name, output_path.display());
+        eprintln!(
+            "✅ Agent '{}' scaffolded successfully at {}",
+            name,
+            output_path.display()
+        );
     }
-    
+
     Ok(())
 }
 
 /// Handle listing available agent templates
 pub async fn handle_list_agent_templates() -> Result<()> {
     use crate::scaffold::agent::TemplateRegistry;
-    
+
     let registry = TemplateRegistry::new();
     let templates = registry.list_available();
-    
+
     eprintln!("📦 Available Agent Templates:");
     eprintln!();
     for template in &templates {
@@ -292,18 +310,18 @@ pub async fn handle_list_agent_templates() -> Result<()> {
     }
     eprintln!();
     eprintln!("Total: {} templates available", templates.len());
-    
+
     Ok(())
 }
 
 /// Handle validating an agent template
 pub async fn handle_validate_agent_template(path: PathBuf) -> Result<()> {
     use crate::scaffold::agent::TemplateRegistry;
-    
+
     let registry = TemplateRegistry::new();
-    
+
     eprintln!("🔍 Validating template: {}", path.display());
-    
+
     match registry.validate_template_file(&path) {
         Ok(_) => {
             eprintln!("✅ Template is valid!");
@@ -311,18 +329,18 @@ pub async fn handle_validate_agent_template(path: PathBuf) -> Result<()> {
         Err(e) => {
             eprintln!("❌ Template validation failed:");
             eprintln!("   {}", e);
-            
+
             // Print detailed errors
             let mut source = e.source();
             while let Some(err) = source {
                 eprintln!("   Caused by: {}", err);
                 source = err.source();
             }
-            
+
             std::process::exit(1);
         }
     }
-    
+
     Ok(())
 }
 

@@ -35,7 +35,7 @@
 //!     max_file_size: Some(10_000_000), // 10MB limit
 //!     follow_symlinks: false,
 //! };
-//! 
+//!
 //! match discovery.discover_files_with_config(&config) {
 //!     Ok(files) => {
 //!         println!("Found {} files", files.len());

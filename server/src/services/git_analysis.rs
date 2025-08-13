@@ -21,11 +21,11 @@
 //! // Analyze code churn for the last 30 days
 //! let project_path = Path::new(".");
 //! let analysis = GitAnalysisService::analyze_code_churn(project_path, 30)?;
-//! 
+//!
 //! println!("Total commits: {}", analysis.summary.total_commits);
 //! println!("Files changed: {}", analysis.summary.files_changed);
 //! println!("Active authors: {}", analysis.summary.active_authors);
-//! 
+//!
 //! // Find hotspots (files with high churn)
 //! for file in &analysis.files {
 //!     if file.commits > 10 {

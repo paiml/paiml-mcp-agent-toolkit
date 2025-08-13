@@ -138,7 +138,7 @@ mod tests {
             if subset_size > 0 {
                 let subset: Vec<_> = initial_files.iter().take(subset_size).collect();
                 prop_assert_eq!(subset.len(), subset_size);
-                
+
                 // Check ordering is preserved
                 for (i, file) in subset.iter().enumerate() {
                     prop_assert_eq!(*file, &initial_files[i]);
@@ -210,7 +210,7 @@ mod tests {
                 PathBuf::from("src/lib.rs"),
                 PathBuf::from("src/main.rs"), // Duplicate
             ];
-            
+
             let unique_files: HashSet<_> = files.iter().collect();
             assert_eq!(unique_files.len(), 2); // Should deduplicate
             assert!(unique_files.contains(&PathBuf::from("src/main.rs")));
@@ -222,7 +222,7 @@ mod tests {
             // Test that empty --files parameter is handled gracefully
             let files: Vec<PathBuf> = vec![];
             assert_eq!(files.len(), 0);
-            
+
             // Should not panic when processing empty file list
             let result = files.is_empty();
             assert!(result);
@@ -241,19 +241,15 @@ mod tests {
         #[test]
         fn test_mcp_file_path_normalization() {
             // Test that file paths are normalized consistently
-            let test_paths = vec![
-                "src/main.rs",
-                "./src/lib.rs",
-                "src/utils/helper.rs",
-            ];
-            
+            let test_paths = vec!["src/main.rs", "./src/lib.rs", "src/utils/helper.rs"];
+
             for path_str in &test_paths {
                 let path = PathBuf::from(path_str);
                 let normalized = path.to_string_lossy();
-                
+
                 // Should not contain double slashes
                 assert!(!normalized.contains("//"));
-                
+
                 // Should have valid extension
                 assert!(path.extension().is_some());
             }
@@ -262,24 +258,24 @@ mod tests {
         #[test]
         fn test_mcp_workflow_simulation() {
             // Simulate a complete MCP workflow
-            
+
             // Step 1: Discover complexity hotspots
             let initial_files = [
                 PathBuf::from("src/complex1.rs"),
                 PathBuf::from("src/complex2.rs"),
                 PathBuf::from("src/simple.rs"),
             ];
-            
+
             // Step 2: Filter to top files (simulate complexity tool output)
             let top_files = 2;
             let hotspots: Vec<_> = initial_files.iter().take(top_files).cloned().collect();
             assert_eq!(hotspots.len(), 2);
-            
+
             // Step 3: Comprehensive analysis on hotspots (simulate MCP composition)
             let targeted_analysis = hotspots;
             assert!(targeted_analysis.contains(&PathBuf::from("src/complex1.rs")));
             assert!(targeted_analysis.contains(&PathBuf::from("src/complex2.rs")));
-            
+
             // Step 4: Verify workflow consistency
             assert_eq!(targeted_analysis.len(), top_files);
         }

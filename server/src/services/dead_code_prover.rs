@@ -32,16 +32,16 @@
 //!
 //! # fn example(ast: &UnifiedAstNode) {
 //! let mut analyzer = ReachabilityAnalyzer::new();
-//! 
+//!
 //! // Analyze AST to find entry points
 //! analyzer.find_entry_points(ast);
-//! 
+//!
 //! // Perform reachability analysis
 //! let dead_code = analyzer.analyze_reachability(ast);
-//! 
+//!
 //! // Generate proof for dead code
 //! for item in &dead_code {
-//!     println!("Dead code: {} (confidence: {}%)", 
+//!     println!("Dead code: {} (confidence: {}%)",
 //!              item.name, item.confidence);
 //!     println!("Reason: {}", item.reason);
 //! }
