@@ -430,7 +430,7 @@ mod tests {
             let has_cyclomatic_violation = cyclomatic_complexity > custom_cyclomatic_threshold;
             let has_cognitive_violation = cognitive_complexity > custom_cognitive_threshold;
             let expected_error_violations = has_cyclomatic_violation || has_cognitive_violation;
-            
+
             // Check for warnings (threshold - 5)
             let warn_cyclomatic_threshold = custom_cyclomatic_threshold.saturating_sub(5).max(1);
             let warn_cognitive_threshold = custom_cognitive_threshold.saturating_sub(5).max(1);

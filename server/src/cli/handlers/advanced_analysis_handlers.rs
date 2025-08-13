@@ -186,7 +186,7 @@ pub async fn handle_analyze_tdg(
     // Use the enhanced implementation from stubs that supports all modes
     super::super::stubs::handle_analyze_tdg(
         path,
-        None, // file - not exposed in current interface
+        None,   // file - not exposed in current interface
         vec![], // files - not exposed in current interface
         threshold.unwrap_or(1.5),
         top.unwrap_or(10),
@@ -196,7 +196,7 @@ pub async fn handle_analyze_tdg(
         critical_only,
         verbose,
         vec![], // include patterns - not exposed in current interface
-        false, // watch - not exposed in current interface
+        false,  // watch - not exposed in current interface
     )
     .await
 }

@@ -33,17 +33,17 @@
 //!     max_edges: 400,
 //!     grouping: GroupingStrategy::Module,
 //! };
-//! 
+//!
 //! let builder = FixedGraphBuilder::new(config);
 //! let full_graph = DependencyGraph::new(); // Your full dependency graph
-//! 
+//!
 //! let fixed_graph = builder.build(&full_graph).unwrap();
-//! 
-//! println!("Reduced from {} to {} nodes", 
+//!
+//! println!("Reduced from {} to {} nodes",
 //!          full_graph.nodes.len(), fixed_graph.nodes.len());
-//! println!("Reduced from {} to {} edges", 
+//! println!("Reduced from {} to {} edges",
 //!          full_graph.edges.len(), fixed_graph.edges.len());
-//! 
+//!
 //! // Graph is now guaranteed to be renderable
 //! assert!(fixed_graph.nodes.len() <= 50);
 //! assert!(fixed_graph.edges.len() <= 400);

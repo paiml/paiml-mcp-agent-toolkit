@@ -1,9 +1,9 @@
-use crate::models::proxy::{ProxyRequest, ProxyMode, ProxyOperation, QualityConfig};
+use crate::models::proxy::{ProxyMode, ProxyOperation, ProxyRequest, QualityConfig};
 use crate::services::quality_proxy::QualityProxyService;
-use pmcp::{ToolHandler, RequestHandlerExtra, Error, Result};
+use async_trait::async_trait;
+use pmcp::{Error, RequestHandlerExtra, Result, ToolHandler};
 use serde::Deserialize;
 use serde_json::Value;
-use async_trait::async_trait;
 use tracing::{debug, info};
 
 /// Input parameters for the quality proxy tool.
@@ -87,10 +87,10 @@ pub struct QualityProxyTool;
 impl ToolHandler for QualityProxyTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
         debug!("Handling quality_proxy with args: {}", args);
-        
+
         let input: QualityProxyInput = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
-        
+
         info!("Processing quality proxy request for {}", input.file_path);
         debug!("Proxy mode: {}, Operation: {}", input.mode, input.operation);
 
@@ -99,7 +99,12 @@ impl ToolHandler for QualityProxyTool {
             "write" => ProxyOperation::Write,
             "edit" => ProxyOperation::Edit,
             "append" => ProxyOperation::Append,
-            _ => return Err(Error::validation(format!("Invalid operation: {}", input.operation))),
+            _ => {
+                return Err(Error::validation(format!(
+                    "Invalid operation: {}",
+                    input.operation
+                )))
+            }
         };
 
         let mode = match input.mode.as_str() {
@@ -128,7 +133,9 @@ impl ToolHandler for QualityProxyTool {
 
         // Process the request
         let service = QualityProxyService::new();
-        let response = service.proxy_operation(request).await
+        let response = service
+            .proxy_operation(request)
+            .await
             .map_err(|e| Error::internal(format!("Failed to process request: {}", e)))?;
 
         // Convert response to JSON

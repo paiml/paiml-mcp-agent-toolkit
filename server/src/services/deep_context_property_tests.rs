@@ -4,16 +4,16 @@
 //! analysis, ensuring that complexity values are accurate and not fixed at 1.0
 //! (addressing issue #33).
 
-use crate::services::simple_deep_context::{SimpleDeepContext, SimpleAnalysisConfig};
+use crate::services::simple_deep_context::{SimpleAnalysisConfig, SimpleDeepContext};
 use proptest::prelude::*;
 use std::fs;
 use tempfile::TempDir;
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(10))]
-    
+
     /// Property: Deep context analysis never returns all complexities as 1.0 (Issue #33)
-    /// 
+    ///
     /// This test verifies that the fix for issue #33 works correctly - complexity
     /// analysis should return varied, accurate values, not heuristic estimates of 1.0.
     #[test]
@@ -26,10 +26,10 @@ proptest! {
             let temp_dir = TempDir::new().unwrap();
             let src_dir = temp_dir.path().join("src");
             fs::create_dir_all(&src_dir).unwrap();
-            
+
             // Create a test file with mixed complexity functions
             let mut content = String::from("// Generated test file\n\n");
-            
+
             // Add simple functions
             for i in 0..num_simple_functions {
                 content.push_str(&format!(r#"
@@ -38,7 +38,7 @@ fn simple_function_{}() {{
 }}
 "#, i, i));
             }
-            
+
             // Add complex functions
             for i in 0..num_complex_functions {
                 content.push_str(&format!(r#"
@@ -57,10 +57,10 @@ fn complex_function_{}(a: i32, b: i32) {{
 }}
 "#, i));
             }
-            
+
             let test_file = src_dir.join("lib.rs");
             fs::write(&test_file, &content).unwrap();
-            
+
             let analyzer = SimpleDeepContext::new();
             let config = SimpleAnalysisConfig {
                 project_path: temp_dir.path().to_path_buf(),
@@ -69,13 +69,13 @@ fn complex_function_{}(a: i32, b: i32) {{
                 exclude_patterns: vec![],
                 enable_verbose: false,
             };
-            
+
             let report = analyzer.analyze(config).await.unwrap();
-            
+
             // Property: Should have detected functions
             prop_assert!(report.complexity_metrics.total_functions > 0,
                 "Should detect functions in generated code");
-            
+
             // Property: Not all functions should have complexity 1.0 (issue #33 fix)
             // With complex functions, we should see varied complexity
             if report.complexity_metrics.total_functions > 1 && num_complex_functions > 0 {
@@ -88,17 +88,17 @@ fn complex_function_{}(a: i32, b: i32) {{
                     report.complexity_metrics.high_complexity_count
                 );
             }
-            
+
             // Property: Average complexity should be reasonable
             prop_assert!(report.complexity_metrics.avg_complexity.is_finite(),
                 "Average complexity should be finite");
             prop_assert!(report.complexity_metrics.avg_complexity > 0.0,
                 "Average complexity should be positive");
-            
+
             Ok(())
         })?;
     }
-    
+
     /// Property: Complexity analysis is deterministic (Issue #33 reliability)
     #[test]
     fn prop_complexity_analysis_deterministic(
@@ -125,30 +125,32 @@ fn simple_func() {
 }
 "#
             };
-            
+
             let result1 = analyze_code_complexity(content).await.unwrap();
             let result2 = analyze_code_complexity(content).await.unwrap();
-            
+
             // Property: Results should be identical across runs
             prop_assert_eq!(result1.total_functions, result2.total_functions,
                 "Function count should be deterministic");
             prop_assert!((result1.avg_complexity - result2.avg_complexity).abs() < 0.001,
                 "Average complexity should be deterministic");
-            
+
             Ok(())
         })?;
     }
 }
 
 /// Helper function to analyze code complexity for property testing
-async fn analyze_code_complexity(content: &str) -> anyhow::Result<crate::services::simple_deep_context::ComplexityMetrics> {
+async fn analyze_code_complexity(
+    content: &str,
+) -> anyhow::Result<crate::services::simple_deep_context::ComplexityMetrics> {
     let temp_dir = TempDir::new()?;
     let src_dir = temp_dir.path().join("src");
     fs::create_dir_all(&src_dir)?;
-    
+
     let test_file = src_dir.join("lib.rs");
     fs::write(&test_file, content)?;
-    
+
     let analyzer = SimpleDeepContext::new();
     let config = SimpleAnalysisConfig {
         project_path: temp_dir.path().to_path_buf(),
@@ -157,7 +159,7 @@ async fn analyze_code_complexity(content: &str) -> anyhow::Result<crate::service
         exclude_patterns: vec![],
         enable_verbose: false,
     };
-    
+
     let report = analyzer.analyze(config).await?;
     Ok(report.complexity_metrics)
 }
@@ -181,7 +183,7 @@ fn complex(a: i32) {
     }
 }
 "#;
-        
+
         let complexity = analyze_code_complexity(simple_code).await.unwrap();
         assert_eq!(complexity.total_functions, 2);
         assert!(complexity.avg_complexity > 1.0);
@@ -191,7 +193,7 @@ fn complex(a: i32) {
     async fn test_empty_function_complexity() {
         let empty_code = "fn empty() {}";
         let complexity = analyze_code_complexity(empty_code).await.unwrap();
-        
+
         assert_eq!(complexity.total_functions, 1);
         assert!(complexity.avg_complexity >= 1.0);
     }
@@ -221,12 +223,15 @@ fn very_complex(a: i32, b: i32) {
     }
 }
 "#;
-        
+
         let complexity = analyze_code_complexity(complex_code).await.unwrap();
         assert_eq!(complexity.total_functions, 1);
         // Complex function should have high complexity or be detected as high complexity
-        assert!(complexity.avg_complexity > 3.0 || complexity.high_complexity_count > 0, 
-            "Complex function should show high complexity, got: avg={}, high_count={}", 
-            complexity.avg_complexity, complexity.high_complexity_count);
+        assert!(
+            complexity.avg_complexity > 3.0 || complexity.high_complexity_count > 0,
+            "Complex function should show high complexity, got: avg={}, high_count={}",
+            complexity.avg_complexity,
+            complexity.high_complexity_count
+        );
     }
 }

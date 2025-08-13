@@ -21,13 +21,13 @@
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let cloner = GitCloner::new(PathBuf::from(".cache"));
-//! 
+//!
 //! // Clone a repository
 //! let result = cloner.clone_or_update("https://github.com/rust-lang/rust").await?;
-//! 
+//!
 //! println!("Cloned to: {}", result.path.display());
 //! println!("From cache: {}", result.cached);
-//! 
+//!
 //! // Subsequent calls use cache
 //! let cached = cloner.clone_or_update("https://github.com/rust-lang/rust").await?;
 //! assert!(cached.cached);
@@ -449,7 +449,7 @@ impl GitCloner {
     /// ```no_run
     /// # use pmat::services::git_clone::{GitCloner, ParsedGitHubUrl};
     /// # use std::path::PathBuf;
-    /// # 
+    /// #
     /// # #[tokio::test]
     /// # async fn test_repo_size() -> anyhow::Result<()> {
     /// let git_clone = GitCloner::new(PathBuf::from(".cache"));
@@ -457,7 +457,7 @@ impl GitCloner {
     ///     owner: "rust-lang".to_string(),
     ///     repo: "rust".to_string(),
     /// };
-    /// 
+    ///
     /// let size_kb = git_clone.check_repo_size(&parsed_url).await?;
     /// assert!(size_kb > 0, "Repository should have non-zero size");
     /// # Ok(())
@@ -469,17 +469,17 @@ impl GitCloner {
     /// ```no_run
     /// # use pmat::services::git_clone::{GitCloner, ParsedGitHubUrl};
     /// # use std::path::PathBuf;
-    /// # 
+    /// #
     /// # #[tokio::test]
     /// # async fn test_repo_size_properties() -> anyhow::Result<()> {
     /// let git_clone = GitCloner::new(PathBuf::from(".cache"));
-    /// 
+    ///
     /// // Test with well-known repositories
     /// let repos = vec![
     ///     ("rust-lang", "rust"),
     ///     ("torvalds", "linux"),
     /// ];
-    /// 
+    ///
     /// for (owner, repo) in repos {
     ///     let parsed_url = ParsedGitHubUrl {
     ///         owner: owner.to_string(),
@@ -498,19 +498,22 @@ impl GitCloner {
     pub async fn check_repo_size(&self, parsed_url: &ParsedGitHubUrl) -> Result<u64> {
         use anyhow::anyhow;
         use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, USER_AGENT};
-        
+
         // Build GitHub API URL
         let api_url = format!(
             "https://api.github.com/repos/{}/{}",
             parsed_url.owner, parsed_url.repo
         );
-        
+
         // Create HTTP client with headers
         let client = reqwest::Client::new();
         let mut headers = HeaderMap::new();
         headers.insert(USER_AGENT, HeaderValue::from_static("pmat-cli"));
-        headers.insert(ACCEPT, HeaderValue::from_static("application/vnd.github.v3+json"));
-        
+        headers.insert(
+            ACCEPT,
+            HeaderValue::from_static("application/vnd.github.v3+json"),
+        );
+
         // Add auth token if available
         if let Ok(token) = std::env::var("GITHUB_TOKEN") {
             headers.insert(
@@ -518,29 +521,25 @@ impl GitCloner {
                 HeaderValue::from_str(&format!("token {}", token))?,
             );
         }
-        
+
         // Make API request
-        let response = client
-            .get(&api_url)
-            .headers(headers)
-            .send()
-            .await?;
-            
+        let response = client.get(&api_url).headers(headers).send().await?;
+
         if !response.status().is_success() {
             return Err(anyhow!(
                 "GitHub API request failed with status: {}",
                 response.status()
             ));
         }
-        
+
         // Parse response
         #[derive(serde::Deserialize)]
         struct RepoInfo {
             size: u64, // Size in KB from GitHub API
         }
-        
+
         let repo_info: RepoInfo = response.json().await?;
-        
+
         // Return size in KB as received from GitHub API
         Ok(repo_info.size)
     }

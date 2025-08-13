@@ -277,8 +277,7 @@ mod tests {
 
     #[test]
     fn test_add_invariant() {
-        let mut checker: InvariantChecker<TestState, TestContext> =
-            InvariantChecker::new(vec![]);
+        let mut checker: InvariantChecker<TestState, TestContext> = InvariantChecker::new(vec![]);
         assert_eq!(checker.invariant_count(), 0);
 
         checker.add_invariant(Box::new(PositiveValueInvariant));

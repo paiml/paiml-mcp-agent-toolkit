@@ -159,7 +159,9 @@ async fn handle_analysis_tools(
             handle_analyze_provability(request_id, Some(tool_params.arguments)).await
         }
         "analyze_satd" => handle_analyze_satd(request_id, tool_params.arguments).await,
-        "analyze_lint_hotspot" => handle_analyze_lint_hotspot(request_id, tool_params.arguments).await,
+        "analyze_lint_hotspot" => {
+            handle_analyze_lint_hotspot(request_id, tool_params.arguments).await
+        }
         _ => McpResponse::error(
             request_id,
             -32602,
@@ -2640,21 +2642,27 @@ async fn handle_analyze_satd(
     };
 
     let project_path = Path::new(&args.project_path);
-    let result = match detector.analyze_project(project_path, !args.exclude_tests).await {
+    let result = match detector
+        .analyze_project(project_path, !args.exclude_tests)
+        .await
+    {
         Ok(result) => result,
         Err(e) => {
-            return McpResponse::error(
-                request_id,
-                -32603,
-                format!("Failed to analyze SATD: {e}"),
-            );
+            return McpResponse::error(request_id, -32603, format!("Failed to analyze SATD: {e}"));
         }
     };
 
     // Filter critical items if requested
     let items = if args.critical_only {
-        result.items.into_iter()
-            .filter(|item| matches!(item.severity, crate::services::satd_detector::Severity::Critical))
+        result
+            .items
+            .into_iter()
+            .filter(|item| {
+                matches!(
+                    item.severity,
+                    crate::services::satd_detector::Severity::Critical
+                )
+            })
             .collect::<Vec<_>>()
     } else {
         result.items
@@ -2681,24 +2689,43 @@ async fn handle_analyze_satd(
             // Summary format
             let mut summary = String::from("SATD Analysis Summary\n");
             summary.push_str("====================\n");
-            summary.push_str(&format!("Total debt items: {}\n", result.summary.total_items));
-            summary.push_str(&format!("Debt density: {:.2} per KLOC\n", (result.summary.total_items as f64 / result.total_files_analyzed.max(1) as f64)));
-            summary.push_str(&format!("Critical items: {}\n", result.summary.by_severity.get("Critical").copied().unwrap_or(0)));
+            summary.push_str(&format!(
+                "Total debt items: {}\n",
+                result.summary.total_items
+            ));
+            summary.push_str(&format!(
+                "Debt density: {:.2} per KLOC\n",
+                (result.summary.total_items as f64 / result.total_files_analyzed.max(1) as f64)
+            ));
+            summary.push_str(&format!(
+                "Critical items: {}\n",
+                result
+                    .summary
+                    .by_severity
+                    .get("Critical")
+                    .copied()
+                    .unwrap_or(0)
+            ));
             summary.push_str("\nTop files with technical debt:\n");
-            
+
             // Group items by file
-            let mut files_map: std::collections::HashMap<&std::path::Path, Vec<&TechnicalDebt>> = std::collections::HashMap::new();
+            let mut files_map: std::collections::HashMap<&std::path::Path, Vec<&TechnicalDebt>> =
+                std::collections::HashMap::new();
             for item in &items {
                 files_map.entry(&item.file).or_default().push(item);
             }
-            
+
             let mut sorted_files: Vec<_> = files_map.iter().collect();
             sorted_files.sort_by_key(|(_, items)| -(items.len() as i32));
-            
+
             for (path, file_items) in sorted_files.iter().take(10) {
-                summary.push_str(&format!("  {} - {} items\n", path.display(), file_items.len()));
+                summary.push_str(&format!(
+                    "  {} - {} items\n",
+                    path.display(),
+                    file_items.len()
+                ));
             }
-            
+
             json!({
                 "formatted_output": summary,
                 "stats": {
@@ -2753,7 +2780,10 @@ async fn handle_analyze_lint_hotspot(
         }
     };
 
-    info!("Analyzing lint hotspots for project: {:?}", args.project_path);
+    info!(
+        "Analyzing lint hotspots for project: {:?}",
+        args.project_path
+    );
 
     use crate::cli::handlers::lint_hotspot_handlers::handle_analyze_lint_hotspot;
     use crate::cli::LintHotspotOutputFormat;
@@ -2773,20 +2803,20 @@ async fn handle_analyze_lint_hotspot(
         }
     };
     let output_path = temp_file.path().to_path_buf();
-    
+
     // Run lint hotspot analysis with JSON output to temp file
     let result = handle_analyze_lint_hotspot(
         project_path.clone(),
         None, // file
         LintHotspotOutputFormat::Json,
-        100.0, // max_density
-        0.0, // min_confidence
-        false, // enforce
-        false, // dry_run
-        false, // enforcement_metadata
+        100.0,                     // max_density
+        0.0,                       // min_confidence
+        false,                     // enforce
+        false,                     // dry_run
+        false,                     // enforcement_metadata
         Some(output_path.clone()), // output to temp file
-        false, // perf
-        String::new(), // clippy_flags
+        false,                     // perf
+        String::new(),             // clippy_flags
         args.top_files,
     )
     .await;
@@ -2810,7 +2840,7 @@ async fn handle_analyze_lint_hotspot(
             );
         }
     };
-    
+
     let lint_data: serde_json::Value = match serde_json::from_str(&json_output) {
         Ok(data) => data,
         Err(e) => {
@@ -2821,12 +2851,14 @@ async fn handle_analyze_lint_hotspot(
             );
         }
     };
-    
+
     // Extract data from JSON
     let hotspots = lint_data["hotspots"].as_array().unwrap_or(&vec![]).clone();
     let total_files = lint_data["total_files_analyzed"].as_u64().unwrap_or(0) as usize;
     let total_violations = lint_data["total_violations"].as_u64().unwrap_or(0) as usize;
-    let average_violations_per_file = lint_data["average_violations_per_file"].as_f64().unwrap_or(0.0);
+    let average_violations_per_file = lint_data["average_violations_per_file"]
+        .as_f64()
+        .unwrap_or(0.0);
 
     // Format output based on requested format
     let output = match args.format.as_str() {
@@ -2850,9 +2882,12 @@ async fn handle_analyze_lint_hotspot(
             table.push_str("====================\n");
             table.push_str(&format!("Total files analyzed: {}\n", total_files));
             table.push_str(&format!("Total violations: {}\n", total_violations));
-            table.push_str(&format!("Average violations per file: {:.2}\n\n", average_violations_per_file));
+            table.push_str(&format!(
+                "Average violations per file: {:.2}\n\n",
+                average_violations_per_file
+            ));
             table.push_str("No hotspots found.\n");
-            
+
             json!({
                 "formatted_output": table,
                 "stats": {

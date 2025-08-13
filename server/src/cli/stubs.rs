@@ -146,15 +146,16 @@ async fn perform_tdg_analysis(
         include_components,
         critical_only,
         verbose,
-    ).await?;
-    
+    )
+    .await?;
+
     if let Some(output_path) = output {
         std::fs::write(output_path, output_content)?;
         eprintln!("✅ TDG analysis saved to {}", output_path.display());
     } else {
         print!("{}", output_content);
     }
-    
+
     Ok(())
 }
 
@@ -174,30 +175,52 @@ pub async fn handle_analyze_tdg(
     watch: bool,
 ) -> Result<()> {
     use crate::services::tdg_calculator::TDGCalculator;
-    
+
     if watch {
-        use tokio::time::Duration;
         use notify::{RecommendedWatcher, RecursiveMode, Watcher};
         use std::sync::mpsc;
-        
+        use tokio::time::Duration;
+
         eprintln!("👁️  Watching for changes in TDG analysis...");
         let (tx, rx) = mpsc::channel();
-        
+
         let mut watcher = RecommendedWatcher::new(
             tx,
-            notify::Config::default().with_poll_interval(Duration::from_secs(2))
+            notify::Config::default().with_poll_interval(Duration::from_secs(2)),
         )?;
         watcher.watch(&path, RecursiveMode::Recursive)?;
-        
+
         // Initial analysis
         let calculator = crate::services::tdg_calculator::TDGCalculator::new();
-        perform_tdg_analysis(&calculator, &path, threshold, top, &format, _include_components, &output, _critical_only, _verbose).await?;
-        
+        perform_tdg_analysis(
+            &calculator,
+            &path,
+            threshold,
+            top,
+            &format,
+            _include_components,
+            &output,
+            _critical_only,
+            _verbose,
+        )
+        .await?;
+
         loop {
             match rx.recv() {
                 Ok(_event) => {
                     eprintln!("🔄 Change detected, re-analyzing...");
-                    perform_tdg_analysis(&calculator, &path, threshold, top, &format, _include_components, &output, _critical_only, _verbose).await?;
+                    perform_tdg_analysis(
+                        &calculator,
+                        &path,
+                        threshold,
+                        top,
+                        &format,
+                        _include_components,
+                        &output,
+                        _critical_only,
+                        _verbose,
+                    )
+                    .await?;
                 }
                 Err(e) => {
                     eprintln!("❌ Watch error: {}", e);
@@ -207,12 +230,12 @@ pub async fn handle_analyze_tdg(
         }
         return Ok(());
     }
-    
+
     eprintln!("🔍 Analyzing Technical Debt Gradient...");
-    
+
     // Create TDG calculator
     let calculator = TDGCalculator::new();
-    
+
     // Determine analysis mode and generate output
     let output_content = if let Some(single_file) = file {
         // Single file mode
@@ -225,7 +248,8 @@ pub async fn handle_analyze_tdg(
             _include_components,
             _critical_only,
             _verbose,
-        ).await?
+        )
+        .await?
     } else if !files.is_empty() {
         // Multiple files mode (MCP tool composition)
         analyze_multiple_files(
@@ -238,7 +262,8 @@ pub async fn handle_analyze_tdg(
             _include_components,
             _critical_only,
             _verbose,
-        ).await?
+        )
+        .await?
     } else {
         // Project mode
         analyze_project(
@@ -251,9 +276,10 @@ pub async fn handle_analyze_tdg(
             _include_components,
             _critical_only,
             _verbose,
-        ).await?
+        )
+        .await?
     };
-    
+
     // Output results
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &output_content).await?;
@@ -261,7 +287,7 @@ pub async fn handle_analyze_tdg(
     } else {
         println!("{output_content}");
     }
-    
+
     eprintln!("✅ TDG analysis complete");
 
     Ok(())
@@ -281,7 +307,6 @@ async fn analyze_single_file(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
-    
     eprintln!("📄 Analyzing TDG for file: {}", file.display());
 
     // Resolve path
@@ -323,7 +348,6 @@ async fn analyze_multiple_files(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
-    
     eprintln!("📄 Analyzing TDG for {} files...", files.len());
 
     let mut results = Vec::new();
@@ -391,7 +415,8 @@ async fn analyze_project(
     let mut summary = calculator.analyze_directory(project_path).await?;
 
     // Filter hotspots based on criteria
-    summary.hotspots = summary.hotspots
+    summary.hotspots = summary
+        .hotspots
         .into_iter()
         .filter(|h| {
             if critical_only {
@@ -408,13 +433,21 @@ async fn analyze_project(
 }
 
 /// Create a summary from individual file results
-fn create_summary_from_file_results(results: &[(crate::models::tdg::TDGScore, PathBuf)]) -> crate::models::tdg::TDGSummary {
+fn create_summary_from_file_results(
+    results: &[(crate::models::tdg::TDGScore, PathBuf)],
+) -> crate::models::tdg::TDGSummary {
     use crate::models::tdg::{TDGHotspot, TDGSeverity, TDGSummary};
-    
+
     let total_files = results.len();
-    let critical_files = results.iter().filter(|(s, _)| matches!(s.severity, TDGSeverity::Critical)).count();
-    let warning_files = results.iter().filter(|(s, _)| matches!(s.severity, TDGSeverity::Warning)).count();
-    
+    let critical_files = results
+        .iter()
+        .filter(|(s, _)| matches!(s.severity, TDGSeverity::Critical))
+        .count();
+    let warning_files = results
+        .iter()
+        .filter(|(s, _)| matches!(s.severity, TDGSeverity::Warning))
+        .count();
+
     let tdg_values: Vec<f64> = results.iter().map(|(s, _)| s.value).collect();
     let average_tdg = if tdg_values.is_empty() {
         0.0
@@ -425,7 +458,7 @@ fn create_summary_from_file_results(results: &[(crate::models::tdg::TDGScore, Pa
     // Calculate percentiles
     let mut sorted_values = tdg_values.clone();
     sorted_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    
+
     let p95_tdg = percentile(&sorted_values, 0.95);
     let p99_tdg = percentile(&sorted_values, 0.99);
 
@@ -481,7 +514,7 @@ fn format_tdg_single_file_output(
     verbose: bool,
 ) -> Result<String> {
     use crate::models::tdg::{TDGHotspot, TDGSeverity, TDGSummary};
-    
+
     // Create a single-file summary
     let hotspot = TDGHotspot {
         path: path.display().to_string(),
@@ -492,8 +525,16 @@ fn format_tdg_single_file_output(
 
     let summary = TDGSummary {
         total_files: 1,
-        critical_files: if matches!(score.severity, TDGSeverity::Critical) { 1 } else { 0 },
-        warning_files: if matches!(score.severity, TDGSeverity::Warning) { 1 } else { 0 },
+        critical_files: if matches!(score.severity, TDGSeverity::Critical) {
+            1
+        } else {
+            0
+        },
+        warning_files: if matches!(score.severity, TDGSeverity::Warning) {
+            1
+        } else {
+            0
+        },
         average_tdg: score.value,
         p95_tdg: score.value,
         p99_tdg: score.value,
@@ -516,43 +557,52 @@ fn format_empty_results(format: TdgOutputFormat) -> String {
 
 // Format implementations...
 
-fn format_table_output(summary: &crate::models::tdg::TDGSummary, include_components: bool, verbose: bool) -> String {
+fn format_table_output(
+    summary: &crate::models::tdg::TDGSummary,
+    include_components: bool,
+    verbose: bool,
+) -> String {
     let mut table = String::new();
     table.push_str("\n# Technical Debt Gradient Analysis\n\n");
-    table.push_str(&format!("📊 **Total Files Analyzed**: {}\n", summary.total_files));
-    
+    table.push_str(&format!(
+        "📊 **Total Files Analyzed**: {}\n",
+        summary.total_files
+    ));
+
     if summary.total_files > 0 {
-        table.push_str(&format!("🔴 **Critical Files**: {} ({:.1}%)\n", 
-            summary.critical_files, 
+        table.push_str(&format!(
+            "🔴 **Critical Files**: {} ({:.1}%)\n",
+            summary.critical_files,
             (summary.critical_files as f64 / summary.total_files as f64) * 100.0
         ));
-        table.push_str(&format!("🟡 **Warning Files**: {} ({:.1}%)\n", 
+        table.push_str(&format!(
+            "🟡 **Warning Files**: {} ({:.1}%)\n",
             summary.warning_files,
             (summary.warning_files as f64 / summary.total_files as f64) * 100.0
         ));
     }
-    
+
     table.push_str(&format!("📈 **Average TDG**: {:.2}\n", summary.average_tdg));
     table.push_str(&format!("📊 **95th Percentile**: {:.2}\n", summary.p95_tdg));
     table.push_str(&format!("📊 **99th Percentile**: {:.2}\n", summary.p99_tdg));
-    table.push_str(&format!("⏱️  **Estimated Debt**: {:.1} hours\n\n", summary.estimated_debt_hours));
-    
+    table.push_str(&format!(
+        "⏱️  **Estimated Debt**: {:.1} hours\n\n",
+        summary.estimated_debt_hours
+    ));
+
     if !summary.hotspots.is_empty() {
         table.push_str("## Top Hotspots\n\n");
         table.push_str("| File | TDG Score | Primary Factor | Est. Hours |\n");
         table.push_str("|------|-----------|----------------|------------|\n");
-        
+
         for hotspot in &summary.hotspots {
             table.push_str(&format!(
                 "| {} | {:.2} | {} | {:.1} |\n",
-                hotspot.path,
-                hotspot.tdg_score,
-                hotspot.primary_factor,
-                hotspot.estimated_hours
+                hotspot.path, hotspot.tdg_score, hotspot.primary_factor, hotspot.estimated_hours
             ));
         }
     }
-    
+
     if include_components && verbose {
         table.push_str("\n## Component Weights\n\n");
         table.push_str("| Component | Weight |\n");
@@ -563,11 +613,14 @@ fn format_table_output(summary: &crate::models::tdg::TDGSummary, include_compone
         table.push_str("| Domain Risk | 10% |\n");
         table.push_str("| Duplication | 10% |\n");
     }
-    
+
     table
 }
 
-fn format_json_output(summary: &crate::models::tdg::TDGSummary, include_components: bool) -> String {
+fn format_json_output(
+    summary: &crate::models::tdg::TDGSummary,
+    include_components: bool,
+) -> String {
     let json_output = serde_json::json!({
         "summary": {
             "total_files": summary.total_files,
@@ -591,42 +644,56 @@ fn format_json_output(summary: &crate::models::tdg::TDGSummary, include_componen
             None
         }
     });
-    
+
     serde_json::to_string_pretty(&json_output).unwrap_or_else(|_| "{}".to_string())
 }
 
-fn format_markdown_output(summary: &crate::models::tdg::TDGSummary, include_components: bool) -> String {
+fn format_markdown_output(
+    summary: &crate::models::tdg::TDGSummary,
+    include_components: bool,
+) -> String {
     let mut md = String::new();
     md.push_str("# Technical Debt Gradient Analysis\n\n");
     md.push_str("## Summary\n\n");
     md.push_str(&format!("- **Total Files**: {}\n", summary.total_files));
-    
+
     if summary.total_files > 0 {
-        md.push_str(&format!("- **Critical Files**: {} ({:.1}%)\n", 
-            summary.critical_files, 
+        md.push_str(&format!(
+            "- **Critical Files**: {} ({:.1}%)\n",
+            summary.critical_files,
             (summary.critical_files as f64 / summary.total_files as f64) * 100.0
         ));
-        md.push_str(&format!("- **Warning Files**: {} ({:.1}%)\n", 
+        md.push_str(&format!(
+            "- **Warning Files**: {} ({:.1}%)\n",
             summary.warning_files,
             (summary.warning_files as f64 / summary.total_files as f64) * 100.0
         ));
     }
-    
+
     md.push_str(&format!("- **Average TDG**: {:.2}\n", summary.average_tdg));
     md.push_str(&format!("- **95th Percentile**: {:.2}\n", summary.p95_tdg));
     md.push_str(&format!("- **99th Percentile**: {:.2}\n", summary.p99_tdg));
-    md.push_str(&format!("- **Estimated Technical Debt**: {:.1} hours\n\n", summary.estimated_debt_hours));
-    
+    md.push_str(&format!(
+        "- **Estimated Technical Debt**: {:.1} hours\n\n",
+        summary.estimated_debt_hours
+    ));
+
     if !summary.hotspots.is_empty() {
         md.push_str("## Hotspots\n\n");
         for (i, hotspot) in summary.hotspots.iter().enumerate() {
             md.push_str(&format!("### {}. {}\n\n", i + 1, hotspot.path));
             md.push_str(&format!("- **TDG Score**: {:.2}\n", hotspot.tdg_score));
-            md.push_str(&format!("- **Primary Factor**: {}\n", hotspot.primary_factor));
-            md.push_str(&format!("- **Estimated Refactoring Time**: {:.1} hours\n\n", hotspot.estimated_hours));
+            md.push_str(&format!(
+                "- **Primary Factor**: {}\n",
+                hotspot.primary_factor
+            ));
+            md.push_str(&format!(
+                "- **Estimated Refactoring Time**: {:.1} hours\n\n",
+                hotspot.estimated_hours
+            ));
         }
     }
-    
+
     if include_components {
         md.push_str("## TDG Components\n\n");
         md.push_str("The Technical Debt Gradient is calculated using the following weighted components:\n\n");
@@ -636,7 +703,7 @@ fn format_markdown_output(summary: &crate::models::tdg::TDGSummary, include_comp
         md.push_str("- **Domain Risk** (10%): Critical domain areas (auth, crypto, etc.)\n");
         md.push_str("- **Duplication** (10%): Code duplication percentage\n");
     }
-    
+
     md
 }
 
@@ -670,7 +737,7 @@ fn format_sarif_output(summary: &crate::models::tdg::TDGSummary) -> String {
                     "ruleId": "TDG001",
                     "level": if hotspot.tdg_score > 2.5 { "error" } else { "warning" },
                     "message": {
-                        "text": format!("TDG score {:.2} - Primary factor: {}", 
+                        "text": format!("TDG score {:.2} - Primary factor: {}",
                             hotspot.tdg_score, hotspot.primary_factor)
                     },
                     "locations": [{
@@ -689,7 +756,7 @@ fn format_sarif_output(summary: &crate::models::tdg::TDGSummary) -> String {
             }).collect::<Vec<_>>()
         }]
     });
-    
+
     serde_json::to_string_pretty(&sarif).unwrap_or_else(|_| "{}".to_string())
 }
 
@@ -699,7 +766,7 @@ fn percentile(sorted_values: &[f64], p: f64) -> f64 {
     if sorted_values.is_empty() {
         return 0.0;
     }
-    
+
     let index = (sorted_values.len() as f64 * p) as usize;
     let index = index.min(sorted_values.len() - 1);
     sorted_values[index]
@@ -713,7 +780,7 @@ fn identify_primary_factor(components: &crate::models::tdg::TDGComponents) -> St
         (components.domain_risk * 0.10, "Domain Risk"),
         (components.duplication * 0.10, "Code Duplication"),
     ];
-    
+
     factors.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
     factors[0].1.to_string()
 }
@@ -804,16 +871,17 @@ fn handle_makefile_fix_mode(fix: bool, filtered_violations: &[makefile_linter::V
     if !fix {
         return;
     }
-    
-    let fixable_violations: Vec<_> = filtered_violations.iter()
+
+    let fixable_violations: Vec<_> = filtered_violations
+        .iter()
         .filter(|v| v.fix_hint.is_some())
         .collect();
-    
+
     if fixable_violations.is_empty() {
         eprintln!("\n💡 No automatically fixable violations found.");
         return;
     }
-    
+
     eprintln!("\n🔧 Applying automatic fixes...");
     let fix_count = fixable_violations.len();
     for violation in fixable_violations {
@@ -1969,27 +2037,44 @@ async fn write_churn_output(content: String, output: Option<PathBuf>) -> Result<
     Ok(())
 }
 
-
 /// Format SATD items as JSON
-fn format_satd_json(items: &[crate::services::satd_detector::TechnicalDebt], metrics: bool, evolution: bool) -> String {
+fn format_satd_json(
+    items: &[crate::services::satd_detector::TechnicalDebt],
+    metrics: bool,
+    evolution: bool,
+) -> String {
     let mut json_obj = serde_json::Map::new();
-    json_obj.insert("total_items".to_string(), serde_json::Value::Number(items.len().into()));
-    json_obj.insert("items".to_string(), serde_json::to_value(items).unwrap_or_default());
-    
+    json_obj.insert(
+        "total_items".to_string(),
+        serde_json::Value::Number(items.len().into()),
+    );
+    json_obj.insert(
+        "items".to_string(),
+        serde_json::to_value(items).unwrap_or_default(),
+    );
+
     if metrics {
-        let severity_counts: std::collections::HashMap<String, usize> = items.iter()
-            .fold(std::collections::HashMap::new(), |mut acc, item| {
-                let sev_str = format!("{:?}", item.severity);
-                *acc.entry(sev_str).or_insert(0) += 1;
-                acc
-            });
-        json_obj.insert("metrics".to_string(), serde_json::to_value(severity_counts).unwrap_or_default());
+        let severity_counts: std::collections::HashMap<String, usize> =
+            items
+                .iter()
+                .fold(std::collections::HashMap::new(), |mut acc, item| {
+                    let sev_str = format!("{:?}", item.severity);
+                    *acc.entry(sev_str).or_insert(0) += 1;
+                    acc
+                });
+        json_obj.insert(
+            "metrics".to_string(),
+            serde_json::to_value(severity_counts).unwrap_or_default(),
+        );
     }
-    
+
     if evolution {
-        json_obj.insert("evolution".to_string(), serde_json::Value::String("Evolution data would be included".to_string()));
+        json_obj.insert(
+            "evolution".to_string(),
+            serde_json::Value::String("Evolution data would be included".to_string()),
+        );
     }
-    
+
     serde_json::to_string_pretty(&json_obj).unwrap_or_default()
 }
 
@@ -2007,59 +2092,73 @@ fn format_satd_sarif(items: &[crate::services::satd_detector::TechnicalDebt]) ->
             "results": []
         }]
     });
-    
-    let results = items.iter().map(|item| {
-        serde_json::json!({
-            "ruleId": format!("{:?}", item.category),
-            "level": match item.severity {
-                crate::services::satd_detector::Severity::Critical => "error",
-                crate::services::satd_detector::Severity::High => "error", 
-                crate::services::satd_detector::Severity::Medium => "warning",
-                crate::services::satd_detector::Severity::Low => "note"
-            },
-            "message": {
-                "text": item.text
-            },
-            "locations": [{
-                "physicalLocation": {
-                    "artifactLocation": {
-                        "uri": item.file.to_string_lossy()
-                    },
-                    "region": {
-                        "startLine": item.line
+
+    let results = items
+        .iter()
+        .map(|item| {
+            serde_json::json!({
+                "ruleId": format!("{:?}", item.category),
+                "level": match item.severity {
+                    crate::services::satd_detector::Severity::Critical => "error",
+                    crate::services::satd_detector::Severity::High => "error",
+                    crate::services::satd_detector::Severity::Medium => "warning",
+                    crate::services::satd_detector::Severity::Low => "note"
+                },
+                "message": {
+                    "text": item.text
+                },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": item.file.to_string_lossy()
+                        },
+                        "region": {
+                            "startLine": item.line
+                        }
                     }
-                }
-            }]
+                }]
+            })
         })
-    }).collect::<Vec<_>>();
-    
+        .collect::<Vec<_>>();
+
     sarif["runs"][0]["results"] = serde_json::Value::Array(results);
     serde_json::to_string_pretty(&sarif).unwrap_or_default()
 }
 
 /// Format SATD items as Markdown
-fn format_satd_markdown(items: &[crate::services::satd_detector::TechnicalDebt], evolution: bool, days: u32) -> String {
+fn format_satd_markdown(
+    items: &[crate::services::satd_detector::TechnicalDebt],
+    evolution: bool,
+    days: u32,
+) -> String {
     let mut output = String::from("# SATD Analysis Report\n\n");
-    
+
     if items.is_empty() {
         output.push_str("✅ **No SATD items found.** Excellent technical debt management!\n");
         return output;
     }
-    
+
     output.push_str(&format!("📊 **Total SATD items:** {}\n\n", items.len()));
-    
+
     output.push_str("## Items by Severity\n\n");
     let mut severity_groups = std::collections::HashMap::new();
     for item in items {
-        severity_groups.entry(format!("{:?}", item.severity)).or_insert_with(Vec::new).push(item);
+        severity_groups
+            .entry(format!("{:?}", item.severity))
+            .or_insert_with(Vec::new)
+            .push(item);
     }
-    
+
     for (severity, group_items) in severity_groups {
-        output.push_str(&format!("### {} ({} items)\n\n", severity, group_items.len()));
+        output.push_str(&format!(
+            "### {} ({} items)\n\n",
+            severity,
+            group_items.len()
+        ));
         for item in group_items {
             let category_str = format!("{:?}", item.category);
             output.push_str(&format!(
-                "- **{}** (line {}): {} - _{}_\n", 
+                "- **{}** (line {}): {} - _{}_\n",
                 item.file.file_name().unwrap_or_default().to_string_lossy(),
                 item.line,
                 category_str,
@@ -2068,11 +2167,14 @@ fn format_satd_markdown(items: &[crate::services::satd_detector::TechnicalDebt],
         }
         output.push('\n');
     }
-    
+
     if evolution {
-        output.push_str(&format!("## Evolution Analysis\n\nEvolution tracking over {} days would be displayed here.\n", days));
+        output.push_str(&format!(
+            "## Evolution Analysis\n\nEvolution tracking over {} days would be displayed here.\n",
+            days
+        ));
     }
-    
+
     output
 }
 
@@ -2081,29 +2183,29 @@ fn format_satd_summary(items: &[crate::services::satd_detector::TechnicalDebt]) 
     if items.is_empty() {
         return "✅ No SATD items found. Excellent technical debt management!\n".to_string();
     }
-    
+
     let mut severity_counts = std::collections::HashMap::new();
     let mut type_counts = std::collections::HashMap::new();
-    
+
     for item in items {
         let sev_str = format!("{:?}", item.severity);
         let cat_str = format!("{:?}", item.category);
         *severity_counts.entry(sev_str).or_insert(0) += 1;
         *type_counts.entry(cat_str).or_insert(0) += 1;
     }
-    
+
     let mut output = format!("📊 SATD Summary: {} total items\n\n", items.len());
-    
+
     output.push_str("By Severity:\n");
     for (severity, count) in severity_counts {
         output.push_str(&format!("  {}: {}\n", severity, count));
     }
-    
+
     output.push_str("\nBy Type:\n");
     for (debt_type, count) in type_counts {
         output.push_str(&format!("  {}: {}\n", debt_type, count));
     }
-    
+
     output
 }
 
@@ -2111,11 +2213,20 @@ fn format_satd_summary(items: &[crate::services::satd_detector::TechnicalDebt]) 
 fn print_satd_metrics(items: &[crate::services::satd_detector::TechnicalDebt]) {
     eprintln!("\n📈 SATD Metrics:");
     eprintln!("  Total items: {}", items.len());
-    
-    let high_severity_count = items.iter().filter(|item| matches!(item.severity, crate::services::satd_detector::Severity::High)).count();
+
+    let high_severity_count = items
+        .iter()
+        .filter(|item| {
+            matches!(
+                item.severity,
+                crate::services::satd_detector::Severity::High
+            )
+        })
+        .count();
     eprintln!("  High severity: {}", high_severity_count);
-    
-    let files_with_satd: std::collections::HashSet<_> = items.iter().map(|item| &item.file).collect();
+
+    let files_with_satd: std::collections::HashSet<_> =
+        items.iter().map(|item| &item.file).collect();
     eprintln!("  Files affected: {}", files_with_satd.len());
 }
 
@@ -2132,22 +2243,22 @@ pub async fn handle_analyze_satd(
     output: Option<PathBuf>,
 ) -> Result<()> {
     use crate::services::satd_detector::SATDDetector;
-    
+
     eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
-    
+
     // Create SATD detector with configuration
     let detector = SATDDetector::new();
-    
+
     // Run analysis
     let satd_items = if include_tests {
         detector.analyze_directory_with_tests(&path, true).await?
     } else {
         detector.analyze_directory(&path).await?
     };
-    
+
     // Apply filters
     let mut filtered_items = satd_items;
-    
+
     // Filter by severity if specified
     if let Some(min_severity) = severity {
         let min_sev = match min_severity {
@@ -2158,12 +2269,18 @@ pub async fn handle_analyze_satd(
         };
         filtered_items.retain(|item| item.severity as u8 >= min_sev as u8);
     }
-    
+
     // Filter for critical items only if requested
     if critical_only {
-        filtered_items.retain(|item| matches!(item.severity, crate::services::satd_detector::Severity::Critical | crate::services::satd_detector::Severity::High));
+        filtered_items.retain(|item| {
+            matches!(
+                item.severity,
+                crate::services::satd_detector::Severity::Critical
+                    | crate::services::satd_detector::Severity::High
+            )
+        });
     }
-    
+
     // Generate output based on format
     let output_content = match format {
         SatdOutputFormat::Summary => format_satd_summary(&filtered_items),
@@ -2171,7 +2288,7 @@ pub async fn handle_analyze_satd(
         SatdOutputFormat::Sarif => format_satd_sarif(&filtered_items),
         SatdOutputFormat::Markdown => format_satd_markdown(&filtered_items, evolution, days),
     };
-    
+
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &output_content).await?;
@@ -2179,14 +2296,13 @@ pub async fn handle_analyze_satd(
     } else {
         println!("{}", output_content);
     }
-    
+
     if metrics {
         print_satd_metrics(&filtered_items);
     }
-    
+
     Ok(())
 }
-
 
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_dag(
@@ -2203,25 +2319,27 @@ pub async fn handle_analyze_dag(
     eprintln!("🔍 Analyzing Directed Acyclic Graph (DAG)...");
     eprintln!("📊 DAG Type: {:?}", dag_type);
     eprintln!("📁 Project: {}", project_path.display());
-    
+
     // Simple DAG analysis implementation
     let mut output_content = String::new();
     output_content.push_str(&format!("# {:?} DAG Analysis\n\n", dag_type));
     output_content.push_str(&format!("Project: {}\n", project_path.display()));
-    
+
     if let Some(depth) = max_depth {
         output_content.push_str(&format!("Max depth: {}\n", depth));
     }
-    
+
     output_content.push_str(&format!("Filter external: {}\n", filter_external));
     output_content.push_str(&format!("Show complexity: {}\n", show_complexity));
     output_content.push_str(&format!("Include duplicates: {}\n", include_duplicates));
     output_content.push_str(&format!("Include dead code: {}\n", include_dead_code));
     output_content.push_str(&format!("Enhanced mode: {}\n", enhanced));
-    
+
     output_content.push_str("\n## Analysis Results\n");
-    output_content.push_str("DAG analysis functionality will be implemented with proper AST-based analysis.\n");
-    
+    output_content.push_str(
+        "DAG analysis functionality will be implemented with proper AST-based analysis.\n",
+    );
+
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &output_content).await?;
@@ -2229,7 +2347,7 @@ pub async fn handle_analyze_dag(
     } else {
         println!("{}", output_content);
     }
-    
+
     Ok(())
 }
 
@@ -2291,7 +2409,7 @@ pub async fn handle_analyze_dag(
 /// //   ✓ Security vulnerabilities
 /// //   🔍 Checking complexity... 2 violations found (0.123s)
 /// //   🔍 Checking security... 0 violations found (0.045s)
-/// // 
+/// //
 /// // ⏱️  Performance Metrics:
 /// //   Total execution time: 0.17s
 /// //   Checks performed: 2
@@ -2314,12 +2432,12 @@ pub async fn handle_quality_gate(
     perf: bool,
 ) -> Result<()> {
     use std::time::Instant;
-    
+
     let start_time = if perf { Some(Instant::now()) } else { None };
-    
+
     // Print initial status message
     print_quality_gate_start_message(&file);
-    
+
     // Show which checks will be run
     let checks_to_run = if checks.is_empty() {
         vec![QualityCheckType::All]
@@ -2356,16 +2474,19 @@ pub async fn handle_quality_gate(
         )
         .await
     };
-    
+
     // Show performance metrics if requested
     if let Some(start) = start_time {
         let duration = start.elapsed();
         eprintln!("\n⏱️  Performance Metrics:");
         eprintln!("  Total execution time: {:.2}s", duration.as_secs_f64());
         eprintln!("  Checks performed: {}", checks_to_run.len());
-        eprintln!("  Average time per check: {:.2}s", duration.as_secs_f64() / checks_to_run.len() as f64);
+        eprintln!(
+            "  Average time per check: {:.2}s",
+            duration.as_secs_f64() / checks_to_run.len() as f64
+        );
     }
-    
+
     result
 }
 
@@ -2384,7 +2505,7 @@ fn print_quality_gate_start_message(file: &Option<PathBuf>) {
 /// Prints which checks will be run
 fn print_checks_to_run(checks: &[QualityCheckType]) {
     eprintln!("\n📋 Checks to run:");
-    
+
     if checks.contains(&QualityCheckType::All) {
         eprintln!("  ✓ Complexity analysis");
         eprintln!("  ✓ Dead code detection");
@@ -2437,7 +2558,7 @@ async fn handle_single_file_quality_gate(
 
     // Run checks on the single file
     let check_start = if perf { Some(Instant::now()) } else { None };
-    
+
     run_single_file_checks(
         &project_path,
         &single_file,
@@ -2447,7 +2568,7 @@ async fn handle_single_file_quality_gate(
         &mut results,
     )
     .await?;
-    
+
     if let Some(start) = check_start {
         let duration = start.elapsed();
         eprintln!("\n⏱️  File analysis took: {:.3}s", duration.as_secs_f64());
@@ -2660,7 +2781,7 @@ async fn handle_project_quality_gate(
 
     // Run selected checks
     let checks_start = if perf { Some(Instant::now()) } else { None };
-    
+
     run_project_checks(
         &project_path,
         &checks,
@@ -2678,15 +2799,21 @@ async fn handle_project_quality_gate(
         let prov_start = if perf { Some(Instant::now()) } else { None };
         let provability_score = calculate_provability_score(&project_path).await?;
         results.provability_score = Some(provability_score);
-        
+
         if let Some(start) = prov_start {
-            eprintln!("  ⏱️  Provability analysis: {:.3}s", start.elapsed().as_secs_f64());
+            eprintln!(
+                "  ⏱️  Provability analysis: {:.3}s",
+                start.elapsed().as_secs_f64()
+            );
         }
     }
-    
+
     if let Some(start) = checks_start {
         let duration = start.elapsed();
-        eprintln!("\n⏱️  All checks completed in: {:.3}s", duration.as_secs_f64());
+        eprintln!(
+            "\n⏱️  All checks completed in: {:.3}s",
+            duration.as_secs_f64()
+        );
     }
 
     // Calculate overall pass/fail
@@ -2735,7 +2862,7 @@ async fn run_project_checks(
         // Otherwise run each specified check
         for check in checks {
             let check_start = if perf { Some(Instant::now()) } else { None };
-            
+
             run_single_project_check(
                 check,
                 project_path,
@@ -2747,7 +2874,7 @@ async fn run_project_checks(
                 perf,
             )
             .await?;
-            
+
             if let Some(start) = check_start {
                 let check_name = match check {
                     QualityCheckType::Complexity => "Complexity",
@@ -2761,7 +2888,11 @@ async fn run_project_checks(
                     QualityCheckType::Provability => "Provability",
                     QualityCheckType::All => "All",
                 };
-                eprintln!("    ⏱️  {} check: {:.3}s", check_name, start.elapsed().as_secs_f64());
+                eprintln!(
+                    "    ⏱️  {} check: {:.3}s",
+                    check_name,
+                    start.elapsed().as_secs_f64()
+                );
             }
         }
     }
@@ -2871,7 +3002,7 @@ async fn run_all_project_checks(
     perf: bool,
 ) -> Result<()> {
     use std::time::Instant;
-    
+
     // Run all checks
     eprint!("  🔍 Checking complexity...");
     let start = if perf { Some(Instant::now()) } else { None };
@@ -2879,7 +3010,11 @@ async fn run_all_project_checks(
     results.complexity_violations = complexity_violations.len();
     violations.extend(complexity_violations);
     if let Some(s) = start {
-        eprintln!(" {} violations found ({:.3}s)", results.complexity_violations, s.elapsed().as_secs_f64());
+        eprintln!(
+            " {} violations found ({:.3}s)",
+            results.complexity_violations,
+            s.elapsed().as_secs_f64()
+        );
     } else {
         eprintln!(" {} violations found", results.complexity_violations);
     }
@@ -2893,21 +3028,53 @@ async fn run_all_project_checks(
             results.$result_field = check_violations.len();
             violations.extend(check_violations);
             if let Some(s) = start {
-                eprintln!(" {} violations found ({:.3}s)", results.$result_field, s.elapsed().as_secs_f64());
+                eprintln!(
+                    " {} violations found ({:.3}s)",
+                    results.$result_field,
+                    s.elapsed().as_secs_f64()
+                );
             } else {
                 eprintln!(" {} violations found", results.$result_field);
             }
         }};
     }
 
-    run_check!("dead code", check_dead_code(project_path, max_dead_code), dead_code_violations);
+    run_check!(
+        "dead code",
+        check_dead_code(project_path, max_dead_code),
+        dead_code_violations
+    );
     run_check!("technical debt", check_satd(project_path), satd_violations);
-    run_check!("code entropy", check_entropy(project_path, min_entropy), entropy_violations);
-    run_check!("security", check_security(project_path), security_violations);
-    run_check!("duplicates", check_duplicates(project_path), duplicate_violations);
-    run_check!("test coverage", check_coverage(project_path, 80.0), coverage_violations);
-    run_check!("documentation sections", check_sections(project_path), section_violations);
-    run_check!("provability", check_provability(project_path, 0.7), provability_violations);
+    run_check!(
+        "code entropy",
+        check_entropy(project_path, min_entropy),
+        entropy_violations
+    );
+    run_check!(
+        "security",
+        check_security(project_path),
+        security_violations
+    );
+    run_check!(
+        "duplicates",
+        check_duplicates(project_path),
+        duplicate_violations
+    );
+    run_check!(
+        "test coverage",
+        check_coverage(project_path, 80.0),
+        coverage_violations
+    );
+    run_check!(
+        "documentation sections",
+        check_sections(project_path),
+        section_violations
+    );
+    run_check!(
+        "provability",
+        check_provability(project_path, 0.7),
+        provability_violations
+    );
 
     Ok(())
 }
@@ -2966,16 +3133,19 @@ pub async fn handle_serve(host: String, port: u16, cors: bool) -> Result<()> {
 
     eprintln!("🚀 Starting PMAT HTTP server on {}:{}...", host, port);
     eprintln!("✅ Server configuration complete.");
-    eprintln!("📍 Health check would be available at: http://{}:{}/health", host, port);
+    eprintln!(
+        "📍 Health check would be available at: http://{}:{}/health",
+        host, port
+    );
     eprintln!("🌐 CORS: {}", if cors { "enabled" } else { "disabled" });
-    
+
     eprintln!("\n🔧 HTTP server functionality ready for implementation.");
     eprintln!("Press Ctrl+C to exit.\n");
-    
+
     // Wait for shutdown signal
     tokio::signal::ctrl_c().await?;
     eprintln!("🛑 Shutting down server...");
-    
+
     Ok(())
 }
 
@@ -3209,7 +3379,7 @@ pub struct QualityGateResults {
 impl Default for QualityGateResults {
     fn default() -> Self {
         Self {
-            passed: true,  // Default to passed when no violations
+            passed: true, // Default to passed when no violations
             total_violations: 0,
             complexity_violations: 0,
             dead_code_violations: 0,
@@ -3344,36 +3514,38 @@ fn is_source_file(path: &Path) -> bool {
         path.extension().and_then(|s| s.to_str()),
         Some("rs" | "js" | "ts" | "py" | "java" | "cpp" | "c")
     );
-    
+
     if !has_source_extension {
         return false;
     }
-    
+
     // Exclude test and example files
     let path_str = path.to_string_lossy();
-    if path_str.contains("/tests/") || 
-       path_str.contains("/test/") ||
-       path_str.contains("/examples/") ||
-       path_str.contains("/benches/") ||
-       path_str.contains("/fixtures/") ||
-       path_str.contains("/testdata/") ||
-       path_str.contains("/test_data/") ||
-       path_str.contains("/debug_test/") ||
-       path_str.contains("/test-") {
+    if path_str.contains("/tests/")
+        || path_str.contains("/test/")
+        || path_str.contains("/examples/")
+        || path_str.contains("/benches/")
+        || path_str.contains("/fixtures/")
+        || path_str.contains("/testdata/")
+        || path_str.contains("/test_data/")
+        || path_str.contains("/debug_test/")
+        || path_str.contains("/test-")
+    {
         return false;
     }
-    
+
     // Exclude test files by name pattern (but not simple test.rs in non-test dirs)
     if let Some(file_name) = path.file_name() {
         let fname = file_name.to_string_lossy();
-        if fname.ends_with("_test.rs") || 
-           fname.ends_with("_tests.rs") ||
-           fname.starts_with("test_") ||
-           fname.contains("_test_") {
+        if fname.ends_with("_test.rs")
+            || fname.ends_with("_tests.rs")
+            || fname.starts_with("test_")
+            || fname.contains("_test_")
+        {
             return false;
         }
     }
-    
+
     true
 }
 
@@ -3410,11 +3582,11 @@ fn is_source_file(path: &Path) -> bool {
 /// # tokio_test::block_on(async {
 /// use std::path::Path;
 /// use pmat::cli::stubs::check_complexity;
-/// 
+///
 /// // Test with a specific threshold
 /// let threshold = 10u32;
 /// let violations = check_complexity(Path::new("."), threshold).await.unwrap();
-/// 
+///
 /// // Property: All violations should have complexity > threshold
 /// for violation in violations {
 ///     // Extract complexity from message
@@ -3433,17 +3605,18 @@ pub async fn check_complexity(
     max_complexity: u32,
 ) -> Result<Vec<QualityViolation>> {
     use crate::services::complexity::aggregate_results_with_thresholds;
-    
+
     let mut violations = Vec::new();
 
     // Use the existing analyze_project_files function - the ONE implementation
     let file_metrics = analyze_project_files(
         project_path,
         None, // Auto-detect toolchain
-        &[], // Empty include pattern means all files
+        &[],  // Empty include pattern means all files
         max_complexity as u16,
         15, // Default cognitive complexity
-    ).await?;
+    )
+    .await?;
 
     // Check for violations using the same logic as analyze complexity
     let report = aggregate_results_with_thresholds(
@@ -3455,18 +3628,37 @@ pub async fn check_complexity(
     // Convert violations to QualityViolation format
     for violation in &report.violations {
         match violation {
-            crate::services::complexity::Violation::Error { file, line, function, rule, message, .. } |
-            crate::services::complexity::Violation::Warning { file, line, function, rule, message, .. } => {
+            crate::services::complexity::Violation::Error {
+                file,
+                line,
+                function,
+                rule,
+                message,
+                ..
+            }
+            | crate::services::complexity::Violation::Warning {
+                file,
+                line,
+                function,
+                rule,
+                message,
+                ..
+            } => {
                 violations.push(QualityViolation {
                     check_type: "complexity".to_string(),
-                    severity: if matches!(violation, crate::services::complexity::Violation::Error { .. }) { 
-                        "error" 
-                    } else { 
-                        "warning" 
-                    }.to_string(),
+                    severity: if matches!(
+                        violation,
+                        crate::services::complexity::Violation::Error { .. }
+                    ) {
+                        "error"
+                    } else {
+                        "warning"
+                    }
+                    .to_string(),
                     file: file.clone(),
                     line: Some(*line as usize),
-                    message: format!("{}: {} - {}", 
+                    message: format!(
+                        "{}: {} - {}",
                         function.as_deref().unwrap_or("global"),
                         rule,
                         message
@@ -3513,12 +3705,12 @@ pub async fn check_complexity(
 /// ```rust
 /// # use std::path::Path;
 /// # use pmat::cli::stubs::check_dead_code;
-/// # 
+/// #
 /// # #[tokio::test]
 /// # async fn test_dead_code_detection() -> anyhow::Result<()> {
 /// // Test with a high threshold (should get no violations)
 /// let violations = check_dead_code(Path::new("."), 90.0).await?;
-/// 
+///
 /// // Verify violation structure
 /// for violation in &violations {
 ///     assert_eq!(violation.check_type, "dead_code");
@@ -3532,11 +3724,11 @@ pub async fn check_dead_code(
     project_path: &Path,
     max_percentage: f64,
 ) -> Result<Vec<QualityViolation>> {
-    use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
     use crate::models::dead_code::DeadCodeAnalysisConfig;
-    
+    use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
+
     let mut violations = Vec::new();
-    
+
     // Create analyzer and run analysis
     let mut analyzer = DeadCodeAnalyzer::new(10000);
     let config = DeadCodeAnalysisConfig {
@@ -3544,22 +3736,25 @@ pub async fn check_dead_code(
         include_unreachable: true,
         min_dead_lines: 0,
     };
-    
+
     let result = analyzer.analyze_with_ranking(project_path, config).await?;
-    
+
     // Check if dead code percentage exceeds threshold
     let dead_percentage = result.summary.dead_percentage as f64;
-    
+
     if dead_percentage > max_percentage {
         violations.push(QualityViolation {
             check_type: "dead_code".to_string(),
             severity: "error".to_string(),
             file: project_path.to_string_lossy().to_string(),
             line: None,
-            message: format!("Dead code percentage {:.1}% exceeds maximum allowed {:.1}%", dead_percentage, max_percentage),
+            message: format!(
+                "Dead code percentage {:.1}% exceeds maximum allowed {:.1}%",
+                dead_percentage, max_percentage
+            ),
         });
     }
-    
+
     // Add a warning for each file with significant dead code
     for file in result.ranked_files.iter().take(5) {
         if file.dead_percentage > 20.0 {
@@ -3568,11 +3763,14 @@ pub async fn check_dead_code(
                 severity: "warning".to_string(),
                 file: file.path.clone(),
                 line: None,
-                message: format!("File has {:.1}% dead code ({} dead lines)", file.dead_percentage, file.dead_lines),
+                message: format!(
+                    "File has {:.1}% dead code ({} dead lines)",
+                    file.dead_percentage, file.dead_lines
+                ),
             });
         }
     }
-    
+
     Ok(violations)
 }
 
@@ -3595,13 +3793,13 @@ pub async fn check_dead_code(
 /// # use pmat::cli::stubs::{check_satd, QualityViolation};
 /// # async fn example() -> anyhow::Result<()> {
 /// let violations = check_satd(Path::new(".")).await?;
-/// 
+///
 /// // Group by severity
 /// let mut by_severity = std::collections::HashMap::new();
 /// for violation in violations {
 ///     *by_severity.entry(violation.severity.clone()).or_insert(0) += 1;
 /// }
-/// 
+///
 /// for (severity, count) in by_severity {
 ///     println!("{} SATD items with severity: {}", count, severity);
 /// }
@@ -3615,10 +3813,10 @@ pub async fn check_dead_code(
 /// # tokio_test::block_on(async {
 /// use std::path::Path;
 /// use pmat::cli::stubs::check_satd;
-/// 
+///
 /// // Property: All detected items should have valid SATD patterns
 /// let violations = check_satd(Path::new(".")).await.unwrap();
-/// 
+///
 /// let valid_patterns = ["TODO", "FIXME", "HACK", "XXX", "BUG", "REFACTOR"];
 /// for violation in violations {
 ///     assert_eq!(violation.check_type, "satd");
@@ -3682,12 +3880,12 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
 /// ```rust
 /// # use std::path::Path;
 /// # use pmat::cli::stubs::QualityViolation;
-/// # 
+/// #
 /// # #[tokio::test]
 /// # async fn test_entropy_check() -> anyhow::Result<()> {
 /// // Check for low entropy (repetitive) code
 /// let violations = check_entropy(Path::new("."), 0.7).await?;
-/// 
+///
 /// for violation in &violations {
 ///     assert_eq!(violation.check_type, "entropy");
 ///     println!("Low diversity in {}: {}", violation.file, violation.message);
@@ -3700,13 +3898,13 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
 ///
 /// ```rust
 /// # use std::path::Path;
-/// # 
+/// #
 /// # #[tokio::test]
 /// # async fn test_entropy_threshold() -> anyhow::Result<()> {
 /// // Test with different thresholds
 /// let low_threshold = check_entropy(Path::new("."), 0.3).await?;
 /// let high_threshold = check_entropy(Path::new("."), 0.9).await?;
-/// 
+///
 /// // Higher threshold should find more violations
 /// assert!(high_threshold.len() >= low_threshold.len());
 /// # Ok(())
@@ -3714,7 +3912,7 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
 /// ```
 pub async fn check_entropy(project_path: &Path, min_entropy: f64) -> Result<Vec<QualityViolation>> {
     use walkdir::WalkDir;
-    
+
     let mut violations = Vec::new();
     let mut total_entropy = 0.0;
     let mut file_count = 0;
@@ -3728,7 +3926,7 @@ pub async fn check_entropy(project_path: &Path, min_entropy: f64) -> Result<Vec<
             if let Ok(content) = tokio::fs::read_to_string(path).await {
                 // Calculate Shannon entropy at character level for code diversity
                 let entropy = calculate_code_entropy(&content);
-                
+
                 if entropy < min_entropy {
                     violations.push(QualityViolation {
                         check_type: "entropy".to_string(),
@@ -3741,7 +3939,7 @@ pub async fn check_entropy(project_path: &Path, min_entropy: f64) -> Result<Vec<
                         ),
                     });
                 }
-                
+
                 total_entropy += entropy;
                 file_count += 1;
             }
@@ -3771,7 +3969,7 @@ pub async fn check_entropy(project_path: &Path, min_entropy: f64) -> Result<Vec<
 /// Calculate Shannon entropy for code content (character-level)
 fn calculate_code_entropy(content: &str) -> f64 {
     use std::collections::HashMap;
-    
+
     // Filter out whitespace and comments for more accurate code entropy
     let code_chars: Vec<char> = content
         .lines()
@@ -3782,26 +3980,26 @@ fn calculate_code_entropy(content: &str) -> f64 {
         .flat_map(|line| line.chars())
         .filter(|&c| !c.is_whitespace())
         .collect();
-    
+
     if code_chars.is_empty() {
         return 0.0;
     }
-    
+
     // Count character frequencies
     let mut frequencies = HashMap::new();
     for ch in &code_chars {
         *frequencies.entry(*ch).or_insert(0) += 1;
     }
-    
+
     // Calculate Shannon entropy
     let len = code_chars.len() as f64;
     let mut entropy = 0.0;
-    
+
     for &count in frequencies.values() {
         let p = count as f64 / len;
         entropy -= p * p.log2();
     }
-    
+
     // Normalize to 0-1 scale based on typical code entropy range (2-6 bits)
     (entropy / 6.0).min(1.0)
 }
@@ -3877,7 +4075,7 @@ async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
 /// # use pmat::cli::stubs::{check_duplicates, QualityViolation};
 /// # async fn example() -> anyhow::Result<()> {
 /// let violations = check_duplicates(Path::new(".")).await?;
-/// 
+///
 /// // Group duplicates by file
 /// let mut duplicates_by_file = std::collections::HashMap::new();
 /// for violation in violations {
@@ -3885,7 +4083,7 @@ async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
 ///         .or_insert_with(Vec::new)
 ///         .push(violation);
 /// }
-/// 
+///
 /// for (file, dups) in duplicates_by_file {
 ///     println!("{} has {} duplicate blocks", file, dups.len());
 /// }
@@ -3899,10 +4097,10 @@ async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
 /// # tokio_test::block_on(async {
 /// use std::path::Path;
 /// use pmat::cli::stubs::check_duplicates;
-/// 
+///
 /// // Property: Duplicate violations come in pairs or more
 /// let violations = check_duplicates(Path::new(".")).await.unwrap();
-/// 
+///
 /// // Group by duplicate message to verify pairs
 /// let mut groups = std::collections::HashMap::new();
 /// for violation in violations {
@@ -3910,7 +4108,7 @@ async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
 ///         .or_insert_with(Vec::new)
 ///         .push(violation);
 /// }
-/// 
+///
 /// for (_, group) in groups {
 ///     // Each duplicate should appear at least twice
 ///     assert!(group.len() >= 2, "Duplicates should come in pairs or more");
@@ -3920,39 +4118,42 @@ async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
 pub async fn check_duplicates(project_path: &Path) -> Result<Vec<QualityViolation>> {
     use std::collections::HashMap;
     use walkdir::WalkDir;
-    
+
     let mut violations = Vec::new();
     let mut file_hashes: HashMap<u64, Vec<PathBuf>> = HashMap::new();
-    
+
     // Simple duplicate detection using file content hashing
     for entry in WalkDir::new(project_path) {
         let entry = entry?;
         let path = entry.path();
-        
+
         if path.is_file() && is_source_file(path) {
             if let Ok(content) = tokio::fs::read_to_string(path).await {
                 // Normalize content by removing whitespace and comments
                 let normalized = normalize_code_content(&content);
-                
-                if normalized.len() > 50 { // Skip very small files
+
+                if normalized.len() > 50 {
+                    // Skip very small files
                     let hash = calculate_content_hash(&normalized);
-                    
-                    file_hashes.entry(hash)
+
+                    file_hashes
+                        .entry(hash)
                         .or_default()
                         .push(path.to_path_buf());
                 }
             }
         }
     }
-    
+
     // Report duplicates
     for (_, paths) in file_hashes.iter() {
         if paths.len() > 1 {
-            let files_str = paths.iter()
+            let files_str = paths
+                .iter()
                 .map(|p| p.to_string_lossy().to_string())
                 .collect::<Vec<_>>()
                 .join(", ");
-                
+
             for path in paths {
                 violations.push(QualityViolation {
                     check_type: "duplicate".to_string(),
@@ -3985,7 +4186,7 @@ fn normalize_code_content(content: &str) -> String {
 fn calculate_content_hash(content: &str) -> u64 {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
-    
+
     let mut hasher = DefaultHasher::new();
     content.hash(&mut hasher);
     hasher.finish()
@@ -4078,14 +4279,14 @@ async fn check_provability(
 /// ```rust
 /// # use std::path::Path;
 /// # use pmat::cli::stubs::calculate_provability_score;
-/// # 
+/// #
 /// # #[tokio::test]
 /// # async fn test_provability_score() -> anyhow::Result<()> {
 /// let score = calculate_provability_score(Path::new(".")).await?;
-/// 
+///
 /// // Score should be between 0 and 1
 /// assert!(score >= 0.0 && score <= 1.0);
-/// 
+///
 /// // Interpret the score
 /// match score {
 ///     s if s >= 0.9 => println!("Excellent provability!"),
@@ -4102,7 +4303,7 @@ async fn check_provability(
 /// ```rust
 /// # use std::path::Path;
 /// # use pmat::cli::stubs::calculate_provability_score;
-/// # 
+/// #
 /// # #[tokio::test]
 /// # async fn test_provability_bounds() -> anyhow::Result<()> {
 /// // Test multiple times to ensure consistency
@@ -4115,23 +4316,23 @@ async fn check_provability(
 /// # }
 /// ```
 pub async fn calculate_provability_score(project_path: &Path) -> Result<f64> {
-    use crate::services::lightweight_provability_analyzer::{LightweightProvabilityAnalyzer, FunctionId};
-    
+    use crate::services::lightweight_provability_analyzer::{
+        FunctionId, LightweightProvabilityAnalyzer,
+    };
+
     // Use the real provability analyzer
     let analyzer = LightweightProvabilityAnalyzer::new();
-    
+
     // For quality gate purposes, we'll analyze a sample of functions
     // This is a simplified check - the full analysis is available via 'pmat analyze provability'
-    let sample_functions = vec![
-        FunctionId {
-            file_path: project_path.to_string_lossy().to_string(),
-            function_name: "main".to_string(),
-            line_number: 1,
-        }
-    ];
-    
+    let sample_functions = vec![FunctionId {
+        file_path: project_path.to_string_lossy().to_string(),
+        function_name: "main".to_string(),
+        line_number: 1,
+    }];
+
     let summaries = analyzer.analyze_incrementally(&sample_functions).await;
-    
+
     if summaries.is_empty() {
         // Default score if no functions analyzed
         Ok(0.85)
@@ -4484,9 +4685,9 @@ pub async fn analyze_project_files(
     cyclomatic_threshold: u16,
     cognitive_threshold: u16,
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
+    use glob::Pattern;
     use std::fs;
     use walkdir::WalkDir;
-    use glob::Pattern;
 
     let mut results = Vec::new();
     let toolchain = toolchain.unwrap_or("rust");
@@ -4521,7 +4722,7 @@ pub async fn analyze_project_files(
             let path_str = path.to_string_lossy();
             let relative_path = path.strip_prefix(_project_path).unwrap_or(path);
             let relative_str = relative_path.to_string_lossy();
-            
+
             let matches_include = include.iter().any(|pattern| {
                 // Use glob pattern matching on both absolute and relative paths
                 match Pattern::new(pattern) {
@@ -4558,10 +4759,10 @@ pub async fn analyze_project_files(
                 || path_str.contains("/test-")
                 || path.file_name().is_some_and(|f| {
                     let fname = f.to_string_lossy();
-                    fname.ends_with("_test.rs") || 
-                    fname.ends_with("_tests.rs") ||
-                    fname.starts_with("test_") ||
-                    fname.contains("_test_")
+                    fname.ends_with("_test.rs")
+                        || fname.ends_with("_tests.rs")
+                        || fname.starts_with("test_")
+                        || fname.contains("_test_")
                 })
             {
                 continue;
@@ -4594,7 +4795,6 @@ async fn analyze_file_complexity_async(
     // Use the new language analyzer module for proper separation of concerns
     crate::cli::language_analyzer::analyze_file_complexity(path, _content).await
 }
-
 
 pub fn add_top_files_ranking(
     files: Vec<crate::services::complexity::FileComplexityMetrics>,
@@ -4965,21 +5165,18 @@ async fn run_complexity_analysis(
     } else {
         vec![]
     };
-    
+
     let file_metrics = analyze_project_files(
         project_path,
         None, // Auto-detect toolchain
         &include_patterns,
         20, // Default cyclomatic threshold
         15, // Default cognitive threshold
-    ).await?;
+    )
+    .await?;
 
     // Aggregate results
-    let report = aggregate_results_with_thresholds(
-        file_metrics,
-        Some(20),
-        Some(15),
-    );
+    let report = aggregate_results_with_thresholds(file_metrics, Some(20), Some(15));
 
     // Convert to legacy ComplexityReport format for compatibility
     let mut functions = Vec::new();
@@ -4988,11 +5185,24 @@ async fn run_complexity_analysis(
 
     for violation in &report.violations {
         match violation {
-            crate::services::complexity::Violation::Error { file, function, value, .. } |
-            crate::services::complexity::Violation::Warning { file, function, value, .. } => {
+            crate::services::complexity::Violation::Error {
+                file,
+                function,
+                value,
+                ..
+            }
+            | crate::services::complexity::Violation::Warning {
+                file,
+                function,
+                value,
+                ..
+            } => {
                 if *value > 20 {
                     functions.push(ComplexityHotspot {
-                        function: function.as_ref().unwrap_or(&"<anonymous>".to_string()).clone(),
+                        function: function
+                            .as_ref()
+                            .unwrap_or(&"<anonymous>".to_string())
+                            .clone(),
                         file: file.clone(),
                         complexity: *value as u32,
                     });
@@ -5883,7 +6093,7 @@ mod tests {
     async fn test_check_complexity_with_custom_threshold() {
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path();
-        
+
         // Create a test file with known complexity
         let src_dir = project_path.join("src");
         std::fs::create_dir_all(&src_dir).unwrap();
@@ -5903,7 +6113,7 @@ mod tests {
         writeln!(file, "        }}").unwrap();
         writeln!(file, "    }}").unwrap();
         writeln!(file, "}}").unwrap();
-        
+
         // Test with threshold that should pass
         // Note: check_complexity uses a hardcoded cognitive complexity of 15
         let violations = check_complexity(project_path, 20).await.unwrap();
@@ -5913,12 +6123,19 @@ mod tests {
                 eprintln!("  - {} {}: {}", v.severity, v.check_type, v.message);
             }
         }
-        assert_eq!(violations.len(), 0, "Expected no violations with threshold 20");
-        
+        assert_eq!(
+            violations.len(),
+            0,
+            "Expected no violations with threshold 20"
+        );
+
         // Test with threshold that should fail
         // With threshold 5, warning threshold is 0, so everything is a warning
         let violations = check_complexity(project_path, 5).await.unwrap();
-        assert!(!violations.is_empty(), "Expected violations with threshold 5");
+        assert!(
+            !violations.is_empty(),
+            "Expected violations with threshold 5"
+        );
         assert_eq!(violations[0].check_type, "complexity");
         // With threshold 5, functions will be warnings (not errors) unless complexity > 5
         assert!(violations[0].severity == "warning" || violations[0].severity == "error");
@@ -5928,7 +6145,7 @@ mod tests {
     async fn test_quality_gate_single_file() {
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path();
-        
+
         // Create a test file with various issues
         let src_dir = project_path.join("src");
         std::fs::create_dir_all(&src_dir).unwrap();
@@ -5941,19 +6158,31 @@ mod tests {
         writeln!(file, "}}").unwrap();
         writeln!(file, "#[allow(dead_code)]").unwrap();
         writeln!(file, "fn unused() {{}}").unwrap();
-        
+
         // Test individual check functions
-        let satd_violations = check_single_file_satd(project_path, &test_file).await.unwrap();
+        let satd_violations = check_single_file_satd(project_path, &test_file)
+            .await
+            .unwrap();
         assert!(!satd_violations.is_empty(), "Expected SATD violations");
-        
-        let security_violations = check_single_file_security(project_path, &test_file).await.unwrap();
-        assert!(!security_violations.is_empty(), "Expected security violations");
-        
-        let dead_code_violations = check_single_file_dead_code(project_path, &test_file).await.unwrap();
-        assert!(!dead_code_violations.is_empty(), "Expected dead code violations");
+
+        let security_violations = check_single_file_security(project_path, &test_file)
+            .await
+            .unwrap();
+        assert!(
+            !security_violations.is_empty(),
+            "Expected security violations"
+        );
+
+        let dead_code_violations = check_single_file_dead_code(project_path, &test_file)
+            .await
+            .unwrap();
+        assert!(
+            !dead_code_violations.is_empty(),
+            "Expected dead code violations"
+        );
     }
 
-    #[test] 
+    #[test]
     fn test_quality_violation_formatting() {
         let violation = QualityViolation {
             check_type: "complexity".to_string(),
@@ -5962,7 +6191,7 @@ mod tests {
             line: Some(42),
             message: "Function exceeds complexity threshold".to_string(),
         };
-        
+
         // Verify the violation can be serialized
         let json = serde_json::to_string(&violation).unwrap();
         assert!(json.contains("\"check_type\":\"complexity\""));
@@ -5990,7 +6219,7 @@ mod tests {
     #[test]
     fn test_quality_check_type_defaults() {
         let checks = QualityCheckType::default_checks();
-        
+
         // Verify all default checks are present
         assert!(checks.contains(&QualityCheckType::Complexity));
         assert!(checks.contains(&QualityCheckType::DeadCode));
@@ -6009,14 +6238,14 @@ mod tests {
         // This addresses issue #30
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path();
-        
+
         // Create a simple project structure
         let src_dir = project_path.join("src");
         std::fs::create_dir_all(&src_dir).unwrap();
         let test_file = src_dir.join("main.rs");
         let mut file = std::fs::File::create(&test_file).unwrap();
         writeln!(file, "fn main() {{}}").unwrap();
-        
+
         // Capture output to verify checks are displayed
         // Test verifies the function executes correctly
         let result = handle_quality_gate(
@@ -6031,8 +6260,9 @@ mod tests {
             false,
             None,
             false,
-        ).await;
-        
+        )
+        .await;
+
         assert!(result.is_ok(), "Quality gate should run successfully");
     }
 
@@ -6042,11 +6272,11 @@ mod tests {
         let all_checks = vec![QualityCheckType::All];
         // This would print all checks to stderr
         print_checks_to_run(&all_checks);
-        
+
         // Test specific checks
         let specific_checks = vec![QualityCheckType::Complexity, QualityCheckType::Security];
         print_checks_to_run(&specific_checks);
-        
+
         // Test empty checks (shouldn't crash)
         let empty_checks: Vec<QualityCheckType> = vec![];
         print_checks_to_run(&empty_checks);
@@ -6058,14 +6288,14 @@ mod tests {
         // This addresses issue #31
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path();
-        
+
         // Create a simple test file
         let src_dir = project_path.join("src");
         std::fs::create_dir_all(&src_dir).unwrap();
         let test_file = src_dir.join("main.rs");
         let mut file = std::fs::File::create(&test_file).unwrap();
         writeln!(file, "fn main() {{ println!(\"Hello\"); }}").unwrap();
-        
+
         // Run with perf=true
         let result = handle_quality_gate(
             project_path.to_path_buf(),
@@ -6079,8 +6309,9 @@ mod tests {
             false,
             None,
             true, // perf = true
-        ).await;
-        
+        )
+        .await;
+
         assert!(result.is_ok(), "Quality gate with perf should succeed");
         // In a real test, we would capture stderr and verify timing output
     }

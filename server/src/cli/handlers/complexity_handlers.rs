@@ -32,7 +32,7 @@ mod complexity_handlers_tests;
 /// // Example 1: AI agent discovers complexity hotspots
 /// use std::path::PathBuf;
 /// use pmat::cli::{ComplexityOutputFormat, handlers::complexity_handlers::handle_analyze_complexity};
-/// 
+///
 /// # async fn mcp_workflow_example() -> anyhow::Result<()> {
 /// // Step 1: Find top 5 most complex files
 /// handle_analyze_complexity(
@@ -49,16 +49,16 @@ mod complexity_handlers_tests;
 ///     5,                              // top_files = 5 hotspots
 ///     false,                          // fail_on_violation
 /// ).await?;
-/// 
+///
 /// // AI agent would parse JSON output to extract file paths:
 /// // let hotspot_files = parse_json_extract_paths(json_output);
-/// 
+///
 /// // Step 2: Deep analyze just those hotspot files
 /// let hotspot_files = vec![
 ///     PathBuf::from("src/complex_module.rs"),
 ///     PathBuf::from("src/legacy_code.rs"),
 /// ];
-/// 
+///
 /// handle_analyze_complexity(
 ///     PathBuf::from("."),
 ///     None,                           // file
@@ -81,7 +81,7 @@ mod complexity_handlers_tests;
 /// // Example 2: AI agent builds refactoring pipeline
 /// use std::path::PathBuf;
 /// use pmat::cli::{ComplexityOutputFormat, handlers::complexity_handlers::handle_analyze_complexity};
-/// 
+///
 /// # async fn mcp_refactor_pipeline() -> anyhow::Result<()> {
 /// // Step 1: Identify files needing refactoring
 /// let candidate_files = vec![
@@ -89,7 +89,7 @@ mod complexity_handlers_tests;
 ///     PathBuf::from("src/payment_processor.rs"),
 ///     PathBuf::from("src/notification_engine.rs"),
 /// ];
-/// 
+///
 /// // Step 2: Analyze complexity metrics for prioritization
 /// handle_analyze_complexity(
 ///     PathBuf::from("."),
@@ -105,7 +105,7 @@ mod complexity_handlers_tests;
 ///     0,                              // top_files (analyze all provided)
 ///     false,                          // fail_on_violation
 /// ).await?;
-/// 
+///
 /// // AI agent would then:
 /// // 1. Parse complexity metrics
 /// // 2. Prioritize by technical debt impact
@@ -138,7 +138,7 @@ mod complexity_handlers_tests;
 ///     10,                             // top_files
 ///     false,                          // fail_on_violation
 /// ).await?;
-/// 
+///
 /// // Expected behavior:
 /// // - File with functions [5, 10, 15] complexity -> EXCLUDED (all below 20)
 /// // - File with functions [5, 25, 10] complexity -> INCLUDED (one function > 20)
@@ -168,7 +168,7 @@ mod complexity_handlers_tests;
 ///     5,                              // top_files - applied AFTER filtering
 ///     false,                          // fail_on_violation
 /// ).await?;
-/// 
+///
 /// // Expected behavior:
 /// // - Files are first filtered to only include those with functions exceeding either threshold
 /// // - Then the top 5 most complex files from the filtered set are returned
@@ -200,7 +200,7 @@ mod complexity_handlers_tests;
 /// ```bash
 /// # Exit with code 0 even if violations found (default behavior)
 /// pmat analyze complexity --max-cyclomatic 10
-/// 
+///
 /// # Exit with code 1 if violations exceed threshold
 /// pmat analyze complexity --max-cyclomatic 10 --fail-on-violation
 /// ```
@@ -224,7 +224,8 @@ pub async fn handle_analyze_complexity(
     fail_on_violation: bool,
 ) -> Result<()> {
     use crate::services::complexity::{
-        aggregate_results_with_thresholds, format_as_sarif, format_complexity_report, format_complexity_summary,
+        aggregate_results_with_thresholds, format_as_sarif, format_complexity_report,
+        format_complexity_summary,
     };
 
     if watch {
@@ -280,7 +281,7 @@ pub async fn handle_analyze_complexity(
     } else if !files.is_empty() {
         // Multiple files mode (MCP tool composition)
         eprintln!("🔍 Analyzing complexity of {} files...", files.len());
-        
+
         let mut all_metrics = Vec::new();
         for file_path in files {
             let full_path = if file_path.is_absolute() {
@@ -364,11 +365,8 @@ pub async fn handle_analyze_complexity(
     }
 
     // Aggregate results with custom thresholds
-    let summary = aggregate_results_with_thresholds(
-        file_metrics.clone(),
-        max_cyclomatic,
-        max_cognitive,
-    );
+    let summary =
+        aggregate_results_with_thresholds(file_metrics.clone(), max_cyclomatic, max_cognitive);
 
     // Format output
     let formatted_output = match format {
@@ -398,12 +396,14 @@ pub async fn handle_analyze_complexity(
     // Check for violations and exit with error code if requested
     if fail_on_violation {
         let has_violations = file_metrics.iter().any(|file| {
-            let cyclomatic_exceeded = file.functions.iter().any(|func| {
-                func.metrics.cyclomatic > max_cyclomatic.unwrap_or(20)
-            });
-            let cognitive_exceeded = file.functions.iter().any(|func| {
-                func.metrics.cognitive > max_cognitive.unwrap_or(15)
-            });
+            let cyclomatic_exceeded = file
+                .functions
+                .iter()
+                .any(|func| func.metrics.cyclomatic > max_cyclomatic.unwrap_or(20));
+            let cognitive_exceeded = file
+                .functions
+                .iter()
+                .any(|func| func.metrics.cognitive > max_cognitive.unwrap_or(15));
             cyclomatic_exceeded || cognitive_exceeded
         });
 

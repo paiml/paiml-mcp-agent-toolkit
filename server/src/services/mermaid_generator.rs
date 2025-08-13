@@ -32,13 +32,13 @@
 //!     group_by_module: true,
 //!     show_complexity: true,
 //! };
-//! 
+//!
 //! let generator = MermaidGenerator::new(options);
 //! let graph = DependencyGraph::new(); // Your dependency graph
-//! 
+//!
 //! let mermaid_code = generator.generate(&graph);
 //! println!("```mermaid\n{}\n```", mermaid_code);
-//! 
+//!
 //! // Use with fixed size configuration
 //! use pmat::services::fixed_graph_builder::{GraphConfig, GroupingStrategy};
 //! let config = GraphConfig {

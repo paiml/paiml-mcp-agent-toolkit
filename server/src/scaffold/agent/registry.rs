@@ -97,10 +97,9 @@ impl TemplateRegistry {
 
     /// Fetch a remote template.
     pub async fn fetch_remote(&self, name: &str) -> ScaffoldResult<Arc<dyn TemplateGenerator>> {
-        let url = self
-            .remote
-            .get(name)
-            .ok_or_else(|| ScaffoldError::TemplateNotFound(format!("Remote template '{}'", name)))?;
+        let url = self.remote.get(name).ok_or_else(|| {
+            ScaffoldError::TemplateNotFound(format!("Remote template '{}'", name))
+        })?;
 
         // In a real implementation, this would fetch the template from the URL
         Err(ScaffoldError::NetworkError(format!(
@@ -122,7 +121,10 @@ impl TemplateRegistry {
     /// Load a custom template from a path.
     fn load_custom_template(&self, path: &Path) -> ScaffoldResult<Arc<dyn TemplateGenerator>> {
         if !path.exists() {
-            return Err(ScaffoldError::TemplateNotFound(format!("{}", path.display())));
+            return Err(ScaffoldError::TemplateNotFound(format!(
+                "{}",
+                path.display()
+            )));
         }
 
         // In a real implementation, this would load and parse the custom template
@@ -261,7 +263,8 @@ impl Default for HybridAnalyzerTemplate {
     fn default() -> Self {
         Self {
             name: "hybrid".to_string(),
-            description: "Hybrid agent with deterministic core and probabilistic wrapper".to_string(),
+            description: "Hybrid agent with deterministic core and probabilistic wrapper"
+                .to_string(),
         }
     }
 }

@@ -1,10 +1,10 @@
 //! Property-based tests for complexity threshold filtering
-//! 
+//!
 //! These tests ensure that the --max-cyclomatic and --max-cognitive flags
 //! properly filter files based on their complexity thresholds.
 
-use proptest::prelude::*;
 use crate::services::complexity::{ComplexityMetrics, FileComplexityMetrics, FunctionComplexity};
+use proptest::prelude::*;
 
 #[cfg(test)]
 mod tests {
@@ -281,7 +281,7 @@ mod tests {
             // Test with both thresholds (OR logic)
             let both_filtered = files.into_iter().filter(|file| {
                 file.functions.iter().any(|func| {
-                    func.metrics.cyclomatic > cyc_threshold || 
+                    func.metrics.cyclomatic > cyc_threshold ||
                     func.metrics.cognitive > cog_threshold
                 })
             }).collect::<Vec<_>>();

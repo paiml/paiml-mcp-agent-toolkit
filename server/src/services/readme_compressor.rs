@@ -28,18 +28,18 @@
 //!
 //! let compressor = ReadmeCompressor::new();
 //! let readme_content = std::fs::read_to_string("README.md").unwrap();
-//! 
+//!
 //! let compressed = compressor.compress(&readme_content);
-//! 
+//!
 //! println!("Original size: {} bytes", readme_content.len());
 //! println!("Compressed size: {} bytes", compressed.content.len());
 //! println!("Sections preserved: {}", compressed.sections.len());
-//! 
+//!
 //! // Access compressed sections
 //! for section in &compressed.sections {
 //!     println!("- {} (importance: {})", section.name, section.importance);
 //! }
-//! 
+//!
 //! // High compression ratio while keeping essential info
 //! let ratio = 1.0 - (compressed.content.len() as f64 / readme_content.len() as f64);
 //! println!("Compression ratio: {:.1}%", ratio * 100.0);

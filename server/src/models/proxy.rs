@@ -166,7 +166,7 @@ mod tests {
 
         let json = serde_json::to_string(&request).unwrap();
         let deserialized: ProxyRequest = serde_json::from_str(&json).unwrap();
-        
+
         assert!(matches!(deserialized.operation, ProxyOperation::Write));
         assert_eq!(deserialized.file_path, "test.rs");
     }

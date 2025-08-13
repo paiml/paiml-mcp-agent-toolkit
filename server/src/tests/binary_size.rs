@@ -11,8 +11,9 @@ fn binary_size_regression() {
         "../target/release/pmat"
     } else if std::path::Path::new("target/release/pmat").exists() {
         "target/release/pmat"
-    } else if std::path::Path::new("../target/debug/pmat").exists() 
-        || std::path::Path::new("target/debug/pmat").exists() {
+    } else if std::path::Path::new("../target/debug/pmat").exists()
+        || std::path::Path::new("target/debug/pmat").exists()
+    {
         // Skip test if only debug build exists
         println!("⚠️  Skipping binary size regression test - release binary not found");
         println!("   Run 'cargo build --release' to enable this test");

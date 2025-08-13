@@ -249,14 +249,26 @@ mod tests {
 
     #[test]
     fn test_feature_parsing() {
-        let feature = "state-machine:Init,Run,Done".parse::<AgentFeature>().unwrap();
+        let feature = "state-machine:Init,Run,Done"
+            .parse::<AgentFeature>()
+            .unwrap();
         assert!(matches!(feature, AgentFeature::StateMachine { states } if states.len() == 3));
 
         let feature = "quality-gates:extreme".parse::<AgentFeature>().unwrap();
-        assert!(matches!(feature, AgentFeature::QualityGates { level: QualityLevel::Extreme }));
+        assert!(matches!(
+            feature,
+            AgentFeature::QualityGates {
+                level: QualityLevel::Extreme
+            }
+        ));
 
         let feature = "monitoring:prometheus".parse::<AgentFeature>().unwrap();
-        assert!(matches!(feature, AgentFeature::Monitoring { backend: MonitoringBackend::Prometheus }));
+        assert!(matches!(
+            feature,
+            AgentFeature::Monitoring {
+                backend: MonitoringBackend::Prometheus
+            }
+        ));
 
         assert!("invalid-feature".parse::<AgentFeature>().is_err());
     }

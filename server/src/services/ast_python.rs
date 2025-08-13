@@ -33,7 +33,7 @@
 //! # #[cfg(feature = "python-ast")]
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let metrics = analyze_python_file_with_complexity(Path::new("main.py")).await?;
-//! 
+//!
 //! println!("File complexity: {}", metrics.total_complexity);
 //! for class in &metrics.classes {
 //!     println!("Class {}: complexity {}", class.name, class.complexity);

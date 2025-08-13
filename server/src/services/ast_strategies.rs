@@ -32,7 +32,7 @@
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let registry = StrategyRegistry::new();
 //! let classifier = FileClassifier::default();
-//! 
+//!
 //! // Get strategy for a specific file
 //! if let Some(strategy) = registry.get_strategy("rs") {
 //!     let file_context = strategy.analyze(Path::new("main.rs"), &classifier).await?;

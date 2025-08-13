@@ -183,7 +183,12 @@ impl DemoServer {
         let mut last_error = None;
 
         while start.elapsed() < timeout {
-            match client.get(base_url).timeout(Duration::from_secs(5)).send().await {
+            match client
+                .get(base_url)
+                .timeout(Duration::from_secs(5))
+                .send()
+                .await
+            {
                 Ok(response) if response.status().is_success() => {
                     // Give the server a bit more time to stabilize
                     sleep(Duration::from_millis(500)).await;
@@ -530,7 +535,7 @@ async fn test_performance_assertions() -> Result<()> {
 
         assert!(response.status().is_success());
         response_times.push(elapsed);
-        
+
         // Small delay between requests to avoid overwhelming the server
         if i < 19 {
             sleep(Duration::from_millis(50)).await;

@@ -268,12 +268,12 @@ impl DeadCodeAnalyzer {
     ///
     /// let mut covered_lines = HashMap::new();
     /// covered_lines.insert("main.rs".to_string(), HashSet::new());
-    /// 
+    ///
     /// let coverage = CoverageData {
     ///     covered_lines,
     ///     execution_counts: HashMap::new(),
     /// };
-    /// 
+    ///
     /// let analyzer = DeadCodeAnalyzer::new(100).with_coverage(coverage);
     /// ```
     pub fn with_coverage(mut self, coverage: CoverageData) -> Self {
@@ -597,12 +597,11 @@ impl DeadCodeAnalyzer {
                 if let AstItem::Function { name, line, .. } = item {
                     let qualified_name = format!("{}::{}", file.path, name);
                     all_functions.insert(qualified_name.clone(), (file.path.clone(), *line as u32));
-                    
+
                     // Mark main functions and exported functions as entry points
                     if name == "main" || name.starts_with("pub ") {
                         entry_points.insert(qualified_name.clone());
                     }
-                    
                 }
             }
         }
@@ -613,10 +612,10 @@ impl DeadCodeAnalyzer {
             if let Ok(content) = std::fs::read_to_string(&file.path) {
                 // Parse the content line by line to detect function calls more accurately
                 let lines: Vec<&str> = content.lines().collect();
-                
+
                 for (i, line) in lines.iter().enumerate() {
                     let line_number = i + 1;
-                    
+
                     // Find which function this line belongs to
                     let mut current_function = None;
                     for (qualified_name, (_, func_line)) in &all_functions {
@@ -628,18 +627,22 @@ impl DeadCodeAnalyzer {
                             }
                         }
                     }
-                    
+
                     if let Some(caller) = current_function {
                         // Look for function calls in this line
                         for callee_qualified in all_functions.keys() {
                             let callee_name = callee_qualified.split("::").last().unwrap();
                             // More specific matching: function name followed by opening parenthesis
                             // and not part of a function definition
-                            if line.contains(&format!("{}(", callee_name)) 
+                            if line.contains(&format!("{}(", callee_name))
                                 && !line.contains(&format!("fn {}", callee_name))
-                                && caller != *callee_qualified  // Don't count self-calls
+                                && caller != *callee_qualified
+                            // Don't count self-calls
                             {
-                                function_calls.entry(caller.clone()).or_default().insert(callee_qualified.clone());
+                                function_calls
+                                    .entry(caller.clone())
+                                    .or_default()
+                                    .insert(callee_qualified.clone());
                             }
                         }
                     }
@@ -650,11 +653,11 @@ impl DeadCodeAnalyzer {
         // Perform reachability analysis
         let mut reachable: HashSet<String> = entry_points.clone();
         let mut changed = true;
-        
+
         while changed {
             changed = false;
             let current_reachable = reachable.clone();
-            
+
             for reachable_func in &current_reachable {
                 if let Some(callees) = function_calls.get(reachable_func) {
                     for callee in callees {
@@ -669,7 +672,7 @@ impl DeadCodeAnalyzer {
 
         // Identify dead functions
         let mut dead_functions = Vec::new();
-        
+
         for (qualified_name, (file_path, line)) in &all_functions {
             if !reachable.contains(qualified_name) {
                 let function_name = qualified_name.split("::").last().unwrap().to_string();
@@ -759,7 +762,6 @@ impl DeadCodeAnalyzer {
 
         // 4. Aggregate by file and create ranking metrics
         let mut file_metrics = self.aggregate_by_file(&report, &project_context, &config)?;
-        
 
         // 5. Calculate scores and sort
         for metrics in &mut file_metrics {

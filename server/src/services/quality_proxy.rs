@@ -2,9 +2,9 @@ use crate::models::proxy::{
     ProxyMode, ProxyOperation, ProxyRequest, ProxyResponse, ProxyStatus, QualityConfig,
     QualityMetrics, QualityReport, QualityViolation, ViolationSeverity, ViolationType,
 };
+use crate::services::ast_rust::analyze_rust_file_with_complexity;
 use crate::services::complexity::aggregate_results_with_thresholds;
 use crate::services::satd_detector::SATDDetector;
-use crate::services::ast_rust::analyze_rust_file_with_complexity;
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::path::Path;
@@ -101,46 +101,61 @@ impl QualityProxyService {
             .unwrap_or("rs");
 
         let ((quality_metrics, passed), violations) = self
-            .analyze_content(&content, &request.file_path, file_extension, &request.quality_config)
+            .analyze_content(
+                &content,
+                &request.file_path,
+                file_extension,
+                &request.quality_config,
+            )
             .await?;
 
-        let (status, final_content, refactoring_applied, refactoring_plan) =
-            match request.mode {
-                ProxyMode::Strict => {
-                    if passed {
-                        (ProxyStatus::Accepted, content, false, None)
-                    } else {
-                        (ProxyStatus::Rejected, String::new(), false, None)
-                    }
-                }
-                ProxyMode::Advisory => {
+        let (status, final_content, refactoring_applied, refactoring_plan) = match request.mode {
+            ProxyMode::Strict => {
+                if passed {
                     (ProxyStatus::Accepted, content, false, None)
+                } else {
+                    (ProxyStatus::Rejected, String::new(), false, None)
                 }
-                ProxyMode::AutoFix => {
-                    if passed {
-                        (ProxyStatus::Accepted, content, false, None)
-                    } else {
-                        match self.auto_fix_content(&content, &request.file_path, file_extension, &request.quality_config).await {
-                            Ok((fixed_content, plan)) => {
-                                let ((_, fixed_passed), _) = self
-                                    .analyze_content(&fixed_content, &request.file_path, file_extension, &request.quality_config)
-                                    .await?;
-                                
-                                if fixed_passed {
-                                    (ProxyStatus::Modified, fixed_content, true, Some(plan))
-                                } else {
-                                    warn!("Auto-fix failed to meet quality standards");
-                                    (ProxyStatus::Rejected, String::new(), false, None)
-                                }
-                            }
-                            Err(e) => {
-                                warn!("Auto-fix failed: {}", e);
+            }
+            ProxyMode::Advisory => (ProxyStatus::Accepted, content, false, None),
+            ProxyMode::AutoFix => {
+                if passed {
+                    (ProxyStatus::Accepted, content, false, None)
+                } else {
+                    match self
+                        .auto_fix_content(
+                            &content,
+                            &request.file_path,
+                            file_extension,
+                            &request.quality_config,
+                        )
+                        .await
+                    {
+                        Ok((fixed_content, plan)) => {
+                            let ((_, fixed_passed), _) = self
+                                .analyze_content(
+                                    &fixed_content,
+                                    &request.file_path,
+                                    file_extension,
+                                    &request.quality_config,
+                                )
+                                .await?;
+
+                            if fixed_passed {
+                                (ProxyStatus::Modified, fixed_content, true, Some(plan))
+                            } else {
+                                warn!("Auto-fix failed to meet quality standards");
                                 (ProxyStatus::Rejected, String::new(), false, None)
                             }
                         }
+                        Err(e) => {
+                            warn!("Auto-fix failed: {}", e);
+                            (ProxyStatus::Rejected, String::new(), false, None)
+                        }
                     }
                 }
-            };
+            }
+        };
 
         Ok(ProxyResponse {
             status,
@@ -157,16 +172,20 @@ impl QualityProxyService {
 
     fn get_operation_content(&self, request: &ProxyRequest) -> Result<String> {
         match request.operation {
-            ProxyOperation::Write => {
-                request.content.clone()
-                    .context("Write operation requires content")
-            }
+            ProxyOperation::Write => request
+                .content
+                .clone()
+                .context("Write operation requires content"),
             ProxyOperation::Edit => {
-                let old = request.old_content.as_ref()
+                let old = request
+                    .old_content
+                    .as_ref()
                     .context("Edit operation requires old_content")?;
-                let new = request.new_content.as_ref()
+                let new = request
+                    .new_content
+                    .as_ref()
                     .context("Edit operation requires new_content")?;
-                
+
                 if let Some(existing_content) = &request.content {
                     Ok(existing_content.replace(old, new))
                 } else {
@@ -174,9 +193,11 @@ impl QualityProxyService {
                 }
             }
             ProxyOperation::Append => {
-                let append_content = request.content.as_ref()
+                let append_content = request
+                    .content
+                    .as_ref()
                     .context("Append operation requires content")?;
-                
+
                 if let Some(existing) = &request.old_content {
                     Ok(format!("{}\n{}", existing, append_content))
                 } else {
@@ -194,16 +215,19 @@ impl QualityProxyService {
         config: &QualityConfig,
     ) -> Result<((QualityMetrics, bool), Vec<QualityViolation>)> {
         let mut violations = Vec::new();
-        
+
         if extension != "rs" {
             debug!("Skipping Rust-specific analysis for non-Rust file");
             return Ok((
-                (QualityMetrics {
-                    max_complexity: 0,
-                    satd_count: 0,
-                    lint_violations: 0,
-                    coverage_percentage: None,
-                }, true),
+                (
+                    QualityMetrics {
+                        max_complexity: 0,
+                        satd_count: 0,
+                        lint_violations: 0,
+                        coverage_percentage: None,
+                    },
+                    true,
+                ),
                 violations,
             ));
         }
@@ -222,7 +246,9 @@ impl QualityProxyService {
                 );
 
                 // Find max complexity from hotspots
-                let max_comp = report.hotspots.iter()
+                let max_comp = report
+                    .hotspots
+                    .iter()
                     .map(|h| h.complexity)
                     .max()
                     .unwrap_or(0) as u32;
@@ -235,15 +261,18 @@ impl QualityProxyService {
                             location: format!("{}:{}", file_path, hotspot.line),
                             message: format!(
                                 "Function '{}' complexity {} exceeds maximum {}",
-                                hotspot.function.as_ref().unwrap_or(&"unknown".to_string()), 
-                                hotspot.complexity, 
+                                hotspot.function.as_ref().unwrap_or(&"unknown".to_string()),
+                                hotspot.complexity,
                                 config.max_complexity
                             ),
-                            suggestion: Some("Consider splitting this function into smaller functions".to_string()),
+                            suggestion: Some(
+                                "Consider splitting this function into smaller functions"
+                                    .to_string(),
+                            ),
                         });
                     }
                 }
-                
+
                 max_comp
             }
             Err(e) => {
@@ -253,9 +282,11 @@ impl QualityProxyService {
         };
 
         // Detect SATD
-        let satd_instances = self.satd_detector.extract_from_content(content, Path::new(file_path))?;
+        let satd_instances = self
+            .satd_detector
+            .extract_from_content(content, Path::new(file_path))?;
         let satd_count = satd_instances.len();
-        
+
         if !config.allow_satd && satd_count > 0 {
             for instance in &satd_instances {
                 violations.push(QualityViolation {
@@ -263,7 +294,9 @@ impl QualityProxyService {
                     severity: ViolationSeverity::Error,
                     location: format!("{}:{}", file_path, instance.line),
                     message: format!("SATD detected: {}", instance.text),
-                    suggestion: Some("Remove TODO/FIXME comments and implement the functionality".to_string()),
+                    suggestion: Some(
+                        "Remove TODO/FIXME comments and implement the functionality".to_string(),
+                    ),
                 });
             }
         }
@@ -294,15 +327,20 @@ impl QualityProxyService {
             violations.extend(doc_violations);
         }
 
-        let passed = violations.iter().all(|v| matches!(v.severity, ViolationSeverity::Warning));
+        let passed = violations
+            .iter()
+            .all(|v| matches!(v.severity, ViolationSeverity::Warning));
 
         Ok((
-            (QualityMetrics {
-                max_complexity,
-                satd_count,
-                lint_violations,
-                coverage_percentage: None,
-            }, passed),
+            (
+                QualityMetrics {
+                    max_complexity,
+                    satd_count,
+                    lint_violations,
+                    coverage_percentage: None,
+                },
+                passed,
+            ),
             violations,
         ))
     }
@@ -319,12 +357,12 @@ impl QualityProxyService {
         }
 
         info!("Applying auto-fix refactoring to {}", file_path);
-        
+
         // For now, we'll apply basic fixes:
         // 1. Remove SATD comments
         // 2. Add missing documentation
         // 3. Format code
-        
+
         let mut fixed_content = content.to_string();
         let mut plan = Vec::new();
 
@@ -332,7 +370,7 @@ impl QualityProxyService {
         if !config.allow_satd {
             let satd_patterns = vec![
                 r"//\s*TODO:.*\n",
-                r"//\s*FIXME:.*\n", 
+                r"//\s*FIXME:.*\n",
                 r"//\s*HACK:.*\n",
                 r"//\s*BUG:.*\n",
             ];
@@ -353,10 +391,13 @@ impl QualityProxyService {
         if config.require_docs {
             let lines: Vec<&str> = fixed_content.lines().collect();
             let mut new_lines = Vec::new();
-            
+
             for (i, line) in lines.iter().enumerate() {
                 let trimmed = line.trim();
-                if trimmed.starts_with("pub fn") || trimmed.starts_with("pub struct") || trimmed.starts_with("pub enum") {
+                if trimmed.starts_with("pub fn")
+                    || trimmed.starts_with("pub struct")
+                    || trimmed.starts_with("pub enum")
+                {
                     let prev_has_doc = i > 0 && lines[i - 1].trim().starts_with("///");
                     if !prev_has_doc {
                         let item_name = trimmed
@@ -366,7 +407,7 @@ impl QualityProxyService {
                             .split('(')
                             .next()
                             .unwrap_or("item");
-                        
+
                         new_lines.push(format!("/// {}", item_name));
                         let mut step = HashMap::new();
                         step.insert("action".to_string(), serde_json::json!("add_documentation"));
@@ -376,7 +417,7 @@ impl QualityProxyService {
                 }
                 new_lines.push(line.to_string());
             }
-            
+
             if !plan.is_empty() {
                 fixed_content = new_lines.join("\n");
             }
@@ -400,10 +441,13 @@ impl QualityProxyService {
     fn check_documentation(&self, content: &str, file_path: &str) -> Vec<QualityViolation> {
         let mut violations = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
-        
+
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
-            if trimmed.starts_with("pub fn") || trimmed.starts_with("pub struct") || trimmed.starts_with("pub enum") {
+            if trimmed.starts_with("pub fn")
+                || trimmed.starts_with("pub struct")
+                || trimmed.starts_with("pub enum")
+            {
                 // Check previous lines for documentation
                 let has_doc = if line_num > 0 {
                     // Check up to 5 lines before for doc comments
@@ -414,7 +458,7 @@ impl QualityProxyService {
                 } else {
                     false
                 };
-                
+
                 if !has_doc {
                     violations.push(QualityViolation {
                         violation_type: ViolationType::Docs,
@@ -426,20 +470,20 @@ impl QualityProxyService {
                 }
             }
         }
-        
+
         violations
     }
 
     fn create_temp_file(&self, content: &str, extension: &str) -> Result<tempfile::NamedTempFile> {
         use std::io::Write;
-        
+
         let mut temp_file = tempfile::Builder::new()
             .suffix(&format!(".{}", extension))
             .tempfile()?;
-        
+
         temp_file.write_all(content.as_bytes())?;
         temp_file.flush()?;
-        
+
         Ok(temp_file)
     }
 
@@ -447,17 +491,17 @@ impl QualityProxyService {
         use std::fs;
         use std::io::Write;
         use std::process::Command;
-        
+
         // Create a temporary Rust project
         let temp_dir = tempfile::TempDir::new()?;
         let src_dir = temp_dir.path().join("src");
         fs::create_dir(&src_dir)?;
-        
+
         let lib_path = src_dir.join("lib.rs");
         let mut lib_file = fs::File::create(&lib_path)?;
         lib_file.write_all(content.as_bytes())?;
         lib_file.flush()?;
-        
+
         let cargo_toml = r#"[package]
 name = "temp_quality_check"
 version = "0.1.0"
@@ -465,12 +509,12 @@ edition = "2021"
 
 [dependencies]
 "#;
-        
+
         let cargo_path = temp_dir.path().join("Cargo.toml");
         let mut cargo_file = fs::File::create(&cargo_path)?;
         cargo_file.write_all(cargo_toml.as_bytes())?;
         cargo_file.flush()?;
-        
+
         // Run cargo clippy
         let output = Command::new("cargo")
             .arg("clippy")
@@ -479,9 +523,9 @@ edition = "2021"
             .arg("warnings")
             .current_dir(temp_dir.path())
             .output()?;
-        
+
         let mut violations = Vec::new();
-        
+
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             // Parse basic clippy output
@@ -494,27 +538,28 @@ edition = "2021"
                 }
             }
         }
-        
+
         Ok(violations)
     }
 
     async fn format_rust_code(&self, content: &str) -> Result<String> {
         use std::process::Command;
-        
+
         let temp_file = self.create_temp_file(content, "rs")?;
-        
+
         let output = Command::new("rustfmt")
             .arg("--edition")
             .arg("2021")
             .arg(temp_file.path())
             .output()?;
-        
+
         if output.status.success() {
-            std::fs::read_to_string(temp_file.path())
-                .context("Failed to read formatted file")
+            std::fs::read_to_string(temp_file.path()).context("Failed to read formatted file")
         } else {
-            Err(anyhow::anyhow!("rustfmt failed: {}", 
-                String::from_utf8_lossy(&output.stderr)))
+            Err(anyhow::anyhow!(
+                "rustfmt failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ))
         }
     }
 }
@@ -604,7 +649,7 @@ pub fn greet(name: &str) -> String {
     #[test]
     fn test_get_operation_content() {
         let service = QualityProxyService::new();
-        
+
         let write_request = ProxyRequest {
             operation: ProxyOperation::Write,
             file_path: "test.rs".to_string(),
@@ -614,10 +659,10 @@ pub fn greet(name: &str) -> String {
             mode: ProxyMode::Strict,
             quality_config: QualityConfig::default(),
         };
-        
+
         let content = service.get_operation_content(&write_request).unwrap();
         assert_eq!(content, "write content");
-        
+
         let edit_request = ProxyRequest {
             operation: ProxyOperation::Edit,
             file_path: "test.rs".to_string(),
@@ -627,7 +672,7 @@ pub fn greet(name: &str) -> String {
             mode: ProxyMode::Strict,
             quality_config: QualityConfig::default(),
         };
-        
+
         let content = service.get_operation_content(&edit_request).unwrap();
         assert_eq!(content, "modified content here");
     }

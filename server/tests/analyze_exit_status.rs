@@ -1,12 +1,12 @@
 //! Integration tests for analyze command exit status (Issue #28)
-//! 
+//!
 //! These tests verify that analyze commands return non-zero exit status
 //! when violations are found AND the --fail-on-violation flag is used,
 //! addressing GitHub issue #28.
 
 use assert_cmd::Command;
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 /// Create a test file with high complexity
 fn create_complex_file(dir: &TempDir) -> std::path::PathBuf {
@@ -75,74 +75,72 @@ fn hacky_function() {
 fn test_analyze_complexity_exits_non_zero_with_violations() {
     let temp_dir = TempDir::new().unwrap();
     create_complex_file(&temp_dir);
-    
+
     // Run analyze complexity with a low threshold and fail-on-violation flag
     let mut cmd = Command::cargo_bin("pmat").unwrap();
-    cmd.current_dir(&temp_dir)
-        .args(["analyze", "complexity", "--max-cyclomatic", "5", "--fail-on-violation"]);
-    
+    cmd.current_dir(&temp_dir).args([
+        "analyze",
+        "complexity",
+        "--max-cyclomatic",
+        "5",
+        "--fail-on-violation",
+    ]);
+
     // Should exit with non-zero status
-    cmd.assert()
-        .failure()
-        .code(1);
+    cmd.assert().failure().code(1);
 }
 
 #[test]
 fn test_analyze_complexity_exits_zero_without_violations() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Create a simple file
     let path = temp_dir.path().join("simple.rs");
     fs::write(&path, "fn simple() -> i32 { 42 }").unwrap();
-    
+
     // Run analyze complexity with a high threshold
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
         .args(["analyze", "complexity", "--max-cyclomatic", "50"]);
-    
+
     // Should exit with zero status
-    cmd.assert()
-        .success();
+    cmd.assert().success();
 }
 
 #[test]
 fn test_analyze_satd_exits_non_zero_with_violations() {
     let temp_dir = TempDir::new().unwrap();
     create_satd_file(&temp_dir);
-    
+
     // Run analyze satd with fail-on-violation flag
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.current_dir(&temp_dir)
         .args(["analyze", "satd", "--fail-on-violation"]);
-    
+
     // Should exit with non-zero status
-    cmd.assert()
-        .failure()
-        .code(1);
+    cmd.assert().failure().code(1);
 }
 
 #[test]
 fn test_analyze_satd_exits_zero_without_violations() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Create a clean file
     let path = temp_dir.path().join("clean.rs");
     fs::write(&path, "fn clean_function() -> i32 { 42 }").unwrap();
-    
+
     // Run analyze satd
     let mut cmd = Command::cargo_bin("pmat").unwrap();
-    cmd.current_dir(&temp_dir)
-        .args(["analyze", "satd"]);
-    
+    cmd.current_dir(&temp_dir).args(["analyze", "satd"]);
+
     // Should exit with zero status
-    cmd.assert()
-        .success();
+    cmd.assert().success();
 }
 
 #[test]
 fn test_analyze_dead_code_exit_status() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Create a file with unused function
     let path = temp_dir.path().join("dead.rs");
     let content = r#"
@@ -159,14 +157,17 @@ fn main() {
 }
 "#;
     fs::write(&path, content).unwrap();
-    
+
     // Run analyze dead-code with max percentage and fail-on-violation flag
     let mut cmd = Command::cargo_bin("pmat").unwrap();
-    cmd.current_dir(&temp_dir)
-        .args(["analyze", "dead-code", "--max-percentage", "10", "--fail-on-violation"]);
-    
+    cmd.current_dir(&temp_dir).args([
+        "analyze",
+        "dead-code",
+        "--max-percentage",
+        "10",
+        "--fail-on-violation",
+    ]);
+
     // Should exit with non-zero status if dead code percentage exceeds threshold
-    cmd.assert()
-        .failure()
-        .code(1);
+    cmd.assert().failure().code(1);
 }

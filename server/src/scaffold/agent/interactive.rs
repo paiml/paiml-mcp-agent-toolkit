@@ -109,15 +109,26 @@ impl InteractiveScaffolder {
     fn prompt_template(&self) -> Result<AgentTemplate> {
         let items = [
             ("MCP Tool Server", "Standard MCP server with async handlers"),
-            ("State Machine Workflow", "Agent with state transitions and invariants"),
-            ("Deterministic Calculator", "Pure deterministic computation agent"),
+            (
+                "State Machine Workflow",
+                "Agent with state transitions and invariants",
+            ),
+            (
+                "Deterministic Calculator",
+                "Pure deterministic computation agent",
+            ),
             ("Hybrid Analyzer", "Deterministic core with AI wrapper"),
             ("Custom Template", "Use a custom template from file"),
         ];
 
         let selection = Select::with_theme(&self.theme)
             .with_prompt("Select template type")
-            .items(&items.iter().map(|(name, desc)| format!("{}\n   {}", name, desc)).collect::<Vec<_>>())
+            .items(
+                &items
+                    .iter()
+                    .map(|(name, desc)| format!("{}\n   {}", name, desc))
+                    .collect::<Vec<_>>(),
+            )
             .default(0)
             .interact()?;
 
@@ -139,7 +150,7 @@ impl InteractiveScaffolder {
     /// Prompt for features to include.
     fn prompt_features(&self, template: &AgentTemplate) -> Result<HashSet<AgentFeature>> {
         let available_features = self.get_available_features(template);
-        
+
         if available_features.is_empty() {
             return Ok(HashSet::new());
         }
@@ -179,7 +190,11 @@ impl InteractiveScaffolder {
             ],
             AgentTemplate::StateMachineWorkflow => vec![
                 AgentFeature::StateMachine {
-                    states: vec!["Initial".to_string(), "Processing".to_string(), "Complete".to_string()],
+                    states: vec![
+                        "Initial".to_string(),
+                        "Processing".to_string(),
+                        "Complete".to_string(),
+                    ],
                 },
                 AgentFeature::QualityGates {
                     level: QualityLevel::Extreme,
@@ -216,12 +231,20 @@ impl InteractiveScaffolder {
         let items = [
             ("Standard", "Basic quality checks, suitable for prototypes"),
             ("Strict", "Zero warnings, high test coverage"),
-            ("Extreme (Toyota Way)", "Zero SATD, max complexity 10, full verification"),
+            (
+                "Extreme (Toyota Way)",
+                "Zero SATD, max complexity 10, full verification",
+            ),
         ];
 
         let selection = Select::with_theme(&self.theme)
             .with_prompt("Quality level")
-            .items(&items.iter().map(|(name, desc)| format!("{}\n   {}", name, desc)).collect::<Vec<_>>())
+            .items(
+                &items
+                    .iter()
+                    .map(|(name, desc)| format!("{}\n   {}", name, desc))
+                    .collect::<Vec<_>>(),
+            )
             .default(1)
             .interact()?;
 
@@ -237,11 +260,7 @@ impl InteractiveScaffolder {
     fn prompt_deterministic_core(&self) -> Result<CoreSpec> {
         println!("\n=== Deterministic Core Configuration ===");
 
-        let verification_items = [
-            "Property-based tests",
-            "Formal proof",
-            "Model checking",
-        ];
+        let verification_items = ["Property-based tests", "Formal proof", "Model checking"];
 
         let verification_idx = Select::with_theme(&self.theme)
             .with_prompt("Verification method")
@@ -301,11 +320,7 @@ impl InteractiveScaffolder {
             _ => unreachable!(),
         };
 
-        let fallback_items = [
-            "Deterministic fallback",
-            "Default value",
-            "Return error",
-        ];
+        let fallback_items = ["Deterministic fallback", "Default value", "Return error"];
 
         let fallback_idx = Select::with_theme(&self.theme)
             .with_prompt("Fallback strategy")
@@ -430,6 +445,8 @@ mod tests {
         let scaffolder = InteractiveScaffolder::new();
         let features = scaffolder.get_available_features(&AgentTemplate::MCPToolServer);
         assert!(!features.is_empty());
-        assert!(features.iter().any(|f| matches!(f, AgentFeature::ToolComposition)));
+        assert!(features
+            .iter()
+            .any(|f| matches!(f, AgentFeature::ToolComposition)));
     }
 }

@@ -22,13 +22,13 @@
 //! let mut params = Map::new();
 //! params.insert("project_name".to_string(), Value::String("my_app".to_string()));
 //! params.insert("description".to_string(), Value::String("My CLI app".to_string()));
-//! 
+//!
 //! let template = generate_template(
 //!     server,
 //!     "project/rust/cli",
 //!     params
 //! ).await?;
-//! 
+//!
 //! println!("Generated: {}", template.filename);
 //! println!("Checksum: {}", template.checksum);
 //! # Ok(())

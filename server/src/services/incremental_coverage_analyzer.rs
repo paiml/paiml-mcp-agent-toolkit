@@ -30,18 +30,18 @@
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let analyzer = IncrementalCoverageAnalyzer::new(Path::new(".coverage_db"))?;
-//! 
+//!
 //! // Analyze coverage for changed files
 //! let changed_files = vec![
 //!     Path::new("src/lib.rs"),
 //!     Path::new("src/main.rs"),
 //! ];
-//! 
+//!
 //! let coverage = analyzer.analyze_incremental(&changed_files).await?;
-//! 
+//!
 //! println!("Delta coverage: {:.1}%", coverage.delta_coverage.percentage);
 //! println!("Files needing re-testing: {}", coverage.files_to_test.len());
-//! 
+//!
 //! // Get impacted test list
 //! for test in &coverage.impacted_tests {
 //!     println!("Re-run test: {}", test);

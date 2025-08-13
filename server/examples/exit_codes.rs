@@ -13,44 +13,44 @@ fn main() {
 
     println!("Commands with Exit Code Support:");
     println!("{}", "=".repeat(60));
-    
+
     println!("\n1. Quality Gate");
     println!("   pmat quality-gate --fail-on-violation");
     println!("   - Comprehensive quality check");
     println!("   - Configurable thresholds for all metrics");
     println!("   - Perfect for CI/CD gate keeping");
-    
+
     println!("\n2. Analyze Complexity");
     println!("   pmat analyze complexity --fail-on-violation");
     println!("   - Fails if any function exceeds complexity thresholds");
     println!("   - Configurable: --max-cyclomatic, --max-cognitive");
     println!("   - Default: cyclomatic=20, cognitive=15");
-    
+
     println!("\n3. Analyze Dead Code");
     println!("   pmat analyze dead-code --fail-on-violation");
     println!("   - Fails if dead code percentage exceeds threshold");
     println!("   - Configurable: --max-percentage");
     println!("   - Default: 15%");
-    
+
     println!("\n4. Analyze SATD");
     println!("   pmat analyze satd --fail-on-violation");
     println!("   - Fails if ANY technical debt is found");
     println!("   - Use --strict for comprehensive detection");
     println!("   - Use --critical-only to only fail on critical debt");
-    
+
     println!("\nTesting Exit Codes:");
     println!("{}", "=".repeat(60));
-    
+
     println!("\n# Test in bash/shell:");
     println!("pmat analyze complexity --fail-on-violation");
     println!("echo \"Exit code: $?\"  # Will show 0 or 1");
-    
+
     println!("\n# Chain commands (stop on first failure):");
     println!("pmat analyze complexity --fail-on-violation && \\");
     println!("pmat analyze satd --strict --fail-on-violation && \\");
     println!("pmat analyze dead-code --max-percentage 10 --fail-on-violation && \\");
     println!("echo \"✅ All quality checks passed!\"");
-    
+
     println!("\n# Continue despite failures:");
     println!("set +e  # Don't exit on error");
     println!("pmat analyze complexity --fail-on-violation");
@@ -61,7 +61,7 @@ fn main() {
     println!("    echo \"Quality issues found!\"");
     println!("    exit 1");
     println!("fi");
-    
+
     println!("\nGitHub Actions Matrix Example:");
     println!("{}", "=".repeat(60));
     println!("```yaml");
@@ -78,7 +78,7 @@ fn main() {
     println!("  - name: Run ${{{{ matrix.check.name }}}} check");
     println!("    run: pmat ${{{{ matrix.check.cmd }}}}");
     println!("```");
-    
+
     println!("\n🎯 Best Practices:");
     println!("{}", "=".repeat(60));
     println!("1. Set appropriate thresholds for your project maturity");

@@ -40,7 +40,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "threshold": 20
     });
     println!("      Request: analyze_complexity");
-    println!("      Args: {}", serde_json::to_string_pretty(&complexity_args)?);
+    println!(
+        "      Args: {}",
+        serde_json::to_string_pretty(&complexity_args)?
+    );
     println!("      Expected: Returns top 10 files with complexity > 20");
 
     // SATD detection example
@@ -60,7 +63,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "include_tests": false
     });
     println!("      Request: analyze_dead_code");
-    println!("      Args: {}", serde_json::to_string_pretty(&dead_code_args)?);
+    println!(
+        "      Args: {}",
+        serde_json::to_string_pretty(&dead_code_args)?
+    );
     println!("      Expected: Returns unused functions and variables");
 
     // Quality gate example
@@ -71,7 +77,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "strict": true
     });
     println!("      Request: quality_gate");
-    println!("      Args: {}", serde_json::to_string_pretty(&quality_args)?);
+    println!(
+        "      Args: {}",
+        serde_json::to_string_pretty(&quality_args)?
+    );
     println!("      Expected: Returns pass/fail for each quality check");
 
     println!("\n3. Server Features:");
@@ -96,7 +105,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("     \"method\": \"tools/call\",");
     println!("     \"params\": {{");
     println!("       \"name\": \"analyze_complexity\",");
-    println!("       \"arguments\": {}", serde_json::to_string(&complexity_args)?);
+    println!(
+        "       \"arguments\": {}",
+        serde_json::to_string(&complexity_args)?
+    );
     println!("     }}");
     println!("   }}");
     println!("   ```");
