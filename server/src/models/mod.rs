@@ -13,6 +13,7 @@
 //! - **defect_report**: Defect reporting structures (SATD, lint issues)
 //! - **error**: Error types and handling
 //! - **mcp**: Model Context Protocol specific structures
+//! - **pdmt**: PDMT integration for deterministic todo generation with quality enforcement
 //! - **project_meta**: Project metadata and configuration
 //! - **refactor**: Refactoring state machine and operations
 //! - **tdg**: Task Dependency Graph for workflow analysis
@@ -53,6 +54,7 @@ pub mod deep_context_config;
 pub mod defect_report;
 pub mod error;
 pub mod mcp;
+pub mod pdmt;
 pub mod project_meta;
 pub mod proxy;
 pub mod refactor;

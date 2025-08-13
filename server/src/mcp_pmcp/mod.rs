@@ -87,6 +87,7 @@
 pub mod analyze_handlers;
 pub mod context_handlers;
 pub mod handlers;
+pub mod pdmt_handler;
 pub mod quality_handlers;
 pub mod quality_proxy_handler;
 pub mod server;
