@@ -6,6 +6,7 @@ use crate::mcp_pmcp::context_handlers::{GenerateContextTool, GitTool, ScaffoldPr
 use crate::mcp_pmcp::handlers::{
     RefactorGetStateTool, RefactorNextIterationTool, RefactorStartTool, RefactorStopTool,
 };
+use crate::mcp_pmcp::pdmt_handler::PdmtTool;
 use crate::mcp_pmcp::quality_handlers::QualityGateTool;
 use crate::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
 use crate::mcp_server::state_manager::StateManager;
@@ -64,16 +65,17 @@ impl SimpleUnifiedServer {
                 "refactor.stop",
                 RefactorStopTool::new(self.state_manager.clone()),
             )
-            // === Quality Tools (2) ===
+            // === Quality Tools (3) ===
             .tool("quality_gate", QualityGateTool)
             .tool("quality_proxy", QualityProxyTool)
+            .tool("pdmt_deterministic_todos", PdmtTool::new())
             // === Git and Context Tools (3) ===
             .tool("git_operation", GitTool)
             .tool("generate_context", GenerateContextTool)
             .tool("scaffold_project", ScaffoldProjectTool)
             .build()?;
 
-        info!("PMAT Simple Unified MCP server ready with 17 core tools, listening on stdio");
+        info!("PMAT Simple Unified MCP server ready with 18 core tools, listening on stdio");
 
         // Run server with stdio transport
         server.run_stdio().await?;

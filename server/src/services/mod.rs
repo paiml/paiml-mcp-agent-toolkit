@@ -107,6 +107,8 @@ pub mod makefile_linter;
 pub mod mermaid_generator;
 pub mod parallel_git;
 pub mod parsed_file_cache;
+pub mod pdmt_quality_integration;
+pub mod pdmt_service;
 pub mod progress;
 pub mod project_analyzer;
 pub mod project_meta_detector;

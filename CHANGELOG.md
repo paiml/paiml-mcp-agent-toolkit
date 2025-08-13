@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2025-08-13
+
+### Added
+- **PDMT Integration**: Comprehensive integration with Pragmatic Deterministic MCP Templating for enterprise-grade todo generation
+  - New MCP tool: `pdmt_deterministic_todos` for generating quality-enforced todo lists from requirements
+  - Deterministic todo generation with reproducible outputs (fixed seed: 42)
+  - Enforces 80%+ test coverage, zero SATD tolerance, and complexity limits
+  - Three enforcement modes: Strict (reject), Advisory (warn), Auto-Fix (refactor)
+  - Comprehensive quality validation pipeline with 7 validation phases
+  - Includes validation commands and success criteria for each generated todo
+  - Full integration with existing quality proxy infrastructure
+- **New Services**: 
+  - `PdmtService` for deterministic todo generation (server/src/services/pdmt_service.rs)
+  - `PdmtQualityEnforcer` for quality validation (server/src/services/pdmt_quality_integration.rs)
+- **New Models**: Comprehensive PDMT data models (server/src/models/pdmt.rs)
+- **Documentation**: PDMT integration guide (docs/pdmt-integration-guide.md)
+- **Tests**: Integration tests for PDMT functionality (server/tests/pdmt_integration_test.rs)
+
+### Changed
+- Updated MCP server to include 18 core tools (was 17)
+- Enhanced README with PDMT integration examples and documentation
+
+### Technical Details
+- PDMT todos include quality gates, validation commands, and implementation specs
+- Quality enforcement validates: structure, coverage, doctests, property tests, examples, and SATD
+- Granularity levels: low (1 todo), medium (2-3 todos), high (full breakdown with tests/docs)
+- Priority detection based on requirement keywords (critical, bug, feature, refactor)
+- Dependency management for logical task ordering
+
 ## [2.2.0] - 2024-12-12
 
 ### Changed
