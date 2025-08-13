@@ -261,6 +261,36 @@ jobs:
           name: dependency-report
           path: outdated.json
 
+  # STAGE 3: Slow tests - run after main CI passes with extended timeout
+  slow-tests:
+    name: Slow Integration Tests
+    needs: ci
+    if: needs.ci.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30  # Give slow tests more time
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          cache-on-failure: true
+          shared-key: "ci"
+      
+      - name: Run MCP integration tests
+        env:
+          SKIP_SLOW_TESTS: false  # Override to run slow tests
+          CI: false  # Override CI flag for these specific tests
+        run: |
+          cd server
+          # Run only the MCP integration tests that need more time
+          cargo test --test bin_integration --release -- --nocapture
+          cargo test --test mcp_documentation_sync --release -- --nocapture
+
   # Final status check
   all-checks:
     name: All Checks Passed

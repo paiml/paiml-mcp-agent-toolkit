@@ -210,9 +210,9 @@ fn send_mcp_request(request: Value) -> Result<McpResponse, String> {
 
 #[test]
 fn test_mcp_tools_match_documentation() {
-    // Skip in CI to avoid timeout issues with MCP server that runs forever
-    if std::env::var("CI").is_ok() || std::env::var("SKIP_SLOW_TESTS").is_ok() {
-        eprintln!("Skipping MCP server test in CI environment");
+    // Skip only when SKIP_SLOW_TESTS is explicitly set to true
+    if std::env::var("SKIP_SLOW_TESTS").unwrap_or_default() == "true" {
+        eprintln!("Skipping MCP server test due to SKIP_SLOW_TESTS=true");
         return;
     }
     
@@ -279,9 +279,9 @@ fn test_mcp_tools_match_documentation() {
 
 #[test]
 fn test_mcp_tool_schemas_match_documentation() {
-    // Skip in CI to avoid timeout issues with MCP server that runs forever
-    if std::env::var("CI").is_ok() || std::env::var("SKIP_SLOW_TESTS").is_ok() {
-        eprintln!("Skipping MCP server test in CI environment");
+    // Skip only when SKIP_SLOW_TESTS is explicitly set to true
+    if std::env::var("SKIP_SLOW_TESTS").unwrap_or_default() == "true" {
+        eprintln!("Skipping MCP server test due to SKIP_SLOW_TESTS=true");
         return;
     }
     
