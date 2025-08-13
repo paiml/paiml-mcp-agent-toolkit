@@ -28,13 +28,13 @@
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let provider = EmbeddedTemplateProvider::new();
-//! 
+//!
 //! // List all available templates
 //! let templates = provider.list_templates("makefile/").await?;
 //! for template in templates {
 //!     println!("{}: {}", template.name, template.description);
 //! }
-//! 
+//!
 //! // Get a specific template
 //! let makefile_content = provider
 //!     .get_template_content("template://makefile/rust/cli")

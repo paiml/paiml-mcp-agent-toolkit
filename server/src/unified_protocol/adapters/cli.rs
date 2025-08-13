@@ -6,10 +6,10 @@ use axum::http::Method;
 use serde_json::{json, Value};
 use tracing::debug;
 
+use crate::cli::commands::ScaffoldCommands;
 use crate::cli::{
     AnalyzeCommands, Commands, ComplexityOutputFormat, ContextFormat, DagType, OutputFormat,
 };
-use crate::cli::commands::ScaffoldCommands;
 use crate::models::churn::ChurnOutputFormat;
 use crate::unified_protocol::{
     CliContext, Protocol, ProtocolAdapter, ProtocolError, UnifiedRequest, UnifiedResponse,
@@ -35,19 +35,17 @@ impl CliAdapter {
                 output,
                 create_dirs,
             } => Self::decode_generate(category, template, params, output, create_dirs),
-            Commands::Scaffold { command } => {
-                match command {
-                    ScaffoldCommands::Project {
-                        toolchain,
-                        templates,
-                        params,
-                        parallel,
-                    } => Self::decode_scaffold(toolchain, templates, params, *parallel),
-                    _ => Err(ProtocolError::UnsupportedProtocol(
-                        "Agent scaffolding not supported via unified protocol".to_string()
-                    )),
-                }
-            }
+            Commands::Scaffold { command } => match command {
+                ScaffoldCommands::Project {
+                    toolchain,
+                    templates,
+                    params,
+                    parallel,
+                } => Self::decode_scaffold(toolchain, templates, params, *parallel),
+                _ => Err(ProtocolError::UnsupportedProtocol(
+                    "Agent scaffolding not supported via unified protocol".to_string(),
+                )),
+            },
             Commands::List {
                 toolchain,
                 category,
@@ -301,7 +299,7 @@ impl CliAdapter {
                 include_tests,
                 output,
                 fail_on_violation: _, // Ignore for MCP
-                max_percentage: _, // Ignore for MCP
+                max_percentage: _,    // Ignore for MCP
             } => Self::decode_analyze_dead_code(
                 path,
                 format,

@@ -370,7 +370,7 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 /// addressing issue #32 where `--max-cyclomatic` didn't affect report output.
 ///
 /// # Arguments
-/// 
+///
 /// * `file_metrics` - Vector of file complexity metrics to aggregate
 /// * `max_cyclomatic` - Optional custom maximum cyclomatic complexity threshold
 /// * `max_cognitive` - Optional custom maximum cognitive complexity threshold
@@ -431,7 +431,7 @@ pub fn aggregate_results_with_thresholds(
         thresholds.cognitive_warn = max_cog.saturating_sub(5).max(1);
         thresholds.cognitive_error = max_cog;
     }
-    
+
     let cyclomatic_rule = CyclomaticComplexityRule::new(&thresholds);
     let cognitive_rule = CognitiveComplexityRule::new(&thresholds);
 

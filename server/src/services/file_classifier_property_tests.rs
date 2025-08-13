@@ -327,7 +327,7 @@ mod tests {
             // Create a safe path that won't trigger vendor/build artifact detection
             let filename = format!("{}.rs", segments.join("_"));
             let path = PathBuf::from(format!("src/{}", filename));
-            
+
             let classifier = FileClassifier::default();
             let mut content = String::new();
 
@@ -346,7 +346,7 @@ mod tests {
             let decision = classifier.should_parse_with_options(&path, content_bytes, true);
             // Check that it's not skipped for LargeFile reason
             prop_assert_ne!(decision, ParseDecision::Skip(SkipReason::LargeFile));
-            
+
             // It should either parse or skip for a different reason (not LargeFile)
             match decision {
                 ParseDecision::Parse => {},

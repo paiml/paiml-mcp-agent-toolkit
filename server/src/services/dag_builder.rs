@@ -30,10 +30,10 @@
 //! # fn example(project: &ProjectContext) {
 //! // Build dependency graph from project context
 //! let graph = DagBuilder::build_from_project(project);
-//! 
-//! println!("Graph has {} nodes and {} edges", 
+//!
+//! println!("Graph has {} nodes and {} edges",
 //!          graph.nodes.len(), graph.edges.len());
-//! 
+//!
 //! // Find all functions that call a specific function
 //! let callers = graph.edges.iter()
 //!     .filter(|e| e.to == "myFunction" && e.edge_type == EdgeType::Calls)

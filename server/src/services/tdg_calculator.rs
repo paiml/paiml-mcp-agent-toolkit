@@ -32,18 +32,18 @@
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let calculator = TDGCalculator::new();
 //! let config = TDGConfig::default();
-//! 
+//!
 //! // Analyze a single file
 //! let file_path = PathBuf::from("src/main.rs");
 //! let score = calculator.calculate_file(file_path, config).await?;
-//! 
+//!
 //! println!("TDG Score: {:.2}", score.value);
 //! println!("Severity: {:?}", score.severity);
 //! println!("Components:");
 //! println!("  Complexity: {:.2}", score.components.complexity);
 //! println!("  Churn: {:.2}", score.components.churn);
 //! println!("  Coupling: {:.2}", score.components.coupling);
-//! 
+//!
 //! // Analyze entire project
 //! let analysis = calculator.analyze_project(PathBuf::from("."), config).await?;
 //! println!("Project average TDG: {:.2}", analysis.summary.average_score);

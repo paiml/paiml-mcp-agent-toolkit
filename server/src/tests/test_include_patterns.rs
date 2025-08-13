@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::cli::{Cli, Commands, AnalyzeCommands};
+    use crate::cli::{AnalyzeCommands, Cli, Commands};
     use clap::Parser;
 
     #[test]
@@ -10,13 +10,16 @@ mod tests {
             "pmat",
             "analyze",
             "complexity",
-            "--include", "**/*.rs",
-            "--include", "src/**/*.rs",
-            "--include", "tests/*.rs",
+            "--include",
+            "**/*.rs",
+            "--include",
+            "src/**/*.rs",
+            "--include",
+            "tests/*.rs",
         ];
-        
+
         let cli = Cli::try_parse_from(&args).unwrap();
-        
+
         match cli.command {
             Commands::Analyze(AnalyzeCommands::Complexity { include, .. }) => {
                 assert_eq!(include.len(), 3);
@@ -31,7 +34,7 @@ mod tests {
     #[test]
     fn test_glob_pattern_matching() {
         use glob::Pattern;
-        
+
         // Test various glob patterns
         let test_cases = vec![
             ("**/*.rs", "src/main.rs", true),
@@ -44,7 +47,7 @@ mod tests {
             ("tests/*/*.rs", "tests/unit/test.rs", true), // Need explicit path depth
             ("tests/**/*.rs", "tests/unit/test.rs", true),
         ];
-        
+
         for (pattern_str, path, expected) in test_cases {
             let pattern = Pattern::new(pattern_str).unwrap();
             assert_eq!(
@@ -58,5 +61,4 @@ mod tests {
             );
         }
     }
-
 }

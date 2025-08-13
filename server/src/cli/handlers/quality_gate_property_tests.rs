@@ -27,7 +27,7 @@ prop_compose! {
         if include_entropy { checks.push(QualityCheckType::Entropy); }
         if include_duplicates { checks.push(QualityCheckType::Duplicates); }
         if include_coverage { checks.push(QualityCheckType::Coverage); }
-        
+
         if checks.is_empty() {
             vec![QualityCheckType::All]
         } else {
@@ -49,9 +49,9 @@ prop_compose! {
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(10))]
-    
+
     /// Property: Quality gate always shows which checks are being run (Issue #30)
-    /// 
+    ///
     /// This test verifies that regardless of input parameters, the quality gate
     /// will always display the checks being executed, addressing issue #30.
     #[test]
@@ -67,7 +67,7 @@ proptest! {
             let temp_dir = TempDir::new().unwrap();
             let src_dir = temp_dir.path().join("src");
             fs::create_dir_all(&src_dir).await.unwrap();
-            
+
             // Create a simple Rust file
             let test_file = src_dir.join("lib.rs");
             fs::write(&test_file, r#"
@@ -85,29 +85,29 @@ fn complex_function(a: i32, b: i32, c: i32, d: i32) {
     }
 }
 "#).await.unwrap();
-            
+
             // Capture output to verify checks are shown
             let original_output = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
             let _output_clone = original_output.clone();
-            
+
             // Mock the quality gate execution with check display verification
             let checks_displayed = verify_checks_displayed(&checks, perf).await;
-            
+
             // Property: Checks must always be displayed
             prop_assert!(checks_displayed, "Quality gate must show which checks are being run");
-            
+
             // Property: Performance metrics shown only when perf flag is true (Issue #31)
             if perf {
                 let perf_metrics_shown = verify_perf_metrics_displayed().await;
                 prop_assert!(perf_metrics_shown, "Performance metrics must be shown when --perf flag is used");
             }
-            
+
             Ok(())
         })?;
     }
-    
+
     /// Property: Quality gate exit behavior is consistent (Related to Issue #34)
-    /// 
+    ///
     /// This test verifies that quality gate exit behavior follows the rules:
     /// - Exit 0 when no violations or fail_on_violation is false
     /// - Exit 1 when violations exist and fail_on_violation is true
@@ -120,19 +120,19 @@ fn complex_function(a: i32, b: i32, c: i32, d: i32) {
         rt.block_on(async {
             let should_exit_with_error = fail_on_violation && has_violations;
             let exit_status = simulate_quality_gate_exit(fail_on_violation, has_violations).await;
-            
+
             if should_exit_with_error {
                 prop_assert_eq!(exit_status, 1, "Should exit with code 1 when fail_on_violation=true and violations exist");
             } else {
                 prop_assert_eq!(exit_status, 0, "Should exit with code 0 when no failures required or no violations");
             }
-            
+
             Ok(())
         })?;
     }
-    
+
     /// Property: Check combinations are valid and complete
-    /// 
+    ///
     /// This test ensures that all check combinations result in meaningful
     /// quality gate execution without errors.
     #[test]
@@ -144,19 +144,19 @@ fn complex_function(a: i32, b: i32, c: i32, d: i32) {
             // Property: Every check combination should be processable
             let check_names = get_check_names(&checks);
             prop_assert!(!check_names.is_empty(), "At least one check must be specified");
-            
+
             // Property: Check names should be valid and recognized
             for check_name in &check_names {
                 prop_assert!(is_valid_check_name(check_name), "Check name '{}' must be valid", check_name);
             }
-            
+
             // Property: If All is specified, it should encompass all individual checks
             if checks.contains(&QualityCheckType::All) {
                 let all_check_names = get_all_check_names();
                 prop_assert!(check_names.len() >= all_check_names.len() || checks.len() == 1,
                     "All check type should include all available checks");
             }
-            
+
             Ok(())
         })?;
     }
@@ -166,25 +166,25 @@ fn complex_function(a: i32, b: i32, c: i32, d: i32) {
 async fn verify_checks_displayed(checks: &[QualityCheckType], perf: bool) -> bool {
     // Simulate the check display logic
     let check_names = get_check_names(checks);
-    
+
     // Property: At least one check must be displayed
     if check_names.is_empty() {
         return false;
     }
-    
+
     // Property: Check display format must be consistent
     for check_name in &check_names {
         if check_name.trim().is_empty() {
             return false;
         }
     }
-    
+
     // Property: Performance metrics integration
     if perf {
         // When perf is enabled, timing information should be available
         return true;
     }
-    
+
     true
 }
 
@@ -207,7 +207,7 @@ async fn simulate_quality_gate_exit(fail_on_violation: bool, has_violations: boo
 /// Get human-readable check names from QualityCheckType enum
 fn get_check_names(checks: &[QualityCheckType]) -> Vec<String> {
     let mut names = Vec::new();
-    
+
     for check in checks {
         match check {
             QualityCheckType::All => {
@@ -224,7 +224,7 @@ fn get_check_names(checks: &[QualityCheckType]) -> Vec<String> {
             QualityCheckType::Provability => names.push("Provability".to_string()),
         }
     }
-    
+
     names.sort();
     names.dedup();
     names
@@ -259,7 +259,7 @@ mod tests {
     fn test_check_name_generation() {
         let checks = vec![QualityCheckType::Complexity, QualityCheckType::DeadCode];
         let names = get_check_names(&checks);
-        
+
         assert_eq!(names.len(), 2);
         assert!(names.contains(&"Complexity analysis".to_string()));
         assert!(names.contains(&"Dead code detection".to_string()));
@@ -270,7 +270,7 @@ mod tests {
         let checks = vec![QualityCheckType::All];
         let names = get_check_names(&checks);
         let all_names = get_all_check_names();
-        
+
         assert_eq!(names.len(), all_names.len());
         for name in &all_names {
             assert!(names.contains(name));
@@ -283,14 +283,14 @@ mod tests {
         for name in &valid_names {
             assert!(is_valid_check_name(name));
         }
-        
+
         assert!(!is_valid_check_name("Invalid Check"));
     }
 
     #[test]
     fn test_exit_behavior_simulation() {
         let rt = tokio::runtime::Runtime::new().unwrap();
-        
+
         // Test all combinations
         rt.block_on(async {
             assert_eq!(simulate_quality_gate_exit(false, false).await, 0);

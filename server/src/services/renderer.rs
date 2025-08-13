@@ -28,12 +28,12 @@
 //!
 //! # fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let renderer = TemplateRenderer::new()?;
-//! 
+//!
 //! let template = r#"
 //! pub struct {{pascal_case name}} {
 //!     created_at: &'static str,
 //! }
-//! 
+//!
 //! impl {{pascal_case name}} {
 //!     pub fn new() -> Self {
 //!         Self {
@@ -42,10 +42,10 @@
 //!     }
 //! }
 //! "#;
-//! 
+//!
 //! let mut context = Map::new();
 //! context.insert("name".to_string(), Value::String("my_struct".to_string()));
-//! 
+//!
 //! let rendered = render_template(&renderer, template, context)?;
 //! assert!(rendered.contains("pub struct MyStruct"));
 //! # Ok(())

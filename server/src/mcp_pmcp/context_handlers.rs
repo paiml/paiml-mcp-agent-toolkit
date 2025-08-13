@@ -10,9 +10,8 @@ use tracing::debug;
 
 // Re-export with expected names
 pub use self::{
-    ContextGenerateTool as GenerateContextTool,
+    ContextGenerateTool as GenerateContextTool, ContextSummaryTool as ScaffoldProjectTool,
     GitStatusTool as GitTool,
-    ContextSummaryTool as ScaffoldProjectTool,
 };
 
 // Git Clone Tool

@@ -115,7 +115,10 @@ pub async fn handle_analyze_comprehensive(
         let project_root = find_project_root(file_path)?;
         (project_root, true, vec![file_path.clone()])
     } else if !files.is_empty() {
-        info!("📋 Multi-file mode (MCP composition): {} files", files.len());
+        info!(
+            "📋 Multi-file mode (MCP composition): {} files",
+            files.len()
+        );
         // For multiple files, use project root and filter by target files
         (project_path.clone(), true, files.clone())
     } else {
@@ -163,9 +166,9 @@ pub async fn handle_analyze_comprehensive(
             if single_file_mode && !target_files.is_empty() {
                 // Check if defect file matches any of our target files
                 let matches_target = target_files.iter().any(|target| {
-                    d.file_path == *target || 
-                    d.file_path.ends_with(target) ||
-                    target.ends_with(&d.file_path)
+                    d.file_path == *target
+                        || d.file_path.ends_with(target)
+                        || target.ends_with(&d.file_path)
                 });
                 if !matches_target {
                     return false;

@@ -113,6 +113,8 @@ pub mod project_meta_detector;
 pub mod proof_annotator;
 pub mod quality_gates;
 pub use quality_gates as quality_gate;
+#[cfg(test)]
+mod deep_context_property_tests;
 pub mod quality_proxy;
 pub mod ranking;
 pub mod ranking_utils;
@@ -123,8 +125,6 @@ pub mod rust_borrow_checker;
 pub mod satd_detector;
 pub mod semantic_naming;
 pub mod simple_deep_context;
-#[cfg(test)]
-mod deep_context_property_tests;
 pub mod symbol_table;
 pub mod tdg_calculator;
 pub mod template_service;

@@ -327,15 +327,15 @@ impl DebtClassifier {
     /// use pmat::services::satd_detector::{DebtClassifier, DebtCategory, Severity};
     ///
     /// let classifier = DebtClassifier::new();
-    /// 
+    ///
     /// // TODO comments are classified as requirements
     /// let result = classifier.classify_comment("TODO: implement this feature");
     /// assert_eq!(result, Some((DebtCategory::Requirement, Severity::Low)));
-    /// 
+    ///
     /// // FIXME comments are defects with higher severity
     /// let result = classifier.classify_comment("FIXME: this crashes sometimes");
     /// assert_eq!(result, Some((DebtCategory::Defect, Severity::High)));
-    /// 
+    ///
     /// // Normal comments return None
     /// let result = classifier.classify_comment("This is a regular comment");
     /// assert_eq!(result, None);
@@ -826,11 +826,14 @@ impl SATDDetector {
     fn is_test_file(&self, path: &Path) -> bool {
         // Check if path contains test directories
         let path_str = path.to_string_lossy();
-        if path_str.contains("/tests/") || path_str.contains("/test/") 
-            || path_str.contains("\\tests\\") || path_str.contains("\\test\\") {
+        if path_str.contains("/tests/")
+            || path_str.contains("/test/")
+            || path_str.contains("\\tests\\")
+            || path_str.contains("\\test\\")
+        {
             return true;
         }
-        
+
         if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
             // Common test file patterns
             file_name.contains("test")
@@ -1439,7 +1442,8 @@ fn helper() {
     async fn test_extract_from_content_skips_test_blocks() {
         let detector = SATDDetector::new();
 
-        let content = format!(r#"
+        let content = format!(
+            r#"
 // {}: implement feature
 fn main() {{
     // {}: production bug
@@ -1455,7 +1459,9 @@ mod tests {{
 }}
 
 // {}: this should be found
-"#, "TODO", "FIXME", "TODO", "FIXME", "TODO");
+"#,
+            "TODO", "FIXME", "TODO", "FIXME", "TODO"
+        );
 
         let debts = detector
             .extract_from_content(&content, Path::new("test.rs"))

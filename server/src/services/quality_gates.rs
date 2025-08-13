@@ -21,7 +21,7 @@
 //! # fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let verifier = QAVerification::new();
 //! let context_result = DeepContextResult::default();
-//! 
+//!
 //! match verifier.verify(&context_result) {
 //!     Ok(verification) => {
 //!         println!("Overall status: {:?}", verification.overall);

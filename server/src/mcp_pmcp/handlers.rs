@@ -39,11 +39,7 @@ impl ToolHandler for RefactorStartTool {
         let params: RefactorStartArgs = serde_json::from_value(args)
             .map_err(|e| PmcpError::validation(format!("Invalid arguments: {}", e)))?;
 
-        let targets: Vec<PathBuf> = params
-            .targets
-            .into_iter()
-            .map(PathBuf::from)
-            .collect();
+        let targets: Vec<PathBuf> = params.targets.into_iter().map(PathBuf::from).collect();
 
         let config = params.config.unwrap_or_default();
 
@@ -148,7 +144,9 @@ impl ToolHandler for RefactorStopTool {
     }
 }
 
-fn serialize_state(state_machine: &crate::models::refactor::RefactorStateMachine) -> Result<Value, Box<dyn std::error::Error>> {
+fn serialize_state(
+    state_machine: &crate::models::refactor::RefactorStateMachine,
+) -> Result<Value, Box<dyn std::error::Error>> {
     let state_json = match &state_machine.current {
         crate::models::refactor::State::Scan { targets } => {
             json!({

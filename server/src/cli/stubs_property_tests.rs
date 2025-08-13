@@ -1,12 +1,12 @@
 //! Property tests for newly implemented stub functions
 
+use crate::cli::stubs::{calculate_provability_score, check_dead_code, check_entropy};
 use proptest::prelude::*;
 use std::path::Path;
-use crate::cli::stubs::{check_dead_code, check_entropy, calculate_provability_score};
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(10))]
-    
+
     /// Test that dead code violations respect the threshold
     #[test]
     #[ignore = "Slow test - takes too long in CI"]
@@ -15,7 +15,7 @@ proptest! {
         let result = rt.block_on(async {
             check_dead_code(Path::new("."), max_percentage).await
         });
-        
+
         match result {
             Ok(violations) => {
                 // All violations should be properly structured
@@ -40,7 +40,7 @@ proptest! {
         let result = rt.block_on(async {
             check_entropy(Path::new("."), min_entropy).await
         });
-        
+
         match result {
             Ok(violations) => {
                 // All violations should be for low entropy
@@ -74,7 +74,7 @@ proptest! {
             let high = check_entropy(Path::new("."), high_threshold).await.unwrap_or_default();
             (low, high)
         });
-        
+
         // Higher threshold should find more or equal violations
         prop_assert!(high_violations.len() >= low_violations.len(),
             "Higher threshold ({}) found {} violations, but lower threshold ({}) found {}",
@@ -87,12 +87,12 @@ proptest! {
     #[ignore = "Slow test - takes too long in CI"]
     fn test_provability_score_bounds(test_runs in 1usize..5) {
         let rt = tokio::runtime::Runtime::new().unwrap();
-        
+
         for _ in 0..test_runs {
             let result = rt.block_on(async {
                 calculate_provability_score(Path::new(".")).await
             });
-            
+
             match result {
                 Ok(score) => {
                     prop_assert!(score >= 0.0, "Score {} should not be negative", score);
@@ -118,7 +118,7 @@ proptest! {
             let v2 = check_dead_code(Path::new("."), threshold2).await.unwrap_or_default();
             (v1, v2)
         });
-        
+
         // Lower threshold should find more or equal violations
         prop_assert!(violations1.len() >= violations2.len(),
             "Threshold {} found {} violations, but threshold {} found {}",
@@ -138,17 +138,17 @@ proptest! {
                 _ => vec![],
             }
         });
-        
+
         for violation in violations {
             // All violations should have meaningful messages
             prop_assert!(!violation.message.is_empty());
             prop_assert!(violation.message.len() > 10, "Message too short: {}", violation.message);
             prop_assert!(violation.message.len() < 500, "Message too long: {}", violation.message);
-            
+
             // Messages should contain relevant keywords
             match check_type {
                 "dead_code" => prop_assert!(violation.message.to_lowercase().contains("dead")),
-                "entropy" => prop_assert!(violation.message.to_lowercase().contains("entropy") || 
+                "entropy" => prop_assert!(violation.message.to_lowercase().contains("entropy") ||
                                         violation.message.to_lowercase().contains("diversity")),
                 _ => {}
             }
@@ -159,8 +159,8 @@ proptest! {
 #[cfg(test)]
 mod integration_tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[tokio::test]
     async fn test_dead_code_with_test_project() {
@@ -168,7 +168,7 @@ mod integration_tests {
         let temp_dir = TempDir::new().unwrap();
         let src_dir = temp_dir.path().join("src");
         fs::create_dir_all(&src_dir).unwrap();
-        
+
         // Create a file with dead code
         fs::write(
             src_dir.join("lib.rs"),
@@ -188,13 +188,16 @@ fn another_unused() {
 "#,
         )
         .unwrap();
-        
+
         // Test with different thresholds
         let violations_low = check_dead_code(temp_dir.path(), 5.0).await.unwrap();
         let violations_high = check_dead_code(temp_dir.path(), 90.0).await.unwrap();
-        
+
         // With low threshold, should find violations
-        assert!(!violations_low.is_empty(), "Should find dead code with 5% threshold");
+        assert!(
+            !violations_low.is_empty(),
+            "Should find dead code with 5% threshold"
+        );
         // With high threshold, should find fewer or no violations
         assert!(violations_high.len() <= violations_low.len());
     }
@@ -205,7 +208,7 @@ fn another_unused() {
         let temp_dir = TempDir::new().unwrap();
         let src_dir = temp_dir.path().join("src");
         fs::create_dir_all(&src_dir).unwrap();
-        
+
         // Create a file with very repetitive code (low entropy)
         fs::write(
             src_dir.join("repetitive.rs"),
@@ -218,7 +221,7 @@ fn func5() { let x = 1; let y = 1; let z = 1; }
 "#,
         )
         .unwrap();
-        
+
         // Create a file with diverse code (high entropy)
         fs::write(
             src_dir.join("diverse.rs"),
@@ -241,15 +244,18 @@ impl Config {
 "#,
         )
         .unwrap();
-        
+
         // Test entropy detection
         let violations = check_entropy(temp_dir.path(), 0.7).await.unwrap();
-        
+
         // Should find low entropy in repetitive.rs
         let repetitive_violations: Vec<_> = violations
             .iter()
             .filter(|v| v.file.contains("repetitive.rs"))
             .collect();
-        assert!(!repetitive_violations.is_empty(), "Should detect low entropy in repetitive code");
+        assert!(
+            !repetitive_violations.is_empty(),
+            "Should detect low entropy in repetitive code"
+        );
     }
 }

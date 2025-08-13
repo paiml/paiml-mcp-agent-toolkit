@@ -26,7 +26,7 @@
 //! // Create a runner and analyze
 //! let runner = DemoRunner::new();
 //! let report = runner.analyze(&repo_path).await?;
-//! 
+//!
 //! // Generate HTML report
 //! runner.export_html(&report, "report.html")?;
 //! # Ok(())

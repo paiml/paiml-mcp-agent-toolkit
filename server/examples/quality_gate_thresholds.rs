@@ -3,85 +3,88 @@
 //! This example shows how to use quality gate with custom complexity thresholds.
 //! Addresses issue #32 where --max-cyclomatic didn't affect report output.
 
-use pmat::cli::{QualityCheckType, QualityGateOutputFormat};
 use pmat::cli::stubs::handle_quality_gate;
+use pmat::cli::{QualityCheckType, QualityGateOutputFormat};
 use tempfile::TempDir;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     println!("# Quality Gate with Custom Thresholds Example\n");
-    
+
     // Create a test project with files of varying complexity
     let temp_dir = TempDir::new()?;
     let project_path = temp_dir.path();
-    
+
     // Create test files
     create_test_files(project_path)?;
-    
+
     println!("## Example 1: Default Thresholds (20/15)\n");
-    
+
     // Run with default thresholds
     println!("Running quality gate with default thresholds...\n");
     let result = handle_quality_gate(
         project_path.to_path_buf(),
-        None,                           // file
-        QualityGateOutputFormat::Human, // format
-        false,                          // fail_on_violation
+        None,                               // file
+        QualityGateOutputFormat::Human,     // format
+        false,                              // fail_on_violation
         vec![QualityCheckType::Complexity], // checks
-        15.0,  // max_dead_code
-        0.5,   // min_entropy
-        20,    // max_complexity_p99 (default)
-        false, // include_provability
-        None,  // output
-        false, // _perf
-    ).await;
-    
+        15.0,                               // max_dead_code
+        0.5,                                // min_entropy
+        20,                                 // max_complexity_p99 (default)
+        false,                              // include_provability
+        None,                               // output
+        false,                              // _perf
+    )
+    .await;
+
     match result {
         Ok(_) => println!("✅ Quality gate passed with default thresholds\n"),
         Err(e) => println!("❌ Quality gate failed: {}\n", e),
     }
-    
+
     println!("## Example 2: Strict Thresholds (10/8)\n");
-    
+
     // Run with strict thresholds
     println!("Running quality gate with strict thresholds...\n");
     let result = handle_quality_gate(
         project_path.to_path_buf(),
-        None,                           // file
-        QualityGateOutputFormat::Human, // format
-        false,                          // fail_on_violation
+        None,                               // file
+        QualityGateOutputFormat::Human,     // format
+        false,                              // fail_on_violation
         vec![QualityCheckType::Complexity], // checks
-        15.0,  // max_dead_code
-        0.5,   // min_entropy
-        10,    // max_complexity_p99 (strict)
-        false, // include_provability
-        None,  // output
-        false, // _perf
-    ).await;
-    
+        15.0,                               // max_dead_code
+        0.5,                                // min_entropy
+        10,                                 // max_complexity_p99 (strict)
+        false,                              // include_provability
+        None,                               // output
+        false,                              // _perf
+    )
+    .await;
+
     match result {
         Ok(_) => println!("✅ Quality gate passed with strict thresholds\n"),
         Err(e) => println!("❌ Quality gate failed: {}\n", e),
     }
-    
+
     println!("## Example 3: CI/CD Mode with Exit Codes\n");
-    
+
     // Demonstrate CI/CD mode
     println!("Running quality gate in CI/CD mode (fail-on-violation)...\n");
     let result = handle_quality_gate(
         project_path.to_path_buf(),
-        None,                          // file
-        QualityGateOutputFormat::Json, // JSON for parsing
-        false,                         // fail_on_violation - would be true in real CI/CD
+        None,                               // file
+        QualityGateOutputFormat::Json,      // JSON for parsing
+        false,                              // fail_on_violation - would be true in real CI/CD
         vec![QualityCheckType::Complexity], // checks
-        15.0,  // max_dead_code
-        0.5,   // min_entropy
-        15,    // max_complexity_p99
-        false, // include_provability
-        None,  // output
-        false, // _perf
-    ).await;
-    
+        15.0,                               // max_dead_code
+        0.5,                                // min_entropy
+        15,                                 // max_complexity_p99
+        false,                              // include_provability
+        None,                               // output
+        false,                              // _perf
+    )
+    .await;
+
     match result {
         Ok(_) => {
             println!("✅ Quality gate passed - would exit with code 0");
@@ -93,31 +96,31 @@ async fn main() -> anyhow::Result<()> {
             println!("   Error: {}", e);
         }
     }
-    
+
     println!("\n## Key Points:");
     println!("- Custom thresholds now properly affect violation detection");
     println!("- Use --fail-on-violation for CI/CD integration");
     println!("- JSON format is ideal for parsing in CI scripts");
     println!("- Exit codes: 0 for success, 1 for failure");
-    
+
     Ok(())
 }
 
 fn create_test_files(project_path: &std::path::Path) -> anyhow::Result<()> {
     use std::fs;
     use std::io::Write;
-    
+
     // Create src directory
     let src_dir = project_path.join("src");
     fs::create_dir_all(&src_dir)?;
-    
+
     // Simple function (complexity: 1)
     let mut file = fs::File::create(src_dir.join("simple.rs"))?;
     writeln!(file, "/// A very simple function")?;
     writeln!(file, "pub fn add(a: i32, b: i32) -> i32 {{")?;
     writeln!(file, "    a + b")?;
     writeln!(file, "}}")?;
-    
+
     // Moderate complexity function (complexity: ~8)
     let mut file = fs::File::create(src_dir.join("moderate.rs"))?;
     writeln!(file, "/// Function with moderate complexity")?;
@@ -139,15 +142,21 @@ fn create_test_files(project_path: &std::path::Path) -> anyhow::Result<()> {
     writeln!(file, "    }}")?;
     writeln!(file, "    result")?;
     writeln!(file, "}}")?;
-    
+
     // High complexity function (complexity: ~15)
     let mut file = fs::File::create(src_dir.join("complex.rs"))?;
     writeln!(file, "/// Function with high complexity")?;
-    writeln!(file, "pub fn complex_logic(data: &[u8]) -> Result<String, String> {{")?;
+    writeln!(
+        file,
+        "pub fn complex_logic(data: &[u8]) -> Result<String, String> {{"
+    )?;
     writeln!(file, "    let mut output = String::new();")?;
     writeln!(file, "    for (i, &byte) in data.iter().enumerate() {{")?;
     writeln!(file, "        if byte == 0 {{")?;
-    writeln!(file, "            return Err(\"Invalid byte\".to_string());")?;
+    writeln!(
+        file,
+        "            return Err(\"Invalid byte\".to_string());"
+    )?;
     writeln!(file, "        }}")?;
     writeln!(file, "        match byte {{")?;
     writeln!(file, "            1..=10 => {{")?;
@@ -184,6 +193,6 @@ fn create_test_files(project_path: &std::path::Path) -> anyhow::Result<()> {
     writeln!(file, "    }}")?;
     writeln!(file, "    Ok(output)")?;
     writeln!(file, "}}")?;
-    
+
     Ok(())
 }

@@ -29,22 +29,22 @@
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let analyzer = CouplingAnalyzer::new();
 //! let graph = DependencyGraph::new();
-//! 
+//!
 //! let report = analyzer.analyze(&graph).await?;
-//! 
+//!
 //! // Find highly coupled files
 //! for (file, metrics) in &report.file_metrics {
 //!     if metrics.efferent_coupling > 10 {
-//!         println!("{} has high efferent coupling: {}", 
+//!         println!("{} has high efferent coupling: {}",
 //!                  file.display(), metrics.efferent_coupling);
 //!     }
 //!     
 //!     if metrics.instability > 0.8 {
-//!         println!("{} is highly unstable: {:.2}", 
+//!         println!("{} is highly unstable: {:.2}",
 //!                  file.display(), metrics.instability);
 //!     }
 //! }
-//! 
+//!
 //! println!("Average coupling: {:.2}", report.project_metrics.avg_efferent);
 //! # Ok(())
 //! # }

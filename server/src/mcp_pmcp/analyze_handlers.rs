@@ -13,9 +13,9 @@ use tracing::debug;
 
 // Re-export for convenience
 pub use self::{
-    ComplexityTool as AnalyzeComplexityTool, SatdTool as AnalyzeSatdTool,
-    DeadCodeTool as AnalyzeDeadCodeTool, LintHotspotTool as AnalyzeDagTool,
-    ChurnTool as AnalyzeDeepContextTool, CouplingTool as AnalyzeBigOTool,
+    ChurnTool as AnalyzeDeepContextTool, ComplexityTool as AnalyzeComplexityTool,
+    CouplingTool as AnalyzeBigOTool, DeadCodeTool as AnalyzeDeadCodeTool,
+    LintHotspotTool as AnalyzeDagTool, SatdTool as AnalyzeSatdTool,
 };
 
 // Complexity Analysis Tool

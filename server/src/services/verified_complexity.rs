@@ -28,16 +28,16 @@
 //! use pmat::models::unified_ast::UnifiedAstNode;
 //!
 //! let mut analyzer = VerifiedComplexityAnalyzer::new();
-//! 
+//!
 //! // Analyze a function AST node
 //! let ast = UnifiedAstNode::default(); // Your AST here
 //! let metrics = analyzer.analyze_function(&ast);
-//! 
+//!
 //! println!("Cyclomatic Complexity: {}", metrics.cyclomatic);
 //! println!("Cognitive Complexity: {}", metrics.cognitive);
 //! println!("Halstead Volume: {:.2}", metrics.halstead.volume());
 //! println!("Halstead Difficulty: {:.2}", metrics.halstead.difficulty());
-//! 
+//!
 //! // Thresholds for code quality
 //! if metrics.cognitive > 15 {
 //!     println!("⚠️ High cognitive complexity - consider refactoring");

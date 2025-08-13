@@ -4,9 +4,9 @@
 //! complexity across different programming languages, following the
 //! Toyota Way principle of quality and single responsibility.
 
+use crate::services::complexity::{ComplexityMetrics, FileComplexityMetrics, FunctionComplexity};
 use anyhow::Result;
 use std::path::Path;
-use crate::services::complexity::{ComplexityMetrics, FileComplexityMetrics, FunctionComplexity};
 
 /// Supported programming languages for complexity analysis
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,7 +35,7 @@ impl Language {
 pub trait LanguageAnalyzer {
     /// Extract functions from source code
     fn extract_functions(&self, content: &str) -> Vec<FunctionInfo>;
-    
+
     /// Estimate complexity for a function
     fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics;
 }
@@ -54,10 +54,10 @@ impl LanguageAnalyzer for RustAnalyzer {
     fn extract_functions(&self, content: &str) -> Vec<FunctionInfo> {
         let mut functions = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
-        
+
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
-            
+
             if self.is_function_declaration(trimmed) {
                 if let Some(name) = self.extract_function_name(trimmed) {
                     let line_end = self.find_function_end(&lines, line_num);
@@ -69,14 +69,14 @@ impl LanguageAnalyzer for RustAnalyzer {
                 }
             }
         }
-        
+
         functions
     }
-    
+
     fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics {
         let lines: Vec<&str> = content.lines().collect();
         let function_lines = &lines[function.line_start..=function.line_end];
-        
+
         let mut visitor = ComplexityVisitor::new();
         visitor.analyze_lines(function_lines);
         visitor.into_metrics()
@@ -93,7 +93,7 @@ impl RustAnalyzer {
             || line.starts_with("pub(super) fn ")
             || line.starts_with("pub(in ") && line.contains(") fn ")
     }
-    
+
     fn extract_function_name(&self, line: &str) -> Option<String> {
         let line = line.trim();
         if let Some(fn_pos) = line.find("fn ") {
@@ -107,11 +107,11 @@ impl RustAnalyzer {
         }
         None
     }
-    
+
     fn find_function_end(&self, lines: &[&str], start: usize) -> usize {
         let mut brace_count = 0;
         let mut found_first_brace = false;
-        
+
         for (i, line) in lines.iter().enumerate().skip(start) {
             for ch in line.chars() {
                 match ch {
@@ -129,7 +129,7 @@ impl RustAnalyzer {
                 }
             }
         }
-        
+
         lines.len() - 1
     }
 }
@@ -141,10 +141,10 @@ impl LanguageAnalyzer for JavaScriptAnalyzer {
     fn extract_functions(&self, content: &str) -> Vec<FunctionInfo> {
         let mut functions = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
-        
+
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
-            
+
             if self.is_function_declaration(trimmed) {
                 if let Some(name) = self.extract_function_name(trimmed) {
                     let line_end = self.find_function_end(&lines, line_num);
@@ -156,14 +156,14 @@ impl LanguageAnalyzer for JavaScriptAnalyzer {
                 }
             }
         }
-        
+
         functions
     }
-    
+
     fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics {
         let lines: Vec<&str> = content.lines().collect();
         let function_lines = &lines[function.line_start..=function.line_end];
-        
+
         let mut visitor = ComplexityVisitor::new();
         visitor.analyze_lines(function_lines);
         visitor.into_metrics()
@@ -185,7 +185,7 @@ impl JavaScriptAnalyzer {
             || (line.contains("export const ") && line.contains(" = ("))
             || line.contains(" => {")
     }
-    
+
     fn extract_function_name(&self, line: &str) -> Option<String> {
         // Handle: function name(
         if let Some(pos) = line.find("function ") {
@@ -197,7 +197,7 @@ impl JavaScriptAnalyzer {
                 }
             }
         }
-        
+
         // Handle: const/let/var name =
         for keyword in &["const ", "let ", "var "] {
             if let Some(pos) = line.find(keyword) {
@@ -208,15 +208,15 @@ impl JavaScriptAnalyzer {
                 }
             }
         }
-        
+
         // For anonymous functions, use generic name
         Some("anonymous_fn".to_string())
     }
-    
+
     fn find_function_end(&self, lines: &[&str], start: usize) -> usize {
         let mut brace_count = 0;
         let mut found_first_brace = false;
-        
+
         for (i, line) in lines.iter().enumerate().skip(start) {
             for ch in line.chars() {
                 match ch {
@@ -234,7 +234,7 @@ impl JavaScriptAnalyzer {
                 }
             }
         }
-        
+
         lines.len() - 1
     }
 }
@@ -246,10 +246,10 @@ impl LanguageAnalyzer for PythonAnalyzer {
     fn extract_functions(&self, content: &str) -> Vec<FunctionInfo> {
         let mut functions = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
-        
+
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
-            
+
             if trimmed.starts_with("def ") || trimmed.starts_with("async def ") {
                 if let Some(name) = self.extract_function_name(trimmed) {
                     let line_end = self.find_function_end(&lines, line_num);
@@ -261,14 +261,14 @@ impl LanguageAnalyzer for PythonAnalyzer {
                 }
             }
         }
-        
+
         functions
     }
-    
+
     fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics {
         let lines: Vec<&str> = content.lines().collect();
         let function_lines = &lines[function.line_start..=function.line_end];
-        
+
         let mut visitor = ComplexityVisitor::new();
         visitor.analyze_lines(function_lines);
         visitor.into_metrics()
@@ -287,15 +287,15 @@ impl PythonAnalyzer {
         }
         None
     }
-    
+
     fn find_function_end(&self, lines: &[&str], start: usize) -> usize {
         if lines.is_empty() || start >= lines.len() {
             return start;
         }
-        
+
         // Get indentation level of function definition
         let def_indent = lines[start].len() - lines[start].trim_start().len();
-        
+
         // Find next line with same or lower indentation
         for (i, line) in lines.iter().enumerate().skip(start + 1) {
             if !line.trim().is_empty() {
@@ -305,7 +305,7 @@ impl PythonAnalyzer {
                 }
             }
         }
-        
+
         lines.len() - 1
     }
 }
@@ -329,24 +329,24 @@ impl ComplexityVisitor {
             lines: 0,
         }
     }
-    
+
     fn analyze_lines(&mut self, lines: &[&str]) {
         self.lines = lines.len() as u16;
-        
+
         for line in lines {
             let trimmed = line.trim();
-            
+
             // Count control flow keywords
             if self.is_control_flow(trimmed) {
                 self.cyclomatic += 1;
                 self.cognitive += 1 + u16::from(self.nesting);
             }
-            
+
             if trimmed.contains("else") {
                 self.cyclomatic += 1;
                 self.cognitive += 1;
             }
-            
+
             // Track nesting
             if trimmed.ends_with('{') || trimmed.ends_with(':') {
                 self.nesting += 1;
@@ -357,7 +357,7 @@ impl ComplexityVisitor {
             }
         }
     }
-    
+
     fn is_control_flow(&self, line: &str) -> bool {
         line.contains("if ")
             || line.contains("while ")
@@ -369,7 +369,7 @@ impl ComplexityVisitor {
             || line.contains("except ")
             || line.contains("catch ")
     }
-    
+
     fn into_metrics(self) -> ComplexityMetrics {
         ComplexityMetrics {
             cyclomatic: self.cyclomatic.min(255),
@@ -381,12 +381,9 @@ impl ComplexityVisitor {
 }
 
 /// Analyze file complexity using appropriate language analyzer
-pub async fn analyze_file_complexity(
-    path: &Path,
-    content: &str,
-) -> Result<FileComplexityMetrics> {
+pub async fn analyze_file_complexity(path: &Path, content: &str) -> Result<FileComplexityMetrics> {
     let language = Language::from_path(path);
-    
+
     // For Rust files, prefer AST-based analysis
     if language == Language::Rust {
         match crate::services::ast_rust::analyze_rust_file_with_complexity(path).await {
@@ -399,7 +396,7 @@ pub async fn analyze_file_complexity(
             }
         }
     }
-    
+
     // Use appropriate language analyzer
     let analyzer: Box<dyn LanguageAnalyzer> = match language {
         Language::Rust => Box::new(RustAnalyzer),
@@ -420,11 +417,11 @@ pub async fn analyze_file_complexity(
             });
         }
     };
-    
+
     // Extract and analyze functions
     let function_infos = analyzer.extract_functions(content);
     let mut functions = Vec::new();
-    
+
     for info in function_infos {
         let metrics = analyzer.estimate_complexity(content, &info);
         functions.push(FunctionComplexity {
@@ -434,7 +431,7 @@ pub async fn analyze_file_complexity(
             metrics,
         });
     }
-    
+
     // Calculate total complexity
     let total_complexity = ComplexityMetrics {
         cyclomatic: functions
@@ -454,7 +451,7 @@ pub async fn analyze_file_complexity(
             .unwrap_or(0),
         lines: content.lines().count() as u16,
     };
-    
+
     Ok(FileComplexityMetrics {
         path: path.to_string_lossy().to_string(),
         total_complexity,
@@ -466,16 +463,25 @@ pub async fn analyze_file_complexity(
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_language_detection() {
         assert_eq!(Language::from_path(Path::new("test.rs")), Language::Rust);
-        assert_eq!(Language::from_path(Path::new("test.js")), Language::JavaScript);
-        assert_eq!(Language::from_path(Path::new("test.ts")), Language::TypeScript);
+        assert_eq!(
+            Language::from_path(Path::new("test.js")),
+            Language::JavaScript
+        );
+        assert_eq!(
+            Language::from_path(Path::new("test.ts")),
+            Language::TypeScript
+        );
         assert_eq!(Language::from_path(Path::new("test.py")), Language::Python);
-        assert_eq!(Language::from_path(Path::new("test.txt")), Language::Unknown);
+        assert_eq!(
+            Language::from_path(Path::new("test.txt")),
+            Language::Unknown
+        );
     }
-    
+
     #[test]
     fn test_rust_function_extraction() {
         let analyzer = RustAnalyzer;
@@ -488,13 +494,13 @@ async fn async_function() {
     // Some async code
 }
 "#;
-        
+
         let functions = analyzer.extract_functions(content);
         assert_eq!(functions.len(), 2);
         assert_eq!(functions[0].name, "test_function");
         assert_eq!(functions[1].name, "async_function");
     }
-    
+
     #[test]
     fn test_complexity_visitor() {
         let mut visitor = ComplexityVisitor::new();
@@ -507,10 +513,10 @@ async fn async_function() {
             "    }",
             "}",
         ];
-        
+
         visitor.analyze_lines(&lines);
         let metrics = visitor.into_metrics();
-        
+
         assert!(metrics.cyclomatic > 1);
         assert!(metrics.cognitive > 0);
         assert_eq!(metrics.nesting_max, 3);

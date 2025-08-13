@@ -27,15 +27,15 @@
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let analyzer = AstBasedDependencyAnalyzer::new();
-//! 
+//!
 //! // Analyze a Rust file
 //! let analysis = analyzer.analyze_file(Path::new("src/main.rs")).await?;
-//! 
+//!
 //! println!("External dependencies: {}", analysis.external.len());
 //! for dep in &analysis.external {
 //!     println!("  - {} ({:?})", dep.name, dep.import_type);
 //! }
-//! 
+//!
 //! // Check for boundary violations
 //! if !analysis.boundary_violations.is_empty() {
 //!     println!("⚠️  Found {} boundary violations", analysis.boundary_violations.len());

@@ -1,7 +1,7 @@
 //! Property tests for git_clone service
 
-use proptest::prelude::*;
 use crate::services::git_clone::{GitCloner, ParsedGitHubUrl};
+use proptest::prelude::*;
 
 proptest! {
     /// Test that repo size is always non-negative
@@ -17,11 +17,11 @@ proptest! {
             owner: owner.clone(),
             repo: repo.clone(),
         };
-        
+
         let result = rt.block_on(async {
             git_clone.check_repo_size(&parsed_url).await
         });
-        
+
         match result {
             Ok(size) => {
                 // Size is usize, which is always non-negative by definition
@@ -48,7 +48,7 @@ proptest! {
             owner: owner.clone(),
             repo: repo.clone(),
         };
-        
+
         // Properties of ParsedGitHubUrl
         prop_assert!(!parsed_url.owner.is_empty());
         prop_assert!(!parsed_url.repo.is_empty());
@@ -65,7 +65,7 @@ proptest! {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let temp_dir = tempfile::tempdir().unwrap();
         let git_clone = GitCloner::new(temp_dir.path().to_path_buf());
-        
+
         let parsed_url = match test_case {
             0 => ParsedGitHubUrl {
                 owner: "nonexistent-user-12345".to_string(),
@@ -88,11 +88,11 @@ proptest! {
                 repo: "rust".to_string(),  // Medium-large repo
             },
         };
-        
+
         let result = rt.block_on(async {
             git_clone.check_repo_size(&parsed_url).await
         });
-        
+
         match test_case {
             0 => {
                 // Nonexistent repo should error
@@ -113,7 +113,7 @@ proptest! {
             _ => {
                 // Rust repo should be medium size
                 if let Ok(size) = result {
-                    prop_assert!(size > 10_000 && size < 1_000_000, 
+                    prop_assert!(size > 10_000 && size < 1_000_000,
                         "Rust repo should be between 10MB and 1GB");
                 }
             }
@@ -136,27 +136,37 @@ mod integration_tests {
 
         let temp_dir = tempfile::tempdir().unwrap();
         let git_clone = GitCloner::new(temp_dir.path().to_path_buf());
-        
+
         // Test with known repositories
         let test_repos = vec![
-            ("github", "gitignore", 100, 10_000),      // Small repo
-            ("rust-lang", "mdBook", 1_000, 100_000),   // Medium repo
+            ("github", "gitignore", 100, 10_000),    // Small repo
+            ("rust-lang", "mdBook", 1_000, 100_000), // Medium repo
         ];
-        
+
         for (owner, repo, min_size, max_size) in test_repos {
             let parsed_url = ParsedGitHubUrl {
                 owner: owner.to_string(),
                 repo: repo.to_string(),
             };
-            
+
             match git_clone.check_repo_size(&parsed_url).await {
                 Ok(size) => {
-                    assert!(size >= min_size, 
-                        "{}/{} size {} KB is less than expected {} KB", 
-                        owner, repo, size, min_size);
-                    assert!(size <= max_size, 
-                        "{}/{} size {} KB is more than expected {} KB", 
-                        owner, repo, size, max_size);
+                    assert!(
+                        size >= min_size,
+                        "{}/{} size {} KB is less than expected {} KB",
+                        owner,
+                        repo,
+                        size,
+                        min_size
+                    );
+                    assert!(
+                        size <= max_size,
+                        "{}/{} size {} KB is more than expected {} KB",
+                        owner,
+                        repo,
+                        size,
+                        max_size
+                    );
                 }
                 Err(e) => {
                     eprintln!("Warning: Could not check {}/{}: {}", owner, repo, e);
@@ -169,20 +179,20 @@ mod integration_tests {
     async fn test_error_handling() {
         let temp_dir = tempfile::tempdir().unwrap();
         let git_clone = GitCloner::new(temp_dir.path().to_path_buf());
-        
+
         // Test various error cases
         let error_cases = vec![
             ("", "repo", "Empty owner"),
             ("owner", "", "Empty repo"),
             ("definitely-not-exist-123456", "repo", "Nonexistent user"),
         ];
-        
+
         for (owner, repo, description) in error_cases {
             let parsed_url = ParsedGitHubUrl {
                 owner: owner.to_string(),
                 repo: repo.to_string(),
             };
-            
+
             let result = git_clone.check_repo_size(&parsed_url).await;
             assert!(result.is_err(), "{} should produce an error", description);
         }
