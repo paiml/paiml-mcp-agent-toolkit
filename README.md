@@ -11,11 +11,12 @@
 
 **Zero-configuration AI context generation system** that analyzes any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com) with extreme quality standards and zero tolerance for technical debt.
 
-> **🎉 v2.2.0 Release**: **Unified MCP Server Architecture!** All MCP implementations consolidated into ONE high-performance pmcp SDK-based server. Features include:
+> **🎉 v2.3.0 Release**: **PDMT Integration & Unified MCP Server!** All MCP implementations consolidated into ONE high-performance pmcp SDK-based server. Features include:
 > - **Quality Proxy**: Intercept and validate AI-generated code with strict quality enforcement
+> - **PDMT Integration**: Deterministic todo generation with comprehensive quality gates
 > - **Single Implementation**: Eliminated duplicate MCP servers, now ONE unified pmcp-based server
 > - **10x Performance**: All MCP operations use high-performance pmcp SDK exclusively  
-> - **17 Core Tools**: Analysis, refactoring, quality gates, and context generation in one place
+> - **18 Core Tools**: Analysis, refactoring, quality gates, PDMT todos, and context generation
 > - **Zero Tolerance**: 0 SATD comments, 0 failing tests, comprehensive property-based testing
 
 ## 🚀 Installation
@@ -74,6 +75,9 @@ pmat quality-gate --strict
 
 # NEW: Quality Proxy - Enforce quality standards on AI-generated code
 cargo run --example quality_proxy_demo
+
+# NEW: PDMT Integration - Generate deterministic todos with quality enforcement
+pmat mcp-call pdmt_deterministic_todos --requirements '["implement auth", "add logging"]'
 ```
 
 ### Using as a Library
@@ -82,7 +86,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmat = "2.2"
+pmat = "2.3"
 ```
 
 Basic usage:
@@ -130,11 +134,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - **Interactive Refactoring** - Step-by-step guided refactoring with explanations
 - **Enforcement Mode** - Enforce extreme quality standards using state machines
   - **Single File Mode** - `pmat enforce extreme --file path/to/file.rs` for file-specific enforcement
-- **Quality Proxy** (v2.2) - Intercept and validate AI-generated code before it's written
+- **Quality Proxy** (v2.3) - Intercept and validate AI-generated code before it's written
   - Enforces complexity thresholds, SATD detection, and documentation requirements
   - Three modes: Strict (reject), Advisory (warn), and Auto-Fix (refactor automatically)
   - Integrated into unified MCP server for all operations
   - Perfect for CI/CD pipelines and AI agent integrations
+- **PDMT Integration** (v2.3) - Deterministic todo generation with quality enforcement
+  - Generates reproducible, high-quality todo lists from requirements
+  - Enforces 80%+ coverage, zero SATD, complexity limits
+  - Includes validation commands and success criteria for each todo
+  - Full integration with quality proxy for code validation
 
 ### 📊 Quality Gates & CI/CD Integration
 - **Lint Hotspot Analysis** - Find files with highest defect density using EXTREME Clippy standards
