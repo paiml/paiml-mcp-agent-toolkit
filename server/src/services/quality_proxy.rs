@@ -606,7 +606,7 @@ pub fn greet(name: &str) -> String {
             file_path: "test.rs".to_string(),
             content: Some(
                 r#"fn process() {
-    // TODO: implement this properly
+    // TODO: remove this test comment for SATD detection
     unimplemented!()
 }"#
                 .to_string(),

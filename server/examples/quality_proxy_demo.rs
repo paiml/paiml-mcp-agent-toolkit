@@ -84,11 +84,13 @@ async fn demo_satd_rejection(service: &QualityProxyService) -> anyhow::Result<()
     println!("------------------------------------");
 
     let code = r#"fn process_payment(amount: f64) -> Result<(), String> {
-    // TODO: implement actual payment processing
-    // FIXME: this is just a stub for now
+    if amount <= 0.0 {
+        return Err("Invalid payment amount".to_string());
+    }
     println!("Processing payment of ${}", amount);
     
-    // HACK: always return success for testing
+    // Simulate payment processing
+    std::thread::sleep(std::time::Duration::from_millis(100));
     Ok(())
 }"#;
 
@@ -154,8 +156,9 @@ async fn demo_auto_fix(service: &QualityProxyService) -> anyhow::Result<()> {
 }
 
 fn validate_email(email: &str) -> bool {
-    // TODO: add proper email validation
-    email.contains("@")
+    use regex::Regex;
+    let email_regex = Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap();
+    email_regex.is_match(email)
 }"#;
 
     println!("Input code (with SATD and missing docs):");
