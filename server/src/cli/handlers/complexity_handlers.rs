@@ -7,10 +7,212 @@ use crate::cli::*;
 use anyhow::Result;
 use std::path::PathBuf;
 
-/// Handle complexity analysis command
+#[cfg(test)]
+mod complexity_handlers_tests;
+
+/// Handle complexity analysis command with MCP tool composition support
+///
+/// This function enables AI agents to perform sophisticated code analysis workflows
+/// by supporting three distinct modes of operation:
+///
+/// 1. **Project Mode**: Analyze entire project using include patterns
+/// 2. **Single File Mode**: Deep analysis of one specific file
+/// 3. **Multi-File Mode**: Process specific file lists for MCP tool chaining
+///
+/// # Filtering Behavior
+///
+/// When `max_cyclomatic` or `max_cognitive` thresholds are specified:
+/// - Only files containing functions that EXCEED the thresholds are included
+/// - This filtering happens BEFORE the `top_files` limit is applied
+/// - A file with all functions below the threshold will be excluded from results
+///
+/// # MCP Tool Composition Examples
+///
+/// ```no_run
+/// // Example 1: AI agent discovers complexity hotspots
+/// use std::path::PathBuf;
+/// use pmat::cli::{ComplexityOutputFormat, handlers::complexity_handlers::handle_analyze_complexity};
+///
+/// # async fn mcp_workflow_example() -> anyhow::Result<()> {
+/// // Step 1: Find top 5 most complex files
+/// handle_analyze_complexity(
+///     PathBuf::from("."),
+///     None,                           // file
+///     vec![],                         // files (empty = project mode)
+///     Some("rust".to_string()),       // toolchain
+///     ComplexityOutputFormat::Json,   // format for parsing
+///     None,                           // output (stdout)
+///     Some(20),                       // max_cyclomatic
+///     Some(15),                       // max_cognitive
+///     vec![],                         // include patterns
+///     false,                          // watch
+///     5,                              // top_files = 5 hotspots
+///     false,                          // fail_on_violation
+/// ).await?;
+///
+/// // AI agent would parse JSON output to extract file paths:
+/// // let hotspot_files = parse_json_extract_paths(json_output);
+///
+/// // Step 2: Deep analyze just those hotspot files
+/// let hotspot_files = vec![
+///     PathBuf::from("src/complex_module.rs"),
+///     PathBuf::from("src/legacy_code.rs"),
+/// ];
+///
+/// handle_analyze_complexity(
+///     PathBuf::from("."),
+///     None,                           // file
+///     hotspot_files,                  // files (MCP composition)
+///     Some("rust".to_string()),       // toolchain
+///     ComplexityOutputFormat::Json,   // format
+///     None,                           // output
+///     Some(10),                       // stricter threshold
+///     Some(8),                        // stricter threshold
+///     vec![],                         // include patterns
+///     false,                          // watch
+///     0,                              // top_files (show all)
+///     false,                          // fail_on_violation
+/// ).await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ```no_run
+/// // Example 2: AI agent builds refactoring pipeline
+/// use std::path::PathBuf;
+/// use pmat::cli::{ComplexityOutputFormat, handlers::complexity_handlers::handle_analyze_complexity};
+///
+/// # async fn mcp_refactor_pipeline() -> anyhow::Result<()> {
+/// // Step 1: Identify files needing refactoring
+/// let candidate_files = vec![
+///     PathBuf::from("src/user_service.rs"),
+///     PathBuf::from("src/payment_processor.rs"),
+///     PathBuf::from("src/notification_engine.rs"),
+/// ];
+///
+/// // Step 2: Analyze complexity metrics for prioritization
+/// handle_analyze_complexity(
+///     PathBuf::from("."),
+///     None,                           // file
+///     candidate_files,                // files (targeted analysis)
+///     Some("rust".to_string()),       // toolchain
+///     ComplexityOutputFormat::Json,   // format for decision making
+///     None,                           // output
+///     Some(15),                       // max_cyclomatic
+///     Some(12),                       // max_cognitive
+///     vec![],                         // include patterns
+///     false,                          // watch
+///     0,                              // top_files (analyze all provided)
+///     false,                          // fail_on_violation
+/// ).await?;
+///
+/// // AI agent would then:
+/// // 1. Parse complexity metrics
+/// // 2. Prioritize by technical debt impact
+/// // 3. Generate refactoring recommendations
+/// // 4. Chain to other pmat tools (dead-code, duplicates, etc.)
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Threshold Filtering Examples
+///
+/// ```no_run
+/// // Example: Filtering behavior with --max-cyclomatic
+/// use std::path::PathBuf;
+/// use pmat::cli::{ComplexityOutputFormat, handlers::complexity_handlers::handle_analyze_complexity};
+///
+/// # async fn threshold_filtering_example() -> anyhow::Result<()> {
+/// // Scenario: Find only files with functions exceeding cyclomatic complexity of 20
+/// handle_analyze_complexity(
+///     PathBuf::from("."),
+///     None,                           // file
+///     vec![],                         // files
+///     Some("rust".to_string()),       // toolchain
+///     ComplexityOutputFormat::Json,   // format
+///     None,                           // output
+///     Some(20),                       // max_cyclomatic - only show files with functions > 20
+///     None,                           // max_cognitive
+///     vec!["src/**/*.rs".to_string()],// include patterns
+///     false,                          // watch
+///     10,                             // top_files
+///     false,                          // fail_on_violation
+/// ).await?;
+///
+/// // Expected behavior:
+/// // - File with functions [5, 10, 15] complexity -> EXCLUDED (all below 20)
+/// // - File with functions [5, 25, 10] complexity -> INCLUDED (one function > 20)
+/// // - File with functions [21, 30, 40] complexity -> INCLUDED (all above 20)
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ```no_run
+/// // Example: Combined threshold filtering
+/// use std::path::PathBuf;
+/// use pmat::cli::{ComplexityOutputFormat, handlers::complexity_handlers::handle_analyze_complexity};
+///
+/// # async fn combined_threshold_example() -> anyhow::Result<()> {
+/// // Scenario: Find files with either high cyclomatic OR high cognitive complexity
+/// handle_analyze_complexity(
+///     PathBuf::from("."),
+///     None,                           // file
+///     vec![],                         // files
+///     Some("rust".to_string()),       // toolchain
+///     ComplexityOutputFormat::Json,   // format
+///     None,                           // output
+///     Some(15),                       // max_cyclomatic
+///     Some(12),                       // max_cognitive
+///     vec!["src/**/*.rs".to_string()],// include patterns
+///     false,                          // watch
+///     5,                              // top_files - applied AFTER filtering
+///     false,                          // fail_on_violation
+/// ).await?;
+///
+/// // Expected behavior:
+/// // - Files are first filtered to only include those with functions exceeding either threshold
+/// // - Then the top 5 most complex files from the filtered set are returned
+/// // - A file needs at least ONE function with cyclomatic > 15 OR cognitive > 12 to be included
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Parameters
+///
+/// * `project_path` - Root directory of the project
+/// * `file` - Single file for focused analysis (conflicts with `files`)
+/// * `files` - **MCP Composition**: List of specific files to analyze
+/// * `toolchain` - Language detection override
+/// * `format` - Output format (JSON recommended for MCP workflows)
+/// * `output` - File output path (None = stdout for MCP parsing)
+/// * `max_cyclomatic` - Complexity threshold for violations
+/// * `max_cognitive` - Cognitive load threshold for violations
+/// * `include` - Glob patterns for project mode (conflicts with `files`)
+/// * `watch` - Continuous analysis mode
+/// * `top_files` - Limit output to N most complex files
+///
+/// # Exit Status
+///
+/// The command returns different exit codes based on results (addressing issue #28):
+/// - `0`: Success - no violations found, all violations below threshold, or --fail-on-violation not specified
+/// - `1`: Failure - violations found that exceed thresholds AND --fail-on-violation flag is used
+///
+/// ```bash
+/// # Exit with code 0 even if violations found (default behavior)
+/// pmat analyze complexity --max-cyclomatic 10
+///
+/// # Exit with code 1 if violations exceed threshold
+/// pmat analyze complexity --max-cyclomatic 10 --fail-on-violation
+/// ```
+///
+/// # Returns
+///
+/// JSON-structured complexity analysis suitable for MCP tool chaining
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_complexity(
     project_path: PathBuf,
+    file: Option<PathBuf>,
+    files: Vec<PathBuf>,
     toolchain: Option<String>,
     format: ComplexityOutputFormat,
     output: Option<PathBuf>,
@@ -18,10 +220,12 @@ pub async fn handle_analyze_complexity(
     max_cognitive: Option<u16>,
     include: Vec<String>,
     watch: bool,
-    _top_files: usize,
+    top_files: usize,
+    fail_on_violation: bool,
 ) -> Result<()> {
     use crate::services::complexity::{
-        aggregate_results, format_as_sarif, format_complexity_report, format_complexity_summary,
+        aggregate_results_with_thresholds, format_as_sarif, format_complexity_report,
+        format_complexity_summary,
     };
 
     if watch {
@@ -34,37 +238,147 @@ pub async fn handle_analyze_complexity(
         .or_else(|| super::super::stubs::detect_toolchain(&project_path))
         .unwrap_or_else(|| "rust".to_string());
 
-    eprintln!("🔍 Analyzing {detected_toolchain} project complexity...");
-
     // Custom thresholds
     let _thresholds =
         super::super::stubs::build_complexity_thresholds(max_cyclomatic, max_cognitive);
 
     // Analyze files
-    let file_metrics = super::super::stubs::analyze_project_files(
-        &project_path,
-        Some(&detected_toolchain),
-        &include,
-        10,
-        15,
-    )
-    .await?;
+    let mut file_metrics = if let Some(single_file) = file {
+        // Single file mode
+        eprintln!("🔍 Analyzing complexity of file: {}", single_file.display());
 
-    // Aggregate results
-    let summary = aggregate_results(file_metrics.clone());
+        // Ensure file exists and is within project
+        let full_path = if single_file.is_absolute() {
+            single_file
+        } else {
+            project_path.join(&single_file)
+        };
+
+        if !full_path.exists() {
+            anyhow::bail!("File not found: {}", full_path.display());
+        }
+
+        // Analyze single file
+        match detected_toolchain.as_str() {
+            "rust" => {
+                use crate::services::ast_rust::analyze_rust_file_with_complexity;
+                let metrics = analyze_rust_file_with_complexity(&full_path).await?;
+                vec![metrics]
+            }
+            _ => {
+                // For other toolchains, use the generic analyzer with a single-file include pattern
+                let include_pattern = vec![full_path.to_string_lossy().to_string()];
+                super::super::stubs::analyze_project_files(
+                    &project_path,
+                    Some(&detected_toolchain),
+                    &include_pattern,
+                    max_cyclomatic.unwrap_or(10),
+                    max_cognitive.unwrap_or(15),
+                )
+                .await?
+            }
+        }
+    } else if !files.is_empty() {
+        // Multiple files mode (MCP tool composition)
+        eprintln!("🔍 Analyzing complexity of {} files...", files.len());
+
+        let mut all_metrics = Vec::new();
+        for file_path in files {
+            let full_path = if file_path.is_absolute() {
+                file_path
+            } else {
+                project_path.join(&file_path)
+            };
+
+            if !full_path.exists() {
+                eprintln!("⚠️  Skipping missing file: {}", full_path.display());
+                continue;
+            }
+
+            // Analyze each file
+            match detected_toolchain.as_str() {
+                "rust" => {
+                    use crate::services::ast_rust::analyze_rust_file_with_complexity;
+                    let metrics = analyze_rust_file_with_complexity(&full_path).await?;
+                    all_metrics.push(metrics);
+                }
+                _ => {
+                    // For other toolchains, use the generic analyzer
+                    let include_pattern = vec![full_path.to_string_lossy().to_string()];
+                    let mut file_results = super::super::stubs::analyze_project_files(
+                        &project_path,
+                        Some(&detected_toolchain),
+                        &include_pattern,
+                        max_cyclomatic.unwrap_or(10),
+                        max_cognitive.unwrap_or(15),
+                    )
+                    .await?;
+                    all_metrics.append(&mut file_results);
+                }
+            }
+        }
+        all_metrics
+    } else {
+        // Project mode
+        eprintln!("🔍 Analyzing {detected_toolchain} project complexity...");
+        super::super::stubs::analyze_project_files(
+            &project_path,
+            Some(&detected_toolchain),
+            &include,
+            max_cyclomatic.unwrap_or(10),
+            max_cognitive.unwrap_or(15),
+        )
+        .await?
+    };
+
+    // Apply filtering based on max thresholds if specified
+    if max_cyclomatic.is_some() || max_cognitive.is_some() {
+        // Filter files to only include those with functions exceeding the thresholds
+        file_metrics.retain(|file| {
+            file.functions.iter().any(|func| {
+                let exceeds_cyclomatic = max_cyclomatic
+                    .map(|threshold| func.metrics.cyclomatic > threshold)
+                    .unwrap_or(false);
+                let exceeds_cognitive = max_cognitive
+                    .map(|threshold| func.metrics.cognitive > threshold)
+                    .unwrap_or(false);
+                exceeds_cyclomatic || exceeds_cognitive
+            })
+        });
+    }
+
+    // Apply top_files filtering if specified
+    if top_files > 0 && !file_metrics.is_empty() {
+        // Sort files by complexity (descending)
+        file_metrics.sort_by(|a, b| {
+            let a_complexity =
+                a.total_complexity.cyclomatic as f64 + a.total_complexity.cognitive as f64;
+            let b_complexity =
+                b.total_complexity.cyclomatic as f64 + b.total_complexity.cognitive as f64;
+            b_complexity
+                .partial_cmp(&a_complexity)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        // Keep only top N files
+        file_metrics.truncate(top_files);
+    }
+
+    // Aggregate results with custom thresholds
+    let summary =
+        aggregate_results_with_thresholds(file_metrics.clone(), max_cyclomatic, max_cognitive);
 
     // Format output
     let formatted_output = match format {
         ComplexityOutputFormat::Summary => Ok(format_complexity_summary(&summary)),
-        ComplexityOutputFormat::Full => {
-            Ok(format_complexity_report(&summary))
-        }
+        ComplexityOutputFormat::Full => Ok(format_complexity_report(&summary)),
         ComplexityOutputFormat::Sarif => format_as_sarif(&summary)
-                .map_err(|e| anyhow::anyhow!("SARIF serialization failed: {}", e)),
+            .map_err(|e| anyhow::anyhow!("SARIF serialization failed: {}", e)),
         ComplexityOutputFormat::Json => {
             let json_output = serde_json::json!({
                 "summary": summary,
                 "files": file_metrics,
+                "top_files_limit": if top_files > 0 { Some(top_files) } else { None },
             });
             serde_json::to_string_pretty(&json_output)
                 .map_err(|e| anyhow::anyhow!("JSON serialization failed: {}", e))
@@ -79,6 +393,26 @@ pub async fn handle_analyze_complexity(
         println!("{}", formatted_output);
     }
 
+    // Check for violations and exit with error code if requested
+    if fail_on_violation {
+        let has_violations = file_metrics.iter().any(|file| {
+            let cyclomatic_exceeded = file
+                .functions
+                .iter()
+                .any(|func| func.metrics.cyclomatic > max_cyclomatic.unwrap_or(20));
+            let cognitive_exceeded = file
+                .functions
+                .iter()
+                .any(|func| func.metrics.cognitive > max_cognitive.unwrap_or(15));
+            cyclomatic_exceeded || cognitive_exceeded
+        });
+
+        if has_violations {
+            eprintln!("\n❌ Complexity violations found");
+            std::process::exit(1);
+        }
+    }
+
     Ok(())
 }
 
@@ -88,13 +422,15 @@ pub async fn handle_analyze_churn(
     days: u32,
     format: crate::models::churn::ChurnOutputFormat,
     output: Option<PathBuf>,
+    top_files: usize,
 ) -> Result<()> {
     // Delegate to main implementation for now - will be extracted in Phase 3 Day 8
-    super::super::stubs::handle_analyze_churn(project_path, days, format, output).await
+    super::super::stubs::handle_analyze_churn(project_path, days, format, output, top_files).await
 }
 
 /// Handle dead code analysis command - REFACTORED
 /// Cognitive complexity reduced from 244 to ~10
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_dead_code(
     path: PathBuf,
     format: DeadCodeOutputFormat,
@@ -103,6 +439,8 @@ pub async fn handle_analyze_dead_code(
     min_dead_lines: usize,
     include_tests: bool,
     output: Option<PathBuf>,
+    fail_on_violation: bool,
+    max_percentage: f64,
 ) -> Result<()> {
     eprintln!("☠️ Analyzing dead code in project...");
 
@@ -126,6 +464,18 @@ pub async fn handle_analyze_dead_code(
 
     // Write output
     write_dead_code_output(formatted_output, output).await?;
+
+    // Check for violations and exit with error code if requested
+    if fail_on_violation {
+        let dead_code_percentage = result.summary.dead_percentage;
+        if dead_code_percentage > max_percentage as f32 {
+            eprintln!(
+                "\n❌ Dead code violations found: {:.1}% exceeds threshold of {:.1}%",
+                dead_code_percentage, max_percentage
+            );
+            std::process::exit(1);
+        }
+    }
 
     Ok(())
 }
@@ -151,7 +501,10 @@ async fn run_dead_code_analysis(
 
     let mut analysis_result = analyzer.analyze_with_ranking(path, config).await?;
 
-    eprintln!("🔍 Found {} ranked files", analysis_result.ranked_files.len());
+    eprintln!(
+        "🔍 Found {} ranked files",
+        analysis_result.ranked_files.len()
+    );
     eprintln!(
         "🔍 Total files analyzed: {}",
         analysis_result.summary.total_files_analyzed
@@ -172,7 +525,10 @@ async fn run_dead_code_analysis(
 }
 
 /// Format dead code result based on output format
-fn format_dead_code_result(result: &crate::models::dead_code::DeadCodeResult, format: &DeadCodeOutputFormat) -> Result<String> {
+fn format_dead_code_result(
+    result: &crate::models::dead_code::DeadCodeResult,
+    format: &DeadCodeOutputFormat,
+) -> Result<String> {
     match format {
         DeadCodeOutputFormat::Json => format_dead_code_as_json(result),
         DeadCodeOutputFormat::Sarif => format_dead_code_as_sarif(result),
@@ -190,14 +546,14 @@ fn format_dead_code_as_json(result: &crate::models::dead_code::DeadCodeResult) -
 fn format_dead_code_as_sarif(result: &crate::models::dead_code::DeadCodeResult) -> Result<String> {
     use crate::models::dead_code::{ConfidenceLevel, DeadCodeType};
     use serde_json::json;
-    
+
     let sarif = json!({
         "version": "2.1.0",
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "runs": [{
             "tool": {
                 "driver": {
-                    "name": "paiml-mcp-agent-toolkit",
+                    "name": "pmat",
                     "version": env!("CARGO_PKG_VERSION"),
                     "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
                     "rules": [{
@@ -255,81 +611,161 @@ fn format_dead_code_as_sarif(result: &crate::models::dead_code::DeadCodeResult) 
 }
 
 /// Format result as summary
-fn format_dead_code_as_summary(result: &crate::models::dead_code::DeadCodeResult) -> Result<String> {
+fn format_dead_code_as_summary(
+    result: &crate::models::dead_code::DeadCodeResult,
+) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     writeln!(&mut output, "# Dead Code Analysis Summary\n")?;
     writeln!(&mut output, "📊 **Files analyzed**: {}", result.total_files)?;
-    writeln!(&mut output, "☠️  **Files with dead code**: {}", result.summary.files_with_dead_code)?;
-    writeln!(&mut output, "📏 **Total dead lines**: {}", result.summary.total_dead_lines)?;
-    writeln!(&mut output, "📈 **Dead code percentage**: {:.2}%\n", result.summary.dead_percentage)?;
+    writeln!(
+        &mut output,
+        "☠️  **Files with dead code**: {}",
+        result.summary.files_with_dead_code
+    )?;
+    writeln!(
+        &mut output,
+        "📏 **Total dead lines**: {}",
+        result.summary.total_dead_lines
+    )?;
+    writeln!(
+        &mut output,
+        "📈 **Dead code percentage**: {:.2}%\n",
+        result.summary.dead_percentage
+    )?;
 
     if result.summary.dead_functions > 0 {
         writeln!(&mut output, "## Dead Code by Type\n")?;
-        writeln!(&mut output, "- **Dead functions**: {}", result.summary.dead_functions)?;
-        writeln!(&mut output, "- **Dead classes**: {}", result.summary.dead_classes)?;
-        writeln!(&mut output, "- **Dead variables**: {}", result.summary.dead_modules)?;
-        writeln!(&mut output, "- **Unreachable blocks**: {}", result.summary.unreachable_blocks)?;
+        writeln!(
+            &mut output,
+            "- **Dead functions**: {}",
+            result.summary.dead_functions
+        )?;
+        writeln!(
+            &mut output,
+            "- **Dead classes**: {}",
+            result.summary.dead_classes
+        )?;
+        writeln!(
+            &mut output,
+            "- **Dead variables**: {}",
+            result.summary.dead_modules
+        )?;
+        writeln!(
+            &mut output,
+            "- **Unreachable blocks**: {}",
+            result.summary.unreachable_blocks
+        )?;
     }
 
     if !result.files.is_empty() {
         writeln!(&mut output, "\n## Top Files with Dead Code\n")?;
         for (i, file) in result.files.iter().take(10).enumerate() {
-            writeln!(&mut output, "{}. `{}` - {:.1}% dead ({} lines)", 
-                i + 1, file.path, file.dead_percentage, file.dead_lines)?;
+            writeln!(
+                &mut output,
+                "{}. `{}` - {:.1}% dead ({} lines)",
+                i + 1,
+                file.path,
+                file.dead_percentage,
+                file.dead_lines
+            )?;
         }
     }
-    
+
     Ok(output)
 }
 
 /// Format result as markdown
-fn format_dead_code_as_markdown(result: &crate::models::dead_code::DeadCodeResult) -> Result<String> {
-    use std::fmt::Write;
-    let mut output = String::new();
-    
-    writeln!(&mut output, "# Dead Code Analysis Report\n")?;
-    writeln!(&mut output, "## Summary\n")?;
-    writeln!(&mut output, "| Metric | Value |")?;
-    writeln!(&mut output, "|--------|-------|")?;
-    writeln!(&mut output, "| Files Analyzed | {} |", result.total_files)?;
-    writeln!(&mut output, "| Files with Dead Code | {} |", result.summary.files_with_dead_code)?;
-    writeln!(&mut output, "| Total Dead Lines | {} |", result.summary.total_dead_lines)?;
-    writeln!(&mut output, "| Dead Code Percentage | {:.2}% |", result.summary.dead_percentage)?;
-    writeln!(&mut output)?;
-    
+fn format_dead_code_as_markdown(
+    result: &crate::models::dead_code::DeadCodeResult,
+) -> Result<String> {
+    let mut sections = Vec::new();
+
+    // Build summary section
+    sections.push(format_dead_code_summary_section(result));
+
+    // Build breakdown section if needed
     if result.summary.dead_functions > 0 {
-        writeln!(&mut output, "## Dead Code Breakdown\n")?;
-        writeln!(&mut output, "| Type | Count |")?;
-        writeln!(&mut output, "|------|-------|")?;
-        writeln!(&mut output, "| Functions | {} |", result.summary.dead_functions)?;
-        writeln!(&mut output, "| Classes | {} |", result.summary.dead_classes)?;
-        writeln!(&mut output, "| Variables | {} |", result.summary.dead_modules)?;
-        writeln!(&mut output, "| Unreachable Blocks | {} |", result.summary.unreachable_blocks)?;
-        writeln!(&mut output)?;
+        sections.push(format_dead_code_breakdown_section(&result.summary));
     }
-    
+
+    // Build file details section if needed
     if !result.files.is_empty() {
-        writeln!(&mut output, "## File Details\n")?;
-        writeln!(&mut output, "| File | Dead % | Dead Lines | Confidence | Items |")?;
-        writeln!(&mut output, "|------|--------|------------|------------|-------|")?;
-        
-        for file in result.files.iter().take(20) {
-            writeln!(&mut output, "| {} | {:.1}% | {} | {:?} | {} |",
-                file.path, file.dead_percentage, file.dead_lines, 
-                file.confidence, file.items.len())?;
-        }
-        writeln!(&mut output)?;
+        sections.push(format_dead_code_file_details_section(&result.files));
     }
-    
-    writeln!(&mut output, "## Recommendations\n")?;
-    writeln!(&mut output, "1. **Review High Confidence Dead Code**: Start with files marked as high confidence.")?;
-    writeln!(&mut output, "2. **Check Test Coverage**: Dead code often indicates missing tests.")?;
-    writeln!(&mut output, "3. **Consider Refactoring**: Large amounts of dead code may indicate design issues.")?;
-    writeln!(&mut output, "4. **Remove Carefully**: Ensure code is truly dead before removal.")?;
-    
-    Ok(output)
+
+    // Build recommendations section
+    sections.push(format_dead_code_recommendations_section());
+
+    Ok(sections.join("\n"))
+}
+
+fn format_dead_code_summary_section(result: &crate::models::dead_code::DeadCodeResult) -> String {
+    format!(
+        "# Dead Code Analysis Report\n\n\
+         ## Summary\n\n\
+         | Metric | Value |\n\
+         |--------|-------|\n\
+         | Files Analyzed | {} |\n\
+         | Files with Dead Code | {} |\n\
+         | Total Dead Lines | {} |\n\
+         | Dead Code Percentage | {:.2}% |\n",
+        result.total_files,
+        result.summary.files_with_dead_code,
+        result.summary.total_dead_lines,
+        result.summary.dead_percentage
+    )
+}
+
+fn format_dead_code_breakdown_section(
+    summary: &crate::models::dead_code::DeadCodeSummary,
+) -> String {
+    format!(
+        "## Dead Code Breakdown\n\n\
+         | Type | Count |\n\
+         |------|-------|\n\
+         | Functions | {} |\n\
+         | Classes | {} |\n\
+         | Variables | {} |\n\
+         | Unreachable Blocks | {} |\n",
+        summary.dead_functions,
+        summary.dead_classes,
+        summary.dead_modules,
+        summary.unreachable_blocks
+    )
+}
+
+fn format_dead_code_file_details_section(
+    files: &[crate::models::dead_code::FileDeadCodeMetrics],
+) -> String {
+    let mut output = String::from(
+        "## File Details\n\n\
+         | File | Dead % | Dead Lines | Confidence | Items |\n\
+         |------|--------|------------|------------|-------|\n",
+    );
+
+    for file in files.iter().take(20) {
+        output.push_str(&format!(
+            "| {} | {:.1}% | {} | {:?} | {} |\n",
+            file.path,
+            file.dead_percentage,
+            file.dead_lines,
+            file.confidence,
+            file.items.len()
+        ));
+    }
+
+    output
+}
+
+fn format_dead_code_recommendations_section() -> String {
+    "## Recommendations\n\n\
+     1. **Review High Confidence Dead Code**: Start with files marked as high confidence.\n\
+     2. **Check Test Coverage**: Dead code often indicates missing tests.\n\
+     3. **Consider Refactoring**: Large amounts of dead code may indicate design issues.\n\
+     4. **Remove Carefully**: Ensure code is truly dead before removal.\n"
+        .to_string()
 }
 
 /// Write dead code output to file or stdout
@@ -354,17 +790,27 @@ pub async fn handle_analyze_satd(
     severity: Option<SatdSeverity>,
     critical_only: bool,
     include_tests: bool,
+    strict: bool,
     evolution: bool,
     days: u32,
     metrics: bool,
     output: Option<PathBuf>,
+    top_files: usize,
+    fail_on_violation: bool,
 ) -> Result<()> {
     use crate::services::satd_detector::{SATDDetector, Severity as DetectorSeverity};
 
     eprintln!("🔍 Analyzing self-admitted technical debt...");
+    if strict {
+        eprintln!("📝 Using strict mode (only explicit SATD markers)");
+    }
 
     // Create SATD detector
-    let detector = SATDDetector::new();
+    let detector = if strict {
+        SATDDetector::new_strict()
+    } else {
+        SATDDetector::new()
+    };
 
     // Run analysis
     let mut result = detector.analyze_project(&path, include_tests).await?;
@@ -388,6 +834,31 @@ pub async fn handle_analyze_satd(
         result
             .items
             .retain(|item| item.severity == DetectorSeverity::Critical);
+    }
+
+    // Apply top_files filtering if specified
+    if top_files > 0 {
+        // Group items by file
+        use std::collections::HashMap;
+        let mut file_counts: HashMap<std::path::PathBuf, usize> = HashMap::new();
+        for item in &result.items {
+            *file_counts.entry(item.file.clone()).or_insert(0) += 1;
+        }
+
+        // Sort files by SATD count (descending)
+        let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
+        sorted_files.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
+
+        // Keep only items from top N files
+        let top_file_paths: std::collections::HashSet<_> = sorted_files
+            .into_iter()
+            .take(top_files)
+            .map(|(path, _)| path)
+            .collect();
+
+        result
+            .items
+            .retain(|item| top_file_paths.contains(&item.file));
     }
 
     eprintln!(
@@ -416,6 +887,15 @@ pub async fn handle_analyze_satd(
         println!("{}", content);
     }
 
+    // Check for violations and exit with error code if requested
+    if fail_on_violation && !result.items.is_empty() {
+        eprintln!(
+            "\n❌ SATD violations found: {} technical debt items",
+            result.items.len()
+        );
+        std::process::exit(1);
+    }
+
     Ok(())
 }
 
@@ -429,7 +909,7 @@ fn generate_satd_sarif(
         "runs": [{
             "tool": {
                 "driver": {
-                    "name": "paiml-mcp-agent-toolkit",
+                    "name": "pmat",
                     "version": env!("CARGO_PKG_VERSION"),
                     "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
                     "rules": [{
@@ -478,7 +958,61 @@ fn generate_satd_sarif(
 }
 
 /// Format SATD summary
-fn format_satd_summary(
+///
+/// # Example
+///
+/// ```no_run
+/// use pmat::services::satd_detector::{SATDAnalysisResult, SATDSummary, TechnicalDebt, DebtCategory, Severity};
+/// use pmat::cli::handlers::complexity_handlers::format_satd_summary;
+/// use std::collections::HashMap;
+/// use std::path::PathBuf;
+/// use chrono::Utc;
+///
+/// let result = SATDAnalysisResult {
+///     items: vec![
+///         TechnicalDebt {
+///             category: DebtCategory::Defect,
+///             severity: Severity::High,
+///             text: "Handle error properly".to_string(),
+///             file: PathBuf::from("src/main.rs"),
+///             line: 42,
+///             column: 8,
+///             context_hash: [0; 16],
+///         },
+///         TechnicalDebt {
+///             category: DebtCategory::Requirement,
+///             severity: Severity::Medium,
+///             text: "Add validation".to_string(),
+///             file: PathBuf::from("src/lib.rs"),
+///             line: 25,
+///             column: 4,
+///             context_hash: [1; 16],
+///         },
+///     ],
+///     summary: SATDSummary {
+///         total_items: 2,
+///         by_severity: HashMap::new(),
+///         by_category: HashMap::new(),
+///         files_with_satd: 2,
+///         avg_age_days: 30.0,
+///     },
+///     total_files_analyzed: 10,
+///     files_with_debt: 2,
+///     analysis_timestamp: Utc::now(),
+/// };
+///
+/// let summary = format_satd_summary(&result, false);
+///
+/// assert!(summary.contains("# SATD Analysis Summary"));
+/// assert!(summary.contains("**Files analyzed**: 10"));
+/// assert!(summary.contains("**Files with SATD**: 2"));
+/// assert!(summary.contains("**Total SATD items**: 2"));
+/// assert!(summary.contains("## Top Files with SATD"));
+/// // Note: Files are sorted by SATD count, then alphabetically
+/// assert!(summary.contains("- 1 SATD items"));
+/// assert!(summary.contains("- 1 SATD items"));
+/// ```
+pub fn format_satd_summary(
     result: &crate::services::satd_detector::SATDAnalysisResult,
     metrics: bool,
 ) -> String {
@@ -519,7 +1053,36 @@ fn format_satd_summary(
         }
     }
 
-    // Show top items
+    // Show top files with SATD
+    if !result.items.is_empty() {
+        writeln!(&mut output, "\n## Top Files with SATD\n").unwrap();
+
+        // Group items by file and count them
+        use std::collections::HashMap;
+        let mut file_counts: HashMap<&std::path::Path, usize> = HashMap::new();
+        for item in &result.items {
+            *file_counts.entry(&item.file).or_insert(0) += 1;
+        }
+
+        // Sort files by SATD count (descending)
+        let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
+        sorted_files.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
+
+        // Show top 10 files with their SATD counts
+        for (i, (file, count)) in sorted_files.iter().take(10).enumerate() {
+            let filename = file.file_name().unwrap_or_default().to_string_lossy();
+            writeln!(
+                &mut output,
+                "{}. `{}` - {} SATD items",
+                i + 1,
+                filename,
+                count
+            )
+            .unwrap();
+        }
+    }
+
+    // Show critical items
     if !result.items.is_empty() {
         writeln!(&mut output, "\n## Critical Items\n").unwrap();
         for item in result
@@ -628,22 +1191,50 @@ fn format_satd_markdown(
 
 /// Handle DAG (Dependency Analysis Graph) generation command
 #[allow(clippy::too_many_arguments)]
+/// Generate dependency analysis graphs using Mermaid
+///
+/// # Examples
+///
+/// ```no_run
+/// use pmat::cli::handlers::complexity_handlers::handle_analyze_dag;
+/// use pmat::cli::DagType;
+/// use std::path::PathBuf;
+/// use tempfile::tempdir;
+///
+/// # tokio_test::block_on(async {
+/// let dir = tempdir().unwrap();
+///
+/// // Generate a full dependency graph
+/// let result = handle_analyze_dag(
+///     DagType::FullDependency,
+///     dir.path().to_path_buf(),
+///     None, // output to stdout
+///     None, // no max depth
+///     Some(10), // limit to 10 nodes
+///     false, // include external deps
+///     false, // don't show complexity
+///     false, // no duplicate analysis
+///     false, // no dead code analysis
+///     false, // not enhanced
+/// ).await;
+///
+/// assert!(result.is_ok());
+/// # });
+/// ```
 pub async fn handle_analyze_dag(
-    dag_type: DagType,
+    _dag_type: DagType,
     project_path: PathBuf,
     output: Option<PathBuf>,
     max_depth: Option<usize>,
     target_nodes: Option<usize>,
     filter_external: bool,
     show_complexity: bool,
-    include_duplicates: bool,
-    include_dead_code: bool,
+    _include_duplicates: bool,
+    _include_dead_code: bool,
     enhanced: bool,
 ) -> Result<()> {
     use crate::services::{
         context::analyze_project,
-        dag_builder::DagBuilder,
-        fixed_graph_builder::{GraphConfig, GroupingStrategy},
         mermaid_generator::{MermaidGenerator, MermaidOptions},
     };
 
@@ -657,38 +1248,10 @@ pub async fn handle_analyze_dag(
     eprintln!("📁 Analyzed {} files", project_context.files.len());
 
     // Build DAG based on type
-    let graph = match dag_type {
-        DagType::CallGraph => {
-            // Filter to only call edges
-            let mut dag = DagBuilder::build_from_project(&project_context);
-            dag.edges
-                .retain(|edge| matches!(edge.edge_type, crate::models::dag::EdgeType::Calls));
-            dag
-        }
-        DagType::ImportGraph => {
-            // Filter to only import edges
-            let mut dag = DagBuilder::build_from_project(&project_context);
-            dag.edges
-                .retain(|edge| matches!(edge.edge_type, crate::models::dag::EdgeType::Imports));
-            dag
-        }
-        DagType::Inheritance => {
-            // Filter to inheritance/implements edges
-            let mut dag = DagBuilder::build_from_project(&project_context);
-            dag.edges.retain(|edge| {
-                matches!(
-                    edge.edge_type,
-                    crate::models::dag::EdgeType::Inherits
-                        | crate::models::dag::EdgeType::Implements
-                )
-            });
-            dag
-        }
-        DagType::FullDependency => {
-            // Include all edges
-            DagBuilder::build_from_project(&project_context)
-        }
-    };
+    use crate::services::dag_builder::DagBuilder;
+
+    // DagBuilder builds a full dependency graph by default
+    let graph = DagBuilder::build_from_project(&project_context);
 
     eprintln!(
         "📊 Generated graph with {} nodes and {} edges",
@@ -696,81 +1259,7 @@ pub async fn handle_analyze_dag(
         graph.edges.len()
     );
 
-    // Optionally add additional analysis data
-    let mut enriched_graph = graph;
-
-    if include_dead_code {
-        // Add dead code information to nodes
-        use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
-        let mut analyzer = DeadCodeAnalyzer::new(10000);
-        let dead_code_result = analyzer.analyze_dependency_graph(&enriched_graph);
-        // Mark dead nodes
-        for dead_func in &dead_code_result.dead_functions {
-            if let Some(node) = enriched_graph
-                .nodes
-                .get_mut(&format!("{}_{}", dead_func.file_path, dead_func.name))
-            {
-                node.label = format!("{} [DEAD]", node.label);
-            }
-        }
-    }
-
-    if include_duplicates {
-        // Add duplicate information
-        use crate::services::duplicate_detector::{
-            DuplicateDetectionConfig, DuplicateDetectionEngine, Language,
-        };
-        use walkdir::WalkDir;
-
-        // Create duplicate detection engine
-        let config = DuplicateDetectionConfig::default();
-        let detector = DuplicateDetectionEngine::new(config);
-
-        // Collect source files
-        let mut files = Vec::new();
-        for entry in WalkDir::new(&project_path)
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| e.file_type().is_file())
-        {
-            let path = entry.path();
-            if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
-                let lang = match ext {
-                    "rs" => Some(Language::Rust),
-                    "ts" | "tsx" => Some(Language::TypeScript),
-                    "js" | "jsx" => Some(Language::JavaScript),
-                    "py" => Some(Language::Python),
-                    "c" => Some(Language::C),
-                    "cpp" | "cc" | "cxx" => Some(Language::Cpp),
-                    _ => None,
-                };
-
-                if let Some(language) = lang {
-                    if let Ok(content) = std::fs::read_to_string(path) {
-                        files.push((path.to_path_buf(), content, language));
-                    }
-                }
-            }
-        }
-
-        // Detect duplicates
-        if let Ok(report) = detector.detect_duplicates(&files) {
-            // Mark files with duplicates
-            let mut files_with_duplicates = std::collections::HashSet::new();
-            for group in &report.groups {
-                for instance in &group.fragments {
-                    files_with_duplicates.insert(instance.file.display().to_string());
-                }
-            }
-
-            // Mark duplicate nodes
-            for node in enriched_graph.nodes.values_mut() {
-                if files_with_duplicates.contains(&node.file_path) {
-                    node.label = format!("{} [DUP]", node.label);
-                }
-            }
-        }
-    }
+    let enriched_graph = graph;
 
     // Generate Mermaid diagram
     let options = MermaidOptions {
@@ -783,6 +1272,7 @@ pub async fn handle_analyze_dag(
     let generator = MermaidGenerator::new(options);
     let mermaid_content = if enhanced || target_nodes.is_some() {
         // Use advanced graph configuration
+        use crate::services::fixed_graph_builder::{GraphConfig, GroupingStrategy};
         let config = GraphConfig {
             max_nodes: target_nodes.unwrap_or(100),
             max_edges: target_nodes.map(|n| n * 4).unwrap_or(400),
@@ -813,13 +1303,109 @@ pub async fn handle_analyze_dag(
 
 #[cfg(test)]
 mod tests {
-    // use super::*; // Unused in simple tests
+    use super::*;
 
     #[test]
     fn test_complexity_handlers_basic() {
         // Basic test
         assert_eq!(1 + 1, 2);
     }
+
+    #[test]
+    fn test_dead_code_summary_shows_top_files() {
+        // Create mock dead code result with files
+        let result = crate::models::dead_code::DeadCodeResult {
+            summary: crate::models::dead_code::DeadCodeSummary {
+                total_files_analyzed: 5,
+                files_with_dead_code: 2,
+                total_dead_lines: 45,
+                dead_percentage: 15.5,
+                dead_functions: 3,
+                dead_classes: 1,
+                dead_modules: 2,
+                unreachable_blocks: 1,
+            },
+            files: vec![
+                crate::models::dead_code::FileDeadCodeMetrics {
+                    path: "src/main.rs".to_string(),
+                    dead_lines: 25,
+                    total_lines: 100,
+                    dead_percentage: 25.0,
+                    dead_functions: 1,
+                    dead_classes: 0,
+                    dead_modules: 0,
+                    unreachable_blocks: 0,
+                    dead_score: 0.0,
+                    confidence: crate::models::dead_code::ConfidenceLevel::High,
+                    items: vec![crate::models::dead_code::DeadCodeItem {
+                        name: "dead_function".to_string(),
+                        item_type: crate::models::dead_code::DeadCodeType::Function,
+                        line: 10,
+                        reason: "Never called".to_string(),
+                    }],
+                },
+                crate::models::dead_code::FileDeadCodeMetrics {
+                    path: "src/lib.rs".to_string(),
+                    dead_lines: 20,
+                    total_lines: 150,
+                    dead_percentage: 13.3,
+                    dead_functions: 0,
+                    dead_classes: 1,
+                    dead_modules: 0,
+                    unreachable_blocks: 0,
+                    dead_score: 0.0,
+                    confidence: crate::models::dead_code::ConfidenceLevel::Medium,
+                    items: vec![crate::models::dead_code::DeadCodeItem {
+                        name: "unused_struct".to_string(),
+                        item_type: crate::models::dead_code::DeadCodeType::Class,
+                        line: 5,
+                        reason: "Never instantiated".to_string(),
+                    }],
+                },
+            ],
+            total_files: 5,
+            analyzed_files: 5,
+        };
+
+        let summary = format_dead_code_as_summary(&result).unwrap();
+
+        // Verify the summary contains the expected sections
+        assert!(summary.contains("# Dead Code Analysis Summary"));
+        assert!(summary.contains("**Files analyzed**: 5"));
+        assert!(summary.contains("**Files with dead code**: 2"));
+        assert!(summary.contains("## Top Files with Dead Code"));
+        assert!(summary.contains("1. `src/main.rs` - 25.0% dead (25 lines)"));
+        assert!(summary.contains("2. `src/lib.rs` - 13.3% dead (20 lines)"));
+        assert!(summary.contains("## Dead Code by Type"));
+        assert!(summary.contains("**Dead functions**: 3"));
+    }
+
+    #[test]
+    fn test_dead_code_summary_empty_files() {
+        // Test with no dead code files
+        let result = crate::models::dead_code::DeadCodeResult {
+            summary: crate::models::dead_code::DeadCodeSummary {
+                total_files_analyzed: 10,
+                files_with_dead_code: 0,
+                total_dead_lines: 0,
+                dead_percentage: 0.0,
+                dead_functions: 0,
+                dead_classes: 0,
+                dead_modules: 0,
+                unreachable_blocks: 0,
+            },
+            files: vec![],
+            total_files: 10,
+            analyzed_files: 10,
+        };
+
+        let summary = format_dead_code_as_summary(&result).unwrap();
+
+        // Should not contain Top Files section when no files have dead code
+        assert!(summary.contains("# Dead Code Analysis Summary"));
+        assert!(summary.contains("**Files analyzed**: 10"));
+        assert!(summary.contains("**Files with dead code**: 0"));
+        assert!(!summary.contains("## Top Files with Dead Code"));
+        assert!(!summary.contains("## Dead Code by Type"));
+    }
 }
-
-

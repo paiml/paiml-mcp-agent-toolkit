@@ -1,6 +1,6 @@
 #![cfg(feature = "demo")]
 
-use paiml_mcp_agent_toolkit::demo::{DemoContent, Hotspot, LocalDemoServer};
+use pmat::demo::{DemoContent, Hotspot, LocalDemoServer};
 use std::time::Duration;
 use tokio::time::timeout;
 
@@ -348,7 +348,7 @@ async fn test_demo_content_rendering() {
 #[cfg(test)]
 mod demo_web_tests {
     use super::*;
-    use paiml_mcp_agent_toolkit::models::dag::{DependencyGraph, NodeInfo, NodeType};
+    use pmat::models::dag::{DependencyGraph, NodeInfo, NodeType};
 
     #[tokio::test]
     async fn test_demo_server_starts() {

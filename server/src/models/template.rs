@@ -27,6 +27,23 @@ pub enum Toolchain {
 }
 
 impl Toolchain {
+    /// Returns the priority of the toolchain (lower number = higher priority)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::template::Toolchain;
+    ///
+    /// let rust = Toolchain::RustCli {
+    ///     cargo_features: vec!["serde".to_string()]
+    /// };
+    /// assert_eq!(rust.priority(), 1);
+    ///
+    /// let deno = Toolchain::DenoTypescript {
+    ///     deno_version: "1.38".to_string()
+    /// };
+    /// assert_eq!(deno.priority(), 2);
+    /// ```
     pub fn priority(&self) -> u8 {
         match self {
             Toolchain::RustCli { .. } => 1,
@@ -35,6 +52,23 @@ impl Toolchain {
         }
     }
 
+    /// Returns the string identifier for the toolchain
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::template::Toolchain;
+    ///
+    /// let rust = Toolchain::RustCli {
+    ///     cargo_features: vec![]
+    /// };
+    /// assert_eq!(rust.as_str(), "rust");
+    ///
+    /// let python = Toolchain::PythonUv {
+    ///     python_version: "3.11".to_string()
+    /// };
+    /// assert_eq!(python.as_str(), "python-uv");
+    /// ```
     pub fn as_str(&self) -> &'static str {
         match self {
             Toolchain::RustCli { .. } => "rust",

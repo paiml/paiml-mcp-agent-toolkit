@@ -1,5 +1,5 @@
-use paiml_mcp_agent_toolkit::models::dag::{DependencyGraph, NodeInfo, NodeType};
-use paiml_mcp_agent_toolkit::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
+use pmat::models::dag::{DependencyGraph, NodeInfo, NodeType};
+use pmat::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
 use rustc_hash::FxHashMap;
 
 #[test]

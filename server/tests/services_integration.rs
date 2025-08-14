@@ -1,5 +1,5 @@
 // Integration tests to improve code coverage by exercising uncovered code paths
-use paiml_mcp_agent_toolkit::stateless_server::StatelessTemplateServer;
+use pmat::stateless_server::StatelessTemplateServer;
 use std::sync::Arc;
 use tempfile::TempDir;
 
@@ -51,7 +51,7 @@ mod integration_coverage_tests {
     // Test AST Rust analysis
     #[tokio::test]
     async fn test_ast_rust_analysis() {
-        use paiml_mcp_agent_toolkit::services::ast_rust::*;
+        use pmat::services::ast_rust::*;
 
         let temp_dir = TempDir::new().unwrap();
         let rust_file = temp_dir.path().join("test.rs");
@@ -106,7 +106,7 @@ enum TestEnum {
     // Test complexity analysis service
     #[test]
     fn test_complexity_service() {
-        use paiml_mcp_agent_toolkit::services::complexity::*;
+        use pmat::services::complexity::*;
 
         // Test ComplexityThresholds
         let default_thresholds = ComplexityThresholds::default();
@@ -173,9 +173,9 @@ enum TestEnum {
     // Test DAG builder
     #[test]
     fn test_dag_builder() {
-        use paiml_mcp_agent_toolkit::models::dag::*;
-        use paiml_mcp_agent_toolkit::services::context::*;
-        use paiml_mcp_agent_toolkit::services::dag_builder::*;
+        use pmat::models::dag::*;
+        use pmat::services::context::*;
+        use pmat::services::dag_builder::*;
 
         // Create a sample project context
         let file_context = FileContext {
@@ -246,8 +246,8 @@ enum TestEnum {
     // Test MCP handlers
     #[tokio::test]
     async fn test_mcp_handlers() {
-        use paiml_mcp_agent_toolkit::handlers::tools::*;
-        use paiml_mcp_agent_toolkit::models::mcp::*;
+        use pmat::handlers::tools::*;
+        use pmat::models::mcp::*;
         use serde_json::json;
 
         let server = Arc::new(StatelessTemplateServer::new().unwrap());
@@ -292,7 +292,7 @@ enum TestEnum {
 
         // Test churn formatting functions
         use chrono::Utc;
-        use paiml_mcp_agent_toolkit::models::churn::*;
+        use pmat::models::churn::*;
         use std::path::PathBuf;
 
         let analysis = CodeChurnAnalysis {
@@ -393,7 +393,7 @@ version = "0.1.0"
     // Test error handling in AST analysis
     #[tokio::test]
     async fn test_ast_error_handling() {
-        use paiml_mcp_agent_toolkit::services::ast_rust::*;
+        use pmat::services::ast_rust::*;
 
         let temp_dir = TempDir::new().unwrap();
         let invalid_rust = temp_dir.path().join("invalid.rs");

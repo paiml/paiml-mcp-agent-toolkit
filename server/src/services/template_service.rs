@@ -1,3 +1,40 @@
+//! Template generation and rendering service.
+//!
+//! This module provides code generation capabilities through a flexible template
+//! system. It supports multiple languages and project types, with intelligent
+//! context generation and parameter validation.
+//!
+//! # Template Categories
+//!
+//! - **Project Templates**: Full project scaffolding (CLI, library, web)
+//! - **Context Templates**: AI-ready code context generation
+//! - **Configuration Templates**: CI/CD, Docker, deployment configs
+//! - **Code Templates**: Common patterns and boilerplate
+//!
+//! # Example
+//!
+//! ```ignore
+//! use pmat::services::template_service::{generate_template, TemplateServerTrait};
+//! use serde_json::{Map, Value};
+//!
+//! # async fn example<T: TemplateServerTrait>(server: &T) -> Result<(), Box<dyn std::error::Error>> {
+//! // Generate a Rust CLI project template
+//! let mut params = Map::new();
+//! params.insert("project_name".to_string(), Value::String("my_app".to_string()));
+//! params.insert("description".to_string(), Value::String("My CLI app".to_string()));
+//!
+//! let template = generate_template(
+//!     server,
+//!     "project/rust/cli",
+//!     params
+//! ).await?;
+//!
+//! println!("Generated: {}", template.filename);
+//! println!("Checksum: {}", template.checksum);
+//! # Ok(())
+//! # }
+//! ```ignore
+
 use crate::models::error::TemplateError;
 use crate::models::template::{GeneratedTemplate, TemplateResource};
 use crate::services::context::{analyze_project, format_context_as_markdown};

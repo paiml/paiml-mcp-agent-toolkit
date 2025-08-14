@@ -1,6 +1,6 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
-use paiml_mcp_agent_toolkit::services::makefile_linter::{MakefileParser, RuleRegistry};
+use pmat::services::makefile_linter::{MakefileParser, RuleRegistry};
 
 fuzz_target!(|data: &[u8]| {
     // Convert bytes to string, skip if not valid UTF-8

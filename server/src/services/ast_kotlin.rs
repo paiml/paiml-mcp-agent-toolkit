@@ -117,7 +117,6 @@ impl KotlinAstParser {
         // Increment depth counter
         ctx.current_depth += 1;
 
-
         let node_id = match node.kind() {
             "class_declaration" => self.process_class(ctx, node)?,
             "object_declaration" => self.process_object(ctx, node)?,
@@ -147,7 +146,6 @@ impl KotlinAstParser {
                 work_stack.push((child, ctx.current_depth + 1));
             }
 
-
             // Process nodes iteratively
             while let Some((work_node, depth)) = work_stack.pop() {
                 // Safety checks
@@ -165,7 +163,7 @@ impl KotlinAstParser {
 
                 // Process the node (only top-level nodes, no deep recursion)
                 let kind = work_node.kind();
-                
+
                 if kind == "class_declaration"
                     || kind == "object_declaration"
                     || kind == "function_declaration"
@@ -208,10 +206,12 @@ impl KotlinAstParser {
     fn process_class(&self, ctx: &mut ParseContext, node: Node) -> Result<Option<usize>> {
         // Check if this is actually an enum class by looking at the source
         let source_start = node.start_byte();
-        let source_end = (source_start + 20).min(node.end_byte()).min(ctx.content.len());
+        let source_end = (source_start + 20)
+            .min(node.end_byte())
+            .min(ctx.content.len());
         let source_prefix = &ctx.content[source_start..source_end];
         let is_enum = source_prefix.starts_with("enum ");
-        
+
         let name = if is_enum {
             // For enums, use special extraction logic
             self.extract_enum_name(ctx, node)
@@ -220,13 +220,13 @@ impl KotlinAstParser {
             self.extract_identifier(ctx, node, "simple_identifier")
                 .unwrap_or_else(|| String::from("AnonymousClass"))
         };
-        
+
         let kind = if is_enum {
             AstKind::Type(TypeKind::Enum)
         } else {
             AstKind::Type(TypeKind::Class)
         };
-        
+
         let mut ast_node = UnifiedAstNode::new(kind, Language::Kotlin);
         ast_node.source_range = node.start_byte() as u32..node.end_byte() as u32;
         self.set_name_vector(&mut ast_node, &name);
@@ -253,7 +253,8 @@ impl KotlinAstParser {
     }
 
     fn process_object(&self, ctx: &mut ParseContext, node: Node) -> Result<Option<usize>> {
-        let name = self.extract_identifier(ctx, node, "simple_identifier")
+        let name = self
+            .extract_identifier(ctx, node, "simple_identifier")
             .unwrap_or_else(|| String::from("AnonymousObject"));
         let mut ast_node = UnifiedAstNode::new(AstKind::Type(TypeKind::Class), Language::Kotlin);
         ast_node.source_range = node.start_byte() as u32..node.end_byte() as u32;
@@ -265,7 +266,8 @@ impl KotlinAstParser {
     }
 
     fn process_enum(&self, ctx: &mut ParseContext, node: Node) -> Result<Option<usize>> {
-        let name = self.extract_identifier(ctx, node, "simple_identifier")
+        let name = self
+            .extract_identifier(ctx, node, "simple_identifier")
             .unwrap_or_else(|| String::from("AnonymousEnum"));
         let mut ast_node = UnifiedAstNode::new(AstKind::Type(TypeKind::Enum), Language::Kotlin);
         ast_node.source_range = node.start_byte() as u32..node.end_byte() as u32;
@@ -277,7 +279,8 @@ impl KotlinAstParser {
     }
 
     fn process_function(&self, ctx: &mut ParseContext, node: Node) -> Result<Option<usize>> {
-        let name = self.extract_identifier(ctx, node, "simple_identifier")
+        let name = self
+            .extract_identifier(ctx, node, "simple_identifier")
             .unwrap_or_else(|| String::from("anonymousFunction"));
         let mut ast_node =
             UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), Language::Kotlin);
@@ -324,21 +327,28 @@ impl KotlinAstParser {
     }
 
     /// Extract identifier from a node by looking for a child with the given kind
-    fn extract_identifier(&self, ctx: &mut ParseContext, node: Node, identifier_kind: &str) -> Option<String> {
+    fn extract_identifier(
+        &self,
+        ctx: &mut ParseContext,
+        node: Node,
+        identifier_kind: &str,
+    ) -> Option<String> {
         // Check if the node is actually an enum by looking at the source
         let source_start = node.start_byte();
-        let source_end = (source_start + 20).min(node.end_byte()).min(ctx.content.len());
+        let source_end = (source_start + 20)
+            .min(node.end_byte())
+            .min(ctx.content.len());
         let source_prefix = &ctx.content[source_start..source_end];
         let is_enum = source_prefix.starts_with("enum ");
-        
+
         let mut found_identifiers = Vec::new();
-        
+
         // For enum class, let's try a different approach - parse from source
         if is_enum {
             // This is handled by extract_enum_name method, so just return early
             return None;
         }
-        
+
         // Normal identifier extraction for non-enums
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
@@ -351,11 +361,14 @@ impl KotlinAstParser {
                 }
             }
         }
-        
+
         // For enum class, we need to skip "class" which might be picked up as an identifier
         if is_enum && found_identifiers.len() > 1 {
             // Return the last identifier (should be the actual enum name)
-            found_identifiers.into_iter().rev().find(|s| s != "class" && s != "enum")
+            found_identifiers
+                .into_iter()
+                .rev()
+                .find(|s| s != "class" && s != "enum")
         } else {
             found_identifiers.into_iter().next()
         }

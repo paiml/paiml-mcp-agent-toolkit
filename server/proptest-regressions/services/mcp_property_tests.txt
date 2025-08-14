@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc cf9cb50a871afbe23fd8a97e599ce4bd1630aa96413740b9ad403be927ae8e20 # shrinks to initial_files = ["src/_.rs"], top_files = 2
+cc ad6065f4af3830b03a591ade9a03203a1b1d9b068d1397d60f717acb45b1a744 # shrinks to params = McpCompositionParams { files: ["src/_.rs", "src/_.rs"], top_files: 1 }

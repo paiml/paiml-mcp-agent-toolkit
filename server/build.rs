@@ -12,6 +12,10 @@ fn main() {
     println!("cargo:rerun-if-changed=assets/demo/");
     println!("cargo:rerun-if-changed=../assets/demo/");
     println!("cargo:rerun-if-changed=templates/");
+    println!("cargo:rerun-if-changed=src/schema/refactor_state.capnp");
+
+    // Declare custom cfg flag for cargo publish detection
+    println!("cargo:rustc-check-cfg=cfg(cargo_publish)");
 
     // Verify critical dependencies at build time
     verify_dependency_versions();
@@ -20,10 +24,29 @@ fn main() {
     compress_templates();
 
     // Download and compress assets for demo mode
-    if env::var("CARGO_FEATURE_DEMO").is_ok() {
+    // Skip asset downloading during cargo publish to avoid modifying source directory
+    if env::var("CARGO_FEATURE_DEMO").is_ok() && !is_publishing() {
         download_and_compress_assets();
         minify_demo_assets();
     }
+
+    // Compile Cap'n Proto schema for MCP server
+    compile_capnp_schema();
+}
+
+/// Check if we're in a cargo publish context
+fn is_publishing() -> bool {
+    // During cargo publish, the package is extracted to a temp directory
+    let is_publish = env::var("CARGO_PKG_VERSION").is_ok()
+        && env::current_dir()
+            .map(|dir| dir.to_string_lossy().contains("/target/package/"))
+            .unwrap_or(false);
+
+    if is_publish {
+        println!("cargo:rustc-cfg=cargo_publish");
+    }
+
+    is_publish
 }
 
 /// Verifies critical dependencies exist in Cargo.lock
@@ -98,7 +121,7 @@ fn process_assets(assets: &[(&str, &str)]) {
             continue;
         }
 
-        ensure_asset_downloaded(&path, url, filename);
+        ensure_asset_downloaded(&path, &gz_path, url, filename);
         compress_asset(&path, &gz_path, filename);
     }
 }
@@ -107,9 +130,18 @@ fn should_skip_asset(gz_path: &Path) -> bool {
     gz_path.exists()
 }
 
-fn ensure_asset_downloaded(path: &Path, url: &str, filename: &str) {
+fn ensure_asset_downloaded(path: &Path, gz_path: &Path, url: &str, filename: &str) {
     if !path.exists() {
-        download_asset(url, path, filename);
+        // Check if we're in a docs.rs build environment
+        if env::var("DOCS_RS").is_ok() {
+            println!("cargo:warning=Skipping asset download in docs.rs environment: {filename}");
+            // Create a placeholder file for docs.rs builds
+            let _ = fs::write(path, b"/* Asset skipped in docs.rs build */");
+            // Also create an empty gzipped placeholder to satisfy include_bytes!
+            let _ = fs::write(gz_path, b"");
+        } else {
+            download_asset(url, path, filename);
+        }
     }
 }
 
@@ -468,4 +500,37 @@ fn calculate_asset_hash() -> String {
     }
 
     format!("{:x}", hasher.finish())
+}
+
+/// Compiles Cap'n Proto schema for MCP server
+fn compile_capnp_schema() {
+    // Only compile schema if MCP server feature is enabled or explicitly requested
+    if env::var("CARGO_FEATURE_MCP_SERVER").is_ok() || env::var("PMAT_BUILD_MCP").is_ok() {
+        let schema_path = Path::new("src/schema/refactor_state.capnp");
+
+        if schema_path.exists() {
+            println!("cargo:warning=Compiling Cap'n Proto schema for MCP server");
+
+            let out_dir = env::var("OUT_DIR").expect("OUT_DIR environment variable must be set");
+
+            // Use capnpc to compile the schema
+            match capnpc::CompilerCommand::new()
+                .src_prefix("src/schema")
+                .file("src/schema/refactor_state.capnp")
+                .output_path(&out_dir)
+                .run()
+            {
+                Ok(_) => {
+                    println!("cargo:warning=Successfully compiled Cap'n Proto schema");
+                }
+                Err(e) => {
+                    // Don't fail the build if Cap'n Proto compilation fails
+                    // The code will fall back to JSON serialization
+                    println!("cargo:warning=Failed to compile Cap'n Proto schema: {}. Using JSON fallback.", e);
+                }
+            }
+        } else {
+            println!("cargo:warning=Cap'n Proto schema file not found, skipping compilation");
+        }
+    }
 }

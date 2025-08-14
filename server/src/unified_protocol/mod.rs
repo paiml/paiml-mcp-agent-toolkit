@@ -1,3 +1,38 @@
+//! Unified protocol implementation for PMAT.
+//!
+//! This module provides a protocol-agnostic service layer that supports multiple
+//! transport mechanisms (HTTP, MCP, CLI) through a unified interface. This design
+//! follows the Toyota Way principle of standardization and flexibility.
+//!
+//! # Architecture
+//!
+//! The unified protocol consists of:
+//! - **Service**: Core protocol-agnostic business logic
+//! - **Adapters**: Transport-specific implementations (HTTP, MCP)
+//! - **Error**: Unified error handling across all transports
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::unified_protocol::{UnifiedRequest, UnifiedResponse, Protocol};
+//! use axum::http::{Method, StatusCode};
+//!
+//! # fn example() {
+//! // Create a unified request
+//! let request = UnifiedRequest::new(Method::GET, "/analyze/complexity".to_string())
+//!     .with_header("content-type", "application/json")
+//!     .with_extension("protocol", Protocol::Http);
+//!
+//! // Create a unified response
+//! let response = UnifiedResponse::ok()
+//!     .with_json(&serde_json::json!({
+//!         "status": "success",
+//!         "files": []
+//!     }))
+//!     .unwrap();
+//! # }
+//! ```
+
 use std::collections::HashMap;
 use std::sync::Arc;
 

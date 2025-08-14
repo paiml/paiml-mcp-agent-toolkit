@@ -9,7 +9,76 @@ use anyhow::Result;
 use std::path::PathBuf;
 use tracing::{debug, info};
 
-/// Handle deep context analysis command  
+/// Handle deep context analysis command
+///
+/// Performs comprehensive analysis of project context, including code relationships,
+/// dependencies, and architectural patterns. This addresses issue #33 where the
+/// command wasn't finding anything by implementing proper file discovery and analysis.
+///
+/// # Examples
+///
+/// ```no_run
+/// use pmat::cli::{DeepContextOutputFormat, DagType};
+/// use pmat::cli::handlers::advanced_analysis_handlers::handle_analyze_deep_context;
+/// use std::path::PathBuf;
+///
+/// # async fn example() -> anyhow::Result<()> {
+/// // Basic deep context analysis
+/// handle_analyze_deep_context(
+///     PathBuf::from("."),
+///     None,                              // output
+///     DeepContextOutputFormat::Json,     // format
+///     false,                             // full
+///     vec![],                            // include
+///     vec![],                            // exclude
+///     30,                                // period_days
+///     None,                              // dag_type
+///     None,                              // max_depth
+///     vec![],                            // include_patterns
+///     vec![],                            // exclude_patterns
+///     None,                              // cache_strategy
+///     false,                             // parallel
+///     false,                             // verbose
+///     10,                                // top_files
+/// ).await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ```no_run
+/// # use pmat::cli::{DeepContextOutputFormat, DagType};
+/// # use pmat::cli::handlers::advanced_analysis_handlers::handle_analyze_deep_context;
+/// # use std::path::PathBuf;
+/// # async fn example() -> anyhow::Result<()> {
+/// // Full analysis with specific includes
+/// handle_analyze_deep_context(
+///     PathBuf::from("./src"),
+///     Some(PathBuf::from("context.json")),
+///     DeepContextOutputFormat::Json,
+///     true,                              // full analysis
+///     vec!["complexity".to_string(), "dependencies".to_string()],
+///     vec![],
+///     90,                                // 90 day history
+///     Some(DagType::CallGraph),
+///     Some(5),                           // max depth 5
+///     vec!["**/*.rs".to_string()],       // only Rust files
+///     vec!["**/tests/**".to_string()],   // exclude tests
+///     Some("persistent".to_string()),
+///     true,                              // parallel processing
+///     true,                              // verbose output
+///     20,                                // top 20 files
+/// ).await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Returns
+///
+/// Returns `Ok(())` if analysis completes successfully, or an error if:
+/// - Project path doesn't exist
+/// - No files found to analyze
+/// - Output file cannot be written
+/// - Analysis encounters errors
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_deep_context(
     project_path: PathBuf,
@@ -21,11 +90,12 @@ pub async fn handle_analyze_deep_context(
     period_days: u32,
     _dag_type: Option<DagType>,
     _max_depth: Option<usize>,
-    _include_patterns: Vec<String>,
+    include_patterns: Vec<String>,
     exclude_patterns: Vec<String>,
     _cache_strategy: Option<String>,
     _parallel: bool,
     verbose: bool,
+    top_files: usize,
 ) -> Result<()> {
     info!("🔍 Starting deep context analysis");
     info!("📂 Project path: {}", project_path.display());
@@ -54,6 +124,7 @@ pub async fn handle_analyze_deep_context(
     let config = SimpleAnalysisConfig {
         project_path: project_path.clone(),
         include_features,
+        include_patterns,
         exclude_patterns: combined_exclude,
         enable_verbose: verbose,
     };
@@ -68,7 +139,7 @@ pub async fn handle_analyze_deep_context(
     // Format and output results
     let output_content = match format {
         DeepContextOutputFormat::Json => analyzer.format_as_json(&report)?,
-        DeepContextOutputFormat::Markdown => analyzer.format_as_markdown(&report),
+        DeepContextOutputFormat::Markdown => analyzer.format_as_markdown(&report, top_files),
         DeepContextOutputFormat::Sarif => {
             // TRACKED: Implement SARIF format
             analyzer.format_as_json(&report)?
@@ -112,16 +183,20 @@ pub async fn handle_analyze_tdg(
     critical_only: bool,
     verbose: bool,
 ) -> Result<()> {
-    // Delegate to stub implementation for now - will be fully extracted later
+    // Use the enhanced implementation from stubs that supports all modes
     super::super::stubs::handle_analyze_tdg(
         path,
-        threshold.unwrap_or(2.5),
+        None,   // file - not exposed in current interface
+        vec![], // files - not exposed in current interface
+        threshold.unwrap_or(1.5),
         top.unwrap_or(10),
         format,
         include_components,
         output,
         critical_only,
         verbose,
+        vec![], // include patterns - not exposed in current interface
+        false,  // watch - not exposed in current interface
     )
     .await
 }
@@ -133,12 +208,15 @@ pub async fn handle_analyze_makefile(
     format: MakefileOutputFormat,
     fix: bool,
     gnu_version: Option<String>,
+    top_files: usize,
 ) -> Result<()> {
     // Delegate to stub implementation for now - will be fully extracted later
-    super::super::stubs::handle_analyze_makefile(path, rules, format, fix, gnu_version).await
+    super::super::stubs::handle_analyze_makefile(path, rules, format, fix, gnu_version, top_files)
+        .await
 }
 
 /// Handle provability analysis command
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_provability(
     project_path: PathBuf,
     functions: Vec<String>,
@@ -147,6 +225,7 @@ pub async fn handle_analyze_provability(
     high_confidence_only: bool,
     include_evidence: bool,
     output: Option<PathBuf>,
+    top_files: usize,
 ) -> Result<()> {
     // Delegate to stub implementation for now - will be fully extracted later
     super::super::stubs::handle_analyze_provability(
@@ -157,6 +236,7 @@ pub async fn handle_analyze_provability(
         high_confidence_only,
         include_evidence,
         output,
+        top_files,
     )
     .await
 }
@@ -175,9 +255,10 @@ pub async fn handle_analyze_defect_prediction(
     exclude: Vec<String>,
     output: Option<PathBuf>,
     perf: bool,
+    top_files: usize,
 ) -> Result<()> {
-    // Delegate to stub implementation for now - will be fully extracted later
-    super::super::stubs::handle_analyze_defect_prediction(
+    // Delegate to the real implementation
+    crate::cli::analysis::defect_prediction::handle_analyze_defect_prediction(
         project_path,
         confidence_threshold.unwrap_or(0.5) as f32,
         min_lines.unwrap_or(100),
@@ -189,6 +270,7 @@ pub async fn handle_analyze_defect_prediction(
         Some(exclude.join(",")),
         output,
         perf,
+        top_files,
     )
     .await
 }
@@ -197,6 +279,8 @@ pub async fn handle_analyze_defect_prediction(
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_comprehensive(
     project_path: PathBuf,
+    file: Option<PathBuf>,
+    files: Vec<PathBuf>,
     format: ComprehensiveOutputFormat,
     include_duplicates: bool,
     include_dead_code: bool,
@@ -211,9 +295,11 @@ pub async fn handle_analyze_comprehensive(
     perf: bool,
     executive_summary: bool,
 ) -> Result<()> {
-    // Delegate to stub implementation for now - will be fully extracted later
-    super::super::stubs::handle_analyze_comprehensive(
+    // Use the new comprehensive handler implementation
+    super::comprehensive_handler::handle_analyze_comprehensive(
         project_path,
+        file,
+        files, // files (MCP composition support)
         format,
         include_duplicates,
         include_dead_code,
