@@ -17,14 +17,19 @@ This guide provides the essential operational instructions for working on the `p
 5.  **NEVER Add SATD Comments:** Zero tolerance for self-admitted technical debt. Never add comments like "TODO", "FIXME", "For now", "In a full implementation", etc. Every implementation must be complete.
 6.  **NEVER Use Simple Heuristics:** Zero tolerance for heuristics, stubs, or approximations. Always use proper AST-based analysis, full implementations, and accurate algorithms. If a function is named `estimate_*` or uses simple pattern matching instead of proper parsing, it must be replaced with the real implementation.
 7.  **NEVER Duplicate Core Logic:** There must be ONE implementation for each core feature. All providers (MCP, HTTP, CLI) must use the same underlying logic. If multiple tools need the same functionality, they must call the same service/function. No duplicate implementations allowed.
-8.  **ALWAYS Use PDMT for Todo Creation:** When creating todo lists or task breakdowns, you MUST use the PDMT (Pragmatic Deterministic MCP Templating) approach. This ensures deterministic, quality-enforced todo generation with proper validation commands and success criteria.
+8.  **ALWAYS Dogfood via MCP First:** We MUST use our own MCP tools as the primary interface. CLI commands are secondary. This ensures we continuously improve our MCP integration and experience the tool as our users do. Use MCP tools for analysis, refactoring, quality gates, and todo creation.
+9.  **ALWAYS Use PDMT for Todo Creation:** When creating todo lists or task breakdowns, you MUST use the PDMT (Pragmatic Deterministic MCP Templating) approach via MCP. This ensures deterministic, quality-enforced todo generation with proper validation commands and success criteria.
 
 ## PDMT Todo Creation (Mandatory)
 
-For ALL todo creation and task planning, use our integrated PDMT system:
+For ALL todo creation and task planning, use our integrated PDMT system via **MCP first**:
 
 ```bash
-# Use pmat's PDMT integration to create deterministic todos
+# PRIMARY: Use MCP tool for PDMT todo generation (dogfooding)
+# Use the pdmt_deterministic_todos MCP tool with deterministic seed
+# Example: Generate todos for "Update pmcp to version 1.2.0" requirement
+
+# FALLBACK ONLY: CLI usage when MCP is not available
 pmat pdmt-todos "your requirement description" --granularity medium --seed 42
 ```
 
@@ -43,48 +48,56 @@ pmat pdmt-todos "your requirement description" --granularity medium --seed 42
 
 **Never create manual todos** - always use PDMT to ensure consistency with our zero-compromise quality standards.
 
+## MCP Dogfooding Philosophy
+
+We eat our own dog food by using our MCP tools as the primary interface:
+
+- **✅ PRIMARY**: Use MCP tools for all operations (analysis, refactoring, quality gates, todos)
+- **⚠️ SECONDARY**: CLI commands only when MCP is unavailable
+- **🎯 BENEFIT**: Continuously improve user experience by using what our users use
+- **📈 QUALITY**: Ensures MCP integration receives the same attention as core functionality
+
+**MCP-First Examples:**
+- Analysis: Use MCP `analyze_complexity` tool before CLI `pmat analyze complexity`
+- Refactoring: Use MCP `refactor_start` tool before CLI `pmat refactor auto`
+- Quality Gates: Use MCP `quality_gate` tool before CLI `pmat quality-gate`
+- Todo Generation: Use MCP `pdmt_deterministic_todos` tool
+
 ## The Kaizen Refactoring Loop (The "Kata")
 
 This is the core workflow for improving the codebase. Treat it as a repeatable practice (a kata) to drive quality.
 
 ### Step 1: Find the Target (Genchi Genbutsu)
 
-First, "go and see" the problems. Use `pmat`'s analysis tools to identify the most critical area for improvement. Choose **one** of the following commands to find a target file:
+First, "go and see" the problems. Use our MCP tools (PRIMARY) to identify the most critical area for improvement:
 
--   **For General Quality Issues:**
-    ```bash
-    pmat analyze lint-hotspot --top-files 5
-    ```
--   **For High Complexity:**
-    ```bash
-    pmat analyze complexity --top-files 5
-    ```
--   **For Technical Debt:**
-    ```bash
-    pmat analyze satd
-    ```
--   **For Unused Code:**
-    ```bash
-    pmat analyze dead-code
-    ```
+-   **For General Quality Issues (MCP First):**
+    - **✅ PRIMARY**: Use MCP `analyze_lint_hotspot` tool with `{"top_files": 5}`
+    - **⚠️ FALLBACK**: `pmat analyze lint-hotspot --top-files 5`
+-   **For High Complexity (MCP First):**
+    - **✅ PRIMARY**: Use MCP `analyze_complexity` tool with `{"top_files": 5}`
+    - **⚠️ FALLBACK**: `pmat analyze complexity --top-files 5`
+-   **For Technical Debt (MCP First):**
+    - **✅ PRIMARY**: Use MCP `analyze_satd` tool
+    - **⚠️ FALLBACK**: `pmat analyze satd`
+-   **For Unused Code (MCP First):**
+    - **✅ PRIMARY**: Use MCP `analyze_dead_code` tool
+    - **⚠️ FALLBACK**: `pmat analyze dead-code`
 
 ### Step 2: Create the Refactoring Plan (Jidoka)
 
-Once you have identified a target file, use `pmat refactor auto` to generate an automated, AI-driven refactoring plan.
+Once you have identified a target file, use our MCP refactoring tools (PRIMARY) to generate an automated, AI-driven refactoring plan:
 
-```bash
-# Generate a refactoring plan for the chosen file
-pmat refactor auto --file <path/to/target/file.rs>
-```
+- **✅ PRIMARY**: Use MCP `refactor_start` tool with `{"file_path": "<path/to/target/file.rs>"}`
+- **⚠️ FALLBACK**: `pmat refactor auto --file <path/to/target/file.rs>`
 
 ### Step 3: Verify the Improvement
 
 After applying the refactoring, you **MUST** verify that the change improved quality and did not introduce regressions.
 
-1.  **Run Quality Gate:** Ensure the specific file now meets our zero-tolerance standards.
-    ```bash
-    pmat quality-gate --file <path/to/target/file.rs>
-    ```
+1.  **Run Quality Gate (MCP First):** Ensure the specific file now meets our zero-tolerance standards.
+    - **✅ PRIMARY**: Use MCP `quality_gate` tool with `{"file_path": "<path/to/target/file.rs>"}`
+    - **⚠️ FALLBACK**: `pmat quality-gate --file <path/to/target/file.rs>`
 2.  **Run Fast Tests:** Confirm that the changes have not broken any existing functionality.
     ```bash
     make test-fast
