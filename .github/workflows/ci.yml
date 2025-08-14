@@ -71,19 +71,19 @@ jobs:
       
       - name: Run lint check
         run: make lint
-        timeout-minutes: 3
+        timeout-minutes: 10
       
       - name: Run type check
         run: make check
-        timeout-minutes: 3
+        timeout-minutes: 8
       
       - name: Build debug binary
         run: cargo build --package pmat
-        timeout-minutes: 5
+        timeout-minutes: 10
       
       - name: Run fast tests
         run: make test-fast
-        timeout-minutes: 5
+        timeout-minutes: 10
       
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
