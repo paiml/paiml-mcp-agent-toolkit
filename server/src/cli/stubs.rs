@@ -6322,10 +6322,13 @@ mod tests {
         let test_file = src_dir.join("test.rs");
         let mut file = std::fs::File::create(&test_file).unwrap();
         writeln!(file, "// Quality test implementation").unwrap();
+        writeln!(file, "// TODO: Fix this technical debt").unwrap();
+        writeln!(file, "#[allow(dead_code)]").unwrap();
         writeln!(file, "fn simple() {{").unwrap();
         writeln!(file, "    let api_key = \"hardcoded-key\";").unwrap();
         writeln!(file, "    println!(\"Hello\");").unwrap();
         writeln!(file, "}}").unwrap();
+        writeln!(file, "// fn commented_function() {{ }}").unwrap();
         writeln!(file, "fn helper_function() {{ println!(\"Helper\"); }}").unwrap();
 
         // Test individual check functions
