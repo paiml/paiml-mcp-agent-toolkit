@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 95ad46eda2e52eb6e79f6adc9eb71bc8a273c1891099d33a8fb366c4328739ac # shrinks to metrics = FileDeadCodeMetrics { path: "a.rs", dead_lines: 20, total_lines: 10, dead_percentage: 200.0, dead_functions: 2, dead_classes: 0, dead_modules: 0, unreachable_blocks: 0, dead_score: 86.4, confidence: High, items: [DeadCodeItem { item_type: Function, name: "a", line: 1, reason: "Never called" }, DeadCodeItem { item_type: Function, name: "A", line: 1, reason: "Never called" }] }

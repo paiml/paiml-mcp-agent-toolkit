@@ -4,8 +4,8 @@
 //! memory safety guarantees and iterative parsing to prevent stack overflow.
 
 use anyhow::Result;
-use std::time::Duration;
 use std::path::Path;
+use std::time::Duration;
 
 use super::types::WasmComplexity;
 use crate::models::unified_ast::AstDag;
@@ -29,7 +29,7 @@ impl AssemblyScriptParser {
             _timeout: Duration::from_secs(30),
         })
     }
-    
+
     /// Create a new AssemblyScript parser with custom timeout
     pub fn new_with_timeout(timeout: Duration) -> Self {
         Self {
@@ -74,19 +74,19 @@ impl AssemblyScriptParser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
     use std::io::Write;
+    use tempfile::NamedTempFile;
 
     #[tokio::test]
     async fn test_assemblyscript_parser() {
         let mut parser = AssemblyScriptParser::new().unwrap();
-        
+
         let mut temp_file = NamedTempFile::new().unwrap();
         writeln!(temp_file, "function test(): i32 {{ return 42; }}").unwrap();
-        
+
         let content = std::fs::read_to_string(temp_file.path()).unwrap();
         let result = parser.parse_file(temp_file.path(), &content).await;
-        
+
         assert!(result.is_ok());
     }
 
@@ -94,7 +94,7 @@ mod tests {
     fn test_complexity_analysis() {
         let parser = AssemblyScriptParser::new_with_timeout(Duration::from_secs(5));
         let content = "function test(): i32 { return 42; }\nfunction test2(): i32 { return 24; }";
-        
+
         let complexity = parser.analyze_complexity(content).unwrap();
         assert!(complexity.cyclomatic > 0);
         assert!(complexity.cognitive > 0);

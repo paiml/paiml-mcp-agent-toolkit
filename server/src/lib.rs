@@ -1,7 +1,10 @@
 pub mod cli;
 pub mod demo;
 pub mod handlers;
+pub mod mcp_pmcp; // Now always available with pmcp 1.0
+pub mod mcp_server;
 pub mod models;
+pub mod scaffold;
 pub mod services;
 pub mod stateless_server;
 // #[cfg(test)]
@@ -226,6 +229,9 @@ mod tests {
 
     #[path = "../tests/helpers.rs"]
     mod helpers;
+
+    #[path = "../tests/quality_checks_property_tests.rs"]
+    mod quality_checks_property_tests;
 
     #[path = "../tests/prompts.rs"]
     mod prompts;

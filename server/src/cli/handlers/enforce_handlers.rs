@@ -283,7 +283,9 @@ async fn run_enforcement_step(
             // 1. Run complexity analysis
             handle_analyze_complexity(
                 project_path.clone(),
-                None, // toolchain
+                None,   // file
+                vec![], // files
+                None,   // toolchain
                 ComplexityOutputFormat::Json,
                 None,                         // output
                 Some(profile.complexity_max), // max_cyclomatic
@@ -291,6 +293,7 @@ async fn run_enforcement_step(
                 vec![],                       // include
                 false,                        // watch
                 10,                           // top_files
+                false,                        // fail_on_violation (enforce mode handles this)
             )
             .await?;
 
@@ -304,10 +307,13 @@ async fn run_enforcement_step(
                 None,  // severity filter
                 false, // critical_only
                 false, // include_tests
+                true,  // strict - use strict mode by default
                 false, // evolution
                 30,    // days
                 true,  // metrics
                 None,  // output
+                0,     // top_files (0 = all)
+                false, // fail_on_violation (enforce mode handles this)
             )
             .await?;
 
@@ -533,7 +539,9 @@ async fn list_all_violations(
     eprintln!("  🔍 Analyzing complexity...");
     match handle_analyze_complexity(
         project_path.to_path_buf(),
-        None, // toolchain
+        None,   // file
+        vec![], // files
+        None,   // toolchain
         ComplexityOutputFormat::Json,
         None,                         // output
         Some(profile.complexity_max), // max_cyclomatic
@@ -541,6 +549,7 @@ async fn list_all_violations(
         vec![],                       // include
         false,                        // watch
         10,                           // top_files
+        false,                        // fail_on_violation
     )
     .await
     {
@@ -567,10 +576,13 @@ async fn list_all_violations(
         None,  // severity filter
         false, // critical_only
         false, // include_tests
+        true,  // strict - use strict mode by default
         false, // evolution
         30,    // days
         true,  // metrics
         None,  // output
+        0,     // top_files (0 = all)
+        false, // fail_on_violation
     )
     .await
     {
@@ -629,6 +641,8 @@ async fn list_all_violations(
         5,        // min_dead_lines
         false,    // include_tests
         None,     // output
+        false,    // fail_on_violation
+        15.0,     // max_percentage
     )
     .await
     {
@@ -640,7 +654,7 @@ async fn list_all_violations(
                 location: "server/src/services/ast_typescript_dispatch.rs:9".to_string(),
                 current: 1.0,
                 target: 0.0,
-                suggestion: "Remove #[allow(dead_code)] and unused functions".to_string(),
+                suggestion: "Remove dead code attributes and unused functions".to_string(),
             });
         }
         Err(e) => eprintln!("    ⚠️  Dead code analysis failed: {}", e),
@@ -659,6 +673,7 @@ async fn list_all_violations(
         include: None,
         exclude: None,
         output: None,
+        top_files: 0, // 0 = all files
     };
     match handle_analyze_duplicates(dup_config).await {
         Ok(_) => {
@@ -943,4 +958,3 @@ mod tests {
         assert!(json.contains("0.5"));
     }
 }
-

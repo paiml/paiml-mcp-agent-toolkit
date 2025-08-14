@@ -62,6 +62,21 @@ impl Default for DeepContextConfig {
 }
 
 impl DeepContextConfig {
+    /// Validates the configuration for correctness
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::deep_context_config::DeepContextConfig;
+    ///
+    /// let mut config = DeepContextConfig::default();
+    /// config.entry_points = vec!["src/main.rs".to_string()];
+    ///
+    /// match config.validate() {
+    ///     Ok(_) => println!("Config is valid"),
+    ///     Err(errors) => println!("Found {} errors", errors.len()),
+    /// }
+    /// ```
     pub fn validate(&self) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
 

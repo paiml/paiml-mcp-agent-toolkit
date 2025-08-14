@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 22cc480fd6459e29ad7881ca6e4860d06002b1f36dd2219c8643c5a5c73147d0 # shrinks to initial_state = TestRefactorState { iteration: 0, context_generated: false, context_path: "/tmp/context.json", current_file: None, files_completed: [], quality_metrics: TestQualityMetrics { total_violations: 0, coverage_percent: 0.0, max_complexity: 0, average_complexity: 0.0, technical_debt_count: 0 }, progress: TestRefactorProgress { files_processed: 0, files_improved: 0, total_files: 100, violations_fixed: 0, complexity_reduced: 0 }, start_time: SystemTime { tv_sec: 1751506674, tv_nsec: 834136207 } }, _profile = TestQualityProfile { coverage_min: 0.0, complexity_max: 1, complexity_target: 1, satd_allowed: 0 }

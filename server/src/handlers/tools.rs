@@ -99,6 +99,8 @@ fn is_analysis_tool(tool_name: &str) -> bool {
             | "analyze_tdg"
             | "analyze_makefile_lint"
             | "analyze_provability"
+            | "analyze_satd"
+            | "analyze_lint_hotspot"
     )
 }
 
@@ -155,6 +157,10 @@ async fn handle_analysis_tools(
         }
         "analyze_provability" => {
             handle_analyze_provability(request_id, Some(tool_params.arguments)).await
+        }
+        "analyze_satd" => handle_analyze_satd(request_id, tool_params.arguments).await,
+        "analyze_lint_hotspot" => {
+            handle_analyze_lint_hotspot(request_id, tool_params.arguments).await
         }
         _ => McpResponse::error(
             request_id,
@@ -625,6 +631,35 @@ async fn handle_analyze_code_churn(
     }
 }
 
+/// Formats a code churn analysis into a human-readable summary
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::handlers::tools::format_churn_summary;
+/// use pmat::models::churn::{CodeChurnAnalysis, ChurnSummary};
+/// use std::path::PathBuf;
+/// use std::collections::HashMap;
+/// use chrono::Utc;
+///
+/// let analysis = CodeChurnAnalysis {
+///     generated_at: Utc::now(),
+///     period_days: 30,
+///     repository_root: PathBuf::from("/project"),
+///     files: vec![],
+///     summary: ChurnSummary {
+///         total_commits: 150,
+///         total_files_changed: 45,
+///         hotspot_files: vec![PathBuf::from("src/main.rs")],
+///         stable_files: vec![PathBuf::from("README.md")],
+///         author_contributions: HashMap::new(),
+///     },
+/// };
+///
+/// let summary = format_churn_summary(&analysis);
+/// assert!(summary.contains("Period: 30 days"));
+/// assert!(summary.contains("Total commits: 150"));
+/// ```
 pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
     let mut output = String::with_capacity(1024);
 
@@ -657,6 +692,35 @@ pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) 
     output
 }
 
+/// Formats a code churn analysis as a Markdown report
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::handlers::tools::format_churn_as_markdown;
+/// use pmat::models::churn::{CodeChurnAnalysis, ChurnSummary};
+/// use std::path::PathBuf;
+/// use std::collections::HashMap;
+/// use chrono::Utc;
+///
+/// let analysis = CodeChurnAnalysis {
+///     generated_at: Utc::now(),
+///     period_days: 7,
+///     repository_root: PathBuf::from("/repo"),
+///     files: vec![],
+///     summary: ChurnSummary {
+///         total_commits: 25,
+///         total_files_changed: 12,
+///         hotspot_files: vec![],
+///         stable_files: vec![],
+///         author_contributions: HashMap::new(),
+///     },
+/// };
+///
+/// let markdown = format_churn_as_markdown(&analysis);
+/// assert!(markdown.contains("# Code Churn Analysis Report"));
+/// assert!(markdown.contains("**Period:** 7 days"));
+/// ```
 pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
     let mut output = String::with_capacity(1024);
 
@@ -704,6 +768,45 @@ pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalys
     output
 }
 
+/// Formats a code churn analysis as CSV data
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::handlers::tools::format_churn_as_csv;
+/// use pmat::models::churn::{CodeChurnAnalysis, ChurnSummary, FileChurnMetrics};
+/// use std::path::PathBuf;
+/// use std::collections::HashMap;
+/// use chrono::Utc;
+///
+/// let analysis = CodeChurnAnalysis {
+///     generated_at: Utc::now(),
+///     period_days: 30,
+///     repository_root: PathBuf::from("/repo"),
+///     files: vec![FileChurnMetrics {
+///         path: PathBuf::from("/repo/src/main.rs"),
+///         relative_path: "src/main.rs".to_string(),
+///         commit_count: 5,
+///         unique_authors: vec![],
+///         additions: 100,
+///         deletions: 50,
+///         churn_score: 0.75,
+///         last_modified: Utc::now(),
+///         first_seen: Utc::now(),
+///     }],
+///     summary: ChurnSummary {
+///         total_commits: 5,
+///         total_files_changed: 1,
+///         hotspot_files: vec![],
+///         stable_files: vec![],
+///         author_contributions: HashMap::new(),
+///     },
+/// };
+///
+/// let csv = format_churn_as_csv(&analysis);
+/// assert!(csv.starts_with("file_path,commits,additions,deletions,churn_score,unique_authors,last_modified"));
+/// assert!(csv.contains("src/main.rs,5,100,50,0.750,0"));
+/// ```
 pub fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -> String {
     let mut output = String::with_capacity(1024);
 
@@ -2110,6 +2213,14 @@ fn resolve_project_path(project_path: Option<String>) -> PathBuf {
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
 }
 
+fn default_project_path() -> String {
+    ".".to_string()
+}
+
+fn default_top_files() -> usize {
+    10
+}
+
 fn parse_analysis_types(
     include_analyses: Option<Vec<String>>,
 ) -> Vec<crate::services::deep_context::AnalysisType> {
@@ -2480,4 +2591,313 @@ async fn handle_analyze_provability(
     });
 
     McpResponse::success(request_id, analysis)
+}
+
+async fn handle_analyze_satd(
+    request_id: serde_json::Value,
+    arguments: serde_json::Value,
+) -> McpResponse {
+    #[derive(Deserialize)]
+    struct SatdArgs {
+        #[serde(default = "default_project_path")]
+        project_path: String,
+        #[serde(default)]
+        strict: bool,
+        #[serde(default = "default_true")]
+        exclude_tests: bool,
+        #[serde(default)]
+        critical_only: bool,
+        #[serde(default = "default_summary_format")]
+        format: String,
+    }
+
+    fn default_true() -> bool {
+        true
+    }
+
+    fn default_summary_format() -> String {
+        "summary".to_string()
+    }
+
+    let args: SatdArgs = match serde_json::from_value(arguments) {
+        Ok(args) => args,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32602,
+                format!("Invalid analyze_satd arguments: {e}"),
+            );
+        }
+    };
+
+    info!("Analyzing SATD for project: {:?}", args.project_path);
+
+    use crate::services::satd_detector::{SATDDetector, TechnicalDebt};
+    use std::path::Path;
+
+    let detector = if args.strict {
+        SATDDetector::new_strict()
+    } else {
+        SATDDetector::new()
+    };
+
+    let project_path = Path::new(&args.project_path);
+    let result = match detector
+        .analyze_project(project_path, !args.exclude_tests)
+        .await
+    {
+        Ok(result) => result,
+        Err(e) => {
+            return McpResponse::error(request_id, -32603, format!("Failed to analyze SATD: {e}"));
+        }
+    };
+
+    // Filter critical items if requested
+    let items = if args.critical_only {
+        result
+            .items
+            .into_iter()
+            .filter(|item| {
+                matches!(
+                    item.severity,
+                    crate::services::satd_detector::Severity::Critical
+                )
+            })
+            .collect::<Vec<_>>()
+    } else {
+        result.items
+    };
+
+    // Format output based on requested format
+    let output = match args.format.as_str() {
+        "json" => json!({
+            "project_path": args.project_path,
+            "total_debt_items": result.summary.total_items,
+            "debt_density": (result.summary.total_items as f64 / result.total_files_analyzed.max(1) as f64),
+            "critical_items": result.summary.by_severity.get("Critical").copied().unwrap_or(0),
+            "categories": result.summary.by_category,
+            "items": items.iter().map(|item| json!({
+                "file": item.file.display().to_string(),
+                "line": item.line,
+                "column": item.column,
+                "category": format!("{:?}", item.category),
+                "severity": format!("{:?}", item.severity),
+                "text": item.text,
+            })).collect::<Vec<_>>(),
+        }),
+        _ => {
+            // Summary format
+            let mut summary = String::from("SATD Analysis Summary\n");
+            summary.push_str("====================\n");
+            summary.push_str(&format!(
+                "Total debt items: {}\n",
+                result.summary.total_items
+            ));
+            summary.push_str(&format!(
+                "Debt density: {:.2} per KLOC\n",
+                (result.summary.total_items as f64 / result.total_files_analyzed.max(1) as f64)
+            ));
+            summary.push_str(&format!(
+                "Critical items: {}\n",
+                result
+                    .summary
+                    .by_severity
+                    .get("Critical")
+                    .copied()
+                    .unwrap_or(0)
+            ));
+            summary.push_str("\nTop files with technical debt:\n");
+
+            // Group items by file
+            let mut files_map: std::collections::HashMap<&std::path::Path, Vec<&TechnicalDebt>> =
+                std::collections::HashMap::new();
+            for item in &items {
+                files_map.entry(&item.file).or_default().push(item);
+            }
+
+            let mut sorted_files: Vec<_> = files_map.iter().collect();
+            sorted_files.sort_by_key(|(_, items)| -(items.len() as i32));
+
+            for (path, file_items) in sorted_files.iter().take(10) {
+                summary.push_str(&format!(
+                    "  {} - {} items\n",
+                    path.display(),
+                    file_items.len()
+                ));
+            }
+
+            json!({
+                "formatted_output": summary,
+                "stats": {
+                    "total_items": result.summary.total_items,
+                    "critical_items": result.summary.by_severity.get("Critical").copied().unwrap_or(0),
+                    "debt_density": (result.summary.total_items as f64 / result.total_files_analyzed.max(1) as f64),
+                }
+            })
+        }
+    };
+
+    McpResponse::success(request_id, output)
+}
+
+async fn handle_analyze_lint_hotspot(
+    request_id: serde_json::Value,
+    arguments: serde_json::Value,
+) -> McpResponse {
+    #[derive(Deserialize)]
+    #[allow(dead_code)]
+    struct LintHotspotArgs {
+        #[serde(default = "default_project_path")]
+        project_path: String,
+        #[serde(default = "default_top_files")]
+        top_files: usize,
+        #[serde(default = "default_min_violations")]
+        min_violations: usize,
+        #[serde(default)]
+        include: Option<String>,
+        #[serde(default)]
+        exclude: Option<String>,
+        #[serde(default = "default_table_format")]
+        format: String,
+    }
+
+    fn default_min_violations() -> usize {
+        1
+    }
+
+    fn default_table_format() -> String {
+        "table".to_string()
+    }
+
+    let args: LintHotspotArgs = match serde_json::from_value(arguments) {
+        Ok(args) => args,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32602,
+                format!("Invalid analyze_lint_hotspot arguments: {e}"),
+            );
+        }
+    };
+
+    info!(
+        "Analyzing lint hotspots for project: {:?}",
+        args.project_path
+    );
+
+    use crate::cli::handlers::lint_hotspot_handlers::handle_analyze_lint_hotspot;
+    use crate::cli::LintHotspotOutputFormat;
+    use std::path::PathBuf;
+
+    let project_path = PathBuf::from(args.project_path.clone());
+
+    // Create a temporary file to capture output
+    let temp_file = match tempfile::NamedTempFile::new() {
+        Ok(file) => file,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32603,
+                format!("Failed to create temporary file: {e}"),
+            );
+        }
+    };
+    let output_path = temp_file.path().to_path_buf();
+
+    // Run lint hotspot analysis with JSON output to temp file
+    let result = handle_analyze_lint_hotspot(
+        project_path.clone(),
+        None, // file
+        LintHotspotOutputFormat::Json,
+        100.0,                     // max_density
+        0.0,                       // min_confidence
+        false,                     // enforce
+        false,                     // dry_run
+        false,                     // enforcement_metadata
+        Some(output_path.clone()), // output to temp file
+        false,                     // perf
+        String::new(),             // clippy_flags
+        args.top_files,
+    )
+    .await;
+
+    if let Err(e) = result {
+        return McpResponse::error(
+            request_id,
+            -32603,
+            format!("Failed to analyze lint hotspots: {e}"),
+        );
+    }
+
+    // Read and parse the JSON output
+    let json_output = match tokio::fs::read_to_string(&output_path).await {
+        Ok(content) => content,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32603,
+                format!("Failed to read temporary file: {e}"),
+            );
+        }
+    };
+
+    let lint_data: serde_json::Value = match serde_json::from_str(&json_output) {
+        Ok(data) => data,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32603,
+                format!("Failed to parse JSON output: {e}"),
+            );
+        }
+    };
+
+    // Extract data from JSON
+    let hotspots = lint_data["hotspots"].as_array().unwrap_or(&vec![]).clone();
+    let total_files = lint_data["total_files_analyzed"].as_u64().unwrap_or(0) as usize;
+    let total_violations = lint_data["total_violations"].as_u64().unwrap_or(0) as usize;
+    let average_violations_per_file = lint_data["average_violations_per_file"]
+        .as_f64()
+        .unwrap_or(0.0);
+
+    // Format output based on requested format
+    let output = match args.format.as_str() {
+        "json" => json!({
+            "project_path": args.project_path,
+            "total_files_analyzed": total_files,
+            "total_violations": total_violations,
+            "average_violations_per_file": average_violations_per_file,
+            "hotspots": hotspots,
+        }),
+        "csv" => {
+            let csv = String::from("file_path,violations,lines_of_code,defect_density\n");
+            json!({
+                "formatted_output": csv,
+                "content_type": "text/csv"
+            })
+        }
+        _ => {
+            // Table format
+            let mut table = String::from("Lint Hotspot Analysis\n");
+            table.push_str("====================\n");
+            table.push_str(&format!("Total files analyzed: {}\n", total_files));
+            table.push_str(&format!("Total violations: {}\n", total_violations));
+            table.push_str(&format!(
+                "Average violations per file: {:.2}\n\n",
+                average_violations_per_file
+            ));
+            table.push_str("No hotspots found.\n");
+
+            json!({
+                "formatted_output": table,
+                "stats": {
+                    "total_files": total_files,
+                    "total_violations": total_violations,
+                    "average_violations_per_file": average_violations_per_file,
+                }
+            })
+        }
+    };
+
+    McpResponse::success(request_id, output)
 }

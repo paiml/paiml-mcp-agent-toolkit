@@ -1,3 +1,48 @@
+//! Legacy caching utilities for AST metadata and file content
+//!
+//! This module provides thread-safe, async caching functionality using LRU
+//! (Least Recently Used) eviction policy. It was originally used for caching
+//! AST analysis results and file content to improve performance.
+//!
+//! # Deprecation Notice
+//!
+//! This module is maintained for backward compatibility but new code should
+//! use the improved caching mechanisms in the `cache` module which provide:
+//! - Better type safety
+//! - More efficient memory usage
+//! - Integrated metrics
+//!
+//! # Features
+//!
+//! - **Thread-safe**: Uses `Arc<RwLock>` for concurrent access
+//! - **Async-first**: All operations are async-friendly
+//! - **Generic Storage**: Can cache any `Clone` type
+//! - **LRU Eviction**: Automatically removes least-used items
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::old_cache::{get_metadata, put_metadata};
+//! use lru::LruCache;
+//! use std::sync::Arc;
+//! use tokio::sync::RwLock;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a cache for string metadata
+//! let cache: Arc<RwLock<LruCache<String, Arc<String>>>> = 
+//!     Arc::new(RwLock::new(LruCache::new(std::num::NonZeroUsize::new(100).unwrap())));
+//! 
+//! // Store metadata
+//! put_metadata(&cache, "file.rs".to_string(), Arc::new("metadata".to_string())).await;
+//! 
+//! // Retrieve metadata
+//! if let Some(data) = get_metadata(&cache, "file.rs").await {
+//!     println!("Retrieved: {}", data);
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 use lru::LruCache;
 use std::sync::Arc;
 use tokio::sync::RwLock;

@@ -10,12 +10,15 @@ pub mod command_dispatcher;
 pub mod command_structure;
 pub mod commands;
 pub mod coverage_helpers;
+pub mod dead_code_formatter;
+pub mod defect_formatter;
 pub mod defect_helpers;
 pub mod defect_prediction_helpers;
 pub mod diagnose;
 pub mod enums;
 pub mod formatting_helpers;
 pub mod handlers;
+pub mod language_analyzer;
 pub mod name_similarity_helpers;
 pub mod proof_annotation_formatter;
 pub mod proof_annotation_helpers;
@@ -78,6 +81,18 @@ pub struct EarlyCliArgs {
 }
 
 /// Parse CLI early to extract tracing configuration
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use pmat::cli::parse_early_for_tracing;
+///
+/// // This function reads from std::env::args() and RUST_LOG
+/// let args = parse_early_for_tracing();
+///
+/// // The function always returns valid EarlyCliArgs
+/// // Values depend on actual command line arguments
+/// ```
 pub fn parse_early_for_tracing() -> EarlyCliArgs {
     let args: Vec<String> = std::env::args().collect();
 
@@ -118,13 +133,42 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
 
 use std::path::Path;
 
+/// Detects the primary programming language of a project based on marker files
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::cli::detect_primary_language;
+/// use std::path::Path;
+/// use tempfile::tempdir;
+/// use std::fs;
+///
+/// let dir = tempdir().unwrap();
+/// fs::write(dir.path().join("Cargo.toml"), "[package]").unwrap();
+///
+/// let lang = detect_primary_language(dir.path());
+/// assert_eq!(lang, Some("rust".to_string()));
+/// ```
 pub fn detect_primary_language(path: &Path) -> Option<String> {
     use walkdir::WalkDir;
 
-    // First check for project marker files
+    // First check for project marker files in order of specificity
+    // Check Rust first as it's the most specific (requires Cargo.toml)
     if path.join("Cargo.toml").exists() {
         return Some("rust".to_string());
     }
+
+    // Check for Python project files
+    if path.join("pyproject.toml").exists() || path.join("setup.py").exists() {
+        return Some("python-uv".to_string());
+    }
+
+    // Check for Kotlin/Gradle build files
+    if path.join("build.gradle").exists() || path.join("build.gradle.kts").exists() {
+        return Some("kotlin".to_string());
+    }
+
+    // Check for JavaScript/TypeScript projects
     if path.join("package.json").exists() {
         // Could be Node.js or Deno - check for deno.json/deno.jsonc
         if path.join("deno.json").exists() || path.join("deno.jsonc").exists() {
@@ -132,17 +176,25 @@ pub fn detect_primary_language(path: &Path) -> Option<String> {
         }
         return Some("deno".to_string()); // Default TypeScript/JS to deno for now
     }
-    if path.join("pyproject.toml").exists() || path.join("setup.py").exists() {
-        return Some("python-uv".to_string());
-    }
-    if path.join("build.gradle").exists() || path.join("build.gradle.kts").exists() {
-        return Some("kotlin".to_string());
-    }
 
     // Fall back to counting file extensions
     let mut lang_counts = std::collections::HashMap::new();
 
-    for entry in WalkDir::new(path).max_depth(3).into_iter().flatten() {
+    // Use higher depth and exclude common non-source directories
+    for entry in WalkDir::new(path)
+        .max_depth(5)
+        .into_iter()
+        .filter_entry(|e| {
+            let file_name = e.file_name().to_str().unwrap_or("");
+            !file_name.starts_with('.')
+                && file_name != "target"
+                && file_name != "node_modules"
+                && file_name != "build"
+                && file_name != "dist"
+                && file_name != "archive"
+        })
+        .flatten()
+    {
         if entry.file_type().is_file() {
             if let Some(ext) = entry.path().extension() {
                 match ext.to_str() {
@@ -162,6 +214,89 @@ pub fn detect_primary_language(path: &Path) -> Option<String> {
         .into_iter()
         .max_by_key(|&(_, count)| count)
         .map(|(lang, _)| lang.to_string())
+}
+
+/// Detect primary language with confidence score
+pub fn detect_primary_language_with_confidence(path: &Path) -> Option<(String, f64)> {
+    use walkdir::WalkDir;
+
+    // First check for project marker files in order of specificity
+    // These have 100% confidence when found
+    if path.join("Cargo.toml").exists() {
+        return Some(("rust".to_string(), 100.0));
+    }
+
+    if path.join("pyproject.toml").exists() || path.join("setup.py").exists() {
+        return Some(("python-uv".to_string(), 100.0));
+    }
+
+    if path.join("build.gradle").exists() || path.join("build.gradle.kts").exists() {
+        return Some(("kotlin".to_string(), 100.0));
+    }
+
+    if path.join("package.json").exists() {
+        if path.join("deno.json").exists() || path.join("deno.jsonc").exists() {
+            return Some(("deno".to_string(), 100.0));
+        }
+        return Some(("deno".to_string(), 90.0)); // Slightly less confident without deno config
+    }
+
+    // Fall back to counting file extensions
+    let mut lang_counts = std::collections::HashMap::new();
+    let mut total_files = 0;
+
+    // Use higher depth and exclude common non-source directories
+    for entry in WalkDir::new(path)
+        .max_depth(5)
+        .into_iter()
+        .filter_entry(|e| {
+            let file_name = e.file_name().to_str().unwrap_or("");
+            !file_name.starts_with('.')
+                && file_name != "target"
+                && file_name != "node_modules"
+                && file_name != "build"
+                && file_name != "dist"
+                && file_name != "archive"
+        })
+        .flatten()
+    {
+        if entry.file_type().is_file() {
+            if let Some(ext) = entry.path().extension() {
+                match ext.to_str() {
+                    Some("rs") => {
+                        *lang_counts.entry("rust").or_insert(0) += 1;
+                        total_files += 1;
+                    }
+                    Some("ts") | Some("tsx") | Some("js") | Some("jsx") => {
+                        *lang_counts.entry("deno").or_insert(0) += 1;
+                        total_files += 1;
+                    }
+                    Some("py") => {
+                        *lang_counts.entry("python-uv").or_insert(0) += 1;
+                        total_files += 1;
+                    }
+                    Some("kt") | Some("kts") => {
+                        *lang_counts.entry("kotlin").or_insert(0) += 1;
+                        total_files += 1;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    if total_files == 0 {
+        return None;
+    }
+
+    lang_counts
+        .into_iter()
+        .max_by_key(|&(_, count)| count)
+        .map(|(lang, count)| {
+            // Calculate confidence as percentage of files for this language
+            let confidence = (count as f64 / total_files as f64) * 100.0;
+            (lang.to_string(), confidence)
+        })
 }
 
 pub fn apply_satd_filters(
@@ -246,6 +381,18 @@ pub fn build_deep_context_config(
     })
 }
 
+/// Converts CLI DAG type to internal model DAG type
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::cli::{convert_dag_type, DeepContextDagType};
+/// use pmat::models::dag::DagType;
+///
+/// let cli_type = DeepContextDagType::CallGraph;
+/// let model_type = convert_dag_type(cli_type);
+/// assert!(matches!(model_type, DagType::CallGraph));
+/// ```
 pub fn convert_dag_type(dag_type: DeepContextDagType) -> crate::models::dag::DagType {
     match dag_type {
         DeepContextDagType::CallGraph => crate::models::dag::DagType::CallGraph,
@@ -255,6 +402,19 @@ pub fn convert_dag_type(dag_type: DeepContextDagType) -> crate::models::dag::Dag
     }
 }
 
+/// Converts cache strategy (currently a pass-through)
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::cli::{convert_cache_strategy, DeepContextCacheStrategy};
+///
+/// let strategy = DeepContextCacheStrategy::Normal;
+/// let converted = convert_cache_strategy(strategy);
+///
+/// // Currently returns the same strategy
+/// assert_eq!(converted, DeepContextCacheStrategy::Normal);
+/// ```
 pub fn convert_cache_strategy(strategy: DeepContextCacheStrategy) -> DeepContextCacheStrategy {
     // Just return the same strategy for now - proper cache strategy conversion
     // would need to be implemented based on the actual cache system
@@ -278,6 +438,18 @@ pub fn parse_analysis_filters(
     Ok((include_analysis, exclude_analysis))
 }
 
+/// Parses a string into an AnalysisType enum
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::cli::{parse_analysis_type, AnalysisType};
+///
+/// assert_eq!(parse_analysis_type("complexity").unwrap(), AnalysisType::Complexity);
+/// assert_eq!(parse_analysis_type("tdg").unwrap(), AnalysisType::TechnicalDebt);
+/// assert_eq!(parse_analysis_type("big-o").unwrap(), AnalysisType::BigO);
+/// assert!(parse_analysis_type("invalid").is_err());
+/// ```
 pub fn parse_analysis_type(s: &str) -> anyhow::Result<AnalysisType> {
     match s.to_lowercase().as_str() {
         "complexity" => Ok(AnalysisType::Complexity),
@@ -323,6 +495,7 @@ pub async fn handle_analyze_duplicates(config: DuplicateHandlerConfig) -> anyhow
         include: config.include,
         exclude: config.exclude,
         output: config.output,
+        top_files: 10, // Default to 10
     };
     handlers::handle_analyze_duplicates(analysis_config).await
 }
@@ -423,3 +596,6 @@ pub async fn handle_analyze_comprehensive(
     tracing::info!("Comprehensive analysis not yet implemented (from CLI mod)");
     Ok(())
 }
+
+#[cfg(test)]
+mod stubs_property_tests;

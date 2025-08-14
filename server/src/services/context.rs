@@ -1,3 +1,39 @@
+//! AI-ready context generation for code repositories.
+//!
+//! This module provides context extraction and generation capabilities that create
+//! structured representations of codebases suitable for AI/LLM consumption. It
+//! analyzes project structure, extracts key code elements, and generates summaries.
+//!
+//! # Features
+//!
+//! - Multi-language support (Rust, TypeScript, Python, C/C++, Kotlin)
+//! - AST-based analysis for accurate extraction
+//! - Complexity metrics integration
+//! - Caching for performance optimization
+//! - Gitignore-aware file traversal
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::context::analyze_project;
+//! use std::path::Path;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Generate context for a Rust project
+//! let context = analyze_project(Path::new("src/"), "rust").await?;
+//!
+//! println!("Project type: {}", context.project_type);
+//! println!("Total files: {}", context.summary.total_files);
+//! println!("Total functions: {}", context.summary.total_functions);
+//!
+//! // Access file-level context
+//! for file in &context.files {
+//!     println!("File: {} ({} items)", file.path, file.items.len());
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::models::error::TemplateError;
 #[cfg(feature = "python-ast")]
 use crate::services::ast_python;
@@ -751,7 +787,7 @@ struct GroupedItems<'a> {
     modules: Vec<&'a AstItem>,
 }
 
-fn group_items_by_type(items: &[AstItem]) -> GroupedItems {
+fn group_items_by_type(items: &[AstItem]) -> GroupedItems<'_> {
     let mut grouped = GroupedItems {
         functions: Vec::new(),
         structs: Vec::new(),

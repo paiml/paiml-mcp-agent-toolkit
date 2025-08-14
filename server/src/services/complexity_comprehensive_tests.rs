@@ -796,7 +796,7 @@ mod tests {
         assert!(sarif_output.contains("\"runs\""));
         assert!(sarif_output.contains("\"tool\""));
         assert!(sarif_output.contains("\"driver\""));
-        assert!(sarif_output.contains("\"name\": \"paiml-mcp-agent-toolkit\""));
+        assert!(sarif_output.contains("\"name\": \"pmat\""));
         assert!(sarif_output.contains("\"rules\""));
         assert!(sarif_output.contains("\"results\""));
         

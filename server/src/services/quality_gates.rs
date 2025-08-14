@@ -1,3 +1,39 @@
+//! Quality gate enforcement for code standards.
+//!
+//! This module implements automated quality checks and verification gates that
+//! ensure code meets defined standards before it can be accepted. Quality gates
+//! check for dead code percentage, complexity metrics, test coverage, and other
+//! code quality indicators following the Toyota Way principle of Jidoka
+//! (automation with a human touch).
+//!
+//! # Quality Checks
+//!
+//! - **Dead Code**: Ensures dead code stays within acceptable limits
+//! - **Complexity**: Verifies complexity entropy and distribution
+//! - **Coverage**: Checks test coverage meets minimum requirements
+//! - **Provability**: Validates pure functions and state invariants
+//!
+//! # Example
+//!
+//! ```ignore
+//! use pmat::services::quality_gates::{QAVerification, DeepContextResult};
+//!
+//! # fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let verifier = QAVerification::new();
+//! let context_result = DeepContextResult::default();
+//!
+//! match verifier.verify(&context_result) {
+//!     Ok(verification) => {
+//!         println!("Overall status: {:?}", verification.overall);
+//!         println!("Dead code: {:.1}%", verification.dead_code.actual * 100.0);
+//!         println!("Complexity P99: {}", verification.complexity.p99);
+//!     }
+//!     Err(e) => println!("Verification failed: {}", e),
+//! }
+//! # Ok(())
+//! # }
+//! ```ignore
+
 use anyhow::Result;
 use rustc_hash::FxHashMap;
 

@@ -1,13 +1,35 @@
-# CI/CD Integration Guide for AI-Powered Refactoring
+# CI/CD Integration Guide
 
-This guide shows how to integrate the `pmat refactor auto` command into your CI/CD pipelines to maintain EXTREME quality standards automatically.
+This guide shows how to integrate pmat's quality analysis and refactoring commands into your CI/CD pipelines to maintain extreme quality standards automatically.
+
+## Overview
+
+All `pmat analyze` commands now support the `--fail-on-violation` flag, which makes them exit with code 1 when violations exceed configured thresholds. This enables seamless CI/CD integration for quality gates.
+
+## Exit Codes
+
+- **0**: Success - no violations found or within thresholds
+- **1**: Failure - violations exceed configured thresholds
+
+## Supported Commands
+
+### Analyze Commands with CI/CD Support
+- `pmat analyze complexity --fail-on-violation` - Exit if complexity exceeds thresholds
+- `pmat analyze dead-code --fail-on-violation` - Exit if dead code percentage too high
+- `pmat analyze satd --fail-on-violation` - Exit if ANY technical debt found
+- `pmat quality-gate --fail-on-violation` - Comprehensive quality check
+
+### Configurable Thresholds
+- **Complexity**: `--max-cyclomatic` (default: 20), `--max-cognitive` (default: 15)
+- **Dead Code**: `--max-percentage` (default: 15.0%)
+- **SATD**: Zero tolerance when using `--fail-on-violation`
 
 ## GitHub Actions Integration
 
-### Basic Quality Gate
+### Comprehensive Quality Gate
 
 ```yaml
-name: Quality Gate
+name: Code Quality Check
 on: [push, pull_request]
 
 jobs:
@@ -18,12 +40,38 @@ jobs:
       
       - name: Install pmat
         run: |
-          curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          cargo install pmat
+          # Or use quick install:
+          # curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+          # echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-      - name: Run quality gate
+      - name: Check Code Complexity
         run: |
-          pmat refactor auto --ci-mode --format json > quality-report.json
+          pmat analyze complexity \
+            --max-cyclomatic 15 \
+            --max-cognitive 10 \
+            --fail-on-violation \
+            --format json > complexity-report.json
+            
+      - name: Check Technical Debt
+        run: |
+          pmat analyze satd \
+            --strict \
+            --fail-on-violation \
+            --format json > satd-report.json
+            
+      - name: Check Dead Code
+        run: |
+          pmat analyze dead-code \
+            --max-percentage 10.0 \
+            --fail-on-violation \
+            --format json > deadcode-report.json
+            
+      - name: Run Comprehensive Quality Gate
+        run: |
+          pmat quality-gate \
+            --fail-on-violation \
+            --format json > quality-report.json
           
       - name: Upload quality report
         uses: actions/upload-artifact@v3
@@ -55,6 +103,257 @@ jobs:
               repo: context.repo.repo,
               body: comment
             });
+```
+
+### Matrix Strategy for Multiple Checks
+
+```yaml
+name: Quality Matrix
+on: [push, pull_request]
+
+jobs:
+  quality-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        check:
+          - name: complexity
+            cmd: analyze complexity --max-cyclomatic 15 --max-cognitive 10 --fail-on-violation
+          - name: dead-code
+            cmd: analyze dead-code --max-percentage 10.0 --fail-on-violation
+          - name: technical-debt
+            cmd: analyze satd --strict --fail-on-violation
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install pmat
+        run: cargo install pmat
+      - name: Run ${{ matrix.check.name }} check
+        run: pmat ${{ matrix.check.cmd }}
+```
+
+## GitLab CI Integration
+
+### .gitlab-ci.yml
+
+```yaml
+stages:
+  - quality
+  - test
+  - deploy
+
+variables:
+  PMAT_VERSION: "latest"
+
+quality-check:
+  stage: quality
+  image: rust:latest
+  script:
+    - cargo install pmat
+    # Run all quality checks
+    - pmat analyze complexity --max-cyclomatic 15 --fail-on-violation
+    - pmat analyze satd --strict --fail-on-violation  
+    - pmat analyze dead-code --max-percentage 10.0 --fail-on-violation
+    - pmat quality-gate --fail-on-violation --format json --output quality-report.json
+  artifacts:
+    reports:
+      codequality: quality-report.json
+    paths:
+      - quality-report.json
+    expire_in: 1 week
+  allow_failure: false
+
+# Separate jobs for detailed reporting
+complexity-check:
+  stage: quality
+  image: rust:latest
+  script:
+    - cargo install pmat
+    - pmat analyze complexity --max-cyclomatic 15 --fail-on-violation --format json > complexity.json
+  artifacts:
+    paths:
+      - complexity.json
+```
+
+## Jenkins Pipeline Integration
+
+### Jenkinsfile
+
+```groovy
+pipeline {
+    agent any
+    
+    environment {
+        PMAT_VERSION = 'latest'
+    }
+    
+    stages {
+        stage('Install Tools') {
+            steps {
+                sh '''
+                    curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+                    export PATH="$HOME/.local/bin:$PATH"
+                '''
+            }
+        }
+        
+        stage('Quality Checks') {
+            parallel {
+                stage('Complexity') {
+                    steps {
+                        sh 'pmat analyze complexity --max-cyclomatic 15 --fail-on-violation'
+                    }
+                }
+                stage('Technical Debt') {
+                    steps {
+                        sh 'pmat analyze satd --strict --fail-on-violation'
+                    }
+                }
+                stage('Dead Code') {
+                    steps {
+                        sh 'pmat analyze dead-code --max-percentage 10.0 --fail-on-violation'
+                    }
+                }
+            }
+        }
+        
+        stage('Generate Reports') {
+            steps {
+                sh '''
+                    pmat quality-gate --format json > quality-report.json
+                    pmat analyze complexity --format sarif > complexity.sarif
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: '*.json,*.sarif', fingerprint: true
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: '.',
+                        reportFiles: 'quality-report.json',
+                        reportName: 'Quality Report'
+                    ])
+                }
+            }
+        }
+    }
+    
+    post {
+        failure {
+            emailext(
+                subject: "Quality Gate Failed: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
+                body: "Quality checks failed. Please check the build logs.",
+                to: "${env.CHANGE_AUTHOR_EMAIL}"
+            )
+        }
+    }
+}
+```
+
+## CircleCI Integration
+
+### .circleci/config.yml
+
+```yaml
+version: 2.1
+
+executors:
+  rust-executor:
+    docker:
+      - image: rust:latest
+
+jobs:
+  quality-checks:
+    executor: rust-executor
+    steps:
+      - checkout
+      - run:
+          name: Install pmat
+          command: cargo install pmat
+      - run:
+          name: Check Complexity
+          command: |
+            pmat analyze complexity \
+              --max-cyclomatic 15 \
+              --max-cognitive 10 \
+              --fail-on-violation
+      - run:
+          name: Check Technical Debt
+          command: pmat analyze satd --strict --fail-on-violation
+      - run:
+          name: Check Dead Code  
+          command: pmat analyze dead-code --max-percentage 10.0 --fail-on-violation
+      - run:
+          name: Generate Reports
+          command: |
+            pmat quality-gate --format json > quality-report.json
+          when: always
+      - store_artifacts:
+          path: quality-report.json
+          destination: quality-reports
+
+workflows:
+  quality-workflow:
+    jobs:
+      - quality-checks
+```
+
+## Pre-commit Hook Integration
+
+### .pre-commit-config.yaml
+
+```yaml
+repos:
+  - repo: local
+    hooks:
+      - id: pmat-complexity
+        name: Check code complexity
+        entry: pmat analyze complexity --max-cyclomatic 15 --fail-on-violation
+        language: system
+        pass_filenames: false
+        
+      - id: pmat-satd
+        name: Check for technical debt
+        entry: pmat analyze satd --strict --fail-on-violation
+        language: system
+        pass_filenames: false
+        
+      - id: pmat-dead-code
+        name: Check for dead code
+        entry: pmat analyze dead-code --max-percentage 10.0 --fail-on-violation
+        language: system
+        pass_filenames: false
+```
+
+### Git Hook Script
+
+```bash
+#!/bin/bash
+# .git/hooks/pre-commit
+
+echo "Running quality checks..."
+
+# Check complexity
+if ! pmat analyze complexity --max-cyclomatic 15 --fail-on-violation; then
+    echo "❌ Complexity check failed. Please refactor complex functions."
+    exit 1
+fi
+
+# Check for technical debt
+if ! pmat analyze satd --strict --fail-on-violation; then
+    echo "❌ Technical debt found. Please remove TODO/FIXME comments."
+    exit 1
+fi
+
+# Check dead code percentage
+if ! pmat analyze dead-code --max-percentage 10.0 --fail-on-violation; then
+    echo "❌ Too much dead code. Please remove unused code."
+    exit 1
+fi
+
+echo "✅ All quality checks passed!"
 ```
 
 ### Automated Refactoring Workflow

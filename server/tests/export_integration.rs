@@ -2,19 +2,15 @@
 mod export_integration_tests {
     use anyhow::Result;
     use chrono::Utc;
-    use paiml_mcp_agent_toolkit::demo::export::*;
-    use paiml_mcp_agent_toolkit::demo::Hotspot;
-    use paiml_mcp_agent_toolkit::models::churn::{
-        ChurnSummary, CodeChurnAnalysis, FileChurnMetrics,
-    };
-    use paiml_mcp_agent_toolkit::models::dag::{
-        DependencyGraph, Edge, EdgeType, NodeInfo, NodeType,
-    };
-    use paiml_mcp_agent_toolkit::services::complexity::{
+    use pmat::demo::export::*;
+    use pmat::demo::Hotspot;
+    use pmat::models::churn::{ChurnSummary, CodeChurnAnalysis, FileChurnMetrics};
+    use pmat::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
+    use pmat::services::complexity::{
         ComplexityMetrics, ComplexityReport, ComplexitySummary, FileComplexityMetrics,
         FunctionComplexity,
     };
-    use paiml_mcp_agent_toolkit::services::deep_context::{CacheStats, ContextMetadata};
+    use pmat::services::deep_context::{CacheStats, ContextMetadata};
     use rustc_hash::FxHashMap;
     use std::collections::HashMap;
     use tempfile::TempDir;
@@ -211,7 +207,7 @@ mod export_integration_tests {
 
         // Verify tool information
         let driver = &sarif["runs"][0]["tool"]["driver"];
-        assert_eq!(driver["name"], "paiml-mcp-agent-toolkit");
+        assert_eq!(driver["name"], "pmat");
         assert!(driver["informationUri"]
             .as_str()
             .unwrap()

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod config_integration_tests {
     use anyhow::Result;
-    use paiml_mcp_agent_toolkit::demo::config::{ConfigManager, GroupingStrategy};
+    use pmat::demo::config::{ConfigManager, GroupingStrategy};
     use std::fs;
     use tempfile::TempDir;
     use tokio::time::{sleep, Duration};

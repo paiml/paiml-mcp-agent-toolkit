@@ -7,19 +7,25 @@ pub mod advanced_analysis_handlers;
 pub mod analysis_handlers;
 pub mod big_o_handlers;
 pub mod complexity_handlers;
+pub mod comprehensive_handler;
 pub mod demo_handlers;
 pub mod duplication_analysis;
 pub mod enforce_handlers;
 pub mod enhanced_reporting_handlers;
 pub mod generation_handlers;
 pub mod lint_hotspot_handlers;
+#[cfg(test)]
+pub mod lint_hotspot_property_tests;
 pub mod name_similarity_analysis;
+#[cfg(test)]
+pub mod quality_gate_property_tests;
 pub mod refactor_auto_handlers;
+#[cfg(test)]
+pub mod refactor_auto_property_tests;
 pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod utility_handlers;
 pub mod wasm_handlers;
-
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{
@@ -35,7 +41,10 @@ pub use complexity_handlers::{
 pub use demo_handlers::{handle_demo, handle_quality_gate};
 pub use duplication_analysis::handle_analyze_duplicates;
 pub use enforce_handlers::route_enforce_command;
-pub use generation_handlers::{handle_generate, handle_scaffold, handle_validate};
+pub use generation_handlers::{
+    handle_generate, handle_list_agent_templates, handle_scaffold, handle_scaffold_agent,
+    handle_validate, handle_validate_agent_template, ScaffoldAgentParams,
+};
 pub use lint_hotspot_handlers::handle_analyze_lint_hotspot;
 pub use name_similarity_analysis::handle_analyze_name_similarity;
 pub use refactor_docs_handlers::handle_refactor_docs;

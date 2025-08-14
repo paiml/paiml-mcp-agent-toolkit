@@ -3,7 +3,7 @@
 //! Tests the complete data flow from AST analysis through DAG generation to Mermaid visualization.
 //! Verifies that metadata propagation and data integrity are maintained throughout the pipeline.
 
-use paiml_mcp_agent_toolkit::{
+use pmat::{
     models::dag::NodeType,
     services::{
         ast_rust::{analyze_rust_file, analyze_rust_file_with_complexity},
@@ -246,7 +246,7 @@ async fn test_pipeline_with_complex_project() {
     let dag = DagBuilder::build_from_project(&project_context);
 
     // Test PageRank pruning doesn't break metadata
-    let pruned_dag = paiml_mcp_agent_toolkit::services::dag_builder::prune_graph_pagerank(&dag, 10);
+    let pruned_dag = pmat::services::dag_builder::prune_graph_pagerank(&dag, 10);
 
     // Verify pruned graph maintains metadata integrity
     for (node_id, node_info) in &pruned_dag.nodes {
@@ -312,12 +312,7 @@ async fn test_individual_file_analysis() {
     let function_count = file_ast
         .items
         .iter()
-        .filter(|item| {
-            matches!(
-                item,
-                paiml_mcp_agent_toolkit::services::context::AstItem::Function { .. }
-            )
-        })
+        .filter(|item| matches!(item, pmat::services::context::AstItem::Function { .. }))
         .count();
 
     assert!(function_count > 0, "Should extract functions from main.rs");
@@ -330,10 +325,10 @@ async fn test_individual_file_analysis() {
         complexity_metrics: Some(file_complexity),
     };
 
-    let project_context = paiml_mcp_agent_toolkit::services::context::ProjectContext {
+    let project_context = pmat::services::context::ProjectContext {
         project_type: "rust".to_string(),
         files: vec![file_context],
-        summary: paiml_mcp_agent_toolkit::services::context::ProjectSummary {
+        summary: pmat::services::context::ProjectSummary {
             total_files: 1,
             total_functions: function_count,
             total_structs: 0,
@@ -393,7 +388,7 @@ fn test_metadata_serialization() {
     metadata.insert("node_type".to_string(), "Function".to_string());
     metadata.insert("language".to_string(), "rust".to_string());
 
-    let node = paiml_mcp_agent_toolkit::models::dag::NodeInfo {
+    let node = pmat::models::dag::NodeInfo {
         id: "test_node".to_string(),
         label: "Test Node".to_string(),
         node_type: NodeType::Function,
@@ -409,8 +404,7 @@ fn test_metadata_serialization() {
     assert!(serialized.contains("src/main.rs"));
 
     // Test deserialization
-    let deserialized: paiml_mcp_agent_toolkit::models::dag::NodeInfo =
-        serde_json::from_str(&serialized).unwrap();
+    let deserialized: pmat::models::dag::NodeInfo = serde_json::from_str(&serialized).unwrap();
 
     assert_eq!(deserialized.id, "test_node");
     assert_eq!(

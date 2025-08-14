@@ -9,6 +9,7 @@
 //! - CommandGroup: Logical grouping of related commands
 //! - ModularHandlers: Individual command implementation modules
 
+use crate::cli::commands::ScaffoldCommands;
 use crate::cli::{AnalyzeCommands, Commands};
 use crate::stateless_server::StatelessTemplateServer;
 use anyhow::Result;
@@ -73,16 +74,33 @@ impl CommandExecutor {
                     )
                     .await
             }
-            Commands::Scaffold {
-                toolchain,
-                templates,
-                params,
-                parallel,
-            } => {
-                self.registry
-                    .generate_handlers
-                    .handle_scaffold(self.server.clone(), toolchain, templates, params, parallel)
-                    .await
+            Commands::Scaffold { command } => {
+                match command {
+                    ScaffoldCommands::Project {
+                        toolchain,
+                        templates,
+                        params,
+                        parallel,
+                    } => {
+                        self.registry
+                            .generate_handlers
+                            .handle_scaffold(
+                                self.server.clone(),
+                                toolchain,
+                                templates,
+                                params,
+                                parallel,
+                            )
+                            .await
+                    }
+                    _ => {
+                        // Handle other scaffold subcommands (agent scaffolding)
+                        // Note: Agent scaffolding is handled in the main CLI dispatcher
+                        anyhow::bail!(
+                            "Agent scaffolding should be handled via the main CLI dispatcher"
+                        )
+                    }
+                }
             }
             Commands::Validate { uri, params } => {
                 self.registry
@@ -189,6 +207,7 @@ impl CommandExecutor {
             }
             Commands::QualityGate {
                 project_path,
+                file,
                 format,
                 fail_on_violation,
                 checks,
@@ -203,6 +222,7 @@ impl CommandExecutor {
                     .demo_handlers
                     .handle_quality_gate(
                         project_path,
+                        file,
                         format,
                         fail_on_violation,
                         checks,
@@ -218,6 +238,9 @@ impl CommandExecutor {
             Commands::Report {
                 project_path,
                 output_format,
+                text,
+                markdown,
+                csv,
                 include_visualizations,
                 include_executive_summary,
                 include_recommendations,
@@ -229,6 +252,9 @@ impl CommandExecutor {
                 crate::cli::handlers::enhanced_reporting_handlers::handle_generate_report(
                     project_path,
                     output_format,
+                    text,
+                    markdown,
+                    csv,
                     include_visualizations,
                     include_executive_summary,
                     include_recommendations,
@@ -438,6 +464,7 @@ impl DemoCommandGroup {
     pub async fn handle_quality_gate(
         &self,
         project_path: std::path::PathBuf,
+        file: Option<std::path::PathBuf>,
         format: crate::cli::QualityGateOutputFormat,
         fail_on_violation: bool,
         checks: Vec<crate::cli::QualityCheckType>,
@@ -451,6 +478,7 @@ impl DemoCommandGroup {
         // Use dedicated demo handlers module
         crate::cli::handlers::demo_handlers::handle_quality_gate(
             project_path,
+            file,
             format,
             fail_on_violation,
             checks,

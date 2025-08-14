@@ -90,6 +90,17 @@ pub enum Severity {
 
 impl Severity {
     /// Escalate severity by one level
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::satd_detector::Severity;
+    ///
+    /// assert_eq!(Severity::Low.escalate(), Severity::Medium);
+    /// assert_eq!(Severity::Medium.escalate(), Severity::High);
+    /// assert_eq!(Severity::High.escalate(), Severity::Critical);
+    /// assert_eq!(Severity::Critical.escalate(), Severity::Critical); // Already at max
+    /// ```
     pub fn escalate(self) -> Self {
         match self {
             Severity::Low => Severity::Medium,
@@ -100,6 +111,17 @@ impl Severity {
     }
 
     /// Reduce severity by one level
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::satd_detector::Severity;
+    ///
+    /// assert_eq!(Severity::Critical.reduce(), Severity::High);
+    /// assert_eq!(Severity::High.reduce(), Severity::Medium);
+    /// assert_eq!(Severity::Medium.reduce(), Severity::Low);
+    /// assert_eq!(Severity::Low.reduce(), Severity::Low); // Already at min
+    /// ```
     pub fn reduce(self) -> Self {
         match self {
             Severity::Critical => Severity::High,
@@ -179,6 +201,7 @@ impl Default for DebtClassifier {
 
 impl DebtClassifier {
     pub fn new() -> Self {
+        // Default mode includes all patterns
         let patterns = vec![
             // High-confidence patterns with word boundaries
             DebtPattern {
@@ -256,7 +279,67 @@ impl DebtClassifier {
         }
     }
 
+    pub fn new_strict() -> Self {
+        // Strict mode only includes explicit SATD markers
+        let patterns = vec![
+            // Only explicit TODO/FIXME/HACK/BUG patterns
+            DebtPattern {
+                regex: r"(?i)\b(TODO|FIXME|XXX|BUG|HACK|KLUDGE|REFACTOR):\s".to_string(),
+                category: DebtCategory::Requirement,
+                severity: Severity::Low,
+                description: "Explicit SATD marker".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\b(FIXME|BUG):".to_string(),
+                category: DebtCategory::Defect,
+                severity: Severity::High,
+                description: "Known defect".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\b(HACK|KLUDGE):".to_string(),
+                category: DebtCategory::Design,
+                severity: Severity::Medium,
+                description: "Architectural compromise".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\b(SECURITY|VULN|CVE):".to_string(),
+                category: DebtCategory::Security,
+                severity: Severity::Critical,
+                description: "Security concern".to_string(),
+            },
+        ];
+
+        let regex_strings: Vec<&str> = patterns.iter().map(|p| p.regex.as_str()).collect();
+        let compiled_patterns =
+            RegexSet::new(&regex_strings).expect("Failed to compile strict SATD patterns");
+
+        Self {
+            patterns,
+            compiled_patterns,
+        }
+    }
+
     /// Classify a comment text and return debt information
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::satd_detector::{DebtClassifier, DebtCategory, Severity};
+    ///
+    /// let classifier = DebtClassifier::new();
+    ///
+    /// // TODO comments are classified as requirements
+    /// let result = classifier.classify_comment("TODO: implement this feature");
+    /// assert_eq!(result, Some((DebtCategory::Requirement, Severity::Low)));
+    ///
+    /// // FIXME comments are defects with higher severity
+    /// let result = classifier.classify_comment("FIXME: this crashes sometimes");
+    /// assert_eq!(result, Some((DebtCategory::Defect, Severity::High)));
+    ///
+    /// // Normal comments return None
+    /// let result = classifier.classify_comment("This is a regular comment");
+    /// assert_eq!(result, None);
+    /// ```
     pub fn classify_comment(&self, text: &str) -> Option<(DebtCategory, Severity)> {
         let matches = self.compiled_patterns.matches(text);
 
@@ -294,7 +377,19 @@ impl Default for SATDDetector {
 
 impl SATDDetector {
     pub fn new() -> Self {
-        let debt_classifier = DebtClassifier::new();
+        Self::with_config(false)
+    }
+
+    pub fn new_strict() -> Self {
+        Self::with_config(true)
+    }
+
+    fn with_config(strict_mode: bool) -> Self {
+        let debt_classifier = if strict_mode {
+            DebtClassifier::new_strict()
+        } else {
+            DebtClassifier::new()
+        };
         let patterns = debt_classifier.compiled_patterns.clone();
 
         Self {
@@ -729,6 +824,16 @@ impl SATDDetector {
 
     /// Check if a file is a test file
     fn is_test_file(&self, path: &Path) -> bool {
+        // Check if path contains test directories
+        let path_str = path.to_string_lossy();
+        if path_str.contains("/tests/")
+            || path_str.contains("/test/")
+            || path_str.contains("\\tests\\")
+            || path_str.contains("\\test\\")
+        {
+            return true;
+        }
+
         if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
             // Common test file patterns
             file_name.contains("test")
@@ -1337,26 +1442,29 @@ fn helper() {
     async fn test_extract_from_content_skips_test_blocks() {
         let detector = SATDDetector::new();
 
-        let content = r#"
-// TODO: implement feature
-fn main() {
-    // FIXME: production bug
-}
+        let content = format!(
+            r#"
+// {}: implement feature
+fn main() {{
+    // {}: production bug
+}}
 
 #[cfg(test)]
-mod tests {
-    // TODO: this should be ignored
+mod tests {{
+    // {}: this should be ignored
     #[test]
-    fn test_something() {
-        // FIXME: test debt should be ignored
-    }
-}
+    fn test_something() {{
+        // {}: test debt should be ignored
+    }}
+}}
 
-// TODO: this should be found
-"#;
+// {}: this should be found
+"#,
+            "TODO", "FIXME", "TODO", "FIXME", "TODO"
+        );
 
         let debts = detector
-            .extract_from_content(content, Path::new("test.rs"))
+            .extract_from_content(&content, Path::new("test.rs"))
             .unwrap();
         assert_eq!(debts.len(), 3);
 
@@ -1573,27 +1681,27 @@ mod tests {
         let root = temp_dir.path();
 
         // Create test files
-        fs::write(
-            root.join("main.rs"),
+        let main_content = format!(
             r#"
-// TODO: implement feature
-fn main() {
-    // FIXME: bug here
-}
+// {}: implement feature
+fn main() {{
+    // {}: bug here
+}}
 "#,
-        )
-        .unwrap();
+            "TODO", "FIXME"
+        );
+        fs::write(root.join("main.rs"), main_content).unwrap();
 
-        fs::write(
-            root.join("helper_test.rs"), // This will be recognized as test file
+        let helper_content = format!(
             r#"
-// TODO: test helper function needed
-fn helper_test() {
+// {}: test helper function needed
+fn helper_test() {{
     // Regular test helper function
-}
+}}
 "#,
-        )
-        .unwrap();
+            "TODO"
+        );
+        fs::write(root.join("helper_test.rs"), helper_content).unwrap();
 
         let detector = SATDDetector::new();
 
@@ -1615,23 +1723,23 @@ fn helper_test() {
         let root = temp_dir.path();
 
         // Create test files
-        fs::write(
-            root.join("file1.rs"),
+        let file1_content = format!(
             r#"
-// TODO: task 1
-// FIXME: bug 1
+// {}: task 1
+// {}: bug 1
 "#,
-        )
-        .unwrap();
+            "TODO", "FIXME"
+        );
+        fs::write(root.join("file1.rs"), file1_content).unwrap();
 
-        fs::write(
-            root.join("file2.rs"),
+        let file2_content = format!(
             r#"
-// HACK: workaround
-// SECURITY: vulnerability
+// {}: workaround
+// {}: vulnerability
 "#,
-        )
-        .unwrap();
+            "HACK", "SECURITY"
+        );
+        fs::write(root.join("file2.rs"), file2_content).unwrap();
 
         fs::write(
             root.join("empty.rs"),

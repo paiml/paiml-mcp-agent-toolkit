@@ -6,6 +6,7 @@ use axum::http::Method;
 use serde_json::{json, Value};
 use tracing::debug;
 
+use crate::cli::commands::ScaffoldCommands;
 use crate::cli::{
     AnalyzeCommands, Commands, ComplexityOutputFormat, ContextFormat, DagType, OutputFormat,
 };
@@ -34,12 +35,17 @@ impl CliAdapter {
                 output,
                 create_dirs,
             } => Self::decode_generate(category, template, params, output, create_dirs),
-            Commands::Scaffold {
-                toolchain,
-                templates,
-                params,
-                parallel,
-            } => Self::decode_scaffold(toolchain, templates, params, *parallel),
+            Commands::Scaffold { command } => match command {
+                ScaffoldCommands::Project {
+                    toolchain,
+                    templates,
+                    params,
+                    parallel,
+                } => Self::decode_scaffold(toolchain, templates, params, *parallel),
+                _ => Err(ProtocolError::UnsupportedProtocol(
+                    "Agent scaffolding not supported via unified protocol".to_string(),
+                )),
+            },
             Commands::List {
                 toolchain,
                 category,
@@ -233,9 +239,12 @@ impl CliAdapter {
                 days,
                 format,
                 output,
-            } => Self::decode_analyze_churn(project_path, *days, format, output),
+                top_files,
+            } => Self::decode_analyze_churn(project_path, *days, format, output, *top_files),
             AnalyzeCommands::Complexity {
                 project_path,
+                file,
+                files,
                 toolchain,
                 format,
                 output,
@@ -244,8 +253,11 @@ impl CliAdapter {
                 include,
                 watch,
                 top_files,
+                fail_on_violation: _, // Ignore for MCP - not applicable
             } => Self::decode_analyze_complexity(
                 project_path,
+                file,
+                files,
                 toolchain,
                 format,
                 output,
@@ -286,6 +298,8 @@ impl CliAdapter {
                 min_dead_lines,
                 include_tests,
                 output,
+                fail_on_violation: _, // Ignore for MCP
+                max_percentage: _,    // Ignore for MCP
             } => Self::decode_analyze_dead_code(
                 path,
                 format,
@@ -301,20 +315,25 @@ impl CliAdapter {
                 severity,
                 critical_only,
                 include_tests,
+                strict,
                 evolution,
                 days,
                 metrics,
                 output,
+                top_files,
+                fail_on_violation: _, // Ignore for MCP
             } => Self::decode_analyze_satd(
                 path,
                 format,
                 severity,
                 *critical_only,
                 *include_tests,
+                *strict,
                 *evolution,
                 *days,
                 *metrics,
                 output,
+                *top_files,
             ),
             AnalyzeCommands::DeepContext {
                 project_path,
@@ -331,6 +350,7 @@ impl CliAdapter {
                 cache_strategy,
                 parallel,
                 verbose,
+                top_files: _,
             } => Self::decode_analyze_deep_context(
                 project_path,
                 output,
@@ -350,7 +370,7 @@ impl CliAdapter {
             AnalyzeCommands::Tdg {
                 path,
                 threshold,
-                top,
+                top_files,
                 format,
                 include_components,
                 output,
@@ -362,7 +382,7 @@ impl CliAdapter {
                 format,
                 *threshold,
                 *critical_only,
-                *top,
+                *top_files,
                 *include_components,
                 *verbose,
             ),
@@ -378,6 +398,7 @@ impl CliAdapter {
                 output,
                 perf,
                 clippy_flags,
+                top_files,
             } => {
                 // Convert LintHotspot command to generic analyze method
                 let params = json!({
@@ -392,6 +413,7 @@ impl CliAdapter {
                     "output": output,
                     "perf": perf,
                     "clippy_flags": clippy_flags,
+                    "top_files": top_files,
                 });
                 Ok((
                     Method::POST,
@@ -406,6 +428,7 @@ impl CliAdapter {
                 format,
                 fix,
                 gnu_version,
+                top_files,
             } => {
                 // Convert Makefile command to generic analyze method
                 let params = json!({
@@ -414,6 +437,7 @@ impl CliAdapter {
                     "fix": fix,
                     "gnu_version": gnu_version,
                     "format": format,
+                    "top_files": top_files,
                 });
                 Ok((
                     Method::POST,
@@ -430,6 +454,7 @@ impl CliAdapter {
                 high_confidence_only,
                 include_evidence,
                 output,
+                top_files,
             } => Self::decode_analyze_provability(
                 project_path,
                 functions,
@@ -438,6 +463,7 @@ impl CliAdapter {
                 *high_confidence_only,
                 *include_evidence,
                 output,
+                *top_files,
             ),
             AnalyzeCommands::Duplicates {
                 project_path,
@@ -450,6 +476,7 @@ impl CliAdapter {
                 include,
                 exclude,
                 output,
+                top_files,
             } => {
                 let params = json!({
                     "project_path": project_path,
@@ -462,6 +489,7 @@ impl CliAdapter {
                     "include": include,
                     "exclude": exclude,
                     "output": output,
+                    "top_files": top_files,
                 });
                 Ok((
                     Method::POST,
@@ -482,6 +510,7 @@ impl CliAdapter {
                 exclude,
                 output,
                 perf,
+                top_files,
             } => {
                 let params = json!({
                     "project_path": project_path,
@@ -495,6 +524,7 @@ impl CliAdapter {
                     "exclude": exclude,
                     "output": output,
                     "perf": perf,
+                    "top_files": top_files,
                 });
                 Ok((
                     Method::POST,
@@ -505,6 +535,8 @@ impl CliAdapter {
             }
             AnalyzeCommands::Comprehensive {
                 project_path,
+                file,
+                files,
                 format,
                 include_duplicates,
                 include_dead_code,
@@ -518,9 +550,12 @@ impl CliAdapter {
                 output,
                 perf,
                 executive_summary,
+                top_files,
             } => {
                 let params = json!({
                     "project_path": project_path,
+                    "file": file,
+                    "files": files.iter().map(|f| f.to_string_lossy()).collect::<Vec<_>>(),
                     "format": format,
                     "include_duplicates": include_duplicates,
                     "include_dead_code": include_dead_code,
@@ -534,6 +569,7 @@ impl CliAdapter {
                     "output": output,
                     "perf": perf,
                     "executive_summary": executive_summary,
+                    "top_files": top_files,
                 });
                 Ok((
                     Method::POST,
@@ -634,6 +670,7 @@ impl CliAdapter {
                 output,
                 perf,
                 clear_cache,
+                top_files,
             } => {
                 let params = json!({
                     "project_path": project_path,
@@ -645,6 +682,7 @@ impl CliAdapter {
                     "output": output,
                     "perf": perf,
                     "clear_cache": clear_cache,
+                    "top_files": top_files,
                 });
                 Ok((
                     Method::POST,
@@ -665,6 +703,7 @@ impl CliAdapter {
                 perf,
                 cache_dir,
                 force_refresh,
+                top_files,
             } => {
                 let params = json!({
                     "project_path": project_path,
@@ -678,6 +717,7 @@ impl CliAdapter {
                     "perf": perf,
                     "cache_dir": cache_dir,
                     "force_refresh": force_refresh,
+                    "top_files": top_files,
                 });
                 Ok((
                     Method::POST,
@@ -697,6 +737,7 @@ impl CliAdapter {
                 show_references,
                 output,
                 perf,
+                top_files,
             } => {
                 let params = json!({
                     "project_path": project_path,
@@ -709,6 +750,7 @@ impl CliAdapter {
                     "show_references": show_references,
                     "output": output,
                     "perf": perf,
+                    "top_files": top_files,
                 });
                 Ok((
                     Method::POST,
@@ -727,6 +769,7 @@ impl CliAdapter {
                 output,
                 perf,
                 high_complexity_only,
+                top_files,
             } => {
                 let params = json!({
                     "project_path": project_path,
@@ -738,6 +781,7 @@ impl CliAdapter {
                     "output": output,
                     "perf": perf,
                     "high_complexity_only": high_complexity_only,
+                    "top_files": top_files,
                 });
                 Ok((
                     Method::POST,
@@ -746,22 +790,18 @@ impl CliAdapter {
                     None,
                 ))
             }
-            AnalyzeCommands::AssemblyScript { .. } => {
-                Ok((
-                    Method::POST,
-                    "/api/v1/analyze/assemblyscript".to_string(),
-                    json!({}),
-                    None,
-                ))
-            }
-            AnalyzeCommands::WebAssembly { .. } => {
-                Ok((
-                    Method::POST,
-                    "/api/v1/analyze/webassembly".to_string(),
-                    json!({}),
-                    None,
-                ))
-            }
+            AnalyzeCommands::AssemblyScript { top_files: _, .. } => Ok((
+                Method::POST,
+                "/api/v1/analyze/assemblyscript".to_string(),
+                json!({}),
+                None,
+            )),
+            AnalyzeCommands::WebAssembly { top_files: _, .. } => Ok((
+                Method::POST,
+                "/api/v1/analyze/webassembly".to_string(),
+                json!({}),
+                None,
+            )),
         }
     }
 
@@ -770,12 +810,14 @@ impl CliAdapter {
         days: u32,
         format: &ChurnOutputFormat,
         output: &Option<std::path::PathBuf>,
+        top_files: usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         let body = json!({
             "project_path": project_path.to_string_lossy(),
             "period_days": &days,
             "format": churn_format_to_string(format),
-            "output_path": output
+            "output_path": output,
+            "top_files": top_files
         });
         Ok((
             Method::POST,
@@ -788,6 +830,8 @@ impl CliAdapter {
     #[allow(clippy::too_many_arguments)]
     fn decode_analyze_complexity(
         project_path: &std::path::Path,
+        file: &Option<std::path::PathBuf>,
+        files: &[std::path::PathBuf],
         toolchain: &Option<String>,
         format: &ComplexityOutputFormat,
         output: &Option<std::path::PathBuf>,
@@ -799,6 +843,8 @@ impl CliAdapter {
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         let body = json!({
             "project_path": project_path.to_string_lossy(),
+            "file": file.as_ref().map(|f| f.to_string_lossy()),
+            "files": files.iter().map(|f| f.to_string_lossy()).collect::<Vec<_>>(),
             "toolchain": toolchain,
             "format": complexity_format_to_string(format),
             "output_path": output,
@@ -883,10 +929,12 @@ impl CliAdapter {
         severity: &Option<crate::cli::SatdSeverity>,
         critical_only: bool,
         include_tests: bool,
+        strict: bool,
         evolution: bool,
         days: u32,
         metrics: bool,
         output: &Option<std::path::PathBuf>,
+        top_files: usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         let body = json!({
             "project_path": path.to_string_lossy(),
@@ -894,10 +942,12 @@ impl CliAdapter {
             "severity": severity.as_ref().map(satd_severity_to_string),
             "critical_only": &critical_only,
             "include_tests": &include_tests,
+            "strict": &strict,
             "evolution": &evolution,
             "days": &days,
             "metrics": &metrics,
-            "output_path": output
+            "output_path": output,
+            "top_files": &top_files
         });
         Ok((
             Method::POST,
@@ -977,6 +1027,7 @@ impl CliAdapter {
         ))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn decode_analyze_provability(
         project_path: &std::path::Path,
         functions: &[String],
@@ -985,6 +1036,7 @@ impl CliAdapter {
         high_confidence_only: bool,
         include_evidence: bool,
         output: &Option<std::path::PathBuf>,
+        top_files: usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         let body = json!({
             "project_path": project_path.to_string_lossy(),
@@ -993,7 +1045,8 @@ impl CliAdapter {
             "format": provability_format_to_string(format),
             "high_confidence_only": &high_confidence_only,
             "include_evidence": &include_evidence,
-            "output_path": output
+            "output_path": output,
+            "top_files": &top_files
         });
         Ok((
             Method::POST,
@@ -1601,6 +1654,8 @@ mod tests {
         let adapter = CliAdapter::new();
         let command = Commands::Analyze(AnalyzeCommands::Complexity {
             project_path: PathBuf::from("."),
+            file: None,
+            files: vec![],
             toolchain: Some("rust".to_string()),
             format: ComplexityOutputFormat::Json,
             output: None,
@@ -1609,6 +1664,7 @@ mod tests {
             include: vec!["**/*.rs".to_string()],
             watch: false,
             top_files: 0,
+            fail_on_violation: false,
         });
 
         let input = CliInput::from_commands(command);
