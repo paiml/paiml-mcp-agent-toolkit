@@ -279,3 +279,5 @@ If a wrong version is published:
 - [ ] Both installation methods tested
 
 **Remember**: The canonical system prevents version regression and ensures every release meets our extreme quality standards.
+
+- workspace project
