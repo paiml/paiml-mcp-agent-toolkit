@@ -8,12 +8,12 @@ mod tests {
             input in ".*"
         ) {
             let mut parser = WatParser::new();
-            
+
             // Should not panic
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 parser.parse(&input)
             }));
-            
+
             prop_assert!(result.is_ok());
         }
 
@@ -39,7 +39,7 @@ mod tests {
             wat_content.push_str("\n)");
             let mut parser = WatParser::new();
             let result = parser.parse(&wat_content);
-            
+
             // Should successfully parse valid WAT modules
             prop_assert!(result.is_ok(), "Failed to parse valid WAT: {}", wat_content);
         }
@@ -56,7 +56,7 @@ mod tests {
             };
             let mut parser = WatParser::new();
             let result = parser.parse(&invalid_content);
-            
+
             // Should reject invalid WAT
             prop_assert!(result.is_err(), "Accepted invalid WAT: {}", invalid_content);
         }
@@ -66,11 +66,11 @@ mod tests {
         ) {
             let base_content = "(module (func $test))";
             let mut parser = WatParser::new();
-            
+
             // Create large content by repeating
             let large_content = base_content.repeat(repeat_count);
             let result = parser.parse(&large_content);
-            
+
             if large_content.len() > 10 * 1024 * 1024 {
                 // Should reject files larger than 10MB
                 prop_assert!(result.is_err());
@@ -92,7 +92,7 @@ mod tests {
             count in 1usize..5,
         ) {
             let mut parser = WatParser::new();
-            
+
             // Generate deeply nested module
             let mut content = "(module".to_string();
             for i in 0..count {
@@ -108,9 +108,9 @@ mod tests {
                 content.push_str(&format!("\n  {}", nested));
             }
             content.push(')');
-            
+
             let result = parser.parse(&content);
-            
+
             // Should handle any depth without panicking
             if content.len() <= 10 * 1024 * 1024 {
                 prop_assert!(result.is_ok());
@@ -123,11 +123,11 @@ mod tests {
         ) {
             let wat_content = "(module)";
             let mut parser = WatParser::new();
-            
+
             // Test with various whitespace
             let content_with_ws = format!("{}{}{}", prefix_ws, wat_content, suffix_ws);
             let result = parser.parse(&content_with_ws);
-            
+
             // Should handle whitespace correctly
             prop_assert!(result.is_ok());
         }
@@ -137,15 +137,15 @@ mod tests {
         ) {
             let wat_base = "(module)";
             let mut parser = WatParser::new();
-            
+
             // Create unicode string
             let unicode_string: String = unicode_chars.into_iter().collect();
-            
+
             // Insert unicode string as a comment
             let wat_with_unicode = format!("{} ;; {}", wat_base, unicode_string);
-            
+
             let result = parser.parse(&wat_with_unicode);
-            
+
             // Should handle unicode without panicking
             if wat_with_unicode.len() <= 10 * 1024 * 1024 {
                 // Parser may accept or reject unicode, but shouldn't panic
@@ -158,7 +158,7 @@ mod tests {
     #[test]
     fn empty_module_handling() {
         let mut parser = WatParser::new();
-        
+
         let empty_modules = vec![
             "(module)",
             "(module )",
@@ -167,7 +167,7 @@ mod tests {
             "( module )",
             "(\nmodule\n)",
         ];
-        
+
         for module in empty_modules {
             let result = parser.parse(module);
             assert!(result.is_ok(), "Failed to parse empty module: {}", module);

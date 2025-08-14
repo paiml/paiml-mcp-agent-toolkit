@@ -7,4 +7,4 @@ retries = 0
 # Fast profile - excludes ignored tests (marked as slow)
 slow-timeout = { period = "60s", grace-period = "10s" }
 retries = 1
-test-threads = 4
+test-threads = "num-cpus"

@@ -1,3 +1,58 @@
+//! Unified refactoring analyzer for multi-language code transformation
+//!
+//! This module provides a language-agnostic framework for analyzing code metrics
+//! and suggesting automated refactoring operations. It uses the Unified AST model
+//! to work across different programming languages with consistent transformations.
+//!
+//! # Architecture
+//!
+//! - **UnifiedAnalyzer Trait**: Common interface for all language analyzers
+//! - **AnalyzerPool**: Registry for language-specific analyzer implementations
+//! - **Metrics-Driven**: Refactoring suggestions based on complexity metrics
+//! - **Risk Assessment**: Each refactoring plan includes risk level evaluation
+//! - **Incremental Updates**: Efficient metric updates after transformations
+//!
+//! # Supported Refactorings
+//!
+//! - **Extract Function**: Split complex functions into smaller units
+//! - **Flatten Nesting**: Reduce deep nesting levels
+//! - **Simplify Expression**: Replace complex expressions with simpler ones
+//! - **Remove SATD**: Eliminate self-admitted technical debt
+//! - **Dead Code Removal**: Clean up unused code
+//!
+//! # Example
+//!
+//! ```ignore
+//! use pmat::services::unified_refactor_analyzer::{AnalyzerPool, RustAnalyzer, Language};
+//! use pmat::models::unified_ast::UnifiedAstNode;
+//! use std::sync::Arc;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create analyzer pool
+//! let mut pool = AnalyzerPool::new();
+//! pool.register(Arc::new(RustAnalyzer::new()));
+//!
+//! // Get analyzer for Rust
+//! let analyzer = pool.get(Language::Rust).unwrap();
+//!
+//! // Analyze a function node
+//! let ast_node = UnifiedAstNode::default(); // Would be actual AST
+//! let metrics = analyzer.compute_metrics(&ast_node).await?;
+//!
+//! // Get refactoring suggestions
+//! let plans = analyzer.suggest_refactors(&metrics).await?;
+//!
+//! for plan in &plans {
+//!     println!("Suggested: {} (confidence: {})",
+//!              plan.explanation, plan.confidence);
+//!     println!("Risk level: {:?}", plan.risk_level);
+//!     println!("Expected complexity reduction: {:?}",
+//!              plan.estimated_improvement.complexity_reduction);
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::models::refactor::{MetricSet, RefactorOp};
 use crate::models::unified_ast::UnifiedAstNode;
 use async_trait::async_trait;
@@ -116,20 +171,65 @@ pub struct AnalyzerPool {
 }
 
 impl AnalyzerPool {
+    /// Create a new analyzer pool
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::unified_refactor_analyzer::AnalyzerPool;
+    ///
+    /// let pool = AnalyzerPool::new();
+    /// assert_eq!(pool.languages().len(), 0);
+    /// ```
     pub fn new() -> Self {
         Self {
             analyzers: std::collections::HashMap::new(),
         }
     }
 
+    /// Register an analyzer for a specific language
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::unified_refactor_analyzer::{AnalyzerPool, RustAnalyzer, Language};
+    /// use std::sync::Arc;
+    ///
+    /// let mut pool = AnalyzerPool::new();
+    /// let rust_analyzer = Arc::new(RustAnalyzer::new());
+    /// pool.register(rust_analyzer);
+    /// assert!(pool.get(Language::Rust).is_some());
+    /// ```
     pub fn register(&mut self, analyzer: Arc<dyn UnifiedAnalyzer>) {
         self.analyzers.insert(analyzer.language(), analyzer);
     }
 
+    /// Get an analyzer for a specific language
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::unified_refactor_analyzer::{AnalyzerPool, Language};
+    ///
+    /// let pool = AnalyzerPool::new();
+    /// assert!(pool.get(Language::Rust).is_none());
+    /// ```
     pub fn get(&self, language: Language) -> Option<Arc<dyn UnifiedAnalyzer>> {
         self.analyzers.get(&language).cloned()
     }
 
+    /// Get all registered languages
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::unified_refactor_analyzer::{AnalyzerPool, RustAnalyzer};
+    /// use std::sync::Arc;
+    ///
+    /// let mut pool = AnalyzerPool::new();
+    /// pool.register(Arc::new(RustAnalyzer::new()));
+    /// assert_eq!(pool.languages().len(), 1);
+    /// ```
     pub fn languages(&self) -> Vec<Language> {
         self.analyzers.keys().copied().collect()
     }
@@ -341,6 +441,17 @@ impl std::hash::Hash for Language {
 }
 
 impl Language {
+    /// Creates a Language enum from a file extension
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::unified_refactor_analyzer::Language;
+    ///
+    /// assert!(matches!(Language::from_extension("rs"), Language::Rust));
+    /// assert!(matches!(Language::from_extension("py"), Language::Python));
+    /// assert!(matches!(Language::from_extension("unknown"), Language::Other(_)));
+    /// ```
     pub fn from_extension(ext: &str) -> Self {
         match ext.to_lowercase().as_str() {
             "rs" => Language::Rust,

@@ -19,73 +19,79 @@ pub enum AssetEncoding {
 // Compile-time embedded assets with zero runtime overhead
 #[cfg(feature = "demo")]
 static ASSETS: Lazy<HashMap<&'static str, EmbeddedAsset>> = Lazy::new(|| {
+    #[allow(unused_mut)]
     let mut m = HashMap::with_capacity(8);
 
-    // Compressed vendor assets
-    m.insert(
-        "/vendor/gridjs.min.js",
-        EmbeddedAsset {
-            content: include_bytes!("../../assets/vendor/gridjs.min.js.gz"),
-            content_type: "application/javascript",
-            encoding: AssetEncoding::Gzip,
-        },
-    );
+    // Compressed vendor assets - only include if files exist (skip during cargo publish)
+    #[cfg(all(not(docsrs), not(cargo_publish)))]
+    {
+        m.insert(
+            "/vendor/gridjs.min.js",
+            EmbeddedAsset {
+                content: include_bytes!("../../assets/vendor/gridjs.min.js.gz"),
+                content_type: "application/javascript",
+                encoding: AssetEncoding::Gzip,
+            },
+        );
 
-    m.insert(
-        "/vendor/gridjs-mermaid.min.css",
-        EmbeddedAsset {
-            content: include_bytes!("../../assets/vendor/gridjs-mermaid.min.css.gz"),
-            content_type: "text/css",
-            encoding: AssetEncoding::Gzip,
-        },
-    );
+        m.insert(
+            "/vendor/gridjs-mermaid.min.css",
+            EmbeddedAsset {
+                content: include_bytes!("../../assets/vendor/gridjs-mermaid.min.css.gz"),
+                content_type: "text/css",
+                encoding: AssetEncoding::Gzip,
+            },
+        );
 
-    m.insert(
-        "/vendor/mermaid.min.js",
-        EmbeddedAsset {
-            content: include_bytes!("../../assets/vendor/mermaid.min.js.gz"),
-            content_type: "application/javascript",
-            encoding: AssetEncoding::Gzip, // Now compressed for significant size reduction
-        },
-    );
+        m.insert(
+            "/vendor/mermaid.min.js",
+            EmbeddedAsset {
+                content: include_bytes!("../../assets/vendor/mermaid.min.js.gz"),
+                content_type: "application/javascript",
+                encoding: AssetEncoding::Gzip,
+            },
+        );
 
-    m.insert(
-        "/vendor/d3.min.js",
-        EmbeddedAsset {
-            content: include_bytes!("../../assets/vendor/d3.min.js.gz"),
-            content_type: "application/javascript",
-            encoding: AssetEncoding::Gzip,
-        },
-    );
+        m.insert(
+            "/vendor/d3.min.js",
+            EmbeddedAsset {
+                content: include_bytes!("../../assets/vendor/d3.min.js.gz"),
+                content_type: "application/javascript",
+                encoding: AssetEncoding::Gzip,
+            },
+        );
+    }
 
-    // Demo-specific assets (now minified for production)
-    m.insert(
-        "/demo.css",
-        EmbeddedAsset {
-            content: include_bytes!("../../assets/demo/style.min.css"),
-            content_type: "text/css",
-            encoding: AssetEncoding::Identity, // CSS minification handles size reduction
-        },
-    );
+    // Demo-specific assets - only include if files exist (skip during cargo publish)
+    #[cfg(all(not(docsrs), not(cargo_publish)))]
+    {
+        m.insert(
+            "/demo.css",
+            EmbeddedAsset {
+                content: include_bytes!("../../assets/demo/style.min.css"),
+                content_type: "text/css",
+                encoding: AssetEncoding::Identity,
+            },
+        );
 
-    m.insert(
-        "/demo.js",
-        EmbeddedAsset {
-            content: include_bytes!("../../assets/demo/app.min.js"),
-            content_type: "application/javascript",
-            encoding: AssetEncoding::Identity, // JS minification handles size reduction
-        },
-    );
+        m.insert(
+            "/demo.js",
+            EmbeddedAsset {
+                content: include_bytes!("../../assets/demo/app.min.js"),
+                content_type: "application/javascript",
+                encoding: AssetEncoding::Identity,
+            },
+        );
 
-    // Favicon
-    m.insert(
-        "/favicon.ico",
-        EmbeddedAsset {
-            content: include_bytes!("../../assets/demo/favicon.ico"),
-            content_type: "image/x-icon",
-            encoding: AssetEncoding::Identity,
-        },
-    );
+        m.insert(
+            "/favicon.ico",
+            EmbeddedAsset {
+                content: include_bytes!("../../assets/demo/favicon.ico"),
+                content_type: "image/x-icon",
+                encoding: AssetEncoding::Identity,
+            },
+        );
+    }
 
     m
 });

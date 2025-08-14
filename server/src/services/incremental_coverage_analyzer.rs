@@ -1,3 +1,55 @@
+//! Incremental code coverage analyzer for CI/CD pipelines
+//!
+//! This module provides efficient incremental coverage analysis by tracking
+//! only changed code and its dependencies. It maintains persistent state across
+//! runs to minimize recomputation and provides detailed coverage metrics for
+//! modified code paths, enabling fast feedback in continuous integration.
+//!
+//! # Key Features
+//!
+//! - **Incremental Analysis**: Only analyzes changed files and their dependencies
+//! - **Persistent State**: Caches AST and coverage data across runs
+//! - **Call Graph Tracking**: Identifies which tests need re-running
+//! - **Delta Coverage**: Reports coverage specifically for changed code
+//! - **CI/CD Optimized**: Minimal overhead for build pipelines
+//!
+//! # Coverage Metrics
+//!
+//! - **Line Coverage**: Percentage of executed lines
+//! - **Branch Coverage**: Percentage of executed branches
+//! - **Function Coverage**: Percentage of called functions
+//! - **Delta Coverage**: Coverage of newly added/modified code
+//!
+//! # Example
+//!
+//! ```ignore
+//! use pmat::services::incremental_coverage_analyzer::{
+//!     IncrementalCoverageAnalyzer, CoverageConfig
+//! };
+//! use std::path::Path;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let analyzer = IncrementalCoverageAnalyzer::new(Path::new(".coverage_db"))?;
+//!
+//! // Analyze coverage for changed files
+//! let changed_files = vec![
+//!     Path::new("src/lib.rs"),
+//!     Path::new("src/main.rs"),
+//! ];
+//!
+//! let coverage = analyzer.analyze_incremental(&changed_files).await?;
+//!
+//! println!("Delta coverage: {:.1}%", coverage.delta_coverage.percentage);
+//! println!("Files needing re-testing: {}", coverage.files_to_test.len());
+//!
+//! // Get impacted test list
+//! for test in &coverage.impacted_tests {
+//!     println!("Re-run test: {}", test);
+//! }
+//! # Ok(())
+//! # }
+//! ```ignore
+
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

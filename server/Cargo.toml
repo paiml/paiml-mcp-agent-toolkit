@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "0.26.4"
+version = "2.4.0"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -25,12 +25,16 @@ serde_json = { version = "1.0", default-features = false, features = ["std"] }
 # Template engine
 handlebars = { version = "6.3", default-features = false, features = ["string_helpers"] }
 
+# MCP SDK - now core dependency for MCP server functionality
+pmcp = { version = "1.2.0", features = ["full", "validation"] }
+
 # Caching
 lru = { version = "0.14", features = ["hashbrown"] }
 
 # Error handling
 thiserror = "2.0"
 anyhow = "1.0"
+tempfile = "3.8"
 
 # Logging
 tracing = { version = "0.1", default-features = false, features = ["std"] }
@@ -43,6 +47,7 @@ lazy_static = "1.5"
 semver = { version = "1.0", features = ["serde"] }
 regex = { version = "1.11", features = ["perf"] }
 chrono = { version = "0.4", features = ["serde"] }
+csv = "1.3"
 hex = "0.4"
 uuid = { version = "1.17", features = ["v4", "serde"] }
 parking_lot = "0.12"
@@ -51,6 +56,11 @@ roaring = "0.10"
 rand = "0.9"
 rayon = "1.10"
 git2 = { version = "0.20", default-features = false, features = ["https"] }
+
+# CLI utilities
+dialoguer = "0.11"
+console = "0.15"
+url = "2.5"
 
 # Storage
 # rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
@@ -78,14 +88,14 @@ toml = "0.8"
 crossbeam-channel = "0.5"
 # For TypeScript/JavaScript parsing (conditional) - use compatible versions
 swc_ecma_parser = { version = "0.145", optional = true }
-swc_common = { version = "0.33", optional = true }
-swc_ecma_ast = { version = "13.0", optional = true }
+swc_common = { version = "14.0", optional = true }
+swc_ecma_ast = { version = "0.114", optional = true }
 swc_ecma_visit = { version = "0.100", optional = true }
 # For Python parsing (conditional)
 rustpython-parser = { version = "0.4", optional = true }
 # For C/C++ parsing (conditional)
 tree-sitter = { version = "0.22", optional = true }
-tree-sitter-c = { version = "0.21", optional = true }
+tree-sitter-c = { version = "0.24", optional = true }
 tree-sitter-cpp = { version = "0.22", optional = true }
 # For Kotlin parsing (conditional)
 tree-sitter-kotlin = { version = "0.3.8", optional = true }
@@ -95,7 +105,7 @@ cpp_demangle = { version = "0.4", optional = true }
 gimli = { version = "0.28", optional = true }
 goblin = { version = "0.7", optional = true }
 # Analysis infrastructure for C/C++
-fixedbitset = { version = "0.4", optional = true }
+fixedbitset = { version = "0.5", optional = true }
 rustc-hash = { version = "1.1" }
 
 # Installer generation
@@ -114,6 +124,8 @@ smallvec = "1.15.0"
 
 # Unified protocol support
 axum = { version = "0.8", default-features = false, features = ["json", "tokio", "http1", "query"] }
+capnp = "0.20"
+capnpc = "0.20"
 tower = { version = "0.5", default-features = false, features = ["util", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["fs", "trace", "compression-gzip", "timeout", "cors"] }
 hyper = { version = "1.6", default-features = false, features = ["http1", "server", "client"] }
@@ -125,6 +137,9 @@ petgraph = "0.8"
 
 # Markdown parsing
 pulldown-cmark = "0.13"
+
+# HTTP client for GitHub API
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 # Progress bars
 indicatif = "0.17"
@@ -155,10 +170,12 @@ flate2 = "1.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 hex = "0.4"
+capnpc = "0.20"
 
 [features]
-default = ["all-languages", "demo"]
+default = ["most-languages", "demo"]
 all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "kotlin-ast"]
+most-languages = ["rust-ast", "typescript-ast", "c-ast", "cpp-ast", "kotlin-ast"]
 rust-only = ["rust-ast"]
 skip-slow-tests = []
 rust-ast = ["syn", "quote", "proc-macro2"]
@@ -222,6 +239,28 @@ name = "performance_regression"
 path = "tests/performance/regression.rs"
 required-features = ["perf-tests"]
 
-[profile.release]
-lto = true
-codegen-units = 1
+# Examples for deterministic MCP agents course
+[[example]]
+name = "scaffold_agent_basics"
+path = "examples/scaffold_agent_basics.rs"
+
+[[example]]
+name = "scaffold_agent_interactive"
+path = "examples/scaffold_agent_interactive.rs"
+
+[[example]]
+name = "scaffold_agent_hybrid"
+path = "examples/scaffold_agent_hybrid.rs"
+
+[[example]]
+name = "scaffold_agent_course_project"
+path = "examples/scaffold_agent_course_project.rs"
+
+# Profile configuration moved to workspace root
+
+[package.metadata.docs.rs]
+# Use default features for documentation (which excludes python-ast due to malachite-bigint build issues)
+features = ["default"]
+# Set DOCS_RS environment variable to skip network operations
+rustdoc-args = ["--cfg", "docsrs"]
+rustc-args = ["--cfg", "docsrs"]

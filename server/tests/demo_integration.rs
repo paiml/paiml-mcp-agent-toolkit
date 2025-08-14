@@ -162,7 +162,7 @@ mod demo_tests {
     #[cfg(test)]
     mod mcp_demo_tests {
         use super::*;
-        use paiml_mcp_agent_toolkit::{
+        use pmat::{
             cli::OutputFormat,
             demo::{run_demo, DemoArgs},
             stateless_server::StatelessTemplateServer,
@@ -190,7 +190,7 @@ mod demo_tests {
                 target_nodes: 15,
                 centrality_threshold: 0.1,
                 merge_threshold: 3,
-                protocol: paiml_mcp_agent_toolkit::demo::Protocol::Cli,
+                protocol: pmat::demo::Protocol::Cli,
                 show_api: false,
                 debug: false,
                 debug_output: None,

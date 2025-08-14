@@ -1,3 +1,25 @@
+//! Utility functions and helpers for PMAT.
+//!
+//! This module contains shared utilities, helper functions, and common patterns
+//! used throughout the PMAT codebase. These utilities follow the DRY (Don't Repeat
+//! Yourself) principle and provide consistent implementations for common tasks.
+//!
+//! # Utilities
+//!
+//! - **helpers**: General-purpose helper functions for file operations, string
+//!   manipulation, and common patterns
+//!
+//! # Example
+//!
+//! ```ignore
+//! use pmat::utils::helpers;
+//! use std::path::Path;
+//!
+//! // Example of using utility functions
+//! let path = Path::new("./src/main.rs");
+//! println!("Processing: {}", path.display());
+//! ```
+
 pub mod helpers;
 
 #[cfg(test)]

@@ -42,24 +42,24 @@ pub trait LanguageParser: Send + Sync {
 #[async_trait]
 pub trait WasmAwareParser: LanguageParser {
     /// Extract WebAssembly-specific metrics from the `AST`
-///
-/// # Errors
-///
-/// Returns an error if the operation fails
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
     fn extract_wasm_metrics(&self, ast: &AstDag) -> Result<WasmMetrics>;
 
     /// Analyze memory usage patterns for optimization opportunities
-///
-/// # Errors
-///
-/// Returns an error if the operation fails
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
     fn analyze_memory_patterns(&self, ast: &AstDag) -> Result<MemoryAnalysis>;
 
     /// Calculate WebAssembly computational complexity including gas estimation
-///
-/// # Errors
-///
-/// Returns an error if the operation fails
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
     fn calculate_wasm_complexity(&self, ast: &AstDag) -> Result<WasmComplexity>;
 
     /// Get parser capabilities for feature detection

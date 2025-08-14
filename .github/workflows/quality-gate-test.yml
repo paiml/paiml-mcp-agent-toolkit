@@ -1,0 +1,68 @@
+name: Quality Gate Test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  quality-check:
+    name: Run Quality Gate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: Cache cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          
+      - name: Install pmat
+        run: |
+          cargo install --path server --locked --force
+          
+      - name: Run quality gate
+        run: |
+          pmat quality-gate \
+            --checks complexity,satd,dead-code \
+            --max-complexity-p99 30 \
+            --max-dead-code 15.0 \
+            --format human || true
+          echo "Quality gate check completed (violations allowed for demo)"
+            
+      - name: Run quality gate with all checks
+        run: |
+          pmat quality-gate \
+            --checks all \
+            --format json \
+            --output quality-report.json || true
+          echo "Full quality report generated"
+            
+      - name: Upload quality report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quality-gate-report
+          path: quality-report.json
+          
+      - name: Display quality summary
+        if: always()
+        run: |
+          echo "=== Quality Gate Summary ==="
+          if [ -f quality-report.json ]; then
+            jq '.summary' quality-report.json || echo "Could not parse summary"
+          else
+            echo "No quality report generated"
+          fi

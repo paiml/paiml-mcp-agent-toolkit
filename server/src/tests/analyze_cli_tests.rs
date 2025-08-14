@@ -19,71 +19,16 @@ mod tests {
                         project_path,
                         format,
                         output,
+                        top_files,
                     } => {
                         assert_eq!(days, 30); // Default value
                         assert_eq!(project_path, PathBuf::from(".")); // Default value
                         assert_eq!(format, ChurnOutputFormat::Summary); // Default
                         assert!(output.is_none());
+                        assert_eq!(top_files, 10); // Default value
                     }
-                    AnalyzeCommands::Dag { .. } => {
-                        panic!("Expected Churn command, got Dag");
-                    }
-                    AnalyzeCommands::Complexity { .. } => {
-                        panic!("Expected Churn command, got Complexity");
-                    }
-                    AnalyzeCommands::DeadCode { .. } => {
-                        panic!("Expected Churn command, got DeadCode");
-                    }
-                    AnalyzeCommands::Satd { .. } => {
-                        panic!("Expected Churn command, got Satd");
-                    }
-                    AnalyzeCommands::DeepContext { .. } => {
-                        panic!("Expected Churn command, got DeepContext");
-                    }
-                    AnalyzeCommands::Tdg { .. } => {
-                        panic!("Expected Churn command, got Tdg");
-                    }
-                    AnalyzeCommands::Makefile { .. } => {
-                        panic!("Expected Churn command, got Makefile");
-                    }
-                    AnalyzeCommands::Provability { .. } => {
-                        panic!("Expected Churn command, got Provability");
-                    }
-                    AnalyzeCommands::Duplicates { .. } => {
-                        panic!("Expected Churn command, got Duplicates");
-                    }
-                    AnalyzeCommands::DefectPrediction { .. } => {
-                        panic!("Expected Churn command, got DefectPrediction");
-                    }
-                    AnalyzeCommands::Comprehensive { .. } => {
-                        panic!("Expected Churn command, got Comprehensive");
-                    }
-                    AnalyzeCommands::GraphMetrics { .. } => {
-                        panic!("Expected Churn command, got GraphMetrics");
-                    }
-                    AnalyzeCommands::NameSimilarity { .. } => {
-                        panic!("Expected Churn command, got NameSimilarity");
-                    }
-                    AnalyzeCommands::ProofAnnotations { .. } => {
-                        panic!("Expected Churn command, got ProofAnnotations");
-                    }
-                    AnalyzeCommands::IncrementalCoverage { .. } => {
-                        panic!("Expected Churn command, got IncrementalCoverage");
-                    }
-                    AnalyzeCommands::SymbolTable { .. } => {
-                        panic!("Expected Churn command, got SymbolTable");
-                    }
-                    AnalyzeCommands::BigO { .. } => {
-                        panic!("Expected Churn command, got BigO");
-                    }
-                    AnalyzeCommands::AssemblyScript { .. } => {
-                        panic!("Expected Churn command, got AssemblyScript");
-                    }
-                    AnalyzeCommands::WebAssembly { .. } => {
-                        panic!("Expected Churn command, got WebAssembly");
-                    }
-                    AnalyzeCommands::LintHotspot { .. } => {
-                        panic!("Expected Churn command, got LintHotspot");
+                    _ => {
+                        panic!("Expected Churn command, got a different analyze command");
                     }
                 }
             }
@@ -115,71 +60,16 @@ mod tests {
                     project_path,
                     format,
                     output,
+                    top_files,
                 } => {
                     assert_eq!(days, 90);
                     assert_eq!(project_path, PathBuf::from("/tmp/test"));
                     assert_eq!(format, ChurnOutputFormat::Markdown);
                     assert_eq!(output, Some(PathBuf::from("report.md")));
+                    assert_eq!(top_files, 10); // Default value
                 }
-                AnalyzeCommands::Dag { .. } => {
-                    panic!("Expected Churn command, got Dag");
-                }
-                AnalyzeCommands::Complexity { .. } => {
-                    panic!("Expected Churn command, got Complexity");
-                }
-                AnalyzeCommands::DeadCode { .. } => {
-                    panic!("Expected Churn command, got DeadCode");
-                }
-                AnalyzeCommands::Satd { .. } => {
-                    panic!("Expected Churn command, got Satd");
-                }
-                AnalyzeCommands::DeepContext { .. } => {
-                    panic!("Expected Churn command, got DeepContext");
-                }
-                AnalyzeCommands::Tdg { .. } => {
-                    panic!("Expected Churn command, got Tdg");
-                }
-                AnalyzeCommands::Makefile { .. } => {
-                    panic!("Expected Churn command, got Makefile");
-                }
-                AnalyzeCommands::Provability { .. } => {
-                    panic!("Expected Churn command, got Provability");
-                }
-                AnalyzeCommands::Duplicates { .. } => {
-                    panic!("Expected Churn command, got Duplicates");
-                }
-                AnalyzeCommands::DefectPrediction { .. } => {
-                    panic!("Expected Churn command, got DefectPrediction");
-                }
-                AnalyzeCommands::Comprehensive { .. } => {
-                    panic!("Expected Churn command, got Comprehensive");
-                }
-                AnalyzeCommands::GraphMetrics { .. } => {
-                    panic!("Expected Churn command, got GraphMetrics");
-                }
-                AnalyzeCommands::NameSimilarity { .. } => {
-                    panic!("Expected Churn command, got NameSimilarity");
-                }
-                AnalyzeCommands::ProofAnnotations { .. } => {
-                    panic!("Expected Churn command, got ProofAnnotations");
-                }
-                AnalyzeCommands::IncrementalCoverage { .. } => {
-                    panic!("Expected Churn command, got IncrementalCoverage");
-                }
-                AnalyzeCommands::SymbolTable { .. } => {
-                    panic!("Expected Churn command, got SymbolTable");
-                }
-                AnalyzeCommands::BigO { .. } => {
-                    panic!("Expected Churn command, got BigO");
-                }
-                AnalyzeCommands::AssemblyScript { .. } => {
-                    panic!("Expected Churn command, got AssemblyScript");
-                }
-                AnalyzeCommands::WebAssembly { .. } => {
-                    panic!("Expected Churn command, got WebAssembly");
-                }
-                AnalyzeCommands::LintHotspot { .. } => {
-                    panic!("Expected Churn command, got LintHotspot");
+                _ => {
+                    panic!("Expected Churn command, got a different analyze command");
                 }
             },
             _ => panic!("Expected Analyze command"),
@@ -230,11 +120,13 @@ mod tests {
                 project_path,
                 format,
                 output,
+                top_files,
             }) => {
                 assert_eq!(days, 7);
                 assert_eq!(project_path, PathBuf::from("/tmp"));
                 assert_eq!(format, ChurnOutputFormat::Csv);
                 assert_eq!(output, Some(PathBuf::from("out.csv")));
+                assert_eq!(top_files, 10); // Default value
             }
             _ => panic!("Expected Analyze command"),
         }
