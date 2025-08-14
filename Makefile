@@ -1009,13 +1009,13 @@ pre-release-checks:
 	@./target/debug/pmat analyze satd --strict 2>/dev/null || cargo run --bin pmat -- analyze satd --strict || echo "⚠️  SATD check skipped (pmat not built)"
 	@echo ""
 	@echo "4️⃣ Security audit..."
-	@cd $(PWD)/../$(notdir $(PWD)) && cargo audit || echo "⚠️  Some vulnerabilities found (review before release)"
+	@if [ -d "server" ]; then cargo audit || echo "⚠️  Some vulnerabilities found (review before release)"; else cd .. && cargo audit || echo "⚠️  Some vulnerabilities found (review before release)"; fi
 	@echo ""
 	@echo "5️⃣ Checking outdated dependencies..."
-	@cd $(PWD)/../$(notdir $(PWD)) && cargo outdated --root-deps-only || true
+	@if [ -d "server" ]; then cargo outdated --root-deps-only || true; else cd .. && cargo outdated --root-deps-only || true; fi
 	@echo ""
 	@echo "6️⃣ SemVer compatibility check..."
-	@cd $(PWD)/../$(notdir $(PWD)) && cargo semver-checks check-release || echo "⚠️  SemVer check completed (review any warnings)"
+	@if [ -d "server" ]; then cargo semver-checks check-release || echo "⚠️  SemVer check completed (review any warnings)"; else cd .. && cargo semver-checks check-release || echo "⚠️  SemVer check completed (review any warnings)"; fi
 	@echo ""
 	@echo "✅ All pre-release checks completed!"
 
@@ -1037,7 +1037,8 @@ release-major: install-release-tools pre-release-checks
 # Auto-determine version bump based on changes
 release-auto: install-release-tools pre-release-checks
 	@echo "🤖 Auto-determining version bump type..."
-	@if cd $(PWD)/../$(notdir $(PWD)) && cargo semver-checks check-release 2>&1 | grep -q "MAJOR"; then \
+	@if [ -d "server" ]; then SEMVER_CMD="cargo semver-checks check-release"; else SEMVER_CMD="cd .. && cargo semver-checks check-release"; fi; \
+	if $$SEMVER_CMD 2>&1 | grep -q "MAJOR"; then \
 		echo "💥 Breaking changes detected - MAJOR release required"; \
 		$(MAKE) release-major; \
 	elif git log --oneline $(shell git describe --tags --abbrev=0 2>/dev/null || echo HEAD~10)..HEAD | grep -qE '^[a-f0-9]+ feat:'; then \
