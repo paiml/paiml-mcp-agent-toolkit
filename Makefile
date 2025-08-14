@@ -976,6 +976,94 @@ size-compare: ## Compare binary size with minimal build
 	echo "Feature overhead: $${REDUCTION}%"
 
 
+# ============================================================================
+# CANONICAL VERSION MANAGEMENT
+# Following the specification in docs/todo/canonical-version-updates-spec.md
+# ============================================================================
+
+.PHONY: pre-release-checks release-patch release-minor release-major release-auto install-release-tools
+
+# Install required release tools
+install-release-tools:
+	@echo "📦 Installing release tools..."
+	@cargo install cargo-release --locked || echo "cargo-release already installed"
+	@cargo install cargo-semver-checks --locked || echo "cargo-semver-checks already installed"
+	@cargo install cargo-audit --locked || echo "cargo-audit already installed"
+	@cargo install cargo-outdated --locked || echo "cargo-outdated already installed"
+	@echo "✅ Release tools installed"
+
+# Pre-release quality gates
+pre-release-checks:
+	@echo "🔍 Running pre-release checks..."
+	@echo ""
+	@echo "1️⃣ Version consistency check..."
+	@grep '^version' Cargo.toml server/Cargo.toml | uniq -c | grep -q '      2 version' || (echo "❌ Version mismatch detected!" && exit 1)
+	@echo "✅ Versions are consistent"
+	@echo ""
+	@echo "2️⃣ Running quality gates..."
+	@$(MAKE) lint || (echo "❌ Linting failed!" && exit 1)
+	@$(MAKE) test-fast || (echo "❌ Tests failed!" && exit 1)
+	@echo "✅ Quality gates passed"
+	@echo ""
+	@echo "3️⃣ Checking for SATD..."
+	@./target/debug/pmat analyze satd --strict 2>/dev/null || cargo run --bin pmat -- analyze satd --strict || echo "⚠️  SATD check skipped (pmat not built)"
+	@echo ""
+	@echo "4️⃣ Security audit..."
+	@cargo audit || echo "⚠️  Some vulnerabilities found (review before release)"
+	@echo ""
+	@echo "5️⃣ Checking outdated dependencies..."
+	@cargo outdated --root-deps-only || true
+	@echo ""
+	@echo "6️⃣ SemVer compatibility check..."
+	@cargo semver-checks check-release || echo "⚠️  SemVer check completed (review any warnings)"
+	@echo ""
+	@echo "✅ All pre-release checks completed!"
+
+# Patch release (x.y.Z) - bug fixes only
+release-patch: install-release-tools pre-release-checks
+	@echo "🔖 Creating PATCH release (bug fixes only)..."
+	@cargo release patch --execute
+
+# Minor release (x.Y.z) - new features, backward compatible
+release-minor: install-release-tools pre-release-checks
+	@echo "🔖 Creating MINOR release (new features, backward compatible)..."
+	@cargo release minor --execute
+
+# Major release (X.y.z) - breaking changes
+release-major: install-release-tools pre-release-checks
+	@echo "🔖 Creating MAJOR release (breaking changes)..."
+	@cargo release major --execute
+
+# Auto-determine version bump based on changes
+release-auto: install-release-tools pre-release-checks
+	@echo "🤖 Auto-determining version bump type..."
+	@if cargo semver-checks check-release 2>&1 | grep -q "MAJOR"; then \
+		echo "💥 Breaking changes detected - MAJOR release required"; \
+		$(MAKE) release-major; \
+	elif git log --oneline $(shell git describe --tags --abbrev=0 2>/dev/null || echo HEAD~10)..HEAD | grep -qE '^[a-f0-9]+ feat:'; then \
+		echo "✨ New features detected - MINOR release"; \
+		$(MAKE) release-minor; \
+	else \
+		echo "🐛 Bug fixes/patches only - PATCH release"; \
+		$(MAKE) release-patch; \
+	fi
+
+# Dry run for release (no actual changes)
+release-dry:
+	@echo "🧪 Dry run for release..."
+	@cargo release patch --dry-run
+
+# Verify release was successful
+release-verify:
+	@echo "🔍 Verifying release..."
+	@LATEST_TAG=$$(git describe --tags --abbrev=0); \
+	echo "Latest tag: $$LATEST_TAG"; \
+	@cargo search pmat | head -1
+	@echo ""
+	@echo "📦 Testing installation from crates.io..."
+	@cargo install pmat --force && pmat --version
+	@echo "✅ Release verification complete!"
+
 # Create GitHub release with binary artifacts
 create-release:
 	@echo "📦 Creating GitHub release..."

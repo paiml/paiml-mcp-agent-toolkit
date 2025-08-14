@@ -10,6 +10,34 @@ authors = ["Pragmatic AI Labs"]
 homepage = "https://paiml.com"
 repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
 
+# Config for cargo-release
+[workspace.metadata.release]
+# Sign commits and tags
+sign-commit = false  # Set to true if you have GPG configured
+sign-tag = false     # Set to true if you have GPG configured
+# Push to remote automatically
+push-remote = "origin"
+# Actually do the release (not just dry-run)
+release = true
+# Consolidate commits
+consolidate-commits = true
+# Disable dev-version bump (we handle this manually)
+dev-version = false
+# Share version for workspace
+shared-version = true
+# Tag prefix
+tag-prefix = "v"
+# Disable automatic publishing to crates.io (we handle it separately)
+publish = false
+# Pre-release replacements
+pre-release-replacements = [
+  {file="README.md", search="pmat = \"[0-9]+\\.[0-9]+\\.[0-9]+\"", replace="pmat = \"{{version}}\""},
+  {file="README.md", search="v[0-9]+\\.[0-9]+\\.[0-9]+ Release", replace="v{{version}} Release"},
+  {file="CHANGELOG.md", search="## \\[Unreleased\\]", replace="## [Unreleased]\n\n## [{{version}}] - {{date}}"},
+]
+# Pre-release hook to run tests
+pre-release-hook = ["make", "pre-release-checks"]
+
 # Config for 'dist'
 [workspace.metadata.dist]
 # The preferred dist version to use in CI (Cargo.toml SemVer syntax)
