@@ -118,55 +118,126 @@ Following successful Toyota Way Kaizen refactoring and comprehensive verificatio
 - **Integration test coverage**: CLI + MCP + Quality Gates + Context all verified
 - **Code reduction**: -3,401 lines net while enhancing features
 
-## Release Process (Jidoka - Quality at Every Step)
+## Canonical Version Management (NEW - Prevents Version Regression)
 
-When creating a new release, follow this exact process to ensure quality:
+**IMPORTANT**: We now use a canonical version management system that prevents version regression issues (like 2.3.0 → 2.0.1). 
+Full specification: `docs/todo/canonical-version-updates-spec.md`
 
-### Step 1: Update Dependencies
+### Quick Release Commands
+
 ```bash
-make outdated          # Check what needs updating
-make update-deps       # Safe semver updates
-make test-unit         # Verify tests pass
+# Run pre-release checklist (recommended first step)
+./scripts/release-checklist.sh
+
+# Interactive release with recommendations
+./scripts/release-checklist.sh --interactive
+
+# Automatic version bump detection (recommended)
+make release-auto
+
+# Manual version bumps
+make release-patch   # Bug fixes only (x.y.Z)
+make release-minor   # New features (x.Y.z)  
+make release-major   # Breaking changes (X.y.z)
+
+# GitHub Actions workflow
+gh workflow run canonical-release.yml -f bump_type=auto
 ```
 
-### Step 2: Create GitHub Release
-```bash
-# Use Simple Release workflow (recommended)
-gh workflow run simple-release.yml -f version_bump=patch  # or minor/major
+### Release Process (Jidoka - Quality at Every Step)
 
-# Alternative: Manual release
-make create-release
+The canonical release process enforces quality gates at every step:
+
+#### Step 1: Pre-Release Validation
+```bash
+# Runs 12 quality checks automatically
+make pre-release-checks
+```
+This validates:
+- Version consistency across workspace
+- All tests passing
+- Zero SATD tolerance
+- Security audit (cargo-audit)
+- Outdated dependencies check
+- SemVer compatibility (cargo-semver-checks)
+
+#### Step 2: Determine Version Bump
+```bash
+# Auto-detect based on commits
+make release-auto
+
+# Or use checklist for recommendation
+./scripts/release-checklist.sh
+```
+The system analyzes:
+- Breaking changes → MAJOR
+- Feature commits (feat:) → MINOR  
+- Everything else → PATCH
+
+#### Step 3: Execute Release
+```bash
+# This will:
+# 1. Run all pre-release checks
+# 2. Update versions in workspace
+# 3. Update CHANGELOG.md
+# 4. Create git commit and tag
+# 5. Push to GitHub
+# 6. Create GitHub release
+# 7. Publish to crates.io (if configured)
+make release-[patch|minor|major|auto]
 ```
 
-### Step 3: Publish to crates.io
-After the GitHub release is created and tagged:
+#### Step 4: Verify Release
 ```bash
-# The publish-crates.yml workflow will trigger automatically on tag push
-# Or manually publish:
-cd server && cargo publish
-```
+# Automatic verification
+make release-verify
 
-### Step 4: Verify Both Installations Work
-**CRITICAL**: Always verify both installation methods work correctly:
-
-```bash
-# Test crates.io installation
+# Manual verification
+cargo search pmat | head -1
 cargo install pmat --force
 pmat --version
-
-# Test GitHub release installation
-curl -fsSL https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.sh | bash
-pmat --version
 ```
 
-### Release Checklist
-- [ ] All CI/CD workflows passing
-- [ ] Dependencies updated
-- [ ] Version bumped correctly
-- [ ] GitHub release created via simple-release.yml
-- [ ] Published to crates.io
-- [ ] Verified cargo install works
-- [ ] Verified curl install script works
-- [ ] Release notes updated
+### Release Quality Gates
 
-**Remember**: Quality is built into every step. A release with any defect violates the Toyota Way.
+Every release MUST pass these gates:
+1. **Version Consistency**: All workspace members synchronized
+2. **Quality Standards**: Zero SATD, complexity ≤20, all tests pass
+3. **Security**: No critical vulnerabilities (cargo-audit)
+4. **SemVer Compliance**: API compatibility verified (cargo-semver-checks)
+5. **Documentation**: CHANGELOG.md updated with changes
+6. **Dependencies**: No severely outdated dependencies
+
+### Release Tools
+
+The system uses industry-standard tools:
+- **cargo-release**: Workspace-aware version management
+- **cargo-semver-checks**: API breaking change detection
+- **cargo-audit**: Security vulnerability scanning
+- **cargo-outdated**: Dependency freshness checking
+
+Install all tools:
+```bash
+make install-release-tools
+```
+
+### Recovery from Release Issues
+
+If a wrong version is published:
+1. **Cannot unpublish from crates.io** (by design)
+2. Immediately publish a patch version with fix
+3. Yank the bad version: `cargo yank --version x.y.z`
+4. Document the issue in CHANGELOG.md
+
+### Release Checklist
+- [ ] Run `./scripts/release-checklist.sh` first
+- [ ] All CI/CD workflows passing
+- [ ] Pre-release checks pass (`make pre-release-checks`)
+- [ ] CHANGELOG.md has unreleased changes documented
+- [ ] Version bump type identified (patch/minor/major)
+- [ ] Release created with `make release-auto`
+- [ ] GitHub release verified
+- [ ] crates.io publication verified
+- [ ] Both installation methods tested
+
+**Remember**: The canonical system prevents version regression and ensures every release meets our extreme quality standards.
