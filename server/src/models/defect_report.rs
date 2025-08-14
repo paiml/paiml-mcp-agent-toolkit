@@ -117,6 +117,17 @@ pub enum DefectCategory {
 
 impl DefectCategory {
     /// Get all categories for iteration
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::defect_report::DefectCategory;
+    ///
+    /// let categories = DefectCategory::all();
+    /// assert_eq!(categories.len(), 7);
+    /// assert!(categories.contains(&DefectCategory::Complexity));
+    /// assert!(categories.contains(&DefectCategory::TestCoverage));
+    /// ```
     pub fn all() -> Vec<Self> {
         vec![
             Self::Complexity,
@@ -156,11 +167,49 @@ pub struct FileHotspot {
 
 impl Defect {
     /// Create a new defect ID with the given prefix and index
+    /// Generates a unique defect ID with prefix and index
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::defect_report::Defect;
+    ///
+    /// let id = Defect::generate_id("TEST", 0);
+    /// assert_eq!(id, "TEST-001");
+    ///
+    /// let id2 = Defect::generate_id("BUG", 99);
+    /// assert_eq!(id2, "BUG-100");
+    /// ```
     pub fn generate_id(prefix: &str, index: usize) -> DefectId {
         format!("{}-{:03}", prefix, index + 1)
     }
 
     /// Calculate severity weight for scoring
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::defect_report::{Defect, Severity, DefectCategory};
+    /// use std::path::PathBuf;
+    /// use std::collections::HashMap;
+    ///
+    /// let defect = Defect {
+    ///     id: "TEST-001".to_string(),
+    ///     severity: Severity::High,
+    ///     category: DefectCategory::TechnicalDebt,
+    ///     file_path: PathBuf::from("src/main.rs"),
+    ///     line_start: 45,
+    ///     line_end: None,
+    ///     column_start: None,
+    ///     column_end: None,
+    ///     message: "Potential memory leak".to_string(),
+    ///     rule_id: "MEM001".to_string(),
+    ///     fix_suggestion: None,
+    ///     metrics: HashMap::new(),
+    /// };
+    ///
+    /// assert_eq!(defect.severity_weight(), 5.0);
+    /// ```
     pub fn severity_weight(&self) -> f64 {
         match self.severity {
             Severity::Critical => 10.0,

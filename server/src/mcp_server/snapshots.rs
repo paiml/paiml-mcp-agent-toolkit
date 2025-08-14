@@ -28,6 +28,27 @@ impl SnapshotManager {
         }
     }
 
+    /// Saves a refactor state machine snapshot to disk
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use pmat::mcp_server::snapshots::SnapshotManager;
+    /// use pmat::models::refactor::{RefactorStateMachine, RefactorConfig};
+    /// use std::path::PathBuf;
+    /// use tempfile::tempdir;
+    ///
+    /// let dir = tempdir().unwrap();
+    /// let manager = SnapshotManager::with_path(dir.path());
+    ///
+    /// let state = RefactorStateMachine::new(
+    ///     vec![PathBuf::from("src/main.rs")],
+    ///     RefactorConfig::default()
+    /// );
+    ///
+    /// let result = manager.save_snapshot(&state);
+    /// assert!(result.is_ok());
+    /// ```
     pub fn save_snapshot(&self, state: &RefactorStateMachine) -> Result<(), String> {
         debug!(
             "Saving refactor state snapshot to {:?} using {}",
@@ -58,6 +79,22 @@ impl SnapshotManager {
         Ok(())
     }
 
+    /// Loads a refactor state machine snapshot from disk
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use pmat::mcp_server::snapshots::SnapshotManager;
+    /// use tempfile::tempdir;
+    ///
+    /// let dir = tempdir().unwrap();
+    /// let manager = SnapshotManager::with_path(dir.path());
+    ///
+    /// match manager.load_snapshot() {
+    ///     Ok(state) => println!("Loaded state"),
+    ///     Err(e) => println!("No snapshot found: {}", e),
+    /// }
+    /// ```
     pub fn load_snapshot(&self) -> Result<RefactorStateMachine, String> {
         debug!(
             "Loading refactor state snapshot from {:?} using {}",
@@ -82,6 +119,20 @@ impl SnapshotManager {
         Ok(state)
     }
 
+    /// Removes a saved snapshot from disk
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use pmat::mcp_server::snapshots::SnapshotManager;
+    /// use tempfile::tempdir;
+    ///
+    /// let dir = tempdir().unwrap();
+    /// let manager = SnapshotManager::with_path(dir.path());
+    ///
+    /// let result = manager.remove_snapshot();
+    /// // Ok if file was removed or didn't exist
+    /// ```
     pub fn remove_snapshot(&self) -> Result<(), String> {
         if self.snapshot_path.exists() {
             fs::remove_file(&self.snapshot_path)

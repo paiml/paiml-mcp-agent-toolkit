@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "pmat": {
+      "command": "pmat",
+      "args": [],
+      "env": {},
+      "disabled": false,
+      "autoApprove": [
+        "generate_context",
+        "analyze_complexity",
+        "analyze_dead_code",
+        "analyze_satd",
+        "analyze_deep_context",
+        "analyze_code_churn",
+        "analyze_dag",
+        "analyze_lint_hotspot",
+        "generate_template",
+        "scaffold_project"
+      ]
+    }
+  }
+}

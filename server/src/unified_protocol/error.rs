@@ -230,11 +230,32 @@ thread_local! {
 }
 
 /// Set the current protocol context (used by middleware)
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::unified_protocol::{Protocol, error::{set_protocol_context, clear_protocol_context}};
+///
+/// set_protocol_context(Protocol::Http);
+/// // Protocol context is now set to HTTP
+/// clear_protocol_context();
+/// // Protocol context is now cleared
+/// ```
 pub fn set_protocol_context(protocol: Protocol) {
     CURRENT_PROTOCOL.with(|p| p.set(Some(protocol)));
 }
 
 /// Clear the protocol context
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::unified_protocol::{Protocol, error::{set_protocol_context, clear_protocol_context}};
+///
+/// set_protocol_context(Protocol::Mcp);
+/// clear_protocol_context();
+/// // Protocol context is now None
+/// ```
 pub fn clear_protocol_context() {
     CURRENT_PROTOCOL.with(|p| p.set(None));
 }

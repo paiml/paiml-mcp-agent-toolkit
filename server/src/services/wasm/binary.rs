@@ -127,6 +127,25 @@ impl Default for WasmBinaryAnalyzer {
 }
 
 /// Count occurrences of a byte pattern
+/// Counts non-overlapping occurrences of a byte pattern in data
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::wasm::binary::count_occurrences;
+///
+/// let data = b"hello world hello";
+/// let pattern = b"hello";
+///
+/// let count = count_occurrences(data, pattern);
+/// assert_eq!(count, 2);
+///
+/// // Pattern larger than data returns 0
+/// assert_eq!(count_occurrences(b"hi", b"hello"), 0);
+///
+/// // Single byte pattern
+/// assert_eq!(count_occurrences(b"aaa", b"a"), 3);
+/// ```
 pub fn count_occurrences(haystack: &[u8], needle: &[u8]) -> u32 {
     let mut count = 0;
     let mut pos = 0;

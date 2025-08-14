@@ -11,6 +11,8 @@ incremental = true   # Enable incremental compilation for faster rebuilds
 [env]
 # Remove test parallelism limit to use all cores
 # RUST_TEST_THREADS = "2"  # Commented out to use default parallelism
+# Increase stack size for tests to prevent stack overflow in CLI parsing
+RUST_MIN_STACK = "8388608"
 
 # This profile is used by `cargo nextest run --profile fast`
 [profile.fast]

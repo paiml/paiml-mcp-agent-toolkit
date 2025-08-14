@@ -177,9 +177,8 @@ struct DiagnosticSpan {
     column_end: u32,
     #[serde(default)]
     is_primary: bool,
-    #[serde(default)]
-    #[allow(dead_code)]
-    text: Vec<DiagnosticText>,
+    #[serde(default, rename = "text")]
+    _text: Vec<DiagnosticText>,
     #[serde(default)]
     suggested_replacement: Option<String>,
     #[serde(default)]
@@ -187,14 +186,33 @@ struct DiagnosticSpan {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 struct DiagnosticText {
-    text: String,
-    highlight_start: u32,
-    highlight_end: u32,
+    _text: String,
+    _highlight_start: u32,
+    _highlight_end: u32,
 }
 
 /// Handle analyze lint-hotspot command
+///
+/// This function analyzes a Rust project to find lint violations and can enforce
+/// quality standards. When the `--enforce` flag is set, the command will exit
+/// with a non-zero status code if ANY violations are found.
+///
+/// # Exit Status
+///
+/// The command exits with status code 1 in the following cases:
+/// - Quality gate fails (defect density exceeds max_density threshold)
+/// - When `--enforce` flag is set AND there are any violations
+///
+/// # Example
+///
+/// ```bash
+/// # Without enforce flag - only exits non-zero if quality gate fails
+/// pmat analyze lint-hotspot --max-density 5.0
+///
+/// # With enforce flag - exits non-zero if ANY violations exist
+/// pmat analyze lint-hotspot --enforce
+/// ```
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_lint_hotspot(
     project_path: PathBuf,
@@ -309,8 +327,19 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
         eprintln!("⚠️  Enforcement execution not yet implemented");
     }
 
-    // Exit with non-zero code if quality gate failed
-    if !final_result.quality_gate.passed {
+    // Exit with non-zero code if quality gate failed OR if enforce flag is set and there are violations
+    if !final_result.quality_gate.passed
+        || (params.enforce && final_result.total_project_violations > 0)
+    {
+        if params.enforce
+            && final_result.total_project_violations > 0
+            && final_result.quality_gate.passed
+        {
+            eprintln!(
+                "\n❌ Enforcement failed: {} violations found",
+                final_result.total_project_violations
+            );
+        }
         std::process::exit(1);
     }
 
@@ -346,12 +375,14 @@ async fn run_clippy_analysis(project_path: &Path, clippy_flags: &str) -> Result<
 
     let output = cmd.output().await.context("Failed to run cargo clippy")?;
 
-    // Check if clippy failed
-    if !output.status.success() {
+    // Check if clippy failed - but warnings are expected with -W flags
+    if !output.status.success() && output.status.code() != Some(101) {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        eprintln!("⚠️  Clippy failed with status: {:?}", output.status);
-        eprintln!("Stderr: {}", stderr);
-        // Continue anyway - we might have partial output
+        if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
+            eprintln!("⚠️  Clippy exited with status: {:?}", output.status);
+            eprintln!("Stderr: {}", stderr);
+        }
+        // Continue anyway - clippy returns non-zero on warnings with -W flags
     }
 
     // Parse JSON output line by line
@@ -492,10 +523,11 @@ async fn run_clippy_analysis_single_file(
     // Parse clippy flags
     let flags: Vec<&str> = clippy_flags.split_whitespace().collect();
 
-    // Run clippy with JSON output
+    // Run clippy with JSON output (include all targets for single file too)
     let mut cmd = Command::new("cargo");
     cmd.current_dir(project_path)
         .arg("clippy")
+        .arg("--all-targets")
         .arg("--message-format=json");
 
     // Add clippy flags after -- separator
@@ -668,9 +700,13 @@ fn process_diagnostic(
     if let Some(span) = primary_span {
         let mut file_path = PathBuf::from(&span.file_name);
 
-        // Handle workspace paths - if path starts with "server/", strip it
+        // Handle workspace paths - if path starts with "server/", strip it for consistent handling
+        // But preserve the original path structure for examples
         if let Ok(stripped) = file_path.strip_prefix("server/") {
             file_path = PathBuf::from(stripped);
+        } else if file_path.starts_with("examples/") {
+            // Keep examples/ paths as-is since they are relative to server/
+            file_path = PathBuf::from("server").join(&file_path);
         }
 
         // Skip non-Rust files (config files, etc.)
@@ -721,50 +757,6 @@ fn process_diagnostic(
 
         metrics.detailed_violations.push(violation);
     }
-}
-
-/// Find the file with highest defect density
-///
-/// # Errors
-///
-/// Returns an error if the operation fails
-#[allow(dead_code)]
-fn find_hotspot(file_metrics: HashMap<PathBuf, FileMetrics>) -> Result<LintHotspot> {
-    let mut hotspot_file = None;
-    let mut max_density = 0.0;
-
-    for (file_path, metrics) in file_metrics {
-        if metrics.sloc == 0 {
-            continue;
-        }
-
-        let total_violations = metrics.severity_counts.error
-            + metrics.severity_counts.warning
-            + metrics.severity_counts.suggestion;
-
-        let density = (total_violations as f64) / (metrics.sloc as f64);
-
-        if density > max_density {
-            max_density = density;
-
-            // Get top 10 lint violations
-            let mut top_lints: Vec<_> = metrics.violations.into_iter().collect();
-            top_lints.sort_by(|a, b| b.1.cmp(&a.1));
-            top_lints.truncate(10);
-
-            hotspot_file = Some(LintHotspot {
-                file: file_path,
-                defect_density: density,
-                total_violations,
-                sloc: metrics.sloc,
-                severity_distribution: metrics.severity_counts,
-                top_lints,
-                detailed_violations: vec![], // Old function doesn't collect detailed violations
-            });
-        }
-    }
-
-    hotspot_file.ok_or_else(|| anyhow::anyhow!("No lint violations found"))
 }
 
 /// Find the file with highest defect density (including detailed violations)
@@ -1282,4 +1274,146 @@ fn find_workspace_root(start_path: &Path) -> Result<Option<PathBuf>> {
     }
 
     Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_hotspot_result() -> LintHotspotResult {
+        LintHotspotResult {
+            hotspot: LintHotspot {
+                file: PathBuf::from("src/main.rs"),
+                defect_density: 0.05,
+                total_violations: 5,
+                sloc: 100,
+                severity_distribution: SeverityDistribution {
+                    error: 2,
+                    warning: 3,
+                    suggestion: 0,
+                    note: 0,
+                },
+                top_lints: vec![
+                    ("clippy::too_many_arguments".to_string(), 2),
+                    ("unused_variable".to_string(), 3),
+                ],
+                detailed_violations: vec![],
+            },
+            all_violations: vec![],
+            summary_by_file: std::collections::HashMap::new(),
+            total_project_violations: 5,
+            enforcement: None,
+            refactor_chain: None,
+            quality_gate: QualityGateStatus {
+                passed: true,
+                violations: vec![],
+                blocking: false,
+            },
+        }
+    }
+
+    /// Test that enforce flag exits with non-zero status when there are violations
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pmat::cli::handlers::lint_hotspot_handlers::should_exit_with_error;
+    ///
+    /// // With enforce flag and violations - should exit with error
+    /// let should_exit = should_exit_with_error(true, true, 5);
+    /// assert!(should_exit);
+    ///
+    /// // Without enforce flag but quality gate failed - should exit with error  
+    /// let should_exit = should_exit_with_error(false, false, 5);
+    /// assert!(should_exit);
+    ///
+    /// // Without enforce flag and no violations - should not exit with error
+    /// let should_exit = should_exit_with_error(true, false, 0);
+    /// assert!(!should_exit);
+    /// ```
+    pub fn should_exit_with_error(
+        quality_gate_passed: bool,
+        enforce: bool,
+        total_violations: usize,
+    ) -> bool {
+        !quality_gate_passed || (enforce && total_violations > 0)
+    }
+
+    #[test]
+    fn test_enforce_flag_behavior() {
+        // Test 1: Enforce flag with violations should trigger exit
+        assert!(should_exit_with_error(true, true, 5));
+
+        // Test 2: Enforce flag without violations should not trigger exit
+        assert!(!should_exit_with_error(true, true, 0));
+
+        // Test 3: No enforce flag with violations should not trigger exit
+        assert!(!should_exit_with_error(true, false, 5));
+
+        // Test 4: Quality gate failed should always trigger exit
+        assert!(should_exit_with_error(false, false, 0));
+        assert!(should_exit_with_error(false, true, 5));
+    }
+
+    #[test]
+    fn test_format_summary_with_violations() {
+        let result = create_test_hotspot_result();
+        let output = format_summary(&result, false, std::time::Duration::from_secs(1), 10).unwrap();
+
+        assert!(output.contains("# Lint Hotspot Analysis"));
+        assert!(output.contains("**Total Project Violations**: 5"));
+        assert!(output.contains("## Top Files with Lint Issues"));
+        assert!(output.contains("## Hottest File Details"));
+        assert!(output.contains("**File**: src/main.rs"));
+    }
+
+    #[test]
+    fn test_quality_gate_enforcement_scenario() {
+        let mut result = create_test_hotspot_result();
+
+        // Test case 1: Quality gate passes but enforce flag is set with violations
+        result.quality_gate.passed = true;
+        result.total_project_violations = 10;
+
+        let should_exit = should_exit_with_error(
+            result.quality_gate.passed,
+            true, // enforce flag
+            result.total_project_violations,
+        );
+        assert!(
+            should_exit,
+            "Should exit with error when enforce flag is set and violations exist"
+        );
+
+        // Test case 2: Quality gate passes, enforce flag set, no violations
+        result.total_project_violations = 0;
+
+        let should_exit = should_exit_with_error(
+            result.quality_gate.passed,
+            true, // enforce flag
+            result.total_project_violations,
+        );
+        assert!(
+            !should_exit,
+            "Should not exit with error when enforce flag is set but no violations"
+        );
+    }
+
+    #[test]
+    fn test_multiple_enforcement_scenarios() {
+        // Scenario 1: Quality gate failed, no enforce flag
+        assert!(should_exit_with_error(false, false, 0));
+
+        // Scenario 2: Quality gate passed, enforce flag, violations present
+        assert!(should_exit_with_error(true, true, 1));
+
+        // Scenario 3: Quality gate passed, enforce flag, no violations
+        assert!(!should_exit_with_error(true, true, 0));
+
+        // Scenario 4: Quality gate passed, no enforce flag, violations present
+        assert!(!should_exit_with_error(true, false, 10));
+
+        // Scenario 5: Quality gate failed, enforce flag, violations present
+        assert!(should_exit_with_error(false, true, 5));
+    }
 }

@@ -67,9 +67,9 @@ jobs:
       
       - name: Run CI pipeline (without Docker)
         run: |
-          make server-format
-          make server-lint
-          make server-check
+          make format
+          make lint
+          make check
           make release
           make test-fast  # Fast tests with nextest for better CI performance
       

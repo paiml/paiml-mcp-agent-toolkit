@@ -16,6 +16,27 @@ pub struct SymbolInfo {
 }
 
 /// Extract symbol information from an AST item
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::cli::symbol_table_helpers::extract_symbol_from_ast_item;
+/// use pmat::services::context::AstItem;
+///
+/// let item = AstItem::Function {
+///     name: "main".to_string(),
+///     visibility: "public".to_string(),
+///     is_async: false,
+///     line: 1,
+/// };
+///
+/// let result = extract_symbol_from_ast_item(&item);
+/// assert!(result.is_some());
+/// let (name, kind, line, visibility, is_async) = result.unwrap();
+/// assert_eq!(name, "main");
+/// assert_eq!(kind, "function");
+/// assert_eq!(line, 1);
+/// ```
 pub fn extract_symbol_from_ast_item(
     item: &AstItem,
 ) -> Option<(String, &'static str, usize, String, bool)> {
@@ -63,6 +84,37 @@ pub fn extract_symbol_from_ast_item(
 }
 
 /// Check if a symbol passes the type filter
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::cli::symbol_table_helpers::passes_type_filter;
+/// use pmat::cli::SymbolTypeFilter;
+///
+/// assert!(passes_type_filter("function", &Some(SymbolTypeFilter::Functions)));
+/// assert!(!passes_type_filter("class", &Some(SymbolTypeFilter::Functions)));
+/// assert!(passes_type_filter("anything", &None));
+/// ```
+/// Checks if a symbol kind passes the type filter
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::cli::symbol_table_helpers::passes_type_filter;
+/// use pmat::cli::SymbolTypeFilter;
+///
+/// // Function passes function filter
+/// assert!(passes_type_filter("function", &Some(SymbolTypeFilter::Functions)));
+///
+/// // Struct passes types filter
+/// assert!(passes_type_filter("struct", &Some(SymbolTypeFilter::Types)));
+///
+/// // Anything passes when no filter
+/// assert!(passes_type_filter("enum", &None));
+///
+/// // Function doesn't pass classes filter
+/// assert!(!passes_type_filter("function", &Some(SymbolTypeFilter::Classes)));
+/// ```
 pub fn passes_type_filter(kind: &str, filter: &Option<super::SymbolTypeFilter>) -> bool {
     match filter {
         Some(super::SymbolTypeFilter::Functions) => kind == "function",
@@ -75,6 +127,16 @@ pub fn passes_type_filter(kind: &str, filter: &Option<super::SymbolTypeFilter>) 
 }
 
 /// Check if a symbol passes the query filter
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::cli::symbol_table_helpers::passes_query_filter;
+///
+/// assert!(passes_query_filter("hello_world", &Some("hello".to_string())));
+/// assert!(!passes_query_filter("goodbye", &Some("hello".to_string())));
+/// assert!(passes_query_filter("anything", &None));
+/// ```
 pub fn passes_query_filter(name: &str, query: &Option<String>) -> bool {
     match query {
         Some(q) => name.to_lowercase().contains(&q.to_lowercase()),
@@ -120,6 +182,37 @@ pub fn extract_symbols_from_context(
 }
 
 /// Count symbols by type
+/// Count symbols by their type/kind
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::cli::symbol_table_helpers::{count_by_type, SymbolInfo};
+/// use std::path::PathBuf;
+///
+/// let symbols = vec![
+///     SymbolInfo {
+///         name: "main".to_string(),
+///         kind: "function".to_string(),
+///         file: PathBuf::from("src/main.rs"),
+///         line: 1,
+///         visibility: "public".to_string(),
+///         is_async: false,
+///     },
+///     SymbolInfo {
+///         name: "Config".to_string(),
+///         kind: "struct".to_string(),
+///         file: PathBuf::from("src/lib.rs"),
+///         line: 10,
+///         visibility: "public".to_string(),
+///         is_async: false,
+///     },
+/// ];
+///
+/// let counts = count_by_type(&symbols);
+/// assert_eq!(counts.get("function"), Some(&1));
+/// assert_eq!(counts.get("struct"), Some(&1));
+/// ```
 pub fn count_by_type(symbols: &[SymbolInfo]) -> std::collections::HashMap<String, usize> {
     let mut counts = std::collections::HashMap::with_capacity(64);
     for symbol in symbols {

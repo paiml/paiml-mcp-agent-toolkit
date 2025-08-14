@@ -10,12 +10,15 @@ pub mod command_dispatcher;
 pub mod command_structure;
 pub mod commands;
 pub mod coverage_helpers;
+pub mod dead_code_formatter;
+pub mod defect_formatter;
 pub mod defect_helpers;
 pub mod defect_prediction_helpers;
 pub mod diagnose;
 pub mod enums;
 pub mod formatting_helpers;
 pub mod handlers;
+pub mod language_analyzer;
 pub mod name_similarity_helpers;
 pub mod proof_annotation_formatter;
 pub mod proof_annotation_helpers;
@@ -78,6 +81,18 @@ pub struct EarlyCliArgs {
 }
 
 /// Parse CLI early to extract tracing configuration
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use pmat::cli::parse_early_for_tracing;
+///
+/// // This function reads from std::env::args() and RUST_LOG
+/// let args = parse_early_for_tracing();
+///
+/// // The function always returns valid EarlyCliArgs
+/// // Values depend on actual command line arguments
+/// ```
 pub fn parse_early_for_tracing() -> EarlyCliArgs {
     let args: Vec<String> = std::env::args().collect();
 
@@ -118,6 +133,22 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
 
 use std::path::Path;
 
+/// Detects the primary programming language of a project based on marker files
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::cli::detect_primary_language;
+/// use std::path::Path;
+/// use tempfile::tempdir;
+/// use std::fs;
+///
+/// let dir = tempdir().unwrap();
+/// fs::write(dir.path().join("Cargo.toml"), "[package]").unwrap();
+///
+/// let lang = detect_primary_language(dir.path());
+/// assert_eq!(lang, Some("rust".to_string()));
+/// ```
 pub fn detect_primary_language(path: &Path) -> Option<String> {
     use walkdir::WalkDir;
 
@@ -350,6 +381,18 @@ pub fn build_deep_context_config(
     })
 }
 
+/// Converts CLI DAG type to internal model DAG type
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::cli::{convert_dag_type, DeepContextDagType};
+/// use pmat::models::dag::DagType;
+///
+/// let cli_type = DeepContextDagType::CallGraph;
+/// let model_type = convert_dag_type(cli_type);
+/// assert!(matches!(model_type, DagType::CallGraph));
+/// ```
 pub fn convert_dag_type(dag_type: DeepContextDagType) -> crate::models::dag::DagType {
     match dag_type {
         DeepContextDagType::CallGraph => crate::models::dag::DagType::CallGraph,
@@ -359,6 +402,19 @@ pub fn convert_dag_type(dag_type: DeepContextDagType) -> crate::models::dag::Dag
     }
 }
 
+/// Converts cache strategy (currently a pass-through)
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::cli::{convert_cache_strategy, DeepContextCacheStrategy};
+///
+/// let strategy = DeepContextCacheStrategy::Normal;
+/// let converted = convert_cache_strategy(strategy);
+///
+/// // Currently returns the same strategy
+/// assert_eq!(converted, DeepContextCacheStrategy::Normal);
+/// ```
 pub fn convert_cache_strategy(strategy: DeepContextCacheStrategy) -> DeepContextCacheStrategy {
     // Just return the same strategy for now - proper cache strategy conversion
     // would need to be implemented based on the actual cache system
@@ -382,6 +438,18 @@ pub fn parse_analysis_filters(
     Ok((include_analysis, exclude_analysis))
 }
 
+/// Parses a string into an AnalysisType enum
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::cli::{parse_analysis_type, AnalysisType};
+///
+/// assert_eq!(parse_analysis_type("complexity").unwrap(), AnalysisType::Complexity);
+/// assert_eq!(parse_analysis_type("tdg").unwrap(), AnalysisType::TechnicalDebt);
+/// assert_eq!(parse_analysis_type("big-o").unwrap(), AnalysisType::BigO);
+/// assert!(parse_analysis_type("invalid").is_err());
+/// ```
 pub fn parse_analysis_type(s: &str) -> anyhow::Result<AnalysisType> {
     match s.to_lowercase().as_str() {
         "complexity" => Ok(AnalysisType::Complexity),
@@ -528,3 +596,6 @@ pub async fn handle_analyze_comprehensive(
     tracing::info!("Comprehensive analysis not yet implemented (from CLI mod)");
     Ok(())
 }
+
+#[cfg(test)]
+mod stubs_property_tests;

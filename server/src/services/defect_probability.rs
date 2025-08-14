@@ -1,3 +1,56 @@
+//! Defect probability prediction using multi-factor analysis.
+//!
+//! This module implements a defect probability calculator that combines multiple
+//! software metrics to predict the likelihood of defects in code files. It uses
+//! an empirically-derived weighted ensemble approach based on research in defect
+//! prediction and software quality metrics.
+//!
+//! # Prediction Model
+//!
+//! The model uses four primary factors:
+//! - **Code Churn** (35%): Frequency and magnitude of changes
+//! - **Complexity** (30%): Cyclomatic and cognitive complexity
+//! - **Duplication** (25%): Amount of duplicated code
+//! - **Coupling** (10%): Inter-module dependencies
+//!
+//! # Risk Levels
+//!
+//! Files are classified into risk levels based on probability:
+//! - **Critical** (>0.8): Immediate attention required
+//! - **High** (0.6-0.8): Should be refactored soon
+//! - **Medium** (0.4-0.6): Monitor and plan refactoring
+//! - **Low** (<0.4): Acceptable risk level
+//!
+//! # Example
+//!
+//! ```
+//! use pmat::services::defect_probability::{DefectProbabilityCalculator, FileMetrics};
+//!
+//! let calculator = DefectProbabilityCalculator::new();
+//!
+//! let metrics = FileMetrics {
+//!     file_path: "src/complex_module.rs".to_string(),
+//!     churn_score: 0.7,
+//!     complexity: 45.0,
+//!     duplicate_ratio: 0.2,
+//!     afferent_coupling: 5.0,
+//!     efferent_coupling: 12.0,
+//!     lines_of_code: 500,
+//!     cyclomatic_complexity: 25,
+//!     cognitive_complexity: 35,
+//! };
+//!
+//! let score = calculator.calculate(&metrics);
+//!
+//! println!("Defect probability: {:.2}%", score.probability * 100.0);
+//! println!("Risk level: {:?}", score.risk_level);
+//!
+//! // Show contributing factors
+//! for (factor, contribution) in &score.contributing_factors {
+//!     println!("{}: {:.2}%", factor, contribution * 100.0);
+//! }
+//! ```
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

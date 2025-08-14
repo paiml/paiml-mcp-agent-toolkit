@@ -1,3 +1,55 @@
+//! Coupling analysis for measuring component dependencies and stability.
+//!
+//! This module analyzes coupling between software components to identify
+//! architectural problems, maintenance hotspots, and stability issues.
+//! It implements Robert C. Martin's coupling metrics including afferent/efferent
+//! coupling and instability calculations.
+//!
+//! # Coupling Metrics
+//!
+//! - **Afferent Coupling (Ca)**: Number of components that depend on this component
+//! - **Efferent Coupling (Ce)**: Number of components this component depends on
+//! - **Instability (I)**: Ce / (Ca + Ce) - measures resistance to change
+//!   - I = 0: Maximally stable (many dependents, no dependencies)
+//!   - I = 1: Maximally unstable (no dependents, many dependencies)
+//!
+//! # Use Cases
+//!
+//! - Identify highly coupled components that are hard to change
+//! - Find stable abstractions vs volatile implementations
+//! - Detect architectural violations and circular dependencies
+//! - Guide refactoring efforts to reduce coupling
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::coupling_analyzer::CouplingAnalyzer;
+//! use pmat::models::dag::DependencyGraph;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let analyzer = CouplingAnalyzer::new();
+//! let graph = DependencyGraph::new();
+//!
+//! let report = analyzer.analyze(&graph).await?;
+//!
+//! // Find highly coupled files
+//! for (file, metrics) in &report.file_metrics {
+//!     if metrics.efferent_coupling > 10 {
+//!         println!("{} has high efferent coupling: {}",
+//!                  file.display(), metrics.efferent_coupling);
+//!     }
+//!     
+//!     if metrics.instability > 0.8 {
+//!         println!("{} is highly unstable: {:.2}",
+//!                  file.display(), metrics.instability);
+//!     }
+//! }
+//!
+//! println!("Average coupling: {:.2}", report.project_metrics.avg_efferent);
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::models::dag::DependencyGraph;
 use anyhow::Result;
 use std::collections::HashMap;

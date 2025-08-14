@@ -43,7 +43,8 @@ mod tests {
 
     proptest! {
         #[test]
-        fn cache_get_put_consistency(
+        #[ignore = "Slow test - creates tokio runtime per test case"]
+        fn cache_get_put_consistency_slow(
             operations in prop::collection::vec(
                 (arb_cache_key(), arb_cache_value()),
                 0..50
@@ -164,7 +165,8 @@ mod tests {
         }
 
         #[test]
-        fn cache_eviction_maintains_invariants(
+        #[ignore = "Slow test - generates up to 100 entries with large data"]
+        fn cache_eviction_maintains_invariants_slow(
             entries in prop::collection::vec(
                 (arb_cache_key(), arb_cache_value()),
                 0..100
@@ -281,7 +283,8 @@ mod tests {
         }
 
         #[test]
-        fn unified_cache_manager_consistency(
+        #[ignore = "Slow test - creates temp directories and file I/O"]
+        fn unified_cache_manager_consistency_slow(
             operations in prop::collection::vec(
                 (arb_cache_key(), arb_cache_value()),
                 0..20

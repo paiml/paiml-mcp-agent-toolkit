@@ -66,6 +66,9 @@ fn parse_documented_mcp_tools() -> Vec<DocumentedTool> {
         ("generate_context", "Generate project context"),
         ("analyze_dead_code", "Analyze dead code"),
         ("analyze_deep_context", "Analyze deep context"),
+        ("analyze_satd", "Analyze self-admitted technical debt"),
+        ("analyze_tdg", "Calculate technical debt gradient"),
+        ("analyze_lint_hotspot", "Analyze lint violation hotspots"),
         // Vectorized tools
         (
             "analyze_duplicates_vectorized",
@@ -207,6 +210,12 @@ fn send_mcp_request(request: Value) -> Result<McpResponse, String> {
 
 #[test]
 fn test_mcp_tools_match_documentation() {
+    // Skip only when SKIP_SLOW_TESTS is explicitly set to true
+    if std::env::var("SKIP_SLOW_TESTS").unwrap_or_default() == "true" {
+        eprintln!("Skipping MCP server test due to SKIP_SLOW_TESTS=true");
+        return;
+    }
+    
     // First, initialize the MCP connection
     let init_request = json!({
         "jsonrpc": "2.0",
@@ -270,6 +279,12 @@ fn test_mcp_tools_match_documentation() {
 
 #[test]
 fn test_mcp_tool_schemas_match_documentation() {
+    // Skip only when SKIP_SLOW_TESTS is explicitly set to true
+    if std::env::var("SKIP_SLOW_TESTS").unwrap_or_default() == "true" {
+        eprintln!("Skipping MCP server test due to SKIP_SLOW_TESTS=true");
+        return;
+    }
+    
     // Initialize connection
     let init_request = json!({
         "jsonrpc": "2.0",

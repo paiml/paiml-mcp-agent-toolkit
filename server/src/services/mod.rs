@@ -1,3 +1,45 @@
+//! Core services for code analysis and refactoring.
+//!
+//! This module contains all the analysis engines, detectors, and services that power
+//! PMAT's code quality toolkit. Services are designed following the Toyota Way
+//! principles of modularity and single responsibility.
+//!
+//! # Service Categories
+//!
+//! ## Analysis Services
+//! - **complexity**: Cyclomatic complexity analysis
+//! - **satd_detector**: Self-Admitted Technical Debt detection
+//! - **dead_code_detector**: Unused code identification
+//! - **duplicate_detector**: Code duplication analysis
+//! - **big_o_analyzer**: Algorithmic complexity analysis
+//! - **coupling_analyzer**: Module coupling metrics
+//!
+//! ## AST Services
+//! - **ast_rust**: Rust AST analysis
+//! - **ast_typescript**: TypeScript/JavaScript analysis
+//! - **ast_python**: Python code analysis
+//! - **ast_c/ast_cpp**: C/C++ analysis
+//! - **ast_kotlin**: Kotlin analysis
+//!
+//! ## Core Services
+//! - **context_generator**: AI-ready context generation
+//! - **refactor_engine**: Automated refactoring
+//! - **quality_gate**: Code quality enforcement
+//! - **template_engine**: Code generation templates
+//!
+//! # Example
+//!
+//! ```ignore
+//! use pmat::services::ast_rust::analyze_rust_file_with_complexity;
+//! use std::path::Path;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let result = analyze_rust_file_with_complexity(Path::new("src/main.rs")).await?;
+//! println!("Total complexity: {:?}", result.total_complexity);
+//! # Ok(())
+//! # }
+//! ```
+
 pub mod artifact_writer;
 pub mod ast_based_dependency_analyzer;
 #[cfg(feature = "c-ast")]
@@ -20,15 +62,21 @@ pub mod ast_typescript;
 #[cfg(feature = "typescript-ast")]
 pub mod ast_typescript_dispatch;
 pub mod big_o_analyzer;
+#[cfg(test)]
+mod big_o_analyzer_property_tests;
 pub mod cache;
 pub mod canonical_query;
 pub mod code_intelligence;
 pub mod complexity;
 pub mod complexity_patterns;
+#[cfg(test)]
+mod complexity_property_tests;
 pub mod context;
 pub mod coupling_analyzer;
 pub mod dag_builder;
 pub mod dead_code_analyzer;
+#[cfg(test)]
+mod dead_code_property_tests;
 pub mod dead_code_prover;
 pub mod deep_context;
 pub mod defect_analyzer;
@@ -39,9 +87,13 @@ pub mod defect_probability;
 pub mod deterministic_mermaid_engine;
 pub mod dogfooding_engine;
 pub mod duplicate_detector;
+#[cfg(test)]
+mod duplicate_detector_property_tests;
 pub mod embedded_templates;
 pub mod enhanced_reporting;
 pub mod file_classifier;
+#[cfg(test)]
+mod file_classifier_property_tests;
 pub mod file_discovery;
 pub mod fixed_graph_builder;
 pub mod git_analysis;
@@ -55,11 +107,17 @@ pub mod makefile_linter;
 pub mod mermaid_generator;
 pub mod parallel_git;
 pub mod parsed_file_cache;
+pub mod pdmt_quality_integration;
+pub mod pdmt_service;
 pub mod progress;
 pub mod project_analyzer;
 pub mod project_meta_detector;
 pub mod proof_annotator;
 pub mod quality_gates;
+pub use quality_gates as quality_gate;
+#[cfg(test)]
+mod deep_context_property_tests;
+pub mod quality_proxy;
 pub mod ranking;
 pub mod ranking_utils;
 pub mod readme_compressor;
@@ -86,6 +144,15 @@ mod ast_typescript_property_tests;
 
 #[cfg(test)]
 mod satd_property_tests;
+
+#[cfg(test)]
+mod mcp_property_tests;
+
+#[cfg(test)]
+mod git_clone_property_tests;
+
+#[cfg(test)]
+mod quality_proxy_property_tests;
 
 #[cfg(test)]
 mod tests {
