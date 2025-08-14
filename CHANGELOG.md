@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **GitHub Issues PDMT Integration**: Comprehensive GitHub Issues integration with quality-enforced development
+  - `GitHubIssuesService`: Full GitHub REST API v3 integration with authentication, rate limiting, and error recovery
+  - `PdmtGitHubService`: Deterministic issue template generation using PDMT approach with seed 42
+  - **Issue Types**: Support for feature, bug, enhancement, refactor, documentation, and testing issues
+  - **Quality Requirements**: Embedded quality gates, validation commands, and success criteria in issue templates
+  - **PDMT Metadata**: Structured metadata for automated processing and quality enforcement
+  - **Toyota Way Standards**: Zero SATD tolerance, complexity limits, and comprehensive testing requirements
+  - **MCP Foundation**: Basic MCP integration structure for future AI agent automation
 - **pmcp 1.2.0 Upgrade**: Updated to latest pmcp Rust MCP SDK
   - Enhanced performance and stability improvements
   - New features including improved WebSocket and HTTP support

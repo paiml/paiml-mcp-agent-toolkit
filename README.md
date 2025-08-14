@@ -78,6 +78,10 @@ cargo run --example quality_proxy_demo
 
 # NEW: PDMT Integration - Generate deterministic todos with quality enforcement
 pmat mcp-call pdmt_deterministic_todos --requirements '["implement auth", "add logging"]'
+
+# NEW: GitHub Issues Integration - Create quality-enforced GitHub issues
+pmat github create-issue --title "Implement Authentication System" --type feature --requirements '["OAuth integration", "JWT tokens"]'
+pmat github list-issues --state open --labels "enhancement,quality-gate"
 ```
 
 ### Using as a Library
@@ -144,6 +148,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   - Enforces 80%+ coverage, zero SATD, complexity limits
   - Includes validation commands and success criteria for each todo
   - Full integration with quality proxy for code validation
+- **GitHub Issues Integration** (v2.4) - PDMT-powered GitHub Issues workflow
+  - Create issues with deterministic PDMT templates (seed 42)
+  - Read, update, and manage GitHub issues programmatically
+  - Quality-enforced development workflow with embedded validation
+  - Toyota Way standards: zero SATD, complexity limits, comprehensive testing
 
 ### 📊 Quality Gates & CI/CD Integration
 - **Lint Hotspot Analysis** - Find files with highest defect density using EXTREME Clippy standards
@@ -334,6 +343,10 @@ Available MCP tools:
 - `analyze_graph_metrics` - Graph centrality and PageRank analysis
 - `refactor_interactive` - Interactive refactoring with explanations
 - `quality_proxy` - **NEW** Proxy AI-generated code through quality gates
+- `pdmt_deterministic_todos` - **NEW** Generate deterministic todos with PDMT
+- `github_create_issue` - **NEW** Create GitHub issues with PDMT templates
+- `github_read_issue` - **NEW** Read and parse GitHub issues
+- `github_list_issues` - **NEW** List repository issues with filtering
 
 #### 🔗 MCP Tool Composition (NEW)
 
