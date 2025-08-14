@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2025-08-14
+
+### Changed
+- **Dependencies**: Updated GitHub Actions dependencies
+  - actions/configure-pages: v4 → v5
+  - codecov/codecov-action: v4 → v5
+- **Quality Improvements**: Implemented systematic quality fixes using PDMT & MCP Quality Proxy
+  - Removed SATD items from production code
+  - Reduced complexity in analyze_project_files (40 → <8)
+  - Reduced complexity in format_incremental_coverage_summary (28 → <8)
+  - Fixed all failing doctests
+  - Achieved 42% reduction in max cyclomatic complexity
+  - All quality gates passing on modified files
+
+### Fixed
+- Corrected version numbering issue from accidental 2.0.1 release
+
 ## [2.3.0] - 2025-08-13
 
 ### Added

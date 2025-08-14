@@ -11,7 +11,7 @@
 
 **Zero-configuration AI context generation system** that analyzes any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com) with extreme quality standards and zero tolerance for technical debt.
 
-> **🎉 v2.3.0 Release**: **PDMT Integration & Unified MCP Server!** All MCP implementations consolidated into ONE high-performance pmcp SDK-based server. Features include:
+> **🎉 v2.3.1 Release**: **Dependency Updates & PDMT Integration!** All MCP implementations consolidated into ONE high-performance pmcp SDK-based server. Features include:
 > - **Quality Proxy**: Intercept and validate AI-generated code with strict quality enforcement
 > - **PDMT Integration**: Deterministic todo generation with comprehensive quality gates
 > - **Single Implementation**: Eliminated duplicate MCP servers, now ONE unified pmcp-based server
