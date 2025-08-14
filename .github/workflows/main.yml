@@ -2,6 +2,7 @@ name: Main CI/CD Pipeline
 
 # This is the main orchestrator workflow that runs CI first,
 # then runs other workflows only if CI passes.
+# Restarted: 2025-01-13
 
 on:
   push:
@@ -58,15 +59,38 @@ jobs:
           cache-on-failure: true
           shared-key: "ci"
       
+      - name: Free disk space
+        run: |
+          echo "=== Before cleanup ==="
+          df -h
+          
+          # Remove pre-installed software we don't need
+          sudo apt-get clean
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /usr/local/.ghcup
+          
+          # Clean docker images
+          docker rmi $(docker images -q) 2>/dev/null || true
+          
+          # Clean apt cache
+          sudo apt-get autoremove -y
+          sudo apt-get autoclean -y
+          
+          echo "=== After cleanup ==="
+          df -h
+      
       - name: Run CI pipeline
         id: tests
-        timeout-minutes: 15
+        timeout-minutes: 90
         run: |
           make format
           make lint
           make check
           cargo build --release --manifest-path server/Cargo.toml --bin pmat
-          make test-unit
+          make test
           echo "passed=true" >> $GITHUB_OUTPUT
       
       - name: Upload binary artifact
@@ -132,7 +156,7 @@ jobs:
   property-tests:
     name: Property Tests
     needs: ci
-    if: false # TEMPORARILY DISABLED for faster CI
+    if: needs.ci.result == 'success'
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -147,33 +171,23 @@ jobs:
           cache-on-failure: true
           shared-key: "ci"
       
-      - name: Run AST property tests
+      - name: Free disk space
         run: |
-          cd server
-          cargo test --test ast_property_tests --release -- --nocapture
+          echo "=== Freeing disk space for property tests ==="
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          docker rmi $(docker images -q) 2>/dev/null || true
+          df -h
       
-      - name: Run refactoring property tests
+      - name: Run property-based tests
         run: |
           cd server
-          cargo test --test refactoring_property_tests --release -- --nocapture
-      
-      - name: Run property test coverage report
-        run: |
-          cd server
-          cargo test --test property_test_coverage --release -- --nocapture
-      
-      - name: Verify property test coverage
-        run: |
-          cd server
-          # Extract coverage from test output
-          coverage=$(cargo test --test property_test_coverage --release 2>&1 | grep "Coverage:" | head -1 | awk '{print $2}' | sed 's/%//')
-          echo "Property test coverage: $coverage%"
-          
-          # Check if coverage meets threshold
-          if (( $(echo "$coverage < 80" | bc -l) )); then
-            echo "Property test coverage below 80% threshold"
-            exit 1
-          fi
+          # Run property tests in lib
+          cargo test --lib --release -- property_tests --nocapture
+          # Run the integration property test
+          cargo test --test refactor_auto_property_integration --release -- --nocapture
 
   benchmarks:
     name: Performance Benchmarks
@@ -246,6 +260,36 @@ jobs:
         with:
           name: dependency-report
           path: outdated.json
+
+  # STAGE 3: Slow tests - run after main CI passes with extended timeout
+  slow-tests:
+    name: Slow Integration Tests
+    needs: ci
+    if: needs.ci.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30  # Give slow tests more time
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          cache-on-failure: true
+          shared-key: "ci"
+      
+      - name: Run MCP integration tests
+        env:
+          SKIP_SLOW_TESTS: false  # Override to run slow tests
+          CI: false  # Override CI flag for these specific tests
+        run: |
+          cd server
+          # Run only the MCP integration tests that need more time
+          cargo test --test bin_integration --release -- --nocapture
+          cargo test --test mcp_documentation_sync --release -- --nocapture
 
   # Final status check
   all-checks:

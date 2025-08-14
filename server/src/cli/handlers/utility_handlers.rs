@@ -59,13 +59,6 @@ impl MarkdownBuilder {
         self.content.push_str("\n\n");
     }
 
-    #[allow(dead_code)]
-    fn add_bullet(&mut self, text: &str) {
-        self.content.push_str("- ");
-        self.content.push_str(text);
-        self.content.push('\n');
-    }
-
     fn add_metric(&mut self, label: &str, value: impl std::fmt::Display) {
         self.content
             .push_str(&format!("- **{}**: {}\n", label, value));

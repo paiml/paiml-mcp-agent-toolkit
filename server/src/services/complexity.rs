@@ -175,6 +175,21 @@ impl<'a> ComplexityVisitor<'a> {
 }
 
 /// Cache key computation for complexity metrics
+/// Computes a cache key for complexity analysis based on file path and content
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::complexity::compute_complexity_cache_key;
+/// use std::path::Path;
+///
+/// let path = Path::new("src/main.rs");
+/// let content = b"fn main() { println!(\"Hello\"); }";
+///
+/// let key = compute_complexity_cache_key(path, content);
+/// assert!(key.starts_with("cx:"));
+/// assert!(key.len() > 10);
+/// ```
 pub fn compute_complexity_cache_key(path: &Path, content: &[u8]) -> String {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -312,14 +327,111 @@ impl ComplexityRule for CognitiveComplexityRule {
 }
 
 /// Aggregate complexity results from multiple files
+/// Aggregates file-level complexity metrics into a comprehensive report
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::complexity::{aggregate_results, FileComplexityMetrics};
+///
+/// let metrics = vec![];
+/// let report = aggregate_results(metrics);
+/// assert_eq!(report.summary.total_files, 0);
+/// ```
+/// Aggregates complexity metrics from multiple files into a summary report
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::complexity::{aggregate_results, FileComplexityMetrics, ComplexityMetrics};
+///
+/// let file = FileComplexityMetrics {
+///     path: "src/main.rs".to_string(),
+///     total_complexity: ComplexityMetrics {
+///         cyclomatic: 10,
+///         cognitive: 8,
+///         nesting_max: 3,
+///         lines: 50,
+///     },
+///     functions: vec![],
+///     classes: vec![],
+/// };
+///
+/// let report = aggregate_results(vec![file]);
+/// assert_eq!(report.files.len(), 1);
+/// ```
 pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> ComplexityReport {
+    aggregate_results_with_thresholds(file_metrics, None, None)
+}
+
+/// Aggregate complexity results with custom thresholds
+///
+/// This function allows customizing the complexity thresholds used to determine violations,
+/// addressing issue #32 where `--max-cyclomatic` didn't affect report output.
+///
+/// # Arguments
+///
+/// * `file_metrics` - Vector of file complexity metrics to aggregate
+/// * `max_cyclomatic` - Optional custom maximum cyclomatic complexity threshold
+/// * `max_cognitive` - Optional custom maximum cognitive complexity threshold
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::complexity::*;
+///
+/// let metrics = ComplexityMetrics {
+///     cyclomatic: 25,
+///     cognitive: 30,
+///     nesting_max: 3,
+///     lines: 100,
+/// };
+///
+/// let func = FunctionComplexity {
+///     name: "complex_function".to_string(),
+///     line_start: 10,
+///     line_end: 50,
+///     metrics,
+/// };
+///
+/// let file = FileComplexityMetrics {
+///     path: "src/main.rs".to_string(),
+///     total_complexity: metrics,
+///     functions: vec![func],
+///     classes: vec![],
+/// };
+///
+/// // With custom threshold of 20, the function with complexity 25 will be a violation
+/// let report = aggregate_results_with_thresholds(vec![file.clone()], Some(20), None);
+/// assert_eq!(report.violations.len(), 2); // Both cyclomatic (25) and cognitive (30) exceed 20
+/// assert!(matches!(report.violations[0], Violation::Error { .. }));
+///
+/// // With cyclomatic threshold of 35 and cognitive threshold of 35, no violations
+/// let report2 = aggregate_results_with_thresholds(vec![file], Some(35), Some(35));
+/// assert_eq!(report2.violations.len(), 0);
+/// ```
+pub fn aggregate_results_with_thresholds(
+    file_metrics: Vec<FileComplexityMetrics>,
+    max_cyclomatic: Option<u16>,
+    max_cognitive: Option<u16>,
+) -> ComplexityReport {
     let mut all_cyclomatic: Vec<u16> = Vec::new();
     let mut all_cognitive: Vec<u16> = Vec::new();
     let mut violations = Vec::new();
     let mut hotspots = Vec::new();
     let mut total_functions = 0;
 
-    let thresholds = ComplexityThresholds::default();
+    // Use custom thresholds if provided
+    let mut thresholds = ComplexityThresholds::default();
+    if let Some(max_cyc) = max_cyclomatic {
+        thresholds.cyclomatic_warn = max_cyc.saturating_sub(5).max(1);
+        thresholds.cyclomatic_error = max_cyc;
+    }
+    if let Some(max_cog) = max_cognitive {
+        thresholds.cognitive_warn = max_cog.saturating_sub(5).max(1);
+        thresholds.cognitive_error = max_cog;
+    }
+
     let cyclomatic_rule = CyclomaticComplexityRule::new(&thresholds);
     let cognitive_rule = CognitiveComplexityRule::new(&thresholds);
 
@@ -462,7 +574,7 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust
 /// use pmat::services::complexity::*;
 ///
 /// let file_metrics = vec![
@@ -680,6 +792,34 @@ pub fn format_complexity_report(report: &ComplexityReport) -> String {
 }
 
 /// Format complexity report as SARIF for IDE integration
+/// Formats a complexity report as SARIF (Static Analysis Results Interchange Format)
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::complexity::{format_as_sarif, ComplexityReport, ComplexitySummary};
+///
+/// let report = ComplexityReport {
+///     summary: ComplexitySummary {
+///         total_files: 1,
+///         total_functions: 1,
+///         median_cyclomatic: 5.0,
+///         median_cognitive: 5.0,
+///         max_cyclomatic: 10,
+///         max_cognitive: 10,
+///         p90_cyclomatic: 8,
+///         p90_cognitive: 8,
+///         technical_debt_hours: 1.0,
+///     },
+///     violations: vec![],
+///     hotspots: vec![],
+///     files: vec![],
+/// };
+///
+/// let sarif = format_as_sarif(&report).unwrap();
+/// assert!(sarif.contains("\"version\": \"2.1.0\""));
+/// assert!(sarif.contains("cyclomatic-complexity"));
+/// ```
 pub fn format_as_sarif(report: &ComplexityReport) -> Result<String, serde_json::Error> {
     use serde_json::json;
 

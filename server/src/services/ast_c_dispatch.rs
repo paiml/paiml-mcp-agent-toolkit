@@ -576,6 +576,16 @@ impl Default for CAstDispatchParser {
 }
 
 impl CAstDispatchParser {
+    /// Creates a new C AST parser with dispatch tables
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::ast_c_dispatch::CAstDispatchParser;
+    ///
+    /// let parser = CAstDispatchParser::new();
+    /// // Parser is ready to analyze C code
+    /// ```
     pub fn new() -> Self {
         #[cfg(feature = "c-ast")]
         {

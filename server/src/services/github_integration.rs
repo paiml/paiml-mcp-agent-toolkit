@@ -195,6 +195,28 @@ impl GitHubClient {
 }
 
 /// Parse a GitHub issue to extract relevant information
+/// Parses a GitHub issue to extract file paths and keywords
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::github_integration::{parse_issue, GitHubIssue};
+///
+/// let issue = GitHubIssue {
+///     number: 123,
+///     title: "Optimize performance in src/main.rs".to_string(),
+///     body: Some("The function is slow".to_string()),
+///     state: "open".to_string(),
+///     html_url: "https://github.com/repo/issues/123".to_string(),
+///     created_at: "2024-01-01".to_string(),
+///     updated_at: "2024-01-01".to_string(),
+///     labels: vec![],
+/// };
+///
+/// let parsed = parse_issue(issue);
+/// assert!(parsed.file_paths.contains(&"src/main.rs".to_string()));
+/// assert!(!parsed.keywords.is_empty());
+/// ```
 pub fn parse_issue(issue: GitHubIssue) -> ParsedIssue {
     let mut file_paths = Vec::new();
     let mut keywords = HashMap::new();

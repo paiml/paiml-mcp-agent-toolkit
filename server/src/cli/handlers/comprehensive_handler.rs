@@ -47,6 +47,7 @@ use tracing::{info, warn};
 /// handle_analyze_comprehensive(
 ///     PathBuf::from("."),
 ///     None,
+///     vec![],  // files
 ///     ComprehensiveOutputFormat::Summary,
 ///     true,  // include_duplicates
 ///     true,  // include_dead_code
@@ -66,6 +67,7 @@ use tracing::{info, warn};
 /// handle_analyze_comprehensive(
 ///     PathBuf::from("."),
 ///     Some(PathBuf::from("src/main.rs")),
+///     vec![],  // files
 ///     ComprehensiveOutputFormat::Detailed,
 ///     true,  // include_duplicates
 ///     true,  // include_dead_code
@@ -87,6 +89,7 @@ use tracing::{info, warn};
 pub async fn handle_analyze_comprehensive(
     project_path: PathBuf,
     file: Option<PathBuf>,
+    files: Vec<PathBuf>,
     format: ComprehensiveOutputFormat,
     include_duplicates: bool,
     include_dead_code: bool,
@@ -104,16 +107,23 @@ pub async fn handle_analyze_comprehensive(
     let start_time = Instant::now();
 
     info!("🔍 Starting comprehensive analysis");
-    
-    // Determine if we're analyzing a single file or whole project
-    let (analysis_path, single_file_mode) = if let Some(ref file_path) = file {
+
+    // Determine analysis mode: single file, multiple files (MCP), or whole project
+    let (analysis_path, single_file_mode, target_files) = if let Some(ref file_path) = file {
         info!("📄 Single file mode: {}", file_path.display());
         // For single file, we need to find the project root
         let project_root = find_project_root(file_path)?;
-        (project_root, true)
+        (project_root, true, vec![file_path.clone()])
+    } else if !files.is_empty() {
+        info!(
+            "📋 Multi-file mode (MCP composition): {} files",
+            files.len()
+        );
+        // For multiple files, use project root and filter by target files
+        (project_path.clone(), true, files.clone())
     } else {
         info!("📂 Project path: {}", project_path.display());
-        (project_path.clone(), false)
+        (project_path.clone(), false, vec![])
     };
 
     // Log enabled analyses
@@ -147,20 +157,24 @@ pub async fn handle_analyze_comprehensive(
     // Generate comprehensive report
     let report = service.generate_report(&analysis_path).await?;
 
-    // Apply filters based on confidence threshold and single file mode
+    // Apply filters based on confidence threshold and file targeting
     let filtered_defects: Vec<_> = report
         .defects
         .iter()
         .filter(|d| {
-            // Filter by single file if in single file mode
-            if single_file_mode {
-                if let Some(ref target_file) = file {
-                    if d.file_path != *target_file {
-                        return false;
-                    }
+            // Filter by target files if in single/multi-file mode (MCP composition)
+            if single_file_mode && !target_files.is_empty() {
+                // Check if defect file matches any of our target files
+                let matches_target = target_files.iter().any(|target| {
+                    d.file_path == *target
+                        || d.file_path.ends_with(target)
+                        || target.ends_with(&d.file_path)
+                });
+                if !matches_target {
+                    return false;
                 }
             }
-            
+
             // Convert confidence from metrics if available
             let confidence = d.metrics.get("confidence").copied().unwrap_or(100.0) as f32;
             confidence >= confidence_threshold
@@ -311,7 +325,9 @@ pub async fn handle_analyze_comprehensive(
 /// Find the project root by looking for Cargo.toml
 fn find_project_root(start_path: &Path) -> Result<PathBuf> {
     let mut current = if start_path.is_file() {
-        start_path.parent().context("File has no parent directory")?
+        start_path
+            .parent()
+            .context("File has no parent directory")?
     } else {
         start_path
     };
@@ -359,30 +375,34 @@ mod tests {
         let project_root = temp_dir.path();
         let src_dir = project_root.join("src");
         let sub_dir = src_dir.join("module");
-        
+
         // Create directories
         fs::create_dir_all(&sub_dir).unwrap();
-        
+
         // Create Cargo.toml at project root
-        fs::write(project_root.join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
-        
+        fs::write(
+            project_root.join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
+
         // Create a test file deep in the structure
         let test_file = sub_dir.join("test.rs");
         fs::write(&test_file, "// test file").unwrap();
-        
+
         // Test finding project root from file
         let found_root = find_project_root(&test_file).unwrap();
         assert_eq!(found_root, project_root);
-        
+
         // Test finding project root from directory
         let found_root = find_project_root(&sub_dir).unwrap();
         assert_eq!(found_root, project_root);
-        
+
         // Test when no Cargo.toml exists
         let isolated_dir = TempDir::new().unwrap();
         let isolated_file = isolated_dir.path().join("isolated.rs");
         fs::write(&isolated_file, "// isolated file").unwrap();
-        
+
         let found_root = find_project_root(&isolated_file).unwrap();
         assert_eq!(found_root, isolated_dir.path());
     }

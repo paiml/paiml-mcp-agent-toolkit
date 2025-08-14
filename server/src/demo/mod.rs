@@ -1,3 +1,38 @@
+//! Demo and reporting system for PMAT.
+//!
+//! This module provides interactive demonstrations and visual reports of PMAT's
+//! analysis capabilities. It supports multiple output formats and protocols,
+//! allowing users to explore analysis results through web interfaces, CLI reports,
+//! or programmatic APIs.
+//!
+//! # Architecture
+//!
+//! - **runner**: Orchestrates demo execution and analysis pipelines
+//! - **server**: Local web server for interactive HTML reports
+//! - **templates**: Report generation templates (HTML, Markdown, JSON)
+//! - **adapters**: Protocol-specific output adapters
+//! - **assets**: Static assets for web interface
+//!
+//! # Example
+//!
+//! ```ignore
+//! use pmat::demo::runner::DemoRunner;
+//! use std::path::PathBuf;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Run demo on a local repository
+//! let repo_path = PathBuf::from(".");
+//!
+//! // Create a runner and analyze
+//! let runner = DemoRunner::new();
+//! let report = runner.analyze(&repo_path).await?;
+//!
+//! // Generate HTML report
+//! runner.export_html(&report, "report.html")?;
+//! # Ok(())
+//! # }
+//! ```
+
 pub mod adapters;
 pub mod assets;
 pub mod config;

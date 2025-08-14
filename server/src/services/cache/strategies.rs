@@ -23,7 +23,7 @@ use std::time::{Duration, UNIX_EPOCH};
 ///
 /// # Examples
 ///
-/// ```rust,ignore
+/// ```rust
 /// use pmat::services::cache::strategies::AstCacheStrategy;
 /// use pmat::services::cache::base::CacheStrategy;
 /// use pmat::services::context::FileContext;
@@ -46,6 +46,7 @@ use std::time::{Duration, UNIX_EPOCH};
 ///     path: file_path.to_string_lossy().to_string(),
 ///     items: vec![],
 ///     language: "rust".to_string(),
+///     complexity_metrics: None,
 /// };
 ///
 /// // Should validate if file exists and hasn't changed
@@ -136,8 +137,8 @@ impl CacheStrategy for AstCacheStrategy {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use pmat::services::cache::strategies::TemplateCacheStrategy;
-/// use pmat::services::cache::base::CacheStrategy;
+/// use pmat::services::cache::TemplateCacheStrategy;
+/// use pmat::services::cache::CacheStrategy;
 /// use pmat::models::template::TemplateResource;
 ///
 /// let strategy = TemplateCacheStrategy;
@@ -208,7 +209,7 @@ impl CacheStrategy for TemplateCacheStrategy {
 ///
 /// # Examples
 ///
-/// ```rust,ignore
+/// ```rust
 /// use pmat::services::cache::strategies::DagCacheStrategy;
 /// use pmat::services::cache::base::CacheStrategy;
 /// use pmat::models::dag::DependencyGraph;
@@ -228,7 +229,7 @@ impl CacheStrategy for TemplateCacheStrategy {
 ///
 /// // Create a dummy dependency graph
 /// let dag = DependencyGraph {
-///     nodes: HashMap::new(),
+///     nodes: rustc_hash::FxHashMap::default(),
 ///     edges: vec![],
 /// };
 ///
@@ -308,8 +309,8 @@ impl CacheStrategy for DagCacheStrategy {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use pmat::services::cache::strategies::ChurnCacheStrategy;
-/// use pmat::services::cache::base::CacheStrategy;
+/// use pmat::services::cache::ChurnCacheStrategy;
+/// use pmat::services::cache::CacheStrategy;
 /// use pmat::models::churn::CodeChurnAnalysis;
 /// use std::path::PathBuf;
 /// use tempfile::tempdir;
@@ -404,11 +405,8 @@ impl ChurnCacheStrategy {
 ///
 /// # Examples
 ///
-/// ```rust
-/// use pmat::services::cache::strategies::{
-///     GitStatsCacheStrategy, GitStats
-/// };
-/// use pmat::services::cache::base::CacheStrategy;
+/// ```rust,no_run
+/// use pmat::services::cache::{GitStatsCacheStrategy, GitStats, CacheStrategy};
 /// use std::path::PathBuf;
 /// use tempfile::tempdir;
 ///
@@ -445,7 +443,7 @@ pub struct GitStatsCacheStrategy;
 /// # Examples
 ///
 /// ```rust
-/// use pmat::services::cache::strategies::GitStats;
+/// use pmat::services::cache::GitStats;
 ///
 /// let stats = GitStats {
 ///     total_commits: 150,

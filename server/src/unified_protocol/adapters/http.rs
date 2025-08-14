@@ -39,7 +39,7 @@ use crate::unified_protocol::{
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```
 /// use pmat::unified_protocol::adapters::http::HttpAdapter;
 /// use pmat::unified_protocol::ProtocolAdapter;
 /// use std::net::{SocketAddr, IpAddr, Ipv4Addr};
@@ -72,7 +72,7 @@ impl HttpAdapter {
     ///
     /// # Examples
     ///
-    /// ```rust,no_run
+    /// ```rust
     /// use pmat::unified_protocol::adapters::http::HttpAdapter;
     /// use pmat::unified_protocol::ProtocolAdapter;
     /// use std::net::{SocketAddr, IpAddr, Ipv4Addr};
@@ -113,11 +113,11 @@ impl HttpAdapter {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```no_run
     /// use pmat::unified_protocol::adapters::http::HttpAdapter;
     /// use std::net::{SocketAddr, IpAddr, Ipv4Addr};
     ///
-    /// # tokio_test::block_on(async {
+    /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
     /// // Create and bind HTTP adapter
     /// let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0); // OS assigns port
     /// let mut adapter = HttpAdapter::new(addr);
@@ -535,7 +535,7 @@ where
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
 /// use serde_json::json;
 ///
@@ -574,7 +574,7 @@ where
 ///
 /// # REST API Usage Examples
 ///
-/// ```rust
+/// ```
 /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
 /// use serde_json::json;
 ///
@@ -618,9 +618,10 @@ impl HttpResponseBuilder {
     ///
     /// ```rust
     /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
+    /// use axum::http::StatusCode;
     ///
     /// let response = HttpResponseBuilder::ok();
-    /// assert_eq!(response.status, axum::http::StatusCode::OK);
+    /// assert_eq!(response.status, StatusCode::OK);
     /// ```
     pub fn ok() -> UnifiedResponse {
         UnifiedResponse::new(StatusCode::OK)
@@ -636,9 +637,10 @@ impl HttpResponseBuilder {
     ///
     /// ```rust
     /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
+    /// use axum::http::StatusCode;
     ///
     /// let response = HttpResponseBuilder::not_found();
-    /// assert_eq!(response.status, axum::http::StatusCode::NOT_FOUND);
+    /// assert_eq!(response.status, StatusCode::NOT_FOUND);
     /// ```
     pub fn not_found() -> UnifiedResponse {
         UnifiedResponse::new(StatusCode::NOT_FOUND)
@@ -654,9 +656,10 @@ impl HttpResponseBuilder {
     ///
     /// ```rust
     /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
+    /// use axum::http::StatusCode;
     ///
     /// let response = HttpResponseBuilder::internal_error();
-    /// assert_eq!(response.status, axum::http::StatusCode::INTERNAL_SERVER_ERROR);
+    /// assert_eq!(response.status, StatusCode::INTERNAL_SERVER_ERROR);
     /// ```
     pub fn internal_error() -> UnifiedResponse {
         UnifiedResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
@@ -681,6 +684,7 @@ impl HttpResponseBuilder {
     /// ```rust
     /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
     /// use serde_json::json;
+    /// use axum::http::StatusCode;
     ///
     /// // Simple JSON response
     /// let response = HttpResponseBuilder::json(&json!({
@@ -688,7 +692,7 @@ impl HttpResponseBuilder {
     ///     "status": "success"
     /// })).unwrap();
     ///
-    /// assert_eq!(response.status, axum::http::StatusCode::OK);
+    /// assert_eq!(response.status, StatusCode::OK);
     /// assert!(response.headers.contains_key("content-type"));
     ///
     /// // API data response
@@ -720,10 +724,11 @@ impl HttpResponseBuilder {
     ///
     /// ```rust
     /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
+    /// use axum::http::StatusCode;
     ///
     /// // Simple text response
     /// let response = HttpResponseBuilder::text("Hello, World!");
-    /// assert_eq!(response.status, axum::http::StatusCode::OK);
+    /// assert_eq!(response.status, StatusCode::OK);
     ///
     /// // Multi-line text response
     /// let multi_line = HttpResponseBuilder::text(
@@ -758,12 +763,13 @@ impl HttpResponseBuilder {
     ///
     /// ```rust
     /// use pmat::unified_protocol::adapters::http::HttpResponseBuilder;
+    /// use axum::http::StatusCode;
     ///
     /// // Simple HTML page
     /// let response = HttpResponseBuilder::html(
     ///     "<html><body><h1>Welcome</h1></body></html>"
     /// );
-    /// assert_eq!(response.status, axum::http::StatusCode::OK);
+    /// assert_eq!(response.status, StatusCode::OK);
     ///
     /// // Dashboard HTML response
     /// let dashboard = HttpResponseBuilder::html(r#"

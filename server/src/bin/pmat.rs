@@ -74,18 +74,13 @@ async fn main() -> Result<()> {
 
     match detect_execution_mode() {
         ExecutionMode::Mcp => {
-            // Check if we should run the refactor MCP server
-            if std::env::var("PMAT_REFACTOR_MCP").is_ok() {
-                info!("Running in Refactor MCP server mode");
-                let refactor_server = pmat::mcp_server::McpServer::new();
-                refactor_server
-                    .run()
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{}", e))
-            } else {
-                info!("Running in standard MCP server mode");
-                pmat::run_mcp_server(server).await
-            }
+            info!("Running unified MCP server (pmcp SDK)");
+            let unified_server = pmat::mcp_pmcp::UnifiedServer::new()
+                .map_err(|e| anyhow::anyhow!("Failed to create unified server: {}", e))?;
+            unified_server
+                .run()
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))
         }
         ExecutionMode::Cli => {
             info!("Running in CLI mode");

@@ -2,6 +2,8 @@
 
 Complete reference for all PMAT command-line interface commands and options.
 
+> **v2.2.0+**: Unified MCP server architecture with integrated quality proxy and single pmcp-based implementation ✅
+
 ## Table of Contents
 
 - [Installation](#installation)
@@ -133,19 +135,22 @@ Examples:
 Generate comprehensive project context for AI understanding.
 
 ```bash
-pmat context [OPTIONS] <PATH>
+pmat context [OPTIONS]
 
 Options:
-  --format <FORMAT>           Output format (markdown, json, yaml)
-  --include-dependencies      Include dependency analysis
-  --max-depth <DEPTH>         Maximum analysis depth
-  --exclude <PATTERNS>        Exclude patterns (comma-separated)
-  --language <LANG>           Force specific language detection
+  -t, --toolchain <TOOLCHAIN>    Target toolchain (auto-detected if not specified)
+  -p, --project-path <PATH>      Project path to analyze (default: .)
+  -o, --output <FILE>            Output file path
+  --format <FORMAT>              Output format (markdown, json, yaml) (default: markdown)
+  --include-large-files          Include large files (>500KB) that are normally skipped
+  --skip-expensive-metrics       Skip expensive metrics (TDG, complexity analysis) for faster execution
 
 Examples:
-  pmat context . --format markdown
-  pmat context ./src --include-dependencies
-  pmat context . --exclude "tests,examples" --max-depth 3
+  pmat context                                   # Analyze current directory
+  pmat context --format json                     # JSON output
+  pmat context -p ./src --output context.md      # Analyze specific path
+  pmat context --skip-expensive-metrics          # Fast mode for large projects
+  pmat context --include-large-files             # Include large files in analysis
 ```
 
 #### `demo`
@@ -268,23 +273,34 @@ All analyze commands support these common options:
 ### Core Analysis
 
 #### `analyze complexity`
-Analyze code complexity metrics.
+Analyze code complexity metrics with MCP tool composition support.
 
 ```bash
 pmat analyze complexity [OPTIONS] <PATH>
 
 Options:
-  --max-complexity <NUM>     Maximum acceptable complexity (default: 10)
-  --cognitive                Include cognitive complexity
+  --file <FILE>              Analyze single file (conflicts with --files)
+  --files <FILES>            Analyze specific files (comma-separated, for MCP composition)
+  --max-cyclomatic <NUM>     Maximum cyclomatic complexity (default: 20)
+  --max-cognitive <NUM>      Maximum cognitive complexity (default: 15)
   --functions-only           Only analyze functions (not files)
   --top-files <NUM>          Show top N most complex files
   --threshold <NUM>          Complexity threshold for reporting
   --profile <PROFILE>        Quality profile (standard, strict, extreme)
+  --fail-on-violation        Exit with code 1 if violations found (CI/CD mode)
 
 Examples:
   pmat analyze complexity .
-  pmat analyze complexity ./src --max-complexity 15 --top-files 10
-  pmat analyze complexity . --format json --cognitive
+  pmat analyze complexity ./src --max-cyclomatic 15 --top-files 10
+  pmat analyze complexity . --format json --max-cognitive 10
+  
+  # CI/CD Integration
+  pmat analyze complexity . --max-cyclomatic 15 --fail-on-violation
+  pmat analyze complexity . --max-cognitive 10 --fail-on-violation --format json
+  
+  # MCP Tool Composition
+  pmat analyze complexity . --files src/complex.rs,src/legacy.rs --format json
+  pmat analyze complexity . --file src/hotspot.rs
 ```
 
 #### `analyze churn`
@@ -332,15 +348,21 @@ Detect unused and unreachable code.
 pmat analyze dead-code [OPTIONS] <PATH>
 
 Options:
-  --aggressive               Use aggressive analysis
-  --exclude-tests            Exclude test files from analysis
-  --public-only              Only check public items
-  --confidence <LEVEL>       Confidence level (low, medium, high)
+  --top-files <NUM>          Show top N files by dead code (default: show all)
+  --include-unreachable      Include unreachable code detection
+  --min-dead-lines <NUM>     Minimum dead lines to report (default: 5)
+  --include-tests            Include test files in analysis
+  --fail-on-violation        Exit with code 1 if violations found (CI/CD mode)
+  --max-percentage <NUM>     Maximum dead code percentage allowed (default: 15.0)
 
 Examples:
   pmat analyze dead-code .
-  pmat analyze dead-code ./src --aggressive --exclude-tests
-  pmat analyze dead-code . --public-only --format json
+  pmat analyze dead-code ./src --top-files 10 --include-unreachable
+  pmat analyze dead-code . --min-dead-lines 3 --format json
+  
+  # CI/CD Integration
+  pmat analyze dead-code . --max-percentage 10.0 --fail-on-violation
+  pmat analyze dead-code . --max-percentage 5.0 --fail-on-violation --format json
 ```
 
 ### Advanced Analysis
@@ -352,32 +374,59 @@ Detect Self-Admitted Technical Debt in comments.
 pmat analyze satd [OPTIONS] <PATH>
 
 Options:
-  --strict                   Use strict detection mode
-  --patterns <FILE>          Custom SATD patterns file
-  --confidence <NUM>         Minimum confidence score (0.0-1.0)
-  --include-resolved         Include resolved debt markers
+  --severity <LEVEL>         Filter by severity (low, medium, high, critical)
+  --critical-only            Show only critical SATD
+  --include-tests            Include test files in analysis
+  --strict                   Use strict detection mode (catches more patterns)
+  --evolution                Track SATD evolution over time
+  --days <NUM>               Days to look back for evolution (default: 30)
+  --metrics                  Include detailed metrics
+  --top-files <NUM>          Show top N files by SATD count (0 = all)
+  --fail-on-violation        Exit with code 1 if ANY SATD found (CI/CD mode)
 
 Examples:
   pmat analyze satd .
   pmat analyze satd . --strict --format json
-  pmat analyze satd ./src --confidence 0.8
+  pmat analyze satd ./src --critical-only
+  pmat analyze satd . --evolution --days 60
+  
+  # CI/CD Integration (zero tolerance)
+  pmat analyze satd . --strict --fail-on-violation
+  pmat analyze satd . --critical-only --fail-on-violation --format json
 ```
 
 #### `analyze deep-context`
-Comprehensive analysis with ML-based defect detection.
+Generate comprehensive deep context analysis with defect detection.
 
 ```bash
-pmat analyze deep-context [OPTIONS] <PATH>
+pmat analyze deep-context [OPTIONS]
 
 Options:
-  --include-ml               Include ML predictions
-  --max-depth <NUM>          Analysis depth
-  --defect-threshold <NUM>   Defect probability threshold
-  --model <MODEL>            ML model to use
+  -p, --project-path <PATH>      Project path to analyze (default: .)
+  -o, --output <FILE>            Output file path
+  --format <FORMAT>              Output format (markdown, json, sarif) (default: markdown)
+  --full                         Enable full detailed report (default is terse)
+  --include <LIST>               Comma-separated list of analyses to include
+  --exclude <LIST>               Comma-separated list of analyses to exclude
+  --period-days <NUM>            Days of history for git analysis (default: 30)
+  --dag-type <TYPE>              DAG type for dependency analysis (call-graph, import-graph, inheritance, full-dependency) (default: call-graph)
+  --max-depth <NUM>              Maximum directory traversal depth
+  --include-pattern <PATTERNS>   Include file patterns (can be specified multiple times)
+  --exclude-pattern <PATTERNS>   Exclude file patterns (can be specified multiple times)
+  --cache-strategy <STRATEGY>    Cache usage strategy (normal, force-refresh, offline) (default: normal)
+  --parallel                     Enable parallel processing
+  --verbose                      Enable verbose logging
+  --top-files <NUM>              Number of top files to show in summary (default: 10)
 
 Examples:
-  pmat analyze deep-context . --include-ml
-  pmat analyze deep-context ./src --max-depth 5 --format json
+  pmat analyze deep-context                          # Basic analysis of current directory
+  pmat analyze deep-context --full                   # Full detailed analysis
+  pmat analyze deep-context --format json            # JSON output for tool integration
+  pmat analyze deep-context --output report.md       # Save to file
+  pmat analyze deep-context --period-days 90         # Analyze 90 days of git history
+  pmat analyze deep-context --include-pattern "*.rs" # Only analyze Rust files
+  pmat analyze deep-context --exclude-pattern "**/tests/**" # Exclude test directories
+  pmat analyze deep-context --top-files 20           # Show top 20 files by complexity
 ```
 
 #### `analyze tdg`
@@ -399,19 +448,28 @@ Examples:
 ```
 
 #### `analyze lint-hotspot`
-Find files with highest defect density.
+Find the file with highest defect density (lint violations per line).
 
 ```bash
-pmat analyze lint-hotspot [OPTIONS] <PATH>
+pmat analyze lint-hotspot [OPTIONS] [PATH]
 
 Options:
-  --top-files <NUM>          Number of hotspots to show (default: 10)
-  --min-violations <NUM>     Minimum violations per file
-  --weight-by-complexity     Weight violations by complexity
+  --file <FILE>              Analyze a specific file instead of finding the hotspot
+  --format <FORMAT>          Output format (summary, detailed, json, sarif, enforcement-json)
+  --max-density <NUM>        Maximum allowed defect density (default: 5.0 violations/100 lines)
+  --clippy-flags <FLAGS>     Custom clippy flags (default: extreme quality mode)
+  --top-files <NUM>          Number of top files to show by density (0 = all, default: 10)
+  --enforce                  Enforce quality standards (exit non-zero if violations found)
+  --dry-run                  Show what would be fixed without making changes
+  --min-confidence <NUM>     Minimum confidence for automated fixes (0.0-1.0, default: 0.8)
+  --enforcement-metadata     Include enforcement metadata in output
 
 Examples:
-  pmat analyze lint-hotspot . --top-files 20
-  pmat analyze lint-hotspot ./src --weight-by-complexity
+  pmat analyze lint-hotspot                                    # Find hotspot in current directory
+  pmat analyze lint-hotspot ./src --top-files 5               # Show top 5 files by defect density
+  pmat analyze lint-hotspot --file src/main.rs --format detailed  # Analyze specific file
+  pmat analyze lint-hotspot . --enforce --max-density 3.0     # Enforce stricter quality gate
+  pmat analyze lint-hotspot . --format json                   # Machine-readable output
 ```
 
 #### `analyze makefile`
@@ -483,13 +541,14 @@ Examples:
 ```
 
 #### `analyze comprehensive`
-Multi-dimensional analysis combining all analysis types.
+Multi-dimensional analysis combining all analysis types with MCP tool composition support.
 
 ```bash
 pmat analyze comprehensive [OPTIONS] <PATH>
 
 Options:
-  --file <FILE>              Single file to analyze (overrides project path)
+  --file <FILE>              Single file to analyze (conflicts with --files)
+  --files <FILES>            Multiple files to analyze (comma-separated, for MCP composition)
   --include-all              Include all analysis types
   --quick                    Quick analysis mode
   --depth <NUM>              Analysis depth level (1-3)
@@ -506,6 +565,10 @@ Examples:
   pmat analyze comprehensive ./src --quick --format html
   pmat analyze comprehensive . --file src/main.rs --format json
   pmat analyze comprehensive . --file lib/parser.rs --confidence-threshold 0.8
+  
+  # MCP Tool Composition (NEW)
+  pmat analyze comprehensive . --files src/complex.rs,src/legacy.rs --include-all
+  pmat analyze comprehensive . --files hotspot1.rs,hotspot2.rs --format json
 ```
 
 ### Graph and Network Analysis
@@ -815,6 +878,123 @@ Examples:
   pmat refactor docs ./docs --fix-links --update-examples
 ```
 
+## Quality Proxy
+
+**NEW in v2.1** - Intercept and validate AI-generated code before it's written to ensure quality standards.
+
+The Quality Proxy acts as a gatekeeper between AI agents (like Claude Code, GitHub Copilot, etc.) and your codebase, enforcing quality standards on all generated code.
+
+### Features
+
+- **Real-time validation** - Check code quality before it's written
+- **Three enforcement modes** - Strict (reject), Advisory (warn), Auto-Fix (refactor)
+- **Comprehensive checks** - Complexity, SATD, documentation, lint violations
+- **AI agent integration** - Works with MCP protocol and HTTP API
+- **Automatic refactoring** - Fix issues automatically in Auto-Fix mode
+
+### Usage via MCP
+
+When using with AI agents through MCP:
+
+```json
+{
+  "tool": "quality_proxy",
+  "arguments": {
+    "operation": "write",
+    "file_path": "src/example.rs",
+    "content": "// Code to validate",
+    "mode": "strict",
+    "quality_config": {
+      "max_complexity": 20,
+      "allow_satd": false,
+      "require_docs": true,
+      "auto_format": true
+    }
+  }
+}
+```
+
+### Usage via Library
+
+```rust
+use pmat::services::quality_proxy::QualityProxyService;
+use pmat::models::proxy::{ProxyRequest, ProxyOperation, ProxyMode, QualityConfig};
+
+let service = QualityProxyService::new();
+let request = ProxyRequest {
+    operation: ProxyOperation::Write,
+    file_path: "example.rs".to_string(),
+    content: Some(code),
+    mode: ProxyMode::Strict,
+    quality_config: QualityConfig::default(),
+};
+
+let response = service.proxy_operation(request).await?;
+```
+
+### Modes
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| **Strict** | Reject code that doesn't meet standards | Production, CI/CD |
+| **Advisory** | Warn but allow code through | Development, debugging |
+| **Auto-Fix** | Automatically fix issues | Rapid prototyping |
+
+### Quality Checks
+
+1. **Complexity Analysis**
+   - McCabe cyclomatic complexity
+   - Cognitive complexity
+   - Configurable thresholds (default: 20)
+
+2. **SATD Detection**
+   - TODO, FIXME, HACK comments
+   - Incomplete implementations
+   - Zero tolerance in strict mode
+
+3. **Documentation**
+   - Public API documentation
+   - Function/struct/enum docs
+   - Configurable requirement
+
+4. **Lint Violations**
+   - Clippy checks
+   - Format validation
+   - Style consistency
+
+### Example Output
+
+```json
+{
+  "status": "rejected",
+  "quality_report": {
+    "passed": false,
+    "metrics": {
+      "max_complexity": 35,
+      "satd_count": 2,
+      "lint_violations": 3
+    },
+    "violations": [
+      {
+        "type": "complexity",
+        "severity": "error",
+        "location": "src/main.rs:45",
+        "message": "Function complexity 35 exceeds threshold 20",
+        "suggestion": "Split into smaller functions"
+      }
+    ]
+  }
+}
+```
+
+### Demo
+
+Run the interactive demo to see all features:
+
+```bash
+cargo run --example quality_proxy_demo
+```
+
 ## Enforce Commands
 
 ### `enforce extreme`
@@ -870,7 +1050,6 @@ PMAT supports extensive output formats across commands:
 |----------|---------|---------|
 | `RUST_LOG` | Logging level and filters | `info` |
 | `MCP_VERSION` | Force MCP mode detection | Not set |
-| `PMAT_REFACTOR_MCP` | Enable refactor MCP server | Not set |
 | `DOCS_RS` | Docs.rs build environment | Not set |
 | `PMAT_CONFIG` | Configuration file path | `.pmat.toml` |
 | `PMAT_CACHE_DIR` | Cache directory location | `~/.cache/pmat` |
@@ -931,6 +1110,73 @@ level = "info"
 file = "pmat.log"
 rotate = true
 max_size = "100MB"
+```
+
+## CI/CD Integration
+
+All analyze commands support `--fail-on-violation` for seamless CI/CD integration. When this flag is set, commands will exit with code 1 if violations exceed configured thresholds.
+
+### Exit Codes
+- **0**: Success - no violations found or within thresholds
+- **1**: Failure - violations exceed configured thresholds
+
+### GitHub Actions
+```yaml
+name: Code Quality
+on: [push, pull_request]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install pmat
+        run: cargo install pmat
+        
+      - name: Check Complexity
+        run: |
+          pmat analyze complexity \
+            --max-cyclomatic 15 \
+            --max-cognitive 10 \
+            --fail-on-violation
+            
+      - name: Check Technical Debt  
+        run: pmat analyze satd --strict --fail-on-violation
+        
+      - name: Check Dead Code
+        run: |
+          pmat analyze dead-code \
+            --max-percentage 10.0 \
+            --fail-on-violation
+```
+
+### GitLab CI
+```yaml
+quality-check:
+  stage: test
+  script:
+    - cargo install pmat
+    - pmat quality-gate --fail-on-violation --format json --output report.json
+  artifacts:
+    reports:
+      codequality: report.json
+```
+
+### Pre-commit Hook
+```bash
+#!/bin/bash
+# .git/hooks/pre-commit
+pmat analyze satd --strict --fail-on-violation || exit 1
+pmat analyze complexity --max-cyclomatic 15 --fail-on-violation || exit 1
+```
+
+### Makefile Integration
+```makefile
+.PHONY: quality-check
+quality-check:
+	pmat analyze complexity --max-cyclomatic 15 --fail-on-violation
+	pmat analyze satd --strict --fail-on-violation
+	pmat analyze dead-code --max-percentage 10 --fail-on-violation
 ```
 
 ## Examples

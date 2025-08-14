@@ -89,22 +89,11 @@ pub enum Commands {
         create_dirs: bool,
     },
 
-    /// Scaffold complete project
+    /// Scaffold complete project or agent
     Scaffold {
-        /// Target toolchain
-        toolchain: String,
-
-        /// Templates to generate
-        #[arg(short, long, value_delimiter = ',')]
-        templates: Vec<String>,
-
-        /// Parameters
-        #[arg(short = 'p', long = "param", value_parser = crate::cli::args::parse_key_val)]
-        params: Vec<(String, Value)>,
-
-        /// Parallelism level
-        #[arg(long, default_value_t = num_cpus::get())]
-        parallel: usize,
+        /// Scaffold subcommand
+        #[command(subcommand)]
+        command: ScaffoldCommands,
     },
 
     /// List available templates
@@ -254,6 +243,10 @@ pub enum Commands {
         #[arg(short = 'p', long, default_value = ".")]
         project_path: PathBuf,
 
+        /// Analyze a specific file instead of the whole project
+        #[arg(long)]
+        file: Option<PathBuf>,
+
         /// Output format
         #[arg(short = 'f', long, value_enum, default_value = "summary")]
         format: QualityGateOutputFormat,
@@ -396,11 +389,32 @@ pub enum AnalyzeCommands {
         top_files: usize,
     },
 
-    /// Analyze code complexity
+    /// Analyze code complexity with MCP tool composition support
+    ///
+    /// MCP Usage Examples:
+    /// 1. Find hotspots: pmat analyze complexity --top-files 5 --format json
+    /// 2. Analyze specific files: pmat analyze complexity --files src/main.rs,src/lib.rs
+    /// 3. Chain with other tools using JSON output for AI agent workflows
     Complexity {
         /// Project path to analyze
         #[arg(short = 'p', long, default_value = ".")]
         project_path: PathBuf,
+
+        /// Analyze a specific file instead of the whole project
+        #[arg(long, conflicts_with = "include")]
+        file: Option<PathBuf>,
+
+        /// Analyze specific files (comma-separated list for MCP tool composition)
+        ///
+        /// Enable AI agents to chain analysis tools by passing file lists between commands.
+        /// Example: --files src/main.rs,src/lib.rs,tests/integration.rs
+        ///
+        /// MCP Tool Chaining:
+        /// 1. Get top complex files from one analysis
+        /// 2. Pass those files to another analysis command
+        /// 3. Build focused refactoring workflows
+        #[arg(long, value_delimiter = ',', conflicts_with_all = ["file", "include"])]
+        files: Vec<PathBuf>,
 
         /// Filter by toolchain (rust, deno, python-uv)
         #[arg(long)]
@@ -433,6 +447,10 @@ pub enum AnalyzeCommands {
         /// Number of top complex files to show (0 = show all violations)
         #[arg(long, default_value_t = 10)]
         top_files: usize,
+
+        /// Exit with non-zero code if violations are found
+        #[arg(long)]
+        fail_on_violation: bool,
     },
 
     /// Generate dependency graphs using Mermaid
@@ -508,6 +526,14 @@ pub enum AnalyzeCommands {
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// Exit with non-zero code if violations are found
+        #[arg(long)]
+        fail_on_violation: bool,
+
+        /// Maximum allowed dead code percentage (default: 15.0)
+        #[arg(long, default_value = "15.0")]
+        max_percentage: f64,
     },
 
     /// Analyze Self-Admitted Technical Debt (SATD) in comments
@@ -556,6 +582,10 @@ pub enum AnalyzeCommands {
         /// Number of top files with most SATD to show (0 = show all)
         #[arg(long, default_value_t = 10)]
         top_files: usize,
+
+        /// Exit with non-zero code if violations are found
+        #[arg(long)]
+        fail_on_violation: bool,
     },
 
     /// Generate comprehensive deep context analysis with defect detection
@@ -704,7 +734,7 @@ pub enum AnalyzeCommands {
         /// Additional flags to pass to clippy (uses extreme quality by default)
         #[arg(
             long,
-            default_value = "-D warnings -D clippy::pedantic -D clippy::nursery -D clippy::cargo"
+            default_value = "-W warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo"
         )]
         clippy_flags: String,
 
@@ -882,15 +912,32 @@ pub enum AnalyzeCommands {
         top_files: usize,
     },
 
-    /// Run comprehensive multi-dimensional analysis combining all analysis types
+    /// Run comprehensive multi-dimensional analysis with MCP tool composition
+    ///
+    /// Perfect for AI agents to get complete code health metrics. Combines:
+    /// - Complexity analysis
+    /// - Technical debt detection
+    /// - Defect prediction
+    /// - Dead code analysis
+    /// - Duplicate detection
+    ///
+    /// MCP Workflow: Use after complexity analysis to get detailed insights on problematic files
     Comprehensive {
         /// Project path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
         project_path: PathBuf,
 
         /// Single file to analyze (overrides project path)
-        #[arg(long)]
+        #[arg(long, conflicts_with = "files")]
         file: Option<PathBuf>,
+
+        /// Analyze specific files (MCP tool composition from complexity hotspots)
+        ///
+        /// Enable AI agents to perform comprehensive analysis on files identified
+        /// by previous complexity analysis. Perfect for multi-stage analysis workflows.
+        /// Example: --files src/complex.rs,src/legacy.rs,src/problematic.rs
+        #[arg(long, value_delimiter = ',', conflicts_with = "file")]
+        files: Vec<PathBuf>,
 
         /// Output format
         #[arg(long, short = 'f', value_enum, default_value = "summary")]
@@ -1697,6 +1744,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_mode_enum() {
+        assert_eq!(Mode::Cli, Mode::Cli);
+        assert_ne!(Mode::Cli, Mode::Mcp);
+    }
+
+    #[test]
     #[ignore = "Stack overflow issue - needs investigation"]
     fn test_cli_parse_empty() {
         // Test that CLI can be parsed with minimal args
@@ -1710,10 +1763,79 @@ mod tests {
             }
         }
     }
+}
 
-    #[test]
-    fn test_mode_enum() {
-        assert_eq!(Mode::Cli, Mode::Cli);
-        assert_ne!(Mode::Cli, Mode::Mcp);
-    }
+/// Scaffold subcommands
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum ScaffoldCommands {
+    /// Scaffold a complete project with templates
+    Project {
+        /// Target toolchain
+        toolchain: String,
+
+        /// Templates to generate
+        #[arg(short, long, value_delimiter = ',')]
+        templates: Vec<String>,
+
+        /// Parameters
+        #[arg(short = 'p', long = "param", value_parser = crate::cli::args::parse_key_val)]
+        params: Vec<(String, Value)>,
+
+        /// Parallelism level
+        #[arg(long, default_value_t = num_cpus::get())]
+        parallel: usize,
+    },
+
+    /// Scaffold a deterministic MCP agent
+    Agent {
+        /// Agent name
+        #[arg(short, long)]
+        name: String,
+
+        /// Template type (mcp-server, state-machine, hybrid, calculator, custom:<path>)
+        #[arg(short, long)]
+        template: String,
+
+        /// Features to include (comma-separated)
+        #[arg(short, long, value_delimiter = ',')]
+        features: Vec<String>,
+
+        /// Quality level (standard, strict, extreme)
+        #[arg(short = 'q', long, default_value = "strict")]
+        quality: String,
+
+        /// Output directory
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Overwrite existing directory
+        #[arg(long)]
+        force: bool,
+
+        /// Show what would be generated without creating files
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Interactive mode for guided creation
+        #[arg(short, long)]
+        interactive: bool,
+
+        /// Deterministic core specification (for hybrid agents)
+        #[arg(long)]
+        deterministic_core: Option<String>,
+
+        /// Probabilistic wrapper specification (for hybrid agents)
+        #[arg(long)]
+        probabilistic_wrapper: Option<String>,
+    },
+
+    /// List available agent templates
+    ListTemplates,
+
+    /// Validate an agent template
+    ValidateTemplate {
+        /// Path to template file
+        path: PathBuf,
+    },
 }

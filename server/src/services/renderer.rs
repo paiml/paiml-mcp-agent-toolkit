@@ -1,3 +1,57 @@
+//! Template rendering engine for code generation.
+//!
+//! This module provides a flexible template rendering system based on Handlebars
+//! templating engine. It supports custom helpers for common code transformations
+//! and provides a safe, sandboxed environment for template execution.
+//!
+//! # Features
+//!
+//! - **Handlebars Templates**: Full support for Handlebars syntax
+//! - **Custom Helpers**: Built-in helpers for case transformations
+//! - **Date/Time Support**: Automatic injection of current date/timestamp
+//! - **Error Handling**: Detailed error messages with line numbers
+//! - **Type Safety**: Strict type checking for template variables
+//!
+//! # Built-in Helpers
+//!
+//! - `{{snake_case value}}` - Converts to snake_case
+//! - `{{kebab_case value}}` - Converts to kebab-case
+//! - `{{pascal_case value}}` - Converts to PascalCase
+//! - `{{current_year}}` - Inserts current year
+//! - `{{current_date}}` - Inserts current date
+//!
+//! # Example
+//!
+//! ```
+//! use pmat::services::renderer::{TemplateRenderer, render_template};
+//! use serde_json::{Map, Value};
+//!
+//! # fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let renderer = TemplateRenderer::new()?;
+//!
+//! let template = r#"
+//! pub struct {{pascal_case name}} {
+//!     created_at: &'static str,
+//! }
+//!
+//! impl {{pascal_case name}} {
+//!     pub fn new() -> Self {
+//!         Self {
+//!             created_at: "{{current_date}}",
+//!         }
+//!     }
+//! }
+//! "#;
+//!
+//! let mut context = Map::new();
+//! context.insert("name".to_string(), Value::String("my_struct".to_string()));
+//!
+//! let rendered = render_template(&renderer, template, context)?;
+//! assert!(rendered.contains("pub struct MyStruct"));
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::models::error::TemplateError;
 use crate::utils::helpers;
 use handlebars::Handlebars;

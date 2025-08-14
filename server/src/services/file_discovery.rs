@@ -1,3 +1,52 @@
+//! Intelligent file discovery service with multi-level filtering
+//!
+//! This module provides sophisticated file discovery capabilities that respect
+//! project boundaries, ignore patterns, and categorize files for optimal analysis.
+//! It implements a multi-stage filtering pipeline to ensure only relevant files
+//! are processed while respecting gitignore rules and avoiding external dependencies.
+//!
+//! # Key Features
+//!
+//! - **Gitignore Integration**: Automatically respects .gitignore patterns
+//! - **External Repository Detection**: Identifies and excludes cloned external repos
+//! - **Smart Categorization**: Classifies files into categories for targeted analysis
+//! - **Performance Optimization**: Parallel directory traversal with early termination
+//! - **Cross-platform Support**: Handles platform-specific path separators and patterns
+//!
+//! # File Categories
+//!
+//! - `SourceCode`: Primary source files for full AST analysis
+//! - `EssentialDoc`: Critical documentation (README.md) that gets compressed
+//! - `BuildConfig`: Build configuration files (Makefile, Cargo.toml)
+//! - `GeneratedOutput`: Generated files to exclude from analysis
+//! - `DevelopmentDoc`: Documentation files excluded from defect analysis
+//! - `TestArtifact`: Test-related files to exclude
+//!
+//! # Example
+//!
+//! ```ignore
+//! use pmat::services::file_discovery::{ProjectFileDiscovery, DiscoveryConfig};
+//! use std::path::PathBuf;
+//!
+//! let discovery = ProjectFileDiscovery::new(PathBuf::from("./src"));
+//! let config = DiscoveryConfig {
+//!     include_tests: false,
+//!     include_docs: true,
+//!     max_file_size: Some(10_000_000), // 10MB limit
+//!     follow_symlinks: false,
+//! };
+//!
+//! match discovery.discover_files_with_config(&config) {
+//!     Ok(files) => {
+//!         println!("Found {} files", files.len());
+//!         for file in files.iter().take(5) {
+//!             println!("  - {}", file.display());
+//!         }
+//!     }
+//!     Err(e) => eprintln!("Discovery failed: {}", e),
+//! }
+//! ```ignore
+
 use anyhow::Result;
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use lazy_static::lazy_static;
