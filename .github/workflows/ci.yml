@@ -47,49 +47,49 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y shellcheck
       
-      - name: Cache cargo registry
-        uses: actions/cache@v4
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          workspaces: ". -> target"
+          cache-on-failure: true
+          shared-key: "ci-build"
       
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-      
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - name: Build dependencies first
+        run: |
+          echo "📦 Pre-building dependencies to maximize cache usage..."
+          cargo build --package pmat --lib
+        timeout-minutes: 10
       
       - name: Run format check
         run: make format
         timeout-minutes: 2
       
       - name: Run lint check
-        run: make lint
-        timeout-minutes: 10
+        run: |
+          echo "🔍 Running lint checks..."
+          cargo clippy --package pmat -- -W warnings
+        timeout-minutes: 5
       
       - name: Run type check
-        run: make check
-        timeout-minutes: 8
-      
-      - name: Build debug binary
-        run: cargo build --package pmat
-        timeout-minutes: 10
-      
-      - name: Run fast tests
         run: |
-          echo "⏭️ Temporarily skipping tests due to compilation timeout issues"
-          echo "Tests pass locally but timeout in CI due to compilation time"
-          # TODO: Fix by using cargo cache more effectively or pre-building deps
-          # cd server
-          # cargo test --lib --features skip-slow-tests -- --test-threads=2
-        timeout-minutes: 10
+          echo "✅ Running type check..."
+          cargo check --package pmat --all-targets
+        timeout-minutes: 3
+      
+      - name: Build binary
+        run: |
+          echo "🔨 Building binary..."
+          cargo build --package pmat --bin pmat
+        timeout-minutes: 5
+      
+      - name: Run unit tests
+        run: |
+          echo "🧪 Running unit tests..."
+          cd server
+          cargo test --lib -- --test-threads=2 --skip slow
+        timeout-minutes: 8
         env:
+          RUST_BACKTRACE: 1
           SKIP_SLOW_TESTS: true
           CI: true
       
