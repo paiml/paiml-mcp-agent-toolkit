@@ -82,8 +82,13 @@ jobs:
         timeout-minutes: 10
       
       - name: Run fast tests
-        run: make test-fast
+        run: |
+          cd server
+          cargo test --lib --features skip-slow-tests -- --test-threads=2
         timeout-minutes: 10
+        env:
+          SKIP_SLOW_TESTS: true
+          CI: true
       
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
