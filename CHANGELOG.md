@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **pmcp 1.2.0 Upgrade**: Updated to latest pmcp Rust MCP SDK
+  - Enhanced performance and stability improvements
+  - New features including improved WebSocket and HTTP support
+  - Updated dependencies: axum, jsonschema, and related transport libraries
+  - Maintains full backward compatibility with existing MCP integrations
 - **Canonical Version Management**: Complete implementation of release automation
   - cargo-release integration for workspace-aware releases
   - cargo-semver-checks for API compatibility validation

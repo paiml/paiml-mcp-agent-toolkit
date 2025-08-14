@@ -270,7 +270,7 @@ claude mcp add pmat ~/.local/bin/pmat
 
 #### Enhanced MCP Server Performance (v2.0+)
 
-**New in v2.0**: pmat now uses the [pmcp 1.0](https://github.com/paiml/pmcp) Rust MCP SDK for dramatically improved performance:
+**New in v2.0**: pmat now uses the [pmcp 1.2.0](https://github.com/paiml/pmcp) Rust MCP SDK for dramatically improved performance:
 
 - **10x faster response times** (50ms → 5ms average)
 - **Native WebSocket support** for browser-based clients
