@@ -196,28 +196,29 @@ impl ToolHandler for PdmtTool {
         let estimated_total_hours: f32 = todo_list.todos.iter().map(|t| t.estimated_hours).sum();
 
         // Prepare output
-        let output = PdmtOutput {
-            success: quality_validation.overall_passed,
-            message: if quality_validation.overall_passed {
-                format!(
-                    "Successfully generated {} deterministic todos with quality enforcement",
-                    total_todos
-                )
-            } else {
-                format!(
-                    "Generated {} todos but quality validation failed. Review violations.",
-                    total_todos
-                )
-            },
-            todo_list: Some(serde_json::to_value(&todo_list).map_err(|e| {
-                Error::internal(format!("Failed to serialize todo list: {}", e))
-            })?),
-            quality_validation: Some(serde_json::to_value(&quality_validation).map_err(|e| {
-                Error::internal(format!("Failed to serialize validation results: {}", e))
-            })?),
-            total_todos,
-            estimated_total_hours,
-        };
+        let output =
+            PdmtOutput {
+                success: quality_validation.overall_passed,
+                message: if quality_validation.overall_passed {
+                    format!(
+                        "Successfully generated {} deterministic todos with quality enforcement",
+                        total_todos
+                    )
+                } else {
+                    format!(
+                        "Generated {} todos but quality validation failed. Review violations.",
+                        total_todos
+                    )
+                },
+                todo_list: Some(serde_json::to_value(&todo_list).map_err(|e| {
+                    Error::internal(format!("Failed to serialize todo list: {}", e))
+                })?),
+                quality_validation: Some(serde_json::to_value(&quality_validation).map_err(
+                    |e| Error::internal(format!("Failed to serialize validation results: {}", e)),
+                )?),
+                total_todos,
+                estimated_total_hours,
+            };
 
         if !quality_validation.overall_passed {
             error!(
@@ -231,7 +232,8 @@ impl ToolHandler for PdmtTool {
             );
         }
 
-        serde_json::to_value(output).map_err(|e| Error::internal(format!("Serialization error: {}", e)))
+        serde_json::to_value(output)
+            .map_err(|e| Error::internal(format!("Serialization error: {}", e)))
     }
 }
 
@@ -249,7 +251,12 @@ mod tests {
         let config = crate::models::pdmt::PdmtQualityConfig::default();
 
         let result = service
-            .generate_todos(requirements, Some("test_project".to_string()), "medium", config)
+            .generate_todos(
+                requirements,
+                Some("test_project".to_string()),
+                "medium",
+                config,
+            )
             .unwrap();
 
         assert!(!result.todos.is_empty());
@@ -271,7 +278,10 @@ mod tests {
             deterministic_seed: 42,
         };
 
-        let result = enforcer.enforce_quality_standards(&todo_list).await.unwrap();
+        let result = enforcer
+            .enforce_quality_standards(&todo_list)
+            .await
+            .unwrap();
         assert!(result.overall_passed);
     }
 }

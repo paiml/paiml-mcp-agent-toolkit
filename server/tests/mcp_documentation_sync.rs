@@ -215,7 +215,7 @@ fn test_mcp_tools_match_documentation() {
         eprintln!("Skipping MCP server test due to SKIP_SLOW_TESTS=true");
         return;
     }
-    
+
     // First, initialize the MCP connection
     let init_request = json!({
         "jsonrpc": "2.0",
@@ -284,7 +284,7 @@ fn test_mcp_tool_schemas_match_documentation() {
         eprintln!("Skipping MCP server test due to SKIP_SLOW_TESTS=true");
         return;
     }
-    
+
     // Initialize connection
     let init_request = json!({
         "jsonrpc": "2.0",

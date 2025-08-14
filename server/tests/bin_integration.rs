@@ -30,7 +30,7 @@ fn test_binary_json_rpc_initialize() {
         eprintln!("Skipping MCP server test due to SKIP_SLOW_TESTS=true");
         return;
     }
-    
+
     let mut child = Command::new("cargo")
         .args(["run", "--bin", "pmat"])
         .stdin(Stdio::piped())
@@ -47,14 +47,14 @@ fn test_binary_json_rpc_initialize() {
         .write_all(request.as_bytes())
         .expect("Failed to write to stdin");
     stdin.write_all(b"\n").expect("Failed to write newline");
-    
+
     // Kill the process after sending request since MCP servers don't exit
     std::thread::sleep(std::time::Duration::from_secs(2));
     child.kill().expect("Failed to kill process");
-    
+
     let output = child.wait_with_output().expect("Failed to wait for output");
     // Don't check exit status since we killed it
-    
+
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("\"jsonrpc\":\"2.0\""));
     assert!(stdout.contains("\"id\":1"));
@@ -68,7 +68,7 @@ fn test_binary_invalid_json() {
         eprintln!("Skipping MCP server test due to SKIP_SLOW_TESTS=true");
         return;
     }
-    
+
     let mut child = Command::new("cargo")
         .args(["run", "--bin", "pmat"])
         .stdin(Stdio::piped())
@@ -83,11 +83,11 @@ fn test_binary_invalid_json() {
     stdin
         .write_all(b"invalid json\n")
         .expect("Failed to write to stdin");
-    
+
     // Kill the process after sending request since MCP servers don't exit
     std::thread::sleep(std::time::Duration::from_secs(2));
     child.kill().expect("Failed to kill process");
-    
+
     let output = child.wait_with_output().expect("Failed to wait for output");
     // Don't check exit status since we killed it
 
@@ -103,7 +103,7 @@ fn test_binary_multiple_requests() {
         eprintln!("Skipping MCP server test due to SKIP_SLOW_TESTS=true");
         return;
     }
-    
+
     let mut child = Command::new("cargo")
         .args(["run", "--bin", "pmat"])
         .stdin(Stdio::piped())
@@ -126,11 +126,11 @@ fn test_binary_multiple_requests() {
         .write_all(req2.as_bytes())
         .expect("Failed to write request 2");
     stdin.write_all(b"\n").expect("Failed to write newline");
-    
+
     // Kill the process after sending requests since MCP servers don't exit
     std::thread::sleep(std::time::Duration::from_secs(2));
     child.kill().expect("Failed to kill process");
-    
+
     let output = child.wait_with_output().expect("Failed to wait for output");
     // Don't check exit status since we killed it
 

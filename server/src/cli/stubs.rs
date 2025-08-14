@@ -4733,10 +4733,10 @@ pub async fn analyze_project_files(
     cognitive_threshold: u16,
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
     use walkdir::WalkDir;
-    
+
     let mut results = Vec::new();
     let extensions = get_file_extensions(toolchain);
-    
+
     for entry in WalkDir::new(project_path)
         .follow_links(false)
         .into_iter()
@@ -4744,16 +4744,18 @@ pub async fn analyze_project_files(
         .filter(|e| e.file_type().is_file())
     {
         let path = entry.path();
-        
+
         if !should_analyze_file(path, project_path, &extensions, include) {
             continue;
         }
-        
-        if let Some(metrics) = analyze_complexity_file(path, cyclomatic_threshold, cognitive_threshold).await? {
+
+        if let Some(metrics) =
+            analyze_complexity_file(path, cyclomatic_threshold, cognitive_threshold).await?
+        {
             results.push(metrics);
         }
     }
-    
+
     Ok(results)
 }
 
@@ -4808,13 +4810,18 @@ pub fn get_file_extensions(toolchain: Option<&str>) -> Vec<&'static str> {
 /// # Returns
 ///
 /// `true` if the file should be analyzed, `false` otherwise
-pub fn should_analyze_file(path: &Path, project_path: &Path, extensions: &[&str], include: &[String]) -> bool {
+pub fn should_analyze_file(
+    path: &Path,
+    project_path: &Path,
+    extensions: &[&str],
+    include: &[String],
+) -> bool {
     let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-    
+
     if !extensions.contains(&extension) {
         return false;
     }
-    
+
     if include.is_empty() {
         !is_excluded_path(path)
     } else {
@@ -4825,29 +4832,25 @@ pub fn should_analyze_file(path: &Path, project_path: &Path, extensions: &[&str]
 /// Check if path matches any of the include patterns
 fn matches_include_patterns(path: &Path, project_path: &Path, include: &[String]) -> bool {
     use glob::Pattern;
-    
+
     let path_str = path.to_string_lossy();
     let relative_path = path.strip_prefix(project_path).unwrap_or(path);
     let relative_str = relative_path.to_string_lossy();
-    
-    include.iter().any(|pattern| {
-        match Pattern::new(pattern) {
-            Ok(glob_pattern) => {
-                glob_pattern.matches(&relative_str) || glob_pattern.matches(&path_str)
-            }
-            Err(_) => path_str.contains(pattern),
-        }
+
+    include.iter().any(|pattern| match Pattern::new(pattern) {
+        Ok(glob_pattern) => glob_pattern.matches(&relative_str) || glob_pattern.matches(&path_str),
+        Err(_) => path_str.contains(pattern),
     })
 }
 
 /// Check if path should be excluded from analysis
 fn is_excluded_path(path: &Path) -> bool {
     let path_str = path.to_string_lossy();
-    
+
     if is_excluded_directory(&path_str) {
         return true;
     }
-    
+
     if let Some(file_name) = path.file_name() {
         let fname = file_name.to_string_lossy();
         is_excluded_filename(&fname)
@@ -4859,21 +4862,31 @@ fn is_excluded_path(path: &Path) -> bool {
 /// Check if path contains excluded directories
 fn is_excluded_directory(path_str: &str) -> bool {
     let excluded_dirs = [
-        "/target/", "/node_modules/", "/.git/", "/vendor/",
-        "/tests/", "/test/", "/examples/", "/benches/",
-        "/benchmarks/", "/fixtures/", "/testdata/",
-        "/test_data/", "/debug_test/", "/test-"
+        "/target/",
+        "/node_modules/",
+        "/.git/",
+        "/vendor/",
+        "/tests/",
+        "/test/",
+        "/examples/",
+        "/benches/",
+        "/benchmarks/",
+        "/fixtures/",
+        "/testdata/",
+        "/test_data/",
+        "/debug_test/",
+        "/test-",
     ];
-    
+
     excluded_dirs.iter().any(|dir| path_str.contains(dir))
 }
 
 /// Check if filename indicates a test file
 fn is_excluded_filename(filename: &str) -> bool {
-    filename.ends_with("_test.rs") ||
-    filename.ends_with("_tests.rs") ||
-    filename.starts_with("test_") ||
-    filename.contains("_test_")
+    filename.ends_with("_test.rs")
+        || filename.ends_with("_tests.rs")
+        || filename.starts_with("test_")
+        || filename.contains("_test_")
 }
 
 /// Analyze a single file for complexity metrics
@@ -4883,7 +4896,7 @@ async fn analyze_complexity_file(
     cognitive_threshold: u16,
 ) -> Result<Option<crate::services::complexity::FileComplexityMetrics>> {
     use std::fs;
-    
+
     match fs::read_to_string(path) {
         Ok(content) => {
             let metrics = analyze_file_complexity_async(
@@ -4891,7 +4904,8 @@ async fn analyze_complexity_file(
                 &content,
                 cyclomatic_threshold,
                 cognitive_threshold,
-            ).await?;
+            )
+            .await?;
             Ok(Some(metrics))
         }
         Err(_) => Ok(None),
@@ -5818,7 +5832,7 @@ pub fn format_incremental_coverage_summary(
 /// Write the header section of the coverage report
 fn write_coverage_header(output: &mut String, report: &IncrementalCoverageReport) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "# Incremental Coverage Analysis\n")?;
     writeln!(output, "**Base Branch**: {}", report.base_branch)?;
     writeln!(output, "**Target Branch**: {}", report.target_branch)?;
@@ -5841,32 +5855,32 @@ fn write_coverage_header(output: &mut String, report: &IncrementalCoverageReport
             "❌ No"
         }
     )?;
-    
+
     Ok(())
 }
 
 /// Write the summary section of the coverage report
 fn write_coverage_summary(output: &mut String, summary: &CoverageSummary) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "## Summary\n")?;
     writeln!(output, "- Files Changed: {}", summary.total_files_changed)?;
     writeln!(output, "- Files Improved: {} 📈", summary.files_improved)?;
     writeln!(output, "- Files Degraded: {} 📉\n", summary.files_degraded)?;
-    
+
     Ok(())
 }
 
 /// Write the detailed file changes section of the coverage report
 fn write_coverage_file_details(
-    output: &mut String, 
-    files: &[FileCoverageMetrics], 
-    top_files: usize
+    output: &mut String,
+    files: &[FileCoverageMetrics],
+    top_files: usize,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "## Top Files by Coverage Change\n")?;
-    
+
     let mut sorted_files = files.to_vec();
     sorted_files.sort_by(|a, b| {
         b.coverage_delta
@@ -5874,10 +5888,10 @@ fn write_coverage_file_details(
             .partial_cmp(&a.coverage_delta.abs())
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-    
+
     let files_to_show = calculate_files_to_show(&sorted_files, top_files);
     write_file_entries(output, &sorted_files, files_to_show)?;
-    
+
     Ok(())
 }
 
@@ -5892,16 +5906,16 @@ fn calculate_files_to_show(files: &[FileCoverageMetrics], top_files: usize) -> u
 
 /// Write individual file coverage entries
 fn write_file_entries(
-    output: &mut String, 
-    files: &[FileCoverageMetrics], 
-    files_to_show: usize
+    output: &mut String,
+    files: &[FileCoverageMetrics],
+    files_to_show: usize,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     for (i, file) in files.iter().take(files_to_show).enumerate() {
         let filename = extract_filename(&file.path);
         let emoji = get_coverage_emoji(file.coverage_delta);
-        
+
         writeln!(
             output,
             "{}. `{}` - {:.1}% → {:.1}% ({:+.1}%) {}",
@@ -5913,7 +5927,7 @@ fn write_file_entries(
             emoji
         )?;
     }
-    
+
     Ok(())
 }
 
@@ -5926,7 +5940,11 @@ fn extract_filename(path: &std::path::Path) -> &str {
 
 /// Get appropriate emoji for coverage delta
 fn get_coverage_emoji(delta: f64) -> &'static str {
-    if delta > 0.0 { "📈" } else { "📉" }
+    if delta > 0.0 {
+        "📈"
+    } else {
+        "📉"
+    }
 }
 
 fn format_incremental_coverage_detailed(
