@@ -1,6 +1,6 @@
 use crate::models::pdmt::{
-    ImplementationSpecs, PdmtQualityConfig, PdmtTodo, PdmtTodoList,
-    TodoPriority, TodoQualityGates, TodoStatus, ValidationCommands,
+    ImplementationSpecs, PdmtQualityConfig, PdmtTodo, PdmtTodoList, TodoPriority, TodoQualityGates,
+    TodoStatus, ValidationCommands,
 };
 use anyhow::Result;
 use chrono::Utc;
@@ -150,7 +150,10 @@ impl PdmtService {
                     quality_proxy: "pmat quality-gate --file".to_string(),
                 },
                 success_criteria: vec![
-                    format!("Tests achieve >{}% coverage", quality_config.coverage_threshold),
+                    format!(
+                        "Tests achieve >{}% coverage",
+                        quality_config.coverage_threshold
+                    ),
                     "All test cases pass".to_string(),
                     "Property tests validate invariants".to_string(),
                 ],
@@ -268,7 +271,10 @@ impl PdmtService {
     /// Generate success criteria based on quality config
     fn generate_success_criteria(&self, config: &PdmtQualityConfig) -> Vec<String> {
         let mut criteria = vec![
-            format!("Unit tests pass with >{}% coverage", config.coverage_threshold),
+            format!(
+                "Unit tests pass with >{}% coverage",
+                config.coverage_threshold
+            ),
             "Quality proxy approves all changes".to_string(),
             "Zero SATD comments present".to_string(),
             format!("Complexity stays under {} limit", config.max_complexity),
@@ -306,7 +312,11 @@ impl PdmtService {
     }
 
     /// Set dependencies between todos based on logical ordering
-    fn set_dependencies(&self, todos: &mut [PdmtTodo], dependency_map: &HashMap<String, Vec<String>>) {
+    fn set_dependencies(
+        &self,
+        todos: &mut [PdmtTodo],
+        dependency_map: &HashMap<String, Vec<String>>,
+    ) {
         debug!("Setting dependencies for {} todos", todos.len());
 
         for todo in todos.iter_mut() {

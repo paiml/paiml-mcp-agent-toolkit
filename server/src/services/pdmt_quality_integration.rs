@@ -359,7 +359,10 @@ mod tests {
     #[tokio::test]
     async fn test_quality_enforcement_basic() {
         let enforcer = PdmtQualityEnforcer::new();
-        let todo = PdmtTodo::new("Implement user authentication".to_string(), TodoPriority::High);
+        let todo = PdmtTodo::new(
+            "Implement user authentication".to_string(),
+            TodoPriority::High,
+        );
         let todo_list = PdmtTodoList {
             project_name: "test".to_string(),
             todos: vec![todo],
@@ -368,7 +371,10 @@ mod tests {
             deterministic_seed: 42,
         };
 
-        let result = enforcer.enforce_quality_standards(&todo_list).await.unwrap();
+        let result = enforcer
+            .enforce_quality_standards(&todo_list)
+            .await
+            .unwrap();
         assert!(result.overall_passed);
     }
 
