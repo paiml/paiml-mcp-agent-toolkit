@@ -98,12 +98,12 @@ pub fn good_function(x: i32) -> i32 {
     // Skip all property tests in CI to prevent timeout
     #[cfg(test)]
     proptest! {
-        #![proptest_config(if std::env::var("SKIP_SLOW_TESTS").is_ok() || std::env::var("CI").is_ok() { 
-            ProptestConfig::with_cases(0) 
-        } else { 
-            ProptestConfig::default() 
+        #![proptest_config(if std::env::var("SKIP_SLOW_TESTS").is_ok() || std::env::var("CI").is_ok() {
+            ProptestConfig::with_cases(0)
+        } else {
+            ProptestConfig::default()
         })]
-        
+
         /// Test that strict mode always rejects code with SATD when not allowed
         #[test]
         fn test_strict_mode_rejects_satd(

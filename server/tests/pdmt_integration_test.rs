@@ -35,7 +35,12 @@ fn test_pdmt_deterministic_generation() {
         .unwrap();
 
     let result2 = service
-        .generate_todos(requirements, Some("test_project".to_string()), "high", config)
+        .generate_todos(
+            requirements,
+            Some("test_project".to_string()),
+            "high",
+            config,
+        )
         .unwrap();
 
     // Verify deterministic generation
@@ -110,7 +115,9 @@ fn test_pdmt_priority_detection() {
 
     // Test feature priority
     let feature_req = vec!["add new dashboard feature".to_string()];
-    let feature_result = service.generate_todos(feature_req, None, "low", config).unwrap();
+    let feature_result = service
+        .generate_todos(feature_req, None, "low", config)
+        .unwrap();
 
     // Verify priority ordering makes sense
     let critical_todo = &critical_result.todos[0];
@@ -118,8 +125,16 @@ fn test_pdmt_priority_detection() {
     let feature_todo = &feature_result.todos[0];
 
     // Critical and bug fixes should have higher priority than features
-    match (&critical_todo.priority, &bug_todo.priority, &feature_todo.priority) {
-        (TodoPriority::Critical | TodoPriority::High, _, TodoPriority::Low | TodoPriority::Medium) => {
+    match (
+        &critical_todo.priority,
+        &bug_todo.priority,
+        &feature_todo.priority,
+    ) {
+        (
+            TodoPriority::Critical | TodoPriority::High,
+            _,
+            TodoPriority::Low | TodoPriority::Medium,
+        ) => {
             // Expected: critical/bug higher than feature
         }
         _ => {
@@ -133,7 +148,10 @@ async fn test_pdmt_quality_enforcement_strict_mode() {
     let enforcer = PdmtQualityEnforcer::new();
 
     // Create a todo with good quality settings
-    let good_todo = PdmtTodo::new("Implement secure user authentication".to_string(), TodoPriority::High);
+    let good_todo = PdmtTodo::new(
+        "Implement secure user authentication".to_string(),
+        TodoPriority::High,
+    );
 
     let todo_list = pmat::models::pdmt::PdmtTodoList {
         project_name: "test_project".to_string(),
@@ -151,7 +169,10 @@ async fn test_pdmt_quality_enforcement_strict_mode() {
         deterministic_seed: 42,
     };
 
-    let result = enforcer.enforce_quality_standards(&todo_list).await.unwrap();
+    let result = enforcer
+        .enforce_quality_standards(&todo_list)
+        .await
+        .unwrap();
     assert!(result.overall_passed);
 }
 
@@ -172,7 +193,10 @@ async fn test_pdmt_quality_enforcement_failures() {
         deterministic_seed: 42,
     };
 
-    let result = enforcer.enforce_quality_standards(&todo_list).await.unwrap();
+    let result = enforcer
+        .enforce_quality_standards(&todo_list)
+        .await
+        .unwrap();
     assert!(!result.overall_passed);
     assert!(!result.recommendations.is_empty());
 }
@@ -200,7 +224,7 @@ fn test_pdmt_validation_commands() {
 fn test_pdmt_success_criteria() {
     let service = PdmtService::new();
     let requirements = vec!["implement database connection pooling".to_string()];
-    
+
     let config = PdmtQualityConfig {
         coverage_threshold: 90.0,
         require_doctests: true,
@@ -215,20 +239,25 @@ fn test_pdmt_success_criteria() {
 
     // Verify success criteria reflect quality config
     assert!(!result.todos.is_empty(), "No todos generated");
-    
+
     for todo in &result.todos {
-        assert!(!todo.success_criteria.is_empty(), "Todo has no success criteria");
-        
+        assert!(
+            !todo.success_criteria.is_empty(),
+            "Todo has no success criteria"
+        );
+
         // Check if any criteria mentions coverage or quality (case-insensitive)
         let criteria_text = todo.success_criteria.join(" ").to_lowercase();
-        let has_relevant_criteria = criteria_text.contains("coverage") || 
-                                   criteria_text.contains("quality") ||
-                                   criteria_text.contains("test") ||
-                                   criteria_text.contains("90");
-        
-        assert!(has_relevant_criteria, 
-                "Todo '{}' has no relevant success criteria. Criteria: {:?}", 
-                todo.content, todo.success_criteria);
+        let has_relevant_criteria = criteria_text.contains("coverage")
+            || criteria_text.contains("quality")
+            || criteria_text.contains("test")
+            || criteria_text.contains("90");
+
+        assert!(
+            has_relevant_criteria,
+            "Todo '{}' has no relevant success criteria. Criteria: {:?}",
+            todo.content, todo.success_criteria
+        );
     }
 }
 
@@ -249,10 +278,11 @@ fn test_pdmt_implementation_specs() {
     let mut has_specs = false;
     for todo in &result.todos {
         // At least some todos should have file specifications
-        if !todo.implementation_specs.primary_files.is_empty() ||
-           !todo.implementation_specs.test_files.is_empty() ||
-           !todo.implementation_specs.doc_files.is_empty() ||
-           !todo.implementation_specs.example_files.is_empty() {
+        if !todo.implementation_specs.primary_files.is_empty()
+            || !todo.implementation_specs.test_files.is_empty()
+            || !todo.implementation_specs.doc_files.is_empty()
+            || !todo.implementation_specs.example_files.is_empty()
+        {
             has_specs = true;
             break;
         }
@@ -275,9 +305,11 @@ fn test_pdmt_dependency_management() {
     assert!(result.todos.len() > 1);
 
     // Test todos should depend on implementation todos
-    let has_dependencies = result.todos.iter()
+    let has_dependencies = result
+        .todos
+        .iter()
         .any(|todo| !todo.dependencies.is_empty());
-    
+
     // At high granularity, we expect some dependencies
     if result.todos.len() > 2 {
         assert!(has_dependencies);
