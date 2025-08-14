@@ -2,6 +2,44 @@
 
 This document describes the MCP (Model Context Protocol) methods and tools available in PMAT.
 
+## Running the MCP Server
+
+### Unified MCP Server Architecture (v2.2.0+)
+
+PMAT now uses a single, unified MCP server implementation based on the pmcp SDK:
+
+```bash
+# Run the unified MCP server (auto-detected)
+pmat
+
+# With debug logging
+RUST_LOG=debug pmat
+
+# The server automatically detects MCP mode when:
+# - stdin is not a terminal
+# - MCP_VERSION environment variable is set
+```
+
+The unified server provides:
+- **Single Implementation**: All tools in one place, no duplicate code
+- **10x Performance**: High-performance pmcp SDK for all operations
+- **Type Safety**: Compile-time validation of all tool interfaces
+- **Quality Integration**: Built-in quality proxy for all operations
+- **All Transports**: stdio (default), WebSocket, and HTTP/SSE support
+
+### Programmatic Usage
+
+```rust
+use pmat::mcp_pmcp::UnifiedServer;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let server = UnifiedServer::new()?;
+    server.run().await?;
+    Ok(())
+}
+```
+
 ### Available MCP Methods
 
 The following standard MCP methods are supported:
@@ -32,6 +70,14 @@ Analyze code change patterns over time (alias for analyze_churn).
 ### generate_context
 Generate comprehensive project context for AI assistants.
 
+**Parameters:**
+- `path` (string, optional): Project path to analyze (default: current directory)
+- `format` (string, optional): Output format - "markdown", "json", "yaml" (default: "markdown")
+- `include_large_files` (boolean, optional): Include files >500KB (default: false)
+- `skip_expensive_metrics` (boolean, optional): Skip TDG and complexity for speed (default: false)
+
+**Returns:** Project context with structure, dependencies, and quality metrics in the specified format.
+
 ### analyze_dag
 Generate and analyze dependency graphs.
 
@@ -39,13 +85,23 @@ Generate and analyze dependency graphs.
 Detect unused code in the project.
 
 ### analyze_deep_context
-Perform deep contextual analysis of the codebase.
+Perform deep contextual analysis of the codebase with defect detection.
+
+**Parameters:**
+- `path` (string, optional): Project path to analyze (default: current directory)
+- `format` (string, optional): Output format - "markdown", "json", "yaml" (default: "markdown")
+- `full` (boolean, optional): Generate full detailed report vs terse summary (default: false)
+- `defect_threshold` (number, optional): Minimum defect score 0.0-1.0 (default: 0.5)
+- `period_days` (number, optional): Days of git history to analyze (default: 30)
+- `cache_strategy` (string, optional): "none", "read", "write", "normal" (default: "normal")
+
+**Returns:** Comprehensive analysis including complexity hotspots, churn patterns, architectural insights, and ML-based defect predictions.
 
 ### analyze_satd
 Analyze self-admitted technical debt in code comments.
 
-### analyze_tdg
-Calculate technical debt gradient based on complexity and churn.
+### analyze_lint_hotspot
+Analyze lint violation hotspots to identify files with the most linting issues.
 
 ### analyze_duplicates_vectorized
 Analyze code duplicates using SIMD optimizations.

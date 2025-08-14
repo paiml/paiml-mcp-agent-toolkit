@@ -6,11 +6,14 @@ use std::fs;
 #[test]
 fn binary_size_regression() {
     // Apply Kaizen - Use correct binary name and path with fallback strategy
-    let binary_path = if std::path::Path::new("target/release/pmat").exists() {
-        "target/release/pmat"
-    } else if std::path::Path::new("../target/release/pmat").exists() {
+    // In a workspace, binaries are at the workspace root
+    let binary_path = if std::path::Path::new("../target/release/pmat").exists() {
         "../target/release/pmat"
-    } else if std::path::Path::new("target/debug/pmat").exists() {
+    } else if std::path::Path::new("target/release/pmat").exists() {
+        "target/release/pmat"
+    } else if std::path::Path::new("../target/debug/pmat").exists()
+        || std::path::Path::new("target/debug/pmat").exists()
+    {
         // Skip test if only debug build exists
         println!("⚠️  Skipping binary size regression test - release binary not found");
         println!("   Run 'cargo build --release' to enable this test");

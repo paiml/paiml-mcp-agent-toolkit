@@ -1,6 +1,6 @@
 # Contributing to PMAT (PAIML MCP Agent Toolkit)
 
-Thank you for your interest in contributing to the PAIML MCP Agent Toolkit! This project follows strict quality standards based on Toyota Way principles.
+Thank you for your interest in contributing to the PAIML MCP Agent Toolkit! This project follows strict quality standards based on Toyota Way principles and maintains zero-defect quality with comprehensive testing coverage.
 
 ## Table of Contents
 

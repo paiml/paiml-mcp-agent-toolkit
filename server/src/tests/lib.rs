@@ -29,6 +29,9 @@ mod gitignore_respect_tests;
 // Include metric accuracy tests
 mod metric_accuracy_suite;
 
+// Include tests for glob pattern matching in --include flags
+mod test_include_patterns;
+
 // Include basic CLI tests for coverage
 mod cli_basic_tests;
 

@@ -234,8 +234,10 @@ impl StateManager {
     /// use pmat::mcp_server::state_manager::StateManager;
     /// use pmat::models::refactor::RefactorConfig;
     /// use std::path::PathBuf;
+    /// use tempfile::tempdir;
     ///
-    /// let mut manager = StateManager::new();
+    /// let temp_dir = tempdir().unwrap();
+    /// let mut manager = StateManager::with_temp_dir(temp_dir.path());
     ///
     /// // Start session first
     /// let targets = vec![PathBuf::from("/tmp/test.rs")];

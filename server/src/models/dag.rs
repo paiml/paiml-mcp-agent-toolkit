@@ -53,14 +53,78 @@ impl DependencyGraph {
         }
     }
 
+    /// Adds a node to the dependency graph
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::dag::{DependencyGraph, NodeInfo, NodeType};
+    /// use rustc_hash::FxHashMap;
+    ///
+    /// let mut graph = DependencyGraph::new();
+    /// graph.add_node(NodeInfo {
+    ///     id: "main::hello".to_string(),
+    ///     label: "hello".to_string(),
+    ///     node_type: NodeType::Function,
+    ///     file_path: "src/main.rs".to_string(),
+    ///     line_number: 10,
+    ///     complexity: 1,
+    ///     metadata: FxHashMap::default(),
+    /// });
+    ///
+    /// assert_eq!(graph.nodes.len(), 1);
+    /// ```
     pub fn add_node(&mut self, node: NodeInfo) {
         self.nodes.insert(node.id.clone(), node);
     }
 
+    /// Adds an edge between two nodes in the dependency graph
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::dag::{DependencyGraph, Edge, EdgeType};
+    ///
+    /// let mut graph = DependencyGraph::new();
+    /// graph.add_edge(Edge {
+    ///     from: "main::hello".to_string(),
+    ///     to: "utils::print".to_string(),
+    ///     edge_type: EdgeType::Calls,
+    ///     weight: 1,
+    /// });
+    ///
+    /// assert_eq!(graph.edges.len(), 1);
+    /// assert_eq!(graph.edges[0].edge_type, EdgeType::Calls);
+    /// ```
     pub fn add_edge(&mut self, edge: Edge) {
         self.edges.push(edge);
     }
 
+    /// Creates a new graph containing only edges of the specified type
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::dag::{DependencyGraph, Edge, EdgeType};
+    ///
+    /// let mut graph = DependencyGraph::new();
+    /// graph.add_edge(Edge {
+    ///     from: "a".to_string(),
+    ///     to: "b".to_string(),
+    ///     edge_type: EdgeType::Calls,
+    ///     weight: 1,
+    /// });
+    /// graph.add_edge(Edge {
+    ///     from: "c".to_string(),
+    ///     to: "d".to_string(),
+    ///     edge_type: EdgeType::Imports,
+    ///     weight: 1,
+    /// });
+    ///
+    /// let calls_only = graph.filter_by_edge_type(EdgeType::Calls);
+    /// assert_eq!(calls_only.edges.len(), 1);
+    /// assert_eq!(calls_only.edges[0].edge_type, EdgeType::Calls);
+    /// ```
     pub fn filter_by_edge_type(&self, edge_type: EdgeType) -> Self {
         let filtered_edges: Vec<Edge> = self
             .edges

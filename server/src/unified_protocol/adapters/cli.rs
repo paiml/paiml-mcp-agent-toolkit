@@ -6,6 +6,7 @@ use axum::http::Method;
 use serde_json::{json, Value};
 use tracing::debug;
 
+use crate::cli::commands::ScaffoldCommands;
 use crate::cli::{
     AnalyzeCommands, Commands, ComplexityOutputFormat, ContextFormat, DagType, OutputFormat,
 };
@@ -34,12 +35,17 @@ impl CliAdapter {
                 output,
                 create_dirs,
             } => Self::decode_generate(category, template, params, output, create_dirs),
-            Commands::Scaffold {
-                toolchain,
-                templates,
-                params,
-                parallel,
-            } => Self::decode_scaffold(toolchain, templates, params, *parallel),
+            Commands::Scaffold { command } => match command {
+                ScaffoldCommands::Project {
+                    toolchain,
+                    templates,
+                    params,
+                    parallel,
+                } => Self::decode_scaffold(toolchain, templates, params, *parallel),
+                _ => Err(ProtocolError::UnsupportedProtocol(
+                    "Agent scaffolding not supported via unified protocol".to_string(),
+                )),
+            },
             Commands::List {
                 toolchain,
                 category,
@@ -237,6 +243,8 @@ impl CliAdapter {
             } => Self::decode_analyze_churn(project_path, *days, format, output, *top_files),
             AnalyzeCommands::Complexity {
                 project_path,
+                file,
+                files,
                 toolchain,
                 format,
                 output,
@@ -245,8 +253,11 @@ impl CliAdapter {
                 include,
                 watch,
                 top_files,
+                fail_on_violation: _, // Ignore for MCP - not applicable
             } => Self::decode_analyze_complexity(
                 project_path,
+                file,
+                files,
                 toolchain,
                 format,
                 output,
@@ -287,6 +298,8 @@ impl CliAdapter {
                 min_dead_lines,
                 include_tests,
                 output,
+                fail_on_violation: _, // Ignore for MCP
+                max_percentage: _,    // Ignore for MCP
             } => Self::decode_analyze_dead_code(
                 path,
                 format,
@@ -308,6 +321,7 @@ impl CliAdapter {
                 metrics,
                 output,
                 top_files,
+                fail_on_violation: _, // Ignore for MCP
             } => Self::decode_analyze_satd(
                 path,
                 format,
@@ -522,6 +536,7 @@ impl CliAdapter {
             AnalyzeCommands::Comprehensive {
                 project_path,
                 file,
+                files,
                 format,
                 include_duplicates,
                 include_dead_code,
@@ -540,6 +555,7 @@ impl CliAdapter {
                 let params = json!({
                     "project_path": project_path,
                     "file": file,
+                    "files": files.iter().map(|f| f.to_string_lossy()).collect::<Vec<_>>(),
                     "format": format,
                     "include_duplicates": include_duplicates,
                     "include_dead_code": include_dead_code,
@@ -814,6 +830,8 @@ impl CliAdapter {
     #[allow(clippy::too_many_arguments)]
     fn decode_analyze_complexity(
         project_path: &std::path::Path,
+        file: &Option<std::path::PathBuf>,
+        files: &[std::path::PathBuf],
         toolchain: &Option<String>,
         format: &ComplexityOutputFormat,
         output: &Option<std::path::PathBuf>,
@@ -825,6 +843,8 @@ impl CliAdapter {
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         let body = json!({
             "project_path": project_path.to_string_lossy(),
+            "file": file.as_ref().map(|f| f.to_string_lossy()),
+            "files": files.iter().map(|f| f.to_string_lossy()).collect::<Vec<_>>(),
             "toolchain": toolchain,
             "format": complexity_format_to_string(format),
             "output_path": output,
@@ -1634,6 +1654,8 @@ mod tests {
         let adapter = CliAdapter::new();
         let command = Commands::Analyze(AnalyzeCommands::Complexity {
             project_path: PathBuf::from("."),
+            file: None,
+            files: vec![],
             toolchain: Some("rust".to_string()),
             format: ComplexityOutputFormat::Json,
             output: None,
@@ -1642,6 +1664,7 @@ mod tests {
             include: vec!["**/*.rs".to_string()],
             watch: false,
             top_files: 0,
+            fail_on_violation: false,
         });
 
         let input = CliInput::from_commands(command);

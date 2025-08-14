@@ -1,3 +1,49 @@
+//! AST-based dependency analysis for accurate import tracking.
+//!
+//! This module provides sophisticated dependency analysis using Abstract Syntax Tree
+//! parsing instead of fragile regex-based approaches. It accurately identifies both
+//! external dependencies and internal module relationships across multiple languages.
+//!
+//! # Features
+//!
+//! - **Multi-language Support**: Rust, Python, JavaScript/TypeScript, Go
+//! - **External vs Internal**: Distinguishes third-party from project dependencies
+//! - **Import Type Detection**: Tracks different import styles (use, import, require)
+//! - **Workspace Awareness**: Understands monorepo and workspace structures
+//! - **Boundary Analysis**: Detects architectural boundary violations
+//! - **Built-in Module Recognition**: Knows standard library modules
+//!
+//! # Architecture
+//!
+//! The analyzer uses language-specific AST parsers to extract import statements,
+//! then resolves them against known module registries and workspace configurations
+//! to determine dependency types and relationships.
+//!
+//! # Example
+//!
+//! ```no_run
+//! use pmat::services::ast_based_dependency_analyzer::AstBasedDependencyAnalyzer;
+//! use std::path::Path;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let analyzer = AstBasedDependencyAnalyzer::new();
+//!
+//! // Analyze a Rust file
+//! let analysis = analyzer.analyze_file(Path::new("src/main.rs")).await?;
+//!
+//! println!("External dependencies: {}", analysis.external.len());
+//! for dep in &analysis.external {
+//!     println!("  - {} ({:?})", dep.name, dep.import_type);
+//! }
+//!
+//! // Check for boundary violations
+//! if !analysis.boundary_violations.is_empty() {
+//!     println!("⚠️  Found {} boundary violations", analysis.boundary_violations.len());
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::Arc;

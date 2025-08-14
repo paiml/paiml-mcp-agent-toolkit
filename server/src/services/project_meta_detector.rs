@@ -1,3 +1,53 @@
+//! Project metadata detection service
+//!
+//! This module automatically detects and processes important project metadata
+//! files such as README files and Makefiles. It scans project directories
+//! efficiently to find documentation and build configuration, enabling better
+//! understanding of project structure and build processes.
+//!
+//! # Detection Strategy
+//!
+//! - **Shallow Scanning**: Only checks top 2 directory levels for performance
+//! - **Pattern Matching**: Uses regex patterns for flexible file matching
+//! - **Async Processing**: Concurrent file reading for speed
+//! - **Size Limits**: Skips files over 10MB to avoid memory issues
+//!
+//! # Supported Files
+//!
+//! - **Makefiles**: Makefile, makefile, GNUmakefile
+//! - **README**: README.md, README.txt, README.rst, README, readme.md
+//! - **Extensible**: Easy to add new file type patterns
+//!
+//! # Example
+//!
+//! ```ignore
+//! use pmat::services::project_meta_detector::ProjectMetaDetector;
+//! use std::path::Path;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let detector = ProjectMetaDetector::new();
+//!
+//! // Detect metadata files in project
+//! let meta_files = detector.detect(Path::new("./")).await;
+//!
+//! for file in &meta_files {
+//!     println!("Found {} at {}",
+//!              match file.file_type {
+//!                  MetaFileType::Readme => "README",
+//!                  MetaFileType::Makefile => "Makefile",
+//!              },
+//!              file.path.display());
+//! }
+//!
+//! // Process detected files
+//! if let Some(makefile) = meta_files.iter()
+//!     .find(|f| matches!(f.file_type, MetaFileType::Makefile)) {
+//!     println!("Build system detected: {}", makefile.path.display());
+//! }
+//! # Ok(())
+//! # }
+//! ```ignore
+
 use crate::models::project_meta::{MetaFile, MetaFileType};
 use regex::Regex;
 use std::path::Path;

@@ -74,6 +74,7 @@ pub async fn handle_demo(
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_quality_gate(
     project_path: PathBuf,
+    file: Option<PathBuf>,
     format: QualityGateOutputFormat,
     fail_on_violation: bool,
     checks: Vec<QualityCheckType>,
@@ -87,6 +88,7 @@ pub async fn handle_quality_gate(
     // Delegate to main quality gate implementation for now - will be extracted later
     super::super::stubs::handle_quality_gate(
         project_path,
+        file,
         format,
         fail_on_violation,
         checks,

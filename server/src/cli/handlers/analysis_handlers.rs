@@ -67,6 +67,8 @@ use anyhow::Result;
 /// // Complexity analysis command
 /// let complexity_cmd = AnalyzeCommands::Complexity {
 ///     project_path: PathBuf::from("/tmp/project"),
+///     file: None,
+///     files: vec![],
 ///     toolchain: None,
 ///     format: pmat::cli::enums::ComplexityOutputFormat::Summary,
 ///     output: None,
@@ -75,6 +77,7 @@ use anyhow::Result;
 ///     include: vec![],
 ///     watch: false,
 ///     top_files: 10,
+///     fail_on_violation: false,
 /// };
 ///
 /// // This would normally execute the command
@@ -90,6 +93,8 @@ use anyhow::Result;
 ///     min_dead_lines: 10,
 ///     include_tests: false,
 ///     output: None,
+///     fail_on_violation: false,
+///     max_percentage: 100.0,
 /// };
 ///
 /// // DAG analysis command
@@ -130,6 +135,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
     match cmd {
         AnalyzeCommands::Complexity {
             project_path,
+            file,
+            files,
             toolchain,
             format,
             output,
@@ -138,9 +145,12 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             include,
             watch,
             top_files,
+            fail_on_violation,
         } => {
             super::complexity_handlers::handle_analyze_complexity(
                 project_path,
+                file,
+                files,
                 toolchain,
                 format,
                 output,
@@ -149,6 +159,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 include,
                 watch,
                 top_files,
+                fail_on_violation,
             )
             .await
         }
@@ -176,6 +187,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             min_dead_lines,
             include_tests,
             output,
+            fail_on_violation,
+            max_percentage,
         } => {
             super::complexity_handlers::handle_analyze_dead_code(
                 path,
@@ -185,6 +198,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 min_dead_lines,
                 include_tests,
                 output,
+                fail_on_violation,
+                max_percentage,
             )
             .await
         }
@@ -226,6 +241,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             metrics,
             output,
             top_files,
+            fail_on_violation,
         } => {
             super::complexity_handlers::handle_analyze_satd(
                 path,
@@ -239,6 +255,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 metrics,
                 output,
                 top_files,
+                fail_on_violation,
             )
             .await
         }
@@ -440,6 +457,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         AnalyzeCommands::Comprehensive {
             project_path,
             file,
+            files,
             format,
             include_duplicates,
             include_dead_code,
@@ -458,6 +476,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             super::advanced_analysis_handlers::handle_analyze_comprehensive(
                 project_path,
                 file,
+                files,
                 format,
                 include_duplicates,
                 include_dead_code,

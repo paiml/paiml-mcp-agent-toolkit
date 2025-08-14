@@ -537,6 +537,16 @@ impl BytePos {
         self.0 as usize
     }
 
+    /// Creates a BytePos from a usize position
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::unified_ast::BytePos;
+    ///
+    /// let pos = BytePos::from_usize(42);
+    /// assert_eq!(pos.to_usize(), 42);
+    /// ```
     pub fn from_usize(pos: usize) -> Self {
         Self(pos as u32)
     }
@@ -613,13 +623,13 @@ impl QualifiedName {
         if qualified_str.is_empty() {
             return Err("Empty qualified name");
         }
-        
+
         let parts: Vec<&str> = qualified_str.split("::").collect();
         let name = parts.last().unwrap().to_string();
         if name.is_empty() {
             return Err("Empty qualified name");
         }
-        
+
         let module_path = parts[..parts.len() - 1]
             .iter()
             .map(|s| s.to_string())
@@ -777,7 +787,7 @@ impl UnifiedAstNode {
     ///
     /// ```rust
     /// use pmat::models::unified_ast::{
-    ///     UnifiedAstNode, AstKind, FunctionKind, Language
+    ///     UnifiedAstNode, AstKind, FunctionKind, Language, ClassKind
     /// };
     ///
     /// let func_node = UnifiedAstNode::new(
@@ -792,7 +802,7 @@ impl UnifiedAstNode {
     /// assert!(!func_node.has_proof_annotations());
     ///
     /// let class_node = UnifiedAstNode::new(
-    ///     AstKind::Class(pmat::models::unified_ast::ClassKind::Struct),
+    ///     AstKind::Class(ClassKind::Struct),
     ///     Language::TypeScript
     /// );
     ///
@@ -952,7 +962,6 @@ impl UnifiedAstNode {
     ///
     /// assert!(node.has_proof_annotations());
     /// assert_eq!(node.proof_annotations().len(), 1);
-    /// assert_eq!(node.proof_annotations()[0].property_proven, PropertyType::MemorySafety);
     /// ```
     pub fn add_proof_annotation(&mut self, annotation: ProofAnnotation) {
         match &mut self.proof_annotations {

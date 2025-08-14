@@ -1,3 +1,44 @@
+//! File classification and filtering for code analysis.
+//!
+//! This module provides intelligent file classification to determine which files
+//! should be analyzed, skipped, or specially handled. It detects vendor code,
+//! build artifacts, generated files, and minified content to ensure analysis
+//! focuses on human-written source code.
+//!
+//! # Classification Rules
+//!
+//! - **Vendor Detection**: Identifies third-party dependencies and libraries
+//! - **Build Artifacts**: Skips compiled output and build directories
+//! - **Minified Files**: Detects compressed/minified code via entropy analysis
+//! - **Large Files**: Handles files exceeding size thresholds
+//! - **Binary Detection**: Identifies non-text files
+//!
+//! # Example
+//!
+//! ```ignore
+//! use pmat::services::file_classifier::{FileClassifier, FileClassifierConfig};
+//! use std::path::Path;
+//!
+//! let config = FileClassifierConfig {
+//!     skip_vendor: true,
+//!     max_line_length: 10_000,
+//!     max_file_size: 1_048_576,
+//! };
+//!
+//! let classifier = FileClassifier::from_config(&config);
+//!
+//! // Check if a file should be analyzed
+//! let path = Path::new("src/main.rs");
+//! match classifier.classify(path) {
+//!     pmat::services::file_classifier::FileDecision::Parse => {
+//!         println!("File should be analyzed");
+//!     }
+//!     pmat::services::file_classifier::FileDecision::Skip(reason) => {
+//!         println!("Skipping file: {:?}", reason);
+//!     }
+//! }
+//! ```ignore
+
 use anyhow::Result;
 use lazy_static::lazy_static;
 use regex::Regex;

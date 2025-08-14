@@ -9,13 +9,27 @@ mod tests {
     use syn::{parse_file, visit::Visit};
     use tempfile::NamedTempFile;
 
+    // Rust keywords to avoid in identifier generation
+    const RUST_KEYWORDS: &[&str] = &[
+        "as", "async", "await", "break", "const", "continue", "crate", "dyn", "else", "enum",
+        "extern", "false", "fn", "for", "if", "impl", "in", "let", "loop", "match", "mod", "move",
+        "mut", "pub", "ref", "return", "self", "Self", "static", "struct", "super", "trait",
+        "true", "type", "unsafe", "use", "where", "while", "abstract", "become", "box", "do",
+        "final", "macro", "override", "priv", "typeof", "unsized", "virtual", "yield", "try",
+    ];
+
     // Strategy for generating valid Rust identifiers
     prop_compose! {
         fn arb_identifier()
             (s in "[a-zA-Z][a-zA-Z0-9_]{0,30}")
             -> String
         {
-            s
+            // If we generated a keyword, append an underscore to make it valid
+            if RUST_KEYWORDS.contains(&s.as_str()) {
+                format!("{}_", s)
+            } else {
+                s
+            }
         }
     }
 

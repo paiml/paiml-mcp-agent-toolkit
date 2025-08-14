@@ -82,6 +82,8 @@ async fn test_execute_analyze_complexity_basic() {
 
     let analyze_cmd = AnalyzeCommands::Complexity {
         project_path: test_dir.path().to_path_buf(),
+        file: None,
+        files: vec![],
         toolchain: None,
         format: ComplexityOutputFormat::Summary,
         output: None,
@@ -90,6 +92,7 @@ async fn test_execute_analyze_complexity_basic() {
         include: vec![],
         watch: false,
         top_files: 10,
+        fail_on_violation: false,
     };
 
     let command = Commands::Analyze(analyze_cmd);

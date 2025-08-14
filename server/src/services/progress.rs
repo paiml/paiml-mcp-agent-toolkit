@@ -24,6 +24,16 @@ impl ProgressTracker {
     }
 
     /// Create a spinner for an indeterminate operation
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::progress::ProgressTracker;
+    ///
+    /// let progress = ProgressTracker::new(false);
+    /// let spinner = progress.create_spinner("Processing...");
+    /// assert!(spinner.is_hidden());
+    /// ```
     pub fn create_spinner(&self, message: &str) -> ProgressBar {
         if !self.enable_progress {
             return ProgressBar::hidden();

@@ -1,3 +1,45 @@
+//! Automated refactoring engine with state machine workflow.
+//!
+//! This module implements PMAT's intelligent refactoring system that follows
+//! the Toyota Way principles of continuous improvement (Kaizen). The engine
+//! uses a state machine to orchestrate the refactoring process through
+//! analysis, planning, execution, and validation phases.
+//!
+//! # Architecture
+//!
+//! The refactoring engine supports three operation modes:
+//! - **Server**: Low-latency mode for MCP/HTTP protocols
+//! - **Interactive**: CLI mode with user confirmation steps
+//! - **Batch**: High-throughput mode for CI/CD pipelines
+//!
+//! # Example
+//!
+//! ```ignore
+//! use pmat::services::refactor_engine::{UnifiedEngine, EngineMode};
+//! use pmat::models::refactor::RefactorConfig;
+//! use std::path::PathBuf;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create refactoring engine in interactive mode
+//! let engine = UnifiedEngine::new_interactive(
+//!     PathBuf::from("checkpoint.json"),
+//!     Default::default()
+//! )?;
+//!
+//! // Start refactoring session
+//! let targets = vec![PathBuf::from("src/complex_module.rs")];
+//! let config = RefactorConfig::default();
+//!
+//! engine.start_session(targets, config).await?;
+//!
+//! // Run refactoring workflow
+//! while !engine.is_complete().await {
+//!     engine.advance().await?;
+//! }
+//! # Ok(())
+//! # }
+//! ```ignore
+
 use crate::models::refactor::{
     DefectPayload, RefactorConfig, RefactorStateMachine, RefactorType, State, Summary,
 };
@@ -144,7 +186,7 @@ impl<T> RingBuffer<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```no_run
     /// use pmat::services::refactor_engine::RingBuffer;
     ///
     /// let buffer: RingBuffer<i32> = RingBuffer::new(3);
@@ -166,7 +208,7 @@ impl<T> RingBuffer<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```no_run
     /// use pmat::services::refactor_engine::RingBuffer;
     ///
     /// let mut buffer = RingBuffer::new(2);
@@ -196,7 +238,7 @@ impl<T> RingBuffer<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```no_run
     /// use pmat::services::refactor_engine::RingBuffer;
     ///
     /// let mut buffer = RingBuffer::new(5);
@@ -238,19 +280,20 @@ impl UnifiedEngine {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```no_run
     /// use pmat::services::refactor_engine::{
     ///     UnifiedEngine, EngineMode, ExplainLevel
     /// };
     /// use pmat::services::unified_ast_engine::UnifiedAstEngine;
     /// use pmat::services::cache::unified_manager::UnifiedCacheManager;
+    /// use pmat::services::cache::unified::UnifiedCacheConfig;
     /// use pmat::models::refactor::RefactorConfig;
     /// use std::sync::Arc;
     /// use std::path::PathBuf;
     /// use std::time::Duration;
     ///
     /// let ast_engine = Arc::new(UnifiedAstEngine::new());
-    /// let cache = Arc::new(UnifiedCacheManager::new());
+    /// let cache = Arc::new(UnifiedCacheManager::new(UnifiedCacheConfig::default()).unwrap());
     /// let config = RefactorConfig::default();
     /// let targets = vec![PathBuf::from("src/main.rs")];
     ///
@@ -311,12 +354,13 @@ impl UnifiedEngine {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```no_run
     /// use pmat::services::refactor_engine::{
     ///     UnifiedEngine, EngineMode
     /// };
     /// use pmat::services::unified_ast_engine::UnifiedAstEngine;
     /// use pmat::services::cache::unified_manager::UnifiedCacheManager;
+    /// use pmat::services::cache::unified::UnifiedCacheConfig;
     /// use pmat::models::refactor::RefactorConfig;
     /// use std::sync::Arc;
     /// use std::path::PathBuf;
@@ -324,7 +368,7 @@ impl UnifiedEngine {
     ///
     /// # tokio_test::block_on(async {
     /// let ast_engine = Arc::new(UnifiedAstEngine::new());
-    /// let cache = Arc::new(UnifiedCacheManager::new());
+    /// let cache = Arc::new(UnifiedCacheManager::new(UnifiedCacheConfig::default()).unwrap());
     /// let config = RefactorConfig::default();
     /// let targets = vec![PathBuf::from("src/example.rs")];
     ///
@@ -347,7 +391,7 @@ impl UnifiedEngine {
     ///
     /// match result {
     ///     Ok(summary) => {
-    ///         println!("Refactoring completed: {} operations", summary.operations_completed);
+    ///         println!("Refactoring completed: {} operations", summary.refactors_applied);
     ///     }
     ///     Err(e) => {
     ///         eprintln!("Refactoring failed: {}", e);

@@ -20,10 +20,10 @@ The Model Context Protocol (MCP) implementation in PMAT provides a standardized 
 │  │    (stdio)   │  │   (JSON-RPC Router)    │  │
 │  └──────────────┘  └────────────────────────┘  │
 │  ┌──────────────────────────────────────────┐  │
-│  │              Tool Registry               │  │
-│  │  • Template Tools (6)  • Analysis (17) │  │
-│  │  • Vectorized (7)      • Core (4)      │  │
-│  │  • Total: 34 available MCP tools       │  │
+│  │           Unified Tool Registry          │  │
+│  │    Single pmcp SDK-based server with    │  │
+│  │      17 core tools consolidated         │  │
+│  │                                        │  │
 │  └──────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────┘
 ```
@@ -57,7 +57,7 @@ Add the PMAT MCP server:
   "mcpServers": {
     "paiml-toolkit": {
       "command": "pmat",
-      "args": ["--mode", "mcp"],
+      "args": [],
       "env": {
         "RUST_LOG": "info"
       }
@@ -81,14 +81,15 @@ claude mcp add paiml-toolkit /usr/local/bin/pmat
 ### For Other MCP Clients
 
 ```bash
-# Start MCP server
-pmat --mode mcp
+# Start unified MCP server (auto-detected)
+pmat
 
-# Or with specific configuration
-pmat --mode mcp --config mcp-config.toml
+# With debug logging
+RUST_LOG=debug pmat
 
-# With environment variables
-RUST_LOG=debug pmat --mode mcp
+# The server automatically detects MCP mode when:
+# - stdin is not a terminal
+# - MCP_VERSION environment variable is set
 ```
 
 ## Protocol Specification
@@ -114,11 +115,41 @@ All messages follow JSON-RPC 2.0 specification:
 
 ### Available Tools
 
-**Total: 34 MCP Tools Available**
+**Unified Server: 17 Core Tools**
 
-## Template Management Tools (6 tools)
+The unified MCP server consolidates all functionality into 17 core tools using the pmcp SDK:
 
-#### 1. `generate_template`
+## Core Tools (17 tools)
+
+### 1. Analysis Tools
+
+#### `analyze_complexity`
+Analyze code complexity metrics including cyclomatic and cognitive complexity.
+
+#### `analyze_churn` 
+Analyze code change patterns over time.
+
+#### `analyze_code_churn`
+Analyze code change patterns over time (alias for analyze_churn).
+
+#### `analyze_dag`
+Generate and analyze dependency graphs.
+
+#### `analyze_dead_code`
+Detect unused code in the project.
+
+#### `analyze_deep_context`
+Perform deep contextual analysis of the codebase with defect detection.
+
+#### `analyze_satd`
+Analyze self-admitted technical debt in code comments.
+
+### 2. Context and Template Tools
+
+#### `generate_context`
+Generate comprehensive project context for AI assistants.
+
+#### `generate_template`
 Generate project templates (Makefile, README, .gitignore).
 
 **Parameters:**
@@ -131,7 +162,7 @@ Generate project templates (Makefile, README, .gitignore).
 }
 ```
 
-#### 2. `list_templates`
+#### `list_templates`
 List all available project templates.
 
 **Parameters:**
@@ -141,7 +172,7 @@ List all available project templates.
 }
 ```
 
-#### 3. `validate_template`
+#### `validate_template`
 Validate template parameters before generation.
 
 **Parameters:**
@@ -152,7 +183,7 @@ Validate template parameters before generation.
 }
 ```
 
-#### 4. `scaffold_project`
+#### `scaffold_project`
 Create complete project structure with templates.
 
 **Parameters:**
@@ -164,7 +195,7 @@ Create complete project structure with templates.
 }
 ```
 
-#### 5. `search_templates`
+#### `search_templates`
 Search available templates by keyword.
 
 **Parameters:**
@@ -175,24 +206,48 @@ Search available templates by keyword.
 }
 ```
 
-#### 6. `get_server_info`
+#### `get_server_info`
 Get MCP server information and capabilities.
 
 **Parameters:** None
 
-## Core Analysis Tools (4 tools)
+### 3. Quality and Refactoring Tools
 
-#### 7. `analyze_complexity`
-Analyzes code complexity metrics.
+#### `quality_gate`
+Run comprehensive quality checks and validation.
+
+#### `quality_proxy`
+**NEW in v2.2** - Intercept and validate AI-generated code before it's written.
+
+Acts as a quality gatekeeper between AI agents and your codebase, enforcing standards on all generated code.
+Analyzes code complexity metrics with tool composition support.
 
 **Parameters:**
 ```typescript
 {
   path: string;
+  file?: string;           // Single file analysis (conflicts with files)
+  files?: string[];        // Multi-file analysis for MCP composition
   max_cyclomatic?: number;
   max_cognitive?: number;
   format?: "summary" | "full" | "json";
 }
+```
+
+**MCP Tool Composition:**
+```javascript
+// AI agent discovers complexity hotspots
+const hotspots = await callTool("analyze_complexity", {
+  path: "/project",
+  top_files: 5,
+  format: "json"
+});
+
+// Agent performs targeted analysis on specific files
+const targeted = await callTool("analyze_complexity", {
+  path: "/project",
+  files: hotspots.files.map(f => f.path)
+});
 ```
 
 **Response:**
@@ -215,326 +270,94 @@ Analyzes code complexity metrics.
 }
 ```
 
-#### 8. `analyze_code_churn`
-Analyzes git history for code churn patterns.
+### 4. Refactoring Tools
+
+#### `refactor.start`
+Start an interactive refactoring session.
+
+#### `refactor.nextIteration`
+Continue to the next step in an active refactoring session.
+
+#### `refactor.getState`
+Get the current state of an active refactoring session.
+
+#### `refactor.stop`
+Stop and finalize an active refactoring session.
+
+## Unified Server Benefits
+
+The unified server architecture provides:
+- **Single Implementation**: All tools consolidated into one server
+- **10x Performance**: pmcp SDK optimization for all operations
+- **Type Safety**: Compile-time validation of tool interfaces
+- **Quality Integration**: Built-in quality proxy for all operations
+- **Consistent Behavior**: One code path for all MCP tools
 
 **Parameters:**
 ```typescript
 {
-  path: string;
-  days?: number;         // Default: 30
-  threshold?: number;    // Minimum commits
-  format?: "table" | "json" | "csv";
+  operation: "write" | "edit" | "append";
+  file_path: string;
+  content?: string;          // For write/append operations
+  old_content?: string;      // For edit operations
+  new_content?: string;      // For edit operations
+  mode?: "strict" | "advisory" | "auto_fix";  // Default: "strict"
+  quality_config?: {
+    max_complexity?: number;    // Default: 20
+    allow_satd?: boolean;       // Default: false
+    require_docs?: boolean;     // Default: true
+    auto_format?: boolean;      // Default: true
+  }
 }
 ```
 
 **Response:**
 ```json
 {
-  "high_churn_files": [
-    {
-      "file": "src/core/engine.rs",
-      "commits": 45,
-      "authors": 8,
-      "added_lines": 1250,
-      "deleted_lines": 890,
-      "churn_score": 0.85
-    }
-  ],
-  "churn_trends": {
-    "increasing": ["src/api/"],
-    "decreasing": ["src/utils/"],
-    "stable": ["src/models/"]
+  "status": "accepted" | "rejected" | "modified",
+  "quality_report": {
+    "passed": boolean,
+    "metrics": {
+      "max_complexity": 15,
+      "satd_count": 0,
+      "lint_violations": 0
+    },
+    "violations": [
+      {
+        "type": "complexity" | "satd" | "docs" | "lint",
+        "severity": "error" | "warning",
+        "location": "file.rs:45",
+        "message": "Function complexity exceeds threshold",
+        "suggestion": "Split into smaller functions"
+      }
+    ]
+  },
+  "final_content": "// Validated or auto-fixed content",
+  "refactoring_applied": boolean,
+  "refactoring_plan": []  // Steps taken in auto-fix mode
+}
+```
+
+**Usage Example:**
+```javascript
+// AI agent validates code before writing
+const result = await callTool("quality_proxy", {
+  operation: "write",
+  file_path: "src/new_feature.rs",
+  content: generatedCode,
+  mode: "auto_fix",  // Automatically fix issues
+  quality_config: {
+    max_complexity: 15,  // Stricter than default
+    require_docs: true
   }
-}
-```
+});
 
-#### 9. `generate_context`
-Generates comprehensive project context for AI understanding.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  format?: "markdown" | "json";
-  include_dependencies?: boolean;
-  max_depth?: number;
-}
-```
-
-**Response:**
-```json
-{
-  "context": {
-    "project_type": "rust",
-    "structure": { /* ... */ },
-    "dependencies": { /* ... */ },
-    "key_files": [ /* ... */ ],
-    "complexity_summary": { /* ... */ },
-    "recent_changes": [ /* ... */ ]
-  }
-}
-```
-
-#### 10. `analyze_dag`
-Generates dependency analysis graphs.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  output_format?: "mermaid" | "dot" | "json";
-  max_depth?: number;
-  filter_external?: boolean;
-}
-```
-
-**Response:**
-```json
-{
-  "graph": {
-    "nodes": 45,
-    "edges": 123,
-    "cycles": 0,
-    "max_depth": 8,
-    "visualization": "graph TD\n  A[main] --> B[lib]\n  ..."
-  }
-}
-```
-
-## Advanced Analysis Tools (17 tools)
-
-#### 11. `analyze_system_architecture`
-Analyze high-level system architecture and component relationships.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  output_format?: "mermaid" | "json";
-  include_metrics?: boolean;
-}
-```
-
-#### 12. `analyze_dead_code`
-Detect unused and unreachable code.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  aggressive?: boolean;
-  exclude_tests?: boolean;
-}
-```
-
-#### 13. `analyze_deep_context`
-Comprehensive analysis with defect detection.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  include_ml_predictions?: boolean;
-  max_depth?: number;
-}
-```
-
-#### 14. `analyze_tdg`
-Technical Debt Gradient analysis.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  strict?: boolean;
-  include_predictions?: boolean;
-}
-```
-
-#### 15. `analyze_makefile_lint`
-Makefile quality and best practices analysis.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  strict_mode?: boolean;
-}
-```
-
-#### 16. `analyze_provability`
-Abstract interpretation and formal verification analysis.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  verification_level?: "basic" | "advanced";
-}
-```
-
-#### 17. `analyze_defect_prediction`
-ML-based defect probability analysis.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  model?: "default" | "advanced";
-  confidence_threshold?: number;
-}
-```
-
-#### 18. `analyze_comprehensive`
-Multi-dimensional analysis combining all analysis types.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  include_all?: boolean;
-  output_format?: "json" | "report";
-}
-```
-
-#### 19. `analyze_graph_metrics`
-Graph centrality and network analysis metrics.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  metrics?: ("pagerank" | "betweenness" | "closeness" | "degree")[];
-}
-```
-
-#### 20. `analyze_name_similarity`
-Name similarity analysis with embeddings.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  similarity_threshold?: number;
-  include_suggestions?: boolean;
-}
-```
-
-#### 21. `analyze_proof_annotations`
-Collect and analyze proof annotations in code.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  annotation_types?: string[];
-}
-```
-
-#### 22. `analyze_incremental_coverage`
-Incremental coverage analysis with caching.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  baseline_ref?: string;
-  cache_enabled?: boolean;
-}
-```
-
-#### 23. `analyze_symbol_table`
-Symbol analysis with cross-references.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  include_cross_refs?: boolean;
-  export_format?: "json" | "csv";
-}
-```
-
-#### 24. `analyze_big_o`
-Algorithmic complexity analysis.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  include_worst_case?: boolean;
-  analysis_depth?: "shallow" | "deep";
-}
-```
-
-#### 25. `analyze_assemblyscript`
-AssemblyScript code analysis.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  optimization_level?: "O0" | "O1" | "O2" | "O3";
-}
-```
-
-#### 26. `analyze_webassembly`
-WebAssembly binary and text format analysis.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  format?: "binary" | "text" | "auto";
-  include_imports?: boolean;
-}
-```
-
-#### 27. `analyze_duplicates`
-Duplicate code detection with multiple algorithms.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  algorithm?: "exact" | "fuzzy" | "semantic" | "all";
-  min_lines?: number;
-}
-```
-
-## Vectorized/SIMD Tools (7 tools)
-
-*High-performance parallel analysis tools using SIMD instructions*
-
-#### 28. `analyze_duplicates_vectorized`
-SIMD-accelerated duplicate detection.
-
-#### 29. `analyze_graph_metrics_vectorized`
-Vectorized graph analysis with parallel processing.
-
-#### 30. `analyze_name_similarity_vectorized`
-SIMD-based name similarity computation.
-
-#### 31. `analyze_symbol_table_vectorized`
-Parallel symbol table analysis.
-
-#### 32. `analyze_incremental_coverage_vectorized`
-Vectorized coverage analysis.
-
-#### 33. `analyze_big_o_vectorized`
-Parallel Big-O complexity analysis.
-
-#### 34. `generate_enhanced_report`
-Generate comprehensive enhanced analysis reports.
-
-**Parameters:**
-```typescript
-{
-  path: string;
-  analysis_types?: string[];
-  output_format?: "markdown" | "html" | "json";
-  include_visualizations?: boolean;
+if (result.status === "accepted" || result.status === "modified") {
+  // Code meets standards, safe to write
+  await writeFile(result.final_content);
+} else {
+  // Code rejected, show violations to user
+  console.error("Quality violations:", result.quality_report.violations);
 }
 ```
 
@@ -662,13 +485,9 @@ class PMATMCPClient:
             "format": "json"
         })
         
-        # Check for technical debt
-        tdg = self.call_tool("analyze_tdg", {"path": path})
-        
         return {
             "context": context,
-            "complexity": complexity,
-            "technical_debt": tdg
+            "complexity": complexity
         }
 ```
 
@@ -810,23 +629,19 @@ strategy = "lru"
 | Variable | Purpose | Default |
 |----------|---------|----------|
 | `MCP_VERSION` | Force MCP mode | `false` |
-| `PMAT_REFACTOR_MCP` | Enable refactor MCP server | `false` |
 | `RUST_LOG` | Logging level | `info` |
 | `DOCS_RS` | Docs.rs build mode | `false` |
 
-### MCP Server Modes
+### Unified MCP Server
 
-PMAT supports two MCP server implementations:
-
-1. **Standard MCP Server** - Full analysis capabilities
-2. **Refactor MCP Server** - Specialized for refactoring workflows
+As of v2.2.0, PMAT uses a single unified MCP server implementation based on the pmcp SDK:
 
 ```bash
-# Standard mode
-pmat --mode mcp
+# Run unified server (auto-detected)
+pmat
 
-# Refactor mode
-PMAT_REFACTOR_MCP=1 pmat --mode mcp
+# With debug logging
+RUST_LOG=debug pmat
 ```
 
 ### Cache Configuration
@@ -933,9 +748,100 @@ RUST_LOG=paiml_mcp_agent_toolkit::handlers=trace pmat --mode mcp
 - **Distributed Analysis**: Multi-node processing
 - **Real-time Collaboration**: Live analysis sharing
 
+## Using the pmcp Rust SDK
+
+PMAT now supports running the MCP server using the [pmcp](https://github.com/paiml/pmcp) Rust SDK, which provides a more idiomatic Rust interface with improved type safety and async support.
+
+### Benefits of pmcp SDK
+
+- **Type Safety**: Strongly typed tool definitions and handlers
+- **Async First**: Built on tokio for efficient async I/O
+- **Better Error Handling**: Rust's Result type throughout
+- **Connection Management**: Automatic lifecycle handling
+- **Extensibility**: Easy to add custom tools
+
+### Running with pmcp
+
+```bash
+# Run the example MCP server
+cargo run --example mcp_server_pmcp
+
+# Connect with an MCP client
+npx @modelcontextprotocol/inspector tcp://127.0.0.1:3000
+```
+
+### Integration Example
+
+```rust
+use pmat::mcp_pmcp::{handlers::*, PmcpServer};
+use pmcp::{Server, ServerBuilder, ToolHandler};
+
+// Create server with all pmat tools
+let server = ServerBuilder::new("pmat-mcp", "1.0.0")
+    .with_tool("analyze_complexity", 
+               "Analyze code complexity metrics", 
+               Box::new(AnalyzeComplexityTool))
+    .with_tool("analyze_satd", 
+               "Detect self-admitted technical debt",
+               Box::new(AnalyzeSatdTool))
+    .with_tool("quality_gate",
+               "Run comprehensive quality checks",
+               Box::new(QualityGateTool))
+    // Add more tools...
+    .build();
+
+// Handle connections
+let listener = TcpListener::bind("127.0.0.1:3000").await?;
+loop {
+    let (stream, addr) = listener.accept().await?;
+    let server = server.clone();
+    tokio::spawn(async move {
+        server.handle_connection(stream).await
+    });
+}
+```
+
+### Custom Tool Implementation
+
+```rust
+use pmcp::{ToolHandler, PmcpResult};
+use async_trait::async_trait;
+use serde_json::Value;
+
+struct MyCustomTool;
+
+#[async_trait]
+impl ToolHandler for MyCustomTool {
+    async fn handle(&self, args: Value) -> PmcpResult<Value> {
+        // Parse arguments
+        let path = args["path"].as_str()
+            .ok_or_else(|| pmcp::Error::InvalidParams("path required"))?;
+        
+        // Perform analysis
+        let result = analyze_something(path).await?;
+        
+        // Return JSON result
+        Ok(serde_json::to_value(result)?)
+    }
+}
+```
+
+### Migration from stdio to pmcp
+
+The pmcp SDK maintains compatibility with existing MCP clients while providing a cleaner implementation:
+
+| Feature | stdio Implementation | pmcp SDK |
+|---------|---------------------|----------|
+| Protocol | Manual JSON-RPC | Built-in |
+| Transport | stdio only | TCP, stdio, WebSocket (planned) |
+| Error Handling | Custom enums | Standard Result<T, E> |
+| Async | Tokio channels | Native async/await |
+| Type Safety | Runtime validation | Compile-time types |
+
 ## Additional Resources
 
 - [MCP Specification](https://modelcontextprotocol.io)
 - [PMAT on crates.io](https://crates.io/crates/pmat)
+- [pmcp SDK](https://github.com/paiml/pmcp)
 - [API Documentation](https://docs.rs/pmat)
 - [GitHub Repository](https://github.com/paiml/paiml-mcp-agent-toolkit)

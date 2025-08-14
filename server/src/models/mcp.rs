@@ -28,6 +28,23 @@ pub struct McpError {
 }
 
 impl McpResponse {
+    /// Creates a successful MCP response
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::mcp::McpResponse;
+    /// use serde_json::json;
+    ///
+    /// let response = McpResponse::success(
+    ///     json!(1),
+    ///     json!({"status": "ok"})
+    /// );
+    ///
+    /// assert_eq!(response.jsonrpc, "2.0");
+    /// assert!(response.result.is_some());
+    /// assert!(response.error.is_none());
+    /// ```
     pub fn success(id: Value, result: Value) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -37,6 +54,24 @@ impl McpResponse {
         }
     }
 
+    /// Creates an error MCP response
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::mcp::McpResponse;
+    /// use serde_json::json;
+    ///
+    /// let response = McpResponse::error(
+    ///     json!(1),
+    ///     -32601,
+    ///     "Method not found".to_string()
+    /// );
+    ///
+    /// assert_eq!(response.jsonrpc, "2.0");
+    /// assert!(response.error.is_some());
+    /// assert_eq!(response.error.unwrap().code, -32601);
+    /// ```
     pub fn error(id: Value, code: i32, message: String) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
