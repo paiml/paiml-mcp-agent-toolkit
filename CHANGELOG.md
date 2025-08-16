@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.1] - 2025-08-16
+
+### Added
+- **Comprehensive MCP Documentation**: Extensive documentation for MCP integration with Claude Code
+  - `docs/mcp-claude-code-setup.md`: Step-by-step guide for Claude Code configuration with troubleshooting
+  - `docs/pdmt-detailed-examples.md`: PDMT deterministic todo generation with 15+ practical examples
+  - `docs/quality-gates-proxy-detailed.md`: Quality gates proxy documentation with enforcement modes and patterns
+  - `docs/cargo-examples-guide.md`: Complete guide to all 30+ cargo examples with descriptions
+  - Enhanced doctests in MCP handlers (pdmt_handler.rs, quality_proxy_handler.rs)
+  - Updated README with direct links to all MCP documentation sections
+
+### Documentation
+- Added extensive examples showing `cargo run --example` commands for all MCP features
+- Documented PDMT tool usage patterns for GitHub Issues, CI/CD, and VS Code integration
+- Comprehensive quality gates proxy examples including strict, advisory, and auto-fix modes
+- Step-by-step Claude Code registration instructions for macOS, Linux, and Windows
+- Troubleshooting guides for common MCP setup issues
+
 ### Added
 - **GitHub Issues PDMT Integration**: Comprehensive GitHub Issues integration with quality-enforced development
   - `GitHubIssuesService`: Full GitHub REST API v3 integration with authentication, rate limiting, and error recovery
