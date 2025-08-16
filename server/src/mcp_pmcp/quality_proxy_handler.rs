@@ -80,6 +80,100 @@ fn default_auto_format() -> bool {
 /// use pmcp::ToolHandler;
 ///
 /// let tool = QualityProxyTool;
+/// assert_eq!(tool.name(), "quality_proxy");
+/// ```
+///
+/// # Strict Mode Example
+///
+/// ```
+/// use pmat::mcp_pmcp::quality_proxy_handler::{QualityProxyTool, QualityProxyInput};
+/// use pmcp::ToolHandler;
+/// use serde_json::json;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let tool = QualityProxyTool;
+///
+/// // Intercept a file write operation
+/// let input = json!({
+///     "operation": "write",
+///     "file_path": "src/new_feature.rs",
+///     "content": "fn complex_function() { /* code */ }",
+///     "mode": "strict",
+///     "quality_config": {
+///         "max_complexity": 10,
+///         "allow_satd": false,
+///         "require_docs": true
+///     }
+/// });
+///
+/// // Quality proxy validates before allowing write
+/// let result = tool.handle(input, Default::default()).await?;
+/// 
+/// // Check if operation was approved
+/// assert!(result["approved"].is_boolean());
+/// if !result["approved"].as_bool().unwrap_or(false) {
+///     println!("Quality violations: {}", result["violations"]);
+/// }
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Auto-Fix Mode Example
+///
+/// ```
+/// use pmat::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
+/// use pmcp::ToolHandler;
+/// use serde_json::json;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let tool = QualityProxyTool;
+///
+/// // Enable auto-fix mode
+/// let input = json!({
+///     "operation": "edit",
+///     "file_path": "src/messy_code.rs",
+///     "old_content": "fn f(){if(true){return 1;}return 0;}",
+///     "new_content": "fn f(){if(true){return 1;}return 0;}//TODO: fix",
+///     "mode": "auto_fix",
+///     "quality_config": {
+///         "max_complexity": 5,
+///         "allow_satd": false,
+///         "auto_format": true
+///     }
+/// });
+///
+/// // Quality proxy automatically improves the code
+/// let result = tool.handle(input, Default::default()).await?;
+/// 
+/// // Get the improved version
+/// if result["auto_fixed"].as_bool().unwrap_or(false) {
+///     let fixed_content = result["fixed_content"].as_str().unwrap();
+///     println!("Auto-fixed code: {}", fixed_content);
+/// }
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Quality Configuration
+///
+/// ```
+/// use pmat::mcp_pmcp::quality_proxy_handler::QualityConfigInput;
+///
+/// // Strict configuration for production
+/// let strict_config = QualityConfigInput {
+///     max_complexity: 8,
+///     allow_satd: false,
+///     require_docs: true,
+///     auto_format: true,
+/// };
+///
+/// // Relaxed configuration for prototyping
+/// let relaxed_config = QualityConfigInput {
+///     max_complexity: 20,
+///     allow_satd: false, // Still no TODOs!
+///     require_docs: false,
+///     auto_format: false,
+/// };
 /// ```
 pub struct QualityProxyTool;
 
