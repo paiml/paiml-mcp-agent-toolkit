@@ -112,6 +112,72 @@ pub struct PdmtOutput {
 /// use pmcp::ToolHandler;
 ///
 /// let tool = PdmtTool::new();
+/// assert_eq!(tool.name(), "pdmt_deterministic_todos");
+/// ```
+///
+/// # Using PDMT for Todo Generation
+///
+/// ```
+/// use pmat::mcp_pmcp::pdmt_handler::{PdmtTool, PdmtInput, QualityConfigInput};
+/// use pmcp::ToolHandler;
+/// use serde_json::json;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let tool = PdmtTool::new();
+///
+/// // Create input for authentication system todos
+/// let input = json!({
+///     "requirements": [
+///         "implement JWT authentication",
+///         "add OAuth2 support",
+///         "create user registration"
+///     ],
+///     "project_name": "auth_system",
+///     "granularity": "high",
+///     "quality_config": {
+///         "enforcement_mode": "strict",
+///         "coverage_threshold": 85.0,
+///         "max_complexity": 10
+///     }
+/// });
+///
+/// // Generate todos with quality enforcement
+/// let result = tool.handle(input, Default::default()).await?;
+/// 
+/// // Verify response structure
+/// assert!(result["success"].as_bool().unwrap_or(false));
+/// assert!(result["total_todos"].as_u64().unwrap_or(0) > 0);
+/// assert!(result["todo_list"].is_object());
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Quality Configuration Options
+///
+/// ```
+/// use pmat::mcp_pmcp::pdmt_handler::QualityConfigInput;
+///
+/// // Strict production configuration
+/// let production_config = QualityConfigInput {
+///     enforcement_mode: "strict".to_string(),
+///     coverage_threshold: 90.0,
+///     max_complexity: 8,
+///     require_doctests: true,
+///     require_property_tests: true,
+///     require_examples: true,
+///     zero_satd_tolerance: true,
+/// };
+///
+/// // Advisory development configuration
+/// let dev_config = QualityConfigInput {
+///     enforcement_mode: "advisory".to_string(),
+///     coverage_threshold: 70.0,
+///     max_complexity: 15,
+///     require_doctests: false,
+///     require_property_tests: false,
+///     require_examples: false,
+///     zero_satd_tolerance: true,
+/// };
 /// ```
 pub struct PdmtTool {
     service: PdmtService,

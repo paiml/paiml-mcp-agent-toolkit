@@ -77,11 +77,17 @@ pmat quality-gate --strict
 cargo run --example quality_proxy_demo
 
 # NEW: PDMT Integration - Generate deterministic todos with quality enforcement
+cargo run --example pmcp_analyze_workflow  # Full PDMT workflow demo
 pmat mcp-call pdmt_deterministic_todos --requirements '["implement auth", "add logging"]'
 
 # NEW: GitHub Issues Integration - Create quality-enforced GitHub issues
 pmat github create-issue --title "Implement Authentication System" --type feature --requirements '["OAuth integration", "JWT tokens"]'
 pmat github list-issues --state open --labels "enhancement,quality-gate"
+
+# Test MCP server and tools
+cargo run --example mcp_server_pmcp      # Start MCP server
+cargo run --example test_pmcp_server     # Test MCP tools
+cargo run --example unified_mcp_demo     # Complete MCP demonstration
 ```
 
 ### Using as a Library
@@ -267,10 +273,30 @@ pmat enforce extreme                          # Enforce extreme quality standard
 
 #### Using with Claude Code
 
+PMAT provides comprehensive MCP (Model Context Protocol) integration for seamless AI-assisted development.
+
+**📚 Complete MCP Documentation:**
+- [**MCP Claude Code Setup Guide**](docs/mcp-claude-code-setup.md) - Step-by-step Claude Code configuration
+- [**PDMT Deterministic Todos**](docs/pdmt-detailed-examples.md) - Quality-enforced todo generation with examples
+- [**Quality Gates Proxy**](docs/quality-gates-proxy-detailed.md) - Intercept and validate AI code changes
+- [**Cargo Examples Guide**](docs/cargo-examples-guide.md) - 30+ runnable examples for all features
+- [**MCP Methods Reference**](docs/mcp-methods.md) - Complete API documentation
+
 ```bash
-# Add to Claude Code
-claude mcp add pmat ~/.local/bin/pmat
+# Quick setup for Claude Code (see full guide above)
+# Add to ~/Library/Application Support/Claude/claude_desktop_config.json (macOS)
+# or ~/.config/Claude/claude_desktop_config.json (Linux)
+{
+  "mcpServers": {
+    "pmat": {
+      "command": "pmat",
+      "args": [],
+      "env": {"RUST_LOG": "info"}
+    }
+  }
+}
 ```
+
 <details>
 <summary><i>💫 See Claude Code usage in action</i></summary>
 <br>
