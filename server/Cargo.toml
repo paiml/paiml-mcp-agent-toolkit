@@ -155,7 +155,7 @@ tokio-test = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 pretty_assertions = "1.4"
 tempfile = "3.20"
-criterion = { version = "0.6", features = ["html_reports"] }
+criterion = { version = "0.7", features = ["html_reports"] }
 proptest = "1.6"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
