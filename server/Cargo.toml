@@ -29,7 +29,7 @@ handlebars = { version = "6.3", default-features = false, features = ["string_he
 pmcp = { version = "1.2.0", features = ["full", "validation"] }
 
 # Caching
-lru = { version = "0.14", features = ["hashbrown"] }
+lru = { version = "0.16", features = ["hashbrown"] }
 
 # Error handling
 thiserror = "2.0"
