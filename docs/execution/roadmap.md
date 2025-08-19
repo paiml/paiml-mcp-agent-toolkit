@@ -35,9 +35,26 @@
 6. **Comprehensive Testing**: 64+ property tests, doctests, integration tests
 7. **Quality Gate CLI**: Zero-tolerance quality enforcement
 
-## Current Sprint Tasks
+## Next Sprint: v2.6.0 Architecture Alignment & Documentation Consolidation 📋 PLANNED
+- **Duration**: 2 days (2025-08-20 to 2025-08-21)
+- **Priority**: CRITICAL - System Coherence
+- **Dependencies**: SPECIFICATION.md as source of truth
+- **Major Features**: Documentation consolidation, architecture alignment, service unification
+- **Quality Gates**: Maintained (complexity ≤20, zero SATD, documentation sync)
 
-### Completed Sprint Tasks ✅
+### v2.6.0 Sprint Tasks 📋
+| ID | Description | Status | Complexity | Priority |
+|----|-------------|--------|------------|----------|
+| PMAT-3001 | Consolidate documentation per SPECIFICATION.md | 📋 | High | P0 |
+| PMAT-3002 | Implement unified protocol design (Section 3) | 📋 | High | P0 |
+| PMAT-3003 | Refactor service architecture (Section 2) | 📋 | High | P0 |
+| PMAT-3004 | Archive outdated documentation | 📋 | Low | P1 |
+| PMAT-3005 | Update CLI to match spec (Section 23) | 📋 | Medium | P1 |
+| PMAT-3006 | Implement performance testing (Section 30) | 📋 | Medium | P2 |
+
+## Previous Sprint Tasks ✅
+
+### v2.5.0 Sprint (COMPLETED)
 | ID | Description | Status | Complexity | Priority |
 |----|-------------|--------|------------|----------|
 | PMAT-2001 | Documentation synchronization framework | ✅ | High | P0 |
@@ -56,13 +73,19 @@
 | PMAT-1003 | PDMT system implementation | ✅ | Medium | v2.4.1 |
 | PMAT-1004 | Canonical release system | ✅ | Medium | v2.4.1 |
 
-### Backlog 📋
-| ID | Description | Status | Complexity | Priority |
-|----|-------------|--------|------------|----------|
-| PMAT-3000 | Advanced MCP discovery | 📋 | High | P1 |
-| PMAT-3001 | Enhanced property testing | 📋 | Medium | P2 |
-| PMAT-3002 | Performance optimization | 📋 | High | P1 |
-| PMAT-3003 | Documentation generation | 📋 | Low | P2 |
+### Backlog 📋 (Aligned with SPECIFICATION.md)
+| ID | Description | Status | Complexity | Priority | Spec Section |
+|----|-------------|--------|------------|----------|-------------|
+| PMAT-4001 | Implement Halstead metrics (Section 7.1) | 📋 | Medium | P2 | Section 7 |
+| PMAT-4002 | Add 30+ language support (Section 6.2) | 📋 | High | P1 | Section 6 |
+| PMAT-4003 | WebSocket transport adapter (Section 5.1) | 📋 | Medium | P2 | Section 5 |
+| PMAT-4004 | Service composition pattern (Section 2.2) | 📋 | High | P1 | Section 2 |
+| PMAT-4005 | HTTP-SSE transport support | 📋 | Medium | P2 | Section 5 |
+| PMAT-4006 | Memory management optimization (Section 26) | 📋 | High | P1 | Section 26 |
+| PMAT-4007 | Caching strategy implementation (Section 27) | 📋 | Medium | P1 | Section 27 |
+| PMAT-4008 | Property-based testing expansion (Section 28) | 📋 | High | P0 | Section 28 |
+| PMAT-4009 | Telemetry & logging system (Section 35) | 📋 | Medium | P2 | Section 35 |
+| PMAT-4010 | Configuration management (Section 36) | 📋 | Low | P2 | Section 36 |
 
 ## Execution DAG
 
@@ -77,9 +100,16 @@ graph TD
     PMAT-3001 --> PMAT-3002[Performance Opt]
 ```
 
-## Performance Tracking
+## Performance Tracking (Per SPECIFICATION.md Section 1.4)
 
-### Current Metrics (v2.4.1)
+### Target Metrics (from Spec)
+- **Startup Latency**: 127ms cold, 4ms hot (mmap'd cache)
+- **Analysis Throughput**: 487K LOC/s (single-threaded), 3.9M LOC/s (16-core)
+- **Memory Usage**: 47MB base RSS, 312KB per KLOC
+- **Cache Performance**: L1 97.3%, L2 89.1%, L3 72.4% hit rates
+- **SIMD Utilization**: 43% coverage, 2.7x AVX2 speedup
+
+### Current Metrics (v2.5.0)
 - Complexity: **ACHIEVED** - All functions ≤20 complexity (current max: 0)
 - Test Coverage: **EXCEEDED** - Comprehensive coverage across all components
 - Technical Debt: **ACHIEVED** - Zero SATD comments maintained (0 found)
