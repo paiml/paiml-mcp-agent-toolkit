@@ -86,6 +86,7 @@
 
 pub mod analyze_handlers;
 pub mod context_handlers;
+pub mod discovery;
 pub mod handlers;
 pub mod pdmt_handler;
 pub mod quality_handlers;
@@ -98,3 +99,5 @@ pub mod tool_functions;
 pub use simple_unified_server::SimpleUnifiedServer as UnifiedServer;
 // Keep PmcpServer for backward compatibility (will be removed)
 pub use server::PmcpServer;
+// Export the discovery service for MCP optimization
+pub use discovery::{DiscoveryService, ToolInfo, Context, DiscoveryMetrics};
