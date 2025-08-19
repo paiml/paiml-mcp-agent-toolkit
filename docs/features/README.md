@@ -1,6 +1,9 @@
-# PAIML MCP Agent Toolkit - Feature Documentation
+# PMAT Features Documentation
 
-This directory contains comprehensive documentation for all features of the PAIML MCP Agent Toolkit.
+*Feature implementation details aligned with [SPECIFICATION.md](../SPECIFICATION.md)*  
+*Version 2.5.0 - Toyota Way Quality Standards*
+
+This directory contains comprehensive documentation for all PMAT features, cross-referenced with the complete system specification.
 
 ## 📚 Feature Categories
 
