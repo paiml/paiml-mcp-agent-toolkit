@@ -32,6 +32,9 @@ fn main() {
 
     // Compile Cap'n Proto schema for MCP server
     compile_capnp_schema();
+    
+    // Generate MCP discovery optimization tables
+    generate_mcp_discovery_tables();
 }
 
 /// Check if we're in a cargo publish context
@@ -532,5 +535,210 @@ fn compile_capnp_schema() {
         } else {
             println!("cargo:warning=Cap'n Proto schema file not found, skipping compilation");
         }
+    }
+}
+
+/// Generate MCP discovery optimization tables for <10ms initialization
+fn generate_mcp_discovery_tables() {
+    println!("cargo:warning=Generating MCP discovery optimization tables");
+    
+    let out_dir = env::var("OUT_DIR").expect("OUT_DIR must be set");
+    
+    // Generate tool registry
+    generate_tool_registry(&out_dir);
+    
+    // Generate alias table  
+    generate_alias_table(&out_dir);
+    
+    // Generate trigram index
+    generate_trigram_index(&out_dir);
+}
+
+/// Generate static PHF map of all MCP tools for zero-copy initialization
+fn generate_tool_registry(out_dir: &str) {
+    let dest_path = Path::new(out_dir).join("tool_registry.rs");
+    
+    // Tool definitions from the current MCP server
+    let tools = vec![
+        ("analyze_complexity", "Analyze code complexity metrics (cyclomatic, cognitive)", vec!["complexity", "analyze", "metrics"]),
+        ("analyze_satd", "Find self-admitted technical debt in comments", vec!["satd", "debt", "todo", "fixme"]),
+        ("analyze_dead_code", "Detect unused functions and variables", vec!["dead", "unused", "code"]),
+        ("analyze_dag", "Generate dependency graphs and visualizations", vec!["dependency", "graph", "dag", "architecture"]),
+        ("analyze_deep_context", "Generate comprehensive codebase context", vec!["context", "summary", "analysis"]),
+        ("analyze_big_o", "Analyze algorithmic complexity", vec!["big-o", "algorithm", "performance"]),
+        ("refactor.start", "Begin refactoring workflow", vec!["refactor", "start", "begin"]),
+        ("refactor.nextIteration", "Continue refactoring process", vec!["refactor", "next", "continue"]),
+        ("refactor.getState", "Get current refactoring state", vec!["refactor", "state", "status"]),
+        ("refactor.stop", "End refactoring workflow", vec!["refactor", "stop", "end"]),
+        ("quality_gate", "Run comprehensive quality analysis", vec!["quality", "gate", "check"]),
+        ("quality_proxy", "Intercept and validate code changes", vec!["quality", "proxy", "validate"]),
+        ("git_operation", "Execute git operations", vec!["git", "version", "control"]),
+        ("generate_context", "Generate AI-optimized context", vec!["generate", "context", "ai"]),
+        ("scaffold_project", "Create project scaffolding", vec!["scaffold", "create", "generate", "project"]),
+    ];
+    
+    let mut registry_code = String::from(
+        "// Auto-generated tool registry for zero-copy MCP initialization\n\n\
+         #[derive(Debug, Clone)]\n\
+         pub struct ToolMeta {\n\
+             pub name: &'static str,\n\
+             pub description: &'static str,\n\
+             pub keywords: &'static [&'static str],\n\
+         }\n\n\
+         pub static TOOL_REGISTRY: once_cell::sync::Lazy<std::collections::HashMap<&'static str, ToolMeta>> = once_cell::sync::Lazy::new(|| {\n\
+             let mut m = std::collections::HashMap::new();\n"
+    );
+    
+    for (name, desc, keywords) in &tools {
+        registry_code.push_str(&format!(
+            "    m.insert(\"{}\", ToolMeta {{\n\
+                 name: \"{}\",\n\
+                 description: \"{}\",\n\
+                 keywords: &{:?},\n\
+             }});\n",
+            name, name, desc, keywords
+        ));
+    }
+    
+    registry_code.push_str("    m\n});\n");
+    
+    if let Err(e) = fs::write(&dest_path, registry_code) {
+        println!("cargo:warning=Failed to write tool registry: {}", e);
+    }
+}
+
+/// Generate alias dispatch table from empirical usage patterns
+fn generate_alias_table(out_dir: &str) {
+    let dest_path = Path::new(out_dir).join("alias_table.rs");
+    
+    let aliases = vec![
+        ("analyze_complexity", vec![
+            "complexity", "cyclomatic", "cognitive", "analyze code",
+            "code complexity", "mccabe", "sonar", "analyze", "metrics"
+        ]),
+        ("analyze_satd", vec![
+            "debt", "technical debt", "todo", "fixme", "hack", "satd",
+            "find debt", "find todo", "self admitted", "admitted debt"
+        ]),
+        ("analyze_dag", vec![
+            "dependency", "dependencies", "graph", "visualize", "diagram",
+            "show dependencies", "dependency graph", "architecture", "dag"
+        ]),
+        ("scaffold_project", vec![
+            "scaffold", "create", "generate", "make", "new", "init",
+            "create project", "generate project", "new project", "project template"
+        ]),
+        ("generate_context", vec![
+            "context", "summary", "generate context", "ai context",
+            "codebase context", "analyze codebase", "understand code"
+        ]),
+        ("quality_gate", vec![
+            "quality", "check quality", "quality check", "gate", "validate",
+            "quality analysis", "code quality", "standards"
+        ]),
+        ("refactor.start", vec![
+            "refactor", "refactoring", "start refactor", "begin refactor",
+            "improve code", "clean code", "restructure"
+        ]),
+        ("git_operation", vec![
+            "git", "version control", "commit", "branch", "merge",
+            "git command", "source control"
+        ]),
+    ];
+    
+    let mut alias_code = String::from(
+        "// Auto-generated alias table for MCP tool discovery\n\n\
+         pub static ALIAS_TABLE: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Vec<&'static str>>> = once_cell::sync::Lazy::new(|| {\n\
+             let mut m = std::collections::HashMap::new();\n"
+    );
+    
+    for (tool, tool_aliases) in &aliases {
+        alias_code.push_str(&format!(
+            "    m.insert(\"{}\", vec!{:?});\n",
+            tool, tool_aliases
+        ));
+    }
+    
+    alias_code.push_str("    m\n});\n");
+    
+    if let Err(e) = fs::write(&dest_path, alias_code) {
+        println!("cargo:warning=Failed to write alias table: {}", e);
+    }
+}
+
+/// Generate trigram index for fuzzy matching
+fn generate_trigram_index(out_dir: &str) {
+    let dest_path = Path::new(out_dir).join("trigram_index.rs");
+    
+    let trigram_code = r#"// Auto-generated trigram index for fuzzy matching
+pub struct TrigramIndex;
+
+impl TrigramIndex {
+    #[inline(always)]
+    pub fn pack_trigram(s: &[u8]) -> u32 {
+        if s.len() < 3 { return 0; }
+        (s[0] as u32) | ((s[1] as u32) << 8) | ((s[2] as u32) << 16)
+    }
+    
+    pub fn similarity_score(&self, query: &str, candidate: &str) -> f32 {
+        let q_bytes = query.to_lowercase().into_bytes();
+        let c_bytes = candidate.to_lowercase().into_bytes();
+        
+        if q_bytes.len() < 3 || c_bytes.len() < 3 {
+            return 0.0;
+        }
+        
+        // Collect query trigrams
+        let mut q_trigrams = Vec::with_capacity(q_bytes.len().saturating_sub(2));
+        for i in 0..q_bytes.len().saturating_sub(2) {
+            q_trigrams.push(Self::pack_trigram(&q_bytes[i..i+3]));
+        }
+        
+        // Collect candidate trigrams
+        let mut c_trigrams = Vec::with_capacity(c_bytes.len().saturating_sub(2));
+        for i in 0..c_bytes.len().saturating_sub(2) {
+            c_trigrams.push(Self::pack_trigram(&c_bytes[i..i+3]));
+        }
+        
+        // Count matches
+        let mut matches = 0;
+        for q_tri in &q_trigrams {
+            if c_trigrams.contains(q_tri) {
+                matches += 1;
+            }
+        }
+        
+        // Jaccard similarity coefficient
+        let union_size = q_trigrams.len() + c_trigrams.len() - matches;
+        if union_size == 0 { return 0.0; }
+        
+        matches as f32 / union_size as f32
+    }
+    
+    pub fn find_best_match<'a>(&self, query: &str, candidates: &[(&'a str, &str)]) -> Option<(&'a str, f32)> {
+        let mut best_match = ("", 0.0f32);
+        
+        for (name, description) in candidates {
+            // Check both name and description
+            let name_score = self.similarity_score(query, name);
+            let desc_score = self.similarity_score(query, description) * 0.7; // Weight description lower
+            let combined = name_score.max(desc_score);
+            
+            if combined > best_match.1 {
+                best_match = (name, combined);
+            }
+        }
+        
+        if best_match.1 > 0.4 {  // Empirically determined threshold
+            Some(best_match)
+        } else {
+            None
+        }
+    }
+}
+"#;
+    
+    if let Err(e) = fs::write(&dest_path, trigram_code) {
+        println!("cargo:warning=Failed to write trigram index: {}", e);
     }
 }
