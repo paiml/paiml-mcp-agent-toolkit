@@ -37,9 +37,11 @@
 | ID | Description | Status | Complexity | Priority |
 |----|-------------|--------|------------|----------|
 | PMAT-2001 | Documentation synchronization framework | ✅ | High | P0 |
-| PMAT-2002 | Pre-commit quality gates | 📋 | Medium | P0 |
-| PMAT-2003 | Sprint management system | 📋 | Medium | P1 |
-| PMAT-2004 | Velocity tracking integration | 📋 | Low | P2 |
+| PMAT-2002 | Pre-commit quality gates | ✅ | Medium | P0 |
+| PMAT-2003 | Sprint management system | ✅ | Medium | P1 |
+| PMAT-2004 | Velocity tracking integration | ✅ | Low | P2 |
+| PMAT-2005 | MCP discovery optimization | ✅ | High | P0 |
+| PMAT-2006 | Release v2.5.0 to crates.io | 🚧 | Medium | P0 |
 
 ### Completed ✅
 | ID | Description | Status | Complexity | Sprint |
