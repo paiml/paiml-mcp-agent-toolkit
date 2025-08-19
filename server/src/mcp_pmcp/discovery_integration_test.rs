@@ -2,7 +2,6 @@
 /// 
 /// Tests the implementation from docs/todo/mcp-discovery-fixes.md
 /// Validates >90% discovery success rate and <10ms initialization
-
 #[cfg(test)]
 mod discovery_integration_tests {
     use crate::mcp_pmcp::DiscoveryService;

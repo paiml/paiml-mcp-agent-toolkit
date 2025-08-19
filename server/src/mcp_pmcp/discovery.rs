@@ -1,10 +1,10 @@
-/// High-performance MCP tool discovery system
-/// 
-/// Implements the optimizations from docs/todo/mcp-discovery-fixes.md:
-/// - Zero-copy initialization with compile-time tool registry
-/// - Trigram-based fuzzy matching for >90% discovery success
-/// - Contextual aliases via static dispatch table
-/// - Sub-10ms initialization time
+// High-performance MCP tool discovery system
+// 
+// Implements the optimizations from docs/todo/mcp-discovery-fixes.md:
+// - Zero-copy initialization with compile-time tool registry
+// - Trigram-based fuzzy matching for >90% discovery success
+// - Contextual aliases via static dispatch table
+// - Sub-10ms initialization time
 
 // Include generated optimization tables from build.rs
 include!(concat!(env!("OUT_DIR"), "/tool_registry.rs"));
