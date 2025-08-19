@@ -1,13 +1,102 @@
-# Contributing to PMAT (PAIML MCP Agent Toolkit)
+# Contributing to PMAT
 
-Thank you for your interest in contributing to the PAIML MCP Agent Toolkit! This project follows strict quality standards based on Toyota Way principles and maintains zero-defect quality with comprehensive testing coverage.
+Welcome to the PMAT project! We follow the Toyota Production System principles to ensure extreme quality and continuous improvement.
 
-## Table of Contents
+## 🎯 Toyota Way Development Process
 
-- [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
-- [Development Setup](#development-setup)
-- [Quality Standards](#quality-standards)
+PMAT uses the Toyota Way (Toyota Production System) for development:
+
+- **Kaizen (改善)**: Continuous incremental improvement
+- **Genchi Genbutsu (現地現物)**: Go and see the actual problems  
+- **Jidoka (自働化)**: Automation with human oversight
+- **Zero Defects**: Quality built-in at source
+
+### Setup (One-time)
+
+```bash
+# Clone the repository
+git clone https://github.com/paiml/paiml-mcp-agent-toolkit
+cd paiml-mcp-agent-toolkit
+
+# Setup Toyota Way quality enforcement
+make setup-quality
+
+# Verify setup
+make validate
+```
+
+This will:
+- Install pre-commit hooks for documentation synchronization
+- Configure git hooks for quality enforcement  
+- Create documentation structure (docs/execution/)
+- Initialize quality gate configuration
+
+### Development Workflow
+
+1. **Start Development with Quality Checks**
+   ```bash
+   make dev
+   ```
+   This runs quality analysis and checks documentation status.
+
+2. **Make Changes**
+   - Write code following quality standards (see below)
+   - **MUST update documentation** with every code change:
+     - `docs/execution/roadmap.md` - Update task status
+     - `docs/execution/quality-gates.md` - Update metrics if needed
+     - `CHANGELOG.md` - Document changes
+     - `docs/architecture/decisions/` - Add ADR if architectural change
+
+3. **Quality-Enforced Commit**
+   ```bash
+   # Stage your changes
+   git add <files>
+   
+   # Create quality-enforced commit
+   make commit
+   ```
+   This will:
+   - Run pre-commit hooks to validate documentation updates
+   - Run quality analysis on staged files
+   - Prompt for commit message (PMAT-XXXX format recommended)
+
+4. **Sprint Verification**
+   ```bash
+   make sprint-close
+   ```
+   Run before major releases to verify all quality standards.
+
+### Pre-commit Hook Behavior
+
+The pre-commit hook will **block commits** that don't include documentation updates when source files are modified. This ensures documentation stays synchronized with code changes.
+
+**Required documentation updates** (at least one of):
+- `docs/execution/roadmap.md`
+- `docs/execution/quality-gates.md`  
+- `CHANGELOG.md`
+- `docs/architecture/decisions/` (for architectural changes)
+
+## 🔍 Quality Standards (Zero Tolerance)
+
+All contributions MUST meet these standards:
+
+### Code Quality
+- **Complexity**: ≤20 cyclomatic complexity per function
+- **SATD Comments**: 0 (no TODO, FIXME, HACK, etc.)
+- **Lint Warnings**: 0 clippy violations
+- **Test Coverage**: >80% with comprehensive testing
+
+### Testing Requirements
+- Unit tests for all public functions
+- Property-based tests for algorithms
+- Doctests for examples
+- Integration tests for services
+
+### Documentation Requirements  
+- All public APIs documented
+- Examples for complex functions
+- Architecture decisions recorded as ADRs
+- Changelog entries for all changes
 - [Submitting Changes](#submitting-changes)
 - [Testing](#testing)
 - [Documentation](#documentation)

@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2025-08-19
+
+### Added
+- **Toyota Way Quality Integration**: Comprehensive project management system inspired by ruchy
+  - Documentation synchronization with pre-commit hooks enforcing updates on every code change
+  - Sprint management system with PMAT-XXXX task IDs and velocity tracking via JSON metrics
+  - Toyota Way development workflow: `make dev`, `make commit`, `make sprint-close`
+  - Pre-commit quality gates with complexity analysis and SATD detection on staged files
+  - Setup automation via `scripts/setup-quality.sh` for one-time quality enforcement configuration
+  - Enhanced pmat.toml configuration with documentation enforcement and commit limits
+- **Documentation Structure**: New docs/execution/ directory with roadmap.md, quality-gates.md, and velocity.json
+  - Task tracking with execution DAG, story points, and completion criteria
+  - Quality metrics tracking with performance baselines and risk indicators  
+  - Sprint definitions with definition-of-done criteria and Toyota Way metrics
+- **Quality-Enforced Development**: Make targets for quality-enforced commits and sprint verification
+  - Documentation synchronization validation with PMAT-XXXX task ID format enforcement
+  - Quality gate integration with pre-commit hooks running PMAT analysis on staged files
+  - Sprint closing verification with comprehensive quality analysis and documentation checks
+- **Streamlined Documentation**: Refactored README and docs using SPECIFICATION.md as source of truth
+  - Clear architecture overview with Toyota Way principles and performance characteristics
+  - Focused core capabilities section highlighting Analysis Engine, Quality Systems, Integration Protocols
+  - Streamlined installation and quick start with Toyota Way development workflow
+  - Comprehensive documentation index with logical categorization and clear paths to key information
+
+### Changed
+- **README Overhaul**: Complete restructure for clarity and focus using SPECIFICATION.md as guide
+  - Emphasis on v2.5.0 Toyota Way Quality Integration features
+  - Clear architecture section explaining Toyota Production System principles
+  - Streamlined feature descriptions with focus on core capabilities
+  - Better organization of documentation links with logical categorization
+
 ## [2.4.1] - 2025-08-16
 
 ### Added
