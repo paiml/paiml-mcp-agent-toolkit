@@ -1,0 +1,31 @@
+# PMAT Configuration - Toyota Way Quality Standards
+# Zero tolerance settings for extreme quality enforcement
+
+[quality_gate]
+max_cyclomatic_complexity = 20
+max_cognitive_complexity = 15
+max_satd_comments = 0
+min_test_coverage = 80.0
+
+[documentation]
+required_updates = [
+    "docs/execution/roadmap.md",
+    "docs/execution/quality-gates.md", 
+    "CHANGELOG.md"
+]
+task_id_pattern = "PMAT-[0-9]{4}"
+
+[toyota_way]
+enable_mcp_first_dogfooding = true
+enforce_jidoka_automation = true
+kaizen_cycle_enforcement = true
+
+[sprint_management]
+current_sprint = "v2.5.0"
+velocity_tracking_enabled = true
+task_id_enforcement = true
+
+[pdmt_integration]
+enable_deterministic_todos = true
+default_granularity = "medium"
+default_seed = 42

@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint lint-main check test test-doc test-fast coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-refactor overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all coverage-stratified coverage-full coverage-report crate-release crate-docs
+.PHONY: all validate format lint lint-main check test test-doc test-fast coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-refactor overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all coverage-stratified coverage-full coverage-report crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -1865,3 +1865,173 @@ overnight-swap-cron:
 	echo "  - Clear swap if usage exceeds 50%"; \
 	echo "  - Only act if overnight refactor is running"; \
 	echo "  - Log actions to .refactor_state/swap-clear.log"
+
+# =============================================================================
+# Toyota Way Quality-Enforced Development Targets (ruchy-inspired)
+# =============================================================================
+
+# Development with quality checks (Toyota Way Genchi Genbutsu)
+dev:
+	@echo "🎯 Toyota Way Development - Starting with quality checks..."
+	@echo "📊 Checking current quality status..."
+	@if [ -f "./target/debug/pmat" ]; then \
+		echo "Running quality gate analysis..."; \
+		./target/debug/pmat quality-gate || echo "⚠️  Quality gate warnings found"; \
+	else \
+		echo "Building PMAT for quality analysis..."; \
+		make build; \
+	fi
+	@echo ""
+	@echo "📝 Documentation synchronization status:"
+	@ls -la docs/execution/ 2>/dev/null || echo "  📋 Run './scripts/setup-quality.sh' to initialize"
+	@echo ""
+	@echo "✅ Ready for Toyota Way development!"
+	@echo "   🎯 Remember: Documentation MUST be updated with code changes"
+	@echo "   🔧 Use 'make commit' for quality-enforced commits"
+
+# Quality-enforced commit (Toyota Way Jidoka)
+commit:
+	@echo "🔧 Toyota Way Quality-Enforced Commit (Jidoka)..."
+	@echo ""
+	@echo "📋 Checking for staged changes..."
+	@if [ -z "$$(git diff --cached --name-only)" ]; then \
+		echo "❌ No staged changes found!"; \
+		echo "   Stage your changes first: git add <files>"; \
+		exit 1; \
+	fi
+	@echo "📝 Staged files:"
+	@git diff --cached --name-only | sed 's/^/  ✓ /'
+	@echo ""
+	@echo "🔍 Running pre-commit quality gates..."
+	@if [ -x ".git/hooks/pre-commit" ]; then \
+		.git/hooks/pre-commit; \
+	else \
+		echo "⚠️  Pre-commit hook not found - run './scripts/setup-quality.sh'"; \
+		echo "Continuing with basic validation..."; \
+		make validate; \
+	fi
+	@echo ""
+	@echo "💬 Please provide commit message (PMAT-XXXX format recommended):"
+	@read -p "Commit message: " MSG; \
+	if [ -z "$$MSG" ]; then \
+		echo "❌ Commit message cannot be empty"; \
+		exit 1; \
+	fi; \
+	git commit -m "$$MSG"; \
+	echo ""; \
+	echo "✅ Quality-enforced commit completed!"; \
+	echo "   🎯 Toyota Way: Quality built-in at source"
+
+# Sprint quality verification (Toyota Way Kaizen)
+sprint-close:
+	@echo "🏁 Sprint Quality Verification (Toyota Way Kaizen)..."
+	@echo ""
+	@echo "📊 Running comprehensive quality analysis..."
+	@make validate
+	@echo ""
+	@echo "🔍 Checking documentation synchronization..."
+	@if [ -f "docs/execution/roadmap.md" ]; then \
+		echo "✓ Roadmap documentation found"; \
+		if grep -q "✅ COMPLETED" docs/execution/roadmap.md; then \
+			echo "✓ Completed tasks found in roadmap"; \
+		else \
+			echo "⚠️  No completed tasks marked in roadmap"; \
+		fi; \
+	else \
+		echo "❌ Roadmap documentation missing"; \
+		echo "   Run './scripts/setup-quality.sh' to initialize"; \
+		exit 1; \
+	fi
+	@if [ -f "docs/execution/quality-gates.md" ]; then \
+		echo "✓ Quality gates documentation found"; \
+	else \
+		echo "❌ Quality gates documentation missing"; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "🧪 Running full test suite..."
+	@make test-all || (echo "❌ Tests failed - cannot close sprint" && exit 1)
+	@echo ""
+	@echo "🔧 Running quality gate analysis..."
+	@if [ -f "./target/debug/pmat" ]; then \
+		./target/debug/pmat quality-gate --strict || (echo "❌ Quality gates failed" && exit 1); \
+	else \
+		echo "⚠️  PMAT binary not found, building..."; \
+		make build && ./target/debug/pmat quality-gate --strict; \
+	fi
+	@echo ""
+	@echo "📈 Updating velocity tracking..."
+	@if [ -f "docs/execution/velocity.json" ]; then \
+		echo "✓ Velocity data found"; \
+		echo "   📊 Consider updating completed tasks and metrics"; \
+	fi
+	@echo ""
+	@echo "✅ Sprint quality verification PASSED!"
+	@echo "   🎯 Toyota Way: Continuous improvement achieved"
+	@echo "   📋 All quality gates met"
+	@echo "   📝 Documentation synchronized"
+	@echo "   🧪 All tests passing"
+	@echo "   🔧 Zero quality violations"
+	@echo ""
+	@echo "🚀 Ready for sprint completion and release!"
+
+# Setup quality enforcement (one-time)
+setup-quality:
+	@echo "🔧 Setting up Toyota Way quality enforcement..."
+	@if [ -x "./scripts/setup-quality.sh" ]; then \
+		./scripts/setup-quality.sh; \
+	else \
+		echo "❌ setup-quality.sh script not found or not executable"; \
+		echo "   Ensure scripts/setup-quality.sh exists and is executable"; \
+		exit 1; \
+	fi
+
+# Quality gate with documentation sync check
+quality-gate-full:
+	@echo "🔍 Comprehensive Quality Gate Analysis..."
+	@echo ""
+	@echo "1️⃣  Running PMAT quality analysis..."
+	@if [ -f "./target/debug/pmat" ]; then \
+		./target/debug/pmat quality-gate --strict; \
+	else \
+		echo "Building PMAT first..."; \
+		make build && ./target/debug/pmat quality-gate --strict; \
+	fi
+	@echo ""
+	@echo "2️⃣  Checking documentation synchronization..."
+	@if [ -f "docs/execution/roadmap.md" ] && [ -f "docs/execution/quality-gates.md" ]; then \
+		echo "✓ Documentation structure complete"; \
+	else \
+		echo "❌ Documentation structure incomplete"; \
+		echo "   Run 'make setup-quality' to initialize"; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "3️⃣  Validating Toyota Way standards..."
+	@make validate
+	@echo ""
+	@echo "✅ Comprehensive quality gate analysis PASSED!"
+
+# Help for Toyota Way targets
+help-toyota-way:
+	@echo "🎯 Toyota Way Quality-Enforced Development Commands:"
+	@echo ""
+	@echo "Setup (run once):"
+	@echo "  make setup-quality     - Initialize quality enforcement system"
+	@echo ""
+	@echo "Development workflow:"
+	@echo "  make dev               - Start development with quality checks"
+	@echo "  make commit            - Create quality-enforced commit"
+	@echo "  make sprint-close      - Verify sprint quality before release"
+	@echo ""
+	@echo "Quality analysis:"
+	@echo "  make quality-gate-full - Comprehensive quality gate analysis"
+	@echo "  pmat quality-gate      - Basic quality gate check"
+	@echo ""
+	@echo "🎯 Toyota Way Principles:"
+	@echo "  - Genchi Genbutsu: Go and see the actual problems"
+	@echo "  - Jidoka: Automation with human oversight"  
+	@echo "  - Kaizen: Continuous incremental improvement"
+	@echo "  - Documentation synchronization enforced"
+	@echo "  - Quality built-in at source"
+	@echo ""
