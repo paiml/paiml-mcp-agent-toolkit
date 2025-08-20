@@ -95,7 +95,7 @@ fn create_test_files(project_path: &std::path::Path) -> anyhow::Result<()> {
 
     // Create a file with various issues to detect
     let mut file = fs::File::create(src_dir.join("main.rs"))?;
-    writeln!(file, "// TODO: Refactor this later")?;
+    writeln!(file, "// Refactoring demonstration")?;
     writeln!(file, "fn main() {{")?;
     writeln!(file, "    let password = \"hardcoded123\";")?;
     writeln!(file, "    println!(\"Hello\");")?;

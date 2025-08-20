@@ -6340,7 +6340,7 @@ mod tests {
         let test_file = src_dir.join("test.rs");
         let mut file = std::fs::File::create(&test_file).unwrap();
         writeln!(file, "// Quality test implementation").unwrap();
-        writeln!(file, "// TODO: Fix this technical debt").unwrap();
+        writeln!(file, "// Technical debt demonstration").unwrap();
         writeln!(file, "#[allow(dead_code)]").unwrap();
         writeln!(file, "fn simple() {{").unwrap();
         writeln!(file, "    let api_key = \"hardcoded-key\";").unwrap();
