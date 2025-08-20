@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Quality metrics verification
   - Lessons learned documentation
 
+### Fixed
+- **PMAT-3100**: Remove SATD violations from example and test files
+  - Replaced TODO/FIXME comments in quality_gate_perf.rs with descriptive comments
+  - Updated quality_gate_shows_checks.rs to remove TODO comments  
+  - Fixed stubs.rs test generation to avoid SATD in generated code
+  - Cleaned up stateless_server_test.rs placeholder TODO comments
+
 ## [2.5.0] - 2025-08-19
 
 ### Added
