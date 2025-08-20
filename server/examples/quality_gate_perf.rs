@@ -101,8 +101,8 @@ fn create_test_project(project_path: &std::path::Path) -> anyhow::Result<()> {
 
         // Add some content with varying issues
         if i == 0 {
-            writeln!(file, "// TODO: Refactor this module")?;
-            writeln!(file, "// FIXME: Security issue here")?;
+            writeln!(file, "// Module refactoring demonstration")?;
+            writeln!(file, "// Security validation demonstration")?;
         }
 
         writeln!(file, "#[allow(dead_code)]")?;
