@@ -272,6 +272,9 @@ impl CommandExecutor {
             Commands::Enforce(enforce_cmd) => {
                 super::handlers::route_enforce_command(enforce_cmd).await
             }
+            Commands::Roadmap(roadmap_cmd) => {
+                super::command_dispatcher::CommandDispatcher::execute_roadmap_command(roadmap_cmd).await
+            }
         }
     }
 }

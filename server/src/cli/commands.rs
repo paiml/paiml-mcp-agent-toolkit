@@ -360,6 +360,10 @@ pub enum Commands {
     /// Refactor code with real-time analysis or interactive mode
     #[command(subcommand)]
     Refactor(RefactorCommands),
+
+    /// Roadmap management with PDMT todos and quality gates
+    #[command(subcommand)]
+    Roadmap(RoadmapCommands),
 }
 
 /// Analyze subcommands
@@ -1837,5 +1841,97 @@ pub enum ScaffoldCommands {
     ValidateTemplate {
         /// Path to template file
         path: PathBuf,
+    },
+}
+
+/// Roadmap management subcommands
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum RoadmapCommands {
+    /// Initialize a new sprint in the roadmap
+    Init {
+        /// Sprint version (e.g., v2.6.0)
+        #[arg(long)]
+        version: String,
+        
+        /// Sprint title
+        #[arg(long)]
+        title: String,
+        
+        /// Sprint duration in days
+        #[arg(long, default_value = "14")]
+        duration_days: u32,
+        
+        /// Sprint priority (P0, P1, P2)
+        #[arg(long, default_value = "P0")]
+        priority: String,
+    },
+    
+    /// Generate PDMT todos from roadmap tasks
+    Todos {
+        /// Sprint ID to generate todos for (uses current if not specified)
+        #[arg(long)]
+        sprint: Option<String>,
+        
+        /// Output file path for todos
+        #[arg(long, default_value = "todos.md")]
+        output: PathBuf,
+        
+        /// Include quality gate requirements in todos
+        #[arg(long)]
+        include_quality_gates: bool,
+    },
+    
+    /// Start working on a task
+    Start {
+        /// Task ID (e.g., PMAT-3001)
+        task_id: String,
+        
+        /// Create a git branch for the task
+        #[arg(long)]
+        create_branch: bool,
+    },
+    
+    /// Complete a task (with quality validation)
+    Complete {
+        /// Task ID (e.g., PMAT-3001)
+        task_id: String,
+        
+        /// Skip quality gate checks
+        #[arg(long)]
+        skip_quality_check: bool,
+    },
+    
+    /// Check sprint or task status
+    Status {
+        /// Sprint ID to check
+        #[arg(long)]
+        sprint: Option<String>,
+        
+        /// Task ID to check
+        #[arg(long)]
+        task: Option<String>,
+        
+        /// Output format
+        #[arg(long, value_enum, default_value = "human")]
+        format: OutputFormat,
+    },
+    
+    /// Validate sprint readiness for release
+    Validate {
+        /// Sprint ID to validate
+        #[arg(long)]
+        sprint: String,
+        
+        /// Fail if validation fails (exit code 1)
+        #[arg(long)]
+        strict: bool,
+    },
+    
+    /// Run quality checks for a task
+    QualityCheck {
+        /// Task ID to check
+        #[arg(long)]
+        task_id: String,
     },
 }
