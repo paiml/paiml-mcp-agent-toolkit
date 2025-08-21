@@ -158,7 +158,7 @@ impl AnalysisService {
         Self {
             metrics: Arc::new(RwLock::new(ServiceMetrics::default())),
             satd_detector: SATDDetector::new(),
-            dead_code_analyzer: DeadCodeAnalyzer::new(),
+            dead_code_analyzer: DeadCodeAnalyzer::new(10000), // Default capacity
         }
     }
     
