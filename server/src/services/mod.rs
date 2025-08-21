@@ -51,6 +51,7 @@
 pub mod service_base;
 pub mod analysis_service;
 pub mod quality_gate_service;
+pub mod service_adapter;
 
 pub mod artifact_writer;
 pub mod ast_based_dependency_analyzer;

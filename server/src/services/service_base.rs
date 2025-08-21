@@ -32,8 +32,9 @@ pub struct ServiceMetrics {
     pub request_count: u64,
     pub success_count: u64,
     pub error_count: u64,
-    pub total_duration: Duration,
-    pub average_duration: Duration,
+    pub total_duration_ms: u64,
+    pub average_duration_ms: u64,
+    #[serde(skip)]
     pub last_request_time: Option<Instant>,
 }
 
@@ -45,8 +46,9 @@ impl ServiceMetrics {
         } else {
             self.error_count += 1;
         }
-        self.total_duration += duration;
-        self.average_duration = self.total_duration / self.request_count as u32;
+        let duration_ms = duration.as_millis() as u64;
+        self.total_duration_ms += duration_ms;
+        self.average_duration_ms = self.total_duration_ms / self.request_count;
         self.last_request_time = Some(Instant::now());
     }
     
@@ -63,7 +65,7 @@ impl ServiceMetrics {
 pub trait Service: Send + Sync {
     type Input: Serialize + DeserializeOwned + Send + Sync;
     type Output: Serialize + DeserializeOwned + Send + Sync;
-    type Error: std::error::Error + Send + Sync;
+    type Error: Into<anyhow::Error> + Send + Sync;
     
     /// Process the input and return output
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error>;
@@ -180,7 +182,7 @@ where
         // Process through first service
         let intermediate = self.first.process(input)
             .await
-            .map_err(|e| anyhow::anyhow!("First service failed: {}", e))?;
+            .map_err(|e| e.into())?;
         
         // Adapt output to input for second service
         let adapted = (self.adapter)(intermediate);
@@ -188,7 +190,7 @@ where
         // Process through second service
         let output = self.second.process(adapted)
             .await
-            .map_err(|e| anyhow::anyhow!("Second service failed: {}", e))?;
+            .map_err(|e| e.into())?;
         
         Ok(output)
     }
@@ -253,7 +255,7 @@ mod tests {
         assert_eq!(metrics.request_count, 3);
         assert_eq!(metrics.success_count, 2);
         assert_eq!(metrics.error_count, 1);
-        assert_eq!(metrics.average_duration, Duration::from_millis(150));
+        assert_eq!(metrics.average_duration_ms, 150);
         assert_eq!(metrics.success_rate(), 2.0 / 3.0);
     }
 }
