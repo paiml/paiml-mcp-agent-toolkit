@@ -119,6 +119,12 @@ impl CliAdapter {
                     "Refactor command should be handled directly by CLI".to_string(),
                 ))
             }
+            Commands::Roadmap(_) => {
+                // Roadmap command is handled directly in the CLI, not through the unified protocol
+                Err(ProtocolError::InvalidFormat(
+                    "Roadmap command should be handled directly by CLI".to_string(),
+                ))
+            }
         }
     }
 
@@ -1255,6 +1261,7 @@ impl CliInput {
             Commands::Report { .. } => "report",
             Commands::Enforce(_) => "enforce",
             Commands::Refactor(_) => "refactor",
+            Commands::Roadmap(_) => "roadmap",
         }
         .to_string();
 
