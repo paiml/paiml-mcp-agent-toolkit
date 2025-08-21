@@ -4,7 +4,7 @@ exclude = ["fuzz"]
 resolver = "2"
 
 [workspace.package]
-version = "2.5.0"
+version = "2.6.0"
 edition = "2021"
 authors = ["Pragmatic AI Labs"]
 homepage = "https://paiml.com"
@@ -22,7 +22,7 @@ release = true
 # Consolidate commits
 consolidate-commits = true
 # Disable dev-version bump (we handle this manually)
-dev-version = false
+# dev-version = false  # This field is not recognized in newer cargo-release
 # Share version for workspace
 shared-version = true
 # Tag prefix
