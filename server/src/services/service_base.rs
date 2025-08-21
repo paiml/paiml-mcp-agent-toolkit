@@ -3,7 +3,7 @@
 //! This module provides the foundational Service trait and ServiceRegistry
 //! for unified service architecture across PMAT.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use dashmap::DashMap;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::any::{Any, TypeId};

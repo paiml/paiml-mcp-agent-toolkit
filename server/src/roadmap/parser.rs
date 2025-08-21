@@ -1,7 +1,7 @@
 //! Roadmap markdown parser and serializer
 
 use super::*;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use regex::Regex;
 use std::collections::HashMap;
 use chrono::NaiveDate;
