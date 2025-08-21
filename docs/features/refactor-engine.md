@@ -1,8 +1,12 @@
 # Refactor Engine
 
+*Reference: SPECIFICATION.md Sections 16-18 (Refactoring Architecture, State Machine, AST Transformation)*
+
 ## Overview
 
 The Refactor Engine is an automated code refactoring system that reduces code complexity through intelligent transformations. It supports both batch processing and interactive modes, with checkpoint support for resumable operations and integration with version control systems.
+
+For complete technical specification, see [SPECIFICATION.md Section 16](../SPECIFICATION.md#16-refactoring-architecture).
 
 ## Architecture
 
