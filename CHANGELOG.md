@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Created operations guides for error handling, telemetry, and configuration
   - Updated feature documentation to reference SPECIFICATION.md sections
   - Established clear documentation hierarchy and cross-referencing
+- **PMAT-3002**: Implement unified protocol design per SPECIFICATION.md Section 3
+  - Created protocol module with ProtocolAdapter trait
+  - Implemented unified Operation enum for all interfaces
+  - Added MCP, HTTP, and CLI protocol adapters
+  - Established UnifiedRequest/UnifiedResponse structures
+  - Integrated with existing services through operation handlers
 - **Daily Summary Reports**: Added execution tracking with daily summaries
   - Sprint completion metrics and task tracking
   - Quality metrics verification
