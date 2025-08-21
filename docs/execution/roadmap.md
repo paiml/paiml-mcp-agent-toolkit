@@ -48,7 +48,7 @@
 | PMAT-3001 | Consolidate documentation per SPECIFICATION.md | ✅ | High | P0 |
 | PMAT-3002 | Implement unified protocol design (Section 3) | ✅ | High | P0 |
 | PMAT-3003 | Refactor service architecture (Section 2) | ✅ | High | P0 |
-| PMAT-3004 | Archive outdated documentation | 📋 | Low | P1 |
+| PMAT-3004 | Archive outdated documentation | 🚧 | Low | P1 |
 | PMAT-3005 | Roadmap-Todo-Quality-Gate Feature | ✅ | High | P0 |
 | PMAT-3006 | Update CLI to match spec (Section 23) | 📋 | Medium | P1 |
 | PMAT-3007 | Implement performance testing (Section 30) | 📋 | Medium | P2 |
