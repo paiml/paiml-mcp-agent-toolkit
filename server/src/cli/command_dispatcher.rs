@@ -3,7 +3,7 @@
 //! This module implements a dispatch table pattern to reduce cyclomatic complexity
 //! in the CLI module by delegating command execution to specialized handlers.
 
-use super::commands::ScaffoldCommands;
+use super::commands::{RoadmapCommands, ScaffoldCommands};
 use super::{AnalyzeCommands, Commands, DemoProtocol, RefactorCommands};
 use crate::stateless_server::StatelessTemplateServer;
 use std::sync::Arc;
@@ -235,6 +235,7 @@ impl CommandDispatcher {
             Commands::Diagnose(args) => super::diagnose::handle_diagnose(args).await,
             Commands::Enforce(enforce_cmd) => handlers::route_enforce_command(enforce_cmd).await,
             Commands::Refactor(refactor_cmd) => Self::execute_refactor_command(refactor_cmd).await,
+            Commands::Roadmap(roadmap_cmd) => Self::execute_roadmap_command(roadmap_cmd).await,
         }
     }
 
@@ -248,6 +249,74 @@ impl CommandDispatcher {
     pub async fn execute_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::Result<()> {
         // Delegate to the refactor handlers
         super::handlers::route_refactor_command(refactor_cmd).await
+    }
+
+    /// Execute roadmap commands using handler pattern (reduces CC)
+    pub async fn execute_roadmap_command(roadmap_cmd: RoadmapCommands) -> anyhow::Result<()> {
+        use crate::roadmap::{self, RoadmapConfig};
+        use std::path::PathBuf;
+
+        // Load configuration (with defaults)
+        let config = RoadmapConfig {
+            path: PathBuf::from("docs/execution/roadmap.md"),
+            quality_gates: roadmap::QualityGateConfig {
+                complexity_max: 20,
+                coverage_min: 80,
+                satd_tolerance: 0,
+                documentation_required: true,
+                lint_compliance: true,
+            },
+            enforce_quality_gates: true,
+            git: roadmap::GitConfig {
+                create_branches: true,
+                branch_pattern: "feature/{task_id}".to_string(),
+                commit_pattern: "{task_id}: {message}".to_string(),
+                require_quality_check: true,
+            },
+            enabled: true,
+            auto_generate_todos: true,
+            require_task_ids: true,
+            task_id_pattern: "PMAT-[0-9]{4}".to_string(),
+            tracking: roadmap::TrackingConfig {
+                velocity_tracking: true,
+                burndown_charts: true,
+                quality_metrics: true,
+                export_format: "json".to_string(),
+            },
+        };
+        
+        // Create command struct and execute
+        let cmd = roadmap::commands::RoadmapCommand {
+            command: match roadmap_cmd {
+                RoadmapCommands::Init { version, title, duration_days, priority } => {
+                    roadmap::commands::RoadmapSubcommand::Init { version, title, duration_days, priority }
+                }
+                RoadmapCommands::Todos { sprint, output, include_quality_gates } => {
+                    roadmap::commands::RoadmapSubcommand::Todos { sprint, output, include_quality_gates }
+                }
+                RoadmapCommands::Start { task_id, create_branch } => {
+                    roadmap::commands::RoadmapSubcommand::Start { task_id, create_branch }
+                }
+                RoadmapCommands::Complete { task_id, skip_quality_check } => {
+                    roadmap::commands::RoadmapSubcommand::Complete { task_id, skip_quality_check }
+                }
+                RoadmapCommands::Status { sprint, task, format } => {
+                    let output_format = match format {
+                        super::OutputFormat::Json => crate::cli::OutputFormat::Json,
+                        _ => crate::cli::OutputFormat::Table,
+                    };
+                    roadmap::commands::RoadmapSubcommand::Status { sprint, task, format: output_format }
+                }
+                RoadmapCommands::Validate { sprint, strict } => {
+                    roadmap::commands::RoadmapSubcommand::Validate { sprint, strict }
+                }
+                RoadmapCommands::QualityCheck { task_id } => {
+                    roadmap::commands::RoadmapSubcommand::QualityCheck { task_id }
+                }
+            },
+        };
+        
+        roadmap::commands::execute(cmd, config).await
     }
 }
 

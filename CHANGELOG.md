@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **PMAT-3005**: Roadmap-Todo-Quality-Gate Feature Implementation
+  - Comprehensive roadmap management system with integrated quality gates
+  - PDMT todo generation from roadmap tasks with deterministic seeds
+  - CLI commands for sprint initialization, task management, and validation
+  - Quality gate enforcement on task completion with configurable thresholds
+  - Velocity tracking and progress metrics with burndown charts
+  - Sprint dashboard generation with progress visualization
+  - Git integration for branch creation and commit templates
+  - Task status tracking with emoji indicators (📋 Planned, 🚧 InProgress, ✅ Completed)
+
 ## [2.5.2] - 2025-08-20
 
 ### Added

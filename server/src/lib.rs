@@ -5,6 +5,7 @@ pub mod mcp_pmcp; // Now always available with pmcp 1.0
 pub mod mcp_server;
 pub mod models;
 pub mod protocol; // Unified protocol design per SPECIFICATION.md Section 3
+pub mod roadmap; // Roadmap-driven development with quality gates
 pub mod scaffold;
 pub mod services;
 pub mod stateless_server;
