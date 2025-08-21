@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.3] - 2025-08-21
+
+### Added
+- **PMAT-3006**: POSIX-compliant exit semantics per SPECIFICATION.md Section 23
+  - Added ExitCode enum with proper POSIX error codes (0-5, 126-128)
+  - Enhanced main function with intelligent error categorization
+  - Quality gate failures now exit with code 3, analysis errors with code 5
+  - Maintains compatibility with existing --fail-on-violation flags
+  - Improved CLI reliability and predictability for CI/CD integration
+
 ## [2.6.2] - 2025-08-21
 
 ### Changed
