@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] - 2025-08-21
+
+### Added
+- **PMAT-3003**: Refactor service architecture per SPECIFICATION.md Section 2
+  - Created unified Service trait with ServiceRegistry for dependency injection
+  - Implemented ServiceMetrics for monitoring and performance tracking
+  - Created AnalysisService and QualityGateService using new architecture
+  - Added CompositeService for service composition patterns
+  - Created ServiceAdapter pattern for integrating legacy services
+  - Established fluent ServiceRegistryBuilder API
+
 ## [2.6.0] - 2025-08-21
 
 ### Added
