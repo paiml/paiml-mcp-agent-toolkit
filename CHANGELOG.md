@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.2] - 2025-08-21
+
+### Changed
+- **PMAT-3004**: Archive outdated documentation for improved organization
+  - Moved pre-v2.0 documentation to docs/archive/pre-v2.0/
+  - Created comprehensive archive structure with navigation index
+  - Archived legacy API docs, implementation guides, and old MCP documentation
+  - Created new docs/README.md as centralized documentation hub
+  - Improved documentation findability and maintenance
+
 ## [2.6.1] - 2025-08-21
 
 ### Added
