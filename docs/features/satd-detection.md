@@ -1,5 +1,7 @@
 # SATD Detection (Self-Admitted Technical Debt)
 
+*Reference: SPECIFICATION.md Section 8 - SATD Detection*
+
 ## Overview
 
 SATD Detection identifies and analyzes Self-Admitted Technical Debt - instances where developers explicitly acknowledge suboptimal solutions through comments. This tool helps teams track, prioritize, and manage technical debt that developers have already identified but haven't yet addressed.
