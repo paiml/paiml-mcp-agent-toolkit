@@ -4,6 +4,13 @@
 //! PMAT's code quality toolkit. Services are designed following the Toyota Way
 //! principles of modularity and single responsibility.
 //!
+//! # Service Architecture (Per SPECIFICATION.md Section 2)
+//! 
+//! Services now implement a unified `Service` trait for consistency and composability.
+//! - **service_base**: Core Service trait and ServiceRegistry
+//! - **analysis_service**: Unified analysis service 
+//! - **quality_gate_service**: Quality enforcement service
+//!
 //! # Service Categories
 //!
 //! ## Analysis Services
@@ -39,6 +46,11 @@
 //! # Ok(())
 //! # }
 //! ```
+
+// Service architecture (SPECIFICATION.md Section 2)
+pub mod service_base;
+pub mod analysis_service;
+pub mod quality_gate_service;
 
 pub mod artifact_writer;
 pub mod ast_based_dependency_analyzer;
