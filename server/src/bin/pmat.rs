@@ -1,13 +1,45 @@
 use anyhow::Result;
 use pmat::{cli, stateless_server::StatelessTemplateServer};
 use std::io::IsTerminal;
+use std::process;
 use std::sync::Arc;
-use tracing::{debug, info, trace};
+use tracing::{debug, info, trace, error};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 enum ExecutionMode {
     Mcp,
     Cli,
+}
+
+/// POSIX-compliant exit codes for CLI interface
+/// Per SPECIFICATION.md Section 23: CLI Interface
+#[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
+pub enum ExitCode {
+    /// Success
+    Success = 0,
+    /// General error
+    GeneralError = 1,
+    /// Misuse of shell command
+    MisuseError = 2,
+    /// Permission denied
+    PermissionDenied = 126,
+    /// Command not found
+    CommandNotFound = 127,
+    /// Invalid argument to exit
+    InvalidExitArg = 128,
+    /// Quality gate failure (custom)
+    QualityGateFailure = 3,
+    /// Configuration error (custom)
+    ConfigurationError = 4,
+    /// Analysis error (custom)
+    AnalysisError = 5,
+}
+
+impl From<ExitCode> for i32 {
+    fn from(code: ExitCode) -> Self {
+        code as i32
+    }
 }
 
 fn detect_execution_mode() -> ExecutionMode {
@@ -54,7 +86,35 @@ fn init_tracing(cli: &cli::EarlyCliArgs) -> Result<()> {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
+    // POSIX-compliant exit handling
+    let exit_code = match run_main().await {
+        Ok(()) => ExitCode::Success,
+        Err(e) => {
+            error!("Error: {}", e);
+            
+            // Categorize errors for appropriate exit codes
+            let error_str = e.to_string().to_lowercase();
+            if error_str.contains("quality gate") || error_str.contains("violation") {
+                ExitCode::QualityGateFailure
+            } else if error_str.contains("config") || error_str.contains("parse") {
+                ExitCode::ConfigurationError
+            } else if error_str.contains("analysis") || error_str.contains("complexity") {
+                ExitCode::AnalysisError
+            } else if error_str.contains("permission") || error_str.contains("access") {
+                ExitCode::PermissionDenied
+            } else {
+                ExitCode::GeneralError
+            }
+        }
+    };
+
+    if exit_code as i32 != 0 {
+        process::exit(exit_code.into());
+    }
+}
+
+async fn run_main() -> Result<()> {
     // Parse CLI to get tracing configuration early
     let cli = cli::parse_early_for_tracing();
 

@@ -3,7 +3,7 @@
 //! This module provides adapter patterns to integrate legacy services
 //! with the new unified service architecture.
 
-use super::service_base::{Service, ServiceMetrics, ValidationError};
+use super::service_base::{Service, ServiceMetrics};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
