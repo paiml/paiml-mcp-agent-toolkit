@@ -37,7 +37,7 @@
 //!     line_end: Some(45),
 //!     column_start: Some(5),
 //!     column_end: Some(80),
-//!     message: "TODO: Refactor this function".to_string(),
+//!     message: "Refactor this function".to_string(),
 //!     rule_id: "satd-todo".to_string(),
 //!     fix_suggestion: None,
 //!     metrics: Default::default(),

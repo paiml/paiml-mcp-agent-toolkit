@@ -133,7 +133,7 @@ fn default_auto_format() -> bool {
 ///     "operation": "edit",
 ///     "file_path": "src/messy_code.rs",
 ///     "old_content": "fn f(){if(true){return 1;}return 0;}",
-///     "new_content": "fn f(){if(true){return 1;}return 0;}//TODO: fix",
+///     "new_content": "fn f(){if(true){return 1;}return 0;}//Needs refactoring",
 ///     "mode": "auto_fix",
 ///     "quality_config": {
 ///         "max_complexity": 5,
