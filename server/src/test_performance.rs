@@ -95,16 +95,18 @@ pub async fn test_single_threaded_throughput() -> Result<()> {
     
     use crate::cli::handlers::complexity_handlers;
     complexity_handlers::handle_analyze_complexity(
-        &temp_dir.path().to_path_buf(),
-        None, // single file
-        20,   // cyclomatic threshold
-        15,   // cognitive threshold
-        &crate::cli::enums::ComplexityOutputFormat::Json,
-        Some(test_file.clone()),
-        None, // include
-        None, // exclude
-        None, // output
-        false, // fail_on_violation
+        temp_dir.path().to_path_buf(),
+        Some(test_file.clone()),  // file
+        vec![],                    // files
+        None,                      // toolchain
+        crate::cli::enums::ComplexityOutputFormat::Json,
+        None,                      // output
+        Some(20),                  // max_cyclomatic
+        Some(15),                  // max_cognitive
+        vec![],                    // include
+        false,                     // watch
+        10,                        // top_files
+        false,                     // fail_on_violation
     ).await?;
     
     let duration = start.elapsed();
@@ -142,16 +144,18 @@ pub async fn test_realistic_project_analysis() -> Result<()> {
     
     use crate::cli::handlers::complexity_handlers;
     complexity_handlers::handle_analyze_complexity(
-        &temp_dir.path().to_path_buf(),
-        None, // all files
-        20,   // cyclomatic threshold
-        15,   // cognitive threshold
-        &crate::cli::enums::ComplexityOutputFormat::Summary,
-        None, // project root
-        None, // include
-        None, // exclude
-        None, // output
-        false, // fail_on_violation
+        temp_dir.path().to_path_buf(),
+        None,                      // file
+        vec![],                    // files
+        None,                      // toolchain
+        crate::cli::enums::ComplexityOutputFormat::Summary,
+        None,                      // output
+        Some(20),                  // max_cyclomatic
+        Some(15),                  // max_cognitive
+        vec![],                    // include
+        false,                     // watch
+        10,                        // top_files
+        false,                     // fail_on_violation
     ).await?;
     
     let duration = start.elapsed();
@@ -185,16 +189,18 @@ pub async fn test_large_file_performance() -> Result<()> {
     
     use crate::cli::handlers::complexity_handlers;
     complexity_handlers::handle_analyze_complexity(
-        &temp_dir.path().to_path_buf(),
-        None,
-        20,
-        15,
-        &crate::cli::enums::ComplexityOutputFormat::Summary,
-        Some(test_file),
-        None,
-        None,
-        None,
-        false,
+        temp_dir.path().to_path_buf(),
+        Some(test_file),           // file
+        vec![],                    // files
+        None,                      // toolchain
+        crate::cli::enums::ComplexityOutputFormat::Summary,
+        None,                      // output
+        Some(20),                  // max_cyclomatic
+        Some(15),                  // max_cognitive
+        vec![],                    // include
+        false,                     // watch
+        10,                        // top_files
+        false,                     // fail_on_violation
     ).await?;
     
     let duration = start.elapsed();
@@ -229,16 +235,18 @@ pub async fn test_memory_usage_patterns() -> Result<()> {
     // Run analysis
     use crate::cli::handlers::complexity_handlers;
     complexity_handlers::handle_analyze_complexity(
-        &temp_dir.path().to_path_buf(),
-        None,
-        20,
-        15,
-        &crate::cli::enums::ComplexityOutputFormat::Json,
-        Some(test_file),
-        None,
-        None,
-        None,
-        false,
+        temp_dir.path().to_path_buf(),
+        Some(test_file),           // file
+        vec![],                    // files
+        None,                      // toolchain
+        crate::cli::enums::ComplexityOutputFormat::Json,
+        None,                      // output
+        Some(20),                  // max_cyclomatic
+        Some(15),                  // max_cognitive
+        vec![],                    // include
+        false,                     // watch
+        10,                        // top_files
+        false,                     // fail_on_violation
     ).await?;
     
     let final_memory = get_memory_usage_mb();
@@ -276,16 +284,18 @@ pub async fn test_performance_regression_detection() -> Result<()> {
         
         use crate::cli::handlers::complexity_handlers;
         complexity_handlers::handle_analyze_complexity(
-            &temp_dir.path().to_path_buf(),
-            None,
-            20,
-            15,
-            &crate::cli::enums::ComplexityOutputFormat::Json,
-            Some(test_file.clone()),
-            None,
-            None,
-            None,
-            false,
+            temp_dir.path().to_path_buf(),
+            Some(test_file.clone()),   // file
+            vec![],                    // files
+            None,                      // toolchain
+            crate::cli::enums::ComplexityOutputFormat::Json,
+            None,                      // output
+            Some(20),                  // max_cyclomatic
+            Some(15),                  // max_cognitive
+            vec![],                    // include
+            false,                     // watch
+            10,                        // top_files
+            false,                     // fail_on_violation
         ).await?;
         
         durations.push(start.elapsed());

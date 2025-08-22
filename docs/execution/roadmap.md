@@ -35,7 +35,25 @@
 6. **Comprehensive Testing**: 64+ property tests, doctests, integration tests
 7. **Quality Gate CLI**: Zero-tolerance quality enforcement
 
-## Next Sprint: v2.6.0 Architecture Alignment & Documentation Consolidation 📋 PLANNED
+## Current Sprint: v2.6.5 Property-Based Testing Expansion ✅ COMPLETED
+- **Duration**: 1 hour (2025-08-22)
+- **Completion**: 2025-08-22
+- **Version Released**: v2.6.5 (pending)
+- **Priority**: P0 - Critical Testing Infrastructure
+- **Dependencies**: SPECIFICATION.md Section 28
+- **Major Features**: Property-based testing expansion, comprehensive test infrastructure
+- **Quality Gates**: Maintained (complexity ≤20, zero SATD, documentation sync)
+
+### v2.6.5 Features Implemented:
+1. **Property Testing Framework**: Comprehensive property-based testing infrastructure
+2. **AST Parser Properties**: Rust and TypeScript/JavaScript parser validation
+3. **State Machine Verification**: Refactor auto state machine invariant testing
+4. **Cache Consistency Tests**: Content-addressed cache validation
+5. **DAG Construction Tests**: Acyclicity and graph invariant verification
+6. **SATD Parser Robustness**: Comment parsing without panics
+7. **Test Command Integration**: New CLI command for running test suites
+
+## Previous Sprint: v2.6.0 Architecture Alignment & Documentation Consolidation ✅ COMPLETED
 - **Duration**: 2 days (2025-08-20 to 2025-08-21)
 - **Priority**: CRITICAL - System Coherence
 - **Dependencies**: SPECIFICATION.md as source of truth
@@ -73,6 +91,7 @@
 | PMAT-1002 | MCP server integration | ✅ | High | v2.4.1 |
 | PMAT-1003 | PDMT system implementation | ✅ | Medium | v2.4.1 |
 | PMAT-1004 | Canonical release system | ✅ | Medium | v2.4.1 |
+| PMAT-4008 | Property-based testing expansion | ✅ | High | v2.6.5 |
 
 ### Backlog 📋 (Aligned with SPECIFICATION.md)
 | ID | Description | Status | Complexity | Priority | Spec Section |
@@ -84,7 +103,7 @@
 | PMAT-4005 | HTTP-SSE transport support | 📋 | Medium | P2 | Section 5 |
 | PMAT-4006 | Memory management optimization (Section 26) | 📋 | High | P1 | Section 26 |
 | PMAT-4007 | Caching strategy implementation (Section 27) | 📋 | Medium | P1 | Section 27 |
-| PMAT-4008 | Property-based testing expansion (Section 28) | 📋 | High | P0 | Section 28 |
+| PMAT-4008 | Property-based testing expansion (Section 28) | ✅ | High | P0 | Section 28 |
 | PMAT-4009 | Telemetry & logging system (Section 35) | 📋 | Medium | P2 | Section 35 |
 | PMAT-4010 | Configuration management (Section 36) | 📋 | Low | P2 | Section 36 |
 

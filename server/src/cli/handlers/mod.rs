@@ -24,6 +24,7 @@ pub mod refactor_auto_handlers;
 pub mod refactor_auto_property_tests;
 pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
+pub mod test_handlers;
 pub mod utility_handlers;
 pub mod wasm_handlers;
 
@@ -49,6 +50,7 @@ pub use lint_hotspot_handlers::handle_analyze_lint_hotspot;
 pub use name_similarity_analysis::handle_analyze_name_similarity;
 pub use refactor_docs_handlers::handle_refactor_docs;
 pub use refactor_handlers::{route_refactor_command, RefactorServeParams};
+pub use test_handlers::handle_test;
 pub use utility_handlers::{
     handle_context, handle_diagnose, handle_list, handle_search, handle_serve,
 };

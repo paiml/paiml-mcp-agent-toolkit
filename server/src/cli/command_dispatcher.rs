@@ -6,6 +6,7 @@
 use super::commands::{RoadmapCommands, ScaffoldCommands};
 use super::{AnalyzeCommands, Commands, DemoProtocol, RefactorCommands};
 use crate::stateless_server::StatelessTemplateServer;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 /// Trait for command handlers to reduce complexity through delegation
@@ -401,6 +402,16 @@ impl CommandDispatcher {
                         test_large_file_performance().await?;
                         println!("✅ Throughput tests passed!");
                     }
+                    Ok(())
+                }
+                TestSuite::Property => {
+                    println!("🔬 Property-based testing not yet implemented in this context");
+                    println!("Use the `pmat test --suite property` command for property tests");
+                    Ok(())
+                }
+                TestSuite::Integration => {
+                    println!("🧪 Integration testing not yet implemented in this context");
+                    println!("Use the `pmat test --suite integration` command for integration tests");
                     Ok(())
                 }
             }
