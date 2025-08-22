@@ -5,6 +5,7 @@
 
 use super::commands::{RoadmapCommands, ScaffoldCommands};
 use super::{AnalyzeCommands, Commands, DemoProtocol, RefactorCommands};
+use crate::cli::handlers::memory::MemoryCommand;
 use crate::stateless_server::StatelessTemplateServer;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -259,6 +260,9 @@ impl CommandDispatcher {
                 )
                 .await
             }
+            Commands::Memory { command } => {
+                Self::execute_memory_command(command).await
+            }
         }
     }
 
@@ -455,6 +459,12 @@ impl CommandDispatcher {
                 anyhow::bail!("Performance tests timed out");
             }
         }
+    }
+
+    /// Execute memory management commands using handler pattern (reduces CC)
+    pub async fn execute_memory_command(memory_cmd: MemoryCommand) -> anyhow::Result<()> {
+        // Delegate to the memory handler
+        super::handlers::handle_memory_command(&memory_cmd).await
     }
 }
 

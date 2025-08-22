@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.8] - 2025-08-22
+
+### Added
+- **PMAT-4006**: Memory Management Optimization per SPECIFICATION.md Section 26
+  - Advanced memory pool management system with configurable allocation strategies
+  - String interning for efficient identifier storage with shared references
+  - Memory-aware data structures (MemoryVec, MemoryString, InternedStringSet)
+  - Buffer reuse patterns for AST parsing and analysis operations
+  - Memory pressure monitoring with automatic cleanup triggers
+  - Global memory manager with pool-specific statistics and configuration
+  - CLI interface for memory monitoring (`pmat memory stats|cleanup|pools|pressure`)
+  - Integration utilities for retrofitting existing services
+  - Comprehensive property-based testing covering allocation patterns, concurrency, and pressure conditions
+  - Zero-copy optimization strategies and cache-friendly data layouts
+
 ## [2.6.7] - 2025-08-22
 
 ### Added
