@@ -5,6 +5,7 @@ use crate::cli::OutputFormat;
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
+use std::str::FromStr;
 
 #[derive(Debug, Parser)]
 #[command(about = "Roadmap management with PDMT todos and quality gates")]

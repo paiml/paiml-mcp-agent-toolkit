@@ -5,6 +5,7 @@ use anyhow::Result;
 use regex::Regex;
 use std::collections::HashMap;
 use chrono::NaiveDate;
+use std::str::FromStr;
 
 /// Parse a roadmap from markdown content
 pub fn parse_roadmap(content: &str) -> Result<Roadmap> {
@@ -181,7 +182,7 @@ pub fn roadmap_to_markdown(roadmap: &Roadmap) -> Result<String> {
     
     // Future sprints
     for (id, sprint) in &roadmap.sprints {
-        if !(roadmap.current_sprint.as_ref() == Some(id)) &&
+        if (roadmap.current_sprint.as_ref() != Some(id)) &&
            !roadmap.completed_sprints.contains(id) {
             output.push_str(&format_sprint(sprint, false, false)?);
             output.push('\n');
