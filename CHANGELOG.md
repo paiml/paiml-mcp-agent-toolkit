@@ -5,9 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.6.8] - 2025-08-22
+## [2.7.0] - 2025-08-22
 
 ### Added
+- **PMAT-4010**: Configuration Management System per SPECIFICATION.md Section 36
+  - Unified configuration service with centralized PmatConfig structure covering all 7 system areas
+  - CLI command `pmat config` with show, edit, validate, reset operations and section-specific display
+  - Global singleton pattern providing THE ONE configuration access point per Toyota Way
+  - TOML/JSON serialization with comprehensive defaults for System, Quality, Analysis, Performance, MCP, Roadmap, Telemetry
+  - Configuration watching system with trait-based notifications for hot-reload capabilities
+  - Interactive editing support with external editor integration
+  - Complete CLI integration with proper command dispatching and validation
+  - Consolidates scattered configuration patterns across the codebase into unified service
+
+## [2.6.8] - 2025-08-22
+
+### Added  
+- **PMAT-4001**: Halstead Metrics Implementation per SPECIFICATION.md Section 7.1
+  - Extended CLI complexity analysis with Halstead software science metrics  
+  - Added comprehensive Halstead metrics structure (n1, n2, N1, N2, volume, difficulty, effort, time, bugs)
+  - Integrated Halstead operator and operand tracking in Rust AST analysis
+  - Enhanced complexity output JSON format to include Halstead calculations
+  - Supports control flow operators (if, while, for, match) and binary operators  
+  - Provides industry-standard software science metrics for complexity assessment
+
+- **PMAT-4007**: Caching Strategy Implementation per SPECIFICATION.md Section 27
+  - Advanced cache orchestrator with workload analysis and strategy selection
+  - Multi-tier caching system (L1/L2/L3) with adaptive eviction policies
+  - Comprehensive cache CLI interface (`pmat cache stats`) with JSON/table output
+  - Cache strategy trait system for pluggable cache implementations
+  - Performance metrics and workload profiling for optimization
+  - Cache statistics tracking with effectiveness scoring
+  - Cache management integration across CLI, MCP, and unified protocol adapters
+
 - **PMAT-4006**: Memory Management Optimization per SPECIFICATION.md Section 26
   - Advanced memory pool management system with configurable allocation strategies
   - String interning for efficient identifier storage with shared references
