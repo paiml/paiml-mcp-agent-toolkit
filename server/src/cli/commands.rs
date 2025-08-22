@@ -364,6 +364,41 @@ pub enum Commands {
     /// Roadmap management with PDMT todos and quality gates
     #[command(subcommand)]
     Roadmap(RoadmapCommands),
+
+    /// Performance testing per SPECIFICATION.md Section 30
+    Test {
+        /// Test suite to run
+        #[arg(value_enum, default_value = "performance")]
+        suite: TestSuite,
+
+        /// Number of test iterations for regression detection
+        #[arg(long, default_value = "3")]
+        iterations: usize,
+
+        /// Enable memory usage testing
+        #[arg(long)]
+        memory: bool,
+
+        /// Enable throughput testing
+        #[arg(long)]
+        throughput: bool,
+
+        /// Enable regression testing
+        #[arg(long)]
+        regression: bool,
+
+        /// Test timeout in seconds
+        #[arg(long, default_value = "300")]
+        timeout: u64,
+
+        /// Output file for test results
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+
+        /// Show detailed performance metrics
+        #[arg(long)]
+        perf: bool,
+    },
 }
 
 /// Analyze subcommands
@@ -1934,4 +1969,19 @@ pub enum RoadmapCommands {
         #[arg(long)]
         task_id: String,
     },
+}
+
+/// Test suite types for performance validation
+#[derive(Clone, Debug, clap::ValueEnum, PartialEq)]
+pub enum TestSuite {
+    /// Performance tests per SPECIFICATION.md Section 30
+    Performance,
+    /// Regression detection tests
+    Regression,
+    /// Memory usage validation tests
+    Memory,
+    /// Throughput validation tests
+    Throughput,
+    /// All test suites
+    All,
 }
