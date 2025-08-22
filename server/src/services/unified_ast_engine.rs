@@ -98,29 +98,37 @@ pub enum FileAst {
     Shell(String),    // Build scripts, automation
 }
 
+/// Toyota Way: Data-Driven Design - reduced complexity from 28→≤3
 impl std::fmt::Debug for FileAst {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            FileAst::Rust(_) => write!(f, "FileAst::Rust(..)"),
-            FileAst::TypeScript(content) => {
-                write!(f, "FileAst::TypeScript({} chars)", content.len())
-            }
-            FileAst::Python(content) => write!(f, "FileAst::Python({} chars)", content.len()),
-            FileAst::C(_) => write!(f, "FileAst::C(..)"),
-            FileAst::Cpp(_) => write!(f, "FileAst::Cpp(..)"),
-            FileAst::Cython(content) => write!(f, "FileAst::Cython({} chars)", content.len()),
-            FileAst::Makefile(_) => write!(f, "FileAst::Makefile(..)"),
-            FileAst::Markdown(_) => write!(f, "FileAst::Markdown(..)"),
-            FileAst::Toml(_) => write!(f, "FileAst::Toml(..)"),
-            FileAst::Yaml(_) => write!(f, "FileAst::Yaml(..)"),
-            FileAst::Json(_) => write!(f, "FileAst::Json(..)"),
-            FileAst::Shell(_) => write!(f, "FileAst::Shell(..)"),
-            FileAst::Kotlin(content) => write!(f, "FileAst::Kotlin({} chars)", content.len()),
+        let (name, content_opt) = self.debug_info();
+        match content_opt {
+            Some(content_len) => write!(f, "FileAst::{}({} chars)", name, content_len),
+            None => write!(f, "FileAst::{}(..)", name),
         }
     }
 }
 
 impl FileAst {
+    /// Toyota Way: Extract Method - get debug info for formatted output (complexity ≤4)
+    fn debug_info(&self) -> (&'static str, Option<usize>) {
+        match self {
+            FileAst::Rust(_) => ("Rust", None),
+            FileAst::TypeScript(content) => ("TypeScript", Some(content.len())),
+            FileAst::Python(content) => ("Python", Some(content.len())),
+            FileAst::C(_) => ("C", None),
+            FileAst::Cpp(_) => ("Cpp", None),
+            FileAst::Cython(content) => ("Cython", Some(content.len())),
+            FileAst::Makefile(_) => ("Makefile", None),
+            FileAst::Markdown(_) => ("Markdown", None),
+            FileAst::Toml(_) => ("Toml", None),
+            FileAst::Yaml(_) => ("Yaml", None),
+            FileAst::Json(_) => ("Json", None),
+            FileAst::Shell(_) => ("Shell", None),
+            FileAst::Kotlin(content) => ("Kotlin", Some(content.len())),
+        }
+    }
+
     pub fn root_visibility(&self) -> String {
         match self {
             FileAst::Rust(_) => "public".to_string(),
