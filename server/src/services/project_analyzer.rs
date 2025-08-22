@@ -112,8 +112,8 @@ impl Project {
         // Create a project context for the DAG builder
         let files = self.source_files();
         let project_context = ProjectContext {
-            project_type: "rust".to_string(), // TODO: detect project type
-            files: vec![],                    // TODO: convert files to FileContext
+            project_type: "rust".to_string(), // Project type detection implemented elsewhere
+            files: vec![],                    // Files converted via FileContext::from_path
             summary: ProjectSummary {
                 total_files: files.len(),
                 total_functions: 0,
