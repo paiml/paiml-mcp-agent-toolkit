@@ -35,7 +35,26 @@
 6. **Comprehensive Testing**: 64+ property tests, doctests, integration tests
 7. **Quality Gate CLI**: Zero-tolerance quality enforcement
 
-## Current Sprint: v2.6.5 Property-Based Testing Expansion ✅ COMPLETED
+## Current Sprint: v2.8.0 Toyota Way Complexity Excellence 🚀 IN PROGRESS
+- **Duration**: 2 hours (2025-08-22)
+- **Start**: 2025-08-22 15:00 UTC
+- **Priority**: P0 - Critical Quality Standards
+- **Dependencies**: Toyota Way ≤20 complexity standard
+- **Major Focus**: Eliminate all complexity violations (max 36 → ≤20)
+- **Quality Gates**: Enforce zero-tolerance complexity standard
+
+### v2.8.0 Sprint Tasks 📋
+| ID | Description | Status | Complexity | Priority |
+|----|-------------|--------|------------|----------|
+| PMAT-5001 | Fix CliAdapter::decode_analyze_command (36→≤20) | [x] | High | P0 |
+| PMAT-5002 | Fix CliAdapter::decode_command (25→≤20) | [ ] | High | P0 |
+| PMAT-5003 | Fix run_single_project_check (23→≤20) | [ ] | Medium | P0 |
+| PMAT-5004 | Fix handle_analyze_dag (23→≤20) | [ ] | Medium | P0 |
+| PMAT-5005 | Fix CliInput::get_analyze_command_name (23→≤20) | [ ] | Medium | P0 |
+| PMAT-5006 | Verify all functions ≤20 complexity | [ ] | Low | P0 |
+| PMAT-5007 | Release v2.8.0 to crates.io | [ ] | Low | P0 |
+
+## Previous Sprint: v2.6.5 Property-Based Testing Expansion ✅ COMPLETED
 - **Duration**: 1 hour (2025-08-22)
 - **Completion**: 2025-08-22
 - **Version Released**: v2.6.5 (pending)
