@@ -862,6 +862,7 @@ impl DemoReport {
 }
 
 /// Resolve repository path from multiple possible sources
+/// Returns either a local path or a special marker path for URLs that need cloning
 pub fn resolve_repository(
     path: Option<PathBuf>,
     url: Option<String>,
@@ -876,10 +877,39 @@ pub fn resolve_repository(
     if let Some(repo_spec) = repo {
         resolve_repo_spec(&repo_spec)
     } else if let Some(url) = url {
-        // Return a PathBuf that will trigger cloning in execute_with_diagram
+        // Return URL as PathBuf - will be handled by async clone later
+        // This is a marker that needs special handling
         Ok(PathBuf::from(url))
     } else {
         detect_repository(path)
+    }
+}
+
+/// Resolve repository path, cloning if necessary
+/// This is the async version that actually performs cloning for URLs
+pub async fn resolve_repository_async(
+    path: Option<PathBuf>,
+    url: Option<String>,
+    repo: Option<String>,
+) -> Result<PathBuf> {
+    let resolved_path = resolve_repository(path, url, repo)?;
+    
+    // Check if the resolved path is actually a URL that needs cloning
+    let path_str = resolved_path.to_string_lossy();
+    if path_str.starts_with("https://") || path_str.starts_with("git@") {
+        // This is a URL - need to clone it
+        let temp_dir = std::env::temp_dir()
+            .join("pmat-demo-repos")
+            .join(format!("repo-{}", uuid::Uuid::new_v4()));
+        
+        // Create a temporary runner to use its clone_and_prepare method
+        // Note: This is a workaround - ideally we'd refactor clone_and_prepare to be standalone
+        let server = crate::stateless_server::StatelessTemplateServer::new()?;
+        let mut runner = DemoRunner::new(Arc::new(server));
+        runner.clone_and_prepare(&path_str).await
+    } else {
+        // It's a local path
+        Ok(resolved_path)
     }
 }
 
