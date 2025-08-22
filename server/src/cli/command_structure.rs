@@ -297,6 +297,9 @@ impl CommandExecutor {
             Commands::Telemetry { system, service, reset, test_event } => {
                 super::handlers::handle_telemetry(system, service, reset, test_event).await
             }
+            Commands::Config { show, edit, validate, reset, section, set, config_path } => {
+                super::handlers::handle_configuration(show, edit, validate, reset, section, set, config_path).await
+            }
         }
     }
 }
