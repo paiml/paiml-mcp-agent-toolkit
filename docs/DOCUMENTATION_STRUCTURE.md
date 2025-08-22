@@ -1,11 +1,11 @@
 # PMAT Documentation Structure
 
 *Consolidated documentation structure aligned with SPECIFICATION.md*  
-*Last Updated: 2025-08-19*
+*Last Updated: 2025-08-22*
 
 ## Source of Truth
 
-**Primary**: `/docs/SPECIFICATION.md` - Complete system specification v2.3.1
+**Primary**: `/docs/SPECIFICATION.md` - Complete system specification v2.8.0
 
 ## Documentation Hierarchy
 

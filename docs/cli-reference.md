@@ -2,7 +2,7 @@
 
 Complete reference for all PMAT command-line interface commands and options.
 
-> **v2.2.0+**: Unified MCP server architecture with integrated quality proxy and single pmcp-based implementation ✅
+> **v2.8.0**: Toyota Way Complexity Excellence with unified MCP server architecture and integrated quality proxy ✅
 
 ## Table of Contents
 

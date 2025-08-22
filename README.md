@@ -11,13 +11,13 @@
 
 **Zero-configuration AI context generation system** with extreme quality enforcement and Toyota Way standards. Analyze any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com).
 
-> **🎯 v2.5.0 Release**: **Toyota Way Quality Integration!** Unified project management with ruchy-inspired documentation synchronization:
-> - **Quality Gates**: Pre-commit hooks enforce documentation updates with every code change
-> - **Sprint Management**: Task tracking with PMAT-XXXX IDs and velocity metrics
-> - **Toyota Way Standards**: Kaizen workflow, MCP-first dogfooding, zero-tolerance quality
+> **🎯 v2.8.0 Release**: **Toyota Way Complexity Excellence Achieved!** Complete implementation of Toyota Way ≤20 complexity standards:
+> - **Toyota Way ≤20**: All targeted functions refactored to meet complexity standards using proven patterns
+> - **Systematic Refactoring**: Data-Driven Design, Extract Method, Template Method, Strategy patterns applied
+> - **Zero Regressions**: All functionality preserved through systematic quality-first approach
+> - **Quality Gates**: Pre-commit hooks enforce documentation synchronization and complexity standards
 > - **18 MCP Tools**: High-performance pmcp SDK with unified protocol design
-> - **PDMT Integration**: Deterministic todo generation with quality requirements
-> - **Zero Technical Debt**: 0 SATD comments, complexity ≤20, comprehensive testing
+> - **Released to crates.io**: Available for installation with `cargo install pmat`
 
 ## 🚀 Quick Start
 
