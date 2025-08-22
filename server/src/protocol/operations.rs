@@ -3,7 +3,7 @@
 use super::*;
 
 /// Executes an operation and returns a unified response
-pub async fn execute_operation(operation: Operation, params: Value) -> UnifiedResponse {
+pub async fn execute_operation(operation: Operation, _params: Value) -> UnifiedResponse {
     let start = std::time::Instant::now();
     
     let (result, error) = match operation {
@@ -58,7 +58,7 @@ pub async fn execute_operation(operation: Operation, params: Value) -> UnifiedRe
     }
 }
 
-async fn analyze_complexity(params: ComplexityParams) -> (Option<Value>, Option<ErrorInfo>) {
+async fn analyze_complexity(_params: ComplexityParams) -> (Option<Value>, Option<ErrorInfo>) {
     // Implementation would call the actual complexity analysis service
     // For now, return a placeholder
     (
@@ -71,7 +71,7 @@ async fn analyze_complexity(params: ComplexityParams) -> (Option<Value>, Option<
     )
 }
 
-async fn analyze_satd(params: SatdParams) -> (Option<Value>, Option<ErrorInfo>) {
+async fn analyze_satd(_params: SatdParams) -> (Option<Value>, Option<ErrorInfo>) {
     // Implementation would call the actual SATD detection service
     (
         Some(serde_json::json!({
@@ -82,7 +82,7 @@ async fn analyze_satd(params: SatdParams) -> (Option<Value>, Option<ErrorInfo>) 
     )
 }
 
-async fn analyze_dead_code(params: DeadCodeParams) -> (Option<Value>, Option<ErrorInfo>) {
+async fn analyze_dead_code(_params: DeadCodeParams) -> (Option<Value>, Option<ErrorInfo>) {
     // Implementation would call the actual dead code analysis service
     (
         Some(serde_json::json!({

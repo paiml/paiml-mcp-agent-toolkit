@@ -131,6 +131,11 @@ impl CliAdapter {
                     "Test command should be handled directly by CLI".to_string(),
                 ))
             }
+            &Commands::Memory { .. } => {
+                Err(ProtocolError::InvalidFormat(
+                    "Memory command should be handled directly by CLI".to_string(),
+                ))
+            }
         }
     }
 
@@ -1269,6 +1274,7 @@ impl CliInput {
             Commands::Refactor(_) => "refactor",
             Commands::Roadmap(_) => "roadmap",
             Commands::Test { .. } => "test",
+            Commands::Memory { .. } => "memory",
         }
         .to_string();
 

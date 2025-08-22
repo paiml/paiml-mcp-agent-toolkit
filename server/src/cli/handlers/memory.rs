@@ -1,0 +1,477 @@
+//! CLI handlers for memory management operations
+//!
+//! This module provides command-line interface for memory optimization features:
+//! - Memory usage monitoring and statistics
+//! - Manual memory cleanup operations
+//! - Memory configuration management
+//! - Pool-specific memory analysis
+//!
+//! # Available Commands
+//!
+//! - `pmat memory stats` - Show current memory usage statistics
+//! - `pmat memory cleanup` - Force memory cleanup operations
+//! - `pmat memory configure` - Configure memory limits and policies
+//! - `pmat memory pools` - Show detailed pool statistics
+//! - `pmat memory pressure` - Check current memory pressure level
+
+use crate::services::memory_manager::{global_memory_manager, init_global_memory_manager};
+use anyhow::Result;
+use clap::Subcommand;
+use console::{style, Style};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use tracing::info;
+
+#[derive(Debug, Clone, Subcommand)]
+pub enum MemoryCommand {
+    /// Show current memory usage statistics
+    Stats {
+        /// Show detailed pool-by-pool breakdown
+        #[arg(long)]
+        detailed: bool,
+        /// Output format (table, json, csv)
+        #[arg(long, default_value = "table")]
+        format: String,
+    },
+    /// Force memory cleanup operations
+    Cleanup {
+        /// Target memory pressure level (0.0-1.0)
+        #[arg(long, default_value = "0.7")]
+        target_pressure: f64,
+        /// Show cleanup progress
+        #[arg(long)]
+        verbose: bool,
+    },
+    /// Configure memory limits and policies
+    Configure {
+        /// Maximum total memory usage in MB
+        #[arg(long)]
+        max_memory_mb: Option<usize>,
+        /// Pool-specific limits (format: pool:size_mb)
+        #[arg(long, value_delimiter = ',')]
+        pool_limits: Vec<String>,
+        /// Enable memory tracking
+        #[arg(long)]
+        enable_tracking: Option<bool>,
+    },
+    /// Show detailed pool statistics
+    Pools {
+        /// Pool type to focus on
+        #[arg(long)]
+        pool: Option<String>,
+        /// Show efficiency metrics
+        #[arg(long)]
+        efficiency: bool,
+    },
+    /// Check current memory pressure level
+    Pressure {
+        /// Set pressure threshold for warnings (0.0-1.0)
+        #[arg(long, default_value = "0.8")]
+        threshold: f64,
+        /// Check continuously (interval in seconds)
+        #[arg(long)]
+        watch: Option<u64>,
+    },
+}
+
+/// Memory statistics output format
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryStatsOutput {
+    pub total_allocated: usize,
+    pub peak_usage: usize,
+    pub allocation_pressure: f64,
+    pub string_intern_size: usize,
+    pub pool_stats: HashMap<String, PoolStatsOutput>,
+    pub recommendations: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PoolStatsOutput {
+    pub buffer_count: usize,
+    pub total_size: usize,
+    pub allocation_count: u64,
+    pub reuse_count: u64,
+    pub reuse_ratio: f64,
+    pub efficiency_rating: String,
+}
+
+/// Handle memory management commands
+pub async fn handle_memory_command(command: &MemoryCommand) -> Result<()> {
+    // Initialize memory manager if not already done
+    if global_memory_manager().is_err() {
+        info!("Initializing global memory manager");
+        init_global_memory_manager()?;
+    }
+
+    match command {
+        MemoryCommand::Stats { detailed, format } => {
+            handle_memory_stats(*detailed, format).await
+        }
+        MemoryCommand::Cleanup { target_pressure, verbose } => {
+            handle_memory_cleanup(*target_pressure, *verbose).await
+        }
+        MemoryCommand::Configure { max_memory_mb, pool_limits, enable_tracking } => {
+            handle_memory_configure(max_memory_mb, pool_limits, enable_tracking).await
+        }
+        MemoryCommand::Pools { pool, efficiency } => {
+            handle_memory_pools(pool, *efficiency).await
+        }
+        MemoryCommand::Pressure { threshold, watch } => {
+            handle_memory_pressure(*threshold, watch).await
+        }
+    }
+}
+
+async fn handle_memory_stats(detailed: bool, format: &str) -> Result<()> {
+    let manager = global_memory_manager()?;
+    let stats = manager.stats();
+
+    let mut pool_stats_output = HashMap::new();
+    for (pool_type, pool_stats) in &stats.pool_stats {
+        let efficiency_rating = if pool_stats.reuse_ratio > 0.8 {
+            "Excellent"
+        } else if pool_stats.reuse_ratio > 0.6 {
+            "Good"
+        } else if pool_stats.reuse_ratio > 0.4 {
+            "Fair"
+        } else {
+            "Poor"
+        };
+
+        pool_stats_output.insert(
+            format!("{:?}", pool_type),
+            PoolStatsOutput {
+                buffer_count: pool_stats.buffer_count,
+                total_size: pool_stats.total_size,
+                allocation_count: pool_stats.allocation_count,
+                reuse_count: pool_stats.reuse_count,
+                reuse_ratio: pool_stats.reuse_ratio,
+                efficiency_rating: efficiency_rating.to_string(),
+            },
+        );
+    }
+
+    // Generate recommendations
+    let mut recommendations = Vec::new();
+    if stats.allocation_pressure > 0.9 {
+        recommendations.push("CRITICAL: Memory pressure very high. Consider reducing workload or increasing limits.".to_string());
+    } else if stats.allocation_pressure > 0.8 {
+        recommendations.push("WARNING: High memory pressure. Monitor usage closely.".to_string());
+    }
+
+    for (pool_type, pool_stats) in &stats.pool_stats {
+        if pool_stats.reuse_ratio < 0.3 {
+            recommendations.push(format!("Pool {:?} has low reuse efficiency ({:.1}%). Consider adjusting pool size.", pool_type, pool_stats.reuse_ratio * 100.0));
+        }
+    }
+
+    if recommendations.is_empty() {
+        recommendations.push("Memory usage is optimal.".to_string());
+    }
+
+    let output = MemoryStatsOutput {
+        total_allocated: stats.total_allocated,
+        peak_usage: stats.peak_usage,
+        allocation_pressure: stats.allocation_pressure,
+        string_intern_size: stats.string_intern_size,
+        pool_stats: pool_stats_output,
+        recommendations,
+    };
+
+    match format {
+        "json" => {
+            println!("{}", serde_json::to_string_pretty(&output)?);
+        }
+        "csv" => {
+            // Simple CSV output
+            println!("metric,value");
+            println!("total_allocated,{}", output.total_allocated);
+            println!("peak_usage,{}", output.peak_usage);
+            println!("allocation_pressure,{:.3}", output.allocation_pressure);
+            println!("string_intern_size,{}", output.string_intern_size);
+        }
+        "table" | _ => {
+            print_memory_stats_table(&output, detailed)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn print_memory_stats_table(stats: &MemoryStatsOutput, detailed: bool) -> Result<()> {
+    let bold = Style::new().bold();
+
+    println!("{}", bold.apply_to("PMAT Memory Statistics"));
+    println!();
+
+    // Overall stats
+    println!("{}:", bold.apply_to("Overall Memory Usage"));
+    println!("  Total Allocated: {}", format_bytes(stats.total_allocated));
+    println!("  Peak Usage:      {}", format_bytes(stats.peak_usage));
+    
+    let pressure_color = if stats.allocation_pressure > 0.9 {
+        Style::new().red()
+    } else if stats.allocation_pressure > 0.8 {
+        Style::new().yellow()
+    } else {
+        Style::new().green()
+    };
+    println!("  Pressure:        {}", pressure_color.apply_to(format!("{:.1}%", stats.allocation_pressure * 100.0)));
+    println!("  String Intern:   {}", format_bytes(stats.string_intern_size));
+    println!();
+
+    if detailed {
+        // Pool-specific stats
+        println!("{}:", bold.apply_to("Pool Statistics"));
+        for (pool_name, pool_stats) in &stats.pool_stats {
+            println!("  {}:", bold.apply_to(pool_name));
+            println!("    Buffers:     {}", pool_stats.buffer_count);
+            println!("    Size:        {}", format_bytes(pool_stats.total_size));
+            println!("    Allocations: {}", pool_stats.allocation_count);
+            println!("    Reuses:      {}", pool_stats.reuse_count);
+            
+            let efficiency_color = match pool_stats.efficiency_rating.as_str() {
+                "Excellent" => Style::new().green(),
+                "Good" => Style::new().green(),
+                "Fair" => Style::new().yellow(),
+                _ => Style::new().red(),
+            };
+            println!("    Efficiency:  {} ({:.1}%)", 
+                     efficiency_color.apply_to(&pool_stats.efficiency_rating),
+                     pool_stats.reuse_ratio * 100.0);
+            println!();
+        }
+    }
+
+    // Recommendations
+    println!("{}:", bold.apply_to("Recommendations"));
+    for rec in &stats.recommendations {
+        let rec_color = if rec.contains("CRITICAL") {
+            Style::new().red()
+        } else if rec.contains("WARNING") {
+            Style::new().yellow()
+        } else {
+            Style::new().green()
+        };
+        println!("  • {}", rec_color.apply_to(rec));
+    }
+
+    Ok(())
+}
+
+async fn handle_memory_cleanup(target_pressure: f64, verbose: bool) -> Result<()> {
+    let manager = global_memory_manager()?;
+    
+    if verbose {
+        let stats_before = manager.stats();
+        println!("Memory before cleanup:");
+        println!("  Allocated: {}", format_bytes(stats_before.total_allocated));
+        println!("  Pressure:  {:.1}%", stats_before.allocation_pressure * 100.0);
+        println!();
+    }
+
+    let cleaned = manager.cleanup()?;
+    
+    if verbose {
+        let stats_after = manager.stats();
+        println!("Memory after cleanup:");
+        println!("  Allocated: {}", format_bytes(stats_after.total_allocated));
+        println!("  Pressure:  {:.1}%", stats_after.allocation_pressure * 100.0);
+        println!("  Cleaned:   {}", format_bytes(cleaned));
+        
+        if stats_after.allocation_pressure <= target_pressure {
+            println!("✓ Target pressure achieved");
+        } else {
+            println!("⚠ Target pressure not reached. Consider reducing workload.");
+        }
+    } else {
+        println!("Cleaned {} of memory", format_bytes(cleaned));
+    }
+
+    Ok(())
+}
+
+async fn handle_memory_configure(
+    max_memory_mb: &Option<usize>,
+    pool_limits: &[String],
+    enable_tracking: &Option<bool>,
+) -> Result<()> {
+    println!("Memory configuration:");
+    
+    if let Some(max_mb) = max_memory_mb {
+        println!("  Maximum memory: {} MB", max_mb);
+        // Note: Current implementation doesn't support runtime reconfiguration
+        println!("  Note: Runtime reconfiguration not yet supported");
+    }
+
+    if !pool_limits.is_empty() {
+        println!("  Pool limits:");
+        for limit_spec in pool_limits {
+            println!("    {}", limit_spec);
+        }
+        println!("  Note: Runtime pool reconfiguration not yet supported");
+    }
+
+    if let Some(tracking) = enable_tracking {
+        println!("  Memory tracking: {}", if *tracking { "enabled" } else { "disabled" });
+    }
+
+    Ok(())
+}
+
+async fn handle_memory_pools(pool: &Option<String>, efficiency: bool) -> Result<()> {
+    let manager = global_memory_manager()?;
+    let stats = manager.stats();
+
+    let bold = Style::new().bold();
+    println!("{}", bold.apply_to("Memory Pool Statistics"));
+    println!();
+
+    for (pool_type, pool_stats) in &stats.pool_stats {
+        let pool_name = format!("{:?}", pool_type);
+        
+        // Filter by specific pool if requested
+        if let Some(target_pool) = pool {
+            if !pool_name.to_lowercase().contains(&target_pool.to_lowercase()) {
+                continue;
+            }
+        }
+
+        println!("{}:", bold.apply_to(&pool_name));
+        println!("  Buffers:     {}", pool_stats.buffer_count);
+        println!("  Total Size:  {}", format_bytes(pool_stats.total_size));
+        println!("  Allocations: {}", pool_stats.allocation_count);
+        println!("  Reuses:      {}", pool_stats.reuse_count);
+        
+        if efficiency {
+            println!("  Reuse Ratio: {:.1}%", pool_stats.reuse_ratio * 100.0);
+            
+            let avg_buffer_size = if pool_stats.buffer_count > 0 {
+                pool_stats.total_size / pool_stats.buffer_count
+            } else {
+                0
+            };
+            println!("  Avg Buffer:  {}", format_bytes(avg_buffer_size));
+            
+            let efficiency_rating = if pool_stats.reuse_ratio > 0.8 {
+                "Excellent"
+            } else if pool_stats.reuse_ratio > 0.6 {
+                "Good"
+            } else if pool_stats.reuse_ratio > 0.4 {
+                "Fair"
+            } else {
+                "Poor"
+            };
+            println!("  Efficiency:  {}", efficiency_rating);
+        }
+        
+        println!();
+    }
+
+    Ok(())
+}
+
+async fn handle_memory_pressure(threshold: f64, watch: &Option<u64>) -> Result<()> {
+    let manager = global_memory_manager()?;
+
+    if let Some(interval) = watch {
+        println!("Monitoring memory pressure (threshold: {:.1}%, interval: {}s)", threshold * 100.0, interval);
+        println!("Press Ctrl+C to stop");
+        println!();
+
+        loop {
+            let stats = manager.stats();
+            let timestamp = chrono::Utc::now().format("%H:%M:%S");
+            
+            let pressure_color = if stats.allocation_pressure > threshold {
+                style(format!("{:.1}%", stats.allocation_pressure * 100.0)).red()
+            } else {
+                style(format!("{:.1}%", stats.allocation_pressure * 100.0)).green()
+            };
+
+            println!("[{}] Pressure: {} | Allocated: {}", 
+                     timestamp, pressure_color, format_bytes(stats.total_allocated));
+
+            if stats.allocation_pressure > threshold {
+                println!("  ⚠ Warning: Memory pressure above threshold!");
+            }
+
+            tokio::time::sleep(tokio::time::Duration::from_secs(*interval)).await;
+        }
+    } else {
+        let stats = manager.stats();
+        
+        println!("Current memory pressure: {:.1}%", stats.allocation_pressure * 100.0);
+        println!("Threshold:               {:.1}%", threshold * 100.0);
+        
+        if stats.allocation_pressure > threshold {
+            println!("Status: {} Above threshold", style("WARNING").yellow());
+            println!("Recommendation: Consider running 'pmat memory cleanup'");
+        } else {
+            println!("Status: {} Below threshold", style("OK").green());
+        }
+    }
+
+    Ok(())
+}
+
+/// Format bytes in human-readable format
+fn format_bytes(bytes: usize) -> String {
+    const UNITS: &[&str] = &["B", "KB", "MB", "GB"];
+    let mut size = bytes as f64;
+    let mut unit_index = 0;
+
+    while size >= 1024.0 && unit_index < UNITS.len() - 1 {
+        size /= 1024.0;
+        unit_index += 1;
+    }
+
+    if unit_index == 0 {
+        format!("{} {}", bytes, UNITS[unit_index])
+    } else {
+        format!("{:.1} {}", size, UNITS[unit_index])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_bytes() {
+        assert_eq!(format_bytes(0), "0 B");
+        assert_eq!(format_bytes(1023), "1023 B");
+        assert_eq!(format_bytes(1024), "1.0 KB");
+        assert_eq!(format_bytes(1536), "1.5 KB");
+        assert_eq!(format_bytes(1048576), "1.0 MB");
+        assert_eq!(format_bytes(1073741824), "1.0 GB");
+    }
+
+    #[test]
+    fn test_memory_stats_output_serialization() -> Result<()> {
+        let mut pool_stats = HashMap::new();
+        pool_stats.insert("TestPool".to_string(), PoolStatsOutput {
+            buffer_count: 5,
+            total_size: 1024,
+            allocation_count: 10,
+            reuse_count: 8,
+            reuse_ratio: 0.8,
+            efficiency_rating: "Good".to_string(),
+        });
+
+        let stats = MemoryStatsOutput {
+            total_allocated: 2048,
+            peak_usage: 3072,
+            allocation_pressure: 0.5,
+            string_intern_size: 512,
+            pool_stats,
+            recommendations: vec!["All good".to_string()],
+        };
+
+        let json = serde_json::to_string(&stats)?;
+        assert!(json.contains("total_allocated"));
+        assert!(json.contains("2048"));
+
+        Ok(())
+    }
+}
