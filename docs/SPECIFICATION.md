@@ -1,7 +1,7 @@
 # PMAT: Complete System Specification
 
-*Version 2.3.1 - Unified source of truth for the PAIML MCP Agent Toolkit*  
-*Zero-configuration AI context generation with extreme quality enforcement*
+*Version 2.8.0 - Toyota Way Excellence Achieved*  
+*Zero-configuration AI context generation with Toyota Way ≤20 complexity standards*
 
 ## Table of Contents
 
