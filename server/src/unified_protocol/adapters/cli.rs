@@ -88,7 +88,7 @@ impl CliAdapter {
                 *centrality_threshold,
                 *merge_threshold,
             ),
-            Commands::Serve { host, port, cors } => Self::decode_serve(host, *port, *cors),
+            Commands::Serve { host, port, cors, transport: _ } => Self::decode_serve(host, *port, *cors),
             Commands::Diagnose(_) => {
                 // Diagnose command is handled directly in the CLI, not through the unified protocol
                 Err(ProtocolError::InvalidFormat(
@@ -134,6 +134,16 @@ impl CliAdapter {
             &Commands::Memory { .. } => {
                 Err(ProtocolError::InvalidFormat(
                     "Memory command should be handled directly by CLI".to_string(),
+                ))
+            }
+            &Commands::Cache { .. } => {
+                Err(ProtocolError::InvalidFormat(
+                    "Cache command should be handled directly by CLI".to_string(),
+                ))
+            }
+            &Commands::Telemetry { .. } => {
+                Err(ProtocolError::InvalidFormat(
+                    "Telemetry command should be handled directly by CLI".to_string(),
                 ))
             }
         }
@@ -1275,6 +1285,8 @@ impl CliInput {
             Commands::Roadmap(_) => "roadmap",
             Commands::Test { .. } => "test",
             Commands::Memory { .. } => "memory",
+            Commands::Cache { .. } => "cache",
+            Commands::Telemetry { .. } => "telemetry",
         }
         .to_string();
 

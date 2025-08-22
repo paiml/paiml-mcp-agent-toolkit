@@ -4,6 +4,7 @@
 //! and executing commands. It's separated from the main CLI module to reduce complexity.
 
 use crate::cli::diagnose::DiagnoseArgs;
+use crate::cli::handlers::cache::CacheCommand;
 use crate::cli::handlers::memory::MemoryCommand;
 use crate::cli::{
     AnalysisType, BigOOutputFormat, ComplexityOutputFormat, ComprehensiveOutputFormat,
@@ -336,9 +337,9 @@ pub enum Commands {
         perf: bool,
     },
 
-    /// Start HTTP API server
+    /// Start HTTP API server with WebSocket support
     Serve {
-        /// Port to bind the HTTP server to
+        /// Port to bind the server to
         #[arg(long, default_value_t = 8080)]
         port: u16,
 
@@ -349,6 +350,10 @@ pub enum Commands {
         /// Enable CORS for cross-origin requests
         #[arg(long)]
         cors: bool,
+
+        /// Transport protocol to use
+        #[arg(long, value_enum, default_value = "http")]
+        transport: ServeTransport,
     },
 
     /// Run self-diagnostics to verify all features are working
@@ -406,6 +411,28 @@ pub enum Commands {
         /// Memory management subcommand
         #[command(subcommand)]
         command: MemoryCommand,
+    },
+
+    /// Cache strategy management and optimization
+    Cache {
+        /// Cache management subcommand
+        #[command(subcommand)]
+        command: CacheCommand,
+    },
+    /// Telemetry and system monitoring
+    Telemetry {
+        /// Show system telemetry data
+        #[arg(long)]
+        system: bool,
+        /// Show service-specific telemetry
+        #[arg(long)]
+        service: Option<String>,
+        /// Reset telemetry data (for testing)
+        #[arg(long)]
+        reset: bool,
+        /// Record a test telemetry event
+        #[arg(long)]
+        test_event: bool,
     },
 }
 
@@ -1995,5 +2022,21 @@ pub enum TestSuite {
     /// Throughput validation tests
     Throughput,
     /// All test suites
+    All,
+}
+
+/// Transport protocol options for serve command
+#[derive(Clone, Debug, clap::ValueEnum)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum ServeTransport {
+    /// HTTP transport (REST API)
+    Http,
+    /// WebSocket transport (real-time bidirectional)
+    WebSocket,
+    /// HTTP Server-Sent Events transport (streaming)
+    HttpSse,
+    /// Both HTTP and WebSocket (hybrid mode)
+    Both,
+    /// All transports (HTTP, WebSocket, SSE)
     All,
 }
