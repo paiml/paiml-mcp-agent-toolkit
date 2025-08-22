@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] - 2025-08-22
+
+### Added
+- **PMAT-5000**: Toyota Way Sprint v2.8.0 - Complexity Excellence Achievement
+  - ✅ **ACHIEVED**: Toyota Way ≤20 complexity standard across all targeted functions
+  - Applied Data-Driven Design pattern to eliminate repetitive match arms
+  - Applied Extract Method pattern to break monolithic functions into focused components
+  - Applied Template Method pattern to abstract common algorithmic patterns
+  - Applied Strategy Pattern to separate algorithm selection from execution
+  - Reduced maximum function complexity from 58→≤20 (Toyota Way compliance)
+
+### Changed
+- **run_single_project_check**: Reduced complexity from 41→≤8 using Extract Method
+- **execute_specific_quality_check**: Reduced complexity from 23→≤3 using Template Method
+- **handle_analyze_satd**: Reduced complexity from 21→≤8 using Strategy Pattern + Extract Method
+- **FileAst::fmt**: Reduced complexity from 28→≤3 using Data-Driven Design
+- **SATDDetector::analyze_project**: Reduced complexity from 25→≤8 using Extract Method
+
 ### Fixed
 - **PMAT-3003**: Fix crates.io publication by including test modules
   - Remove overly broad test_* exclude pattern from Cargo.toml
