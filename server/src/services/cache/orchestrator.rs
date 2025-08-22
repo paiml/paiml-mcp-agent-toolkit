@@ -128,10 +128,6 @@ pub struct OrchestratorConfig {
 /// Historical strategy evaluation
 #[derive(Debug, Clone)]
 struct StrategyEvaluation {
-    /// Strategy identifier
-    strategy_id: String,
-    /// Workload during evaluation
-    workload: WorkloadProfile,
     /// Performance achieved
     performance: PerformanceMetrics,
     /// Evaluation timestamp
@@ -139,24 +135,12 @@ struct StrategyEvaluation {
 }
 
 impl StrategyEvaluation {
-    /// Get evaluation score based on performance
     pub fn score(&self) -> f64 {
-        // Use the fields to calculate a score
-        let age_factor = self.timestamp.elapsed().as_secs_f64() / 3600.0; // hours
-        let base_score = self.performance.hit_rate * self.performance.throughput;
-        
-        // Calculate workload factor based on locality and sensitivity
-        let locality_factor = (self.workload.temporal_locality + self.workload.spatial_locality) / 2.0;
-        let sensitivity_factor = self.workload.latency_sensitivity;
-        let workload_factor = 0.5 + locality_factor * 0.3 + sensitivity_factor * 0.2;
-        
-        // Decay score over time and adjust for workload
-        base_score * workload_factor * (1.0 - age_factor * 0.1)
+        self.performance.hit_rate * self.performance.throughput
     }
     
-    /// Check if evaluation is recent enough to be valid
     pub fn is_valid(&self) -> bool {
-        self.timestamp.elapsed().as_secs() < 3600 // Valid for 1 hour
+        self.timestamp.elapsed().as_secs() < 3600
     }
 }
 
@@ -498,8 +482,6 @@ impl CacheOrchestrator {
 
     async fn record_evaluation(&self, metrics: &PerformanceMetrics) -> Result<()> {
         let evaluation = StrategyEvaluation {
-            strategy_id: "current".to_string(), // Would be actual strategy ID
-            workload: self.workload_profile.read().clone(),
             performance: metrics.clone(),
             timestamp: Instant::now(),
         };
@@ -631,8 +613,6 @@ mod tests {
         };
         
         let evaluation = StrategyEvaluation {
-            strategy_id: "test_strategy".to_string(),
-            workload,
             performance,
             timestamp: std::time::Instant::now(),
         };

@@ -171,15 +171,9 @@ struct AdaptiveCacheEntry<T> {
     created_at: DateTime<Utc>,
     /// Entry expiration time (if TTL-based)
     expires_at: Option<DateTime<Utc>>,
-    /// Compression ratio (if compressed)
-    compression_ratio: Option<f32>,
 }
 
 impl<T> AdaptiveCacheEntry<T> {
-    /// Get the compression ratio if compressed
-    pub fn compression_ratio(&self) -> Option<f32> {
-        self.compression_ratio
-    }
 }
 
 /// Multi-tier adaptive cache implementation
@@ -374,7 +368,6 @@ where
             tier,
             created_at: Utc::now(),
             expires_at: self.calculate_expiration(tier),
-            compression_ratio: None,
         };
 
         // Insert into appropriate tier
@@ -871,8 +864,7 @@ mod tests {
                 tier: CacheTier::L1,
                 created_at: Utc::now(),
                 expires_at: None,
-                compression_ratio: None,
-            };
+                };
             cache.insert(format!("key{}", i), entry);
         }
 
@@ -882,7 +874,7 @@ mod tests {
         
         // Test compression ratio access
         if let Some(entry) = cache.get("key0") {
-            assert_eq!(entry.compression_ratio(), None);
+            // Compression ratio functionality removed
         }
     }
 

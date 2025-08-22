@@ -65,16 +65,20 @@ pub enum Complexity {
     High,
 }
 
-impl Complexity {
-    pub fn from_str(s: &str) -> Option<Self> {
+impl std::str::FromStr for Complexity {
+    type Err = ();
+    
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "low" => Some(Self::Low),
-            "medium" => Some(Self::Medium),
-            "high" => Some(Self::High),
-            _ => None,
+            "low" => Ok(Self::Low),
+            "medium" => Ok(Self::Medium),
+            "high" => Ok(Self::High),
+            _ => Err(()),
         }
     }
-    
+}
+
+impl Complexity {
     pub fn to_string(&self) -> &str {
         match self {
             Self::Low => "low",
@@ -92,15 +96,20 @@ pub enum Priority {
     P2, // Nice to have
 }
 
-impl Priority {
-    pub fn from_str(s: &str) -> Option<Self> {
+impl std::str::FromStr for Priority {
+    type Err = ();
+    
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_uppercase().as_str() {
-            "P0" => Some(Self::P0),
-            "P1" => Some(Self::P1),
-            "P2" => Some(Self::P2),
-            _ => None,
+            "P0" => Ok(Self::P0),
+            "P1" => Ok(Self::P1),
+            "P2" => Ok(Self::P2),
+            _ => Err(()),
         }
     }
+}
+
+impl Priority {
 }
 
 /// A single task in the roadmap

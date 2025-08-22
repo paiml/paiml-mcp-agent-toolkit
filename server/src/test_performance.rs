@@ -67,12 +67,12 @@ fn generate_test_code(lines: usize) -> String {
     
     for i in 0..lines.saturating_sub(10) {
         code.push_str(&format!("pub fn test_function_{i}() -> i32 {{\n"));
-        code.push_str(&"    let mut sum = 0;\n".to_string());
+        code.push_str("    let mut sum = 0;\n");
         code.push_str(&format!("    for j in 0..{i} {{\n"));
         code.push_str(&format!("        sum += j * {i};\n"));
-        code.push_str(&"    }\n".to_string());
-        code.push_str(&"    sum\n".to_string());
-        code.push_str(&"}\n\n".to_string());
+        code.push_str("    }\n");
+        code.push_str("    sum\n");
+        code.push_str("}\n\n");
     }
     
     code

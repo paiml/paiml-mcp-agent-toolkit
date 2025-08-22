@@ -232,7 +232,7 @@ fn test_concurrent_operations(thread_count: usize, operations: usize) -> Result<
     }
 
     // Verify system is still functional
-    let stats = manager.stats();
+    let _stats = manager.stats();
     // Basic sanity check - total_allocated is valid if we got here without panic
     
     Ok(())
