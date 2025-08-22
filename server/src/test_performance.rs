@@ -4,7 +4,6 @@
 //! that can be used by the CLI and other components.
 
 use std::time::{Duration, Instant};
-use std::path::PathBuf;
 use tempfile::tempdir;
 use std::fs;
 use anyhow::Result;

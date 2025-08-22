@@ -4,6 +4,7 @@
 //! and executing commands. It's separated from the main CLI module to reduce complexity.
 
 use crate::cli::diagnose::DiagnoseArgs;
+use crate::cli::handlers::memory::MemoryCommand;
 use crate::cli::{
     AnalysisType, BigOOutputFormat, ComplexityOutputFormat, ComprehensiveOutputFormat,
     ContextFormat, DagType, DeadCodeOutputFormat, DeepContextCacheStrategy, DeepContextDagType,
@@ -398,6 +399,13 @@ pub enum Commands {
         /// Show detailed performance metrics
         #[arg(long)]
         perf: bool,
+    },
+
+    /// Memory management and optimization
+    Memory {
+        /// Memory management subcommand
+        #[command(subcommand)]
+        command: MemoryCommand,
     },
 }
 

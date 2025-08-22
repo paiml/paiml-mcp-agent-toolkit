@@ -16,6 +16,7 @@ pub mod generation_handlers;
 pub mod lint_hotspot_handlers;
 #[cfg(test)]
 pub mod lint_hotspot_property_tests;
+pub mod memory;
 pub mod name_similarity_analysis;
 #[cfg(test)]
 pub mod quality_gate_property_tests;
@@ -47,6 +48,7 @@ pub use generation_handlers::{
     handle_validate, handle_validate_agent_template, ScaffoldAgentParams,
 };
 pub use lint_hotspot_handlers::handle_analyze_lint_hotspot;
+pub use memory::handle_memory_command;
 pub use name_similarity_analysis::handle_analyze_name_similarity;
 pub use refactor_docs_handlers::handle_refactor_docs;
 pub use refactor_handlers::{route_refactor_command, RefactorServeParams};

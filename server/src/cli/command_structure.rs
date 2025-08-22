@@ -288,6 +288,9 @@ impl CommandExecutor {
                 )
                 .await
             }
+            Commands::Memory { command } => {
+                super::command_dispatcher::CommandDispatcher::execute_memory_command(command).await
+            }
         }
     }
 }
