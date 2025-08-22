@@ -89,68 +89,17 @@ impl CliAdapter {
                 *merge_threshold,
             ),
             Commands::Serve { host, port, cors, transport: _ } => Self::decode_serve(host, *port, *cors),
-            Commands::Diagnose(_) => {
-                // Diagnose command is handled directly in the CLI, not through the unified protocol
-                Err(ProtocolError::InvalidFormat(
-                    "Diagnose command should be handled directly by CLI".to_string(),
-                ))
-            }
-            Commands::QualityGate { .. } => {
-                // QualityGate command is handled directly in the CLI, not through the unified protocol
-                Err(ProtocolError::InvalidFormat(
-                    "QualityGate command should be handled directly by CLI".to_string(),
-                ))
-            }
-            Commands::Report { .. } => {
-                // Report command is handled directly in the CLI, not through the unified protocol
-                Err(ProtocolError::InvalidFormat(
-                    "Report command should be handled directly by CLI".to_string(),
-                ))
-            }
-            Commands::Enforce(_) => {
-                // Enforce command is handled directly in the CLI, not through the unified protocol
-                Err(ProtocolError::InvalidFormat(
-                    "Enforce command should be handled directly by CLI".to_string(),
-                ))
-            }
-            Commands::Refactor(_) => {
-                // Refactor command is handled directly in the CLI, not through the unified protocol
-                Err(ProtocolError::InvalidFormat(
-                    "Refactor command should be handled directly by CLI".to_string(),
-                ))
-            }
-            Commands::Roadmap(_) => {
-                // Roadmap command is handled directly in the CLI, not through the unified protocol
-                Err(ProtocolError::InvalidFormat(
-                    "Roadmap command should be handled directly by CLI".to_string(),
-                ))
-            }
-            Commands::Test { .. } => {
-                // Test command is handled directly in the CLI, not through the unified protocol
-                Err(ProtocolError::InvalidFormat(
-                    "Test command should be handled directly by CLI".to_string(),
-                ))
-            }
-            &Commands::Memory { .. } => {
-                Err(ProtocolError::InvalidFormat(
-                    "Memory command should be handled directly by CLI".to_string(),
-                ))
-            }
-            &Commands::Cache { .. } => {
-                Err(ProtocolError::InvalidFormat(
-                    "Cache command should be handled directly by CLI".to_string(),
-                ))
-            }
-            &Commands::Telemetry { .. } => {
-                Err(ProtocolError::InvalidFormat(
-                    "Telemetry command should be handled directly by CLI".to_string(),
-                ))
-            }
-            &Commands::Config { .. } => {
-                Err(ProtocolError::InvalidFormat(
-                    "Config command should be handled directly by CLI".to_string(),
-                ))
-            }
+            Commands::Diagnose(_) | 
+            Commands::QualityGate { .. } | 
+            Commands::Report { .. } | 
+            Commands::Enforce(_) | 
+            Commands::Refactor(_) | 
+            Commands::Roadmap(_) | 
+            Commands::Test { .. } | 
+            Commands::Memory { .. } | 
+            Commands::Cache { .. } | 
+            Commands::Telemetry { .. } | 
+            Commands::Config { .. } => Self::cli_only_command_error()
         }
     }
 
@@ -654,10 +603,10 @@ impl CliAdapter {
     #[allow(clippy::too_many_arguments)]
     fn decode_analyze_duplicates(
         project_path: &std::path::Path,
-        detection_type: &crate::cli::DetectionType,
-        threshold: &Option<f64>,
-        min_lines: &Option<usize>,
-        max_tokens: &Option<usize>,
+        detection_type: &crate::cli::DuplicateType,
+        threshold: &f32,
+        min_lines: &usize,
+        max_tokens: &usize,
         format: &crate::cli::DuplicateOutputFormat,
         perf: &bool,
         include: &Vec<String>,
@@ -954,6 +903,12 @@ impl CliAdapter {
 
     fn decode_analyze_webassembly() -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         Ok((Method::POST, "/api/v1/analyze/webassembly".to_string(), json!({}), None))
+    }
+
+    fn cli_only_command_error() -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        Err(ProtocolError::InvalidFormat(
+            "Command should be handled directly by CLI".to_string(),
+        ))
     }
 
     fn format_to_extension_string(format: &OutputFormat) -> &'static str {
