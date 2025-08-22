@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.7] - 2025-08-22
+
+### Added
+- **PMAT-4002**: 30+ Language Support per SPECIFICATION.md Section 6.2
+  - Comprehensive language registry supporting 50+ programming languages
+  - Language-aware analysis dispatcher with 8 analysis types
+  - Support for Systems Programming, JVM, .NET, Dynamic, Functional, Mobile, Shell, Data/Config, Build, and Specialized languages
+  - Intelligent file type detection via extensions and filenames
+  - Language-specific comment detection, keyword analysis, and security patterns
+  - Complete test coverage with 26 language-related tests passing
+  - Integration with existing analysis infrastructure
+
+## [2.6.6] - 2025-08-22
+
+### Added
+- **PMAT-4004**: Service Composition Pattern per SPECIFICATION.md Section 2.2
+  - Comprehensive service composition framework for building complex operations
+  - Service lifecycle management with health monitoring and state tracking
+  - Inter-service communication patterns (Pub-Sub, Router, Load Balancer)
+  - Type-safe service chaining and composition
+  - Complete test coverage with 6 service composition tests
+
 ## [2.6.4] - 2025-08-21
 
 ### Added
