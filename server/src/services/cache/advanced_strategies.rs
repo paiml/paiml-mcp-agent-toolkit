@@ -873,7 +873,7 @@ mod tests {
         assert_eq!(cache.len(), 2);
         
         // Test compression ratio access
-        if let Some(entry) = cache.get("key0") {
+        if let Some(_entry) = cache.get("key0") {
             // Compression ratio functionality removed
         }
     }

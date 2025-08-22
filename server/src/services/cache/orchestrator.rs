@@ -127,6 +127,7 @@ pub struct OrchestratorConfig {
 
 /// Historical strategy evaluation
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct StrategyEvaluation {
     /// Performance achieved
     performance: PerformanceMetrics,
@@ -134,6 +135,7 @@ struct StrategyEvaluation {
     timestamp: Instant,
 }
 
+#[cfg(test)]
 impl StrategyEvaluation {
     pub fn score(&self) -> f64 {
         self.performance.hit_rate * self.performance.throughput
@@ -247,8 +249,10 @@ impl CacheOrchestrator {
 
     /// Update workload profile based on current metrics
     pub async fn update_workload_profile(&self, new_profile: WorkloadProfile) -> Result<()> {
-        let mut current_profile = self.workload_profile.write();
-        *current_profile = new_profile;
+        {
+            let mut current_profile = self.workload_profile.write();
+            *current_profile = new_profile;
+        } // Drop lock before await
         
         // If auto-switching is enabled, evaluate if we need a new strategy
         if self.config.auto_strategy_switching {
