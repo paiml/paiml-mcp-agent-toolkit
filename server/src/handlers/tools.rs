@@ -1197,15 +1197,12 @@ async fn handle_analyze_dag(
 
 /// Toyota Way: Extract Method pattern for DAG analysis
 async fn execute_dag_analysis(args: &AnalyzeDagArgs) -> anyhow::Result<serde_json::Value> {
-    use crate::services::{
-        context::analyze_project,
-        dag_builder::DagBuilder,
-    };
+    use crate::services::context::analyze_project;
     let project_path = resolve_project_path(&args.project_path);
     let project_context = analyze_project(&project_path, "rust").await?;
     let graph = build_dag_graph(&project_context);
     let dag_type = parse_dag_type(args.dag_type.as_deref());
-    let filtered_graph = apply_dag_filters(graph, dag_type);
+    let filtered_graph = apply_dag_filters(graph, dag_type.clone());
     let output = generate_dag_output(&filtered_graph, args, dag_type);
     Ok(output)
 }
@@ -1217,7 +1214,7 @@ fn resolve_project_path(project_path: &Option<String>) -> PathBuf {
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
 }
 
-fn build_dag_graph(project_context: &crate::services::context::ProjectContext) -> crate::services::dag_builder::DependencyGraph {
+fn build_dag_graph(project_context: &crate::services::context::ProjectContext) -> crate::models::dag::DependencyGraph {
     use crate::services::dag_builder::DagBuilder;
     DagBuilder::build_from_project_with_limit(project_context, 50)
 }
@@ -1236,9 +1233,9 @@ fn parse_dag_type(dag_type_str: Option<&str>) -> crate::cli::DagType {
 }
 
 fn apply_dag_filters(
-    graph: crate::services::dag_builder::DependencyGraph, 
+    graph: crate::models::dag::DependencyGraph, 
     dag_type: crate::cli::DagType
-) -> crate::services::dag_builder::DependencyGraph {
+) -> crate::models::dag::DependencyGraph {
     use crate::cli::DagType;
     use crate::services::dag_builder::{filter_call_edges, filter_import_edges, filter_inheritance_edges};
     
@@ -1251,7 +1248,7 @@ fn apply_dag_filters(
 }
 
 fn generate_dag_output(
-    filtered_graph: &crate::services::dag_builder::DependencyGraph,
+    filtered_graph: &crate::models::dag::DependencyGraph,
     args: &AnalyzeDagArgs,
     dag_type: crate::cli::DagType,
 ) -> serde_json::Value {
@@ -2197,7 +2194,7 @@ async fn handle_analyze_deep_context(
         Err(e) => return McpResponse::error(request_id, -32602, e),
     };
 
-    let project_path = resolve_project_path(args.project_path.clone());
+    let project_path = resolve_deep_context_project_path(args.project_path.clone());
     info!("Running deep context analysis for {:?}", project_path);
 
     let config = build_deep_context_config(&args);
@@ -2220,7 +2217,7 @@ fn parse_deep_context_args(arguments: serde_json::Value) -> Result<AnalyzeDeepCo
         .map_err(|e| format!("Invalid analyze_deep_context arguments: {e}"))
 }
 
-fn resolve_project_path(project_path: Option<String>) -> PathBuf {
+fn resolve_deep_context_project_path(project_path: Option<String>) -> PathBuf {
     project_path
         .map(PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
@@ -2262,7 +2259,7 @@ fn parse_analysis_types(
     }
 }
 
-fn parse_dag_type(dag_type: Option<String>) -> crate::services::deep_context::DagType {
+fn parse_deep_context_dag_type(dag_type: Option<String>) -> crate::services::deep_context::DagType {
     use crate::services::deep_context::DagType;
 
     match dag_type.as_deref() {
@@ -2295,7 +2292,7 @@ fn build_deep_context_config(
     DeepContextConfig {
         include_analyses: parse_analysis_types(args.include_analyses.clone()),
         period_days: args.period_days.unwrap_or(30),
-        dag_type: parse_dag_type(args.dag_type.clone()),
+        dag_type: parse_deep_context_dag_type(args.dag_type.clone()),
         complexity_thresholds: Some(ComplexityThresholds {
             max_cyclomatic: 10,
             max_cognitive: 15,
