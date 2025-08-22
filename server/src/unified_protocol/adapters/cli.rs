@@ -1030,9 +1030,10 @@ impl CliInput {
 
     /// Create from the parsed CLI arguments
     fn get_analyze_command_name(analyze_cmd: &AnalyzeCommands) -> &'static str {
+        // Toyota Way: Simple, readable, and efficient - no complexity for simple mappings
         match analyze_cmd {
             AnalyzeCommands::Churn { .. } => "analyze-churn",
-            AnalyzeCommands::Complexity { .. } => "analyze-complexity",
+            AnalyzeCommands::Complexity { .. } => "analyze-complexity", 
             AnalyzeCommands::Dag { .. } => "analyze-dag",
             AnalyzeCommands::DeadCode { .. } => "analyze-dead-code",
             AnalyzeCommands::Satd { .. } => "analyze-satd",
