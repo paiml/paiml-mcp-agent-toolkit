@@ -43,7 +43,7 @@ impl QualityReport {
         }
     }
     
-    pub fn add_check_result(&mut self, check: QualityCheck, result: CheckResult) {
+    pub fn add_check_result(&mut self, _check: QualityCheck, result: CheckResult) {
         if !result.passed {
             self.overall_passed = false;
         }
@@ -101,7 +101,7 @@ impl TaskQualityGate {
     async fn check_complexity(&self, max: u32) -> Result<CheckResult> {
         // Run complexity analysis
         let output = std::process::Command::new("pmat")
-            .args(&["analyze", "complexity", "--max-cyclomatic", &max.to_string(), "--format", "json"])
+            .args(["analyze", "complexity", "--max-cyclomatic", &max.to_string(), "--format", "json"])
             .output()?;
         
         let passed = output.status.success();
@@ -122,7 +122,7 @@ impl TaskQualityGate {
     async fn check_coverage(&self, min: u8) -> Result<CheckResult> {
         // Run coverage check
         let output = std::process::Command::new("cargo")
-            .args(&["tarpaulin", "--print-summary"])
+            .args(["tarpaulin", "--print-summary"])
             .output()?;
         
         // Parse coverage percentage from output
@@ -147,7 +147,7 @@ impl TaskQualityGate {
     async fn check_documentation(&self) -> Result<CheckResult> {
         // Check if documentation has been updated
         let output = std::process::Command::new("git")
-            .args(&["diff", "--name-only", "HEAD~1", "HEAD"])
+            .args(["diff", "--name-only", "HEAD~1", "HEAD"])
             .output()?;
         
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -171,7 +171,7 @@ impl TaskQualityGate {
     async fn check_satd(&self) -> Result<CheckResult> {
         // Run SATD check
         let output = std::process::Command::new("pmat")
-            .args(&["analyze", "satd", "--strict", "--format", "json"])
+            .args(["analyze", "satd", "--strict", "--format", "json"])
             .output()?;
         
         let passed = output.status.success() || self.config.satd_tolerance > 0;
@@ -201,7 +201,7 @@ impl TaskQualityGate {
         
         // Run lint check
         let output = std::process::Command::new("make")
-            .args(&["lint"])
+            .args(["lint"])
             .output()?;
         
         let passed = output.status.success();
@@ -222,7 +222,7 @@ impl TaskQualityGate {
     async fn check_roadmap_status(&self) -> Result<CheckResult> {
         // Check if roadmap has been updated
         let output = std::process::Command::new("git")
-            .args(&["diff", "--name-only", "HEAD~1", "HEAD"])
+            .args(["diff", "--name-only", "HEAD~1", "HEAD"])
             .output()?;
         
         let stdout = String::from_utf8_lossy(&output.stdout);

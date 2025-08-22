@@ -212,7 +212,7 @@ async fn start_task(roadmap_path: &Path, task_id: &str, create_branch: bool, con
         
         println!("🌿 Creating branch: {}", branch_name);
         std::process::Command::new("git")
-            .args(&["checkout", "-b", &branch_name])
+            .args(["checkout", "-b", &branch_name])
             .output()
             .context("Failed to create git branch")?;
         
@@ -256,11 +256,11 @@ async fn complete_task(roadmap_path: &Path, task_id: &str, skip_quality_check: b
         
         println!("📝 Creating commit: {}", message);
         std::process::Command::new("git")
-            .args(&["add", "-A"])
+            .args(["add", "-A"])
             .output()?;
         
         std::process::Command::new("git")
-            .args(&["commit", "-m", &message])
+            .args(["commit", "-m", &message])
             .output()?;
         
         println!("✅ Changes committed");
@@ -387,7 +387,7 @@ async fn quality_check(task_id: &str, config: &RoadmapConfig) -> Result<()> {
     
     // Run complexity check
     let complexity_result = std::process::Command::new("pmat")
-        .args(&["analyze", "complexity", "--max-cyclomatic", &config.quality_gates.complexity_max.to_string()])
+        .args(["analyze", "complexity", "--max-cyclomatic", &config.quality_gates.complexity_max.to_string()])
         .output()?;
     
     if !complexity_result.status.success() {
@@ -398,7 +398,7 @@ async fn quality_check(task_id: &str, config: &RoadmapConfig) -> Result<()> {
     
     // Run SATD check
     let satd_result = std::process::Command::new("pmat")
-        .args(&["analyze", "satd", "--strict"])
+        .args(["analyze", "satd", "--strict"])
         .output()?;
     
     if !satd_result.status.success() && config.quality_gates.satd_tolerance == 0 {
@@ -410,7 +410,7 @@ async fn quality_check(task_id: &str, config: &RoadmapConfig) -> Result<()> {
     // Run lint check
     if config.quality_gates.lint_compliance {
         let lint_result = std::process::Command::new("make")
-            .args(&["lint"])
+            .args(["lint"])
             .output()?;
         
         if !lint_result.status.success() {

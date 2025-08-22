@@ -1020,9 +1020,9 @@ fn detect_primary_language(path: &Path) -> Result<String> {
 */
 
 /// Handle serve command
-pub async fn handle_serve(host: String, port: u16, cors: bool) -> Result<()> {
+pub async fn handle_serve(host: String, port: u16, cors: bool, transport: crate::cli::commands::ServeTransport) -> Result<()> {
     // Delegate to main serve implementation for now - will be extracted later
-    super::super::stubs::handle_serve(host, port, cors).await
+    super::super::stubs::handle_serve(host, port, cors, transport).await
 }
 
 /// Handle diagnose command

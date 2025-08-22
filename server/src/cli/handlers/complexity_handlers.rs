@@ -265,6 +265,11 @@ pub async fn handle_analyze_complexity(
                 let metrics = analyze_rust_file_with_complexity(&full_path).await?;
                 vec![metrics]
             }
+            "ruchy" => {
+                use crate::services::languages::ruchy::analyze_ruchy_file;
+                let metrics = analyze_ruchy_file(&full_path).await?;
+                vec![metrics]
+            }
             _ => {
                 // For other toolchains, use the generic analyzer with a single-file include pattern
                 let include_pattern = vec![full_path.to_string_lossy().to_string()];

@@ -15,12 +15,7 @@ mod tests {
             )
             -> ComplexityMetrics
         {
-            ComplexityMetrics {
-                cyclomatic,
-                cognitive,
-                nesting_max,
-                lines,
-            }
+            ComplexityMetrics::new(cyclomatic, cognitive, nesting_max, lines)
         }
     }
 
@@ -173,12 +168,7 @@ mod tests {
             base_cognitive in 0u16..u16::MAX - 100,
             increment in 0u16..200
         ) {
-            let metrics = ComplexityMetrics {
-                cyclomatic: base_cyclomatic,
-                cognitive: base_cognitive,
-                nesting_max: 0,
-                lines: 0,
-            };
+            let metrics = ComplexityMetrics::new(base_cyclomatic, base_cognitive, 0, 0);
 
             // Test saturating addition
             let new_cyclomatic = metrics.cyclomatic.saturating_add(increment);
@@ -286,12 +276,7 @@ mod tests {
                             name: format!("method_{}", i),
                             line_start: method_start,
                             line_end: method_end.min(class_body_end),
-                            metrics: ComplexityMetrics {
-                                cyclomatic: 1,
-                                cognitive: 2,
-                                nesting_max: 1,
-                                lines: (method_end - method_start + 1).min(5) as u16,
-                            },
+                            metrics: ComplexityMetrics::new(1, 2, 1, (method_end - method_start + 1).min(5) as u16),
                         }
                     })
                     .collect()
@@ -398,12 +383,7 @@ mod tests {
             custom_cyclomatic_threshold in 1u16..50,
             custom_cognitive_threshold in 1u16..50,
         ) {
-            let metrics = ComplexityMetrics {
-                cyclomatic: cyclomatic_complexity,
-                cognitive: cognitive_complexity,
-                nesting_max: 3,
-                lines: 100,
-            };
+            let metrics = ComplexityMetrics::new(cyclomatic_complexity, cognitive_complexity, 3, 100);
 
             let func = FunctionComplexity {
                 name: "test_function".to_string(),
@@ -455,12 +435,7 @@ mod tests {
             // Generate random file metrics
             let mut files = Vec::new();
             for i in 0..file_count {
-                let metrics = ComplexityMetrics {
-                    cyclomatic: (i as u16 * 5) % 60,
-                    cognitive: (i as u16 * 7) % 60,
-                    nesting_max: (i % 10) as u8,
-                    lines: 100 + (i as u16 * 10),
-                };
+                let metrics = ComplexityMetrics::new((i as u16 * 5) % 60, (i as u16 * 7) % 60, (i % 10) as u8, 100 + (i as u16 * 10));
 
                 let file = FileComplexityMetrics {
                     path: format!("src/file_{}.rs", i),
@@ -496,12 +471,7 @@ mod tests {
             cyclomatic_complexity in 0u16..100,
             cognitive_complexity in 0u16..100,
         ) {
-            let metrics = ComplexityMetrics {
-                cyclomatic: cyclomatic_complexity,
-                cognitive: cognitive_complexity,
-                nesting_max: 3,
-                lines: 100,
-            };
+            let metrics = ComplexityMetrics::new(cyclomatic_complexity, cognitive_complexity, 3, 100);
 
             let func = FunctionComplexity {
                 name: "test_function".to_string(),

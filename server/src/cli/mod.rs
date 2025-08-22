@@ -153,7 +153,23 @@ pub fn detect_primary_language(path: &Path) -> Option<String> {
     use walkdir::WalkDir;
 
     // First check for project marker files in order of specificity
-    // Check Rust first as it's the most specific (requires Cargo.toml)
+    // Check for Ruchy project (if it has .ruchy files)
+    let has_ruchy_files = WalkDir::new(path)
+        .max_depth(3)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .any(|e| {
+            e.path().extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| ext == "ruchy" || ext == "rh")
+                .unwrap_or(false)
+        });
+    
+    if has_ruchy_files {
+        return Some("ruchy".to_string());
+    }
+    
+    // Check Rust next as it's the most specific (requires Cargo.toml)
     if path.join("Cargo.toml").exists() {
         return Some("rust".to_string());
     }

@@ -170,7 +170,7 @@ impl RoadmapDashboard {
         output.push_str("```\n");
         let progress_width = 50;
         let completed_width = (completed as f64 / total as f64 * progress_width as f64) as usize;
-        output.push_str("[");
+        output.push('[');
         for i in 0..progress_width {
             if i < completed_width {
                 output.push('█');
@@ -188,19 +188,19 @@ impl RoadmapDashboard {
         for task in sprint.tasks.iter().filter(|t| t.status == TaskStatus::Completed) {
             output.push_str(&format!("- {} - {}\n", task.id, task.description));
         }
-        output.push_str("\n");
+        output.push('\n');
         
         output.push_str("### 🚧 In Progress\n");
         for task in sprint.tasks.iter().filter(|t| t.status == TaskStatus::InProgress) {
             output.push_str(&format!("- {} - {}\n", task.id, task.description));
         }
-        output.push_str("\n");
+        output.push('\n');
         
         output.push_str("### 📋 Planned\n");
         for task in sprint.tasks.iter().filter(|t| t.status == TaskStatus::Planned) {
             output.push_str(&format!("- {} - {}\n", task.id, task.description));
         }
-        output.push_str("\n");
+        output.push('\n');
         
         // Velocity metrics if available
         if let Ok(tracker) = VelocityTracker::load(sprint_id) {
@@ -229,7 +229,7 @@ impl RoadmapDashboard {
             let checked = if completed == total { "x" } else { " " };
             output.push_str(&format!("- [{}] {}\n", checked, item));
         }
-        output.push_str("\n");
+        output.push('\n');
         
         // Quality Gates
         output.push_str("## Quality Gates\n\n");

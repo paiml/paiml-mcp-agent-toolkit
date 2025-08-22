@@ -104,7 +104,7 @@ async fn generate_context(params: ContextParams) -> (Option<Value>, Option<Error
     )
 }
 
-async fn run_quality_gate(params: QualityGateParams) -> (Option<Value>, Option<ErrorInfo>) {
+async fn run_quality_gate(_params: QualityGateParams) -> (Option<Value>, Option<ErrorInfo>) {
     // Implementation would call the actual quality gate service
     (
         Some(serde_json::json!({

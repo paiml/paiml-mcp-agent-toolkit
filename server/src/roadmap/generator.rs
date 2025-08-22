@@ -116,7 +116,7 @@ impl RoadmapTodoGenerator {
         
         // Add quality gate validation
         validation_commands.push(format!("pmat roadmap quality-check --task-id {}", task.id));
-        validation_commands.push(format!("pmat quality-gate --file-path ."));
+        validation_commands.push("pmat quality-gate --file-path .".to_string());
         
         // Add quality success criteria
         success_criteria.push("All quality gates pass".to_string());
@@ -196,14 +196,14 @@ impl RoadmapTodoGenerator {
                 for criterion in &todo.success_criteria {
                     output.push_str(&format!("- [ ] {}\n", criterion));
                 }
-                output.push_str("\n");
+                output.push('\n');
                 
                 if !todo.dependencies.is_empty() {
                     output.push_str("**Dependencies:**\n");
                     for dep in &todo.dependencies {
                         output.push_str(&format!("- {}\n", dep));
                     }
-                    output.push_str("\n");
+                    output.push('\n');
                 }
                 
                 output.push_str("---\n\n");
