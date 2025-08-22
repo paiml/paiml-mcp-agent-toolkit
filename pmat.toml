@@ -21,7 +21,7 @@ enforce_jidoka_automation = true
 kaizen_cycle_enforcement = true
 
 [sprint_management]
-current_sprint = "v2.5.0"
+current_sprint = "v2.8.0"
 velocity_tracking_enabled = true
 task_id_enforcement = true
 
