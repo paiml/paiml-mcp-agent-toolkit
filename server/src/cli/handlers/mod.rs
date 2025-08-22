@@ -5,6 +5,7 @@
 
 pub mod advanced_analysis_handlers;
 pub mod analysis_handlers;
+pub mod cache;
 pub mod big_o_handlers;
 pub mod complexity_handlers;
 pub mod comprehensive_handler;
@@ -25,6 +26,7 @@ pub mod refactor_auto_handlers;
 pub mod refactor_auto_property_tests;
 pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
+pub mod telemetry_handlers;
 pub mod test_handlers;
 pub mod utility_handlers;
 pub mod wasm_handlers;
@@ -36,6 +38,7 @@ pub use advanced_analysis_handlers::{
     handle_analyze_symbol_table, handle_analyze_tdg,
 };
 pub use analysis_handlers::route_analyze_command;
+pub use cache::handle_cache_command;
 pub use complexity_handlers::{
     handle_analyze_churn, handle_analyze_complexity, handle_analyze_dag, handle_analyze_dead_code,
     handle_analyze_satd,
@@ -52,6 +55,7 @@ pub use memory::handle_memory_command;
 pub use name_similarity_analysis::handle_analyze_name_similarity;
 pub use refactor_docs_handlers::handle_refactor_docs;
 pub use refactor_handlers::{route_refactor_command, RefactorServeParams};
+pub use telemetry_handlers::handle_telemetry;
 pub use test_handlers::handle_test;
 pub use utility_handlers::{
     handle_context, handle_diagnose, handle_list, handle_search, handle_serve,

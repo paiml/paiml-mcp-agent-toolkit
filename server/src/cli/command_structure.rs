@@ -155,10 +155,10 @@ impl CommandExecutor {
                     )
                     .await
             }
-            Commands::Serve { port, host, cors } => {
+            Commands::Serve { port, host, cors, transport } => {
                 self.registry
                     .utility_handlers
-                    .handle_serve(host, port, cors)
+                    .handle_serve(host, port, cors, transport)
                     .await
             }
 
@@ -291,6 +291,12 @@ impl CommandExecutor {
             Commands::Memory { command } => {
                 super::command_dispatcher::CommandDispatcher::execute_memory_command(command).await
             }
+            Commands::Cache { command } => {
+                super::command_dispatcher::CommandDispatcher::execute_cache_command(command).await
+            }
+            Commands::Telemetry { system, service, reset, test_event } => {
+                super::handlers::handle_telemetry(system, service, reset, test_event).await
+            }
         }
     }
 }
@@ -416,8 +422,8 @@ impl UtilityCommandGroup {
     }
 
     /// Handle serve command
-    pub async fn handle_serve(&self, host: String, port: u16, cors: bool) -> Result<()> {
-        crate::cli::handlers::utility_handlers::handle_serve(host, port, cors).await
+    pub async fn handle_serve(&self, host: String, port: u16, cors: bool, transport: crate::cli::commands::ServeTransport) -> Result<()> {
+        crate::cli::handlers::utility_handlers::handle_serve(host, port, cors, transport).await
     }
 
     /// Handle diagnose command

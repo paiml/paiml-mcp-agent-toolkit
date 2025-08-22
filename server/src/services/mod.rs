@@ -57,6 +57,7 @@ pub mod service_communication;
 pub mod service_lifecycle;
 pub mod language_registry;
 pub mod language_analyzer;
+pub mod languages;
 pub mod memory_manager;
 pub mod memory_integration;
 #[cfg(test)]
@@ -175,6 +176,8 @@ mod git_clone_property_tests;
 
 #[cfg(test)]
 mod quality_proxy_property_tests;
+
+pub mod telemetry_service;
 
 #[cfg(test)]
 mod tests {

@@ -5,6 +5,7 @@
 
 use super::commands::{RoadmapCommands, ScaffoldCommands};
 use super::{AnalyzeCommands, Commands, DemoProtocol, RefactorCommands};
+use crate::cli::handlers::cache::CacheCommand;
 use crate::cli::handlers::memory::MemoryCommand;
 use crate::stateless_server::StatelessTemplateServer;
 use std::path::PathBuf;
@@ -233,7 +234,7 @@ impl CommandDispatcher {
                 )
                 .await
             }
-            Commands::Serve { port, host, cors } => handlers::handle_serve(host, port, cors).await,
+            Commands::Serve { port, host, cors, transport } => handlers::handle_serve(host, port, cors, transport).await,
             Commands::Diagnose(args) => super::diagnose::handle_diagnose(args).await,
             Commands::Enforce(enforce_cmd) => handlers::route_enforce_command(enforce_cmd).await,
             Commands::Refactor(refactor_cmd) => Self::execute_refactor_command(refactor_cmd).await,
@@ -262,6 +263,12 @@ impl CommandDispatcher {
             }
             Commands::Memory { command } => {
                 Self::execute_memory_command(command).await
+            }
+            Commands::Cache { command } => {
+                Self::execute_cache_command(command).await
+            }
+            Commands::Telemetry { system, service, reset, test_event } => {
+                handlers::telemetry_handlers::handle_telemetry(system, service, reset, test_event).await
             }
         }
     }
@@ -465,6 +472,12 @@ impl CommandDispatcher {
     pub async fn execute_memory_command(memory_cmd: MemoryCommand) -> anyhow::Result<()> {
         // Delegate to the memory handler
         super::handlers::handle_memory_command(&memory_cmd).await
+    }
+
+    /// Execute cache management commands using handler pattern (reduces CC)
+    pub async fn execute_cache_command(cache_cmd: CacheCommand) -> anyhow::Result<()> {
+        // Delegate to the cache handler
+        super::handlers::handle_cache_command(&cache_cmd).await
     }
 }
 
