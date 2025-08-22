@@ -898,7 +898,7 @@ pub async fn resolve_repository_async(
     let path_str = resolved_path.to_string_lossy();
     if path_str.starts_with("https://") || path_str.starts_with("git@") {
         // This is a URL - need to clone it
-        let temp_dir = std::env::temp_dir()
+        let _temp_dir = std::env::temp_dir()
             .join("pmat-demo-repos")
             .join(format!("repo-{}", uuid::Uuid::new_v4()));
         
