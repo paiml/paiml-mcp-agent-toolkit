@@ -266,574 +266,48 @@ impl CliAdapter {
         analyze_cmd: &AnalyzeCommands,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         match analyze_cmd {
-            AnalyzeCommands::Churn {
-                project_path,
-                days,
-                format,
-                output,
-                top_files,
-            } => Self::decode_analyze_churn(project_path, *days, format, output, *top_files),
-            AnalyzeCommands::Complexity {
-                project_path,
-                file,
-                files,
-                toolchain,
-                format,
-                output,
-                max_cyclomatic,
-                max_cognitive,
-                include,
-                watch,
-                top_files,
-                fail_on_violation: _, // Ignore for MCP - not applicable
-            } => Self::decode_analyze_complexity(
-                project_path,
-                file,
-                files,
-                toolchain,
-                format,
-                output,
-                max_cyclomatic,
-                max_cognitive,
-                include,
-                *watch,
-                *top_files,
-            ),
-            AnalyzeCommands::Dag {
-                dag_type,
-                project_path,
-                output,
-                max_depth,
-                target_nodes,
-                filter_external,
-                show_complexity,
-                include_duplicates,
-                include_dead_code,
-                enhanced,
-            } => Self::decode_analyze_dag(
-                dag_type,
-                project_path,
-                output,
-                max_depth,
-                target_nodes,
-                *filter_external,
-                *show_complexity,
-                *include_duplicates,
-                *include_dead_code,
-                *enhanced,
-            ),
-            AnalyzeCommands::DeadCode {
-                path,
-                format,
-                top_files,
-                include_unreachable,
-                min_dead_lines,
-                include_tests,
-                output,
-                fail_on_violation: _, // Ignore for MCP
-                max_percentage: _,    // Ignore for MCP
-            } => Self::decode_analyze_dead_code(
-                path,
-                format,
-                top_files,
-                *include_unreachable,
-                *min_dead_lines,
-                *include_tests,
-                output,
-            ),
-            AnalyzeCommands::Satd {
-                path,
-                format,
-                severity,
-                critical_only,
-                include_tests,
-                strict,
-                evolution,
-                days,
-                metrics,
-                output,
-                top_files,
-                fail_on_violation: _, // Ignore for MCP
-            } => Self::decode_analyze_satd(
-                path,
-                format,
-                severity,
-                *critical_only,
-                *include_tests,
-                *strict,
-                *evolution,
-                *days,
-                *metrics,
-                output,
-                *top_files,
-            ),
-            AnalyzeCommands::DeepContext {
-                project_path,
-                output,
-                format,
-                full,
-                include,
-                exclude,
-                period_days,
-                dag_type,
-                max_depth,
-                include_patterns,
-                exclude_patterns,
-                cache_strategy,
-                parallel,
-                verbose,
-                top_files: _,
-            } => Self::decode_analyze_deep_context(
-                project_path,
-                output,
-                format,
-                *full,
-                include,
-                exclude,
-                *period_days,
-                dag_type,
-                max_depth,
-                include_patterns,
-                exclude_patterns,
-                cache_strategy,
-                parallel,
-                *verbose,
-            ),
-            AnalyzeCommands::Tdg {
-                path,
-                threshold,
-                top_files,
-                format,
-                include_components,
-                output,
-                critical_only,
-                verbose,
-            } => Self::decode_analyze_tdg(
-                path,
-                output,
-                format,
-                *threshold,
-                *critical_only,
-                *top_files,
-                *include_components,
-                *verbose,
-            ),
-            AnalyzeCommands::LintHotspot {
-                project_path,
-                file,
-                format,
-                max_density,
-                min_confidence,
-                enforce,
-                dry_run,
-                enforcement_metadata,
-                output,
-                perf,
-                clippy_flags,
-                top_files,
-            } => {
-                // Convert LintHotspot command to generic analyze method
-                let params = json!({
-                    "project_path": project_path,
-                    "file": file,
-                    "format": format,
-                    "max_density": max_density,
-                    "min_confidence": min_confidence,
-                    "enforce": enforce,
-                    "dry_run": dry_run,
-                    "enforcement_metadata": enforcement_metadata,
-                    "output": output,
-                    "perf": perf,
-                    "clippy_flags": clippy_flags,
-                    "top_files": top_files,
-                });
-                Ok((
-                    Method::POST,
-                    "/api/v1/analyze/lint-hotspot".to_string(),
-                    params,
-                    None,
-                ))
-            }
-            AnalyzeCommands::Makefile {
-                path,
-                rules,
-                format,
-                fix,
-                gnu_version,
-                top_files,
-            } => {
-                // Convert Makefile command to generic analyze method
-                let params = json!({
-                    "path": path,
-                    "rules": rules,
-                    "fix": fix,
-                    "gnu_version": gnu_version,
-                    "format": format,
-                    "top_files": top_files,
-                });
-                Ok((
-                    Method::POST,
-                    "/api/v1/analyze/makefile".to_string(),
-                    params,
-                    None,
-                ))
-            }
-            AnalyzeCommands::Provability {
-                project_path,
-                functions,
-                analysis_depth,
-                format,
-                high_confidence_only,
-                include_evidence,
-                output,
-                top_files,
-            } => Self::decode_analyze_provability(
-                project_path,
-                functions,
-                *analysis_depth,
-                format,
-                *high_confidence_only,
-                *include_evidence,
-                output,
-                *top_files,
-            ),
-            AnalyzeCommands::Duplicates {
-                project_path,
-                detection_type,
-                threshold,
-                min_lines,
-                max_tokens,
-                format,
-                perf,
-                include,
-                exclude,
-                output,
-                top_files,
-            } => {
-                let params = json!({
-                    "project_path": project_path,
-                    "detection_type": detection_type,
-                    "threshold": threshold,
-                    "min_lines": min_lines,
-                    "max_tokens": max_tokens,
-                    "format": format,
-                    "perf": perf,
-                    "include": include,
-                    "exclude": exclude,
-                    "output": output,
-                    "top_files": top_files,
-                });
-                Ok((
-                    Method::POST,
-                    "/api/v1/analyze/duplicates".to_string(),
-                    params,
-                    None,
-                ))
-            }
-            AnalyzeCommands::DefectPrediction {
-                project_path,
-                confidence_threshold,
-                min_lines,
-                include_low_confidence,
-                format,
-                high_risk_only,
-                include_recommendations,
-                include,
-                exclude,
-                output,
-                perf,
-                top_files,
-            } => {
-                let params = json!({
-                    "project_path": project_path,
-                    "confidence_threshold": confidence_threshold,
-                    "min_lines": min_lines,
-                    "include_low_confidence": include_low_confidence,
-                    "format": format,
-                    "high_risk_only": high_risk_only,
-                    "include_recommendations": include_recommendations,
-                    "include": include,
-                    "exclude": exclude,
-                    "output": output,
-                    "perf": perf,
-                    "top_files": top_files,
-                });
-                Ok((
-                    Method::POST,
-                    "/api/v1/analyze/defect-prediction".to_string(),
-                    params,
-                    None,
-                ))
-            }
-            AnalyzeCommands::Comprehensive {
-                project_path,
-                file,
-                files,
-                format,
-                include_duplicates,
-                include_dead_code,
-                include_defects,
-                include_complexity,
-                include_tdg,
-                confidence_threshold,
-                min_lines,
-                include,
-                exclude,
-                output,
-                perf,
-                executive_summary,
-                top_files,
-            } => {
-                let params = json!({
-                    "project_path": project_path,
-                    "file": file,
-                    "files": files.iter().map(|f| f.to_string_lossy()).collect::<Vec<_>>(),
-                    "format": format,
-                    "include_duplicates": include_duplicates,
-                    "include_dead_code": include_dead_code,
-                    "include_defects": include_defects,
-                    "include_complexity": include_complexity,
-                    "include_tdg": include_tdg,
-                    "confidence_threshold": confidence_threshold,
-                    "min_lines": min_lines,
-                    "include": include,
-                    "exclude": exclude,
-                    "output": output,
-                    "perf": perf,
-                    "executive_summary": executive_summary,
-                    "top_files": top_files,
-                });
-                Ok((
-                    Method::POST,
-                    "/api/v1/analyze/comprehensive".to_string(),
-                    params,
-                    None,
-                ))
-            }
-            AnalyzeCommands::GraphMetrics {
-                project_path,
-                metrics,
-                pagerank_seeds,
-                damping_factor,
-                max_iterations,
-                convergence_threshold,
-                format,
-                include,
-                exclude,
-                output,
-                export_graphml,
-                perf,
-                top_k,
-                min_centrality,
-            } => {
-                let params = json!({
-                    "project_path": project_path,
-                    "metrics": metrics.iter().map(graph_metric_type_to_string).collect::<Vec<_>>(),
-                    "pagerank_seeds": pagerank_seeds,
-                    "damping_factor": damping_factor,
-                    "max_iterations": max_iterations,
-                    "convergence_threshold": convergence_threshold,
-                    "format": graph_metrics_format_to_string(format),
-                    "include": include,
-                    "exclude": exclude,
-                    "output": output,
-                    "export_graphml": export_graphml,
-                    "perf": perf,
-                    "top_k": top_k,
-                    "min_centrality": min_centrality,
-                });
-                Ok((
-                    Method::POST,
-                    "/api/v1/analyze/graph-metrics".to_string(),
-                    params,
-                    None,
-                ))
-            }
-            AnalyzeCommands::NameSimilarity {
-                project_path,
-                query,
-                top_k,
-                phonetic,
-                scope,
-                threshold,
-                format,
-                include,
-                exclude,
-                output,
-                perf,
-                fuzzy,
-                case_sensitive,
-            } => {
-                use crate::cli::SearchScope;
-                let params = json!({
-                    "project_path": project_path,
-                    "query": query,
-                    "top_k": top_k,
-                    "phonetic": phonetic,
-                    "scope": match scope {
-                        SearchScope::Functions => "functions",
-                        SearchScope::Types => "types",
-                        SearchScope::Variables => "variables",
-                        SearchScope::All => "all",
-                    },
-                    "threshold": threshold,
-                    "format": name_similarity_format_to_string(format),
-                    "include": include,
-                    "exclude": exclude,
-                    "output": output,
-                    "perf": perf,
-                    "fuzzy": fuzzy,
-                    "case_sensitive": case_sensitive,
-                });
-                Ok((
-                    Method::POST,
-                    "/api/v1/analyze/name-similarity".to_string(),
-                    params,
-                    None,
-                ))
-            }
-            AnalyzeCommands::ProofAnnotations {
-                project_path,
-                format,
-                high_confidence_only,
-                include_evidence,
-                property_type,
-                verification_method,
-                output,
-                perf,
-                clear_cache,
-                top_files,
-            } => {
-                let params = json!({
-                    "project_path": project_path,
-                    "format": proof_annotation_format_to_string(format),
-                    "high_confidence_only": high_confidence_only,
-                    "include_evidence": include_evidence,
-                    "property_type": property_type.as_ref().map(property_type_filter_to_string),
-                    "verification_method": verification_method.as_ref().map(verification_method_filter_to_string),
-                    "output": output,
-                    "perf": perf,
-                    "clear_cache": clear_cache,
-                    "top_files": top_files,
-                });
-                Ok((
-                    Method::POST,
-                    "/api/v1/analyze/proof-annotations".to_string(),
-                    params,
-                    None,
-                ))
-            }
-            AnalyzeCommands::IncrementalCoverage {
-                project_path,
-                base_branch,
-                target_branch,
-                format,
-                coverage_threshold,
-                changed_files_only,
-                detailed,
-                output,
-                perf,
-                cache_dir,
-                force_refresh,
-                top_files,
-            } => {
-                let params = json!({
-                    "project_path": project_path,
-                    "base_branch": base_branch,
-                    "target_branch": target_branch,
-                    "format": incremental_coverage_format_to_string(format),
-                    "coverage_threshold": coverage_threshold,
-                    "changed_files_only": changed_files_only,
-                    "detailed": detailed,
-                    "output": output,
-                    "perf": perf,
-                    "cache_dir": cache_dir,
-                    "force_refresh": force_refresh,
-                    "top_files": top_files,
-                });
-                Ok((
-                    Method::POST,
-                    "/api/v1/analyze/incremental-coverage".to_string(),
-                    params,
-                    None,
-                ))
-            }
-            AnalyzeCommands::SymbolTable {
-                project_path,
-                format,
-                query,
-                filter,
-                include,
-                exclude,
-                show_unreferenced,
-                show_references,
-                output,
-                perf,
-                top_files,
-            } => {
-                let params = json!({
-                    "project_path": project_path,
-                    "format": symbol_table_format_to_string(format),
-                    "query": query,
-                    "filter": filter.as_ref().map(symbol_type_filter_to_string),
-                    "include": include,
-                    "exclude": exclude,
-                    "show_unreferenced": show_unreferenced,
-                    "show_references": show_references,
-                    "output": output,
-                    "perf": perf,
-                    "top_files": top_files,
-                });
-                Ok((
-                    Method::POST,
-                    "/api/v1/analyze/symbol-table".to_string(),
-                    params,
-                    None,
-                ))
-            }
-            AnalyzeCommands::BigO {
-                project_path,
-                format,
-                confidence_threshold,
-                analyze_space,
-                include,
-                exclude,
-                output,
-                perf,
-                high_complexity_only,
-                top_files,
-            } => {
-                let params = json!({
-                    "project_path": project_path,
-                    "format": big_o_format_to_string(format),
-                    "confidence_threshold": confidence_threshold,
-                    "analyze_space": analyze_space,
-                    "include": include,
-                    "exclude": exclude,
-                    "output": output,
-                    "perf": perf,
-                    "high_complexity_only": high_complexity_only,
-                    "top_files": top_files,
-                });
-                Ok((
-                    Method::POST,
-                    "/api/v1/analyze/big-o".to_string(),
-                    params,
-                    None,
-                ))
-            }
-            AnalyzeCommands::AssemblyScript { top_files: _, .. } => Ok((
-                Method::POST,
-                "/api/v1/analyze/assemblyscript".to_string(),
-                json!({}),
-                None,
-            )),
-            AnalyzeCommands::WebAssembly { top_files: _, .. } => Ok((
-                Method::POST,
-                "/api/v1/analyze/webassembly".to_string(),
-                json!({}),
-                None,
-            )),
+            AnalyzeCommands::Churn { project_path, days, format, output, top_files } => 
+                Self::decode_analyze_churn(project_path, *days, format, output, *top_files),
+            AnalyzeCommands::Complexity { project_path, file, files, toolchain, format, output, max_cyclomatic, max_cognitive, include, watch, top_files, fail_on_violation: _ } => 
+                Self::decode_analyze_complexity(project_path, file, files, toolchain, format, output, max_cyclomatic, max_cognitive, include, *watch, *top_files),
+            AnalyzeCommands::Dag { dag_type, project_path, output, max_depth, target_nodes, filter_external, show_complexity, include_duplicates, include_dead_code, enhanced } => 
+                Self::decode_analyze_dag(dag_type, project_path, output, max_depth, target_nodes, *filter_external, *show_complexity, *include_duplicates, *include_dead_code, *enhanced),
+            AnalyzeCommands::DeadCode { path, format, top_files, include_unreachable, min_dead_lines, include_tests, output, fail_on_violation: _, max_percentage: _ } => 
+                Self::decode_analyze_dead_code(path, format, top_files, *include_unreachable, *min_dead_lines, *include_tests, output),
+            AnalyzeCommands::Satd { path, format, severity, critical_only, include_tests, strict, evolution, days, metrics, output, top_files, fail_on_violation: _ } => 
+                Self::decode_analyze_satd(path, format, severity, *critical_only, *include_tests, *strict, *evolution, *days, *metrics, output, *top_files),
+            AnalyzeCommands::DeepContext { project_path, output, format, full, include, exclude, period_days, dag_type, max_depth, include_patterns, exclude_patterns, cache_strategy, parallel, verbose, top_files: _ } => 
+                Self::decode_analyze_deep_context(project_path, output, format, *full, include, exclude, *period_days, dag_type, max_depth, include_patterns, exclude_patterns, cache_strategy, parallel, *verbose),
+            AnalyzeCommands::Tdg { path, threshold, top_files, format, include_components, output, critical_only, verbose } => 
+                Self::decode_analyze_tdg(path, output, format, *threshold, *critical_only, *top_files, *include_components, *verbose),
+            AnalyzeCommands::LintHotspot { project_path, file, format, max_density, min_confidence, enforce, dry_run, enforcement_metadata, output, perf, clippy_flags, top_files } => 
+                Self::decode_analyze_lint_hotspot(project_path, file, format, max_density, min_confidence, enforce, dry_run, enforcement_metadata, output, perf, clippy_flags, top_files),
+            AnalyzeCommands::Makefile { path, rules, format, fix, gnu_version, top_files } => 
+                Self::decode_analyze_makefile(path, rules, format, fix, gnu_version, top_files),
+            AnalyzeCommands::Provability { project_path, functions, analysis_depth, format, high_confidence_only, include_evidence, output, top_files } => 
+                Self::decode_analyze_provability(project_path, functions, *analysis_depth, format, *high_confidence_only, *include_evidence, output, *top_files),
+            AnalyzeCommands::Duplicates { project_path, detection_type, threshold, min_lines, max_tokens, format, perf, include, exclude, output, top_files } => 
+                Self::decode_analyze_duplicates(project_path, detection_type, threshold, min_lines, max_tokens, format, perf, include, exclude, output, top_files),
+            AnalyzeCommands::DefectPrediction { project_path, confidence_threshold, min_lines, include_low_confidence, format, high_risk_only, include_recommendations, include, exclude, output, perf, top_files } => 
+                Self::decode_analyze_defect_prediction(project_path, confidence_threshold, min_lines, include_low_confidence, format, high_risk_only, include_recommendations, include, exclude, output, perf, top_files),
+            AnalyzeCommands::Comprehensive { project_path, file, files, format, include_duplicates, include_dead_code, include_defects, include_complexity, include_tdg, confidence_threshold, min_lines, include, exclude, output, perf, executive_summary, top_files } => 
+                Self::decode_analyze_comprehensive(project_path, file, files, format, include_duplicates, include_dead_code, include_defects, include_complexity, include_tdg, confidence_threshold, min_lines, include, exclude, output, perf, executive_summary, top_files),
+            AnalyzeCommands::GraphMetrics { project_path, metrics, pagerank_seeds, damping_factor, max_iterations, convergence_threshold, format, include, exclude, output, export_graphml, perf, top_k, min_centrality } => 
+                Self::decode_analyze_graph_metrics(project_path, metrics, pagerank_seeds, damping_factor, max_iterations, convergence_threshold, format, include, exclude, output, export_graphml, perf, top_k, min_centrality),
+            AnalyzeCommands::NameSimilarity { project_path, query, top_k, phonetic, scope, threshold, format, include, exclude, output, perf, fuzzy, case_sensitive } => 
+                Self::decode_analyze_name_similarity(project_path, query, top_k, phonetic, scope, threshold, format, include, exclude, output, perf, fuzzy, case_sensitive),
+            AnalyzeCommands::ProofAnnotations { project_path, format, high_confidence_only, include_evidence, property_type, verification_method, output, perf, clear_cache, top_files } => 
+                Self::decode_analyze_proof_annotations(project_path, format, high_confidence_only, include_evidence, property_type, verification_method, output, perf, clear_cache, top_files),
+            AnalyzeCommands::IncrementalCoverage { project_path, base_branch, target_branch, format, coverage_threshold, changed_files_only, detailed, output, perf, cache_dir, force_refresh, top_files } => 
+                Self::decode_analyze_incremental_coverage(project_path, base_branch, target_branch, format, coverage_threshold, changed_files_only, detailed, output, perf, cache_dir, force_refresh, top_files),
+            AnalyzeCommands::SymbolTable { project_path, format, query, filter, include, exclude, show_unreferenced, show_references, output, perf, top_files } => 
+                Self::decode_analyze_symbol_table(project_path, format, query, filter, include, exclude, show_unreferenced, show_references, output, perf, top_files),
+            AnalyzeCommands::BigO { project_path, format, confidence_threshold, analyze_space, include, exclude, output, perf, high_complexity_only, top_files } => 
+                Self::decode_analyze_big_o(project_path, format, confidence_threshold, analyze_space, include, exclude, output, perf, high_complexity_only, top_files),
+            AnalyzeCommands::AssemblyScript { top_files: _, .. } => 
+                Self::decode_analyze_assemblyscript(),
+            AnalyzeCommands::WebAssembly { top_files: _, .. } => 
+                Self::decode_analyze_webassembly(),
         }
     }
 
@@ -1125,6 +599,361 @@ impl CliAdapter {
             "merge_threshold": &merge_threshold
         });
         Ok((Method::POST, "/api/v1/demo".to_string(), body, None))
+    }
+
+    fn decode_analyze_lint_hotspot(
+        project_path: &std::path::Path,
+        file: &Option<PathBuf>,
+        format: &crate::cli::LintHotspotOutputFormat,
+        max_density: &Option<f64>,
+        min_confidence: &Option<f64>,
+        enforce: &bool,
+        dry_run: &bool,
+        enforcement_metadata: &Option<PathBuf>,
+        output: &Option<PathBuf>,
+        perf: &bool,
+        clippy_flags: &Vec<String>,
+        top_files: &usize,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let params = json!({
+            "project_path": project_path,
+            "file": file,
+            "format": format,
+            "max_density": max_density,
+            "min_confidence": min_confidence,
+            "enforce": enforce,
+            "dry_run": dry_run,
+            "enforcement_metadata": enforcement_metadata,
+            "output": output,
+            "perf": perf,
+            "clippy_flags": clippy_flags,
+            "top_files": top_files,
+        });
+        Ok((Method::POST, "/api/v1/analyze/lint-hotspot".to_string(), params, None))
+    }
+
+    fn decode_analyze_makefile(
+        path: &std::path::Path,
+        rules: &Vec<String>,
+        format: &crate::cli::MakefileOutputFormat,
+        fix: &bool,
+        gnu_version: &Option<String>,
+        top_files: &usize,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let params = json!({
+            "path": path,
+            "rules": rules,
+            "fix": fix,
+            "gnu_version": gnu_version,
+            "format": format,
+            "top_files": top_files,
+        });
+        Ok((Method::POST, "/api/v1/analyze/makefile".to_string(), params, None))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_duplicates(
+        project_path: &std::path::Path,
+        detection_type: &crate::cli::DuplicateDetectionType,
+        threshold: &Option<f64>,
+        min_lines: &Option<usize>,
+        max_tokens: &Option<usize>,
+        format: &crate::cli::DuplicatesOutputFormat,
+        perf: &bool,
+        include: &Vec<String>,
+        exclude: &Vec<String>,
+        output: &Option<PathBuf>,
+        top_files: &usize,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let params = json!({
+            "project_path": project_path,
+            "detection_type": detection_type,
+            "threshold": threshold,
+            "min_lines": min_lines,
+            "max_tokens": max_tokens,
+            "format": format,
+            "perf": perf,
+            "include": include,
+            "exclude": exclude,
+            "output": output,
+            "top_files": top_files,
+        });
+        Ok((Method::POST, "/api/v1/analyze/duplicates".to_string(), params, None))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_defect_prediction(
+        project_path: &std::path::Path,
+        confidence_threshold: &Option<f64>,
+        min_lines: &Option<usize>,
+        include_low_confidence: &bool,
+        format: &crate::cli::DefectPredictionOutputFormat,
+        high_risk_only: &bool,
+        include_recommendations: &bool,
+        include: &Vec<String>,
+        exclude: &Vec<String>,
+        output: &Option<PathBuf>,
+        perf: &bool,
+        top_files: &usize,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let params = json!({
+            "project_path": project_path,
+            "confidence_threshold": confidence_threshold,
+            "min_lines": min_lines,
+            "include_low_confidence": include_low_confidence,
+            "format": format,
+            "high_risk_only": high_risk_only,
+            "include_recommendations": include_recommendations,
+            "include": include,
+            "exclude": exclude,
+            "output": output,
+            "perf": perf,
+            "top_files": top_files,
+        });
+        Ok((Method::POST, "/api/v1/analyze/defect-prediction".to_string(), params, None))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_comprehensive(
+        project_path: &std::path::Path,
+        file: &Option<PathBuf>,
+        files: &Vec<PathBuf>,
+        format: &crate::cli::ComprehensiveOutputFormat,
+        include_duplicates: &bool,
+        include_dead_code: &bool,
+        include_defects: &bool,
+        include_complexity: &bool,
+        include_tdg: &bool,
+        confidence_threshold: &Option<f64>,
+        min_lines: &Option<usize>,
+        include: &Vec<String>,
+        exclude: &Vec<String>,
+        output: &Option<PathBuf>,
+        perf: &bool,
+        executive_summary: &bool,
+        top_files: &usize,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let params = json!({
+            "project_path": project_path,
+            "file": file,
+            "files": files.iter().map(|f| f.to_string_lossy()).collect::<Vec<_>>(),
+            "format": format,
+            "include_duplicates": include_duplicates,
+            "include_dead_code": include_dead_code,
+            "include_defects": include_defects,
+            "include_complexity": include_complexity,
+            "include_tdg": include_tdg,
+            "confidence_threshold": confidence_threshold,
+            "min_lines": min_lines,
+            "include": include,
+            "exclude": exclude,
+            "output": output,
+            "perf": perf,
+            "executive_summary": executive_summary,
+            "top_files": top_files,
+        });
+        Ok((Method::POST, "/api/v1/analyze/comprehensive".to_string(), params, None))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_graph_metrics(
+        project_path: &std::path::Path,
+        metrics: &Vec<crate::cli::GraphMetricType>,
+        pagerank_seeds: &Vec<String>,
+        damping_factor: &Option<f64>,
+        max_iterations: &Option<usize>,
+        convergence_threshold: &Option<f64>,
+        format: &crate::cli::GraphMetricsOutputFormat,
+        include: &Vec<String>,
+        exclude: &Vec<String>,
+        output: &Option<PathBuf>,
+        export_graphml: &bool,
+        perf: &bool,
+        top_k: &Option<usize>,
+        min_centrality: &Option<f64>,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let params = json!({
+            "project_path": project_path,
+            "metrics": metrics.iter().map(graph_metric_type_to_string).collect::<Vec<_>>(),
+            "pagerank_seeds": pagerank_seeds,
+            "damping_factor": damping_factor,
+            "max_iterations": max_iterations,
+            "convergence_threshold": convergence_threshold,
+            "format": graph_metrics_format_to_string(format),
+            "include": include,
+            "exclude": exclude,
+            "output": output,
+            "export_graphml": export_graphml,
+            "perf": perf,
+            "top_k": top_k,
+            "min_centrality": min_centrality,
+        });
+        Ok((Method::POST, "/api/v1/analyze/graph-metrics".to_string(), params, None))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_name_similarity(
+        project_path: &std::path::Path,
+        query: &str,
+        top_k: &Option<usize>,
+        phonetic: &bool,
+        scope: &crate::cli::SearchScope,
+        threshold: &Option<f64>,
+        format: &crate::cli::NameSimilarityOutputFormat,
+        include: &Vec<String>,
+        exclude: &Vec<String>,
+        output: &Option<PathBuf>,
+        perf: &bool,
+        fuzzy: &bool,
+        case_sensitive: &bool,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let params = json!({
+            "project_path": project_path,
+            "query": query,
+            "top_k": top_k,
+            "phonetic": phonetic,
+            "scope": match scope {
+                crate::cli::SearchScope::Functions => "functions",
+                crate::cli::SearchScope::Types => "types",
+                crate::cli::SearchScope::Variables => "variables",
+                crate::cli::SearchScope::All => "all",
+            },
+            "threshold": threshold,
+            "format": name_similarity_format_to_string(format),
+            "include": include,
+            "exclude": exclude,
+            "output": output,
+            "perf": perf,
+            "fuzzy": fuzzy,
+            "case_sensitive": case_sensitive,
+        });
+        Ok((Method::POST, "/api/v1/analyze/name-similarity".to_string(), params, None))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_proof_annotations(
+        project_path: &std::path::Path,
+        format: &crate::cli::ProofAnnotationOutputFormat,
+        high_confidence_only: &bool,
+        include_evidence: &bool,
+        property_type: &Option<crate::cli::PropertyTypeFilter>,
+        verification_method: &Option<crate::cli::VerificationMethodFilter>,
+        output: &Option<PathBuf>,
+        perf: &bool,
+        clear_cache: &bool,
+        top_files: &usize,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let params = json!({
+            "project_path": project_path,
+            "format": proof_annotation_format_to_string(format),
+            "high_confidence_only": high_confidence_only,
+            "include_evidence": include_evidence,
+            "property_type": property_type.as_ref().map(property_type_filter_to_string),
+            "verification_method": verification_method.as_ref().map(verification_method_filter_to_string),
+            "output": output,
+            "perf": perf,
+            "clear_cache": clear_cache,
+            "top_files": top_files,
+        });
+        Ok((Method::POST, "/api/v1/analyze/proof-annotations".to_string(), params, None))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_incremental_coverage(
+        project_path: &std::path::Path,
+        base_branch: &Option<String>,
+        target_branch: &Option<String>,
+        format: &crate::cli::IncrementalCoverageOutputFormat,
+        coverage_threshold: &Option<f64>,
+        changed_files_only: &bool,
+        detailed: &bool,
+        output: &Option<PathBuf>,
+        perf: &bool,
+        cache_dir: &Option<PathBuf>,
+        force_refresh: &bool,
+        top_files: &usize,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let params = json!({
+            "project_path": project_path,
+            "base_branch": base_branch,
+            "target_branch": target_branch,
+            "format": incremental_coverage_format_to_string(format),
+            "coverage_threshold": coverage_threshold,
+            "changed_files_only": changed_files_only,
+            "detailed": detailed,
+            "output": output,
+            "perf": perf,
+            "cache_dir": cache_dir,
+            "force_refresh": force_refresh,
+            "top_files": top_files,
+        });
+        Ok((Method::POST, "/api/v1/analyze/incremental-coverage".to_string(), params, None))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_symbol_table(
+        project_path: &std::path::Path,
+        format: &crate::cli::SymbolTableOutputFormat,
+        query: &Option<String>,
+        filter: &Option<crate::cli::SymbolTypeFilter>,
+        include: &Vec<String>,
+        exclude: &Vec<String>,
+        show_unreferenced: &bool,
+        show_references: &bool,
+        output: &Option<PathBuf>,
+        perf: &bool,
+        top_files: &usize,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let params = json!({
+            "project_path": project_path,
+            "format": symbol_table_format_to_string(format),
+            "query": query,
+            "filter": filter.as_ref().map(symbol_type_filter_to_string),
+            "include": include,
+            "exclude": exclude,
+            "show_unreferenced": show_unreferenced,
+            "show_references": show_references,
+            "output": output,
+            "perf": perf,
+            "top_files": top_files,
+        });
+        Ok((Method::POST, "/api/v1/analyze/symbol-table".to_string(), params, None))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_big_o(
+        project_path: &std::path::Path,
+        format: &crate::cli::BigOOutputFormat,
+        confidence_threshold: &Option<f64>,
+        analyze_space: &bool,
+        include: &Vec<String>,
+        exclude: &Vec<String>,
+        output: &Option<PathBuf>,
+        perf: &bool,
+        high_complexity_only: &bool,
+        top_files: &usize,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        let params = json!({
+            "project_path": project_path,
+            "format": big_o_format_to_string(format),
+            "confidence_threshold": confidence_threshold,
+            "analyze_space": analyze_space,
+            "include": include,
+            "exclude": exclude,
+            "output": output,
+            "perf": perf,
+            "high_complexity_only": high_complexity_only,
+            "top_files": top_files,
+        });
+        Ok((Method::POST, "/api/v1/analyze/big-o".to_string(), params, None))
+    }
+
+    fn decode_analyze_assemblyscript() -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        Ok((Method::POST, "/api/v1/analyze/assemblyscript".to_string(), json!({}), None))
+    }
+
+    fn decode_analyze_webassembly() -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        Ok((Method::POST, "/api/v1/analyze/webassembly".to_string(), json!({}), None))
     }
 
     fn format_to_extension_string(format: &OutputFormat) -> &'static str {
