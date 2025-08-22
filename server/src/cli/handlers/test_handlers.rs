@@ -11,6 +11,7 @@ use crate::cli::commands::TestSuite;
 use crate::test_performance::{PerformanceTestConfig, run_performance_test_suite};
 
 /// Handle test command execution
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_test(
     suite: TestSuite,
     iterations: usize,
@@ -192,7 +193,7 @@ async fn run_property_expansion_tests(
     
     // Run property tests via cargo test
     let result = tokio::process::Command::new("cargo")
-        .args(&[
+        .args([
             "test",
             "--package", "pmat",
             "--lib",
@@ -243,7 +244,7 @@ async fn run_integration_tests(
     
     // Run cargo test for integration tests
     let result = tokio::process::Command::new("cargo")
-        .args(&["test", "--package", "pmat", "--test", "*", "--", "--nocapture"])
+        .args(["test", "--package", "pmat", "--test", "*", "--", "--nocapture"])
         .output()
         .await?;
     

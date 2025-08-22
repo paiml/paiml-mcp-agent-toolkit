@@ -71,7 +71,7 @@ pub trait Service: Send + Sync {
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error>;
     
     /// Validate input before processing
-    fn validate_input(&self, input: &Self::Input) -> Result<(), ValidationError> {
+    fn validate_input(&self, _input: &Self::Input) -> Result<(), ValidationError> {
         // Default validation - can be overridden
         Ok(())
     }

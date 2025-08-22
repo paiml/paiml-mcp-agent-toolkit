@@ -58,6 +58,12 @@ pub struct PubSubService<T: Clone + Send> {
     metrics: Arc<RwLock<ServiceMetrics>>,
 }
 
+impl<T: Clone + Send> Default for PubSubService<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: Clone + Send> PubSubService<T> {
     /// Create a new pub-sub service
     pub fn new() -> Self {
@@ -109,6 +115,12 @@ pub struct RouterService {
     routes: Arc<RwLock<HashMap<String, Arc<dyn Service<Input = ServiceMessage<Vec<u8>>, Output = ServiceMessage<Vec<u8>>, Error = anyhow::Error> + Send + Sync>>>>,
     default_handler: Option<Arc<dyn Service<Input = ServiceMessage<Vec<u8>>, Output = ServiceMessage<Vec<u8>>, Error = anyhow::Error> + Send + Sync>>,
     metrics: ServiceMetrics,
+}
+
+impl Default for RouterService {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RouterService {

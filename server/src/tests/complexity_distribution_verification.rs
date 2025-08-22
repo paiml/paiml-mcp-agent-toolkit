@@ -118,12 +118,7 @@ mod tests {
                 name: format!("func_{i}"),
                 line_start: (i * 10) as u32,
                 line_end: ((i * 10) + 5) as u32,
-                metrics: ComplexityMetrics {
-                    cyclomatic: 5,
-                    cognitive: 5,
-                    nesting_max: 1,
-                    lines: 5,
-                },
+                metrics: ComplexityMetrics::new(5, 5, 1, 5),
             })
             .collect();
 
@@ -140,12 +135,7 @@ mod tests {
                 name: format!("func_{i}"),
                 line_start: (i * 10) as u32,
                 line_end: ((i * 10) + 5) as u32,
-                metrics: ComplexityMetrics {
-                    cyclomatic: ((i % 20) + 1) as u16,
-                    cognitive: ((i % 15) + 1) as u16,
-                    nesting_max: ((i % 5) + 1) as u8,
-                    lines: 5,
-                },
+                metrics: ComplexityMetrics::new(((i % 20) + 1) as u16, ((i % 15) + 1) as u16, ((i % 5) + 1) as u8, 5),
             })
             .collect();
 
@@ -164,12 +154,7 @@ mod tests {
         // Test healthy distribution
         let healthy_metrics = vec![FileComplexityMetrics {
             path: "src/main.rs".to_string(),
-            total_complexity: ComplexityMetrics {
-                cyclomatic: 500,
-                cognitive: 600,
-                nesting_max: 5,
-                lines: 2000,
-            },
+            total_complexity: ComplexityMetrics::new(500, 600, 5, 2000),
             functions: generate_realistic_functions(150),
             classes: vec![],
         }];
@@ -182,23 +167,13 @@ mod tests {
         // Test suspicious uniform distribution
         let uniform_metrics = vec![FileComplexityMetrics {
             path: "src/uniform.rs".to_string(),
-            total_complexity: ComplexityMetrics {
-                cyclomatic: 450,
-                cognitive: 450,
-                nesting_max: 1,
-                lines: 1500,
-            },
+            total_complexity: ComplexityMetrics::new(450, 450, 1, 1500),
             functions: (0..150)
                 .map(|i| FunctionComplexity {
                     name: format!("func_{i}"),
                     line_start: (i * 10) as u32,
                     line_end: ((i * 10) + 5) as u32,
-                    metrics: ComplexityMetrics {
-                        cyclomatic: 3,
-                        cognitive: 3,
-                        nesting_max: 1,
-                        lines: 5,
-                    },
+                    metrics: ComplexityMetrics::new(3, 3, 1, 5),
                 })
                 .collect(),
             classes: vec![],
@@ -223,12 +198,7 @@ mod tests {
                 name: format!("func_{i}"),
                 line_start: (i * 10) as u32,
                 line_end: ((i * 10) + 5) as u32,
-                metrics: ComplexityMetrics {
-                    cyclomatic: (5 + (i % 2)) as u16,
-                    cognitive: 5,
-                    nesting_max: 1,
-                    lines: 5,
-                },
+                metrics: ComplexityMetrics::new((5 + (i % 2)) as u16, 5, 1, 5),
             })
             .collect();
 
@@ -242,12 +212,7 @@ mod tests {
                 name: format!("func_{i}"),
                 line_start: (i * 10) as u32,
                 line_end: ((i * 10) + 5) as u32,
-                metrics: ComplexityMetrics {
-                    cyclomatic: (1 + (i * 2)) as u16,
-                    cognitive: (1 + (i * 2)) as u16,
-                    nesting_max: (1 + (i % 5)) as u8,
-                    lines: 5,
-                },
+                metrics: ComplexityMetrics::new((1 + (i * 2)) as u16, (1 + (i * 2)) as u16, (1 + (i % 5)) as u8, 5),
             })
             .collect();
 
@@ -275,12 +240,7 @@ mod tests {
                     name: format!("func_{i}"),
                     line_start: (i * 20) as u32,
                     line_end: ((i * 20) + complexity * 2) as u32,
-                    metrics: ComplexityMetrics {
-                        cyclomatic: complexity as u16,
-                        cognitive: (complexity + (i % 3)) as u16,
-                        nesting_max: (1 + (complexity / 10).min(5)) as u8,
-                        lines: (complexity * 2) as u16,
-                    },
+                    metrics: ComplexityMetrics::new(complexity as u16, (complexity + (i % 3)) as u16, (1 + (complexity / 10).min(5)) as u8, (complexity * 2) as u16),
                 }
             })
             .collect()

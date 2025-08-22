@@ -541,56 +541,31 @@ mod tests {
     fn create_test_file_metrics() -> FileComplexityMetrics {
         FileComplexityMetrics {
             path: "test.rs".to_string(),
-            total_complexity: ComplexityMetrics {
-                cyclomatic: 23,
-                cognitive: 37,
-                nesting_max: 4,
-                lines: 50,
-            },
+            total_complexity: ComplexityMetrics::new(23, 37, 4, 50),
             functions: vec![
                 FunctionComplexity {
                     name: "test_func".to_string(),
                     line_start: 1,
                     line_end: 10,
-                    metrics: ComplexityMetrics {
-                        cyclomatic: 5,
-                        cognitive: 8,
-                        nesting_max: 2,
-                        lines: 10,
-                    },
+                    metrics: ComplexityMetrics::new(5, 8, 2, 10),
                 },
                 FunctionComplexity {
                     name: "complex_func".to_string(),
                     line_start: 20,
                     line_end: 50,
-                    metrics: ComplexityMetrics {
-                        cyclomatic: 15,
-                        cognitive: 25,
-                        nesting_max: 4,
-                        lines: 30,
-                    },
+                    metrics: ComplexityMetrics::new(15, 25, 4, 30),
                 },
             ],
             classes: vec![ClassComplexity {
                 name: "TestClass".to_string(),
                 line_start: 60,
                 line_end: 100,
-                metrics: ComplexityMetrics {
-                    cyclomatic: 3,
-                    cognitive: 4,
-                    nesting_max: 1,
-                    lines: 10,
-                },
+                metrics: ComplexityMetrics::new(3, 4, 1, 10),
                 methods: vec![FunctionComplexity {
                     name: "method".to_string(),
                     line_start: 65,
                     line_end: 75,
-                    metrics: ComplexityMetrics {
-                        cyclomatic: 3,
-                        cognitive: 4,
-                        nesting_max: 1,
-                        lines: 10,
-                    },
+                    metrics: ComplexityMetrics::new(3, 4, 1, 10),
                 }],
             }],
         }
@@ -976,22 +951,12 @@ mod tests {
         let metrics = vec![
             FileComplexityMetrics {
                 path: "simple.rs".to_string(),
-                total_complexity: ComplexityMetrics {
-                    cyclomatic: 1,
-                    cognitive: 1,
-                    nesting_max: 0,
-                    lines: 5,
-                },
+                total_complexity: ComplexityMetrics::new(1, 1, 0, 5),
                 functions: vec![FunctionComplexity {
                     name: "simple".to_string(),
                     line_start: 1,
                     line_end: 5,
-                    metrics: ComplexityMetrics {
-                        cyclomatic: 1,
-                        cognitive: 1,
-                        nesting_max: 0,
-                        lines: 5,
-                    },
+                    metrics: ComplexityMetrics::new(1, 1, 0, 5),
                 }],
                 classes: vec![],
             },

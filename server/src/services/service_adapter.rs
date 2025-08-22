@@ -86,7 +86,7 @@ pub mod complexity_adapter {
     
     async fn process_complexity(
         _inner: &(),
-        input: ComplexityInput,
+        _input: ComplexityInput,
     ) -> Result<ComplexityOutput> {
         // Would call actual complexity analysis here
         Ok(ComplexityOutput {
@@ -146,7 +146,7 @@ pub mod refactor_adapter {
     
     async fn process_refactor(
         _inner: &(),
-        input: RefactorInput,
+        _input: RefactorInput,
     ) -> Result<RefactorOutput> {
         // Would call actual refactor engine here
         Ok(RefactorOutput {

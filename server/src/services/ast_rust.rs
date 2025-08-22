@@ -156,6 +156,11 @@ struct RustComplexityVisitor {
     #[allow(dead_code)]
     current_struct: Option<ClassComplexity>,
     nesting_level: u8,
+    // Halstead metrics tracking
+    operators: std::collections::HashSet<String>,
+    operands: std::collections::HashSet<String>,
+    operator_count: u32,
+    operand_count: u32,
 }
 
 impl RustComplexityVisitor {
@@ -171,6 +176,10 @@ impl RustComplexityVisitor {
             current_function_start: 0,
             current_struct: None,
             nesting_level: 0,
+            operators: std::collections::HashSet::new(),
+            operands: std::collections::HashSet::new(),
+            operator_count: 0,
+            operand_count: 0,
         }
     }
 
@@ -268,13 +277,19 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
             self.current_function_start = 1;
             // CRITICAL: Reset nesting level for each function to prevent contamination
             self.nesting_level = 0;
+            // Reset Halstead tracking for this function
+            self.reset_halstead();
 
             // Visit function body to calculate complexity
             self.visit_block(&node.block);
 
             // Save function complexity
-            if let Some(complexity) = self.current_function_complexity.take() {
+            if let Some(mut complexity) = self.current_function_complexity.take() {
                 if let Some(fn_name) = self.current_function_name.take() {
+                    // Calculate and add Halstead metrics
+                    let halstead = self.calculate_halstead();
+                    complexity.halstead = Some(halstead);
+
                     self.functions.push(FunctionComplexity {
                         name: fn_name,
                         line_start: self.current_function_start,
@@ -422,6 +437,7 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
         if self.enable_complexity {
             match node {
                 Expr::If(if_expr) => {
+                    self.track_operator("if");
                     self.add_complexity(1, 1);
                     self.enter_nesting();
                     // Visit only the inner parts, not the entire if expression again
@@ -434,6 +450,7 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
                     return; // Important: don't call default visitor
                 }
                 Expr::Match(match_expr) => {
+                    self.track_operator("match");
                     self.add_complexity(1, 1);
                     self.enter_nesting();
                     // Visit only the inner parts, not the entire match expression again
@@ -445,6 +462,7 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
                     return; // Important: don't call default visitor
                 }
                 Expr::While(while_expr) => {
+                    self.track_operator("while");
                     self.add_complexity(1, 1);
                     self.enter_nesting();
                     // Visit only the inner parts, not the entire while expression again
@@ -454,6 +472,7 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
                     return; // Important: don't call default visitor
                 }
                 Expr::ForLoop(for_expr) => {
+                    self.track_operator("for");
                     self.add_complexity(1, 1);
                     self.enter_nesting();
                     // Visit only the inner parts, not the entire for expression again
@@ -478,6 +497,40 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
                     return; // Important: don't call default visitor
                 }
                 Expr::Binary(bin_expr) => {
+                    // Track operator for Halstead metrics
+                    let op_str = match bin_expr.op {
+                        syn::BinOp::Add(_) => "+",
+                        syn::BinOp::Sub(_) => "-",
+                        syn::BinOp::Mul(_) => "*",
+                        syn::BinOp::Div(_) => "/",
+                        syn::BinOp::Rem(_) => "%",
+                        syn::BinOp::And(_) => "&&",
+                        syn::BinOp::Or(_) => "||",
+                        syn::BinOp::BitXor(_) => "^",
+                        syn::BinOp::BitAnd(_) => "&",
+                        syn::BinOp::BitOr(_) => "|",
+                        syn::BinOp::Shl(_) => "<<",
+                        syn::BinOp::Shr(_) => ">>",
+                        syn::BinOp::Eq(_) => "==",
+                        syn::BinOp::Lt(_) => "<",
+                        syn::BinOp::Le(_) => "<=",
+                        syn::BinOp::Ne(_) => "!=",
+                        syn::BinOp::Ge(_) => ">=",
+                        syn::BinOp::Gt(_) => ">",
+                        syn::BinOp::AddAssign(_) => "+=",
+                        syn::BinOp::SubAssign(_) => "-=",
+                        syn::BinOp::MulAssign(_) => "*=",
+                        syn::BinOp::DivAssign(_) => "/=",
+                        syn::BinOp::RemAssign(_) => "%=",
+                        syn::BinOp::BitXorAssign(_) => "^=",
+                        syn::BinOp::BitAndAssign(_) => "&=",
+                        syn::BinOp::BitOrAssign(_) => "|=",
+                        syn::BinOp::ShlAssign(_) => "<<=",
+                        syn::BinOp::ShrAssign(_) => ">>=",
+                        _ => "unknown_op",
+                    };
+                    self.track_operator(op_str);
+
                     // Logical operators add complexity
                     match bin_expr.op {
                         syn::BinOp::And(_) | syn::BinOp::Or(_) => {
@@ -522,6 +575,81 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
         }
 
         syn::visit::visit_stmt(self, node);
+    }
+
+    fn visit_ident(&mut self, node: &'ast syn::Ident) {
+        // Track identifier as operand for Halstead metrics
+        self.track_operand(&node.to_string());
+        syn::visit::visit_ident(self, node);
+    }
+
+    fn visit_lit(&mut self, node: &'ast syn::Lit) {
+        // Track literals as operands for Halstead metrics
+        let operand = match node {
+            syn::Lit::Str(lit_str) => format!("\"{}\"", lit_str.value()),
+            syn::Lit::ByteStr(lit_byte_str) => format!("b\"{}\"", 
+                String::from_utf8_lossy(&lit_byte_str.value())),
+            syn::Lit::Byte(lit_byte) => format!("b'{}'", lit_byte.value() as char),
+            syn::Lit::Char(lit_char) => format!("'{}'", lit_char.value()),
+            syn::Lit::Int(lit_int) => lit_int.base10_digits().to_string(),
+            syn::Lit::Float(lit_float) => lit_float.base10_digits().to_string(),
+            syn::Lit::Bool(lit_bool) => lit_bool.value().to_string(),
+            syn::Lit::Verbatim(_) => "<verbatim>".to_string(),
+            _ => "<literal>".to_string(),
+        };
+        self.track_operand(&operand);
+        syn::visit::visit_lit(self, node);
+    }
+}
+
+impl RustComplexityVisitor {
+    /// Reset Halstead tracking for a new function
+    fn reset_halstead(&mut self) {
+        self.operators.clear();
+        self.operands.clear();
+        self.operator_count = 0;
+        self.operand_count = 0;
+    }
+
+    /// Track an operator for Halstead metrics
+    fn track_operator(&mut self, op: &str) {
+        self.operators.insert(op.to_string());
+        self.operator_count += 1;
+    }
+
+    /// Track an operand for Halstead metrics
+    fn track_operand(&mut self, operand: &str) {
+        self.operands.insert(operand.to_string());
+        self.operand_count += 1;
+    }
+
+    /// Calculate Halstead metrics for current function
+    fn calculate_halstead(&self) -> crate::services::complexity::HalsteadMetrics {
+        let n1 = self.operators.len() as u32;
+        let n2 = self.operands.len() as u32;
+        let n1_total = self.operator_count;
+        let n2_total = self.operand_count;
+
+        let n = (n1 + n2) as f64;
+        let n_total = (n1_total + n2_total) as f64;
+
+        let volume = if n > 0.0 { n_total * n.log2() } else { 0.0 };
+        let difficulty = if n2 > 0 { (n1 as f64 / 2.0) * (n2_total as f64 / n2 as f64) } else { 0.0 };
+        let effort = volume * difficulty;
+        let time = effort / 18.0; // Stroud number
+        let bugs = volume / 3000.0; // Industry average
+
+        crate::services::complexity::HalsteadMetrics {
+            n1,
+            n2,
+            n1_total,
+            n2_total,
+            volume,
+            difficulty,
+            effort,
+            time,
+            bugs,
+        }
     }
 }
 

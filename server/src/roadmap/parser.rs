@@ -110,7 +110,7 @@ pub fn parse_roadmap(content: &str) -> Result<Roadmap> {
             
             // Determine if this is the current sprint
             if line.contains("Current Sprint:") || 
-               (!roadmap.current_sprint.is_some() && !line.contains("Previous")) {
+               (roadmap.current_sprint.is_none() && !line.contains("Previous")) {
                 roadmap.current_sprint = Some(version.clone());
             }
             
@@ -167,7 +167,7 @@ pub fn roadmap_to_markdown(roadmap: &Roadmap) -> Result<String> {
     if let Some(current_id) = &roadmap.current_sprint {
         if let Some(sprint) = roadmap.sprints.get(current_id) {
             output.push_str(&format_sprint(sprint, true, false)?);
-            output.push_str("\n");
+            output.push('\n');
         }
     }
     
@@ -175,16 +175,16 @@ pub fn roadmap_to_markdown(roadmap: &Roadmap) -> Result<String> {
     for sprint_id in &roadmap.completed_sprints {
         if let Some(sprint) = roadmap.sprints.get(sprint_id) {
             output.push_str(&format_sprint(sprint, false, true)?);
-            output.push_str("\n");
+            output.push('\n');
         }
     }
     
     // Future sprints
     for (id, sprint) in &roadmap.sprints {
-        if !roadmap.current_sprint.as_ref().map_or(false, |c| c == id) &&
+        if !(roadmap.current_sprint.as_ref() == Some(id)) &&
            !roadmap.completed_sprints.contains(id) {
             output.push_str(&format_sprint(sprint, false, false)?);
-            output.push_str("\n");
+            output.push('\n');
         }
     }
     
@@ -196,7 +196,7 @@ pub fn roadmap_to_markdown(roadmap: &Roadmap) -> Result<String> {
         for task in &roadmap.backlog {
             output.push_str(&format_task(task)?);
         }
-        output.push_str("\n");
+        output.push('\n');
     }
     
     Ok(output)

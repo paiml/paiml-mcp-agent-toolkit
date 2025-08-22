@@ -13,6 +13,7 @@ use crate::services::memory_integration::{
 use anyhow::Result;
 use proptest::prelude::*;
 use std::collections::HashMap;
+use tracing::info;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -133,9 +134,11 @@ fn test_string_interning(mut strings: Vec<String>, duplication_factor: usize) ->
 
 fn test_cleanup_under_pressure(allocations: usize, pressure_threshold: f64) -> Result<()> {
     // Create a manager with smaller memory limits to trigger pressure
-    let mut config = MemoryConfig::default();
-    config.max_total_memory = 16 * 1024 * 1024; // 16MB limit
-    config.cache_pressure_threshold = pressure_threshold;
+    let config = MemoryConfig {
+        max_total_memory: 16 * 1024 * 1024, // 16MB limit
+        cache_pressure_threshold: pressure_threshold,
+        ..Default::default()
+    };
     
     let manager = MemoryManager::with_config(config)?;
     let mut buffers = Vec::new();
@@ -170,9 +173,10 @@ fn test_cleanup_under_pressure(allocations: usize, pressure_threshold: f64) -> R
     let stats_after = manager.stats();
     let _pressure_after = stats_after.allocation_pressure;
 
-    // Verify cleanup reduced pressure if we were over threshold
+    // Verify cleanup succeeded when we were over threshold
     if pressure_before > pressure_threshold {
-        assert!(cleaned >= 0, "Cleanup should not fail when under pressure");
+        // cleanup() succeeded if we got here without panic, cleaned amount is always valid
+        info!("Cleaned {} bytes when pressure was {:.1}%", cleaned, pressure_before * 100.0);
         // Note: Pressure might not always decrease due to retained allocations
     }
 
@@ -229,7 +233,7 @@ fn test_concurrent_operations(thread_count: usize, operations: usize) -> Result<
 
     // Verify system is still functional
     let stats = manager.stats();
-    assert!(stats.total_allocated >= 0); // Basic sanity check
+    // Basic sanity check - total_allocated is valid if we got here without panic
     
     Ok(())
 }
@@ -274,7 +278,7 @@ fn test_pool_efficiency(buffer_sizes: Vec<usize>, reuse_probability: f64) -> Res
     if let Some(pool_stats) = stats.pool_stats.get(&PoolType::AstParsing) {
         if pool_stats.allocation_count > 0 {
             let efficiency = pool_stats.reuse_ratio;
-            assert!(efficiency >= 0.0 && efficiency <= 1.0);
+            assert!((0.0..=1.0).contains(&efficiency));
             
             // If reuse probability was high, we should see some reuse
             if reuse_probability > 0.5 && pool_stats.allocation_count > 20 {
@@ -407,8 +411,10 @@ fn test_memory_aware_cache() -> Result<()> {
 #[test]
 fn test_extreme_memory_conditions() -> Result<()> {
     // Create manager with very small limits
-    let mut config = MemoryConfig::default();
-    config.max_total_memory = 1024 * 1024; // 1MB limit
+    let config = MemoryConfig {
+        max_total_memory: 1024 * 1024, // 1MB limit
+        ..Default::default()
+    };
     
     let manager = MemoryManager::with_config(config)?;
     

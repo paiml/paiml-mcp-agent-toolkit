@@ -23,23 +23,13 @@ mod tests {
             for i in 0..num_files {
                 let file = FileComplexityMetrics {
                     path: format!("file_{}.rs", i),
-                    total_complexity: ComplexityMetrics {
-                        cyclomatic: threshold - 1,
-                        cognitive: threshold - 1,
-                        nesting_max: 3,
-                        lines: 100,
-                    },
+                    total_complexity: ComplexityMetrics::new(threshold - 1, threshold - 1, 3, 100),
                     functions: (0..functions_per_file)
                         .map(|j| FunctionComplexity {
                             name: format!("func_{}", j),
                             line_start: j as u32 * 10,
                             line_end: (j as u32 + 1) * 10,
-                            metrics: ComplexityMetrics {
-                                cyclomatic: (threshold - 1 - j as u16).max(1),
-                                cognitive: (threshold - 1 - j as u16).max(1),
-                                nesting_max: 2,
-                                lines: 10,
-                            },
+                            metrics: ComplexityMetrics::new((threshold - 1 - j as u16).max(1), (threshold - 1 - j as u16).max(1), 2, 10),
                         })
                         .collect(),
                     classes: vec![],
@@ -71,36 +61,21 @@ mod tests {
             for i in 0..num_files {
                 let file = FileComplexityMetrics {
                     path: format!("file_{}.rs", i),
-                    total_complexity: ComplexityMetrics {
-                        cyclomatic: high_complexity,
-                        cognitive: high_complexity,
-                        nesting_max: 5,
-                        lines: 200,
-                    },
+                    total_complexity: ComplexityMetrics::new(high_complexity, high_complexity, 5, 200),
                     functions: vec![
                         // One high complexity function
                         FunctionComplexity {
                             name: "complex_func".to_string(),
                             line_start: 1,
                             line_end: 50,
-                            metrics: ComplexityMetrics {
-                                cyclomatic: high_complexity,
-                                cognitive: high_complexity,
-                                nesting_max: 5,
-                                lines: 50,
-                            },
+                            metrics: ComplexityMetrics::new(high_complexity, high_complexity, 5, 50),
                         },
                         // One low complexity function
                         FunctionComplexity {
                             name: "simple_func".to_string(),
                             line_start: 51,
                             line_end: 60,
-                            metrics: ComplexityMetrics {
-                                cyclomatic: 5,
-                                cognitive: 3,
-                                nesting_max: 1,
-                                lines: 10,
-                            },
+                            metrics: ComplexityMetrics::new(5, 3, 1, 10),
                         },
                     ],
                     classes: vec![],
@@ -129,44 +104,24 @@ mod tests {
                 // File with function exactly at threshold - should be filtered out
                 FileComplexityMetrics {
                     path: "at_threshold.rs".to_string(),
-                    total_complexity: ComplexityMetrics {
-                        cyclomatic: threshold,
-                        cognitive: threshold,
-                        nesting_max: 3,
-                        lines: 100,
-                    },
+                    total_complexity: ComplexityMetrics::new(threshold, threshold, 3, 100),
                     functions: vec![FunctionComplexity {
                         name: "at_threshold_func".to_string(),
                         line_start: 1,
                         line_end: 50,
-                        metrics: ComplexityMetrics {
-                            cyclomatic: threshold,
-                            cognitive: threshold,
-                            nesting_max: 3,
-                            lines: 50,
-                        },
+                        metrics: ComplexityMetrics::new(threshold, threshold, 3, 50),
                     }],
                     classes: vec![],
                 },
                 // File with function just above threshold - should be kept
                 FileComplexityMetrics {
                     path: "above_threshold.rs".to_string(),
-                    total_complexity: ComplexityMetrics {
-                        cyclomatic: threshold + 1,
-                        cognitive: threshold + 1,
-                        nesting_max: 3,
-                        lines: 100,
-                    },
+                    total_complexity: ComplexityMetrics::new(threshold + 1, threshold + 1, 3, 100),
                     functions: vec![FunctionComplexity {
                         name: "above_threshold_func".to_string(),
                         line_start: 1,
                         line_end: 50,
-                        metrics: ComplexityMetrics {
-                            cyclomatic: threshold + 1,
-                            cognitive: threshold + 1,
-                            nesting_max: 3,
-                            lines: 50,
-                        },
+                        metrics: ComplexityMetrics::new(threshold + 1, threshold + 1, 3, 50),
                     }],
                     classes: vec![],
                 },
@@ -195,66 +150,36 @@ mod tests {
                 // File exceeding only cyclomatic
                 FileComplexityMetrics {
                     path: "high_cyclomatic.rs".to_string(),
-                    total_complexity: ComplexityMetrics {
-                        cyclomatic: cyc_threshold + 10,
-                        cognitive: cog_threshold - 10,
-                        nesting_max: 3,
-                        lines: 100,
-                    },
+                    total_complexity: ComplexityMetrics::new(cyc_threshold + 10, cog_threshold - 10, 3, 100),
                     functions: vec![FunctionComplexity {
                         name: "cyc_complex".to_string(),
                         line_start: 1,
                         line_end: 50,
-                        metrics: ComplexityMetrics {
-                            cyclomatic: cyc_threshold + 10,
-                            cognitive: cog_threshold - 10,
-                            nesting_max: 3,
-                            lines: 50,
-                        },
+                        metrics: ComplexityMetrics::new(cyc_threshold + 10, cog_threshold - 10, 3, 50),
                     }],
                     classes: vec![],
                 },
                 // File exceeding only cognitive
                 FileComplexityMetrics {
                     path: "high_cognitive.rs".to_string(),
-                    total_complexity: ComplexityMetrics {
-                        cyclomatic: cyc_threshold - 10,
-                        cognitive: cog_threshold + 10,
-                        nesting_max: 3,
-                        lines: 100,
-                    },
+                    total_complexity: ComplexityMetrics::new(cyc_threshold - 10, cog_threshold + 10, 3, 100),
                     functions: vec![FunctionComplexity {
                         name: "cog_complex".to_string(),
                         line_start: 1,
                         line_end: 50,
-                        metrics: ComplexityMetrics {
-                            cyclomatic: cyc_threshold - 10,
-                            cognitive: cog_threshold + 10,
-                            nesting_max: 3,
-                            lines: 50,
-                        },
+                        metrics: ComplexityMetrics::new(cyc_threshold - 10, cog_threshold + 10, 3, 50),
                     }],
                     classes: vec![],
                 },
                 // File exceeding neither
                 FileComplexityMetrics {
                     path: "simple.rs".to_string(),
-                    total_complexity: ComplexityMetrics {
-                        cyclomatic: cyc_threshold - 10,
-                        cognitive: cog_threshold - 10,
-                        nesting_max: 1,
-                        lines: 50,
-                    },
+                    total_complexity: ComplexityMetrics::new(cyc_threshold - 10, cog_threshold - 10, 1, 50),
                     functions: vec![FunctionComplexity {
                         name: "simple_func".to_string(),
                         line_start: 1,
                         line_end: 25,
-                        metrics: ComplexityMetrics {
-                            cyclomatic: cyc_threshold - 10,
-                            cognitive: cog_threshold - 10,
-                            nesting_max: 1,
-                            lines: 25,
-                        },
+                        metrics: ComplexityMetrics::new(cyc_threshold - 10, cog_threshold - 10, 1, 25),
                     }],
                     classes: vec![],
                 },
