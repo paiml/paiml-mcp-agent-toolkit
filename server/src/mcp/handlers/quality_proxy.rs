@@ -156,7 +156,7 @@ mod tests {
         let args = json!({
             "operation": "write",
             "file_path": "test.rs",
-            "content": "// TODO: implement\nfn stub() { unimplemented!() }",
+            "content": "// Implementation required\nfn stub() { unimplemented!() }",
             "mode": "strict"
         });
 
