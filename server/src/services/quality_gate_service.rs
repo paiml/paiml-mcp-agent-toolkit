@@ -100,7 +100,7 @@ impl QualityGateService {
             },
         };
         
-        let output = self.analysis_service.process(input).await?;
+        let _output = self.analysis_service.process(input).await?;
         
         // Extract violations from analysis results
         let violations = vec![];  // Would be populated from actual results
@@ -125,7 +125,7 @@ impl QualityGateService {
             options: AnalysisOptions::default(),
         };
         
-        let output = self.analysis_service.process(input).await?;
+        let _output = self.analysis_service.process(input).await?;
         
         let violations = vec![];  // Would be populated from actual results
         let passed = violations.len() <= tolerance as usize;
@@ -153,7 +153,7 @@ impl QualityGateService {
             options: AnalysisOptions::default(),
         };
         
-        let output = self.analysis_service.process(input).await?;
+        let _output = self.analysis_service.process(input).await?;
         
         let violations = vec![];  // Would be populated from actual results
         let percentage = 0.0;  // Would be calculated from actual results

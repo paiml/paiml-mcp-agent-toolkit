@@ -376,6 +376,7 @@ impl ComplexityVisitor {
             cognitive: self.cognitive.min(255),
             nesting_max: self.max_nesting,
             lines: self.lines,
+            halstead: None,
         }
     }
 }
@@ -411,6 +412,7 @@ pub async fn analyze_file_complexity(path: &Path, content: &str) -> Result<FileC
                     cognitive: 0,
                     nesting_max: 0,
                     lines: content.lines().count() as u16,
+                    halstead: None,
                 },
                 functions: vec![],
                 classes: vec![],
@@ -450,6 +452,7 @@ pub async fn analyze_file_complexity(path: &Path, content: &str) -> Result<FileC
             .max()
             .unwrap_or(0),
         lines: content.lines().count() as u16,
+        halstead: None,
     };
 
     Ok(FileComplexityMetrics {

@@ -270,6 +270,9 @@ impl CommandDispatcher {
             Commands::Telemetry { system, service, reset, test_event } => {
                 handlers::telemetry_handlers::handle_telemetry(system, service, reset, test_event).await
             }
+            Commands::Config { show, edit, validate, reset, section, set, config_path } => {
+                handlers::handle_configuration(show, edit, validate, reset, section, set, config_path).await
+            }
         }
     }
 
@@ -354,6 +357,7 @@ impl CommandDispatcher {
     }
 
     /// Execute test commands using handler pattern (reduces CC)
+    #[allow(clippy::too_many_arguments)]
     pub async fn execute_test_command(
         suite: super::commands::TestSuite,
         iterations: usize,

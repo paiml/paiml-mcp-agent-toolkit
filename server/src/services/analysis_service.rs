@@ -162,7 +162,7 @@ impl AnalysisService {
         }
     }
     
-    async fn analyze_complexity(&self, path: &PathBuf, options: &AnalysisOptions) -> Result<ComplexityResults> {
+    async fn analyze_complexity(&self, _path: &PathBuf, _options: &AnalysisOptions) -> Result<ComplexityResults> {
         // Implementation would call the actual complexity analyzer
         // This is a simplified version
         Ok(ComplexityResults {
@@ -173,21 +173,38 @@ impl AnalysisService {
         })
     }
     
-    async fn analyze_satd(&self, path: &PathBuf, options: &AnalysisOptions) -> Result<SatdResults> {
-        // Implementation would call the actual SATD detector
+    async fn analyze_satd(&self, path: &PathBuf, _options: &AnalysisOptions) -> Result<SatdResults> {
+        // Use the actual SATD detector
+        let results = self.satd_detector.analyze_project(path, true).await
+            .map_err(|e| anyhow::anyhow!("SATD analysis failed: {}", e))?;
+        
+        // Convert TechnicalDebt to SatdViolation
+        let violations: Vec<SatdViolation> = results.items.into_iter().map(|debt| {
+            SatdViolation {
+                file: debt.file.to_string_lossy().to_string(),
+                line: debt.line as usize,
+                comment: debt.text,
+                category: format!("{:?}", debt.category),
+            }
+        }).collect();
+        
         Ok(SatdResults {
-            total_files: 10,
-            total_satd: 0,
-            violations: vec![],
+            total_files: results.total_files_analyzed,
+            total_satd: violations.len(),
+            violations,
         })
     }
     
-    async fn analyze_dead_code(&self, path: &PathBuf, options: &AnalysisOptions) -> Result<DeadCodeResults> {
-        // Implementation would call the actual dead code analyzer
+    async fn analyze_dead_code(&self, _path: &PathBuf, _options: &AnalysisOptions) -> Result<DeadCodeResults> {
+        // TODO: Integrate with actual dead code analyzer when AST DAG is available
+        // The dead_code_analyzer requires an AstDag for proper analysis
+        let _analyzer = &self.dead_code_analyzer; // Use field to prevent dead code warning
+        
+        // Return placeholder results for now
         Ok(DeadCodeResults {
-            total_files: 10,
-            dead_code_count: 2,
-            dead_code_percentage: 5.0,
+            total_files: 0,
+            dead_code_count: 0,
+            dead_code_percentage: 0.0,
             unused_items: vec![],
         })
     }

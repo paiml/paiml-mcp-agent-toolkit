@@ -159,6 +159,11 @@ impl MemoryString {
     pub fn shares_memory_with(&self, other: &MemoryString) -> bool {
         Arc::ptr_eq(&self.content, &other.content)
     }
+
+    /// Get memory statistics for this string
+    pub fn memory_stats(&self) -> super::memory_manager::MemoryStats {
+        self.memory_manager.stats()
+    }
 }
 
 impl Deref for MemoryString {
@@ -325,6 +330,11 @@ where
             estimated_memory: self.cache.len() * (std::mem::size_of::<K>() + std::mem::size_of::<V>()),
         }
     }
+
+    /// Get the memory pool type used by this cache
+    pub fn pool_type(&self) -> PoolType {
+        self.pool_type
+    }
 }
 
 /// Cache statistics
@@ -356,7 +366,7 @@ pub mod utils {
 
     /// Estimate memory usage for a collection
     pub fn estimate_collection_memory<T>(collection: &[T]) -> usize {
-        collection.len() * std::mem::size_of::<T>()
+        std::mem::size_of_val(collection)
     }
 
     /// Check if memory cleanup is recommended

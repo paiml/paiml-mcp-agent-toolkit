@@ -190,7 +190,10 @@ async fn handle_memory_stats(detailed: bool, format: &str) -> Result<()> {
             println!("allocation_pressure,{:.3}", output.allocation_pressure);
             println!("string_intern_size,{}", output.string_intern_size);
         }
-        "table" | _ => {
+        "table" => {
+            print_memory_stats_table(&output, detailed)?;
+        }
+        _ => {
             print_memory_stats_table(&output, detailed)?;
         }
     }

@@ -390,16 +390,14 @@ impl MemoryManager {
                 }
             }
             AllocationStrategy::Direct => {
-                let mut buffer = Vec::with_capacity(size);
-                buffer.resize(size, 0);
+                let mut buffer = vec![0; size];
                 self.track_allocation(buffer.capacity());
                 Ok(PooledBuffer::new(buffer, pool_type, Arc::clone(self)))
             }
             AllocationStrategy::MemoryMapped => {
                 // For very large allocations, use direct allocation
                 // Memory mapping would require file-backed storage
-                let mut buffer = Vec::with_capacity(size);
-                buffer.resize(size, 0);
+                let mut buffer = vec![0; size];
                 self.track_allocation(buffer.capacity());
                 Ok(PooledBuffer::new(buffer, pool_type, Arc::clone(self)))
             }

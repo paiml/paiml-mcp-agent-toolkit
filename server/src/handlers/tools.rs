@@ -1470,6 +1470,7 @@ fn build_complexity_map(
                         cognitive: func.metrics.cognitive,
                         nesting_max: func.metrics.nesting_max,
                         lines: func.metrics.lines,
+                        halstead: func.metrics.halstead,
                     },
                 );
             }

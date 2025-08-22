@@ -17,6 +17,55 @@ pub struct ComplexityMetrics {
     pub nesting_max: u8,
     /// Logical lines of code
     pub lines: u16,
+    /// Halstead software science metrics
+    pub halstead: Option<HalsteadMetrics>,
+}
+
+impl ComplexityMetrics {
+    /// The ONE way to create ComplexityMetrics - Toyota Way principle
+    pub fn new(cyclomatic: u16, cognitive: u16, nesting_max: u8, lines: u16) -> Self {
+        Self {
+            cyclomatic,
+            cognitive,
+            nesting_max,
+            lines,
+            halstead: None, // Always initialized to None by default
+        }
+    }
+
+    /// Create with halstead metrics (only when actually calculated)
+    pub fn with_halstead(cyclomatic: u16, cognitive: u16, nesting_max: u8, lines: u16, halstead: HalsteadMetrics) -> Self {
+        Self {
+            cyclomatic,
+            cognitive,
+            nesting_max,
+            lines,
+            halstead: Some(halstead),
+        }
+    }
+}
+
+/// Halstead software science metrics for CLI output
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
+pub struct HalsteadMetrics {
+    /// Number of distinct operators
+    pub n1: u32,
+    /// Number of distinct operands
+    pub n2: u32,
+    /// Total number of operators
+    pub n1_total: u32,
+    /// Total number of operands
+    pub n2_total: u32,
+    /// Program volume
+    pub volume: f64,
+    /// Program difficulty
+    pub difficulty: f64,
+    /// Programming effort
+    pub effort: f64,
+    /// Time to program (in hours)
+    pub time: f64,
+    /// Delivered bugs estimate
+    pub bugs: f64,
 }
 
 /// Complexity metrics for an entire file
@@ -923,12 +972,7 @@ mod tests {
         nesting_max: u8,
         lines: u16,
     ) -> ComplexityMetrics {
-        ComplexityMetrics {
-            cyclomatic,
-            cognitive,
-            nesting_max,
-            lines,
-        }
+        ComplexityMetrics::new(cyclomatic, cognitive, nesting_max, lines)
     }
 
     // Helper function to create test function complexity
