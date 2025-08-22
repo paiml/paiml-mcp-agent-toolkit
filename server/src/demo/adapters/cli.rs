@@ -64,14 +64,23 @@ impl CliDemoAdapter {
         use crate::services::deep_context::{AnalysisType, DeepContextAnalyzer, DeepContextConfig};
         use std::path::PathBuf;
 
-        let path_buf = PathBuf::from(path);
-
-        // Validate path exists
-        if !path_buf.exists() {
+        // Handle URLs - they should have been cloned already by resolve_repository_async
+        let path_buf = if path.starts_with("https://") || path.starts_with("git@") {
+            // This is a URL - it should have been cloned already
+            // If we get here with a URL, something went wrong upstream
             return Err(CliDemoError::InvalidPath(format!(
-                "Path does not exist: {path}"
+                "URL should have been cloned before reaching CLI adapter: {path}"
             )));
-        }
+        } else {
+            let p = PathBuf::from(path);
+            // Validate path exists
+            if !p.exists() {
+                return Err(CliDemoError::InvalidPath(format!(
+                    "Path does not exist: {path}"
+                )));
+            }
+            p
+        };
 
         // Create analyzer with default config
         let config = DeepContextConfig {

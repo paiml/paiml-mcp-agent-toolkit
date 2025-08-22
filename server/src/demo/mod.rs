@@ -53,7 +53,7 @@ pub async fn run_demo(
     args: DemoArgs,
     server: std::sync::Arc<crate::stateless_server::StatelessTemplateServer>,
 ) -> Result<()> {
-    let config = load_demo_config(args, server)?;
+    let config = load_demo_config(args, server).await?;
     let analyzer = create_analyzer(config.clone())?;
     let results = run_analyses(analyzer, &config).await?;
     let output = generate_output(results, config.args.protocol)?;
@@ -61,11 +61,11 @@ pub async fn run_demo(
 }
 
 // Configuration loading and validation
-fn load_demo_config(
+async fn load_demo_config(
     args: DemoArgs,
     server: std::sync::Arc<crate::stateless_server::StatelessTemplateServer>,
 ) -> Result<DemoConfig> {
-    let repo_path = resolve_repository(args.path.clone(), args.url.clone(), args.repo.clone())?;
+    let repo_path = runner::resolve_repository_async(args.path.clone(), args.url.clone(), args.repo.clone()).await?;
     Ok(DemoConfig {
         repo_path,
         args,
