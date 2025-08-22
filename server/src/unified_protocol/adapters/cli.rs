@@ -146,6 +146,11 @@ impl CliAdapter {
                     "Telemetry command should be handled directly by CLI".to_string(),
                 ))
             }
+            &Commands::Config { .. } => {
+                Err(ProtocolError::InvalidFormat(
+                    "Config command should be handled directly by CLI".to_string(),
+                ))
+            }
         }
     }
 
@@ -1287,6 +1292,7 @@ impl CliInput {
             Commands::Memory { .. } => "memory",
             Commands::Cache { .. } => "cache",
             Commands::Telemetry { .. } => "telemetry",
+            Commands::Config { .. } => "config",
         }
         .to_string();
 
