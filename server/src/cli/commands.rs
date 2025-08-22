@@ -1976,6 +1976,10 @@ pub enum RoadmapCommands {
 pub enum TestSuite {
     /// Performance tests per SPECIFICATION.md Section 30
     Performance,
+    /// Property-based testing expansion per SPECIFICATION.md Section 28
+    Property,
+    /// Integration test suite
+    Integration,
     /// Regression detection tests
     Regression,
     /// Memory usage validation tests
