@@ -260,7 +260,7 @@ impl LanguageQualityThresholds {
 **Week 2: Fix Python Analysis**  
 - Priority: P0 (second most common)
 - Files: `server/src/services/ast_python.rs`
-- Target: Function extraction working for Django, Flask, FastAPI projects
+- Target: Function extraction working for Flask, FastAPI, Tornado projects
 
 **Week 3: C/C++ Implementation**
 - Priority: P1 (system programming showcase)
@@ -297,15 +297,15 @@ impl LanguageQualityThresholds {
 
 # JavaScript/TypeScript
 test_repo "https://github.com/microsoft/vscode" "TypeScript"
-test_repo "https://github.com/facebook/react" "JavaScript" 
 test_repo "https://github.com/angular/angular" "TypeScript"
 test_repo "https://github.com/vuejs/core" "TypeScript"
+test_repo "https://github.com/nodejs/node" "JavaScript"
 
 # Python
-test_repo "https://github.com/django/django" "Python"
 test_repo "https://github.com/pallets/flask" "Python"
 test_repo "https://github.com/tiangolo/fastapi" "Python"
 test_repo "https://github.com/python/cpython" "Python"
+test_repo "https://github.com/psf/requests" "Python"
 
 # Java  
 test_repo "https://github.com/spring-projects/spring-boot" "Java"

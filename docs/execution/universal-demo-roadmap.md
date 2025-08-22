@@ -25,8 +25,8 @@ Based on comprehensive demo functionality investigation:
 1. **Remote Cloning Broken**
    ```bash
    # This fails completely:
-   pmat demo --repo https://github.com/facebook/react --cli
-   # Error: "Analysis failed: Invalid path: Path does not exist: https://github.com/facebook/react"
+   pmat demo --repo https://github.com/microsoft/vscode --cli
+   # Error: "Analysis failed: Invalid path: Path does not exist: https://github.com/microsoft/vscode"
    ```
 
 2. **No Function Analysis**
@@ -181,7 +181,7 @@ Languages to implement:
 # These must work:
 pmat demo --repo https://github.com/microsoft/calculator --cli
 pmat demo --repo https://github.com/python/cpython --cli  
-pmat demo --repo https://github.com/facebook/react --cli
+pmat demo --repo https://github.com/microsoft/vscode --cli
 ```
 
 **Function Analysis Test**:
@@ -322,21 +322,21 @@ pub enum DemoStage {
 }
 ```
 
-**Django Python Project**:
+**Python Flask Project**:
 ```json
 {
     "smart_recommendations": [
         {
             "type": "performance",
-            "message": "Views in views.py lack database query optimization. Consider select_related() for User model queries.",
-            "file": "myapp/views.py", 
+            "message": "Database queries in routes.py lack optimization. Consider using connection pooling.",
+            "file": "app/routes.py", 
             "action": "optimize",
             "priority": "high"
         },
         {
             "type": "security",
-            "message": "Missing CSRF protection on custom API endpoints. Add @csrf_protect decorator.",
-            "file": "api/views.py",
+            "message": "Missing input validation on API endpoints. Add request validation decorators.",
+            "file": "api/endpoints.py",
             "action": "secure", 
             "priority": "critical"
         }

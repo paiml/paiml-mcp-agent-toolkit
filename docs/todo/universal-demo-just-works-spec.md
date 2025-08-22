@@ -290,8 +290,8 @@ interface UniversalDemoInterface {
 
 **Examples**:
 - **Rust**: tokio, serde, clap
-- **JavaScript**: react, vue, express  
-- **Python**: django, flask, requests
+- **JavaScript**: vue, express, node  
+- **Python**: flask, fastapi, requests
 - **TypeScript**: vscode, angular, nest
 - **Java**: spring-boot, junit5
 - **Go**: kubernetes, docker, prometheus
@@ -319,11 +319,11 @@ recommendations:
   - "Implement error boundaries for better user experience"
   - "Consider lazy loading for Bundle.js (2.3MB)"
 
-# For a Python Django project  
+# For a Python Flask project  
 recommendations:
-  - "Views in views.py have high cyclomatic complexity - consider splitting"
-  - "Missing database indexes detected in models.py"
-  - "Consider implementing caching for frequently accessed endpoints"
+  - "Routes in app.py have high cyclomatic complexity - consider splitting"
+  - "Missing input validation detected in api endpoints"
+  - "Consider implementing caching for frequently accessed routes"
   - "Test coverage is 43% - focus on models.py and utils.py"
 ```
 
@@ -415,8 +415,8 @@ recommendations:
 ```bash
 # These commands must work flawlessly
 pmat demo --repo https://github.com/microsoft/vscode    # TypeScript
-pmat demo --repo https://github.com/django/django      # Python  
-pmat demo --repo https://github.com/facebook/react     # JavaScript
+pmat demo --repo https://github.com/pallets/flask      # Python  
+pmat demo --repo https://github.com/nodejs/node        # JavaScript
 pmat demo --repo https://github.com/spring-projects/spring-boot  # Java
 pmat demo --repo https://github.com/golang/go          # Go
 pmat demo --repo https://github.com/rust-lang/rust     # Rust
