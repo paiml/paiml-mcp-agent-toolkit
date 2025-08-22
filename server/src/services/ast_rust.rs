@@ -433,130 +433,22 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
     }
 
     // Control flow statements for complexity calculation
+    /// Toyota Way: Extract Method pattern - reduced complexity from 48→≤8
     fn visit_expr(&mut self, node: &'ast Expr) {
         if self.enable_complexity {
             match node {
-                Expr::If(if_expr) => {
-                    self.track_operator("if");
-                    self.add_complexity(1, 1);
-                    self.enter_nesting();
-                    // Visit only the inner parts, not the entire if expression again
-                    self.visit_expr(&if_expr.cond);
-                    self.visit_block(&if_expr.then_branch);
-                    if let Some((_, else_branch)) = &if_expr.else_branch {
-                        self.visit_expr(else_branch);
-                    }
-                    self.exit_nesting();
-                    return; // Important: don't call default visitor
-                }
-                Expr::Match(match_expr) => {
-                    self.track_operator("match");
-                    self.add_complexity(1, 1);
-                    self.enter_nesting();
-                    // Visit only the inner parts, not the entire match expression again
-                    self.visit_expr(&match_expr.expr);
-                    for arm in &match_expr.arms {
-                        self.visit_arm(arm);
-                    }
-                    self.exit_nesting();
-                    return; // Important: don't call default visitor
-                }
-                Expr::While(while_expr) => {
-                    self.track_operator("while");
-                    self.add_complexity(1, 1);
-                    self.enter_nesting();
-                    // Visit only the inner parts, not the entire while expression again
-                    self.visit_expr(&while_expr.cond);
-                    self.visit_block(&while_expr.body);
-                    self.exit_nesting();
-                    return; // Important: don't call default visitor
-                }
-                Expr::ForLoop(for_expr) => {
-                    self.track_operator("for");
-                    self.add_complexity(1, 1);
-                    self.enter_nesting();
-                    // Visit only the inner parts, not the entire for expression again
-                    self.visit_pat(&for_expr.pat);
-                    self.visit_expr(&for_expr.expr);
-                    self.visit_block(&for_expr.body);
-                    self.exit_nesting();
-                    return; // Important: don't call default visitor
-                }
-                Expr::Loop(loop_expr) => {
-                    self.add_complexity(1, 1);
-                    self.enter_nesting();
-                    // Visit only the inner parts, not the entire loop expression again
-                    self.visit_block(&loop_expr.body);
-                    self.exit_nesting();
-                    return; // Important: don't call default visitor
-                }
-                Expr::Try(try_expr) => {
-                    self.add_complexity(1, 1);
-                    // Visit only the inner expression, not the entire try expression again
-                    self.visit_expr(&try_expr.expr);
-                    return; // Important: don't call default visitor
-                }
-                Expr::Binary(bin_expr) => {
-                    // Track operator for Halstead metrics
-                    let op_str = match bin_expr.op {
-                        syn::BinOp::Add(_) => "+",
-                        syn::BinOp::Sub(_) => "-",
-                        syn::BinOp::Mul(_) => "*",
-                        syn::BinOp::Div(_) => "/",
-                        syn::BinOp::Rem(_) => "%",
-                        syn::BinOp::And(_) => "&&",
-                        syn::BinOp::Or(_) => "||",
-                        syn::BinOp::BitXor(_) => "^",
-                        syn::BinOp::BitAnd(_) => "&",
-                        syn::BinOp::BitOr(_) => "|",
-                        syn::BinOp::Shl(_) => "<<",
-                        syn::BinOp::Shr(_) => ">>",
-                        syn::BinOp::Eq(_) => "==",
-                        syn::BinOp::Lt(_) => "<",
-                        syn::BinOp::Le(_) => "<=",
-                        syn::BinOp::Ne(_) => "!=",
-                        syn::BinOp::Ge(_) => ">=",
-                        syn::BinOp::Gt(_) => ">",
-                        syn::BinOp::AddAssign(_) => "+=",
-                        syn::BinOp::SubAssign(_) => "-=",
-                        syn::BinOp::MulAssign(_) => "*=",
-                        syn::BinOp::DivAssign(_) => "/=",
-                        syn::BinOp::RemAssign(_) => "%=",
-                        syn::BinOp::BitXorAssign(_) => "^=",
-                        syn::BinOp::BitAndAssign(_) => "&=",
-                        syn::BinOp::BitOrAssign(_) => "|=",
-                        syn::BinOp::ShlAssign(_) => "<<=",
-                        syn::BinOp::ShrAssign(_) => ">>=",
-                        _ => "unknown_op",
-                    };
-                    self.track_operator(op_str);
-
-                    // Logical operators add complexity
-                    match bin_expr.op {
-                        syn::BinOp::And(_) | syn::BinOp::Or(_) => {
-                            self.add_complexity(1, 1);
-                        }
-                        _ => {}
-                    }
-                    // Continue to default visitor for binary expressions
-                }
-                Expr::Macro(_) => {
-                    // Macros add complexity due to hidden control flow
-                    self.add_complexity(1, 1);
-                    // Continue to default visitor for macros
-                }
-                Expr::Async(_) => {
-                    // Async blocks add complexity
-                    self.add_complexity(1, 1);
-                    // Continue to default visitor for async blocks
-                }
-                _ => {
-                    // All other expressions: continue to default visitor
-                }
+                Expr::If(if_expr) => return self.handle_if_expr(if_expr),
+                Expr::Match(match_expr) => return self.handle_match_expr(match_expr),
+                Expr::While(while_expr) => return self.handle_while_expr(while_expr),
+                Expr::ForLoop(for_expr) => return self.handle_for_loop_expr(for_expr),
+                Expr::Loop(loop_expr) => return self.handle_loop_expr(loop_expr),
+                Expr::Try(try_expr) => return self.handle_try_expr(try_expr),
+                Expr::Binary(bin_expr) => self.handle_binary_expr(bin_expr),
+                Expr::Macro(_) => self.add_complexity(1, 1),
+                Expr::Async(_) => self.add_complexity(1, 1),
+                _ => {} // All other expressions: continue to default visitor
             }
         }
-
-        // Only call default visitor if we didn't return early above
         syn::visit::visit_expr(self, node);
     }
 
@@ -649,6 +541,115 @@ impl RustComplexityVisitor {
             effort,
             time,
             bugs,
+        }
+    }
+    
+    /// Toyota Way: Extract Method - handle if expressions (complexity ≤5)
+    fn handle_if_expr(&mut self, if_expr: &syn::ExprIf) {
+        self.track_operator("if");
+        self.add_complexity(1, 1);
+        self.enter_nesting();
+        self.visit_expr(&if_expr.cond);
+        self.visit_block(&if_expr.then_branch);
+        if let Some((_, else_branch)) = &if_expr.else_branch {
+            self.visit_expr(else_branch);
+        }
+        self.exit_nesting();
+    }
+    
+    /// Toyota Way: Extract Method - handle match expressions (complexity ≤5)
+    fn handle_match_expr(&mut self, match_expr: &syn::ExprMatch) {
+        self.track_operator("match");
+        self.add_complexity(1, 1);
+        self.enter_nesting();
+        self.visit_expr(&match_expr.expr);
+        for arm in &match_expr.arms {
+            self.visit_arm(arm);
+        }
+        self.exit_nesting();
+    }
+    
+    /// Toyota Way: Extract Method - handle while expressions (complexity ≤5)
+    fn handle_while_expr(&mut self, while_expr: &syn::ExprWhile) {
+        self.track_operator("while");
+        self.add_complexity(1, 1);
+        self.enter_nesting();
+        self.visit_expr(&while_expr.cond);
+        self.visit_block(&while_expr.body);
+        self.exit_nesting();
+    }
+    
+    /// Toyota Way: Extract Method - handle for loop expressions (complexity ≤5)
+    fn handle_for_loop_expr(&mut self, for_expr: &syn::ExprForLoop) {
+        self.track_operator("for");
+        self.add_complexity(1, 1);
+        self.enter_nesting();
+        self.visit_pat(&for_expr.pat);
+        self.visit_expr(&for_expr.expr);
+        self.visit_block(&for_expr.body);
+        self.exit_nesting();
+    }
+    
+    /// Toyota Way: Extract Method - handle loop expressions (complexity ≤3)
+    fn handle_loop_expr(&mut self, loop_expr: &syn::ExprLoop) {
+        self.add_complexity(1, 1);
+        self.enter_nesting();
+        self.visit_block(&loop_expr.body);
+        self.exit_nesting();
+    }
+    
+    /// Toyota Way: Extract Method - handle try expressions (complexity ≤3)
+    fn handle_try_expr(&mut self, try_expr: &syn::ExprTry) {
+        self.add_complexity(1, 1);
+        self.visit_expr(&try_expr.expr);
+    }
+    
+    /// Toyota Way: Extract Method - handle binary expressions (complexity ≤15)
+    fn handle_binary_expr(&mut self, bin_expr: &syn::ExprBinary) {
+        let op_str = self.get_binary_op_string(&bin_expr.op);
+        self.track_operator(op_str);
+        
+        // Logical operators add complexity
+        match bin_expr.op {
+            syn::BinOp::And(_) | syn::BinOp::Or(_) => {
+                self.add_complexity(1, 1);
+            }
+            _ => {}
+        }
+    }
+    
+    /// Toyota Way: Extract Method - binary operator mapping (complexity ≤3)
+    fn get_binary_op_string(&self, op: &syn::BinOp) -> &'static str {
+        match op {
+            syn::BinOp::Add(_) => "+",
+            syn::BinOp::Sub(_) => "-",
+            syn::BinOp::Mul(_) => "*",
+            syn::BinOp::Div(_) => "/",
+            syn::BinOp::Rem(_) => "%",
+            syn::BinOp::And(_) => "&&",
+            syn::BinOp::Or(_) => "||",
+            syn::BinOp::BitXor(_) => "^",
+            syn::BinOp::BitAnd(_) => "&",
+            syn::BinOp::BitOr(_) => "|",
+            syn::BinOp::Shl(_) => "<<",
+            syn::BinOp::Shr(_) => ">>",
+            syn::BinOp::Eq(_) => "==",
+            syn::BinOp::Lt(_) => "<",
+            syn::BinOp::Le(_) => "<=",
+            syn::BinOp::Ne(_) => "!=",
+            syn::BinOp::Ge(_) => ">=",
+            syn::BinOp::Gt(_) => ">",
+            syn::BinOp::AddAssign(_) => "+=",
+            syn::BinOp::SubAssign(_) => "-=",
+            syn::BinOp::MulAssign(_) => "*=",
+            syn::BinOp::DivAssign(_) => "/=",
+            syn::BinOp::RemAssign(_) => "%=",
+            syn::BinOp::BitXorAssign(_) => "^=",
+            syn::BinOp::BitAndAssign(_) => "&=",
+            syn::BinOp::BitOrAssign(_) => "|=",
+            syn::BinOp::ShlAssign(_) => "<<=",
+            syn::BinOp::ShrAssign(_) => ">>=",
+            _ => "unknown_op",
         }
     }
 }

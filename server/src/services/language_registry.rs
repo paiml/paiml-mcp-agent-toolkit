@@ -6,6 +6,95 @@
 use std::path::Path;
 use serde::{Deserialize, Serialize};
 
+/// Language metadata for efficient lookup (Toyota Way: Data-Driven Design)
+#[derive(Debug)]
+struct LanguageInfo {
+    name: &'static str,
+    extensions: &'static [&'static str],
+}
+
+/// Static language metadata table - eliminates giant match statements (Toyota Way: ≤20 complexity)
+static LANGUAGE_INFO: &[LanguageInfo] = &[
+    // Systems Programming
+    LanguageInfo { name: "Rust", extensions: &["rs"] },
+    LanguageInfo { name: "C", extensions: &["c", "h"] },
+    LanguageInfo { name: "C++", extensions: &["cpp", "cc", "cxx", "hpp", "hxx", "C", "H"] },
+    LanguageInfo { name: "Go", extensions: &["go"] },
+    LanguageInfo { name: "Zig", extensions: &["zig"] },
+    
+    // JVM Ecosystem
+    LanguageInfo { name: "Java", extensions: &["java"] },
+    LanguageInfo { name: "Kotlin", extensions: &["kt", "kts"] },
+    LanguageInfo { name: "Scala", extensions: &["scala", "sc"] },
+    LanguageInfo { name: "Groovy", extensions: &["groovy", "gvy", "gy", "gsh"] },
+    LanguageInfo { name: "Clojure", extensions: &["clj", "cljs", "cljc", "edn"] },
+    
+    // .NET Ecosystem  
+    LanguageInfo { name: "C#", extensions: &["cs"] },
+    LanguageInfo { name: "F#", extensions: &["fs", "fsi", "fsx"] },
+    LanguageInfo { name: "Visual Basic", extensions: &["vb"] },
+    
+    // Dynamic Languages
+    LanguageInfo { name: "Python", extensions: &["py", "pyw", "pyi", "pyx", "pxd"] },
+    LanguageInfo { name: "JavaScript", extensions: &["js", "jsx", "mjs", "cjs"] },
+    LanguageInfo { name: "TypeScript", extensions: &["ts", "tsx", "d.ts"] },
+    LanguageInfo { name: "Ruby", extensions: &["rb", "rbw", "rake", "gemspec"] },
+    LanguageInfo { name: "PHP", extensions: &["php", "phtml", "php3", "php4", "php5", "phps"] },
+    LanguageInfo { name: "Perl", extensions: &["pl", "pm", "t", "pod"] },
+    LanguageInfo { name: "Lua", extensions: &["lua"] },
+    
+    // Functional Languages
+    LanguageInfo { name: "Haskell", extensions: &["hs", "lhs"] },
+    LanguageInfo { name: "Elixir", extensions: &["ex", "exs"] },
+    LanguageInfo { name: "Erlang", extensions: &["erl", "hrl"] },
+    LanguageInfo { name: "OCaml", extensions: &["ml", "mli"] },
+    LanguageInfo { name: "ReasonML", extensions: &["re", "rei"] },
+    LanguageInfo { name: "Elm", extensions: &["elm"] },
+    LanguageInfo { name: "PureScript", extensions: &["purs"] },
+    
+    // Mobile Development
+    LanguageInfo { name: "Swift", extensions: &["swift"] },
+    LanguageInfo { name: "Objective-C", extensions: &["m", "mm", "M"] },
+    LanguageInfo { name: "Dart", extensions: &["dart"] },
+    
+    // Shell & Scripting
+    LanguageInfo { name: "Bash", extensions: &["sh", "bash", "zsh"] },
+    LanguageInfo { name: "Zsh", extensions: &["zsh"] },
+    LanguageInfo { name: "Fish", extensions: &["fish"] },
+    LanguageInfo { name: "PowerShell", extensions: &["ps1", "psm1", "psd1"] },
+    
+    // Data & Config
+    LanguageInfo { name: "SQL", extensions: &["sql", "ddl", "dml"] },
+    LanguageInfo { name: "HCL", extensions: &["tf", "tfvars", "hcl"] },
+    LanguageInfo { name: "YAML", extensions: &["yml", "yaml"] },
+    LanguageInfo { name: "TOML", extensions: &["toml"] },
+    LanguageInfo { name: "JSON", extensions: &["json", "jsonc"] },
+    LanguageInfo { name: "XML", extensions: &["xml", "xsd", "xsl", "xslt"] },
+    
+    // Documentation & Markup
+    LanguageInfo { name: "Markdown", extensions: &["md", "markdown", "mdown", "mkd"] },
+    LanguageInfo { name: "LaTeX", extensions: &["tex", "latex", "sty", "cls"] },
+    LanguageInfo { name: "AsciiDoc", extensions: &["adoc", "asciidoc"] },
+    
+    // Build Systems
+    LanguageInfo { name: "Makefile", extensions: &["mk", "make"] },
+    LanguageInfo { name: "CMake", extensions: &["cmake"] },
+    LanguageInfo { name: "Bazel", extensions: &["bazel", "bzl"] },
+    LanguageInfo { name: "Gradle", extensions: &["gradle"] },
+    LanguageInfo { name: "Maven", extensions: &["pom"] },
+    
+    // Specialized
+    LanguageInfo { name: "Solidity", extensions: &["sol"] },
+    LanguageInfo { name: "VHDL", extensions: &["vhd", "vhdl"] },
+    LanguageInfo { name: "Verilog", extensions: &["v", "vh"] },
+    LanguageInfo { name: "R", extensions: &["r", "R"] },
+    LanguageInfo { name: "Julia", extensions: &["jl"] },
+    LanguageInfo { name: "Matlab", extensions: &["m"] },
+    LanguageInfo { name: "Assembly", extensions: &["s", "S", "asm"] },
+    
+    LanguageInfo { name: "Unknown", extensions: &[] },
+];
+
 /// Comprehensive language enumeration supporting 30+ languages
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Language {
@@ -90,8 +179,24 @@ pub enum Language {
 }
 
 impl Language {
-    /// Get file extensions associated with this language
+    /// Convert enum variant to array index (Toyota Way: O(1) lookup)
+    fn to_index(&self) -> usize {
+        *self as usize
+    }
+    
+    /// Get file extensions associated with this language (Toyota Way: ≤3 complexity)
     pub fn extensions(&self) -> &'static [&'static str] {
+        LANGUAGE_INFO[self.to_index()].extensions
+    }
+    
+    /// Get human-readable name for this language (Toyota Way: ≤3 complexity)  
+    pub fn name(&self) -> &'static str {
+        LANGUAGE_INFO[self.to_index()].name
+    }
+    
+    /// Original extensions method - REPLACED with data-driven approach
+    #[allow(dead_code)]
+    pub fn extensions_old(&self) -> &'static [&'static str] {
         match self {
             // Systems Programming
             Language::Rust => &["rs"],
@@ -227,68 +332,6 @@ impl Language {
             Self::from_extension(ext)
         } else {
             Language::Unknown
-        }
-    }
-    
-    /// Get language name as string
-    pub fn name(&self) -> &'static str {
-        match self {
-            Language::Rust => "Rust",
-            Language::C => "C",
-            Language::Cpp => "C++",
-            Language::Go => "Go",
-            Language::Zig => "Zig",
-            Language::Java => "Java",
-            Language::Kotlin => "Kotlin",
-            Language::Scala => "Scala",
-            Language::Groovy => "Groovy",
-            Language::Clojure => "Clojure",
-            Language::CSharp => "C#",
-            Language::FSharp => "F#",
-            Language::VisualBasic => "Visual Basic",
-            Language::Python => "Python",
-            Language::JavaScript => "JavaScript",
-            Language::TypeScript => "TypeScript",
-            Language::Ruby => "Ruby",
-            Language::PHP => "PHP",
-            Language::Perl => "Perl",
-            Language::Lua => "Lua",
-            Language::Haskell => "Haskell",
-            Language::Elixir => "Elixir",
-            Language::Erlang => "Erlang",
-            Language::OCaml => "OCaml",
-            Language::ReasonML => "ReasonML",
-            Language::Elm => "Elm",
-            Language::PureScript => "PureScript",
-            Language::Swift => "Swift",
-            Language::ObjectiveC => "Objective-C",
-            Language::Dart => "Dart",
-            Language::Bash => "Bash",
-            Language::Zsh => "Zsh",
-            Language::Fish => "Fish",
-            Language::PowerShell => "PowerShell",
-            Language::SQL => "SQL",
-            Language::HCL => "HCL",
-            Language::YAML => "YAML",
-            Language::TOML => "TOML",
-            Language::JSON => "JSON",
-            Language::XML => "XML",
-            Language::Markdown => "Markdown",
-            Language::LaTeX => "LaTeX",
-            Language::AsciiDoc => "AsciiDoc",
-            Language::Makefile => "Makefile",
-            Language::CMake => "CMake",
-            Language::Bazel => "Bazel",
-            Language::Gradle => "Gradle",
-            Language::Maven => "Maven",
-            Language::Solidity => "Solidity",
-            Language::VHDL => "VHDL",
-            Language::Verilog => "Verilog",
-            Language::R => "R",
-            Language::Julia => "Julia",
-            Language::Matlab => "MATLAB",
-            Language::Assembly => "Assembly",
-            Language::Unknown => "Unknown",
         }
     }
     
