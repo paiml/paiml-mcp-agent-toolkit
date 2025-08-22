@@ -275,6 +275,19 @@ impl CommandExecutor {
             Commands::Roadmap(roadmap_cmd) => {
                 super::command_dispatcher::CommandDispatcher::execute_roadmap_command(roadmap_cmd).await
             }
+            Commands::Test { suite, iterations, memory, throughput, regression, timeout, output, perf } => {
+                crate::cli::handlers::test_handlers::handle_test(
+                    suite,
+                    iterations,
+                    memory,
+                    throughput,
+                    regression,
+                    timeout,
+                    output,
+                    perf,
+                )
+                .await
+            }
         }
     }
 }
