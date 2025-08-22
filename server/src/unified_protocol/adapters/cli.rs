@@ -654,11 +654,11 @@ impl CliAdapter {
     #[allow(clippy::too_many_arguments)]
     fn decode_analyze_duplicates(
         project_path: &std::path::Path,
-        detection_type: &crate::cli::DuplicateDetectionType,
+        detection_type: &crate::cli::DetectionType,
         threshold: &Option<f64>,
         min_lines: &Option<usize>,
         max_tokens: &Option<usize>,
-        format: &crate::cli::DuplicatesOutputFormat,
+        format: &crate::cli::DuplicateOutputFormat,
         perf: &bool,
         include: &Vec<String>,
         exclude: &Vec<String>,
