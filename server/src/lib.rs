@@ -9,6 +9,7 @@ pub mod roadmap; // Roadmap-driven development with quality gates
 pub mod scaffold;
 pub mod services;
 pub mod stateless_server;
+pub mod test_performance; // Performance testing per SPECIFICATION.md Section 30
 // #[cfg(test)]
 // pub mod testing;
 pub mod unified_protocol;

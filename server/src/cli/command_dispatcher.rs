@@ -236,6 +236,28 @@ impl CommandDispatcher {
             Commands::Enforce(enforce_cmd) => handlers::route_enforce_command(enforce_cmd).await,
             Commands::Refactor(refactor_cmd) => Self::execute_refactor_command(refactor_cmd).await,
             Commands::Roadmap(roadmap_cmd) => Self::execute_roadmap_command(roadmap_cmd).await,
+            Commands::Test {
+                suite,
+                iterations,
+                memory,
+                throughput,
+                regression,
+                timeout,
+                output,
+                perf,
+            } => {
+                Self::execute_test_command(
+                    suite,
+                    iterations,
+                    memory,
+                    throughput,
+                    regression,
+                    timeout,
+                    output,
+                    perf,
+                )
+                .await
+            }
         }
     }
 
@@ -317,6 +339,111 @@ impl CommandDispatcher {
         };
         
         roadmap::commands::execute(cmd, config).await
+    }
+
+    /// Execute test commands using handler pattern (reduces CC)
+    pub async fn execute_test_command(
+        suite: super::commands::TestSuite,
+        iterations: usize,
+        memory: bool,
+        throughput: bool,
+        regression: bool,
+        timeout: u64,
+        output: Option<PathBuf>,
+        perf: bool,
+    ) -> anyhow::Result<()> {
+        use super::commands::TestSuite;
+        
+        // Import the performance testing module
+        use crate::test_performance::*;
+        
+        // Configure the test suite based on CLI arguments
+        let config = PerformanceTestConfig {
+            enable_regression_tests: regression || matches!(suite, TestSuite::Regression | TestSuite::All),
+            enable_memory_tests: memory || matches!(suite, TestSuite::Memory | TestSuite::All),
+            enable_throughput_tests: throughput || matches!(suite, TestSuite::Throughput | TestSuite::All),
+            test_iterations: iterations,
+        };
+        
+        // Run the performance test suite
+        println!("🚀 Starting Performance Testing Suite (SPECIFICATION.md Section 30)");
+        println!("Suite: {:?}, Iterations: {}, Timeout: {}s", suite, iterations, timeout);
+        
+        let start = std::time::Instant::now();
+        
+        // Set timeout for the test execution
+        let test_future = async {
+            match suite {
+                TestSuite::Performance | TestSuite::All => {
+                    run_performance_test_suite(config).await
+                }
+                TestSuite::Regression => {
+                    if config.enable_regression_tests {
+                        println!("🔍 Running regression tests...");
+                        test_performance_regression_detection().await?;
+                        println!("✅ Regression tests passed!");
+                    }
+                    Ok(())
+                }
+                TestSuite::Memory => {
+                    if config.enable_memory_tests {
+                        println!("💾 Running memory tests...");
+                        test_memory_usage_patterns().await?;
+                        println!("✅ Memory tests passed!");
+                    }
+                    Ok(())
+                }
+                TestSuite::Throughput => {
+                    if config.enable_throughput_tests {
+                        println!("📊 Running throughput tests...");
+                        test_single_threaded_throughput().await?;
+                        test_realistic_project_analysis().await?;
+                        test_large_file_performance().await?;
+                        println!("✅ Throughput tests passed!");
+                    }
+                    Ok(())
+                }
+            }
+        };
+        
+        // Execute with timeout
+        let timeout_duration = std::time::Duration::from_secs(timeout);
+        match tokio::time::timeout(timeout_duration, test_future).await {
+            Ok(result) => {
+                let elapsed = start.elapsed();
+                
+                if perf {
+                    println!("\n📈 Performance Summary:");
+                    println!("   Total execution time: {:?}", elapsed);
+                    println!("   Suite: {:?}", suite);
+                    println!("   Iterations: {}", iterations);
+                }
+                
+                // Write results to output file if specified
+                if let Some(output_path) = output {
+                    let results = format!(
+                        "Performance Test Results\n\
+                        ======================\n\
+                        Suite: {:?}\n\
+                        Execution time: {:?}\n\
+                        Iterations: {}\n\
+                        Status: {}\n",
+                        suite,
+                        elapsed,
+                        iterations,
+                        if result.is_ok() { "PASSED" } else { "FAILED" }
+                    );
+                    std::fs::write(&output_path, results)?;
+                    println!("📄 Results written to: {}", output_path.display());
+                }
+                
+                result
+            }
+            Err(_) => {
+                eprintln!("❌ Test execution timed out after {}s", timeout);
+                anyhow::bail!("Performance tests timed out");
+            }
+        }
     }
 }
 
