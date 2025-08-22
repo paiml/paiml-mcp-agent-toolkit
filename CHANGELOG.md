@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **PMAT-3003**: Fix crates.io publication by including test modules
+  - Remove overly broad test_* exclude pattern from Cargo.toml
+  - Keep test_performance.rs and test_handlers.rs for CLI functionality
+  - These modules provide public API per SPECIFICATION.md Section 30
+
 ## [2.7.1] - 2025-08-22
 
 ### Fixed
