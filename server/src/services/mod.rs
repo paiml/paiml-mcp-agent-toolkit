@@ -94,6 +94,7 @@ pub mod complexity;
 pub mod complexity_patterns;
 #[cfg(test)]
 mod complexity_property_tests;
+pub mod configuration_service;
 pub mod context;
 pub mod coupling_analyzer;
 pub mod dag_builder;

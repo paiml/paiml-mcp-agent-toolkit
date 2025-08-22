@@ -434,6 +434,30 @@ pub enum Commands {
         #[arg(long)]
         test_event: bool,
     },
+    /// Configuration management and settings
+    Config {
+        /// Show configuration overview or details
+        #[arg(long)]
+        show: bool,
+        /// Interactive edit configuration
+        #[arg(long)]
+        edit: bool,
+        /// Validate configuration
+        #[arg(long)]
+        validate: bool,
+        /// Reset configuration to defaults
+        #[arg(long)]
+        reset: bool,
+        /// Show specific configuration section
+        #[arg(long)]
+        section: Option<String>,
+        /// Set configuration values (key=value format)
+        #[arg(long, action = clap::ArgAction::Append)]
+        set: Vec<String>,
+        /// Path to configuration file
+        #[arg(long)]
+        config_path: Option<PathBuf>,
+    },
 }
 
 /// Analyze subcommands

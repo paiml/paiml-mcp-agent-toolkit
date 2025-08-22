@@ -9,6 +9,7 @@ pub mod cache;
 pub mod big_o_handlers;
 pub mod complexity_handlers;
 pub mod comprehensive_handler;
+pub mod configuration_handlers;
 pub mod demo_handlers;
 pub mod duplication_analysis;
 pub mod enforce_handlers;
@@ -43,6 +44,7 @@ pub use complexity_handlers::{
     handle_analyze_churn, handle_analyze_complexity, handle_analyze_dag, handle_analyze_dead_code,
     handle_analyze_satd,
 };
+pub use configuration_handlers::handle_configuration;
 pub use demo_handlers::{handle_demo, handle_quality_gate};
 pub use duplication_analysis::handle_analyze_duplicates;
 pub use enforce_handlers::route_enforce_command;
