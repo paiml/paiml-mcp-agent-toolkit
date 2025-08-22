@@ -550,6 +550,7 @@ impl CliAdapter {
         Ok((Method::POST, "/api/v1/demo".to_string(), body, None))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn decode_analyze_lint_hotspot(
         project_path: &std::path::Path,
         file: &Option<PathBuf>,
@@ -666,7 +667,7 @@ impl CliAdapter {
     fn decode_analyze_comprehensive(
         project_path: &std::path::Path,
         file: &Option<PathBuf>,
-        files: &Vec<PathBuf>,
+        files: &[PathBuf],
         format: &crate::cli::ComprehensiveOutputFormat,
         include_duplicates: &bool,
         include_dead_code: &bool,
@@ -707,8 +708,8 @@ impl CliAdapter {
     #[allow(clippy::too_many_arguments)]
     fn decode_analyze_graph_metrics(
         project_path: &std::path::Path,
-        metrics: &Vec<crate::cli::GraphMetricType>,
-        pagerank_seeds: &Vec<String>,
+        metrics: &[crate::cli::GraphMetricType],
+        pagerank_seeds: &[String],
         damping_factor: &f32,
         max_iterations: &usize,
         convergence_threshold: &f64,
