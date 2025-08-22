@@ -1189,40 +1189,42 @@ async fn handle_analyze_dag(
         }
     };
 
-    let project_path = args
-        .project_path
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    match execute_dag_analysis(&args).await {
+        Ok(result) => McpResponse::success(request_id, result),
+        Err(e) => McpResponse::error(request_id, -32000, format!("DAG analysis failed: {e}")),
+    }
+}
 
-    // Analyze the project to get AST information
-    use crate::cli::DagType;
+/// Toyota Way: Extract Method pattern for DAG analysis
+async fn execute_dag_analysis(args: &AnalyzeDagArgs) -> anyhow::Result<serde_json::Value> {
     use crate::services::{
         context::analyze_project,
-        dag_builder::{
-            filter_call_edges, filter_import_edges, filter_inheritance_edges, DagBuilder,
-        },
-        mermaid_generator::{MermaidGenerator, MermaidOptions},
+        dag_builder::DagBuilder,
     };
+    let project_path = resolve_project_path(&args.project_path);
+    let project_context = analyze_project(&project_path, "rust").await?;
+    let graph = build_dag_graph(&project_context);
+    let dag_type = parse_dag_type(args.dag_type.as_deref());
+    let filtered_graph = apply_dag_filters(graph, dag_type);
+    let output = generate_dag_output(&filtered_graph, args, dag_type);
+    Ok(output)
+}
 
-    // We'll analyze as Rust by default, but could be enhanced to detect toolchain
-    let project_context = match analyze_project(&project_path, "rust").await {
-        Ok(context) => context,
-        Err(e) => {
-            return McpResponse::error(
-                request_id,
-                -32000,
-                format!("Failed to analyze project: {e}"),
-            );
-        }
-    };
+fn resolve_project_path(project_path: &Option<String>) -> PathBuf {
+    project_path
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+}
 
-    // Build the dependency graph with pruning limit
-    let graph = DagBuilder::build_from_project_with_limit(&project_context, 50);
+fn build_dag_graph(project_context: &crate::services::context::ProjectContext) -> crate::services::dag_builder::DependencyGraph {
+    use crate::services::dag_builder::DagBuilder;
+    DagBuilder::build_from_project_with_limit(project_context, 50)
+}
 
-    // Parse dag type
-    let dag_type = args
-        .dag_type
-        .as_deref()
+fn parse_dag_type(dag_type_str: Option<&str>) -> crate::cli::DagType {
+    use crate::cli::DagType;
+    dag_type_str
         .and_then(|t| match t {
             "call-graph" => Some(DagType::CallGraph),
             "import-graph" => Some(DagType::ImportGraph),
@@ -1230,17 +1232,31 @@ async fn handle_analyze_dag(
             "full-dependency" => Some(DagType::FullDependency),
             _ => None,
         })
-        .unwrap_or(DagType::CallGraph);
+        .unwrap_or(DagType::CallGraph)
+}
 
-    // Apply filters based on DAG type
-    let filtered_graph = match dag_type {
+fn apply_dag_filters(
+    graph: crate::services::dag_builder::DependencyGraph, 
+    dag_type: crate::cli::DagType
+) -> crate::services::dag_builder::DependencyGraph {
+    use crate::cli::DagType;
+    use crate::services::dag_builder::{filter_call_edges, filter_import_edges, filter_inheritance_edges};
+    
+    match dag_type {
         DagType::CallGraph => filter_call_edges(graph),
         DagType::ImportGraph => filter_import_edges(graph),
         DagType::Inheritance => filter_inheritance_edges(graph),
         DagType::FullDependency => graph,
-    };
+    }
+}
 
-    // Generate Mermaid output
+fn generate_dag_output(
+    filtered_graph: &crate::services::dag_builder::DependencyGraph,
+    args: &AnalyzeDagArgs,
+    dag_type: crate::cli::DagType,
+) -> serde_json::Value {
+    use crate::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
+    
     let generator = MermaidGenerator::new(MermaidOptions {
         max_depth: args.max_depth,
         filter_external: args.filter_external.unwrap_or(false),
@@ -1248,9 +1264,7 @@ async fn handle_analyze_dag(
         ..Default::default()
     });
 
-    let mermaid_output = generator.generate(&filtered_graph);
-
-    // Add stats as comments
+    let mermaid_output = generator.generate(filtered_graph);
     let output_with_stats = format!(
         "{}\n%% Graph Statistics:\n%% Nodes: {}\n%% Edges: {}\n",
         mermaid_output,
@@ -1258,7 +1272,7 @@ async fn handle_analyze_dag(
         filtered_graph.edges.len()
     );
 
-    let result = json!({
+    json!({
         "content": [{
             "type": "text",
             "text": output_with_stats
@@ -1266,9 +1280,7 @@ async fn handle_analyze_dag(
         "graph_type": format!("{:?}", dag_type),
         "nodes": filtered_graph.nodes.len(),
         "edges": filtered_graph.edges.len(),
-    });
-
-    McpResponse::success(request_id, result)
+    })
 }
 
 #[derive(Debug, Deserialize, Serialize)]
