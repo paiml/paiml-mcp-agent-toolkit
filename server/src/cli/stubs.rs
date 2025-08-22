@@ -2899,6 +2899,23 @@ async fn run_project_checks(
     Ok(())
 }
 
+/// Toyota Way Template Method: execute quality check with consistent pattern
+async fn execute_quality_check<'a, F, Fut>(
+    check_name: &str,
+    violations: &'a mut Vec<QualityViolation>,
+    results: &'a mut QualityGateResults,
+    check_fn: F,
+) -> Result<()>
+where
+    F: FnOnce(&'a mut Vec<QualityViolation>, &'a mut QualityGateResults) -> Fut,
+    Fut: std::future::Future<Output = Result<usize>>,
+{
+    eprint!("  🔍 Checking {}...", check_name);
+    let violations_count = check_fn(violations, results).await?;
+    eprintln!(" {} violations found", violations_count);
+    Ok(())
+}
+
 /// Runs a single project-wide check
 #[allow(clippy::too_many_arguments)]
 async fn run_single_project_check(
@@ -2913,67 +2930,94 @@ async fn run_single_project_check(
 ) -> Result<()> {
     match check {
         QualityCheckType::Complexity => {
-            eprint!("  🔍 Checking complexity...");
-            let violations_found = check_complexity(project_path, max_complexity_p99).await?;
-            results.complexity_violations = violations_found.len();
-            violations.extend(violations_found);
-            eprintln!(" {} violations found", results.complexity_violations);
+            execute_quality_check("complexity", violations, results, |violations, results| {
+                Box::pin(async move {
+                    let violations_found = check_complexity(project_path, max_complexity_p99).await?;
+                    results.complexity_violations = violations_found.len();
+                    violations.extend(violations_found);
+                    Ok(results.complexity_violations)
+                })
+            }).await?;
         }
         QualityCheckType::DeadCode => {
-            eprint!("  🔍 Checking dead code...");
-            let violations_found = check_dead_code(project_path, max_dead_code).await?;
-            results.dead_code_violations = violations_found.len();
-            violations.extend(violations_found);
-            eprintln!(" {} violations found", results.dead_code_violations);
+            execute_quality_check("dead code", violations, results, |violations, results| {
+                Box::pin(async move {
+                    let violations_found = check_dead_code(project_path, max_dead_code).await?;
+                    results.dead_code_violations = violations_found.len();
+                    violations.extend(violations_found);
+                    Ok(results.dead_code_violations)
+                })
+            }).await?;
         }
         QualityCheckType::Satd => {
-            eprint!("  🔍 Checking technical debt...");
-            let violations_found = check_satd(project_path).await?;
-            results.satd_violations = violations_found.len();
-            violations.extend(violations_found);
-            eprintln!(" {} violations found", results.satd_violations);
+            execute_quality_check("technical debt", violations, results, |violations, results| {
+                Box::pin(async move {
+                    let violations_found = check_satd(project_path).await?;
+                    results.satd_violations = violations_found.len();
+                    violations.extend(violations_found);
+                    Ok(results.satd_violations)
+                })
+            }).await?;
         }
         QualityCheckType::Entropy => {
-            eprint!("  🔍 Checking code entropy...");
-            let violations_found = check_entropy(project_path, min_entropy).await?;
-            results.entropy_violations = violations_found.len();
-            violations.extend(violations_found);
-            eprintln!(" {} violations found", results.entropy_violations);
+            execute_quality_check("code entropy", violations, results, |violations, results| {
+                Box::pin(async move {
+                    let violations_found = check_entropy(project_path, min_entropy).await?;
+                    results.entropy_violations = violations_found.len();
+                    violations.extend(violations_found);
+                    Ok(results.entropy_violations)
+                })
+            }).await?;
         }
         QualityCheckType::Security => {
-            eprint!("  🔍 Checking security...");
-            let violations_found = check_security(project_path).await?;
-            results.security_violations = violations_found.len();
-            violations.extend(violations_found);
-            eprintln!(" {} violations found", results.security_violations);
+            execute_quality_check("security", violations, results, |violations, results| {
+                Box::pin(async move {
+                    let violations_found = check_security(project_path).await?;
+                    results.security_violations = violations_found.len();
+                    violations.extend(violations_found);
+                    Ok(results.security_violations)
+                })
+            }).await?;
         }
         QualityCheckType::Duplicates => {
-            eprint!("  🔍 Checking duplicates...");
-            let violations_found = check_duplicates(project_path).await?;
-            results.duplicate_violations = violations_found.len();
-            violations.extend(violations_found);
-            eprintln!(" {} violations found", results.duplicate_violations);
+            execute_quality_check("duplicates", violations, results, |violations, results| {
+                Box::pin(async move {
+                    let violations_found = check_duplicates(project_path).await?;
+                    results.duplicate_violations = violations_found.len();
+                    violations.extend(violations_found);
+                    Ok(results.duplicate_violations)
+                })
+            }).await?;
         }
         QualityCheckType::Coverage => {
-            eprint!("  🔍 Checking test coverage...");
-            let violations_found = check_coverage(project_path, 80.0).await?;
-            results.coverage_violations = violations_found.len();
-            violations.extend(violations_found);
-            eprintln!(" {} violations found", results.coverage_violations);
+            execute_quality_check("test coverage", violations, results, |violations, results| {
+                Box::pin(async move {
+                    let violations_found = check_coverage(project_path, 80.0).await?;
+                    results.coverage_violations = violations_found.len();
+                    violations.extend(violations_found);
+                    Ok(results.coverage_violations)
+                })
+            }).await?;
         }
         QualityCheckType::Sections => {
-            eprint!("  🔍 Checking documentation sections...");
-            let violations_found = check_sections(project_path).await?;
-            results.section_violations = violations_found.len();
-            violations.extend(violations_found);
-            eprintln!(" {} violations found", results.section_violations);
+            execute_quality_check("documentation sections", violations, results, |violations, results| {
+                Box::pin(async move {
+                    let violations_found = check_sections(project_path).await?;
+                    results.section_violations = violations_found.len();
+                    violations.extend(violations_found);
+                    Ok(results.section_violations)
+                })
+            }).await?;
         }
         QualityCheckType::Provability => {
-            eprint!("  🔍 Checking provability...");
-            let violations_found = check_provability(project_path, 0.7).await?;
-            results.provability_violations = violations_found.len();
-            violations.extend(violations_found);
-            eprintln!(" {} violations found", results.provability_violations);
+            execute_quality_check("provability", violations, results, |violations, results| {
+                Box::pin(async move {
+                    let violations_found = check_provability(project_path, 0.7).await?;
+                    results.provability_violations = violations_found.len();
+                    violations.extend(violations_found);
+                    Ok(results.provability_violations)
+                })
+            }).await?;
         }
         QualityCheckType::All => {
             run_all_project_checks(
