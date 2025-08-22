@@ -98,7 +98,7 @@
 | ID | Description | Status | Complexity | Priority | Spec Section |
 |----|-------------|--------|------------|----------|-------------|
 | PMAT-4001 | Implement Halstead metrics (Section 7.1) | 📋 | Medium | P2 | Section 7 |
-| PMAT-4002 | Add 30+ language support (Section 6.2) | 📋 | High | P1 | Section 6 |
+| PMAT-4002 | Add 30+ language support (Section 6.2) | 🚧 | High | P1 | Section 6 |
 | PMAT-4003 | WebSocket transport adapter (Section 5.1) | 📋 | Medium | P2 | Section 5 |
 | PMAT-4004 | Service composition pattern (Section 2.2) | ✅ | High | P1 | Section 2 |
 | PMAT-4005 | HTTP-SSE transport support | 📋 | Medium | P2 | Section 5 |

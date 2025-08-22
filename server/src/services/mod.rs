@@ -55,6 +55,7 @@ pub mod service_adapter;
 pub mod service_composition;
 pub mod service_communication;
 pub mod service_lifecycle;
+pub mod language_registry;
 
 pub mod artifact_writer;
 pub mod ast_based_dependency_analyzer;
