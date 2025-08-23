@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+- **Claude Code Agent Mode Specification**: Comprehensive specification for PMAT integration as Claude Code background agent
+  - MCP server architecture with stdio/SSE/HTTP transport support
+  - Continuous quality monitoring with file system watching
+  - AI-driven refactoring suggestions following Toyota Way principles
+  - Quality gate automation for CI/CD pipeline integration
+  - Background daemon mode for proactive quality management
+  - Interactive assistant mode for on-demand analysis
+  - 10 PMAT tasks (PMAT-7001 through PMAT-7010) planned across 4 implementation phases
+  - Target version: v2.10.0 "Agent Excellence" (11 weeks implementation timeline)
 - **PMAT-6001**: Fix remote repository cloning for GitHub URLs
   - Implemented `resolve_repository_async` function for actual cloning
   - Fixed path resolution to properly detect and clone remote repositories
