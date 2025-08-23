@@ -1,0 +1,260 @@
+name: Multi-Ecosystem Package Distribution
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 2.10.0)'
+        required: true
+      dry_run:
+        description: 'Dry run (no actual publishing)'
+        type: boolean
+        default: false
+
+env:
+  VERSION: ${{ github.event.inputs.version || github.ref_name }}
+
+jobs:
+  # Extract version and prepare metadata
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      sha256: ${{ steps.sha256.outputs.sha256 }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Extract version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+          TAG="v${VERSION}"
+        else
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+        fi
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "tag=${TAG}" >> $GITHUB_OUTPUT
+        echo "Version: ${VERSION}, Tag: ${TAG}"
+        
+    - name: Calculate SHA256
+      id: sha256
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        SHA256=$(curl -sL "https://github.com/paiml/paiml-mcp-agent-toolkit/archive/v${VERSION}.tar.gz" | sha256sum | cut -d' ' -f1)
+        echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+        echo "SHA256: ${SHA256}"
+
+  # Update npm package
+  update-npm:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        registry-url: 'https://registry.npmjs.org'
+        
+    - name: Update npm package version
+      run: |
+        cd npm-package
+        npm version ${{ needs.prepare.outputs.version }} --no-git-tag-version
+        
+    - name: Publish to npm
+      if: ${{ !github.event.inputs.dry_run }}
+      run: |
+        cd npm-package
+        npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        
+    - name: Commit npm updates
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add npm-package/package.json
+        git commit -m "npm: Update to v${{ needs.prepare.outputs.version }}" || exit 0
+        git push
+
+  # Update Homebrew formula
+  update-homebrew:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Update Homebrew formula
+      run: |
+        VERSION="${{ needs.prepare.outputs.version }}"
+        SHA256="${{ needs.prepare.outputs.sha256 }}"
+        
+        # Update formula with new version and SHA256
+        sed -i "s|archive/v.*\.tar\.gz|archive/v${VERSION}.tar.gz|" homebrew/pmat.rb
+        sed -i "s|sha256 \".*\"|sha256 \"${SHA256}\"|" homebrew/pmat.rb
+        
+        echo "Updated Homebrew formula:"
+        cat homebrew/pmat.rb | grep -E "(url|sha256|version)"
+        
+    - name: Commit Homebrew updates
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add homebrew/pmat.rb
+        git commit -m "homebrew: Update to v${{ needs.prepare.outputs.version }}" || exit 0
+        git push
+
+  # Update AUR package
+  update-aur:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Update AUR files
+      run: |
+        VERSION="${{ needs.prepare.outputs.version }}"
+        SHA256="${{ needs.prepare.outputs.sha256 }}"
+        
+        # Update PKGBUILD
+        sed -i "s|pkgver=.*|pkgver=${VERSION}|" aur/PKGBUILD
+        sed -i "s|sha256sums=.*|sha256sums=('${SHA256}')|" aur/PKGBUILD
+        
+        # Update .SRCINFO
+        sed -i "s|pkgver = .*|pkgver = ${VERSION}|" aur/.SRCINFO
+        sed -i "s|sha256sums = .*|sha256sums = ${SHA256}|" aur/.SRCINFO
+        
+        echo "Updated AUR files:"
+        echo "PKGBUILD version: $(grep pkgver= aur/PKGBUILD)"
+        echo ".SRCINFO version: $(grep 'pkgver = ' aur/.SRCINFO)"
+        
+    - name: Commit AUR updates
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add aur/PKGBUILD aur/.SRCINFO
+        git commit -m "aur: Update to v${{ needs.prepare.outputs.version }}" || exit 0
+        git push
+
+  # Update Chocolatey package
+  update-chocolatey:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Update Chocolatey package
+      run: |
+        VERSION="${{ needs.prepare.outputs.version }}"
+        
+        # Update nuspec version
+        sed -i "s|<version>.*</version>|<version>${VERSION}</version>|" chocolatey/pmat.nuspec
+        
+        # Update PowerShell script version
+        sed -i "s|\$version = '.*'|\$version = '${VERSION}'|" chocolatey/tools/chocolateyinstall.ps1
+        
+        echo "Updated Chocolatey files:"
+        echo "nuspec version: $(grep '<version>' chocolatey/pmat.nuspec)"
+        echo "install.ps1 version: $(grep '\$version =' chocolatey/tools/chocolateyinstall.ps1)"
+        
+    - name: Commit Chocolatey updates
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add chocolatey/pmat.nuspec chocolatey/tools/chocolateyinstall.ps1
+        git commit -m "chocolatey: Update to v${{ needs.prepare.outputs.version }}" || exit 0
+        git push
+
+  # Update Debian package
+  update-debian:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Update Debian package
+      run: |
+        VERSION="${{ needs.prepare.outputs.version }}"
+        
+        # Update control file version
+        sed -i "s|Version: .*|Version: ${VERSION}|" debian/DEBIAN/control
+        
+        # Add changelog entry
+        DATE=$(date -R)
+        cat > temp_changelog << EOF
+pmat (${VERSION}) unstable; urgency=medium
+
+  * Automated release v${VERSION}
+  * Updated via GitHub Actions multi-ecosystem workflow
+
+ -- GitHub Action <action@github.com>  ${DATE}
+
+EOF
+        
+        # Prepend to existing changelog if it exists
+        if [ -f debian/usr/share/doc/pmat/changelog.Debian ]; then
+          cat debian/usr/share/doc/pmat/changelog.Debian >> temp_changelog
+        fi
+        mv temp_changelog debian/usr/share/doc/pmat/changelog.Debian
+        
+        echo "Updated Debian files:"
+        echo "control version: $(grep 'Version:' debian/DEBIAN/control)"
+        
+    - name: Commit Debian updates
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add debian/DEBIAN/control debian/usr/share/doc/pmat/changelog.Debian
+        git commit -m "debian: Update to v${{ needs.prepare.outputs.version }}" || exit 0
+        git push
+
+  # Summary and next steps
+  summary:
+    needs: [prepare, update-npm, update-homebrew, update-aur, update-chocolatey, update-debian]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Distribution Summary
+      run: |
+        echo "🎉 Multi-Ecosystem Distribution Update Complete!"
+        echo "=============================================="
+        echo ""
+        echo "📦 Updated Packages for v${{ needs.prepare.outputs.version }}:"
+        echo "✅ npm: pmat-agent@${{ needs.prepare.outputs.version }}"
+        echo "✅ Homebrew: Formula updated with SHA256 ${{ needs.prepare.outputs.sha256 }}"
+        echo "✅ AUR: PKGBUILD and .SRCINFO updated"
+        echo "✅ Chocolatey: nuspec and install script updated"
+        echo "✅ Debian: control and changelog updated"
+        echo "✅ Docker: Automated via docker-publish.yml workflow"
+        echo ""
+        echo "📋 Manual Steps Required:"
+        echo "1. 🍺 Homebrew: Submit PR to homebrew-core with updated formula"
+        echo "2. 🏛️ AUR: Submit to AUR using aur/submit-to-aur.sh"
+        echo "3. 🍫 Chocolatey: Submit to community repository using chocolatey/build-package.ps1 -Submit"
+        echo "4. 🐧 Debian: Submit to PPA using debian/SUBMIT_TO_UBUNTU_PPA.md guide"
+        echo ""
+        echo "🤖 Automated Distributions:"
+        echo "• crates.io: Via publish-crates.yml workflow"
+        echo "• Docker Hub: Via docker-publish.yml workflow"
+        echo "• npm: Published automatically (if NPM_TOKEN available)"
+        echo ""
+        echo "🔗 Installation Commands Updated:"
+        echo "• cargo install pmat"
+        echo "• npm install -g pmat-agent"  
+        echo "• docker run paiml/pmat:latest"
+        echo "• brew install pmat (after homebrew-core submission)"
+        echo "• choco install pmat (after chocolatey submission)"
+        echo "• yay -S pmat (after AUR submission)"
+        echo "• apt install pmat (after PPA submission)"

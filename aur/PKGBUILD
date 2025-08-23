@@ -9,7 +9,7 @@ license=('MIT')
 depends=()
 makedepends=('rust' 'cargo')
 source=("${pkgname}-${pkgver}.tar.gz::https://github.com/paiml/paiml-mcp-agent-toolkit/archive/v${pkgver}.tar.gz")
-sha256sums=('SKIP') # Will need to be updated with actual SHA256
+sha256sums=('d8aa8ade82d3c877fd140327ee64c51d9a00d91b97c5f6195c54550ca1b8c4a0')
 
 build() {
     cd "paiml-mcp-agent-toolkit-${pkgver}/server"

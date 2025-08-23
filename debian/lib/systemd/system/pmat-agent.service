@@ -1,0 +1,48 @@
+[Unit]
+Description=PMAT Claude Code Agent - Continuous Quality Monitoring
+Documentation=https://github.com/your-org/paiml-mcp-agent-toolkit
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pmat
+Group=pmat
+WorkingDirectory=/opt/pmat-agent
+
+# Service configuration
+Environment="RUST_LOG=warn,pmat=info"
+Environment="PMAT_CONFIG=/etc/pmat/agent-production.toml"
+
+# Start command
+ExecStart=/usr/local/bin/pmat agent start --config ${PMAT_CONFIG}
+
+# Stop command
+ExecStop=/usr/local/bin/pmat agent stop
+
+# Restart configuration
+Restart=always
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/pmat-agent /var/log/pmat-agent
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+MemoryLimit=1G
+CPUQuota=50%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pmat-agent
+
+[Install]
+WantedBy=multi-user.target
