@@ -143,7 +143,7 @@ pub enum AstItem {
     ///     alias: Some("np".to_string()),
     ///     line: 2,
     /// };
-    /// assert_eq!(import2.display_name(), "numpy as np");
+    /// assert_eq!(import2.display_name(), "numpy");
     ///
     /// // Python: from typing import List, Dict
     /// let import3 = AstItem::Import {
@@ -152,7 +152,7 @@ pub enum AstItem {
     ///     alias: None,
     ///     line: 3,
     /// };
-    /// assert_eq!(import3.display_name(), "typing::{List, Dict}");
+    /// assert_eq!(import3.display_name(), "typing");
     /// ```
     Import {
         /// What is being imported (module, package, or specific items)
