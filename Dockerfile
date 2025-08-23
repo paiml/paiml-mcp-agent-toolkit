@@ -60,7 +60,7 @@ LABEL org.opencontainers.image.title="PMAT"
 LABEL org.opencontainers.image.description="Zero-config AI context generation and code quality toolkit with Claude Code Agent Mode"
 LABEL org.opencontainers.image.url="https://github.com/paiml/paiml-mcp-agent-toolkit"
 LABEL org.opencontainers.image.source="https://github.com/paiml/paiml-mcp-agent-toolkit"
-LABEL org.opencontainers.image.version="2.10.0"
+LABEL org.opencontainers.image.version="2.12.0"
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.authors="Pragmatic AI Labs <hello@paiml.com>"
 
