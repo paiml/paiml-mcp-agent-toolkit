@@ -28,7 +28,7 @@ pub mod symbol_table_helpers;
 pub mod tdg_helpers;
 
 // Re-export commonly used types from submodules
-pub use commands::{AnalyzeCommands, Cli, Commands, EnforceCommands, Mode, RefactorCommands};
+pub use commands::{AgentCommands, AnalyzeCommands, Cli, Commands, EnforceCommands, Mode, RefactorCommands};
 pub use enums::*;
 
 // Type definitions for handler compatibility
@@ -78,6 +78,7 @@ pub struct EarlyCliArgs {
     pub debug: bool,
     pub trace: bool,
     pub trace_filter: Option<String>,
+    pub is_mcp_server: bool,
 }
 
 /// Parse CLI early to extract tracing configuration
@@ -99,6 +100,11 @@ pub fn parse_early_for_tracing() -> EarlyCliArgs {
     let verbose = args.iter().any(|arg| arg == "-v" || arg == "--verbose");
     let debug = args.iter().any(|arg| arg == "--debug");
     let trace = args.iter().any(|arg| arg == "--trace");
+    
+    // Check if this is an MCP server command
+    let is_mcp_server = args.len() >= 3 
+        && args[1] == "agent" 
+        && args[2] == "mcp-server";
 
     let trace_filter = args
         .iter()
@@ -112,6 +118,7 @@ pub fn parse_early_for_tracing() -> EarlyCliArgs {
         debug,
         trace,
         trace_filter,
+        is_mcp_server,
     }
 }
 

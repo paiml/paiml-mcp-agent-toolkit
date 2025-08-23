@@ -4,6 +4,7 @@
 //! and grouping related functionality together.
 
 pub mod advanced_analysis_handlers;
+pub mod agent_handlers;
 pub mod analysis_handlers;
 pub mod cache;
 pub mod big_o_handlers;
@@ -38,6 +39,7 @@ pub use advanced_analysis_handlers::{
     handle_analyze_graph_metrics, handle_analyze_makefile, handle_analyze_provability,
     handle_analyze_symbol_table, handle_analyze_tdg,
 };
+pub use agent_handlers::handle_agent_command;
 pub use analysis_handlers::route_analyze_command;
 pub use cache::handle_cache_command;
 pub use complexity_handlers::{

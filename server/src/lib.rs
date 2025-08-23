@@ -1,3 +1,4 @@
+pub mod agent; // Claude Code Agent Mode implementation
 pub mod cli;
 pub mod demo;
 pub mod handlers;
