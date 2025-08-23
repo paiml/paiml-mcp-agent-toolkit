@@ -1,10 +1,11 @@
 {
-  "name": "pmat",
+  "name": "pmat-agent",
   "version": "2.10.0",
   "description": "PMAT - Zero-config AI context generation and code quality toolkit with Claude Code Agent Mode",
   "main": "index.js",
   "bin": {
-    "pmat": "./bin/pmat"
+    "pmat": "./bin/pmat",
+    "pmat-agent": "./bin/pmat"
   },
   "scripts": {
     "postinstall": "node install.js",
