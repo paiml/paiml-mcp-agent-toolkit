@@ -157,7 +157,7 @@ mod property_tests {
             line in 1usize..10000
         ) {
             use crate::services::dag_builder::DagBuilder;
-            use crate::services::context::FileContext;
+            use crate::services::context::{FileContext, ProjectContext, ProjectSummary};
             
             let import = AstItem::Import {
                 module,
@@ -173,13 +173,28 @@ mod property_tests {
                 complexity_metrics: None,
             };
             
-            let mut builder = DagBuilder::new();
-            // Should not panic when processing imports
-            builder.add_file_context(&file_context);
-            let dag = builder.build();
+            let summary = ProjectSummary {
+                total_files: 1,
+                total_functions: 0,
+                total_structs: 0,
+                total_enums: 0,
+                total_traits: 0,
+                total_impls: 0,
+                dependencies: vec![],
+            };
             
-            // Basic validation
-            assert!(dag.edges.len() >= 0);
+            let project = ProjectContext {
+                project_type: "python".to_string(),
+                files: vec![file_context],
+                summary,
+            };
+            
+            // Should not panic when processing imports
+            let dag = DagBuilder::build_from_project(&project);
+            
+            // Basic validation - DAG should be created without panicking
+            // The number of edges will vary based on the imports
+            let _ = dag.edges.len();
         }
     }
 }
