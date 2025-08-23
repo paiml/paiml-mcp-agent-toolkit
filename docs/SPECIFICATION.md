@@ -1,7 +1,7 @@
 # PMAT: Complete System Specification
 
-*Version 2.8.0 - Toyota Way Excellence Achieved*  
-*Zero-configuration AI context generation with Toyota Way ≤20 complexity standards*
+*Version 2.10.0 - "Always Working" Achievement*  
+*Zero-configuration AI context generation with Claude Code Agent Mode and Toyota Way ≤20 complexity standards*
 
 ## Table of Contents
 
@@ -10,7 +10,8 @@
 2. [Service Architecture](#2-service-architecture)
 3. [Unified Protocol Design](#3-unified-protocol-design)
 4. [MCP Implementation](#4-mcp-implementation)
-5. [Transport Layer](#5-transport-layer)
+5. [Claude Code Agent Mode](#5-claude-code-agent-mode)
+6. [Transport Layer](#6-transport-layer)
 
 ### Analysis Services
 6. [Code Analysis Service](#6-code-analysis-service)

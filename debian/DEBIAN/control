@@ -1,0 +1,32 @@
+Package: pmat
+Version: 2.10.0
+Section: devel
+Priority: optional
+Architecture: amd64
+Essential: no
+Depends: libc6 (>= 2.31), libssl3 (>= 3.0.0), libgit2-1.5 (>= 1.5.0)
+Pre-Depends: 
+Recommends: git
+Suggests: rust-all
+Installed-Size: 25600
+Maintainer: Pragmatic AI Labs <hello@paiml.com>
+Description: Zero-config AI context generation and code quality toolkit with Claude Code Agent Mode
+ PMAT (Pragmatic AI MCP Agent Toolkit) is a zero-configuration AI context
+ generation system with extreme quality enforcement and Toyota Way standards.
+ .
+ Key Features:
+ - Claude Code Agent Mode for continuous quality monitoring
+ - AI context generation optimized for LLM workflows
+ - Code complexity analysis with McCabe cyclomatic & cognitive complexity
+ - Technical debt detection (SATD) with severity classification
+ - Quality gates with Toyota Way ≤20 complexity enforcement
+ - Multi-language support for 30+ languages via tree-sitter
+ - Real-time file system monitoring with instant feedback
+ - Production-ready systemd service deployment
+ .
+ The package includes MCP (Model Context Protocol) integration for seamless
+ Claude Code experience, providing 6 agent-specific tools plus 18 existing
+ analysis capabilities.
+Homepage: https://github.com/paiml/paiml-mcp-agent-toolkit
+Vcs-Git: https://github.com/paiml/paiml-mcp-agent-toolkit.git
+Vcs-Browser: https://github.com/paiml/paiml-mcp-agent-toolkit
