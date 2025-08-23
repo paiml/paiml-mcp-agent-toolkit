@@ -15,6 +15,7 @@ use tracing::{debug, error, info, warn};
 
 use super::mcp_server::{AgentConfig, ClaudeCodeAgentMcpServer};
 use super::quality_monitor::{QualityEvent, QualityMonitorConfig, QualityMonitorEngine};
+use super::state_persistence::{StatePersistence, ProjectState, QualityMetrics as PersistentMetrics};
 
 /// Background daemon for the Claude Code agent
 pub struct AgentDaemon {
@@ -29,6 +30,9 @@ pub struct AgentDaemon {
     
     /// Daemon state
     state: Arc<RwLock<DaemonState>>,
+    
+    /// State persistence
+    persistence: Option<StatePersistence>,
     
     /// Shutdown signal sender
     shutdown_tx: Option<mpsc::Sender<()>>,
@@ -143,6 +147,7 @@ impl AgentDaemon {
                 restart_count: 0,
                 last_error: None,
             })),
+            persistence: None,
             shutdown_tx: None,
         }
     }
@@ -236,9 +241,20 @@ impl AgentDaemon {
         // Create MCP server
         let mcp_server = ClaudeCodeAgentMcpServer::new(self.config.agent.clone());
         
+        // Initialize state persistence
+        let state_dir = PathBuf::from(&self.config.daemon.working_directory).join(".pmat_state");
+        let persistence = StatePersistence::new(&state_dir)?;
+        persistence.start_auto_save().await;
+        
+        // Restore previous state if available
+        let saved_state = persistence.get_state().await;
+        info!("Restored {} monitored projects from persistent state", 
+            saved_state.monitored_projects.len());
+        
         // Store components
         self.quality_monitor = Some(quality_monitor);
         self.mcp_server = Some(mcp_server);
+        self.persistence = Some(persistence);
         
         // Spawn quality event processor
         let state = self.state.clone();

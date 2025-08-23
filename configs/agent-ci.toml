@@ -1,0 +1,124 @@
+# Claude Code Agent - CI/CD Configuration
+# PMAT-7007: Continuous Integration environment settings for automated quality checks
+
+[agent]
+version = "2.10.0"
+name = "pmat-agent-ci"
+environment = "ci"
+
+# Monitoring settings - Strict for CI
+complexity_threshold = 20
+satd_enabled = true
+check_interval_seconds = 0  # One-shot analysis for CI
+watch_patterns = ["**/*"]  # Analyze all files
+
+[quality_monitor]
+enabled = false  # No continuous monitoring in CI
+debounce_ms = 0
+full_analysis_interval_minutes = 0
+incremental_analysis = false  # Full analysis only
+
+# File system watching
+watch_depth = 20  # Deep analysis for CI
+ignore_patterns = [
+    "target/", "dist/", "build/", "node_modules/",
+    ".git/", "vendor/", "third_party/"
+]
+max_file_size_mb = 50
+
+[daemon]
+# No daemon mode in CI - single run
+pid_file = "/tmp/pmat-agent-ci.pid"
+log_file = "./pmat-ci.log"
+working_directory = "./"
+
+# Health monitoring
+health_check_interval_secs = 0  # Disabled for CI
+max_memory_mb = 2000  # Higher limit for CI runners
+auto_restart = false
+shutdown_timeout_secs = 60  # Longer timeout for complete analysis
+
+[mcp]
+# MCP server disabled for CI mode
+enabled = false
+protocol_version = "2024-11-05"
+server_name = "pmat-agent-ci"
+debug_mode = false
+
+[persistence]
+# Minimal persistence for CI
+state_dir = "./ci-state"
+auto_save_interval_secs = 0  # No auto-save in CI
+history_retention_days = 0  # No history needed
+max_snapshots = 1
+
+[logging]
+# CI logging - info level with structured output
+level = "info"
+format = "json"  # Machine-readable for CI systems
+show_timestamp = true
+show_file_location = true
+show_thread_ids = false
+
+[performance]
+# Performance tuning for CI - maximize speed
+max_concurrent_analyses = 8  # Use available cores
+cache_size_mb = 1000  # Large cache for speed
+analysis_timeout_secs = 300  # 5 minute timeout
+
+[output]
+# CI-specific output configuration
+format = "json"  # Machine-readable
+include_metrics = true
+include_violations = true
+include_suggestions = true
+summary_only = false
+
+# Report generation
+[output.reports]
+generate_html = true
+generate_json = true
+generate_markdown = true
+report_dir = "./reports"
+
+# Exit codes for CI
+[output.exit_codes]
+success = 0
+quality_gate_failed = 1
+analysis_error = 2
+configuration_error = 3
+
+[quality_gates]
+# Quality gate configuration for CI
+enabled = true
+fail_fast = false  # Complete analysis even if gates fail
+
+# Individual gate thresholds
+[quality_gates.thresholds]
+max_complexity = 20
+max_satd_count = 0
+max_dead_code_percentage = 5.0
+min_test_coverage = 80.0
+max_duplication_percentage = 10.0
+
+# Gate actions
+[quality_gates.actions]
+block_on_failure = true
+generate_report = true
+post_comment = false  # Configure for PR comments
+update_status = false  # Configure for commit status
+
+[integration]
+# CI system integrations
+jenkins = false
+github_actions = true
+gitlab_ci = false
+azure_devops = false
+circleci = false
+
+# Artifact handling
+[integration.artifacts]
+save_reports = true
+save_logs = true
+save_state = false
+artifact_retention_days = 30
