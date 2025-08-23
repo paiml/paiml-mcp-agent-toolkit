@@ -9,10 +9,10 @@
 
 ```bash
 # Install via npm
-npm install -g pmat
+npm install -g pmat-agent
 
 # Or using npx (no installation)  
-npx pmat --version
+npx pmat-agent --version
 
 # Start Claude Code Agent Mode
 pmat agent mcp-server
