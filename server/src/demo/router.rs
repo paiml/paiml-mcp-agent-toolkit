@@ -10,7 +10,8 @@ mod implementation {
         serve_analysis_data, serve_analysis_stream, serve_architecture_analysis, serve_dag_mermaid,
         serve_dashboard, serve_defect_analysis, serve_hotspots_table, serve_metrics_json,
         serve_static_asset, serve_statistics_analysis, serve_summary_json, serve_system_diagram,
-        serve_system_diagram_mermaid, DemoState,
+        serve_system_diagram_mermaid, serve_polyglot_analysis, serve_recommendations_json,
+        serve_showcase_gallery, DemoState,
     };
 
     type RouteHandler = fn(&Arc<RwLock<DemoState>>) -> Response<Bytes>;
@@ -42,6 +43,9 @@ mod implementation {
     /// - `/api/v1/analysis/statistics` - Statistical analysis
     /// - `/api/v1/analysis/diagram` - System diagrams
     /// - `/api/v1/analysis/stream` - Real-time analysis stream
+    /// - `/api/recommendations` - AI-powered repository recommendations
+    /// - `/api/polyglot` - Multi-language project intelligence
+    /// - `/api/showcase` - Repository showcase gallery
     ///
     /// # Examples
     ///
@@ -144,6 +148,10 @@ mod implementation {
             .route("/api/dag", serve_dag_mermaid)
             .route("/api/system-diagram", serve_system_diagram_mermaid)
             .route("/api/analysis", serve_analysis_data)
+            // AI-powered features
+            .route("/api/recommendations", serve_recommendations_json)
+            .route("/api/polyglot", serve_polyglot_analysis)
+            .route("/api/showcase", serve_showcase_gallery)
             // Enhanced API v1 endpoints
             .route("/api/v1/analysis/architecture", serve_architecture_analysis)
             .route("/api/v1/analysis/defects", serve_defect_analysis)
@@ -175,6 +183,9 @@ mod implementation {
     /// - `GET /api/hotspots` - Code complexity and quality hotspots
     /// - `GET /api/dag` - Dependency graph in Mermaid format
     /// - `GET /api/analysis` - Comprehensive analysis data
+    /// - `GET /api/recommendations` - AI-powered repository recommendations
+    /// - `GET /api/polyglot` - Multi-language project intelligence
+    /// - `GET /api/showcase` - Repository showcase gallery
     ///
     /// ## Enhanced v1 APIs
     /// - `GET /api/v1/analysis/architecture` - System architecture analysis

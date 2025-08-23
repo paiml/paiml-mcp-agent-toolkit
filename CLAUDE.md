@@ -121,6 +121,13 @@ The `make test` command runs all required tests:
 - `make test-property` - Property-based tests
 - `make test-examples` - All cargo examples
 
+**TOYOTA WAY PRINCIPLE: NO DEFECT IS MINOR**
+- All compilation errors must be fixed immediately
+- All warnings must be addressed (unused imports, dead code, type mismatches)
+- All tests must pass across examples, integration tests, and unit tests
+- Zero tolerance for "it compiles but has warnings" mentality
+- Every defect represents a potential failure point that violates our quality standards
+
 ## Quality Standards (Toyota Way Excellence Achieved)
 
 **✅ STATUS: PROJECT NOW MEETS ALL EXTREME QUALITY STANDARDS**

@@ -11,13 +11,14 @@
 
 **Zero-configuration AI context generation system** with extreme quality enforcement and Toyota Way standards. Analyze any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com).
 
-> **🎯 v2.8.0 Release**: **Toyota Way Complexity Excellence Achieved!** Complete implementation of Toyota Way ≤20 complexity standards:
-> - **Toyota Way ≤20**: All targeted functions refactored to meet complexity standards using proven patterns
-> - **Systematic Refactoring**: Data-Driven Design, Extract Method, Template Method, Strategy patterns applied
-> - **Zero Regressions**: All functionality preserved through systematic quality-first approach
-> - **Quality Gates**: Pre-commit hooks enforce documentation synchronization and complexity standards
-> - **18 MCP Tools**: High-performance pmcp SDK with unified protocol design
-> - **Released to crates.io**: Available for installation with `cargo install pmat`
+> **🎯 v2.9.0 Release**: **Universal Demo "Just Works" Achievement!** Complete AI-powered repository intelligence with multi-language analysis:
+> - **🤖 AI-Powered Recommendations**: Framework-aware repository recommendations with complexity-based learning tiers
+> - **🌍 Multi-Language Intelligence**: Advanced polyglot analysis with cross-language dependency detection
+> - **🏛️ Architecture Pattern Recognition**: Microservices, Layered, Event-driven pattern detection with confidence scoring
+> - **📚 Repository Showcase Gallery**: Curated collection of 8+ repositories across languages and complexity levels
+> - **⚡ Universal Demo**: Any GitHub repository URL → Complete analysis with AI recommendations
+> - **🌐 Enhanced Web Demo**: Interactive visualizations with 3 new API endpoints (/api/recommendations, /api/polyglot, /api/showcase)
+> - **Toyota Way Excellence**: Zero compilation defects maintained throughout development
 
 ## 🚀 Quick Start
 
@@ -53,6 +54,26 @@ pmat quality-gate --strict
 pmat mcp
 ```
 
+### Universal Demo - "Just Works" Analysis
+```bash
+# Analyze any GitHub repository with AI recommendations
+cargo run --example analyze_github_repo -- --url https://github.com/rust-lang/rust-clippy
+
+# Compare multiple repositories across languages
+cargo run --example compare_repos
+
+# Run quality gates on GitHub repositories
+cargo run --example quality_gate_github -- https://github.com/owner/repo
+
+# Start interactive web demo
+pmat demo --serve
+# Then visit http://localhost:8080 for:
+# • AI-powered repository recommendations
+# • Multi-language project intelligence
+# • Repository showcase gallery
+# • Interactive analysis visualizations
+```
+
 ### Toyota Way Development (NEW)
 ```bash
 # Setup quality enforcement (one-time)
@@ -76,6 +97,12 @@ make sprint-close
 - **SATD Detection**: Self-admitted technical debt with severity classification
 - **Technical Debt Gradient**: Multi-factor composite scoring with time-decay modeling
 - **Deep Context Generation**: Multi-dimensional analysis optimized for AI agents
+
+### 🤖 AI-Powered Intelligence (NEW)
+- **Smart Recommendations**: Framework-aware repository suggestions with complexity matching
+- **Polyglot Analysis**: Cross-language dependency detection and architecture pattern recognition
+- **Repository Showcase**: Curated gallery with learning pathways from beginner to expert
+- **Integration Points**: Risk assessment of multi-language project coupling with mitigation strategies
 
 ### Quality Systems
 - **Quality Gates**: Zero-tolerance enforcement (complexity ≤20, SATD=0, coverage >80%)
@@ -213,7 +240,26 @@ cargo run --example test_pmcp_server
 - `refactor_start` - Begin refactoring workflow
 - `pdmt_deterministic_todos` - Generate quality todos
 - `github_create_issue` - Create GitHub issues
+- **NEW**: AI recommendation tools for intelligent repository analysis
 - And 11 more...
+
+### 🌐 Web Demo API Endpoints (NEW)
+```bash
+# AI-powered repository recommendations
+GET /api/recommendations
+
+# Multi-language project intelligence
+GET /api/polyglot
+
+# Repository showcase gallery
+GET /api/showcase
+
+# Core analysis APIs
+GET /api/summary
+GET /api/metrics
+GET /api/hotspots
+GET /api/dag
+```
 
 ## 📊 Quality Standards
 

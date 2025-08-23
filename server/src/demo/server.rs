@@ -2,6 +2,9 @@
 use crate::demo::assets::{decompress_asset, get_asset};
 use crate::models::dag::DependencyGraph;
 use crate::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
+use crate::services::recommendation_engine::{RecommendationEngine, RepositoryRecommendation, ComplexityTier};
+use crate::services::polyglot_analyzer::{PolyglotAnalyzer, PolyglotAnalysis};
+use crate::demo::showcase::ShowcaseGallery;
 use anyhow::Result;
 use bytes::Bytes;
 use dashmap::DashMap;
@@ -44,6 +47,8 @@ pub struct DemoContent {
     pub complexity_time_ms: u64,
     pub churn_time_ms: u64,
     pub dag_time_ms: u64,
+    pub recommendations: Vec<RepositoryRecommendation>,
+    pub polyglot_analysis: Option<PolyglotAnalysis>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -399,6 +404,39 @@ pub(crate) fn serve_analysis_stream(
 
 #[cfg(not(feature = "demo"))]
 #[allow(dead_code)]
+pub(crate) fn serve_recommendations_json(
+    _state: &std::sync::Arc<parking_lot::RwLock<DemoState>>,
+) -> Response<Bytes> {
+    Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .body(Bytes::from_static(b"Demo mode disabled"))
+        .unwrap()
+}
+
+#[cfg(not(feature = "demo"))]
+#[allow(dead_code)]
+pub(crate) fn serve_polyglot_analysis(
+    _state: &std::sync::Arc<parking_lot::RwLock<DemoState>>,
+) -> Response<Bytes> {
+    Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .body(Bytes::from_static(b"Demo mode disabled"))
+        .unwrap()
+}
+
+#[cfg(not(feature = "demo"))]
+#[allow(dead_code)]
+pub(crate) fn serve_showcase_gallery(
+    _state: &std::sync::Arc<parking_lot::RwLock<DemoState>>,
+) -> Response<Bytes> {
+    Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .body(Bytes::from_static(b"Demo mode disabled"))
+        .unwrap()
+}
+
+#[cfg(not(feature = "demo"))]
+#[allow(dead_code)]
 fn calculate_graph_density(_graph: &DependencyGraph) -> f64 {
     0.0
 }
@@ -457,6 +495,70 @@ pub(crate) fn serve_metrics_json(state: &Arc<RwLock<DemoState>>) -> Response<Byt
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .body(Bytes::from(serde_json::to_vec(&metrics).unwrap()))
+        .unwrap()
+}
+
+#[cfg(feature = "demo")]
+pub(crate) fn serve_recommendations_json(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
+    let _state = state.read();
+    
+    // Generate recommendations based on analysis results
+    let recommendation_engine = RecommendationEngine::new();
+    let recommendations = recommendation_engine.get_recommendations(
+        "rust", // TODO: Get from actual language detection
+        Some(ComplexityTier::Intermediate),
+    );
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Bytes::from(serde_json::to_vec(&recommendations).unwrap()))
+        .unwrap()
+}
+
+#[cfg(feature = "demo")]
+pub(crate) fn serve_polyglot_analysis(_state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
+    // For now, return mock polyglot analysis data
+    // TODO: Integrate with actual polyglot analyzer when project path is available
+    let polyglot_data = serde_json::json!({
+        "languages": [
+            {
+                "language": "rust",
+                "file_count": 25,
+                "line_count": 2500,
+                "complexity_score": 6.5,
+                "test_coverage": 0.85,
+                "primary_frameworks": ["Tokio", "Serde", "Clap"]
+            }
+        ],
+        "cross_language_dependencies": [],
+        "architecture_pattern": "Monolithic",
+        "integration_points": [],
+        "recommendation_score": 0.8
+    });
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Bytes::from(serde_json::to_vec(&polyglot_data).unwrap()))
+        .unwrap()
+}
+
+#[cfg(feature = "demo")]
+pub(crate) fn serve_showcase_gallery(_state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
+    let gallery = ShowcaseGallery::new();
+    let showcase_data = serde_json::json!({
+        "repositories": gallery.get_all_repositories(),
+        "summary": gallery.generate_showcase_summary(),
+        "featured": gallery.get_featured_repositories(),
+        "quickStart": gallery.get_quick_start_recommendations(),
+        "categories": gallery.get_categories()
+    });
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Bytes::from(serde_json::to_vec(&showcase_data).unwrap()))
         .unwrap()
 }
 
@@ -938,18 +1040,60 @@ impl DemoContent {
 
         let mermaid_diagram = mermaid_generator.generate(dag);
 
+        let enhanced_hotspots: Vec<EnhancedHotspot> = hotspots.into_iter().map(|h| EnhancedHotspot {
+            function: "main".to_string(),
+            file: h.file.clone(),
+            path: h.file,
+            complexity: h.complexity,
+            loc: 50,
+            language: "rust".to_string(),
+            churn_score: h.churn_score,
+            refactor_suggestion: "Consider extracting methods to reduce complexity".to_string(),
+        }).collect();
+
         Self {
             mermaid_diagram,
             system_diagram: None,
             files_analyzed,
+            functions_analyzed: enhanced_hotspots.len(),
             avg_complexity,
+            p90_complexity: (avg_complexity * 1.5) as u32,
+            hotspot_functions: enhanced_hotspots.len(),
+            quality_score: 0.75,
             tech_debt_hours,
-            hotspots,
+            hotspots: enhanced_hotspots,
+            language_stats: std::collections::HashMap::new(),
             ast_time_ms,
             complexity_time_ms,
             churn_time_ms,
             dag_time_ms,
+            recommendations: Vec::new(),
+            polyglot_analysis: None,
         }
+    }
+
+    pub async fn with_ai_recommendations(mut self, project_path: &std::path::Path, detected_language: &str) -> Self {
+        let recommendation_engine = RecommendationEngine::new();
+        
+        if let Ok(_detected_frameworks) = recommendation_engine.analyze_repository(&project_path.to_string_lossy()) {
+            self.recommendations = recommendation_engine.get_recommendations(detected_language, Some(ComplexityTier::Intermediate));
+            
+            if !self.recommendations.is_empty() {
+                self.recommendations.truncate(5);
+            }
+        }
+
+        self
+    }
+
+    pub async fn with_polyglot_analysis(mut self, project_path: &std::path::Path) -> Self {
+        let polyglot_analyzer = PolyglotAnalyzer::new();
+        
+        if let Ok(analysis) = polyglot_analyzer.analyze_project(project_path).await {
+            self.polyglot_analysis = Some(analysis);
+        }
+
+        self
     }
 }
 

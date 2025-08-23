@@ -345,22 +345,12 @@ mod export_integration_tests {
             hotspots: vec![],
             files: vec![FileComplexityMetrics {
                 path: "src/main.rs".to_string(),
-                total_complexity: ComplexityMetrics {
-                    cyclomatic: 15,
-                    cognitive: 20,
-                    nesting_max: 3,
-                    lines: 50,
-                },
+                total_complexity: ComplexityMetrics::new(15, 20, 3, 50),
                 functions: vec![FunctionComplexity {
                     name: "main".to_string(),
                     line_start: 1,
                     line_end: 50,
-                    metrics: ComplexityMetrics {
-                        cyclomatic: 15,
-                        cognitive: 20,
-                        nesting_max: 3,
-                        lines: 50,
-                    },
+                    metrics: ComplexityMetrics::new(15, 20, 3, 50),
                 }],
                 classes: vec![],
             }],
