@@ -32,15 +32,41 @@ pub struct DemoContent {
     pub mermaid_diagram: String,
     pub system_diagram: Option<String>,
     pub files_analyzed: usize,
+    pub functions_analyzed: usize,
     pub avg_complexity: f64,
+    pub p90_complexity: u32,
+    pub hotspot_functions: usize,
+    pub quality_score: f64,
     pub tech_debt_hours: u32,
-    pub hotspots: Vec<Hotspot>,
+    pub hotspots: Vec<EnhancedHotspot>,
+    pub language_stats: std::collections::HashMap<String, LanguageStats>,
     pub ast_time_ms: u64,
     pub complexity_time_ms: u64,
     pub churn_time_ms: u64,
     pub dag_time_ms: u64,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct EnhancedHotspot {
+    pub function: String,
+    pub file: String,
+    pub path: String,
+    pub complexity: u32,
+    pub loc: u32,
+    pub language: String,
+    pub churn_score: u32,
+    pub refactor_suggestion: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct LanguageStats {
+    pub file_count: usize,
+    pub function_count: usize,
+    pub avg_complexity: f64,
+    pub total_loc: u32,
+}
+
+// Legacy hotspot for compatibility
 #[derive(Debug, Clone, Serialize, serde::Deserialize)]
 pub struct Hotspot {
     pub file: String,
