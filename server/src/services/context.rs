@@ -120,6 +120,16 @@ pub enum AstItem {
         path: String,
         line: usize,
     },
+    Import {
+        /// What is being imported (module, package, or specific items)
+        module: String,
+        /// Specific items imported from the module (if any)
+        items: Vec<String>,
+        /// Alias for the import (if any)
+        alias: Option<String>,
+        /// Line number
+        line: usize,
+    },
 }
 
 impl AstItem {
@@ -132,6 +142,7 @@ impl AstItem {
             AstItem::Impl { type_name, .. } => type_name,
             AstItem::Module { name, .. } => name,
             AstItem::Use { path, .. } => path,
+            AstItem::Import { module, .. } => module,
         }
     }
 }
