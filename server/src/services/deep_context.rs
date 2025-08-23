@@ -3031,39 +3031,84 @@ impl DeepContextAnalyzer {
         // that the quality_gates module expects
 
         // Create complexity metrics from the analysis results
-        let complexity_metrics =
-            context
-                .analyses
-                .complexity_report
-                .as_ref()
-                .map(|report| ComplexityMetricsForQA {
-                    files: report
-                        .files
-                        .iter()
-                        .map(|f| FileComplexityMetricsForQA {
-                            path: std::path::PathBuf::from(&f.path),
-                            functions: f
-                                .functions
-                                .iter()
-                                .map(|func| FunctionComplexityForQA {
-                                    name: func.name.clone(),
-                                    cyclomatic: func.metrics.cyclomatic as u32,
-                                    cognitive: func.metrics.cognitive as u32,
-                                    nesting_depth: func.metrics.nesting_max as u32,
-                                    start_line: func.line_start as usize,
-                                    end_line: func.line_end as usize,
-                                })
-                                .collect(),
-                            total_cyclomatic: f.total_complexity.cyclomatic as u32,
-                            total_cognitive: f.total_complexity.cognitive as u32,
-                            total_lines: f.total_complexity.lines as usize,
-                        })
-                        .collect(),
+        // If we don't have a complexity report, create basic metrics from file discovery
+        let complexity_metrics = if let Some(report) = context.analyses.complexity_report.as_ref() {
+            Some(ComplexityMetricsForQA {
+                files: report
+                    .files
+                    .iter()
+                    .map(|f| FileComplexityMetricsForQA {
+                        path: std::path::PathBuf::from(&f.path),
+                        functions: f
+                            .functions
+                            .iter()
+                            .map(|func| FunctionComplexityForQA {
+                                name: func.name.clone(),
+                                cyclomatic: func.metrics.cyclomatic as u32,
+                                cognitive: func.metrics.cognitive as u32,
+                                nesting_depth: func.metrics.nesting_max as u32,
+                                start_line: func.line_start as usize,
+                                end_line: func.line_end as usize,
+                            })
+                            .collect(),
+                        total_cyclomatic: f.total_complexity.cyclomatic as u32,
+                        total_cognitive: f.total_complexity.cognitive as u32,
+                        total_lines: f.total_complexity.lines as usize,
+                    })
+                    .collect(),
+                summary: ComplexitySummaryForQA {
+                    total_files: report.files.len(),
+                    total_functions: report.files.par_iter().map(|f| f.functions.len()).sum(),
+                },
+            })
+        } else {
+            // Fallback: Count lines from all discovered files
+            let file_paths = self.collect_file_paths(&context.file_tree.root);
+            let mut files_with_lines = Vec::new();
+            
+            // Build full paths using the project root
+            let project_root = &context.metadata.project_root;
+            
+            debug!("QA Fallback: Counting lines from {} files in {:?}", 
+                   file_paths.len(), project_root);
+            
+            for path_str in &file_paths {
+                // Try both relative and absolute paths
+                let full_path = if std::path::Path::new(path_str).is_absolute() {
+                    std::path::PathBuf::from(path_str)
+                } else {
+                    project_root.join(path_str)
+                };
+                
+                if full_path.exists() && full_path.is_file() {
+                    if let Ok(content) = std::fs::read_to_string(&full_path) {
+                        let line_count = content.lines().count();
+                        
+                        if line_count > 0 {
+                            files_with_lines.push(FileComplexityMetricsForQA {
+                                path: full_path.clone(),
+                                functions: Vec::new(),
+                                total_cyclomatic: 0,
+                                total_cognitive: 0,
+                                total_lines: line_count,
+                            });
+                        }
+                    }
+                }
+            }
+            
+            if !files_with_lines.is_empty() {
+                Some(ComplexityMetricsForQA {
+                    files: files_with_lines,
                     summary: ComplexitySummaryForQA {
-                        total_files: report.files.len(),
-                        total_functions: report.files.par_iter().map(|f| f.functions.len()).sum(),
+                        total_files: file_paths.len(),
+                        total_functions: 0,
                     },
-                });
+                })
+            } else {
+                None
+            }
+        };
 
         // Create dead code analysis from the results
         let dead_code_analysis = if let Some(ref dead_code) = context.analyses.dead_code_results {
