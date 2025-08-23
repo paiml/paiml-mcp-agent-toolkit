@@ -178,6 +178,9 @@ mod git_clone_property_tests;
 #[cfg(test)]
 mod quality_proxy_property_tests;
 
+#[cfg(test)]
+mod ast_import_tests;
+
 pub mod telemetry_service;
 
 #[cfg(test)]
