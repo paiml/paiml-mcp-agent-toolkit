@@ -231,11 +231,16 @@ if is_remote_url(&repo_spec) {
 
 ### Phase 2: Quality Gate Fixes (Sprint 2 - v2.9.1)
 
-#### PMAT-6004: Fix Demo Quality Gate Failures
+#### PMAT-6004: Fix Demo Quality Gate Failures ✅
 - **Priority**: High
 - **Complexity**: Medium
+- **Status**: COMPLETED
 
-**Current Issue**: All demos fail with `"overall": String("FAIL")`
+**Resolved**: Quality gates now pass for all language repositories
+- Fixed "No lines analyzed - invalid result" error
+- Added fallback logic when complexity metrics unavailable
+- Quality gates check file discovery before failing
+- Now passes for Python, JavaScript, and mixed-language repos
 
 **Root Causes**:
 1. **Dead Code Analysis**: Fails for small projects with "No lines analyzed"

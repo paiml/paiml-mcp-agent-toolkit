@@ -37,6 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Created `quality_gate_github.rs` for quality gate testing
   - All examples support GitHub URL cloning and analysis
 
+- **PMAT-6004**: Fix demo quality gate failures
+  - Fixed "No lines analyzed - invalid result" error for non-Rust repositories
+  - Quality gates now properly handle projects without complexity metrics
+  - Added fallback to count lines from discovered files
+  - Quality verification now passes for Python, JavaScript, and other language repos
+
 ## [2.8.0] - 2025-08-22
 
 ### Added
