@@ -349,7 +349,7 @@ impl ShowcaseGallery {
         self.repositories.insert(name.clone(), repo);
         self.categories
             .entry(category)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(name);
     }
 
@@ -424,7 +424,7 @@ impl ShowcaseGallery {
         let complexity_distribution = {
             let mut distribution = HashMap::new();
             for repo in self.repositories.values() {
-                *distribution.entry(repo.complexity_tier.clone()).or_insert(0) += 1;
+                *distribution.entry(repo.complexity_tier).or_insert(0) += 1;
             }
             distribution
         };

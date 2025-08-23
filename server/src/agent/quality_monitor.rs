@@ -460,7 +460,7 @@ impl QualityMonitorEngine {
     }
     
     /// Perform full analysis of a project
-    async fn perform_full_analysis(&self, project_id: &str, project_path: &Path) -> Result<()> {
+    async fn perform_full_analysis(&self, project_id: &str, _project_path: &Path) -> Result<()> {
         info!("Performing full quality analysis for project: {}", project_id);
         
         // Complexity and SATD analysis implementation using existing services
@@ -509,7 +509,7 @@ impl QualityMonitorEngine {
     }
     
     /// Start periodic monitoring for a project
-    async fn start_periodic_monitoring(&self, project_id: String, project_path: PathBuf) -> Result<()> {
+    async fn start_periodic_monitoring(&self, project_id: String, _project_path: PathBuf) -> Result<()> {
         let metrics = self.metrics.clone();
         let config = self.config.clone();
         let event_sender = self.event_sender.clone();
