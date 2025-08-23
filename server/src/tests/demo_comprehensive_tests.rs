@@ -52,6 +52,18 @@ async fn test_demo_report_structure() {
         total_time_ms: 2500,
         steps: vec![],
         system_diagram: Some("graph TD; A --> B".to_string()),
+        analysis: crate::demo::runner::DemoAnalysisResult {
+            files_analyzed: 10,
+            functions_analyzed: 5,
+            avg_complexity: 3.2,
+            hotspot_functions: 1,
+            quality_score: 0.85,
+            tech_debt_hours: 2,
+            qa_verification: None,
+            language_stats: None,
+            complexity_metrics: None,
+        },
+        execution_time_ms: 2500,
     };
 
     assert_eq!(report.repository, "/test/project");
@@ -306,6 +318,18 @@ async fn test_demo_report_rendering_cli() {
         total_time_ms: 2500,
         steps: vec![step],
         system_diagram: Some("graph TD; A --> B".to_string()),
+        analysis: crate::demo::runner::DemoAnalysisResult {
+            files_analyzed: 10,
+            functions_analyzed: 5,
+            avg_complexity: 3.2,
+            hotspot_functions: 1,
+            quality_score: 0.85,
+            tech_debt_hours: 2,
+            qa_verification: None,
+            language_stats: None,
+            complexity_metrics: None,
+        },
+        execution_time_ms: 2500,
     };
 
     let rendered = report.render(ExecutionMode::Cli);
@@ -345,6 +369,18 @@ async fn test_demo_report_rendering_mcp() {
         total_time_ms: 1800,
         steps: vec![step],
         system_diagram: None,
+        analysis: crate::demo::runner::DemoAnalysisResult {
+            files_analyzed: 10,
+            functions_analyzed: 5,
+            avg_complexity: 3.2,
+            hotspot_functions: 1,
+            quality_score: 0.85,
+            tech_debt_hours: 2,
+            qa_verification: None,
+            language_stats: None,
+            complexity_metrics: None,
+        },
+        execution_time_ms: 1800,
     };
 
     let rendered = report.render(ExecutionMode::Mcp);
@@ -438,6 +474,18 @@ async fn test_demo_report_with_multiple_steps() {
         total_time_ms: 250,
         steps,
         system_diagram: None,
+        analysis: crate::demo::runner::DemoAnalysisResult {
+            files_analyzed: 10,
+            functions_analyzed: 5,
+            avg_complexity: 3.2,
+            hotspot_functions: 1,
+            quality_score: 0.85,
+            tech_debt_hours: 2,
+            qa_verification: None,
+            language_stats: None,
+            complexity_metrics: None,
+        },
+        execution_time_ms: 250,
     };
 
     assert_eq!(report.steps.len(), 2);
@@ -494,6 +542,18 @@ fn test_demo_report_serialization() {
         total_time_ms: 1500,
         steps: vec![],
         system_diagram: Some("test diagram".to_string()),
+        analysis: crate::demo::runner::DemoAnalysisResult {
+            files_analyzed: 10,
+            functions_analyzed: 5,
+            avg_complexity: 3.2,
+            hotspot_functions: 1,
+            quality_score: 0.85,
+            tech_debt_hours: 2,
+            qa_verification: None,
+            language_stats: None,
+            complexity_metrics: None,
+        },
+        execution_time_ms: 1500,
     };
 
     // Test serialization

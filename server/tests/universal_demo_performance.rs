@@ -7,7 +7,6 @@ mod universal_demo_performance_tests {
     use std::time::{Duration, Instant};
     use tempfile::TempDir;
     use std::fs;
-    use std::path::Path;
 
     /// Create a test repository with specified number of files
     fn create_test_repo(num_files: usize, lines_per_file: usize) -> TempDir {
@@ -129,7 +128,7 @@ mod universal_demo_performance_tests {
 
         let config = pmat::services::deep_context::DeepContextConfig::default();
         let analyzer = pmat::services::deep_context::DeepContextAnalyzer::new(config);
-        let result = analyzer.analyze_project(temp_dir.path()).await.unwrap();
+        let result = analyzer.analyze_project(&temp_dir.path().to_path_buf()).await.unwrap();
 
         let duration = start.elapsed();
 
@@ -152,7 +151,7 @@ mod universal_demo_performance_tests {
 
         let config = pmat::services::deep_context::DeepContextConfig::default();
         let analyzer = pmat::services::deep_context::DeepContextAnalyzer::new(config);
-        let result = analyzer.analyze_project(temp_dir.path()).await.unwrap();
+        let result = analyzer.analyze_project(&temp_dir.path().to_path_buf()).await.unwrap();
 
         let duration = start.elapsed();
 
@@ -174,7 +173,7 @@ mod universal_demo_performance_tests {
 
         let config = pmat::services::deep_context::DeepContextConfig::default();
         let analyzer = pmat::services::deep_context::DeepContextAnalyzer::new(config);
-        let result = analyzer.analyze_project(temp_dir.path()).await.unwrap();
+        let result = analyzer.analyze_project(&temp_dir.path().to_path_buf()).await.unwrap();
 
         let duration = start.elapsed();
 
@@ -214,7 +213,7 @@ mod universal_demo_performance_tests {
 
         let config = pmat::services::deep_context::DeepContextConfig::default();
         let analyzer = pmat::services::deep_context::DeepContextAnalyzer::new(config);
-        let _result = analyzer.analyze_project(temp_dir.path()).await.unwrap();
+        let _result = analyzer.analyze_project(&temp_dir.path().to_path_buf()).await.unwrap();
 
         // Get final memory (approximate)
         let after = get_approximate_memory_usage();

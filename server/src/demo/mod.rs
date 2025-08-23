@@ -41,6 +41,7 @@ pub mod protocol_harness;
 pub mod router;
 pub mod runner;
 pub mod server;
+pub mod showcase;
 pub mod templates;
 
 pub use runner::{detect_repository, resolve_repository, DemoReport, DemoRunner, DemoStep};

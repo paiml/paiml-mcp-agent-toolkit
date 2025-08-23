@@ -150,6 +150,8 @@ pub mod renderer;
 pub mod rust_borrow_checker;
 pub mod satd_detector;
 pub mod semantic_naming;
+pub mod recommendation_engine;
+pub mod polyglot_analyzer;
 pub mod simple_deep_context;
 pub mod symbol_table;
 pub mod tdg_calculator;

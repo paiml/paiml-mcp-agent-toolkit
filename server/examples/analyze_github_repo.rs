@@ -52,43 +52,24 @@ async fn main() -> Result<()> {
     println!("\n=== Analysis Results ===");
     println!("Repository: {}", url);
     
-    if let Some(complexity) = &result.complexity_metrics {
-        println!("\n📊 Complexity Metrics:");
-        println!("  Files analyzed: {}", complexity.files.len());
-        let total_functions: usize = complexity.files.iter()
-            .map(|f| f.functions.len())
-            .sum();
-        println!("  Total functions: {}", total_functions);
-        
-        if total_functions > 0 {
-            let max_complexity = complexity.files.iter()
-                .flat_map(|f| f.functions.iter())
-                .map(|f| f.complexity.cyclomatic)
-                .max()
-                .unwrap_or(0);
-            println!("  Max cyclomatic complexity: {}", max_complexity);
-        }
-    }
-
-    if let Some(ast) = &result.ast_summaries {
-        println!("\n🌳 AST Summary:");
-        for summary in ast {
-            println!("  {}: {} items", summary.language, summary.total_items);
-        }
-    }
+    println!("\n📊 Complexity Metrics:");
+    println!("  Files analyzed: {}", result.files_analyzed);
+    println!("  Total functions: {}", result.functions_analyzed);
+    println!("  Average complexity: {:.2}", result.avg_complexity);
+    println!("  Hotspot functions: {}", result.hotspot_functions);
+    println!("  Quality score: {:.2}", result.quality_score);
 
     if let Some(lang_stats) = &result.language_stats {
-        println!("\n💻 Language Statistics:");
+        println!("\n🌳 Language Summary:");
         for (lang, stats) in lang_stats {
-            println!("  {}: {} files, {} lines", lang, stats.file_count, stats.line_count);
+            println!("  {}: {} files", lang, stats.get("file_count").unwrap_or(&serde_json::Value::Null));
         }
     }
 
-    if let Some(qa) = &result.qa_verification {
+    if let Some(qa_status) = &result.qa_verification {
         println!("\n✅ Quality Verification:");
-        println!("  Overall: {:?}", qa.overall);
-        println!("  Dead code: {:.1}%", qa.dead_code.actual * 100.0);
-        println!("  Complexity P99: {}", qa.complexity.p99);
+        println!("  Status: {}", qa_status);
+        println!("  Technical Debt: {} hours", result.tech_debt_hours);
     }
 
     info!("Analysis complete!");
