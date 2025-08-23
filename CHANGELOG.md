@@ -55,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Configuration loading and statistics tracking tests
 
 - **Multi-Ecosystem Distribution** ✅
-  - npm package for Node.js/JavaScript developers
+  - **npm package PUBLISHED**: pmat-agent@2.10.0 live at https://www.npmjs.com/package/pmat-agent
   - Homebrew formula for macOS/Linux users
   - Arch Linux AUR package with systemd integration
   - Docker Hub multi-stage production image

@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  pmat:
+    build: .
+    image: paiml/pmat:2.10.0
+    container_name: pmat-agent
+    volumes:
+      - ./:/workspace:ro
+      - pmat-state:/var/lib/pmat-agent
+      - pmat-logs:/var/log/pmat-agent
+    ports:
+      - "8080:8080"  # Web demo
+      - "9090:9090"  # Metrics
+    environment:
+      - RUST_LOG=info,pmat=debug
+    command: ["pmat", "demo", "--serve", "--host", "0.0.0.0"]
+    restart: unless-stopped
+    networks:
+      - pmat-network
+
+  pmat-agent:
+    build: .
+    image: paiml/pmat:2.10.0
+    container_name: pmat-background-agent
+    volumes:
+      - ./:/workspace:ro
+      - pmat-state:/var/lib/pmat-agent
+      - pmat-logs:/var/log/pmat-agent
+    environment:
+      - RUST_LOG=info,pmat=debug
+      - PMAT_CONFIG=/etc/pmat/agent-production.toml
+    command: ["pmat", "agent", "start", "--project-path", "/workspace"]
+    restart: unless-stopped
+    networks:
+      - pmat-network
+    depends_on:
+      - pmat
+
+  pmat-mcp:
+    build: .
+    image: paiml/pmat:2.10.0
+    container_name: pmat-mcp-server
+    volumes:
+      - ./:/workspace:ro
+      - pmat-state:/var/lib/pmat-agent
+    environment:
+      - RUST_LOG=warn,pmat=info
+    command: ["pmat", "agent", "mcp-server", "--config", "/etc/pmat/agent-production.toml"]
+    stdin_open: true
+    tty: true
+    networks:
+      - pmat-network
+
+volumes:
+  pmat-state:
+    driver: local
+  pmat-logs:
+    driver: local
+
+networks:
+  pmat-network:
+    driver: bridge
