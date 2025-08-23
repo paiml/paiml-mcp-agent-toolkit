@@ -19,7 +19,14 @@
 
 **Zero-configuration AI context generation system** with extreme quality enforcement and Toyota Way standards. Analyze any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com).
 
-> **🚀 v2.10.0 Release**: **Claude Code Agent Mode - "Always Working" Achievement!** Transform PMAT into a persistent background quality agent:
+> **🎉 v2.11.0 Release**: **Ruchy Language Support!** Full support for the Ruchy programming language:
+> - **🦀 Ruchy v1.5.0**: Complete AST parsing and complexity analysis for Ruchy files
+> - **🚀 Advanced Features**: Classes, actors, traits, pattern matching, and pipeline operators
+> - **📊 Complexity Metrics**: Function-level cyclomatic and cognitive complexity analysis
+> - **🔤 Modern Syntax**: F-strings, async/await, error handling with Result types
+> - **🔧 Seamless Integration**: Automatic `.ruchy` file detection and analysis
+
+> **🚀 v2.10.0**: **Claude Code Agent Mode - "Always Working" Achievement!** Transform PMAT into a persistent background quality agent:
 > - **🤖 Claude Code Integration**: Native MCP server for seamless Claude Code integration
 > - **💾 Persistent State**: Monitoring state maintained across restarts with auto-save
 > - **⚙️ Production Ready**: Environment-specific configs for dev, prod, and CI/CD
@@ -270,6 +277,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - **TypeScript/JavaScript**: SWC-based parsing
 - **Python**: RustPython AST analysis  
 - **C/C++**: Tree-sitter with goto tracking
+- **Ruchy**: v1.5.0 support with full AST parsing, actors, and pipeline operators
+- **Kotlin**: Tree-sitter based analysis
 - **30+ Languages**: Via tree-sitter grammar support
 
 ## 🤖 MCP Integration
