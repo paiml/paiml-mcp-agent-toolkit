@@ -603,7 +603,7 @@ mod tests {
 
     #[test]
     fn test_strategy_evaluation() {
-        let workload = WorkloadProfile {
+        let _workload = WorkloadProfile {
             temporal_locality: 0.8,
             spatial_locality: 0.6,
             latency_sensitivity: 0.9,
