@@ -15,7 +15,7 @@ use tracing::{debug, error, info, warn};
 
 use super::mcp_server::{AgentConfig, ClaudeCodeAgentMcpServer};
 use super::quality_monitor::{QualityEvent, QualityMonitorConfig, QualityMonitorEngine};
-use super::state_persistence::{StatePersistence, ProjectState, QualityMetrics as PersistentMetrics};
+use super::state_persistence::StatePersistence;
 
 /// Background daemon for the Claude Code agent
 pub struct AgentDaemon {
