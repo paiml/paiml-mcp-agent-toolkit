@@ -9,12 +9,7 @@ mod coverage_improvement {
 
     #[test]
     fn test_complexity_metrics_creation() {
-        let metrics = ComplexityMetrics {
-            cyclomatic: 5,
-            cognitive: 7,
-            nesting_max: 3,
-            lines: 25,
-        };
+        let metrics = ComplexityMetrics::new(5, 7, 3, 25);
 
         assert_eq!(metrics.cyclomatic, 5);
         assert_eq!(metrics.cognitive, 7);
@@ -38,12 +33,7 @@ mod coverage_improvement {
             name: "test_function".to_string(),
             line_start: 10,
             line_end: 20,
-            metrics: ComplexityMetrics {
-                cyclomatic: 3,
-                cognitive: 4,
-                nesting_max: 2,
-                lines: 11,
-            },
+            metrics: ComplexityMetrics::new(3, 4, 2, 11),
         };
 
         assert_eq!(function.name, "test_function");
@@ -110,22 +100,12 @@ mod coverage_improvement {
     fn test_aggregate_results_with_data() {
         let file_metrics = vec![FileComplexityMetrics {
             path: "test1.rs".to_string(),
-            total_complexity: ComplexityMetrics {
-                cyclomatic: 5,
-                cognitive: 7,
-                nesting_max: 2,
-                lines: 20,
-            },
+            total_complexity: ComplexityMetrics::new(5, 7, 2, 20),
             functions: vec![FunctionComplexity {
                 name: "func1".to_string(),
                 line_start: 1,
                 line_end: 10,
-                metrics: ComplexityMetrics {
-                    cyclomatic: 3,
-                    cognitive: 4,
-                    nesting_max: 2,
-                    lines: 10,
-                },
+                metrics: ComplexityMetrics::new(3, 4, 2, 10),
             }],
             classes: vec![],
         }];
@@ -140,12 +120,7 @@ mod coverage_improvement {
     fn test_format_complexity_summary() {
         let file_metrics = vec![FileComplexityMetrics {
             path: "test.rs".to_string(),
-            total_complexity: ComplexityMetrics {
-                cyclomatic: 5,
-                cognitive: 7,
-                nesting_max: 2,
-                lines: 20,
-            },
+            total_complexity: ComplexityMetrics::new(5, 7, 2, 20),
             functions: vec![],
             classes: vec![],
         }];
@@ -161,22 +136,12 @@ mod coverage_improvement {
     fn test_format_complexity_report() {
         let file_metrics = vec![FileComplexityMetrics {
             path: "test.rs".to_string(),
-            total_complexity: ComplexityMetrics {
-                cyclomatic: 10,
-                cognitive: 15,
-                nesting_max: 4,
-                lines: 50,
-            },
+            total_complexity: ComplexityMetrics::new(10, 15, 4, 50),
             functions: vec![FunctionComplexity {
                 name: "complex_function".to_string(),
                 line_start: 1,
                 line_end: 25,
-                metrics: ComplexityMetrics {
-                    cyclomatic: 8,
-                    cognitive: 12,
-                    nesting_max: 4,
-                    lines: 25,
-                },
+                metrics: ComplexityMetrics::new(8, 12, 4, 25),
             }],
             classes: vec![],
         }];
@@ -193,12 +158,7 @@ mod coverage_improvement {
     fn test_format_as_sarif() {
         let file_metrics = vec![FileComplexityMetrics {
             path: "test.rs".to_string(),
-            total_complexity: ComplexityMetrics {
-                cyclomatic: 15,
-                cognitive: 20,
-                nesting_max: 5,
-                lines: 100,
-            },
+            total_complexity: ComplexityMetrics::new(15, 20, 5, 100),
             functions: vec![],
             classes: vec![],
         }];

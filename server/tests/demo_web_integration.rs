@@ -1,24 +1,38 @@
 #![cfg(feature = "demo")]
 
-use pmat::demo::{DemoContent, Hotspot, LocalDemoServer};
+use pmat::demo::{DemoContent, LocalDemoServer};
+use pmat::demo::server::{EnhancedHotspot, LanguageStats};
+use pmat::services::recommendation_engine::RepositoryRecommendation;
+use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::timeout;
 
-#[tokio::test]
-async fn test_demo_server_startup_and_shutdown() {
-    // Create test content
-    let content = DemoContent {
+fn create_test_demo_content() -> DemoContent {
+    DemoContent {
         mermaid_diagram: "graph TD\n  A --> B".to_string(),
         system_diagram: None,
         files_analyzed: 10,
+        functions_analyzed: 5,
         avg_complexity: 5.5,
+        p90_complexity: 15,
+        hotspot_functions: 2,
+        quality_score: 0.85,
         tech_debt_hours: 20,
         hotspots: vec![],
+        language_stats: HashMap::new(),
         ast_time_ms: 100,
         complexity_time_ms: 150,
         churn_time_ms: 200,
         dag_time_ms: 250,
-    };
+        recommendations: vec![],
+        polyglot_analysis: None,
+    }
+}
+
+#[tokio::test]
+async fn test_demo_server_startup_and_shutdown() {
+    // Create test content
+    let content = create_test_demo_content();
 
     // Start server
     let (server, port) = LocalDemoServer::spawn(content.clone()).await.unwrap();
@@ -58,29 +72,37 @@ async fn test_demo_server_startup_and_shutdown() {
 #[tokio::test]
 async fn test_demo_server_api_endpoints() {
     // Create test content with hotspots
-    let content = DemoContent {
-        mermaid_diagram: "graph TD\n  A[Main] --> B[Utils]\n  A --> C[Helpers]".to_string(),
-        system_diagram: None,
-        files_analyzed: 25,
-        avg_complexity: 8.3,
-        tech_debt_hours: 45,
-        hotspots: vec![
-            Hotspot {
-                file: "src/complex.rs".to_string(),
-                complexity: 15,
-                churn_score: 80,
-            },
-            Hotspot {
-                file: "src/utils.rs".to_string(),
-                complexity: 12,
-                churn_score: 60,
-            },
-        ],
-        ast_time_ms: 120,
-        complexity_time_ms: 180,
-        churn_time_ms: 240,
-        dag_time_ms: 300,
-    };
+    let mut content = create_test_demo_content();
+    content.mermaid_diagram = "graph TD\n  A[Main] --> B[Utils]\n  A --> C[Helpers]".to_string();
+    content.files_analyzed = 25;
+    content.avg_complexity = 8.3;
+    content.tech_debt_hours = 45;
+    content.hotspots = vec![
+        EnhancedHotspot {
+            function: "complex_algorithm".to_string(),
+            file: "src/complex.rs".to_string(),
+            path: "src/complex.rs".to_string(),
+            complexity: 15,
+            loc: 80,
+            language: "rust".to_string(),
+            churn_score: 80,
+            refactor_suggestion: "Consider breaking down this function".to_string(),
+        },
+        EnhancedHotspot {
+            function: "utility_helper".to_string(),
+            file: "src/utils.rs".to_string(),
+            path: "src/utils.rs".to_string(),
+            complexity: 12,
+            loc: 60,
+            language: "rust".to_string(),
+            churn_score: 60,
+            refactor_suggestion: "Extract common patterns".to_string(),
+        },
+    ];
+    content.ast_time_ms = 120;
+    content.complexity_time_ms = 180;
+    content.churn_time_ms = 240;
+    content.dag_time_ms = 300;
 
     let (server, port) = LocalDemoServer::spawn(content).await.unwrap();
     let client = reqwest::Client::new();
@@ -152,18 +174,11 @@ async fn test_demo_server_api_endpoints() {
 
 #[tokio::test]
 async fn test_demo_server_static_assets() {
-    let content = DemoContent {
-        mermaid_diagram: "graph TD".to_string(),
-        system_diagram: None,
-        files_analyzed: 1,
-        avg_complexity: 1.0,
-        tech_debt_hours: 0,
-        hotspots: vec![],
-        ast_time_ms: 10,
-        complexity_time_ms: 20,
-        churn_time_ms: 30,
-        dag_time_ms: 40,
-    };
+    let mut content = create_test_demo_content();
+    content.mermaid_diagram = "graph TD".to_string();
+    content.files_analyzed = 1;
+    content.avg_complexity = 1.0;
+    content.tech_debt_hours = 0;
 
     let (server, port) = LocalDemoServer::spawn(content).await.unwrap();
     let client = reqwest::Client::new();
@@ -192,18 +207,11 @@ async fn test_demo_server_static_assets() {
 
 #[tokio::test]
 async fn test_demo_server_concurrent_requests() {
-    let content = DemoContent {
-        mermaid_diagram: "graph TD\n  A --> B".to_string(),
-        system_diagram: None,
-        files_analyzed: 100,
-        avg_complexity: std::f64::consts::PI,
-        tech_debt_hours: 8,
-        hotspots: vec![],
-        ast_time_ms: 50,
-        complexity_time_ms: 75,
-        churn_time_ms: 100,
-        dag_time_ms: 125,
-    };
+    let mut content = create_test_demo_content();
+    content.mermaid_diagram = "graph TD\n  A --> B".to_string();
+    content.files_analyzed = 100;
+    content.avg_complexity = std::f64::consts::PI;
+    content.tech_debt_hours = 8;
 
     let (server, port) = LocalDemoServer::spawn(content).await.unwrap();
     let base_url = format!("http://127.0.0.1:{port}");
@@ -236,18 +244,11 @@ async fn test_demo_server_concurrent_requests() {
 
 #[tokio::test]
 async fn test_demo_server_response_headers() {
-    let content = DemoContent {
-        mermaid_diagram: "graph TD".to_string(),
-        system_diagram: None,
-        files_analyzed: 1,
-        avg_complexity: 1.0,
-        tech_debt_hours: 0,
-        hotspots: vec![],
-        ast_time_ms: 1,
-        complexity_time_ms: 1,
-        churn_time_ms: 1,
-        dag_time_ms: 1,
-    };
+    let mut content = create_test_demo_content();
+    content.mermaid_diagram = "graph TD".to_string();
+    content.files_analyzed = 1;
+    content.avg_complexity = 1.0;
+    content.tech_debt_hours = 0;
 
     let (server, port) = LocalDemoServer::spawn(content).await.unwrap();
     let client = reqwest::Client::new();
@@ -289,35 +290,43 @@ async fn test_demo_server_response_headers() {
 #[tokio::test]
 async fn test_demo_content_rendering() {
     // Test with specific values to ensure proper rendering
-    let content = DemoContent {
-        mermaid_diagram:
-            "graph TD\n  API[API Server] --> DB[Database]\n  API --> Cache[Redis Cache]".to_string(),
-        system_diagram: None,
-        files_analyzed: 42,
-        avg_complexity: 6.78,
-        tech_debt_hours: 123,
-        hotspots: vec![
-            Hotspot {
-                file: "src/main.rs".to_string(),
-                complexity: 25,
-                churn_score: 95,
-            },
-            Hotspot {
-                file: "src/handlers/api.rs".to_string(),
-                complexity: 18,
-                churn_score: 70,
-            },
-            Hotspot {
-                file: "src/services/database.rs".to_string(),
-                complexity: 15,
-                churn_score: 50,
-            },
-        ],
-        ast_time_ms: 111,
-        complexity_time_ms: 222,
-        churn_time_ms: 333,
-        dag_time_ms: 444,
-    };
+    let mut content = create_test_demo_content();
+    content.mermaid_diagram = "graph TD\n  API[API Server] --> DB[Database]\n  API --> Cache[Redis Cache]".to_string();
+    content.files_analyzed = 42;
+    content.avg_complexity = 6.78;
+    content.tech_debt_hours = 123;
+    content.hotspots = vec![
+        EnhancedHotspot {
+            function: "main".to_string(),
+            file: "src/main.rs".to_string(),
+            path: "src/main.rs".to_string(),
+            complexity: 25,
+            loc: 150,
+            language: "rust".to_string(),
+            churn_score: 95,
+            refactor_suggestion: "High complexity function needs refactoring".to_string(),
+        },
+        EnhancedHotspot {
+            function: "handle_api".to_string(),
+            file: "src/handlers/api.rs".to_string(),
+            path: "src/handlers/api.rs".to_string(),
+            complexity: 18,
+            loc: 120,
+            language: "rust".to_string(),
+            churn_score: 70,
+            refactor_suggestion: "Consider breaking into smaller functions".to_string(),
+        },
+        EnhancedHotspot {
+            function: "database_query".to_string(),
+            file: "src/services/database.rs".to_string(),
+            path: "src/services/database.rs".to_string(),
+            complexity: 15,
+            loc: 100,
+            language: "rust".to_string(),
+            churn_score: 50,
+            refactor_suggestion: "Extract query builder patterns".to_string(),
+        },
+    ];
 
     let (server, port) = LocalDemoServer::spawn(content).await.unwrap();
     let client = reqwest::Client::new();
@@ -352,22 +361,21 @@ mod demo_web_tests {
 
     #[tokio::test]
     async fn test_demo_server_starts() {
-        let content = DemoContent {
-            mermaid_diagram: String::from("graph TD\n    A[Test] --> B[Demo]"),
-            system_diagram: None,
-            files_analyzed: 10,
-            avg_complexity: 5.5,
-            tech_debt_hours: 12,
-            hotspots: vec![Hotspot {
-                file: String::from("test.rs"),
-                complexity: 15,
-                churn_score: 80,
-            }],
-            ast_time_ms: 100,
-            complexity_time_ms: 150,
-            churn_time_ms: 200,
-            dag_time_ms: 250,
-        };
+        let mut content = create_test_demo_content();
+        content.mermaid_diagram = String::from("graph TD\n    A[Test] --> B[Demo]");
+        content.files_analyzed = 10;
+        content.avg_complexity = 5.5;
+        content.tech_debt_hours = 12;
+        content.hotspots = vec![EnhancedHotspot {
+            function: "test_function".to_string(),
+            file: String::from("test.rs"),
+            path: String::from("test.rs"),
+            complexity: 15,
+            loc: 80,
+            language: "rust".to_string(),
+            churn_score: 80,
+            refactor_suggestion: "Test function needs optimization".to_string(),
+        }];
 
         // Start the server
         let (server, port) = LocalDemoServer::spawn(content)

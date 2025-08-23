@@ -1,0 +1,990 @@
+use std::collections::HashMap;
+use std::path::Path;
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LanguageInfo {
+    pub name: String,
+    pub file_count: usize,
+    pub line_count: usize,
+    pub frameworks: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PolyglotAnalysis {
+    pub languages: Vec<LanguageStats>,
+    pub cross_language_dependencies: Vec<CrossLanguageDependency>,
+    pub architecture_pattern: Option<ArchitecturePattern>,
+    pub integration_points: Vec<IntegrationPoint>,
+    pub recommendation_score: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LanguageStats {
+    pub language: String,
+    pub file_count: usize,
+    pub line_count: usize,
+    pub complexity_score: f64,
+    pub test_coverage: f64,
+    pub primary_frameworks: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CrossLanguageDependency {
+    pub from_language: String,
+    pub to_language: String,
+    pub dependency_type: DependencyType,
+    pub coupling_strength: f64,
+    pub files_involved: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum DependencyType {
+    FFI,
+    ProcessCommunication,
+    SharedDataStructure,
+    ConfigurationFile,
+    BuildSystem,
+    Testing,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ArchitecturePattern {
+    Microservices,
+    Monolithic,
+    LayeredArchitecture,
+    EventDriven,
+    PluginArchitecture,
+    ClientServer,
+    Mixed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IntegrationPoint {
+    pub name: String,
+    pub languages: Vec<String>,
+    pub integration_type: IntegrationType,
+    pub risk_level: RiskLevel,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum IntegrationType {
+    API,
+    Database,
+    FileSystem,
+    Memory,
+    Network,
+    Configuration,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum RiskLevel {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+pub struct PolyglotAnalyzer {
+    language_patterns: HashMap<String, LanguagePattern>,
+    architecture_signatures: Vec<ArchitectureSignature>,
+}
+
+#[derive(Debug, Clone)]
+struct LanguagePattern {
+    file_extensions: Vec<String>,
+    _build_files: Vec<String>,
+    _config_files: Vec<String>,
+    _dependency_files: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+struct ArchitectureSignature {
+    pattern: ArchitecturePattern,
+    _indicators: Vec<String>,
+    required_languages: usize,
+    confidence_threshold: f64,
+}
+
+#[derive(Debug, Clone)]
+struct ArchitectureIndicators {
+    has_microservice_indicators: bool,
+    has_layered_indicators: bool,
+    has_event_indicators: bool,
+    has_plugin_indicators: bool,
+    directory_structure: Vec<String>,
+    config_files: Vec<String>,
+}
+
+impl PolyglotAnalyzer {
+    pub fn new() -> Self {
+        let mut analyzer = Self {
+            language_patterns: HashMap::new(),
+            architecture_signatures: Vec::new(),
+        };
+        analyzer.initialize_patterns();
+        analyzer.initialize_architecture_signatures();
+        analyzer
+    }
+
+    fn initialize_patterns(&mut self) {
+        self.language_patterns.insert("rust".to_string(), LanguagePattern {
+            file_extensions: vec![".rs".to_string()],
+            _build_files: vec!["Cargo.toml".to_string(), "Cargo.lock".to_string()],
+            _config_files: vec!["rust-toolchain".to_string(), ".rustfmt.toml".to_string()],
+            _dependency_files: vec!["Cargo.toml".to_string()],
+        });
+
+        self.language_patterns.insert("python".to_string(), LanguagePattern {
+            file_extensions: vec![".py".to_string(), ".pyw".to_string()],
+            _build_files: vec!["setup.py".to_string(), "pyproject.toml".to_string()],
+            _config_files: vec!["setup.cfg".to_string(), "tox.ini".to_string()],
+            _dependency_files: vec!["requirements.txt".to_string(), "Pipfile".to_string()],
+        });
+
+        self.language_patterns.insert("typescript".to_string(), LanguagePattern {
+            file_extensions: vec![".ts".to_string(), ".tsx".to_string()],
+            _build_files: vec!["package.json".to_string(), "tsconfig.json".to_string()],
+            _config_files: vec!["webpack.config.js".to_string(), ".eslintrc.json".to_string()],
+            _dependency_files: vec!["package.json".to_string(), "yarn.lock".to_string()],
+        });
+
+        self.language_patterns.insert("javascript".to_string(), LanguagePattern {
+            file_extensions: vec![".js".to_string(), ".jsx".to_string()],
+            _build_files: vec!["package.json".to_string(), "webpack.config.js".to_string()],
+            _config_files: vec![".babelrc".to_string(), ".eslintrc.js".to_string()],
+            _dependency_files: vec!["package.json".to_string(), "package-lock.json".to_string()],
+        });
+    }
+
+    fn initialize_architecture_signatures(&mut self) {
+        self.architecture_signatures.push(ArchitectureSignature {
+            pattern: ArchitecturePattern::Microservices,
+            _indicators: vec![
+                "docker-compose".to_string(),
+                "kubernetes".to_string(),
+                "service".to_string(),
+                "api".to_string(),
+            ],
+            required_languages: 2,
+            confidence_threshold: 0.7,
+        });
+
+        self.architecture_signatures.push(ArchitectureSignature {
+            pattern: ArchitecturePattern::LayeredArchitecture,
+            _indicators: vec![
+                "controller".to_string(),
+                "service".to_string(),
+                "repository".to_string(),
+                "model".to_string(),
+            ],
+            required_languages: 1,
+            confidence_threshold: 0.8,
+        });
+
+        self.architecture_signatures.push(ArchitectureSignature {
+            pattern: ArchitecturePattern::EventDriven,
+            _indicators: vec![
+                "event".to_string(),
+                "message".to_string(),
+                "queue".to_string(),
+                "pub_sub".to_string(),
+            ],
+            required_languages: 1,
+            confidence_threshold: 0.6,
+        });
+    }
+
+    pub async fn analyze_project(&self, project_path: &Path) -> Result<PolyglotAnalysis, Box<dyn std::error::Error>> {
+        let language_info = self.detect_languages(project_path).await?;
+        let language_stats = self.calculate_language_stats(&language_info).await?;
+        let cross_deps = self.analyze_cross_language_dependencies(project_path, &language_info).await?;
+        let architecture = self.detect_architecture_pattern(project_path, &language_info).await?;
+        let integration_points = self.identify_integration_points(project_path, &cross_deps).await?;
+        let recommendation_score = self.calculate_recommendation_score(&language_stats, &cross_deps, &architecture);
+
+        Ok(PolyglotAnalysis {
+            languages: language_stats,
+            cross_language_dependencies: cross_deps,
+            architecture_pattern: architecture,
+            integration_points,
+            recommendation_score,
+        })
+    }
+
+    async fn detect_languages(&self, project_path: &Path) -> Result<HashMap<String, LanguageInfo>, Box<dyn std::error::Error>> {
+        let mut languages = HashMap::new();
+
+        for (lang_name, pattern) in &self.language_patterns {
+            let mut file_count = 0;
+            let mut total_lines = 0;
+            // Recursively scan project directory for language files
+            self.scan_directory_recursive(project_path, &pattern.file_extensions, &mut file_count, &mut total_lines)?;
+            
+            // Detect frameworks for this language
+            let frameworks = self.detect_language_frameworks(project_path, lang_name).await?;
+
+            if file_count > 0 {
+                languages.insert(lang_name.clone(), LanguageInfo {
+                    name: lang_name.clone(),
+                    file_count,
+                    line_count: total_lines,
+                    frameworks,
+                });
+            }
+        }
+
+        Ok(languages)
+    }
+
+    fn scan_directory_recursive(
+        &self,
+        dir_path: &Path,
+        extensions: &[String],
+        file_count: &mut usize,
+        total_lines: &mut usize,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if let Ok(entries) = std::fs::read_dir(dir_path) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                
+                if path.is_dir() {
+                    // Skip common non-source directories
+                    if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                        if matches!(dir_name, "node_modules" | "target" | "build" | ".git" | "__pycache__" | ".venv" | "venv") {
+                            continue;
+                        }
+                    }
+                    self.scan_directory_recursive(&path, extensions, file_count, total_lines)?;
+                } else if path.is_file() {
+                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                        let full_ext = format!(".{}", ext);
+                        if extensions.contains(&full_ext) {
+                            *file_count += 1;
+                            if let Ok(content) = std::fs::read_to_string(&path) {
+                                *total_lines += content.lines().count();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    async fn detect_language_frameworks(&self, project_path: &Path, language: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        let mut frameworks = Vec::new();
+        
+        match language {
+            "rust" => {
+                if let Ok(cargo_toml) = std::fs::read_to_string(project_path.join("Cargo.toml")) {
+                    if cargo_toml.contains("tokio") { frameworks.push("Tokio".to_string()); }
+                    if cargo_toml.contains("actix-web") { frameworks.push("Actix Web".to_string()); }
+                    if cargo_toml.contains("axum") { frameworks.push("Axum".to_string()); }
+                    if cargo_toml.contains("diesel") { frameworks.push("Diesel".to_string()); }
+                    if cargo_toml.contains("serde") { frameworks.push("Serde".to_string()); }
+                    if cargo_toml.contains("clap") { frameworks.push("Clap".to_string()); }
+                }
+            },
+            "python" => {
+                // Check for common Python frameworks
+                if project_path.join("requirements.txt").exists() {
+                    if let Ok(reqs) = std::fs::read_to_string(project_path.join("requirements.txt")) {
+                        if reqs.contains("django") { frameworks.push("Django".to_string()); }
+                        if reqs.contains("flask") { frameworks.push("Flask".to_string()); }
+                        if reqs.contains("fastapi") { frameworks.push("FastAPI".to_string()); }
+                        if reqs.contains("pandas") { frameworks.push("Pandas".to_string()); }
+                        if reqs.contains("numpy") { frameworks.push("NumPy".to_string()); }
+                    }
+                }
+                if project_path.join("pyproject.toml").exists() {
+                    if let Ok(pyproject) = std::fs::read_to_string(project_path.join("pyproject.toml")) {
+                        if pyproject.contains("django") { frameworks.push("Django".to_string()); }
+                        if pyproject.contains("flask") { frameworks.push("Flask".to_string()); }
+                        if pyproject.contains("fastapi") { frameworks.push("FastAPI".to_string()); }
+                    }
+                }
+            },
+            "typescript" | "javascript" => {
+                if let Ok(package_json) = std::fs::read_to_string(project_path.join("package.json")) {
+                    if package_json.contains("react") { frameworks.push("React".to_string()); }
+                    if package_json.contains("vue") { frameworks.push("Vue.js".to_string()); }
+                    if package_json.contains("angular") { frameworks.push("Angular".to_string()); }
+                    if package_json.contains("express") { frameworks.push("Express.js".to_string()); }
+                    if package_json.contains("next") { frameworks.push("Next.js".to_string()); }
+                    if package_json.contains("svelte") { frameworks.push("Svelte".to_string()); }
+                }
+            },
+            _ => {}
+        }
+        
+        Ok(frameworks)
+    }
+
+    async fn calculate_language_stats(&self, language_info: &HashMap<String, LanguageInfo>) -> Result<Vec<LanguageStats>, Box<dyn std::error::Error>> {
+        let mut stats = Vec::new();
+
+        for (lang_name, info) in language_info {
+            let complexity_score = self.calculate_language_complexity_score(info);
+            let test_coverage = self.estimate_test_coverage(info);
+            
+            stats.push(LanguageStats {
+                language: lang_name.clone(),
+                file_count: info.file_count,
+                line_count: info.line_count,
+                complexity_score,
+                test_coverage,
+                primary_frameworks: info.frameworks.clone(),
+            });
+        }
+
+        stats.sort_by(|a, b| b.line_count.cmp(&a.line_count));
+        Ok(stats)
+    }
+
+    fn calculate_language_complexity_score(&self, info: &LanguageInfo) -> f64 {
+        let base_score = (info.line_count as f64).ln() / (info.file_count as f64).ln();
+        base_score.clamp(1.0, 10.0)
+    }
+
+    fn estimate_test_coverage(&self, _info: &LanguageInfo) -> f64 {
+        0.75
+    }
+
+    async fn analyze_cross_language_dependencies(&self, project_path: &Path, language_info: &HashMap<String, LanguageInfo>) -> Result<Vec<CrossLanguageDependency>, Box<dyn std::error::Error>> {
+        let mut dependencies = Vec::new();
+        let languages: Vec<_> = language_info.keys().collect();
+
+        for (i, lang1) in languages.iter().enumerate() {
+            for lang2 in languages.iter().skip(i + 1) {
+                if let Some(dep) = self.analyze_language_pair(project_path, lang1, lang2).await? {
+                    dependencies.push(dep);
+                }
+            }
+        }
+
+        // Also analyze build system and configuration dependencies
+        dependencies.extend(self.analyze_build_system_dependencies(project_path, language_info).await?);
+        dependencies.extend(self.analyze_configuration_dependencies(project_path, language_info).await?);
+
+        Ok(dependencies)
+    }
+
+    async fn analyze_language_pair(&self, project_path: &Path, lang1: &str, lang2: &str) -> Result<Option<CrossLanguageDependency>, Box<dyn std::error::Error>> {
+        if !self.has_potential_integration(lang1, lang2) {
+            return Ok(None);
+        }
+
+        let mut files_involved = Vec::new();
+        let mut coupling_strength: f64 = 0.0;
+        let dependency_type = self.infer_dependency_type(lang1, lang2);
+
+        // Analyze actual file interactions
+        match (lang1, lang2) {
+            ("rust", "python") | ("python", "rust") => {
+                // Look for PyO3 bindings or ctypes usage
+                coupling_strength = self.analyze_rust_python_integration(project_path, &mut files_involved).await?;
+            },
+            ("typescript", "javascript") | ("javascript", "typescript") => {
+                // Look for shared configurations and imports
+                coupling_strength = self.analyze_js_ts_integration(project_path, &mut files_involved).await?;
+            },
+            ("javascript", "python") | ("python", "javascript") |
+            ("typescript", "python") | ("python", "typescript") => {
+                // Look for API boundaries and shared data formats
+                coupling_strength = self.analyze_api_integration(project_path, &mut files_involved).await?;
+            },
+            _ => {
+                coupling_strength = 0.3; // Default moderate coupling
+                files_involved.push("shared config".to_string());
+            }
+        }
+
+        if coupling_strength > 0.1 {
+            Ok(Some(CrossLanguageDependency {
+                from_language: lang1.to_string(),
+                to_language: lang2.to_string(),
+                dependency_type,
+                coupling_strength,
+                files_involved,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn analyze_rust_python_integration(&self, project_path: &Path, files_involved: &mut Vec<String>) -> Result<f64, Box<dyn std::error::Error>> {
+        let mut coupling_strength: f64 = 0.0;
+
+        // Check Cargo.toml for PyO3
+        if let Ok(cargo_toml) = std::fs::read_to_string(project_path.join("Cargo.toml")) {
+            if cargo_toml.contains("pyo3") {
+                coupling_strength += 0.7;
+                files_involved.push("Cargo.toml (PyO3)".to_string());
+            }
+        }
+
+        // Check for Python setup files that reference Rust
+        if let Ok(setup_py) = std::fs::read_to_string(project_path.join("setup.py")) {
+            if setup_py.contains("rust") || setup_py.contains("cargo") {
+                coupling_strength += 0.5;
+                files_involved.push("setup.py".to_string());
+            }
+        }
+
+        // Check for .so files or build artifacts
+        if project_path.join("target").exists() && project_path.join("__pycache__").exists() {
+            coupling_strength += 0.3;
+            files_involved.push("build artifacts".to_string());
+        }
+
+        Ok(coupling_strength.min(1.0))
+    }
+
+    async fn analyze_js_ts_integration(&self, project_path: &Path, files_involved: &mut Vec<String>) -> Result<f64, Box<dyn std::error::Error>> {
+        let mut coupling_strength: f64 = 0.0;
+
+        // Check for TypeScript config
+        if project_path.join("tsconfig.json").exists() {
+            coupling_strength += 0.6;
+            files_involved.push("tsconfig.json".to_string());
+        }
+
+        // Check package.json for TypeScript dependencies
+        if let Ok(package_json) = std::fs::read_to_string(project_path.join("package.json")) {
+            if package_json.contains("typescript") {
+                coupling_strength += 0.4;
+                files_involved.push("package.json (TypeScript)".to_string());
+            }
+        }
+
+        // Check for mixed .js and .ts files
+        let mut js_files = 0;
+        let mut ts_files = 0;
+        self.count_files_recursive(project_path, &["js".to_string()], &mut js_files)?;
+        self.count_files_recursive(project_path, &["ts".to_string()], &mut ts_files)?;
+        
+        if js_files > 0 && ts_files > 0 {
+            coupling_strength += 0.3;
+            files_involved.push(format!("{} JS + {} TS files", js_files, ts_files));
+        }
+
+        Ok(coupling_strength.min(1.0))
+    }
+
+    async fn analyze_api_integration(&self, project_path: &Path, files_involved: &mut Vec<String>) -> Result<f64, Box<dyn std::error::Error>> {
+        let mut coupling_strength: f64 = 0.0;
+
+        // Look for API specification files
+        for api_file in &["openapi.yaml", "openapi.json", "swagger.yaml", "swagger.json", "api.yaml"] {
+            if project_path.join(api_file).exists() {
+                coupling_strength += 0.5;
+                files_involved.push(api_file.to_string());
+            }
+        }
+
+        // Look for shared data schemas
+        for schema_file in &["schema.json", "types.json", "models.json"] {
+            if project_path.join(schema_file).exists() {
+                coupling_strength += 0.3;
+                files_involved.push(schema_file.to_string());
+            }
+        }
+
+        // Look for Docker Compose indicating microservices
+        if project_path.join("docker-compose.yml").exists() || project_path.join("docker-compose.yaml").exists() {
+            coupling_strength += 0.4;
+            files_involved.push("docker-compose".to_string());
+        }
+
+        Ok(coupling_strength.min(1.0))
+    }
+
+    async fn analyze_build_system_dependencies(&self, project_path: &Path, language_info: &HashMap<String, LanguageInfo>) -> Result<Vec<CrossLanguageDependency>, Box<dyn std::error::Error>> {
+        let mut dependencies = Vec::new();
+
+        // Check for multi-language build systems
+        if project_path.join("Makefile").exists() {
+            if let Ok(makefile) = std::fs::read_to_string(project_path.join("Makefile")) {
+                let languages_in_make: Vec<_> = language_info.keys()
+                    .filter(|&lang| makefile.contains(lang))
+                    .collect();
+                    
+                if languages_in_make.len() >= 2 {
+                    for (i, &lang1) in languages_in_make.iter().enumerate() {
+                        for &lang2 in languages_in_make.iter().skip(i + 1) {
+                            dependencies.push(CrossLanguageDependency {
+                                from_language: lang1.to_string(),
+                                to_language: lang2.to_string(),
+                                dependency_type: DependencyType::BuildSystem,
+                                coupling_strength: 0.6,
+                                files_involved: vec!["Makefile".to_string()],
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(dependencies)
+    }
+
+    async fn analyze_configuration_dependencies(&self, project_path: &Path, language_info: &HashMap<String, LanguageInfo>) -> Result<Vec<CrossLanguageDependency>, Box<dyn std::error::Error>> {
+        let mut dependencies = Vec::new();
+
+        // Check for shared configuration files
+        for config_file in &["config.json", "settings.yaml", ".env", "app.config"] {
+            if project_path.join(config_file).exists() {
+                let languages: Vec<_> = language_info.keys().collect();
+                if languages.len() >= 2 {
+                    for (i, &lang1) in languages.iter().enumerate() {
+                        for &lang2 in languages.iter().skip(i + 1) {
+                            dependencies.push(CrossLanguageDependency {
+                                from_language: lang1.to_string(),
+                                to_language: lang2.to_string(),
+                                dependency_type: DependencyType::ConfigurationFile,
+                                coupling_strength: 0.4,
+                                files_involved: vec![config_file.to_string()],
+                            });
+                        }
+                    }
+                }
+                break; // Only count one shared config file
+            }
+        }
+
+        Ok(dependencies)
+    }
+
+    fn count_files_recursive(&self, dir_path: &Path, extensions: &[String], count: &mut usize) -> Result<(), Box<dyn std::error::Error>> {
+        if let Ok(entries) = std::fs::read_dir(dir_path) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                        if matches!(dir_name, "node_modules" | "target" | "build" | ".git" | "__pycache__" | ".venv" | "venv") {
+                            continue;
+                        }
+                    }
+                    self.count_files_recursive(&path, extensions, count)?;
+                } else if path.is_file() {
+                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                        if extensions.contains(&ext.to_string()) {
+                            *count += 1;
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn has_potential_integration(&self, lang1: &str, lang2: &str) -> bool {
+        matches!(
+            (lang1, lang2),
+            ("rust", "python") | ("python", "rust") |
+            ("typescript", "rust") | ("rust", "typescript") |
+            ("javascript", "python") | ("python", "javascript") |
+            ("typescript", "javascript") | ("javascript", "typescript")
+        )
+    }
+
+    fn infer_dependency_type(&self, lang1: &str, lang2: &str) -> DependencyType {
+        match (lang1, lang2) {
+            ("rust", "python") | ("python", "rust") => DependencyType::FFI,
+            ("typescript", "javascript") | ("javascript", "typescript") => DependencyType::SharedDataStructure,
+            _ => DependencyType::ProcessCommunication,
+        }
+    }
+
+
+    async fn detect_architecture_pattern(&self, project_path: &Path, language_info: &HashMap<String, LanguageInfo>) -> Result<Option<ArchitecturePattern>, Box<dyn std::error::Error>> {
+        let language_count = language_info.len();
+        
+        // Analyze project structure for architecture indicators
+        let architecture_indicators = self.analyze_architecture_indicators(project_path).await?;
+        
+        for signature in &self.architecture_signatures {
+            if language_count >= signature.required_languages {
+                let confidence = self.calculate_architecture_confidence(signature, language_info, &architecture_indicators);
+                if confidence >= signature.confidence_threshold {
+                    return Ok(Some(signature.pattern.clone()));
+                }
+            }
+        }
+
+        // Fallback detection based on project structure
+        if architecture_indicators.has_microservice_indicators {
+            Ok(Some(ArchitecturePattern::Microservices))
+        } else if architecture_indicators.has_layered_indicators {
+            Ok(Some(ArchitecturePattern::LayeredArchitecture))
+        } else if architecture_indicators.has_event_indicators {
+            Ok(Some(ArchitecturePattern::EventDriven))
+        } else if language_count >= 3 {
+            Ok(Some(ArchitecturePattern::Mixed))
+        } else if language_count >= 2 {
+            Ok(Some(ArchitecturePattern::ClientServer))
+        } else {
+            Ok(Some(ArchitecturePattern::Monolithic))
+        }
+    }
+    
+    async fn analyze_architecture_indicators(&self, project_path: &Path) -> Result<ArchitectureIndicators, Box<dyn std::error::Error>> {
+        let mut indicators = ArchitectureIndicators {
+            has_microservice_indicators: false,
+            has_layered_indicators: false,
+            has_event_indicators: false,
+            has_plugin_indicators: false,
+            directory_structure: Vec::new(),
+            config_files: Vec::new(),
+        };
+        
+        // Analyze directory structure
+        indicators.directory_structure = self.analyze_directory_structure(project_path).await?;
+        
+        // Check for microservice indicators
+        if project_path.join("docker-compose.yml").exists() ||
+           project_path.join("docker-compose.yaml").exists() ||
+           project_path.join("kubernetes").exists() ||
+           project_path.join("k8s").exists() {
+            indicators.has_microservice_indicators = true;
+        }
+        
+        // Check for layered architecture indicators
+        let has_controller = indicators.directory_structure.iter().any(|d| d.contains("controller"));
+        let has_service = indicators.directory_structure.iter().any(|d| d.contains("service"));
+        let has_repository = indicators.directory_structure.iter().any(|d| d.contains("repository") || d.contains("dao"));
+        let has_model = indicators.directory_structure.iter().any(|d| d.contains("model") || d.contains("entity"));
+        
+        if (has_controller && has_service) || (has_service && has_repository) || (has_model && has_service) {
+            indicators.has_layered_indicators = true;
+        }
+        
+        // Check for event-driven indicators
+        let has_event = indicators.directory_structure.iter().any(|d| d.contains("event"));
+        let has_message = indicators.directory_structure.iter().any(|d| d.contains("message") || d.contains("msg"));
+        let has_queue = indicators.directory_structure.iter().any(|d| d.contains("queue"));
+        
+        if has_event || has_message || has_queue {
+            indicators.has_event_indicators = true;
+        }
+        
+        // Check for plugin architecture indicators
+        let has_plugin = indicators.directory_structure.iter().any(|d| d.contains("plugin") || d.contains("extension"));
+        if has_plugin {
+            indicators.has_plugin_indicators = true;
+        }
+        
+        Ok(indicators)
+    }
+    
+    async fn analyze_directory_structure(&self, project_path: &Path) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        let mut directories = Vec::new();
+        self.collect_directories_recursive(project_path, &mut directories, 0)?;
+        Ok(directories)
+    }
+    
+    fn collect_directories_recursive(&self, dir_path: &Path, directories: &mut Vec<String>, depth: usize) -> Result<(), Box<dyn std::error::Error>> {
+        if depth > 3 { // Limit recursion depth
+            return Ok(());
+        }
+        
+        if let Ok(entries) = std::fs::read_dir(dir_path) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                        // Skip common non-architecture directories
+                        if matches!(dir_name, "node_modules" | "target" | "build" | ".git" | "__pycache__" | ".venv" | "venv" | "dist") {
+                            continue;
+                        }
+                        directories.push(dir_name.to_lowercase());
+                        self.collect_directories_recursive(&path, directories, depth + 1)?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn calculate_architecture_confidence(&self, signature: &ArchitectureSignature, language_info: &HashMap<String, LanguageInfo>, indicators: &ArchitectureIndicators) -> f64 {
+        let mut confidence: f64 = 0.0;
+        
+        match signature.pattern {
+            ArchitecturePattern::Microservices => {
+                if indicators.has_microservice_indicators {
+                    confidence += 0.6;
+                }
+                if language_info.len() >= 2 {
+                    confidence += 0.2;
+                }
+                // Docker/container indicators
+                if indicators.config_files.iter().any(|f| f.contains("docker")) {
+                    confidence += 0.2;
+                }
+            },
+            ArchitecturePattern::LayeredArchitecture => {
+                if indicators.has_layered_indicators {
+                    confidence += 0.7;
+                }
+                // Common in enterprise applications
+                if language_info.contains_key("java") || language_info.contains_key("csharp") {
+                    confidence += 0.1;
+                }
+            },
+            ArchitecturePattern::EventDriven => {
+                if indicators.has_event_indicators {
+                    confidence += 0.6;
+                }
+                // Message queues, event systems
+                if indicators.directory_structure.iter().any(|d| d.contains("kafka") || d.contains("rabbitmq")) {
+                    confidence += 0.2;
+                }
+            },
+            ArchitecturePattern::PluginArchitecture => {
+                if indicators.has_plugin_indicators {
+                    confidence += 0.7;
+                }
+            },
+            _ => {
+                confidence = 0.5; // Default confidence
+            }
+        }
+        
+        confidence.clamp(0.0, 1.0)
+    }
+
+    async fn identify_integration_points(&self, _project_path: &Path, cross_deps: &[CrossLanguageDependency]) -> Result<Vec<IntegrationPoint>, Box<dyn std::error::Error>> {
+        let mut integration_points = Vec::new();
+
+        for dep in cross_deps {
+            integration_points.push(IntegrationPoint {
+                name: format!("{} ↔ {}", dep.from_language, dep.to_language),
+                languages: vec![dep.from_language.clone(), dep.to_language.clone()],
+                integration_type: self.map_dependency_to_integration(&dep.dependency_type),
+                risk_level: self.assess_risk_level(dep.coupling_strength),
+                description: format!("Integration between {} and {} via {:?}", 
+                    dep.from_language, dep.to_language, dep.dependency_type),
+            });
+        }
+
+        Ok(integration_points)
+    }
+
+    fn map_dependency_to_integration(&self, dep_type: &DependencyType) -> IntegrationType {
+        match dep_type {
+            DependencyType::FFI => IntegrationType::Memory,
+            DependencyType::ProcessCommunication => IntegrationType::Network,
+            DependencyType::SharedDataStructure => IntegrationType::Memory,
+            DependencyType::ConfigurationFile => IntegrationType::Configuration,
+            DependencyType::BuildSystem => IntegrationType::FileSystem,
+            DependencyType::Testing => IntegrationType::API,
+        }
+    }
+
+    fn assess_risk_level(&self, coupling_strength: f64) -> RiskLevel {
+        if coupling_strength >= 0.8 {
+            RiskLevel::Critical
+        } else if coupling_strength >= 0.6 {
+            RiskLevel::High
+        } else if coupling_strength >= 0.4 {
+            RiskLevel::Medium
+        } else {
+            RiskLevel::Low
+        }
+    }
+
+    fn calculate_recommendation_score(&self, language_stats: &[LanguageStats], cross_deps: &[CrossLanguageDependency], architecture: &Option<ArchitecturePattern>) -> f64 {
+        let mut score: f64 = 0.0;
+
+        let total_lines: usize = language_stats.iter().map(|s| s.line_count).sum();
+        if total_lines > 1000 {
+            score += 0.3;
+        }
+
+        let language_count = language_stats.len();
+        if language_count >= 2 {
+            score += 0.2;
+        }
+        if language_count >= 3 {
+            score += 0.2;
+        }
+
+        if !cross_deps.is_empty() {
+            score += 0.2;
+        }
+
+        if architecture.is_some() {
+            score += 0.1;
+        }
+
+        score.clamp(0.0, 1.0)
+    }
+
+    pub fn generate_polyglot_insights(&self, analysis: &PolyglotAnalysis) -> Vec<String> {
+        let mut insights = Vec::new();
+
+        if analysis.languages.len() >= 3 {
+            insights.push("This is a polyglot project with multiple programming languages".to_string());
+        }
+
+        let primary_language = analysis.languages.first();
+        if let Some(lang) = primary_language {
+            insights.push(format!("Primary language: {} ({} files, {} lines)", 
+                lang.language, lang.file_count, lang.line_count));
+        }
+
+        if !analysis.cross_language_dependencies.is_empty() {
+            insights.push(format!("Found {} cross-language integration points", 
+                analysis.cross_language_dependencies.len()));
+        }
+
+        if let Some(pattern) = &analysis.architecture_pattern {
+            insights.push(format!("Architecture pattern: {:?}", pattern));
+        }
+
+        let high_risk_points: Vec<_> = analysis.integration_points.iter()
+            .filter(|p| matches!(p.risk_level, RiskLevel::High | RiskLevel::Critical))
+            .collect();
+        
+        if !high_risk_points.is_empty() {
+            insights.push(format!("⚠️  {} high-risk integration points identified", high_risk_points.len()));
+        }
+
+        insights.push(format!("Overall recommendation score: {:.2}/1.0", analysis.recommendation_score));
+
+        insights
+    }
+}
+
+impl Default for PolyglotAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_polyglot_analyzer_creation() {
+        let analyzer = PolyglotAnalyzer::new();
+        assert!(!analyzer.language_patterns.is_empty());
+        assert!(!analyzer.architecture_signatures.is_empty());
+    }
+
+    #[test]
+    fn test_language_pattern_initialization() {
+        let analyzer = PolyglotAnalyzer::new();
+        let rust_pattern = analyzer.language_patterns.get("rust").unwrap();
+        assert!(rust_pattern.file_extensions.contains(&".rs".to_string()));
+        assert!(rust_pattern._build_files.contains(&"Cargo.toml".to_string()));
+    }
+
+    #[test]
+    fn test_has_potential_integration() {
+        let analyzer = PolyglotAnalyzer::new();
+        assert!(analyzer.has_potential_integration("rust", "python"));
+        assert!(analyzer.has_potential_integration("typescript", "javascript"));
+        assert!(!analyzer.has_potential_integration("rust", "rust"));
+    }
+
+    #[test]
+    fn test_dependency_type_inference() {
+        let analyzer = PolyglotAnalyzer::new();
+        let dep_type = analyzer.infer_dependency_type("rust", "python");
+        assert!(matches!(dep_type, DependencyType::FFI));
+    }
+
+    #[test]
+    fn test_risk_level_assessment() {
+        let analyzer = PolyglotAnalyzer::new();
+        assert!(matches!(analyzer.assess_risk_level(0.9), RiskLevel::Critical));
+        assert!(matches!(analyzer.assess_risk_level(0.7), RiskLevel::High));
+        assert!(matches!(analyzer.assess_risk_level(0.5), RiskLevel::Medium));
+        assert!(matches!(analyzer.assess_risk_level(0.2), RiskLevel::Low));
+    }
+
+    #[test]
+    fn test_complexity_score_calculation() {
+        let analyzer = PolyglotAnalyzer::new();
+        let language_info = LanguageInfo {
+            name: "rust".to_string(),
+            file_count: 10,
+            line_count: 1000,
+            frameworks: vec![],
+        };
+        
+        let score = analyzer.calculate_language_complexity_score(&language_info);
+        assert!(score >= 1.0 && score <= 10.0);
+    }
+
+    #[test]
+    fn test_integration_point_mapping() {
+        let analyzer = PolyglotAnalyzer::new();
+        let integration_type = analyzer.map_dependency_to_integration(&DependencyType::FFI);
+        assert!(matches!(integration_type, IntegrationType::Memory));
+    }
+
+    #[test]
+    fn test_recommendation_score_calculation() {
+        let analyzer = PolyglotAnalyzer::new();
+        let language_stats = vec![
+            LanguageStats {
+                language: "rust".to_string(),
+                file_count: 10,
+                line_count: 2000,
+                complexity_score: 5.0,
+                test_coverage: 0.8,
+                primary_frameworks: vec![],
+            }
+        ];
+        
+        let score = analyzer.calculate_recommendation_score(&language_stats, &[], &Some(ArchitecturePattern::Monolithic));
+        assert!(score >= 0.0 && score <= 1.0);
+    }
+
+    #[test]
+    fn test_polyglot_insights_generation() {
+        let analyzer = PolyglotAnalyzer::new();
+        let analysis = PolyglotAnalysis {
+            languages: vec![
+                LanguageStats {
+                    language: "rust".to_string(),
+                    file_count: 5,
+                    line_count: 1000,
+                    complexity_score: 5.0,
+                    test_coverage: 0.8,
+                    primary_frameworks: vec![],
+                },
+                LanguageStats {
+                    language: "python".to_string(),
+                    file_count: 3,
+                    line_count: 500,
+                    complexity_score: 3.0,
+                    test_coverage: 0.7,
+                    primary_frameworks: vec![],
+                },
+                LanguageStats {
+                    language: "typescript".to_string(),
+                    file_count: 2,
+                    line_count: 300,
+                    complexity_score: 4.0,
+                    test_coverage: 0.6,
+                    primary_frameworks: vec![],
+                },
+            ],
+            cross_language_dependencies: vec![],
+            architecture_pattern: Some(ArchitecturePattern::Mixed),
+            integration_points: vec![],
+            recommendation_score: 0.8,
+        };
+        
+        let insights = analyzer.generate_polyglot_insights(&analysis);
+        assert!(!insights.is_empty());
+        assert!(insights.iter().any(|i| i.contains("polyglot project")));
+        assert!(insights.iter().any(|i| i.contains("Primary language: rust")));
+    }
+}
