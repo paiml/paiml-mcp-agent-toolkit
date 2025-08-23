@@ -108,10 +108,11 @@ Support matrix for "just works" analysis:
 
 ### Phase 1: Fix Core Infrastructure (Sprint 1 - v2.9.0)
 
-#### PMAT-6001: Fix Remote Repository Cloning
+#### PMAT-6001: Fix Remote Repository Cloning ✅
 - **Priority**: P0
 - **Complexity**: High
 - **Owner**: AI Assistant
+- **Status**: COMPLETED
 
 **Issues to Fix**:
 ```rust
@@ -139,10 +140,11 @@ if is_remote_url(&repo_spec) {
 
 **Validation Command**: `pmat demo --repo https://github.com/microsoft/calculator --cli`
 
-#### PMAT-6002: Enable Function-Level Analysis for Top Languages
+#### PMAT-6002: Enable Function-Level Analysis for Top Languages ✅
 - **Priority**: P0  
 - **Complexity**: High
 - **Dependencies**: AST parser improvements
+- **Status**: COMPLETED
 
 **Current Issues**:
 - Python: `rustpython-parser` integration incomplete
@@ -189,11 +191,16 @@ if is_remote_url(&repo_spec) {
 - `pmat analyze complexity --language javascript`
 - `pmat analyze complexity --language typescript`
 
-#### PMAT-6003: Language-Aware Dependency Graph Construction
+#### PMAT-6003: Language-Aware Dependency Graph Construction ✅
 - **Priority**: High
 - **Complexity**: Medium
+- **Status**: COMPLETED
 
-**Current Issue**: Empty dependency graphs for all non-Rust projects
+**Resolved**: Implemented Import variant for language-specific imports
+- Added Import variant to AstItem enum with module, items, and alias fields
+- Updated Python AST parser to use Import variant for proper tracking
+- Modified DAG builder to process Import variants and create dependency edges
+- Fixed pattern match exhaustiveness across codebase
 
 **Implementation**:
 
