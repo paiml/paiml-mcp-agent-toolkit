@@ -1,0 +1,28 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    purge)
+        echo "🧹 Purging PMAT data and configuration..."
+        
+        # Remove service user and directories on purge
+        if getent passwd pmat >/dev/null 2>&1; then
+            echo "👤 Removing pmat system user..."
+            userdel pmat || true
+        fi
+        
+        # Remove service directories
+        echo "📁 Removing service directories..."
+        rm -rf /var/lib/pmat-agent /var/log/pmat-agent || true
+        
+        # Remove configuration files
+        rm -rf /etc/pmat || true
+        
+        echo "✅ PMAT purge completed!"
+        ;;
+    remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        # Normal removal - keep data for potential reinstall
+        ;;
+esac
+
+exit 0

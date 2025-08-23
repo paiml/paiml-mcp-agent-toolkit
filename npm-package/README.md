@@ -1,7 +1,7 @@
 # PMAT - Pragmatic AI MCP Agent Toolkit
 
-[![npm version](https://badge.fury.io/js/pmat.svg)](https://badge.fury.io/js/pmat)
-[![Downloads](https://img.shields.io/npm/dm/pmat.svg)](https://www.npmjs.com/package/pmat)
+[![npm version](https://badge.fury.io/js/pmat-agent.svg)](https://badge.fury.io/js/pmat-agent)
+[![Downloads](https://img.shields.io/npm/dm/pmat-agent.svg)](https://www.npmjs.com/package/pmat-agent)
 
 **Zero-configuration AI context generation system** with Claude Code Agent Mode for continuous quality monitoring.
 
