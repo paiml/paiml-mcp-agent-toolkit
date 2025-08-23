@@ -3,13 +3,13 @@
 //! This module implements handlers for the agent subcommands, providing
 //! background daemon management and continuous quality monitoring capabilities.
 
-use crate::agent::{AgentDaemon, DaemonConfig, DaemonManager, DaemonSettings};
+use crate::agent::{AgentDaemon, DaemonConfig, DaemonManager};
 use crate::cli::AgentCommands;
 use anyhow::{anyhow, Result};
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::fs;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 /// Handle agent commands
 pub async fn handle_agent_command(command: AgentCommands) -> Result<()> {
@@ -67,7 +67,7 @@ pub async fn handle_agent_command(command: AgentCommands) -> Result<()> {
 
 /// Start the background agent daemon
 async fn handle_agent_start(
-    project_path: PathBuf,
+    _project_path: PathBuf,
     config_path: Option<PathBuf>,
     working_dir: Option<PathBuf>,
     pid_file: Option<PathBuf>,
@@ -312,7 +312,7 @@ async fn handle_agent_mcp_server(
         eprintln!("  - run_quality_gates: Execute quality gates");  
         eprintln!("  - analyze_complexity: Analyze code complexity");
         eprintln!("  - health_check: Check system health");
-        eprintln!("");
+        eprintln!();
         eprintln!("Ready for MCP client connections via stdio...");
     }
 
