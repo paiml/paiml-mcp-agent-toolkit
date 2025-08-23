@@ -1,0 +1,70 @@
+# Claude Code Agent - Development Configuration
+# PMAT-7007: Development environment settings with verbose logging and relaxed thresholds
+
+[agent]
+version = "2.10.0"
+name = "pmat-agent-dev"
+environment = "development"
+
+# Monitoring settings
+complexity_threshold = 25  # Slightly relaxed for development
+satd_enabled = true
+check_interval_seconds = 30
+watch_patterns = ["*.rs", "*.ts", "*.js", "*.py"]
+
+[quality_monitor]
+enabled = true
+debounce_ms = 1000
+full_analysis_interval_minutes = 10
+incremental_analysis = true
+
+# File system watching
+watch_depth = 5
+ignore_patterns = ["target/", "node_modules/", ".git/", "*.tmp"]
+max_file_size_mb = 10
+
+[daemon]
+pid_file = "/tmp/pmat-agent-dev.pid"
+log_file = "./logs/pmat-agent-dev.log"
+working_directory = "./"
+
+# Health monitoring
+health_check_interval_secs = 30
+max_memory_mb = 1000
+auto_restart = false  # Manual restart in dev
+shutdown_timeout_secs = 5
+
+[mcp]
+# MCP server settings
+protocol_version = "2024-11-05"
+server_name = "pmat-agent-dev"
+debug_mode = true
+
+# Tool configuration
+[mcp.tools]
+enable_all = true
+complexity_analysis = true
+quality_gates = true
+monitoring = true
+refactoring_suggestions = true
+
+[persistence]
+# State persistence settings
+state_dir = "./.pmat_state_dev"
+auto_save_interval_secs = 60
+history_retention_days = 7
+max_snapshots = 100
+
+[logging]
+# Development logging - verbose
+level = "debug"
+format = "pretty"
+show_timestamp = true
+show_file_location = true
+show_thread_ids = false
+
+[performance]
+# Performance tuning for development
+max_concurrent_analyses = 2
+cache_size_mb = 100
+analysis_timeout_secs = 30

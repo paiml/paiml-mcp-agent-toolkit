@@ -1,0 +1,135 @@
+# Claude Code Agent - Production Configuration
+# PMAT-7007: Production environment settings with strict quality gates and optimized performance
+
+[agent]
+version = "2.10.0"
+name = "pmat-agent-prod"
+environment = "production"
+
+# Monitoring settings - Toyota Way standards
+complexity_threshold = 20  # Strict Toyota Way standard
+satd_enabled = true
+check_interval_seconds = 60
+watch_patterns = ["*.rs", "*.ts", "*.tsx", "*.js", "*.jsx", "*.py", "*.go", "*.java"]
+
+[quality_monitor]
+enabled = true
+debounce_ms = 2000
+full_analysis_interval_minutes = 30
+incremental_analysis = true
+
+# File system watching
+watch_depth = 10
+ignore_patterns = [
+    "target/", "dist/", "build/", "node_modules/", 
+    ".git/", "*.tmp", "*.log", "*.cache",
+    "coverage/", "__pycache__/", ".pytest_cache/"
+]
+max_file_size_mb = 20
+
+[daemon]
+pid_file = "/var/run/pmat-agent.pid"
+log_file = "/var/log/pmat-agent/agent.log"
+working_directory = "/opt/pmat-agent"
+
+# Health monitoring
+health_check_interval_secs = 60
+max_memory_mb = 500
+auto_restart = true  # Automatic recovery in production
+shutdown_timeout_secs = 30
+
+[mcp]
+# MCP server settings
+protocol_version = "2024-11-05"
+server_name = "pmat-agent-prod"
+debug_mode = false
+
+# Tool configuration
+[mcp.tools]
+enable_all = true
+complexity_analysis = true
+quality_gates = true
+monitoring = true
+refactoring_suggestions = true
+
+# Rate limiting for production
+[mcp.rate_limiting]
+enabled = true
+max_requests_per_minute = 100
+max_concurrent_requests = 10
+
+[persistence]
+# State persistence settings
+state_dir = "/var/lib/pmat-agent/state"
+auto_save_interval_secs = 300  # Save every 5 minutes
+history_retention_days = 30
+max_snapshots = 1000
+
+# Backup configuration
+[persistence.backup]
+enabled = true
+backup_dir = "/var/lib/pmat-agent/backups"
+backup_interval_hours = 24
+max_backups = 7
+
+[logging]
+# Production logging - errors and warnings only
+level = "warn"
+format = "json"  # Structured logging for production
+show_timestamp = true
+show_file_location = false
+show_thread_ids = false
+
+# Log rotation
+[logging.rotation]
+enabled = true
+max_size_mb = 100
+max_files = 10
+compress = true
+
+[performance]
+# Performance tuning for production
+max_concurrent_analyses = 4
+cache_size_mb = 500
+analysis_timeout_secs = 60
+
+# Resource limits
+[performance.limits]
+max_cpu_percent = 50
+max_io_operations_per_sec = 1000
+nice_priority = 10
+
+[security]
+# Security settings for production
+require_authentication = false  # MCP handles auth
+allowed_paths = ["/"]
+disallowed_patterns = ["../", "~/", "/etc/", "/sys/", "/proc/"]
+
+[monitoring]
+# Metrics and monitoring
+metrics_enabled = true
+metrics_port = 9090
+metrics_path = "/metrics"
+
+# Alerts configuration
+[monitoring.alerts]
+enabled = true
+webhook_url = ""  # Configure for your alerting system
+alert_on_high_complexity = true
+alert_on_satd_increase = true
+alert_on_quality_drop = true
+quality_threshold = 80.0
+
+[integration]
+# External integrations
+github_enabled = false
+gitlab_enabled = false
+jira_enabled = false
+
+# CI/CD integration
+[integration.ci]
+enabled = true
+output_format = "json"
+fail_on_quality_gate_failure = true
+generate_reports = true
+report_dir = "/var/lib/pmat-agent/reports"

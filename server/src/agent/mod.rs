@@ -22,7 +22,16 @@
 pub mod mcp_server;
 pub mod quality_monitor;
 pub mod daemon;
+pub mod state_persistence;
 
 pub use mcp_server::*;
-pub use quality_monitor::*;
+pub use quality_monitor::{
+    QualityMonitorEngine, QualityMonitorConfig, QualityEvent, 
+    FileQualityMetrics, QualityMetrics as MonitorQualityMetrics
+};
 pub use daemon::*;
+pub use state_persistence::{
+    StatePersistence, AgentState, ProjectState, QualitySnapshot,
+    QualityMetrics as PersistentQualityMetrics, QualityThresholds,
+    AgentStatistics
+};
