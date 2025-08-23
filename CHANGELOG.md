@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **PMAT-6001**: Fix remote repository cloning for GitHub URLs
+  - Implemented `resolve_repository_async` function for actual cloning
+  - Fixed path resolution to properly detect and clone remote repositories
+  - Integrated GitCloner with DemoRunner for seamless remote repo support
+  
+- **PMAT-6002**: Enable function-level analysis for Python/JavaScript
+  - Added python-ast feature to most-languages feature set
+  - Enabled Python function detection and complexity analysis
+  - Python repositories now properly report function metrics
+  
+- **PMAT-6003**: Language-aware dependency graph construction
+  - Added Import variant to AstItem enum for language-specific imports
+  - Updated Python AST parser to use Import variant for better tracking
+  - Modified DAG builder to handle Import variants and create dependency edges
+  - Support for module imports, specific item imports, and import aliases
+  - Fixed pattern match exhaustiveness across codebase
+
 ## [2.8.0] - 2025-08-22
 
 ### Added

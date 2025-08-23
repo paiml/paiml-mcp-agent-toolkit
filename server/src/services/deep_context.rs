@@ -1468,6 +1468,19 @@ impl DeepContextAnalyzer {
                         line: *line,
                     });
                 }
+                crate::services::context::AstItem::Import { module, items, alias, line } => {
+                    let path = if let Some(alias) = alias {
+                        format!("{} as {}", module, alias)
+                    } else if !items.is_empty() {
+                        format!("{} ({})", module, items.join(", "))
+                    } else {
+                        module.clone()
+                    };
+                    categorized.uses.push(AstUse {
+                        path,
+                        line: *line,
+                    });
+                }
             }
         }
 
@@ -3122,7 +3135,7 @@ impl DeepContextAnalyzer {
                             .items
                             .iter()
                             .filter(|item| {
-                                matches!(item, crate::services::context::AstItem::Use { .. })
+                                matches!(item, crate::services::context::AstItem::Use { .. } | crate::services::context::AstItem::Import { .. })
                             })
                             .count(),
                     })

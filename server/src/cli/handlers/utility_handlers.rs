@@ -364,6 +364,7 @@ fn format_json_output(
                             AstItem::Impl { .. } => "Impl",
                             AstItem::Module { .. } => "Module",
                             AstItem::Use { .. } => "Use",
+                            AstItem::Import { .. } => "Import",
                         },
                         "name": item.display_name(),
                     });
@@ -603,6 +604,16 @@ fn add_file_items(
             }
             AstItem::Use { .. } => {
                 builder.content.push_str("- **Use**: statement\n");
+            }
+            AstItem::Import { module, items, alias, .. } => {
+                let import_desc = if !items.is_empty() {
+                    format!("- **Import**: `{}` (items: {})\n", module, items.join(", "))
+                } else if let Some(alias) = alias {
+                    format!("- **Import**: `{}` as `{}`\n", module, alias)
+                } else {
+                    format!("- **Import**: `{}`\n", module)
+                };
+                builder.content.push_str(&import_desc);
             }
         }
     }

@@ -903,9 +903,8 @@ pub async fn resolve_repository_async(
             .join(format!("repo-{}", uuid::Uuid::new_v4()));
         
         // Create a temporary runner to use its clone_and_prepare method
-        // Note: This is a workaround - ideally we'd refactor clone_and_prepare to be standalone
         let server = crate::stateless_server::StatelessTemplateServer::new()?;
-        let mut runner = DemoRunner::new(Arc::new(server));
+        let runner = DemoRunner::new(Arc::new(server));
         runner.clone_and_prepare(&path_str).await
     } else {
         // It's a local path
