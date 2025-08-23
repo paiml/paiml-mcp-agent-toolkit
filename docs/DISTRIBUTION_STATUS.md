@@ -70,7 +70,7 @@ These distributions have automated package updates but require one-time manual s
 
 ## 🚀 Release Process
 
-### Current State (v2.10.0)
+### Current State (v2.12.0)
 When you create a new release:
 
 1. **✅ Automatic (Zero Action Required)**:

@@ -4,7 +4,7 @@ This guide covers submitting the PMAT formula to the official Homebrew repositor
 
 ## ✅ Prerequisites Met
 
-- [x] **Stable Release**: v2.10.0 tagged and released on GitHub
+- [x] **Stable Release**: v2.12.0 tagged and released on GitHub
 - [x] **License**: MIT license (Homebrew compatible) 
 - [x] **Build System**: Standard Cargo build process
 - [x] **Tests**: Comprehensive test suite included
@@ -50,23 +50,23 @@ brew uninstall pmat
 ### 4. Submit pull request
 ```bash
 # Create branch
-git checkout -b add-pmat-2.10.0
+git checkout -b add-pmat-2.12.0
 
 # Commit formula
 git add Formula/pmat.rb
-git commit -m "pmat 2.10.0 (new formula)
+git commit -m "pmat 2.12.0 (new formula)
 
 PMAT is a zero-config AI context generation and code quality toolkit 
 with Claude Code Agent Mode for continuous quality monitoring."
 
 # Push and create PR
-git push origin add-pmat-2.10.0
+git push origin add-pmat-2.12.0
 ```
 
 ## 📋 PR Description Template
 
 ```markdown
-## PMAT 2.10.0 (new formula)
+## PMAT 2.12.0 (new formula)
 
 PMAT (Pragmatic AI MCP Agent Toolkit) is a zero-configuration AI context generation system with Claude Code Agent Mode for continuous quality monitoring.
 
@@ -89,7 +89,7 @@ PMAT (Pragmatic AI MCP Agent Toolkit) is a zero-configuration AI context generat
 - [x] `brew audit --strict Formula/pmat.rb` passes
 - [x] `brew install --build-from-source Formula/pmat.rb` succeeds
 - [x] `brew test pmat` passes
-- [x] Binary works correctly: `pmat --version` shows 2.10.0
+- [x] Binary works correctly: `pmat --version` shows 2.12.0
 
 ### Links:
 - Homepage: https://github.com/paiml/paiml-mcp-agent-toolkit
@@ -103,7 +103,7 @@ PMAT (Pragmatic AI MCP Agent Toolkit) is a zero-configuration AI context generat
 Homebrew maintainers will check:
 
 1. **Notability**: PMAT provides unique AI/code quality functionality
-2. **Stability**: v2.10.0 is a stable release with comprehensive testing
+2. **Stability**: v2.12.0 is a stable release with comprehensive testing
 3. **Build**: Standard Cargo build process (well-supported)
 4. **Tests**: Formula includes appropriate test cases
 5. **Naming**: "pmat" follows Homebrew naming conventions
