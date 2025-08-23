@@ -122,12 +122,17 @@ pub enum AstItem {
     },
     /// Import statement for language-specific module imports
     ///
+    /// Supports various import patterns across different languages including
+    /// Python, JavaScript, TypeScript, and other languages with module systems.
+    ///
     /// # Examples
+    ///
+    /// ## Python Import Patterns
     ///
     /// ```
     /// use pmat::services::context::AstItem;
     ///
-    /// // Python: import os
+    /// // Simple import: import os
     /// let import1 = AstItem::Import {
     ///     module: "os".to_string(),
     ///     items: vec![],
@@ -136,7 +141,7 @@ pub enum AstItem {
     /// };
     /// assert_eq!(import1.display_name(), "os");
     ///
-    /// // Python: import numpy as np
+    /// // Import with alias: import numpy as np
     /// let import2 = AstItem::Import {
     ///     module: "numpy".to_string(),
     ///     items: vec![],
@@ -145,7 +150,7 @@ pub enum AstItem {
     /// };
     /// assert_eq!(import2.display_name(), "numpy");
     ///
-    /// // Python: from typing import List, Dict
+    /// // From import: from typing import List, Dict
     /// let import3 = AstItem::Import {
     ///     module: "typing".to_string(),
     ///     items: vec!["List".to_string(), "Dict".to_string()],
@@ -153,6 +158,108 @@ pub enum AstItem {
     ///     line: 3,
     /// };
     /// assert_eq!(import3.display_name(), "typing");
+    ///
+    /// // Submodule import: import os.path
+    /// let import4 = AstItem::Import {
+    ///     module: "os.path".to_string(),
+    ///     items: vec![],
+    ///     alias: None,
+    ///     line: 4,
+    /// };
+    /// assert_eq!(import4.display_name(), "os.path");
+    ///
+    /// // Wildcard import: from math import *
+    /// let import5 = AstItem::Import {
+    ///     module: "math".to_string(),
+    ///     items: vec!["*".to_string()],
+    ///     alias: None,
+    ///     line: 5,
+    /// };
+    /// assert_eq!(import5.display_name(), "math");
+    /// ```
+    ///
+    /// ## JavaScript/TypeScript Import Patterns
+    ///
+    /// ```
+    /// use pmat::services::context::AstItem;
+    ///
+    /// // ES6 default import: import React from 'react'
+    /// let import1 = AstItem::Import {
+    ///     module: "react".to_string(),
+    ///     items: vec![],
+    ///     alias: None,
+    ///     line: 1,
+    /// };
+    /// assert_eq!(import1.display_name(), "react");
+    ///
+    /// // Named imports: import { useState, useEffect } from 'react'
+    /// let import2 = AstItem::Import {
+    ///     module: "react".to_string(),
+    ///     items: vec!["useState".to_string(), "useEffect".to_string()],
+    ///     alias: None,
+    ///     line: 2,
+    /// };
+    /// assert_eq!(import2.display_name(), "react");
+    ///
+    /// // Scoped package: import { Button } from '@mui/material'
+    /// let import3 = AstItem::Import {
+    ///     module: "@mui/material".to_string(),
+    ///     items: vec!["Button".to_string()],
+    ///     alias: None,
+    ///     line: 3,
+    /// };
+    /// assert_eq!(import3.display_name(), "@mui/material");
+    ///
+    /// // Relative import: import { utils } from './utils'
+    /// let import4 = AstItem::Import {
+    ///     module: "./utils".to_string(),
+    ///     items: vec!["utils".to_string()],
+    ///     alias: None,
+    ///     line: 4,
+    /// };
+    /// assert_eq!(import4.display_name(), "./utils");
+    ///
+    /// // Parent directory import: import Component from '../components/Button'
+    /// let import5 = AstItem::Import {
+    ///     module: "../components/Button".to_string(),
+    ///     items: vec![],
+    ///     alias: None,
+    ///     line: 5,
+    /// };
+    /// assert_eq!(import5.display_name(), "../components/Button");
+    /// ```
+    ///
+    /// ## Edge Cases and Special Patterns
+    ///
+    /// ```
+    /// use pmat::services::context::AstItem;
+    ///
+    /// // Empty module (edge case)
+    /// let import1 = AstItem::Import {
+    ///     module: "".to_string(),
+    ///     items: vec![],
+    ///     alias: None,
+    ///     line: 1,
+    /// };
+    /// assert_eq!(import1.display_name(), "");
+    ///
+    /// // Complex nested module path
+    /// let import2 = AstItem::Import {
+    ///     module: "matplotlib.pyplot.subplots".to_string(),
+    ///     items: vec![],
+    ///     alias: Some("plt".to_string()),
+    ///     line: 2,
+    /// };
+    /// assert_eq!(import2.display_name(), "matplotlib.pyplot.subplots");
+    ///
+    /// // Multiple aliases don't affect display_name
+    /// let import3 = AstItem::Import {
+    ///     module: "pandas".to_string(),
+    ///     items: vec!["DataFrame".to_string(), "Series".to_string()],
+    ///     alias: Some("pd".to_string()),
+    ///     line: 3,
+    /// };
+    /// assert_eq!(import3.display_name(), "pandas");
     /// ```
     Import {
         /// What is being imported (module, package, or specific items)
