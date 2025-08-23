@@ -1,0 +1,69 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update (e.g., 2.10.0)'
+        required: true
+        default: '2.10.0'
+
+jobs:
+  update-homebrew:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Extract version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Calculate SHA256
+      id: sha256
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        SHA256=$(curl -sL "https://github.com/paiml/paiml-mcp-agent-toolkit/archive/v${VERSION}.tar.gz" | sha256sum | cut -d' ' -f1)
+        echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+        echo "Version: ${VERSION}"
+        echo "SHA256: ${SHA256}"
+        
+    - name: Update Homebrew formula
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        SHA256="${{ steps.sha256.outputs.sha256 }}"
+        
+        # Update formula with new version and SHA256
+        sed -i "s|archive/v.*\.tar\.gz|archive/v${VERSION}.tar.gz|" homebrew/pmat.rb
+        sed -i "s|sha256 \".*\"|sha256 \"${SHA256}\"|" homebrew/pmat.rb
+        
+        echo "Updated formula:"
+        cat homebrew/pmat.rb | grep -E "(url|sha256)"
+        
+    - name: Commit updated formula
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add homebrew/pmat.rb
+        git commit -m "homebrew: Update formula to v${{ steps.version.outputs.version }}" || exit 0
+        git push
+        
+    - name: Create PR to homebrew-core (manual step)
+      run: |
+        echo "📝 Manual step required:"
+        echo "1. Fork https://github.com/Homebrew/homebrew-core"
+        echo "2. Copy updated homebrew/pmat.rb to Formula/pmat.rb"
+        echo "3. Test with: brew install --build-from-source Formula/pmat.rb"
+        echo "4. Submit PR with title: 'pmat ${{ steps.version.outputs.version }}'"
+        echo ""
+        echo "Formula ready at: homebrew/pmat.rb"
+        echo "SHA256: ${{ steps.sha256.outputs.sha256 }}"
