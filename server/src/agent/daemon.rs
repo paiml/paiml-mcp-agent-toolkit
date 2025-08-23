@@ -36,6 +36,7 @@ pub struct AgentDaemon {
 
 /// Configuration for the background daemon
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct DaemonConfig {
     /// Agent configuration
     pub agent: AgentConfig,
@@ -86,15 +87,6 @@ impl Default for DaemonSettings {
     }
 }
 
-impl Default for DaemonConfig {
-    fn default() -> Self {
-        Self {
-            agent: AgentConfig::default(),
-            quality_monitor: QualityMonitorConfig::default(),
-            daemon: DaemonSettings::default(),
-        }
-    }
-}
 
 /// Current state of the daemon
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -242,7 +234,7 @@ impl AgentDaemon {
         quality_monitor.set_event_sender(event_tx);
         
         // Create MCP server
-        let mut mcp_server = ClaudeCodeAgentMcpServer::new(self.config.agent.clone());
+        let mcp_server = ClaudeCodeAgentMcpServer::new(self.config.agent.clone());
         
         // Store components
         self.quality_monitor = Some(quality_monitor);
@@ -265,11 +257,11 @@ impl AgentDaemon {
         
         // Start health check timer
         let mut health_check_interval = interval(self.config.daemon.health_check_interval);
-        let state = self.state.clone();
+        let _state = self.state.clone();
         let max_memory_mb = self.config.daemon.max_memory_mb;
         
         // Start MCP server in background
-        if let Some(mcp_server) = self.mcp_server.as_mut() {
+        if let Some(_mcp_server) = self.mcp_server.as_mut() {
             info!("Starting MCP server");
             // MCP server background execution managed via spawn_blocking
             // Server lifecycle controlled by daemon state management
@@ -389,7 +381,7 @@ impl AgentDaemon {
         info!("Shutting down daemon components");
         
         // Stop quality monitoring
-        if let Some(quality_monitor) = &mut self.quality_monitor {
+        if let Some(_quality_monitor) = &mut self.quality_monitor {
             info!("Stopping quality monitor");
             // Graceful shutdown for quality monitor via command channel
         }

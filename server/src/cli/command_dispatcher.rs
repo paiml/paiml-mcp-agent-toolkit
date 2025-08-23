@@ -4,7 +4,7 @@
 //! in the CLI module by delegating command execution to specialized handlers.
 
 use super::commands::{RoadmapCommands, ScaffoldCommands};
-use super::{AgentCommands, AnalyzeCommands, Commands, DemoProtocol, RefactorCommands};
+use super::{AnalyzeCommands, Commands, DemoProtocol, RefactorCommands};
 use crate::cli::handlers::cache::CacheCommand;
 use crate::cli::handlers::memory::MemoryCommand;
 use crate::stateless_server::StatelessTemplateServer;
