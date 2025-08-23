@@ -1,0 +1,31 @@
+VERIFICATION
+Verification is intended to assist the Chocolatey moderators and community
+in verifying that this package's contents are trustworthy.
+
+PMAT (Pragmatic AI MCP Agent Toolkit) is an open-source project distributed under MIT License.
+
+Package source: https://github.com/paiml/paiml-mcp-agent-toolkit
+Release page: https://github.com/paiml/paiml-mcp-agent-toolkit/releases/tag/v2.10.0
+
+The package installs PMAT via Cargo (Rust package manager) from the official crates.io registry:
+- crates.io page: https://crates.io/crates/pmat
+- Published version: 2.10.0
+- Installation command: cargo install pmat
+
+Alternative installation methods provided:
+1. npm package: https://www.npmjs.com/package/pmat-agent
+2. Docker image: https://hub.docker.com/r/paiml/pmat
+3. Direct binary downloads (when available)
+
+License: MIT License
+License URL: https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/LICENSE
+
+Security: This package does not include any pre-compiled binaries. 
+It installs from the official Rust crates.io registry, ensuring
+the same security guarantees as any other Rust package installation.
+
+The source code can be audited at:
+https://github.com/paiml/paiml-mcp-agent-toolkit
+
+Checksum verification is handled by Cargo itself when installing from crates.io,
+providing cryptographic verification of package integrity.

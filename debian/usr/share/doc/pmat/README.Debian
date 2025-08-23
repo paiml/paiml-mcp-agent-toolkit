@@ -1,0 +1,97 @@
+PMAT for Debian/Ubuntu
+======================
+
+This package provides PMAT (Pragmatic AI MCP Agent Toolkit) for Debian and Ubuntu systems.
+
+Installation Notes
+------------------
+
+This package provides the framework and configuration for PMAT, but the actual
+binary installation depends on your preferred method:
+
+1. **Rust/Cargo (Recommended)**:
+   ```bash
+   sudo apt install rustc cargo
+   cargo install pmat
+   ```
+
+2. **npm (Node.js ecosystem)**:
+   ```bash
+   sudo apt install nodejs npm  
+   npm install -g pmat-agent
+   ```
+
+3. **Docker**:
+   ```bash
+   docker run --rm paiml/pmat:latest pmat --version
+   ```
+
+Claude Code Integration
+-----------------------
+
+After installing the binary, configure Claude Code Agent Mode:
+
+1. Add to your Claude Code settings.json:
+   ```json
+   {
+     "mcpServers": {
+       "pmat": {
+         "command": "pmat",
+         "args": ["agent", "mcp-server"],
+         "env": {}
+       }
+     }
+   }
+   ```
+
+2. Restart Claude Code to load the MCP server
+
+Service Mode (Optional)
+-----------------------
+
+For continuous monitoring, use the systemd service:
+
+```bash
+# Configure service (edit /etc/pmat/agent-production.toml)
+sudo systemctl enable pmat-agent
+sudo systemctl start pmat-agent
+sudo systemctl status pmat-agent
+```
+
+Configuration Files
+-------------------
+
+Default configurations are provided in `/etc/pmat/`:
+- `agent-development.toml` - Development environment settings  
+- `agent-production.toml` - Production deployment configuration
+- `agent-ci.toml` - CI/CD pipeline integration
+
+Logs and Data
+-------------
+
+When running as a service:
+- Logs: `/var/log/pmat-agent/`
+- State: `/var/lib/pmat-agent/`
+- Service runs as `pmat` system user
+
+Quick Start
+-----------
+
+```bash
+# Verify installation
+pmat --version
+
+# Analyze current directory
+pmat context
+pmat quality-gate
+
+# Start Claude Code Agent Mode
+pmat agent mcp-server
+```
+
+Support
+-------
+
+- Documentation: https://github.com/paiml/paiml-mcp-agent-toolkit
+- Issues: https://github.com/paiml/paiml-mcp-agent-toolkit/issues
+- Claude Code Guide: /usr/share/doc/pmat/CLAUDE_CODE_AGENT.md

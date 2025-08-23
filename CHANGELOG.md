@@ -58,9 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **npm package PUBLISHED**: pmat-agent@2.10.0 live at https://www.npmjs.com/package/pmat-agent
   - **Homebrew formula READY**: Complete with SHA256, tests, and submission guide for homebrew-core
   - **Docker Hub AUTOMATED**: GitHub Actions workflow for multi-arch builds
-  - Arch Linux AUR package with systemd integration
-  - Chocolatey package for Windows users
-  - Debian/Ubuntu .deb package with service setup
+  - **Arch Linux AUR READY**: Complete PKGBUILD, systemd service, and automated submission scripts
+  - **Chocolatey Package READY**: Complete nuspec with PowerShell scripts, legal files, and automated testing
+  - **Debian/Ubuntu Package READY**: Complete .deb with systemd service, documentation, and automated build scripts
 
 ### Changed
 

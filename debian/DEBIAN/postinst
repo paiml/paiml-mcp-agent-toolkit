@@ -1,38 +1,75 @@
 #!/bin/bash
 set -e
 
+echo "🤖 PMAT - Pragmatic AI MCP Agent Toolkit"
+echo "========================================"
+
 case "$1" in
     configure)
-        # Create pmat user if it doesn't exist
+        # Check if PMAT binary is installed (may need Cargo installation)
+        if ! command -v pmat >/dev/null 2>&1; then
+            echo "⚠️ PMAT binary not found - installation options:"
+            echo ""
+            echo "Option 1 (Recommended): Install via Rust/Cargo"
+            echo "  sudo apt install rustc cargo"
+            echo "  cargo install pmat"
+            echo ""
+            echo "Option 2: Install via npm (Node.js)"  
+            echo "  sudo apt install nodejs npm"
+            echo "  npm install -g pmat-agent"
+            echo ""
+            echo "Option 3: Use Docker"
+            echo "  docker run --rm paiml/pmat:latest pmat --version"
+            echo ""
+        else
+            echo "✅ PMAT binary found at: $(which pmat)"
+            echo "📝 Version: $(pmat --version 2>/dev/null || echo 'unknown')"
+        fi
+
+        # Create pmat user for service mode (optional)
         if ! getent passwd pmat >/dev/null 2>&1; then
+            echo "👤 Creating pmat system user for service mode..."
             useradd --system --no-create-home --home-dir /var/lib/pmat-agent \
-                    --shell /bin/false --comment "PMAT Agent" pmat
+                    --shell /bin/false --comment "PMAT Agent Service" pmat || true
         fi
 
-        # Create directories
+        # Create service directories
+        echo "📁 Setting up service directories..."
         mkdir -p /var/lib/pmat-agent /var/log/pmat-agent
-        chown pmat:pmat /var/lib/pmat-agent /var/log/pmat-agent
-        chmod 755 /var/lib/pmat-agent
-        chmod 755 /var/log/pmat-agent
+        if getent passwd pmat >/dev/null 2>&1; then
+            chown pmat:pmat /var/lib/pmat-agent /var/log/pmat-agent 2>/dev/null || true
+        fi
+        chmod 755 /var/lib/pmat-agent /var/log/pmat-agent
 
-        # Enable systemd service (but don't start it)
+        # Set up systemd service (if systemd is available)
         if command -v systemctl >/dev/null 2>&1; then
+            echo "🔧 Setting up systemd service..."
             systemctl daemon-reload
-            systemctl enable pmat-agent.service || true
+            # Don't enable by default - let users decide
+            echo "ℹ️ Service available but not enabled by default"
+            echo "   Enable with: sudo systemctl enable pmat-agent"
         fi
 
-        echo "PMAT installed successfully!"
         echo ""
-        echo "Quick start:"
-        echo "  pmat --version"
-        echo "  pmat agent mcp-server    # For Claude Code integration"
-        echo "  pmat quality-gate        # Analyze code quality"
+        echo "✅ PMAT package installation completed!"
         echo ""
-        echo "Service management:"
-        echo "  systemctl start pmat-agent"
-        echo "  systemctl status pmat-agent"
+        echo "🎯 Quick Start:"
+        echo "  pmat --version                    # Verify installation"
+        echo "  pmat context                      # Generate AI context"
+        echo "  pmat quality-gate                 # Run quality checks"
+        echo "  pmat agent mcp-server             # Claude Code integration"
         echo ""
-        echo "Documentation: /usr/share/doc/pmat/"
+        echo "🤖 Claude Code Integration:"
+        echo "  Add to Claude Code settings.json:"
+        echo '  "mcpServers": { "pmat": { "command": "pmat", "args": ["agent", "mcp-server"] } }'
+        echo ""
+        echo "🔧 Service Management (Optional):"
+        echo "  sudo systemctl enable pmat-agent   # Enable service"
+        echo "  sudo systemctl start pmat-agent    # Start service"
+        echo "  sudo systemctl status pmat-agent   # Check status"
+        echo ""
+        echo "📚 Documentation: /usr/share/doc/pmat/"
+        echo "🌐 Homepage: https://github.com/paiml/paiml-mcp-agent-toolkit"
         ;;
 esac
 

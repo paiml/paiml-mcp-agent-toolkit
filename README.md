@@ -1,9 +1,17 @@
 # PAIML MCP Agent Toolkit (pmat)
 
 [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
+[![npm](https://img.shields.io/npm/v/pmat-agent.svg)](https://www.npmjs.com/package/pmat-agent)
+[![Docker](https://img.shields.io/docker/v/paiml/pmat?label=docker)](https://hub.docker.com/r/paiml/pmat)
+[![Homebrew](https://img.shields.io/badge/homebrew-ready-blue)](https://github.com/paiml/paiml-mcp-agent-toolkit/tree/master/homebrew)
+[![AUR](https://img.shields.io/badge/AUR-ready-orange)](https://github.com/paiml/paiml-mcp-agent-toolkit/tree/master/aur)
+[![Chocolatey](https://img.shields.io/badge/chocolatey-ready-blue)](https://github.com/paiml/paiml-mcp-agent-toolkit/tree/master/chocolatey)
+
 [![Documentation](https://docs.rs/pmat/badge.svg)](https://docs.rs/pmat)
 [![CI/CD](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/main.yml)
 [![Quality Gate](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/quality-gate-test.yml/badge.svg?branch=master)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/quality-gate-test.yml)
+[![Multi-Ecosystem Release](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/multi-ecosystem-release.yml/badge.svg)](https://github.com/paiml/paiml-mcp-agent-toolkit/actions/workflows/multi-ecosystem-release.yml)
+
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Downloads](https://img.shields.io/crates/d/pmat)](https://crates.io/crates/pmat)
@@ -30,17 +38,55 @@
 ## 🚀 Quick Start
 
 ### Installation
+
+Choose your preferred installation method - PMAT is available across all major package ecosystems:
+
+#### 🦀 Rust (Recommended)
 ```bash
-# From Crates.io (Recommended)
 cargo install pmat
+```
 
-# Linux Quick Install
-curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+#### 📦 Package Managers
+```bash
+# macOS/Linux - Homebrew
+brew install pmat
 
-# From Source
+# Windows - Chocolatey  
+choco install pmat
+
+# Ubuntu/Debian - APT
+sudo apt install pmat                    # (via PPA - coming soon)
+
+# Arch Linux - AUR
+yay -S pmat
+
+# Node.js - npm (global)
+npm install -g pmat-agent
+```
+
+#### 🐳 Docker
+```bash
+# Latest version
+docker run --rm -v $(pwd):/workspace paiml/pmat:latest pmat --version
+
+# Interactive analysis
+docker run --rm -v $(pwd):/workspace -w /workspace paiml/pmat:latest pmat context
+```
+
+#### 🔧 From Source
+```bash
 git clone https://github.com/paiml/paiml-mcp-agent-toolkit
 cd paiml-mcp-agent-toolkit
 make build
+```
+
+#### 📥 Direct Download
+```bash
+# Linux/macOS Quick Install
+curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+
+# Windows PowerShell
+# Download from: https://github.com/paiml/paiml-mcp-agent-toolkit/releases
 ```
 
 ### Basic Usage
