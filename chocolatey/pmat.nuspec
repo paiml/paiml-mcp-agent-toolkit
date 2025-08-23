@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>pmat</id>
+    <version>2.10.0</version>
+    <packageSourceUrl>https://github.com/paiml/paiml-mcp-agent-toolkit/tree/master/chocolatey</packageSourceUrl>
+    <owners>Pragmatic AI Labs</owners>
+    
+    <title>PMAT - Pragmatic AI MCP Agent Toolkit</title>
+    <authors>Pragmatic AI Labs</authors>
+    <projectUrl>https://github.com/paiml/paiml-mcp-agent-toolkit</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/docs/assets/pmat-logo.png</iconUrl>
+    <copyright>Copyright (c) 2024 Pragmatic AI Labs</copyright>
+    <licenseUrl>https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/paiml/paiml-mcp-agent-toolkit</projectSourceUrl>
+    <docsUrl>https://github.com/paiml/paiml-mcp-agent-toolkit/blob/master/docs/CLAUDE_CODE_AGENT.md</docsUrl>
+    <bugTrackerUrl>https://github.com/paiml/paiml-mcp-agent-toolkit/issues</bugTrackerUrl>
+    <tags>code-quality static-analysis ai-context claude-code mcp agent monitoring complexity technical-debt</tags>
+    
+    <summary>Zero-config AI context generation and code quality toolkit with Claude Code Agent Mode</summary>
+    <description><![CDATA[
+# PMAT - Pragmatic AI MCP Agent Toolkit
+
+PMAT is a zero-configuration AI context generation system with extreme quality enforcement and Toyota Way standards. It provides both on-demand analysis and continuous background monitoring through Claude Code Agent Mode.
+
+## Features
+
+- **Claude Code Agent Mode**: Continuous quality monitoring integrated with Claude Code via MCP protocol
+- **AI Context Generation**: Optimized for LLM workflows and AI-assisted development
+- **Code Complexity Analysis**: McCabe cyclomatic & cognitive complexity with AST precision
+- **Technical Debt Detection**: SATD (Self-Admitted Technical Debt) analysis with severity classification
+- **Quality Gates**: Toyota Way ≤20 complexity enforcement with zero tolerance policy
+- **Multi-Language Support**: 30+ languages via tree-sitter grammar support
+- **Real-time Monitoring**: File system watching with instant quality feedback
+- **Production Ready**: Systemd service deployment with health checks
+
+## Quick Start
+
+```
+# Analyze code quality
+pmat quality-gate --strict
+
+# Generate AI context
+pmat context
+
+# Start Claude Code Agent Mode
+pmat agent mcp-server
+```
+
+## Claude Code Integration
+
+Configure PMAT as an MCP server in Claude Code settings:
+
+```json
+{
+  "mcpServers": {
+    "pmat": {
+      "command": "pmat",
+      "args": ["agent", "mcp-server"],
+      "env": {}
+    }
+  }
+}
+```
+
+Built with ❤️ following Toyota Way principles by Pragmatic AI Labs.
+]]></description>
+    
+    <releaseNotes>
+      v2.10.0 - "Always Working Achievement"
+      
+      - NEW: Claude Code Agent Mode with continuous quality monitoring
+      - NEW: MCP (Model Context Protocol) integration for seamless Claude Code experience
+      - NEW: Real-time file system watching with instant feedback
+      - NEW: Persistent state management with auto-save across restarts
+      - NEW: Production-ready systemd service deployment
+      - NEW: 6 agent-specific MCP tools plus 18 existing analysis tools
+      - Toyota Way compliance maintained: ≤20 complexity, zero SATD tolerance
+    </releaseNotes>
+    
+    <dependencies>
+      <dependency id="chocolatey-core.extension" version="1.3.3" />
+    </dependencies>
+  </metadata>
+  
+  <files>
+    <file src="tools\**" target="tools" />
+    <file src="legal\**" target="legal" />
+  </files>
+</package>

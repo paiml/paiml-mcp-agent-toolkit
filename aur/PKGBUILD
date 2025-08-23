@@ -1,0 +1,50 @@
+# Maintainer: Pragmatic AI Labs <hello@paiml.com>
+pkgname=pmat
+pkgver=2.10.0
+pkgrel=1
+pkgdesc="Zero-config AI context generation and code quality toolkit with Claude Code Agent Mode"
+arch=('x86_64' 'aarch64')
+url="https://github.com/paiml/paiml-mcp-agent-toolkit"
+license=('MIT')
+depends=()
+makedepends=('rust' 'cargo')
+source=("${pkgname}-${pkgver}.tar.gz::https://github.com/paiml/paiml-mcp-agent-toolkit/archive/v${pkgver}.tar.gz")
+sha256sums=('SKIP') # Will need to be updated with actual SHA256
+
+build() {
+    cd "paiml-mcp-agent-toolkit-${pkgver}/server"
+    export RUSTUP_TOOLCHAIN=stable
+    export CARGO_TARGET_DIR=target
+    cargo build --release --locked
+}
+
+check() {
+    cd "paiml-mcp-agent-toolkit-${pkgver}/server"
+    export RUSTUP_TOOLCHAIN=stable
+    # Basic version check
+    ./target/release/pmat --version
+}
+
+package() {
+    cd "paiml-mcp-agent-toolkit-${pkgver}"
+    
+    # Install binary
+    install -Dm755 "server/target/release/pmat" "${pkgdir}/usr/bin/pmat"
+    
+    # Install license
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    
+    # Install documentation
+    install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+    install -Dm644 docs/CLAUDE_CODE_AGENT.md "${pkgdir}/usr/share/doc/${pkgname}/CLAUDE_CODE_AGENT.md"
+    
+    # Install configuration templates
+    install -Dm644 configs/agent-development.toml "${pkgdir}/etc/pmat/agent-development.toml"
+    install -Dm644 configs/agent-production.toml "${pkgdir}/etc/pmat/agent-production.toml"
+    install -Dm644 configs/agent-ci.toml "${pkgdir}/etc/pmat/agent-ci.toml"
+    
+    # Install systemd service (optional)
+    if [[ -f deployment/pmat-agent.service ]]; then
+        install -Dm644 deployment/pmat-agent.service "${pkgdir}/usr/lib/systemd/system/pmat-agent.service"
+    fi
+}

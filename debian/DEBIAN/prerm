@@ -1,0 +1,14 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    remove|deconfigure)
+        # Stop and disable the service
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl stop pmat-agent.service || true
+            systemctl disable pmat-agent.service || true
+        fi
+        ;;
+esac
+
+exit 0
