@@ -512,7 +512,7 @@ impl QualityMonitorEngine {
     async fn start_periodic_monitoring(&self, project_id: String, _project_path: PathBuf) -> Result<()> {
         let metrics = self.metrics.clone();
         let config = self.config.clone();
-        let event_sender = self.event_sender.clone();
+        let _event_sender = self.event_sender.clone();
         
         tokio::spawn(async move {
             let mut interval = interval(config.update_interval);
@@ -824,7 +824,6 @@ impl Default for QualityMetrics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
     
     #[test]
     fn test_quality_monitor_config_default() {

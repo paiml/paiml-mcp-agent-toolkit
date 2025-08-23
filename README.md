@@ -11,7 +11,14 @@
 
 **Zero-configuration AI context generation system** with extreme quality enforcement and Toyota Way standards. Analyze any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com).
 
-> **🎯 v2.9.0 Release**: **Universal Demo "Just Works" Achievement!** Complete AI-powered repository intelligence with multi-language analysis:
+> **🚀 v2.10.0 Release**: **Claude Code Agent Mode - "Always Working" Achievement!** Transform PMAT into a persistent background quality agent:
+> - **🤖 Claude Code Integration**: Native MCP server for seamless Claude Code integration
+> - **💾 Persistent State**: Monitoring state maintained across restarts with auto-save
+> - **⚙️ Production Ready**: Environment-specific configs for dev, prod, and CI/CD
+> - **📊 Real-time Monitoring**: Continuous quality tracking with file system watching
+> - **🏗️ Service Architecture**: Systemd deployment with health checks and auto-restart
+
+> **🎯 v2.9.0**: **Universal Demo "Just Works" Achievement!** Complete AI-powered repository intelligence with multi-language analysis:
 > - **🤖 AI-Powered Recommendations**: Framework-aware repository recommendations with complexity-based learning tiers
 > - **🌍 Multi-Language Intelligence**: Advanced polyglot analysis with cross-language dependency detection
 > - **🏛️ Architecture Pattern Recognition**: Microservices, Layered, Event-driven pattern detection with confidence scoring
@@ -242,6 +249,58 @@ cargo run --example test_pmcp_server
 - `github_create_issue` - Create GitHub issues
 - **NEW**: AI recommendation tools for intelligent repository analysis
 - And 11 more...
+
+## 🤖 Claude Code Agent Mode (NEW v2.10.0)
+
+Transform PMAT into a persistent background quality agent that continuously monitors your codebase:
+
+### Quick Start with Claude Code
+
+```bash
+# Start agent as MCP server for Claude Code
+pmat agent mcp-server
+
+# Configure in Claude Code settings.json:
+{
+  "mcpServers": {
+    "pmat": {
+      "command": "pmat",
+      "args": ["agent", "mcp-server"],
+      "env": {}
+    }
+  }
+}
+```
+
+### Background Daemon Mode
+
+```bash
+# Start monitoring a project
+pmat agent start --project-path /path/to/project
+
+# Check monitoring status
+pmat agent status
+
+# Stop monitoring
+pmat agent stop
+```
+
+### Key Features
+- **Real-time Monitoring**: File system watching with instant quality feedback
+- **Persistent State**: Maintains metrics across restarts with auto-save
+- **Toyota Way Compliance**: Enforces ≤20 complexity with zero SATD tolerance
+- **Production Ready**: Systemd service with health checks and auto-restart
+- **MCP Native**: Seamless Claude Code integration via stdio transport
+
+### Available Agent Tools
+- `start_quality_monitoring` - Begin monitoring a project
+- `stop_quality_monitoring` - Stop monitoring
+- `get_quality_status` - Current quality metrics
+- `run_quality_gates` - Execute quality checks
+- `analyze_complexity` - Complexity analysis
+- `health_check` - Agent health status
+
+See [Claude Code Agent Guide](docs/CLAUDE_CODE_AGENT.md) for detailed setup and deployment instructions.
 
 ### 🌐 Web Demo API Endpoints (NEW)
 ```bash
