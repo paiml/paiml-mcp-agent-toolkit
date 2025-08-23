@@ -57,7 +57,14 @@ fn detect_execution_mode() -> ExecutionMode {
 
 /// Initialize the enhanced tracing system based on CLI flags
 fn init_tracing(cli: &cli::EarlyCliArgs) -> Result<()> {
-    let filter = if let Some(ref custom) = cli.trace_filter {
+    let filter = if cli.is_mcp_server {
+        // In MCP server mode, disable all logging unless debug is explicitly enabled
+        if cli.debug {
+            EnvFilter::new("warn,pmat=debug")
+        } else {
+            EnvFilter::new("off")
+        }
+    } else if let Some(ref custom) = cli.trace_filter {
         EnvFilter::try_new(custom)?
     } else if cli.trace {
         EnvFilter::new("debug,pmat=trace")
@@ -78,7 +85,8 @@ fn init_tracing(cli: &cli::EarlyCliArgs) -> Result<()> {
                 .with_thread_ids(cli.trace)
                 .with_file(cli.trace)
                 .with_line_number(cli.trace)
-                .compact(),
+                .compact()
+                .with_writer(std::io::stderr), // Always write to stderr
         )
         .init();
 
@@ -121,20 +129,28 @@ async fn run_main() -> Result<()> {
     // Initialize enhanced tracing system
     init_tracing(&cli)?;
 
-    info!(
-        "Starting PAIML MCP Agent Toolkit v{}",
-        env!("CARGO_PKG_VERSION")
-    );
-    debug!("Debug logging enabled");
-    trace!("Trace logging enabled");
+    // Only log to stdout if not running MCP server mode
+    if !cli.is_mcp_server {
+        info!(
+            "Starting PAIML MCP Agent Toolkit v{}",
+            env!("CARGO_PKG_VERSION")
+        );
+        debug!("Debug logging enabled");
+        trace!("Trace logging enabled");
+    }
 
     // Create shared template server
     let server = Arc::new(StatelessTemplateServer::new()?);
-    debug!("Template server initialized");
+    
+    if !cli.is_mcp_server {
+        debug!("Template server initialized");
+    }
 
     match detect_execution_mode() {
         ExecutionMode::Mcp => {
-            info!("Running unified MCP server (pmcp SDK)");
+            if !cli.is_mcp_server {
+                info!("Running unified MCP server (pmcp SDK)");
+            }
             let unified_server = pmat::mcp_pmcp::UnifiedServer::new()
                 .map_err(|e| anyhow::anyhow!("Failed to create unified server: {}", e))?;
             unified_server
@@ -143,7 +159,9 @@ async fn run_main() -> Result<()> {
                 .map_err(|e| anyhow::anyhow!("{}", e))
         }
         ExecutionMode::Cli => {
-            info!("Running in CLI mode");
+            if !cli.is_mcp_server {
+                info!("Running in CLI mode");
+            }
             cli::run(server).await
         }
     }

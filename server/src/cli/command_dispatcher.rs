@@ -4,7 +4,7 @@
 //! in the CLI module by delegating command execution to specialized handlers.
 
 use super::commands::{RoadmapCommands, ScaffoldCommands};
-use super::{AnalyzeCommands, Commands, DemoProtocol, RefactorCommands};
+use super::{AgentCommands, AnalyzeCommands, Commands, DemoProtocol, RefactorCommands};
 use crate::cli::handlers::cache::CacheCommand;
 use crate::cli::handlers::memory::MemoryCommand;
 use crate::stateless_server::StatelessTemplateServer;
@@ -272,6 +272,10 @@ impl CommandDispatcher {
             }
             Commands::Config { show, edit, validate, reset, section, set, config_path } => {
                 handlers::handle_configuration(show, edit, validate, reset, section, set, config_path).await
+            }
+
+            Commands::Agent { command } => {
+                handlers::handle_agent_command(command).await
             }
         }
     }
