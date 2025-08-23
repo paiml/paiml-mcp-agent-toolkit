@@ -6,6 +6,7 @@ Welcome to the PMAT (Pragmatic AI MCP Agent Toolkit) documentation.
 
 ### Core Documentation
 - **[SPECIFICATION.md](./SPECIFICATION.md)** - Complete system specification (source of truth)
+- **[CLAUDE_CODE_AGENT.md](./CLAUDE_CODE_AGENT.md)** - Claude Code Agent Mode user guide (v2.10.0)
 - **[DOCUMENTATION_STRUCTURE.md](./DOCUMENTATION_STRUCTURE.md)** - Documentation organization guide
 
 ### Active Documentation

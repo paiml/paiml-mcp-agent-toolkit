@@ -1,0 +1,39 @@
+# Build artifacts
+target/
+server/target/
+*.log
+*.tmp
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Package managers
+node_modules/
+npm-package/
+homebrew/
+aur/
+chocolatey/
+
+# Examples and docs (keep essential docs)
+examples/
+docs/archive/
+docs/bugs/
+docs/todo/
+
+# Keep essential files for runtime
+!configs/
+!deployment/
+!docs/CLAUDE_CODE_AGENT.md
+!README.md
+!LICENSE

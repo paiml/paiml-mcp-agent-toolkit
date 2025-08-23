@@ -1,0 +1,39 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    configure)
+        # Create pmat user if it doesn't exist
+        if ! getent passwd pmat >/dev/null 2>&1; then
+            useradd --system --no-create-home --home-dir /var/lib/pmat-agent \
+                    --shell /bin/false --comment "PMAT Agent" pmat
+        fi
+
+        # Create directories
+        mkdir -p /var/lib/pmat-agent /var/log/pmat-agent
+        chown pmat:pmat /var/lib/pmat-agent /var/log/pmat-agent
+        chmod 755 /var/lib/pmat-agent
+        chmod 755 /var/log/pmat-agent
+
+        # Enable systemd service (but don't start it)
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl daemon-reload
+            systemctl enable pmat-agent.service || true
+        fi
+
+        echo "PMAT installed successfully!"
+        echo ""
+        echo "Quick start:"
+        echo "  pmat --version"
+        echo "  pmat agent mcp-server    # For Claude Code integration"
+        echo "  pmat quality-gate        # Analyze code quality"
+        echo ""
+        echo "Service management:"
+        echo "  systemctl start pmat-agent"
+        echo "  systemctl status pmat-agent"
+        echo ""
+        echo "Documentation: /usr/share/doc/pmat/"
+        ;;
+esac
+
+exit 0
