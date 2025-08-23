@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.12.0] - 2025-08-23 - Enhanced Ruchy Analysis
+
+### Added
+
+- **Advanced Ruchy Analysis Engine** 🧮
+  - Halstead metrics calculation (volume, difficulty, effort, time, bugs estimation)
+  - Dead code detection for unused functions and variables
+  - Type inference for literals and binary operations
+  - Import/export dependency analysis with module tracking
+  - Enhanced pattern matching complexity scoring with cognitive load analysis
+  - Actor message flow analysis with spawn/send tracking and deadlock detection
+
+### Enhanced
+
+- **Ruchy Language Support**
+  - Expanded from basic complexity to comprehensive code analysis
+  - 35+ token types with full lexer support
+  - Advanced AST node analysis for all Ruchy constructs
+  - Export-aware dead code analysis (excludes main and exported functions)
+  - Circular dependency detection in actor message flows
+
+### Technical Improvements
+
+- Enhanced RuchyComplexityAnalyzer with HashSet-based tracking for efficiency
+- Comprehensive test coverage with 8+ test cases covering all features
+- Industry-standard Halstead metrics implementation
+- Type environment tracking for future type system analysis
+- Actor state and message handler identification
+
+### Documentation
+
+- Added comprehensive documentation in `docs/RUCHY_ADVANCED_ANALYSIS.md`
+- Updated README with detailed Ruchy feature descriptions
+- Enhanced code examples with advanced Ruchy constructs
+
 ## [2.11.0] - 2025-08-23 - Ruchy Language Support
 
 ### Added

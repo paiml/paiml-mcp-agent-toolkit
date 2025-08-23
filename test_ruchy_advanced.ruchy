@@ -1,0 +1,238 @@
+// Advanced Ruchy test file with complex patterns for enhanced analysis
+import std::collections::HashMap
+import actors::MessageBus
+export { Calculator, CounterActor, fibonacci }
+
+// Complex function with high cyclomatic complexity
+fun complex_analysis(data: Vec<i32>, threshold: i32) -> Result<HashMap<String, f64>, String> {
+    let mut results = HashMap::new()
+    let mut sum = 0
+    let mut count = 0
+    
+    // Multiple nested conditions and loops
+    for item in data {
+        if item > threshold {
+            if item % 2 == 0 {
+                sum += item * 2
+                count += 1
+                
+                // Pattern matching adds complexity
+                match item {
+                    0..10 => results.insert("small".to_string(), item as f64),
+                    11..100 => results.insert("medium".to_string(), item as f64),
+                    101..1000 => results.insert("large".to_string(), item as f64),
+                    _ => results.insert("huge".to_string(), item as f64),
+                };
+            } else if item % 3 == 0 {
+                // More complexity with logical operators
+                if (item > 50 && item < 200) || (item > 500 && item < 1000) {
+                    sum += item
+                    count += 1
+                }
+            }
+        } else {
+            // Error handling adds complexity
+            return Err(f"Item {item} below threshold {threshold}")
+        }
+    }
+    
+    // Pipeline operations
+    let average = data
+        |> filter(|x| x > &0)
+        |> map(|x| x * x)
+        |> fold(0, |acc, x| acc + x) as f64
+        |> |total| total / data.len() as f64
+    
+    results.insert("average".to_string(), average)
+    Ok(results)
+}
+
+// Recursive function (higher cyclomatic complexity)
+fun fibonacci(n: i32) -> i32 {
+    match n {
+        0 => 0,
+        1 => 1,
+        n if n < 0 => panic("Negative fibonacci not supported"),
+        _ => fibonacci(n - 1) + fibonacci(n - 2)
+    }
+}
+
+// Class with complex methods
+class Calculator {
+    precision: u8,
+    history: Vec<f64>
+    
+    fun new(precision: u8) -> Calculator {
+        Calculator {
+            precision,
+            history: Vec::new()
+        }
+    }
+    
+    fun calculate(self, operation: String, operands: Vec<f64>) -> Result<f64, String> {
+        let result = match operation.as_str() {
+            "add" => operands.iter().sum(),
+            "multiply" => operands.iter().fold(1.0, |acc, x| acc * x),
+            "divide" if operands.len() == 2 => {
+                if operands[1] == 0.0 {
+                    return Err("Division by zero".to_string())
+                }
+                operands[0] / operands[1]
+            },
+            "sqrt" if operands.len() == 1 => {
+                if operands[0] < 0.0 {
+                    return Err("Square root of negative number".to_string())
+                }
+                operands[0].sqrt()
+            },
+            _ => return Err(f"Unknown operation: {operation}")
+        }
+        
+        self.history.push(result)
+        Ok(result)
+    }
+    
+    // Dead code example - never called
+    fun unused_method(self) -> String {
+        "This method is never used".to_string()
+    }
+}
+
+// Actor with message flow patterns
+actor CounterActor {
+    count: i32,
+    subscribers: Vec<ActorRef>
+    
+    receive increment() {
+        self.count += 1
+        self.notify_subscribers()
+    }
+    
+    receive decrement() {
+        if self.count > 0 {
+            self.count -= 1
+            self.notify_subscribers()
+        }
+    }
+    
+    receive subscribe(subscriber: ActorRef) {
+        self.subscribers.push(subscriber)
+    }
+    
+    receive get_count() -> i32 {
+        self.count
+    }
+    
+    fun notify_subscribers(self) {
+        for subscriber in &self.subscribers {
+            send(subscriber, count_updated(self.count))
+        }
+    }
+}
+
+// Actor system demonstrating message flows
+actor MessageRouter {
+    routes: HashMap<String, ActorRef>
+    
+    receive register_route(path: String, actor: ActorRef) {
+        self.routes.insert(path, actor)
+    }
+    
+    receive route_message(path: String, message: Message) {
+        match self.routes.get(&path) {
+            Some(actor) => send(actor, message),
+            None => {
+                // Spawn new actor if path doesn't exist
+                let new_actor = spawn(DefaultActor::new())
+                self.routes.insert(path.clone(), new_actor)
+                send(new_actor, message)
+            }
+        }
+    }
+}
+
+// Async function with complex error handling
+async fun fetch_and_process(url: String) -> Result<String, ProcessingError> {
+    // Try-catch equivalent with ?
+    let response = http_get(url).await?
+    let data = response.json().await?
+    
+    // Complex processing with multiple error paths
+    match data.get("status") {
+        Some("success") => {
+            let processed = data
+                |> get("payload")
+                |> and_then(|p| p.as_string())
+                |> map(|s| s.to_uppercase())
+                |> ok_or(ProcessingError::InvalidPayload)?
+            
+            Ok(processed)
+        },
+        Some("error") => Err(ProcessingError::ServerError(
+            data.get("message").unwrap_or("Unknown error").to_string()
+        )),
+        _ => Err(ProcessingError::UnknownStatus)
+    }
+}
+
+// Main function with complex orchestration
+async fun main() -> Result<(), Box<dyn Error>> {
+    // Create actor system
+    let counter = spawn(CounterActor { count: 0, subscribers: Vec::new() })
+    let router = spawn(MessageRouter { routes: HashMap::new() })
+    
+    // Register routes
+    send(router, register_route("counter".to_string(), counter))
+    
+    // Complex data processing
+    let data = vec![1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 50, 75, 100, 150, 200]
+    let results = complex_analysis(data, 5)?
+    
+    // Process results with error handling
+    for (key, value) in results {
+        if value > 100.0 {
+            println(f"High value found: {key} = {value}")
+        } else if value < 0.0 {
+            eprintln(f"Warning: Negative value {key} = {value}")
+        }
+    }
+    
+    // Test calculator
+    let mut calc = Calculator::new(2)
+    let result = calc.calculate("add".to_string(), vec![1.0, 2.0, 3.0])?
+    println(f"Calculator result: {result}")
+    
+    // Async operations
+    let urls = vec!["http://api1.com", "http://api2.com", "http://api3.com"]
+    let mut handles = Vec::new()
+    
+    for url in urls {
+        let handle = spawn_task(fetch_and_process(url.to_string()))
+        handles.push(handle)
+    }
+    
+    // Wait for all async operations
+    for handle in handles {
+        match handle.await {
+            Ok(result) => println(f"Processed: {result}"),
+            Err(e) => eprintln(f"Error: {e}")
+        }
+    }
+    
+    Ok(())
+}
+
+// Dead code examples
+fun never_called_function(x: i32) -> i32 {
+    x * 2 // This function is defined but never called
+}
+
+let unused_variable = 42; // This variable is defined but never used
+
+// Type alias for complex types
+type ProcessingError = enum {
+    InvalidPayload,
+    ServerError(String),
+    UnknownStatus,
+    NetworkError(String)
+}

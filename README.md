@@ -19,12 +19,13 @@
 
 **Zero-configuration AI context generation system** with extreme quality enforcement and Toyota Way standards. Analyze any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com).
 
-> **🎉 v2.11.0 Release**: **Ruchy Language Support!** Full support for the Ruchy programming language:
-> - **🦀 Ruchy v1.5.0**: Complete AST parsing and complexity analysis for Ruchy files
-> - **🚀 Advanced Features**: Classes, actors, traits, pattern matching, and pipeline operators
-> - **📊 Complexity Metrics**: Function-level cyclomatic and cognitive complexity analysis
-> - **🔤 Modern Syntax**: F-strings, async/await, error handling with Result types
-> - **🔧 Seamless Integration**: Automatic `.ruchy` file detection and analysis
+> **🎉 v2.12.0 Release**: **Enhanced Ruchy Analysis!** Advanced analysis capabilities for the Ruchy programming language:
+> - **🧮 Halstead Metrics**: Volume, difficulty, effort, time, and bug estimations
+> - **💀 Dead Code Detection**: Unused functions and variables identification
+> - **🎯 Type Inference**: Automatic type analysis for literals and operations
+> - **🎭 Actor Analysis**: Message flow tracking and deadlock detection
+> - **🌟 Pattern Matching**: Enhanced complexity scoring for match expressions
+> - **📦 Dependency Tracking**: Import/export analysis with module relationships
 
 > **🚀 v2.10.0**: **Claude Code Agent Mode - "Always Working" Achievement!** Transform PMAT into a persistent background quality agent:
 > - **🤖 Claude Code Integration**: Native MCP server for seamless Claude Code integration
@@ -277,7 +278,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - **TypeScript/JavaScript**: SWC-based parsing
 - **Python**: RustPython AST analysis  
 - **C/C++**: Tree-sitter with goto tracking
-- **Ruchy**: v1.5.0 support with full AST parsing, actors, and pipeline operators
+- **Ruchy**: v1.5.0 support with advanced analysis
+  - Full AST parsing with 35+ token types
+  - Halstead metrics (volume, difficulty, effort, time, bugs)
+  - Dead code detection (unused functions/variables)  
+  - Type inference for literals and binary operations
+  - Actor message flow analysis with deadlock detection
+  - Enhanced pattern matching complexity scoring
+  - Import/export dependency tracking
 - **Kotlin**: Tree-sitter based analysis
 - **30+ Languages**: Via tree-sitter grammar support
 
