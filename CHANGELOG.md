@@ -25,6 +25,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Support for module imports, specific item imports, and import aliases
   - Fixed pattern match exhaustiveness across codebase
 
+- **PMAT-6006**: Comprehensive testing suite
+  - Added property tests for Import AST variant with proptest
+  - Created doctests for AstItem::Import with Python examples
+  - Tests cover roundtrip, edge cases, and display_name handling
+  
+- **PMAT-6007**: GitHub repository analysis examples
+  - Created `analyze_github_simple.rs` for basic repo analysis
+  - Created `analyze_github_repo.rs` for detailed demo runner analysis
+  - Created `compare_repos.rs` for multi-repo comparison
+  - Created `quality_gate_github.rs` for quality gate testing
+  - All examples support GitHub URL cloning and analysis
+
 ## [2.8.0] - 2025-08-22
 
 ### Added

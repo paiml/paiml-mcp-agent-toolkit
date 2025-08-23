@@ -120,6 +120,40 @@ pub enum AstItem {
         path: String,
         line: usize,
     },
+    /// Import statement for language-specific module imports
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pmat::services::context::AstItem;
+    ///
+    /// // Python: import os
+    /// let import1 = AstItem::Import {
+    ///     module: "os".to_string(),
+    ///     items: vec![],
+    ///     alias: None,
+    ///     line: 1,
+    /// };
+    /// assert_eq!(import1.display_name(), "os");
+    ///
+    /// // Python: import numpy as np
+    /// let import2 = AstItem::Import {
+    ///     module: "numpy".to_string(),
+    ///     items: vec![],
+    ///     alias: Some("np".to_string()),
+    ///     line: 2,
+    /// };
+    /// assert_eq!(import2.display_name(), "numpy as np");
+    ///
+    /// // Python: from typing import List, Dict
+    /// let import3 = AstItem::Import {
+    ///     module: "typing".to_string(),
+    ///     items: vec!["List".to_string(), "Dict".to_string()],
+    ///     alias: None,
+    ///     line: 3,
+    /// };
+    /// assert_eq!(import3.display_name(), "typing::{List, Dict}");
+    /// ```
     Import {
         /// What is being imported (module, package, or specific items)
         module: String,

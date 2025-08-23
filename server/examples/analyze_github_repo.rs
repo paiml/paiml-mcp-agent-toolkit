@@ -1,0 +1,100 @@
+//! Example: Analyze a GitHub repository
+//! 
+//! This example demonstrates how to analyze a GitHub repository using pmat.
+//! It clones the repository, performs analysis, and outputs results.
+//!
+//! Usage:
+//! ```bash
+//! cargo run --example analyze_github_repo
+//! cargo run --example analyze_github_repo -- --url https://github.com/rust-lang/rust-clippy
+//! ```
+
+use anyhow::Result;
+use pmat::demo::runner::{resolve_repository_async, DemoRunner};
+use pmat::stateless_server::StatelessTemplateServer;
+use std::sync::Arc;
+use tracing::{info, Level};
+use tracing_subscriber::FmtSubscriber;
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    // Initialize logging
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber)?;
+
+    // Parse command line arguments
+    let args: Vec<String> = std::env::args().collect();
+    let url = if args.len() > 2 && args[1] == "--url" {
+        args[2].clone()
+    } else {
+        // Default to a small, popular repository for testing
+        "https://github.com/serde-rs/json".to_string()
+    };
+
+    info!("Analyzing GitHub repository: {}", url);
+
+    // Resolve and clone the repository
+    let repo_path = resolve_repository_async(None, Some(url.clone()), None).await?;
+    info!("Repository cloned to: {:?}", repo_path);
+
+    // Create server and runner
+    let server = Arc::new(StatelessTemplateServer::new()?);
+    let mut runner = DemoRunner::new(server);
+
+    // Run the demo analysis
+    info!("Starting analysis...");
+    let report = runner.execute(repo_path).await?;
+    let result = &report.analysis;
+
+    // Output results
+    println!("\n=== Analysis Results ===");
+    println!("Repository: {}", url);
+    
+    if let Some(complexity) = &result.complexity_metrics {
+        println!("\n📊 Complexity Metrics:");
+        println!("  Files analyzed: {}", complexity.files.len());
+        let total_functions: usize = complexity.files.iter()
+            .map(|f| f.functions.len())
+            .sum();
+        println!("  Total functions: {}", total_functions);
+        
+        if total_functions > 0 {
+            let max_complexity = complexity.files.iter()
+                .flat_map(|f| f.functions.iter())
+                .map(|f| f.complexity.cyclomatic)
+                .max()
+                .unwrap_or(0);
+            println!("  Max cyclomatic complexity: {}", max_complexity);
+        }
+    }
+
+    if let Some(ast) = &result.ast_summaries {
+        println!("\n🌳 AST Summary:");
+        for summary in ast {
+            println!("  {}: {} items", summary.language, summary.total_items);
+        }
+    }
+
+    if let Some(lang_stats) = &result.language_stats {
+        println!("\n💻 Language Statistics:");
+        for (lang, stats) in lang_stats {
+            println!("  {}: {} files, {} lines", lang, stats.file_count, stats.line_count);
+        }
+    }
+
+    if let Some(qa) = &result.qa_verification {
+        println!("\n✅ Quality Verification:");
+        println!("  Overall: {:?}", qa.overall);
+        println!("  Dead code: {:.1}%", qa.dead_code.actual * 100.0);
+        println!("  Complexity P99: {}", qa.complexity.p99);
+    }
+
+    info!("Analysis complete!");
+    
+    // Print execution time
+    println!("\n⏱️  Execution time: {:.2}s", report.execution_time_ms as f64 / 1000.0);
+    
+    Ok(())
+}
