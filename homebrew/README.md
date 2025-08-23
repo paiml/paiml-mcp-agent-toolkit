@@ -42,7 +42,7 @@ To submit this formula to the official Homebrew repository:
 1. **Fork homebrew-core**: https://github.com/Homebrew/homebrew-core
 2. **Calculate SHA256**: 
    ```bash
-   curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/archive/v2.10.0.tar.gz | shasum -a 256
+   curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/archive/v2.12.0.tar.gz | shasum -a 256
    ```
 3. **Update formula**: Replace SHA256_PLACEHOLDER with actual hash
 4. **Test formula**:

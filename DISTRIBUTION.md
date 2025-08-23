@@ -1,6 +1,6 @@
-# PMAT v2.10.0 Multi-Ecosystem Distribution Guide
+# PMAT v2.12.0 Multi-Ecosystem Distribution Guide
 
-This document outlines how to distribute PMAT v2.10.0 across major package ecosystems to maximize accessibility for developers.
+This document outlines how to distribute PMAT v2.12.0 across major package ecosystems to maximize accessibility for developers.
 
 ## 📦 Package Ecosystems Ready for Submission
 
@@ -66,8 +66,8 @@ paru -S pmat
 
 ```bash
 # Usage (after publishing)
-docker run -it paiml/pmat:2.10.0 pmat --version
-docker run -p 8080:8080 paiml/pmat:2.10.0 pmat demo --serve
+docker run -it paiml/pmat:2.12.0 pmat --version
+docker run -p 8080:8080 paiml/pmat:2.12.0 pmat demo --serve
 ```
 
 **Submission Status**: ✅ READY FOR AUTOMATED PUBLISHING
@@ -119,7 +119,7 @@ sudo apt install pmat
 ## 🚀 Submission Priority & Timeline
 
 ### **Phase 1: Immediate (Week 1)**
-1. **✅ npm PUBLISHED** - pmat-agent@2.10.0 live on npm registry
+1. **✅ npm PUBLISHED** - pmat-agent@2.12.0 live on npm registry
 2. **🚀 Docker Hub READY** - Automated builds configured via GitHub Actions
 3. **GitHub Releases** - Direct .deb and binary downloads
 
@@ -136,10 +136,10 @@ sudo apt install pmat
 ## 📋 Pre-Submission Checklist
 
 ### **For All Packages**:
-- [ ] Update version to 2.10.0 in all package files
+- [ ] Update version to 2.12.0 in all package files
 - [ ] Calculate and update SHA256 checksums
 - [ ] Test installation on clean systems
-- [ ] Verify `pmat --version` shows 2.10.0
+- [ ] Verify `pmat --version` shows 2.12.0
 - [ ] Test Claude Code Agent Mode: `pmat agent mcp-server`
 - [ ] Validate quality gates: `pmat quality-gate --help`
 
