@@ -26,7 +26,7 @@ The Chocolatey package provides multiple installation paths:
 ### 1. Automatic Installation (Preferred)
 If Rust/Cargo is available, the package automatically installs from crates.io:
 ```powershell
-cargo install pmat --version 2.10.0 --force
+cargo install pmat --version 2.12.0 --force
 ```
 
 ### 2. Alternative Methods
@@ -100,7 +100,7 @@ The package includes comprehensive tests:
 
 # Manual submission
 choco pack pmat.nuspec
-choco push pmat.2.10.0.nupkg --source https://push.chocolatey.org/
+choco push pmat.2.12.0.nupkg --source https://push.chocolatey.org/
 ```
 
 ## Features

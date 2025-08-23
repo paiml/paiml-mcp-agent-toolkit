@@ -1,31 +1,31 @@
 # PMAT Docker Guide
 
-This guide covers running PMAT v2.10.0 in containerized environments using Docker.
+This guide covers running PMAT v2.12.0 in containerized environments using Docker.
 
 ## 🐳 Quick Start
 
 ### Pull and Run
 ```bash
 # Pull the latest image
-docker pull paiml/pmat:2.10.0
+docker pull paiml/pmat:2.12.0
 
 # Run version check
-docker run --rm paiml/pmat:2.10.0 pmat --version
+docker run --rm paiml/pmat:2.12.0 pmat --version
 
 # Analyze current directory
-docker run --rm -v $(pwd):/workspace paiml/pmat:2.10.0 pmat context
+docker run --rm -v $(pwd):/workspace paiml/pmat:2.12.0 pmat context
 ```
 
 ### Claude Code Agent Mode
 ```bash
 # Start MCP server for Claude Code integration
-docker run -it --rm paiml/pmat:2.10.0 pmat agent mcp-server
+docker run -it --rm paiml/pmat:2.12.0 pmat agent mcp-server
 
 # Background agent monitoring
 docker run -d --name pmat-agent \
   -v $(pwd):/workspace:ro \
   -v pmat-data:/var/lib/pmat-agent \
-  paiml/pmat:2.10.0 pmat agent start --project-path /workspace
+  paiml/pmat:2.12.0 pmat agent start --project-path /workspace
 ```
 
 ## 🏗️ Docker Compose
@@ -85,17 +85,17 @@ docker-compose down
 - name: Run PMAT Quality Gates
   run: |
     docker run --rm -v ${{ github.workspace }}:/workspace \
-      paiml/pmat:2.10.0 pmat quality-gate --strict --format json
+      paiml/pmat:2.12.0 pmat quality-gate --strict --format json
 ```
 
 ### Development Workflow
 ```bash
 # Interactive development shell
-docker run -it --rm -v $(pwd):/workspace paiml/pmat:2.10.0 bash
+docker run -it --rm -v $(pwd):/workspace paiml/pmat:2.12.0 bash
 
 # Watch mode for continuous analysis
 docker run --rm -v $(pwd):/workspace \
-  paiml/pmat:2.10.0 pmat agent start --project-path /workspace
+  paiml/pmat:2.12.0 pmat agent start --project-path /workspace
 ```
 
 ### Production Deployment
@@ -107,7 +107,7 @@ docker run -d --name pmat-production \
   -v pmat-prod-state:/var/lib/pmat-agent \
   -v pmat-prod-logs:/var/log/pmat-agent \
   -p 9090:9090 \
-  paiml/pmat:2.10.0 pmat agent start --project-path /workspace
+  paiml/pmat:2.12.0 pmat agent start --project-path /workspace
 ```
 
 ## 🛡️ Security Features
@@ -128,7 +128,7 @@ docker run -d --name pmat-production \
 # Run with limited network access
 docker run --rm --network none \
   -v $(pwd):/workspace:ro \
-  paiml/pmat:2.10.0 pmat context
+  paiml/pmat:2.12.0 pmat context
 ```
 
 ## 📊 Multi-Architecture Support
@@ -149,13 +149,13 @@ docker run --rm --health-cmd="pmat --version" \
   --health-interval=30s \
   --health-timeout=10s \
   --health-retries=3 \
-  paiml/pmat:2.10.0
+  paiml/pmat:2.12.0
 ```
 
 ### Metrics Endpoint
 ```bash
 # Access Prometheus metrics
-docker run -p 9090:9090 paiml/pmat:2.10.0 pmat agent start --enable-metrics
+docker run -p 9090:9090 paiml/pmat:2.12.0 pmat agent start --enable-metrics
 curl http://localhost:9090/metrics
 ```
 
@@ -166,13 +166,13 @@ curl http://localhost:9090/metrics
 # Enable debug logging
 docker run --rm -e RUST_LOG=debug \
   -v $(pwd):/workspace \
-  paiml/pmat:2.10.0 pmat context --verbose
+  paiml/pmat:2.12.0 pmat context --verbose
 ```
 
 ### Container Shell Access
 ```bash
 # Access container shell for debugging
-docker run -it --entrypoint=/bin/bash paiml/pmat:2.10.0
+docker run -it --entrypoint=/bin/bash paiml/pmat:2.12.0
 
 # Inspect running container
 docker exec -it pmat-agent bash
@@ -187,20 +187,20 @@ docker exec -it pmat-agent bash
 
 2. **Memory Limits**: For large codebases, increase container memory
    ```bash
-   docker run --memory=2g paiml/pmat:2.10.0 pmat context
+   docker run --memory=2g paiml/pmat:2.12.0 pmat context
    ```
 
 3. **Network Issues**: Check port conflicts and firewall settings
    ```bash
-   docker run -p 8081:8080 paiml/pmat:2.10.0 pmat demo --serve
+   docker run -p 8081:8080 paiml/pmat:2.12.0 pmat demo --serve
    ```
 
 ## 📦 Image Variants
 
 ### Available Tags
 - `paiml/pmat:latest` - Latest stable release
-- `paiml/pmat:2.10.0` - Specific version
-- `paiml/pmat:2.10` - Minor version latest
+- `paiml/pmat:2.12.0` - Specific version
+- `paiml/pmat:2.12` - Minor version latest
 - `paiml/pmat:2` - Major version latest
 
 ### Image Size

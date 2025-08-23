@@ -1,6 +1,6 @@
 # PMAT Debian/Ubuntu Package
 
-This directory contains the complete Debian package structure for PMAT v2.10.0.
+This directory contains the complete Debian package structure for PMAT v2.12.0.
 
 ## 📦 Package Structure
 
@@ -46,7 +46,7 @@ gzip -9 usr/share/doc/pmat/changelog.Debian
 gzip -9 usr/share/man/man1/pmat.1
 
 # Build package
-cd .. && dpkg-deb --build debian pmat_2.10.0_amd64.deb
+cd .. && dpkg-deb --build debian pmat_2.12.0_amd64.deb
 ```
 
 ## 🧪 Testing
@@ -59,7 +59,7 @@ cd .. && dpkg-deb --build debian pmat_2.10.0_amd64.deb
 ### Manual Testing
 ```bash
 # Install package
-sudo dpkg -i ../pmat_2.10.0_amd64.deb
+sudo dpkg -i ../pmat_2.12.0_amd64.deb
 
 # Fix dependencies if needed
 sudo apt-get install -f
@@ -124,7 +124,7 @@ After binary installation:
 ## 📊 Package Details
 
 - **Package Name**: `pmat`
-- **Version**: `2.10.0`
+- **Version**: `2.12.0`
 - **Architecture**: `amd64` (expandable to `arm64`)
 - **Section**: `devel` (development tools)
 - **Priority**: `optional`
@@ -136,7 +136,7 @@ After binary installation:
 
 ### 1. Local Installation
 ```bash
-sudo dpkg -i pmat_2.10.0_amd64.deb
+sudo dpkg -i pmat_2.12.0_amd64.deb
 ```
 
 ### 2. APT Repository

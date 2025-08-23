@@ -33,7 +33,7 @@ sudo apt install devscripts build-essential dh-make
 
 # Create source package structure
 cd /path/to/pmat-source
-dh_make -e hello@paiml.com -f ../pmat_2.10.0.orig.tar.gz
+dh_make -e hello@paiml.com -f ../pmat_2.12.0.orig.tar.gz
 
 # Build source package
 debuild -S -sa
@@ -53,7 +53,7 @@ debuild -S -sa
 
 ```bash
 # Upload source package to PPA
-dput ppa:your-username/pmat pmat_2.10.0-1_source.changes
+dput ppa:your-username/pmat pmat_2.12.0-1_source.changes
 
 # Check upload status
 # Visit: https://launchpad.net/~your-username/+archive/ubuntu/pmat
@@ -63,7 +63,7 @@ dput ppa:your-username/pmat pmat_2.10.0-1_source.changes
 
 ### Source Package Structure
 ```
-pmat-2.10.0/
+pmat-2.12.0/
 ├── debian/
 │   ├── control           # Package metadata
 │   ├── rules             # Build rules
@@ -109,7 +109,7 @@ override_dh_auto_install:
 ### Package Naming
 - Must follow Ubuntu naming conventions
 - No conflicts with existing packages
-- Version format: `2.10.0-1ubuntu1`
+- Version format: `2.12.0-1ubuntu1`
 
 ### Dependencies
 - Only Ubuntu-available dependencies
@@ -138,7 +138,7 @@ sudo apt install snapcraft
 # Create snapcraft.yaml
 cat > snap/snapcraft.yaml << 'EOF'
 name: pmat
-version: '2.10.0'
+version: '2.12.0'
 summary: Pragmatic AI MCP Agent Toolkit
 description: |
   Zero-config AI context generation and code quality toolkit
@@ -169,10 +169,10 @@ EOF
 snapcraft
 
 # Test snap
-sudo snap install pmat_2.10.0_amd64.snap --devmode
+sudo snap install pmat_2.12.0_amd64.snap --devmode
 
 # Publish to Snap Store
-snapcraft upload pmat_2.10.0_amd64.snap
+snapcraft upload pmat_2.12.0_amd64.snap
 ```
 
 ## 🎯 Benefits of PPA Distribution
@@ -203,19 +203,19 @@ snapcraft upload pmat_2.10.0_amd64.snap
 ### Regular Updates
 ```bash
 # Update version in debian/changelog
-dch -v 2.11.0-1 "New upstream release"
+dch -v 2.13.0-1 "New upstream release"
 
 # Build and upload
 debuild -S -sa
-dput ppa:username/pmat pmat_2.11.0-1_source.changes
+dput ppa:username/pmat pmat_2.13.0-1_source.changes
 ```
 
 ### Emergency Fixes
 ```bash
 # Create patch version  
-dch -v 2.10.0-2 "Fix critical security issue"
+dch -v 2.12.0-2 "Fix critical security issue"
 debuild -S -sa
-dput ppa:username/pmat pmat_2.10.0-2_source.changes
+dput ppa:username/pmat pmat_2.12.0-2_source.changes
 ```
 
 ## 🔧 Testing and Validation
@@ -223,9 +223,9 @@ dput ppa:username/pmat pmat_2.10.0-2_source.changes
 ### Local Testing
 ```bash
 # Test package builds
-pbuilder-dist focal build pmat_2.10.0-1.dsc
-pbuilder-dist jammy build pmat_2.10.0-1.dsc
-pbuilder-dist noble build pmat_2.10.0-1.dsc
+pbuilder-dist focal build pmat_2.12.0-1.dsc
+pbuilder-dist jammy build pmat_2.12.0-1.dsc
+pbuilder-dist noble build pmat_2.12.0-1.dsc
 ```
 
 ### PPA Testing

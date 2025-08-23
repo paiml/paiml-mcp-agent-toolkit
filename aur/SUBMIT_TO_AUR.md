@@ -1,11 +1,11 @@
 # Submitting PMAT to Arch Linux AUR
 
-This guide covers submitting PMAT v2.10.0 to the Arch User Repository (AUR).
+This guide covers submitting PMAT v2.12.0 to the Arch User Repository (AUR).
 
 ## ✅ Prerequisites Met
 
 - [x] **AUR Account**: SSH key registered with AUR
-- [x] **Stable Release**: v2.10.0 tagged and released on GitHub  
+- [x] **Stable Release**: v2.12.0 tagged and released on GitHub  
 - [x] **License**: MIT license (AUR compatible)
 - [x] **Build System**: Standard Cargo build process
 - [x] **SHA256**: Calculated and verified (`d8aa8ade82d3c877fd140327ee64c51d9a00d91b97c5f6195c54550ca1b8c4a0`)
@@ -58,7 +58,7 @@ sudo pacman -R pmat
 git add PKGBUILD .SRCINFO
 
 # Commit with descriptive message
-git commit -m "pmat: initial upload - v2.10.0
+git commit -m "pmat: initial upload - v2.12.0
 
 PMAT is a zero-config AI context generation and code quality toolkit 
 with Claude Code Agent Mode for continuous quality monitoring.
@@ -98,7 +98,7 @@ git push origin master
 ## 🔍 AUR Guidelines Compliance
 
 - **Naming**: `pmat` follows AUR naming conventions
-- **Version**: Follows upstream semantic versioning (2.10.0)
+- **Version**: Follows upstream semantic versioning (2.12.0)
 - **License**: MIT (AUR-compatible open source license)
 - **Dependencies**: Minimal (build-only rust/cargo)
 - **Files**: Standard PKGBUILD structure with proper .SRCINFO
@@ -138,11 +138,11 @@ Once submitted to AUR:
 
 ### Version Update Command
 ```bash
-# For next release (e.g., v2.11.0)
+# For next release (e.g., v2.13.0)
 updpkgsums  # Updates checksums automatically
 makepkg --printsrcinfo > .SRCINFO
 git add PKGBUILD .SRCINFO
-git commit -m "pmat: update to 2.11.0"
+git commit -m "pmat: update to 2.13.0"
 git push origin master
 ```
 

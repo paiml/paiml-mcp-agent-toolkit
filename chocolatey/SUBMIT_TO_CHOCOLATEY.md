@@ -7,7 +7,7 @@ This guide covers submitting the PMAT Chocolatey package to the official Chocola
 - [x] **Chocolatey Package**: Complete .nuspec with all required metadata
 - [x] **Installation Scripts**: PowerShell scripts for install/uninstall
 - [x] **Legal Files**: LICENSE.txt and VERIFICATION.txt included
-- [x] **Version**: 2.10.0 stable release
+- [x] **Version**: 2.12.0 stable release
 - [x] **Testing**: Local testing with test-package.ps1
 - [x] **Dependencies**: Handled gracefully (Cargo preferred, npm fallback)
 
@@ -38,7 +38,7 @@ This guide covers submitting the PMAT Chocolatey package to the official Chocola
 choco pack pmat.nuspec
 
 # Verify package contents
-choco info pmat.2.10.0.nupkg
+choco info pmat.2.12.0.nupkg
 ```
 
 ### 4. Submit to Chocolatey
@@ -47,7 +47,7 @@ choco info pmat.2.10.0.nupkg
 choco apikey --key YOUR_API_KEY --source https://push.chocolatey.org/
 
 # Push package for review
-choco push pmat.2.10.0.nupkg --source https://push.chocolatey.org/
+choco push pmat.2.12.0.nupkg --source https://push.chocolatey.org/
 ```
 
 ## 📋 Package Details
@@ -73,7 +73,7 @@ Chocolatey moderators will verify:
 
 ### 1. **Package Metadata**
 - [x] Unique package ID (`pmat`)
-- [x] Semantic versioning (2.10.0)
+- [x] Semantic versioning (2.12.0)
 - [x] Complete description with features
 - [x] Valid project URLs and documentation links
 - [x] Appropriate tags and categorization
