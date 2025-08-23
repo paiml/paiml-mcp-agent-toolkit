@@ -99,7 +99,8 @@ impl CliAdapter {
             Commands::Memory { .. } | 
             Commands::Cache { .. } | 
             Commands::Telemetry { .. } | 
-            Commands::Config { .. } => Self::cli_only_command_error()
+            Commands::Config { .. } | 
+            Commands::Agent { .. } => Self::cli_only_command_error()
         }
     }
 
@@ -1079,6 +1080,7 @@ impl CliInput {
             Commands::Cache { .. } => "cache",
             Commands::Telemetry { .. } => "telemetry",
             Commands::Config { .. } => "config",
+            Commands::Agent { .. } => "agent",
         }
         .to_string();
 

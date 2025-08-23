@@ -458,6 +458,13 @@ pub enum Commands {
         #[arg(long)]
         config_path: Option<PathBuf>,
     },
+
+    /// Start Claude Code background agent for continuous quality monitoring
+    Agent {
+        /// Agent mode subcommand
+        #[command(subcommand)]
+        command: AgentCommands,
+    },
 }
 
 /// Analyze subcommands
@@ -2063,4 +2070,144 @@ pub enum ServeTransport {
     Both,
     /// All transports (HTTP, WebSocket, SSE)
     All,
+}
+
+/// Agent mode subcommands for Claude Code integration
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum AgentCommands {
+    /// Start the background agent daemon
+    Start {
+        /// Project path to monitor (defaults to current directory)
+        #[arg(short = 'p', long, default_value = ".")]
+        project_path: PathBuf,
+
+        /// Configuration file path
+        #[arg(short = 'c', long)]
+        config: Option<PathBuf>,
+
+        /// Working directory for the daemon
+        #[arg(long)]
+        working_dir: Option<PathBuf>,
+
+        /// PID file location
+        #[arg(long)]
+        pid_file: Option<PathBuf>,
+
+        /// Log file location
+        #[arg(long)]
+        log_file: Option<PathBuf>,
+
+        /// Run in foreground (don't daemonize)
+        #[arg(long)]
+        foreground: bool,
+
+        /// Health check interval in seconds
+        #[arg(long, default_value = "30")]
+        health_interval: u64,
+
+        /// Maximum memory usage in MB before restart
+        #[arg(long, default_value = "500")]
+        max_memory_mb: u64,
+
+        /// Disable auto-restart on failure
+        #[arg(long)]
+        no_auto_restart: bool,
+    },
+
+    /// Stop the background agent daemon
+    Stop {
+        /// PID file location
+        #[arg(long)]
+        pid_file: Option<PathBuf>,
+
+        /// Force stop (SIGKILL) if graceful stop fails
+        #[arg(long)]
+        force: bool,
+
+        /// Timeout for graceful shutdown in seconds
+        #[arg(long, default_value = "10")]
+        timeout: u64,
+    },
+
+    /// Show daemon status
+    Status {
+        /// PID file location
+        #[arg(long)]
+        pid_file: Option<PathBuf>,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "json")]
+        format: OutputFormat,
+    },
+
+    /// Start monitoring a new project
+    Monitor {
+        /// Project path to start monitoring
+        #[arg(short = 'p', long)]
+        project_path: PathBuf,
+
+        /// Project identifier (defaults to path basename)
+        #[arg(long)]
+        project_id: Option<String>,
+
+        /// Quality thresholds configuration file
+        #[arg(long)]
+        thresholds: Option<PathBuf>,
+    },
+
+    /// Stop monitoring a project
+    Unmonitor {
+        /// Project ID to stop monitoring
+        #[arg(short = 'i', long)]
+        project_id: String,
+    },
+
+    /// Run health check
+    Health {
+        /// PID file location
+        #[arg(long)]
+        pid_file: Option<PathBuf>,
+
+        /// Detailed health information
+        #[arg(long)]
+        detailed: bool,
+    },
+
+    /// Reload daemon configuration
+    Reload {
+        /// PID file location
+        #[arg(long)]
+        pid_file: Option<PathBuf>,
+
+        /// Configuration file path
+        #[arg(short = 'c', long)]
+        config: Option<PathBuf>,
+    },
+
+    /// Run quality gate through agent
+    QualityGate {
+        /// Project ID or path
+        #[arg(short = 'p', long)]
+        project: String,
+
+        /// Specific file to check
+        #[arg(long)]
+        file: Option<PathBuf>,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "summary")]
+        format: QualityGateOutputFormat,
+    },
+
+    /// Start MCP server for testing
+    McpServer {
+        /// Configuration file path
+        #[arg(short = 'c', long)]
+        config: Option<PathBuf>,
+
+        /// Debug mode (verbose logging)
+        #[arg(long)]
+        debug: bool,
+    },
 }

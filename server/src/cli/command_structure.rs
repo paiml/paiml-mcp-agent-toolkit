@@ -300,6 +300,10 @@ impl CommandExecutor {
             Commands::Config { show, edit, validate, reset, section, set, config_path } => {
                 super::handlers::handle_configuration(show, edit, validate, reset, section, set, config_path).await
             }
+
+            Commands::Agent { command } => {
+                super::handlers::handle_agent_command(command).await
+            }
         }
     }
 }
