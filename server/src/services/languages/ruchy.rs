@@ -26,10 +26,11 @@ use crate::services::complexity::{ComplexityMetrics, FileComplexityMetrics, Func
 use anyhow::Result;
 use std::path::Path;
 
-/// Ruchy language token types based on the lexer specification
+/// Ruchy language token types based on the official Ruchy lexer specification
+/// Updated to match ruchy v1.5.0 token definitions
 #[derive(Debug, Clone, PartialEq)]
 pub enum RuchyToken {
-    // Keywords
+    // Keywords - aligned with ruchy v1.5.0
     Fun,
     If,
     Else,
@@ -51,8 +52,22 @@ pub enum RuchyToken {
     Send,
     Await,
     Async,
+    True,
+    False,
+    Break,
+    Continue,
+    In,
+    As,
+    Pub,
+    Mod,
+    Use,
+    Where,
+    Type,
+    Import,
+    From,
+    Export,
     
-    // Operators
+    // Operators - aligned with ruchy v1.5.0
     Plus,
     Minus,
     Star,
@@ -71,8 +86,15 @@ pub enum RuchyToken {
     PipeForward,  // |>
     Arrow,        // ->
     FatArrow,     // =>
+    Question,     // ?
+    Ampersand,    // &
+    Pipe,         // |
+    Caret,        // ^
+    Tilde,        // ~
+    LeftShift,    // <<
+    RightShift,   // >>
     
-    // Delimiters
+    // Delimiters - aligned with ruchy v1.5.0
     LeftParen,
     RightParen,
     LeftBrace,
@@ -83,20 +105,32 @@ pub enum RuchyToken {
     Semicolon,
     Colon,
     Dot,
+    DoubleColon,
+    DotDot,       // ..
+    DotDotDot,    // ...
+    At,           // @
+    Hash,         // #
     
-    // Literals
+    // Literals - aligned with ruchy v1.5.0
     Integer(i64),
     Float(f64),
     String(String),
+    FString(String),
+    Char(char),
     Bool(bool),
     
     // Identifiers
     Identifier(String),
     
     // Special
-    Annotation(String),  // @test, #[property], etc.
+    Annotation(String),  // @test, etc.
     Comment(String),
+    
+    // End of file
     Eof,
+    
+    // Error token
+    Error,
 }
 
 /// Ruchy AST node types
@@ -452,10 +486,19 @@ impl RuchyLexer {
             if ch.is_numeric() {
                 num_str.push(ch);
                 self.advance();
-            } else if ch == '.' && !is_float {
+            } else if ch == '.' && !is_float && self.peek().map_or(false, |c| c.is_numeric()) {
                 is_float = true;
                 num_str.push(ch);
                 self.advance();
+            } else if (ch == 'e' || ch == 'E') && !num_str.contains('e') && !num_str.contains('E') {
+                num_str.push(ch);
+                self.advance();
+                if let Some(sign) = self.current_char {
+                    if sign == '+' || sign == '-' {
+                        num_str.push(sign);
+                        self.advance();
+                    }
+                }
             } else {
                 break;
             }
@@ -466,6 +509,40 @@ impl RuchyLexer {
         } else {
             RuchyToken::Integer(num_str.parse().unwrap_or(0))
         }
+    }
+    
+    fn read_string(&mut self, quote: char) -> String {
+        let mut result = String::new();
+        self.advance(); // skip opening quote
+        
+        while let Some(ch) = self.current_char {
+            if ch == quote {
+                self.advance(); // skip closing quote
+                break;
+            } else if ch == '\\' {
+                self.advance();
+                if let Some(escaped) = self.current_char {
+                    match escaped {
+                        'n' => result.push('\n'),
+                        't' => result.push('\t'),
+                        'r' => result.push('\r'),
+                        '\\' => result.push('\\'),
+                        '"' => result.push('"'),
+                        '\'' => result.push('\''),
+                        _ => {
+                            result.push('\\');
+                            result.push(escaped);
+                        }
+                    }
+                    self.advance();
+                }
+            } else {
+                result.push(ch);
+                self.advance();
+            }
+        }
+        
+        result
     }
     
     pub fn next_token(&mut self) -> RuchyToken {
@@ -568,17 +645,144 @@ impl RuchyLexer {
                     "trait" => RuchyToken::Trait,
                     "impl" => RuchyToken::Impl,
                     "actor" => RuchyToken::Actor,
-                    "true" => RuchyToken::Bool(true),
-                    "false" => RuchyToken::Bool(false),
+                    "async" => RuchyToken::Async,
+                    "await" => RuchyToken::Await,
+                    "spawn" => RuchyToken::Spawn,
+                    "send" => RuchyToken::Send,
+                    "receive" => RuchyToken::Receive,
+                    "break" => RuchyToken::Break,
+                    "continue" => RuchyToken::Continue,
+                    "in" => RuchyToken::In,
+                    "as" => RuchyToken::As,
+                    "pub" => RuchyToken::Pub,
+                    "mod" => RuchyToken::Mod,
+                    "use" => RuchyToken::Use,
+                    "where" => RuchyToken::Where,
+                    "type" => RuchyToken::Type,
+                    "import" => RuchyToken::Import,
+                    "from" => RuchyToken::From,
+                    "export" => RuchyToken::Export,
+                    "true" => RuchyToken::True,
+                    "false" => RuchyToken::False,
                     _ => RuchyToken::Identifier(ident),
                 }
+            }
+            Some('"') => {
+                let s = self.read_string('"');
+                RuchyToken::String(s)
+            }
+            Some('\'') => {
+                self.advance();
+                let ch = self.current_char.unwrap_or('\0');
+                self.advance();
+                if self.current_char == Some('\'') {
+                    self.advance();
+                }
+                RuchyToken::Char(ch)
+            }
+            Some('@') => {
+                self.advance();
+                let ident = self.read_identifier();
+                RuchyToken::Annotation(format!("@{}", ident))
+            }
+            Some('#') => {
+                self.advance();
+                RuchyToken::Hash
+            }
+            Some('.') => {
+                self.advance();
+                if self.current_char == Some('.') {
+                    self.advance();
+                    if self.current_char == Some('.') {
+                        self.advance();
+                        RuchyToken::DotDotDot
+                    } else {
+                        RuchyToken::DotDot
+                    }
+                } else {
+                    RuchyToken::Dot
+                }
+            }
+            Some(':') => {
+                self.advance();
+                if self.current_char == Some(':') {
+                    self.advance();
+                    RuchyToken::DoubleColon
+                } else {
+                    RuchyToken::Colon
+                }
+            }
+            Some(';') => {
+                self.advance();
+                RuchyToken::Semicolon
+            }
+            Some(',') => {
+                self.advance();
+                RuchyToken::Comma
+            }
+            Some('[') => {
+                self.advance();
+                RuchyToken::LeftBracket
+            }
+            Some(']') => {
+                self.advance();
+                RuchyToken::RightBracket
+            }
+            Some('!') => {
+                self.advance();
+                if self.current_char == Some('=') {
+                    self.advance();
+                    RuchyToken::NotEqual
+                } else {
+                    RuchyToken::Not
+                }
+            }
+            Some('<') => {
+                self.advance();
+                if self.current_char == Some('=') {
+                    self.advance();
+                    RuchyToken::LessEqual
+                } else if self.current_char == Some('<') {
+                    self.advance();
+                    RuchyToken::LeftShift
+                } else {
+                    RuchyToken::Less
+                }
+            }
+            Some('>') => {
+                self.advance();
+                if self.current_char == Some('=') {
+                    self.advance();
+                    RuchyToken::GreaterEqual
+                } else if self.current_char == Some('>') {
+                    self.advance();
+                    RuchyToken::RightShift
+                } else {
+                    RuchyToken::Greater
+                }
+            }
+            Some('?') => {
+                self.advance();
+                RuchyToken::Question
+            }
+            Some('~') => {
+                self.advance();
+                RuchyToken::Tilde
+            }
+            Some('^') => {
+                self.advance();
+                RuchyToken::Caret
+            }
+            Some('%') => {
+                self.advance();
+                RuchyToken::Percent
             }
             Some(ch) if ch.is_numeric() => {
                 self.read_number()
             }
             _ => {
                 self.advance();
-                RuchyToken::Eof
+                RuchyToken::Error
             }
         }
     }

@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.11.0] - 2025-08-23 - Ruchy Language Support
+
+### Added
+
+- **Ruchy Language Support (v1.5.0)** 🚀
+  - Full AST parsing and complexity analysis for Ruchy programming language
+  - Support for Ruchy v1.5.0 features including classes, actors, traits, and pattern matching
+  - Pipeline operator support (`|>`) for functional programming constructs
+  - Async/await and error handling analysis
+  - F-strings and raw string literal parsing
+  - Comprehensive token lexer with logos-based parsing
+
+### Enhanced
+
+- **Language Detection**
+  - Automatic detection of `.ruchy` files
+  - Integrated complexity metrics for Ruchy functions, classes, and actors
+  - Support for Ruchy-specific control flow (match expressions, pipeline operators)
+
+### Technical Details
+
+- Added `logos` v0.14 dependency for efficient tokenization
+- Extended RuchyToken enum with 35+ token types
+- Implemented RuchyLexer with escape sequence processing
+- Enhanced complexity analyzer for Ruchy-specific constructs
+- Added support for scientific notation in number literals
+
 ## [2.10.0] - 2025-08-23 - Agent Excellence "Always Working"
 
 ### Added
