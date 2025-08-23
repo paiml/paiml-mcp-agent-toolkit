@@ -2,7 +2,7 @@ class Pmat < Formula
   desc "Zero-config AI context generation and code quality toolkit with Claude Code Agent Mode"
   homepage "https://github.com/paiml/paiml-mcp-agent-toolkit"
   url "https://github.com/paiml/paiml-mcp-agent-toolkit/archive/v2.10.0.tar.gz"
-  sha256 "SHA256_PLACEHOLDER" # Will need to be updated with actual SHA256
+  sha256 "d8aa8ade82d3c877fd140327ee64c51d9a00d91b97c5f6195c54550ca1b8c4a0"
   license "MIT"
   head "https://github.com/paiml/paiml-mcp-agent-toolkit.git", branch: "master"
 

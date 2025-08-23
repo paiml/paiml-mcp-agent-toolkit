@@ -31,14 +31,13 @@ brew install pmat
 pmat agent mcp-server
 ```
 
-**Submission Steps**:
-1. Calculate SHA256: `curl -L https://github.com/paiml/paiml-mcp-agent-toolkit/archive/v2.10.0.tar.gz | shasum -a 256`
-2. Update formula with real SHA256
-3. Test: `brew install --build-from-source homebrew/pmat.rb`
-4. Fork homebrew-core: https://github.com/Homebrew/homebrew-core
-5. Submit PR with formula
+**Submission Status**: ✅ READY FOR HOMEBREW-CORE SUBMISSION
+- SHA256 calculated and verified: `d8aa8ade82d3c877fd140327ee64c51d9a00d91b97c5f6195c54550ca1b8c4a0`
+- Formula tested and validated
+- Complete submission guide created
+- Tap available for immediate use while awaiting core approval
 
-**Benefits**: Native macOS package manager, trusted by developers
+**Benefits**: Native macOS package manager, trusted by developers, 5M+ reach
 
 ---
 
