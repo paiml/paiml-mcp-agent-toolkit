@@ -56,9 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Multi-Ecosystem Distribution** ✅
   - **npm package PUBLISHED**: pmat-agent@2.10.0 live at https://www.npmjs.com/package/pmat-agent
-  - Homebrew formula for macOS/Linux users
+  - **Homebrew formula READY**: Complete with SHA256, tests, and submission guide for homebrew-core
+  - **Docker Hub AUTOMATED**: GitHub Actions workflow for multi-arch builds
   - Arch Linux AUR package with systemd integration
-  - Docker Hub multi-stage production image
   - Chocolatey package for Windows users
   - Debian/Ubuntu .deb package with service setup
 
