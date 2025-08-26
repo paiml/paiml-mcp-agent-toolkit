@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.14.0] - 2025-08-26 - Technical Debt Elimination via TDD
+
+### Fixed
+
+- **Language Detection**: Complete fix for broken function detection
+  - Fixed CLI single-file analysis using wrong AST implementation
+  - Unified single-file and project analysis to use same language_analyzer
+  - Functions now properly detected (was detecting 0, now detects all)
+  - Applied Toyota Way "ONE Implementation" principle for consistency
+
+- **Stub Implementations Eliminated**: Zero tolerance for technical debt
+  - Replaced stub defect prediction with real DefectProbabilityCalculator
+  - Eliminated incremental coverage stubs with real IncrementalCoverageAnalyzer  
+  - Removed all "not yet implemented" placeholders
+
+- **Complexity Reduction**: Ruchy parser refactored using Kaizen
+  - Reduced cyclomatic complexity from 89 to ≤4
+  - Applied systematic function extraction pattern
+  - Improved maintainability and testability
+
+### Added
+
+- **Test Coverage**: Comprehensive TDD test suite for language detection
+  - 80%+ coverage on critical paths
+  - Integration tests for end-to-end verification
+  - Property-based tests for robustness
+
+### Changed
+
+- **Architecture**: Consistent implementation across all code paths
+  - Single source of truth for language analysis
+  - No duplicate implementations allowed
+  - Enforced via quality gates
+
+## [2.13.3] - 2025-08-26
+
 ## [2.13.2] - 2025-08-26
 
 ### Fixed

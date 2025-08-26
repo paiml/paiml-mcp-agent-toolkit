@@ -4,7 +4,7 @@
 //! extracted from the main CLI module to reduce cognitive complexity.
 
 use crate::cli::*;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::path::PathBuf;
 
 #[cfg(test)]
@@ -258,31 +258,12 @@ pub async fn handle_analyze_complexity(
             anyhow::bail!("File not found: {}", full_path.display());
         }
 
-        // Analyze single file
-        match detected_toolchain.as_str() {
-            "rust" => {
-                use crate::services::ast_rust::analyze_rust_file_with_complexity;
-                let metrics = analyze_rust_file_with_complexity(&full_path).await?;
-                vec![metrics]
-            }
-            "ruchy" => {
-                use crate::services::languages::ruchy::analyze_ruchy_file;
-                let metrics = analyze_ruchy_file(&full_path).await?;
-                vec![metrics]
-            }
-            _ => {
-                // For other toolchains, use the generic analyzer with a single-file include pattern
-                let include_pattern = vec![full_path.to_string_lossy().to_string()];
-                super::super::stubs::analyze_project_files(
-                    &project_path,
-                    Some(&detected_toolchain),
-                    &include_pattern,
-                    max_cyclomatic.unwrap_or(10),
-                    max_cognitive.unwrap_or(15),
-                )
-                .await?
-            }
-        }
+        // Analyze single file using the SAME implementation as project analysis (Toyota Way: ONE implementation)
+        let file_content = std::fs::read_to_string(&full_path)
+            .context(format!("Failed to read file: {}", full_path.display()))?;
+            
+        let metrics = crate::cli::language_analyzer::analyze_file_complexity(&full_path, &file_content).await?;
+        vec![metrics]
     } else if !files.is_empty() {
         // Multiple files mode (MCP tool composition)
         eprintln!("🔍 Analyzing complexity of {} files...", files.len());
