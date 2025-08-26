@@ -42,7 +42,7 @@ impl Language {
             })
             .unwrap_or(Language::Unknown)
     }
-    
+
     /// Get the language name as a string
     pub fn name(&self) -> &'static str {
         match self {
@@ -58,7 +58,7 @@ impl Language {
             Language::Unknown => "Unknown",
         }
     }
-    
+
     /// Get file extensions for this language
     pub fn extensions(&self) -> &'static [&'static str] {
         match self {
@@ -80,26 +80,50 @@ impl Language {
 mod tests {
     use super::*;
     use std::path::PathBuf;
-    
+
     #[test]
     fn test_language_detection() {
-        assert_eq!(Language::from_extension(&PathBuf::from("test.rs")), Language::Rust);
-        assert_eq!(Language::from_extension(&PathBuf::from("test.ruchy")), Language::Ruchy);
-        assert_eq!(Language::from_extension(&PathBuf::from("test.rh")), Language::Ruchy);
-        assert_eq!(Language::from_extension(&PathBuf::from("test.py")), Language::Python);
-        assert_eq!(Language::from_extension(&PathBuf::from("test.js")), Language::JavaScript);
-        assert_eq!(Language::from_extension(&PathBuf::from("test.ts")), Language::TypeScript);
-        assert_eq!(Language::from_extension(&PathBuf::from("test.go")), Language::Go);
-        assert_eq!(Language::from_extension(&PathBuf::from("test.unknown")), Language::Unknown);
+        assert_eq!(
+            Language::from_extension(&PathBuf::from("test.rs")),
+            Language::Rust
+        );
+        assert_eq!(
+            Language::from_extension(&PathBuf::from("test.ruchy")),
+            Language::Ruchy
+        );
+        assert_eq!(
+            Language::from_extension(&PathBuf::from("test.rh")),
+            Language::Ruchy
+        );
+        assert_eq!(
+            Language::from_extension(&PathBuf::from("test.py")),
+            Language::Python
+        );
+        assert_eq!(
+            Language::from_extension(&PathBuf::from("test.js")),
+            Language::JavaScript
+        );
+        assert_eq!(
+            Language::from_extension(&PathBuf::from("test.ts")),
+            Language::TypeScript
+        );
+        assert_eq!(
+            Language::from_extension(&PathBuf::from("test.go")),
+            Language::Go
+        );
+        assert_eq!(
+            Language::from_extension(&PathBuf::from("test.unknown")),
+            Language::Unknown
+        );
     }
-    
+
     #[test]
     fn test_language_names() {
         assert_eq!(Language::Ruchy.name(), "Ruchy");
         assert_eq!(Language::Rust.name(), "Rust");
         assert_eq!(Language::Python.name(), "Python");
     }
-    
+
     #[test]
     fn test_language_extensions() {
         assert!(Language::Ruchy.extensions().contains(&"ruchy"));

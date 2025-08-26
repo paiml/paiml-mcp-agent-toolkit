@@ -34,7 +34,13 @@ impl ComplexityMetrics {
     }
 
     /// Create with halstead metrics (only when actually calculated)
-    pub fn with_halstead(cyclomatic: u16, cognitive: u16, nesting_max: u8, lines: u16, halstead: HalsteadMetrics) -> Self {
+    pub fn with_halstead(
+        cyclomatic: u16,
+        cognitive: u16,
+        nesting_max: u8,
+        lines: u16,
+        halstead: HalsteadMetrics,
+    ) -> Self {
         Self {
             cyclomatic,
             cognitive,
@@ -761,6 +767,36 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
             ));
         }
         output.push('\n');
+
+        // Show all functions when there's only one file (e.g., single file analysis)
+        if report.files.len() == 1 && !report.files[0].functions.is_empty() {
+            output.push_str("## Functions in File\n\n");
+
+            // Sort functions by total complexity
+            let mut functions_with_score: Vec<_> = report.files[0]
+                .functions
+                .iter()
+                .map(|f| {
+                    let total = f.metrics.cyclomatic as f64 + f.metrics.cognitive as f64;
+                    (f, total)
+                })
+                .collect();
+            functions_with_score
+                .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+            for (i, (func, _)) in functions_with_score.iter().enumerate() {
+                output.push_str(&format!(
+                    "{}. `{}` (line {}-{}) - Cyclomatic: {}, Cognitive: {}\n",
+                    i + 1,
+                    func.name,
+                    func.line_start,
+                    func.line_end,
+                    func.metrics.cyclomatic,
+                    func.metrics.cognitive
+                ));
+            }
+            output.push('\n');
+        }
     }
 
     // Top hotspots

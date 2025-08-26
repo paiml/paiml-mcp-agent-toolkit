@@ -1,11 +1,11 @@
 //! Simple integration tests for Universal Demo
-//! 
+//!
 //! These tests verify basic functionality works.
 
 #[cfg(test)]
 mod tests {
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn test_demo_compiles() {
@@ -18,7 +18,7 @@ mod tests {
         let _ = DemoRunner::new(Arc::new(server));
     }
 
-    #[test] 
+    #[test]
     fn test_import_variants() {
         use pmat::services::context::AstItem;
 
@@ -55,12 +55,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_quality_gates_pass() {
-        use pmat::services::quality_gates::VerificationStatus;
         use pmat::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
+        use pmat::services::quality_gates::VerificationStatus;
 
         // Create a test project
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Add multiple files
         for i in 0..5 {
             let file = temp_dir.path().join(format!("file{}.py", i));
@@ -76,8 +76,11 @@ mod tests {
         // Check quality gates
         if let Some(qa) = result.qa_verification {
             // Should pass or be partial (not fail)
-            assert_ne!(qa.overall, VerificationStatus::Fail,
-                      "Quality gates should not fail for simple project");
+            assert_ne!(
+                qa.overall,
+                VerificationStatus::Fail,
+                "Quality gates should not fail for simple project"
+            );
         }
     }
 
@@ -87,33 +90,25 @@ mod tests {
 
         // Test local path resolution
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Create a git repo marker so it's recognized as valid
         let git_dir = temp_dir.path().join(".git");
         fs::create_dir(&git_dir).unwrap();
-        
-        let result = resolve_repository(
-            Some(temp_dir.path().to_path_buf()),
-            None,
-            None
-        );
-        
+
+        let result = resolve_repository(Some(temp_dir.path().to_path_buf()), None, None);
+
         match result {
             Ok(path) => assert_eq!(path, temp_dir.path()),
             Err(e) => {
                 // It's okay if it fails, as long as the error is reasonable
-                assert!(e.to_string().contains("repository") || 
-                        e.to_string().contains("path"));
+                assert!(e.to_string().contains("repository") || e.to_string().contains("path"));
             }
         }
 
         // Test URL detection
-        let url_result = resolve_repository(
-            None,
-            Some("https://github.com/test/repo".to_string()),
-            None
-        );
-        
+        let url_result =
+            resolve_repository(None, Some("https://github.com/test/repo".to_string()), None);
+
         // Should recognize it as a URL and return it for async processing
         assert!(url_result.is_ok());
         let path = url_result.unwrap();

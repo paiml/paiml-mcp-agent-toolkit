@@ -59,9 +59,7 @@ pub async fn handle_agent_command(command: AgentCommands) -> Result<()> {
             file,
             format,
         } => handle_agent_quality_gate(project, file, format).await,
-        AgentCommands::McpServer { config, debug } => {
-            handle_agent_mcp_server(config, debug).await
-        }
+        AgentCommands::McpServer { config, debug } => handle_agent_mcp_server(config, debug).await,
     }
 }
 
@@ -126,11 +124,7 @@ async fn handle_agent_start(
 }
 
 /// Stop the background agent daemon
-async fn handle_agent_stop(
-    _pid_file: Option<PathBuf>,
-    _force: bool,
-    _timeout: u64,
-) -> Result<()> {
+async fn handle_agent_stop(_pid_file: Option<PathBuf>, _force: bool, _timeout: u64) -> Result<()> {
     info!("Stopping Claude Code Agent daemon");
 
     if !DaemonManager::is_running().await {
@@ -286,10 +280,7 @@ async fn handle_agent_quality_gate(
 }
 
 /// Start MCP server for testing
-async fn handle_agent_mcp_server(
-    config_path: Option<PathBuf>,
-    debug: bool,
-) -> Result<()> {
+async fn handle_agent_mcp_server(config_path: Option<PathBuf>, debug: bool) -> Result<()> {
     // Only log to stderr if debug is enabled
     if debug {
         eprintln!("Starting MCP server in debug mode");
@@ -309,7 +300,7 @@ async fn handle_agent_mcp_server(
         eprintln!("MCP Server starting on stdio transport...");
         eprintln!("Server capabilities:");
         eprintln!("  - start_quality_monitoring: Start monitoring a project");
-        eprintln!("  - run_quality_gates: Execute quality gates");  
+        eprintln!("  - run_quality_gates: Execute quality gates");
         eprintln!("  - analyze_complexity: Analyze code complexity");
         eprintln!("  - health_check: Check system health");
         eprintln!();

@@ -17,10 +17,10 @@ pub mod operations;
 pub trait ProtocolAdapter: Send + Sync {
     type Request: for<'de> Deserialize<'de>;
     type Response: Serialize;
-    
+
     fn decode(&self, raw: &[u8]) -> Result<UnifiedRequest, ProtocolError>;
     fn encode(&self, response: UnifiedResponse) -> Result<Vec<u8>, ProtocolError>;
-    
+
     async fn handle(&self, request: Self::Request) -> Self::Response;
 }
 
@@ -70,13 +70,13 @@ pub struct ErrorInfo {
 pub enum ProtocolError {
     #[error("Unknown method: {0}")]
     UnknownMethod(String),
-    
+
     #[error("Invalid parameters: {0}")]
     InvalidParams(String),
-    
+
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
-    
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -90,20 +90,20 @@ pub enum Operation {
     AnalyzeSatd(SatdParams),
     AnalyzeDeadCode(DeadCodeParams),
     GenerateContext(ContextParams),
-    
+
     // Quality
     QualityGate(QualityGateParams),
     QualityProxy(QualityProxyParams),
-    
+
     // Refactoring
     RefactorStart(RefactorStartParams),
     RefactorNext(RefactorNextParams),
     RefactorStop(RefactorStopParams),
-    
+
     // Scaffolding
     ScaffoldProject(ProjectParams),
     ScaffoldAgent(AgentParams),
-    
+
     // PDMT
     PdmtTodos(PdmtParams),
 }
@@ -191,7 +191,7 @@ impl RequestContext {
             timestamp: chrono::Utc::now().timestamp(),
         }
     }
-    
+
     pub fn from_json_rpc(request: &JsonRpcRequest) -> Self {
         Self {
             request_id: request.id.to_string(),
@@ -200,10 +200,11 @@ impl RequestContext {
             timestamp: chrono::Utc::now().timestamp(),
         }
     }
-    
+
     pub fn from_http(request: &HttpRequest) -> Self {
         Self {
-            request_id: request.headers
+            request_id: request
+                .headers
                 .get("x-request-id")
                 .cloned()
                 .unwrap_or_else(|| Uuid::new_v4().to_string()),

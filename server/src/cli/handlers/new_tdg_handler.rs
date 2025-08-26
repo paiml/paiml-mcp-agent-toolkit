@@ -2,8 +2,10 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 use crate::cli::enums::TdgOutputFormat;
+use crate::tdg::formatters::{
+    format_comparison, format_human, format_json, format_markdown, format_project,
+};
 use crate::tdg::TdgAnalyzer;
-use crate::tdg::formatters::{format_human, format_json, format_markdown, format_comparison, format_project};
 
 pub async fn handle_analyze_tdg(
     path: PathBuf,
@@ -16,14 +18,14 @@ pub async fn handle_analyze_tdg(
     _verbose: bool,
 ) -> Result<()> {
     eprintln!("🔍 Starting TDG (Technical Debt Grading) analysis...");
-    
+
     let analyzer = TdgAnalyzer::new()?;
     let _threshold = threshold.unwrap_or(1.5);
     let _top_files = top_files.unwrap_or(10);
-    
+
     let result = if path.is_dir() {
         let project_score = analyzer.analyze_project(&path)?;
-        
+
         match format {
             TdgOutputFormat::Table => format_project(&project_score),
             TdgOutputFormat::Json => serde_json::to_string_pretty(&project_score)?,
@@ -35,7 +37,7 @@ pub async fn handle_analyze_tdg(
         }
     } else {
         let score = analyzer.analyze_file(&path)?;
-        
+
         match format {
             TdgOutputFormat::Table => format_human(&score),
             TdgOutputFormat::Json => format_json(&score),
@@ -46,14 +48,14 @@ pub async fn handle_analyze_tdg(
             }
         }
     };
-    
+
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &result).await?;
         eprintln!("📝 Results written to {}", output_path.display());
     } else {
         println!("{}", result);
     }
-    
+
     eprintln!("✅ TDG analysis complete");
     Ok(())
 }
@@ -65,10 +67,10 @@ pub async fn handle_tdg_compare(
     output: Option<PathBuf>,
 ) -> Result<()> {
     eprintln!("🔍 Starting TDG comparison...");
-    
+
     let analyzer = TdgAnalyzer::new()?;
     let comparison = analyzer.compare(&path1, &path2)?;
-    
+
     let result = match format {
         TdgOutputFormat::Table => format_comparison(&comparison),
         TdgOutputFormat::Json => serde_json::to_string_pretty(&comparison)?,
@@ -81,20 +83,22 @@ pub async fn handle_tdg_compare(
             anyhow::bail!("SARIF format is not supported for comparisons")
         }
     };
-    
+
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &result).await?;
         eprintln!("📝 Results written to {}", output_path.display());
     } else {
         println!("{}", result);
     }
-    
+
     eprintln!("✅ TDG comparison complete");
     Ok(())
 }
 
 fn create_sarif_output(project: &crate::tdg::ProjectScore) -> serde_json::Value {
-    let results = project.files.iter()
+    let results = project
+        .files
+        .iter()
         .filter(|score| score.total < 75.0)
         .map(|score| {
             let level = if score.total < 50.0 {
@@ -104,17 +108,19 @@ fn create_sarif_output(project: &crate::tdg::ProjectScore) -> serde_json::Value 
             } else {
                 "note"
             };
-            
+
             let message = format!(
                 "TDG Score: {:.1}/100 ({}). Issues: {}",
                 score.total,
                 score.grade,
-                score.penalties_applied.iter()
+                score
+                    .penalties_applied
+                    .iter()
                     .map(|p| p.issue.as_str())
                     .collect::<Vec<_>>()
                     .join(", ")
             );
-            
+
             serde_json::json!({
                 "ruleId": "TDG001",
                 "level": level,
@@ -145,7 +151,7 @@ fn create_sarif_output(project: &crate::tdg::ProjectScore) -> serde_json::Value 
             })
         })
         .collect::<Vec<_>>();
-    
+
     serde_json::json!({
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "version": "2.1.0",
@@ -179,21 +185,23 @@ fn create_file_sarif_output(score: &crate::tdg::TdgScore) -> serde_json::Value {
     let level = if score.total < 50.0 {
         "error"
     } else if score.total < 65.0 {
-        "warning" 
+        "warning"
     } else {
         "note"
     };
-    
+
     let message = format!(
         "TDG Score: {:.1}/100 ({}). Issues: {}",
         score.total,
         score.grade,
-        score.penalties_applied.iter()
+        score
+            .penalties_applied
+            .iter()
             .map(|p| p.issue.as_str())
             .collect::<Vec<_>>()
             .join(", ")
     );
-    
+
     let results = if score.total < 75.0 {
         vec![serde_json::json!({
             "ruleId": "TDG001",
@@ -226,7 +234,7 @@ fn create_file_sarif_output(score: &crate::tdg::TdgScore) -> serde_json::Value {
     } else {
         vec![]
     };
-    
+
     serde_json::json!({
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "version": "2.1.0",
@@ -259,9 +267,9 @@ fn create_file_sarif_output(score: &crate::tdg::TdgScore) -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
     use std::io::Write;
-    
+    use tempfile::NamedTempFile;
+
     #[tokio::test]
     async fn test_handle_analyze_tdg_file() -> Result<()> {
         let mut temp_file = NamedTempFile::with_suffix(".rs")?;
@@ -274,7 +282,7 @@ mod tests {
             }}
             "#
         )?;
-        
+
         let result = handle_analyze_tdg(
             temp_file.path().to_path_buf(),
             Some(0.0),
@@ -284,8 +292,9 @@ mod tests {
             None,
             false,
             false,
-        ).await;
-        
+        )
+        .await;
+
         assert!(result.is_ok());
         Ok(())
     }

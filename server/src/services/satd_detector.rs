@@ -562,10 +562,13 @@ impl SATDDetector {
     ) -> Result<SATDAnalysisResult, TemplateError> {
         let files = self.find_source_files(root).await?;
         let mut analysis_stats = ProjectAnalysisStats::new();
-        
-        self.process_project_files(&files, include_tests, &mut analysis_stats).await;
-        let avg_age_days = self.calculate_project_debt_age(&analysis_stats.all_debts, root).await;
-        
+
+        self.process_project_files(&files, include_tests, &mut analysis_stats)
+            .await;
+        let avg_age_days = self
+            .calculate_project_debt_age(&analysis_stats.all_debts, root)
+            .await;
+
         Ok(self.build_analysis_result(analysis_stats, avg_age_days))
     }
 
@@ -580,7 +583,7 @@ impl SATDDetector {
             if self.should_skip_file(file_path, include_tests).await {
                 continue;
             }
-            
+
             stats.total_files_analyzed += 1;
             self.process_single_file(file_path, stats).await;
         }
@@ -619,8 +622,11 @@ impl SATDDetector {
         match tokio::fs::read_to_string(file_path).await {
             Ok(content) => {
                 if content.len() > 10_000_000 {
-                    eprintln!("Warning: Skipping large file {}: {} bytes", 
-                             file_path.display(), content.len());
+                    eprintln!(
+                        "Warning: Skipping large file {}: {} bytes",
+                        file_path.display(),
+                        content.len()
+                    );
                     return;
                 }
 
@@ -632,14 +638,20 @@ impl SATDDetector {
                         stats.all_debts.extend(debts);
                     }
                     Err(e) => {
-                        eprintln!("Warning: Error processing file {}: {}", 
-                                 file_path.display(), e);
+                        eprintln!(
+                            "Warning: Error processing file {}: {}",
+                            file_path.display(),
+                            e
+                        );
                     }
                 }
             }
             Err(e) => {
-                eprintln!("Warning: Could not read file {}: {}", 
-                         file_path.display(), e);
+                eprintln!(
+                    "Warning: Could not read file {}: {}",
+                    file_path.display(),
+                    e
+                );
             }
         }
     }
@@ -647,14 +659,20 @@ impl SATDDetector {
     /// Toyota Way: Extract Method - calculate debt age (complexity ≤3)
     async fn calculate_project_debt_age(&self, debts: &[TechnicalDebt], root: &Path) -> f64 {
         if !debts.is_empty() && root.join(".git").exists() {
-            self.calculate_average_debt_age(debts, root).await.unwrap_or(0.0)
+            self.calculate_average_debt_age(debts, root)
+                .await
+                .unwrap_or(0.0)
         } else {
             0.0
         }
     }
 
     /// Toyota Way: Extract Method - build analysis result (complexity ≤5)
-    fn build_analysis_result(&self, stats: ProjectAnalysisStats, avg_age_days: f64) -> SATDAnalysisResult {
+    fn build_analysis_result(
+        &self,
+        stats: ProjectAnalysisStats,
+        avg_age_days: f64,
+    ) -> SATDAnalysisResult {
         SATDAnalysisResult {
             items: stats.all_debts.clone(),
             summary: SATDSummary {
@@ -671,7 +689,10 @@ impl SATDDetector {
     }
 
     /// Toyota Way: Extract Method - group debts by severity (complexity ≤3)
-    fn group_debts_by_severity(&self, debts: &[TechnicalDebt]) -> std::collections::HashMap<String, usize> {
+    fn group_debts_by_severity(
+        &self,
+        debts: &[TechnicalDebt],
+    ) -> std::collections::HashMap<String, usize> {
         let mut map = std::collections::HashMap::with_capacity(3);
         for debt in debts {
             *map.entry(format!("{:?}", debt.severity)).or_insert(0) += 1;
@@ -680,7 +701,10 @@ impl SATDDetector {
     }
 
     /// Toyota Way: Extract Method - group debts by category (complexity ≤3)
-    fn group_debts_by_category(&self, debts: &[TechnicalDebt]) -> std::collections::HashMap<String, usize> {
+    fn group_debts_by_category(
+        &self,
+        debts: &[TechnicalDebt],
+    ) -> std::collections::HashMap<String, usize> {
         let mut map = std::collections::HashMap::with_capacity(5);
         for debt in debts {
             *map.entry(format!("{:?}", debt.category)).or_insert(0) += 1;

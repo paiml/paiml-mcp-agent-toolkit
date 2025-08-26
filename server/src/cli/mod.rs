@@ -28,7 +28,9 @@ pub mod symbol_table_helpers;
 pub mod tdg_helpers;
 
 // Re-export commonly used types from submodules
-pub use commands::{AgentCommands, AnalyzeCommands, Cli, Commands, EnforceCommands, Mode, RefactorCommands};
+pub use commands::{
+    AgentCommands, AnalyzeCommands, Cli, Commands, EnforceCommands, Mode, RefactorCommands,
+};
 pub use enums::*;
 
 // Type definitions for handler compatibility
@@ -100,11 +102,9 @@ pub fn parse_early_for_tracing() -> EarlyCliArgs {
     let verbose = args.iter().any(|arg| arg == "-v" || arg == "--verbose");
     let debug = args.iter().any(|arg| arg == "--debug");
     let trace = args.iter().any(|arg| arg == "--trace");
-    
+
     // Check if this is an MCP server command
-    let is_mcp_server = args.len() >= 3 
-        && args[1] == "agent" 
-        && args[2] == "mcp-server";
+    let is_mcp_server = args.len() >= 3 && args[1] == "agent" && args[2] == "mcp-server";
 
     let trace_filter = args
         .iter()
@@ -166,16 +166,17 @@ pub fn detect_primary_language(path: &Path) -> Option<String> {
         .into_iter()
         .filter_map(|e| e.ok())
         .any(|e| {
-            e.path().extension()
+            e.path()
+                .extension()
                 .and_then(|ext| ext.to_str())
                 .map(|ext| ext == "ruchy" || ext == "rh")
                 .unwrap_or(false)
         });
-    
+
     if has_ruchy_files {
         return Some("ruchy".to_string());
     }
-    
+
     // Check Rust next as it's the most specific (requires Cargo.toml)
     if path.join("Cargo.toml").exists() {
         return Some("rust".to_string());

@@ -234,7 +234,12 @@ impl CommandDispatcher {
                 )
                 .await
             }
-            Commands::Serve { port, host, cors, transport } => handlers::handle_serve(host, port, cors, transport).await,
+            Commands::Serve {
+                port,
+                host,
+                cors,
+                transport,
+            } => handlers::handle_serve(host, port, cors, transport).await,
             Commands::Diagnose(args) => super::diagnose::handle_diagnose(args).await,
             Commands::Enforce(enforce_cmd) => handlers::route_enforce_command(enforce_cmd).await,
             Commands::Refactor(refactor_cmd) => Self::execute_refactor_command(refactor_cmd).await,
@@ -250,33 +255,43 @@ impl CommandDispatcher {
                 perf,
             } => {
                 Self::execute_test_command(
-                    suite,
-                    iterations,
-                    memory,
-                    throughput,
-                    regression,
-                    timeout,
-                    output,
-                    perf,
+                    suite, iterations, memory, throughput, regression, timeout, output, perf,
                 )
                 .await
             }
-            Commands::Memory { command } => {
-                Self::execute_memory_command(command).await
+            Commands::Memory { command } => Self::execute_memory_command(command).await,
+            Commands::Cache { command } => Self::execute_cache_command(command).await,
+            Commands::Telemetry {
+                system,
+                service,
+                reset,
+                test_event,
+            } => {
+                handlers::telemetry_handlers::handle_telemetry(system, service, reset, test_event)
+                    .await
             }
-            Commands::Cache { command } => {
-                Self::execute_cache_command(command).await
-            }
-            Commands::Telemetry { system, service, reset, test_event } => {
-                handlers::telemetry_handlers::handle_telemetry(system, service, reset, test_event).await
-            }
-            Commands::Config { show, edit, validate, reset, section, set, config_path } => {
-                handlers::handle_configuration(show, edit, validate, reset, section, set, config_path).await
+            Commands::Config {
+                show,
+                edit,
+                validate,
+                reset,
+                section,
+                set,
+                config_path,
+            } => {
+                handlers::handle_configuration(
+                    show,
+                    edit,
+                    validate,
+                    reset,
+                    section,
+                    set,
+                    config_path,
+                )
+                .await
             }
 
-            Commands::Agent { command } => {
-                handlers::handle_agent_command(command).await
-            }
+            Commands::Agent { command } => handlers::handle_agent_command(command).await,
         }
     }
 
@@ -325,28 +340,58 @@ impl CommandDispatcher {
                 export_format: "json".to_string(),
             },
         };
-        
+
         // Create command struct and execute
         let cmd = roadmap::commands::RoadmapCommand {
             command: match roadmap_cmd {
-                RoadmapCommands::Init { version, title, duration_days, priority } => {
-                    roadmap::commands::RoadmapSubcommand::Init { version, title, duration_days, priority }
-                }
-                RoadmapCommands::Todos { sprint, output, include_quality_gates } => {
-                    roadmap::commands::RoadmapSubcommand::Todos { sprint, output, include_quality_gates }
-                }
-                RoadmapCommands::Start { task_id, create_branch } => {
-                    roadmap::commands::RoadmapSubcommand::Start { task_id, create_branch }
-                }
-                RoadmapCommands::Complete { task_id, skip_quality_check } => {
-                    roadmap::commands::RoadmapSubcommand::Complete { task_id, skip_quality_check }
-                }
-                RoadmapCommands::Status { sprint, task, format } => {
+                RoadmapCommands::Init {
+                    version,
+                    title,
+                    duration_days,
+                    priority,
+                } => roadmap::commands::RoadmapSubcommand::Init {
+                    version,
+                    title,
+                    duration_days,
+                    priority,
+                },
+                RoadmapCommands::Todos {
+                    sprint,
+                    output,
+                    include_quality_gates,
+                } => roadmap::commands::RoadmapSubcommand::Todos {
+                    sprint,
+                    output,
+                    include_quality_gates,
+                },
+                RoadmapCommands::Start {
+                    task_id,
+                    create_branch,
+                } => roadmap::commands::RoadmapSubcommand::Start {
+                    task_id,
+                    create_branch,
+                },
+                RoadmapCommands::Complete {
+                    task_id,
+                    skip_quality_check,
+                } => roadmap::commands::RoadmapSubcommand::Complete {
+                    task_id,
+                    skip_quality_check,
+                },
+                RoadmapCommands::Status {
+                    sprint,
+                    task,
+                    format,
+                } => {
                     let output_format = match format {
                         super::OutputFormat::Json => crate::cli::OutputFormat::Json,
                         _ => crate::cli::OutputFormat::Table,
                     };
-                    roadmap::commands::RoadmapSubcommand::Status { sprint, task, format: output_format }
+                    roadmap::commands::RoadmapSubcommand::Status {
+                        sprint,
+                        task,
+                        format: output_format,
+                    }
                 }
                 RoadmapCommands::Validate { sprint, strict } => {
                     roadmap::commands::RoadmapSubcommand::Validate { sprint, strict }
@@ -356,7 +401,7 @@ impl CommandDispatcher {
                 }
             },
         };
-        
+
         roadmap::commands::execute(cmd, config).await
     }
 
@@ -373,30 +418,33 @@ impl CommandDispatcher {
         perf: bool,
     ) -> anyhow::Result<()> {
         use super::commands::TestSuite;
-        
+
         // Import the performance testing module
         use crate::test_performance::*;
-        
+
         // Configure the test suite based on CLI arguments
         let config = PerformanceTestConfig {
-            enable_regression_tests: regression || matches!(suite, TestSuite::Regression | TestSuite::All),
+            enable_regression_tests: regression
+                || matches!(suite, TestSuite::Regression | TestSuite::All),
             enable_memory_tests: memory || matches!(suite, TestSuite::Memory | TestSuite::All),
-            enable_throughput_tests: throughput || matches!(suite, TestSuite::Throughput | TestSuite::All),
+            enable_throughput_tests: throughput
+                || matches!(suite, TestSuite::Throughput | TestSuite::All),
             test_iterations: iterations,
         };
-        
+
         // Run the performance test suite
         println!("🚀 Starting Performance Testing Suite (SPECIFICATION.md Section 30)");
-        println!("Suite: {:?}, Iterations: {}, Timeout: {}s", suite, iterations, timeout);
-        
+        println!(
+            "Suite: {:?}, Iterations: {}, Timeout: {}s",
+            suite, iterations, timeout
+        );
+
         let start = std::time::Instant::now();
-        
+
         // Set timeout for the test execution
         let test_future = async {
             match suite {
-                TestSuite::Performance | TestSuite::All => {
-                    run_performance_test_suite(config).await
-                }
+                TestSuite::Performance | TestSuite::All => run_performance_test_suite(config).await,
                 TestSuite::Regression => {
                     if config.enable_regression_tests {
                         println!("🔍 Running regression tests...");
@@ -430,25 +478,27 @@ impl CommandDispatcher {
                 }
                 TestSuite::Integration => {
                     println!("🧪 Integration testing not yet implemented in this context");
-                    println!("Use the `pmat test --suite integration` command for integration tests");
+                    println!(
+                        "Use the `pmat test --suite integration` command for integration tests"
+                    );
                     Ok(())
                 }
             }
         };
-        
+
         // Execute with timeout
         let timeout_duration = std::time::Duration::from_secs(timeout);
         match tokio::time::timeout(timeout_duration, test_future).await {
             Ok(result) => {
                 let elapsed = start.elapsed();
-                
+
                 if perf {
                     println!("\n📈 Performance Summary:");
                     println!("   Total execution time: {:?}", elapsed);
                     println!("   Suite: {:?}", suite);
                     println!("   Iterations: {}", iterations);
                 }
-                
+
                 // Write results to output file if specified
                 if let Some(output_path) = output {
                     let results = format!(
@@ -466,7 +516,7 @@ impl CommandDispatcher {
                     std::fs::write(&output_path, results)?;
                     println!("📄 Results written to: {}", output_path.display());
                 }
-                
+
                 result
             }
             Err(_) => {

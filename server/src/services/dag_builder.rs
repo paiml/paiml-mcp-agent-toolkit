@@ -287,7 +287,12 @@ impl DagBuilder {
                         });
                     }
                 }
-                AstItem::Import { module, items, alias: _, line: _ } => {
+                AstItem::Import {
+                    module,
+                    items,
+                    alias: _,
+                    line: _,
+                } => {
                     // Handle language-specific imports (Python, JavaScript, etc.)
                     // Create import edge to the module
                     if let Some(target_id) = self.resolve_import_path(module) {
@@ -298,7 +303,7 @@ impl DagBuilder {
                             weight: 1,
                         });
                     }
-                    
+
                     // Also create edges for specific imported items
                     for item in items {
                         let full_path = format!("{}.{}", module, item);

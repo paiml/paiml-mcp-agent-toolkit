@@ -21,33 +21,32 @@ use super::state_persistence::StatePersistence;
 pub struct AgentDaemon {
     /// Daemon configuration
     config: DaemonConfig,
-    
+
     /// MCP server instance
     mcp_server: Option<ClaudeCodeAgentMcpServer>,
-    
+
     /// Quality monitor engine
     quality_monitor: Option<QualityMonitorEngine>,
-    
+
     /// Daemon state
     state: Arc<RwLock<DaemonState>>,
-    
+
     /// State persistence
     persistence: Option<StatePersistence>,
-    
+
     /// Shutdown signal sender
     shutdown_tx: Option<mpsc::Sender<()>>,
 }
 
 /// Configuration for the background daemon
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DaemonConfig {
     /// Agent configuration
     pub agent: AgentConfig,
-    
+
     /// Quality monitoring configuration
     pub quality_monitor: QualityMonitorConfig,
-    
+
     /// Daemon-specific settings
     pub daemon: DaemonSettings,
 }
@@ -57,22 +56,22 @@ pub struct DaemonConfig {
 pub struct DaemonSettings {
     /// PID file location (optional)
     pub pid_file: Option<PathBuf>,
-    
+
     /// Log file location (optional)
     pub log_file: Option<PathBuf>,
-    
+
     /// Working directory
     pub working_directory: PathBuf,
-    
+
     /// Health check interval
     pub health_check_interval: Duration,
-    
+
     /// Maximum memory usage before restart (MB)
     pub max_memory_mb: u64,
-    
+
     /// Auto-restart on failure
     pub auto_restart: bool,
-    
+
     /// Graceful shutdown timeout
     pub shutdown_timeout: Duration,
 }
@@ -91,31 +90,30 @@ impl Default for DaemonSettings {
     }
 }
 
-
 /// Current state of the daemon
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DaemonState {
     /// Daemon status
     pub status: DaemonStatus,
-    
+
     /// Start time
     pub started_at: SystemTime,
-    
+
     /// Last health check
     pub last_health_check: SystemTime,
-    
+
     /// Number of active projects being monitored
     pub active_projects: usize,
-    
+
     /// Total quality events processed
     pub events_processed: u64,
-    
+
     /// Current memory usage (MB)
     pub memory_usage_mb: u64,
-    
+
     /// Number of restarts
     pub restart_count: u32,
-    
+
     /// Last error message
     pub last_error: Option<String>,
 }
@@ -151,56 +149,59 @@ impl AgentDaemon {
             shutdown_tx: None,
         }
     }
-    
+
     /// Start the daemon
     pub async fn start(&mut self) -> Result<()> {
-        info!("Starting Claude Code Agent Daemon v{}", self.config.agent.version);
-        
+        info!(
+            "Starting Claude Code Agent Daemon v{}",
+            self.config.agent.version
+        );
+
         // Update state
         {
             let mut state = self.state.write().await;
             state.status = DaemonStatus::Starting;
             state.started_at = SystemTime::now();
         }
-        
+
         // Create shutdown channel
         let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
         self.shutdown_tx = Some(shutdown_tx);
-        
+
         // Initialize components
         self.initialize_components().await?;
-        
+
         // Update state to running
         {
             let mut state = self.state.write().await;
             state.status = DaemonStatus::Running;
         }
-        
+
         info!("Claude Code Agent Daemon started successfully");
-        
+
         // Run main daemon loop
         self.run_daemon_loop(shutdown_rx).await
     }
-    
+
     /// Stop the daemon gracefully
     pub async fn stop(&mut self) -> Result<()> {
         info!("Stopping Claude Code Agent Daemon");
-        
+
         // Update state
         {
             let mut state = self.state.write().await;
             state.status = DaemonStatus::Stopping;
         }
-        
+
         // Send shutdown signal
         if let Some(sender) = &self.shutdown_tx {
             let _ = sender.send(()).await;
         }
-        
+
         // Wait for graceful shutdown with timeout
         let timeout = self.config.daemon.shutdown_timeout;
         let shutdown_future = self.shutdown_components();
-        
+
         match tokio::time::timeout(timeout, shutdown_future).await {
             Ok(result) => {
                 if let Err(e) = result {
@@ -211,51 +212,53 @@ impl AgentDaemon {
                 warn!("Shutdown timeout exceeded, forcing stop");
             }
         }
-        
+
         // Update state
         {
             let mut state = self.state.write().await;
             state.status = DaemonStatus::Stopped;
         }
-        
+
         info!("Claude Code Agent Daemon stopped");
         Ok(())
     }
-    
+
     /// Get current daemon state
     pub async fn get_state(&self) -> DaemonState {
         self.state.read().await.clone()
     }
-    
+
     /// Initialize daemon components
     async fn initialize_components(&mut self) -> Result<()> {
         info!("Initializing daemon components");
-        
+
         // Create quality monitor
         let mut quality_monitor = QualityMonitorEngine::new(self.config.quality_monitor.clone());
-        
+
         // Create event channel for quality updates
         let (event_tx, mut event_rx) = mpsc::channel(100);
         quality_monitor.set_event_sender(event_tx);
-        
+
         // Create MCP server
         let mcp_server = ClaudeCodeAgentMcpServer::new(self.config.agent.clone());
-        
+
         // Initialize state persistence
         let state_dir = PathBuf::from(&self.config.daemon.working_directory).join(".pmat_state");
         let persistence = StatePersistence::new(&state_dir)?;
         persistence.start_auto_save().await;
-        
+
         // Restore previous state if available
         let saved_state = persistence.get_state().await;
-        info!("Restored {} monitored projects from persistent state", 
-            saved_state.monitored_projects.len());
-        
+        info!(
+            "Restored {} monitored projects from persistent state",
+            saved_state.monitored_projects.len()
+        );
+
         // Store components
         self.quality_monitor = Some(quality_monitor);
         self.mcp_server = Some(mcp_server);
         self.persistence = Some(persistence);
-        
+
         // Spawn quality event processor
         let state = self.state.clone();
         tokio::spawn(async move {
@@ -263,26 +266,26 @@ impl AgentDaemon {
                 Self::process_quality_event(event, &state).await;
             }
         });
-        
+
         Ok(())
     }
-    
+
     /// Run the main daemon loop
     async fn run_daemon_loop(&mut self, mut shutdown_rx: mpsc::Receiver<()>) -> Result<()> {
         info!("Starting main daemon loop");
-        
+
         // Start health check timer
         let mut health_check_interval = interval(self.config.daemon.health_check_interval);
         let _state = self.state.clone();
         let max_memory_mb = self.config.daemon.max_memory_mb;
-        
+
         // Start MCP server in background
         if let Some(_mcp_server) = self.mcp_server.as_mut() {
             info!("Starting MCP server");
             // MCP server background execution managed via spawn_blocking
             // Server lifecycle controlled by daemon state management
         }
-        
+
         loop {
             tokio::select! {
                 // Shutdown signal received
@@ -290,30 +293,30 @@ impl AgentDaemon {
                     info!("Shutdown signal received");
                     break;
                 }
-                
+
                 // Health check timer
                 _ = health_check_interval.tick() => {
                     self.perform_health_check().await;
-                    
+
                     // Check memory usage
                     let current_state = self.state.read().await;
                     if current_state.memory_usage_mb > max_memory_mb {
-                        warn!("Memory usage {} MB exceeds limit {} MB", 
+                        warn!("Memory usage {} MB exceeds limit {} MB",
                             current_state.memory_usage_mb, max_memory_mb);
-                        
+
                         if self.config.daemon.auto_restart {
                             warn!("Triggering auto-restart due to high memory usage");
                             break;
                         }
                     }
                 }
-                
+
                 // System signals
                 _ = signal::ctrl_c() => {
                     info!("SIGINT received, initiating graceful shutdown");
                     break;
                 }
-                
+
                 // SIGTERM (Unix only) - wrapped in separate select to handle cfg properly
                 _ = async {
                     #[cfg(unix)]
@@ -332,17 +335,17 @@ impl AgentDaemon {
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Perform health check
     async fn perform_health_check(&self) {
         debug!("Performing daemon health check");
-        
+
         let mut state = self.state.write().await;
         state.last_health_check = SystemTime::now();
-        
+
         // Get memory usage (simplified)
         #[cfg(unix)]
         {
@@ -350,67 +353,85 @@ impl AgentDaemon {
             // For now, use a mock value
             state.memory_usage_mb = 150; // Mock value
         }
-        
+
         #[cfg(not(unix))]
         {
             // On other platforms, use a different method or mock
             state.memory_usage_mb = 150; // Mock value
         }
-        
+
         // Check component health
         if state.status == DaemonStatus::Running {
             // All components healthy
-            debug!("Health check passed: {} MB memory, {} active projects", 
-                state.memory_usage_mb, state.active_projects);
+            debug!(
+                "Health check passed: {} MB memory, {} active projects",
+                state.memory_usage_mb, state.active_projects
+            );
         }
     }
-    
+
     /// Process quality events from the monitor
     async fn process_quality_event(event: QualityEvent, state: &Arc<RwLock<DaemonState>>) {
         debug!("Processing quality event: {:?}", event);
-        
+
         let mut daemon_state = state.write().await;
         daemon_state.events_processed += 1;
-        
+
         match event {
             QualityEvent::MetricsUpdated { project_id, .. } => {
                 debug!("Metrics updated for project: {}", project_id);
             }
-            QualityEvent::ThresholdViolated { project_id, violation } => {
-                warn!("Quality threshold violated in project {}: {:?}", project_id, violation);
+            QualityEvent::ThresholdViolated {
+                project_id,
+                violation,
+            } => {
+                warn!(
+                    "Quality threshold violated in project {}: {:?}",
+                    project_id, violation
+                );
             }
-            QualityEvent::FileAnalyzed { project_id, file_path, .. } => {
+            QualityEvent::FileAnalyzed {
+                project_id,
+                file_path,
+                ..
+            } => {
                 debug!("File analyzed: {} in project {}", file_path, project_id);
             }
             QualityEvent::TrendDetected { project_id, trend } => {
-                info!("Quality trend detected in project {}: {:?}", project_id, trend);
+                info!(
+                    "Quality trend detected in project {}: {:?}",
+                    project_id, trend
+                );
             }
             QualityEvent::Error { project_id, error } => {
-                error!("Quality monitoring error in project {}: {}", project_id, error);
+                error!(
+                    "Quality monitoring error in project {}: {}",
+                    project_id, error
+                );
                 daemon_state.last_error = Some(error);
             }
         }
     }
-    
+
     /// Shutdown daemon components gracefully
     async fn shutdown_components(&mut self) -> Result<()> {
         info!("Shutting down daemon components");
-        
+
         // Stop quality monitoring
         if let Some(_quality_monitor) = &mut self.quality_monitor {
             info!("Stopping quality monitor");
             // Graceful shutdown for quality monitor via command channel
         }
-        
+
         // Stop MCP server
         if let Some(_mcp_server) = &mut self.mcp_server {
             info!("Stopping MCP server");
             // Graceful shutdown for MCP server via protocol termination
         }
-        
+
         self.quality_monitor = None;
         self.mcp_server = None;
-        
+
         Ok(())
     }
 }
@@ -424,13 +445,13 @@ impl DaemonManager {
         // Check PID file or process status via platform-specific APIs
         false
     }
-    
+
     /// Get daemon status
     pub async fn get_status() -> Result<DaemonState> {
         // Connect to running daemon via IPC for status retrieval
         Err(anyhow::anyhow!("Not implemented"))
     }
-    
+
     /// Send command to running daemon
     pub async fn send_command(_command: DaemonCommand) -> Result<()> {
         // Send command to running daemon using platform IPC mechanisms
@@ -443,19 +464,19 @@ impl DaemonManager {
 pub enum DaemonCommand {
     /// Get current status
     GetStatus,
-    
+
     /// Start monitoring a project
     StartMonitoring { project_path: String },
-    
+
     /// Stop monitoring a project
     StopMonitoring { project_id: String },
-    
+
     /// Reload configuration
     ReloadConfig,
-    
+
     /// Perform health check
     HealthCheck,
-    
+
     /// Graceful shutdown
     Shutdown,
 }
@@ -463,7 +484,7 @@ pub enum DaemonCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_daemon_config_default() {
         let config = DaemonConfig::default();
@@ -471,7 +492,7 @@ mod tests {
         assert_eq!(config.daemon.max_memory_mb, 500);
         assert!(config.daemon.auto_restart);
     }
-    
+
     #[test]
     fn test_daemon_state_creation() {
         let state = DaemonState {
@@ -484,22 +505,22 @@ mod tests {
             restart_count: 0,
             last_error: None,
         };
-        
+
         assert_eq!(state.status, DaemonStatus::Running);
         assert_eq!(state.active_projects, 3);
         assert_eq!(state.memory_usage_mb, 200);
     }
-    
+
     #[tokio::test]
     async fn test_daemon_creation() {
         let config = DaemonConfig::default();
         let daemon = AgentDaemon::new(config);
-        
+
         let state = daemon.get_state().await;
         assert_eq!(state.status, DaemonStatus::Stopped);
         assert_eq!(state.active_projects, 0);
     }
-    
+
     #[test]
     fn test_daemon_status_serialization() {
         let status = DaemonStatus::Running;
@@ -507,7 +528,7 @@ mod tests {
         let deserialized: DaemonStatus = serde_json::from_str(&json).unwrap();
         assert_eq!(status, deserialized);
     }
-    
+
     #[tokio::test]
     async fn test_daemon_manager() {
         let is_running = DaemonManager::is_running().await;

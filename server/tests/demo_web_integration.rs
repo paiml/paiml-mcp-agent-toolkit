@@ -1,7 +1,7 @@
 #![cfg(feature = "demo")]
 
-use pmat::demo::{DemoContent, LocalDemoServer};
 use pmat::demo::server::{EnhancedHotspot, LanguageStats};
+use pmat::demo::{DemoContent, LocalDemoServer};
 use pmat::services::recommendation_engine::RepositoryRecommendation;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -291,7 +291,8 @@ async fn test_demo_server_response_headers() {
 async fn test_demo_content_rendering() {
     // Test with specific values to ensure proper rendering
     let mut content = create_test_demo_content();
-    content.mermaid_diagram = "graph TD\n  API[API Server] --> DB[Database]\n  API --> Cache[Redis Cache]".to_string();
+    content.mermaid_diagram =
+        "graph TD\n  API[API Server] --> DB[Database]\n  API --> Cache[Redis Cache]".to_string();
     content.files_analyzed = 42;
     content.avg_complexity = 6.78;
     content.tech_debt_hours = 123;

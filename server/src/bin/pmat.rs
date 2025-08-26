@@ -3,7 +3,7 @@ use pmat::{cli, stateless_server::StatelessTemplateServer};
 use std::io::IsTerminal;
 use std::process;
 use std::sync::Arc;
-use tracing::{debug, info, trace, error};
+use tracing::{debug, error, info, trace};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 enum ExecutionMode {
@@ -100,7 +100,7 @@ async fn main() {
         Ok(()) => ExitCode::Success,
         Err(e) => {
             error!("Error: {}", e);
-            
+
             // Categorize errors for appropriate exit codes
             let error_str = e.to_string().to_lowercase();
             if error_str.contains("quality gate") || error_str.contains("violation") {
@@ -141,7 +141,7 @@ async fn run_main() -> Result<()> {
 
     // Create shared template server
     let server = Arc::new(StatelessTemplateServer::new()?);
-    
+
     if !cli.is_mcp_server {
         debug!("Template server initialized");
     }

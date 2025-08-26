@@ -18,8 +18,8 @@ pub mod unified;
 pub mod unified_manager;
 
 pub use advanced_strategies::{
-    AdaptiveCache, AdvancedCacheConfig, CacheTier, EvictionPolicy, 
-    CacheWarmingConfig, PerformanceConfig, AdaptiveCacheStats,
+    AdaptiveCache, AdaptiveCacheStats, AdvancedCacheConfig, CacheTier, CacheWarmingConfig,
+    EvictionPolicy, PerformanceConfig,
 };
 pub use base::{CacheEntry, CacheStats, CacheStrategy};
 pub use cache_trait::AstCacheManager;
@@ -28,8 +28,8 @@ pub use content_cache::ContentCache;
 pub use diagnostics::{CacheDiagnostics, CacheEffectiveness};
 pub use manager::SessionCacheManager;
 pub use orchestrator::{
-    CacheOrchestrator, OrchestratorConfig, OrchestratorStats,
-    PerformanceMetrics, StrategyRecommendation, WorkloadProfile,
+    CacheOrchestrator, OrchestratorConfig, OrchestratorStats, PerformanceMetrics,
+    StrategyRecommendation, WorkloadProfile,
 };
 pub use persistent_manager::PersistentCacheManager;
 pub use strategies::{

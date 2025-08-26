@@ -66,7 +66,9 @@ async fn load_demo_config(
     args: DemoArgs,
     server: std::sync::Arc<crate::stateless_server::StatelessTemplateServer>,
 ) -> Result<DemoConfig> {
-    let repo_path = runner::resolve_repository_async(args.path.clone(), args.url.clone(), args.repo.clone()).await?;
+    let repo_path =
+        runner::resolve_repository_async(args.path.clone(), args.url.clone(), args.repo.clone())
+            .await?;
     Ok(DemoConfig {
         repo_path,
         args,

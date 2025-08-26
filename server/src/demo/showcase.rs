@@ -1,10 +1,10 @@
 //! Repository Showcase Gallery
-//! 
+//!
 //! This module provides a curated collection of example repositories that demonstrate
 //! the capabilities of PMAT across different languages, frameworks, and architectural patterns.
 //! The showcase serves as both a demo and a reference for users exploring the tool.
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -73,7 +73,8 @@ impl ShowcaseGallery {
         self.add_repository(ShowcaseRepository {
             name: "Tokio".to_string(),
             url: "https://github.com/tokio-rs/tokio".to_string(),
-            description: "A runtime for writing reliable asynchronous applications with Rust".to_string(),
+            description: "A runtime for writing reliable asynchronous applications with Rust"
+                .to_string(),
             primary_language: "rust".to_string(),
             languages: vec!["rust".to_string()],
             frameworks: vec!["Tokio".to_string()],
@@ -211,7 +212,11 @@ impl ShowcaseGallery {
             url: "https://github.com/microsoft/vscode".to_string(),
             description: "Visual Studio Code - Open Source IDE".to_string(),
             primary_language: "typescript".to_string(),
-            languages: vec!["typescript".to_string(), "javascript".to_string(), "css".to_string()],
+            languages: vec![
+                "typescript".to_string(),
+                "javascript".to_string(),
+                "css".to_string(),
+            ],
             frameworks: vec!["Electron".to_string(), "Monaco Editor".to_string()],
             category: RepositoryCategory::DeveloperTools,
             complexity_tier: ComplexityTier::Expert,
@@ -243,7 +248,8 @@ impl ShowcaseGallery {
         self.add_repository(ShowcaseRepository {
             name: "ripgrep".to_string(),
             url: "https://github.com/BurntSushi/ripgrep".to_string(),
-            description: "A line-oriented search tool that recursively searches for patterns".to_string(),
+            description: "A line-oriented search tool that recursively searches for patterns"
+                .to_string(),
             primary_language: "rust".to_string(),
             languages: vec!["rust".to_string()],
             frameworks: vec!["clap".to_string(), "regex".to_string()],
@@ -311,7 +317,9 @@ impl ShowcaseGallery {
         self.add_repository(ShowcaseRepository {
             name: "Lodash".to_string(),
             url: "https://github.com/lodash/lodash".to_string(),
-            description: "A modern JavaScript utility library delivering consistency and performance".to_string(),
+            description:
+                "A modern JavaScript utility library delivering consistency and performance"
+                    .to_string(),
             primary_language: "javascript".to_string(),
             languages: vec!["javascript".to_string()],
             frameworks: vec![],
@@ -345,19 +353,19 @@ impl ShowcaseGallery {
     fn add_repository(&mut self, repo: ShowcaseRepository) {
         let category = repo.category.clone();
         let name = repo.name.clone();
-        
+
         self.repositories.insert(name.clone(), repo);
-        self.categories
-            .entry(category)
-            .or_default()
-            .push(name);
+        self.categories.entry(category).or_default().push(name);
     }
 
     pub fn get_all_repositories(&self) -> Vec<&ShowcaseRepository> {
         self.repositories.values().collect()
     }
 
-    pub fn get_repositories_by_category(&self, category: &RepositoryCategory) -> Vec<&ShowcaseRepository> {
+    pub fn get_repositories_by_category(
+        &self,
+        category: &RepositoryCategory,
+    ) -> Vec<&ShowcaseRepository> {
         if let Some(repo_names) = self.categories.get(category) {
             repo_names
                 .iter()
@@ -368,7 +376,10 @@ impl ShowcaseGallery {
         }
     }
 
-    pub fn get_repositories_by_complexity(&self, tier: &ComplexityTier) -> Vec<&ShowcaseRepository> {
+    pub fn get_repositories_by_complexity(
+        &self,
+        tier: &ComplexityTier,
+    ) -> Vec<&ShowcaseRepository> {
         self.repositories
             .values()
             .filter(|repo| repo.complexity_tier == *tier)
@@ -380,8 +391,11 @@ impl ShowcaseGallery {
         self.repositories
             .values()
             .filter(|repo| {
-                repo.primary_language.to_lowercase() == lang_lower ||
-                repo.languages.iter().any(|l| l.to_lowercase() == lang_lower)
+                repo.primary_language.to_lowercase() == lang_lower
+                    || repo
+                        .languages
+                        .iter()
+                        .any(|l| l.to_lowercase() == lang_lower)
             })
             .collect()
     }
@@ -398,7 +412,12 @@ impl ShowcaseGallery {
         // Return beginner and intermediate repositories for quick starts
         self.repositories
             .values()
-            .filter(|repo| matches!(repo.complexity_tier, ComplexityTier::Beginner | ComplexityTier::Intermediate))
+            .filter(|repo| {
+                matches!(
+                    repo.complexity_tier,
+                    ComplexityTier::Beginner | ComplexityTier::Intermediate
+                )
+            })
             .take(4)
             .collect()
     }
@@ -414,13 +433,14 @@ impl ShowcaseGallery {
 
     pub fn generate_showcase_summary(&self) -> ShowcaseSummary {
         let total_repositories = self.repositories.len();
-        let languages: std::collections::HashSet<String> = self.repositories
+        let languages: std::collections::HashSet<String> = self
+            .repositories
             .values()
             .flat_map(|repo| repo.languages.iter().cloned())
             .collect();
-        
+
         let categories_count = self.categories.len();
-        
+
         let complexity_distribution = {
             let mut distribution = HashMap::new();
             for repo in self.repositories.values() {
@@ -463,10 +483,10 @@ mod tests {
     #[test]
     fn test_showcase_gallery_initialization() {
         let gallery = ShowcaseGallery::new();
-        
+
         assert!(!gallery.repositories.is_empty());
         assert!(!gallery.categories.is_empty());
-        
+
         // Should have repositories in different categories
         assert!(gallery.categories.len() >= 4);
     }
@@ -474,15 +494,15 @@ mod tests {
     #[test]
     fn test_repository_filtering() {
         let gallery = ShowcaseGallery::new();
-        
+
         // Test filtering by language
         let rust_repos = gallery.get_repositories_by_language("rust");
         assert!(!rust_repos.is_empty());
-        
+
         // Test filtering by complexity
         let beginner_repos = gallery.get_repositories_by_complexity(&ComplexityTier::Beginner);
         assert!(!beginner_repos.is_empty());
-        
+
         // Test filtering by category
         let web_repos = gallery.get_repositories_by_category(&RepositoryCategory::WebFramework);
         assert!(!web_repos.is_empty());
@@ -491,11 +511,11 @@ mod tests {
     #[test]
     fn test_showcase_recommendations() {
         let gallery = ShowcaseGallery::new();
-        
+
         let quick_start = gallery.get_quick_start_recommendations();
         assert!(!quick_start.is_empty());
         assert!(quick_start.len() <= 4);
-        
+
         let featured = gallery.get_featured_repositories();
         assert!(!featured.is_empty());
         assert_eq!(featured.len(), 4);
@@ -505,7 +525,7 @@ mod tests {
     fn test_showcase_summary() {
         let gallery = ShowcaseGallery::new();
         let summary = gallery.generate_showcase_summary();
-        
+
         assert!(summary.total_repositories > 0);
         assert!(summary.total_languages > 0);
         assert!(summary.total_categories > 0);
@@ -515,7 +535,7 @@ mod tests {
     #[test]
     fn test_repository_structure() {
         let gallery = ShowcaseGallery::new();
-        
+
         if let Some(repo) = gallery.get_repository_by_name("Tokio") {
             assert_eq!(repo.name, "Tokio");
             assert_eq!(repo.primary_language, "rust");

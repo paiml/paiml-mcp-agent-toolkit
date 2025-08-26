@@ -34,10 +34,10 @@ mod property_tests {
                 alias: alias.clone(),
                 line,
             };
-            
+
             // Should never panic
             let display = import.display_name();
-            
+
             // Basic validation
             if let Some(alias) = alias {
                 assert!(display.contains(&alias));
@@ -61,14 +61,14 @@ mod property_tests {
                 alias: alias.clone(),
                 line,
             };
-            
+
             // Check that all fields are preserved
             match import {
-                AstItem::Import { 
-                    module: m, 
-                    items: i, 
-                    alias: a, 
-                    line: l 
+                AstItem::Import {
+                    module: m,
+                    items: i,
+                    alias: a,
+                    line: l
                 } => {
                     assert_eq!(m, module);
                     assert_eq!(i, items);
@@ -91,7 +91,7 @@ mod property_tests {
                 alias,
                 line,
             };
-            
+
             // Empty items list is valid (imports entire module)
             let display = import.display_name();
             assert!(!display.is_empty());
@@ -132,12 +132,12 @@ mod property_tests {
                     line,
                 },
             ];
-            
+
             for import in test_cases {
                 // Should handle all cases without panic
                 let display = import.display_name();
                 assert!(!display.is_empty());
-                
+
                 // Verify basic structure
                 match &import {
                     AstItem::Import { module, .. } => {
@@ -158,21 +158,21 @@ mod property_tests {
         ) {
             use crate::services::dag_builder::DagBuilder;
             use crate::services::context::{FileContext, ProjectContext, ProjectSummary};
-            
+
             let import = AstItem::Import {
                 module,
                 items,
                 alias: None,
                 line,
             };
-            
+
             let file_context = FileContext {
                 path: "test.py".to_string(),
                 language: "python".to_string(),
                 items: vec![import],
                 complexity_metrics: None,
             };
-            
+
             let summary = ProjectSummary {
                 total_files: 1,
                 total_functions: 0,
@@ -182,16 +182,16 @@ mod property_tests {
                 total_impls: 0,
                 dependencies: vec![],
             };
-            
+
             let project = ProjectContext {
                 project_type: "python".to_string(),
                 files: vec![file_context],
                 summary,
             };
-            
+
             // Should not panic when processing imports
             let dag = DagBuilder::build_from_project(&project);
-            
+
             // Basic validation - DAG should be created without panicking
             // The number of edges will vary based on the imports
             let _ = dag.edges.len();

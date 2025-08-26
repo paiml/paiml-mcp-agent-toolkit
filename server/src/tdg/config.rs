@@ -115,7 +115,7 @@ impl TdgConfig {
         let config: Self = toml::from_str(&content)?;
         Ok(config)
     }
-    
+
     pub fn save(&self, path: &Path) -> Result<()> {
         let content = toml::to_string_pretty(self)?;
         std::fs::write(path, content)?;
@@ -128,7 +128,7 @@ mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::NamedTempFile;
-    
+
     #[test]
     fn test_penalty_curve_application() {
         assert_eq!(PenaltyCurve::Linear.apply(2.0, 3.0), 6.0);
@@ -136,7 +136,7 @@ mod tests {
         assert_eq!(PenaltyCurve::Quadratic.apply(2.0, 3.0), 12.0);
         assert!(PenaltyCurve::Exponential.apply(2.0, 1.0) > 7.0);
     }
-    
+
     #[test]
     fn test_config_serialization() -> Result<()> {
         let config = TdgConfig::default();
@@ -145,7 +145,7 @@ mod tests {
         assert!(toml_str.contains("max_cyclomatic_complexity"));
         Ok(())
     }
-    
+
     #[test]
     fn test_config_from_file() -> Result<()> {
         let mut temp_file = NamedTempFile::new()?;
@@ -175,12 +175,15 @@ duplication_penalty_curve = "Linear"
 coupling_penalty_curve = "Quadratic"
 "#
         )?;
-        
+
         let config = TdgConfig::from_file(temp_file.path())?;
         assert_eq!(config.weights.structural_complexity, 30.0);
         assert_eq!(config.thresholds.max_cyclomatic_complexity, 15);
-        assert!(matches!(config.penalties.complexity_penalty_base, PenaltyCurve::Logarithmic));
-        
+        assert!(matches!(
+            config.penalties.complexity_penalty_base,
+            PenaltyCurve::Logarithmic
+        ));
+
         Ok(())
     }
 }

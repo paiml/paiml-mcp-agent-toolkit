@@ -1,15 +1,14 @@
 //! Unit tests for Universal Demo components
-//! 
+//!
 //! These tests verify individual components without network access.
 
 #[cfg(test)]
 mod universal_demo_unit_tests {
     use pmat::services::context::AstItem;
-    use pmat::services::quality_gates::{QAVerification, VerificationStatus};
     use pmat::services::deep_context::{
-        ComplexityMetricsForQA, FileComplexityMetricsForQA,
-        DeadCodeAnalysis, DeadCodeSummary,
+        ComplexityMetricsForQA, DeadCodeAnalysis, DeadCodeSummary, FileComplexityMetricsForQA,
     };
+    use pmat::services::quality_gates::{QAVerification, VerificationStatus};
     use std::path::PathBuf;
 
     #[test]
@@ -44,12 +43,12 @@ mod universal_demo_unit_tests {
 
     #[test]
     fn test_quality_gate_with_no_complexity_metrics() {
+        use chrono::Utc;
         use pmat::services::deep_context::{
-            DeepContextResult, ContextMetadata, AnalysisResults,
-            QualityScorecard, DefectSummary, CacheStats,
+            AnalysisResults, CacheStats, ContextMetadata, DeepContextResult, DefectSummary,
+            QualityScorecard,
         };
         use std::time::Duration;
-        use chrono::Utc;
 
         // Create a result with no complexity metrics but with files
         let mut result = DeepContextResult {
@@ -111,10 +110,10 @@ mod universal_demo_unit_tests {
         // Test with no metrics at all
         let qa = QAVerification::new();
         let verification = qa.verify(&result);
-        
+
         // Should handle gracefully
         assert!(verification.contains_key("dead_code_sanity"));
-        
+
         // Add dead code analysis with line counts
         result.dead_code_analysis = Some(DeadCodeAnalysis {
             summary: DeadCodeSummary {
@@ -127,7 +126,7 @@ mod universal_demo_unit_tests {
             dead_functions: vec![],
             warnings: vec![],
         });
-        
+
         let verification2 = qa.verify(&result);
         assert!(verification2.contains_key("dead_code_sanity"));
     }
@@ -156,9 +155,7 @@ mod universal_demo_unit_tests {
         };
 
         // Should be able to get total line count
-        let total_lines: usize = metrics.files.iter()
-            .map(|f| f.total_lines)
-            .sum();
+        let total_lines: usize = metrics.files.iter().map(|f| f.total_lines).sum();
         assert_eq!(total_lines, 300);
     }
 
@@ -166,12 +163,12 @@ mod universal_demo_unit_tests {
     fn test_verification_status_ordering() {
         // Ensure verification statuses have expected properties
         use VerificationStatus::*;
-        
+
         // Test equality
         assert_eq!(Pass, Pass);
         assert_eq!(Fail, Fail);
         assert_eq!(Partial, Partial);
-        
+
         // Test inequality
         assert_ne!(Pass, Fail);
         assert_ne!(Pass, Partial);

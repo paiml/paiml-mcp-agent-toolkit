@@ -1,9 +1,9 @@
 //! Quality gate service implementing the Service trait
-//! 
+//!
 //! Enforces quality standards across the codebase
 
+use super::analysis_service::{AnalysisInput, AnalysisOperation, AnalysisOptions, AnalysisService};
 use super::service_base::{Service, ServiceMetrics, ValidationError};
-use super::analysis_service::{AnalysisService, AnalysisInput, AnalysisOperation, AnalysisOptions};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -89,7 +89,7 @@ impl QualityGateService {
             analysis_service: AnalysisService::new(),
         }
     }
-    
+
     async fn check_complexity(&self, path: &PathBuf, max: u32) -> Result<QualityCheckResult> {
         let input = AnalysisInput {
             operation: AnalysisOperation::Complexity,
@@ -99,13 +99,13 @@ impl QualityGateService {
                 ..Default::default()
             },
         };
-        
+
         let _output = self.analysis_service.process(input).await?;
-        
+
         // Extract violations from analysis results
-        let violations = vec![];  // Would be populated from actual results
+        let violations = vec![]; // Would be populated from actual results
         let passed = violations.is_empty();
-        
+
         Ok(QualityCheckResult {
             check: format!("Complexity (max: {})", max),
             passed,
@@ -117,19 +117,19 @@ impl QualityGateService {
             violations,
         })
     }
-    
+
     async fn check_satd(&self, path: &PathBuf, tolerance: u32) -> Result<QualityCheckResult> {
         let input = AnalysisInput {
             operation: AnalysisOperation::Satd,
             path: path.clone(),
             options: AnalysisOptions::default(),
         };
-        
+
         let _output = self.analysis_service.process(input).await?;
-        
-        let violations = vec![];  // Would be populated from actual results
+
+        let violations = vec![]; // Would be populated from actual results
         let passed = violations.len() <= tolerance as usize;
-        
+
         Ok(QualityCheckResult {
             check: format!("SATD (tolerance: {})", tolerance),
             passed,
@@ -145,20 +145,24 @@ impl QualityGateService {
             violations,
         })
     }
-    
-    async fn check_dead_code(&self, path: &PathBuf, max_percentage: f64) -> Result<QualityCheckResult> {
+
+    async fn check_dead_code(
+        &self,
+        path: &PathBuf,
+        max_percentage: f64,
+    ) -> Result<QualityCheckResult> {
         let input = AnalysisInput {
             operation: AnalysisOperation::DeadCode,
             path: path.clone(),
             options: AnalysisOptions::default(),
         };
-        
+
         let _output = self.analysis_service.process(input).await?;
-        
-        let violations = vec![];  // Would be populated from actual results
-        let percentage = 0.0;  // Would be calculated from actual results
+
+        let violations = vec![]; // Would be populated from actual results
+        let percentage = 0.0; // Would be calculated from actual results
         let passed = percentage <= max_percentage;
-        
+
         Ok(QualityCheckResult {
             check: format!("Dead Code (max: {}%)", max_percentage),
             passed,
@@ -170,7 +174,7 @@ impl QualityGateService {
             violations,
         })
     }
-    
+
     async fn check_coverage(&self, _path: &PathBuf, min: f64) -> Result<QualityCheckResult> {
         // Placeholder for coverage check
         Ok(QualityCheckResult {
@@ -180,7 +184,7 @@ impl QualityGateService {
             violations: vec![],
         })
     }
-    
+
     async fn check_lint(&self, _path: &PathBuf) -> Result<QualityCheckResult> {
         // Placeholder for lint check
         Ok(QualityCheckResult {
@@ -190,7 +194,7 @@ impl QualityGateService {
             violations: vec![],
         })
     }
-    
+
     async fn check_documentation(&self, _path: &PathBuf) -> Result<QualityCheckResult> {
         // Placeholder for documentation check
         Ok(QualityCheckResult {
@@ -207,11 +211,11 @@ impl Service for QualityGateService {
     type Input = QualityGateInput;
     type Output = QualityGateOutput;
     type Error = anyhow::Error;
-    
+
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
-        
+
         for check in &input.checks {
             let result = match check {
                 QualityCheck::Complexity { max } => {
@@ -223,44 +227,40 @@ impl Service for QualityGateService {
                 QualityCheck::DeadCode { max_percentage } => {
                     self.check_dead_code(&input.path, *max_percentage).await?
                 }
-                QualityCheck::Coverage { min } => {
-                    self.check_coverage(&input.path, *min).await?
-                }
-                QualityCheck::Lint => {
-                    self.check_lint(&input.path).await?
-                }
-                QualityCheck::Documentation => {
-                    self.check_documentation(&input.path).await?
-                }
+                QualityCheck::Coverage { min } => self.check_coverage(&input.path, *min).await?,
+                QualityCheck::Lint => self.check_lint(&input.path).await?,
+                QualityCheck::Documentation => self.check_documentation(&input.path).await?,
             };
             results.push(result);
         }
-        
+
         let duration = start.elapsed();
         let mut metrics = self.metrics.write().await;
-        
+
         // Calculate summary
         let total_checks = results.len();
         let passed_checks = results.iter().filter(|r| r.passed).count();
         let failed_checks = total_checks - passed_checks;
         let total_violations: usize = results.iter().map(|r| r.violations.len()).sum();
-        let error_count = results.iter()
+        let error_count = results
+            .iter()
             .flat_map(|r| &r.violations)
             .filter(|v| matches!(v.severity, Severity::Error))
             .count();
-        let warning_count = results.iter()
+        let warning_count = results
+            .iter()
             .flat_map(|r| &r.violations)
             .filter(|v| matches!(v.severity, Severity::Warning))
             .count();
-        
+
         let passed = if input.strict {
             failed_checks == 0
         } else {
             error_count == 0
         };
-        
+
         metrics.record_request(duration, passed);
-        
+
         Ok(QualityGateOutput {
             passed,
             results,
@@ -274,7 +274,7 @@ impl Service for QualityGateService {
             },
         })
     }
-    
+
     fn validate_input(&self, input: &Self::Input) -> Result<(), ValidationError> {
         if !input.path.exists() {
             return Err(ValidationError::InvalidValue {
@@ -282,20 +282,20 @@ impl Service for QualityGateService {
                 reason: "Path does not exist".to_string(),
             });
         }
-        
+
         if input.checks.is_empty() {
             return Err(ValidationError::MissingField {
                 field: "checks".to_string(),
             });
         }
-        
+
         Ok(())
     }
-    
+
     fn metrics(&self) -> ServiceMetrics {
         self.metrics.blocking_read().clone()
     }
-    
+
     fn name(&self) -> &str {
         "QualityGateService"
     }

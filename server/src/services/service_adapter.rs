@@ -25,7 +25,7 @@ impl<T, I, O> ServiceAdapter<T, I, O> {
             _phantom: PhantomData,
         }
     }
-    
+
     pub fn inner(&self) -> &T {
         &self.inner
     }
@@ -40,18 +40,18 @@ macro_rules! impl_service_adapter {
             type Input = $input;
             type Output = $output;
             type Error = anyhow::Error;
-            
+
             async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
                 let start = std::time::Instant::now();
                 let result = $process_fn(&self.inner, input).await;
                 let duration = start.elapsed();
-                
+
                 let mut metrics = self.metrics.write().await;
                 metrics.record_request(duration, result.is_ok());
-                
+
                 result
             }
-            
+
             fn metrics(&self) -> ServiceMetrics {
                 self.metrics.blocking_read().clone()
             }
@@ -64,36 +64,33 @@ pub mod complexity_adapter {
     use super::*;
     use crate::services::complexity::{ComplexityMetrics, ComplexityThresholds};
     use std::path::PathBuf;
-    
+
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct ComplexityInput {
         pub path: PathBuf,
         pub thresholds: ComplexityThresholds,
     }
-    
+
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct ComplexityOutput {
         pub metrics: ComplexityMetrics,
     }
-    
+
     pub type ComplexityServiceAdapter = ServiceAdapter<(), ComplexityInput, ComplexityOutput>;
-    
+
     impl ComplexityServiceAdapter {
         pub fn new_complexity_service() -> Self {
             ServiceAdapter::new(())
         }
     }
-    
-    async fn process_complexity(
-        _inner: &(),
-        _input: ComplexityInput,
-    ) -> Result<ComplexityOutput> {
+
+    async fn process_complexity(_inner: &(), _input: ComplexityInput) -> Result<ComplexityOutput> {
         // Would call actual complexity analysis here
         Ok(ComplexityOutput {
             metrics: ComplexityMetrics::default(),
         })
     }
-    
+
     impl_service_adapter!(
         ComplexityServiceAdapter,
         ComplexityInput,
@@ -106,13 +103,13 @@ pub mod complexity_adapter {
 pub mod refactor_adapter {
     use super::*;
     use std::path::PathBuf;
-    
+
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct RefactorInput {
         pub file_path: PathBuf,
         pub refactor_type: RefactorType,
     }
-    
+
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub enum RefactorType {
         ExtractFunction,
@@ -120,14 +117,14 @@ pub mod refactor_adapter {
         RemoveDeadCode,
         Auto,
     }
-    
+
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct RefactorOutput {
         pub success: bool,
         pub changes: Vec<Change>,
         pub message: String,
     }
-    
+
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct Change {
         pub file: String,
@@ -135,19 +132,16 @@ pub mod refactor_adapter {
         pub before: String,
         pub after: String,
     }
-    
+
     pub type RefactorServiceAdapter = ServiceAdapter<(), RefactorInput, RefactorOutput>;
-    
+
     impl RefactorServiceAdapter {
         pub fn new_refactor_service() -> Self {
             ServiceAdapter::new(())
         }
     }
-    
-    async fn process_refactor(
-        _inner: &(),
-        _input: RefactorInput,
-    ) -> Result<RefactorOutput> {
+
+    async fn process_refactor(_inner: &(), _input: RefactorInput) -> Result<RefactorOutput> {
         // Would call actual refactor engine here
         Ok(RefactorOutput {
             success: true,
@@ -155,7 +149,7 @@ pub mod refactor_adapter {
             message: "Refactoring completed".to_string(),
         })
     }
-    
+
     impl_service_adapter!(
         RefactorServiceAdapter,
         RefactorInput,
@@ -175,35 +169,35 @@ impl ServiceRegistryBuilder {
             registry: super::service_base::ServiceRegistry::new(),
         }
     }
-    
+
     /// Register an analysis service
     pub fn with_analysis_service(self) -> Self {
         let service = super::analysis_service::AnalysisService::new();
         self.registry.register(service);
         self
     }
-    
+
     /// Register a quality gate service
     pub fn with_quality_gate_service(self) -> Self {
         let service = super::quality_gate_service::QualityGateService::new();
         self.registry.register(service);
         self
     }
-    
+
     /// Register a complexity service adapter
     pub fn with_complexity_service(self) -> Self {
         let service = complexity_adapter::ComplexityServiceAdapter::new_complexity_service();
         self.registry.register(service);
         self
     }
-    
+
     /// Register a refactor service adapter
     pub fn with_refactor_service(self) -> Self {
         let service = refactor_adapter::RefactorServiceAdapter::new_refactor_service();
         self.registry.register(service);
         self
     }
-    
+
     /// Build the registry
     pub fn build(self) -> super::service_base::ServiceRegistry {
         self.registry
@@ -219,14 +213,14 @@ impl Default for ServiceRegistryBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_service_registry_builder() {
         let registry = ServiceRegistryBuilder::new()
             .with_analysis_service()
             .with_quality_gate_service()
             .build();
-        
+
         // Check that services are registered
         let services = registry.list_services();
         assert!(services.len() >= 2);

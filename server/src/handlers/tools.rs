@@ -1214,7 +1214,9 @@ fn resolve_project_path(project_path: &Option<String>) -> PathBuf {
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
 }
 
-fn build_dag_graph(project_context: &crate::services::context::ProjectContext) -> crate::models::dag::DependencyGraph {
+fn build_dag_graph(
+    project_context: &crate::services::context::ProjectContext,
+) -> crate::models::dag::DependencyGraph {
     use crate::services::dag_builder::DagBuilder;
     DagBuilder::build_from_project_with_limit(project_context, 50)
 }
@@ -1233,12 +1235,14 @@ fn parse_dag_type(dag_type_str: Option<&str>) -> crate::cli::DagType {
 }
 
 fn apply_dag_filters(
-    graph: crate::models::dag::DependencyGraph, 
-    dag_type: crate::cli::DagType
+    graph: crate::models::dag::DependencyGraph,
+    dag_type: crate::cli::DagType,
 ) -> crate::models::dag::DependencyGraph {
     use crate::cli::DagType;
-    use crate::services::dag_builder::{filter_call_edges, filter_import_edges, filter_inheritance_edges};
-    
+    use crate::services::dag_builder::{
+        filter_call_edges, filter_import_edges, filter_inheritance_edges,
+    };
+
     match dag_type {
         DagType::CallGraph => filter_call_edges(graph),
         DagType::ImportGraph => filter_import_edges(graph),
@@ -1253,7 +1257,7 @@ fn generate_dag_output(
     dag_type: crate::cli::DagType,
 ) -> serde_json::Value {
     use crate::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
-    
+
     let generator = MermaidGenerator::new(MermaidOptions {
         max_depth: args.max_depth,
         filter_external: args.filter_external.unwrap_or(false),

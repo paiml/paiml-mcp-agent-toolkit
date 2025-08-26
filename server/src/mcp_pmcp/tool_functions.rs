@@ -204,20 +204,20 @@ pub async fn analyze_tdg(
     include_components: Option<bool>,
 ) -> Result<Value> {
     use crate::tdg::TdgAnalyzer;
-    
+
     let analyzer = TdgAnalyzer::new()?;
     let _threshold = threshold.unwrap_or(1.5);
     let _top_files = top_files.unwrap_or(10);
     let _include_components = include_components.unwrap_or(false);
-    
+
     if paths.is_empty() {
         return Err(anyhow::anyhow!("At least one path must be provided"));
     }
-    
+
     // Handle single file vs multiple files/directories
     if paths.len() == 1 {
         let path = &paths[0];
-        
+
         if path.is_dir() {
             // Directory analysis
             let project_score = analyzer.analyze_project(path)?;
@@ -246,7 +246,7 @@ pub async fn analyze_tdg(
     } else {
         // Multiple files/directories analysis
         let mut all_scores = Vec::new();
-        
+
         for path in paths {
             if path.is_dir() {
                 let project_score = analyzer.analyze_project(path)?;
@@ -256,10 +256,10 @@ pub async fn analyze_tdg(
                 all_scores.push(score);
             }
         }
-        
+
         use crate::tdg::ProjectScore;
         let aggregated = ProjectScore::aggregate(all_scores);
-        
+
         Ok(json!({
             "status": "completed",
             "message": "TDG multi-path analysis completed",
@@ -278,10 +278,10 @@ pub async fn analyze_tdg(
 /// Compare TDG scores between two files or directories
 pub async fn compare_tdg(path1: &Path, path2: &Path) -> Result<Value> {
     use crate::tdg::TdgAnalyzer;
-    
+
     let analyzer = TdgAnalyzer::new()?;
     let comparison = analyzer.compare(path1, path2)?;
-    
+
     Ok(json!({
         "status": "completed",
         "message": "TDG comparison completed",

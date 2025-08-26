@@ -1,5 +1,5 @@
 //! Example: Simple GitHub repository analysis
-//! 
+//!
 //! This example demonstrates basic analysis of a GitHub repository.
 //!
 //! Usage:
@@ -47,26 +47,39 @@ async fn main() -> Result<()> {
     // Output results
     println!("\n=== Analysis Results ===");
     println!("Repository: {}", url);
-    
+
     // Project metadata
     println!("\n📁 Project Metadata:");
     println!("  Project root: {:?}", result.metadata.project_root);
-    println!("  Analysis duration: {:.2}s", result.metadata.analysis_duration.as_secs_f64());
-    
+    println!(
+        "  Analysis duration: {:.2}s",
+        result.metadata.analysis_duration.as_secs_f64()
+    );
+
     // Quality scorecard
     println!("\n📊 Quality Scorecard:");
-    println!("  Overall health: {:.0}%", result.quality_scorecard.overall_health);
-    println!("  Complexity score: {:.0}%", result.quality_scorecard.complexity_score);
-    println!("  Maintainability: {:.0}%", result.quality_scorecard.maintainability_index);
-    println!("  Technical debt: {:.0} hours", result.quality_scorecard.technical_debt_hours);
+    println!(
+        "  Overall health: {:.0}%",
+        result.quality_scorecard.overall_health
+    );
+    println!(
+        "  Complexity score: {:.0}%",
+        result.quality_scorecard.complexity_score
+    );
+    println!(
+        "  Maintainability: {:.0}%",
+        result.quality_scorecard.maintainability_index
+    );
+    println!(
+        "  Technical debt: {:.0} hours",
+        result.quality_scorecard.technical_debt_hours
+    );
 
     // Complexity report from analyses
     if let Some(complexity) = &result.analyses.complexity_report {
         println!("\n🔬 Complexity Analysis:");
         println!("  Files analyzed: {}", complexity.files.len());
-        let total_functions: usize = complexity.files.iter()
-            .map(|f| f.functions.len())
-            .sum();
+        let total_functions: usize = complexity.files.iter().map(|f| f.functions.len()).sum();
         println!("  Total functions: {}", total_functions);
         if !complexity.hotspots.is_empty() {
             println!("  Complexity hotspots: {}", complexity.hotspots.len());
@@ -78,13 +91,13 @@ async fn main() -> Result<()> {
         println!("\n✅ Quality Verification:");
         println!("  Overall: {:?}", qa.overall);
         println!("  Dead code: {:.1}%", qa.dead_code.actual * 100.0);
-        
+
         if qa.dead_code.actual == 0.0 {
             if let Some(notes) = &qa.dead_code.notes {
                 println!("    Note: {}", notes);
             }
         }
-        
+
         println!("  Complexity P99: {}", qa.complexity.p99);
     }
 
@@ -94,12 +107,15 @@ async fn main() -> Result<()> {
         println!("  Total SATD items: {}", satd.summary.total_items);
         println!("  Files with debt: {}", satd.files_with_debt);
     }
-    
+
     // Defect summary
     if result.defect_summary.total_defects > 0 {
         println!("\n⚠️  Defects Found:");
         println!("  Total defects: {}", result.defect_summary.total_defects);
-        println!("  Defect density: {:.2}", result.defect_summary.defect_density);
+        println!(
+            "  Defect density: {:.2}",
+            result.defect_summary.defect_density
+        );
     }
 
     info!("Analysis complete!");
