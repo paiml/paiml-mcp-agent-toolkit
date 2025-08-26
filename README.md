@@ -19,13 +19,14 @@
 
 **Zero-configuration AI context generation system** with extreme quality enforcement and Toyota Way standards. Analyze any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com).
 
-> **🎉 v2.12.0 Release**: **Enhanced Ruchy Analysis!** Advanced analysis capabilities for the Ruchy programming language:
-> - **🧮 Halstead Metrics**: Volume, difficulty, effort, time, and bug estimations
-> - **💀 Dead Code Detection**: Unused functions and variables identification
-> - **🎯 Type Inference**: Automatic type analysis for literals and operations
-> - **🎭 Actor Analysis**: Message flow tracking and deadlock detection
-> - **🌟 Pattern Matching**: Enhanced complexity scoring for match expressions
-> - **📦 Dependency Tracking**: Import/export analysis with module relationships
+> **🎯 v2.13.0 Release**: **Technical Debt Grading (TDG) System!** Complete code quality scoring with 6 orthogonal metrics:
+> - **📊 Comprehensive Scoring**: Structural complexity, semantic complexity, code duplication, coupling analysis
+> - **📚 Documentation Coverage**: Language-specific documentation pattern detection and scoring
+> - **🎨 Consistency Analysis**: Naming conventions, indentation patterns, and code style consistency
+> - **🏆 Grade Classification**: A+ through F grading system with detailed component breakdowns
+> - **🌍 Multi-Language Support**: 10+ languages including Rust, Python, JavaScript, TypeScript, Go, Java, C/C++
+> - **🛠️ CLI & MCP Integration**: `pmat analyze tdg` command and MCP tools for programmatic access
+> - **📈 Project Analysis**: Directory-level analysis with language distribution and aggregated scoring
 
 > **🚀 v2.10.0**: **Claude Code Agent Mode - "Always Working" Achievement!** Transform PMAT into a persistent background quality agent:
 > - **🤖 Claude Code Integration**: Native MCP server for seamless Claude Code integration
@@ -102,6 +103,9 @@ curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/maste
 # Analyze current directory
 pmat context
 
+# Technical Debt Grading (TDG) - NEW!
+pmat analyze tdg --path . --include-components
+
 # Get complexity metrics
 pmat analyze complexity --top-files 10
 
@@ -153,10 +157,12 @@ make sprint-close
 ## 🎯 Core Capabilities
 
 ### Analysis Engine
+- **Technical Debt Grading (TDG)**: 6-metric orthogonal code quality scoring with A+ through F grading
 - **Complexity Analysis**: McCabe cyclomatic & cognitive complexity with AST precision
 - **Dead Code Detection**: Graph-based reachability analysis across 30+ languages
 - **SATD Detection**: Self-admitted technical debt with severity classification
-- **Technical Debt Gradient**: Multi-factor composite scoring with time-decay modeling
+- **Documentation Coverage**: Language-specific pattern detection with scoring algorithms
+- **Consistency Analysis**: Naming conventions and code style consistency measurement
 - **Deep Context Generation**: Multi-dimensional analysis optimized for AI agents
 
 ### 🤖 AI-Powered Intelligence (NEW)
@@ -172,7 +178,7 @@ make sprint-close
 - **Refactoring Engine**: State machine-based code transformation with ACID snapshots
 
 ### Integration Protocols
-- **MCP Protocol**: 18 tools via unified pmcp SDK 1.2.0 server
+- **MCP Protocol**: 18 tools via unified pmcp SDK 1.2.0 server (includes TDG analysis tools)
 - **HTTP API**: RESTful with Server-Sent Events streaming
 - **CLI Interface**: 47 commands with POSIX-compliant exit semantics
 
@@ -180,6 +186,7 @@ make sprint-close
 
 ### Core Documentation
 - **[Complete Specification](docs/SPECIFICATION.md)** - Unified source of truth (36 sections)
+- **[TDG Guide](docs/TDG_GUIDE.md)** - **NEW!** Technical Debt Grading system documentation
 - **[API Reference](docs/api-guide.md)** - Service APIs and integration patterns
 - **[CLI Reference](docs/cli-reference.md)** - Complete command documentation
 
@@ -303,6 +310,8 @@ cargo run --example test_pmcp_server
 ```
 
 ### Available Tools
+- `analyze_tdg` - **NEW!** Technical Debt Grading with 6-metric scoring
+- `analyze_tdg_compare` - **NEW!** Compare TDG scores between files/projects
 - `analyze_complexity` - Complexity metrics
 - `analyze_satd` - Technical debt detection  
 - `analyze_dead_code` - Unused code analysis
@@ -311,7 +320,7 @@ cargo run --example test_pmcp_server
 - `pdmt_deterministic_todos` - Generate quality todos
 - `github_create_issue` - Create GitHub issues
 - **NEW**: AI recommendation tools for intelligent repository analysis
-- And 11 more...
+- And 9 more...
 
 ## 🤖 Claude Code Agent Mode (NEW v2.10.0)
 
