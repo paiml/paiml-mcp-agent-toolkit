@@ -8,8 +8,8 @@ use crate::cli::AgentCommands;
 use anyhow::{anyhow, Result};
 use std::path::PathBuf;
 use std::time::Duration;
+use tracing::{error, info, warn};
 use tokio::fs;
-use tracing::{info, warn};
 
 /// Handle agent commands
 pub async fn handle_agent_command(command: AgentCommands) -> Result<()> {
@@ -132,8 +132,16 @@ async fn handle_agent_stop(_pid_file: Option<PathBuf>, _force: bool, _timeout: u
         return Ok(());
     }
 
-    // TODO: Implement daemon communication and graceful shutdown
-    info!("Daemon stop functionality not yet implemented");
+    // Implement daemon communication and graceful shutdown
+    match DaemonManager::shutdown().await {
+        Ok(_) => {
+            info!("Agent daemon shut down successfully");
+        }
+        Err(e) => {
+            error!("Failed to shut down daemon: {}", e);
+            return Err(anyhow::anyhow!("Failed to shut down daemon: {}", e));
+        }
+    }
     Ok(())
 }
 
@@ -192,8 +200,17 @@ async fn handle_agent_monitor(
         ));
     }
 
-    // TODO: Send command to running daemon to start monitoring
-    info!("Project monitoring command sent to daemon");
+    // Send command to running daemon to start monitoring
+    match DaemonManager::start_monitoring(&project_path, &project_id).await {
+        Ok(_) => {
+            info!("Project monitoring command sent to daemon successfully");
+            println!("✅ Started monitoring project '{}' at {:?}", project_id, project_path);
+        }
+        Err(e) => {
+            error!("Failed to start monitoring: {}", e);
+            return Err(anyhow::anyhow!("Failed to start monitoring: {}", e));
+        }
+    }
     Ok(())
 }
 
@@ -207,8 +224,17 @@ async fn handle_agent_unmonitor(project_id: String) -> Result<()> {
         ));
     }
 
-    // TODO: Send command to running daemon to stop monitoring
-    info!("Stop monitoring command sent to daemon");
+    // Send command to running daemon to stop monitoring
+    match DaemonManager::stop_monitoring(&project_id).await {
+        Ok(_) => {
+            info!("Stop monitoring command sent to daemon successfully");
+            println!("✅ Stopped monitoring project '{}'", project_id);
+        }
+        Err(e) => {
+            error!("Failed to stop monitoring: {}", e);
+            return Err(anyhow::anyhow!("Failed to stop monitoring: {}", e));
+        }
+    }
     Ok(())
 }
 
@@ -220,16 +246,22 @@ async fn handle_agent_health(_pid_file: Option<PathBuf>, detailed: bool) -> Resu
     }
 
     if detailed {
-        // TODO: Get detailed health information from running daemon
-        let health_info = serde_json::json!({
-            "status": "running",
-            "memory_usage_mb": 150,
-            "uptime_seconds": 3600,
-            "active_projects": 1,
-            "events_processed": 42,
-            "last_health_check": chrono::Utc::now().to_rfc3339()
-        });
-        println!("{}", serde_json::to_string_pretty(&health_info)?);
+        // Get detailed health information from running daemon
+        match DaemonManager::get_health_info().await {
+            Ok(health_info) => {
+                println!("{}", serde_json::to_string_pretty(&health_info)?);
+            }
+            Err(e) => {
+                error!("Failed to get detailed health info: {}", e);
+                // Fallback to basic status
+                let basic_health = serde_json::json!({
+                    "status": "running",
+                    "error": format!("Could not get detailed info: {}", e),
+                    "last_check": chrono::Utc::now().to_rfc3339()
+                });
+                println!("{}", serde_json::to_string_pretty(&basic_health)?);
+            }
+        }
     } else {
         println!("✅ Agent daemon is healthy");
     }
@@ -250,13 +282,22 @@ async fn handle_agent_reload(
         ));
     }
 
-    if let Some(config_path) = config_path {
-        info!("Loading configuration from {:?}", config_path);
-        let _config = load_daemon_config(&config_path).await?;
+    if let Some(ref path) = config_path {
+        info!("Loading configuration from {:?}", path);
+        let _config = load_daemon_config(path).await?;
     }
 
-    // TODO: Send reload command to running daemon
-    info!("Configuration reload command sent to daemon");
+    // Send reload command to running daemon
+    match DaemonManager::reload_config(config_path.as_ref()).await {
+        Ok(_) => {
+            info!("Configuration reload command sent to daemon successfully");
+            println!("✅ Configuration reloaded successfully");
+        }
+        Err(e) => {
+            error!("Failed to reload configuration: {}", e);
+            return Err(anyhow::anyhow!("Failed to reload configuration: {}", e));
+        }
+    }
     Ok(())
 }
 
@@ -274,8 +315,22 @@ async fn handle_agent_quality_gate(
         ));
     }
 
-    // TODO: Send quality gate command to running daemon
-    info!("Quality gate command sent to daemon");
+    // Send quality gate command to running daemon
+    match DaemonManager::run_quality_gate(&project).await {
+        Ok(result) => {
+            info!("Quality gate command sent to daemon successfully");
+            println!("✅ Quality gate completed");
+            if let Some(violations) = result.violations {
+                if violations > 0 {
+                    println!("⚠️  Found {} quality violations", violations);
+                }
+            }
+        }
+        Err(e) => {
+            error!("Failed to run quality gate: {}", e);
+            return Err(anyhow::anyhow!("Failed to run quality gate: {}", e));
+        }
+    }
     Ok(())
 }
 

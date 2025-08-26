@@ -222,6 +222,7 @@ pub async fn handle_analyze_complexity(
     watch: bool,
     top_files: usize,
     fail_on_violation: bool,
+    timeout: u64,
 ) -> Result<()> {
     use crate::services::complexity::{
         aggregate_results_with_thresholds, format_as_sarif, format_complexity_report,
@@ -243,6 +244,7 @@ pub async fn handle_analyze_complexity(
         super::super::stubs::build_complexity_thresholds(max_cyclomatic, max_cognitive);
 
     // Analyze files
+    eprintln!("⏰ Analysis timeout set to {} seconds", timeout);
     let mut file_metrics = if let Some(single_file) = file {
         // Single file mode
         eprintln!("🔍 Analyzing complexity of file: {}", single_file.display());
@@ -427,18 +429,25 @@ pub async fn handle_analyze_dead_code(
     output: Option<PathBuf>,
     fail_on_violation: bool,
     max_percentage: f64,
+    timeout: u64,
 ) -> Result<()> {
     eprintln!("☠️ Analyzing dead code in project...");
+    eprintln!("⏰ Analysis timeout set to {} seconds", timeout);
 
-    // Run analysis
-    let result = run_dead_code_analysis(
-        &path,
-        include_unreachable,
-        include_tests,
-        min_dead_lines,
-        top_files,
-    )
-    .await?;
+    // Run analysis with timeout
+    let timeout_duration = tokio::time::Duration::from_secs(timeout);
+    let result = tokio::time::timeout(timeout_duration, async {
+        run_dead_code_analysis(
+            &path,
+            include_unreachable,
+            include_tests,
+            min_dead_lines,
+            top_files,
+        )
+        .await
+    })
+    .await
+    .map_err(|_| anyhow::anyhow!("Dead code analysis timed out after {} seconds", timeout))??;
 
     eprintln!(
         "📊 Analysis complete: {} files analyzed, {} with dead code",
@@ -783,10 +792,12 @@ pub async fn handle_analyze_satd(
     output: Option<PathBuf>,
     top_files: usize,
     fail_on_violation: bool,
+    timeout: u64,
 ) -> Result<()> {
     use crate::services::satd_detector::{SATDDetector, Severity as DetectorSeverity};
 
     eprintln!("🔍 Analyzing self-admitted technical debt...");
+    eprintln!("⏰ Analysis timeout set to {} seconds", timeout);
     if strict {
         eprintln!("📝 Using strict mode (only explicit SATD markers)");
     }
@@ -798,8 +809,13 @@ pub async fn handle_analyze_satd(
         SATDDetector::new()
     };
 
-    // Run analysis
-    let mut result = detector.analyze_project(&path, include_tests).await?;
+    // Run analysis with timeout
+    let timeout_duration = tokio::time::Duration::from_secs(timeout);
+    let mut result = tokio::time::timeout(timeout_duration, async {
+        detector.analyze_project(&path, include_tests).await
+    })
+    .await
+    .map_err(|_| anyhow::anyhow!("SATD analysis timed out after {} seconds", timeout))??;
 
     // Filter by severity if specified
     if let Some(min_severity) = severity {

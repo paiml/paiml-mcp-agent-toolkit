@@ -21,6 +21,7 @@
 //! ```
 
 pub mod helpers;
+pub mod command_suggestions;
 
 #[cfg(test)]
 mod tests {

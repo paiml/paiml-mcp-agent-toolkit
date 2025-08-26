@@ -106,6 +106,7 @@ pub async fn test_single_threaded_throughput() -> Result<()> {
         false,    // watch
         10,       // top_files
         false,    // fail_on_violation
+        60,       // timeout
     )
     .await?;
 
@@ -159,6 +160,7 @@ pub async fn test_realistic_project_analysis() -> Result<()> {
         false,    // watch
         10,       // top_files
         false,    // fail_on_violation
+        60,       // timeout
     )
     .await?;
 
@@ -208,6 +210,7 @@ pub async fn test_large_file_performance() -> Result<()> {
         false,    // watch
         10,       // top_files
         false,    // fail_on_violation
+        60,       // timeout
     )
     .await?;
 
@@ -259,6 +262,7 @@ pub async fn test_memory_usage_patterns() -> Result<()> {
         false,    // watch
         10,       // top_files
         false,    // fail_on_violation
+        60,       // timeout
     )
     .await?;
 
@@ -315,6 +319,7 @@ pub async fn test_performance_regression_detection() -> Result<()> {
             false,    // watch
             10,       // top_files
             false,    // fail_on_violation
+            60,       // timeout
         )
         .await?;
 

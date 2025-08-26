@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **CRITICAL**: Dead code analysis hanging indefinitely (**v2.15.0**)
+  - **Impact**: `pmat analyze dead-code --path .` would hang forever, making tests timeout and project unusable
+  - **Root Cause**: WalkDir with no depth limits causing infinite recursion + unlimited parallel task spawning
+  - **TDD Fix Applied**:
+    - Added MAX_DEPTH limit (10 levels) to prevent infinite directory traversal
+    - Added MAX_FILES limit (10,000) to prevent resource exhaustion
+    - Implemented batch processing (100 files at a time) instead of unlimited spawning
+    - Added individual file timeouts (5s per file) to prevent hanging
+    - Added progress reporting for user feedback on large projects
+  - **Testing**: Comprehensive TDD test suite with timeout protection, empty directory tests, single file tests
+  - **Result**: Command now completes successfully within 30 seconds even on large projects
+
 - **Complexity Analysis**: Display function names in single-file analysis
   - Added "Functions in File" section when analyzing a single file
   - Lists all functions with their complexity metrics sorted by complexity

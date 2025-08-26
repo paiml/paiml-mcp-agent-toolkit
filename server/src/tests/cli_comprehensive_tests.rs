@@ -518,6 +518,7 @@ fn test_analyze_complexity_full_options() {
             watch,
             top_files,
             fail_on_violation: _,
+            timeout: _,
         }) => {
             assert_eq!(project_path, PathBuf::from("/workspace"));
             assert_eq!(file, None); // No file specified in this test
