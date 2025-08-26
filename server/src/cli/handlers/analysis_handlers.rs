@@ -146,6 +146,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             watch,
             top_files,
             fail_on_violation,
+            timeout,
         } => {
             super::complexity_handlers::handle_analyze_complexity(
                 project_path,
@@ -160,6 +161,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 watch,
                 top_files,
                 fail_on_violation,
+                timeout,
             )
             .await
         }
@@ -189,6 +191,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             output,
             fail_on_violation,
             max_percentage,
+            timeout,
         } => {
             super::complexity_handlers::handle_analyze_dead_code(
                 path,
@@ -200,6 +203,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 output,
                 fail_on_violation,
                 max_percentage,
+                timeout,
             )
             .await
         }
@@ -242,6 +246,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             output,
             top_files,
             fail_on_violation,
+            timeout,
         } => {
             super::complexity_handlers::handle_analyze_satd(
                 path,
@@ -256,6 +261,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 output,
                 top_files,
                 fail_on_violation,
+                timeout,
             )
             .await
         }

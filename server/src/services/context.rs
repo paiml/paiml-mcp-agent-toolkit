@@ -572,37 +572,70 @@ async fn scan_and_analyze_files(
     cache_manager: Option<Arc<SessionCacheManager>>,
     gitignore: &ignore::gitignore::Gitignore,
 ) -> Vec<FileContext> {
-    // First, collect all file paths to analyze
+    // FIXED: Add depth limit and file count limit to prevent hanging
+    const MAX_DEPTH: usize = 10; // Prevent infinite recursion
+    const MAX_FILES: usize = 10000; // Prevent resource exhaustion
+    const BATCH_SIZE: usize = 100; // Process files in batches to avoid overwhelming the system
+    
+    // First, collect all file paths to analyze with limits
+    let mut file_count = 0;
     let paths: Vec<_> = WalkDir::new(root_path)
         .follow_links(false)
+        .max_depth(MAX_DEPTH) // TDD Fix: Limit directory traversal depth
         .into_iter()
         .filter_map(|e| e.ok())
         .filter(|entry| {
             let path = entry.path();
             !path.is_dir() && !gitignore.matched(path, false).is_ignore()
         })
-        .map(|entry| entry.path().to_path_buf())
-        .collect();
-
-    // Process files in parallel
-    let tasks: Vec<_> = paths
-        .into_iter()
-        .map(|path| {
-            let toolchain = toolchain.to_string();
-            let cache_manager = cache_manager.clone();
-            tokio::spawn(async move {
-                analyze_file_by_toolchain(&path, &toolchain, cache_manager).await
-            })
+        .take(MAX_FILES) // TDD Fix: Limit total files analyzed
+        .map(|entry| {
+            file_count += 1;
+            if file_count % 1000 == 0 {
+                eprintln!("📁 Scanning files... ({} so far)", file_count);
+            }
+            entry.path().to_path_buf()
         })
         .collect();
 
-    // Wait for all tasks to complete and collect results
-    let results = join_all(tasks).await;
-    results
-        .into_iter()
-        .filter_map(|result| result.ok())
-        .flatten()
-        .collect()
+    if file_count > MAX_FILES / 2 {
+        eprintln!("⚠️ Large project detected: {} files. Limited to {} for performance.", file_count, MAX_FILES);
+    }
+
+    // Process files in controlled batches instead of all at once
+    let mut all_results = Vec::new();
+    
+    for chunk in paths.chunks(BATCH_SIZE) {
+        let batch_tasks: Vec<_> = chunk
+            .iter()
+            .map(|path| {
+                let path = path.clone();
+                let toolchain = toolchain.to_string();
+                let cache_manager = cache_manager.clone();
+                tokio::spawn(async move {
+                    // Add timeout for individual file analysis
+                    let timeout_duration = tokio::time::Duration::from_secs(5);
+                    tokio::time::timeout(timeout_duration, async move {
+                        analyze_file_by_toolchain(&path, &toolchain, cache_manager).await
+                    })
+                    .await
+                    .ok()
+                    .flatten()
+                })
+            })
+            .collect();
+
+        // Wait for this batch to complete before starting the next
+        let batch_results = join_all(batch_tasks).await;
+        all_results.extend(
+            batch_results
+                .into_iter()
+                .filter_map(|result| result.ok())
+                .flatten()
+        );
+    }
+
+    all_results
 }
 
 async fn analyze_file_by_toolchain(
@@ -806,10 +839,16 @@ async fn scan_and_analyze_files_persistent(
     cache_manager: Option<Arc<PersistentCacheManager>>,
     gitignore: &ignore::gitignore::Gitignore,
 ) -> Vec<FileContext> {
+    // FIXED: Add same depth and file limits as non-persistent version
+    const MAX_DEPTH: usize = 10; // Prevent infinite recursion
+    const MAX_FILES: usize = 10000; // Prevent resource exhaustion
+    
     let mut files = Vec::new();
+    let mut file_count = 0;
 
     for entry in WalkDir::new(root_path)
         .follow_links(false)
+        .max_depth(MAX_DEPTH) // TDD Fix: Limit directory traversal depth
         .into_iter()
         .filter_map(|e| e.ok())
     {
@@ -819,10 +858,26 @@ async fn scan_and_analyze_files_persistent(
         if gitignore.matched(path, path.is_dir()).is_ignore() {
             continue;
         }
-
-        if let Some(file_context) =
+        
+        // TDD Fix: Limit total files analyzed
+        file_count += 1;
+        if file_count > MAX_FILES {
+            eprintln!("⚠️ Reached file limit of {}. Stopping analysis.", MAX_FILES);
+            break;
+        }
+        
+        if file_count % 1000 == 0 {
+            eprintln!("📁 Scanning files... ({} so far)", file_count);
+        }
+        
+        // Add timeout for individual file analysis
+        let timeout_duration = tokio::time::Duration::from_secs(5);
+        let result = tokio::time::timeout(timeout_duration, async {
             analyze_file_by_toolchain_persistent(path, toolchain, cache_manager.clone()).await
-        {
+        })
+        .await;
+
+        if let Ok(Some(file_context)) = result {
             files.push(file_context);
         }
     }
@@ -1179,97 +1234,86 @@ fn format_analysis_results(
 ) {
     output.push_str("## Analysis Results\n\n");
 
-    // Complexity Analysis
+    // Complexity Analysis - Combined formatting to reduce complexity 
     if let Some(ref complexity) = analyses.complexity_report {
-        output.push_str("### Complexity Metrics\n\n");
         output.push_str(&format!(
-            "- **Total Files Analyzed**: {}\n",
-            complexity.files.len()
-        ));
-        output.push_str(&format!(
-            "- **Median Cyclomatic Complexity**: {:.1}\n",
-            complexity.summary.median_cyclomatic
-        ));
-        output.push_str(&format!(
-            "- **Max Cyclomatic Complexity**: {}\n",
-            complexity.summary.max_cyclomatic
-        ));
-        output.push_str(&format!(
-            "- **Median Cognitive Complexity**: {:.1}\n",
-            complexity.summary.median_cognitive
-        ));
-        output.push_str(&format!(
-            "- **Max Cognitive Complexity**: {}\n",
-            complexity.summary.max_cognitive
-        ));
-        output.push_str(&format!(
-            "- **Refactoring Hours**: {:.1}\n\n",
+            "### Complexity Metrics\n\n\
+            - **Total Files Analyzed**: {}\n\
+            - **Median Cyclomatic Complexity**: {:.1}\n\
+            - **Max Cyclomatic Complexity**: {}\n\
+            - **Median Cognitive Complexity**: {:.1}\n\
+            - **Max Cognitive Complexity**: {}\n\
+            - **Refactoring Hours**: {:.1}\n\n",
+            complexity.files.len(),
+            complexity.summary.median_cyclomatic,
+            complexity.summary.max_cyclomatic,
+            complexity.summary.median_cognitive,
+            complexity.summary.max_cognitive,
             complexity.summary.technical_debt_hours
         ));
     }
 
-    // Churn Analysis
+    // Churn Analysis - Combined formatting to reduce complexity
     if let Some(ref churn) = analyses.churn_analysis {
-        output.push_str("### Code Churn Analysis\n\n");
-        output.push_str(&format!(
-            "- **Analysis Period**: {} days\n",
-            churn.period_days
-        ));
-        output.push_str(&format!(
-            "- **Total Files Changed**: {}\n",
-            churn.summary.total_files_changed
-        ));
-        output.push_str(&format!(
-            "- **Total Commits**: {}\n",
-            churn.summary.total_commits
-        ));
-        output.push_str(&format!(
-            "- **Hotspot Files**: {}\n",
-            churn.summary.hotspot_files.len()
-        ));
-        if !churn.summary.hotspot_files.is_empty() {
-            output.push_str("- **Top Hotspots**:\n");
+        let hotspots = if !churn.summary.hotspot_files.is_empty() {
+            let mut hotspots_str = "- **Top Hotspots**:\n".to_string();
             for (i, hotspot) in churn.summary.hotspot_files.iter().take(5).enumerate() {
-                output.push_str(&format!("  {}. {}\n", i + 1, hotspot.display()));
+                hotspots_str.push_str(&format!("  {}. {}\n", i + 1, hotspot.display()));
             }
-        }
-        output.push('\n');
+            hotspots_str
+        } else {
+            String::new()
+        };
+        
+        output.push_str(&format!(
+            "### Code Churn Analysis\n\n\
+            - **Analysis Period**: {} days\n\
+            - **Total Files Changed**: {}\n\
+            - **Total Commits**: {}\n\
+            - **Hotspot Files**: {}\n{}\n",
+            churn.period_days,
+            churn.summary.total_files_changed,
+            churn.summary.total_commits,
+            churn.summary.hotspot_files.len(),
+            hotspots
+        ));
     }
 
-    // Dependency Graph
+    // Dependency Graph - Combined formatting to reduce complexity
     if let Some(ref dag) = analyses.dependency_graph {
-        output.push_str("### Dependency Graph Statistics\n\n");
-        output.push_str(&format!("- **Total Nodes**: {}\n", dag.nodes.len()));
-        output.push_str(&format!("- **Total Edges**: {}\n", dag.edges.len()));
-        output.push_str("- **Graph Analysis**: Dependency relationships analyzed\n\n");
+        output.push_str(&format!(
+            "### Dependency Graph Statistics\n\n\
+            - **Total Nodes**: {}\n\
+            - **Total Edges**: {}\n\
+            - **Graph Analysis**: Dependency relationships analyzed\n\n",
+            dag.nodes.len(),
+            dag.edges.len()
+        ));
     }
 
-    // Dead Code Analysis
+    // Dead Code Analysis - Combined formatting to reduce complexity
     if let Some(ref dead_code) = analyses.dead_code_results {
-        output.push_str("### Dead Code Analysis\n\n");
         output.push_str(&format!(
-            "- **Total Files Analyzed**: {}\n",
-            dead_code.summary.total_files_analyzed
-        ));
-        output.push_str(&format!(
-            "- **Dead Functions Found**: {}\n",
-            dead_code.summary.dead_functions
-        ));
-        output.push_str(&format!(
-            "- **Dead Classes Found**: {}\n",
-            dead_code.summary.dead_classes
-        ));
-        output.push_str(&format!(
-            "- **Dead Lines**: {}\n\n",
+            "### Dead Code Analysis\n\n\
+            - **Total Files Analyzed**: {}\n\
+            - **Dead Functions Found**: {}\n\
+            - **Dead Classes Found**: {}\n\
+            - **Dead Lines**: {}\n\n",
+            dead_code.summary.total_files_analyzed,
+            dead_code.summary.dead_functions,
+            dead_code.summary.dead_classes,
             dead_code.summary.total_dead_lines
         ));
     }
 
-    // SATD Analysis
+    // SATD Analysis - Combined formatting to reduce complexity
     if let Some(ref satd) = analyses.satd_results {
-        output.push_str("### Self-Admitted Debt Analysis\n\n");
-        output.push_str(&format!("- **Total SATD Items**: {}\n", satd.items.len()));
-        output.push_str("- **Categories**: Various debt types detected\n\n");
+        output.push_str(&format!(
+            "### Self-Admitted Debt Analysis\n\n\
+            - **Total SATD Items**: {}\n\
+            - **Categories**: Various debt types detected\n\n",
+            satd.items.len()
+        ));
     }
 }
 

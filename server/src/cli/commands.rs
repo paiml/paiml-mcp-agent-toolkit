@@ -556,6 +556,10 @@ pub enum AnalyzeCommands {
         /// Exit with non-zero code if violations are found
         #[arg(long)]
         fail_on_violation: bool,
+
+        /// Analysis timeout in seconds
+        #[arg(long, default_value = "60")]
+        timeout: u64,
     },
 
     /// Generate dependency graphs using Mermaid
@@ -639,6 +643,10 @@ pub enum AnalyzeCommands {
         /// Maximum allowed dead code percentage (default: 15.0)
         #[arg(long, default_value = "15.0")]
         max_percentage: f64,
+
+        /// Analysis timeout in seconds
+        #[arg(long, default_value = "60")]
+        timeout: u64,
     },
 
     /// Analyze Self-Admitted Technical Debt (SATD) in comments
@@ -691,6 +699,10 @@ pub enum AnalyzeCommands {
         /// Exit with non-zero code if violations are found
         #[arg(long)]
         fail_on_violation: bool,
+
+        /// Analysis timeout in seconds
+        #[arg(long, default_value = "60")]
+        timeout: u64,
     },
 
     /// Generate comprehensive deep context analysis with defect detection

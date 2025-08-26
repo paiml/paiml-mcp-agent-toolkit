@@ -93,6 +93,7 @@ async fn test_execute_analyze_complexity_basic() {
         watch: false,
         top_files: 10,
         fail_on_violation: false,
+        timeout: 60,
     };
 
     let command = Commands::Analyze(analyze_cmd);

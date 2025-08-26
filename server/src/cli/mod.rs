@@ -123,7 +123,14 @@ pub fn parse_early_for_tracing() -> EarlyCliArgs {
 }
 
 pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
-    let cli = Cli::parse();
+    let cli = match parse_with_suggestions() {
+        Ok(cli) => cli,
+        Err(suggestion_msg) => {
+            eprintln!("{}", suggestion_msg);
+            std::process::exit(2); // Exit with "misuse" code for command errors
+        }
+    };
+    
     debug!("CLI arguments parsed");
 
     // Handle forced mode
@@ -134,6 +141,35 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
 
     // Use command dispatcher for improved modularity
     CommandDispatcher::execute_command(cli.command, server).await
+}
+
+/// Parse CLI with command suggestions on failure
+fn parse_with_suggestions() -> Result<Cli, String> {
+    use clap::Parser;
+    use crate::utils::command_suggestions::CommandSuggester;
+    
+    // Try to parse normally first
+    match Cli::try_parse() {
+        Ok(cli) => Ok(cli),
+        Err(clap_error) => {
+            let args: Vec<String> = std::env::args().skip(1).collect();
+            let suggester = CommandSuggester::new();
+            
+            // Get suggestion based on the failed arguments
+            if let Some(suggestion) = suggester.suggest_command(&args) {
+                let error_msg = format!(
+                    "error: unrecognized subcommand\n\n{}\n\nFor more information, try 'pmat --help'",
+                    suggestion
+                );
+                Err(error_msg)
+            } else {
+                // If no suggestion, show the original clap error with examples
+                let examples = CommandSuggester::get_help_examples();
+                let error_msg = format!("{}{}", clap_error, examples);
+                Err(error_msg)
+            }
+        }
+    }
 }
 
 // Helper functions made public for testing

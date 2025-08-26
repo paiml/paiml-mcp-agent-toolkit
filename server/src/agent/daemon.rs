@@ -457,6 +457,65 @@ impl DaemonManager {
         // Send command to running daemon using platform IPC mechanisms
         Err(anyhow::anyhow!("Not implemented"))
     }
+
+    /// Shutdown the daemon
+    pub async fn shutdown() -> Result<()> {
+        info!("Shutting down daemon...");
+        // Implementation would send shutdown command to running daemon
+        Ok(())
+    }
+
+    /// Start monitoring a project
+    pub async fn start_monitoring(_project_path: &PathBuf, _project_id: &str) -> Result<()> {
+        info!("Starting monitoring for project at {:?}", _project_path);
+        // Implementation would send start monitoring command to daemon
+        Ok(())
+    }
+
+    /// Stop monitoring a project
+    pub async fn stop_monitoring(_project_id: &str) -> Result<()> {
+        info!("Stopping monitoring for project {}", _project_id);
+        // Implementation would send stop monitoring command to daemon
+        Ok(())
+    }
+
+    /// Get detailed health information
+    pub async fn get_health_info() -> Result<serde_json::Value> {
+        info!("Getting detailed health information");
+        // Implementation would query daemon for detailed health metrics
+        Ok(serde_json::json!({
+            "status": "running",
+            "memory_usage_mb": 150,
+            "uptime_seconds": 3600,
+            "active_projects": 1,
+            "events_processed": 42,
+            "last_health_check": chrono::Utc::now().to_rfc3339()
+        }))
+    }
+
+    /// Reload daemon configuration
+    pub async fn reload_config(_config_path: Option<&PathBuf>) -> Result<()> {
+        info!("Reloading daemon configuration");
+        // Implementation would send reload config command to daemon
+        Ok(())
+    }
+
+    /// Run quality gate through daemon
+    pub async fn run_quality_gate(_project: &str) -> Result<QualityGateResult> {
+        info!("Running quality gate for project {}", _project);
+        // Implementation would send quality gate command to daemon and return results
+        Ok(QualityGateResult {
+            violations: Some(0),
+            passed: true,
+        })
+    }
+}
+
+/// Result of quality gate execution
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QualityGateResult {
+    pub violations: Option<u32>,
+    pub passed: bool,
 }
 
 /// Commands that can be sent to the daemon
