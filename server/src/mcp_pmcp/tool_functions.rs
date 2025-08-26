@@ -195,3 +195,97 @@ pub async fn context_summary(_paths: &[PathBuf], _level: Option<&str>) -> Result
         }
     }))
 }
+
+/// Analyze Technical Debt Grading (TDG) scores using the new TDG implementation
+pub async fn analyze_tdg(
+    paths: &[PathBuf],
+    threshold: Option<f64>,
+    top_files: Option<usize>,
+    include_components: Option<bool>,
+) -> Result<Value> {
+    use crate::tdg::TdgAnalyzer;
+    
+    let analyzer = TdgAnalyzer::new()?;
+    let _threshold = threshold.unwrap_or(1.5);
+    let _top_files = top_files.unwrap_or(10);
+    let _include_components = include_components.unwrap_or(false);
+    
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+    
+    // Handle single file vs multiple files/directories
+    if paths.len() == 1 {
+        let path = &paths[0];
+        
+        if path.is_dir() {
+            // Directory analysis
+            let project_score = analyzer.analyze_project(path)?;
+            Ok(json!({
+                "status": "completed",
+                "message": "TDG project analysis completed",
+                "result_type": "project",
+                "results": {
+                    "average_score": project_score.average_score,
+                    "average_grade": project_score.average_grade,
+                    "total_files": project_score.total_files,
+                    "language_distribution": project_score.language_distribution,
+                    "files": project_score.files
+                }
+            }))
+        } else {
+            // Single file analysis
+            let score = analyzer.analyze_file(path)?;
+            Ok(json!({
+                "status": "completed",
+                "message": "TDG file analysis completed",
+                "result_type": "file",
+                "results": score
+            }))
+        }
+    } else {
+        // Multiple files/directories analysis
+        let mut all_scores = Vec::new();
+        
+        for path in paths {
+            if path.is_dir() {
+                let project_score = analyzer.analyze_project(path)?;
+                all_scores.extend(project_score.files);
+            } else {
+                let score = analyzer.analyze_file(path)?;
+                all_scores.push(score);
+            }
+        }
+        
+        use crate::tdg::ProjectScore;
+        let aggregated = ProjectScore::aggregate(all_scores);
+        
+        Ok(json!({
+            "status": "completed",
+            "message": "TDG multi-path analysis completed",
+            "result_type": "multi_path",
+            "results": {
+                "average_score": aggregated.average_score,
+                "average_grade": aggregated.average_grade,
+                "total_files": aggregated.total_files,
+                "language_distribution": aggregated.language_distribution,
+                "files": aggregated.files
+            }
+        }))
+    }
+}
+
+/// Compare TDG scores between two files or directories
+pub async fn compare_tdg(path1: &Path, path2: &Path) -> Result<Value> {
+    use crate::tdg::TdgAnalyzer;
+    
+    let analyzer = TdgAnalyzer::new()?;
+    let comparison = analyzer.compare(path1, path2)?;
+    
+    Ok(json!({
+        "status": "completed",
+        "message": "TDG comparison completed",
+        "result_type": "comparison",
+        "results": comparison
+    }))
+}

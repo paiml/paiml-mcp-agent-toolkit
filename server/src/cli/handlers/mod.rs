@@ -32,6 +32,7 @@ pub mod telemetry_handlers;
 pub mod test_handlers;
 pub mod utility_handlers;
 pub mod wasm_handlers;
+pub mod new_tdg_handler;
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{

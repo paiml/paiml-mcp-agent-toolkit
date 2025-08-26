@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.13.0] - 2025-08-26 - Technical Debt Grading (TDG) System
+
+### Added
+
+- **Technical Debt Grading (TDG) System** 🎯
+  - Comprehensive code quality scoring with 6 orthogonal metrics
+  - Structural complexity analysis (cyclomatic complexity, nesting depth)
+  - Semantic complexity evaluation (cognitive complexity patterns)
+  - Code duplication detection and quantification
+  - Coupling analysis with import/dependency tracking
+  - Documentation coverage scoring with language-specific patterns
+  - Code consistency analysis (naming conventions, indentation patterns)
+
+### Features
+
+- **Multi-Language Support**
+  - Support for Rust, Python, JavaScript, TypeScript, Go, Java, C/C++, Ruby, Swift, Kotlin
+  - Language-specific analysis rules and scoring adaptations
+  - Confidence scoring based on language detection accuracy
+
+- **Flexible Output Formats**
+  - Human-readable format with ASCII art progress bars and detailed breakdowns
+  - JSON format for programmatic integration
+  - Markdown format for documentation and reports
+  - Grade classification system (A+, A, A-, B+, B, B-, C+, C, C-, D, F)
+
+- **Advanced Analysis Features**
+  - Penalty tracking system with detailed attribution
+  - Project-level analysis with language distribution
+  - File comparison capabilities with delta analysis
+  - Configurable thresholds and penalty curves
+  - Quality gate integration for CI/CD pipelines
+
+- **CLI Integration**
+  - `pmat analyze tdg` command with comprehensive options
+  - Threshold filtering and top-files limiting
+  - Critical-only mode for focused analysis
+  - Verbose output with detailed component breakdowns
+
+- **MCP Tool Integration**
+  - `analyze_tdg` tool for single file/directory analysis
+  - `analyze_tdg_compare` tool for comparative analysis
+  - Full integration with existing MCP server architecture
+  - JSON-RPC compatible tool interfaces
+
+### Technical Implementation
+
+- **Modular Architecture**
+  - Separate modules for analysis, formatting, configuration, and language detection
+  - Heuristic-based analysis optimized for performance
+  - Comprehensive test suite with 25+ test cases
+  - Configurable scoring weights and penalty systems
+
+- **Quality Assurance**
+  - Zero clippy warnings in TDG codebase
+  - Full test coverage for all TDG components
+  - Property-based testing for scoring algorithms
+  - Integration testing with CLI and MCP interfaces
+
+### Documentation
+
+- Implementation based on TDG Simplified Specification (v2.0)
+- Comprehensive inline documentation with examples
+- Test-driven development with extensive test coverage
+
 ## [2.12.0] - 2025-08-23 - Enhanced Ruchy Analysis
 
 ### Added
