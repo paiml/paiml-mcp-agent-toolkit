@@ -1,5 +1,5 @@
 //! Integration tests for Universal Demo "Just Works" functionality
-//! 
+//!
 //! These tests verify that pmat can analyze any GitHub repository
 //! regardless of language and provide meaningful results.
 
@@ -101,11 +101,7 @@ mod universal_demo_tests {
         println!("Testing {} repository: {}", repo.language, repo.url);
 
         // Clone the repository
-        let repo_path = resolve_repository_async(
-            None,
-            Some(repo.url.to_string()),
-            None
-        ).await?;
+        let repo_path = resolve_repository_async(None, Some(repo.url.to_string()), None).await?;
 
         assert!(repo_path.exists(), "Repository should be cloned");
 
@@ -116,7 +112,10 @@ mod universal_demo_tests {
 
         // Verify basic metadata
         assert!(result.metadata.project_root.exists());
-        assert!(result.metadata.analysis_duration.as_secs() < 300, "Analysis should complete within 5 minutes");
+        assert!(
+            result.metadata.analysis_duration.as_secs() < 300,
+            "Analysis should complete within 5 minutes"
+        );
 
         // Verify file discovery
         let file_count = count_files_in_tree(&result.file_tree.root);
@@ -128,9 +127,12 @@ mod universal_demo_tests {
         );
 
         // Verify quality gates
-        assert!(result.qa_verification.is_some(), "Should have QA verification");
+        assert!(
+            result.qa_verification.is_some(),
+            "Should have QA verification"
+        );
         let qa = result.qa_verification.unwrap();
-        
+
         // Check overall status matches expectation
         assert_eq!(
             qa.overall, repo.expected_quality,
@@ -164,26 +166,26 @@ mod universal_demo_tests {
 
     fn count_files_in_tree(node: &pmat::services::deep_context::AnnotatedNode) -> usize {
         use pmat::services::deep_context::NodeType;
-        
+
         match node.node_type {
             NodeType::File => 1,
-            NodeType::Directory => {
-                node.children.iter()
-                    .map(|child| count_files_in_tree(child))
-                    .sum()
-            }
+            NodeType::Directory => node
+                .children
+                .iter()
+                .map(|child| count_files_in_tree(child))
+                .sum(),
         }
     }
 
     #[tokio::test]
     async fn test_quality_gate_edge_cases() -> Result<()> {
+        use chrono::Utc;
         use pmat::services::deep_context::{
-            DeepContextResult, ContextMetadata, AnalysisResults,
-            QualityScorecard, DefectSummary, CacheStats,
+            AnalysisResults, CacheStats, ContextMetadata, DeepContextResult, DefectSummary,
+            QualityScorecard,
         };
         use pmat::services::quality_gates::QAVerification;
         use std::time::Duration;
-        use chrono::Utc;
 
         // Create a minimal result with no analysis
         let minimal_result = DeepContextResult {
@@ -241,10 +243,10 @@ mod universal_demo_tests {
         // Verify quality gates handle minimal results gracefully
         let qa = QAVerification::new();
         let verification = qa.verify(&minimal_result);
-        
+
         // Should not panic and should provide some result
         assert!(verification.contains_key("dead_code_sanity"));
-        
+
         Ok(())
     }
 
@@ -254,8 +256,9 @@ mod universal_demo_tests {
         let result = resolve_repository_async(
             None,
             Some("https://github.com/nonexistent/repo-that-does-not-exist".to_string()),
-            None
-        ).await;
+            None,
+        )
+        .await;
 
         // Should handle gracefully (might succeed with empty repo or fail with clear error)
         match result {
@@ -267,9 +270,9 @@ mod universal_demo_tests {
                 // Error message should be informative
                 let error_msg = e.to_string();
                 assert!(
-                    error_msg.contains("clone") || 
-                    error_msg.contains("repository") ||
-                    error_msg.contains("not found"),
+                    error_msg.contains("clone")
+                        || error_msg.contains("repository")
+                        || error_msg.contains("not found"),
                     "Error should be descriptive: {}",
                     error_msg
                 );
@@ -284,12 +287,8 @@ mod universal_demo_tests {
         // Test a repository with multiple languages
         // Using a small repo that likely has mixed content
         let repo_url = "https://github.com/github/gitignore";
-        
-        let repo_path = resolve_repository_async(
-            None,
-            Some(repo_url.to_string()),
-            None
-        ).await?;
+
+        let repo_path = resolve_repository_async(None, Some(repo_url.to_string()), None).await?;
 
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
@@ -297,7 +296,7 @@ mod universal_demo_tests {
 
         // Should handle mixed content without errors
         assert!(result.qa_verification.is_some());
-        
+
         // Clean up
         if repo_path.starts_with("/tmp") {
             let _ = std::fs::remove_dir_all(&repo_path);

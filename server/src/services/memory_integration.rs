@@ -35,7 +35,9 @@
 //! # }
 //! ```
 
-use crate::services::memory_manager::{global_memory_manager, MemoryManager, PoolType, PooledBuffer};
+use crate::services::memory_manager::{
+    global_memory_manager, MemoryManager, PoolType, PooledBuffer,
+};
 use anyhow::Result;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
@@ -73,14 +75,18 @@ impl<T> MemoryVec<T> {
     pub fn push(&mut self, item: T) -> Result<()> {
         let old_capacity = self.data.capacity();
         self.data.push(item);
-        
+
         // Track memory growth
         let new_capacity = self.data.capacity();
         if new_capacity > old_capacity {
             let growth = (new_capacity - old_capacity) * std::mem::size_of::<T>();
-            trace!("MemoryVec grew by {} bytes for pool {:?}", growth, self.pool_type);
+            trace!(
+                "MemoryVec grew by {} bytes for pool {:?}",
+                growth,
+                self.pool_type
+            );
         }
-        
+
         Ok(())
     }
 
@@ -88,13 +94,17 @@ impl<T> MemoryVec<T> {
     pub fn reserve(&mut self, additional: usize) -> Result<()> {
         let old_capacity = self.data.capacity();
         self.data.reserve(additional);
-        
+
         let new_capacity = self.data.capacity();
         if new_capacity > old_capacity {
             let growth = (new_capacity - old_capacity) * std::mem::size_of::<T>();
-            trace!("MemoryVec reserved {} bytes for pool {:?}", growth, self.pool_type);
+            trace!(
+                "MemoryVec reserved {} bytes for pool {:?}",
+                growth,
+                self.pool_type
+            );
         }
-        
+
         Ok(())
     }
 
@@ -111,10 +121,13 @@ impl<T> MemoryVec<T> {
         // Check memory pressure before processing
         let stats = self.memory_manager.stats();
         if stats.allocation_pressure > 0.9 {
-            debug!("High memory pressure detected: {:.1}%", stats.allocation_pressure * 100.0);
+            debug!(
+                "High memory pressure detected: {:.1}%",
+                stats.allocation_pressure * 100.0
+            );
             self.memory_manager.cleanup()?;
         }
-        
+
         Ok(f(&self.data))
     }
 }
@@ -190,13 +203,13 @@ impl std::fmt::Debug for MemoryString {
 pub trait MemoryAware {
     /// Get memory usage estimate for this service
     fn memory_usage(&self) -> usize;
-    
+
     /// Cleanup unused memory in this service
     fn cleanup_memory(&mut self) -> Result<usize>;
-    
+
     /// Configure memory limits for this service
     fn configure_memory(&mut self, max_memory: usize) -> Result<()>;
-    
+
     /// Check if service is under memory pressure
     fn memory_pressure(&self) -> f64 {
         0.0 // Default implementation
@@ -221,7 +234,8 @@ impl AstBufferPool {
 
     /// Get a buffer for AST parsing
     pub fn get_buffer(&self, min_size: usize) -> Result<PooledBuffer> {
-        self.memory_manager.allocate_buffer(self.pool_type, min_size)
+        self.memory_manager
+            .allocate_buffer(self.pool_type, min_size)
     }
 
     /// Get buffer sized for specific file content
@@ -307,7 +321,12 @@ where
         let stats = self.memory_manager.stats();
         if stats.allocation_pressure > 0.85 && self.cache.len() >= self.max_items {
             // Evict oldest entries (simplified LRU)
-            let keys_to_remove: Vec<_> = self.cache.keys().take(self.cache.len() / 4).cloned().collect();
+            let keys_to_remove: Vec<_> = self
+                .cache
+                .keys()
+                .take(self.cache.len() / 4)
+                .cloned()
+                .collect();
             for key in keys_to_remove {
                 self.cache.remove(&key);
             }
@@ -327,7 +346,8 @@ where
         CacheStats {
             item_count: self.cache.len(),
             max_items: self.max_items,
-            estimated_memory: self.cache.len() * (std::mem::size_of::<K>() + std::mem::size_of::<V>()),
+            estimated_memory: self.cache.len()
+                * (std::mem::size_of::<K>() + std::mem::size_of::<V>()),
         }
     }
 
@@ -399,85 +419,85 @@ mod tests {
     #[test]
     fn test_memory_vec() -> Result<()> {
         setup_memory_manager()?;
-        
+
         let mut vec = MemoryVec::new(PoolType::AstParsing)?;
         vec.push("test1".to_string())?;
         vec.push("test2".to_string())?;
-        
+
         assert_eq!(vec.len(), 2);
         assert!(vec.memory_usage() > 0);
-        
+
         Ok(())
     }
 
     #[test]
     fn test_memory_string() -> Result<()> {
         setup_memory_manager()?;
-        
+
         let str1 = MemoryString::new("test")?;
         let str2 = MemoryString::new("test")?;
-        
+
         assert_eq!(str1.as_str(), "test");
         assert!(str1.shares_memory_with(&str2));
-        
+
         Ok(())
     }
 
     #[test]
     fn test_ast_buffer_pool() -> Result<()> {
         setup_memory_manager()?;
-        
+
         let pool = AstBufferPool::new(PoolType::AstParsing)?;
         let buffer = pool.get_buffer(1024)?;
-        
+
         assert!(buffer.capacity() >= 1024);
-        
+
         Ok(())
     }
 
     #[test]
     fn test_interned_string_set() -> Result<()> {
         setup_memory_manager()?;
-        
+
         let mut set = InternedStringSet::new()?;
         assert!(set.insert("test1")?);
         assert!(!set.insert("test1")?); // Already exists
         assert!(set.insert("test2")?);
-        
+
         assert_eq!(set.strings.len(), 2);
-        
+
         Ok(())
     }
 
     #[test]
     fn test_memory_aware_cache() -> Result<()> {
         setup_memory_manager()?;
-        
+
         let mut cache = MemoryAwareCache::new(PoolType::AnalysisCache, 100)?;
         cache.insert("key1", "value1")?;
         cache.insert("key2", "value2")?;
-        
+
         assert_eq!(cache.get(&"key1"), Some(&"value1"));
-        
+
         let stats = cache.stats();
         assert_eq!(stats.item_count, 2);
         assert_eq!(stats.max_items, 100);
-        
+
         Ok(())
     }
 
     #[test]
     fn test_utils() -> Result<()> {
         setup_memory_manager()?;
-        
+
         let _id_vec = utils::create_identifier_vec()?;
         let _content_vec = utils::create_content_vec()?;
         let _ast_vec: MemoryVec<i32> = utils::create_ast_vec()?;
-        
+
         let test_data = vec![1, 2, 3, 4, 5];
         let memory_usage = utils::estimate_collection_memory(&test_data);
         assert_eq!(memory_usage, 5 * std::mem::size_of::<i32>());
-        
+
         Ok(())
     }
 }

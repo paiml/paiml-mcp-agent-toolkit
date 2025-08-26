@@ -116,28 +116,34 @@ impl LanguageAnalyzer {
             metrics: Arc::new(std::sync::Mutex::new(ServiceMetrics::default())),
         }
     }
-    
+
     /// Analyze a file with automatic language detection
-    pub async fn analyze_file(&self, path: &Path, analysis_types: Vec<AnalysisType>) -> Result<LanguageAnalysisResult> {
+    pub async fn analyze_file(
+        &self,
+        path: &Path,
+        analysis_types: Vec<AnalysisType>,
+    ) -> Result<LanguageAnalysisResult> {
         let start_time = std::time::Instant::now();
-        
+
         // Detect language
         let language = self.language_registry.detect_language(path);
-        
+
         // Read file for analysis
         let content = tokio::fs::read_to_string(path).await?;
         let metadata = self.analyze_file_metadata(&content, language);
-        
+
         // Perform language-specific analysis
-        let analysis_results = self.perform_analyses(&content, language, &analysis_types).await?;
-        
+        let analysis_results = self
+            .perform_analyses(&content, language, &analysis_types)
+            .await?;
+
         let processing_time = start_time.elapsed().as_millis() as u64;
-        
+
         // Update metrics
         if let Ok(mut metrics) = self.metrics.lock() {
             metrics.record_request(start_time.elapsed(), true);
         }
-        
+
         Ok(LanguageAnalysisResult {
             path: path.to_path_buf(),
             language,
@@ -146,12 +152,12 @@ impl LanguageAnalyzer {
             processing_time_ms: processing_time,
         })
     }
-    
+
     /// Get supported languages
     pub fn supported_languages(&self) -> &[Language] {
         self.language_registry.supported_languages()
     }
-    
+
     /// Check if language supports specific analysis type
     pub fn supports_analysis(&self, language: Language, analysis_type: &AnalysisType) -> bool {
         match analysis_type {
@@ -160,23 +166,24 @@ impl LanguageAnalyzer {
             AnalysisType::DeadCode => language.has_ast_support(),
             AnalysisType::Security => language.supports_complexity(), // Security analysis needs AST
             AnalysisType::Style => language.has_ast_support(),
-            AnalysisType::Documentation => matches!(language, 
-                Language::Markdown | Language::LaTeX | Language::AsciiDoc | 
-                Language::Unknown), // Include unknown for potential docs
+            AnalysisType::Documentation => matches!(
+                language,
+                Language::Markdown | Language::LaTeX | Language::AsciiDoc | Language::Unknown
+            ), // Include unknown for potential docs
             AnalysisType::Dependencies => language.has_ast_support(),
             AnalysisType::Metrics => true, // Basic metrics available for all files
         }
     }
-    
+
     /// Analyze file metadata (lines, size, etc.)
     fn analyze_file_metadata(&self, content: &str, language: Language) -> FileMetadata {
         let lines: Vec<&str> = content.lines().collect();
         let total_lines = lines.len();
-        
+
         let mut code_lines = 0;
         let mut comment_lines = 0;
         let mut blank_lines = 0;
-        
+
         for line in &lines {
             let trimmed = line.trim();
             if trimmed.is_empty() {
@@ -187,7 +194,7 @@ impl LanguageAnalyzer {
                 code_lines += 1;
             }
         }
-        
+
         FileMetadata {
             lines_total: total_lines,
             lines_code: code_lines,
@@ -198,62 +205,79 @@ impl LanguageAnalyzer {
             confidence: 1.0, // For now, assume high confidence
         }
     }
-    
+
     /// Check if a line is a comment for the given language
     fn is_comment_line(&self, line: &str, language: Language) -> bool {
         match language {
             // C-style comments
-            Language::Rust | Language::C | Language::Cpp | Language::Go | 
-            Language::Java | Language::Kotlin | Language::JavaScript | 
-            Language::TypeScript | Language::CSharp | Language::Swift |
-            Language::Dart | Language::Scala | Language::Groovy => {
+            Language::Rust
+            | Language::C
+            | Language::Cpp
+            | Language::Go
+            | Language::Java
+            | Language::Kotlin
+            | Language::JavaScript
+            | Language::TypeScript
+            | Language::CSharp
+            | Language::Swift
+            | Language::Dart
+            | Language::Scala
+            | Language::Groovy => {
                 line.starts_with("//") || line.starts_with("/*") || line.starts_with("*")
             }
-            
+
             // Hash comments
-            Language::Python | Language::Ruby | Language::Bash | Language::Zsh |
-            Language::Fish | Language::Perl | Language::R | Language::YAML |
-            Language::TOML | Language::Makefile => {
-                line.starts_with('#')
-            }
-            
+            Language::Python
+            | Language::Ruby
+            | Language::Bash
+            | Language::Zsh
+            | Language::Fish
+            | Language::Perl
+            | Language::R
+            | Language::YAML
+            | Language::TOML
+            | Language::Makefile => line.starts_with('#'),
+
             // Semicolon comments
             Language::Clojure => line.starts_with(';'),
-            
+
             // Percent comments
             Language::Erlang | Language::Matlab => line.starts_with('%'),
-            
+
             // Double dash comments
             Language::SQL | Language::Haskell => line.starts_with("--"),
-            
+
             // HTML/XML comments
             Language::XML => line.starts_with("<!--"),
-            
+
             // Other languages
             _ => false,
         }
     }
-    
+
     /// Perform language-specific analyses
     async fn perform_analyses(
-        &self, 
-        content: &str, 
-        language: Language, 
-        analysis_types: &[AnalysisType]
+        &self,
+        content: &str,
+        language: Language,
+        analysis_types: &[AnalysisType],
     ) -> Result<Vec<AnalysisResult>> {
         let mut results = Vec::new();
-        
+
         for analysis_type in analysis_types {
             if !self.supports_analysis(language, analysis_type) {
                 results.push(AnalysisResult {
                     analysis_type: analysis_type.clone(),
                     success: false,
                     data: serde_json::json!({"error": "Analysis not supported for this language"}),
-                    error: Some(format!("Analysis {:?} not supported for language {:?}", analysis_type, language)),
+                    error: Some(format!(
+                        "Analysis {:?} not supported for language {:?}",
+                        analysis_type, language
+                    )),
                 });
                 continue;
             }
-            
+
             let result = match analysis_type {
                 AnalysisType::Complexity => self.analyze_complexity(content, language).await,
                 AnalysisType::Satd => self.analyze_satd(content, language).await,
@@ -264,13 +288,13 @@ impl LanguageAnalyzer {
                 AnalysisType::Dependencies => self.analyze_dependencies(content, language).await,
                 AnalysisType::Metrics => self.analyze_metrics(content, language).await,
             };
-            
+
             results.push(result);
         }
-        
+
         Ok(results)
     }
-    
+
     /// Analyze complexity for the given language
     async fn analyze_complexity(&self, content: &str, language: Language) -> AnalysisResult {
         // Simplified complexity analysis - count control flow keywords
@@ -280,19 +304,23 @@ impl LanguageAnalyzer {
             }
             Language::Python => vec!["if", "elif", "else", "for", "while", "try", "except"],
             Language::JavaScript | Language::TypeScript => {
-                vec!["if", "else", "for", "while", "switch", "case", "try", "catch"]
+                vec![
+                    "if", "else", "for", "while", "switch", "case", "try", "catch",
+                ]
             }
             Language::Java | Language::Kotlin => {
-                vec!["if", "else", "for", "while", "switch", "case", "try", "catch", "when"]
+                vec![
+                    "if", "else", "for", "while", "switch", "case", "try", "catch", "when",
+                ]
             }
             _ => vec!["if", "else", "for", "while"], // Basic keywords for other languages
         };
-        
+
         let mut complexity = 1; // Base complexity
         for keyword in complexity_keywords {
             complexity += content.matches(keyword).count();
         }
-        
+
         AnalysisResult {
             analysis_type: AnalysisType::Complexity,
             success: true,
@@ -304,12 +332,12 @@ impl LanguageAnalyzer {
             error: None,
         }
     }
-    
+
     /// Analyze SATD (Self-Admitted Technical Debt)
     async fn analyze_satd(&self, content: &str, _language: Language) -> AnalysisResult {
         let satd_keywords = ["TODO", "FIXME", "HACK", "XXX", "BUG", "KLUDGE"];
         let mut satd_items = Vec::new();
-        
+
         for (line_num, line) in content.lines().enumerate() {
             for keyword in &satd_keywords {
                 if line.to_uppercase().contains(keyword) {
@@ -321,7 +349,7 @@ impl LanguageAnalyzer {
                 }
             }
         }
-        
+
         AnalysisResult {
             analysis_type: AnalysisType::Satd,
             success: true,
@@ -332,7 +360,7 @@ impl LanguageAnalyzer {
             error: None,
         }
     }
-    
+
     /// Analyze dead code (simplified)
     async fn analyze_dead_code(&self, _content: &str, language: Language) -> AnalysisResult {
         AnalysisResult {
@@ -345,7 +373,7 @@ impl LanguageAnalyzer {
             error: None,
         }
     }
-    
+
     /// Analyze security issues (simplified)
     async fn analyze_security(&self, content: &str, language: Language) -> AnalysisResult {
         let security_patterns = match language {
@@ -356,7 +384,7 @@ impl LanguageAnalyzer {
             Language::SQL => vec!["DROP", "DELETE", "UPDATE"],
             _ => vec!["password", "secret", "token"],
         };
-        
+
         let mut issues = Vec::new();
         for (line_num, line) in content.lines().enumerate() {
             for pattern in &security_patterns {
@@ -369,7 +397,7 @@ impl LanguageAnalyzer {
                 }
             }
         }
-        
+
         AnalysisResult {
             analysis_type: AnalysisType::Security,
             success: true,
@@ -380,15 +408,17 @@ impl LanguageAnalyzer {
             error: None,
         }
     }
-    
+
     /// Analyze code style
     async fn analyze_style(&self, content: &str, language: Language) -> AnalysisResult {
         let line_lengths: Vec<usize> = content.lines().map(|line| line.len()).collect();
-        let avg_line_length = if line_lengths.is_empty() { 0.0 } else { 
-            line_lengths.iter().sum::<usize>() as f64 / line_lengths.len() as f64 
+        let avg_line_length = if line_lengths.is_empty() {
+            0.0
+        } else {
+            line_lengths.iter().sum::<usize>() as f64 / line_lengths.len() as f64
         };
         let max_line_length = line_lengths.iter().max().copied().unwrap_or(0);
-        
+
         AnalysisResult {
             analysis_type: AnalysisType::Style,
             success: true,
@@ -401,13 +431,20 @@ impl LanguageAnalyzer {
             error: None,
         }
     }
-    
+
     /// Analyze documentation
     async fn analyze_documentation(&self, content: &str, language: Language) -> AnalysisResult {
         let total_lines = content.lines().count();
-        let comment_lines = content.lines().filter(|line| self.is_comment_line(line.trim(), language)).count();
-        let doc_ratio = if total_lines > 0 { comment_lines as f64 / total_lines as f64 } else { 0.0 };
-        
+        let comment_lines = content
+            .lines()
+            .filter(|line| self.is_comment_line(line.trim(), language))
+            .count();
+        let doc_ratio = if total_lines > 0 {
+            comment_lines as f64 / total_lines as f64
+        } else {
+            0.0
+        };
+
         AnalysisResult {
             analysis_type: AnalysisType::Documentation,
             success: true,
@@ -420,7 +457,7 @@ impl LanguageAnalyzer {
             error: None,
         }
     }
-    
+
     /// Analyze dependencies (simplified)
     async fn analyze_dependencies(&self, content: &str, language: Language) -> AnalysisResult {
         let import_patterns = match language {
@@ -431,7 +468,7 @@ impl LanguageAnalyzer {
             Language::Go => vec!["import "],
             _ => vec!["import", "include", "require"],
         };
-        
+
         let mut imports = Vec::new();
         for (line_num, line) in content.lines().enumerate() {
             for pattern in &import_patterns {
@@ -443,7 +480,7 @@ impl LanguageAnalyzer {
                 }
             }
         }
-        
+
         AnalysisResult {
             analysis_type: AnalysisType::Dependencies,
             success: true,
@@ -454,7 +491,7 @@ impl LanguageAnalyzer {
             error: None,
         }
     }
-    
+
     /// Analyze basic metrics
     async fn analyze_metrics(&self, content: &str, language: Language) -> AnalysisResult {
         let lines: Vec<&str> = content.lines().collect();
@@ -464,10 +501,12 @@ impl LanguageAnalyzer {
             Language::JavaScript | Language::TypeScript => {
                 content.matches("function ").count() + content.matches("=> ").count()
             }
-            Language::Java | Language::Kotlin => content.matches("public ").count() + content.matches("private ").count(),
+            Language::Java | Language::Kotlin => {
+                content.matches("public ").count() + content.matches("private ").count()
+            }
             _ => 0,
         };
-        
+
         AnalysisResult {
             analysis_type: AnalysisType::Metrics,
             success: true,
@@ -485,27 +524,27 @@ impl LanguageAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_language_analyzer_basic() {
         let analyzer = LanguageAnalyzer::new();
         assert!(analyzer.supported_languages().len() >= 50);
     }
-    
+
     #[tokio::test]
     async fn test_analysis_support() {
         let analyzer = LanguageAnalyzer::new();
-        
+
         assert!(analyzer.supports_analysis(Language::Rust, &AnalysisType::Complexity));
         assert!(analyzer.supports_analysis(Language::Python, &AnalysisType::Satd));
         assert!(!analyzer.supports_analysis(Language::JSON, &AnalysisType::Complexity));
         assert!(analyzer.supports_analysis(Language::Markdown, &AnalysisType::Documentation));
     }
-    
+
     #[test]
     fn test_comment_detection() {
         let analyzer = LanguageAnalyzer::new();
-        
+
         assert!(analyzer.is_comment_line("// This is a comment", Language::Rust));
         assert!(analyzer.is_comment_line("# This is a comment", Language::Python));
         assert!(analyzer.is_comment_line("/* Comment */", Language::Java));

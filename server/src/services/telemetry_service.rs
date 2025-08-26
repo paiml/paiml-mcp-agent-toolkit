@@ -88,7 +88,7 @@ pub struct ServiceTelemetryData {
 }
 
 /// System-wide telemetry aggregation
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]  
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SystemTelemetryData {
     /// Overall system metrics
     pub system_metrics: ServiceTelemetryData,
@@ -124,7 +124,7 @@ impl TelemetryService {
     pub fn new() -> Self {
         let startup_time = Instant::now();
         info!("🔍 Initializing PMAT Telemetry Service");
-        
+
         Self {
             services: Arc::new(DashMap::new()),
             startup_time,
@@ -137,19 +137,17 @@ impl TelemetryService {
     #[instrument(skip(self), fields(service = %input.service_name, operation = %input.operation))]
     pub async fn record_operation(&self, input: TelemetryInput) -> Result<TelemetryOutput> {
         let event_id = Uuid::new_v4().to_string();
-        let recorded_at = SystemTime::now()
-            .duration_since(UNIX_EPOCH)?
-            .as_secs();
+        let recorded_at = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
 
         // Update service-specific telemetry
         self.update_service_telemetry(&input).await?;
-        
+
         // Update system metrics
         self.update_system_metrics(&input).await?;
 
         // Increment global event counter
         let event_count = self.event_counter.fetch_add(1, Ordering::Relaxed) + 1;
-        
+
         // Structured logging based on operation success
         if input.metrics.success {
             info!(
@@ -190,7 +188,8 @@ impl TelemetryService {
 
     /// Update service-specific telemetry data
     async fn update_service_telemetry(&self, input: &TelemetryInput) -> Result<()> {
-        let mut entry = self.services
+        let mut entry = self
+            .services
             .entry(input.service_name.clone())
             .or_insert_with(|| ServiceTelemetryData {
                 service_name: input.service_name.clone(),
@@ -199,7 +198,7 @@ impl TelemetryService {
 
         let data = entry.value_mut();
         data.total_operations += 1;
-        
+
         if input.metrics.success {
             data.successful_operations += 1;
         } else {
@@ -221,7 +220,10 @@ impl TelemetryService {
             .as_secs();
 
         // Update operation counts
-        *data.operation_counts.entry(input.operation.clone()).or_insert(0) += 1;
+        *data
+            .operation_counts
+            .entry(input.operation.clone())
+            .or_insert(0) += 1;
 
         debug!(
             service = %input.service_name,
@@ -235,7 +237,9 @@ impl TelemetryService {
 
     /// Update system-wide metrics
     async fn update_system_metrics(&self, input: &TelemetryInput) -> Result<()> {
-        let mut metrics = self.system_metrics.write()
+        let mut metrics = self
+            .system_metrics
+            .write()
             .map_err(|_| anyhow::anyhow!("Failed to acquire system metrics lock"))?;
 
         let duration = Duration::from_millis(input.metrics.duration_ms);
@@ -248,11 +252,11 @@ impl TelemetryService {
     #[instrument(skip(self))]
     pub async fn get_system_telemetry(&self) -> Result<SystemTelemetryData> {
         let uptime_seconds = self.startup_time.elapsed().as_secs();
-        let startup_time = SystemTime::now()
-            .duration_since(UNIX_EPOCH)?
-            .as_secs() - uptime_seconds;
+        let startup_time = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() - uptime_seconds;
 
-        let _system_metrics = self.system_metrics.read()
+        let _system_metrics = self
+            .system_metrics
+            .read()
             .map_err(|_| anyhow::anyhow!("Failed to acquire system metrics lock"))?
             .clone();
 
@@ -278,10 +282,18 @@ impl TelemetryService {
             successful_operations: total_successful,
             failed_operations: total_operations - total_successful,
             total_duration_ms: total_duration,
-            avg_duration_ms: if total_operations > 0 { total_duration / total_operations } else { 0 },
+            avg_duration_ms: if total_operations > 0 {
+                total_duration / total_operations
+            } else {
+                0
+            },
             peak_memory_bytes: 0, // Would need system memory monitoring
             total_items_processed: total_items,
-            success_rate: if total_operations > 0 { total_successful as f64 / total_operations as f64 } else { 0.0 },
+            success_rate: if total_operations > 0 {
+                total_successful as f64 / total_operations as f64
+            } else {
+                0.0
+            },
             last_operation_at: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
@@ -356,13 +368,14 @@ impl Service for TelemetryService {
     }
 
     fn metrics(&self) -> ServiceMetrics {
-        self.system_metrics.read()
+        self.system_metrics
+            .read()
             .map(|m| m.clone())
             .unwrap_or_default()
     }
 }
 
-// Global telemetry service instance (singleton pattern)  
+// Global telemetry service instance (singleton pattern)
 lazy_static::lazy_static! {
     static ref TELEMETRY: Arc<TelemetryService> = Arc::new(TelemetryService::new());
 }
@@ -379,31 +392,36 @@ macro_rules! record_telemetry {
         record_telemetry!($service, $operation, $duration, $success, 1, HashMap::new())
     };
     ($service:expr, $operation:expr, $duration:expr, $success:expr, $items:expr) => {
-        record_telemetry!($service, $operation, $duration, $success, $items, HashMap::new())
+        record_telemetry!(
+            $service,
+            $operation,
+            $duration,
+            $success,
+            $items,
+            HashMap::new()
+        )
     };
-    ($service:expr, $operation:expr, $duration:expr, $success:expr, $items:expr, $tags:expr) => {
-        {
-            let input = $crate::services::telemetry_service::TelemetryInput {
-                event_type: "operation".to_string(),
-                service_name: $service.to_string(),
-                operation: $operation.to_string(),
-                metrics: $crate::services::telemetry_service::OperationMetrics {
-                    duration_ms: $duration.as_millis() as u64,
-                    items_processed: $items,
-                    memory_bytes: None,
-                    cpu_time_ms: None,
-                    success: $success,
-                    error_message: None,
-                },
-                tags: $tags,
-                properties: std::collections::HashMap::new(),
-            };
-            
-            let _ = $crate::services::telemetry_service::telemetry()
-                .record_operation(input)
-                .await;
-        }
-    };
+    ($service:expr, $operation:expr, $duration:expr, $success:expr, $items:expr, $tags:expr) => {{
+        let input = $crate::services::telemetry_service::TelemetryInput {
+            event_type: "operation".to_string(),
+            service_name: $service.to_string(),
+            operation: $operation.to_string(),
+            metrics: $crate::services::telemetry_service::OperationMetrics {
+                duration_ms: $duration.as_millis() as u64,
+                items_processed: $items,
+                memory_bytes: None,
+                cpu_time_ms: None,
+                success: $success,
+                error_message: None,
+            },
+            tags: $tags,
+            properties: std::collections::HashMap::new(),
+        };
+
+        let _ = $crate::services::telemetry_service::telemetry()
+            .record_operation(input)
+            .await;
+    }};
 }
 
 #[cfg(test)]
@@ -414,7 +432,7 @@ mod tests {
     async fn test_telemetry_service_creation() {
         let telemetry = TelemetryService::new();
         let system_data = telemetry.get_system_telemetry().await.unwrap();
-        
+
         assert_eq!(system_data.system_metrics.total_operations, 0);
         assert_eq!(system_data.services.len(), 0);
     }
@@ -422,7 +440,7 @@ mod tests {
     #[tokio::test]
     async fn test_record_successful_operation() {
         let telemetry = TelemetryService::new();
-        
+
         let input = TelemetryInput {
             event_type: "test".to_string(),
             service_name: "complexity_analyzer".to_string(),
@@ -443,7 +461,10 @@ mod tests {
         assert!(output.success);
         assert!(!output.event_id.is_empty());
 
-        let service_data = telemetry.get_service_telemetry("complexity_analyzer").await.unwrap();
+        let service_data = telemetry
+            .get_service_telemetry("complexity_analyzer")
+            .await
+            .unwrap();
         assert_eq!(service_data.total_operations, 1);
         assert_eq!(service_data.successful_operations, 1);
         assert_eq!(service_data.total_items_processed, 5);
@@ -453,7 +474,7 @@ mod tests {
     #[tokio::test]
     async fn test_record_failed_operation() {
         let telemetry = TelemetryService::new();
-        
+
         let input = TelemetryInput {
             event_type: "test".to_string(),
             service_name: "refactor_engine".to_string(),
@@ -473,7 +494,10 @@ mod tests {
         let output = telemetry.record_operation(input).await.unwrap();
         assert!(output.success); // Telemetry recording succeeded
 
-        let service_data = telemetry.get_service_telemetry("refactor_engine").await.unwrap();
+        let service_data = telemetry
+            .get_service_telemetry("refactor_engine")
+            .await
+            .unwrap();
         assert_eq!(service_data.total_operations, 1);
         assert_eq!(service_data.failed_operations, 1);
         assert_eq!(service_data.success_rate, 0.0);
@@ -482,10 +506,10 @@ mod tests {
     #[tokio::test]
     async fn test_system_telemetry_aggregation() {
         let telemetry = TelemetryService::new();
-        
+
         // Record operations for multiple services
         let services = ["complexity_analyzer", "refactor_engine", "satd_detector"];
-        
+
         for service in &services {
             let input = TelemetryInput {
                 event_type: "test".to_string(),
@@ -502,7 +526,7 @@ mod tests {
                 tags: HashMap::new(),
                 properties: HashMap::new(),
             };
-            
+
             telemetry.record_operation(input).await.unwrap();
         }
 
@@ -515,7 +539,7 @@ mod tests {
     #[tokio::test]
     async fn test_validation() {
         let telemetry = TelemetryService::new();
-        
+
         let invalid_input = TelemetryInput {
             event_type: "".to_string(), // Invalid - empty
             service_name: "test_service".to_string(),
@@ -541,7 +565,7 @@ mod tests {
     async fn test_global_telemetry_service() {
         let telemetry1 = telemetry();
         let telemetry2 = telemetry();
-        
+
         // Should be the same instance (singleton)
         assert!(Arc::ptr_eq(&telemetry1, &telemetry2));
     }

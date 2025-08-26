@@ -125,7 +125,7 @@ pub struct PerformanceConfig {
 impl Default for AdvancedCacheConfig {
     fn default() -> Self {
         let mut tier_limits = FxHashMap::default();
-        tier_limits.insert(CacheTier::L1, 64 * 1024 * 1024);  // 64MB
+        tier_limits.insert(CacheTier::L1, 64 * 1024 * 1024); // 64MB
         tier_limits.insert(CacheTier::L2, 256 * 1024 * 1024); // 256MB
         tier_limits.insert(CacheTier::L3, 1024 * 1024 * 1024); // 1GB
 
@@ -173,8 +173,7 @@ struct AdaptiveCacheEntry<T> {
     expires_at: Option<DateTime<Utc>>,
 }
 
-impl<T> AdaptiveCacheEntry<T> {
-}
+impl<T> AdaptiveCacheEntry<T> {}
 
 /// Multi-tier adaptive cache implementation
 pub struct AdaptiveCache<K, V>
@@ -311,7 +310,7 @@ where
     /// Get value from cache with intelligent tier promotion
     pub async fn get(&self, key: &K) -> Option<Arc<V>> {
         let start = Instant::now();
-        
+
         // Try L1 first (fastest)
         if let Some(entry) = self.get_from_tier(key, CacheTier::L1) {
             self.record_hit(CacheTier::L1, start.elapsed());
@@ -354,13 +353,13 @@ where
     pub async fn put(&self, key: K, value: V) -> Result<()> {
         let start = Instant::now();
         let value_arc = Arc::new(value);
-        
+
         // Estimate size (simplified)
         let size = std::mem::size_of::<V>();
-        
+
         // Determine initial tier based on access patterns
         let tier = self.determine_initial_tier(&key, size);
-        
+
         let entry = AdaptiveCacheEntry {
             value: value_arc,
             pattern: self.get_or_create_pattern(&key),
@@ -389,7 +388,10 @@ where
         let l3_removed = self.l3_cache.write().remove(key);
 
         // Return the most recent value found
-        l1_removed.or(l2_removed).or(l3_removed).map(|entry| entry.value)
+        l1_removed
+            .or(l2_removed)
+            .or(l3_removed)
+            .map(|entry| entry.value)
     }
 
     /// Clear all cache tiers
@@ -398,7 +400,7 @@ where
         self.l2_cache.write().clear();
         self.l3_cache.write().clear();
         self.access_patterns.write().clear();
-        
+
         // Reset statistics
         let mut stats = self.stats.write();
         for tier_stats in stats.tier_stats.values_mut() {
@@ -406,7 +408,7 @@ where
             tier_stats.misses.store(0, Ordering::Relaxed);
             tier_stats.evictions.store(0, Ordering::Relaxed);
         }
-        
+
         Ok(())
     }
 
@@ -435,9 +437,16 @@ where
 
         let warming_time = start.elapsed();
         self.stats.write().warming_stats.total_warming_time = warming_time;
-        self.stats.write().warming_stats.files_warmed.store(warmed_count, Ordering::Relaxed);
+        self.stats
+            .write()
+            .warming_stats
+            .files_warmed
+            .store(warmed_count, Ordering::Relaxed);
 
-        info!("Cache warming completed: {} entries in {:?}", warmed_count, warming_time);
+        info!(
+            "Cache warming completed: {} entries in {:?}",
+            warmed_count, warming_time
+        );
         Ok(warmed_count)
     }
 
@@ -449,15 +458,19 @@ where
 
         // Clean expired entries
         self.cleanup_expired_entries().await?;
-        
+
         // Optimize cache layout
         self.optimize_cache_layout().await?;
-        
+
         // Update access patterns
         self.update_global_patterns();
-        
-        self.stats.write().performance.cleanup_operations.fetch_add(1, Ordering::Relaxed);
-        
+
+        self.stats
+            .write()
+            .performance
+            .cleanup_operations
+            .fetch_add(1, Ordering::Relaxed);
+
         Ok(())
     }
 
@@ -489,9 +502,11 @@ where
 
     fn determine_initial_tier(&self, _key: &K, size: usize) -> CacheTier {
         // Simple heuristic - could be more sophisticated
-        if size < 64 * 1024 { // < 64KB
+        if size < 64 * 1024 {
+            // < 64KB
             CacheTier::L1
-        } else if size < 1024 * 1024 { // < 1MB
+        } else if size < 1024 * 1024 {
+            // < 1MB
             CacheTier::L2
         } else {
             CacheTier::L3
@@ -499,14 +514,18 @@ where
     }
 
     fn get_or_create_pattern(&self, key: &K) -> AccessPattern {
-        self.access_patterns.read().get(key).cloned().unwrap_or_else(|| AccessPattern {
-            frequency: 0.0,
-            temporal_locality: 0.0,
-            spatial_locality: 0.0,
-            entropy: 0.0,
-            last_access: Utc::now(),
-            access_count: 0,
-        })
+        self.access_patterns
+            .read()
+            .get(key)
+            .cloned()
+            .unwrap_or_else(|| AccessPattern {
+                frequency: 0.0,
+                temporal_locality: 0.0,
+                spatial_locality: 0.0,
+                entropy: 0.0,
+                last_access: Utc::now(),
+                access_count: 0,
+            })
     }
 
     fn calculate_expiration(&self, tier: CacheTier) -> Option<DateTime<Utc>> {
@@ -524,37 +543,49 @@ where
 
     async fn insert_l1(&self, key: K, entry: AdaptiveCacheEntry<V>) -> Result<()> {
         let mut cache = self.l1_cache.write();
-        
+
         // Check if we need to evict
-        let max_size = *self.config.tier_memory_limits.get(&CacheTier::L1).unwrap_or(&(64 * 1024 * 1024));
+        let max_size = *self
+            .config
+            .tier_memory_limits
+            .get(&CacheTier::L1)
+            .unwrap_or(&(64 * 1024 * 1024));
         if self.calculate_tier_size(&cache) + entry.size > max_size {
             self.evict_from_tier(&mut cache, CacheTier::L1)?;
         }
-        
+
         cache.insert(key, entry);
         Ok(())
     }
 
     async fn insert_l2(&self, key: K, entry: AdaptiveCacheEntry<V>) -> Result<()> {
         let mut cache = self.l2_cache.write();
-        
-        let max_size = *self.config.tier_memory_limits.get(&CacheTier::L2).unwrap_or(&(256 * 1024 * 1024));
+
+        let max_size = *self
+            .config
+            .tier_memory_limits
+            .get(&CacheTier::L2)
+            .unwrap_or(&(256 * 1024 * 1024));
         if self.calculate_tier_size(&cache) + entry.size > max_size {
             self.evict_from_tier(&mut cache, CacheTier::L2)?;
         }
-        
+
         cache.insert(key, entry);
         Ok(())
     }
 
     async fn insert_l3(&self, key: K, entry: AdaptiveCacheEntry<V>) -> Result<()> {
         let mut cache = self.l3_cache.write();
-        
-        let max_size = *self.config.tier_memory_limits.get(&CacheTier::L3).unwrap_or(&(1024 * 1024 * 1024));
+
+        let max_size = *self
+            .config
+            .tier_memory_limits
+            .get(&CacheTier::L3)
+            .unwrap_or(&(1024 * 1024 * 1024));
         if self.calculate_tier_size(&cache) + entry.size > max_size {
             self.evict_from_tier(&mut cache, CacheTier::L3)?;
         }
-        
+
         cache.insert(key, entry);
         Ok(())
     }
@@ -563,7 +594,11 @@ where
         cache.values().map(|entry| entry.size).sum()
     }
 
-    fn evict_from_tier(&self, cache: &mut FxHashMap<K, AdaptiveCacheEntry<V>>, tier: CacheTier) -> Result<()> {
+    fn evict_from_tier(
+        &self,
+        cache: &mut FxHashMap<K, AdaptiveCacheEntry<V>>,
+        tier: CacheTier,
+    ) -> Result<()> {
         if cache.is_empty() {
             return Ok(());
         }
@@ -586,24 +621,29 @@ where
     }
 
     fn evict_lru(&self, cache: &mut FxHashMap<K, AdaptiveCacheEntry<V>>) {
-        if let Some(oldest_key) = cache.iter()
+        if let Some(oldest_key) = cache
+            .iter()
             .min_by_key(|(_, entry)| entry.pattern.last_access)
-            .map(|(key, _)| key.clone()) {
+            .map(|(key, _)| key.clone())
+        {
             cache.remove(&oldest_key);
         }
     }
 
     fn evict_lfu(&self, cache: &mut FxHashMap<K, AdaptiveCacheEntry<V>>) {
-        if let Some(least_used_key) = cache.iter()
+        if let Some(least_used_key) = cache
+            .iter()
             .min_by_key(|(_, entry)| entry.pattern.access_count)
-            .map(|(key, _)| key.clone()) {
+            .map(|(key, _)| key.clone())
+        {
             cache.remove(&least_used_key);
         }
     }
 
     fn evict_ttl(&self, cache: &mut FxHashMap<K, AdaptiveCacheEntry<V>>) {
         let now = Utc::now();
-        let expired_keys: Vec<_> = cache.iter()
+        let expired_keys: Vec<_> = cache
+            .iter()
             .filter(|(_, entry)| entry.expires_at.is_some_and(|exp| exp < now))
             .map(|(key, _)| key.clone())
             .collect();
@@ -619,9 +659,11 @@ where
     }
 
     fn evict_fifo(&self, cache: &mut FxHashMap<K, AdaptiveCacheEntry<V>>) {
-        if let Some(oldest_key) = cache.iter()
+        if let Some(oldest_key) = cache
+            .iter()
             .min_by_key(|(_, entry)| entry.created_at)
-            .map(|(key, _)| key.clone()) {
+            .map(|(key, _)| key.clone())
+        {
             cache.remove(&oldest_key);
         }
     }
@@ -634,13 +676,17 @@ where
 
     fn evict_adaptive(&self, cache: &mut FxHashMap<K, AdaptiveCacheEntry<V>>) {
         // Adaptive eviction considers multiple factors
-        if let Some(victim_key) = cache.iter()
+        if let Some(victim_key) = cache
+            .iter()
             .min_by(|(_, a), (_, b)| {
                 let score_a = self.calculate_eviction_score(&a.pattern);
                 let score_b = self.calculate_eviction_score(&b.pattern);
-                score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
+                score_a
+                    .partial_cmp(&score_b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             })
-            .map(|(key, _)| key.clone()) {
+            .map(|(key, _)| key.clone())
+        {
             cache.remove(&victim_key);
         }
     }
@@ -657,9 +703,9 @@ where
             1.0 - (age.num_seconds() as f64 / 3600.0).min(1.0) // Normalize to hours
         };
 
-        recency_weight * recency_score +
-        frequency_weight * pattern.frequency +
-        locality_weight * (pattern.temporal_locality + pattern.spatial_locality) / 2.0
+        recency_weight * recency_score
+            + frequency_weight * pattern.frequency
+            + locality_weight * (pattern.temporal_locality + pattern.spatial_locality) / 2.0
     }
 
     fn record_hit(&self, tier: CacheTier, _access_time: Duration) {
@@ -692,25 +738,25 @@ where
 
     async fn cleanup_expired_entries(&self) -> Result<()> {
         let now = Utc::now();
-        
+
         // Clean L1
         {
             let mut cache = self.l1_cache.write();
             cache.retain(|_, entry| entry.expires_at.map_or(true, |exp| exp > now));
         }
-        
+
         // Clean L2
         {
             let mut cache = self.l2_cache.write();
             cache.retain(|_, entry| entry.expires_at.map_or(true, |exp| exp > now));
         }
-        
+
         // Clean L3
         {
             let mut cache = self.l3_cache.write();
             cache.retain(|_, entry| entry.expires_at.map_or(true, |exp| exp > now));
         }
-        
+
         Ok(())
     }
 
@@ -724,19 +770,16 @@ where
         // Update global access pattern statistics
         let patterns = self.access_patterns.read();
         let mut stats = self.stats.write();
-        
+
         if !patterns.is_empty() {
-            stats.pattern_stats.avg_frequency = patterns.values()
-                .map(|p| p.frequency)
-                .sum::<f64>() / patterns.len() as f64;
-                
-            stats.pattern_stats.avg_temporal_locality = patterns.values()
-                .map(|p| p.temporal_locality)
-                .sum::<f64>() / patterns.len() as f64;
-                
-            stats.pattern_stats.avg_spatial_locality = patterns.values()
-                .map(|p| p.spatial_locality)
-                .sum::<f64>() / patterns.len() as f64;
+            stats.pattern_stats.avg_frequency =
+                patterns.values().map(|p| p.frequency).sum::<f64>() / patterns.len() as f64;
+
+            stats.pattern_stats.avg_temporal_locality =
+                patterns.values().map(|p| p.temporal_locality).sum::<f64>() / patterns.len() as f64;
+
+            stats.pattern_stats.avg_spatial_locality =
+                patterns.values().map(|p| p.spatial_locality).sum::<f64>() / patterns.len() as f64;
         }
     }
 }
@@ -756,12 +799,12 @@ where
     pub fn record_access(&self, key: K) {
         let mut history = self.access_history.write();
         history.push_back(key);
-        
+
         // Keep only recent history
         if history.len() > 1000 {
             history.pop_front();
         }
-        
+
         // Update patterns
         self.update_patterns(&history);
     }
@@ -769,15 +812,16 @@ where
     pub fn predict_next(&self, current_sequence: &[K]) -> Vec<K> {
         let patterns = self.patterns.read();
         let mut predictions = Vec::new();
-        
+
         for (pattern, confidence) in patterns.iter() {
-            if *confidence > self.confidence_threshold && 
-               pattern.len() > current_sequence.len() &&
-               pattern.starts_with(current_sequence) {
+            if *confidence > self.confidence_threshold
+                && pattern.len() > current_sequence.len()
+                && pattern.starts_with(current_sequence)
+            {
                 predictions.push(pattern[current_sequence.len()].clone());
             }
         }
-        
+
         predictions
     }
 
@@ -788,7 +832,7 @@ where
 
     fn update_patterns(&self, history: &VecDeque<K>) {
         let mut patterns = self.patterns.write();
-        
+
         // Extract subsequences and update their frequencies
         for window_size in 2..=5.min(history.len()) {
             for window in history.iter().collect::<Vec<_>>().windows(window_size) {
@@ -796,7 +840,7 @@ where
                 *patterns.entry(pattern).or_insert(0.0) += 1.0;
             }
         }
-        
+
         // Normalize frequencies
         let total_patterns = patterns.len() as f64;
         for confidence in patterns.values_mut() {
@@ -846,7 +890,8 @@ mod tests {
     #[test]
     fn test_eviction_policies() {
         let mut cache = FxHashMap::default();
-        let adaptive_cache: AdaptiveCache<String, String> = AdaptiveCache::new(AdvancedCacheConfig::default());
+        let adaptive_cache: AdaptiveCache<String, String> =
+            AdaptiveCache::new(AdvancedCacheConfig::default());
 
         // Add some test entries
         for i in 0..3 {
@@ -864,14 +909,14 @@ mod tests {
                 tier: CacheTier::L1,
                 created_at: Utc::now(),
                 expires_at: None,
-                };
+            };
             cache.insert(format!("key{}", i), entry);
         }
 
         // Test LRU eviction
         adaptive_cache.evict_lru(&mut cache);
         assert_eq!(cache.len(), 2);
-        
+
         // Test compression ratio access
         if let Some(_entry) = cache.get("key0") {
             // Compression ratio functionality removed

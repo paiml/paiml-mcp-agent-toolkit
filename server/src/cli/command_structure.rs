@@ -155,7 +155,12 @@ impl CommandExecutor {
                     )
                     .await
             }
-            Commands::Serve { port, host, cors, transport } => {
+            Commands::Serve {
+                port,
+                host,
+                cors,
+                transport,
+            } => {
                 self.registry
                     .utility_handlers
                     .handle_serve(host, port, cors, transport)
@@ -273,18 +278,21 @@ impl CommandExecutor {
                 super::handlers::route_enforce_command(enforce_cmd).await
             }
             Commands::Roadmap(roadmap_cmd) => {
-                super::command_dispatcher::CommandDispatcher::execute_roadmap_command(roadmap_cmd).await
+                super::command_dispatcher::CommandDispatcher::execute_roadmap_command(roadmap_cmd)
+                    .await
             }
-            Commands::Test { suite, iterations, memory, throughput, regression, timeout, output, perf } => {
+            Commands::Test {
+                suite,
+                iterations,
+                memory,
+                throughput,
+                regression,
+                timeout,
+                output,
+                perf,
+            } => {
                 crate::cli::handlers::test_handlers::handle_test(
-                    suite,
-                    iterations,
-                    memory,
-                    throughput,
-                    regression,
-                    timeout,
-                    output,
-                    perf,
+                    suite, iterations, memory, throughput, regression, timeout, output, perf,
                 )
                 .await
             }
@@ -294,16 +302,34 @@ impl CommandExecutor {
             Commands::Cache { command } => {
                 super::command_dispatcher::CommandDispatcher::execute_cache_command(command).await
             }
-            Commands::Telemetry { system, service, reset, test_event } => {
-                super::handlers::handle_telemetry(system, service, reset, test_event).await
-            }
-            Commands::Config { show, edit, validate, reset, section, set, config_path } => {
-                super::handlers::handle_configuration(show, edit, validate, reset, section, set, config_path).await
+            Commands::Telemetry {
+                system,
+                service,
+                reset,
+                test_event,
+            } => super::handlers::handle_telemetry(system, service, reset, test_event).await,
+            Commands::Config {
+                show,
+                edit,
+                validate,
+                reset,
+                section,
+                set,
+                config_path,
+            } => {
+                super::handlers::handle_configuration(
+                    show,
+                    edit,
+                    validate,
+                    reset,
+                    section,
+                    set,
+                    config_path,
+                )
+                .await
             }
 
-            Commands::Agent { command } => {
-                super::handlers::handle_agent_command(command).await
-            }
+            Commands::Agent { command } => super::handlers::handle_agent_command(command).await,
         }
     }
 }
@@ -429,7 +455,13 @@ impl UtilityCommandGroup {
     }
 
     /// Handle serve command
-    pub async fn handle_serve(&self, host: String, port: u16, cors: bool, transport: crate::cli::commands::ServeTransport) -> Result<()> {
+    pub async fn handle_serve(
+        &self,
+        host: String,
+        port: u16,
+        cors: bool,
+        transport: crate::cli::commands::ServeTransport,
+    ) -> Result<()> {
         crate::cli::handlers::utility_handlers::handle_serve(host, port, cors, transport).await
     }
 

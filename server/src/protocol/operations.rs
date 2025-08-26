@@ -5,48 +5,24 @@ use super::*;
 /// Executes an operation and returns a unified response
 pub async fn execute_operation(operation: Operation, _params: Value) -> UnifiedResponse {
     let start = std::time::Instant::now();
-    
+
     let (result, error) = match operation {
-        Operation::AnalyzeComplexity(params) => {
-            analyze_complexity(params).await
-        }
-        Operation::AnalyzeSatd(params) => {
-            analyze_satd(params).await
-        }
-        Operation::AnalyzeDeadCode(params) => {
-            analyze_dead_code(params).await
-        }
-        Operation::GenerateContext(params) => {
-            generate_context(params).await
-        }
-        Operation::QualityGate(params) => {
-            run_quality_gate(params).await
-        }
-        Operation::QualityProxy(params) => {
-            run_quality_proxy(params).await
-        }
-        Operation::RefactorStart(params) => {
-            refactor_start(params).await
-        }
-        Operation::RefactorNext(params) => {
-            refactor_next(params).await
-        }
-        Operation::RefactorStop(params) => {
-            refactor_stop(params).await
-        }
-        Operation::ScaffoldProject(params) => {
-            scaffold_project(params).await
-        }
-        Operation::ScaffoldAgent(params) => {
-            scaffold_agent(params).await
-        }
-        Operation::PdmtTodos(params) => {
-            generate_pdmt_todos(params).await
-        }
+        Operation::AnalyzeComplexity(params) => analyze_complexity(params).await,
+        Operation::AnalyzeSatd(params) => analyze_satd(params).await,
+        Operation::AnalyzeDeadCode(params) => analyze_dead_code(params).await,
+        Operation::GenerateContext(params) => generate_context(params).await,
+        Operation::QualityGate(params) => run_quality_gate(params).await,
+        Operation::QualityProxy(params) => run_quality_proxy(params).await,
+        Operation::RefactorStart(params) => refactor_start(params).await,
+        Operation::RefactorNext(params) => refactor_next(params).await,
+        Operation::RefactorStop(params) => refactor_stop(params).await,
+        Operation::ScaffoldProject(params) => scaffold_project(params).await,
+        Operation::ScaffoldAgent(params) => scaffold_agent(params).await,
+        Operation::PdmtTodos(params) => generate_pdmt_todos(params).await,
     };
-    
+
     let duration_ms = start.elapsed().as_millis() as u64;
-    
+
     UnifiedResponse {
         result,
         error,
@@ -67,7 +43,7 @@ async fn analyze_complexity(_params: ComplexityParams) -> (Option<Value>, Option
             "max_cognitive": 8,
             "files_analyzed": 1
         })),
-        None
+        None,
     )
 }
 
@@ -78,7 +54,7 @@ async fn analyze_satd(_params: SatdParams) -> (Option<Value>, Option<ErrorInfo>)
             "satd_count": 0,
             "files_with_satd": 0
         })),
-        None
+        None,
     )
 }
 
@@ -89,7 +65,7 @@ async fn analyze_dead_code(_params: DeadCodeParams) -> (Option<Value>, Option<Er
             "dead_code_items": [],
             "total_dead_code": 0
         })),
-        None
+        None,
     )
 }
 
@@ -100,7 +76,7 @@ async fn generate_context(params: ContextParams) -> (Option<Value>, Option<Error
             "context": "Generated context",
             "format": params.format
         })),
-        None
+        None,
     )
 }
 
@@ -111,7 +87,7 @@ async fn run_quality_gate(_params: QualityGateParams) -> (Option<Value>, Option<
             "passed": true,
             "violations": []
         })),
-        None
+        None,
     )
 }
 
@@ -122,7 +98,7 @@ async fn run_quality_proxy(params: QualityProxyParams) -> (Option<Value>, Option
             "refactored": false,
             "content": params.content
         })),
-        None
+        None,
     )
 }
 
@@ -133,7 +109,7 @@ async fn refactor_start(params: RefactorStartParams) -> (Option<Value>, Option<E
             "session_id": Uuid::new_v4().to_string(),
             "file": params.file_path
         })),
-        None
+        None,
     )
 }
 
@@ -145,7 +121,7 @@ async fn refactor_next(params: RefactorNextParams) -> (Option<Value>, Option<Err
             "step": 1,
             "complete": false
         })),
-        None
+        None,
     )
 }
 
@@ -156,7 +132,7 @@ async fn refactor_stop(params: RefactorStopParams) -> (Option<Value>, Option<Err
             "session_id": params.session_id,
             "stopped": true
         })),
-        None
+        None,
     )
 }
 
@@ -168,7 +144,7 @@ async fn scaffold_project(params: ProjectParams) -> (Option<Value>, Option<Error
             "template": params.template,
             "created": true
         })),
-        None
+        None,
     )
 }
 
@@ -180,7 +156,7 @@ async fn scaffold_agent(params: AgentParams) -> (Option<Value>, Option<ErrorInfo
             "capabilities": params.capabilities,
             "created": true
         })),
-        None
+        None,
     )
 }
 
@@ -192,6 +168,6 @@ async fn generate_pdmt_todos(params: PdmtParams) -> (Option<Value>, Option<Error
             "todos": [],
             "seed": params.seed.unwrap_or(42)
         })),
-        None
+        None,
     )
 }

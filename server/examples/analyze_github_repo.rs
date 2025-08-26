@@ -1,5 +1,5 @@
 //! Example: Analyze a GitHub repository
-//! 
+//!
 //! This example demonstrates how to analyze a GitHub repository using pmat.
 //! It clones the repository, performs analysis, and outputs results.
 //!
@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
     // Output results
     println!("\n=== Analysis Results ===");
     println!("Repository: {}", url);
-    
+
     println!("\n📊 Complexity Metrics:");
     println!("  Files analyzed: {}", result.files_analyzed);
     println!("  Total functions: {}", result.functions_analyzed);
@@ -62,7 +62,11 @@ async fn main() -> Result<()> {
     if let Some(lang_stats) = &result.language_stats {
         println!("\n🌳 Language Summary:");
         for (lang, stats) in lang_stats {
-            println!("  {}: {} files", lang, stats.get("file_count").unwrap_or(&serde_json::Value::Null));
+            println!(
+                "  {}: {} files",
+                lang,
+                stats.get("file_count").unwrap_or(&serde_json::Value::Null)
+            );
         }
     }
 
@@ -73,9 +77,12 @@ async fn main() -> Result<()> {
     }
 
     info!("Analysis complete!");
-    
+
     // Print execution time
-    println!("\n⏱️  Execution time: {:.2}s", report.execution_time_ms as f64 / 1000.0);
-    
+    println!(
+        "\n⏱️  Execution time: {:.2}s",
+        report.execution_time_ms as f64 / 1000.0
+    );
+
     Ok(())
 }

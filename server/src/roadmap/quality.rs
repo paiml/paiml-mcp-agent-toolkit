@@ -42,14 +42,14 @@ impl QualityReport {
             overall_passed: true,
         }
     }
-    
+
     pub fn add_check_result(&mut self, _check: QualityCheck, result: CheckResult) {
         if !result.passed {
             self.overall_passed = false;
         }
         self.checks.push(result);
     }
-    
+
     pub fn passed(&self) -> bool {
         self.overall_passed
     }
@@ -71,17 +71,17 @@ impl TaskQualityGate {
             QualityCheck::Documentation,
             QualityCheck::RoadmapUpdated,
         ];
-        
+
         Self {
             task_id: task_id.to_string(),
             checks,
             config,
         }
     }
-    
+
     pub async fn validate(&self) -> Result<QualityReport> {
         let mut report = QualityReport::new(&self.task_id);
-        
+
         for check in &self.checks {
             let result = match check {
                 QualityCheck::Complexity(max) => self.check_complexity(*max).await?,
@@ -91,26 +91,33 @@ impl TaskQualityGate {
                 QualityCheck::LintCompliance => self.check_lint().await?,
                 QualityCheck::RoadmapUpdated => self.check_roadmap_status().await?,
             };
-            
+
             report.add_check_result(check.clone(), result);
         }
-        
+
         Ok(report)
     }
-    
+
     async fn check_complexity(&self, max: u32) -> Result<CheckResult> {
         // Run complexity analysis
         let output = std::process::Command::new("pmat")
-            .args(["analyze", "complexity", "--max-cyclomatic", &max.to_string(), "--format", "json"])
+            .args([
+                "analyze",
+                "complexity",
+                "--max-cyclomatic",
+                &max.to_string(),
+                "--format",
+                "json",
+            ])
             .output()?;
-        
+
         let passed = output.status.success();
         let message = if passed {
             format!("Complexity within limit (≤ {})", max)
         } else {
             format!("Complexity exceeds limit (> {})", max)
         };
-        
+
         Ok(CheckResult {
             check: QualityCheck::Complexity(max),
             passed,
@@ -118,24 +125,24 @@ impl TaskQualityGate {
             details: Some(String::from_utf8_lossy(&output.stdout).to_string()),
         })
     }
-    
+
     async fn check_coverage(&self, min: u8) -> Result<CheckResult> {
         // Run coverage check
         let output = std::process::Command::new("cargo")
             .args(["tarpaulin", "--print-summary"])
             .output()?;
-        
+
         // Parse coverage percentage from output
         let stdout = String::from_utf8_lossy(&output.stdout);
         let coverage = parse_coverage_percentage(&stdout).unwrap_or(0.0);
-        
+
         let passed = coverage >= min as f64;
         let message = if passed {
             format!("Test coverage sufficient ({:.1}% ≥ {}%)", coverage, min)
         } else {
             format!("Test coverage insufficient ({:.1}% < {}%)", coverage, min)
         };
-        
+
         Ok(CheckResult {
             check: QualityCheck::TestCoverage(min),
             passed,
@@ -143,23 +150,25 @@ impl TaskQualityGate {
             details: Some(stdout.to_string()),
         })
     }
-    
+
     async fn check_documentation(&self) -> Result<CheckResult> {
         // Check if documentation has been updated
         let output = std::process::Command::new("git")
             .args(["diff", "--name-only", "HEAD~1", "HEAD"])
             .output()?;
-        
+
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let docs_updated = stdout.lines().any(|line| line.contains("docs/") || line.ends_with(".md"));
-        
+        let docs_updated = stdout
+            .lines()
+            .any(|line| line.contains("docs/") || line.ends_with(".md"));
+
         let passed = docs_updated || !self.config.documentation_required;
         let message = if passed {
             "Documentation updated".to_string()
         } else {
             "Documentation not updated".to_string()
         };
-        
+
         Ok(CheckResult {
             check: QualityCheck::Documentation,
             passed,
@@ -167,20 +176,20 @@ impl TaskQualityGate {
             details: None,
         })
     }
-    
+
     async fn check_satd(&self) -> Result<CheckResult> {
         // Run SATD check
         let output = std::process::Command::new("pmat")
             .args(["analyze", "satd", "--strict", "--format", "json"])
             .output()?;
-        
+
         let passed = output.status.success() || self.config.satd_tolerance > 0;
         let message = if passed {
             "No SATD violations found".to_string()
         } else {
             "SATD violations detected".to_string()
         };
-        
+
         Ok(CheckResult {
             check: QualityCheck::NoSatd,
             passed,
@@ -188,7 +197,7 @@ impl TaskQualityGate {
             details: Some(String::from_utf8_lossy(&output.stdout).to_string()),
         })
     }
-    
+
     async fn check_lint(&self) -> Result<CheckResult> {
         if !self.config.lint_compliance {
             return Ok(CheckResult {
@@ -198,19 +207,17 @@ impl TaskQualityGate {
                 details: None,
             });
         }
-        
+
         // Run lint check
-        let output = std::process::Command::new("make")
-            .args(["lint"])
-            .output()?;
-        
+        let output = std::process::Command::new("make").args(["lint"]).output()?;
+
         let passed = output.status.success();
         let message = if passed {
             "No lint violations".to_string()
         } else {
             "Lint violations found".to_string()
         };
-        
+
         Ok(CheckResult {
             check: QualityCheck::LintCompliance,
             passed,
@@ -218,23 +225,23 @@ impl TaskQualityGate {
             details: Some(String::from_utf8_lossy(&output.stderr).to_string()),
         })
     }
-    
+
     async fn check_roadmap_status(&self) -> Result<CheckResult> {
         // Check if roadmap has been updated
         let output = std::process::Command::new("git")
             .args(["diff", "--name-only", "HEAD~1", "HEAD"])
             .output()?;
-        
+
         let stdout = String::from_utf8_lossy(&output.stdout);
         let roadmap_updated = stdout.lines().any(|line| line.contains("roadmap.md"));
-        
+
         let passed = roadmap_updated;
         let message = if passed {
             "Roadmap status updated".to_string()
         } else {
             "Roadmap status not updated".to_string()
         };
-        
+
         Ok(CheckResult {
             check: QualityCheck::RoadmapUpdated,
             passed,

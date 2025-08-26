@@ -143,7 +143,7 @@ pub struct PdmtOutput {
 ///
 /// // Generate todos with quality enforcement
 /// let result = tool.handle(input, Default::default()).await?;
-/// 
+///
 /// // Verify response structure
 /// assert!(result["success"].as_bool().unwrap_or(false));
 /// assert!(result["total_todos"].as_u64().unwrap_or(0) > 0);

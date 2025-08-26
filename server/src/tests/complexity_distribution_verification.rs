@@ -135,7 +135,12 @@ mod tests {
                 name: format!("func_{i}"),
                 line_start: (i * 10) as u32,
                 line_end: ((i * 10) + 5) as u32,
-                metrics: ComplexityMetrics::new(((i % 20) + 1) as u16, ((i % 15) + 1) as u16, ((i % 5) + 1) as u8, 5),
+                metrics: ComplexityMetrics::new(
+                    ((i % 20) + 1) as u16,
+                    ((i % 15) + 1) as u16,
+                    ((i % 5) + 1) as u8,
+                    5,
+                ),
             })
             .collect();
 
@@ -212,7 +217,12 @@ mod tests {
                 name: format!("func_{i}"),
                 line_start: (i * 10) as u32,
                 line_end: ((i * 10) + 5) as u32,
-                metrics: ComplexityMetrics::new((1 + (i * 2)) as u16, (1 + (i * 2)) as u16, (1 + (i % 5)) as u8, 5),
+                metrics: ComplexityMetrics::new(
+                    (1 + (i * 2)) as u16,
+                    (1 + (i * 2)) as u16,
+                    (1 + (i % 5)) as u8,
+                    5,
+                ),
             })
             .collect();
 
@@ -240,7 +250,12 @@ mod tests {
                     name: format!("func_{i}"),
                     line_start: (i * 20) as u32,
                     line_end: ((i * 20) + complexity * 2) as u32,
-                    metrics: ComplexityMetrics::new(complexity as u16, (complexity + (i % 3)) as u16, (1 + (complexity / 10).min(5)) as u8, (complexity * 2) as u16),
+                    metrics: ComplexityMetrics::new(
+                        complexity as u16,
+                        (complexity + (i % 3)) as u16,
+                        (1 + (complexity / 10).min(5)) as u8,
+                        (complexity * 2) as u16,
+                    ),
                 }
             })
             .collect()

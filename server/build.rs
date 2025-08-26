@@ -32,7 +32,7 @@ fn main() {
 
     // Compile Cap'n Proto schema for MCP server
     compile_capnp_schema();
-    
+
     // Generate MCP discovery optimization tables
     generate_mcp_discovery_tables();
 }
@@ -541,15 +541,15 @@ fn compile_capnp_schema() {
 /// Generate MCP discovery optimization tables for <10ms initialization
 fn generate_mcp_discovery_tables() {
     println!("cargo:warning=Generating MCP discovery optimization tables");
-    
+
     let out_dir = env::var("OUT_DIR").expect("OUT_DIR must be set");
-    
+
     // Generate tool registry
     generate_tool_registry(&out_dir);
-    
-    // Generate alias table  
+
+    // Generate alias table
     generate_alias_table(&out_dir);
-    
+
     // Generate trigram index
     generate_trigram_index(&out_dir);
 }
@@ -557,26 +557,86 @@ fn generate_mcp_discovery_tables() {
 /// Generate static PHF map of all MCP tools for zero-copy initialization
 fn generate_tool_registry(out_dir: &str) {
     let dest_path = Path::new(out_dir).join("tool_registry.rs");
-    
+
     // Tool definitions from the current MCP server
     let tools = vec![
-        ("analyze_complexity", "Analyze code complexity metrics (cyclomatic, cognitive)", vec!["complexity", "analyze", "metrics"]),
-        ("analyze_satd", "Find self-admitted technical debt in comments", vec!["satd", "debt", "todo", "fixme"]),
-        ("analyze_dead_code", "Detect unused functions and variables", vec!["dead", "unused", "code"]),
-        ("analyze_dag", "Generate dependency graphs and visualizations", vec!["dependency", "graph", "dag", "architecture"]),
-        ("analyze_deep_context", "Generate comprehensive codebase context", vec!["context", "summary", "analysis"]),
-        ("analyze_big_o", "Analyze algorithmic complexity", vec!["big-o", "algorithm", "performance"]),
-        ("refactor.start", "Begin refactoring workflow", vec!["refactor", "start", "begin"]),
-        ("refactor.nextIteration", "Continue refactoring process", vec!["refactor", "next", "continue"]),
-        ("refactor.getState", "Get current refactoring state", vec!["refactor", "state", "status"]),
-        ("refactor.stop", "End refactoring workflow", vec!["refactor", "stop", "end"]),
-        ("quality_gate", "Run comprehensive quality analysis", vec!["quality", "gate", "check"]),
-        ("quality_proxy", "Intercept and validate code changes", vec!["quality", "proxy", "validate"]),
-        ("git_operation", "Execute git operations", vec!["git", "version", "control"]),
-        ("generate_context", "Generate AI-optimized context", vec!["generate", "context", "ai"]),
-        ("scaffold_project", "Create project scaffolding", vec!["scaffold", "create", "generate", "project"]),
+        (
+            "analyze_complexity",
+            "Analyze code complexity metrics (cyclomatic, cognitive)",
+            vec!["complexity", "analyze", "metrics"],
+        ),
+        (
+            "analyze_satd",
+            "Find self-admitted technical debt in comments",
+            vec!["satd", "debt", "todo", "fixme"],
+        ),
+        (
+            "analyze_dead_code",
+            "Detect unused functions and variables",
+            vec!["dead", "unused", "code"],
+        ),
+        (
+            "analyze_dag",
+            "Generate dependency graphs and visualizations",
+            vec!["dependency", "graph", "dag", "architecture"],
+        ),
+        (
+            "analyze_deep_context",
+            "Generate comprehensive codebase context",
+            vec!["context", "summary", "analysis"],
+        ),
+        (
+            "analyze_big_o",
+            "Analyze algorithmic complexity",
+            vec!["big-o", "algorithm", "performance"],
+        ),
+        (
+            "refactor.start",
+            "Begin refactoring workflow",
+            vec!["refactor", "start", "begin"],
+        ),
+        (
+            "refactor.nextIteration",
+            "Continue refactoring process",
+            vec!["refactor", "next", "continue"],
+        ),
+        (
+            "refactor.getState",
+            "Get current refactoring state",
+            vec!["refactor", "state", "status"],
+        ),
+        (
+            "refactor.stop",
+            "End refactoring workflow",
+            vec!["refactor", "stop", "end"],
+        ),
+        (
+            "quality_gate",
+            "Run comprehensive quality analysis",
+            vec!["quality", "gate", "check"],
+        ),
+        (
+            "quality_proxy",
+            "Intercept and validate code changes",
+            vec!["quality", "proxy", "validate"],
+        ),
+        (
+            "git_operation",
+            "Execute git operations",
+            vec!["git", "version", "control"],
+        ),
+        (
+            "generate_context",
+            "Generate AI-optimized context",
+            vec!["generate", "context", "ai"],
+        ),
+        (
+            "scaffold_project",
+            "Create project scaffolding",
+            vec!["scaffold", "create", "generate", "project"],
+        ),
     ];
-    
+
     let mut registry_code = String::from(
         "// Auto-generated tool registry for zero-copy MCP initialization\n\n\
          #[derive(Debug, Clone)]\n\
@@ -588,7 +648,7 @@ fn generate_tool_registry(out_dir: &str) {
          pub static TOOL_REGISTRY: once_cell::sync::Lazy<std::collections::HashMap<&'static str, ToolMeta>> = once_cell::sync::Lazy::new(|| {\n\
              let mut m = std::collections::HashMap::new();\n"
     );
-    
+
     for (name, desc, keywords) in &tools {
         registry_code.push_str(&format!(
             "    m.insert(\"{}\", ToolMeta {{\n\
@@ -599,9 +659,9 @@ fn generate_tool_registry(out_dir: &str) {
             name, name, desc, keywords
         ));
     }
-    
+
     registry_code.push_str("    m\n});\n");
-    
+
     if let Err(e) = fs::write(&dest_path, registry_code) {
         println!("cargo:warning=Failed to write tool registry: {}", e);
     }
@@ -610,57 +670,132 @@ fn generate_tool_registry(out_dir: &str) {
 /// Generate alias dispatch table from empirical usage patterns
 fn generate_alias_table(out_dir: &str) {
     let dest_path = Path::new(out_dir).join("alias_table.rs");
-    
+
     let aliases = vec![
-        ("analyze_complexity", vec![
-            "complexity", "cyclomatic", "cognitive", "analyze code",
-            "code complexity", "mccabe", "sonar", "analyze", "metrics"
-        ]),
-        ("analyze_satd", vec![
-            "debt", "technical debt", "todo", "fixme", "hack", "satd",
-            "find debt", "find todo", "self admitted", "admitted debt"
-        ]),
-        ("analyze_dag", vec![
-            "dependency", "dependencies", "graph", "visualize", "diagram",
-            "show dependencies", "dependency graph", "architecture", "dag"
-        ]),
-        ("scaffold_project", vec![
-            "scaffold", "create", "generate", "make", "new", "init",
-            "create project", "generate project", "new project", "project template"
-        ]),
-        ("generate_context", vec![
-            "context", "summary", "generate context", "ai context",
-            "codebase context", "analyze codebase", "understand code"
-        ]),
-        ("quality_gate", vec![
-            "quality", "check quality", "quality check", "gate", "validate",
-            "quality analysis", "code quality", "standards"
-        ]),
-        ("refactor.start", vec![
-            "refactor", "refactoring", "start refactor", "begin refactor",
-            "improve code", "clean code", "restructure"
-        ]),
-        ("git_operation", vec![
-            "git", "version control", "commit", "branch", "merge",
-            "git command", "source control"
-        ]),
+        (
+            "analyze_complexity",
+            vec![
+                "complexity",
+                "cyclomatic",
+                "cognitive",
+                "analyze code",
+                "code complexity",
+                "mccabe",
+                "sonar",
+                "analyze",
+                "metrics",
+            ],
+        ),
+        (
+            "analyze_satd",
+            vec![
+                "debt",
+                "technical debt",
+                "todo",
+                "fixme",
+                "hack",
+                "satd",
+                "find debt",
+                "find todo",
+                "self admitted",
+                "admitted debt",
+            ],
+        ),
+        (
+            "analyze_dag",
+            vec![
+                "dependency",
+                "dependencies",
+                "graph",
+                "visualize",
+                "diagram",
+                "show dependencies",
+                "dependency graph",
+                "architecture",
+                "dag",
+            ],
+        ),
+        (
+            "scaffold_project",
+            vec![
+                "scaffold",
+                "create",
+                "generate",
+                "make",
+                "new",
+                "init",
+                "create project",
+                "generate project",
+                "new project",
+                "project template",
+            ],
+        ),
+        (
+            "generate_context",
+            vec![
+                "context",
+                "summary",
+                "generate context",
+                "ai context",
+                "codebase context",
+                "analyze codebase",
+                "understand code",
+            ],
+        ),
+        (
+            "quality_gate",
+            vec![
+                "quality",
+                "check quality",
+                "quality check",
+                "gate",
+                "validate",
+                "quality analysis",
+                "code quality",
+                "standards",
+            ],
+        ),
+        (
+            "refactor.start",
+            vec![
+                "refactor",
+                "refactoring",
+                "start refactor",
+                "begin refactor",
+                "improve code",
+                "clean code",
+                "restructure",
+            ],
+        ),
+        (
+            "git_operation",
+            vec![
+                "git",
+                "version control",
+                "commit",
+                "branch",
+                "merge",
+                "git command",
+                "source control",
+            ],
+        ),
     ];
-    
+
     let mut alias_code = String::from(
         "// Auto-generated alias table for MCP tool discovery\n\n\
          pub static ALIAS_TABLE: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Vec<&'static str>>> = once_cell::sync::Lazy::new(|| {\n\
              let mut m = std::collections::HashMap::new();\n"
     );
-    
+
     for (tool, tool_aliases) in &aliases {
         alias_code.push_str(&format!(
             "    m.insert(\"{}\", vec!{:?});\n",
             tool, tool_aliases
         ));
     }
-    
+
     alias_code.push_str("    m\n});\n");
-    
+
     if let Err(e) = fs::write(&dest_path, alias_code) {
         println!("cargo:warning=Failed to write alias table: {}", e);
     }
@@ -669,7 +804,7 @@ fn generate_alias_table(out_dir: &str) {
 /// Generate trigram index for fuzzy matching
 fn generate_trigram_index(out_dir: &str) {
     let dest_path = Path::new(out_dir).join("trigram_index.rs");
-    
+
     let trigram_code = r#"// Auto-generated trigram index for fuzzy matching
 pub struct TrigramIndex;
 
@@ -737,7 +872,7 @@ impl TrigramIndex {
     }
 }
 "#;
-    
+
     if let Err(e) = fs::write(&dest_path, trigram_code) {
         println!("cargo:warning=Failed to write trigram index: {}", e);
     }

@@ -1,7 +1,7 @@
 //! Configuration management service for PMAT system
 //!
 //! This module provides a centralized configuration management system that
-//! consolidates all configuration patterns in the codebase following the 
+//! consolidates all configuration patterns in the codebase following the
 //! Toyota Way ONE implementation principle.
 
 use crate::services::service_base::ServiceMetrics;
@@ -17,25 +17,25 @@ use std::time::Duration;
 pub struct PmatConfig {
     /// System-wide settings
     pub system: SystemConfig,
-    
+
     /// Quality gate configurations
     pub quality: QualityConfig,
-    
+
     /// Analysis configurations
     pub analysis: AnalysisConfig,
-    
+
     /// Performance testing configurations
     pub performance: PerformanceConfig,
-    
+
     /// MCP server configurations
     pub mcp: McpConfig,
-    
+
     /// Roadmap and project management
     pub roadmap: RoadmapConfig,
-    
+
     /// Telemetry settings
     pub telemetry: TelemetryConfig,
-    
+
     /// Custom user configurations
     pub custom: HashMap<String, serde_json::Value>,
 }
@@ -45,22 +45,22 @@ pub struct PmatConfig {
 pub struct SystemConfig {
     /// Project name
     pub project_name: String,
-    
+
     /// Project root path
     pub project_path: PathBuf,
-    
+
     /// Output directory for generated files
     pub output_dir: PathBuf,
-    
+
     /// Maximum number of concurrent operations
     pub max_concurrent_operations: usize,
-    
+
     /// Enable verbose logging
     pub verbose: bool,
-    
+
     /// Enable debug mode
     pub debug: bool,
-    
+
     /// Toolchain preference
     pub default_toolchain: String,
 }
@@ -70,22 +70,22 @@ pub struct SystemConfig {
 pub struct QualityConfig {
     /// Maximum cyclomatic complexity allowed
     pub max_complexity: u32,
-    
+
     /// Maximum cognitive complexity allowed  
     pub max_cognitive_complexity: u32,
-    
+
     /// Minimum test coverage percentage
     pub min_coverage: f64,
-    
+
     /// Allow SATD (Self-Admitted Technical Debt) comments
     pub allow_satd: bool,
-    
+
     /// Require documentation for public items
     pub require_docs: bool,
-    
+
     /// Enable lint compliance checking
     pub lint_compliance: bool,
-    
+
     /// Fail builds on quality violations
     pub fail_on_violation: bool,
 }
@@ -95,25 +95,25 @@ pub struct QualityConfig {
 pub struct AnalysisConfig {
     /// Include patterns for file analysis
     pub include_patterns: Vec<String>,
-    
+
     /// Exclude patterns for file analysis
     pub exclude_patterns: Vec<String>,
-    
+
     /// Maximum file size to analyze (bytes)
     pub max_file_size: usize,
-    
+
     /// Maximum line length for analysis
     pub max_line_length: usize,
-    
+
     /// Skip vendor directories
     pub skip_vendor: bool,
-    
+
     /// Enable parallel processing
     pub parallel: bool,
-    
+
     /// Number of worker threads (0 = auto)
     pub thread_count: usize,
-    
+
     /// Analysis timeout in seconds
     pub timeout_seconds: u64,
 }
@@ -123,19 +123,19 @@ pub struct AnalysisConfig {
 pub struct PerformanceConfig {
     /// Enable regression testing
     pub enable_regression_tests: bool,
-    
+
     /// Enable memory usage tests
     pub enable_memory_tests: bool,
-    
+
     /// Enable throughput tests
     pub enable_throughput_tests: bool,
-    
+
     /// Number of test iterations
     pub test_iterations: usize,
-    
+
     /// Test timeout in milliseconds
     pub timeout_ms: u64,
-    
+
     /// Target metrics
     pub target_startup_latency_ms: u64,
     pub target_throughput_loc_per_sec: u64,
@@ -147,22 +147,22 @@ pub struct PerformanceConfig {
 pub struct McpConfig {
     /// Server name
     pub server_name: String,
-    
+
     /// Server version
     pub server_version: String,
-    
+
     /// Enable transport compression
     pub enable_compression: bool,
-    
+
     /// Request timeout in seconds
     pub request_timeout_seconds: u64,
-    
+
     /// Maximum request size in bytes
     pub max_request_size: usize,
-    
+
     /// Enable request logging
     pub log_requests: bool,
-    
+
     /// Tools to expose
     pub enabled_tools: Vec<String>,
 }
@@ -172,25 +172,25 @@ pub struct McpConfig {
 pub struct RoadmapConfig {
     /// Path to roadmap file
     pub roadmap_path: PathBuf,
-    
+
     /// Enable automatic todo generation
     pub auto_generate_todos: bool,
-    
+
     /// Enforce quality gates
     pub enforce_quality_gates: bool,
-    
+
     /// Require task IDs
     pub require_task_ids: bool,
-    
+
     /// Task ID pattern regex
     pub task_id_pattern: String,
-    
+
     /// Enable velocity tracking
     pub velocity_tracking: bool,
-    
+
     /// Enable burndown charts
     pub burndown_charts: bool,
-    
+
     /// Git integration settings
     pub git: GitConfig,
 }
@@ -200,13 +200,13 @@ pub struct RoadmapConfig {
 pub struct GitConfig {
     /// Create branches for tasks
     pub create_branches: bool,
-    
+
     /// Branch naming pattern
     pub branch_pattern: String,
-    
+
     /// Commit message pattern
     pub commit_pattern: String,
-    
+
     /// Require quality check before commit
     pub require_quality_check: bool,
 }
@@ -216,19 +216,19 @@ pub struct GitConfig {
 pub struct TelemetryConfig {
     /// Enable telemetry collection
     pub enabled: bool,
-    
+
     /// Collection interval in seconds
     pub collection_interval_seconds: u64,
-    
+
     /// Maximum telemetry data age in days
     pub max_data_age_days: u32,
-    
+
     /// Enable metric aggregation
     pub enable_aggregation: bool,
-    
+
     /// Enable telemetry export
     pub enable_export: bool,
-    
+
     /// Export format (json, csv, etc.)
     pub export_format: String,
 }
@@ -254,9 +254,9 @@ impl ConfigurationService {
                 .unwrap_or_default()
                 .join("pmat.toml")
         });
-        
+
         let default_config = Self::default_config();
-        
+
         Self {
             config: Arc::new(RwLock::new(default_config)),
             config_path: default_path,
@@ -264,130 +264,145 @@ impl ConfigurationService {
             watchers: Arc::new(RwLock::new(Vec::new())),
         }
     }
-    
+
     /// Load configuration from file
     pub async fn load(&self) -> Result<()> {
         if self.config_path.exists() {
             let content = tokio::fs::read_to_string(&self.config_path).await?;
             let config: PmatConfig = toml::from_str(&content)?;
-            
+
             {
-                let mut config_lock = self.config.write()
+                let mut config_lock = self
+                    .config
+                    .write()
                     .map_err(|_| anyhow::anyhow!("Failed to acquire config write lock"))?;
                 *config_lock = config.clone();
             }
-            
+
             // Notify watchers
             self.notify_watchers(&config)?;
-            
+
             // Update metrics
             {
-                let mut metrics = self.metrics.write()
+                let mut metrics = self
+                    .metrics
+                    .write()
                     .map_err(|_| anyhow::anyhow!("Failed to acquire metrics lock"))?;
                 metrics.record_request(std::time::Duration::from_millis(1), true);
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Save configuration to file
     pub async fn save(&self) -> Result<()> {
         let config = {
-            self.config.read()
+            self.config
+                .read()
                 .map_err(|_| anyhow::anyhow!("Failed to acquire config read lock"))?
                 .clone()
         };
-        
+
         let content = toml::to_string_pretty(&config)?;
         tokio::fs::write(&self.config_path, content).await?;
-        
+
         // Update metrics
         {
-            let mut metrics = self.metrics.write()
+            let mut metrics = self
+                .metrics
+                .write()
                 .map_err(|_| anyhow::anyhow!("Failed to acquire metrics lock"))?;
             metrics.record_request(std::time::Duration::from_millis(1), true);
         }
-        
+
         Ok(())
     }
-    
+
     /// Get current configuration
     pub fn get_config(&self) -> Result<PmatConfig> {
-        Ok(self.config.read()
+        Ok(self
+            .config
+            .read()
             .map_err(|_| anyhow::anyhow!("Failed to acquire config read lock"))?
             .clone())
     }
-    
+
     /// Update configuration
     pub async fn update_config<F>(&self, updater: F) -> Result<()>
     where
         F: FnOnce(&mut PmatConfig) -> Result<()>,
     {
         let config_clone = {
-            let mut config = self.config.write()
+            let mut config = self
+                .config
+                .write()
                 .map_err(|_| anyhow::anyhow!("Failed to acquire config write lock"))?;
-            
+
             updater(&mut config)?;
             config.clone()
         }; // Guard is dropped here
-        
+
         // Save to file
         self.save().await?;
-        
+
         // Notify watchers
         self.notify_watchers(&config_clone)?;
-        
+
         Ok(())
     }
-    
+
     /// Add configuration watcher
     pub fn add_watcher(&self, watcher: Box<dyn ConfigWatcher + Send + Sync>) -> Result<()> {
-        let mut watchers = self.watchers.write()
+        let mut watchers = self
+            .watchers
+            .write()
             .map_err(|_| anyhow::anyhow!("Failed to acquire watchers lock"))?;
         watchers.push(watcher);
         Ok(())
     }
-    
+
     /// Get specific configuration section
     pub fn get_quality_config(&self) -> Result<QualityConfig> {
         Ok(self.get_config()?.quality)
     }
-    
+
     pub fn get_analysis_config(&self) -> Result<AnalysisConfig> {
         Ok(self.get_config()?.analysis)
     }
-    
+
     pub fn get_performance_config(&self) -> Result<PerformanceConfig> {
         Ok(self.get_config()?.performance)
     }
-    
+
     pub fn get_mcp_config(&self) -> Result<McpConfig> {
         Ok(self.get_config()?.mcp)
     }
-    
+
     pub fn get_roadmap_config(&self) -> Result<RoadmapConfig> {
         Ok(self.get_config()?.roadmap)
     }
-    
+
     pub fn get_telemetry_config(&self) -> Result<TelemetryConfig> {
         Ok(self.get_config()?.telemetry)
     }
-    
+
     /// Notify all watchers of configuration changes
     fn notify_watchers(&self, config: &PmatConfig) -> Result<()> {
-        let watchers = self.watchers.read()
+        let watchers = self
+            .watchers
+            .read()
             .map_err(|_| anyhow::anyhow!("Failed to acquire watchers lock"))?;
-        
+
         for watcher in watchers.iter() {
             if let Err(e) = watcher.on_config_changed(config) {
                 tracing::warn!("Configuration watcher failed: {}", e);
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Create default configuration
     pub fn default_config() -> PmatConfig {
         PmatConfig {
@@ -411,12 +426,15 @@ impl ConfigurationService {
             },
             analysis: AnalysisConfig {
                 include_patterns: vec!["**/*.rs".to_string(), "**/*.ts".to_string()],
-                exclude_patterns: vec!["**/target/**".to_string(), "**/node_modules/**".to_string()],
+                exclude_patterns: vec![
+                    "**/target/**".to_string(),
+                    "**/node_modules/**".to_string(),
+                ],
                 max_file_size: 1024 * 1024, // 1MB
                 max_line_length: 100,
                 skip_vendor: true,
                 parallel: true,
-                thread_count: 0, // Auto
+                thread_count: 0,      // Auto
                 timeout_seconds: 300, // 5 minutes
             },
             performance: PerformanceConfig {
@@ -476,39 +494,46 @@ impl ConfigurationService {
     pub async fn start(&self) -> Result<()> {
         // Load configuration from file if it exists
         self.load().await?;
-        
+
         // Update metrics
         {
-            let mut metrics = self.metrics.write()
+            let mut metrics = self
+                .metrics
+                .write()
                 .map_err(|_| anyhow::anyhow!("Failed to acquire metrics lock"))?;
             metrics.record_request(Duration::from_millis(10), true);
         }
-        
-        tracing::info!("Configuration service started with config at: {:?}", self.config_path);
+
+        tracing::info!(
+            "Configuration service started with config at: {:?}",
+            self.config_path
+        );
         Ok(())
     }
-    
+
     /// Stop the configuration service
     pub async fn stop(&self) -> Result<()> {
         // Save current configuration
         self.save().await?;
-        
+
         // Update metrics
         {
-            let mut metrics = self.metrics.write()
+            let mut metrics = self
+                .metrics
+                .write()
                 .map_err(|_| anyhow::anyhow!("Failed to acquire metrics lock"))?;
             metrics.record_request(Duration::from_millis(5), true);
         }
-        
+
         tracing::info!("Configuration service stopped");
         Ok(())
     }
-    
+
     /// Get service status
     pub async fn status(&self) -> Result<String> {
         let config_exists = self.config_path.exists();
         let _config = self.get_config()?;
-        
+
         Ok(format!(
             "Configuration service: {} (file: {}, sections: {})",
             if config_exists { "loaded" } else { "default" },
@@ -516,14 +541,16 @@ impl ConfigurationService {
             7 // Number of main config sections
         ))
     }
-    
+
     /// Get service metrics
     pub async fn get_metrics(&self) -> Result<ServiceMetrics> {
-        Ok(self.metrics.read()
+        Ok(self
+            .metrics
+            .read()
             .map_err(|_| anyhow::anyhow!("Failed to acquire metrics lock"))?
             .clone())
     }
-    
+
     /// Check service health
     pub async fn health_check(&self) -> Result<bool> {
         // Check if we can read the configuration
@@ -550,7 +577,7 @@ mod tests {
     async fn test_configuration_service_creation() {
         let config_service = ConfigurationService::new(None);
         let config = config_service.get_config().unwrap();
-        
+
         assert_eq!(config.system.project_name, "pmat");
         assert_eq!(config.quality.max_complexity, 20);
         assert!(!config.quality.allow_satd);
@@ -560,20 +587,23 @@ mod tests {
     async fn test_configuration_save_load() {
         let temp_dir = tempdir().unwrap();
         let config_path = temp_dir.path().join("test_config.toml");
-        
+
         let config_service = ConfigurationService::new(Some(config_path.clone()));
-        
+
         // Update config
-        config_service.update_config(|config| {
-            config.system.project_name = "test_project".to_string();
-            config.quality.max_complexity = 25;
-            Ok(())
-        }).await.unwrap();
-        
+        config_service
+            .update_config(|config| {
+                config.system.project_name = "test_project".to_string();
+                config.quality.max_complexity = 25;
+                Ok(())
+            })
+            .await
+            .unwrap();
+
         // Create new service and load
         let new_service = ConfigurationService::new(Some(config_path));
         new_service.load().await.unwrap();
-        
+
         let loaded_config = new_service.get_config().unwrap();
         assert_eq!(loaded_config.system.project_name, "test_project");
         assert_eq!(loaded_config.quality.max_complexity, 25);
@@ -582,22 +612,22 @@ mod tests {
     #[tokio::test]
     async fn test_configuration_sections() {
         let config_service = ConfigurationService::new(None);
-        
+
         let quality_config = config_service.get_quality_config().unwrap();
         assert_eq!(quality_config.max_complexity, 20);
-        
+
         let analysis_config = config_service.get_analysis_config().unwrap();
         assert!(analysis_config.parallel);
-        
+
         let performance_config = config_service.get_performance_config().unwrap();
         assert_eq!(performance_config.test_iterations, 10);
-        
+
         let mcp_config = config_service.get_mcp_config().unwrap();
         assert_eq!(mcp_config.server_name, "pmat-mcp-server");
-        
+
         let roadmap_config = config_service.get_roadmap_config().unwrap();
         assert!(roadmap_config.auto_generate_todos);
-        
+
         let telemetry_config = config_service.get_telemetry_config().unwrap();
         assert!(telemetry_config.enabled);
     }
@@ -605,17 +635,17 @@ mod tests {
     #[tokio::test]
     async fn test_service_lifecycle() {
         let config_service = ConfigurationService::new(None);
-        
+
         // Test service operations
         assert!(config_service.start().await.is_ok());
         assert!(config_service.health_check().await.unwrap());
-        
+
         let status = config_service.status().await.unwrap();
         assert!(status.contains("Configuration service"));
-        
+
         let metrics = config_service.get_metrics().await.unwrap();
         assert_eq!(metrics.request_count, 1); // From the start() call
-        
+
         assert!(config_service.stop().await.is_ok());
     }
 
@@ -623,7 +653,7 @@ mod tests {
     async fn test_global_configuration_access() {
         let config_service = configuration();
         let config = config_service.get_config().unwrap();
-        
+
         assert_eq!(config.system.project_name, "pmat");
         assert!(config.quality.fail_on_violation);
     }
@@ -632,7 +662,7 @@ mod tests {
     fn test_configuration_serialization() {
         let config = ConfigurationService::default_config();
         let serialized = toml::to_string(&config).unwrap();
-        
+
         assert!(serialized.contains("[system]"));
         assert!(serialized.contains("[quality]"));
         assert!(serialized.contains("[analysis]"));
@@ -640,10 +670,13 @@ mod tests {
         assert!(serialized.contains("[mcp]"));
         assert!(serialized.contains("[roadmap]"));
         assert!(serialized.contains("[telemetry]"));
-        
+
         // Test deserialization
         let deserialized: PmatConfig = toml::from_str(&serialized).unwrap();
         assert_eq!(deserialized.system.project_name, config.system.project_name);
-        assert_eq!(deserialized.quality.max_complexity, config.quality.max_complexity);
+        assert_eq!(
+            deserialized.quality.max_complexity,
+            config.quality.max_complexity
+        );
     }
 }

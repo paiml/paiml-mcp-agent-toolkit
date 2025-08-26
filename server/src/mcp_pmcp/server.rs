@@ -1,6 +1,6 @@
 use crate::mcp_pmcp::analyze_handlers::{
     AnalyzeBigOTool, AnalyzeComplexityTool, AnalyzeDagTool, AnalyzeDeadCodeTool,
-    AnalyzeDeepContextTool, AnalyzeSatdTool, AnalyzeTdgTool, AnalyzeTdgCompareTool,
+    AnalyzeDeepContextTool, AnalyzeSatdTool, AnalyzeTdgCompareTool, AnalyzeTdgTool,
 };
 use crate::mcp_pmcp::context_handlers::{GenerateContextTool, GitTool, ScaffoldProjectTool};
 use crate::mcp_pmcp::handlers::{

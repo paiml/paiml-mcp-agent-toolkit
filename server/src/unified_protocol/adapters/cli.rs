@@ -88,19 +88,24 @@ impl CliAdapter {
                 *centrality_threshold,
                 *merge_threshold,
             ),
-            Commands::Serve { host, port, cors, transport: _ } => Self::decode_serve(host, *port, *cors),
-            Commands::Diagnose(_) | 
-            Commands::QualityGate { .. } | 
-            Commands::Report { .. } | 
-            Commands::Enforce(_) | 
-            Commands::Refactor(_) | 
-            Commands::Roadmap(_) | 
-            Commands::Test { .. } | 
-            Commands::Memory { .. } | 
-            Commands::Cache { .. } | 
-            Commands::Telemetry { .. } | 
-            Commands::Config { .. } | 
-            Commands::Agent { .. } => Self::cli_only_command_error()
+            Commands::Serve {
+                host,
+                port,
+                cors,
+                transport: _,
+            } => Self::decode_serve(host, *port, *cors),
+            Commands::Diagnose(_)
+            | Commands::QualityGate { .. }
+            | Commands::Report { .. }
+            | Commands::Enforce(_)
+            | Commands::Refactor(_)
+            | Commands::Roadmap(_)
+            | Commands::Test { .. }
+            | Commands::Memory { .. }
+            | Commands::Cache { .. }
+            | Commands::Telemetry { .. }
+            | Commands::Config { .. }
+            | Commands::Agent { .. } => Self::cli_only_command_error(),
         }
     }
 
@@ -216,48 +221,463 @@ impl CliAdapter {
         analyze_cmd: &AnalyzeCommands,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         match analyze_cmd {
-            AnalyzeCommands::Churn { project_path, days, format, output, top_files } => 
-                Self::decode_analyze_churn(project_path, *days, format, output, *top_files),
-            AnalyzeCommands::Complexity { project_path, file, files, toolchain, format, output, max_cyclomatic, max_cognitive, include, watch, top_files, fail_on_violation: _ } => 
-                Self::decode_analyze_complexity(project_path, file, files, toolchain, format, output, max_cyclomatic, max_cognitive, include, *watch, *top_files),
-            AnalyzeCommands::Dag { dag_type, project_path, output, max_depth, target_nodes, filter_external, show_complexity, include_duplicates, include_dead_code, enhanced } => 
-                Self::decode_analyze_dag(dag_type, project_path, output, max_depth, target_nodes, *filter_external, *show_complexity, *include_duplicates, *include_dead_code, *enhanced),
-            AnalyzeCommands::DeadCode { path, format, top_files, include_unreachable, min_dead_lines, include_tests, output, fail_on_violation: _, max_percentage: _ } => 
-                Self::decode_analyze_dead_code(path, format, top_files, *include_unreachable, *min_dead_lines, *include_tests, output),
-            AnalyzeCommands::Satd { path, format, severity, critical_only, include_tests, strict, evolution, days, metrics, output, top_files, fail_on_violation: _ } => 
-                Self::decode_analyze_satd(path, format, severity, *critical_only, *include_tests, *strict, *evolution, *days, *metrics, output, *top_files),
-            AnalyzeCommands::DeepContext { project_path, output, format, full, include, exclude, period_days, dag_type, max_depth, include_patterns, exclude_patterns, cache_strategy, parallel, verbose, top_files: _ } => 
-                Self::decode_analyze_deep_context(project_path, output, format, *full, include, exclude, *period_days, dag_type, max_depth, include_patterns, exclude_patterns, cache_strategy, parallel, *verbose),
-            AnalyzeCommands::Tdg { path, threshold, top_files, format, include_components, output, critical_only, verbose } => 
-                Self::decode_analyze_tdg(path, output, format, *threshold, *critical_only, *top_files, *include_components, *verbose),
-            AnalyzeCommands::LintHotspot { project_path, file, format, max_density, min_confidence, enforce, dry_run, enforcement_metadata, output, perf, clippy_flags, top_files } => 
-                Self::decode_analyze_lint_hotspot(project_path, file, format, max_density, min_confidence, enforce, dry_run, enforcement_metadata, output, perf, clippy_flags, top_files),
-            AnalyzeCommands::Makefile { path, rules, format, fix, gnu_version, top_files } => 
-                Self::decode_analyze_makefile(path, rules, format, fix, gnu_version, top_files),
-            AnalyzeCommands::Provability { project_path, functions, analysis_depth, format, high_confidence_only, include_evidence, output, top_files } => 
-                Self::decode_analyze_provability(project_path, functions, *analysis_depth, format, *high_confidence_only, *include_evidence, output, *top_files),
-            AnalyzeCommands::Duplicates { project_path, detection_type, threshold, min_lines, max_tokens, format, perf, include, exclude, output, top_files } => 
-                Self::decode_analyze_duplicates(project_path, detection_type, threshold, min_lines, max_tokens, format, perf, include, exclude, output, top_files),
-            AnalyzeCommands::DefectPrediction { project_path, confidence_threshold, min_lines, include_low_confidence, format, high_risk_only, include_recommendations, include, exclude, output, perf, top_files } => 
-                Self::decode_analyze_defect_prediction(project_path, confidence_threshold, min_lines, include_low_confidence, format, high_risk_only, include_recommendations, include, exclude, output, perf, top_files),
-            AnalyzeCommands::Comprehensive { project_path, file, files, format, include_duplicates, include_dead_code, include_defects, include_complexity, include_tdg, confidence_threshold, min_lines, include, exclude, output, perf, executive_summary, top_files } => 
-                Self::decode_analyze_comprehensive(project_path, file, files, format, include_duplicates, include_dead_code, include_defects, include_complexity, include_tdg, confidence_threshold, min_lines, include, exclude, output, perf, executive_summary, top_files),
-            AnalyzeCommands::GraphMetrics { project_path, metrics, pagerank_seeds, damping_factor, max_iterations, convergence_threshold, format, include, exclude, output, export_graphml, perf, top_k, min_centrality } => 
-                Self::decode_analyze_graph_metrics(project_path, metrics, pagerank_seeds, damping_factor, max_iterations, convergence_threshold, format, include, exclude, output, export_graphml, perf, top_k, min_centrality),
-            AnalyzeCommands::NameSimilarity { project_path, query, top_k, phonetic, scope, threshold, format, include, exclude, output, perf, fuzzy, case_sensitive } => 
-                Self::decode_analyze_name_similarity(project_path, query, top_k, phonetic, scope, threshold, format, include, exclude, output, perf, fuzzy, case_sensitive),
-            AnalyzeCommands::ProofAnnotations { project_path, format, high_confidence_only, include_evidence, property_type, verification_method, output, perf, clear_cache, top_files } => 
-                Self::decode_analyze_proof_annotations(project_path, format, high_confidence_only, include_evidence, property_type, verification_method, output, perf, clear_cache, top_files),
-            AnalyzeCommands::IncrementalCoverage { project_path, base_branch, target_branch, format, coverage_threshold, changed_files_only, detailed, output, perf, cache_dir, force_refresh, top_files } => 
-                Self::decode_analyze_incremental_coverage(project_path, base_branch, target_branch, format, coverage_threshold, changed_files_only, detailed, output, perf, cache_dir, force_refresh, top_files),
-            AnalyzeCommands::SymbolTable { project_path, format, query, filter, include, exclude, show_unreferenced, show_references, output, perf, top_files } => 
-                Self::decode_analyze_symbol_table(project_path, format, query, filter, include, exclude, show_unreferenced, show_references, output, perf, top_files),
-            AnalyzeCommands::BigO { project_path, format, confidence_threshold, analyze_space, include, exclude, output, perf, high_complexity_only, top_files } => 
-                Self::decode_analyze_big_o(project_path, format, confidence_threshold, analyze_space, include, exclude, output, perf, high_complexity_only, top_files),
-            AnalyzeCommands::AssemblyScript { top_files: _, .. } => 
-                Self::decode_analyze_assemblyscript(),
-            AnalyzeCommands::WebAssembly { top_files: _, .. } => 
-                Self::decode_analyze_webassembly(),
+            AnalyzeCommands::Churn {
+                project_path,
+                days,
+                format,
+                output,
+                top_files,
+            } => Self::decode_analyze_churn(project_path, *days, format, output, *top_files),
+            AnalyzeCommands::Complexity {
+                project_path,
+                file,
+                files,
+                toolchain,
+                format,
+                output,
+                max_cyclomatic,
+                max_cognitive,
+                include,
+                watch,
+                top_files,
+                fail_on_violation: _,
+            } => Self::decode_analyze_complexity(
+                project_path,
+                file,
+                files,
+                toolchain,
+                format,
+                output,
+                max_cyclomatic,
+                max_cognitive,
+                include,
+                *watch,
+                *top_files,
+            ),
+            AnalyzeCommands::Dag {
+                dag_type,
+                project_path,
+                output,
+                max_depth,
+                target_nodes,
+                filter_external,
+                show_complexity,
+                include_duplicates,
+                include_dead_code,
+                enhanced,
+            } => Self::decode_analyze_dag(
+                dag_type,
+                project_path,
+                output,
+                max_depth,
+                target_nodes,
+                *filter_external,
+                *show_complexity,
+                *include_duplicates,
+                *include_dead_code,
+                *enhanced,
+            ),
+            AnalyzeCommands::DeadCode {
+                path,
+                format,
+                top_files,
+                include_unreachable,
+                min_dead_lines,
+                include_tests,
+                output,
+                fail_on_violation: _,
+                max_percentage: _,
+            } => Self::decode_analyze_dead_code(
+                path,
+                format,
+                top_files,
+                *include_unreachable,
+                *min_dead_lines,
+                *include_tests,
+                output,
+            ),
+            AnalyzeCommands::Satd {
+                path,
+                format,
+                severity,
+                critical_only,
+                include_tests,
+                strict,
+                evolution,
+                days,
+                metrics,
+                output,
+                top_files,
+                fail_on_violation: _,
+            } => Self::decode_analyze_satd(
+                path,
+                format,
+                severity,
+                *critical_only,
+                *include_tests,
+                *strict,
+                *evolution,
+                *days,
+                *metrics,
+                output,
+                *top_files,
+            ),
+            AnalyzeCommands::DeepContext {
+                project_path,
+                output,
+                format,
+                full,
+                include,
+                exclude,
+                period_days,
+                dag_type,
+                max_depth,
+                include_patterns,
+                exclude_patterns,
+                cache_strategy,
+                parallel,
+                verbose,
+                top_files: _,
+            } => Self::decode_analyze_deep_context(
+                project_path,
+                output,
+                format,
+                *full,
+                include,
+                exclude,
+                *period_days,
+                dag_type,
+                max_depth,
+                include_patterns,
+                exclude_patterns,
+                cache_strategy,
+                parallel,
+                *verbose,
+            ),
+            AnalyzeCommands::Tdg {
+                path,
+                threshold,
+                top_files,
+                format,
+                include_components,
+                output,
+                critical_only,
+                verbose,
+            } => Self::decode_analyze_tdg(
+                path,
+                output,
+                format,
+                *threshold,
+                *critical_only,
+                *top_files,
+                *include_components,
+                *verbose,
+            ),
+            AnalyzeCommands::LintHotspot {
+                project_path,
+                file,
+                format,
+                max_density,
+                min_confidence,
+                enforce,
+                dry_run,
+                enforcement_metadata,
+                output,
+                perf,
+                clippy_flags,
+                top_files,
+            } => Self::decode_analyze_lint_hotspot(
+                project_path,
+                file,
+                format,
+                max_density,
+                min_confidence,
+                enforce,
+                dry_run,
+                enforcement_metadata,
+                output,
+                perf,
+                clippy_flags,
+                top_files,
+            ),
+            AnalyzeCommands::Makefile {
+                path,
+                rules,
+                format,
+                fix,
+                gnu_version,
+                top_files,
+            } => Self::decode_analyze_makefile(path, rules, format, fix, gnu_version, top_files),
+            AnalyzeCommands::Provability {
+                project_path,
+                functions,
+                analysis_depth,
+                format,
+                high_confidence_only,
+                include_evidence,
+                output,
+                top_files,
+            } => Self::decode_analyze_provability(
+                project_path,
+                functions,
+                *analysis_depth,
+                format,
+                *high_confidence_only,
+                *include_evidence,
+                output,
+                *top_files,
+            ),
+            AnalyzeCommands::Duplicates {
+                project_path,
+                detection_type,
+                threshold,
+                min_lines,
+                max_tokens,
+                format,
+                perf,
+                include,
+                exclude,
+                output,
+                top_files,
+            } => Self::decode_analyze_duplicates(
+                project_path,
+                detection_type,
+                threshold,
+                min_lines,
+                max_tokens,
+                format,
+                perf,
+                include,
+                exclude,
+                output,
+                top_files,
+            ),
+            AnalyzeCommands::DefectPrediction {
+                project_path,
+                confidence_threshold,
+                min_lines,
+                include_low_confidence,
+                format,
+                high_risk_only,
+                include_recommendations,
+                include,
+                exclude,
+                output,
+                perf,
+                top_files,
+            } => Self::decode_analyze_defect_prediction(
+                project_path,
+                confidence_threshold,
+                min_lines,
+                include_low_confidence,
+                format,
+                high_risk_only,
+                include_recommendations,
+                include,
+                exclude,
+                output,
+                perf,
+                top_files,
+            ),
+            AnalyzeCommands::Comprehensive {
+                project_path,
+                file,
+                files,
+                format,
+                include_duplicates,
+                include_dead_code,
+                include_defects,
+                include_complexity,
+                include_tdg,
+                confidence_threshold,
+                min_lines,
+                include,
+                exclude,
+                output,
+                perf,
+                executive_summary,
+                top_files,
+            } => Self::decode_analyze_comprehensive(
+                project_path,
+                file,
+                files,
+                format,
+                include_duplicates,
+                include_dead_code,
+                include_defects,
+                include_complexity,
+                include_tdg,
+                confidence_threshold,
+                min_lines,
+                include,
+                exclude,
+                output,
+                perf,
+                executive_summary,
+                top_files,
+            ),
+            AnalyzeCommands::GraphMetrics {
+                project_path,
+                metrics,
+                pagerank_seeds,
+                damping_factor,
+                max_iterations,
+                convergence_threshold,
+                format,
+                include,
+                exclude,
+                output,
+                export_graphml,
+                perf,
+                top_k,
+                min_centrality,
+            } => Self::decode_analyze_graph_metrics(
+                project_path,
+                metrics,
+                pagerank_seeds,
+                damping_factor,
+                max_iterations,
+                convergence_threshold,
+                format,
+                include,
+                exclude,
+                output,
+                export_graphml,
+                perf,
+                top_k,
+                min_centrality,
+            ),
+            AnalyzeCommands::NameSimilarity {
+                project_path,
+                query,
+                top_k,
+                phonetic,
+                scope,
+                threshold,
+                format,
+                include,
+                exclude,
+                output,
+                perf,
+                fuzzy,
+                case_sensitive,
+            } => Self::decode_analyze_name_similarity(
+                project_path,
+                query,
+                top_k,
+                phonetic,
+                scope,
+                threshold,
+                format,
+                include,
+                exclude,
+                output,
+                perf,
+                fuzzy,
+                case_sensitive,
+            ),
+            AnalyzeCommands::ProofAnnotations {
+                project_path,
+                format,
+                high_confidence_only,
+                include_evidence,
+                property_type,
+                verification_method,
+                output,
+                perf,
+                clear_cache,
+                top_files,
+            } => Self::decode_analyze_proof_annotations(
+                project_path,
+                format,
+                high_confidence_only,
+                include_evidence,
+                property_type,
+                verification_method,
+                output,
+                perf,
+                clear_cache,
+                top_files,
+            ),
+            AnalyzeCommands::IncrementalCoverage {
+                project_path,
+                base_branch,
+                target_branch,
+                format,
+                coverage_threshold,
+                changed_files_only,
+                detailed,
+                output,
+                perf,
+                cache_dir,
+                force_refresh,
+                top_files,
+            } => Self::decode_analyze_incremental_coverage(
+                project_path,
+                base_branch,
+                target_branch,
+                format,
+                coverage_threshold,
+                changed_files_only,
+                detailed,
+                output,
+                perf,
+                cache_dir,
+                force_refresh,
+                top_files,
+            ),
+            AnalyzeCommands::SymbolTable {
+                project_path,
+                format,
+                query,
+                filter,
+                include,
+                exclude,
+                show_unreferenced,
+                show_references,
+                output,
+                perf,
+                top_files,
+            } => Self::decode_analyze_symbol_table(
+                project_path,
+                format,
+                query,
+                filter,
+                include,
+                exclude,
+                show_unreferenced,
+                show_references,
+                output,
+                perf,
+                top_files,
+            ),
+            AnalyzeCommands::BigO {
+                project_path,
+                format,
+                confidence_threshold,
+                analyze_space,
+                include,
+                exclude,
+                output,
+                perf,
+                high_complexity_only,
+                top_files,
+            } => Self::decode_analyze_big_o(
+                project_path,
+                format,
+                confidence_threshold,
+                analyze_space,
+                include,
+                exclude,
+                output,
+                perf,
+                high_complexity_only,
+                top_files,
+            ),
+            AnalyzeCommands::AssemblyScript { top_files: _, .. } => {
+                Self::decode_analyze_assemblyscript()
+            }
+            AnalyzeCommands::WebAssembly { top_files: _, .. } => Self::decode_analyze_webassembly(),
         }
     }
 
@@ -580,7 +1000,12 @@ impl CliAdapter {
             "clippy_flags": clippy_flags,
             "top_files": top_files,
         });
-        Ok((Method::POST, "/api/v1/analyze/lint-hotspot".to_string(), params, None))
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/lint-hotspot".to_string(),
+            params,
+            None,
+        ))
     }
 
     fn decode_analyze_makefile(
@@ -599,7 +1024,12 @@ impl CliAdapter {
             "format": format,
             "top_files": top_files,
         });
-        Ok((Method::POST, "/api/v1/analyze/makefile".to_string(), params, None))
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/makefile".to_string(),
+            params,
+            None,
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -629,7 +1059,12 @@ impl CliAdapter {
             "output": output,
             "top_files": top_files,
         });
-        Ok((Method::POST, "/api/v1/analyze/duplicates".to_string(), params, None))
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/duplicates".to_string(),
+            params,
+            None,
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -661,7 +1096,12 @@ impl CliAdapter {
             "perf": perf,
             "top_files": top_files,
         });
-        Ok((Method::POST, "/api/v1/analyze/defect-prediction".to_string(), params, None))
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/defect-prediction".to_string(),
+            params,
+            None,
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -703,7 +1143,12 @@ impl CliAdapter {
             "executive_summary": executive_summary,
             "top_files": top_files,
         });
-        Ok((Method::POST, "/api/v1/analyze/comprehensive".to_string(), params, None))
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/comprehensive".to_string(),
+            params,
+            None,
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -739,7 +1184,12 @@ impl CliAdapter {
             "top_k": top_k,
             "min_centrality": min_centrality,
         });
-        Ok((Method::POST, "/api/v1/analyze/graph-metrics".to_string(), params, None))
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/graph-metrics".to_string(),
+            params,
+            None,
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -778,7 +1228,12 @@ impl CliAdapter {
             "fuzzy": fuzzy,
             "case_sensitive": case_sensitive,
         });
-        Ok((Method::POST, "/api/v1/analyze/name-similarity".to_string(), params, None))
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/name-similarity".to_string(),
+            params,
+            None,
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -806,7 +1261,12 @@ impl CliAdapter {
             "clear_cache": clear_cache,
             "top_files": top_files,
         });
-        Ok((Method::POST, "/api/v1/analyze/proof-annotations".to_string(), params, None))
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/proof-annotations".to_string(),
+            params,
+            None,
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -838,7 +1298,12 @@ impl CliAdapter {
             "force_refresh": force_refresh,
             "top_files": top_files,
         });
-        Ok((Method::POST, "/api/v1/analyze/incremental-coverage".to_string(), params, None))
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/incremental-coverage".to_string(),
+            params,
+            None,
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -868,7 +1333,12 @@ impl CliAdapter {
             "perf": perf,
             "top_files": top_files,
         });
-        Ok((Method::POST, "/api/v1/analyze/symbol-table".to_string(), params, None))
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/symbol-table".to_string(),
+            params,
+            None,
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -896,18 +1366,36 @@ impl CliAdapter {
             "high_complexity_only": high_complexity_only,
             "top_files": top_files,
         });
-        Ok((Method::POST, "/api/v1/analyze/big-o".to_string(), params, None))
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/big-o".to_string(),
+            params,
+            None,
+        ))
     }
 
-    fn decode_analyze_assemblyscript() -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        Ok((Method::POST, "/api/v1/analyze/assemblyscript".to_string(), json!({}), None))
+    fn decode_analyze_assemblyscript(
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/assemblyscript".to_string(),
+            json!({}),
+            None,
+        ))
     }
 
-    fn decode_analyze_webassembly() -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        Ok((Method::POST, "/api/v1/analyze/webassembly".to_string(), json!({}), None))
+    fn decode_analyze_webassembly(
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        Ok((
+            Method::POST,
+            "/api/v1/analyze/webassembly".to_string(),
+            json!({}),
+            None,
+        ))
     }
 
-    fn cli_only_command_error() -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+    fn cli_only_command_error(
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         Err(ProtocolError::InvalidFormat(
             "Command should be handled directly by CLI".to_string(),
         ))
@@ -1035,7 +1523,7 @@ impl CliInput {
         // Toyota Way: Simple, readable, and efficient - no complexity for simple mappings
         match analyze_cmd {
             AnalyzeCommands::Churn { .. } => "analyze-churn",
-            AnalyzeCommands::Complexity { .. } => "analyze-complexity", 
+            AnalyzeCommands::Complexity { .. } => "analyze-complexity",
             AnalyzeCommands::Dag { .. } => "analyze-dag",
             AnalyzeCommands::DeadCode { .. } => "analyze-dead-code",
             AnalyzeCommands::Satd { .. } => "analyze-satd",

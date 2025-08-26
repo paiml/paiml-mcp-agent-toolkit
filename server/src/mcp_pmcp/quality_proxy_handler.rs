@@ -108,7 +108,7 @@ fn default_auto_format() -> bool {
 ///
 /// // Quality proxy validates before allowing write
 /// let result = tool.handle(input, Default::default()).await?;
-/// 
+///
 /// // Check if operation was approved
 /// assert!(result["approved"].is_boolean());
 /// if !result["approved"].as_bool().unwrap_or(false) {
@@ -144,7 +144,7 @@ fn default_auto_format() -> bool {
 ///
 /// // Quality proxy automatically improves the code
 /// let result = tool.handle(input, Default::default()).await?;
-/// 
+///
 /// // Get the improved version
 /// if result["auto_fixed"].as_bool().unwrap_or(false) {
 ///     let fixed_content = result["fixed_content"].as_str().unwrap();

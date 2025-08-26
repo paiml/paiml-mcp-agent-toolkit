@@ -2245,18 +2245,18 @@ pub async fn handle_analyze_satd(
 ) -> Result<()> {
     use crate::services::satd_detector::SATDDetector;
     eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
-    
+
     let detector = SATDDetector::new();
     let satd_items = analyze_satd_items(&detector, &path, include_tests).await?;
     let filtered_items = apply_satd_filters(satd_items, severity, critical_only);
     let output_content = generate_satd_output(format, &filtered_items, metrics, evolution, days);
-    
+
     write_satd_output(output, &output_content).await?;
-    
+
     if metrics {
         print_satd_metrics(&filtered_items);
     }
-    
+
     Ok(())
 }
 
@@ -2267,7 +2267,10 @@ async fn analyze_satd_items(
     include_tests: bool,
 ) -> Result<Vec<crate::services::satd_detector::TechnicalDebt>> {
     if include_tests {
-        detector.analyze_directory_with_tests(path, true).await.map_err(Into::into)
+        detector
+            .analyze_directory_with_tests(path, true)
+            .await
+            .map_err(Into::into)
     } else {
         detector.analyze_directory(path).await.map_err(Into::into)
     }
@@ -2289,7 +2292,7 @@ fn apply_satd_filters(
         };
         satd_items.retain(|item| item.severity as u8 >= min_sev as u8);
     }
-    
+
     // Filter for critical items only if requested
     if critical_only {
         satd_items.retain(|item| {
@@ -2300,7 +2303,7 @@ fn apply_satd_filters(
             )
         });
     }
-    
+
     satd_items
 }
 
@@ -2949,7 +2952,8 @@ async fn run_single_project_check(
                 violations,
                 results,
                 perf,
-            ).await
+            )
+            .await
         }
         _ => {
             execute_specific_quality_check(
@@ -2960,7 +2964,8 @@ async fn run_single_project_check(
                 max_complexity_p99,
                 violations,
                 results,
-            ).await
+            )
+            .await
         }
     }
 }
@@ -2981,64 +2986,73 @@ async fn execute_specific_quality_check(
             execute_quality_check_template(
                 check_complexity(project_path, max_complexity_p99),
                 |count| results.complexity_violations = count,
-                violations
-            ).await
+                violations,
+            )
+            .await
         }
         QualityCheckType::DeadCode => {
             execute_quality_check_template(
                 check_dead_code(project_path, max_dead_code),
                 |count| results.dead_code_violations = count,
-                violations
-            ).await
+                violations,
+            )
+            .await
         }
         QualityCheckType::Satd => {
             execute_quality_check_template(
                 check_satd(project_path),
                 |count| results.satd_violations = count,
-                violations
-            ).await
+                violations,
+            )
+            .await
         }
         QualityCheckType::Entropy => {
             execute_quality_check_template(
                 check_entropy(project_path, min_entropy),
                 |count| results.entropy_violations = count,
-                violations
-            ).await
+                violations,
+            )
+            .await
         }
         QualityCheckType::Security => {
             execute_quality_check_template(
                 check_security(project_path),
                 |count| results.security_violations = count,
-                violations
-            ).await
+                violations,
+            )
+            .await
         }
         QualityCheckType::Duplicates => {
             execute_quality_check_template(
                 check_duplicates(project_path),
                 |count| results.duplicate_violations = count,
-                violations
-            ).await
+                violations,
+            )
+            .await
         }
         QualityCheckType::Coverage => {
             execute_quality_check_template(
                 check_coverage(project_path, 80.0),
                 |count| results.coverage_violations = count,
-                violations
-            ).await
+                violations,
+            )
+            .await
         }
         QualityCheckType::Sections => {
             execute_quality_check_template(
                 check_sections(project_path),
                 |count| results.section_violations = count,
-                violations
-            ).await
+                violations,
+            )
+            .await
         }
         QualityCheckType::Provability => {
             execute_quality_check_template(
                 check_provability(project_path, 0.7),
                 |count| results.provability_violations = count,
-                violations
-            ).await
+                violations,
+            )
+            .await
         }
         QualityCheckType::All => {
             unreachable!("All case handled in parent function")
@@ -3193,9 +3207,14 @@ fn handle_quality_gate_exit_status(fail_on_violation: bool, passed: bool) {
 ///
 /// # Errors
 /// Returns an error if the server cannot be started
-pub async fn handle_serve(host: String, port: u16, cors: bool, transport: crate::cli::commands::ServeTransport) -> Result<()> {
+pub async fn handle_serve(
+    host: String,
+    port: u16,
+    cors: bool,
+    transport: crate::cli::commands::ServeTransport,
+) -> Result<()> {
     use crate::cli::commands::ServeTransport;
-    
+
     match transport {
         ServeTransport::Http => {
             eprintln!("🚀 Starting PMAT HTTP server on http://{host}:{port}");
@@ -3206,19 +3225,19 @@ pub async fn handle_serve(host: String, port: u16, cors: bool, transport: crate:
                 eprintln!("🌐 CORS enabled for all origins");
             }
             eprintln!("\n🔧 HTTP server functionality ready for implementation.");
-        },
-        
+        }
+
         ServeTransport::WebSocket => {
             eprintln!("🚀 Starting PMAT WebSocket server on ws://{host}:{port}");
             eprintln!("✅ WebSocket server ready!");
             eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
             eprintln!("🔌 MCP protocol over WebSocket");
-            
+
             // Start actual WebSocket server
             let addr = format!("{}:{}", host, port);
             return start_websocket_server(addr).await;
-        },
-        
+        }
+
         ServeTransport::HttpSse => {
             eprintln!("🚀 Starting PMAT HTTP-SSE server on http://{host}:{port}");
             eprintln!("✅ HTTP-SSE server ready!");
@@ -3228,11 +3247,11 @@ pub async fn handle_serve(host: String, port: u16, cors: bool, transport: crate:
             if cors {
                 eprintln!("🌐 CORS enabled for all origins");
             }
-            
+
             // Start HTTP-SSE server
             let addr = format!("{}:{}", host, port);
             return start_http_sse_server(addr, cors).await;
-        },
+        }
 
         ServeTransport::Both => {
             eprintln!("🚀 Starting PMAT hybrid server (HTTP + WebSocket) on {host}:{port}");
@@ -3243,11 +3262,11 @@ pub async fn handle_serve(host: String, port: u16, cors: bool, transport: crate:
             if cors {
                 eprintln!("🌐 CORS enabled for all origins");
             }
-            
+
             // Start hybrid server (HTTP + WebSocket)
             let addr = format!("{}:{}", host, port);
             return start_hybrid_server(addr, cors).await;
-        },
+        }
 
         ServeTransport::All => {
             eprintln!("🚀 Starting PMAT full server (HTTP + WebSocket + SSE) on {host}:{port}");
@@ -3259,11 +3278,11 @@ pub async fn handle_serve(host: String, port: u16, cors: bool, transport: crate:
             if cors {
                 eprintln!("🌐 CORS enabled for all origins");
             }
-            
+
             // Start full multi-transport server
             let addr = format!("{}:{}", host, port);
             return start_full_server(addr, cors).await;
-        },
+        }
     }
 
     eprintln!("Press Ctrl+C to exit.\n");
@@ -3285,7 +3304,7 @@ async fn start_websocket_server(addr: String) -> Result<()> {
     // Wait for shutdown signal
     tokio::signal::ctrl_c().await?;
     eprintln!("🛑 Shutting down WebSocket server...");
-    
+
     Ok(())
 }
 
@@ -3330,7 +3349,6 @@ async fn start_full_server(addr: String, _cors: bool) -> Result<()> {
 
     Ok(())
 }
-
 
 /// Performs comprehensive multi-faceted analysis of a project.
 ///

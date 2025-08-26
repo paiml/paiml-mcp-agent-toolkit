@@ -4,19 +4,19 @@
 //! optimization features, ensuring correctness under various load conditions and
 //! usage patterns.
 
-use crate::services::memory_manager::{
-    MemoryConfig, MemoryManager, PoolType, init_global_memory_manager_with_config,
-};
 use crate::services::memory_integration::{
-    MemoryVec, MemoryString, AstBufferPool, InternedStringSet, MemoryAwareCache,
+    AstBufferPool, InternedStringSet, MemoryAwareCache, MemoryString, MemoryVec,
+};
+use crate::services::memory_manager::{
+    init_global_memory_manager_with_config, MemoryConfig, MemoryManager, PoolType,
 };
 use anyhow::Result;
 use proptest::prelude::*;
 use std::collections::HashMap;
-use tracing::info;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+use tracing::info;
 
 proptest! {
     /// Test that memory manager can handle arbitrary allocation patterns
@@ -91,7 +91,7 @@ fn test_allocation_patterns(sizes: Vec<usize>, pool_types: Vec<PoolType>) -> Res
     // Test cleanup
     drop(buffers);
     let _cleaned = manager.cleanup()?;
-    
+
     // Note: Cleanup amount depends on memory pressure
     Ok(())
 }
@@ -116,7 +116,10 @@ fn test_string_interning(mut strings: Vec<String>, duplication_factor: usize) ->
     for interned in &interned_strings {
         let key = interned.to_string();
         if let Some(existing) = string_map.get(&key) {
-            assert!(Arc::ptr_eq(existing, interned), "Identical strings should share memory");
+            assert!(
+                Arc::ptr_eq(existing, interned),
+                "Identical strings should share memory"
+            );
         } else {
             string_map.insert(key, Arc::clone(interned));
         }
@@ -126,7 +129,10 @@ fn test_string_interning(mut strings: Vec<String>, duplication_factor: usize) ->
     let unique_count = string_map.len();
     let total_count = interned_strings.len();
     if duplication_factor > 1 {
-        assert!(unique_count < total_count, "String interning should reduce memory usage");
+        assert!(
+            unique_count < total_count,
+            "String interning should reduce memory usage"
+        );
     }
 
     Ok(())
@@ -139,7 +145,7 @@ fn test_cleanup_under_pressure(allocations: usize, pressure_threshold: f64) -> R
         cache_pressure_threshold: pressure_threshold,
         ..Default::default()
     };
-    
+
     let manager = MemoryManager::with_config(config)?;
     let mut buffers = Vec::new();
 
@@ -153,11 +159,11 @@ fn test_cleanup_under_pressure(allocations: usize, pressure_threshold: f64) -> R
             3 => PoolType::FileContent,
             _ => PoolType::GraphConstruction,
         };
-        
+
         if let Ok(buffer) = manager.allocate_buffer(pool_type, size) {
             buffers.push(buffer);
         }
-        
+
         // Check if we've reached pressure threshold
         let stats = manager.stats();
         if stats.allocation_pressure > pressure_threshold {
@@ -176,7 +182,11 @@ fn test_cleanup_under_pressure(allocations: usize, pressure_threshold: f64) -> R
     // Verify cleanup succeeded when we were over threshold
     if pressure_before > pressure_threshold {
         // cleanup() succeeded if we got here without panic, cleaned amount is always valid
-        info!("Cleaned {} bytes when pressure was {:.1}%", cleaned, pressure_before * 100.0);
+        info!(
+            "Cleaned {} bytes when pressure was {:.1}%",
+            cleaned,
+            pressure_before * 100.0
+        );
         // Note: Pressure might not always decrease due to retained allocations
     }
 
@@ -186,45 +196,47 @@ fn test_cleanup_under_pressure(allocations: usize, pressure_threshold: f64) -> R
 fn test_concurrent_operations(thread_count: usize, operations: usize) -> Result<()> {
     let manager = MemoryManager::new()?;
     let manager = Arc::new(manager);
-    
-    let handles: Vec<_> = (0..thread_count).map(|thread_id| {
-        let manager = Arc::clone(&manager);
-        thread::spawn(move || -> Result<()> {
-            let mut buffers = Vec::new();
-            let mut strings = Vec::new();
-            
-            for i in 0..operations {
-                // Mix of buffer allocations and string interning
-                if i % 2 == 0 {
-                    let size = 1024 + (i * 100) % 4096;
-                    let pool_type = match thread_id % 3 {
-                        0 => PoolType::AstParsing,
-                        1 => PoolType::FileContent,
-                        _ => PoolType::AnalysisCache,
-                    };
-                    
-                    if let Ok(buffer) = manager.allocate_buffer(pool_type, size) {
-                        buffers.push(buffer);
+
+    let handles: Vec<_> = (0..thread_count)
+        .map(|thread_id| {
+            let manager = Arc::clone(&manager);
+            thread::spawn(move || -> Result<()> {
+                let mut buffers = Vec::new();
+                let mut strings = Vec::new();
+
+                for i in 0..operations {
+                    // Mix of buffer allocations and string interning
+                    if i % 2 == 0 {
+                        let size = 1024 + (i * 100) % 4096;
+                        let pool_type = match thread_id % 3 {
+                            0 => PoolType::AstParsing,
+                            1 => PoolType::FileContent,
+                            _ => PoolType::AnalysisCache,
+                        };
+
+                        if let Ok(buffer) = manager.allocate_buffer(pool_type, size) {
+                            buffers.push(buffer);
+                        }
+                    } else {
+                        let test_string = format!("thread_{}_op_{}", thread_id, i);
+                        if let Ok(interned) = manager.intern_string(&test_string) {
+                            strings.push(interned);
+                        }
                     }
-                } else {
-                    let test_string = format!("thread_{}_op_{}", thread_id, i);
-                    if let Ok(interned) = manager.intern_string(&test_string) {
-                        strings.push(interned);
+
+                    // Occasional cleanup to test contention
+                    if i % 50 == 0 {
+                        let _ = manager.cleanup();
                     }
+
+                    // Small delay to increase contention
+                    thread::sleep(Duration::from_micros(1));
                 }
-                
-                // Occasional cleanup to test contention
-                if i % 50 == 0 {
-                    let _ = manager.cleanup();
-                }
-                
-                // Small delay to increase contention
-                thread::sleep(Duration::from_micros(1));
-            }
-            
-            Ok(())
+
+                Ok(())
+            })
         })
-    }).collect();
+        .collect();
 
     // Wait for all threads to complete
     for handle in handles {
@@ -234,21 +246,21 @@ fn test_concurrent_operations(thread_count: usize, operations: usize) -> Result<
     // Verify system is still functional
     let _stats = manager.stats();
     // Basic sanity check - total_allocated is valid if we got here without panic
-    
+
     Ok(())
 }
 
 fn test_pool_efficiency(buffer_sizes: Vec<usize>, reuse_probability: f64) -> Result<()> {
     let manager = MemoryManager::new()?;
     let mut active_buffers = Vec::new();
-    
+
     for (i, &size) in buffer_sizes.iter().enumerate() {
         let pool_type = PoolType::AstParsing;
-        
+
         // Allocate buffer
         let buffer = manager.allocate_buffer(pool_type, size)?;
         active_buffers.push(buffer);
-        
+
         // Probabilistically drop some buffers to test reuse
         if (i % 100) as f64 / 100.0 < reuse_probability {
             // Drop a random buffer to return it to pool
@@ -257,7 +269,7 @@ fn test_pool_efficiency(buffer_sizes: Vec<usize>, reuse_probability: f64) -> Res
                 active_buffers.remove(index);
             }
         }
-        
+
         // Check pool stats periodically
         if i % 20 == 0 {
             let stats = manager.stats();
@@ -269,24 +281,27 @@ fn test_pool_efficiency(buffer_sizes: Vec<usize>, reuse_probability: f64) -> Res
             }
         }
     }
-    
+
     // Drop all remaining buffers
     active_buffers.clear();
-    
+
     // Check final efficiency
     let stats = manager.stats();
     if let Some(pool_stats) = stats.pool_stats.get(&PoolType::AstParsing) {
         if pool_stats.allocation_count > 0 {
             let efficiency = pool_stats.reuse_ratio;
             assert!((0.0..=1.0).contains(&efficiency));
-            
+
             // If reuse probability was high, we should see some reuse
             if reuse_probability > 0.5 && pool_stats.allocation_count > 20 {
-                assert!(efficiency > 0.0, "Should see some buffer reuse with high reuse probability");
+                assert!(
+                    efficiency > 0.0,
+                    "Should see some buffer reuse with high reuse probability"
+                );
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -296,24 +311,23 @@ fn test_memory_vec_operations() -> Result<()> {
     // Initialize global memory manager for integration testing
     let config = MemoryConfig::default();
     init_global_memory_manager_with_config(config)?;
-    
+
     let mut vec = MemoryVec::new(PoolType::AstParsing)?;
-    
+
     // Test basic operations
     vec.push("test1".to_string())?;
     vec.push("test2".to_string())?;
     vec.push("test3".to_string())?;
-    
+
     assert_eq!(vec.len(), 3);
     assert!(vec.memory_usage() > 0);
-    
+
     // Test memory-aware processing
-    let total_length = vec.process_with_memory_awareness(|items| {
-        items.iter().map(|s| s.len()).sum::<usize>()
-    })?;
-    
+    let total_length =
+        vec.process_with_memory_awareness(|items| items.iter().map(|s| s.len()).sum::<usize>())?;
+
     assert_eq!(total_length, "test1".len() + "test2".len() + "test3".len());
-    
+
     Ok(())
 }
 
@@ -322,20 +336,20 @@ fn test_memory_vec_operations() -> Result<()> {
 fn test_memory_string_integration() -> Result<()> {
     let config = MemoryConfig::default();
     init_global_memory_manager_with_config(config)?;
-    
+
     let str1 = MemoryString::new("shared_identifier")?;
     let str2 = MemoryString::new("shared_identifier")?;
     let str3 = MemoryString::new("different_identifier")?;
-    
+
     // Verify memory sharing
     assert!(str1.shares_memory_with(&str2));
     assert!(!str1.shares_memory_with(&str3));
-    
+
     // Verify content
     assert_eq!(str1.as_str(), "shared_identifier");
     assert_eq!(str2.as_str(), "shared_identifier");
     assert_eq!(str3.as_str(), "different_identifier");
-    
+
     Ok(())
 }
 
@@ -344,18 +358,18 @@ fn test_memory_string_integration() -> Result<()> {
 fn test_ast_buffer_pool_integration() -> Result<()> {
     let config = MemoryConfig::default();
     init_global_memory_manager_with_config(config)?;
-    
+
     let pool = AstBufferPool::new(PoolType::AstParsing)?;
-    
+
     // Test different buffer sizes
     let buffer1 = pool.get_buffer(1024)?;
     let buffer2 = pool.get_buffer(2048)?;
     let buffer3 = pool.get_buffer_for_content("fn main() { println!(\"Hello, world!\"); }")?;
-    
+
     assert!(buffer1.capacity() >= 1024);
     assert!(buffer2.capacity() >= 2048);
     assert!(buffer3.capacity() > 0);
-    
+
     Ok(())
 }
 
@@ -364,22 +378,22 @@ fn test_ast_buffer_pool_integration() -> Result<()> {
 fn test_interned_string_set() -> Result<()> {
     let config = MemoryConfig::default();
     init_global_memory_manager_with_config(config)?;
-    
+
     let mut set = InternedStringSet::new()?;
-    
+
     // Test insertion and deduplication
     assert!(set.insert("identifier1")?);
     assert!(!set.insert("identifier1")?); // Should return false for duplicate
     assert!(set.insert("identifier2")?);
-    
+
     // Test iteration
     let identifiers: Vec<_> = set.iter().collect();
     assert_eq!(identifiers.len(), 2);
     assert!(identifiers.contains(&"identifier1"));
     assert!(identifiers.contains(&"identifier2"));
-    
+
     assert!(set.memory_usage() > 0);
-    
+
     Ok(())
 }
 
@@ -388,22 +402,22 @@ fn test_interned_string_set() -> Result<()> {
 fn test_memory_aware_cache() -> Result<()> {
     let config = MemoryConfig::default();
     init_global_memory_manager_with_config(config)?;
-    
+
     let mut cache = MemoryAwareCache::new(PoolType::AnalysisCache, 10)?;
-    
+
     // Test basic cache operations
     cache.insert("key1", "value1")?;
     cache.insert("key2", "value2")?;
-    
+
     assert_eq!(cache.get(&"key1"), Some(&"value1"));
     assert_eq!(cache.get(&"key2"), Some(&"value2"));
     assert_eq!(cache.get(&"nonexistent"), None);
-    
+
     let stats = cache.stats();
     assert_eq!(stats.item_count, 2);
     assert_eq!(stats.max_items, 10);
     assert!(stats.estimated_memory > 0);
-    
+
     Ok(())
 }
 
@@ -415,13 +429,13 @@ fn test_extreme_memory_conditions() -> Result<()> {
         max_total_memory: 1024 * 1024, // 1MB limit
         ..Default::default()
     };
-    
+
     let manager = MemoryManager::with_config(config)?;
-    
+
     // Try to allocate more than limit
     let mut buffers = Vec::new();
     let mut allocation_count = 0;
-    
+
     // Allocate until we hit limits or can't allocate
     for _i in 0..1000 {
         let size = 4096; // 4KB buffers
@@ -435,7 +449,7 @@ fn test_extreme_memory_conditions() -> Result<()> {
                 break;
             }
         }
-        
+
         // Check if memory pressure triggers cleanup
         let stats = manager.stats();
         if stats.allocation_pressure > 0.9 {
@@ -443,13 +457,13 @@ fn test_extreme_memory_conditions() -> Result<()> {
             // Cleanup might or might not free memory depending on active references
         }
     }
-    
+
     // Should have allocated at least some buffers
     assert!(allocation_count > 0);
-    
+
     // Final cleanup
     buffers.clear();
     let _ = manager.cleanup()?;
-    
+
     Ok(())
 }

@@ -162,7 +162,8 @@ fn extract_python_items(stmt: &ast::Stmt, items: &mut Vec<AstItem>) {
                 visibility: "public".to_string(),
                 fields_count: attributes_count,
                 derives: vec![], // Python doesn't have derives like Rust
-                line: 1,                     });
+                line: 1,
+            });
 
             // Also extract methods from the class
             for stmt in &class.body {
@@ -175,7 +176,8 @@ fn extract_python_items(stmt: &ast::Stmt, items: &mut Vec<AstItem>) {
                     module: alias.name.to_string(),
                     items: Vec::new(), // Direct import of entire module
                     alias: alias.asname.as_ref().map(|a| a.to_string()),
-                    line: 1,                 });
+                    line: 1,
+                });
             }
         }
         ast::Stmt::ImportFrom(import_from) => {
@@ -541,7 +543,8 @@ fn create_function_item(name: &str, is_async: bool) -> AstItem {
             "public".to_string()
         },
         is_async,
-        line: 1,     }
+        line: 1,
+    }
 }
 
 fn count_class_attributes(body: &[ast::Stmt]) -> usize {
@@ -553,23 +556,25 @@ fn count_class_attributes(body: &[ast::Stmt]) -> usize {
 fn extract_import_from_items(import_from: &ast::StmtImportFrom, items: &mut Vec<AstItem>) {
     if let Some(module) = &import_from.module {
         let module_name = module.to_string();
-        let imported_items: Vec<String> = import_from.names
+        let imported_items: Vec<String> = import_from
+            .names
             .iter()
             .map(|alias| alias.name.to_string())
             .collect();
-        
+
         // Check if there's a single alias for the entire import
         let alias = if import_from.names.len() == 1 {
             import_from.names[0].asname.as_ref().map(|a| a.to_string())
         } else {
             None
         };
-        
+
         items.push(AstItem::Import {
             module: module_name,
             items: imported_items,
             alias,
-            line: 1,         });
+            line: 1,
+        });
     }
 }
 

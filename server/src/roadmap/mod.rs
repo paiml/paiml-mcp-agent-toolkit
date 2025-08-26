@@ -8,16 +8,16 @@
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use regex::Regex;
 
-pub mod parser;
+pub mod commands;
 pub mod generator;
+pub mod parser;
 pub mod quality;
 pub mod tracker;
-pub mod commands;
 
 /// Task status in the roadmap
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -44,7 +44,7 @@ impl TaskStatus {
             Self::Deferred => "⏸️",
         }
     }
-    
+
     pub fn from_emoji(emoji: &str) -> Option<Self> {
         match emoji {
             "📋" => Some(Self::Planned),
@@ -67,7 +67,7 @@ pub enum Complexity {
 
 impl std::str::FromStr for Complexity {
     type Err = ();
-    
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "low" => Ok(Self::Low),
@@ -98,7 +98,7 @@ pub enum Priority {
 
 impl std::str::FromStr for Priority {
     type Err = ();
-    
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_uppercase().as_str() {
             "P0" => Ok(Self::P0),
@@ -109,13 +109,12 @@ impl std::str::FromStr for Priority {
     }
 }
 
-impl Priority {
-}
+impl Priority {}
 
 /// A single task in the roadmap
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Task {
-    pub id: String,           // PMAT-XXXX
+    pub id: String, // PMAT-XXXX
     pub description: String,
     pub status: TaskStatus,
     pub complexity: Complexity,
@@ -167,7 +166,7 @@ impl Roadmap {
             .with_context(|| format!("Failed to read roadmap from {}", path.display()))?;
         parser::parse_roadmap(&content)
     }
-    
+
     /// Save roadmap to a markdown file
     pub fn to_file(&self, path: &Path) -> Result<()> {
         let content = parser::roadmap_to_markdown(self)?;
@@ -175,12 +174,12 @@ impl Roadmap {
             .with_context(|| format!("Failed to write roadmap to {}", path.display()))?;
         Ok(())
     }
-    
+
     /// Get a specific sprint
     pub fn get_sprint(&self, sprint_id: &str) -> Option<&Sprint> {
         self.sprints.get(sprint_id)
     }
-    
+
     /// Get a specific task across all sprints
     pub fn get_task(&self, task_id: &str) -> Option<&Task> {
         for sprint in self.sprints.values() {
@@ -190,14 +189,14 @@ impl Roadmap {
         }
         self.backlog.iter().find(|t| t.id == task_id)
     }
-    
+
     /// Update task status
     pub fn update_task_status(&mut self, task_id: &str, status: TaskStatus) -> Result<()> {
         // Update in sprints
         for sprint in self.sprints.values_mut() {
             if let Some(task) = sprint.tasks.iter_mut().find(|t| t.id == task_id) {
                 task.status = status;
-                
+
                 // Update timestamps
                 match status {
                     TaskStatus::InProgress if task.started_at.is_none() => {
@@ -208,17 +207,17 @@ impl Roadmap {
                     }
                     _ => {}
                 }
-                
+
                 return Ok(());
             }
         }
-        
+
         // Update in backlog
         if let Some(task) = self.backlog.iter_mut().find(|t| t.id == task_id) {
             task.status = status;
             return Ok(());
         }
-        
+
         anyhow::bail!("Task {} not found in roadmap", task_id)
     }
 }

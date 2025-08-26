@@ -1,15 +1,12 @@
 //! Cache Management Commands
 //!
 //! This module provides CLI commands for managing and optimizing cache strategies.
-//! 
+//!
 //! ## Available Commands
-//! 
+//!
 //! - `pmat cache stats` - Display current cache statistics
 
-use crate::services::cache::{
-    CacheOrchestrator,
-    OrchestratorConfig,
-};
+use crate::services::cache::{CacheOrchestrator, OrchestratorConfig};
 use anyhow::Result;
 use clap::Subcommand;
 use serde::{Deserialize, Serialize};
@@ -45,15 +42,15 @@ pub async fn handle_cache_command(command: &CacheCommand) -> Result<()> {
 async fn handle_cache_stats(detailed: bool, format: &str, history: bool) -> Result<()> {
     let config = OrchestratorConfig::default();
     let orchestrator = CacheOrchestrator::new(config);
-    
+
     let _stats = orchestrator.get_performance_metrics();
-    
+
     match format {
         "json" => {
             let output = serde_json::to_string_pretty(&CacheStatsOutput {
                 orchestrator_stats: OrchestratorStatsOutput {
                     strategy_switches: 0,
-                    evaluations_performed: 0, 
+                    evaluations_performed: 0,
                     recommendations_generated: 0,
                     performance_improvements: 0,
                     overall_effectiveness: 0.85,
@@ -95,7 +92,7 @@ async fn handle_cache_stats(detailed: bool, format: &str, history: bool) -> Resu
         }
         _ => return Err(anyhow::anyhow!("Unknown format: {}", format)),
     }
-    
+
     Ok(())
 }
 

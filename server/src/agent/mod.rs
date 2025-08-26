@@ -19,19 +19,18 @@
 //! - **PMAT-7002**: Quality Monitoring Engine
 //! - **PMAT-7003**: Claude Code Integration Testing
 
+pub mod daemon;
 pub mod mcp_server;
 pub mod quality_monitor;
-pub mod daemon;
 pub mod state_persistence;
 
+pub use daemon::*;
 pub use mcp_server::*;
 pub use quality_monitor::{
-    QualityMonitorEngine, QualityMonitorConfig, QualityEvent, 
-    FileQualityMetrics, QualityMetrics as MonitorQualityMetrics
+    FileQualityMetrics, QualityEvent, QualityMetrics as MonitorQualityMetrics,
+    QualityMonitorConfig, QualityMonitorEngine,
 };
-pub use daemon::*;
 pub use state_persistence::{
-    StatePersistence, AgentState, ProjectState, QualitySnapshot,
-    QualityMetrics as PersistentQualityMetrics, QualityThresholds,
-    AgentStatistics
+    AgentState, AgentStatistics, ProjectState, QualityMetrics as PersistentQualityMetrics,
+    QualitySnapshot, QualityThresholds, StatePersistence,
 };
