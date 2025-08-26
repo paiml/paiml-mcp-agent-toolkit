@@ -1,6 +1,6 @@
 use crate::mcp_pmcp::analyze_handlers::{
     AnalyzeBigOTool, AnalyzeComplexityTool, AnalyzeDagTool, AnalyzeDeadCodeTool,
-    AnalyzeDeepContextTool, AnalyzeSatdTool,
+    AnalyzeDeepContextTool, AnalyzeSatdTool, AnalyzeTdgTool, AnalyzeTdgCompareTool,
 };
 use crate::mcp_pmcp::context_handlers::{GenerateContextTool, GitTool, ScaffoldProjectTool};
 use crate::mcp_pmcp::handlers::{
@@ -132,6 +132,8 @@ impl PmcpServer {
             .tool("analyze_dag", AnalyzeDagTool)
             .tool("analyze_deep_context", AnalyzeDeepContextTool)
             .tool("analyze_big_o", AnalyzeBigOTool)
+            .tool("analyze_tdg", AnalyzeTdgTool)
+            .tool("analyze_tdg_compare", AnalyzeTdgCompareTool)
             // Refactoring tools
             .tool(
                 "refactor.start",
@@ -161,7 +163,7 @@ impl PmcpServer {
 
         info!(
             "PMAT MCP server ready with {} tools, listening on stdio",
-            16
+            18
         );
 
         // Run server with stdio transport

@@ -314,7 +314,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             critical_only,
             verbose,
         } => {
-            super::advanced_analysis_handlers::handle_analyze_tdg(
+            super::new_tdg_handler::handle_analyze_tdg(
                 path,
                 Some(threshold),
                 Some(top_files),
