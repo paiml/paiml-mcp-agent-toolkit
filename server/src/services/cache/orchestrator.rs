@@ -25,9 +25,7 @@
 //! - **Resource Management**: Intelligent memory and storage allocation
 //! - **Fault Tolerance**: Graceful degradation and recovery
 
-use crate::services::cache::{
-    advanced_strategies::{CacheTier, EvictionPolicy},
-};
+use crate::services::cache::advanced_strategies::{CacheTier, EvictionPolicy};
 use anyhow::Result;
 use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
@@ -140,7 +138,7 @@ impl StrategyEvaluation {
     pub fn score(&self) -> f64 {
         self.performance.hit_rate * self.performance.throughput
     }
-    
+
     pub fn is_valid(&self) -> bool {
         self.timestamp.elapsed().as_secs() < 3600
     }
@@ -159,7 +157,7 @@ struct PerformanceCounters {
 pub trait CacheStrategy {
     /// Get strategy identifier
     fn strategy_id(&self) -> &str;
-    
+
     /// Get cache statistics
     fn get_stats(&self) -> PerformanceMetrics;
 }
@@ -203,7 +201,7 @@ impl Default for OrchestratorConfig {
         Self {
             auto_strategy_switching: true,
             evaluation_interval: Duration::from_secs(300), // 5 minutes
-            min_improvement_threshold: 0.05, // 5% improvement
+            min_improvement_threshold: 0.05,               // 5% improvement
             evaluation_window: 10,
             enable_prediction: true,
         }
@@ -231,7 +229,9 @@ impl CacheOrchestrator {
     /// Register a cache strategy
     pub fn register_strategy(&self, strategy: Box<dyn CacheStrategy + Send + Sync>) -> Result<()> {
         let strategy_id = strategy.strategy_id().to_string();
-        self.strategies.write().insert(strategy_id.clone(), strategy);
+        self.strategies
+            .write()
+            .insert(strategy_id.clone(), strategy);
         info!("Registered cache strategy: {}", strategy_id);
         Ok(())
     }
@@ -240,10 +240,15 @@ impl CacheOrchestrator {
     pub async fn recommend_strategy(&self) -> Result<StrategyRecommendation> {
         let workload = self.workload_profile.read().clone();
         let recommendation = self.analyze_workload_and_recommend(&workload).await?;
-        
-        self.counters.recommendations_generated.fetch_add(1, Ordering::Relaxed);
-        
-        info!("Generated strategy recommendation: {:?}", recommendation.eviction_policy);
+
+        self.counters
+            .recommendations_generated
+            .fetch_add(1, Ordering::Relaxed);
+
+        info!(
+            "Generated strategy recommendation: {:?}",
+            recommendation.eviction_policy
+        );
         Ok(recommendation)
     }
 
@@ -253,12 +258,12 @@ impl CacheOrchestrator {
             let mut current_profile = self.workload_profile.write();
             *current_profile = new_profile;
         } // Drop lock before await
-        
+
         // If auto-switching is enabled, evaluate if we need a new strategy
         if self.config.auto_strategy_switching {
             self.evaluate_and_switch_if_needed().await?;
         }
-        
+
         Ok(())
     }
 
@@ -270,10 +275,10 @@ impl CacheOrchestrator {
     /// Run continuous optimization
     pub async fn run_optimization_loop(&self) -> Result<()> {
         let mut interval = tokio::time::interval(self.config.evaluation_interval);
-        
+
         loop {
             interval.tick().await;
-            
+
             if let Err(e) = self.perform_optimization_cycle().await {
                 warn!("Optimization cycle failed: {}", e);
             }
@@ -284,17 +289,22 @@ impl CacheOrchestrator {
     pub async fn evaluate_and_switch_if_needed(&self) -> Result<()> {
         let recommendation = self.recommend_strategy().await?;
         let _current_metrics = self.get_performance_metrics();
-        
+
         // Check if switching would provide significant improvement
-        if recommendation.expected_improvement > self.config.min_improvement_threshold &&
-           recommendation.confidence > 0.7 {
-            info!("Switching cache strategy due to expected {:.2}% improvement", 
-                  recommendation.expected_improvement * 100.0);
-            
+        if recommendation.expected_improvement > self.config.min_improvement_threshold
+            && recommendation.confidence > 0.7
+        {
+            info!(
+                "Switching cache strategy due to expected {:.2}% improvement",
+                recommendation.expected_improvement * 100.0
+            );
+
             self.switch_to_recommended_strategy(recommendation).await?;
-            self.counters.strategy_switches.fetch_add(1, Ordering::Relaxed);
+            self.counters
+                .strategy_switches
+                .fetch_add(1, Ordering::Relaxed);
         }
-        
+
         Ok(())
     }
 
@@ -303,8 +313,14 @@ impl CacheOrchestrator {
         OrchestratorStats {
             strategy_switches: self.counters.strategy_switches.load(Ordering::Relaxed),
             evaluations_performed: self.counters.evaluations_performed.load(Ordering::Relaxed),
-            recommendations_generated: self.counters.recommendations_generated.load(Ordering::Relaxed),
-            performance_improvements: self.counters.performance_improvements.load(Ordering::Relaxed),
+            recommendations_generated: self
+                .counters
+                .recommendations_generated
+                .load(Ordering::Relaxed),
+            performance_improvements: self
+                .counters
+                .performance_improvements
+                .load(Ordering::Relaxed),
             current_metrics: self.get_performance_metrics(),
             workload_profile: self.workload_profile.read().clone(),
         }
@@ -312,10 +328,15 @@ impl CacheOrchestrator {
 
     // Private methods
 
-    async fn analyze_workload_and_recommend(&self, workload: &WorkloadProfile) -> Result<StrategyRecommendation> {
+    async fn analyze_workload_and_recommend(
+        &self,
+        workload: &WorkloadProfile,
+    ) -> Result<StrategyRecommendation> {
         let eviction_policy = self.select_eviction_policy(workload);
         let tier_config = self.configure_tiers(workload);
-        let expected_improvement = self.estimate_improvement(workload, &eviction_policy).await?;
+        let expected_improvement = self
+            .estimate_improvement(workload, &eviction_policy)
+            .await?;
         let confidence = self.calculate_confidence(workload);
 
         Ok(StrategyRecommendation {
@@ -334,7 +355,8 @@ impl CacheOrchestrator {
             EvictionPolicy::LFU
         } else if workload.latency_sensitivity > 0.9 {
             EvictionPolicy::TTL
-        } else if workload.working_set_size > 1_000_000_000 { // > 1GB
+        } else if workload.working_set_size > 1_000_000_000 {
+            // > 1GB
             EvictionPolicy::Random // Avoid overhead for very large datasets
         } else {
             EvictionPolicy::Adaptive // Default to adaptive for balanced workloads
@@ -375,15 +397,19 @@ impl CacheOrchestrator {
         }
     }
 
-    async fn estimate_improvement(&self, _workload: &WorkloadProfile, _policy: &EvictionPolicy) -> Result<f64> {
+    async fn estimate_improvement(
+        &self,
+        _workload: &WorkloadProfile,
+        _policy: &EvictionPolicy,
+    ) -> Result<f64> {
         // Simplified improvement estimation
         // In practice, this would use ML models or historical data
         let current_metrics = self.get_performance_metrics();
-        
+
         // Estimate based on current hit rate vs target
         let current_hit_rate = current_metrics.hit_rate;
         let target_hit_rate = 0.9;
-        
+
         if current_hit_rate < target_hit_rate {
             Ok((target_hit_rate - current_hit_rate) * 0.5) // Conservative estimate
         } else {
@@ -395,21 +421,27 @@ impl CacheOrchestrator {
         // Calculate confidence based on workload characteristics and historical data
         let evaluation_count = self.evaluation_history.read().len() as f64;
         let base_confidence = 0.5;
-        
+
         // Higher confidence with more evaluation history
         let history_bonus = (evaluation_count / 100.0).min(0.3);
-        
+
         // Higher confidence for well-defined workload characteristics
         let locality_bonus = (workload.temporal_locality + workload.spatial_locality) / 4.0;
-        
+
         (base_confidence + history_bonus + locality_bonus).min(1.0)
     }
 
-    async fn switch_to_recommended_strategy(&self, recommendation: StrategyRecommendation) -> Result<()> {
+    async fn switch_to_recommended_strategy(
+        &self,
+        recommendation: StrategyRecommendation,
+    ) -> Result<()> {
         // Implementation would switch to the recommended strategy
         // For now, just log the switch
-        info!("Switching to strategy: {:?} with expected {:.2}% improvement",
-              recommendation.eviction_policy, recommendation.expected_improvement * 100.0);
+        info!(
+            "Switching to strategy: {:?} with expected {:.2}% improvement",
+            recommendation.eviction_policy,
+            recommendation.expected_improvement * 100.0
+        );
         Ok(())
     }
 
@@ -417,20 +449,22 @@ impl CacheOrchestrator {
         // Collect current metrics
         let current_metrics = self.collect_current_metrics().await?;
         *self.metrics.write() = current_metrics.clone();
-        
+
         // Update workload profile based on metrics
         self.update_workload_from_metrics(&current_metrics).await?;
-        
+
         // Evaluate if strategy change is needed
         if self.config.auto_strategy_switching {
             self.evaluate_and_switch_if_needed().await?;
         }
-        
+
         // Record evaluation
         self.record_evaluation(&current_metrics).await?;
-        
-        self.counters.evaluations_performed.fetch_add(1, Ordering::Relaxed);
-        
+
+        self.counters
+            .evaluations_performed
+            .fetch_add(1, Ordering::Relaxed);
+
         debug!("Completed optimization cycle");
         Ok(())
     }
@@ -438,7 +472,7 @@ impl CacheOrchestrator {
     async fn collect_current_metrics(&self) -> Result<PerformanceMetrics> {
         // Collect metrics from active strategies
         let strategies = self.strategies.read();
-        
+
         if strategies.is_empty() {
             return Ok(PerformanceMetrics::default());
         }
@@ -472,15 +506,15 @@ impl CacheOrchestrator {
 
     async fn update_workload_from_metrics(&self, metrics: &PerformanceMetrics) -> Result<()> {
         let mut workload = self.workload_profile.write();
-        
+
         // Update workload based on observed metrics
         workload.request_rate = metrics.throughput;
-        
+
         // Adjust target hit rate based on current performance
         if metrics.hit_rate < workload.target_hit_rate {
             workload.latency_sensitivity = (workload.latency_sensitivity * 1.1).min(1.0);
         }
-        
+
         Ok(())
     }
 
@@ -489,15 +523,15 @@ impl CacheOrchestrator {
             performance: metrics.clone(),
             timestamp: Instant::now(),
         };
-        
+
         let mut history = self.evaluation_history.write();
         history.push(evaluation);
-        
+
         // Keep only recent evaluations
         if history.len() > self.config.evaluation_window {
             history.remove(0);
         }
-        
+
         Ok(())
     }
 }
@@ -543,7 +577,7 @@ mod tests {
     async fn test_orchestrator_creation() {
         let config = OrchestratorConfig::default();
         let orchestrator = CacheOrchestrator::new(config);
-        
+
         let stats = orchestrator.get_orchestrator_stats();
         assert_eq!(stats.strategy_switches, 0);
     }
@@ -552,14 +586,14 @@ mod tests {
     async fn test_strategy_registration() -> Result<()> {
         let config = OrchestratorConfig::default();
         let orchestrator = CacheOrchestrator::new(config);
-        
+
         let mock_strategy = Box::new(MockCacheStrategy {
             id: "test_strategy".to_string(),
             hit_rate: 0.8,
         });
-        
+
         orchestrator.register_strategy(mock_strategy)?;
-        
+
         Ok(())
     }
 
@@ -567,17 +601,17 @@ mod tests {
     async fn test_workload_analysis() -> Result<()> {
         let config = OrchestratorConfig::default();
         let orchestrator = CacheOrchestrator::new(config);
-        
+
         let workload = WorkloadProfile {
             temporal_locality: 0.9, // High temporal locality should suggest LRU
             ..Default::default()
         };
-        
+
         orchestrator.update_workload_profile(workload).await?;
         let recommendation = orchestrator.recommend_strategy().await?;
-        
+
         assert_eq!(recommendation.eviction_policy, EvictionPolicy::LRU);
-        
+
         Ok(())
     }
 
@@ -585,19 +619,19 @@ mod tests {
     fn test_tier_configuration() {
         let config = OrchestratorConfig::default();
         let orchestrator = CacheOrchestrator::new(config);
-        
+
         let workload = WorkloadProfile {
             latency_sensitivity: 0.95, // High latency sensitivity
             working_set_size: 1_000_000,
             ..Default::default()
         };
-        
+
         let tier_config = orchestrator.configure_tiers(&workload);
-        
+
         // Should allocate more to L1 for latency-sensitive workloads
         let l1_allocation = tier_config.tier_allocations.get(&CacheTier::L1).unwrap();
         let l2_allocation = tier_config.tier_allocations.get(&CacheTier::L2).unwrap();
-        
+
         assert!(l1_allocation > l2_allocation);
     }
 
@@ -609,22 +643,22 @@ mod tests {
             latency_sensitivity: 0.9,
             ..Default::default()
         };
-        
+
         let performance = PerformanceMetrics {
             hit_rate: 0.85,
             throughput: 1000.0,
             ..Default::default()
         };
-        
+
         let evaluation = StrategyEvaluation {
             performance,
             timestamp: std::time::Instant::now(),
         };
-        
+
         // Test score calculation
         let score = evaluation.score();
         assert!(score > 0.0, "Score should be positive for good performance");
-        
+
         // Test validity check
         assert!(evaluation.is_valid(), "Fresh evaluation should be valid");
     }

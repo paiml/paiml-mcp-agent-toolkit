@@ -11,10 +11,10 @@ pub struct McpAdapter;
 impl ProtocolAdapter for McpAdapter {
     type Request = JsonRpcRequest;
     type Response = JsonRpcResponse;
-    
+
     fn decode(&self, raw: &[u8]) -> Result<UnifiedRequest, ProtocolError> {
         let json_rpc: JsonRpcRequest = serde_json::from_slice(raw)?;
-        
+
         // Map JSON-RPC method to Operation
         let method = json_rpc.method.clone();
         let params = json_rpc.params.clone();
@@ -69,14 +69,14 @@ impl ProtocolAdapter for McpAdapter {
             }
             _ => return Err(ProtocolError::UnknownMethod(method)),
         };
-        
+
         Ok(UnifiedRequest {
             operation,
             params,
             context: RequestContext::from_json_rpc(&json_rpc),
         })
     }
-    
+
     fn encode(&self, response: UnifiedResponse) -> Result<Vec<u8>, ProtocolError> {
         let json_rpc = JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
@@ -84,10 +84,10 @@ impl ProtocolAdapter for McpAdapter {
             error: response.error.map(Into::into),
             id: response.metadata.request_id.into(),
         };
-        
+
         Ok(serde_json::to_vec(&json_rpc)?)
     }
-    
+
     async fn handle(&self, request: Self::Request) -> Self::Response {
         // This would be implemented to process the request
         // For now, return a placeholder response
@@ -107,36 +107,37 @@ pub struct HttpAdapter;
 impl ProtocolAdapter for HttpAdapter {
     type Request = HttpRequest;
     type Response = HttpResponse;
-    
+
     fn decode(&self, raw: &[u8]) -> Result<UnifiedRequest, ProtocolError> {
         // Parse HTTP request and extract operation from path/method
         let request = parse_http_request(raw)?;
         let operation = route_to_operation(&request.path, &request.method)?;
         let params = request.body.clone();
-        
+
         Ok(UnifiedRequest {
             operation,
             params,
             context: RequestContext::from_http(&request),
         })
     }
-    
+
     fn encode(&self, response: UnifiedResponse) -> Result<Vec<u8>, ProtocolError> {
-        let status = if response.error.is_some() { 
+        let status = if response.error.is_some() {
             400 // Bad Request
-        } else { 
+        } else {
             200 // OK
         };
-        
+
         let body = serde_json::to_vec(&response)?;
-        
+
         Ok(format!(
             "HTTP/1.1 {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n",
             status,
             body.len()
-        ).into_bytes())
+        )
+        .into_bytes())
     }
-    
+
     async fn handle(&self, _request: Self::Request) -> Self::Response {
         // This would be implemented to process the request
         // For now, return a placeholder response
@@ -155,62 +156,52 @@ pub struct CliAdapter;
 impl ProtocolAdapter for CliAdapter {
     type Request = CliRequest;
     type Response = CliResponse;
-    
+
     fn decode(&self, raw: &[u8]) -> Result<UnifiedRequest, ProtocolError> {
         let cli_request: CliRequest = serde_json::from_slice(raw)?;
-        
+
         let command = cli_request.command.clone();
         let args = cli_request.args.clone();
-        
+
         // Map CLI command to Operation
         let operation = match command.as_str() {
             "analyze" => match cli_request.subcommand.as_deref() {
                 Some("complexity") => {
                     Operation::AnalyzeComplexity(serde_json::from_value(args.clone())?)
                 }
-                Some("satd") => {
-                    Operation::AnalyzeSatd(serde_json::from_value(args.clone())?)
-                }
+                Some("satd") => Operation::AnalyzeSatd(serde_json::from_value(args.clone())?),
                 Some("dead-code") => {
                     Operation::AnalyzeDeadCode(serde_json::from_value(args.clone())?)
                 }
                 _ => return Err(ProtocolError::UnknownMethod(command)),
             },
-            "quality-gate" => {
-                Operation::QualityGate(serde_json::from_value(args.clone())?)
-            }
+            "quality-gate" => Operation::QualityGate(serde_json::from_value(args.clone())?),
             "refactor" => match cli_request.subcommand.as_deref() {
-                Some("start") => {
-                    Operation::RefactorStart(serde_json::from_value(args.clone())?)
-                }
-                Some("next") => {
-                    Operation::RefactorNext(serde_json::from_value(args.clone())?)
-                }
-                Some("stop") => {
-                    Operation::RefactorStop(serde_json::from_value(args.clone())?)
-                }
+                Some("start") => Operation::RefactorStart(serde_json::from_value(args.clone())?),
+                Some("next") => Operation::RefactorNext(serde_json::from_value(args.clone())?),
+                Some("stop") => Operation::RefactorStop(serde_json::from_value(args.clone())?),
                 _ => return Err(ProtocolError::UnknownMethod(command)),
             },
             _ => return Err(ProtocolError::UnknownMethod(command)),
         };
-        
+
         Ok(UnifiedRequest {
             operation,
             params: args,
             context: RequestContext::new("cli"),
         })
     }
-    
+
     fn encode(&self, response: UnifiedResponse) -> Result<Vec<u8>, ProtocolError> {
         let cli_response = CliResponse {
             success: response.error.is_none(),
             result: response.result,
             error: response.error.map(|e| e.message),
         };
-        
+
         Ok(serde_json::to_vec(&cli_response)?)
     }
-    
+
     async fn handle(&self, _request: Self::Request) -> Self::Response {
         // This would be implemented to process the request
         // For now, return a placeholder response
@@ -249,19 +240,21 @@ fn parse_http_request(raw: &[u8]) -> Result<HttpRequest, ProtocolError> {
     // Simple HTTP parsing - in production would use a proper HTTP parser
     let request_str = String::from_utf8_lossy(raw);
     let lines: Vec<&str> = request_str.lines().collect();
-    
+
     if lines.is_empty() {
         return Err(ProtocolError::InvalidParams("Empty request".to_string()));
     }
-    
+
     let request_line: Vec<&str> = lines[0].split_whitespace().collect();
     if request_line.len() < 2 {
-        return Err(ProtocolError::InvalidParams("Invalid request line".to_string()));
+        return Err(ProtocolError::InvalidParams(
+            "Invalid request line".to_string(),
+        ));
     }
-    
+
     let method = request_line[0].to_string();
     let path = request_line[1].to_string();
-    
+
     // Parse headers
     let mut headers = HashMap::new();
     let mut body_start = 0;
@@ -274,7 +267,7 @@ fn parse_http_request(raw: &[u8]) -> Result<HttpRequest, ProtocolError> {
             headers.insert(key.to_string(), value.to_string());
         }
     }
-    
+
     // Parse body if present
     let body = if body_start < lines.len() {
         let body_str = lines[body_start..].join("\n");
@@ -282,7 +275,7 @@ fn parse_http_request(raw: &[u8]) -> Result<HttpRequest, ProtocolError> {
     } else {
         Value::Null
     };
-    
+
     Ok(HttpRequest {
         method,
         path,
@@ -300,24 +293,18 @@ fn route_to_operation(path: &str, method: &str) -> Result<Operation, ProtocolErr
                 max_cognitive: None,
             }))
         }
-        ("GET" | "POST", "/analyze/satd") => {
-            Ok(Operation::AnalyzeSatd(SatdParams {
-                file_path: None,
-                strict: false,
-            }))
-        }
-        ("GET" | "POST", "/analyze/dead-code") => {
-            Ok(Operation::AnalyzeDeadCode(DeadCodeParams {
-                file_path: None,
-                include_tests: false,
-            }))
-        }
-        ("POST", "/quality/gate") => {
-            Ok(Operation::QualityGate(QualityGateParams {
-                file_path: None,
-                fail_on_violation: false,
-            }))
-        }
+        ("GET" | "POST", "/analyze/satd") => Ok(Operation::AnalyzeSatd(SatdParams {
+            file_path: None,
+            strict: false,
+        })),
+        ("GET" | "POST", "/analyze/dead-code") => Ok(Operation::AnalyzeDeadCode(DeadCodeParams {
+            file_path: None,
+            include_tests: false,
+        })),
+        ("POST", "/quality/gate") => Ok(Operation::QualityGate(QualityGateParams {
+            file_path: None,
+            fail_on_violation: false,
+        })),
         _ => Err(ProtocolError::UnknownMethod(format!("{} {}", method, path))),
     }
 }

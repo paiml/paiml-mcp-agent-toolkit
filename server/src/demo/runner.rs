@@ -385,7 +385,7 @@ impl DemoRunner {
         let system_diagram = self.generate_system_diagram(&steps)?;
 
         let total_elapsed = start.elapsed().as_millis() as u64;
-        
+
         Ok(DemoReport {
             repository: if let Some(ref url) = actual_url {
                 url.clone()
@@ -922,7 +922,7 @@ pub async fn resolve_repository_async(
     repo: Option<String>,
 ) -> Result<PathBuf> {
     let resolved_path = resolve_repository(path, url, repo)?;
-    
+
     // Check if the resolved path is actually a URL that needs cloning
     let path_str = resolved_path.to_string_lossy();
     if path_str.starts_with("https://") || path_str.starts_with("git@") {
@@ -930,7 +930,7 @@ pub async fn resolve_repository_async(
         let _temp_dir = std::env::temp_dir()
             .join("pmat-demo-repos")
             .join(format!("repo-{}", uuid::Uuid::new_v4()));
-        
+
         // Create a temporary runner to use its clone_and_prepare method
         let server = crate::stateless_server::StatelessTemplateServer::new()?;
         let runner = DemoRunner::new(Arc::new(server));

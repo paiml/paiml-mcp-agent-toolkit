@@ -34,7 +34,7 @@ fn test_binary_json_rpc_initialize() {
 
     let mut child = Command::new("cargo")
         .args(["run", "--bin", "pmat"])
-        .env("RUST_LOG", "error")  // Suppress info/debug logs
+        .env("RUST_LOG", "error") // Suppress info/debug logs
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -74,7 +74,7 @@ fn test_binary_invalid_json() {
 
     let mut child = Command::new("cargo")
         .args(["run", "--bin", "pmat"])
-        .env("RUST_LOG", "error")  // Suppress info/debug logs
+        .env("RUST_LOG", "error") // Suppress info/debug logs
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -111,7 +111,7 @@ fn test_binary_multiple_requests() {
 
     let mut child = Command::new("cargo")
         .args(["run", "--bin", "pmat"])
-        .env("RUST_LOG", "error")  // Suppress info/debug logs
+        .env("RUST_LOG", "error") // Suppress info/debug logs
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

@@ -1,5 +1,5 @@
 // High-performance MCP tool discovery system
-// 
+//
 // Implements the optimizations from docs/todo/mcp-discovery-fixes.md:
 // - Zero-copy initialization with compile-time tool registry
 // - Trigram-based fuzzy matching for >90% discovery success
@@ -23,21 +23,21 @@ impl DiscoveryService {
             trigram_index: TrigramIndex,
         }
     }
-    
+
     /// Resolve tool name from natural language query
-    /// 
+    ///
     /// Uses three-phase discovery:
     /// 1. Exact match (O(1))
     /// 2. Alias match (O(n) where n = alias count)  
     /// 3. Trigram fuzzy match (O(m) where m = tool count)
     pub fn resolve_tool(&self, query: &str) -> Option<&'static str> {
         let normalized = query.to_lowercase();
-        
+
         // Phase 1: Exact match
         if let Some(tool) = TOOL_REGISTRY.get(normalized.as_str()) {
             return Some(tool.name);
         }
-        
+
         // Phase 2: Alias match
         for (tool_name, aliases) in ALIAS_TABLE.iter() {
             for alias in aliases {
@@ -46,43 +46,48 @@ impl DiscoveryService {
                 }
             }
         }
-        
+
         // Phase 3: Trigram fuzzy match
-        let candidates: Vec<(&'static str, &str)> = TOOL_REGISTRY.iter()
+        let candidates: Vec<(&'static str, &str)> = TOOL_REGISTRY
+            .iter()
             .map(|(name, meta)| (*name, meta.description))
             .collect();
-            
-        if let Some((best_match, _score)) = self.trigram_index.find_best_match(&normalized, &candidates) {
+
+        if let Some((best_match, _score)) =
+            self.trigram_index.find_best_match(&normalized, &candidates)
+        {
             Some(best_match)
         } else {
             None
         }
     }
-    
+
     /// Get all available tools with metadata
     pub fn list_tools(&self) -> Vec<ToolInfo> {
-        TOOL_REGISTRY.iter()
+        TOOL_REGISTRY
+            .iter()
             .map(|(name, meta)| ToolInfo {
                 name: name.to_string(),
                 description: meta.description.to_string(),
                 keywords: meta.keywords.iter().map(|s| s.to_string()).collect(),
-                aliases: ALIAS_TABLE.get(name)
+                aliases: ALIAS_TABLE
+                    .get(name)
                     .map(|aliases| aliases.iter().map(|s| s.to_string()).collect())
                     .unwrap_or_default(),
             })
             .collect()
     }
-    
+
     /// Disambiguate between multiple tool matches using static priority rules
     pub fn disambiguate<'a>(&self, candidates: Vec<&'a str>, context: Option<&Context>) -> &'a str {
         if candidates.is_empty() {
             return "";
         }
-        
+
         if candidates.len() == 1 {
             return candidates[0];
         }
-        
+
         // Rule 1: File extension affinity
         if let Some(ctx) = context {
             if let Some(ext) = &ctx.file_extension {
@@ -101,9 +106,10 @@ impl DiscoveryService {
                 }
             }
         }
-        
+
         // Rule 2: Category priority (Generate > Analyze > List > Validate)
-        let mut prioritized: Vec<_> = candidates.into_iter()
+        let mut prioritized: Vec<_> = candidates
+            .into_iter()
             .map(|name| {
                 let priority = match name {
                     n if n.starts_with("generate") || n.starts_with("scaffold") => 0,
@@ -114,7 +120,7 @@ impl DiscoveryService {
                 (name, priority)
             })
             .collect();
-        
+
         prioritized.sort_by_key(|(_, priority)| *priority);
         prioritized[0].0
     }
@@ -171,14 +177,20 @@ mod tests {
     #[test]
     fn test_exact_match() {
         let service = DiscoveryService::new();
-        assert_eq!(service.resolve_tool("analyze_complexity"), Some("analyze_complexity"));
+        assert_eq!(
+            service.resolve_tool("analyze_complexity"),
+            Some("analyze_complexity")
+        );
         assert_eq!(service.resolve_tool("quality_gate"), Some("quality_gate"));
     }
 
     #[test]
     fn test_alias_match() {
         let service = DiscoveryService::new();
-        assert_eq!(service.resolve_tool("complexity"), Some("analyze_complexity"));
+        assert_eq!(
+            service.resolve_tool("complexity"),
+            Some("analyze_complexity")
+        );
         assert_eq!(service.resolve_tool("debt"), Some("analyze_satd"));
         assert_eq!(service.resolve_tool("technical debt"), Some("analyze_satd"));
     }
@@ -186,7 +198,10 @@ mod tests {
     #[test]
     fn test_fuzzy_match() {
         let service = DiscoveryService::new();
-        assert_eq!(service.resolve_tool("complxity"), Some("analyze_complexity"));
+        assert_eq!(
+            service.resolve_tool("complxity"),
+            Some("analyze_complexity")
+        );
         assert_eq!(service.resolve_tool("refactr"), Some("refactor.start"));
     }
 
@@ -199,7 +214,7 @@ mod tests {
     #[test]
     fn test_disambiguation() {
         let service = DiscoveryService::new();
-        
+
         // Test category priority
         let candidates = vec!["analyze_complexity", "generate_context"];
         let context = Context {
@@ -207,8 +222,11 @@ mod tests {
             current_directory: None,
             recent_tools: vec![],
         };
-        assert_eq!(service.disambiguate(candidates, Some(&context)), "generate_context");
-        
+        assert_eq!(
+            service.disambiguate(candidates, Some(&context)),
+            "generate_context"
+        );
+
         // Test file extension affinity
         let candidates = vec!["analyze_dag", "analyze_complexity"];
         let context = Context {
@@ -216,14 +234,17 @@ mod tests {
             current_directory: None,
             recent_tools: vec![],
         };
-        assert_eq!(service.disambiguate(candidates, Some(&context)), "analyze_complexity");
+        assert_eq!(
+            service.disambiguate(candidates, Some(&context)),
+            "analyze_complexity"
+        );
     }
 
     #[test]
     fn test_list_tools() {
         let service = DiscoveryService::new();
         let tools = service.list_tools();
-        
+
         assert!(!tools.is_empty());
         assert!(tools.iter().any(|t| t.name == "analyze_complexity"));
         assert!(tools.iter().any(|t| t.name == "quality_gate"));
@@ -232,14 +253,14 @@ mod tests {
     #[test]
     fn test_trigram_similarity() {
         let index = TrigramIndex;
-        
+
         // Exact match
         assert_eq!(index.similarity_score("test", "test"), 1.0);
-        
+
         // Partial match
         let score = index.similarity_score("complexity", "complex");
         assert!(score > 0.5);
-        
+
         // No match
         let score = index.similarity_score("abc", "xyz");
         assert!(score < 0.1);
@@ -248,15 +269,19 @@ mod tests {
     #[test]
     fn test_performance() {
         use std::time::Instant;
-        
+
         let service = DiscoveryService::new();
-        
+
         // Test initialization time
         let start = Instant::now();
         let _service2 = DiscoveryService::new();
         let init_time = start.elapsed();
-        assert!(init_time.as_millis() < 10, "Initialization took {}ms", init_time.as_millis());
-        
+        assert!(
+            init_time.as_millis() < 10,
+            "Initialization took {}ms",
+            init_time.as_millis()
+        );
+
         // Test query resolution time
         let queries = vec![
             "analyze_complexity",
@@ -266,15 +291,19 @@ mod tests {
             "quality",
             "refactor",
         ];
-        
+
         let start = Instant::now();
         for query in &queries {
             let _ = service.resolve_tool(query);
         }
         let total_time = start.elapsed();
         let avg_time = total_time / queries.len() as u32;
-        
-        assert!(avg_time.as_millis() < 5, "Average query time: {}ms", avg_time.as_millis());
+
+        assert!(
+            avg_time.as_millis() < 5,
+            "Average query time: {}ms",
+            avg_time.as_millis()
+        );
     }
 }
 

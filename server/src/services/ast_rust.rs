@@ -479,8 +479,9 @@ impl<'ast> Visit<'ast> for RustComplexityVisitor {
         // Track literals as operands for Halstead metrics
         let operand = match node {
             syn::Lit::Str(lit_str) => format!("\"{}\"", lit_str.value()),
-            syn::Lit::ByteStr(lit_byte_str) => format!("b\"{}\"", 
-                String::from_utf8_lossy(&lit_byte_str.value())),
+            syn::Lit::ByteStr(lit_byte_str) => {
+                format!("b\"{}\"", String::from_utf8_lossy(&lit_byte_str.value()))
+            }
             syn::Lit::Byte(lit_byte) => format!("b'{}'", lit_byte.value() as char),
             syn::Lit::Char(lit_char) => format!("'{}'", lit_char.value()),
             syn::Lit::Int(lit_int) => lit_int.base10_digits().to_string(),
@@ -526,7 +527,11 @@ impl RustComplexityVisitor {
         let n_total = (n1_total + n2_total) as f64;
 
         let volume = if n > 0.0 { n_total * n.log2() } else { 0.0 };
-        let difficulty = if n2 > 0 { (n1 as f64 / 2.0) * (n2_total as f64 / n2 as f64) } else { 0.0 };
+        let difficulty = if n2 > 0 {
+            (n1 as f64 / 2.0) * (n2_total as f64 / n2 as f64)
+        } else {
+            0.0
+        };
         let effort = volume * difficulty;
         let time = effort / 18.0; // Stroud number
         let bugs = volume / 3000.0; // Industry average
@@ -543,7 +548,7 @@ impl RustComplexityVisitor {
             bugs,
         }
     }
-    
+
     /// Toyota Way: Extract Method - handle if expressions (complexity ≤5)
     fn handle_if_expr(&mut self, if_expr: &syn::ExprIf) {
         self.track_operator("if");
@@ -556,7 +561,7 @@ impl RustComplexityVisitor {
         }
         self.exit_nesting();
     }
-    
+
     /// Toyota Way: Extract Method - handle match expressions (complexity ≤5)
     fn handle_match_expr(&mut self, match_expr: &syn::ExprMatch) {
         self.track_operator("match");
@@ -568,7 +573,7 @@ impl RustComplexityVisitor {
         }
         self.exit_nesting();
     }
-    
+
     /// Toyota Way: Extract Method - handle while expressions (complexity ≤5)
     fn handle_while_expr(&mut self, while_expr: &syn::ExprWhile) {
         self.track_operator("while");
@@ -578,7 +583,7 @@ impl RustComplexityVisitor {
         self.visit_block(&while_expr.body);
         self.exit_nesting();
     }
-    
+
     /// Toyota Way: Extract Method - handle for loop expressions (complexity ≤5)
     fn handle_for_loop_expr(&mut self, for_expr: &syn::ExprForLoop) {
         self.track_operator("for");
@@ -589,7 +594,7 @@ impl RustComplexityVisitor {
         self.visit_block(&for_expr.body);
         self.exit_nesting();
     }
-    
+
     /// Toyota Way: Extract Method - handle loop expressions (complexity ≤3)
     fn handle_loop_expr(&mut self, loop_expr: &syn::ExprLoop) {
         self.add_complexity(1, 1);
@@ -597,18 +602,18 @@ impl RustComplexityVisitor {
         self.visit_block(&loop_expr.body);
         self.exit_nesting();
     }
-    
+
     /// Toyota Way: Extract Method - handle try expressions (complexity ≤3)
     fn handle_try_expr(&mut self, try_expr: &syn::ExprTry) {
         self.add_complexity(1, 1);
         self.visit_expr(&try_expr.expr);
     }
-    
+
     /// Toyota Way: Extract Method - handle binary expressions (complexity ≤15)
     fn handle_binary_expr(&mut self, bin_expr: &syn::ExprBinary) {
         let op_str = self.get_binary_op_string(&bin_expr.op);
         self.track_operator(op_str);
-        
+
         // Logical operators add complexity
         match bin_expr.op {
             syn::BinOp::And(_) | syn::BinOp::Or(_) => {
@@ -617,7 +622,7 @@ impl RustComplexityVisitor {
             _ => {}
         }
     }
-    
+
     /// Toyota Way: Extract Method - binary operator mapping (complexity ≤3)
     fn get_binary_op_string(&self, op: &syn::BinOp) -> &'static str {
         match op {

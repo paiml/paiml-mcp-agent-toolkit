@@ -6,52 +6,52 @@
 #[cfg(test)]
 mod agent_tests {
     use pmat::agent::{
-        AgentDaemon, DaemonConfig, ClaudeCodeAgentMcpServer, AgentConfig,
-        StatePersistence, ProjectState, QualityThresholds,
+        AgentConfig, AgentDaemon, ClaudeCodeAgentMcpServer, DaemonConfig, ProjectState,
+        QualityThresholds, StatePersistence,
     };
-    use pmat::services::quality_gate_service::{QualityGateService, QualityGateInput, QualityCheck};
+    use pmat::services::quality_gate_service::{
+        QualityCheck, QualityGateInput, QualityGateService,
+    };
     use pmat::services::service_base::Service;
     use std::path::PathBuf;
     use tempfile::TempDir;
     use tokio::time::{sleep, Duration};
-    
+
     #[tokio::test]
     async fn test_mcp_server_initialization() {
         // Create MCP server
         let config = AgentConfig::default();
         let mut server = ClaudeCodeAgentMcpServer::new(config);
-        
+
         // Verify server can be created
         assert!(server.start_stdio().await.is_ok());
     }
-    
+
     #[tokio::test]
     async fn test_daemon_lifecycle() {
         // Create daemon configuration
         let config = DaemonConfig::default();
         let mut daemon = AgentDaemon::new(config);
-        
+
         // Test start
-        let start_handle = tokio::spawn(async move {
-            daemon.start().await
-        });
-        
+        let start_handle = tokio::spawn(async move { daemon.start().await });
+
         // Give it time to start
         sleep(Duration::from_millis(100)).await;
-        
+
         // Should be running (we can't easily test this without the daemon running)
         // In a real test, we'd check the PID file or daemon status
-        
+
         start_handle.abort();
     }
-    
+
     #[tokio::test]
     async fn test_state_persistence() {
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Create persistence manager
         let persistence = StatePersistence::new(temp_dir.path()).unwrap();
-        
+
         // Add a project
         let project = ProjectState {
             id: "test_project".to_string(),
@@ -62,25 +62,28 @@ mod agent_tests {
             watch_patterns: vec!["*.rs".to_string()],
             thresholds: QualityThresholds::default(),
         };
-        
+
         persistence.add_project(project.clone()).await.unwrap();
-        
+
         // Save state
         persistence.save().await.unwrap();
-        
+
         // Create new persistence instance and verify state was loaded
         let persistence2 = StatePersistence::new(temp_dir.path()).unwrap();
         let state = persistence2.get_state().await;
-        
+
         assert!(state.monitored_projects.contains_key("test_project"));
-        assert_eq!(state.monitored_projects["test_project"].path, PathBuf::from("/test/path"));
+        assert_eq!(
+            state.monitored_projects["test_project"].path,
+            PathBuf::from("/test/path")
+        );
     }
-    
+
     #[tokio::test]
     async fn test_quality_gate_integration() {
         // Create quality gate service
         let service = QualityGateService::new();
-        
+
         // Create test input
         let input = QualityGateInput {
             path: PathBuf::from("."),
@@ -90,20 +93,20 @@ mod agent_tests {
             ],
             strict: true,
         };
-        
+
         // Run quality gates
         let result = service.process(input).await.unwrap();
-        
+
         // Verify result structure
         assert!(!result.results.is_empty());
         assert!(result.summary.total_checks > 0);
     }
-    
+
     #[tokio::test]
     async fn test_metrics_update() {
         let temp_dir = TempDir::new().unwrap();
         let persistence = StatePersistence::new(temp_dir.path()).unwrap();
-        
+
         // Add project
         let project = ProjectState {
             id: "metrics_test".to_string(),
@@ -114,9 +117,9 @@ mod agent_tests {
             watch_patterns: vec![],
             thresholds: QualityThresholds::default(),
         };
-        
+
         persistence.add_project(project).await.unwrap();
-        
+
         // Update metrics
         let metrics = pmat::agent::PersistentQualityMetrics {
             avg_complexity: 5.5,
@@ -127,33 +130,44 @@ mod agent_tests {
             files_analyzed: 100,
             total_violations: 0,
         };
-        
-        persistence.update_metrics("metrics_test", metrics).await.unwrap();
-        
+
+        persistence
+            .update_metrics("metrics_test", metrics)
+            .await
+            .unwrap();
+
         // Verify metrics were updated
         let state = persistence.get_state().await;
-        assert_eq!(state.monitored_projects["metrics_test"].current_metrics.avg_complexity, 5.5);
+        assert_eq!(
+            state.monitored_projects["metrics_test"]
+                .current_metrics
+                .avg_complexity,
+            5.5
+        );
         assert!(!state.quality_history.is_empty());
     }
-    
+
     #[tokio::test]
     async fn test_statistics_tracking() {
         let temp_dir = TempDir::new().unwrap();
         let persistence = StatePersistence::new(temp_dir.path()).unwrap();
-        
+
         // Update statistics
-        persistence.update_statistics(|stats| {
-            stats.sessions_count += 1;
-            stats.analyses_performed += 10;
-            stats.violations_detected += 5;
-        }).await.unwrap();
-        
+        persistence
+            .update_statistics(|stats| {
+                stats.sessions_count += 1;
+                stats.analyses_performed += 10;
+                stats.violations_detected += 5;
+            })
+            .await
+            .unwrap();
+
         let state = persistence.get_state().await;
         assert_eq!(state.statistics.sessions_count, 1);
         assert_eq!(state.statistics.analyses_performed, 10);
         assert_eq!(state.statistics.violations_detected, 5);
     }
-    
+
     #[tokio::test]
     async fn test_configuration_loading() {
         // Test that configuration files can be parsed
@@ -166,7 +180,7 @@ mod agent_tests {
             [daemon]
             working_directory = "/tmp"
         "#;
-        
+
         let config: DaemonConfig = toml::from_str(dev_config).unwrap();
         assert_eq!(config.agent.complexity_threshold, 20);
     }
@@ -175,7 +189,7 @@ mod agent_tests {
 #[cfg(test)]
 mod mcp_protocol_tests {
     use serde_json::json;
-    
+
     #[test]
     fn test_mcp_request_format() {
         // Test that MCP requests are properly formatted
@@ -188,12 +202,12 @@ mod mcp_protocol_tests {
             },
             "id": 1
         });
-        
+
         assert_eq!(request["jsonrpc"], "2.0");
         assert_eq!(request["method"], "initialize");
         assert!(request["id"].is_number());
     }
-    
+
     #[test]
     fn test_mcp_response_format() {
         // Test that MCP responses are properly formatted
@@ -208,12 +222,12 @@ mod mcp_protocol_tests {
                 }
             }
         });
-        
+
         assert_eq!(response["jsonrpc"], "2.0");
         assert!(response["result"].is_object());
         assert!(response["result"]["serverInfo"].is_object());
     }
-    
+
     #[test]
     fn test_tool_call_format() {
         let tool_call = json!({
@@ -227,7 +241,7 @@ mod mcp_protocol_tests {
             },
             "id": 42
         });
-        
+
         assert_eq!(tool_call["method"], "tools/call");
         assert_eq!(tool_call["params"]["name"], "run_quality_gates");
         assert!(tool_call["params"]["arguments"].is_object());

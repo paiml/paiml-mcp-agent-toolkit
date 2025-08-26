@@ -1468,7 +1468,12 @@ impl DeepContextAnalyzer {
                         line: *line,
                     });
                 }
-                crate::services::context::AstItem::Import { module, items, alias, line } => {
+                crate::services::context::AstItem::Import {
+                    module,
+                    items,
+                    alias,
+                    line,
+                } => {
                     let path = if let Some(alias) = alias {
                         format!("{} as {}", module, alias)
                     } else if !items.is_empty() {
@@ -1476,10 +1481,7 @@ impl DeepContextAnalyzer {
                     } else {
                         module.clone()
                     };
-                    categorized.uses.push(AstUse {
-                        path,
-                        line: *line,
-                    });
+                    categorized.uses.push(AstUse { path, line: *line });
                 }
             }
         }
@@ -3065,13 +3067,16 @@ impl DeepContextAnalyzer {
             // Fallback: Count lines from all discovered files
             let file_paths = self.collect_file_paths(&context.file_tree.root);
             let mut files_with_lines = Vec::new();
-            
+
             // Build full paths using the project root
             let project_root = &context.metadata.project_root;
-            
-            debug!("QA Fallback: Counting lines from {} files in {:?}", 
-                   file_paths.len(), project_root);
-            
+
+            debug!(
+                "QA Fallback: Counting lines from {} files in {:?}",
+                file_paths.len(),
+                project_root
+            );
+
             for path_str in &file_paths {
                 // Try both relative and absolute paths
                 let full_path = if std::path::Path::new(path_str).is_absolute() {
@@ -3079,11 +3084,11 @@ impl DeepContextAnalyzer {
                 } else {
                     project_root.join(path_str)
                 };
-                
+
                 if full_path.exists() && full_path.is_file() {
                     if let Ok(content) = std::fs::read_to_string(&full_path) {
                         let line_count = content.lines().count();
-                        
+
                         if line_count > 0 {
                             files_with_lines.push(FileComplexityMetricsForQA {
                                 path: full_path.clone(),
@@ -3096,7 +3101,7 @@ impl DeepContextAnalyzer {
                     }
                 }
             }
-            
+
             if !files_with_lines.is_empty() {
                 Some(ComplexityMetricsForQA {
                     files: files_with_lines,
@@ -3180,7 +3185,11 @@ impl DeepContextAnalyzer {
                             .items
                             .iter()
                             .filter(|item| {
-                                matches!(item, crate::services::context::AstItem::Use { .. } | crate::services::context::AstItem::Import { .. })
+                                matches!(
+                                    item,
+                                    crate::services::context::AstItem::Use { .. }
+                                        | crate::services::context::AstItem::Import { .. }
+                                )
                             })
                             .count(),
                     })

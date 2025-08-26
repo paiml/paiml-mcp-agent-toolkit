@@ -55,10 +55,10 @@ impl TdgScore {
             + self.coupling_score
             + self.doc_coverage
             + self.consistency_score;
-        
+
         self.grade = Grade::from_score(self.total);
     }
-    
+
     pub fn set_metric(&mut self, category: MetricCategory, value: f32) {
         match category {
             MetricCategory::StructuralComplexity => self.structural_complexity = value,
@@ -157,12 +157,12 @@ impl ProjectScore {
         } else {
             0.0
         };
-        
+
         let mut language_distribution = HashMap::new();
         for score in &scores {
             *language_distribution.entry(score.language).or_insert(0) += 1;
         }
-        
+
         Self {
             files: scores,
             average_score,
@@ -171,23 +171,33 @@ impl ProjectScore {
             language_distribution,
         }
     }
-    
+
     pub fn average(&self) -> TdgScore {
         if self.files.is_empty() {
             return TdgScore::default();
         }
-        
+
         let mut avg = TdgScore::default();
         let count = self.files.len() as f32;
-        
-        avg.structural_complexity = self.files.iter().map(|s| s.structural_complexity).sum::<f32>() / count;
-        avg.semantic_complexity = self.files.iter().map(|s| s.semantic_complexity).sum::<f32>() / count;
+
+        avg.structural_complexity = self
+            .files
+            .iter()
+            .map(|s| s.structural_complexity)
+            .sum::<f32>()
+            / count;
+        avg.semantic_complexity = self
+            .files
+            .iter()
+            .map(|s| s.semantic_complexity)
+            .sum::<f32>()
+            / count;
         avg.duplication_ratio = self.files.iter().map(|s| s.duplication_ratio).sum::<f32>() / count;
         avg.coupling_score = self.files.iter().map(|s| s.coupling_score).sum::<f32>() / count;
         avg.doc_coverage = self.files.iter().map(|s| s.doc_coverage).sum::<f32>() / count;
         avg.consistency_score = self.files.iter().map(|s| s.consistency_score).sum::<f32>() / count;
         avg.confidence = self.files.iter().map(|s| s.confidence).sum::<f32>() / count;
-        
+
         avg.calculate_total();
         avg
     }
@@ -212,52 +222,72 @@ impl Comparison {
         } else {
             0.0
         };
-        
+
         let winner = if source2.total > source1.total {
-            source2.file_path.as_ref()
+            source2
+                .file_path
+                .as_ref()
                 .map(|p| p.display().to_string())
                 .unwrap_or_else(|| "source2".to_string())
         } else {
-            source1.file_path.as_ref()
+            source1
+                .file_path
+                .as_ref()
                 .map(|p| p.display().to_string())
                 .unwrap_or_else(|| "source1".to_string())
         };
-        
+
         let mut improvements = Vec::new();
         let mut regressions = Vec::new();
-        
+
         if source2.structural_complexity > source1.structural_complexity {
-            improvements.push(format!("Structural complexity improved by {:.1}", 
-                source2.structural_complexity - source1.structural_complexity));
+            improvements.push(format!(
+                "Structural complexity improved by {:.1}",
+                source2.structural_complexity - source1.structural_complexity
+            ));
         } else if source2.structural_complexity < source1.structural_complexity {
-            regressions.push(format!("Structural complexity degraded by {:.1}", 
-                source1.structural_complexity - source2.structural_complexity));
+            regressions.push(format!(
+                "Structural complexity degraded by {:.1}",
+                source1.structural_complexity - source2.structural_complexity
+            ));
         }
-        
+
         if source2.semantic_complexity > source1.semantic_complexity {
-            improvements.push(format!("Semantic complexity improved by {:.1}", 
-                source2.semantic_complexity - source1.semantic_complexity));
+            improvements.push(format!(
+                "Semantic complexity improved by {:.1}",
+                source2.semantic_complexity - source1.semantic_complexity
+            ));
         } else if source2.semantic_complexity < source1.semantic_complexity {
-            regressions.push(format!("Semantic complexity degraded by {:.1}", 
-                source1.semantic_complexity - source2.semantic_complexity));
+            regressions.push(format!(
+                "Semantic complexity degraded by {:.1}",
+                source1.semantic_complexity - source2.semantic_complexity
+            ));
         }
-        
+
         if source2.duplication_ratio > source1.duplication_ratio {
-            improvements.push(format!("Code duplication reduced by {:.1}", 
-                source2.duplication_ratio - source1.duplication_ratio));
+            improvements.push(format!(
+                "Code duplication reduced by {:.1}",
+                source2.duplication_ratio - source1.duplication_ratio
+            ));
         } else if source2.duplication_ratio < source1.duplication_ratio {
-            regressions.push(format!("Code duplication increased by {:.1}", 
-                source1.duplication_ratio - source2.duplication_ratio));
+            regressions.push(format!(
+                "Code duplication increased by {:.1}",
+                source1.duplication_ratio - source2.duplication_ratio
+            ));
         }
-        
+
         if source2.doc_coverage > source1.doc_coverage {
-            improvements.push(format!("Documentation coverage improved by {:.1}", 
-                source2.doc_coverage - source1.doc_coverage));
+            improvements.push(format!(
+                "Documentation coverage improved by {:.1}",
+                source2.doc_coverage - source1.doc_coverage
+            ));
         } else if source2.doc_coverage < source1.doc_coverage {
-            regressions.push(format!("Documentation coverage decreased by {:.1}", 
-                source1.doc_coverage - source2.doc_coverage));
+            regressions.push(format!(
+                "Documentation coverage decreased by {:.1}",
+                source1.doc_coverage - source2.doc_coverage
+            ));
         }
-        
+
         Self {
             source1,
             source2,
@@ -286,22 +316,31 @@ impl PenaltyTracker {
             applied: HashMap::new(),
         }
     }
-    
-    pub fn apply(&mut self, issue_id: String, category: MetricCategory, amount: f32, issue: String) -> Option<f32> {
+
+    pub fn apply(
+        &mut self,
+        issue_id: String,
+        category: MetricCategory,
+        amount: f32,
+        issue: String,
+    ) -> Option<f32> {
         if self.applied.contains_key(&issue_id) {
             return None;
         }
-        
-        self.applied.insert(issue_id, PenaltyAttribution {
-            source_metric: category,
-            amount,
-            applied_to: HashSet::from([category]),
-            issue,
-        });
-        
+
+        self.applied.insert(
+            issue_id,
+            PenaltyAttribution {
+                source_metric: category,
+                amount,
+                applied_to: HashSet::from([category]),
+                issue,
+            },
+        );
+
         Some(amount)
     }
-    
+
     pub fn get_attributions(&self) -> Vec<PenaltyAttribution> {
         self.applied.values().cloned().collect()
     }
@@ -310,7 +349,7 @@ impl PenaltyTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_grade_from_score() {
         assert_eq!(Grade::from_score(95.0), Grade::APLus);
@@ -325,7 +364,7 @@ mod tests {
         assert_eq!(Grade::from_score(50.0), Grade::D);
         assert_eq!(Grade::from_score(45.0), Grade::F);
     }
-    
+
     #[test]
     fn test_tdg_score_calculate_total() {
         let mut score = TdgScore::default();
@@ -335,33 +374,33 @@ mod tests {
         score.coupling_score = 14.0;
         score.doc_coverage = 9.0;
         score.consistency_score = 8.0;
-        
+
         score.calculate_total();
-        
+
         assert_eq!(score.total, 88.0);
         assert_eq!(score.grade, Grade::AMinus);
     }
-    
+
     #[test]
     fn test_penalty_tracker() {
         let mut tracker = PenaltyTracker::new();
-        
+
         let penalty1 = tracker.apply(
             "issue1".to_string(),
             MetricCategory::StructuralComplexity,
             3.5,
-            "High cyclomatic complexity".to_string()
+            "High cyclomatic complexity".to_string(),
         );
         assert_eq!(penalty1, Some(3.5));
-        
+
         let penalty2 = tracker.apply(
             "issue1".to_string(),
             MetricCategory::StructuralComplexity,
             3.5,
-            "High cyclomatic complexity".to_string()
+            "High cyclomatic complexity".to_string(),
         );
         assert_eq!(penalty2, None);
-        
+
         let attributions = tracker.get_attributions();
         assert_eq!(attributions.len(), 1);
         assert_eq!(attributions[0].amount, 3.5);

@@ -16,7 +16,7 @@ pub use self::{
     ChurnTool as AnalyzeDeepContextTool, ComplexityTool as AnalyzeComplexityTool,
     CouplingTool as AnalyzeBigOTool, DeadCodeTool as AnalyzeDeadCodeTool,
     LintHotspotTool as AnalyzeDagTool, SatdTool as AnalyzeSatdTool,
-    TdgTool as AnalyzeTdgTool, TdgCompareTool as AnalyzeTdgCompareTool,
+    TdgCompareTool as AnalyzeTdgCompareTool, TdgTool as AnalyzeTdgTool,
 };
 
 // Complexity Analysis Tool
@@ -415,10 +415,10 @@ impl ToolHandler for TdgTool {
         let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
 
         let results = tool_functions::analyze_tdg(
-            &paths, 
-            params.threshold, 
-            params.top_files, 
-            params.include_components
+            &paths,
+            params.threshold,
+            params.top_files,
+            params.include_components,
         )
         .await
         .map_err(|e| Error::internal(format!("TDG analysis failed: {}", e)))?;

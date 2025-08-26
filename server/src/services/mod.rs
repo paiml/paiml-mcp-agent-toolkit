@@ -5,10 +5,10 @@
 //! principles of modularity and single responsibility.
 //!
 //! # Service Architecture (Per SPECIFICATION.md Section 2)
-//! 
+//!
 //! Services now implement a unified `Service` trait for consistency and composability.
 //! - **service_base**: Core Service trait and ServiceRegistry
-//! - **analysis_service**: Unified analysis service 
+//! - **analysis_service**: Unified analysis service
 //! - **quality_gate_service**: Quality enforcement service
 //!
 //! # Service Categories
@@ -48,20 +48,20 @@
 //! ```
 
 // Service architecture (SPECIFICATION.md Section 2)
-pub mod service_base;
 pub mod analysis_service;
-pub mod quality_gate_service;
-pub mod service_adapter;
-pub mod service_composition;
-pub mod service_communication;
-pub mod service_lifecycle;
-pub mod language_registry;
 pub mod language_analyzer;
+pub mod language_registry;
 pub mod languages;
-pub mod memory_manager;
 pub mod memory_integration;
+pub mod memory_manager;
 #[cfg(test)]
 pub mod memory_property_tests;
+pub mod quality_gate_service;
+pub mod service_adapter;
+pub mod service_base;
+pub mod service_communication;
+pub mod service_composition;
+pub mod service_lifecycle;
 
 pub mod artifact_writer;
 pub mod ast_based_dependency_analyzer;
@@ -141,17 +141,17 @@ pub mod quality_gates;
 pub use quality_gates as quality_gate;
 #[cfg(test)]
 mod deep_context_property_tests;
+pub mod polyglot_analyzer;
 pub mod quality_proxy;
 pub mod ranking;
 pub mod ranking_utils;
 pub mod readme_compressor;
+pub mod recommendation_engine;
 pub mod refactor_engine;
 pub mod renderer;
 pub mod rust_borrow_checker;
 pub mod satd_detector;
 pub mod semantic_naming;
-pub mod recommendation_engine;
-pub mod polyglot_analyzer;
 pub mod simple_deep_context;
 pub mod symbol_table;
 pub mod tdg_calculator;

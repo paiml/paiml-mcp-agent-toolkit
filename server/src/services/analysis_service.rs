@@ -1,10 +1,10 @@
 //! Unified analysis service implementing the Service trait
-//! 
+//!
 //! Provides various code analysis capabilities through a unified interface
 
 use super::service_base::{Service, ServiceMetrics, ValidationError};
-use crate::services::satd_detector::SATDDetector;
 use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
+use crate::services::satd_detector::SATDDetector;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -161,8 +161,12 @@ impl AnalysisService {
             dead_code_analyzer: DeadCodeAnalyzer::new(10000), // Default capacity
         }
     }
-    
-    async fn analyze_complexity(&self, _path: &PathBuf, _options: &AnalysisOptions) -> Result<ComplexityResults> {
+
+    async fn analyze_complexity(
+        &self,
+        _path: &PathBuf,
+        _options: &AnalysisOptions,
+    ) -> Result<ComplexityResults> {
         // Implementation would call the actual complexity analyzer
         // This is a simplified version
         Ok(ComplexityResults {
@@ -172,34 +176,47 @@ impl AnalysisService {
             violations: vec![],
         })
     }
-    
-    async fn analyze_satd(&self, path: &PathBuf, _options: &AnalysisOptions) -> Result<SatdResults> {
+
+    async fn analyze_satd(
+        &self,
+        path: &PathBuf,
+        _options: &AnalysisOptions,
+    ) -> Result<SatdResults> {
         // Use the actual SATD detector
-        let results = self.satd_detector.analyze_project(path, true).await
+        let results = self
+            .satd_detector
+            .analyze_project(path, true)
+            .await
             .map_err(|e| anyhow::anyhow!("SATD analysis failed: {}", e))?;
-        
+
         // Convert TechnicalDebt to SatdViolation
-        let violations: Vec<SatdViolation> = results.items.into_iter().map(|debt| {
-            SatdViolation {
+        let violations: Vec<SatdViolation> = results
+            .items
+            .into_iter()
+            .map(|debt| SatdViolation {
                 file: debt.file.to_string_lossy().to_string(),
                 line: debt.line as usize,
                 comment: debt.text,
                 category: format!("{:?}", debt.category),
-            }
-        }).collect();
-        
+            })
+            .collect();
+
         Ok(SatdResults {
             total_files: results.total_files_analyzed,
             total_satd: violations.len(),
             violations,
         })
     }
-    
-    async fn analyze_dead_code(&self, _path: &PathBuf, _options: &AnalysisOptions) -> Result<DeadCodeResults> {
+
+    async fn analyze_dead_code(
+        &self,
+        _path: &PathBuf,
+        _options: &AnalysisOptions,
+    ) -> Result<DeadCodeResults> {
         // TODO: Integrate with actual dead code analyzer when AST DAG is available
         // The dead_code_analyzer requires an AstDag for proper analysis
         let _analyzer = &self.dead_code_analyzer; // Use field to prevent dead code warning
-        
+
         // Return placeholder results for now
         Ok(DeadCodeResults {
             total_files: 0,
@@ -215,10 +232,10 @@ impl Service for AnalysisService {
     type Input = AnalysisInput;
     type Output = AnalysisOutput;
     type Error = anyhow::Error;
-    
+
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
         let start = std::time::Instant::now();
-        
+
         let results = match input.operation {
             AnalysisOperation::Complexity => {
                 let complexity = self.analyze_complexity(&input.path, &input.options).await?;
@@ -236,7 +253,7 @@ impl Service for AnalysisService {
                 let complexity = self.analyze_complexity(&input.path, &input.options).await?;
                 let satd = self.analyze_satd(&input.path, &input.options).await?;
                 let dead_code = self.analyze_dead_code(&input.path, &input.options).await?;
-                
+
                 AnalysisResults::Combined(CombinedResults {
                     complexity,
                     satd,
@@ -244,24 +261,34 @@ impl Service for AnalysisService {
                 })
             }
         };
-        
+
         let duration = start.elapsed();
         let mut metrics = self.metrics.write().await;
         metrics.record_request(duration, true);
-        
+
         // Calculate summary
         let (files_analyzed, total_issues, critical_issues) = match &results {
-            AnalysisResults::Complexity(c) => (c.total_files, c.violations.len(), 
-                c.violations.iter().filter(|v| v.complexity > 20).count()),
+            AnalysisResults::Complexity(c) => (
+                c.total_files,
+                c.violations.len(),
+                c.violations.iter().filter(|v| v.complexity > 20).count(),
+            ),
             AnalysisResults::Satd(s) => (s.total_files, s.violations.len(), s.violations.len()),
             AnalysisResults::DeadCode(d) => (d.total_files, d.unused_items.len(), 0),
             AnalysisResults::Combined(c) => (
                 c.complexity.total_files,
-                c.complexity.violations.len() + c.satd.violations.len() + c.dead_code.unused_items.len(),
-                c.complexity.violations.iter().filter(|v| v.complexity > 20).count() + c.satd.violations.len(),
+                c.complexity.violations.len()
+                    + c.satd.violations.len()
+                    + c.dead_code.unused_items.len(),
+                c.complexity
+                    .violations
+                    .iter()
+                    .filter(|v| v.complexity > 20)
+                    .count()
+                    + c.satd.violations.len(),
             ),
         };
-        
+
         Ok(AnalysisOutput {
             operation: input.operation,
             results,
@@ -273,7 +300,7 @@ impl Service for AnalysisService {
             },
         })
     }
-    
+
     fn validate_input(&self, input: &Self::Input) -> Result<(), ValidationError> {
         if !input.path.exists() {
             return Err(ValidationError::InvalidValue {
@@ -281,7 +308,7 @@ impl Service for AnalysisService {
                 reason: "Path does not exist".to_string(),
             });
         }
-        
+
         if let Some(max) = input.options.max_complexity {
             if max == 0 || max > 100 {
                 return Err(ValidationError::InvalidValue {
@@ -290,15 +317,15 @@ impl Service for AnalysisService {
                 });
             }
         }
-        
+
         Ok(())
     }
-    
+
     fn metrics(&self) -> ServiceMetrics {
         // Return a clone of current metrics
         self.metrics.blocking_read().clone()
     }
-    
+
     fn name(&self) -> &str {
         "AnalysisService"
     }

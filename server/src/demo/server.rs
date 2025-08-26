@@ -1,10 +1,12 @@
 #[cfg(feature = "demo")]
 use crate::demo::assets::{decompress_asset, get_asset};
+use crate::demo::showcase::ShowcaseGallery;
 use crate::models::dag::DependencyGraph;
 use crate::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
-use crate::services::recommendation_engine::{RecommendationEngine, RepositoryRecommendation, ComplexityTier};
-use crate::services::polyglot_analyzer::{PolyglotAnalyzer, PolyglotAnalysis};
-use crate::demo::showcase::ShowcaseGallery;
+use crate::services::polyglot_analyzer::{PolyglotAnalysis, PolyglotAnalyzer};
+use crate::services::recommendation_engine::{
+    ComplexityTier, RecommendationEngine, RepositoryRecommendation,
+};
 use anyhow::Result;
 use bytes::Bytes;
 use dashmap::DashMap;
@@ -501,7 +503,7 @@ pub(crate) fn serve_metrics_json(state: &Arc<RwLock<DemoState>>) -> Response<Byt
 #[cfg(feature = "demo")]
 pub(crate) fn serve_recommendations_json(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let _state = state.read();
-    
+
     // Generate recommendations based on analysis results
     let recommendation_engine = RecommendationEngine::new();
     let recommendations = recommendation_engine.get_recommendations(
@@ -1040,16 +1042,19 @@ impl DemoContent {
 
         let mermaid_diagram = mermaid_generator.generate(dag);
 
-        let enhanced_hotspots: Vec<EnhancedHotspot> = hotspots.into_iter().map(|h| EnhancedHotspot {
-            function: "main".to_string(),
-            file: h.file.clone(),
-            path: h.file,
-            complexity: h.complexity,
-            loc: 50,
-            language: "rust".to_string(),
-            churn_score: h.churn_score,
-            refactor_suggestion: "Consider extracting methods to reduce complexity".to_string(),
-        }).collect();
+        let enhanced_hotspots: Vec<EnhancedHotspot> = hotspots
+            .into_iter()
+            .map(|h| EnhancedHotspot {
+                function: "main".to_string(),
+                file: h.file.clone(),
+                path: h.file,
+                complexity: h.complexity,
+                loc: 50,
+                language: "rust".to_string(),
+                churn_score: h.churn_score,
+                refactor_suggestion: "Consider extracting methods to reduce complexity".to_string(),
+            })
+            .collect();
 
         Self {
             mermaid_diagram,
@@ -1072,12 +1077,19 @@ impl DemoContent {
         }
     }
 
-    pub async fn with_ai_recommendations(mut self, project_path: &std::path::Path, detected_language: &str) -> Self {
+    pub async fn with_ai_recommendations(
+        mut self,
+        project_path: &std::path::Path,
+        detected_language: &str,
+    ) -> Self {
         let recommendation_engine = RecommendationEngine::new();
-        
-        if let Ok(_detected_frameworks) = recommendation_engine.analyze_repository(&project_path.to_string_lossy()) {
-            self.recommendations = recommendation_engine.get_recommendations(detected_language, Some(ComplexityTier::Intermediate));
-            
+
+        if let Ok(_detected_frameworks) =
+            recommendation_engine.analyze_repository(&project_path.to_string_lossy())
+        {
+            self.recommendations = recommendation_engine
+                .get_recommendations(detected_language, Some(ComplexityTier::Intermediate));
+
             if !self.recommendations.is_empty() {
                 self.recommendations.truncate(5);
             }
@@ -1088,7 +1100,7 @@ impl DemoContent {
 
     pub async fn with_polyglot_analysis(mut self, project_path: &std::path::Path) -> Self {
         let polyglot_analyzer = PolyglotAnalyzer::new();
-        
+
         if let Ok(analysis) = polyglot_analyzer.analyze_project(project_path).await {
             self.polyglot_analysis = Some(analysis);
         }

@@ -100,4 +100,4 @@ pub use simple_unified_server::SimpleUnifiedServer as UnifiedServer;
 // Keep PmcpServer for backward compatibility (will be removed)
 pub use server::PmcpServer;
 // Export the discovery service for MCP optimization
-pub use discovery::{DiscoveryService, ToolInfo, Context, DiscoveryMetrics};
+pub use discovery::{Context, DiscoveryMetrics, DiscoveryService, ToolInfo};

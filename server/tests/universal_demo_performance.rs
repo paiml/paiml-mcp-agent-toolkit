@@ -1,12 +1,12 @@
 //! Performance tests for Universal Demo
-//! 
+//!
 //! Ensures the demo runs efficiently even on large repositories.
 
 #[cfg(test)]
 mod universal_demo_performance_tests {
+    use std::fs;
     use std::time::{Duration, Instant};
     use tempfile::TempDir;
-    use std::fs;
 
     /// Create a test repository with specified number of files
     fn create_test_repo(num_files: usize, lines_per_file: usize) -> TempDir {
@@ -18,21 +18,21 @@ mod universal_demo_performance_tests {
         fs::create_dir(&src_path).unwrap();
 
         // Create Python files
-        for i in 0..num_files/3 {
+        for i in 0..num_files / 3 {
             let file_path = src_path.join(format!("module_{}.py", i));
             let content = generate_python_file(lines_per_file, i);
             fs::write(file_path, content).unwrap();
         }
 
         // Create JavaScript files
-        for i in 0..num_files/3 {
+        for i in 0..num_files / 3 {
             let file_path = src_path.join(format!("component_{}.js", i));
             let content = generate_javascript_file(lines_per_file, i);
             fs::write(file_path, content).unwrap();
         }
 
         // Create TypeScript files
-        for i in 0..num_files/3 {
+        for i in 0..num_files / 3 {
             let file_path = src_path.join(format!("service_{}.ts", i));
             let content = generate_typescript_file(lines_per_file, i);
             fs::write(file_path, content).unwrap();
@@ -41,8 +41,9 @@ mod universal_demo_performance_tests {
         // Create a README
         fs::write(
             base_path.join("README.md"),
-            "# Test Repository\nThis is a test repository for performance testing."
-        ).unwrap();
+            "# Test Repository\nThis is a test repository for performance testing.",
+        )
+        .unwrap();
 
         temp_dir
     }
@@ -60,7 +61,7 @@ mod universal_demo_performance_tests {
         content.push_str("        self.data = {}\n\n");
 
         // Add functions
-        for i in 0..lines/10 {
+        for i in 0..lines / 10 {
             content.push_str(&format!("    def method_{}(self, x):\n", i));
             content.push_str("        if x > 0:\n");
             content.push_str("            return x * 2\n");
@@ -82,7 +83,7 @@ mod universal_demo_performance_tests {
         content.push_str("    const [state, setState] = useState(0);\n\n");
 
         // Add functions
-        for i in 0..lines/15 {
+        for i in 0..lines / 15 {
             content.push_str(&format!("    const handler{} = (value) => {{\n", i));
             content.push_str("        if (value > 0) {\n");
             content.push_str("            setState(value * 2);\n");
@@ -109,8 +110,11 @@ mod universal_demo_performance_tests {
         content.push_str("    private users: User[] = [];\n\n");
 
         // Add methods
-        for i in 0..lines/20 {
-            content.push_str(&format!("    public method{}(id: number): User | undefined {{\n", i));
+        for i in 0..lines / 20 {
+            content.push_str(&format!(
+                "    public method{}(id: number): User | undefined {{\n",
+                i
+            ));
             content.push_str("        return this.users.find(u => u.id === id);\n");
             content.push_str("    }\n\n");
         }
@@ -128,7 +132,10 @@ mod universal_demo_performance_tests {
 
         let config = pmat::services::deep_context::DeepContextConfig::default();
         let analyzer = pmat::services::deep_context::DeepContextAnalyzer::new(config);
-        let result = analyzer.analyze_project(&temp_dir.path().to_path_buf()).await.unwrap();
+        let result = analyzer
+            .analyze_project(&temp_dir.path().to_path_buf())
+            .await
+            .unwrap();
 
         let duration = start.elapsed();
 
@@ -151,7 +158,10 @@ mod universal_demo_performance_tests {
 
         let config = pmat::services::deep_context::DeepContextConfig::default();
         let analyzer = pmat::services::deep_context::DeepContextAnalyzer::new(config);
-        let result = analyzer.analyze_project(&temp_dir.path().to_path_buf()).await.unwrap();
+        let result = analyzer
+            .analyze_project(&temp_dir.path().to_path_buf())
+            .await
+            .unwrap();
 
         let duration = start.elapsed();
 
@@ -173,7 +183,10 @@ mod universal_demo_performance_tests {
 
         let config = pmat::services::deep_context::DeepContextConfig::default();
         let analyzer = pmat::services::deep_context::DeepContextAnalyzer::new(config);
-        let result = analyzer.analyze_project(&temp_dir.path().to_path_buf()).await.unwrap();
+        let result = analyzer
+            .analyze_project(&temp_dir.path().to_path_buf())
+            .await
+            .unwrap();
 
         let duration = start.elapsed();
 
@@ -207,13 +220,16 @@ mod universal_demo_performance_tests {
     async fn test_memory_efficiency() {
         // Create a repo with many small files
         let temp_dir = create_test_repo(200, 50);
-        
+
         // Get initial memory (approximate)
         let before = get_approximate_memory_usage();
 
         let config = pmat::services::deep_context::DeepContextConfig::default();
         let analyzer = pmat::services::deep_context::DeepContextAnalyzer::new(config);
-        let _result = analyzer.analyze_project(&temp_dir.path().to_path_buf()).await.unwrap();
+        let _result = analyzer
+            .analyze_project(&temp_dir.path().to_path_buf())
+            .await
+            .unwrap();
 
         // Get final memory (approximate)
         let after = get_approximate_memory_usage();
@@ -231,14 +247,14 @@ mod universal_demo_performance_tests {
         // This is a rough approximation
         // In real tests, you might use a proper memory profiler
         use std::alloc::{GlobalAlloc, Layout, System};
-        
+
         // Allocate and deallocate to get a rough idea
         let layout = Layout::from_size_align(1, 1).unwrap();
         unsafe {
             let ptr = System.alloc(layout);
             System.dealloc(ptr, layout);
         }
-        
+
         // Return a placeholder value
         // In production, use proper memory tracking
         50_000_000 // 50MB baseline

@@ -9,9 +9,9 @@ mod implementation {
     use crate::demo::server::{
         serve_analysis_data, serve_analysis_stream, serve_architecture_analysis, serve_dag_mermaid,
         serve_dashboard, serve_defect_analysis, serve_hotspots_table, serve_metrics_json,
+        serve_polyglot_analysis, serve_recommendations_json, serve_showcase_gallery,
         serve_static_asset, serve_statistics_analysis, serve_summary_json, serve_system_diagram,
-        serve_system_diagram_mermaid, serve_polyglot_analysis, serve_recommendations_json,
-        serve_showcase_gallery, DemoState,
+        serve_system_diagram_mermaid, DemoState,
     };
 
     type RouteHandler = fn(&Arc<RwLock<DemoState>>) -> Response<Bytes>;

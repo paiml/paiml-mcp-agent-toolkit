@@ -12,8 +12,8 @@ pub mod services;
 pub mod stateless_server;
 pub mod tdg; // Technical Debt Grading system
 pub mod test_performance; // Performance testing per SPECIFICATION.md Section 30
-// #[cfg(test)]
-// pub mod testing;
+                          // #[cfg(test)]
+                          // pub mod testing;
 pub mod unified_protocol;
 pub mod utils;
 

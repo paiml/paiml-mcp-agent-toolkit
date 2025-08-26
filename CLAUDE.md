@@ -288,3 +288,6 @@ If a wrong version is published:
 **Remember**: The canonical system prevents version regression and ensures every release meets our extreme quality standards.
 
 - workspace project
+- We use TDD. no code is written unless a test is written first.  new features require 80% coverage and passing pmat quality gates.  all code must be in roadmap and using a ticket that is updated when complete.  For tickets/bugs, we need to add doctests/property tests and cargo run --example.
+- this is a workspace project, never cd into server.
+- We practice the toyota way.  EVERY defect is our problem.  We never "allow them", we use five-whys, fix root cause, even if unrelated to a problem we are working on.

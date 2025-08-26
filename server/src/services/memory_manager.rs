@@ -23,15 +23,15 @@
 //!
 //! # fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let mut manager = MemoryManager::new()?;
-//! 
+//!
 //! // Configure pools based on expected workload
 //! manager.configure_pool(PoolType::AstParsing, 32 * 1024 * 1024)?; // 32MB
 //! manager.configure_pool(PoolType::StringIntern, 8 * 1024 * 1024)?;  // 8MB
-//! 
+//!
 //! // Use pooled allocation for analysis
 //! let buffer = manager.allocate_buffer(PoolType::AstParsing, 4096)?;
 //! let interned_string = manager.intern_string("common_identifier")?;
-//! 
+//!
 //! // Automatic cleanup when manager is dropped
 //! # Ok(())
 //! # }
@@ -79,11 +79,11 @@ pub struct MemoryConfig {
     /// Pool size limits per type
     pub pool_limits: FxHashMap<PoolType, usize>,
     /// Allocation strategy thresholds
-    pub small_allocation_threshold: usize,  // < 4KB
-    pub large_allocation_threshold: usize,  // > 1MB
+    pub small_allocation_threshold: usize, // < 4KB
+    pub large_allocation_threshold: usize, // > 1MB
     /// Cache eviction policy parameters
     pub max_cache_age: Duration,
-    pub cache_pressure_threshold: f64,  // 0.0-1.0
+    pub cache_pressure_threshold: f64, // 0.0-1.0
     /// Enable memory tracking and debugging
     pub enable_tracking: bool,
 }
@@ -91,18 +91,18 @@ pub struct MemoryConfig {
 impl Default for MemoryConfig {
     fn default() -> Self {
         let mut pool_limits = FxHashMap::default();
-        pool_limits.insert(PoolType::AstParsing, 64 * 1024 * 1024);      // 64MB
-        pool_limits.insert(PoolType::StringIntern, 16 * 1024 * 1024);    // 16MB
-        pool_limits.insert(PoolType::AnalysisCache, 128 * 1024 * 1024);  // 128MB
-        pool_limits.insert(PoolType::FileContent, 32 * 1024 * 1024);     // 32MB
+        pool_limits.insert(PoolType::AstParsing, 64 * 1024 * 1024); // 64MB
+        pool_limits.insert(PoolType::StringIntern, 16 * 1024 * 1024); // 16MB
+        pool_limits.insert(PoolType::AnalysisCache, 128 * 1024 * 1024); // 128MB
+        pool_limits.insert(PoolType::FileContent, 32 * 1024 * 1024); // 32MB
         pool_limits.insert(PoolType::GraphConstruction, 32 * 1024 * 1024); // 32MB
 
         Self {
             max_total_memory: 512 * 1024 * 1024, // 512MB
             pool_limits,
-            small_allocation_threshold: 4 * 1024,      // 4KB
-            large_allocation_threshold: 1024 * 1024,   // 1MB
-            max_cache_age: Duration::from_secs(300),   // 5 minutes
+            small_allocation_threshold: 4 * 1024,    // 4KB
+            large_allocation_threshold: 1024 * 1024, // 1MB
+            max_cache_age: Duration::from_secs(300), // 5 minutes
             cache_pressure_threshold: 0.85,
             enable_tracking: true,
         }
@@ -346,13 +346,17 @@ impl MemoryManager {
     /// Create a new memory manager with custom configuration
     pub fn with_config(config: MemoryConfig) -> Result<Arc<Self>> {
         let mut pools = FxHashMap::default();
-        
+
         for (&pool_type, &max_size) in &config.pool_limits {
             pools.insert(pool_type, MemoryPool::new(max_size));
         }
 
         let string_interner = StringInterner::new(
-            config.pool_limits.get(&PoolType::StringIntern).copied().unwrap_or(16 * 1024 * 1024)
+            config
+                .pool_limits
+                .get(&PoolType::StringIntern)
+                .copied()
+                .unwrap_or(16 * 1024 * 1024),
         );
 
         Ok(Arc::new(Self {
@@ -376,9 +380,13 @@ impl MemoryManager {
     }
 
     /// Allocate a buffer using the appropriate strategy
-    pub fn allocate_buffer(self: &Arc<Self>, pool_type: PoolType, size: usize) -> Result<PooledBuffer> {
+    pub fn allocate_buffer(
+        self: &Arc<Self>,
+        pool_type: PoolType,
+        size: usize,
+    ) -> Result<PooledBuffer> {
         let strategy = self.determine_strategy(size);
-        
+
         match strategy {
             AllocationStrategy::Pooled => {
                 if let Some(pool) = self.pools.get(&pool_type) {
@@ -413,7 +421,7 @@ impl MemoryManager {
     pub fn stats(&self) -> MemoryStats {
         let total_allocated = *self.total_allocated.lock();
         let peak_usage = *self.peak_usage.lock();
-        
+
         let mut pool_stats = FxHashMap::default();
         for (&pool_type, pool) in &self.pools {
             pool_stats.insert(pool_type, pool.stats());
@@ -434,7 +442,7 @@ impl MemoryManager {
     /// Force cleanup of unused memory
     pub fn cleanup(&self) -> Result<usize> {
         let mut cleaned = 0;
-        
+
         // Check if cleanup is needed
         let now = Instant::now();
         let mut last_cleanup = self.last_cleanup.lock();
@@ -453,7 +461,10 @@ impl MemoryManager {
         if stats.allocation_pressure > 0.9 {
             self.string_interner.clear();
             cleaned += stats.string_intern_size;
-            info!("Cleared string interner: {} bytes", stats.string_intern_size);
+            info!(
+                "Cleared string interner: {} bytes",
+                stats.string_intern_size
+            );
         }
 
         // Clear least recently used pool buffers
@@ -462,7 +473,10 @@ impl MemoryManager {
             if pool_stats.total_size > 0 {
                 pool.clear();
                 cleaned += pool_stats.total_size;
-                debug!("Cleared pool {:?}: {} bytes", pool_type, pool_stats.total_size);
+                debug!(
+                    "Cleared pool {:?}: {} bytes",
+                    pool_type, pool_stats.total_size
+                );
             }
         }
 
@@ -488,16 +502,20 @@ impl MemoryManager {
     fn track_allocation(&self, size: usize) {
         let mut total = self.total_allocated.lock();
         *total += size;
-        
+
         let mut peak = self.peak_usage.lock();
         if *total > *peak {
             *peak = *total;
         }
 
         // Trigger cleanup if approaching limit
-        if *total as f64 / self.config.max_total_memory as f64 > self.config.cache_pressure_threshold {
-            trace!("Memory pressure detected: {:.1}%", 
-                   *total as f64 / self.config.max_total_memory as f64 * 100.0);
+        if *total as f64 / self.config.max_total_memory as f64
+            > self.config.cache_pressure_threshold
+        {
+            trace!(
+                "Memory pressure detected: {:.1}%",
+                *total as f64 / self.config.max_total_memory as f64 * 100.0
+            );
         }
     }
 
@@ -506,7 +524,7 @@ impl MemoryManager {
         if let Some(pool) = self.pools.get(&pool_type) {
             let capacity = buffer.capacity();
             pool.return_buffer(buffer);
-            
+
             let mut total = self.total_allocated.lock();
             *total = total.saturating_sub(capacity);
         }
@@ -514,7 +532,8 @@ impl MemoryManager {
 }
 
 /// Global memory manager instance
-static GLOBAL_MEMORY_MANAGER: once_cell::sync::OnceCell<Arc<MemoryManager>> = once_cell::sync::OnceCell::new();
+static GLOBAL_MEMORY_MANAGER: once_cell::sync::OnceCell<Arc<MemoryManager>> =
+    once_cell::sync::OnceCell::new();
 
 /// Get the global memory manager instance
 pub fn global_memory_manager() -> Result<Arc<MemoryManager>> {
@@ -569,10 +588,10 @@ mod tests {
     #[test]
     fn test_string_interning() -> Result<()> {
         let manager = MemoryManager::new()?;
-        
+
         let str1 = manager.intern_string("test")?;
         let str2 = manager.intern_string("test")?;
-        
+
         // Should be the same Arc instance
         assert!(Arc::ptr_eq(&str1, &str2));
         assert_eq!(str1.as_ref(), "test");
@@ -582,18 +601,18 @@ mod tests {
     #[test]
     fn test_memory_cleanup() -> Result<()> {
         let manager = MemoryManager::new()?;
-        
+
         // Allocate some memory
         let _buffer1 = manager.allocate_buffer(PoolType::AstParsing, 1024)?;
         let _buffer2 = manager.allocate_buffer(PoolType::FileContent, 2048)?;
         let _interned = manager.intern_string("test_string")?;
-        
+
         let stats_before = manager.stats();
         assert!(stats_before.total_allocated > 0);
-        
+
         // Force cleanup
         let _cleaned = manager.cleanup()?;
-        
+
         // Note: Cleanup behavior depends on memory pressure
         // In a real scenario with high pressure, cleanup would free memory
         Ok(())
@@ -602,32 +621,38 @@ mod tests {
     #[test]
     fn test_pool_buffer_reuse() -> Result<()> {
         let manager = MemoryManager::new()?;
-        
+
         // Allocate and drop buffer
         {
             let _buffer = manager.allocate_buffer(PoolType::AstParsing, 1024)?;
         }
-        
+
         // Allocate another buffer of same size - should reuse
         let buffer2 = manager.allocate_buffer(PoolType::AstParsing, 1024)?;
         assert_eq!(buffer2.as_slice().len(), 1024);
-        
+
         Ok(())
     }
 
     #[test]
     fn test_allocation_strategy() -> Result<()> {
         let manager = MemoryManager::new()?;
-        
+
         // Small allocation should use pooled strategy
         assert_eq!(manager.determine_strategy(1024), AllocationStrategy::Pooled);
-        
-        // Large allocation should use memory-mapped strategy  
-        assert_eq!(manager.determine_strategy(2 * 1024 * 1024), AllocationStrategy::MemoryMapped);
-        
+
+        // Large allocation should use memory-mapped strategy
+        assert_eq!(
+            manager.determine_strategy(2 * 1024 * 1024),
+            AllocationStrategy::MemoryMapped
+        );
+
         // Medium allocation should use direct strategy
-        assert_eq!(manager.determine_strategy(512 * 1024), AllocationStrategy::Direct);
-        
+        assert_eq!(
+            manager.determine_strategy(512 * 1024),
+            AllocationStrategy::Direct
+        );
+
         Ok(())
     }
 
@@ -635,26 +660,30 @@ mod tests {
     fn test_concurrent_access() -> Result<()> {
         let manager = MemoryManager::new()?;
         let manager = Arc::clone(&manager);
-        
-        let handles: Vec<_> = (0..4).map(|i| {
-            let manager = Arc::clone(&manager);
-            thread::spawn(move || -> Result<()> {
-                for j in 0..10 {
-                    let _buffer = manager.allocate_buffer(PoolType::AstParsing, 1024 + j * 100)?;
-                    let _interned = manager.intern_string(&format!("thread_{}_iter_{}", i, j))?;
-                    thread::sleep(Duration::from_millis(1));
-                }
-                Ok(())
+
+        let handles: Vec<_> = (0..4)
+            .map(|i| {
+                let manager = Arc::clone(&manager);
+                thread::spawn(move || -> Result<()> {
+                    for j in 0..10 {
+                        let _buffer =
+                            manager.allocate_buffer(PoolType::AstParsing, 1024 + j * 100)?;
+                        let _interned =
+                            manager.intern_string(&format!("thread_{}_iter_{}", i, j))?;
+                        thread::sleep(Duration::from_millis(1));
+                    }
+                    Ok(())
+                })
             })
-        }).collect();
-        
+            .collect();
+
         for handle in handles {
             handle.join().unwrap()?;
         }
-        
+
         let stats = manager.stats();
         assert!(stats.total_allocated > 0);
-        
+
         Ok(())
     }
 }

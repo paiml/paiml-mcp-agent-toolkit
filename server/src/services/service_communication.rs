@@ -1,5 +1,5 @@
 //! Service communication patterns per SPECIFICATION.md Section 2.2
-//! 
+//!
 //! This module provides various communication patterns between services
 //! including request-response, pub-sub, and streaming.
 
@@ -37,7 +37,7 @@ impl<T> ServiceMessage<T> {
             reply_to: None,
         }
     }
-    
+
     /// Create a reply to this message
     pub fn reply<R>(&self, payload: R) -> ServiceMessage<R> {
         ServiceMessage {
@@ -72,37 +72,35 @@ impl<T: Clone + Send> PubSubService<T> {
             metrics: Arc::new(RwLock::new(ServiceMetrics::default())),
         }
     }
-    
+
     /// Subscribe to a topic
     pub async fn subscribe(&self, topic: String) -> broadcast::Receiver<T> {
         let (tx, rx) = broadcast::channel(100);
-        
+
         let mut subs = self.subscribers.write().await;
-        subs.entry(topic)
-            .or_insert_with(Vec::new)
-            .push(tx);
-        
+        subs.entry(topic).or_insert_with(Vec::new).push(tx);
+
         rx
     }
-    
+
     /// Publish to a topic
     pub async fn publish(&self, topic: String, message: T) -> Result<()> {
         let subs = self.subscribers.read().await;
-        
+
         if let Some(subscribers) = subs.get(&topic) {
             for tx in subscribers {
                 // Ignore send errors (subscriber might have dropped)
                 let _ = tx.send(message.clone());
             }
-            
+
             let mut metrics = self.metrics.write().await;
             metrics.request_count += 1;
             metrics.success_count += 1;
         }
-        
+
         Ok(())
     }
-    
+
     /// Get the number of subscribers for a topic
     pub async fn subscriber_count(&self, topic: &str) -> usize {
         let subs = self.subscribers.read().await;
@@ -112,8 +110,31 @@ impl<T: Clone + Send> PubSubService<T> {
 
 /// Router service that routes messages to appropriate handlers
 pub struct RouterService {
-    routes: Arc<RwLock<HashMap<String, Arc<dyn Service<Input = ServiceMessage<Vec<u8>>, Output = ServiceMessage<Vec<u8>>, Error = anyhow::Error> + Send + Sync>>>>,
-    default_handler: Option<Arc<dyn Service<Input = ServiceMessage<Vec<u8>>, Output = ServiceMessage<Vec<u8>>, Error = anyhow::Error> + Send + Sync>>,
+    routes: Arc<
+        RwLock<
+            HashMap<
+                String,
+                Arc<
+                    dyn Service<
+                            Input = ServiceMessage<Vec<u8>>,
+                            Output = ServiceMessage<Vec<u8>>,
+                            Error = anyhow::Error,
+                        > + Send
+                        + Sync,
+                >,
+            >,
+        >,
+    >,
+    default_handler: Option<
+        Arc<
+            dyn Service<
+                    Input = ServiceMessage<Vec<u8>>,
+                    Output = ServiceMessage<Vec<u8>>,
+                    Error = anyhow::Error,
+                > + Send
+                + Sync,
+        >,
+    >,
     metrics: ServiceMetrics,
 }
 
@@ -132,43 +153,58 @@ impl RouterService {
             metrics: ServiceMetrics::default(),
         }
     }
-    
+
     /// Add a route
     pub async fn add_route<S>(&mut self, pattern: String, handler: S)
     where
-        S: Service<Input = ServiceMessage<Vec<u8>>, Output = ServiceMessage<Vec<u8>>, Error = anyhow::Error> + Send + Sync + 'static,
+        S: Service<
+                Input = ServiceMessage<Vec<u8>>,
+                Output = ServiceMessage<Vec<u8>>,
+                Error = anyhow::Error,
+            > + Send
+            + Sync
+            + 'static,
     {
         let mut routes = self.routes.write().await;
         routes.insert(pattern, Arc::new(handler));
     }
-    
+
     /// Set default handler for unmatched routes
     pub fn set_default<S>(&mut self, handler: S)
     where
-        S: Service<Input = ServiceMessage<Vec<u8>>, Output = ServiceMessage<Vec<u8>>, Error = anyhow::Error> + Send + Sync + 'static,
+        S: Service<
+                Input = ServiceMessage<Vec<u8>>,
+                Output = ServiceMessage<Vec<u8>>,
+                Error = anyhow::Error,
+            > + Send
+            + Sync
+            + 'static,
     {
         self.default_handler = Some(Arc::new(handler));
     }
-    
+
     /// Route a message to the appropriate handler
     pub async fn route(&self, message: ServiceMessage<Vec<u8>>) -> Result<ServiceMessage<Vec<u8>>> {
         let routes = self.routes.read().await;
-        
+
         // Find matching route
         if let Some(handler) = routes.get(&message.destination) {
             debug!("Routing to {}", message.destination);
             return handler.process(message).await;
         }
-        
+
         // Use default handler if available
         if let Some(ref default) = self.default_handler {
             debug!("Using default handler for {}", message.destination);
             return default.process(message).await;
         }
-        
-        Err(anyhow::anyhow!("No route found for {}", message.destination))
+
+        Err(anyhow::anyhow!(
+            "No route found for {}",
+            message.destination
+        ))
     }
-    
+
     /// Get metrics for this router
     pub fn metrics(&self) -> &ServiceMetrics {
         &self.metrics
@@ -180,7 +216,7 @@ impl Service for RouterService {
     type Input = ServiceMessage<Vec<u8>>;
     type Output = ServiceMessage<Vec<u8>>;
     type Error = anyhow::Error;
-    
+
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
         self.route(input).await
     }
@@ -189,7 +225,7 @@ impl Service for RouterService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_service_message() {
         let msg = ServiceMessage::new(
@@ -197,33 +233,36 @@ mod tests {
             "service-b".to_string(),
             "Hello".to_string(),
         );
-        
+
         assert_eq!(msg.source, "service-a");
         assert_eq!(msg.destination, "service-b");
         assert_eq!(msg.payload, "Hello");
-        
+
         let reply = msg.reply("World".to_string());
         assert_eq!(reply.source, "service-b");
         assert_eq!(reply.destination, "service-a");
         assert_eq!(reply.correlation_id, Some(msg.id));
     }
-    
+
     #[tokio::test]
     async fn test_pub_sub() {
         let pubsub = PubSubService::<String>::new();
-        
+
         let mut subscriber1 = pubsub.subscribe("topic1".to_string()).await;
         let mut subscriber2 = pubsub.subscribe("topic1".to_string()).await;
-        
-        pubsub.publish("topic1".to_string(), "Message 1".to_string()).await.unwrap();
-        
+
+        pubsub
+            .publish("topic1".to_string(), "Message 1".to_string())
+            .await
+            .unwrap();
+
         // Both subscribers should receive the message
         let msg1 = subscriber1.recv().await.unwrap();
         let msg2 = subscriber2.recv().await.unwrap();
-        
+
         assert_eq!(msg1, "Message 1");
         assert_eq!(msg2, "Message 1");
-        
+
         assert_eq!(pubsub.subscriber_count("topic1").await, 2);
     }
 }

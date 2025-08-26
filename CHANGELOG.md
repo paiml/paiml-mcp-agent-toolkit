@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Complexity Analysis**: Display function names in single-file analysis
+  - Added "Functions in File" section when analyzing a single file
+  - Lists all functions with their complexity metrics sorted by complexity
+  - Shows function name, line range, cyclomatic and cognitive complexity values
+  - Improves usability by making it clear which specific functions need refactoring
+
 ## [2.13.0] - 2025-08-26 - Technical Debt Grading (TDG) System
 
 ### Added

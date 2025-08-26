@@ -22,10 +22,12 @@
 //! }
 //! ```
 
-use crate::services::complexity::{ComplexityMetrics, FileComplexityMetrics, FunctionComplexity, HalsteadMetrics};
+use crate::services::complexity::{
+    ComplexityMetrics, FileComplexityMetrics, FunctionComplexity, HalsteadMetrics,
+};
 use anyhow::Result;
-use std::path::Path;
 use std::collections::HashSet;
+use std::path::Path;
 
 /// Ruchy language token types based on the official Ruchy lexer specification
 /// Updated to match ruchy v1.5.0 token definitions
@@ -67,7 +69,7 @@ pub enum RuchyToken {
     Import,
     From,
     Export,
-    
+
     // Operators - aligned with ruchy v1.5.0
     Plus,
     Minus,
@@ -84,17 +86,17 @@ pub enum RuchyToken {
     And,
     Or,
     Not,
-    PipeForward,  // |>
-    Arrow,        // ->
-    FatArrow,     // =>
-    Question,     // ?
-    Ampersand,    // &
-    Pipe,         // |
-    Caret,        // ^
-    Tilde,        // ~
-    LeftShift,    // <<
-    RightShift,   // >>
-    
+    PipeForward, // |>
+    Arrow,       // ->
+    FatArrow,    // =>
+    Question,    // ?
+    Ampersand,   // &
+    Pipe,        // |
+    Caret,       // ^
+    Tilde,       // ~
+    LeftShift,   // <<
+    RightShift,  // >>
+
     // Delimiters - aligned with ruchy v1.5.0
     LeftParen,
     RightParen,
@@ -107,11 +109,11 @@ pub enum RuchyToken {
     Colon,
     Dot,
     DoubleColon,
-    DotDot,       // ..
-    DotDotDot,    // ...
-    At,           // @
-    Hash,         // #
-    
+    DotDot,    // ..
+    DotDotDot, // ...
+    At,        // @
+    Hash,      // #
+
     // Literals - aligned with ruchy v1.5.0
     Integer(i64),
     Float(f64),
@@ -119,17 +121,17 @@ pub enum RuchyToken {
     FString(String),
     Char(char),
     Bool(bool),
-    
+
     // Identifiers
     Identifier(String),
-    
+
     // Special
-    Annotation(String),  // @test, etc.
+    Annotation(String), // @test, etc.
     Comment(String),
-    
+
     // End of file
     Eof,
-    
+
     // Error token
     Error,
 }
@@ -263,6 +265,7 @@ pub struct RuchyComplexityAnalyzer {
     defined_variables: HashSet<String>,
     used_variables: HashSet<String>,
     // Type inference tracking
+    #[allow(dead_code)]
     type_environment: std::collections::HashMap<String, RuchyType>,
     // Import/dependency tracking
     imports: Vec<RuchyImport>,
@@ -348,7 +351,7 @@ impl RuchyComplexityAnalyzer {
             spawn_calls: Vec::new(),
         }
     }
-    
+
     /// Reset Halstead tracking for a new function
     fn reset_halstead(&mut self) {
         self.operators.clear();
@@ -356,39 +359,39 @@ impl RuchyComplexityAnalyzer {
         self.operator_count = 0;
         self.operand_count = 0;
     }
-    
+
     /// Track an operator for Halstead metrics
     fn track_operator(&mut self, op: &str) {
         self.operators.insert(op.to_string());
         self.operator_count += 1;
     }
-    
+
     /// Track an operand for Halstead metrics
     fn track_operand(&mut self, operand: &str) {
         self.operands.insert(operand.to_string());
         self.operand_count += 1;
     }
-    
+
     /// Calculate Halstead metrics for current function
     fn calculate_halstead(&self) -> HalsteadMetrics {
         let n1 = self.operators.len() as u32;
         let n2 = self.operands.len() as u32;
         let n1_total = self.operator_count;
         let n2_total = self.operand_count;
-        
+
         let n = (n1 + n2) as f64;
         let n_total = (n1_total + n2_total) as f64;
-        
+
         let volume = if n > 0.0 { n_total * n.log2() } else { 0.0 };
-        let difficulty = if n2 > 0 { 
-            (n1 as f64 / 2.0) * (n2_total as f64 / n2 as f64) 
-        } else { 
-            0.0 
+        let difficulty = if n2 > 0 {
+            (n1 as f64 / 2.0) * (n2_total as f64 / n2 as f64)
+        } else {
+            0.0
         };
         let effort = volume * difficulty;
         let time = effort / 18.0; // Stroud number
         let bugs = volume / 3000.0; // Industry average
-        
+
         HalsteadMetrics {
             n1,
             n2,
@@ -401,28 +404,31 @@ impl RuchyComplexityAnalyzer {
             bugs,
         }
     }
-    
+
     /// Get dead code analysis results
     pub fn get_dead_code(&self) -> RuchyDeadCode {
-        let unused_functions: Vec<String> = self.defined_functions
+        let unused_functions: Vec<String> = self
+            .defined_functions
             .difference(&self.called_functions)
             .filter(|f| *f != "main" && !self.exports.contains(*f)) // main and exported functions are entry points
             .cloned()
             .collect();
-            
-        let unused_variables: Vec<String> = self.defined_variables
+
+        let unused_variables: Vec<String> = self
+            .defined_variables
             .difference(&self.used_variables)
             .cloned()
             .collect();
-            
+
         RuchyDeadCode {
             unused_functions,
             unused_variables,
             unreachable_code: Vec::new(), // Will be populated during AST traversal
         }
     }
-    
+
     /// Infer type from a literal token
+    #[allow(dead_code)]
     fn infer_literal_type(&self, lit: &RuchyToken) -> RuchyType {
         match lit {
             RuchyToken::Integer(_) => RuchyType::Integer,
@@ -433,9 +439,15 @@ impl RuchyComplexityAnalyzer {
             _ => RuchyType::Unknown,
         }
     }
-    
+
     /// Infer type of a binary operation
-    fn infer_binary_type(&self, op: &RuchyToken, left_type: &RuchyType, _right_type: &RuchyType) -> RuchyType {
+    #[allow(dead_code)]
+    fn infer_binary_type(
+        &self,
+        op: &RuchyToken,
+        left_type: &RuchyType,
+        _right_type: &RuchyType,
+    ) -> RuchyType {
         match op {
             RuchyToken::Plus | RuchyToken::Minus | RuchyToken::Star | RuchyToken::Slash => {
                 match left_type {
@@ -445,24 +457,27 @@ impl RuchyComplexityAnalyzer {
                     _ => RuchyType::Unknown,
                 }
             }
-            RuchyToken::EqualEqual | RuchyToken::NotEqual | 
-            RuchyToken::Less | RuchyToken::Greater | 
-            RuchyToken::LessEqual | RuchyToken::GreaterEqual => RuchyType::Bool,
+            RuchyToken::EqualEqual
+            | RuchyToken::NotEqual
+            | RuchyToken::Less
+            | RuchyToken::Greater
+            | RuchyToken::LessEqual
+            | RuchyToken::GreaterEqual => RuchyType::Bool,
             RuchyToken::And | RuchyToken::Or => RuchyType::Bool,
             _ => RuchyType::Unknown,
         }
     }
-    
+
     /// Get import dependencies
     pub fn get_imports(&self) -> &[RuchyImport] {
         &self.imports
     }
-    
+
     /// Get exported items
     pub fn get_exports(&self) -> Vec<String> {
         self.exports.iter().cloned().collect()
     }
-    
+
     /// Analyze pattern complexity for match expressions
     fn analyze_pattern_complexity(&mut self, pattern: &RuchyAst) {
         match pattern {
@@ -470,35 +485,33 @@ impl RuchyComplexityAnalyzer {
                 self.track_operand(name);
                 self.defined_variables.insert(name.clone());
             }
-            RuchyAst::Literal(lit) => {
-                match lit {
-                    RuchyToken::Integer(i) => self.track_operand(&i.to_string()),
-                    RuchyToken::String(s) => self.track_operand(s),
-                    _ => {}
-                }
-            }
+            RuchyAst::Literal(lit) => match lit {
+                RuchyToken::Integer(i) => self.track_operand(&i.to_string()),
+                RuchyToken::String(s) => self.track_operand(s),
+                _ => {}
+            },
             // Wildcard pattern
             _ => {
                 self.track_operator("_");
             }
         }
     }
-    
+
     /// Get actor analysis results
     pub fn get_actor_analysis(&self) -> RuchyActorAnalysis {
         let potential_deadlocks = self.detect_potential_deadlocks();
-        
+
         RuchyActorAnalysis {
             actors: self.actors.clone(),
             message_flows: self.message_flows.clone(),
             potential_deadlocks,
         }
     }
-    
+
     /// Detect potential deadlocks in actor message flows
     fn detect_potential_deadlocks(&self) -> Vec<DeadlockWarning> {
         let mut warnings = Vec::new();
-        
+
         // Simple cycle detection in message flows
         for flow1 in &self.message_flows {
             for flow2 in &self.message_flows {
@@ -506,7 +519,7 @@ impl RuchyComplexityAnalyzer {
                     warnings.push(DeadlockWarning {
                         actors_involved: vec![flow1.from_actor.clone(), flow1.to_actor.clone()],
                         description: format!(
-                            "Potential circular dependency between {} and {}", 
+                            "Potential circular dependency between {} and {}",
                             flow1.from_actor, flow1.to_actor
                         ),
                         line: flow1.line,
@@ -514,24 +527,30 @@ impl RuchyComplexityAnalyzer {
                 }
             }
         }
-        
+
         warnings
     }
 
     /// Analyze a Ruchy AST node for complexity
     fn analyze_node(&mut self, node: &RuchyAst) {
         match node {
-            RuchyAst::Function { name, body, line_start, line_end, .. } => {
+            RuchyAst::Function {
+                name,
+                body,
+                line_start,
+                line_end,
+                ..
+            } => {
                 // Track function definition for dead code analysis
                 self.defined_functions.insert(name.clone());
                 self.track_operator("fun");
                 self.track_operand(name);
-                
+
                 let prev_complexity = self.current_complexity;
                 let prev_nesting = self.nesting_level;
-                
+
                 self.current_complexity = ComplexityMetrics {
-                    cyclomatic: 1,  // Base complexity for function
+                    cyclomatic: 1, // Base complexity for function
                     cognitive: 0,
                     nesting_max: 0,
                     lines: (*line_end - *line_start) as u16,
@@ -539,32 +558,37 @@ impl RuchyComplexityAnalyzer {
                 };
                 self.nesting_level = 0;
                 self.reset_halstead();
-                
+
                 self.analyze_node(body);
-                
+
                 // Calculate Halstead metrics for this function
                 let halstead = self.calculate_halstead();
                 self.current_complexity.halstead = Some(halstead);
-                
+
                 self.functions.push(FunctionComplexity {
                     name: name.clone(),
                     line_start: *line_start,
                     line_end: *line_end,
                     metrics: self.current_complexity,
                 });
-                
+
                 self.current_complexity = prev_complexity;
                 self.nesting_level = prev_nesting;
             }
-            
-            RuchyAst::If { condition, then_branch, else_branch } => {
+
+            RuchyAst::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
                 self.current_complexity.cyclomatic += 1;
                 self.current_complexity.cognitive += 1 + self.nesting_level as u16;
                 self.track_operator("if");
-                
+
                 self.nesting_level += 1;
-                self.current_complexity.nesting_max = self.current_complexity.nesting_max.max(self.nesting_level);
-                
+                self.current_complexity.nesting_max =
+                    self.current_complexity.nesting_max.max(self.nesting_level);
+
                 self.analyze_node(condition);
                 self.analyze_node(then_branch);
                 if let Some(else_br) = else_branch {
@@ -572,56 +596,59 @@ impl RuchyComplexityAnalyzer {
                     self.track_operator("else");
                     self.analyze_node(else_br);
                 }
-                
+
                 self.nesting_level -= 1;
             }
-            
+
             RuchyAst::While { condition, body } => {
                 self.current_complexity.cyclomatic += 1;
                 self.current_complexity.cognitive += 1 + self.nesting_level as u16;
-                
+
                 self.nesting_level += 1;
-                self.current_complexity.nesting_max = self.current_complexity.nesting_max.max(self.nesting_level);
-                
+                self.current_complexity.nesting_max =
+                    self.current_complexity.nesting_max.max(self.nesting_level);
+
                 self.analyze_node(condition);
                 self.analyze_node(body);
-                
+
                 self.nesting_level -= 1;
             }
-            
+
             RuchyAst::For { body, .. } => {
                 self.current_complexity.cyclomatic += 1;
                 self.current_complexity.cognitive += 1 + self.nesting_level as u16;
-                
+
                 self.nesting_level += 1;
-                self.current_complexity.nesting_max = self.current_complexity.nesting_max.max(self.nesting_level);
-                
+                self.current_complexity.nesting_max =
+                    self.current_complexity.nesting_max.max(self.nesting_level);
+
                 self.analyze_node(body);
-                
+
                 self.nesting_level -= 1;
             }
-            
+
             RuchyAst::Match { expr, arms } => {
                 // Pattern matching has higher cognitive complexity
                 let arm_count = arms.len() as u16;
                 self.current_complexity.cyclomatic += arm_count;
                 self.current_complexity.cognitive += (arm_count * 2) + self.nesting_level as u16;
-                
+
                 self.track_operator("match");
-                
+
                 self.nesting_level += 1;
-                self.current_complexity.nesting_max = self.current_complexity.nesting_max.max(self.nesting_level);
-                
+                self.current_complexity.nesting_max =
+                    self.current_complexity.nesting_max.max(self.nesting_level);
+
                 self.analyze_node(expr);
                 for (pattern, body) in arms {
                     // Analyze pattern complexity
                     self.analyze_pattern_complexity(pattern);
                     self.analyze_node(body);
                 }
-                
+
                 self.nesting_level -= 1;
             }
-            
+
             RuchyAst::BinaryOp { left, op, right } => {
                 // Track operator for Halstead
                 let op_str = match op {
@@ -642,7 +669,7 @@ impl RuchyComplexityAnalyzer {
                     _ => "op",
                 };
                 self.track_operator(op_str);
-                
+
                 // Logical operators add complexity
                 if matches!(op, RuchyToken::And | RuchyToken::Or) {
                     self.current_complexity.cyclomatic += 1;
@@ -651,13 +678,13 @@ impl RuchyComplexityAnalyzer {
                 self.analyze_node(left);
                 self.analyze_node(right);
             }
-            
+
             RuchyAst::Block { statements } => {
                 for stmt in statements {
                     self.analyze_node(stmt);
                 }
             }
-            
+
             RuchyAst::Pipeline { stages } => {
                 // Pipelines add cognitive complexity
                 self.current_complexity.cognitive += (stages.len() as u16).saturating_sub(1);
@@ -665,47 +692,58 @@ impl RuchyComplexityAnalyzer {
                     self.analyze_node(stage);
                 }
             }
-            
-            RuchyAst::Class { methods, line_start, line_end, name, .. } => {
+
+            RuchyAst::Class {
+                methods,
+                line_start,
+                line_end,
+                name,
+                ..
+            } => {
                 let mut class_complexity = ComplexityMetrics::default();
-                
+
                 for method in methods {
                     self.analyze_node(method);
                     if let RuchyAst::Function { .. } = method {
                         if let Some(func) = self.functions.last() {
                             class_complexity.cyclomatic += func.metrics.cyclomatic;
                             class_complexity.cognitive += func.metrics.cognitive;
-                            class_complexity.nesting_max = class_complexity.nesting_max.max(func.metrics.nesting_max);
+                            class_complexity.nesting_max =
+                                class_complexity.nesting_max.max(func.metrics.nesting_max);
                         }
                     }
                 }
-                
-                self.classes.push(crate::services::complexity::ClassComplexity {
-                    name: name.clone(),
-                    line_start: *line_start,
-                    line_end: *line_end,
-                    metrics: class_complexity,
-                    methods: vec![],
-                });
+
+                self.classes
+                    .push(crate::services::complexity::ClassComplexity {
+                        name: name.clone(),
+                        line_start: *line_start,
+                        line_end: *line_end,
+                        metrics: class_complexity,
+                        methods: vec![],
+                    });
             }
-            
+
             RuchyAst::Call { function, args } => {
                 // Track function call for dead code analysis
                 if let RuchyAst::Identifier(fn_name) = function.as_ref() {
                     self.called_functions.insert(fn_name.clone());
                     self.track_operand(fn_name);
-                    
+
                     // Track actor-related calls for message flow analysis
                     match fn_name.as_str() {
-                        "spawn" if args.len() >= 1 => {
+                        "spawn" if !args.is_empty() => {
                             if let RuchyAst::Identifier(actor_name) = &args[0] {
                                 if let Some(current) = &self.current_actor {
-                                    self.spawn_calls.push((current.clone(), actor_name.clone(), 0));
+                                    self.spawn_calls
+                                        .push((current.clone(), actor_name.clone(), 0));
                                 }
                             }
                         }
                         "send" if args.len() >= 2 => {
-                            if let (RuchyAst::Identifier(target), RuchyAst::Identifier(message)) = (&args[0], &args[1]) {
+                            if let (RuchyAst::Identifier(target), RuchyAst::Identifier(message)) =
+                                (&args[0], &args[1])
+                            {
                                 if let Some(current) = &self.current_actor {
                                     self.message_flows.push(MessageFlow {
                                         from_actor: current.clone(),
@@ -720,42 +758,40 @@ impl RuchyComplexityAnalyzer {
                     }
                 }
                 self.track_operator("()");
-                
+
                 self.analyze_node(function);
                 for arg in args {
                     self.analyze_node(arg);
                 }
             }
-            
+
             RuchyAst::Identifier(name) => {
                 self.track_operand(name);
                 self.used_variables.insert(name.clone());
             }
-            
-            RuchyAst::Literal(lit) => {
-                match lit {
-                    RuchyToken::Integer(i) => self.track_operand(&i.to_string()),
-                    RuchyToken::Float(f) => self.track_operand(&f.to_string()),
-                    RuchyToken::String(s) | RuchyToken::FString(s) => self.track_operand(s),
-                    RuchyToken::Bool(b) => self.track_operand(&b.to_string()),
-                    _ => {}
-                }
-            }
-            
+
+            RuchyAst::Literal(lit) => match lit {
+                RuchyToken::Integer(i) => self.track_operand(&i.to_string()),
+                RuchyToken::Float(f) => self.track_operand(&f.to_string()),
+                RuchyToken::String(s) | RuchyToken::FString(s) => self.track_operand(s),
+                RuchyToken::Bool(b) => self.track_operand(&b.to_string()),
+                _ => {}
+            },
+
             RuchyAst::Let { name, value } => {
                 self.defined_variables.insert(name.clone());
                 self.track_operator("let");
                 self.track_operand(name);
                 self.analyze_node(value);
             }
-            
+
             RuchyAst::Return { value } => {
                 self.track_operator("return");
                 if let Some(val) = value {
                     self.analyze_node(val);
                 }
             }
-            
+
             RuchyAst::UnaryOp { op, expr } => {
                 let op_str = match op {
                     RuchyToken::Not => "!",
@@ -765,8 +801,12 @@ impl RuchyComplexityAnalyzer {
                 self.track_operator(op_str);
                 self.analyze_node(expr);
             }
-            
-            RuchyAst::Import { module, items, line } => {
+
+            RuchyAst::Import {
+                module,
+                items,
+                line,
+            } => {
                 self.imports.push(RuchyImport {
                     module: module.clone(),
                     items: items.clone(),
@@ -775,24 +815,29 @@ impl RuchyComplexityAnalyzer {
                 self.track_operator("import");
                 self.track_operand(module);
             }
-            
+
             RuchyAst::Export { items, .. } => {
                 for item in items {
                     self.exports.insert(item.clone());
                 }
                 self.track_operator("export");
             }
-            
+
             // Note: Ok, Err, Some, None, Try, Await would need to be added to RuchyAst enum
             // For now, handle them as regular function calls
-            
-            RuchyAst::Actor { name, state, handlers, line_start, line_end } => {
+            RuchyAst::Actor {
+                name,
+                state,
+                handlers,
+                line_start,
+                line_end,
+            } => {
                 self.track_operator("actor");
                 self.track_operand(name);
-                
+
                 let prev_actor = self.current_actor.clone();
                 self.current_actor = Some(name.clone());
-                
+
                 let mut actor_info = ActorInfo {
                     name: name.clone(),
                     state_fields: state.iter().map(|(field, _)| field.clone()).collect(),
@@ -801,11 +846,14 @@ impl RuchyComplexityAnalyzer {
                     line_start: *line_start,
                     line_end: *line_end,
                 };
-                
+
                 let mut class_complexity = ComplexityMetrics::default();
-                
+
                 for handler in handlers {
-                    if let RuchyAst::Function { name: handler_name, .. } = handler {
+                    if let RuchyAst::Function {
+                        name: handler_name, ..
+                    } = handler
+                    {
                         actor_info.message_handlers.push(handler_name.clone());
                     }
                     self.analyze_node(handler);
@@ -813,23 +861,25 @@ impl RuchyComplexityAnalyzer {
                         if let Some(func) = self.functions.last() {
                             class_complexity.cyclomatic += func.metrics.cyclomatic;
                             class_complexity.cognitive += func.metrics.cognitive;
-                            class_complexity.nesting_max = class_complexity.nesting_max.max(func.metrics.nesting_max);
+                            class_complexity.nesting_max =
+                                class_complexity.nesting_max.max(func.metrics.nesting_max);
                         }
                     }
                 }
-                
+
                 self.actors.push(actor_info);
-                self.classes.push(crate::services::complexity::ClassComplexity {
-                    name: name.clone(),
-                    line_start: *line_start,
-                    line_end: *line_end,
-                    metrics: class_complexity,
-                    methods: vec![],
-                });
-                
+                self.classes
+                    .push(crate::services::complexity::ClassComplexity {
+                        name: name.clone(),
+                        line_start: *line_start,
+                        line_end: *line_end,
+                        metrics: class_complexity,
+                        methods: vec![],
+                    });
+
                 self.current_actor = prev_actor;
             }
-            
+
             _ => {
                 // Other nodes don't affect complexity directly
             }
@@ -845,16 +895,31 @@ impl RuchyComplexityAnalyzer {
         } else {
             self.analyze_node(ast);
         }
-        
+
         // Calculate total file complexity
         let total_complexity = ComplexityMetrics {
-            cyclomatic: self.functions.iter().map(|f| f.metrics.cyclomatic).sum::<u16>().max(1),
-            cognitive: self.functions.iter().map(|f| f.metrics.cognitive).sum::<u16>().max(1),
-            nesting_max: self.functions.iter().map(|f| f.metrics.nesting_max).max().unwrap_or(0),
+            cyclomatic: self
+                .functions
+                .iter()
+                .map(|f| f.metrics.cyclomatic)
+                .sum::<u16>()
+                .max(1),
+            cognitive: self
+                .functions
+                .iter()
+                .map(|f| f.metrics.cognitive)
+                .sum::<u16>()
+                .max(1),
+            nesting_max: self
+                .functions
+                .iter()
+                .map(|f| f.metrics.nesting_max)
+                .max()
+                .unwrap_or(0),
             lines: self.functions.iter().map(|f| f.metrics.lines).sum::<u16>(),
             halstead: None,
         };
-        
+
         FileComplexityMetrics {
             path: String::new(), // Will be set by caller
             total_complexity,
@@ -884,7 +949,7 @@ impl RuchyLexer {
         };
         lexer
     }
-    
+
     fn advance(&mut self) {
         if let Some(ch) = self.current_char {
             if ch == '\n' {
@@ -894,15 +959,15 @@ impl RuchyLexer {
                 self.column += 1;
             }
         }
-        
+
         self.position += 1;
         self.current_char = self.input.chars().nth(self.position);
     }
-    
+
     fn peek(&self) -> Option<char> {
         self.input.chars().nth(self.position + 1)
     }
-    
+
     fn skip_whitespace(&mut self) {
         while let Some(ch) = self.current_char {
             if ch.is_whitespace() {
@@ -912,7 +977,7 @@ impl RuchyLexer {
             }
         }
     }
-    
+
     fn skip_comment(&mut self) {
         if self.current_char == Some('/') && self.peek() == Some('/') {
             while self.current_char.is_some() && self.current_char != Some('\n') {
@@ -920,7 +985,7 @@ impl RuchyLexer {
             }
         }
     }
-    
+
     fn read_identifier(&mut self) -> String {
         let mut result = String::new();
         while let Some(ch) = self.current_char {
@@ -933,16 +998,16 @@ impl RuchyLexer {
         }
         result
     }
-    
+
     fn read_number(&mut self) -> RuchyToken {
         let mut num_str = String::new();
         let mut is_float = false;
-        
+
         while let Some(ch) = self.current_char {
             if ch.is_numeric() {
                 num_str.push(ch);
                 self.advance();
-            } else if ch == '.' && !is_float && self.peek().map_or(false, |c| c.is_numeric()) {
+            } else if ch == '.' && !is_float && self.peek().is_some_and(|c| c.is_numeric()) {
                 is_float = true;
                 num_str.push(ch);
                 self.advance();
@@ -959,18 +1024,18 @@ impl RuchyLexer {
                 break;
             }
         }
-        
+
         if is_float {
             RuchyToken::Float(num_str.parse().unwrap_or(0.0))
         } else {
             RuchyToken::Integer(num_str.parse().unwrap_or(0))
         }
     }
-    
+
     fn read_string(&mut self, quote: char) -> String {
         let mut result = String::new();
         self.advance(); // skip opening quote
-        
+
         while let Some(ch) = self.current_char {
             if ch == quote {
                 self.advance(); // skip closing quote
@@ -997,14 +1062,14 @@ impl RuchyLexer {
                 self.advance();
             }
         }
-        
+
         result
     }
-    
+
     pub fn next_token(&mut self) -> RuchyToken {
         self.skip_whitespace();
         self.skip_comment();
-        
+
         match self.current_char {
             None => RuchyToken::Eof,
             Some('+') => {
@@ -1233,9 +1298,7 @@ impl RuchyLexer {
                 self.advance();
                 RuchyToken::Percent
             }
-            Some(ch) if ch.is_numeric() => {
-                self.read_number()
-            }
+            Some(ch) if ch.is_numeric() => self.read_number(),
             _ => {
                 self.advance();
                 RuchyToken::Error
@@ -1247,11 +1310,11 @@ impl RuchyLexer {
 /// Parse a Ruchy file and analyze its complexity
 pub async fn analyze_ruchy_file(path: &Path) -> Result<FileComplexityMetrics> {
     let content = tokio::fs::read_to_string(path).await?;
-    
+
     // For now, use a simple heuristic-based analysis
     // A full parser would be implemented based on the grammar specification
     let _analyzer = RuchyComplexityAnalyzer::new();
-    
+
     // Simple parsing - count functions and control flow
     let mut metrics = FileComplexityMetrics {
         path: path.display().to_string(),
@@ -1259,7 +1322,7 @@ pub async fn analyze_ruchy_file(path: &Path) -> Result<FileComplexityMetrics> {
         functions: vec![],
         classes: vec![],
     };
-    
+
     let lines: Vec<&str> = content.lines().collect();
     let mut in_function = false;
     let mut function_name = String::new();
@@ -1272,38 +1335,37 @@ pub async fn analyze_ruchy_file(path: &Path) -> Result<FileComplexityMetrics> {
         lines: 0,
         halstead: None,
     };
-    
+
     for (i, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
-        
+
         // Detect function start
-        if (trimmed.starts_with("fun ") || trimmed.starts_with("@test") || trimmed.contains("fun test_"))
-            && !in_function {
-                in_function = true;
-                function_start = i as u32 + 1;
-                
-                // Extract function name
-                if let Some(name_start) = trimmed.find("fun ") {
-                    let after_fun = &trimmed[name_start + 4..];
-                    function_name = after_fun.split('(')
-                        .next()
-                        .unwrap_or("")
-                        .trim()
-                        .to_string();
-                }
-                
-                current_metrics = ComplexityMetrics {
-                    cyclomatic: 1,
-                    cognitive: 0,
-                    nesting_max: 0,
-                    lines: 0,
-                    halstead: None,
-                };
+        if (trimmed.starts_with("fun ")
+            || trimmed.starts_with("@test")
+            || trimmed.contains("fun test_"))
+            && !in_function
+        {
+            in_function = true;
+            function_start = i as u32 + 1;
+
+            // Extract function name
+            if let Some(name_start) = trimmed.find("fun ") {
+                let after_fun = &trimmed[name_start + 4..];
+                function_name = after_fun.split('(').next().unwrap_or("").trim().to_string();
             }
-        
+
+            current_metrics = ComplexityMetrics {
+                cyclomatic: 1,
+                cognitive: 0,
+                nesting_max: 0,
+                lines: 0,
+                halstead: None,
+            };
+        }
+
         if in_function {
             current_metrics.lines += 1;
-            
+
             // Count control flow keywords
             if trimmed.starts_with("if ") || trimmed.contains(" if ") {
                 current_metrics.cyclomatic += 1;
@@ -1329,11 +1391,11 @@ pub async fn analyze_ruchy_file(path: &Path) -> Result<FileComplexityMetrics> {
                 current_metrics.cyclomatic += 1;
                 current_metrics.cognitive += 1;
             }
-            
+
             // Track braces for function end
             brace_count += trimmed.chars().filter(|&c| c == '{').count() as i32;
             brace_count -= trimmed.chars().filter(|&c| c == '}').count() as i32;
-            
+
             // Function ends when brace count returns to 0
             if brace_count == 0 && trimmed.contains('}') {
                 metrics.functions.push(FunctionComplexity {
@@ -1342,22 +1404,37 @@ pub async fn analyze_ruchy_file(path: &Path) -> Result<FileComplexityMetrics> {
                     line_end: i as u32 + 1,
                     metrics: current_metrics,
                 });
-                
+
                 in_function = false;
                 function_name.clear();
             }
         }
     }
-    
+
     // Calculate total complexity
     metrics.total_complexity = ComplexityMetrics {
-        cyclomatic: metrics.functions.iter().map(|f| f.metrics.cyclomatic).sum::<u16>().max(1),
-        cognitive: metrics.functions.iter().map(|f| f.metrics.cognitive).sum::<u16>().max(1),
-        nesting_max: metrics.functions.iter().map(|f| f.metrics.nesting_max).max().unwrap_or(0),
+        cyclomatic: metrics
+            .functions
+            .iter()
+            .map(|f| f.metrics.cyclomatic)
+            .sum::<u16>()
+            .max(1),
+        cognitive: metrics
+            .functions
+            .iter()
+            .map(|f| f.metrics.cognitive)
+            .sum::<u16>()
+            .max(1),
+        nesting_max: metrics
+            .functions
+            .iter()
+            .map(|f| f.metrics.nesting_max)
+            .max()
+            .unwrap_or(0),
         lines: lines.len() as u16,
         halstead: None,
     };
-    
+
     Ok(metrics)
 }
 
@@ -1369,7 +1446,7 @@ mod tests {
     #[test]
     fn test_ruchy_lexer_basic() {
         let mut lexer = RuchyLexer::new("fun test() { return 42 }".to_string());
-        
+
         assert!(matches!(lexer.next_token(), RuchyToken::Fun));
         assert!(matches!(lexer.next_token(), RuchyToken::Identifier(_)));
         assert!(matches!(lexer.next_token(), RuchyToken::LeftParen));
@@ -1380,11 +1457,11 @@ mod tests {
         assert!(matches!(lexer.next_token(), RuchyToken::RightBrace));
         // lexer.next_token(); // Last token varies based on implementation
     }
-    
+
     #[test]
     fn test_ruchy_halstead_calculation() {
         let mut analyzer = RuchyComplexityAnalyzer::new();
-        
+
         // Track some operators and operands
         analyzer.track_operator("+");
         analyzer.track_operator("-");
@@ -1393,30 +1470,30 @@ mod tests {
         analyzer.track_operand("y");
         analyzer.track_operand("42");
         analyzer.track_operand("x"); // Duplicate
-        
+
         let halstead = analyzer.calculate_halstead();
-        
+
         assert_eq!(halstead.n1, 2); // 2 distinct operators
         assert_eq!(halstead.n2, 3); // 3 distinct operands
         assert_eq!(halstead.n1_total, 3); // 3 total operators
         assert_eq!(halstead.n2_total, 4); // 4 total operands
         assert!(halstead.volume > 0.0);
     }
-    
+
     #[test]
     fn test_dead_code_detection() {
         let mut analyzer = RuchyComplexityAnalyzer::new();
-        
+
         // Simulate some function definitions and calls
         analyzer.defined_functions.insert("main".to_string());
         analyzer.defined_functions.insert("helper".to_string());
         analyzer.defined_functions.insert("unused".to_string());
-        
+
         analyzer.called_functions.insert("helper".to_string());
         // 'unused' is never called, 'main' is entry point
-        
+
         let dead_code = analyzer.get_dead_code();
-        
+
         assert_eq!(dead_code.unused_functions.len(), 1);
         assert!(dead_code.unused_functions.contains(&"unused".to_string()));
         assert!(!dead_code.unused_functions.contains(&"main".to_string())); // main is entry point
@@ -1426,7 +1503,7 @@ mod tests {
     async fn test_ruchy_complexity_analysis() {
         let temp_dir = tempfile::tempdir().unwrap();
         let file_path = temp_dir.path().join("test.ruchy");
-        
+
         let content = r#"
 fun fibonacci(n: i32) -> i32 {
     if n <= 1 {
@@ -1442,12 +1519,12 @@ fun main() {
     }
 }
 "#;
-        
+
         let mut file = std::fs::File::create(&file_path).unwrap();
         file.write_all(content.as_bytes()).unwrap();
-        
+
         let metrics = analyze_ruchy_file(&file_path).await.unwrap();
-        
+
         assert_eq!(metrics.functions.len(), 2);
         assert!(metrics.functions[0].metrics.cyclomatic > 1);
         assert!(metrics.total_complexity.cyclomatic > 1);

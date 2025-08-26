@@ -6,8 +6,8 @@
 pub mod advanced_analysis_handlers;
 pub mod agent_handlers;
 pub mod analysis_handlers;
-pub mod cache;
 pub mod big_o_handlers;
+pub mod cache;
 pub mod complexity_handlers;
 pub mod comprehensive_handler;
 pub mod configuration_handlers;
@@ -21,6 +21,7 @@ pub mod lint_hotspot_handlers;
 pub mod lint_hotspot_property_tests;
 pub mod memory;
 pub mod name_similarity_analysis;
+pub mod new_tdg_handler;
 #[cfg(test)]
 pub mod quality_gate_property_tests;
 pub mod refactor_auto_handlers;
@@ -32,7 +33,6 @@ pub mod telemetry_handlers;
 pub mod test_handlers;
 pub mod utility_handlers;
 pub mod wasm_handlers;
-pub mod new_tdg_handler;
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{

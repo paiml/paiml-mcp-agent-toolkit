@@ -190,7 +190,7 @@ fn send_mcp_request(request: Value) -> Result<McpResponse, String> {
     let reader = BufReader::new(stdout);
     let start = Instant::now();
     let timeout = Duration::from_secs(10); // 10 second timeout
-    
+
     for line in reader.lines() {
         // Check timeout
         if start.elapsed() > timeout {
@@ -198,7 +198,7 @@ fn send_mcp_request(request: Value) -> Result<McpResponse, String> {
             let _ = child.wait();
             return Err("Timeout waiting for MCP response".to_string());
         }
-        
+
         let line = line.map_err(|e| e.to_string())?;
         if line.trim().is_empty() {
             continue;
@@ -222,7 +222,8 @@ fn send_mcp_request(request: Value) -> Result<McpResponse, String> {
 #[test]
 fn test_mcp_tools_match_documentation() {
     // Skip in CI or when SKIP_SLOW_TESTS is set
-    if std::env::var("CI").is_ok() || std::env::var("SKIP_SLOW_TESTS").unwrap_or_default() == "true" {
+    if std::env::var("CI").is_ok() || std::env::var("SKIP_SLOW_TESTS").unwrap_or_default() == "true"
+    {
         eprintln!("Skipping MCP server test in CI environment");
         return;
     }
@@ -291,7 +292,8 @@ fn test_mcp_tools_match_documentation() {
 #[test]
 fn test_mcp_tool_schemas_match_documentation() {
     // Skip in CI or when SKIP_SLOW_TESTS is set
-    if std::env::var("CI").is_ok() || std::env::var("SKIP_SLOW_TESTS").unwrap_or_default() == "true" {
+    if std::env::var("CI").is_ok() || std::env::var("SKIP_SLOW_TESTS").unwrap_or_default() == "true"
+    {
         eprintln!("Skipping MCP server test in CI environment");
         return;
     }
@@ -459,7 +461,8 @@ fn test_mcp_error_codes_are_complete() {
 #[test]
 fn test_no_undocumented_mcp_tools() {
     // Skip in CI or when SKIP_SLOW_TESTS is set
-    if std::env::var("CI").is_ok() || std::env::var("SKIP_SLOW_TESTS").unwrap_or_default() == "true" {
+    if std::env::var("CI").is_ok() || std::env::var("SKIP_SLOW_TESTS").unwrap_or_default() == "true"
+    {
         eprintln!("Skipping MCP server test in CI environment");
         return;
     }

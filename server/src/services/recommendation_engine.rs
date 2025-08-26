@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -14,7 +14,7 @@ pub struct RepositoryRecommendation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ComplexityTier {
     Beginner,
-    Intermediate,  
+    Intermediate,
     Advanced,
     Expert,
 }
@@ -117,10 +117,14 @@ impl RecommendationEngine {
             },
         ];
 
-        self.framework_signatures.insert("rust".to_string(), rust_frameworks);
-        self.framework_signatures.insert("python".to_string(), python_frameworks);
-        self.framework_signatures.insert("typescript".to_string(), typescript_frameworks.clone());
-        self.framework_signatures.insert("javascript".to_string(), typescript_frameworks);
+        self.framework_signatures
+            .insert("rust".to_string(), rust_frameworks);
+        self.framework_signatures
+            .insert("python".to_string(), python_frameworks);
+        self.framework_signatures
+            .insert("typescript".to_string(), typescript_frameworks.clone());
+        self.framework_signatures
+            .insert("javascript".to_string(), typescript_frameworks);
     }
 
     fn initialize_curated_repositories(&mut self) {
@@ -131,7 +135,10 @@ impl RecommendationEngine {
                 confidence: 0.95,
                 framework_detected: Some("Tokio".to_string()),
                 complexity_tier: ComplexityTier::Advanced,
-                learning_focus: vec!["async programming".to_string(), "runtime design".to_string()],
+                learning_focus: vec![
+                    "async programming".to_string(),
+                    "runtime design".to_string(),
+                ],
             },
             RepositoryRecommendation {
                 repository: "actix/actix-web".to_string(),
@@ -205,21 +212,30 @@ impl RecommendationEngine {
             },
         ];
 
-        self.curated_repositories.insert("rust".to_string(), rust_repos);
-        self.curated_repositories.insert("python".to_string(), python_repos);
-        self.curated_repositories.insert("typescript".to_string(), typescript_repos.clone());
-        self.curated_repositories.insert("javascript".to_string(), typescript_repos);
+        self.curated_repositories
+            .insert("rust".to_string(), rust_repos);
+        self.curated_repositories
+            .insert("python".to_string(), python_repos);
+        self.curated_repositories
+            .insert("typescript".to_string(), typescript_repos.clone());
+        self.curated_repositories
+            .insert("javascript".to_string(), typescript_repos);
     }
 
-    pub fn analyze_repository(&self, path: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    pub fn analyze_repository(
+        &self,
+        path: &str,
+    ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let mut detected_frameworks = Vec::new();
 
         for (language, signatures) in &self.framework_signatures {
             for signature in signatures {
                 let confidence = self.calculate_framework_confidence(path, signature)?;
                 if confidence >= signature.confidence_threshold {
-                    detected_frameworks.push(format!("{}: {} (confidence: {:.2})", 
-                        language, signature.name, confidence));
+                    detected_frameworks.push(format!(
+                        "{}: {} (confidence: {:.2})",
+                        language, signature.name, confidence
+                    ));
                 }
             }
         }
@@ -227,7 +243,11 @@ impl RecommendationEngine {
         Ok(detected_frameworks)
     }
 
-    fn calculate_framework_confidence(&self, _path: &str, signature: &FrameworkSignature) -> Result<f64, Box<dyn std::error::Error>> {
+    fn calculate_framework_confidence(
+        &self,
+        _path: &str,
+        signature: &FrameworkSignature,
+    ) -> Result<f64, Box<dyn std::error::Error>> {
         let confidence = 0.0;
         let mut total_checks = 0.0;
 
@@ -242,63 +262,89 @@ impl RecommendationEngine {
         Ok(confidence / total_checks)
     }
 
-    pub fn get_recommendations(&self, detected_language: &str, complexity_preference: Option<ComplexityTier>) -> Vec<RepositoryRecommendation> {
+    pub fn get_recommendations(
+        &self,
+        detected_language: &str,
+        complexity_preference: Option<ComplexityTier>,
+    ) -> Vec<RepositoryRecommendation> {
         let language_key = detected_language.to_lowercase();
-        
+
         if let Some(repos) = self.curated_repositories.get(&language_key) {
             let mut recommendations = repos.clone();
-            
+
             if let Some(pref) = complexity_preference {
                 recommendations.retain(|repo| {
                     matches!(
                         (&repo.complexity_tier, &pref),
-                        (ComplexityTier::Beginner, ComplexityTier::Beginner) |
-                        (ComplexityTier::Intermediate, ComplexityTier::Intermediate) |
-                        (ComplexityTier::Advanced, ComplexityTier::Advanced) |
-                        (ComplexityTier::Expert, ComplexityTier::Expert)
+                        (ComplexityTier::Beginner, ComplexityTier::Beginner)
+                            | (ComplexityTier::Intermediate, ComplexityTier::Intermediate)
+                            | (ComplexityTier::Advanced, ComplexityTier::Advanced)
+                            | (ComplexityTier::Expert, ComplexityTier::Expert)
                     )
                 });
             }
 
-            recommendations.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
+            recommendations.sort_by(|a, b| {
+                b.confidence
+                    .partial_cmp(&a.confidence)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
             recommendations
         } else {
             Vec::new()
         }
     }
 
-    pub fn get_framework_specific_recommendations(&self, framework: &str) -> Vec<RepositoryRecommendation> {
+    pub fn get_framework_specific_recommendations(
+        &self,
+        framework: &str,
+    ) -> Vec<RepositoryRecommendation> {
         let mut recommendations = Vec::new();
-        
+
         for repos in self.curated_repositories.values() {
             for repo in repos {
                 if let Some(detected_framework) = &repo.framework_detected {
-                    if detected_framework.to_lowercase().contains(&framework.to_lowercase()) {
+                    if detected_framework
+                        .to_lowercase()
+                        .contains(&framework.to_lowercase())
+                    {
                         recommendations.push(repo.clone());
                     }
                 }
             }
         }
 
-        recommendations.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
+        recommendations.sort_by(|a, b| {
+            b.confidence
+                .partial_cmp(&a.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         recommendations
     }
 
-    pub fn generate_learning_path(&self, language: &str, detected_frameworks: &[String]) -> Vec<String> {
+    pub fn generate_learning_path(
+        &self,
+        language: &str,
+        detected_frameworks: &[String],
+    ) -> Vec<String> {
         let mut learning_path = Vec::new();
-        
+
         learning_path.push(format!("Start with basic {} syntax and concepts", language));
-        
+
         for framework_info in detected_frameworks {
             if let Some(colon_pos) = framework_info.find(':') {
-                let framework = framework_info[colon_pos + 1..].split(" (").next().unwrap_or("").trim();
+                let framework = framework_info[colon_pos + 1..]
+                    .split(" (")
+                    .next()
+                    .unwrap_or("")
+                    .trim();
                 learning_path.push(format!("Study {} framework patterns", framework));
             }
         }
 
         learning_path.push("Explore advanced patterns and best practices".to_string());
         learning_path.push("Contribute to open source projects".to_string());
-        
+
         learning_path
     }
 }
@@ -322,7 +368,7 @@ mod tests {
             dependencies: vec!["test-dep".to_string()],
             confidence_threshold: 0.8,
         };
-        
+
         assert_eq!(signature.name, "Test Framework");
         assert_eq!(signature.confidence_threshold, 0.8);
     }
@@ -339,8 +385,10 @@ mod tests {
         let engine = RecommendationEngine::new();
         let recommendations = engine.get_recommendations("rust", None);
         assert!(!recommendations.is_empty());
-        
-        let has_tokio = recommendations.iter().any(|r| r.repository.contains("tokio"));
+
+        let has_tokio = recommendations
+            .iter()
+            .any(|r| r.repository.contains("tokio"));
         assert!(has_tokio);
     }
 
@@ -348,7 +396,7 @@ mod tests {
     fn test_complexity_tier_filtering() {
         let engine = RecommendationEngine::new();
         let beginner_recs = engine.get_recommendations("rust", Some(ComplexityTier::Beginner));
-        
+
         for rec in beginner_recs {
             assert!(matches!(rec.complexity_tier, ComplexityTier::Beginner));
         }
@@ -358,7 +406,7 @@ mod tests {
     fn test_framework_specific_recommendations() {
         let engine = RecommendationEngine::new();
         let react_recs = engine.get_framework_specific_recommendations("React");
-        
+
         assert!(!react_recs.is_empty());
         for rec in react_recs {
             if let Some(framework) = &rec.framework_detected {
@@ -372,7 +420,7 @@ mod tests {
         let engine = RecommendationEngine::new();
         let detected_frameworks = vec!["rust: Tokio (confidence: 0.85)".to_string()];
         let learning_path = engine.generate_learning_path("rust", &detected_frameworks);
-        
+
         assert!(!learning_path.is_empty());
         assert!(learning_path[0].contains("basic rust"));
         assert!(learning_path.iter().any(|step| step.contains("Tokio")));

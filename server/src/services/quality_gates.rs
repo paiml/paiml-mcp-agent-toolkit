@@ -126,12 +126,11 @@ impl QAVerification {
                 if file_count == 0 {
                     return Err("No files discovered in project".into());
                 }
-                
+
                 // For non-analyzable projects (e.g., no Rust/Python/JS), pass with a warning
                 if file_count > 0 {
                     return Ok(());  // Pass but with implicit warning that analysis was limited
                 }
-                
                 return Err("No lines analyzed - invalid result".into());
             }
 
