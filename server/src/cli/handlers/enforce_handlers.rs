@@ -294,6 +294,7 @@ async fn run_enforcement_step(
                 false,                        // watch
                 10,                           // top_files
                 false,                        // fail_on_violation (enforce mode handles this)
+                60,                           // timeout - reasonable default for enforce mode
             )
             .await?;
 
@@ -314,6 +315,7 @@ async fn run_enforcement_step(
                 None,  // output
                 0,     // top_files (0 = all)
                 false, // fail_on_violation (enforce mode handles this)
+                60,    // timeout - reasonable default for enforce mode
             )
             .await?;
 
@@ -550,6 +552,7 @@ async fn list_all_violations(
         false,                        // watch
         10,                           // top_files
         false,                        // fail_on_violation
+        60,     // timeout
     )
     .await
     {
@@ -583,6 +586,7 @@ async fn list_all_violations(
         None,  // output
         0,     // top_files (0 = all)
         false, // fail_on_violation
+        60,    // timeout
     )
     .await
     {
@@ -643,6 +647,7 @@ async fn list_all_violations(
         None,     // output
         false,    // fail_on_violation
         15.0,     // max_percentage
+        60,       // timeout
     )
     .await
     {

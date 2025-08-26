@@ -1,6 +1,31 @@
 # PMAT Development Roadmap
 
-## Current Sprint: v2.14.0 Technical Debt Elimination via TDD ✅ 100% COMPLETE
+## Current Sprint: v2.15.0 Critical CLI UX Fixes via TDD 🚧 IN PROGRESS
+- **Duration**: 2025-08-26
+- **Priority**: P0 CRITICAL - Project is dead without this
+- **Methodology**: Test-Driven Development (TDD) + Functional Programming
+
+### Tasks
+| ID | Description | Status | Complexity | Priority |
+|----|-------------|--------|------------|----------|
+| PMAT-UX001 | Build comprehensive CLI functional test harness | ✅ | Critical | P0 |
+| PMAT-UX002 | Fix command discoverability - add "did you mean?" suggestions | ⏳ | High | P0 |
+| PMAT-UX003 | Add working examples to all help text | ⏳ | Medium | P0 |
+| PMAT-UX004 | Fix confusing command structure (agent analyze doesn't exist) | ⏳ | High | P0 |
+| PMAT-UX005 | Add default paths so commands work without arguments | ⏳ | Medium | P0 |
+| PMAT-UX006 | Create comprehensive command documentation with examples | ⏳ | Low | P0 |
+| PMAT-UX007 | Add to CI/CD as mandatory quality gate | ⏳ | Medium | P0 |
+| PMAT-UX008 | **CRITICAL**: Fix dead-code analysis hanging indefinitely | ✅ | Critical | P0 |
+
+### Critical Issues Found
+- **Commands don't work without exact syntax** - Users can't discover correct usage
+- **No "did you mean?" suggestions** - Users get cryptic "unrecognized subcommand" errors
+- **Help text lacks examples** - Users don't know HOW to use commands
+- **Default paths missing** - Commands fail with 0 files analyzed if path not specified
+- **Confusing command structure** - `pmat agent analyze` doesn't exist but AI keeps trying it
+- ~**Dead code analysis hangs indefinitely**~ ✅ **FIXED** - Added depth limits, file limits, and batch processing
+
+## Previous Sprint: v2.14.0 Technical Debt Elimination via TDD ✅ COMPLETE
 - **Duration**: 2025-08-26
 - **Priority**: P0
 - **Methodology**: Test-Driven Development (TDD) + Toyota Way Principles

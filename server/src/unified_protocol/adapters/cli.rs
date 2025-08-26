@@ -241,6 +241,7 @@ impl CliAdapter {
                 watch,
                 top_files,
                 fail_on_violation: _,
+                timeout: _,
             } => Self::decode_analyze_complexity(
                 project_path,
                 file,
@@ -287,6 +288,7 @@ impl CliAdapter {
                 output,
                 fail_on_violation: _,
                 max_percentage: _,
+                timeout: _,
             } => Self::decode_analyze_dead_code(
                 path,
                 format,
@@ -309,6 +311,7 @@ impl CliAdapter {
                 output,
                 top_files,
                 fail_on_violation: _,
+                timeout: _,
             } => Self::decode_analyze_satd(
                 path,
                 format,
@@ -1979,6 +1982,7 @@ mod tests {
             watch: false,
             top_files: 0,
             fail_on_violation: false,
+            timeout: 60,
         });
 
         let input = CliInput::from_commands(command);

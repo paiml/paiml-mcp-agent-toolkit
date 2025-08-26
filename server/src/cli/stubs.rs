@@ -6029,7 +6029,7 @@ fn format_incremental_coverage_lcov(report: &IncrementalCoverageReport) -> Resul
     let mut output = String::new();
     
     for file in &report.files {
-        output.push_str(&format!("TN:\n"));
+        output.push_str(&"TN:\n".to_string());
         output.push_str(&format!("SF:{}\n", file.path.display()));
         
         // Generate fake line data based on coverage

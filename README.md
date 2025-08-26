@@ -119,6 +119,11 @@ pmat analyze complexity --top-files 10
 # Find technical debt
 pmat analyze satd
 
+# Analysis with timeout control - NEW! 🔧
+pmat analyze complexity --timeout 30    # 30-second timeout
+pmat analyze dead-code --timeout 60     # 60-second timeout  
+pmat analyze satd --timeout 45          # 45-second timeout
+
 # Run quality gates
 pmat quality-gate --strict
 
@@ -368,6 +373,7 @@ pmat agent stop
 - **Real-time Monitoring**: File system watching with instant quality feedback
 - **Persistent State**: Maintains metrics across restarts with auto-save
 - **Toyota Way Compliance**: Enforces ≤20 complexity with zero SATD tolerance
+- **Analysis Timeouts**: Configurable timeouts prevent infinite hangs (NEW! 🔧)
 - **Production Ready**: Systemd service with health checks and auto-restart
 - **MCP Native**: Seamless Claude Code integration via stdio transport
 

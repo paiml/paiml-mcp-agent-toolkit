@@ -31,6 +31,7 @@ async fn main() -> Result<()> {
         None,  // Output to stdout
         10,    // Top 10 files
         false, // Don't fail on violation
+        60,    // Timeout in seconds
     )
     .await;
 
@@ -56,6 +57,7 @@ async fn main() -> Result<()> {
         None,
         0,     // Check all files
         false, // Don't fail on violation in example (to avoid CI failure)
+        60,    // Timeout in seconds
     )
     .await;
 
@@ -86,6 +88,7 @@ async fn main() -> Result<()> {
         None,
         5,     // Top 5 files
         false, // Don't fail on violation in example
+        60,    // Timeout in seconds
     )
     .await;
 
@@ -114,6 +117,7 @@ async fn main() -> Result<()> {
         None,
         10,
         false,
+        60,   // Timeout in seconds
     )
     .await;
 
@@ -140,6 +144,7 @@ async fn main() -> Result<()> {
         Some(output_path.clone()),
         0, // All files
         false,
+        60, // Timeout in seconds
     )
     .await;
 

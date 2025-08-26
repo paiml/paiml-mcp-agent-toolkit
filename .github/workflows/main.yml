@@ -90,6 +90,11 @@ jobs:
           make lint
           make check
           cargo build --release --manifest-path server/Cargo.toml --bin pmat
+          
+          # Validate timeout feature functionality (Toyota Way quality gate)
+          echo "🔧 Validating timeout feature as mandatory quality gate..."
+          ./scripts/validate-timeout-feature.sh
+          
           make test
           echo "passed=true" >> $GITHUB_OUTPUT
       
