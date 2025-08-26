@@ -2,7 +2,7 @@
 
 Complete reference for all PMAT command-line interface commands and options.
 
-> **v2.8.0**: Toyota Way Complexity Excellence with unified MCP server architecture and integrated quality proxy ✅
+> **v2.14.0**: Technical Debt Elimination via TDD - Zero stub implementations, fixed language detection ✅
 
 ## Table of Contents
 
