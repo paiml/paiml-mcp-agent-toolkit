@@ -430,21 +430,27 @@ Examples:
 ```
 
 #### `analyze tdg`
-Technical Debt Gradient analysis.
+Technical Debt Grading (TDG) analysis with 6-metric orthogonal code quality scoring.
 
 ```bash
-pmat analyze tdg [OPTIONS] <PATH>
+pmat analyze tdg [OPTIONS]
 
 Options:
-  --include-predictions      Include ML predictions
-  --gradient-threshold <NUM> TDG score threshold
-  --detailed                 Include detailed breakdown
-  --baseline <REF>           Git reference for baseline comparison
+  -p, --path <PATH>              Path to analyze [default: .]
+  -t, --threshold <THRESHOLD>    TDG threshold for filtering results [default: 1.5]
+  -n, --top-files <TOP_FILES>    Number of top files to show [default: 10]
+  -f, --format <FORMAT>          Output format [default: table]
+                                 [possible values: table, json, markdown, sarif]
+  -o, --output <OUTPUT>          Output file path
+      --include-components       Include TDG component breakdown
+      --critical-only            Show only critical files (TDG > 2.5)
+      --verbose                  Enable verbose analysis output
 
 Examples:
-  pmat analyze tdg .
-  pmat analyze tdg . --include-predictions --detailed
-  pmat analyze tdg . --baseline main --format json
+  pmat analyze tdg                                    # Analyze current directory
+  pmat analyze tdg --path src/ --include-components   # Detailed component analysis
+  pmat analyze tdg --format json --output report.json # JSON output to file
+  pmat analyze tdg --critical-only                    # Show only critical issues
 ```
 
 #### `analyze lint-hotspot`
