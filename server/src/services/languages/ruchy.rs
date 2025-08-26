@@ -534,359 +534,245 @@ impl RuchyComplexityAnalyzer {
     /// Analyze a Ruchy AST node for complexity
     fn analyze_node(&mut self, node: &RuchyAst) {
         match node {
-            RuchyAst::Function {
-                name,
-                body,
-                line_start,
-                line_end,
-                ..
-            } => {
-                // Track function definition for dead code analysis
-                self.defined_functions.insert(name.clone());
-                self.track_operator("fun");
-                self.track_operand(name);
-
-                let prev_complexity = self.current_complexity;
-                let prev_nesting = self.nesting_level;
-
-                self.current_complexity = ComplexityMetrics {
-                    cyclomatic: 1, // Base complexity for function
-                    cognitive: 0,
-                    nesting_max: 0,
-                    lines: (*line_end - *line_start) as u16,
-                    halstead: None,
-                };
-                self.nesting_level = 0;
-                self.reset_halstead();
-
-                self.analyze_node(body);
-
-                // Calculate Halstead metrics for this function
-                let halstead = self.calculate_halstead();
-                self.current_complexity.halstead = Some(halstead);
-
-                self.functions.push(FunctionComplexity {
-                    name: name.clone(),
-                    line_start: *line_start,
-                    line_end: *line_end,
-                    metrics: self.current_complexity,
-                });
-
-                self.current_complexity = prev_complexity;
-                self.nesting_level = prev_nesting;
+            RuchyAst::Function { name, body, line_start, line_end, .. } => {
+                self.analyze_function(name, body, *line_start, *line_end);
             }
-
-            RuchyAst::If {
-                condition,
-                then_branch,
-                else_branch,
-            } => {
-                self.current_complexity.cyclomatic += 1;
-                self.current_complexity.cognitive += 1 + self.nesting_level as u16;
-                self.track_operator("if");
-
-                self.nesting_level += 1;
-                self.current_complexity.nesting_max =
-                    self.current_complexity.nesting_max.max(self.nesting_level);
-
-                self.analyze_node(condition);
-                self.analyze_node(then_branch);
-                if let Some(else_br) = else_branch {
-                    self.current_complexity.cyclomatic += 1;
-                    self.track_operator("else");
-                    self.analyze_node(else_br);
-                }
-
-                self.nesting_level -= 1;
+            RuchyAst::If { condition, then_branch, else_branch } => {
+                self.analyze_if(condition, then_branch, else_branch.as_deref());
             }
-
             RuchyAst::While { condition, body } => {
-                self.current_complexity.cyclomatic += 1;
-                self.current_complexity.cognitive += 1 + self.nesting_level as u16;
-
-                self.nesting_level += 1;
-                self.current_complexity.nesting_max =
-                    self.current_complexity.nesting_max.max(self.nesting_level);
-
-                self.analyze_node(condition);
-                self.analyze_node(body);
-
-                self.nesting_level -= 1;
+                self.analyze_while(condition, body);
             }
-
             RuchyAst::For { body, .. } => {
-                self.current_complexity.cyclomatic += 1;
-                self.current_complexity.cognitive += 1 + self.nesting_level as u16;
-
-                self.nesting_level += 1;
-                self.current_complexity.nesting_max =
-                    self.current_complexity.nesting_max.max(self.nesting_level);
-
-                self.analyze_node(body);
-
-                self.nesting_level -= 1;
+                self.analyze_for(body);
             }
-
             RuchyAst::Match { expr, arms } => {
-                // Pattern matching has higher cognitive complexity
-                let arm_count = arms.len() as u16;
-                self.current_complexity.cyclomatic += arm_count;
-                self.current_complexity.cognitive += (arm_count * 2) + self.nesting_level as u16;
-
-                self.track_operator("match");
-
-                self.nesting_level += 1;
-                self.current_complexity.nesting_max =
-                    self.current_complexity.nesting_max.max(self.nesting_level);
-
-                self.analyze_node(expr);
-                for (pattern, body) in arms {
-                    // Analyze pattern complexity
-                    self.analyze_pattern_complexity(pattern);
-                    self.analyze_node(body);
-                }
-
-                self.nesting_level -= 1;
+                self.analyze_match(expr, arms);
             }
-
             RuchyAst::BinaryOp { left, op, right } => {
-                // Track operator for Halstead
-                let op_str = match op {
-                    RuchyToken::Plus => "+",
-                    RuchyToken::Minus => "-",
-                    RuchyToken::Star => "*",
-                    RuchyToken::Slash => "/",
-                    RuchyToken::Percent => "%",
-                    RuchyToken::EqualEqual => "==",
-                    RuchyToken::NotEqual => "!=",
-                    RuchyToken::Less => "<",
-                    RuchyToken::Greater => ">",
-                    RuchyToken::LessEqual => "<=",
-                    RuchyToken::GreaterEqual => ">=",
-                    RuchyToken::And => "&&",
-                    RuchyToken::Or => "||",
-                    RuchyToken::PipeForward => "|>",
-                    _ => "op",
-                };
-                self.track_operator(op_str);
-
-                // Logical operators add complexity
-                if matches!(op, RuchyToken::And | RuchyToken::Or) {
-                    self.current_complexity.cyclomatic += 1;
-                    self.current_complexity.cognitive += 1;
-                }
-                self.analyze_node(left);
-                self.analyze_node(right);
+                self.analyze_binary_op(left, op, right);
             }
-
             RuchyAst::Block { statements } => {
-                for stmt in statements {
-                    self.analyze_node(stmt);
-                }
+                self.analyze_block(statements);
             }
-
-            RuchyAst::Pipeline { stages } => {
-                // Pipelines add cognitive complexity
-                self.current_complexity.cognitive += (stages.len() as u16).saturating_sub(1);
-                for stage in stages {
-                    self.analyze_node(stage);
-                }
+            RuchyAst::Import { module, items, line } => {
+                self.analyze_import(module, items, *line);
             }
-
-            RuchyAst::Class {
-                methods,
-                line_start,
-                line_end,
-                name,
-                ..
-            } => {
-                let mut class_complexity = ComplexityMetrics::default();
-
-                for method in methods {
-                    self.analyze_node(method);
-                    if let RuchyAst::Function { .. } = method {
-                        if let Some(func) = self.functions.last() {
-                            class_complexity.cyclomatic += func.metrics.cyclomatic;
-                            class_complexity.cognitive += func.metrics.cognitive;
-                            class_complexity.nesting_max =
-                                class_complexity.nesting_max.max(func.metrics.nesting_max);
-                        }
-                    }
-                }
-
-                self.classes
-                    .push(crate::services::complexity::ClassComplexity {
-                        name: name.clone(),
-                        line_start: *line_start,
-                        line_end: *line_end,
-                        metrics: class_complexity,
-                        methods: vec![],
-                    });
-            }
-
-            RuchyAst::Call { function, args } => {
-                // Track function call for dead code analysis
-                if let RuchyAst::Identifier(fn_name) = function.as_ref() {
-                    self.called_functions.insert(fn_name.clone());
-                    self.track_operand(fn_name);
-
-                    // Track actor-related calls for message flow analysis
-                    match fn_name.as_str() {
-                        "spawn" if !args.is_empty() => {
-                            if let RuchyAst::Identifier(actor_name) = &args[0] {
-                                if let Some(current) = &self.current_actor {
-                                    self.spawn_calls
-                                        .push((current.clone(), actor_name.clone(), 0));
-                                }
-                            }
-                        }
-                        "send" if args.len() >= 2 => {
-                            if let (RuchyAst::Identifier(target), RuchyAst::Identifier(message)) =
-                                (&args[0], &args[1])
-                            {
-                                if let Some(current) = &self.current_actor {
-                                    self.message_flows.push(MessageFlow {
-                                        from_actor: current.clone(),
-                                        to_actor: target.clone(),
-                                        message_type: message.clone(),
-                                        line: 0,
-                                    });
-                                }
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                self.track_operator("()");
-
-                self.analyze_node(function);
-                for arg in args {
-                    self.analyze_node(arg);
-                }
-            }
-
-            RuchyAst::Identifier(name) => {
-                self.track_operand(name);
-                self.used_variables.insert(name.clone());
-            }
-
-            RuchyAst::Literal(lit) => match lit {
-                RuchyToken::Integer(i) => self.track_operand(&i.to_string()),
-                RuchyToken::Float(f) => self.track_operand(&f.to_string()),
-                RuchyToken::String(s) | RuchyToken::FString(s) => self.track_operand(s),
-                RuchyToken::Bool(b) => self.track_operand(&b.to_string()),
-                _ => {}
-            },
-
-            RuchyAst::Let { name, value } => {
-                self.defined_variables.insert(name.clone());
-                self.track_operator("let");
-                self.track_operand(name);
-                self.analyze_node(value);
-            }
-
-            RuchyAst::Return { value } => {
-                self.track_operator("return");
-                if let Some(val) = value {
-                    self.analyze_node(val);
-                }
-            }
-
-            RuchyAst::UnaryOp { op, expr } => {
-                let op_str = match op {
-                    RuchyToken::Not => "!",
-                    RuchyToken::Minus => "-",
-                    _ => "unary",
-                };
-                self.track_operator(op_str);
-                self.analyze_node(expr);
-            }
-
-            RuchyAst::Import {
-                module,
-                items,
-                line,
-            } => {
-                self.imports.push(RuchyImport {
-                    module: module.clone(),
-                    items: items.clone(),
-                    line: *line,
-                });
-                self.track_operator("import");
-                self.track_operand(module);
-            }
-
             RuchyAst::Export { items, .. } => {
-                for item in items {
-                    self.exports.insert(item.clone());
-                }
-                self.track_operator("export");
+                self.analyze_export(items);
             }
-
-            // Note: Ok, Err, Some, None, Try, Await would need to be added to RuchyAst enum
-            // For now, handle them as regular function calls
-            RuchyAst::Actor {
-                name,
-                state,
-                handlers,
-                line_start,
-                line_end,
-            } => {
-                self.track_operator("actor");
-                self.track_operand(name);
-
-                let prev_actor = self.current_actor.clone();
-                self.current_actor = Some(name.clone());
-
-                let mut actor_info = ActorInfo {
-                    name: name.clone(),
-                    state_fields: state.iter().map(|(field, _)| field.clone()).collect(),
-                    message_handlers: Vec::new(),
-                    spawned_actors: Vec::new(),
-                    line_start: *line_start,
-                    line_end: *line_end,
-                };
-
-                let mut class_complexity = ComplexityMetrics::default();
-
-                for handler in handlers {
-                    if let RuchyAst::Function {
-                        name: handler_name, ..
-                    } = handler
-                    {
-                        actor_info.message_handlers.push(handler_name.clone());
-                    }
-                    self.analyze_node(handler);
-                    if let RuchyAst::Function { .. } = handler {
-                        if let Some(func) = self.functions.last() {
-                            class_complexity.cyclomatic += func.metrics.cyclomatic;
-                            class_complexity.cognitive += func.metrics.cognitive;
-                            class_complexity.nesting_max =
-                                class_complexity.nesting_max.max(func.metrics.nesting_max);
-                        }
-                    }
-                }
-
-                self.actors.push(actor_info);
-                self.classes
-                    .push(crate::services::complexity::ClassComplexity {
-                        name: name.clone(),
-                        line_start: *line_start,
-                        line_end: *line_end,
-                        metrics: class_complexity,
-                        methods: vec![],
-                    });
-
-                self.current_actor = prev_actor;
+            RuchyAst::Actor { name, state, handlers, line_start, line_end } => {
+                self.analyze_actor(name, state, handlers, *line_start, *line_end);
             }
-
             _ => {
                 // Other nodes don't affect complexity directly
             }
         }
     }
 
-    /// Analyze a complete Ruchy program
+    /// Analyze function complexity
+    fn analyze_function(&mut self, name: &str, body: &RuchyAst, line_start: u32, line_end: u32) {
+        self.defined_functions.insert(name.to_string());
+        self.track_operator("fun");
+        self.track_operand(name);
+
+        let prev_complexity = self.current_complexity;
+        let prev_nesting = self.nesting_level;
+
+        self.current_complexity = ComplexityMetrics {
+            cyclomatic: 1,
+            cognitive: 0,
+            nesting_max: 0,
+            lines: (line_end - line_start) as u16,
+            halstead: None,
+        };
+        self.nesting_level = 0;
+        self.reset_halstead();
+
+        self.analyze_node(body);
+
+        let halstead = self.calculate_halstead();
+        self.current_complexity.halstead = Some(halstead);
+
+        self.functions.push(FunctionComplexity {
+            name: name.to_string(),
+            line_start,
+            line_end,
+            metrics: self.current_complexity,
+        });
+
+        self.current_complexity = prev_complexity;
+        self.nesting_level = prev_nesting;
+    }
+
+    /// Analyze if statement complexity
+    fn analyze_if(&mut self, condition: &RuchyAst, then_branch: &RuchyAst, else_branch: Option<&RuchyAst>) {
+        self.current_complexity.cyclomatic += 1;
+        self.current_complexity.cognitive += 1 + self.nesting_level as u16;
+        self.track_operator("if");
+
+        self.nesting_level += 1;
+        self.current_complexity.nesting_max = self.current_complexity.nesting_max.max(self.nesting_level);
+
+        self.analyze_node(condition);
+        self.analyze_node(then_branch);
+        if let Some(else_br) = else_branch {
+            self.current_complexity.cyclomatic += 1;
+            self.track_operator("else");
+            self.analyze_node(else_br);
+        }
+
+        self.nesting_level -= 1;
+    }
+
+    /// Analyze while loop complexity
+    fn analyze_while(&mut self, condition: &RuchyAst, body: &RuchyAst) {
+        self.current_complexity.cyclomatic += 1;
+        self.current_complexity.cognitive += 1 + self.nesting_level as u16;
+
+        self.nesting_level += 1;
+        self.current_complexity.nesting_max = self.current_complexity.nesting_max.max(self.nesting_level);
+
+        self.analyze_node(condition);
+        self.analyze_node(body);
+
+        self.nesting_level -= 1;
+    }
+
+    /// Analyze for loop complexity
+    fn analyze_for(&mut self, body: &RuchyAst) {
+        self.current_complexity.cyclomatic += 1;
+        self.current_complexity.cognitive += 1 + self.nesting_level as u16;
+
+        self.nesting_level += 1;
+        self.current_complexity.nesting_max = self.current_complexity.nesting_max.max(self.nesting_level);
+
+        self.analyze_node(body);
+
+        self.nesting_level -= 1;
+    }
+
+    /// Analyze match expression complexity
+    fn analyze_match(&mut self, expr: &RuchyAst, arms: &[(RuchyAst, RuchyAst)]) {
+        let arm_count = arms.len() as u16;
+        self.current_complexity.cyclomatic += arm_count;
+        self.current_complexity.cognitive += (arm_count * 2) + self.nesting_level as u16;
+
+        self.track_operator("match");
+
+        self.nesting_level += 1;
+        self.current_complexity.nesting_max = self.current_complexity.nesting_max.max(self.nesting_level);
+
+        self.analyze_node(expr);
+        for (pattern, body) in arms {
+            self.analyze_pattern_complexity(pattern);
+            self.analyze_node(body);
+        }
+
+        self.nesting_level -= 1;
+    }
+
+    /// Analyze binary operation complexity
+    fn analyze_binary_op(&mut self, left: &RuchyAst, op: &RuchyToken, right: &RuchyAst) {
+        let op_str = match op {
+            RuchyToken::Plus => "+",
+            RuchyToken::Minus => "-",
+            RuchyToken::Star => "*",
+            RuchyToken::Slash => "/",
+            RuchyToken::Percent => "%",
+            RuchyToken::EqualEqual => "==",
+            RuchyToken::NotEqual => "!=",
+            RuchyToken::Less => "<",
+            RuchyToken::Greater => ">",
+            RuchyToken::LessEqual => "<=",
+            RuchyToken::GreaterEqual => ">=",
+            RuchyToken::And => "&&",
+            RuchyToken::Or => "||",
+            RuchyToken::PipeForward => "|>",
+            _ => "op",
+        };
+        self.track_operator(op_str);
+
+        if matches!(op, RuchyToken::And | RuchyToken::Or) {
+            self.current_complexity.cyclomatic += 1;
+            self.current_complexity.cognitive += 1;
+        }
+        self.analyze_node(left);
+        self.analyze_node(right);
+    }
+
+    /// Analyze block complexity
+    fn analyze_block(&mut self, statements: &[RuchyAst]) {
+        for stmt in statements {
+            self.analyze_node(stmt);
+        }
+    }
+
+    /// Analyze import statement
+    fn analyze_import(&mut self, module: &str, items: &[String], line: u32) {
+        self.imports.push(RuchyImport {
+            module: module.to_string(),
+            items: items.to_vec(),
+            line,
+        });
+        self.track_operator("import");
+        self.track_operand(module);
+    }
+
+    /// Analyze export statement
+    fn analyze_export(&mut self, items: &[String]) {
+        for item in items {
+            self.exports.insert(item.clone());
+        }
+        self.track_operator("export");
+    }
+
+    /// Analyze actor complexity
+    fn analyze_actor(&mut self, name: &str, state: &[(String, String)], handlers: &[RuchyAst], line_start: u32, line_end: u32) {
+        self.track_operator("actor");
+        self.track_operand(name);
+
+        let prev_actor = self.current_actor.clone();
+        self.current_actor = Some(name.to_string());
+
+        let mut actor_info = ActorInfo {
+            name: name.to_string(),
+            state_fields: state.iter().map(|(field, _)| field.clone()).collect(),
+            message_handlers: Vec::new(),
+            spawned_actors: Vec::new(),
+            line_start,
+            line_end,
+        };
+
+        let mut class_complexity = ComplexityMetrics::default();
+
+        for handler in handlers {
+            if let RuchyAst::Function { name: handler_name, .. } = handler {
+                actor_info.message_handlers.push(handler_name.clone());
+            }
+            self.analyze_node(handler);
+            if let RuchyAst::Function { .. } = handler {
+                if let Some(func) = self.functions.last() {
+                    class_complexity.cyclomatic += func.metrics.cyclomatic;
+                    class_complexity.cognitive += func.metrics.cognitive;
+                    class_complexity.nesting_max = class_complexity.nesting_max.max(func.metrics.nesting_max);
+                }
+            }
+        }
+
+        self.actors.push(actor_info);
+        self.classes.push(crate::services::complexity::ClassComplexity {
+            name: name.to_string(),
+            line_start,
+            line_end,
+            metrics: class_complexity,
+            methods: vec![],
+        });
+
+        self.current_actor = prev_actor;
+    }
+
+
     pub fn analyze_program(&mut self, ast: &RuchyAst) -> FileComplexityMetrics {
         if let RuchyAst::Program { items } = ast {
             for item in items {
@@ -1072,237 +958,252 @@ impl RuchyLexer {
 
         match self.current_char {
             None => RuchyToken::Eof,
-            Some('+') => {
-                self.advance();
-                RuchyToken::Plus
-            }
-            Some('-') => {
-                self.advance();
-                if self.current_char == Some('>') {
-                    self.advance();
-                    RuchyToken::Arrow
-                } else {
-                    RuchyToken::Minus
-                }
-            }
-            Some('*') => {
-                self.advance();
-                RuchyToken::Star
-            }
-            Some('/') => {
-                self.advance();
-                if self.current_char == Some('/') {
-                    self.skip_comment();
-                    self.next_token()
-                } else {
-                    RuchyToken::Slash
-                }
-            }
-            Some('(') => {
-                self.advance();
-                RuchyToken::LeftParen
-            }
-            Some(')') => {
-                self.advance();
-                RuchyToken::RightParen
-            }
-            Some('{') => {
-                self.advance();
-                RuchyToken::LeftBrace
-            }
-            Some('}') => {
-                self.advance();
-                RuchyToken::RightBrace
-            }
-            Some('=') => {
-                self.advance();
-                if self.current_char == Some('=') {
-                    self.advance();
-                    RuchyToken::EqualEqual
-                } else if self.current_char == Some('>') {
-                    self.advance();
-                    RuchyToken::FatArrow
-                } else {
-                    RuchyToken::Equal
-                }
-            }
-            Some('|') => {
-                self.advance();
-                if self.current_char == Some('>') {
-                    self.advance();
-                    RuchyToken::PipeForward
-                } else if self.current_char == Some('|') {
-                    self.advance();
-                    RuchyToken::Or
-                } else {
-                    RuchyToken::Identifier("|".to_string())
-                }
-            }
-            Some('&') => {
-                self.advance();
-                if self.current_char == Some('&') {
-                    self.advance();
-                    RuchyToken::And
-                } else {
-                    RuchyToken::Identifier("&".to_string())
-                }
-            }
-            Some(ch) if ch.is_alphabetic() || ch == '_' => {
-                let ident = self.read_identifier();
-                match ident.as_str() {
-                    "fun" => RuchyToken::Fun,
-                    "if" => RuchyToken::If,
-                    "else" => RuchyToken::Else,
-                    "while" => RuchyToken::While,
-                    "for" => RuchyToken::For,
-                    "match" => RuchyToken::Match,
-                    "return" => RuchyToken::Return,
-                    "let" => RuchyToken::Let,
-                    "const" => RuchyToken::Const,
-                    "var" => RuchyToken::Var,
-                    "class" => RuchyToken::Class,
-                    "struct" => RuchyToken::Struct,
-                    "enum" => RuchyToken::Enum,
-                    "trait" => RuchyToken::Trait,
-                    "impl" => RuchyToken::Impl,
-                    "actor" => RuchyToken::Actor,
-                    "async" => RuchyToken::Async,
-                    "await" => RuchyToken::Await,
-                    "spawn" => RuchyToken::Spawn,
-                    "send" => RuchyToken::Send,
-                    "receive" => RuchyToken::Receive,
-                    "break" => RuchyToken::Break,
-                    "continue" => RuchyToken::Continue,
-                    "in" => RuchyToken::In,
-                    "as" => RuchyToken::As,
-                    "pub" => RuchyToken::Pub,
-                    "mod" => RuchyToken::Mod,
-                    "use" => RuchyToken::Use,
-                    "where" => RuchyToken::Where,
-                    "type" => RuchyToken::Type,
-                    "import" => RuchyToken::Import,
-                    "from" => RuchyToken::From,
-                    "export" => RuchyToken::Export,
-                    "true" => RuchyToken::True,
-                    "false" => RuchyToken::False,
-                    _ => RuchyToken::Identifier(ident),
-                }
-            }
+            Some(ch) if ch.is_alphabetic() || ch == '_' => self.handle_identifier(),
+            Some(ch) if ch.is_numeric() => self.read_number(),
             Some('"') => {
                 let s = self.read_string('"');
                 RuchyToken::String(s)
             }
-            Some('\'') => {
-                self.advance();
-                let ch = self.current_char.unwrap_or('\0');
-                self.advance();
-                if self.current_char == Some('\'') {
-                    self.advance();
-                }
-                RuchyToken::Char(ch)
-            }
-            Some('@') => {
-                self.advance();
-                let ident = self.read_identifier();
-                RuchyToken::Annotation(format!("@{}", ident))
-            }
-            Some('#') => {
-                self.advance();
-                RuchyToken::Hash
-            }
-            Some('.') => {
-                self.advance();
-                if self.current_char == Some('.') {
-                    self.advance();
-                    if self.current_char == Some('.') {
-                        self.advance();
-                        RuchyToken::DotDotDot
-                    } else {
-                        RuchyToken::DotDot
-                    }
-                } else {
-                    RuchyToken::Dot
-                }
-            }
-            Some(':') => {
-                self.advance();
-                if self.current_char == Some(':') {
-                    self.advance();
-                    RuchyToken::DoubleColon
-                } else {
-                    RuchyToken::Colon
-                }
-            }
-            Some(';') => {
-                self.advance();
-                RuchyToken::Semicolon
-            }
-            Some(',') => {
-                self.advance();
-                RuchyToken::Comma
-            }
-            Some('[') => {
-                self.advance();
-                RuchyToken::LeftBracket
-            }
-            Some(']') => {
-                self.advance();
-                RuchyToken::RightBracket
-            }
-            Some('!') => {
-                self.advance();
-                if self.current_char == Some('=') {
-                    self.advance();
-                    RuchyToken::NotEqual
-                } else {
-                    RuchyToken::Not
-                }
-            }
-            Some('<') => {
-                self.advance();
-                if self.current_char == Some('=') {
-                    self.advance();
-                    RuchyToken::LessEqual
-                } else if self.current_char == Some('<') {
-                    self.advance();
-                    RuchyToken::LeftShift
-                } else {
-                    RuchyToken::Less
-                }
-            }
-            Some('>') => {
-                self.advance();
-                if self.current_char == Some('=') {
-                    self.advance();
-                    RuchyToken::GreaterEqual
-                } else if self.current_char == Some('>') {
-                    self.advance();
-                    RuchyToken::RightShift
-                } else {
-                    RuchyToken::Greater
-                }
-            }
-            Some('?') => {
-                self.advance();
-                RuchyToken::Question
-            }
-            Some('~') => {
-                self.advance();
-                RuchyToken::Tilde
-            }
-            Some('^') => {
-                self.advance();
-                RuchyToken::Caret
-            }
-            Some('%') => {
-                self.advance();
-                RuchyToken::Percent
-            }
-            Some(ch) if ch.is_numeric() => self.read_number(),
+            Some('\'') => self.handle_char_literal(),
+            Some(ch) => self.handle_operator_or_punctuation(ch),
+        }
+    }
+
+    /// Handle identifier and keyword tokens
+    fn handle_identifier(&mut self) -> RuchyToken {
+        let ident = self.read_identifier();
+        match ident.as_str() {
+            "fun" => RuchyToken::Fun,
+            "if" => RuchyToken::If,
+            "else" => RuchyToken::Else,
+            "while" => RuchyToken::While,
+            "for" => RuchyToken::For,
+            "match" => RuchyToken::Match,
+            "return" => RuchyToken::Return,
+            "let" => RuchyToken::Let,
+            "const" => RuchyToken::Const,
+            "var" => RuchyToken::Var,
+            "class" => RuchyToken::Class,
+            "struct" => RuchyToken::Struct,
+            "enum" => RuchyToken::Enum,
+            "trait" => RuchyToken::Trait,
+            "impl" => RuchyToken::Impl,
+            "actor" => RuchyToken::Actor,
+            "async" => RuchyToken::Async,
+            "await" => RuchyToken::Await,
+            "spawn" => RuchyToken::Spawn,
+            "send" => RuchyToken::Send,
+            "receive" => RuchyToken::Receive,
+            "break" => RuchyToken::Break,
+            "continue" => RuchyToken::Continue,
+            "in" => RuchyToken::In,
+            "as" => RuchyToken::As,
+            "pub" => RuchyToken::Pub,
+            "mod" => RuchyToken::Mod,
+            "use" => RuchyToken::Use,
+            "where" => RuchyToken::Where,
+            "type" => RuchyToken::Type,
+            "import" => RuchyToken::Import,
+            "from" => RuchyToken::From,
+            "export" => RuchyToken::Export,
+            "true" => RuchyToken::True,
+            "false" => RuchyToken::False,
+            _ => RuchyToken::Identifier(ident),
+        }
+    }
+
+    /// Handle character literal tokens
+    fn handle_char_literal(&mut self) -> RuchyToken {
+        self.advance();
+        let ch = self.current_char.unwrap_or('\0');
+        self.advance();
+        if self.current_char == Some('\'') {
+            self.advance();
+        }
+        RuchyToken::Char(ch)
+    }
+
+    /// Handle operators and punctuation tokens
+    fn handle_operator_or_punctuation(&mut self, ch: char) -> RuchyToken {
+        match ch {
+            '+' => self.handle_single_char_token(RuchyToken::Plus),
+            '*' => self.handle_single_char_token(RuchyToken::Star),
+            '(' => self.handle_single_char_token(RuchyToken::LeftParen),
+            ')' => self.handle_single_char_token(RuchyToken::RightParen),
+            '{' => self.handle_single_char_token(RuchyToken::LeftBrace),
+            '}' => self.handle_single_char_token(RuchyToken::RightBrace),
+            '[' => self.handle_single_char_token(RuchyToken::LeftBracket),
+            ']' => self.handle_single_char_token(RuchyToken::RightBracket),
+            ';' => self.handle_single_char_token(RuchyToken::Semicolon),
+            ',' => self.handle_single_char_token(RuchyToken::Comma),
+            '?' => self.handle_single_char_token(RuchyToken::Question),
+            '~' => self.handle_single_char_token(RuchyToken::Tilde),
+            '^' => self.handle_single_char_token(RuchyToken::Caret),
+            '%' => self.handle_single_char_token(RuchyToken::Percent),
+            '#' => self.handle_single_char_token(RuchyToken::Hash),
+            '-' => self.handle_dash(),
+            '/' => self.handle_slash(),
+            '=' => self.handle_equals(),
+            '|' => self.handle_pipe(),
+            '&' => self.handle_ampersand(),
+            '@' => self.handle_annotation(),
+            '.' => self.handle_dot(),
+            ':' => self.handle_colon(),
+            '!' => self.handle_exclamation(),
+            '<' => self.handle_less_than(),
+            '>' => self.handle_greater_than(),
             _ => {
                 self.advance();
                 RuchyToken::Error
             }
+        }
+    }
+
+    /// Handle single character tokens
+    fn handle_single_char_token(&mut self, token: RuchyToken) -> RuchyToken {
+        self.advance();
+        token
+    }
+
+    /// Handle dash (-) and arrow (->) tokens
+    fn handle_dash(&mut self) -> RuchyToken {
+        self.advance();
+        if self.current_char == Some('>') {
+            self.advance();
+            RuchyToken::Arrow
+        } else {
+            RuchyToken::Minus
+        }
+    }
+
+    /// Handle slash (/) and comment tokens
+    fn handle_slash(&mut self) -> RuchyToken {
+        self.advance();
+        if self.current_char == Some('/') {
+            self.skip_comment();
+            self.next_token()
+        } else {
+            RuchyToken::Slash
+        }
+    }
+
+    /// Handle equals (=) tokens
+    fn handle_equals(&mut self) -> RuchyToken {
+        self.advance();
+        match self.current_char {
+            Some('=') => {
+                self.advance();
+                RuchyToken::EqualEqual
+            }
+            Some('>') => {
+                self.advance();
+                RuchyToken::FatArrow
+            }
+            _ => RuchyToken::Equal,
+        }
+    }
+
+    /// Handle pipe (|) tokens
+    fn handle_pipe(&mut self) -> RuchyToken {
+        self.advance();
+        match self.current_char {
+            Some('>') => {
+                self.advance();
+                RuchyToken::PipeForward
+            }
+            Some('|') => {
+                self.advance();
+                RuchyToken::Or
+            }
+            _ => RuchyToken::Identifier("|".to_string()),
+        }
+    }
+
+    /// Handle ampersand (&) tokens
+    fn handle_ampersand(&mut self) -> RuchyToken {
+        self.advance();
+        if self.current_char == Some('&') {
+            self.advance();
+            RuchyToken::And
+        } else {
+            RuchyToken::Identifier("&".to_string())
+        }
+    }
+
+    /// Handle annotation (@) tokens
+    fn handle_annotation(&mut self) -> RuchyToken {
+        self.advance();
+        let ident = self.read_identifier();
+        RuchyToken::Annotation(format!("@{}", ident))
+    }
+
+    /// Handle dot (.) tokens
+    fn handle_dot(&mut self) -> RuchyToken {
+        self.advance();
+        if self.current_char == Some('.') {
+            self.advance();
+            if self.current_char == Some('.') {
+                self.advance();
+                RuchyToken::DotDotDot
+            } else {
+                RuchyToken::DotDot
+            }
+        } else {
+            RuchyToken::Dot
+        }
+    }
+
+    /// Handle colon (:) tokens
+    fn handle_colon(&mut self) -> RuchyToken {
+        self.advance();
+        if self.current_char == Some(':') {
+            self.advance();
+            RuchyToken::DoubleColon
+        } else {
+            RuchyToken::Colon
+        }
+    }
+
+    /// Handle exclamation (!) tokens
+    fn handle_exclamation(&mut self) -> RuchyToken {
+        self.advance();
+        if self.current_char == Some('=') {
+            self.advance();
+            RuchyToken::NotEqual
+        } else {
+            RuchyToken::Not
+        }
+    }
+
+    /// Handle less than (<) tokens
+    fn handle_less_than(&mut self) -> RuchyToken {
+        self.advance();
+        match self.current_char {
+            Some('=') => {
+                self.advance();
+                RuchyToken::LessEqual
+            }
+            Some('<') => {
+                self.advance();
+                RuchyToken::LeftShift
+            }
+            _ => RuchyToken::Less,
+        }
+    }
+
+    /// Handle greater than (>) tokens
+    fn handle_greater_than(&mut self) -> RuchyToken {
+        self.advance();
+        match self.current_char {
+            Some('=') => {
+                self.advance();
+                RuchyToken::GreaterEqual
+            }
+            Some('>') => {
+                self.advance();
+                RuchyToken::RightShift
+            }
+            _ => RuchyToken::Greater,
         }
     }
 }
