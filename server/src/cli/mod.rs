@@ -151,21 +151,36 @@ fn parse_with_suggestions() -> Result<Cli, String> {
     match Cli::try_parse() {
         Ok(cli) => Ok(cli),
         Err(clap_error) => {
-            let args: Vec<String> = std::env::args().skip(1).collect();
-            let suggester = CommandSuggester::new();
+            // Handle special cases where clap handles --version and --help
+            use clap::error::ErrorKind;
+            match clap_error.kind() {
+                ErrorKind::DisplayHelp => {
+                    // Clap already printed help, just exit successfully
+                    std::process::exit(0);
+                }
+                ErrorKind::DisplayVersion => {
+                    // Clap already printed version, just exit successfully
+                    std::process::exit(0);
+                }
+                _ => {
+                    // For other errors, provide suggestions
+                    let args: Vec<String> = std::env::args().skip(1).collect();
+                    let suggester = CommandSuggester::new();
 
-            // Get suggestion based on the failed arguments
-            if let Some(suggestion) = suggester.suggest_command(&args) {
-                let error_msg = format!(
-                    "error: unrecognized subcommand\n\n{}\n\nFor more information, try 'pmat --help'",
-                    suggestion
-                );
-                Err(error_msg)
-            } else {
-                // If no suggestion, show the original clap error with examples
-                let examples = CommandSuggester::get_help_examples();
-                let error_msg = format!("{}{}", clap_error, examples);
-                Err(error_msg)
+                    // Get suggestion based on the failed arguments
+                    if let Some(suggestion) = suggester.suggest_command(&args) {
+                        let error_msg = format!(
+                            "error: unrecognized subcommand\n\n{}\n\nFor more information, try 'pmat --help'",
+                            suggestion
+                        );
+                        Err(error_msg)
+                    } else {
+                        // If no suggestion, show the original clap error with examples
+                        let examples = CommandSuggester::get_help_examples();
+                        let error_msg = format!("{}{}", clap_error, examples);
+                        Err(error_msg)
+                    }
+                }
             }
         }
     }

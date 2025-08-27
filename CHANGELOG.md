@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented proper dead code analysis in analysis_service.rs (was returning stub data)
   - Fixed hardcoded language detection in demo/server.rs
   - Reduced SATD count from 4 to 2 (remaining are test data, not actual debt)
+- **CLI Version Exit Code**: Fixed `--version` and `--help` returning exit code 2 instead of 0
+  - Properly handle clap's DisplayVersion and DisplayHelp error kinds
+  - Binary size regression test now passes
 
 ## [2.15.0] - 2025-08-27
 
