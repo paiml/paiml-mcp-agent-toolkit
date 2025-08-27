@@ -148,10 +148,10 @@ pub async fn analyze_python_file_with_classifier(
 fn extract_python_items(stmt: &ast::Stmt, items: &mut Vec<AstItem>) {
     match stmt {
         ast::Stmt::FunctionDef(func) => {
-            items.push(create_function_item(&func.name, false));
+            items.push(create_function_item_with_line(&func.name, false, func.range.start().to_u32() as usize));
         }
         ast::Stmt::AsyncFunctionDef(func) => {
-            items.push(create_function_item(&func.name, true));
+            items.push(create_function_item_with_line(&func.name, true, func.range.start().to_u32() as usize));
         }
         ast::Stmt::ClassDef(class) => {
             let attributes_count = count_class_attributes(&class.body);
@@ -162,7 +162,7 @@ fn extract_python_items(stmt: &ast::Stmt, items: &mut Vec<AstItem>) {
                 visibility: "public".to_string(),
                 fields_count: attributes_count,
                 derives: vec![], // Python doesn't have derives like Rust
-                line: 1,
+                line: class.range.start().to_u32() as usize,
             });
 
             // Also extract methods from the class
@@ -176,7 +176,7 @@ fn extract_python_items(stmt: &ast::Stmt, items: &mut Vec<AstItem>) {
                     module: alias.name.to_string(),
                     items: Vec::new(), // Direct import of entire module
                     alias: alias.asname.as_ref().map(|a| a.to_string()),
-                    line: 1,
+                    line: import.range.start().to_u32() as usize,
                 });
             }
         }
@@ -534,7 +534,7 @@ impl PythonComplexityVisitor {
 }
 
 // Additional helper functions to reduce code duplication
-fn create_function_item(name: &str, is_async: bool) -> AstItem {
+fn create_function_item_with_line(name: &str, is_async: bool, line: usize) -> AstItem {
     AstItem::Function {
         name: name.to_string(),
         visibility: if name.starts_with('_') {
@@ -543,9 +543,10 @@ fn create_function_item(name: &str, is_async: bool) -> AstItem {
             "public".to_string()
         },
         is_async,
-        line: 1,
+        line,
     }
 }
+
 
 fn count_class_attributes(body: &[ast::Stmt]) -> usize {
     body.iter()
@@ -573,7 +574,7 @@ fn extract_import_from_items(import_from: &ast::StmtImportFrom, items: &mut Vec<
             module: module_name,
             items: imported_items,
             alias,
-            line: 1,
+            line: import_from.range.start().to_u32() as usize,
         });
     }
 }

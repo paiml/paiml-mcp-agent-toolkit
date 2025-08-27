@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Default capacity increased from 10,000 to 100,000 nodes (10x improvement)
   - Added LARGE_CAPACITY constant for enterprise projects (1,000,000 nodes)
   - Made capacity configurable via constants instead of hardcoded values
+- **Service Layer Foundation**: Created architectural foundation for service-oriented refactoring
+  - Added service registry with dependency injection pattern
+  - Created facade pattern implementations for complexity, dead code, and SATD analysis
+  - Implemented analysis orchestrator for coordinating multiple analyses
+  - Supports both parallel and sequential execution modes
 
 ### Changed
 - Cleaned up temporary debug files from development
@@ -27,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI Version Exit Code**: Fixed `--version` and `--help` returning exit code 2 instead of 0
   - Properly handle clap's DisplayVersion and DisplayHelp error kinds
   - Binary size regression test now passes
+- **Python AST Tests**: Fixed failing Python AST parser tests
+  - Changed tests to look for `AstItem::Import` instead of `AstItem::Use` for Python imports
+  - Fixed line number extraction using `range.start().to_u32()` API
+  - All Python AST items now report accurate source line numbers
 
 ## [2.15.0] - 2025-08-27
 
