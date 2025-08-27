@@ -49,6 +49,7 @@
 
 // Service architecture (SPECIFICATION.md Section 2)
 pub mod analysis_service;
+pub mod facades;
 pub mod language_analyzer;
 pub mod language_registry;
 pub mod languages;
@@ -60,6 +61,7 @@ pub mod quality_gate_service;
 pub mod service_adapter;
 pub mod service_base;
 pub mod service_communication;
+pub mod service_registry;
 pub mod service_composition;
 pub mod service_lifecycle;
 

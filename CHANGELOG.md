@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented analysis orchestrator for coordinating multiple analyses
   - Added incremental coverage facade for simplified coverage analysis
   - Supports both parallel and sequential execution modes
+- **Handler Refactoring**: Extracted complex handlers to use service facades
+  - Refactored handle_analyze_incremental_coverage to use IncrementalCoverageFacade
+  - Reduced complexity from 26 to ~8 through service delegation
+  - Created separate incremental_coverage_handler module with clean separation of concerns
 
 ### Changed
 - Cleaned up temporary debug files from development
