@@ -21,9 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added incremental coverage facade for simplified coverage analysis
   - Supports both parallel and sequential execution modes
 - **Handler Refactoring**: Extracted complex handlers to use service facades
-  - Refactored handle_analyze_incremental_coverage to use IncrementalCoverageFacade
-  - Reduced complexity from 26 to ~8 through service delegation
-  - Created separate incremental_coverage_handler module with clean separation of concerns
+  - Refactored handle_analyze_incremental_coverage to use IncrementalCoverageFacade (complexity: 26→8)
+  - Refactored handle_analyze_defect_prediction to use DefectPredictionFacade (complexity: 23→8)
+  - Created separate handler modules with clean separation of concerns
+  - Achieved 65-69% complexity reduction through service delegation
 
 ### Changed
 - Cleaned up temporary debug files from development

@@ -444,16 +444,16 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             perf,
             top_files,
         } => {
-            super::advanced_analysis_handlers::handle_analyze_defect_prediction(
+            super::defect_prediction_handler::handle_analyze_defect_prediction(
                 project_path,
-                Some(confidence_threshold as f64),
-                Some(min_lines),
+                confidence_threshold as f32,
+                min_lines,
                 include_low_confidence,
                 format,
                 high_risk_only,
                 include_recommendations,
-                include.map(|s| vec![s]).unwrap_or_default(),
-                exclude.map(|s| vec![s]).unwrap_or_default(),
+                include,
+                exclude,
                 output,
                 perf,
                 top_files,
