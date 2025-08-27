@@ -10,10 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Comprehensive refactoring plan for stubs.rs complexity reduction
 - Refactoring progress documentation with lessons learned
+- **Dead Code Analysis Optimization**: Increased capacity limits for large projects
+  - Default capacity increased from 10,000 to 100,000 nodes (10x improvement)
+  - Added LARGE_CAPACITY constant for enterprise projects (1,000,000 nodes)
+  - Made capacity configurable via constants instead of hardcoded values
 
 ### Changed
 - Cleaned up temporary debug files from development
 - Post-release maintenance and validation
+
+### Fixed
+- **SATD Elimination**: Fixed critical self-admitted technical debt items
+  - Implemented proper dead code analysis in analysis_service.rs (was returning stub data)
+  - Fixed hardcoded language detection in demo/server.rs
+  - Reduced SATD count from 4 to 2 (remaining are test data, not actual debt)
 
 ## [2.15.0] - 2025-08-27
 
