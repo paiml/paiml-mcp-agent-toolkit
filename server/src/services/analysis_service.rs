@@ -150,7 +150,6 @@ pub struct UnusedItem {
 pub struct AnalysisService {
     metrics: Arc<RwLock<ServiceMetrics>>,
     satd_detector: SATDDetector,
-    dead_code_analyzer: DeadCodeAnalyzer,
 }
 
 impl AnalysisService {
@@ -158,7 +157,6 @@ impl AnalysisService {
         Self {
             metrics: Arc::new(RwLock::new(ServiceMetrics::default())),
             satd_detector: SATDDetector::new(),
-            dead_code_analyzer: DeadCodeAnalyzer::new(10000), // Default capacity
         }
     }
 
@@ -210,19 +208,50 @@ impl AnalysisService {
 
     async fn analyze_dead_code(
         &self,
-        _path: &PathBuf,
-        _options: &AnalysisOptions,
+        path: &PathBuf,
+        options: &AnalysisOptions,
     ) -> Result<DeadCodeResults> {
-        // TODO: Integrate with actual dead code analyzer when AST DAG is available
-        // The dead_code_analyzer requires an AstDag for proper analysis
-        let _analyzer = &self.dead_code_analyzer; // Use field to prevent dead code warning
+        use crate::models::dead_code::DeadCodeAnalysisConfig;
 
-        // Return placeholder results for now
+        let config = DeadCodeAnalysisConfig {
+            include_unreachable: true, // Include all dead code
+            include_tests: options.include_tests,
+            min_dead_lines: 1, // Include even single-line dead code
+        };
+
+        // Create a new analyzer instance (DeadCodeAnalyzer doesn't implement Clone)
+        let mut analyzer = DeadCodeAnalyzer::new(10000);
+        let analysis_result = analyzer.analyze_with_ranking(path, config).await?;
+
+        // Convert ranked files to unused items
+        let unused_items: Vec<UnusedItem> = analysis_result
+            .ranked_files
+            .into_iter()
+            .flat_map(|file| {
+                file.items
+                    .into_iter()
+                    .map(move |item| UnusedItem {
+                        file: file.path.clone(),
+                        item: item.name.clone(),
+                        line: item.line as usize,
+                        item_type: format!("{:?}", item.item_type),
+                    })
+            })
+            .collect();
+
+        let total_files = analysis_result.summary.total_files_analyzed;
+        let dead_code_count = unused_items.len();
+        let dead_code_percentage = if total_files > 0 {
+            (dead_code_count as f64 / total_files as f64) * 100.0
+        } else {
+            0.0
+        };
+
         Ok(DeadCodeResults {
-            total_files: 0,
-            dead_code_count: 0,
-            dead_code_percentage: 0.0,
-            unused_items: vec![],
+            total_files,
+            dead_code_count,
+            dead_code_percentage,
+            unused_items,
         })
     }
 }

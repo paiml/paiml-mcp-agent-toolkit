@@ -1,0 +1,82 @@
+[system]
+project_name = "pmat"
+project_path = "/home/noah/src/paiml-mcp-agent-toolkit/server"
+output_dir = "target/pmat"
+max_concurrent_operations = 22
+verbose = false
+debug = false
+default_toolchain = "rust"
+
+[quality]
+max_complexity = 20
+max_cognitive_complexity = 15
+min_coverage = 80.0
+allow_satd = false
+require_docs = true
+lint_compliance = true
+fail_on_violation = true
+
+[analysis]
+include_patterns = [
+    "**/*.rs",
+    "**/*.ts",
+]
+exclude_patterns = [
+    "**/target/**",
+    "**/node_modules/**",
+]
+max_file_size = 1048576
+max_line_length = 100
+skip_vendor = true
+parallel = true
+thread_count = 0
+timeout_seconds = 300
+
+[performance]
+enable_regression_tests = true
+enable_memory_tests = true
+enable_throughput_tests = true
+test_iterations = 10
+timeout_ms = 30000
+target_startup_latency_ms = 127
+target_throughput_loc_per_sec = 487000
+target_memory_mb = 47
+
+[mcp]
+server_name = "pmat-mcp-server"
+server_version = "2.15.0"
+enable_compression = true
+request_timeout_seconds = 30
+max_request_size = 10485760
+log_requests = false
+enabled_tools = [
+    "analyze_complexity",
+    "analyze_dead_code",
+    "quality_gate",
+    "refactor_start",
+]
+
+[roadmap]
+roadmap_path = "docs/execution/roadmap.md"
+auto_generate_todos = true
+enforce_quality_gates = true
+require_task_ids = true
+task_id_pattern = "PMAT-[0-9]{4}"
+velocity_tracking = true
+burndown_charts = true
+
+[roadmap.git]
+create_branches = true
+branch_pattern = "feature/{task_id}"
+commit_pattern = "{task_id}: {message}"
+require_quality_check = true
+
+[telemetry]
+enabled = true
+collection_interval_seconds = 60
+max_data_age_days = 30
+enable_aggregation = true
+enable_export = false
+export_format = "json"
+
+[custom]
