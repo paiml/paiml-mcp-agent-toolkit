@@ -11,6 +11,7 @@ pub mod cache;
 pub mod complexity_handlers;
 pub mod comprehensive_handler;
 pub mod configuration_handlers;
+pub mod defect_prediction_handler;
 pub mod demo_handlers;
 pub mod duplication_analysis;
 pub mod enforce_handlers;
@@ -37,10 +38,11 @@ pub mod wasm_handlers;
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{
-    handle_analyze_comprehensive, handle_analyze_deep_context, handle_analyze_defect_prediction,
+    handle_analyze_comprehensive, handle_analyze_deep_context,
     handle_analyze_graph_metrics, handle_analyze_makefile, handle_analyze_provability,
     handle_analyze_symbol_table, handle_analyze_tdg,
 };
+pub use defect_prediction_handler::handle_analyze_defect_prediction;
 pub use agent_handlers::handle_agent_command;
 pub use analysis_handlers::route_analyze_command;
 pub use cache::handle_cache_command;
