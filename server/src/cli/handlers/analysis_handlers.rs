@@ -248,7 +248,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             fail_on_violation,
             timeout,
         } => {
-            super::complexity_handlers::handle_analyze_satd(
+            super::satd_handler::handle_analyze_satd(
                 path,
                 format,
                 severity,
