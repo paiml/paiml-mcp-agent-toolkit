@@ -31,6 +31,7 @@ pub mod refactor_auto_handlers;
 pub mod refactor_auto_property_tests;
 pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
+pub mod satd_handler;
 pub mod telemetry_handlers;
 pub mod test_handlers;
 pub mod utility_handlers;
@@ -48,8 +49,8 @@ pub use analysis_handlers::route_analyze_command;
 pub use cache::handle_cache_command;
 pub use complexity_handlers::{
     handle_analyze_churn, handle_analyze_complexity, handle_analyze_dag, handle_analyze_dead_code,
-    handle_analyze_satd,
 };
+pub use satd_handler::handle_analyze_satd;
 pub use incremental_coverage_handler::handle_analyze_incremental_coverage;
 pub use configuration_handlers::handle_configuration;
 pub use demo_handlers::{handle_demo, handle_quality_gate};
