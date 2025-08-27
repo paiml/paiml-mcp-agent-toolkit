@@ -4020,7 +4020,7 @@ pub async fn check_dead_code(
     let mut violations = Vec::new();
 
     // Create analyzer and run analysis
-    let mut analyzer = DeadCodeAnalyzer::new(10000);
+    let mut analyzer = DeadCodeAnalyzer::new(DeadCodeAnalyzer::DEFAULT_CAPACITY);
     let config = DeadCodeAnalysisConfig {
         include_tests: false,
         include_unreachable: true,

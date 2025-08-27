@@ -488,7 +488,7 @@ async fn run_dead_code_analysis(
     use crate::models::dead_code::DeadCodeAnalysisConfig;
     use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
 
-    let mut analyzer = DeadCodeAnalyzer::new(10000);
+    let mut analyzer = DeadCodeAnalyzer::new(DeadCodeAnalyzer::DEFAULT_CAPACITY);
 
     let config = DeadCodeAnalysisConfig {
         include_unreachable,
