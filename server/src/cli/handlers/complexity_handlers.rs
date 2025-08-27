@@ -263,8 +263,10 @@ pub async fn handle_analyze_complexity(
         // Analyze single file using the SAME implementation as project analysis (Toyota Way: ONE implementation)
         let file_content = std::fs::read_to_string(&full_path)
             .context(format!("Failed to read file: {}", full_path.display()))?;
-            
-        let metrics = crate::cli::language_analyzer::analyze_file_complexity(&full_path, &file_content).await?;
+
+        let metrics =
+            crate::cli::language_analyzer::analyze_file_complexity(&full_path, &file_content)
+                .await?;
         vec![metrics]
     } else if !files.is_empty() {
         // Multiple files mode (MCP tool composition)

@@ -576,7 +576,7 @@ async fn scan_and_analyze_files(
     const MAX_DEPTH: usize = 10; // Prevent infinite recursion
     const MAX_FILES: usize = 10000; // Prevent resource exhaustion
     const BATCH_SIZE: usize = 100; // Process files in batches to avoid overwhelming the system
-    
+
     // First, collect all file paths to analyze with limits
     let mut file_count = 0;
     let paths: Vec<_> = WalkDir::new(root_path)
@@ -599,12 +599,15 @@ async fn scan_and_analyze_files(
         .collect();
 
     if file_count > MAX_FILES / 2 {
-        eprintln!("⚠️ Large project detected: {} files. Limited to {} for performance.", file_count, MAX_FILES);
+        eprintln!(
+            "⚠️ Large project detected: {} files. Limited to {} for performance.",
+            file_count, MAX_FILES
+        );
     }
 
     // Process files in controlled batches instead of all at once
     let mut all_results = Vec::new();
-    
+
     for chunk in paths.chunks(BATCH_SIZE) {
         let batch_tasks: Vec<_> = chunk
             .iter()
@@ -631,7 +634,7 @@ async fn scan_and_analyze_files(
             batch_results
                 .into_iter()
                 .filter_map(|result| result.ok())
-                .flatten()
+                .flatten(),
         );
     }
 
@@ -842,7 +845,7 @@ async fn scan_and_analyze_files_persistent(
     // FIXED: Add same depth and file limits as non-persistent version
     const MAX_DEPTH: usize = 10; // Prevent infinite recursion
     const MAX_FILES: usize = 10000; // Prevent resource exhaustion
-    
+
     let mut files = Vec::new();
     let mut file_count = 0;
 
@@ -858,18 +861,18 @@ async fn scan_and_analyze_files_persistent(
         if gitignore.matched(path, path.is_dir()).is_ignore() {
             continue;
         }
-        
+
         // TDD Fix: Limit total files analyzed
         file_count += 1;
         if file_count > MAX_FILES {
             eprintln!("⚠️ Reached file limit of {}. Stopping analysis.", MAX_FILES);
             break;
         }
-        
+
         if file_count % 1000 == 0 {
             eprintln!("📁 Scanning files... ({} so far)", file_count);
         }
-        
+
         // Add timeout for individual file analysis
         let timeout_duration = tokio::time::Duration::from_secs(5);
         let result = tokio::time::timeout(timeout_duration, async {
@@ -1234,7 +1237,7 @@ fn format_analysis_results(
 ) {
     output.push_str("## Analysis Results\n\n");
 
-    // Complexity Analysis - Combined formatting to reduce complexity 
+    // Complexity Analysis - Combined formatting to reduce complexity
     if let Some(ref complexity) = analyses.complexity_report {
         output.push_str(&format!(
             "### Complexity Metrics\n\n\
@@ -1264,7 +1267,7 @@ fn format_analysis_results(
         } else {
             String::new()
         };
-        
+
         output.push_str(&format!(
             "### Code Churn Analysis\n\n\
             - **Analysis Period**: {} days\n\

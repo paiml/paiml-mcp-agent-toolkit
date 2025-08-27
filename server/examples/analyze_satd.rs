@@ -117,7 +117,7 @@ async fn main() -> Result<()> {
         None,
         10,
         false,
-        60,   // Timeout in seconds
+        60, // Timeout in seconds
     )
     .await;
 

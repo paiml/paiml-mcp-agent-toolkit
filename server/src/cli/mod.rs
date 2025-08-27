@@ -68,7 +68,6 @@ pub struct DuplicateHandlerConfig {
 }
 
 use crate::stateless_server::StatelessTemplateServer;
-use clap::Parser;
 use command_dispatcher::CommandDispatcher;
 use std::sync::Arc;
 use tracing::{debug, info};
@@ -130,7 +129,7 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
             std::process::exit(2); // Exit with "misuse" code for command errors
         }
     };
-    
+
     debug!("CLI arguments parsed");
 
     // Handle forced mode
@@ -145,16 +144,16 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
 
 /// Parse CLI with command suggestions on failure
 fn parse_with_suggestions() -> Result<Cli, String> {
-    use clap::Parser;
     use crate::utils::command_suggestions::CommandSuggester;
-    
+    use clap::Parser;
+
     // Try to parse normally first
     match Cli::try_parse() {
         Ok(cli) => Ok(cli),
         Err(clap_error) => {
             let args: Vec<String> = std::env::args().skip(1).collect();
             let suggester = CommandSuggester::new();
-            
+
             // Get suggestion based on the failed arguments
             if let Some(suggestion) = suggester.suggest_command(&args) {
                 let error_msg = format!(

@@ -274,7 +274,7 @@ pub struct RuchyComplexityAnalyzer {
     actors: Vec<ActorInfo>,
     current_actor: Option<String>,
     message_flows: Vec<MessageFlow>,
-    spawn_calls: Vec<(String, String, u32)>, // (spawner, spawned, line)
+    _spawn_calls: Vec<(String, String, u32)>, // (spawner, spawned, line)
 }
 
 impl Default for RuchyComplexityAnalyzer {
@@ -348,7 +348,7 @@ impl RuchyComplexityAnalyzer {
             actors: Vec::new(),
             current_actor: None,
             message_flows: Vec::new(),
-            spawn_calls: Vec::new(),
+            _spawn_calls: Vec::new(),
         }
     }
 
@@ -534,10 +534,20 @@ impl RuchyComplexityAnalyzer {
     /// Analyze a Ruchy AST node for complexity
     fn analyze_node(&mut self, node: &RuchyAst) {
         match node {
-            RuchyAst::Function { name, body, line_start, line_end, .. } => {
+            RuchyAst::Function {
+                name,
+                body,
+                line_start,
+                line_end,
+                ..
+            } => {
                 self.analyze_function(name, body, *line_start, *line_end);
             }
-            RuchyAst::If { condition, then_branch, else_branch } => {
+            RuchyAst::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
                 self.analyze_if(condition, then_branch, else_branch.as_deref());
             }
             RuchyAst::While { condition, body } => {
@@ -555,13 +565,23 @@ impl RuchyComplexityAnalyzer {
             RuchyAst::Block { statements } => {
                 self.analyze_block(statements);
             }
-            RuchyAst::Import { module, items, line } => {
+            RuchyAst::Import {
+                module,
+                items,
+                line,
+            } => {
                 self.analyze_import(module, items, *line);
             }
             RuchyAst::Export { items, .. } => {
                 self.analyze_export(items);
             }
-            RuchyAst::Actor { name, state, handlers, line_start, line_end } => {
+            RuchyAst::Actor {
+                name,
+                state,
+                handlers,
+                line_start,
+                line_end,
+            } => {
                 self.analyze_actor(name, state, handlers, *line_start, *line_end);
             }
             _ => {
@@ -606,13 +626,19 @@ impl RuchyComplexityAnalyzer {
     }
 
     /// Analyze if statement complexity
-    fn analyze_if(&mut self, condition: &RuchyAst, then_branch: &RuchyAst, else_branch: Option<&RuchyAst>) {
+    fn analyze_if(
+        &mut self,
+        condition: &RuchyAst,
+        then_branch: &RuchyAst,
+        else_branch: Option<&RuchyAst>,
+    ) {
         self.current_complexity.cyclomatic += 1;
         self.current_complexity.cognitive += 1 + self.nesting_level as u16;
         self.track_operator("if");
 
         self.nesting_level += 1;
-        self.current_complexity.nesting_max = self.current_complexity.nesting_max.max(self.nesting_level);
+        self.current_complexity.nesting_max =
+            self.current_complexity.nesting_max.max(self.nesting_level);
 
         self.analyze_node(condition);
         self.analyze_node(then_branch);
@@ -631,7 +657,8 @@ impl RuchyComplexityAnalyzer {
         self.current_complexity.cognitive += 1 + self.nesting_level as u16;
 
         self.nesting_level += 1;
-        self.current_complexity.nesting_max = self.current_complexity.nesting_max.max(self.nesting_level);
+        self.current_complexity.nesting_max =
+            self.current_complexity.nesting_max.max(self.nesting_level);
 
         self.analyze_node(condition);
         self.analyze_node(body);
@@ -645,7 +672,8 @@ impl RuchyComplexityAnalyzer {
         self.current_complexity.cognitive += 1 + self.nesting_level as u16;
 
         self.nesting_level += 1;
-        self.current_complexity.nesting_max = self.current_complexity.nesting_max.max(self.nesting_level);
+        self.current_complexity.nesting_max =
+            self.current_complexity.nesting_max.max(self.nesting_level);
 
         self.analyze_node(body);
 
@@ -661,7 +689,8 @@ impl RuchyComplexityAnalyzer {
         self.track_operator("match");
 
         self.nesting_level += 1;
-        self.current_complexity.nesting_max = self.current_complexity.nesting_max.max(self.nesting_level);
+        self.current_complexity.nesting_max =
+            self.current_complexity.nesting_max.max(self.nesting_level);
 
         self.analyze_node(expr);
         for (pattern, body) in arms {
@@ -728,7 +757,14 @@ impl RuchyComplexityAnalyzer {
     }
 
     /// Analyze actor complexity
-    fn analyze_actor(&mut self, name: &str, state: &[(String, String)], handlers: &[RuchyAst], line_start: u32, line_end: u32) {
+    fn analyze_actor(
+        &mut self,
+        name: &str,
+        state: &[(String, String)],
+        handlers: &[RuchyAst],
+        line_start: u32,
+        line_end: u32,
+    ) {
         self.track_operator("actor");
         self.track_operand(name);
 
@@ -747,7 +783,10 @@ impl RuchyComplexityAnalyzer {
         let mut class_complexity = ComplexityMetrics::default();
 
         for handler in handlers {
-            if let RuchyAst::Function { name: handler_name, .. } = handler {
+            if let RuchyAst::Function {
+                name: handler_name, ..
+            } = handler
+            {
                 actor_info.message_handlers.push(handler_name.clone());
             }
             self.analyze_node(handler);
@@ -755,23 +794,24 @@ impl RuchyComplexityAnalyzer {
                 if let Some(func) = self.functions.last() {
                     class_complexity.cyclomatic += func.metrics.cyclomatic;
                     class_complexity.cognitive += func.metrics.cognitive;
-                    class_complexity.nesting_max = class_complexity.nesting_max.max(func.metrics.nesting_max);
+                    class_complexity.nesting_max =
+                        class_complexity.nesting_max.max(func.metrics.nesting_max);
                 }
             }
         }
 
         self.actors.push(actor_info);
-        self.classes.push(crate::services::complexity::ClassComplexity {
-            name: name.to_string(),
-            line_start,
-            line_end,
-            metrics: class_complexity,
-            methods: vec![],
-        });
+        self.classes
+            .push(crate::services::complexity::ClassComplexity {
+                name: name.to_string(),
+                line_start,
+                line_end,
+                metrics: class_complexity,
+                methods: vec![],
+            });
 
         self.current_actor = prev_actor;
     }
-
 
     pub fn analyze_program(&mut self, ast: &RuchyAst) -> FileComplexityMetrics {
         if let RuchyAst::Program { items } = ast {
