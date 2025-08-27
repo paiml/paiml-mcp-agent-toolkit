@@ -43,6 +43,7 @@ pub enum SatdSeverity {
 }
 
 /// Facade for SATD analysis operations
+#[derive(Clone)]
 pub struct SatdFacade {
     registry: Arc<ServiceRegistry>,
 }

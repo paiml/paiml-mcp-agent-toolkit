@@ -604,7 +604,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             force_refresh,
             top_files,
         } => {
-            super::super::stubs::handle_analyze_incremental_coverage(
+            super::incremental_coverage_handler::handle_analyze_incremental_coverage(
                 project_path,
                 base_branch,
                 target_branch,
