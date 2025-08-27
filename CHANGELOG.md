@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added service registry with dependency injection pattern
   - Created facade pattern implementations for complexity, dead code, and SATD analysis
   - Implemented analysis orchestrator for coordinating multiple analyses
+  - Added incremental coverage facade for simplified coverage analysis
   - Supports both parallel and sequential execution modes
 
 ### Changed

@@ -8,8 +8,10 @@ pub mod complexity_facade;
 pub mod dead_code_facade;
 pub mod satd_facade;
 pub mod analysis_orchestrator;
+pub mod incremental_coverage_facade;
 
 pub use complexity_facade::ComplexityFacade;
 pub use dead_code_facade::DeadCodeFacade;
 pub use satd_facade::SatdFacade;
 pub use analysis_orchestrator::AnalysisOrchestrator;
+pub use incremental_coverage_facade::IncrementalCoverageFacade;
