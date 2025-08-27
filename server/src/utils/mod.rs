@@ -20,8 +20,8 @@
 //! println!("Processing: {}", path.display());
 //! ```
 
-pub mod helpers;
 pub mod command_suggestions;
+pub mod helpers;
 
 #[cfg(test)]
 mod tests {

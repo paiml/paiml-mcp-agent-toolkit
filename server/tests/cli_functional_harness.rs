@@ -1,17 +1,17 @@
 //! Comprehensive CLI Functional Test Harness
-//! 
+//!
 //! CRITICAL: This test harness verifies EVERY command and option works.
 //! Without this, the entire project is dead in the water.
-//! 
+//!
 //! Principles:
 //! - Functional programming: pure functions, immutable data
 //! - Exhaustive testing: every command, every option combination
 //! - Real execution: actually run the binary, don't mock
 //! - Output validation: verify output is sensible, not just "no error"
 
-use std::process::Command;
-use std::path::PathBuf;
 use std::collections::HashMap;
+use std::path::PathBuf;
+use std::process::Command;
 use tempfile::TempDir;
 
 /// Test result for a single command execution
@@ -51,29 +51,29 @@ impl CliTestHarness {
     fn new() -> Self {
         let binary_path = PathBuf::from(env!("CARGO_BIN_EXE_pmat"));
         let test_dir = TempDir::new().expect("Failed to create temp dir");
-        
+
         Self {
             binary_path,
             test_dir,
             results: Vec::new(),
         }
     }
-    
+
     /// Execute a command and validate output
     fn execute_command(&mut self, spec: CommandSpec) -> CommandResult {
         let mut cmd = Command::new(&self.binary_path);
-        
+
         // Add command and subcommand
         cmd.arg(&spec.command);
         if let Some(subcmd) = &spec.subcommand {
             cmd.arg(subcmd);
         }
-        
+
         // Add args
         for arg in &spec.args {
             cmd.arg(arg);
         }
-        
+
         // Add options
         for (key, value) in &spec.options {
             cmd.arg(format!("--{}", key));
@@ -81,34 +81,41 @@ impl CliTestHarness {
                 cmd.arg(value);
             }
         }
-        
+
         // Execute with timeout to prevent hanging
         let cmd_child = cmd.spawn().expect("Failed to spawn command");
         let output = match cmd_child.wait_with_output() {
             Ok(output) => output,
             Err(e) => panic!("Command failed to complete: {}", e),
         };
-        
+
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
         let exit_code = output.status.code().unwrap_or(-1);
-        
+
         // Validate output
         let mut validation_errors = Vec::new();
-        
+
         if spec.should_succeed && !output.status.success() {
-            validation_errors.push(format!("Command should succeed but failed with exit code {}", exit_code));
+            validation_errors.push(format!(
+                "Command should succeed but failed with exit code {}",
+                exit_code
+            ));
         }
-        
+
         // Run custom validators
         for validator in &spec.output_validators {
             if let Err(e) = validator(&stdout) {
                 validation_errors.push(e);
             }
         }
-        
+
         let result = CommandResult {
-            command: format!("{} {}", spec.command, spec.subcommand.as_ref().unwrap_or(&String::new())),
+            command: format!(
+                "{} {}",
+                spec.command,
+                spec.subcommand.as_ref().unwrap_or(&String::new())
+            ),
             args: spec.args.clone(),
             success: output.status.success(),
             stdout: stdout.clone(),
@@ -116,22 +123,26 @@ impl CliTestHarness {
             exit_code,
             validation_errors: validation_errors.clone(),
         };
-        
+
         self.results.push(result.clone());
         result
     }
-    
+
     /// Generate test report
     fn generate_report(&self) -> String {
         let total = self.results.len();
-        let passed = self.results.iter().filter(|r| r.validation_errors.is_empty()).count();
+        let passed = self
+            .results
+            .iter()
+            .filter(|r| r.validation_errors.is_empty())
+            .count();
         let failed = total - passed;
-        
+
         let mut report = format!("# CLI Functional Test Report\n\n");
         report.push_str(&format!("Total Commands Tested: {}\n", total));
         report.push_str(&format!("✅ Passed: {}\n", passed));
         report.push_str(&format!("❌ Failed: {}\n\n", failed));
-        
+
         if failed > 0 {
             report.push_str("## Failed Commands\n\n");
             for result in &self.results {
@@ -150,7 +161,7 @@ impl CliTestHarness {
                 }
             }
         }
-        
+
         report.push_str("## Working Commands\n\n");
         for result in &self.results {
             if result.validation_errors.is_empty() {
@@ -161,7 +172,7 @@ impl CliTestHarness {
                 report.push_str("\n");
             }
         }
-        
+
         report
     }
 }
@@ -226,7 +237,7 @@ fn validate_quality_gate_output(output: &str) -> Result<(), String> {
 /// Create all command specifications to test
 fn generate_command_specs() -> Vec<CommandSpec> {
     let mut specs = Vec::new();
-    
+
     // Help commands - these MUST work
     specs.push(CommandSpec {
         command: "--help".to_string(),
@@ -234,12 +245,9 @@ fn generate_command_specs() -> Vec<CommandSpec> {
         args: vec![],
         options: HashMap::new(),
         should_succeed: true,
-        output_validators: vec![
-            validate_help_has_usage,
-            validate_help_has_commands,
-        ],
+        output_validators: vec![validate_help_has_usage, validate_help_has_commands],
     });
-    
+
     // Version command
     specs.push(CommandSpec {
         command: "--version".to_string(),
@@ -249,7 +257,7 @@ fn generate_command_specs() -> Vec<CommandSpec> {
         should_succeed: true,
         output_validators: vec![validate_has_version],
     });
-    
+
     // Analyze complexity - various forms
     specs.push(CommandSpec {
         command: "analyze".to_string(),
@@ -259,7 +267,7 @@ fn generate_command_specs() -> Vec<CommandSpec> {
         should_succeed: true,
         output_validators: vec![validate_complexity_output],
     });
-    
+
     // Analyze complexity with file
     specs.push(CommandSpec {
         command: "analyze".to_string(),
@@ -273,7 +281,7 @@ fn generate_command_specs() -> Vec<CommandSpec> {
         should_succeed: true,
         output_validators: vec![],
     });
-    
+
     // Analyze SATD
     specs.push(CommandSpec {
         command: "analyze".to_string(),
@@ -283,7 +291,7 @@ fn generate_command_specs() -> Vec<CommandSpec> {
         should_succeed: true,
         output_validators: vec![validate_satd_output],
     });
-    
+
     // Analyze dead-code - FIXED: Should no longer hang
     specs.push(CommandSpec {
         command: "analyze".to_string(),
@@ -297,17 +305,17 @@ fn generate_command_specs() -> Vec<CommandSpec> {
         should_succeed: true,
         output_validators: vec![validate_dead_code_output],
     });
-    
+
     // Quality gate
     specs.push(CommandSpec {
         command: "quality-gate".to_string(),
         subcommand: None,
         args: vec![],
         options: HashMap::new(),
-        should_succeed: true,  // Should succeed even if quality fails
+        should_succeed: true, // Should succeed even if quality fails
         output_validators: vec![validate_quality_gate_output],
     });
-    
+
     // Demo command
     specs.push(CommandSpec {
         command: "demo".to_string(),
@@ -317,7 +325,7 @@ fn generate_command_specs() -> Vec<CommandSpec> {
         should_succeed: true,
         output_validators: vec![],
     });
-    
+
     // Agent command
     specs.push(CommandSpec {
         command: "agent".to_string(),
@@ -327,7 +335,7 @@ fn generate_command_specs() -> Vec<CommandSpec> {
         should_succeed: true,
         output_validators: vec![],
     });
-    
+
     // TDG analysis
     specs.push(CommandSpec {
         command: "analyze".to_string(),
@@ -337,7 +345,7 @@ fn generate_command_specs() -> Vec<CommandSpec> {
         should_succeed: true,
         output_validators: vec![],
     });
-    
+
     // Context generation
     specs.push(CommandSpec {
         command: "context".to_string(),
@@ -347,7 +355,7 @@ fn generate_command_specs() -> Vec<CommandSpec> {
         should_succeed: true,
         output_validators: vec![],
     });
-    
+
     // Refactor commands
     specs.push(CommandSpec {
         command: "refactor".to_string(),
@@ -357,7 +365,7 @@ fn generate_command_specs() -> Vec<CommandSpec> {
         should_succeed: true,
         output_validators: vec![],
     });
-    
+
     specs
 }
 
@@ -365,29 +373,40 @@ fn generate_command_specs() -> Vec<CommandSpec> {
 fn test_all_cli_commands_work() {
     let mut harness = CliTestHarness::new();
     let specs = generate_command_specs();
-    
+
     println!("Testing {} command variations...", specs.len());
-    
+
     let mut failed = 0;
     for spec in specs {
         let result = harness.execute_command(spec.clone());
         if !result.validation_errors.is_empty() {
             failed += 1;
-            eprintln!("❌ Failed: {} {}", spec.command, spec.subcommand.unwrap_or_default());
+            eprintln!(
+                "❌ Failed: {} {}",
+                spec.command,
+                spec.subcommand.unwrap_or_default()
+            );
             for error in &result.validation_errors {
                 eprintln!("   {}", error);
             }
         } else {
-            println!("✅ Passed: {} {}", spec.command, spec.subcommand.unwrap_or_default());
+            println!(
+                "✅ Passed: {} {}",
+                spec.command,
+                spec.subcommand.unwrap_or_default()
+            );
         }
     }
-    
+
     // Generate report
     let report = harness.generate_report();
     std::fs::write("cli_test_report.md", &report).expect("Failed to write report");
-    
+
     if failed > 0 {
-        panic!("{} commands failed! See cli_test_report.md for details", failed);
+        panic!(
+            "{} commands failed! See cli_test_report.md for details",
+            failed
+        );
     }
 }
 
@@ -397,16 +416,19 @@ fn test_help_is_actually_helpful() {
         .arg("--help")
         .output()
         .expect("Failed to run help");
-    
+
     let help_text = String::from_utf8_lossy(&output.stdout);
-    
+
     // Help should show actual examples
     assert!(help_text.contains("Usage:"), "Help should show usage");
     assert!(help_text.contains("Commands:"), "Help should list commands");
-    
+
     // Help should be organized
     assert!(help_text.contains("analyze"), "Should show analyze command");
-    assert!(help_text.contains("quality-gate"), "Should show quality-gate command");
+    assert!(
+        help_text.contains("quality-gate"),
+        "Should show quality-gate command"
+    );
 }
 
 #[test]
@@ -418,12 +440,15 @@ fn test_analyze_complexity_actually_finds_files() {
         .arg(".")
         .output()
         .expect("Failed to run complexity analysis");
-    
+
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     // Should actually find some files
-    assert!(!stdout.contains("Files analyzed: 0"), 
-        "Complexity analysis should find files, but got:\n{}", stdout);
+    assert!(
+        !stdout.contains("Files analyzed: 0"),
+        "Complexity analysis should find files, but got:\n{}",
+        stdout
+    );
 }
 
 #[test]
@@ -431,16 +456,18 @@ fn test_error_messages_are_helpful() {
     // Test invalid command
     let output = Command::new(env!("CARGO_BIN_EXE_pmat"))
         .arg("agent")
-        .arg("analyze")  // This is wrong - should be separate commands
+        .arg("analyze") // This is wrong - should be separate commands
         .output()
         .expect("Failed to run command");
-    
+
     let stderr = String::from_utf8_lossy(&output.stderr);
-    
+
     // Error should suggest correct usage
-    assert!(stderr.contains("unrecognized") || stderr.contains("error"), 
-        "Should show clear error message");
-    
+    assert!(
+        stderr.contains("unrecognized") || stderr.contains("error"),
+        "Should show clear error message"
+    );
+
     // Ideally should suggest: "Did you mean 'pmat analyze'?"
     // This is what we need to add!
 }

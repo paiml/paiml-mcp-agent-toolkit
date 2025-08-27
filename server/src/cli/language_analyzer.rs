@@ -539,23 +539,33 @@ pub fn second_function() {
 }
 "#;
         let path = Path::new("test.rs");
-        
+
         // Test the RustAnalyzer directly first
         let analyzer = RustAnalyzer;
         let functions = analyzer.extract_functions(content);
         assert_eq!(functions.len(), 2, "RustAnalyzer should detect 2 functions");
-        
+
         // Test the full integration
         let result = analyze_file_complexity(path, content).await;
-        assert!(result.is_ok(), "analyze_file_complexity should succeed: {:?}", result);
-        
+        assert!(
+            result.is_ok(),
+            "analyze_file_complexity should succeed: {:?}",
+            result
+        );
+
         let metrics = result.unwrap();
-        
+
         // THIS MIGHT FAIL - if it does, we found the integration bug
-        assert_eq!(metrics.functions.len(), 2, 
-            "Integration should analyze 2 functions but found {}. Functions: {:?}", 
-            metrics.functions.len(), 
-            metrics.functions.iter().map(|f| &f.name).collect::<Vec<_>>()
+        assert_eq!(
+            metrics.functions.len(),
+            2,
+            "Integration should analyze 2 functions but found {}. Functions: {:?}",
+            metrics.functions.len(),
+            metrics
+                .functions
+                .iter()
+                .map(|f| &f.name)
+                .collect::<Vec<_>>()
         );
     }
 
@@ -564,7 +574,7 @@ pub fn second_function() {
     async fn test_cli_layer_integration_bug() {
         use std::fs;
         use tempfile::TempDir;
-        
+
         let content = r#"fn simple_function() {
     println!("hello");
 }
@@ -575,35 +585,47 @@ pub fn second_function() {
     }
 }
 "#;
-        
+
         // Create a temporary directory and file
         let temp_dir = TempDir::new().unwrap();
         let test_file = temp_dir.path().join("test.rs");
         fs::write(&test_file, content).unwrap();
-        
+
         // Test the CLI stubs layer using analyze_project_files
         let result = crate::cli::stubs::analyze_project_files(
             temp_dir.path(),
-            Some("rust"), 
+            Some("rust"),
             &[], // empty include patterns
             20,  // cyclomatic threshold
-            15   // cognitive threshold
-        ).await;
-        
-        assert!(result.is_ok(), "analyze_project_files should succeed: {:?}", result);
-        
+            15,  // cognitive threshold
+        )
+        .await;
+
+        assert!(
+            result.is_ok(),
+            "analyze_project_files should succeed: {:?}",
+            result
+        );
+
         let file_metrics = result.unwrap();
-        
+
         // Find our test file
-        let test_metrics = file_metrics.iter()
+        let test_metrics = file_metrics
+            .iter()
             .find(|metrics| metrics.path.ends_with("test.rs"))
             .expect("Should find test.rs in results");
-        
+
         // THIS SHOULD EXPOSE THE BUG
-        assert_eq!(test_metrics.functions.len(), 2, 
-            "CLI layer should analyze 2 functions but found {}. Functions: {:?}", 
-            test_metrics.functions.len(), 
-            test_metrics.functions.iter().map(|f| &f.name).collect::<Vec<_>>()
+        assert_eq!(
+            test_metrics.functions.len(),
+            2,
+            "CLI layer should analyze 2 functions but found {}. Functions: {:?}",
+            test_metrics.functions.len(),
+            test_metrics
+                .functions
+                .iter()
+                .map(|f| &f.name)
+                .collect::<Vec<_>>()
         );
     }
 }

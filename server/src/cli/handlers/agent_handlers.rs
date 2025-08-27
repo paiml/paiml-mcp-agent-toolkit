@@ -8,8 +8,8 @@ use crate::cli::AgentCommands;
 use anyhow::{anyhow, Result};
 use std::path::PathBuf;
 use std::time::Duration;
-use tracing::{error, info, warn};
 use tokio::fs;
+use tracing::{error, info, warn};
 
 /// Handle agent commands
 pub async fn handle_agent_command(command: AgentCommands) -> Result<()> {
@@ -204,7 +204,10 @@ async fn handle_agent_monitor(
     match DaemonManager::start_monitoring(&project_path, &project_id).await {
         Ok(_) => {
             info!("Project monitoring command sent to daemon successfully");
-            println!("✅ Started monitoring project '{}' at {:?}", project_id, project_path);
+            println!(
+                "✅ Started monitoring project '{}' at {:?}",
+                project_id, project_path
+            );
         }
         Err(e) => {
             error!("Failed to start monitoring: {}", e);
