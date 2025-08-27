@@ -552,7 +552,7 @@ async fn list_all_violations(
         false,                        // watch
         10,                           // top_files
         false,                        // fail_on_violation
-        60,     // timeout
+        60,                           // timeout
     )
     .await
     {

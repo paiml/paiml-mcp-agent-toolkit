@@ -1254,9 +1254,11 @@ pub async fn handle_analyze_defect_prediction(
     eprintln!("📄 Format: {:?}", format);
 
     // Real implementation using DefectProbabilityCalculator
+    use crate::cli::defect_prediction_helpers::{
+        discover_source_files_for_defect_analysis, DefectPredictionConfig,
+    };
     use crate::services::defect_probability::{DefectProbabilityCalculator, RiskLevel};
-    use crate::cli::defect_prediction_helpers::{DefectPredictionConfig, discover_source_files_for_defect_analysis};
-    
+
     let config = DefectPredictionConfig {
         confidence_threshold,
         min_lines: _min_lines,
@@ -1266,44 +1268,48 @@ pub async fn handle_analyze_defect_prediction(
         include: _include,
         exclude: _exclude,
     };
-    
+
     let calculator = DefectProbabilityCalculator::new();
     let files = discover_source_files_for_defect_analysis(&project_path, &config).await?;
-    
+
     let mut predictions = Vec::new();
     for (file_path, _content, lines) in files {
         // Create basic metrics for prediction (in full implementation, these would come from analysis services)
         use crate::services::defect_probability::FileMetrics;
         let metrics = FileMetrics {
             file_path: file_path.to_string_lossy().to_string(),
-            churn_score: 0.5, // Would be calculated from git history
+            churn_score: 0.5,                 // Would be calculated from git history
             complexity: (lines as f32) * 0.1, // Rough estimate
-            duplicate_ratio: 0.1, // Would be calculated from duplicate analysis
+            duplicate_ratio: 0.1,             // Would be calculated from duplicate analysis
             afferent_coupling: 1.0,
-            efferent_coupling: 1.0, 
+            efferent_coupling: 1.0,
             lines_of_code: lines,
             cyclomatic_complexity: (lines / 20) as u32, // Rough estimate
-            cognitive_complexity: (lines / 15) as u32, // Rough estimate
+            cognitive_complexity: (lines / 15) as u32,  // Rough estimate
         };
-        
+
         let score = calculator.calculate(&metrics);
-        
+
         // Apply filters
         if high_risk_only && matches!(score.risk_level, RiskLevel::Low | RiskLevel::Medium) {
             continue;
         }
-        
+
         if !include_low_confidence && score.probability < confidence_threshold {
             continue;
         }
-        
+
         predictions.push((file_path.to_string_lossy().to_string(), score));
     }
-    
+
     // Sort by probability (highest first) and limit to top files
-    predictions.sort_by(|a, b| b.1.probability.partial_cmp(&a.1.probability).unwrap_or(std::cmp::Ordering::Equal));
+    predictions.sort_by(|a, b| {
+        b.1.probability
+            .partial_cmp(&a.1.probability)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     predictions.truncate(top_files);
-    
+
     // Convert to report format expected by existing formatting functions
     let report = create_defect_report_from_predictions(predictions)?;
 
@@ -1638,28 +1644,26 @@ pub async fn handle_analyze_incremental_coverage(
     eprintln!("📄 Format: {:?}", format);
 
     // Real implementation using IncrementalCoverageAnalyzer
-    use crate::cli::coverage_helpers::{setup_coverage_analyzer, get_changed_files_for_coverage};
+    use crate::cli::coverage_helpers::{get_changed_files_for_coverage, setup_coverage_analyzer};
     use crate::services::incremental_coverage_analyzer::{ChangeSet, FileId};
-    
+
     let analyzer = setup_coverage_analyzer(_cache_dir, _force_refresh)?;
-    let changed_files = get_changed_files_for_coverage(
-        &project_path,
-        &base_branch,
-        target_branch.as_deref(),
-    ).await?;
-    
+    let changed_files =
+        get_changed_files_for_coverage(&project_path, &base_branch, target_branch.as_deref())
+            .await?;
+
     // Create FileId objects for changed files
     let mut modified_files = Vec::new();
     for (path, status) in &changed_files {
         if status == "M" || status == "A" {
             // Create hash for the file path
-            use sha2::{Sha256, Digest};
+            use sha2::{Digest, Sha256};
             let mut hasher = Sha256::new();
             hasher.update(path.to_string_lossy().as_bytes());
             let hash_result = hasher.finalize();
             let mut hash = [0u8; 32];
             hash.copy_from_slice(&hash_result);
-            
+
             let file_id = FileId {
                 path: path.clone(),
                 hash,
@@ -1667,15 +1671,15 @@ pub async fn handle_analyze_incremental_coverage(
             modified_files.push(file_id);
         }
     }
-    
+
     let changeset = ChangeSet {
         modified_files,
         added_files: Vec::new(), // These are included in modified_files above
         deleted_files: Vec::new(),
     };
-    
+
     let coverage_update = analyzer.analyze_changes(&changeset).await?;
-    
+
     // Convert real coverage data to report format expected by formatting functions
     let report = convert_coverage_update_to_report(
         coverage_update,
@@ -5974,7 +5978,7 @@ fn convert_coverage_update_to_report(
     changed_files: Vec<(PathBuf, String)>,
 ) -> Result<IncrementalCoverageReport> {
     let mut files = Vec::new();
-    
+
     // Convert real coverage data to report format
     for (file_id, file_coverage) in coverage_update.file_coverage {
         // Match this FileId to one of our changed files
@@ -5983,11 +5987,11 @@ fn convert_coverage_update_to_report(
             let base_coverage = file_coverage.line_coverage.max(50.0) - 10.0; // Simulate previous coverage
             let target_coverage = file_coverage.line_coverage;
             let coverage_delta = target_coverage - base_coverage;
-            
+
             let lines_total = file_coverage.total_lines;
             let lines_covered = file_coverage.covered_lines.len();
             let lines_uncovered = lines_total.saturating_sub(lines_covered);
-            
+
             files.push(FileCoverageMetrics {
                 path: file_path.clone(),
                 base_coverage,
@@ -5999,14 +6003,14 @@ fn convert_coverage_update_to_report(
             });
         }
     }
-    
+
     // Calculate summary statistics
     let total_files_changed = files.len();
     let files_improved = files.iter().filter(|f| f.coverage_delta > 0.0).count();
     let files_degraded = files.iter().filter(|f| f.coverage_delta < 0.0).count();
     let overall_delta = coverage_update.delta_coverage.percentage;
     let meets_threshold = overall_delta >= coverage_threshold;
-    
+
     let summary = CoverageSummary {
         total_files_changed,
         files_improved,
@@ -6014,7 +6018,7 @@ fn convert_coverage_update_to_report(
         overall_delta,
         meets_threshold,
     };
-    
+
     Ok(IncrementalCoverageReport {
         base_branch,
         target_branch,
@@ -6027,11 +6031,11 @@ fn convert_coverage_update_to_report(
 /// Format incremental coverage as LCOV
 fn format_incremental_coverage_lcov(report: &IncrementalCoverageReport) -> Result<String> {
     let mut output = String::new();
-    
+
     for file in &report.files {
-        output.push_str(&"TN:\n".to_string());
+        output.push_str("TN:\n");
         output.push_str(&format!("SF:{}\n", file.path.display()));
-        
+
         // Generate fake line data based on coverage
         for line in 1..=file.lines_added {
             if line <= file.lines_covered {
@@ -6040,19 +6044,19 @@ fn format_incremental_coverage_lcov(report: &IncrementalCoverageReport) -> Resul
                 output.push_str(&format!("DA:{},0\n", line));
             }
         }
-        
+
         output.push_str(&format!("LF:{}\n", file.lines_added));
         output.push_str(&format!("LH:{}\n", file.lines_covered));
         output.push_str("end_of_record\n");
     }
-    
+
     Ok(output)
 }
 
 /// Format incremental coverage as SARIF
 fn format_incremental_coverage_sarif(report: &IncrementalCoverageReport) -> Result<String> {
     use serde_json::json;
-    
+
     let runs = vec![json!({
         "tool": {
             "driver": {
@@ -6063,9 +6067,9 @@ fn format_incremental_coverage_sarif(report: &IncrementalCoverageReport) -> Resu
         "results": report.files.iter().filter(|f| f.coverage_delta < 0.0).map(|file| {
             json!({
                 "ruleId": "coverage-decrease",
-                "level": "warning", 
+                "level": "warning",
                 "message": {
-                    "text": format!("Coverage decreased by {:.1}% in {}", 
+                    "text": format!("Coverage decreased by {:.1}% in {}",
                              file.coverage_delta.abs(), file.path.display())
                 },
                 "locations": [{
@@ -6078,13 +6082,13 @@ fn format_incremental_coverage_sarif(report: &IncrementalCoverageReport) -> Resu
             })
         }).collect::<Vec<_>>()
     })];
-    
+
     let sarif = json!({
         "version": "2.1.0",
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "runs": runs
     });
-    
+
     Ok(serde_json::to_string_pretty(&sarif)?)
 }
 
@@ -7079,36 +7083,42 @@ mod tests {
 // Helper functions for defect prediction
 
 /// Convert predictions to report format expected by formatting functions
-fn create_defect_report_from_predictions(predictions: Vec<(String, crate::services::defect_probability::DefectScore)>) -> Result<DefectPredictionReport> {
+fn create_defect_report_from_predictions(
+    predictions: Vec<(String, crate::services::defect_probability::DefectScore)>,
+) -> Result<DefectPredictionReport> {
     use crate::services::defect_probability::RiskLevel;
     let mut high_risk_files = 0;
-    let mut medium_risk_files = 0; 
+    let mut medium_risk_files = 0;
     let mut low_risk_files = 0;
-    
-    let file_predictions: Vec<FilePrediction> = predictions.iter().map(|(file_path, score)| {
-        match score.risk_level {
-            RiskLevel::High => high_risk_files += 1,
-            RiskLevel::Medium => medium_risk_files += 1,
-            RiskLevel::Low => low_risk_files += 1,
-        }
-        
-        let factors: Vec<String> = score.contributing_factors
-            .iter()
-            .map(|(factor, contribution)| format!("{}: {:.1}%", factor, contribution * 100.0))
-            .collect();
-        
-        FilePrediction {
-            file_path: file_path.clone(),
-            risk_score: score.probability,
-            risk_level: format!("{:?}", score.risk_level),
-            factors,
-        }
-    }).collect();
-    
+
+    let file_predictions: Vec<FilePrediction> = predictions
+        .iter()
+        .map(|(file_path, score)| {
+            match score.risk_level {
+                RiskLevel::High => high_risk_files += 1,
+                RiskLevel::Medium => medium_risk_files += 1,
+                RiskLevel::Low => low_risk_files += 1,
+            }
+
+            let factors: Vec<String> = score
+                .contributing_factors
+                .iter()
+                .map(|(factor, contribution)| format!("{}: {:.1}%", factor, contribution * 100.0))
+                .collect();
+
+            FilePrediction {
+                file_path: file_path.clone(),
+                risk_score: score.probability,
+                risk_level: format!("{:?}", score.risk_level),
+                factors,
+            }
+        })
+        .collect();
+
     Ok(DefectPredictionReport {
         total_files: predictions.len(),
         high_risk_files,
-        medium_risk_files, 
+        medium_risk_files,
         low_risk_files,
         file_predictions,
     })
@@ -7130,7 +7140,6 @@ pub struct FilePrediction {
     pub risk_level: String,
     pub factors: Vec<String>,
 }
-
 
 /// Format defect prediction summary with top files
 ///

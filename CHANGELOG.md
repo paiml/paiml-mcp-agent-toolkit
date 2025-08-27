@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Timeout Functionality**: Comprehensive timeout support for all analysis commands
+  - Added `--timeout` parameter to complexity, SATD, and dead-code analysis commands
+  - Default timeout of 60 seconds prevents infinite hangs
+  - Timeout values logged for transparency in CI/CD pipelines
+  - CI/CD integration via validation script in GitHub Actions
+  - Complete example updates maintaining backward compatibility
+
 ### Fixed
+
+- **Code Quality**: Removed unused imports and dead code warnings
+  - Removed unused `clap::Parser` import from `cli/mod.rs`
+  - Fixed unused `spawn_calls` field warning in `ruchy.rs`
+  - Maintains Toyota Way zero-warning policy
 
 - **CRITICAL**: Dead code analysis hanging indefinitely (**v2.15.0**)
   - **Impact**: `pmat analyze dead-code --path .` would hang forever, making tests timeout and project unusable
