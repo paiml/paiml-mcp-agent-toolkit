@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Comprehensive refactoring plan for stubs.rs complexity reduction
+
 ### Changed
 - Cleaned up temporary debug files from development
 - Post-release maintenance and validation
