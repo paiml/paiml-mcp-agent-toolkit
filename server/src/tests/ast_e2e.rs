@@ -44,7 +44,7 @@ mod ast_python_tests {
         let imports: Vec<&AstItem> = context
             .items
             .iter()
-            .filter(|item| matches!(item, AstItem::Use { .. }))
+            .filter(|item| matches!(item, AstItem::Import { .. }))
             .collect();
 
         // Check counts
@@ -172,8 +172,8 @@ mod ast_python_tests {
             .items
             .iter()
             .filter_map(|item| {
-                if let AstItem::Use { path, .. } = item {
-                    Some(path.clone())
+                if let AstItem::Import { module, .. } = item {
+                    Some(module.clone())
                 } else {
                     None
                 }
