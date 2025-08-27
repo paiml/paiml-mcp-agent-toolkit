@@ -7,7 +7,6 @@ use crate::services::service_registry::ServiceRegistry;
 use anyhow::Result;
 use std::path::Path;
 use std::sync::Arc;
-use tokio::task::JoinSet;
 
 /// Comprehensive analysis request
 #[derive(Debug, Clone)]
@@ -39,6 +38,13 @@ pub struct AnalysisSummary {
     pub critical_issues: usize,
     pub quality_score: f64,
     pub recommendations: Vec<String>,
+}
+
+/// Enum to handle different analysis result types
+enum AnalysisTaskResult {
+    Complexity(super::complexity_facade::ComplexityAnalysisResult),
+    DeadCode(super::dead_code_facade::DeadCodeAnalysisResult),
+    Satd(super::satd_facade::SatdAnalysisResult),
 }
 
 /// Orchestrator for coordinating multiple analysis operations
@@ -80,7 +86,8 @@ impl AnalysisOrchestrator {
 
     /// Perform analysis operations in parallel
     async fn analyze_parallel(&self, request: ComprehensiveAnalysisRequest) -> Result<ComprehensiveAnalysisResult> {
-        let mut tasks = JoinSet::new();
+        use tokio::task::JoinHandle;
+        let mut tasks: Vec<JoinHandle<(&str, Result<AnalysisTaskResult>)>> = Vec::new();
         
         // Spawn complexity analysis task
         if request.include_complexity {
@@ -93,9 +100,10 @@ impl AnalysisOrchestrator {
                 output_format: super::complexity_facade::ComplexityOutputFormat::Detailed,
             };
             
-            tasks.spawn(async move {
-                ("complexity", facade.analyze_project(req).await)
-            });
+            tasks.push(tokio::spawn(async move {
+                let result = facade.analyze_project(req).await.map(AnalysisTaskResult::Complexity);
+                ("complexity", result)
+            }));
         }
         
         // Spawn dead code analysis task
@@ -108,9 +116,10 @@ impl AnalysisOrchestrator {
                 min_dead_lines: 1,
             };
             
-            tasks.spawn(async move {
-                ("dead_code", facade.analyze_project(req).await)
-            });
+            tasks.push(tokio::spawn(async move {
+                let result = facade.analyze_project(req).await.map(AnalysisTaskResult::DeadCode);
+                ("dead_code", result)
+            }));
         }
         
         // Spawn SATD analysis task
@@ -122,9 +131,10 @@ impl AnalysisOrchestrator {
                 include_tests: request.include_tests,
             };
             
-            tasks.spawn(async move {
-                ("satd", facade.analyze_project(req).await)
-            });
+            tasks.push(tokio::spawn(async move {
+                let result = facade.analyze_project(req).await.map(AnalysisTaskResult::Satd);
+                ("satd", result)
+            }));
         }
         
         // Collect results
@@ -132,13 +142,13 @@ impl AnalysisOrchestrator {
         let mut dead_code_result = None;
         let mut satd_result = None;
         
-        while let Some(task_result) = tasks.join_next().await {
-            match task_result? {
-                ("complexity", Ok(result)) => complexity_result = Some(result),
-                ("dead_code", Ok(result)) => dead_code_result = Some(result),
-                ("satd", Ok(result)) => satd_result = Some(result),
-                (task_name, Err(e)) => {
-                    eprintln!("Warning: {} analysis failed: {}", task_name, e);
+        for task in tasks {
+            if let Ok((task_name, result)) = task.await {
+                match result {
+                    Ok(AnalysisTaskResult::Complexity(r)) => complexity_result = Some(r),
+                    Ok(AnalysisTaskResult::DeadCode(r)) => dead_code_result = Some(r),
+                    Ok(AnalysisTaskResult::Satd(r)) => satd_result = Some(r),
+                    Err(e) => eprintln!("Warning: {} analysis failed: {}", task_name, e),
                 }
             }
         }
@@ -287,29 +297,6 @@ impl AnalysisOrchestrator {
     }
 }
 
-impl Clone for ComplexityFacade {
-    fn clone(&self) -> Self {
-        Self {
-            registry: Arc::clone(&self.registry),
-        }
-    }
-}
-
-impl Clone for DeadCodeFacade {
-    fn clone(&self) -> Self {
-        Self {
-            registry: Arc::clone(&self.registry),
-        }
-    }
-}
-
-impl Clone for SatdFacade {
-    fn clone(&self) -> Self {
-        Self {
-            registry: Arc::clone(&self.registry),
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {

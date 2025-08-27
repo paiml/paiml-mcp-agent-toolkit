@@ -16,6 +16,7 @@ pub mod duplication_analysis;
 pub mod enforce_handlers;
 pub mod enhanced_reporting_handlers;
 pub mod generation_handlers;
+pub mod incremental_coverage_handler;
 pub mod lint_hotspot_handlers;
 #[cfg(test)]
 pub mod lint_hotspot_property_tests;
@@ -47,6 +48,7 @@ pub use complexity_handlers::{
     handle_analyze_churn, handle_analyze_complexity, handle_analyze_dag, handle_analyze_dead_code,
     handle_analyze_satd,
 };
+pub use incremental_coverage_handler::handle_analyze_incremental_coverage;
 pub use configuration_handlers::handle_configuration;
 pub use demo_handlers::{handle_demo, handle_quality_gate};
 pub use duplication_analysis::handle_analyze_duplicates;

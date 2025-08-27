@@ -2,7 +2,7 @@
 //!
 //! Provides a simplified interface for dead code detection and analysis.
 
-use crate::services::service_registry::{AnalysisService, ServiceRegistry};
+use crate::services::service_registry::ServiceRegistry;
 use anyhow::Result;
 use std::path::Path;
 use std::sync::Arc;
@@ -46,6 +46,7 @@ pub enum DeadCodeType {
 }
 
 /// Facade for dead code analysis operations
+#[derive(Clone)]
 pub struct DeadCodeFacade {
     registry: Arc<ServiceRegistry>,
 }

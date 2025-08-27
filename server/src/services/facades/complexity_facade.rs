@@ -2,7 +2,7 @@
 //!
 //! Provides a simplified interface for complexity analysis operations.
 
-use crate::services::service_registry::{AnalysisService, ServiceRegistry};
+use crate::services::service_registry::ServiceRegistry;
 use anyhow::Result;
 use std::path::Path;
 use std::sync::Arc;
@@ -46,6 +46,7 @@ pub struct ComplexityViolation {
 }
 
 /// Facade for complexity analysis operations
+#[derive(Clone)]
 pub struct ComplexityFacade {
     registry: Arc<ServiceRegistry>,
 }
