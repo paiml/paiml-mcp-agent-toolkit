@@ -220,7 +220,7 @@ impl AnalysisService {
         };
 
         // Create a new analyzer instance (DeadCodeAnalyzer doesn't implement Clone)
-        let mut analyzer = DeadCodeAnalyzer::new(10000);
+        let mut analyzer = DeadCodeAnalyzer::new(DeadCodeAnalyzer::DEFAULT_CAPACITY);
         let analysis_result = analyzer.analyze_with_ranking(path, config).await?;
 
         // Convert ranked files to unused items
