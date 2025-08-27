@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.15.1] - 2025-08-27
+
 ## [2.14.0] - 2025-08-26 - Technical Debt Elimination via TDD
 
 ### Fixed
