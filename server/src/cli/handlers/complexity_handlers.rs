@@ -5,7 +5,10 @@
 
 use crate::cli::*;
 use anyhow::{Context, Result};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use std::sync::mpsc::channel;
+use std::time::Duration;
 
 #[cfg(test)]
 mod complexity_handlers_tests;
@@ -461,8 +464,17 @@ pub async fn handle_analyze_complexity(
     };
 
     if watch {
-        eprintln!("❌ Watch mode not yet implemented");
-        return Ok(());
+        return handle_watch_mode(
+            &project_path,
+            toolchain.as_deref(),
+            max_cyclomatic,
+            max_cognitive,
+            include.clone(),
+            timeout,
+            top_files,
+            format,
+            output.as_deref(),
+        );
     }
 
     // Create configuration to reduce parameter passing and centralize logic
@@ -519,6 +531,231 @@ pub async fn handle_analyze_complexity(
             std::process::exit(1);
         }
     }
+
+    Ok(())
+}
+
+/// Handle watch mode for continuous complexity analysis
+#[allow(clippy::too_many_arguments)]
+fn handle_watch_mode(
+    path: &Path,
+    toolchain: Option<&str>,
+    max_cyclomatic: Option<u16>,
+    max_cognitive: Option<u16>,
+    include: Vec<String>,
+    timeout: u64,
+    top_files: usize,
+    format: ComplexityOutputFormat,
+    output: Option<&Path>,
+) -> Result<()> {
+    eprintln!("👁️  Starting watch mode for complexity analysis...");
+    eprintln!("📁 Watching: {}", path.display());
+    eprintln!("🔄 Press Ctrl+C to stop watching\n");
+
+    // Create a channel to receive file system events
+    let (tx, rx) = channel();
+
+    // Create a watcher with a small debounce delay
+    let mut watcher = RecommendedWatcher::new(
+        move |event: Result<Event, notify::Error>| {
+            if let Ok(event) = event {
+                let _ = tx.send(event);
+            }
+        },
+        Config::default().with_poll_interval(Duration::from_secs(1)),
+    )?;
+
+    // Start watching the path recursively
+    watcher.watch(path, RecursiveMode::Recursive)?;
+
+    // Initial analysis
+    eprintln!("📊 Running initial complexity analysis...\n");
+    run_complexity_analysis_sync(
+        path,
+        toolchain,
+        max_cyclomatic,
+        max_cognitive,
+        &include,
+        timeout,
+        top_files,
+        format.clone(),
+        output,
+    )?;
+
+    // Watch for changes
+    loop {
+        match rx.recv() {
+            Ok(event) => {
+                // Filter for relevant file changes
+                if should_reanalyze(&event, &include) {
+                    eprintln!("\n🔄 File change detected, reanalyzing...");
+                    if let Some(paths) = get_changed_paths(&event) {
+                        for changed_path in paths {
+                            eprintln!("  📝 Changed: {}", changed_path.display());
+                        }
+                    }
+                    eprintln!();
+                    
+                    // Run analysis again
+                    if let Err(e) = run_complexity_analysis_sync(
+                        path,
+                        toolchain,
+                        max_cyclomatic,
+                        max_cognitive,
+                        &include,
+                        timeout,
+                        top_files,
+                        format.clone(),
+                        output,
+                    ) {
+                        eprintln!("⚠️  Analysis error: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("⚠️  Watch error: {}", e);
+                break;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Check if we should reanalyze based on the event type
+fn should_reanalyze(event: &Event, include_patterns: &[String]) -> bool {
+    match event.kind {
+        EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) => {
+            // Check if any of the changed paths match our include patterns
+            for path in &event.paths {
+                if let Some(path_str) = path.to_str() {
+                    // Check for source code files
+                    if path_str.ends_with(".rs") 
+                        || path_str.ends_with(".ts") 
+                        || path_str.ends_with(".tsx")
+                        || path_str.ends_with(".js")
+                        || path_str.ends_with(".jsx")
+                        || path_str.ends_with(".py")
+                        || path_str.ends_with(".c")
+                        || path_str.ends_with(".cpp")
+                        || path_str.ends_with(".h")
+                        || path_str.ends_with(".hpp") {
+                        
+                        // If no include patterns, analyze all source files
+                        if include_patterns.is_empty() {
+                            return true;
+                        }
+                        
+                        // Check against include patterns
+                        for pattern in include_patterns {
+                            if path_str.contains(pattern) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            false
+        }
+        _ => false,
+    }
+}
+
+/// Get the paths that changed from an event
+fn get_changed_paths(event: &Event) -> Option<&Vec<PathBuf>> {
+    if !event.paths.is_empty() {
+        Some(&event.paths)
+    } else {
+        None
+    }
+}
+
+/// Format and output complexity results in watch mode
+async fn format_and_output_watch_results(
+    summary: crate::services::complexity::ComplexityReport,
+    file_metrics: Vec<crate::services::complexity::FileComplexityMetrics>,
+    format: ComplexityOutputFormat,
+    output: Option<&Path>,
+) -> Result<()> {
+    use crate::services::complexity::format_complexity_summary;
+
+    // For watch mode, we'll use summary format for simplicity
+    let content = match format {
+        ComplexityOutputFormat::Json => {
+            // Convert to JSON
+            serde_json::to_string_pretty(&summary)?
+        }
+        _ => {
+            // Use summary format for all other cases in watch mode
+            format_complexity_summary(&summary)
+        }
+    };
+
+    // Clear screen for better watch mode experience
+    print!("\x1B[2J\x1B[1;1H");
+    
+    // Write output
+    if let Some(output_path) = output {
+        tokio::fs::write(output_path, &content).await?;
+        eprintln!("✅ Analysis written to: {}", output_path.display());
+    } else {
+        println!("{}", content);
+    }
+
+    Ok(())
+}
+
+/// Synchronous wrapper for complexity analysis in watch mode
+fn run_complexity_analysis_sync(
+    path: &Path,
+    toolchain: Option<&str>,
+    max_cyclomatic: Option<u16>,
+    max_cognitive: Option<u16>,
+    include: &[String],
+    timeout: u64,
+    top_files: usize,
+    format: ComplexityOutputFormat,
+    output: Option<&Path>,
+) -> Result<()> {
+    // Create a runtime for the async operation
+    let runtime = tokio::runtime::Runtime::new()?;
+    
+    // Create config
+    let config = ComplexityConfig::from_args(
+        path.to_path_buf(),
+        toolchain.map(String::from),
+        max_cyclomatic,
+        max_cognitive,
+        include.to_vec(),
+        timeout,
+        top_files,
+    );
+
+    // Run the analysis
+    runtime.block_on(async {
+        let mut file_metrics = if path.is_file() {
+            analyze_single_file(&path.to_path_buf(), &config).await?
+        } else {
+            let detected_toolchain = config.detect_toolchain();
+            analyze_project(detected_toolchain, &config).await?
+        };
+
+        // Apply filters
+        apply_complexity_filters(&mut file_metrics, Some(config.max_cyclomatic), Some(config.max_cognitive));
+        apply_top_files_limit(&mut file_metrics, config.top_files);
+
+        // Aggregate results
+        use crate::services::complexity::aggregate_results_with_thresholds;
+        let summary = aggregate_results_with_thresholds(
+            file_metrics.clone(), 
+            Some(config.max_cyclomatic), 
+            Some(config.max_cognitive)
+        );
+
+        // Format and output results
+        format_and_output_watch_results(summary, file_metrics, format, output).await?;
+        Ok::<(), anyhow::Error>(())
+    })?;
 
     Ok(())
 }
