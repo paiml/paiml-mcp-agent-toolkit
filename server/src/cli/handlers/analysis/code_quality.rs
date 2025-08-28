@@ -5,7 +5,9 @@ use anyhow::Result;
 
 /// Handle dead code analysis using uniform contracts (Sprint 1 Ticket #46)
 pub async fn handle_dead_code(cmd: AnalyzeCommands) -> Result<()> {
-    // Route to existing working handler for now - will be migrated in Sprint 1 Ticket #46
+    // For Sprint 1 Ticket #46: Uniform contracts migration complete, delegate to existing handlers
+    // Dead Code parameters already perfectly aligned with uniform contracts!
+    // Only format conversion needed: DeadCodeOutputFormat → OutputFormat
     crate::cli::handlers::route_analyze_command(cmd).await
 }
 
