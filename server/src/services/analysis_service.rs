@@ -228,14 +228,12 @@ impl AnalysisService {
             .ranked_files
             .into_iter()
             .flat_map(|file| {
-                file.items
-                    .into_iter()
-                    .map(move |item| UnusedItem {
-                        file: file.path.clone(),
-                        item: item.name.clone(),
-                        line: item.line as usize,
-                        item_type: format!("{:?}", item.item_type),
-                    })
+                file.items.into_iter().map(move |item| UnusedItem {
+                    file: file.path.clone(),
+                    item: item.name.clone(),
+                    line: item.line as usize,
+                    item_type: format!("{:?}", item.item_type),
+                })
             })
             .collect();
 

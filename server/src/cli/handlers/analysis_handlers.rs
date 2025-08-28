@@ -446,7 +446,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         } => {
             super::defect_prediction_handler::handle_analyze_defect_prediction(
                 project_path,
-                confidence_threshold as f32,
+                confidence_threshold,
                 min_lines,
                 include_low_confidence,
                 format,

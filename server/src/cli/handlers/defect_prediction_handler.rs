@@ -135,9 +135,15 @@ fn format_summary(result: &DefectPredictionResult) -> String {
 fn format_detailed(result: &DefectPredictionResult) -> String {
     let mut output = String::new();
     output.push_str("# Defect Prediction Detailed Report\n\n");
-    output.push_str(&format!("Total files analyzed: {}\n", result.total_files_analyzed));
+    output.push_str(&format!(
+        "Total files analyzed: {}\n",
+        result.total_files_analyzed
+    ));
     output.push_str(&format!("High risk files: {}\n", result.high_risk_files));
-    output.push_str(&format!("Medium risk files: {}\n", result.medium_risk_files));
+    output.push_str(&format!(
+        "Medium risk files: {}\n",
+        result.medium_risk_files
+    ));
     output.push_str(&format!("Low risk files: {}\n\n", result.low_risk_files));
 
     output.push_str("## File Analysis\n");
@@ -148,8 +154,11 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
             "- Defect Probability: {:.1}%\n",
             prediction.defect_probability * 100.0
         ));
-        output.push_str(&format!("- Confidence: {:.1}%\n", prediction.confidence * 100.0));
-        
+        output.push_str(&format!(
+            "- Confidence: {:.1}%\n",
+            prediction.confidence * 100.0
+        ));
+
         output.push_str("- Risk Metrics:\n");
         output.push_str(&format!(
             "  - Complexity: {:.1}\n",
@@ -163,15 +172,12 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
             "  - Coupling: {:.1}\n",
             prediction.metrics.coupling_score
         ));
-        output.push_str(&format!(
-            "  - Size: {:.1}\n",
-            prediction.metrics.size_score
-        ));
+        output.push_str(&format!("  - Size: {:.1}\n", prediction.metrics.size_score));
         output.push_str(&format!(
             "  - Duplication: {:.1}\n",
             prediction.metrics.duplication_score
         ));
-        
+
         if !prediction.contributing_factors.is_empty() {
             output.push_str("- Contributing Factors:\n");
             for factor in &prediction.contributing_factors {
@@ -206,33 +212,32 @@ fn format_csv(result: &DefectPredictionResult) -> String {
     output
 }
 
-
 /// Format as SARIF
 fn format_sarif(result: &DefectPredictionResult) -> String {
-    let rules = vec![
-        serde_json::json!({
-            "id": "high-defect-risk",
-            "shortDescription": {
-                "text": "High defect probability detected"
-            },
-            "fullDescription": {
-                "text": "Files with high defect probability require additional testing and review"
-            }
-        })
-    ];
+    let rules = vec![serde_json::json!({
+        "id": "high-defect-risk",
+        "shortDescription": {
+            "text": "High defect probability detected"
+        },
+        "fullDescription": {
+            "text": "Files with high defect probability require additional testing and review"
+        }
+    })];
 
     let results: Vec<_> = result
         .predictions
         .iter()
-        .filter(|p| matches!(
-            p.risk_level,
-            crate::services::facades::defect_prediction_facade::RiskLevel::High
-                | crate::services::facades::defect_prediction_facade::RiskLevel::Critical
-        ))
+        .filter(|p| {
+            matches!(
+                p.risk_level,
+                crate::services::facades::defect_prediction_facade::RiskLevel::High
+                    | crate::services::facades::defect_prediction_facade::RiskLevel::Critical
+            )
+        })
         .map(|prediction| {
             serde_json::json!({
                 "ruleId": "high-defect-risk",
-                "level": if matches!(prediction.risk_level, 
+                "level": if matches!(prediction.risk_level,
                     crate::services::facades::defect_prediction_facade::RiskLevel::Critical) {
                     "error"
                 } else {
@@ -282,7 +287,9 @@ fn format_sarif(result: &DefectPredictionResult) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::facades::defect_prediction_facade::{FilePrediction, FileRiskMetrics, RiskLevel};
+    use crate::services::facades::defect_prediction_facade::{
+        FilePrediction, FileRiskMetrics, RiskLevel,
+    };
 
     #[test]
     fn test_format_summary() {
@@ -291,22 +298,20 @@ mod tests {
             high_risk_files: 3,
             medium_risk_files: 4,
             low_risk_files: 3,
-            predictions: vec![
-                FilePrediction {
-                    file_path: "test.rs".to_string(),
-                    defect_probability: 0.8,
-                    risk_level: RiskLevel::High,
-                    confidence: 0.9,
-                    metrics: FileRiskMetrics {
-                        complexity_score: 0.8,
-                        churn_score: 0.7,
-                        coupling_score: 0.6,
-                        size_score: 0.5,
-                        duplication_score: 0.4,
-                    },
-                    contributing_factors: vec!["High complexity".to_string()],
-                }
-            ],
+            predictions: vec![FilePrediction {
+                file_path: "test.rs".to_string(),
+                defect_probability: 0.8,
+                risk_level: RiskLevel::High,
+                confidence: 0.9,
+                metrics: FileRiskMetrics {
+                    complexity_score: 0.8,
+                    churn_score: 0.7,
+                    coupling_score: 0.6,
+                    size_score: 0.5,
+                    duplication_score: 0.4,
+                },
+                contributing_factors: vec!["High complexity".to_string()],
+            }],
             summary: "Test summary".to_string(),
             recommendations: vec!["Test recommendation".to_string()],
         };

@@ -1,9 +1,34 @@
 # PMAT Development Roadmap
 
-## Current Sprint: v2.17.0 (Next Sprint Planning)
-- **Duration**: TBD
-- **Priority**: TBD
-- **Methodology**: Toyota Way Principles + TDD
+## Current Sprint: v2.17.0 Uniform Contracts System 🚀 IN PROGRESS
+- **Duration**: 2025-08-28 (Foundation Complete)
+- **Priority**: P0 - Critical Architecture
+- **Methodology**: Contract-Driven Development + Toyota Way Principles
+
+### Foundation Phase ✅ COMPLETE
+| ID | Description | Status | Complexity | Priority |
+|----|-------------|--------|------------|----------|
+| PMAT-UC001 | Implement uniform contract definitions | ✅ | High | P0 |
+| PMAT-UC002 | Create contract validation system | ✅ | Medium | P0 |
+| PMAT-UC003 | Build service layer with contracts | ✅ | Medium | P0 |
+| PMAT-UC004 | Implement MCP contract handler | ✅ | Medium | P0 |
+| PMAT-UC005 | Create HTTP contract endpoints | ✅ | Medium | P0 |
+| PMAT-UC006 | Add contract versioning system | ✅ | Low | P1 |
+| PMAT-UC007 | Implement backward compatibility | ✅ | Low | P1 |
+| PMAT-UC008 | Create comprehensive test suite | ✅ | Medium | P0 |
+| PMAT-UC009 | Add CI/CD contract enforcement | ✅ | Low | P1 |
+
+### Achievements - Foundation Phase
+- **Parameter Consistency**: All interfaces now use identical parameter names (`path`, `format`, `output`, `top_files`, `include_tests`, `timeout`)
+- **Single Source of Truth**: Contract definitions eliminate CLI/MCP/HTTP inconsistencies
+- **Quality Verified**: 9/9 contract tests passing, full compilation success
+- **Future-Proofed**: Contract versioning system supports evolution
+- **Documentation**: Complete roadmap, specifications, and examples
+
+### Next: Sprint 1 - CLI Migration (Starting)
+- **Goal**: Migrate existing CLI commands to uniform contracts
+- **Duration**: 2 weeks
+- **Target**: 4 tickets, 9 story points
 
 ## Previous Sprint: v2.16.1 Critical Bug Fix ✅ COMPLETE
 - **Duration**: 2025-08-28

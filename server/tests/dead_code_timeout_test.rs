@@ -19,7 +19,7 @@ fn test_dead_code_completes_within_timeout() {
         let start = Instant::now();
 
         let output = Command::new(env!("CARGO_BIN_EXE_pmat"))
-            .args(&["analyze", "dead-code", "--path", "."])
+            .args(["analyze", "dead-code", "--path", "."])
             .output();
 
         let duration = start.elapsed();
@@ -70,7 +70,7 @@ fn test_dead_code_handles_empty_directory() {
 
     let start = Instant::now();
     let output = Command::new(env!("CARGO_BIN_EXE_pmat"))
-        .args(&[
+        .args([
             "analyze",
             "dead-code",
             "--path",
@@ -103,7 +103,7 @@ fn test_dead_code_handles_single_file() {
 
     let start = Instant::now();
     let output = Command::new(env!("CARGO_BIN_EXE_pmat"))
-        .args(&[
+        .args([
             "analyze",
             "dead-code",
             "--file",
@@ -130,7 +130,7 @@ fn test_dead_code_handles_single_file() {
 fn test_dead_code_with_max_depth_limit() {
     // Test that max-depth parameter prevents infinite recursion
     let output = Command::new(env!("CARGO_BIN_EXE_pmat"))
-        .args(&["analyze", "dead-code", "--path", ".", "--max-depth", "2"])
+        .args(["analyze", "dead-code", "--path", ".", "--max-depth", "2"])
         .output()
         .expect("Failed to run command");
 

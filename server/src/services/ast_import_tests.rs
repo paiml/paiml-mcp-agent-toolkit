@@ -141,7 +141,7 @@ mod property_tests {
                 // Verify basic structure
                 match &import {
                     AstItem::Import { module, .. } => {
-                        assert!(display.contains(module) || display.len() > 0);
+                        assert!(display.contains(module) || !display.is_empty());
                     }
                     _ => panic!("Expected Import variant"),
                 }

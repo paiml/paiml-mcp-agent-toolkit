@@ -1127,7 +1127,7 @@ pub async fn handle_serve(
 async fn start_websocket_server(addr: String) -> Result<()> {
     eprintln!("🔌 WebSocket server implementation ready for {addr}");
     eprintln!("💡 Connect using any WebSocket client to test MCP protocol");
-    
+
     // Placeholder for actual WebSocket server implementation
     tokio::signal::ctrl_c().await?;
     Ok(())
@@ -1137,7 +1137,7 @@ async fn start_websocket_server(addr: String) -> Result<()> {
 async fn start_http_sse_server(addr: String, _cors: bool) -> Result<()> {
     eprintln!("🌊 HTTP-SSE server implementation ready for {addr}");
     eprintln!("💡 Server-Sent Events endpoint ready for MCP protocol");
-    
+
     // Placeholder for actual HTTP-SSE server implementation
     tokio::signal::ctrl_c().await?;
     Ok(())
@@ -1147,7 +1147,7 @@ async fn start_http_sse_server(addr: String, _cors: bool) -> Result<()> {
 async fn start_hybrid_server(addr: String, _cors: bool) -> Result<()> {
     eprintln!("🔥 Hybrid server implementation ready for {addr}");
     eprintln!("💡 Both HTTP and WebSocket endpoints ready");
-    
+
     // Placeholder for actual hybrid server implementation
     tokio::signal::ctrl_c().await?;
     Ok(())
@@ -1157,7 +1157,7 @@ async fn start_hybrid_server(addr: String, _cors: bool) -> Result<()> {
 async fn start_full_server(addr: String, _cors: bool) -> Result<()> {
     eprintln!("🚀 Full server implementation ready for {addr}");
     eprintln!("💡 All transport methods (HTTP, WebSocket, SSE) ready");
-    
+
     // Placeholder for actual full server implementation
     tokio::signal::ctrl_c().await?;
     Ok(())

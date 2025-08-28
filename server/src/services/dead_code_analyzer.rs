@@ -236,7 +236,7 @@ pub struct DeadCodeAnalyzer {
 impl DeadCodeAnalyzer {
     /// Default capacity for small to medium projects
     pub const DEFAULT_CAPACITY: usize = 100_000;
-    
+
     /// Large capacity for enterprise projects  
     pub const LARGE_CAPACITY: usize = 1_000_000;
 

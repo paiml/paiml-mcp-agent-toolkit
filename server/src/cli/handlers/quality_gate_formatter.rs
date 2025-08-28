@@ -2,8 +2,8 @@
 //! Complexity: Reduced from 20 to individual functions ≤8
 //! Purpose: Quality gate report formatting with clean separation of concerns
 
-use crate::cli::{QualityCheckType, QualityGateOutputFormat};
 use crate::cli::stubs::{QualityGateResults, QualityViolation};
+use crate::cli::{QualityCheckType, QualityGateOutputFormat};
 use anyhow::Result;
 use serde_json::json;
 use std::collections::HashMap;
@@ -191,7 +191,7 @@ fn print_specific_checks(checks: &[QualityCheckType]) {
     for check in checks {
         let check_name = match check {
             QualityCheckType::Complexity => "✓ Complexity analysis",
-            QualityCheckType::DeadCode => "✓ Dead code detection", 
+            QualityCheckType::DeadCode => "✓ Dead code detection",
             QualityCheckType::Satd => "✓ Self-admitted technical debt (SATD)",
             QualityCheckType::Security => "✓ Security vulnerabilities",
             QualityCheckType::Entropy => "✓ Code entropy",
@@ -218,15 +218,28 @@ pub async fn run_project_checks(
     // If checks contains All, run the comprehensive check
     if checks.contains(&QualityCheckType::All) {
         run_all_checks(
-            project_path, max_dead_code, min_entropy, max_complexity_p99, 
-            violations, results, perf
-        ).await?;
+            project_path,
+            max_dead_code,
+            min_entropy,
+            max_complexity_p99,
+            violations,
+            results,
+            perf,
+        )
+        .await?;
     } else {
         // Run individual checks with performance timing
         run_individual_checks(
-            checks, project_path, max_dead_code, min_entropy, max_complexity_p99,
-            violations, results, perf
-        ).await?;
+            checks,
+            project_path,
+            max_dead_code,
+            min_entropy,
+            max_complexity_p99,
+            violations,
+            results,
+            perf,
+        )
+        .await?;
     }
     Ok(())
 }
@@ -235,7 +248,7 @@ pub async fn run_project_checks(
 async fn run_all_checks(
     project_path: &Path,
     max_dead_code: f64,
-    min_entropy: f64, 
+    min_entropy: f64,
     max_complexity_p99: u32,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
@@ -250,10 +263,11 @@ async fn run_all_checks(
         violations,
         results,
         perf,
-    ).await
+    )
+    .await
 }
 
-/// Toyota Way: Extract Method - Run individual checks with timing (complexity ≤8) 
+/// Toyota Way: Extract Method - Run individual checks with timing (complexity ≤8)
 async fn run_individual_checks(
     checks: &[QualityCheckType],
     project_path: &Path,
@@ -265,7 +279,7 @@ async fn run_individual_checks(
     perf: bool,
 ) -> Result<()> {
     use std::time::Instant;
-    
+
     for check in checks {
         let check_start = if perf { Some(Instant::now()) } else { None };
 
@@ -278,7 +292,8 @@ async fn run_individual_checks(
             violations,
             results,
             perf,
-        ).await?;
+        )
+        .await?;
 
         // Print timing if performance monitoring is enabled
         if let Some(start) = check_start {
@@ -292,7 +307,7 @@ async fn run_individual_checks(
 fn print_check_timing(check: &QualityCheckType, elapsed_secs: f64) {
     let check_name = match check {
         QualityCheckType::Complexity => "Complexity",
-        QualityCheckType::DeadCode => "Dead code", 
+        QualityCheckType::DeadCode => "Dead code",
         QualityCheckType::Satd => "SATD",
         QualityCheckType::Security => "Security",
         QualityCheckType::Entropy => "Entropy",
@@ -333,9 +348,12 @@ pub fn format_qg_as_junit(violations: &[QualityViolation]) -> Result<String> {
 }
 
 /// Toyota Way: Extract Method - Write single JUnit test case (complexity ≤3)
-fn write_junit_test_case(output: &mut String, violation: &QualityViolation) -> Result<(), std::fmt::Error> {
+fn write_junit_test_case(
+    output: &mut String,
+    violation: &QualityViolation,
+) -> Result<(), std::fmt::Error> {
     use std::fmt::Write;
-    
+
     writeln!(
         output,
         r#"    <testcase name="{}" classname="{}">"#,

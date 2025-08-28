@@ -59,13 +59,16 @@ impl ComplexityFacade {
     }
 
     /// Perform complexity analysis on a project
-    pub async fn analyze_project(&self, request: ComplexityAnalysisRequest) -> Result<ComplexityAnalysisResult> {
+    pub async fn analyze_project(
+        &self,
+        request: ComplexityAnalysisRequest,
+    ) -> Result<ComplexityAnalysisResult> {
         // This is a facade implementation that would orchestrate:
         // 1. Language detection if not specified
         // 2. File discovery and filtering
         // 3. Complexity analysis using appropriate service
         // 4. Result aggregation and formatting
-        
+
         // For now, return a mock result to establish the interface
         Ok(ComplexityAnalysisResult {
             total_files: 1,
@@ -78,13 +81,16 @@ impl ComplexityFacade {
             }],
             average_complexity: 8.5,
             max_complexity: 15,
-            summary: format!("Analyzed {} with {} violations", 
-                           request.path.display(), 1),
+            summary: format!("Analyzed {} with {} violations", request.path.display(), 1),
         })
     }
 
     /// Analyze a single file for complexity
-    pub async fn analyze_file<P: AsRef<Path>>(&self, path: P, language: Option<&str>) -> Result<ComplexityAnalysisResult> {
+    pub async fn analyze_file<P: AsRef<Path>>(
+        &self,
+        path: P,
+        language: Option<&str>,
+    ) -> Result<ComplexityAnalysisResult> {
         let request = ComplexityAnalysisRequest {
             path: path.as_ref().to_path_buf(),
             language: language.map(|s| s.to_string()),
@@ -92,7 +98,7 @@ impl ComplexityFacade {
             max_complexity_threshold: Some(20),
             output_format: ComplexityOutputFormat::Detailed,
         };
-        
+
         self.analyze_project(request).await
     }
 
@@ -123,17 +129,25 @@ impl ComplexityFacade {
     }
 
     /// Check if complexity violations exceed thresholds
-    pub fn validate_complexity(&self, result: &ComplexityAnalysisResult, language: &str) -> ValidationResult {
+    pub fn validate_complexity(
+        &self,
+        result: &ComplexityAnalysisResult,
+        language: &str,
+    ) -> ValidationResult {
         let thresholds = self.get_language_thresholds(language);
-        
-        let warnings = result.violations.iter()
+
+        let warnings = result
+            .violations
+            .iter()
             .filter(|v| v.complexity >= thresholds.warning && v.complexity < thresholds.error)
             .count();
-            
-        let errors = result.violations.iter()
+
+        let errors = result
+            .violations
+            .iter()
             .filter(|v| v.complexity >= thresholds.error)
             .count();
-            
+
         ValidationResult {
             passed: errors == 0,
             warnings,
@@ -171,7 +185,7 @@ mod tests {
     async fn test_complexity_facade_creation() {
         let registry = Arc::new(ServiceRegistry::new());
         let facade = ComplexityFacade::new(registry);
-        
+
         // Test basic facade functionality
         let thresholds = facade.get_language_thresholds("rust");
         assert_eq!(thresholds.warning, 15);
@@ -182,7 +196,7 @@ mod tests {
     async fn test_complexity_validation() {
         let registry = Arc::new(ServiceRegistry::new());
         let facade = ComplexityFacade::new(registry);
-        
+
         let result = ComplexityAnalysisResult {
             total_files: 1,
             violations: vec![ComplexityViolation {
@@ -196,7 +210,7 @@ mod tests {
             max_complexity: 30,
             summary: "Test".to_string(),
         };
-        
+
         let validation = facade.validate_complexity(&result, "rust");
         assert!(!validation.passed);
         assert_eq!(validation.errors, 1);

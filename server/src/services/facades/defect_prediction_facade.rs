@@ -83,22 +83,27 @@ impl DefectPredictionFacade {
     ) -> Result<DefectPredictionResult> {
         // Discover source files to analyze
         let files = self.discover_files(&request).await?;
-        
+
         // Analyze each file for defect probability
         let mut predictions = Vec::new();
-        for file_path in files.iter().take(request.top_files * 2) { // Analyze more than needed for filtering
+        for file_path in files.iter().take(request.top_files * 2) {
+            // Analyze more than needed for filtering
             if let Ok(prediction) = self.analyze_file(file_path, &request).await {
                 // Apply filters
-                if request.high_risk_only && matches!(prediction.risk_level, RiskLevel::Low | RiskLevel::Medium) {
+                if request.high_risk_only
+                    && matches!(prediction.risk_level, RiskLevel::Low | RiskLevel::Medium)
+                {
                     continue;
                 }
-                if !request.include_low_confidence && prediction.confidence < request.confidence_threshold {
+                if !request.include_low_confidence
+                    && prediction.confidence < request.confidence_threshold
+                {
                     continue;
                 }
                 predictions.push(prediction);
             }
         }
-        
+
         // Sort by probability and limit to top files
         predictions.sort_by(|a, b| {
             b.defect_probability
@@ -106,7 +111,7 @@ impl DefectPredictionFacade {
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
         predictions.truncate(request.top_files);
-        
+
         // Build result
         Ok(self.build_result(predictions, &request))
     }
@@ -114,7 +119,7 @@ impl DefectPredictionFacade {
     /// Discover source files to analyze
     async fn discover_files(&self, request: &DefectPredictionRequest) -> Result<Vec<PathBuf>> {
         use walkdir::WalkDir;
-        
+
         let mut files = Vec::new();
         for entry in WalkDir::new(&request.project_path)
             .follow_links(false)
@@ -125,28 +130,37 @@ impl DefectPredictionFacade {
             if path.is_file() {
                 // Check if file matches include/exclude patterns
                 let path_str = path.to_string_lossy();
-                
+
                 if let Some(ref excludes) = request.exclude {
                     if excludes.iter().any(|pattern| path_str.contains(pattern)) {
                         continue;
                     }
                 }
-                
+
                 if let Some(ref includes) = request.include {
                     if !includes.iter().any(|pattern| path_str.contains(pattern)) {
                         continue;
                     }
                 }
-                
+
                 // Check if it's a source file (basic check by extension)
                 if let Some(ext) = path.extension() {
-                    if matches!(ext.to_str(), Some("rs") | Some("py") | Some("js") | Some("ts") | Some("cpp") | Some("c") | Some("java")) {
+                    if matches!(
+                        ext.to_str(),
+                        Some("rs")
+                            | Some("py")
+                            | Some("js")
+                            | Some("ts")
+                            | Some("cpp")
+                            | Some("c")
+                            | Some("java")
+                    ) {
                         files.push(path.to_path_buf());
                     }
                 }
             }
         }
-        
+
         Ok(files)
     }
 
@@ -157,23 +171,20 @@ impl DefectPredictionFacade {
         request: &DefectPredictionRequest,
     ) -> Result<FilePrediction> {
         // Get file metrics (would integrate with real analysis services)
-        let lines = tokio::fs::read_to_string(file_path)
-            .await?
-            .lines()
-            .count();
-        
+        let lines = tokio::fs::read_to_string(file_path).await?.lines().count();
+
         // Skip files below minimum line threshold
         if lines < request.min_lines {
             return Err(anyhow::anyhow!("File too small"));
         }
-        
+
         // Calculate risk metrics (simplified for now)
         let complexity_score = (lines as f32 / 100.0).min(1.0);
         let churn_score = 0.3; // Would be calculated from git history
         let coupling_score = 0.2; // Would be calculated from dependency analysis
         let size_score = (lines as f32 / 1000.0).min(1.0);
         let duplication_score = 0.1; // Would be calculated from duplicate detector
-        
+
         // Calculate overall defect probability
         let defect_probability = (complexity_score * 0.3
             + churn_score * 0.25
@@ -181,7 +192,7 @@ impl DefectPredictionFacade {
             + size_score * 0.15
             + duplication_score * 0.1)
             .min(1.0);
-        
+
         // Determine risk level
         let risk_level = match defect_probability {
             p if p >= 0.8 => RiskLevel::Critical,
@@ -189,10 +200,10 @@ impl DefectPredictionFacade {
             p if p >= 0.4 => RiskLevel::Medium,
             _ => RiskLevel::Low,
         };
-        
+
         // Calculate confidence (based on available metrics)
         let confidence = 0.75; // Would be based on data quality
-        
+
         // Identify contributing factors
         let mut contributing_factors = Vec::new();
         if complexity_score > 0.7 {
@@ -204,7 +215,7 @@ impl DefectPredictionFacade {
         if size_score > 0.7 {
             contributing_factors.push("Large file size".to_string());
         }
-        
+
         Ok(FilePrediction {
             file_path: file_path.display().to_string(),
             defect_probability,
@@ -240,17 +251,17 @@ impl DefectPredictionFacade {
             .iter()
             .filter(|p| matches!(p.risk_level, RiskLevel::Low))
             .count();
-        
+
         let summary = format!(
             "Analyzed {} files: {} high risk, {} medium risk, {} low risk",
             total_files_analyzed, high_risk_files, medium_risk_files, low_risk_files
         );
-        
+
         let mut recommendations = Vec::new();
         if high_risk_files > 0 {
             recommendations.push("Focus testing and review efforts on high-risk files".to_string());
         }
-        
+
         if request.include_recommendations {
             for prediction in predictions.iter().take(3) {
                 if !prediction.contributing_factors.is_empty() {
@@ -262,7 +273,7 @@ impl DefectPredictionFacade {
                 }
             }
         }
-        
+
         DefectPredictionResult {
             total_files_analyzed,
             high_risk_files,
@@ -275,10 +286,7 @@ impl DefectPredictionFacade {
     }
 
     /// Quick analysis with defaults
-    pub async fn quick_analysis(
-        &self,
-        project_path: PathBuf,
-    ) -> Result<DefectPredictionResult> {
+    pub async fn quick_analysis(&self, project_path: PathBuf) -> Result<DefectPredictionResult> {
         let request = DefectPredictionRequest {
             project_path,
             confidence_threshold: 0.5,
@@ -290,7 +298,7 @@ impl DefectPredictionFacade {
             exclude: Some(vec!["test".to_string(), "vendor".to_string()]),
             top_files: 10,
         };
-        
+
         self.analyze_project(request).await
     }
 }
@@ -308,9 +316,6 @@ mod tests {
 
     #[test]
     fn test_risk_level_classification() {
-        assert_eq!(
-            RiskLevel::Critical,
-            RiskLevel::Critical
-        );
+        assert_eq!(RiskLevel::Critical, RiskLevel::Critical);
     }
 }

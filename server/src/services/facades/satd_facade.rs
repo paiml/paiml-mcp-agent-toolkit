@@ -56,47 +56,56 @@ impl SatdFacade {
     }
 
     /// Perform SATD analysis on a project
-    pub async fn analyze_project(&self, request: SatdAnalysisRequest) -> Result<SatdAnalysisResult> {
+    pub async fn analyze_project(
+        &self,
+        request: SatdAnalysisRequest,
+    ) -> Result<SatdAnalysisResult> {
         use crate::services::satd_detector::SATDDetector;
-        
+
         let detector = SATDDetector::new();
-        
+
         // Run analysis based on request parameters
         let satd_items = if request.include_tests {
-            detector.analyze_directory_with_tests(&request.path, request.strict_mode).await?
+            detector
+                .analyze_directory_with_tests(&request.path, request.strict_mode)
+                .await?
         } else {
             detector.analyze_directory(&request.path).await?
         };
-        
+
         // Convert to facade types
-        let violations: Vec<SatdViolation> = satd_items.iter().map(|item| {
-            let severity = match item.severity {
-                crate::services::satd_detector::Severity::Critical => SatdSeverity::Critical,
-                crate::services::satd_detector::Severity::High => SatdSeverity::High,
-                crate::services::satd_detector::Severity::Medium => SatdSeverity::Medium,
-                crate::services::satd_detector::Severity::Low => SatdSeverity::Low,
-            };
-            
-            SatdViolation {
-                file_path: item.file.display().to_string(),
-                line_number: item.line as usize,
-                violation_type: format!("{:?}", item.category),
-                message: item.text.clone(),
-                severity,
-            }
-        }).collect();
-        
-        let total_files = violations.iter()
+        let violations: Vec<SatdViolation> = satd_items
+            .iter()
+            .map(|item| {
+                let severity = match item.severity {
+                    crate::services::satd_detector::Severity::Critical => SatdSeverity::Critical,
+                    crate::services::satd_detector::Severity::High => SatdSeverity::High,
+                    crate::services::satd_detector::Severity::Medium => SatdSeverity::Medium,
+                    crate::services::satd_detector::Severity::Low => SatdSeverity::Low,
+                };
+
+                SatdViolation {
+                    file_path: item.file.display().to_string(),
+                    line_number: item.line as usize,
+                    violation_type: format!("{:?}", item.category),
+                    message: item.text.clone(),
+                    severity,
+                }
+            })
+            .collect();
+
+        let total_files = violations
+            .iter()
             .map(|v| &v.file_path)
             .collect::<std::collections::HashSet<_>>()
             .len();
-        
+
         let summary = format!(
             "Found {} SATD violations in {} files",
             violations.len(),
             total_files
         );
-        
+
         Ok(SatdAnalysisResult {
             total_files,
             violations,
@@ -111,7 +120,7 @@ impl SatdFacade {
             strict_mode: false,
             include_tests: true,
         };
-        
+
         self.analyze_project(request).await
     }
 }

@@ -148,10 +148,18 @@ pub async fn analyze_python_file_with_classifier(
 fn extract_python_items(stmt: &ast::Stmt, items: &mut Vec<AstItem>) {
     match stmt {
         ast::Stmt::FunctionDef(func) => {
-            items.push(create_function_item_with_line(&func.name, false, func.range.start().to_u32() as usize));
+            items.push(create_function_item_with_line(
+                &func.name,
+                false,
+                func.range.start().to_u32() as usize,
+            ));
         }
         ast::Stmt::AsyncFunctionDef(func) => {
-            items.push(create_function_item_with_line(&func.name, true, func.range.start().to_u32() as usize));
+            items.push(create_function_item_with_line(
+                &func.name,
+                true,
+                func.range.start().to_u32() as usize,
+            ));
         }
         ast::Stmt::ClassDef(class) => {
             let attributes_count = count_class_attributes(&class.body);
@@ -546,7 +554,6 @@ fn create_function_item_with_line(name: &str, is_async: bool, line: usize) -> As
         line,
     }
 }
-
 
 fn count_class_attributes(body: &[ast::Stmt]) -> usize {
     body.iter()

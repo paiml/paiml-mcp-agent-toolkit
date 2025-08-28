@@ -510,10 +510,8 @@ pub(crate) fn serve_recommendations_json(state: &Arc<RwLock<DemoState>>) -> Resp
 
     // Generate recommendations based on analysis results
     let recommendation_engine = RecommendationEngine::new();
-    let recommendations = recommendation_engine.get_recommendations(
-        &language,
-        Some(ComplexityTier::Intermediate),
-    );
+    let recommendations =
+        recommendation_engine.get_recommendations(&language, Some(ComplexityTier::Intermediate));
 
     Response::builder()
         .status(StatusCode::OK)
@@ -525,11 +523,11 @@ pub(crate) fn serve_recommendations_json(state: &Arc<RwLock<DemoState>>) -> Resp
 #[cfg(feature = "demo")]
 pub(crate) fn serve_polyglot_analysis(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
-    
+
     // Detect primary language as a simple alternative to full polyglot analysis
     let primary_language = crate::cli::detect_primary_language(&state.repository)
         .unwrap_or_else(|| "rust".to_string());
-    
+
     // Create a simplified polyglot response based on detected language
     // This avoids the thread safety issues with the async polyglot analyzer
     let polyglot_data = serde_json::json!({
