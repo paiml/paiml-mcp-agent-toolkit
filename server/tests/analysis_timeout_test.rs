@@ -254,7 +254,8 @@ mod cli_timeout_integration {
 
         // These should compile if timeout parameters exist
         let _complexity_timeout = match (AnalyzeCommands::Complexity {
-            project_path: PathBuf::from("."),
+            path: PathBuf::from("."),
+            project_path: None,
             file: None,
             files: vec![],
             toolchain: None,

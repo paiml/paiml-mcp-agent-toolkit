@@ -81,7 +81,8 @@ async fn test_execute_analyze_complexity_basic() {
     let test_dir = create_test_dir_with_rust_file();
 
     let analyze_cmd = AnalyzeCommands::Complexity {
-        project_path: test_dir.path().to_path_buf(),
+        path: test_dir.path().to_path_buf(),
+        project_path: None,
         file: None,
         files: vec![],
         toolchain: None,
