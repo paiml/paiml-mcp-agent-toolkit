@@ -1,7 +1,33 @@
 # PMAT Development Roadmap
 
-## Current Sprint: v2.15.0 Critical CLI UX Fixes via TDD 🚧 IN PROGRESS
-- **Duration**: 2025-08-26
+## Current Sprint: v2.17.0 (Next Sprint Planning)
+- **Duration**: TBD
+- **Priority**: TBD
+- **Methodology**: Toyota Way Principles + TDD
+
+## Previous Sprint: v2.16.0 Toyota Way Kaizen Refactoring ✅ COMPLETE
+- **Duration**: 2025-08-28
+- **Priority**: P0
+- **Methodology**: Toyota Way Kaizen Principles + Continuous Improvement
+
+### Tasks
+| ID | Description | Status | Complexity | Priority |
+|----|-------------|--------|------------|----------|
+| PMAT-KZ001 | Extract high-complexity functions (17→8) | ✅ | High | P0 |
+| PMAT-KZ002 | Create formatter modules with clean separation | ✅ | Medium | P0 |
+| PMAT-KZ003 | Eliminate all dead code warnings (37→0) | ✅ | High | P0 |
+| PMAT-KZ004 | Apply Toyota Way principles (Kaizen, Genchi Genbutsu, Jidoka) | ✅ | Medium | P0 |
+| PMAT-KZ005 | Document architectural improvements | ✅ | Low | P1 |
+
+### Achievements
+- **3 New Formatter Modules**: churn_formatter, tdg_formatter, quality_gate_formatter
+- **Zero Dead Code Warnings**: Eliminated all 37 warnings
+- **Complexity Reduction**: All extracted functions ≤8 (Toyota Way target)
+- **Clean Architecture**: Proper separation of formatting and business logic
+- **Zero Compilation Errors**: Maintained throughout refactoring
+
+## Previous Sprint: v2.15.0 Critical CLI UX Fixes via TDD ✅ COMPLETE
+- **Duration**: 2025-08-26 to 2025-08-27
 - **Priority**: P0 CRITICAL - Project is dead without this
 - **Methodology**: Test-Driven Development (TDD) + Functional Programming
 

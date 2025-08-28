@@ -4,6 +4,7 @@
 
 use crate::services::service_registry::ServiceRegistry;
 use anyhow::Result;
+use serde::Serialize;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -26,7 +27,7 @@ pub enum ComplexityOutputFormat {
 }
 
 /// Result of complexity analysis
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ComplexityAnalysisResult {
     pub total_files: usize,
     pub violations: Vec<ComplexityViolation>,
@@ -36,7 +37,7 @@ pub struct ComplexityAnalysisResult {
 }
 
 /// Individual complexity violation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ComplexityViolation {
     pub file_path: String,
     pub function_name: String,

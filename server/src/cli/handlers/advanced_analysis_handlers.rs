@@ -184,19 +184,15 @@ pub async fn handle_analyze_tdg(
     verbose: bool,
 ) -> Result<()> {
     // Use the enhanced implementation from stubs that supports all modes
-    super::super::stubs::handle_analyze_tdg(
+    super::new_tdg_handler::handle_analyze_tdg(
         path,
-        None,   // file - not exposed in current interface
-        vec![], // files - not exposed in current interface
-        threshold.unwrap_or(1.5),
-        top.unwrap_or(10),
+        threshold,
+        top,
         format,
         include_components,
         output,
         critical_only,
         verbose,
-        vec![], // include patterns - not exposed in current interface
-        false,  // watch - not exposed in current interface
     )
     .await
 }
@@ -215,31 +211,7 @@ pub async fn handle_analyze_makefile(
         .await
 }
 
-/// Handle provability analysis command
-#[allow(clippy::too_many_arguments)]
-pub async fn handle_analyze_provability(
-    project_path: PathBuf,
-    functions: Vec<String>,
-    analysis_depth: Option<u32>,
-    format: ProvabilityOutputFormat,
-    high_confidence_only: bool,
-    include_evidence: bool,
-    output: Option<PathBuf>,
-    top_files: usize,
-) -> Result<()> {
-    // Delegate to stub implementation for now - will be fully extracted later
-    super::super::stubs::handle_analyze_provability(
-        project_path,
-        functions,
-        analysis_depth.unwrap_or(10) as usize,
-        format,
-        high_confidence_only,
-        include_evidence,
-        output,
-        top_files,
-    )
-    .await
-}
+// handle_analyze_provability has been moved to provability_handler.rs
 
 /// Handle defect prediction analysis command
 #[allow(clippy::too_many_arguments)]
@@ -295,8 +267,8 @@ pub async fn handle_analyze_comprehensive(
     perf: bool,
     executive_summary: bool,
 ) -> Result<()> {
-    // Use the new comprehensive handler implementation
-    super::comprehensive_handler::handle_analyze_comprehensive(
+    // Use the new orchestrator-based comprehensive handler implementation
+    super::comprehensive_analysis_handler::handle_analyze_comprehensive(
         project_path,
         file,
         files, // files (MCP composition support)
@@ -313,6 +285,7 @@ pub async fn handle_analyze_comprehensive(
         output,
         perf,
         executive_summary,
+        20, // top_files default
     )
     .await
 }
