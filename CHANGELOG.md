@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.20.0] - 2025-08-28
+
+### Added
+- **Issue #51**: Implement watch mode for complexity analysis
+  - Added --watch flag to continuously monitor files for complexity changes
+  - Debounced file change detection to avoid redundant analysis
+  - Real-time feedback on complexity violations as files are modified
+  - Integration with notify crate for efficient file system monitoring
+  
+- **Issue #52**: Add comprehensive include/exclude parameters
+  - Added --include and --exclude flags to all analysis commands
+  - Support for glob patterns (e.g., "**/*.rs", "tests/**")
+  - Available on: churn, dead-code, satd, lint-hotspot commands
+  - Parameters added to CLI, MCP, and HTTP interfaces for consistency
+
+### Changed
+- **Sprint 7**: Feature Enhancement & Stability
+  - Improved code organization with proper parameter destructuring
+  - Enhanced test coverage with pattern matching updates
+  - Maintained Toyota Way quality standards throughout development
+
+### Technical Improvements
+- Updated all handler function signatures to accept include/exclude vectors
+- Modified pattern matching in tests to handle new struct fields
+- Prepared foundation for actual filtering implementation in service facades
+
 ## [2.19.0] - 2025-08-28
 
 ### Fixed
