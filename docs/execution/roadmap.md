@@ -239,8 +239,48 @@ Focus on **developer experience and code cleanliness** to improve maintainabilit
 - Quality Gates: FAIL → PASS on all files
 - Refactoring Time: <40 hours (targeted efficiency)
 
-## Future Sprint: v2.19.0 Dependency Coordination
-- **Previous v2.18.0 plan moved to v2.19.0 due to quality crisis**
+## Sprint 6: v2.19.0 Dependency Coordination & Modernization 🚀 IN PROGRESS
+- **Duration**: 2025-08-28 - ongoing
+- **Priority**: P1 - Maintenance & Security
+- **Methodology**: Coordinated Dependency Updates + Comprehensive Testing
+
+### Sprint Objectives
+Following successful quality achievement in v2.18.0, focus on technical debt in dependencies:
+
+1. **Dependency Modernization** (Issue #18)
+   - Update SWC ecosystem to latest versions
+   - Coordinate tree-sitter parser updates
+   - Update analysis tools (gimli, goblin)
+   - Ensure all language parsers remain functional
+
+2. **Security Posture**
+   - Address unmaintained `paste` crate warning
+   - Update all outdated dependencies
+   - Maintain zero critical vulnerabilities
+
+3. **Feature Implementation**
+   - Issue #50: Restore strict quality gate enforcement
+   - Issue #51: Implement watch mode for complexity analysis
+   - Issue #52: Add comprehensive include/exclude parameters
+   - Issue #53: Replace placeholder implementations
+
+### Tasks
+| ID | Description | GitHub Issue | Status | Priority |
+|----|-------------|--------------|--------|----------|
+| DC-001 | Update SWC ecosystem dependencies | [#18](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/18) | 🚀 | P1 |
+| DC-002 | Update tree-sitter and language parsers | [#18](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/18) | 📋 | P1 |
+| DC-003 | Update analysis tools (gimli, goblin) | [#18](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/18) | 📋 | P1 |
+| DC-004 | Restore strict quality gate enforcement | [#50](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/50) | 📋 | P0 |
+| DC-005 | Implement watch mode for complexity | [#51](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/51) | 📋 | P2 |
+| DC-006 | Add include/exclude parameters | [#52](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/52) | 📋 | P2 |
+| DC-007 | Replace placeholder implementations | [#53](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/53) | 📋 | P1 |
+
+### Success Criteria
+- All dependencies updated to latest stable versions
+- Zero security vulnerabilities
+- All language parsers functional
+- Quality gates enforced at ≤20 complexity
+- No placeholder implementations remaining
 
 ## Previous Sprint: v2.16.1 Critical Bug Fix ✅ COMPLETE
 - **Duration**: 2025-08-28
