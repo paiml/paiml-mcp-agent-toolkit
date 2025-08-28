@@ -20,6 +20,7 @@ mod tests {
                         format,
                         output,
                         top_files,
+                        ..
                     } => {
                         assert_eq!(days, 30); // Default value
                         assert_eq!(project_path, PathBuf::from(".")); // Default value
@@ -61,6 +62,7 @@ mod tests {
                     format,
                     output,
                     top_files,
+                    ..
                 } => {
                     assert_eq!(days, 90);
                     assert_eq!(project_path, PathBuf::from("/tmp/test"));
@@ -121,6 +123,7 @@ mod tests {
                 format,
                 output,
                 top_files,
+                ..
             }) => {
                 assert_eq!(days, 7);
                 assert_eq!(project_path, PathBuf::from("/tmp"));

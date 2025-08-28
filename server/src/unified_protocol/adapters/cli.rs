@@ -227,6 +227,8 @@ impl CliAdapter {
                 format,
                 output,
                 top_files,
+                include: _,
+                exclude: _,
             } => Self::decode_analyze_churn(project_path, *days, format, output, *top_files),
             AnalyzeCommands::Complexity {
                 path,
@@ -298,6 +300,8 @@ impl CliAdapter {
                 fail_on_violation: _,
                 max_percentage: _,
                 timeout: _,
+                include: _,
+                exclude: _,
             } => Self::decode_analyze_dead_code(
                 path,
                 format,
@@ -321,6 +325,8 @@ impl CliAdapter {
                 top_files,
                 fail_on_violation: _,
                 timeout: _,
+                include: _,
+                exclude: _,
             } => Self::decode_analyze_satd(
                 path,
                 format,
@@ -398,6 +404,8 @@ impl CliAdapter {
                 perf,
                 clippy_flags,
                 top_files,
+                include: _,
+                exclude: _,
             } => Self::decode_analyze_lint_hotspot(
                 project_path,
                 file,

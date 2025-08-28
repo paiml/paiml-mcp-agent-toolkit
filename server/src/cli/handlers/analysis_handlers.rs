@@ -180,6 +180,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             format,
             output,
             top_files,
+            include,
+            exclude,
         } => {
             super::complexity_handlers::handle_analyze_churn(
                 project_path,
@@ -187,6 +189,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 format,
                 output,
                 top_files,
+                include,
+                exclude,
             )
             .await
         }
@@ -201,6 +205,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             fail_on_violation,
             max_percentage,
             timeout,
+            include,
+            exclude,
         } => {
             super::complexity_handlers::handle_analyze_dead_code(
                 path,
@@ -213,6 +219,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 fail_on_violation,
                 max_percentage,
                 timeout,
+                include,
+                exclude,
             )
             .await
         }
@@ -256,6 +264,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             top_files,
             fail_on_violation,
             timeout,
+            include,
+            exclude,
         } => {
             super::satd_handler::handle_analyze_satd(
                 path,
@@ -271,6 +281,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 top_files,
                 fail_on_violation,
                 timeout,
+                include,
+                exclude,
             )
             .await
         }
@@ -354,6 +366,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             perf,
             clippy_flags,
             top_files,
+            include,
+            exclude,
         } => {
             super::lint_hotspot_handlers::handle_analyze_lint_hotspot(
                 project_path,
@@ -368,6 +382,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 perf,
                 clippy_flags,
                 top_files,
+                include,
+                exclude,
             )
             .await
         }
