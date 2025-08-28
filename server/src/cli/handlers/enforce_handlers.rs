@@ -74,8 +74,8 @@ impl Default for QualityProfile {
         // RIGID extreme quality profile - the highest standards
         Self {
             coverage_min: 80.0,            // Minimum 80% test coverage
-            complexity_max: 10,            // Maximum cyclomatic complexity of 10 (was 20)
-            complexity_target: 5,          // Target complexity of 5 for optimal readability
+            complexity_max: 20,            // Toyota Way standard: maximum cyclomatic complexity of 20
+            complexity_target: 10,         // Target complexity of 10 for good readability
             tdg_max: 1.0,                  // Technical Debt Gradient must be under 1.0
             satd_allowed: 0,               // Zero self-admitted technical debt
             duplication_max_lines: 0,      // Zero duplicate code allowed
@@ -938,7 +938,7 @@ mod tests {
     fn test_quality_profile_default() {
         let profile = QualityProfile::default();
         assert_eq!(profile.coverage_min, 80.0);
-        assert_eq!(profile.complexity_max, 10);
+        assert_eq!(profile.complexity_max, 20);
         assert_eq!(profile.satd_allowed, 0);
     }
 

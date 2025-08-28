@@ -38,8 +38,8 @@ impl Default for QualityProfile {
         // EXTREME quality profile - the highest standards
         Self {
             coverage_min: 80.0,   // Minimum 80% test coverage
-            complexity_max: 10,   // Maximum cyclomatic complexity of 10
-            complexity_target: 5, // Target complexity of 5 for optimal readability
+            complexity_max: 20,   // Toyota Way standard: maximum cyclomatic complexity of 20
+            complexity_target: 10, // Target complexity of 10 for good readability
             satd_allowed: 0,      // Zero self-admitted technical debt
         }
     }

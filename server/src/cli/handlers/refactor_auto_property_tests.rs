@@ -352,8 +352,8 @@ mod tests {
                 issue_summary.as_deref(),
                 &TestQualityProfile {
                     coverage_min: 80.0,
-                    complexity_max: 10,
-                    complexity_target: 5,
+                    complexity_max: 20,
+                    complexity_target: 10,
                     satd_allowed: 0,
                 }
             );
