@@ -285,19 +285,43 @@ pub async fn handle_analyze_complexity(
                 continue;
             }
 
-            // Analyze each file
-            match detected_toolchain.as_str() {
+            // Detect language based on file extension, not project toolchain
+            // This fixes Issue #42 where Python files were being analyzed as Rust
+            let file_extension = full_path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .unwrap_or("");
+            
+            let file_toolchain = match file_extension {
+                "rs" => "rust",
+                "py" => "python",
+                "js" | "jsx" => "javascript",
+                "ts" | "tsx" => "typescript",
+                "go" => "go",
+                "java" => "java",
+                "kt" | "kts" => "kotlin",
+                "c" => "c",
+                "cpp" | "cc" | "cxx" => "cpp",
+                "rb" => "ruby",
+                "php" => "php",
+                "swift" => "swift",
+                "cs" => "csharp",
+                _ => detected_toolchain.as_str(), // Fall back to project toolchain
+            };
+
+            // Analyze each file based on its detected language
+            match file_toolchain {
                 "rust" => {
                     use crate::services::ast_rust::analyze_rust_file_with_complexity;
                     let metrics = analyze_rust_file_with_complexity(&full_path).await?;
                     all_metrics.push(metrics);
                 }
                 _ => {
-                    // For other toolchains, use the generic analyzer
+                    // For other toolchains, use the generic analyzer with correct language
                     let include_pattern = vec![full_path.to_string_lossy().to_string()];
                     let mut file_results = super::super::stubs::analyze_project_files(
                         &project_path,
-                        Some(&detected_toolchain),
+                        Some(file_toolchain),
                         &include_pattern,
                         max_cyclomatic.unwrap_or(10),
                         max_cognitive.unwrap_or(15),
