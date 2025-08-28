@@ -1,9 +1,9 @@
 # PMAT Development Roadmap
 
-## Current Sprint: v2.17.0 Uniform Contracts System 🚀 IN PROGRESS
-- **Duration**: 2025-08-28 (Foundation Complete)
+## Current Sprint: v2.17.0 Uniform Contracts System ✅ COMPLETE
+- **Duration**: 2025-08-28 
 - **Priority**: P0 - Critical Architecture
-- **Methodology**: Contract-Driven Development + Toyota Way Principles
+- **Methodology**: Contract-Driven Development + Toyota Way Principles + TDD
 
 ### Foundation Phase ✅ COMPLETE
 | ID | Description | Status | Complexity | Priority |
@@ -28,7 +28,7 @@
 ### Sprint 1 - CLI Migration ✅ COMPLETE
 - **Goal**: Migrate existing CLI commands to uniform contracts
 - **Duration**: 2025-08-28 (1 day sprint)
-- **Target**: 5 tasks completed
+- **Result**: 5/5 tasks completed (100%)
 
 #### Tasks
 | ID | Description | Status | Complexity | Priority |
@@ -67,6 +67,20 @@
   - ✅ Includes Issue #42 regression test
   - 🔧 Note: Project-wide analysis limited to detected toolchain (architectural constraint)
 - **Status**: 5/5 tasks complete (100%)
+
+## Next Sprint: v2.18.0 Security & Dependencies Update
+- **Duration**: TBD
+- **Priority**: P0 - Security
+- **Goal**: Address all security vulnerabilities and update dependencies
+
+### Planned Tasks
+| ID | Description | Status | Complexity | Priority |
+|----|-------------|--------|------------|----------|
+| Issue #10 | Security vulnerabilities in dependencies (June 9) | 📋 | High | P0 |
+| Issue #17 | Security vulnerabilities in dependencies (June 16) | 📋 | High | P0 |
+| Issue #22 | Security vulnerabilities in dependencies (June 23) | 📋 | High | P0 |
+| Issue #25 | Security vulnerabilities in dependencies (June 30) | 📋 | High | P0 |
+| Issue #18 | Coordinate major dependency updates (SWC, tree-sitter, gimli, goblin) | 📋 | High | P0 |
 
 ## Previous Sprint: v2.16.1 Critical Bug Fix ✅ COMPLETE
 - **Duration**: 2025-08-28
