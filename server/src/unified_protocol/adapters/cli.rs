@@ -229,6 +229,7 @@ impl CliAdapter {
                 top_files,
             } => Self::decode_analyze_churn(project_path, *days, format, output, *top_files),
             AnalyzeCommands::Complexity {
+                path,
                 project_path,
                 file,
                 files,
@@ -242,19 +243,27 @@ impl CliAdapter {
                 top_files,
                 fail_on_violation: _,
                 timeout: _,
-            } => Self::decode_analyze_complexity(
-                project_path,
-                file,
-                files,
-                toolchain,
-                format,
-                output,
-                max_cyclomatic,
-                max_cognitive,
-                include,
-                *watch,
-                *top_files,
-            ),
+            } => {
+                // Handle parameter migration: use new 'path' or deprecated 'project_path'
+                let analysis_path = if let Some(deprecated_path) = project_path {
+                    deprecated_path.as_ref()
+                } else {
+                    path.as_ref()
+                };
+                Self::decode_analyze_complexity(
+                    analysis_path,
+                    file,
+                    files,
+                    toolchain,
+                    format,
+                    output,
+                    max_cyclomatic,
+                    max_cognitive,
+                    include,
+                    *watch,
+                    *top_files,
+                )
+            }
             AnalyzeCommands::Dag {
                 dag_type,
                 project_path,

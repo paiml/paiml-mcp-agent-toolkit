@@ -5,6 +5,7 @@
 
 pub mod advanced_analysis_handlers;
 pub mod agent_handlers;
+pub mod analysis;
 pub mod analysis_handlers;
 pub mod big_o_handlers;
 pub mod cache;

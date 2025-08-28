@@ -501,9 +501,13 @@ pub enum AnalyzeCommands {
     /// 2. Analyze specific files: pmat analyze complexity --files src/main.rs,src/lib.rs
     /// 3. Chain with other tools using JSON output for AI agent workflows
     Complexity {
-        /// Project path to analyze
+        /// Path to analyze (file or directory)
         #[arg(short = 'p', long, default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead. Project path to analyze
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Analyze a specific file instead of the whole project
         #[arg(long, conflicts_with = "include")]

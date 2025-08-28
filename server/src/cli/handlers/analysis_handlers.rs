@@ -134,6 +134,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
     use cli::*;
     match cmd {
         AnalyzeCommands::Complexity {
+            path,
             project_path,
             file,
             files,
@@ -148,8 +149,16 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             fail_on_violation,
             timeout,
         } => {
+            // Handle parameter migration: use new 'path' or deprecated 'project_path'
+            let analysis_path = if let Some(deprecated_path) = project_path {
+                eprintln!("⚠️  WARNING: --project-path is deprecated. Use --path instead.");
+                deprecated_path
+            } else {
+                path
+            };
+
             super::complexity_handlers::handle_analyze_complexity(
-                project_path,
+                analysis_path,
                 file,
                 files,
                 toolchain,

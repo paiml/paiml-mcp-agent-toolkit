@@ -25,10 +25,26 @@
 - **Future-Proofed**: Contract versioning system supports evolution
 - **Documentation**: Complete roadmap, specifications, and examples
 
-### Next: Sprint 1 - CLI Migration (Starting)
+### Sprint 1 - CLI Migration 🚧 IN PROGRESS
 - **Goal**: Migrate existing CLI commands to uniform contracts
 - **Duration**: 2 weeks
 - **Target**: 4 tickets, 9 story points
+
+#### Tasks
+| ID | Description | Status | Complexity | Priority |
+|----|-------------|--------|------------|----------|
+| Ticket #44 | Migrate Complexity Command to Uniform Contracts | ✅ | High | P0 |
+| Ticket #45 | Migrate SATD Command to Uniform Contracts | 🔄 | Medium | P0 |
+| Ticket #46 | Migrate Dead Code Command to Uniform Contracts | 📋 | Medium | P0 |
+| Ticket #47 | CLI Integration Testing | 📋 | Low | P1 |
+
+#### Progress - Sprint 1
+- **Ticket #44 Complete**: CLI complexity command successfully migrated to uniform contracts
+  - ✅ New parameter: `--path` (replaces `--project-path`)
+  - ✅ Backward compatibility: Deprecated parameter shows warning
+  - ✅ Uniform contracts: Full integration with service layer
+  - ✅ Zero SATD: Complete implementation, no stubs
+- **Status**: 1/4 tickets complete (25%)
 
 ## Previous Sprint: v2.16.1 Critical Bug Fix ✅ COMPLETE
 - **Duration**: 2025-08-28

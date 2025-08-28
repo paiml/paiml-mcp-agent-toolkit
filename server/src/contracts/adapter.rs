@@ -10,10 +10,26 @@ use std::path::PathBuf;
 pub struct ContractAdapter;
 
 impl ContractAdapter {
+    /// Generate deprecation warnings for inconsistent parameters
+    pub fn deprecation_warnings(cmd: &AnalyzeCommands) -> Vec<String> {
+        let mut warnings = Vec::new();
+
+        if let AnalyzeCommands::Complexity {
+            project_path: Some(_),
+            ..
+        } = cmd
+        {
+            warnings.push("Warning: --project-path is deprecated, use --path instead".to_string());
+        }
+
+        warnings
+    }
+
     /// Map existing CLI analyze commands to uniform contracts
     pub fn from_cli(cmd: &AnalyzeCommands) -> Result<Box<dyn ContractValidation>> {
         match cmd {
             AnalyzeCommands::Complexity {
+                path,
                 project_path,
                 file,
                 files,
@@ -23,16 +39,24 @@ impl ContractAdapter {
                 top_files,
                 timeout,
                 ..
-            } => Self::map_complexity_command(
-                project_path,
-                file,
-                files,
-                output,
-                max_cyclomatic,
-                max_cognitive,
-                top_files,
-                timeout,
-            ),
+            } => {
+                // Handle parameter migration: use new 'path' or deprecated 'project_path'
+                let analysis_path = if let Some(deprecated_path) = project_path {
+                    deprecated_path.clone()
+                } else {
+                    path.clone()
+                };
+                Self::map_complexity_command(
+                    &analysis_path,
+                    file,
+                    files,
+                    output,
+                    max_cyclomatic,
+                    max_cognitive,
+                    top_files,
+                    timeout,
+                )
+            }
             AnalyzeCommands::Satd {
                 path,
                 critical_only,
@@ -119,11 +143,11 @@ impl ContractAdapter {
 
     fn map_complexity_command(
         project_path: &PathBuf,
-        file: &Option<PathBuf>,
-        files: &[PathBuf],
+        _file: &Option<PathBuf>,
+        _files: &[PathBuf],
         output: &Option<PathBuf>,
-        max_cyclomatic: &Option<i32>,
-        max_cognitive: &Option<i32>,
+        max_cyclomatic: &Option<u16>,
+        max_cognitive: &Option<u16>,
         top_files: &usize,
         timeout: &u64,
     ) -> Result<Box<dyn ContractValidation>> {
