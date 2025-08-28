@@ -1,0 +1,22 @@
+//! Code quality analysis handlers using uniform contracts
+
+use crate::cli::commands::AnalyzeCommands;
+use anyhow::Result;
+
+/// Handle dead code analysis using uniform contracts (Sprint 1 Ticket #46)
+pub async fn handle_dead_code(cmd: AnalyzeCommands) -> Result<()> {
+    // Route to existing working handler for now - will be migrated in Sprint 1 Ticket #46
+    crate::cli::handlers::route_analyze_command(cmd).await
+}
+
+/// Handle SATD analysis using uniform contracts (Sprint 1 Ticket #45)
+pub async fn handle_satd(cmd: AnalyzeCommands) -> Result<()> {
+    // Route to existing working handler for now - will be migrated in Sprint 1 Ticket #45
+    crate::cli::handlers::route_analyze_command(cmd).await
+}
+
+/// Handle makefile analysis
+pub async fn handle_makefile(cmd: AnalyzeCommands) -> Result<()> {
+    // Route to existing working handler
+    crate::cli::handlers::route_analyze_command(cmd).await
+}

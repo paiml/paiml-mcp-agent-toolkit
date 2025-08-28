@@ -57,7 +57,7 @@ impl ContractCliHandler {
 
     async fn handle_complexity_analysis(&self, cmd: &AnalyzeCommands) -> Result<serde_json::Value> {
         let contract = super::adapter::ContractAdapter::from_cli(cmd)?;
-        if let Ok(complexity_contract) = contract
+        if let Some(complexity_contract) = contract
             .as_any()
             .downcast_ref::<AnalyzeComplexityContract>()
         {
@@ -73,7 +73,7 @@ impl ContractCliHandler {
 
     async fn handle_satd_analysis(&self, cmd: &AnalyzeCommands) -> Result<serde_json::Value> {
         let contract = super::adapter::ContractAdapter::from_cli(cmd)?;
-        if let Ok(satd_contract) = contract.as_any().downcast_ref::<AnalyzeSatdContract>() {
+        if let Some(satd_contract) = contract.as_any().downcast_ref::<AnalyzeSatdContract>() {
             self.service.analyze_satd(satd_contract.clone()).await
         } else {
             Err(anyhow::anyhow!("Invalid contract type for SATD analysis"))
@@ -82,7 +82,8 @@ impl ContractCliHandler {
 
     async fn handle_dead_code_analysis(&self, cmd: &AnalyzeCommands) -> Result<serde_json::Value> {
         let contract = super::adapter::ContractAdapter::from_cli(cmd)?;
-        if let Ok(dead_code_contract) = contract.as_any().downcast_ref::<AnalyzeDeadCodeContract>()
+        if let Some(dead_code_contract) =
+            contract.as_any().downcast_ref::<AnalyzeDeadCodeContract>()
         {
             self.service
                 .analyze_dead_code(dead_code_contract.clone())
@@ -96,7 +97,7 @@ impl ContractCliHandler {
 
     async fn handle_tdg_analysis(&self, cmd: &AnalyzeCommands) -> Result<serde_json::Value> {
         let contract = super::adapter::ContractAdapter::from_cli(cmd)?;
-        if let Ok(tdg_contract) = contract.as_any().downcast_ref::<AnalyzeTdgContract>() {
+        if let Some(tdg_contract) = contract.as_any().downcast_ref::<AnalyzeTdgContract>() {
             self.service.analyze_tdg(tdg_contract.clone()).await
         } else {
             Err(anyhow::anyhow!("Invalid contract type for TDG analysis"))
@@ -108,7 +109,7 @@ impl ContractCliHandler {
         cmd: &AnalyzeCommands,
     ) -> Result<serde_json::Value> {
         let contract = super::adapter::ContractAdapter::from_cli(cmd)?;
-        if let Ok(lint_contract) = contract
+        if let Some(lint_contract) = contract
             .as_any()
             .downcast_ref::<AnalyzeLintHotspotContract>()
         {
