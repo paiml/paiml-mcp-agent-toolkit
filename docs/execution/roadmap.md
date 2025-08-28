@@ -269,8 +269,8 @@ Following successful quality achievement in v2.18.0, focus on technical debt in 
 |----|-------------|--------------|--------|----------|
 | DC-001 | Update SWC ecosystem dependencies | [#18](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/18) | 🚀 | P1 |
 | DC-002 | Update tree-sitter and language parsers | [#18](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/18) | 📋 | P1 |
-| DC-003 | Update analysis tools (gimli, goblin) | [#18](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/18) | 📋 | P1 |
-| DC-004 | Restore strict quality gate enforcement | [#50](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/50) | 📋 | P0 |
+| DC-003 | Update analysis tools (gimli, goblin) | [#18](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/18) | ✅ | P1 |
+| DC-004 | Restore strict quality gate enforcement | [#50](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/50) | ✅ | P0 |
 | DC-005 | Implement watch mode for complexity | [#51](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/51) | 📋 | P2 |
 | DC-006 | Add include/exclude parameters | [#52](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/52) | 📋 | P2 |
 | DC-007 | Replace placeholder implementations | [#53](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/53) | 📋 | P1 |
