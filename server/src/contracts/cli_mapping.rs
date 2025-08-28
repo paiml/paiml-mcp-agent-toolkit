@@ -12,17 +12,7 @@ pub fn map_analyze_command(cmd: &AnalyzeCommands) -> Result<Box<dyn ContractVali
     super::adapter::ContractAdapter::from_cli(cmd)
 }
 
-// The functions below are placeholders until we refactor CLI to use uniform types
-
-fn map_cli_format(_cli_format: &crate::cli::OutputFormat) -> OutputFormat {
-    // Default format mapping for CLI
-    OutputFormat::Table
-}
-
-fn map_cli_severity(_cli_severity: &Option<crate::cli::SatdSeverity>) -> Option<SatdSeverity> {
-    // Default severity mapping for CLI
-    None
-}
+// TODO: Add actual CLI to uniform type mapping functions when needed
 
 #[cfg(test)]
 mod tests {

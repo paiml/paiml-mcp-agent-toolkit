@@ -24,7 +24,6 @@ struct ComplexityConfig {
     include: Vec<String>,
     timeout: u64,
     top_files: usize,
-    fail_on_violation: bool,
 }
 
 impl ComplexityConfig {
@@ -37,7 +36,6 @@ impl ComplexityConfig {
         include: Vec<String>,
         timeout: u64,
         top_files: usize,
-        fail_on_violation: bool,
     ) -> Self {
         Self {
             project_path,
@@ -47,7 +45,6 @@ impl ComplexityConfig {
             include,
             timeout,
             top_files,
-            fail_on_violation,
         }
     }
 
@@ -58,10 +55,6 @@ impl ComplexityConfig {
             .or_else(|| super::super::stubs::detect_toolchain(&self.project_path))
     }
 
-    /// Build complexity thresholds tuple
-    fn build_thresholds(&self) -> (u16, u16) {
-        (self.max_cyclomatic, self.max_cognitive)
-    }
 }
 
 /// Analyze a single file and return its complexity metrics
@@ -481,7 +474,6 @@ pub async fn handle_analyze_complexity(
         include,
         timeout,
         top_files,
-        fail_on_violation,
     );
 
     // Detect toolchain (Issue #42 fix: supports multi-language when None)
