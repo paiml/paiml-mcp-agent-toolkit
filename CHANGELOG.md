@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.17.0] - 2025-08-28
 
 ### Added
 - **Uniform Contracts System**: Complete architecture for consistent CLI/MCP/HTTP interfaces
@@ -15,16 +15,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Service layer using contracts for all operations
   - MCP handler with direct contract support (`mcp_simple.rs`)
   - HTTP endpoints using contracts (`http_impl.rs`)
-  - Future CLI commands with uniform parameters (`uniform_cli_commands.rs`)
   - Contract versioning and migration system for backward compatibility
   - Comprehensive test suite (9/9 tests passing)
   - CI/CD enforcement workflow for contract consistency
   - Complete documentation and implementation roadmap
 
+- **Sprint 1 CLI Migration**: Completed migration to uniform contracts
+  - Complexity command: New `--path` parameter (replaces `--project-path`)
+  - SATD command: Unified parameter structure
+  - Dead code command: Perfect parameter alignment
+  - Comprehensive CLI integration test suite (`tests/cli_integration_tests.sh`)
+  - Backward compatibility with deprecation warnings
+
+### Fixed
+- **Issue #42**: Complexity analysis now works for non-Rust files
+  - Fixed directory-level analysis for Python/JS/TypeScript projects
+  - Multi-language analysis when no specific toolchain detected
+  - Both `--file` and `--files` parameters fully functional
+  - Eliminated "Invalid UTF-8 in template content" errors
+  - Language detection based on file extensions, not project toolchain
+
 ### Changed
 - **Architecture**: Introduced contract-driven development approach
 - **Interface Consistency**: All interfaces now use identical parameter names
 - **Validation**: Centralized parameter validation through contracts
+- **Language Detection**: Now analyzes all supported languages in mixed projects
 
 ### Infrastructure
 - Added contract enforcement GitHub Actions workflow

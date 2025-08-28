@@ -238,9 +238,10 @@ pub async fn handle_analyze_complexity(
     }
 
     // Detect toolchain if not specified
-    let detected_toolchain = toolchain
-        .or_else(|| super::super::stubs::detect_toolchain(&project_path))
-        .unwrap_or_else(|| "rust".to_string());
+    // Issue #42 fix: When no toolchain is detected, analyze ALL supported languages
+    // instead of defaulting to "rust" which would miss Python/JS/etc files
+    let detected_toolchain =
+        toolchain.or_else(|| super::super::stubs::detect_toolchain(&project_path));
 
     // Custom thresholds
     let _thresholds =
@@ -288,31 +289,8 @@ pub async fn handle_analyze_complexity(
                 continue;
             }
 
-            // Detect language based on file extension, not project toolchain
-            // This fixes Issue #42 where Python files were being analyzed as Rust
-            let file_extension = full_path
-                .extension()
-                .and_then(|ext| ext.to_str())
-                .unwrap_or("");
-            
-            let file_toolchain = match file_extension {
-                "rs" => "rust",
-                "py" => "python",
-                "js" | "jsx" => "javascript",
-                "ts" | "tsx" => "typescript",
-                "go" => "go",
-                "java" => "java",
-                "kt" | "kts" => "kotlin",
-                "c" => "c",
-                "cpp" | "cc" | "cxx" => "cpp",
-                "rb" => "ruby",
-                "php" => "php",
-                "swift" => "swift",
-                "cs" => "csharp",
-                _ => detected_toolchain.as_str(), // Fall back to project toolchain
-            };
-
             // Use the same analyzer as single file mode for consistency (Issue #42 fix)
+            // This automatically detects language based on file extension
             let file_content = std::fs::read_to_string(&full_path)
                 .context(format!("Failed to read file: {}", full_path.display()))?;
 
@@ -324,15 +302,32 @@ pub async fn handle_analyze_complexity(
         all_metrics
     } else {
         // Project mode
-        eprintln!("🔍 Analyzing {detected_toolchain} project complexity...");
-        super::super::stubs::analyze_project_files(
-            &project_path,
-            Some(&detected_toolchain),
-            &include,
-            max_cyclomatic.unwrap_or(10),
-            max_cognitive.unwrap_or(15),
-        )
-        .await?
+        // Issue #42 fix: Handle both detected and undetected toolchains
+        match detected_toolchain {
+            Some(ref toolchain) => {
+                eprintln!("🔍 Analyzing {} project complexity...", toolchain);
+                super::super::stubs::analyze_project_files(
+                    &project_path,
+                    Some(toolchain),
+                    &include,
+                    max_cyclomatic.unwrap_or(10),
+                    max_cognitive.unwrap_or(15),
+                )
+                .await?
+            }
+            None => {
+                // No specific toolchain detected - analyze all supported file types
+                eprintln!("🔍 Analyzing project complexity (multi-language)...");
+                super::super::stubs::analyze_project_files(
+                    &project_path,
+                    None, // This will trigger analysis of all supported languages
+                    &include,
+                    max_cyclomatic.unwrap_or(10),
+                    max_cognitive.unwrap_or(15),
+                )
+                .await?
+            }
+        }
     };
 
     // Apply filtering based on max thresholds if specified
