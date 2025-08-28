@@ -62,7 +62,11 @@ impl SatdFacade {
     ) -> Result<SatdAnalysisResult> {
         use crate::services::satd_detector::SATDDetector;
 
-        let detector = SATDDetector::new();
+        let detector = if request.strict_mode {
+            SATDDetector::new_strict()
+        } else {
+            SATDDetector::new()
+        };
 
         // Run analysis based on request parameters
         let satd_items = if request.include_tests {
