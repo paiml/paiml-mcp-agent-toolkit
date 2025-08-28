@@ -648,6 +648,8 @@ async fn list_all_violations(
         false,    // fail_on_violation
         15.0,     // max_percentage
         60,       // timeout
+        Vec::new(), // include
+        Vec::new(), // exclude
     )
     .await
     {

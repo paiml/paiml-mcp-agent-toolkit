@@ -227,6 +227,8 @@ pub async fn handle_analyze_lint_hotspot(
     perf: bool,
     clippy_flags: String,
     top_files: usize,
+    _include: Vec<String>,
+    _exclude: Vec<String>,
 ) -> Result<()> {
     let params = LintHotspotParams {
         project_path,
