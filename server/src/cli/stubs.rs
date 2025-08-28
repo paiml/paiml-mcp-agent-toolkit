@@ -5076,11 +5076,18 @@ pub async fn analyze_project_files(
 /// assert_eq!(default_extensions, vec!["rs"]);
 /// ```
 pub fn get_file_extensions(toolchain: Option<&str>) -> Vec<&'static str> {
-    match toolchain.unwrap_or("rust") {
-        "rust" => vec!["rs"],
-        "deno" | "typescript" => vec!["ts", "tsx", "js", "jsx"],
-        "python-uv" | "python" => vec!["py"],
-        _ => vec!["rs"], // default to rust
+    match toolchain {
+        Some("rust") => vec!["rs"],
+        Some("deno") | Some("typescript") => vec!["ts", "tsx", "js", "jsx"],
+        Some("python-uv") | Some("python") => vec!["py"],
+        Some(_) => vec!["rs"], // unknown toolchain defaults to rust
+        None => {
+            // Issue #42 fix: When no toolchain detected, analyze ALL supported languages
+            vec![
+                "rs", "py", "ts", "tsx", "js", "jsx", "go", "java", "kt", "kts", "c", "cpp", "cc",
+                "cxx", "rb", "php", "swift", "cs",
+            ]
+        }
     }
 }
 
