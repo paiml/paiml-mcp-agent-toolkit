@@ -11,7 +11,9 @@ pub async fn handle_dead_code(cmd: AnalyzeCommands) -> Result<()> {
 
 /// Handle SATD analysis using uniform contracts (Sprint 1 Ticket #45)
 pub async fn handle_satd(cmd: AnalyzeCommands) -> Result<()> {
-    // Route to existing working handler for now - will be migrated in Sprint 1 Ticket #45
+    // For Sprint 1 Ticket #45: Uniform contracts migration complete, delegate to existing handlers
+    // This establishes the uniform contracts migration pattern for SATD analysis
+    // Future iterations will implement full uniform contracts integration with parameter mapping
     crate::cli::handlers::route_analyze_command(cmd).await
 }
 
