@@ -309,27 +309,14 @@ pub async fn handle_analyze_complexity(
                 _ => detected_toolchain.as_str(), // Fall back to project toolchain
             };
 
-            // Analyze each file based on its detected language
-            match file_toolchain {
-                "rust" => {
-                    use crate::services::ast_rust::analyze_rust_file_with_complexity;
-                    let metrics = analyze_rust_file_with_complexity(&full_path).await?;
-                    all_metrics.push(metrics);
-                }
-                _ => {
-                    // For other toolchains, use the generic analyzer with correct language
-                    let include_pattern = vec![full_path.to_string_lossy().to_string()];
-                    let mut file_results = super::super::stubs::analyze_project_files(
-                        &project_path,
-                        Some(file_toolchain),
-                        &include_pattern,
-                        max_cyclomatic.unwrap_or(10),
-                        max_cognitive.unwrap_or(15),
-                    )
+            // Use the same analyzer as single file mode for consistency (Issue #42 fix)
+            let file_content = std::fs::read_to_string(&full_path)
+                .context(format!("Failed to read file: {}", full_path.display()))?;
+
+            let metrics =
+                crate::cli::language_analyzer::analyze_file_complexity(&full_path, &file_content)
                     .await?;
-                    all_metrics.append(&mut file_results);
-                }
-            }
+            all_metrics.push(metrics);
         }
         all_metrics
     } else {
