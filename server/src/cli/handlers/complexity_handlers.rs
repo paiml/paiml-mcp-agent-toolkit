@@ -10,6 +10,60 @@ use std::path::PathBuf;
 #[cfg(test)]
 mod complexity_handlers_tests;
 
+/// Configuration for complexity analysis operations
+/// 
+/// This struct centralizes all configuration parameters and provides
+/// helper methods to reduce the complexity of the main handler function.
+/// Following Toyota Way single responsibility principle.
+#[derive(Debug, Clone)]
+struct ComplexityConfig {
+    project_path: PathBuf,
+    toolchain: Option<String>,
+    max_cyclomatic: u16,
+    max_cognitive: u16,
+    include: Vec<String>,
+    timeout: u64,
+    top_files: usize,
+    fail_on_violation: bool,
+}
+
+impl ComplexityConfig {
+    /// Create configuration from CLI arguments
+    fn from_args(
+        project_path: PathBuf,
+        toolchain: Option<String>,
+        max_cyclomatic: Option<u16>,
+        max_cognitive: Option<u16>,
+        include: Vec<String>,
+        timeout: u64,
+        top_files: usize,
+        fail_on_violation: bool,
+    ) -> Self {
+        Self {
+            project_path,
+            toolchain,
+            max_cyclomatic: max_cyclomatic.unwrap_or(10),
+            max_cognitive: max_cognitive.unwrap_or(15),
+            include,
+            timeout,
+            top_files,
+            fail_on_violation,
+        }
+    }
+
+    /// Detect toolchain for the project, returning detected toolchain or None for multi-language
+    fn detect_toolchain(&self) -> Option<String> {
+        self.toolchain
+            .clone()
+            .or_else(|| super::super::stubs::detect_toolchain(&self.project_path))
+    }
+
+    /// Build complexity thresholds tuple
+    fn build_thresholds(&self) -> (u16, u16) {
+        (self.max_cyclomatic, self.max_cognitive)
+    }
+}
+
 /// Handle complexity analysis command with MCP tool composition support
 ///
 /// This function enables AI agents to perform sophisticated code analysis workflows
@@ -234,18 +288,23 @@ pub async fn handle_analyze_complexity(
         return Ok(());
     }
 
-    // Detect toolchain if not specified
-    // Issue #42 fix: When no toolchain is detected, analyze ALL supported languages
-    // instead of defaulting to "rust" which would miss Python/JS/etc files
-    let detected_toolchain =
-        toolchain.or_else(|| super::super::stubs::detect_toolchain(&project_path));
+    // Create configuration to reduce parameter passing and centralize logic
+    let config = ComplexityConfig::from_args(
+        project_path,
+        toolchain,
+        max_cyclomatic,
+        max_cognitive,
+        include,
+        timeout,
+        top_files,
+        fail_on_violation,
+    );
 
-    // Custom thresholds
-    let _thresholds =
-        super::super::stubs::build_complexity_thresholds(max_cyclomatic, max_cognitive);
+    // Detect toolchain (Issue #42 fix: supports multi-language when None)
+    let detected_toolchain = config.detect_toolchain();
 
     // Analyze files
-    eprintln!("⏰ Analysis timeout set to {} seconds", timeout);
+    eprintln!("⏰ Analysis timeout set to {} seconds", config.timeout);
     let mut file_metrics = if let Some(single_file) = file {
         // Single file mode
         eprintln!("🔍 Analyzing complexity of file: {}", single_file.display());
@@ -254,7 +313,7 @@ pub async fn handle_analyze_complexity(
         let full_path = if single_file.is_absolute() {
             single_file
         } else {
-            project_path.join(&single_file)
+            config.project_path.join(&single_file)
         };
 
         if !full_path.exists() {
@@ -278,7 +337,7 @@ pub async fn handle_analyze_complexity(
             let full_path = if file_path.is_absolute() {
                 file_path
             } else {
-                project_path.join(&file_path)
+                config.project_path.join(&file_path)
             };
 
             if !full_path.exists() {
@@ -304,11 +363,11 @@ pub async fn handle_analyze_complexity(
             Some(ref toolchain) => {
                 eprintln!("🔍 Analyzing {} project complexity...", toolchain);
                 super::super::stubs::analyze_project_files(
-                    &project_path,
+                    &config.project_path,
                     Some(toolchain),
-                    &include,
-                    max_cyclomatic.unwrap_or(10),
-                    max_cognitive.unwrap_or(15),
+                    &config.include,
+                    config.max_cyclomatic,
+                    config.max_cognitive,
                 )
                 .await?
             }
@@ -316,11 +375,11 @@ pub async fn handle_analyze_complexity(
                 // No specific toolchain detected - analyze all supported file types
                 eprintln!("🔍 Analyzing project complexity (multi-language)...");
                 super::super::stubs::analyze_project_files(
-                    &project_path,
+                    &config.project_path,
                     None, // This will trigger analysis of all supported languages
-                    &include,
-                    max_cyclomatic.unwrap_or(10),
-                    max_cognitive.unwrap_or(15),
+                    &config.include,
+                    config.max_cyclomatic,
+                    config.max_cognitive,
                 )
                 .await?
             }
@@ -328,6 +387,7 @@ pub async fn handle_analyze_complexity(
     };
 
     // Apply filtering based on max thresholds if specified
+    // Note: We check original args since config has defaults
     if max_cyclomatic.is_some() || max_cognitive.is_some() {
         // Filter files to only include those with functions exceeding the thresholds
         file_metrics.retain(|file| {
@@ -344,7 +404,7 @@ pub async fn handle_analyze_complexity(
     }
 
     // Apply top_files filtering if specified
-    if top_files > 0 && !file_metrics.is_empty() {
+    if config.top_files > 0 && !file_metrics.is_empty() {
         // Sort files by complexity (descending)
         file_metrics.sort_by(|a, b| {
             let a_complexity =
@@ -357,7 +417,7 @@ pub async fn handle_analyze_complexity(
         });
 
         // Keep only top N files
-        file_metrics.truncate(top_files);
+        file_metrics.truncate(config.top_files);
     }
 
     // Aggregate results with custom thresholds
