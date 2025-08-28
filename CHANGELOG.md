@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.16.1] - 2025-08-28
+
+### Fixed
+- **CLI Help Output**: Restored help functionality for analyze subcommands (#43)
+  - Fixed `pmat analyze complexity --help` and other analyze commands not displaying help
+  - Issue was clap's DisplayHelp error being intercepted without printing to stdout
+  - Now explicitly prints help messages before exiting
+
 ## [2.16.0] - 2025-08-28
 
 ### Added
