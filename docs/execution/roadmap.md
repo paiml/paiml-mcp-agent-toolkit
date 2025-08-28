@@ -5,6 +5,26 @@
 - **Priority**: TBD
 - **Methodology**: Toyota Way Principles + TDD
 
+## Previous Sprint: v2.16.1 Critical Bug Fix ✅ COMPLETE
+- **Duration**: 2025-08-28
+- **Priority**: P0
+- **Methodology**: Rapid Response + Root Cause Analysis
+
+### Tasks
+| ID | Description | Status | Complexity | Priority |
+|----|-------------|--------|------------|----------|
+| PMAT-BF001 | Fix help output for analyze subcommands (#43) | ✅ | Low | P0 |
+| PMAT-BF002 | Verify fix across all analyze commands | ✅ | Low | P0 |
+| PMAT-BF003 | Release patch version 2.16.1 | ✅ | Low | P0 |
+| PMAT-BF004 | Document fix and update changelog | ✅ | Low | P0 |
+
+### Achievements
+- **Root Cause Identified**: Clap's DisplayHelp error was intercepted but not printed
+- **Fix Applied**: Explicitly print help messages to stdout
+- **User Impact**: Restored critical CLI discoverability functionality
+- **Response Time**: Same-day fix and release
+- **Published**: Successfully published to crates.io
+
 ## Previous Sprint: v2.16.0 Toyota Way Kaizen Refactoring ✅ COMPLETE
 - **Duration**: 2025-08-28
 - **Priority**: P0
