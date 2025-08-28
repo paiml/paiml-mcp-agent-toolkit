@@ -155,11 +155,13 @@ fn parse_with_suggestions() -> Result<Cli, String> {
             use clap::error::ErrorKind;
             match clap_error.kind() {
                 ErrorKind::DisplayHelp => {
-                    // Clap already printed help, just exit successfully
+                    // Print the help message to stdout
+                    print!("{}", clap_error);
                     std::process::exit(0);
                 }
                 ErrorKind::DisplayVersion => {
-                    // Clap already printed version, just exit successfully
+                    // Print the version to stdout
+                    print!("{}", clap_error);
                     std::process::exit(0);
                 }
                 _ => {
