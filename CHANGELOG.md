@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.19.0] - 2025-08-28
+
 ### Fixed
 - **Issue #48**: SATD detector false positive elimination (100% precision improvement)
   - Fixed over-broad pattern matching in SATD detection
@@ -42,6 +44,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 80/20 prioritization focusing on core protocol layer
 - **Sprint 5**: Developer Experience Enhancement completed
   - Systematic dead code cleanup and warning reduction
+
+### Sprint 6: Dependency Coordination & Quality Enhancement
+
+#### Updated
+- **Issue #18**: Major dependency updates (partially resolved)
+  - gimli: 0.28 → 0.32 (DWARF debugging library)
+  - goblin: 0.7 → 0.10 (binary parsing library)
+  - Deferred: SWC v0.145→v23 (requires major refactoring)
+  - Deferred: tree-sitter v0.22→v0.25 (conflicts with tree-sitter-kotlin)
+
+#### Fixed
+- **Issue #50**: Restored strict quality gate enforcement
+  - Enforced Toyota Way standard: complexity ≤20
+  - Set target complexity: 10 (good readability)
+  - Synchronized all quality profiles across commands
+  - Updated tests to match enforcement thresholds
 
 ## [2.17.0] - 2025-08-28
 
