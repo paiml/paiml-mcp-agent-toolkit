@@ -282,30 +282,36 @@ impl DebtClassifier {
     pub fn new_strict() -> Self {
         // Strict mode only includes explicit SATD markers
         let patterns = vec![
-            // Only explicit TODO/FIXME/HACK/BUG patterns
+            // Ultra-strict: ONLY actual comment-based SATD markers
             DebtPattern {
-                regex: r"(?i)\b(TODO|FIXME|XXX|BUG|HACK|KLUDGE|REFACTOR):\s".to_string(),
+                regex: r"//\s*TODO:\s+.+".to_string(),
                 category: DebtCategory::Requirement,
                 severity: Severity::Low,
-                description: "Explicit SATD marker".to_string(),
+                description: "TODO task marker".to_string(),
             },
             DebtPattern {
-                regex: r"(?i)\b(FIXME|BUG):".to_string(),
+                regex: r"//\s*FIXME:\s+.+".to_string(),
                 category: DebtCategory::Defect,
                 severity: Severity::High,
-                description: "Known defect".to_string(),
+                description: "FIXME issue marker".to_string(),
             },
             DebtPattern {
-                regex: r"(?i)\b(HACK|KLUDGE):".to_string(),
+                regex: r"//\s*HACK:\s+.+".to_string(),
                 category: DebtCategory::Design,
                 severity: Severity::Medium,
-                description: "Architectural compromise".to_string(),
+                description: "HACK workaround marker".to_string(),
             },
             DebtPattern {
-                regex: r"(?i)\b(SECURITY|VULN|CVE):".to_string(),
-                category: DebtCategory::Security,
-                severity: Severity::Critical,
-                description: "Security concern".to_string(),
+                regex: r"//\s*XXX:\s+.+".to_string(),
+                category: DebtCategory::Design,
+                severity: Severity::Medium,
+                description: "XXX problem marker".to_string(),
+            },
+            DebtPattern {
+                regex: r"//\s*BUG:\s+.+".to_string(),
+                category: DebtCategory::Defect,
+                severity: Severity::High,
+                description: "BUG issue marker".to_string(),
             },
         ];
 
