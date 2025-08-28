@@ -109,13 +109,13 @@
 - 📄 **Full Analysis**: docs/technical-debt/post-sprint-1-analysis.md
 
 ### Emergency Quality Tasks
-| ID | Description | Status | Complexity | Priority |
-|----|-------------|--------|------------|----------|
-| QR-001 | Eliminate all 26 SATD violations | 📋 | High | P0 |
-| QR-002 | Refactor handle_analyze_complexity (41→≤8) | 📋 | High | P0 |
-| QR-003 | Break down functions >50 complexity | 📋 | High | P0 |
-| QR-004 | Restore quality gate enforcement | 📋 | Medium | P0 |
-| QR-005 | Create complexity regression tests | 📋 | Medium | P1 |
+| ID | Description | GitHub Issue | Status | Priority |
+|----|-------------|--------------|--------|----------|
+| QR-001 | Eliminate all 26 SATD violations | [#48](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/48) | 📋 | P0 |
+| QR-002 | Refactor handle_analyze_complexity (41→≤8) | [#49](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/49) | 📋 | P0 |
+| QR-003 | Break down functions >50 complexity | TBD | 📋 | P0 |
+| QR-004 | Restore quality gate enforcement | [#50](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/50) | 📋 | P0 |
+| QR-005 | Create complexity regression tests | TBD | 📋 | P1 |
 
 ### Toyota Way Recovery Plan
 1. **Jidoka**: Stop all feature development until quality restored
