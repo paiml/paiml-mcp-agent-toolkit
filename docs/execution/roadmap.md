@@ -96,6 +96,42 @@
 - **SWC Ecosystem**: Tightly coupled dependencies need coordinated update
 - **Native Library Conflicts**: Only one `tree-sitter` version can be linked
 
+## Next Sprint: v2.18.0 Quality Restoration (Toyota Way Emergency Sprint)
+- **Duration**: 1-2 weeks
+- **Priority**: P0 - Quality Crisis
+- **Methodology**: Toyota Way Jidoka + Kaizen (Stop the Line for Quality)
+
+### Quality Crisis Assessment (2025-08-28)
+- ❌ **Technical Debt**: 26 SATD violations (violates zero-tolerance policy)
+- ❌ **Complexity**: Max 77 (Toyota Way limit: ≤20)  
+- ❌ **Quality Gates**: Failed on multiple files
+- 📊 **Refactoring Estimate**: 312.8 hours
+- 📄 **Full Analysis**: docs/technical-debt/post-sprint-1-analysis.md
+
+### Emergency Quality Tasks
+| ID | Description | Status | Complexity | Priority |
+|----|-------------|--------|------------|----------|
+| QR-001 | Eliminate all 26 SATD violations | 📋 | High | P0 |
+| QR-002 | Refactor handle_analyze_complexity (41→≤8) | 📋 | High | P0 |
+| QR-003 | Break down functions >50 complexity | 📋 | High | P0 |
+| QR-004 | Restore quality gate enforcement | 📋 | Medium | P0 |
+| QR-005 | Create complexity regression tests | 📋 | Medium | P1 |
+
+### Toyota Way Recovery Plan
+1. **Jidoka**: Stop all feature development until quality restored
+2. **Genchi Genbutsu**: Analyze root cause of technical debt accumulation  
+3. **Kaizen**: Systematic function-by-function refactoring
+4. **Poka-Yoke**: Prevent future quality degradation
+
+### Success Criteria
+- SATD: 26 → 0 violations
+- Max Complexity: 77 → ≤20
+- Quality Gates: FAIL → PASS on all files
+- Refactoring Time: <40 hours (targeted efficiency)
+
+## Future Sprint: v2.19.0 Dependency Coordination
+- **Previous v2.18.0 plan moved to v2.19.0 due to quality crisis**
+
 ## Previous Sprint: v2.16.1 Critical Bug Fix ✅ COMPLETE
 - **Duration**: 2025-08-28
 - **Priority**: P0
