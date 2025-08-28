@@ -5,6 +5,7 @@
 use super::{ComplexityFacade, DeadCodeFacade, SatdFacade};
 use crate::services::service_registry::ServiceRegistry;
 use anyhow::Result;
+use serde::Serialize;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -21,7 +22,7 @@ pub struct ComprehensiveAnalysisRequest {
 }
 
 /// Unified analysis results
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct ComprehensiveAnalysisResult {
     pub complexity: Option<super::complexity_facade::ComplexityAnalysisResult>,
     pub dead_code: Option<super::dead_code_facade::DeadCodeAnalysisResult>,
@@ -31,7 +32,7 @@ pub struct ComprehensiveAnalysisResult {
 }
 
 /// High-level summary of all analyses
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct AnalysisSummary {
     pub total_files: usize,
     pub total_issues: usize,

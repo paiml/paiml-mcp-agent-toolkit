@@ -4,6 +4,7 @@
 
 use crate::services::service_registry::ServiceRegistry;
 use anyhow::Result;
+use serde::Serialize;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -16,7 +17,7 @@ pub struct SatdAnalysisRequest {
 }
 
 /// Result of SATD analysis
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SatdAnalysisResult {
     pub total_files: usize,
     pub violations: Vec<SatdViolation>,
@@ -24,7 +25,7 @@ pub struct SatdAnalysisResult {
 }
 
 /// Individual SATD violation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SatdViolation {
     pub file_path: String,
     pub line_number: usize,
@@ -34,7 +35,7 @@ pub struct SatdViolation {
 }
 
 /// SATD severity levels
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum SatdSeverity {
     Critical,
     High,

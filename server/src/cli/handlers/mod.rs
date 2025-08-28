@@ -8,7 +8,9 @@ pub mod agent_handlers;
 pub mod analysis_handlers;
 pub mod big_o_handlers;
 pub mod cache;
+pub mod churn_formatter;
 pub mod complexity_handlers;
+pub mod comprehensive_analysis_handler;
 pub mod comprehensive_handler;
 pub mod configuration_handlers;
 pub mod defect_prediction_handler;
@@ -24,6 +26,9 @@ pub mod lint_hotspot_property_tests;
 pub mod memory;
 pub mod name_similarity_analysis;
 pub mod new_tdg_handler;
+pub mod proof_annotations_handler;
+pub mod provability_handler;
+pub mod quality_gate_formatter;
 #[cfg(test)]
 pub mod quality_gate_property_tests;
 pub mod refactor_auto_handlers;
@@ -32,6 +37,7 @@ pub mod refactor_auto_property_tests;
 pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod satd_handler;
+pub mod tdg_formatter;
 pub mod telemetry_handlers;
 pub mod test_handlers;
 pub mod utility_handlers;
@@ -40,9 +46,10 @@ pub mod wasm_handlers;
 // Re-export handler functions
 pub use advanced_analysis_handlers::{
     handle_analyze_comprehensive, handle_analyze_deep_context,
-    handle_analyze_graph_metrics, handle_analyze_makefile, handle_analyze_provability,
+    handle_analyze_graph_metrics, handle_analyze_makefile,
     handle_analyze_symbol_table, handle_analyze_tdg,
 };
+pub use provability_handler::handle_analyze_provability;
 pub use defect_prediction_handler::handle_analyze_defect_prediction;
 pub use agent_handlers::handle_agent_command;
 pub use analysis_handlers::route_analyze_command;
