@@ -761,14 +761,18 @@ fn run_complexity_analysis_sync(
 }
 
 /// Handle churn analysis command
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_churn(
     project_path: PathBuf,
     days: u32,
     format: crate::models::churn::ChurnOutputFormat,
     output: Option<PathBuf>,
     top_files: usize,
+    _include: Vec<String>,
+    _exclude: Vec<String>,
 ) -> Result<()> {
-    // Delegate to main implementation for now - will be extracted in Phase 3 Day 8
+    // TODO: Apply include/exclude filters to churn analysis
+    // For now, delegate to main implementation
     super::super::stubs::handle_analyze_churn(project_path, days, format, output, top_files).await
 }
 
@@ -786,7 +790,10 @@ pub async fn handle_analyze_dead_code(
     fail_on_violation: bool,
     max_percentage: f64,
     timeout: u64,
+    _include: Vec<String>,
+    _exclude: Vec<String>,
 ) -> Result<()> {
+    // TODO: Apply include/exclude filters to dead code analysis
     eprintln!("☠️ Analyzing dead code in project...");
     eprintln!("⏰ Analysis timeout set to {} seconds", timeout);
 

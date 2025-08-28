@@ -2832,6 +2832,8 @@ async fn handle_analyze_lint_hotspot(
         false,                     // perf
         String::new(),             // clippy_flags
         args.top_files,
+        Vec::new(),                // include
+        Vec::new(),                // exclude
     )
     .await;
 

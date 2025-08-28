@@ -841,6 +841,8 @@ pub mod handlers {
             false,                     // perf
             String::new(),             // clippy_flags
             params.top_files.unwrap_or(10),
+            Vec::new(),                // include
+            Vec::new(),                // exclude
         )
         .await
         .map_err(|e| AppError::Analysis(format!("Lint hotspot analysis failed: {}", e)))?;

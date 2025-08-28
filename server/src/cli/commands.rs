@@ -492,6 +492,14 @@ pub enum AnalyzeCommands {
         /// Number of top files to show by churn (0 = show all)
         #[arg(long, default_value_t = 10)]
         top_files: usize,
+
+        /// Include file patterns (e.g., "**/*.rs", "src/**")
+        #[arg(long)]
+        include: Vec<String>,
+
+        /// Exclude file patterns (e.g., "tests/**", "target/**")
+        #[arg(long)]
+        exclude: Vec<String>,
     },
 
     /// Analyze code complexity with MCP tool composition support
@@ -651,6 +659,14 @@ pub enum AnalyzeCommands {
         /// Analysis timeout in seconds
         #[arg(long, default_value = "60")]
         timeout: u64,
+
+        /// Include file patterns (e.g., "**/*.rs", "src/**")
+        #[arg(long)]
+        include: Vec<String>,
+
+        /// Exclude file patterns (e.g., "tests/**", "target/**")
+        #[arg(long)]
+        exclude: Vec<String>,
     },
 
     /// Analyze Self-Admitted Technical Debt (SATD) in comments
@@ -707,6 +723,14 @@ pub enum AnalyzeCommands {
         /// Analysis timeout in seconds
         #[arg(long, default_value = "60")]
         timeout: u64,
+
+        /// Include file patterns (e.g., "**/*.rs", "src/**")
+        #[arg(long)]
+        include: Vec<String>,
+
+        /// Exclude file patterns (e.g., "tests/**", "target/**")
+        #[arg(long)]
+        exclude: Vec<String>,
     },
 
     /// Generate comprehensive deep context analysis with defect detection
@@ -862,6 +886,14 @@ pub enum AnalyzeCommands {
         /// Number of top files to show by defect density (0 = all)
         #[arg(long, default_value = "10")]
         top_files: usize,
+
+        /// Include file patterns (e.g., "**/*.rs", "src/**")
+        #[arg(long)]
+        include: Vec<String>,
+
+        /// Exclude file patterns (e.g., "tests/**", "target/**")
+        #[arg(long)]
+        exclude: Vec<String>,
     },
 
     /// Analyze Makefile quality and compliance

@@ -24,6 +24,8 @@ pub async fn handle_analyze_satd(
     _top_files: usize,
     _fail_on_violation: bool,
     _timeout: u64,
+    _include: Vec<String>,
+    _exclude: Vec<String>,
 ) -> Result<()> {
     eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
 

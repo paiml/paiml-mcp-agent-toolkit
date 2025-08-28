@@ -443,6 +443,7 @@ fn test_analyze_churn_full_options() {
             format,
             output,
             top_files,
+            ..
         }) => {
             assert_eq!(project_path, PathBuf::from("/tmp/repo"));
             assert_eq!(days, 60);
