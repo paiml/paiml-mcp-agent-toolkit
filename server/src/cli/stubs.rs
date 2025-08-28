@@ -3021,7 +3021,7 @@ async fn run_project_checks(
 /// Runs a single project-wide check
 #[allow(clippy::too_many_arguments)]
 /// Toyota Way: Data-Driven Design - eliminated 41→≤8 complexity
-async fn run_single_project_check(
+pub async fn run_single_project_check(
     check: &QualityCheckType,
     project_path: &Path,
     max_dead_code: f64,

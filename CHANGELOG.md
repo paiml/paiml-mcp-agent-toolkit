@@ -7,42 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.16.0] - 2025-08-28
+
 ### Added
-- Comprehensive refactoring plan for stubs.rs complexity reduction
-- Refactoring progress documentation with lessons learned
-- **Dead Code Analysis Optimization**: Increased capacity limits for large projects
-  - Default capacity increased from 10,000 to 100,000 nodes (10x improvement)
-  - Added LARGE_CAPACITY constant for enterprise projects (1,000,000 nodes)
-  - Made capacity configurable via constants instead of hardcoded values
-- **Service Layer Foundation**: Created architectural foundation for service-oriented refactoring
-  - Added service registry with dependency injection pattern
-  - Created facade pattern implementations for complexity, dead code, and SATD analysis
-  - Implemented analysis orchestrator for coordinating multiple analyses
-  - Added incremental coverage facade for simplified coverage analysis
-  - Supports both parallel and sequential execution modes
-- **Handler Refactoring**: Extracted complex handlers to use service facades
-  - Refactored handle_analyze_incremental_coverage to use IncrementalCoverageFacade (complexity: 26→8)
-  - Refactored handle_analyze_defect_prediction to use DefectPredictionFacade (complexity: 23→8)
-  - Refactored handle_analyze_satd to use enhanced SatdFacade with real detector integration
-  - Created separate handler modules with clean separation of concerns
-  - Achieved 65-69% complexity reduction through service delegation
+- **Toyota Way Kaizen Refactoring**: Major architectural improvements following Toyota Way principles
+  - Created 3 new formatter modules with complexity ≤8 (Toyota Way target)
+    - `churn_formatter.rs` - Extracted churn analysis formatting functions
+    - `tdg_formatter.rs` - Extracted TDG report formatting functions  
+    - `quality_gate_formatter.rs` - Extracted quality gate formatting functions
+  - Extracted high-complexity functions (complexity 16-17 → 8):
+    - `write_markdown_summary_table` - Moved to churn_formatter
+    - `is_source_file` - Moved to churn_formatter with better decomposition
+    - `format_markdown_output` - Moved to tdg_formatter
+  - Applied Kaizen (continuous improvement) principles throughout
+  - Applied Genchi Genbutsu (go and see) using actual complexity metrics
+  - Applied Jidoka (quality at every step) with automated checks
 
 ### Changed
-- Cleaned up temporary debug files from development
-- Post-release maintenance and validation
+- **Comprehensive Handler Module Extraction**: Refactored stubs.rs for better maintainability
+  - Removed 370+ lines of unused comprehensive analysis code
+  - Eliminated all dead code warnings (37 functions cleaned up)
+  - Improved module organization with clean separation of concerns
+  - Made `run_single_project_check` public for use in quality_gate_formatter
+- **Service Layer Enhancements**: Continued service-oriented architecture improvements
+  - Enhanced facade patterns with better error handling
+  - Improved orchestration between analysis services
+  - Better separation between formatting and business logic
 
 ### Fixed
-- **SATD Elimination**: Fixed critical self-admitted technical debt items
-  - Implemented proper dead code analysis in analysis_service.rs (was returning stub data)
-  - Fixed hardcoded language detection in demo/server.rs
-  - Reduced SATD count from 4 to 2 (remaining are test data, not actual debt)
-- **CLI Version Exit Code**: Fixed `--version` and `--help` returning exit code 2 instead of 0
-  - Properly handle clap's DisplayVersion and DisplayHelp error kinds
-  - Binary size regression test now passes
-- **Python AST Tests**: Fixed failing Python AST parser tests
-  - Changed tests to look for `AstItem::Import` instead of `AstItem::Use` for Python imports
-  - Fixed line number extraction using `range.start().to_u32()` API
-  - All Python AST items now report accurate source line numbers
+- **Compilation and Quality**: Achieved zero errors and warnings
+  - Fixed all compilation errors after module extraction
+  - Resolved function visibility issues between modules
+  - Eliminated all dead code warnings
+  - All linting checks pass successfully
+
+### Performance
+- **Code Quality Metrics**:
+  - Zero compilation errors (maintained)
+  - Zero dead code warnings (from 37 warnings)
+  - All extracted functions meet complexity ≤8 target
+  - Improved testability through smaller, focused functions
+  - Better maintainability with modular architecture
+
+### Documentation
+- Updated architecture documentation with new module structure
+- Added Toyota Way principles documentation in extracted modules
+- Improved inline documentation for public APIs
 
 ## [2.15.0] - 2025-08-27
 

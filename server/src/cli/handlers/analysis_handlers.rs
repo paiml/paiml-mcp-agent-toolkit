@@ -390,10 +390,10 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             output,
             top_files,
         } => {
-            super::advanced_analysis_handlers::handle_analyze_provability(
+            super::provability_handler::handle_analyze_provability(
                 project_path,
                 functions,
-                Some(analysis_depth as u32),
+                analysis_depth,
                 format,
                 high_confidence_only,
                 include_evidence,
@@ -577,7 +577,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             clear_cache,
             top_files: _top_files,
         } => {
-            super::super::stubs::handle_analyze_proof_annotations(
+            super::proof_annotations_handler::handle_analyze_proof_annotations(
                 project_path,
                 format,
                 high_confidence_only,

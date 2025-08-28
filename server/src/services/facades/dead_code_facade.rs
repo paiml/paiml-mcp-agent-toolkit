@@ -4,6 +4,7 @@
 
 use crate::services::service_registry::ServiceRegistry;
 use anyhow::Result;
+use serde::Serialize;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -17,7 +18,7 @@ pub struct DeadCodeAnalysisRequest {
 }
 
 /// Result of dead code analysis
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DeadCodeAnalysisResult {
     pub total_files: usize,
     pub dead_items: Vec<DeadCodeItem>,
@@ -26,7 +27,7 @@ pub struct DeadCodeAnalysisResult {
 }
 
 /// Individual dead code item
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DeadCodeItem {
     pub file_path: String,
     pub item_name: String,
@@ -36,7 +37,7 @@ pub struct DeadCodeItem {
 }
 
 /// Types of dead code
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum DeadCodeType {
     Function,
     Class,
