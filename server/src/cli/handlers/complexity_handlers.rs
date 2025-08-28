@@ -208,9 +208,6 @@ mod complexity_handlers_tests;
 /// # Returns
 ///
 /// JSON-structured complexity analysis suitable for MCP tool chaining
-/// TODO: Refactor this function to reduce complexity (currently 52 cyclomatic, 107 cognitive)
-/// This function should be broken down into smaller helper functions as part of Sprint 2
-/// tracking issue: Sprint 1 completion prioritized this over immediate refactoring
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_analyze_complexity(
     project_path: PathBuf,
