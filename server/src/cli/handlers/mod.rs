@@ -45,21 +45,17 @@ pub mod wasm_handlers;
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{
-    handle_analyze_comprehensive, handle_analyze_deep_context,
-    handle_analyze_graph_metrics, handle_analyze_makefile,
-    handle_analyze_symbol_table, handle_analyze_tdg,
+    handle_analyze_comprehensive, handle_analyze_deep_context, handle_analyze_graph_metrics,
+    handle_analyze_makefile, handle_analyze_symbol_table, handle_analyze_tdg,
 };
-pub use provability_handler::handle_analyze_provability;
-pub use defect_prediction_handler::handle_analyze_defect_prediction;
 pub use agent_handlers::handle_agent_command;
 pub use analysis_handlers::route_analyze_command;
 pub use cache::handle_cache_command;
 pub use complexity_handlers::{
     handle_analyze_churn, handle_analyze_complexity, handle_analyze_dag, handle_analyze_dead_code,
 };
-pub use satd_handler::handle_analyze_satd;
-pub use incremental_coverage_handler::handle_analyze_incremental_coverage;
 pub use configuration_handlers::handle_configuration;
+pub use defect_prediction_handler::handle_analyze_defect_prediction;
 pub use demo_handlers::{handle_demo, handle_quality_gate};
 pub use duplication_analysis::handle_analyze_duplicates;
 pub use enforce_handlers::route_enforce_command;
@@ -67,11 +63,14 @@ pub use generation_handlers::{
     handle_generate, handle_list_agent_templates, handle_scaffold, handle_scaffold_agent,
     handle_validate, handle_validate_agent_template, ScaffoldAgentParams,
 };
+pub use incremental_coverage_handler::handle_analyze_incremental_coverage;
 pub use lint_hotspot_handlers::handle_analyze_lint_hotspot;
 pub use memory::handle_memory_command;
 pub use name_similarity_analysis::handle_analyze_name_similarity;
+pub use provability_handler::handle_analyze_provability;
 pub use refactor_docs_handlers::handle_refactor_docs;
 pub use refactor_handlers::{route_refactor_command, RefactorServeParams};
+pub use satd_handler::handle_analyze_satd;
 pub use telemetry_handlers::handle_telemetry;
 pub use test_handlers::handle_test;
 pub use utility_handlers::{

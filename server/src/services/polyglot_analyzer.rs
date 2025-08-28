@@ -1185,7 +1185,7 @@ mod tests {
         };
 
         let score = analyzer.calculate_language_complexity_score(&language_info);
-        assert!(score >= 1.0 && score <= 10.0);
+        assert!((1.0..=10.0).contains(&score));
     }
 
     #[test]
@@ -1212,7 +1212,7 @@ mod tests {
             &[],
             &Some(ArchitecturePattern::Monolithic),
         );
-        assert!(score >= 0.0 && score <= 1.0);
+        assert!((0.0..=1.0).contains(&score));
     }
 
     #[test]

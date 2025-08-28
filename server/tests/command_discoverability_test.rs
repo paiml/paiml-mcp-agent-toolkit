@@ -11,7 +11,7 @@ const PMAT_BINARY: &str = env!("CARGO_BIN_EXE_pmat");
 fn test_agent_analyze_suggests_correct_command() {
     // TDD Test: Common mistake "pmat agent analyze" should suggest "pmat analyze"
     let output = Command::new(PMAT_BINARY)
-        .args(&["agent", "analyze"])
+        .args(["agent", "analyze"])
         .output()
         .expect("Failed to run command");
 
@@ -40,7 +40,7 @@ fn test_agent_analyze_suggests_correct_command() {
 fn test_typo_analize_suggests_analyze() {
     // TDD Test: Typo "analize" should suggest "analyze"
     let output = Command::new(PMAT_BINARY)
-        .args(&["analize", "complexity"])
+        .args(["analize", "complexity"])
         .output()
         .expect("Failed to run command");
 
@@ -63,7 +63,7 @@ fn test_typo_analize_suggests_analyze() {
 fn test_missing_analyze_prefix_suggests_full_command() {
     // TDD Test: "complexity" alone should suggest "analyze complexity"
     let output = Command::new(PMAT_BINARY)
-        .args(&["complexity"])
+        .args(["complexity"])
         .output()
         .expect("Failed to run command");
 
@@ -89,7 +89,7 @@ fn test_satd_typo_suggests_correct_command() {
 
     for (typo, correct) in test_cases {
         let output = Command::new(PMAT_BINARY)
-            .args(&["analyze", typo])
+            .args(["analyze", typo])
             .output()
             .expect("Failed to run command");
 
@@ -113,7 +113,7 @@ fn test_satd_typo_suggests_correct_command() {
 fn test_help_provides_working_examples() {
     // TDD Test: Help should show actual working commands, not just syntax
     let output = Command::new(PMAT_BINARY)
-        .args(&["--help"])
+        .args(["--help"])
         .output()
         .expect("Failed to run command");
 
@@ -154,7 +154,7 @@ fn test_help_provides_working_examples() {
 fn test_analyze_help_shows_subcommands_clearly() {
     // TDD Test: "pmat analyze --help" should clearly show available subcommands
     let output = Command::new(PMAT_BINARY)
-        .args(&["analyze", "--help"])
+        .args(["analyze", "--help"])
         .output()
         .expect("Failed to run command");
 
@@ -178,7 +178,7 @@ fn test_analyze_help_shows_subcommands_clearly() {
 fn test_command_suggestions_are_ranked_by_similarity() {
     // TDD Test: Multiple suggestions should be ranked by similarity
     let output = Command::new(PMAT_BINARY)
-        .args(&["analyz"]) // Close to "analyze"
+        .args(["analyz"]) // Close to "analyze"
         .output()
         .expect("Failed to run command");
 
@@ -201,7 +201,7 @@ fn test_command_suggestions_are_ranked_by_similarity() {
 fn test_valid_commands_dont_show_suggestions() {
     // TDD Test: Valid commands should not show "did you mean" suggestions
     let output = Command::new(PMAT_BINARY)
-        .args(&["analyze", "complexity", "--help"])
+        .args(["analyze", "complexity", "--help"])
         .output()
         .expect("Failed to run command");
 

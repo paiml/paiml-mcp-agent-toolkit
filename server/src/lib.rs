@@ -1,5 +1,6 @@
 pub mod agent; // Claude Code Agent Mode implementation
 pub mod cli;
+pub mod contracts; // Uniform contracts across ALL interfaces (CLI, MCP, HTTP)
 pub mod demo;
 pub mod handlers;
 pub mod mcp_pmcp; // Now always available with pmcp 1.0

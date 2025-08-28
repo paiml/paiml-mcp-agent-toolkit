@@ -59,7 +59,10 @@ impl DeadCodeFacade {
     }
 
     /// Perform dead code analysis on a project
-    pub async fn analyze_project(&self, request: DeadCodeAnalysisRequest) -> Result<DeadCodeAnalysisResult> {
+    pub async fn analyze_project(
+        &self,
+        request: DeadCodeAnalysisRequest,
+    ) -> Result<DeadCodeAnalysisResult> {
         // Mock implementation for interface establishment
         Ok(DeadCodeAnalysisResult {
             total_files: 1,
@@ -83,7 +86,7 @@ impl DeadCodeFacade {
             include_unreachable: true,
             min_dead_lines: 1,
         };
-        
+
         self.analyze_project(request).await
     }
 }

@@ -13,17 +13,17 @@ use std::sync::{Arc, RwLock};
 pub trait Service: Send + Sync {
     /// Unique service identifier
     fn service_name(&self) -> &'static str;
-    
+
     /// Initialize the service with configuration
     fn initialize(&mut self) -> Result<()> {
         Ok(())
     }
-    
+
     /// Check if service is healthy and ready
     fn health_check(&self) -> Result<()> {
         Ok(())
     }
-    
+
     /// Cleanup resources on shutdown
     fn shutdown(&mut self) -> Result<()> {
         Ok(())
@@ -39,7 +39,7 @@ pub trait AnalysisService: Service {
 
     /// Perform analysis on the given input
     async fn analyze(&self, input: Self::Input) -> Result<Self::Output, Self::Error>;
-    
+
     /// Get analysis capabilities and metadata
     fn capabilities(&self) -> AnalysisCapabilities {
         AnalysisCapabilities::default()
@@ -85,38 +85,38 @@ impl ServiceRegistry {
     pub fn register<T: Service + 'static>(&self, mut service: T) -> Result<()> {
         // Initialize the service
         service.initialize()?;
-        
+
         let service_name = service.service_name();
         let type_id = TypeId::of::<T>();
-        
+
         // Store the service
         {
             let mut services = self.services.write().unwrap();
             services.insert(type_id, Box::new(Arc::new(service)));
         }
-        
+
         // Store the service name for debugging
         {
             let mut names = self.service_names.write().unwrap();
             names.insert(type_id, service_name);
         }
-        
+
         Ok(())
     }
 
     /// Get a service from the registry
     pub fn get<T: Service + 'static>(&self) -> Result<Arc<T>> {
         let type_id = TypeId::of::<T>();
-        
+
         let services = self.services.read().unwrap();
         let service = services
             .get(&type_id)
             .ok_or_else(|| anyhow::anyhow!("Service not found: {}", std::any::type_name::<T>()))?;
-            
-        let service = service
-            .downcast_ref::<Arc<T>>()
-            .ok_or_else(|| anyhow::anyhow!("Service type mismatch for: {}", std::any::type_name::<T>()))?;
-            
+
+        let service = service.downcast_ref::<Arc<T>>().ok_or_else(|| {
+            anyhow::anyhow!("Service type mismatch for: {}", std::any::type_name::<T>())
+        })?;
+
         Ok(Arc::clone(service))
     }
 
@@ -208,24 +208,28 @@ mod tests {
     #[test]
     fn test_service_registration() -> Result<()> {
         let registry = ServiceRegistry::new();
-        let service = TestService { name: "test_service" };
-        
+        let service = TestService {
+            name: "test_service",
+        };
+
         registry.register(service)?;
         assert!(registry.has::<TestService>());
         assert_eq!(registry.list_services(), vec!["test_service"]);
-        
+
         Ok(())
     }
 
     #[test]
     fn test_service_retrieval() -> Result<()> {
         let registry = ServiceRegistry::new();
-        let service = TestService { name: "test_service" };
-        
+        let service = TestService {
+            name: "test_service",
+        };
+
         registry.register(service)?;
         let retrieved = registry.get::<TestService>()?;
         assert_eq!(retrieved.service_name(), "test_service");
-        
+
         Ok(())
     }
 
@@ -235,9 +239,9 @@ mod tests {
             .with_service(TestService { name: "service1" })?
             .with_service(TestService { name: "service2" })?
             .build();
-            
+
         assert_eq!(registry.list_services().len(), 2);
-        
+
         Ok(())
     }
 }
