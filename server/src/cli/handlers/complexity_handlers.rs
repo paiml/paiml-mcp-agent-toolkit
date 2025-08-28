@@ -64,6 +64,191 @@ impl ComplexityConfig {
     }
 }
 
+/// Analyze a single file and return its complexity metrics
+/// 
+/// This helper function handles single file analysis with proper error handling
+/// and maintains consistency with the Issue #42 fix for multi-language support.
+async fn analyze_single_file(
+    file_path: &PathBuf, 
+    config: &ComplexityConfig
+) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
+    eprintln!("🔍 Analyzing complexity of file: {}", file_path.display());
+
+    // Ensure file exists and resolve absolute path
+    let full_path = if file_path.is_absolute() {
+        file_path.clone()
+    } else {
+        config.project_path.join(file_path)
+    };
+
+    if !full_path.exists() {
+        anyhow::bail!("File not found: {}", full_path.display());
+    }
+
+    // Use unified analyzer (maintains Issue #42 fix)
+    let file_content = std::fs::read_to_string(&full_path)
+        .context(format!("Failed to read file: {}", full_path.display()))?;
+
+    let metrics = crate::cli::language_analyzer::analyze_file_complexity(&full_path, &file_content)
+        .await?;
+    
+    Ok(vec![metrics])
+}
+
+/// Analyze multiple files and return aggregated complexity metrics
+/// 
+/// This helper function processes a list of files, maintaining consistency
+/// with single file analysis and proper error handling for missing files.
+async fn analyze_multiple_files(
+    files: &[PathBuf], 
+    config: &ComplexityConfig
+) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
+    eprintln!("🔍 Analyzing complexity of {} files...", files.len());
+
+    let mut all_metrics = Vec::new();
+    for file_path in files {
+        let full_path = if file_path.is_absolute() {
+            file_path.clone()
+        } else {
+            config.project_path.join(file_path)
+        };
+
+        if !full_path.exists() {
+            eprintln!("⚠️  Skipping missing file: {}", full_path.display());
+            continue;
+        }
+
+        // Use same analyzer as single file mode (Issue #42 consistency)
+        let file_content = std::fs::read_to_string(&full_path)
+            .context(format!("Failed to read file: {}", full_path.display()))?;
+
+        let metrics = crate::cli::language_analyzer::analyze_file_complexity(&full_path, &file_content)
+            .await?;
+        all_metrics.push(metrics);
+    }
+    
+    Ok(all_metrics)
+}
+
+/// Analyze entire project directory based on toolchain detection
+/// 
+/// This helper function handles project-wide analysis with proper toolchain
+/// detection and maintains the Issue #42 fix for multi-language projects.
+async fn analyze_project(
+    detected_toolchain: Option<String>, 
+    config: &ComplexityConfig
+) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
+    match detected_toolchain {
+        Some(ref toolchain) => {
+            eprintln!("🔍 Analyzing {} project complexity...", toolchain);
+            super::super::stubs::analyze_project_files(
+                &config.project_path,
+                Some(toolchain),
+                &config.include,
+                config.max_cyclomatic,
+                config.max_cognitive,
+            )
+            .await
+        }
+        None => {
+            // No specific toolchain detected - analyze all supported file types
+            eprintln!("🔍 Analyzing project complexity (multi-language)...");
+            super::super::stubs::analyze_project_files(
+                &config.project_path,
+                None, // This will trigger analysis of all supported languages
+                &config.include,
+                config.max_cyclomatic,
+                config.max_cognitive,
+            )
+            .await
+        }
+    }
+}
+
+/// Apply complexity threshold filtering to metrics
+/// 
+/// Filters files to only include those with functions exceeding the specified
+/// cyclomatic or cognitive complexity thresholds.
+fn apply_complexity_filters(
+    file_metrics: &mut Vec<crate::services::complexity::FileComplexityMetrics>,
+    max_cyclomatic: Option<u16>,
+    max_cognitive: Option<u16>,
+) {
+    if max_cyclomatic.is_some() || max_cognitive.is_some() {
+        file_metrics.retain(|file| {
+            file.functions.iter().any(|func| {
+                let exceeds_cyclomatic = max_cyclomatic
+                    .map(|threshold| func.metrics.cyclomatic > threshold)
+                    .unwrap_or(false);
+                let exceeds_cognitive = max_cognitive
+                    .map(|threshold| func.metrics.cognitive > threshold)
+                    .unwrap_or(false);
+                exceeds_cyclomatic || exceeds_cognitive
+            })
+        });
+    }
+}
+
+/// Apply top files limit by sorting and truncating results
+/// 
+/// Sorts files by total complexity (cyclomatic + cognitive) in descending order
+/// and keeps only the top N most complex files.
+fn apply_top_files_limit(
+    file_metrics: &mut Vec<crate::services::complexity::FileComplexityMetrics>,
+    top_files: usize,
+) {
+    if top_files > 0 && !file_metrics.is_empty() {
+        // Sort files by complexity (descending)
+        file_metrics.sort_by(|a, b| {
+            let a_complexity =
+                a.total_complexity.cyclomatic as f64 + a.total_complexity.cognitive as f64;
+            let b_complexity =
+                b.total_complexity.cyclomatic as f64 + b.total_complexity.cognitive as f64;
+            b_complexity
+                .partial_cmp(&a_complexity)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        // Keep only top N files
+        file_metrics.truncate(top_files);
+    }
+}
+
+async fn format_and_write_output(
+    summary: &crate::services::complexity::ComplexityReport,
+    file_metrics: &[crate::services::complexity::FileComplexityMetrics],
+    format: ComplexityOutputFormat,
+    output: Option<PathBuf>,
+    top_files: usize,
+) -> Result<()> {
+    use crate::services::complexity::{format_complexity_summary, format_complexity_report, format_as_sarif};
+    
+    let formatted_output = match format {
+        ComplexityOutputFormat::Summary => Ok(format_complexity_summary(summary)),
+        ComplexityOutputFormat::Full => Ok(format_complexity_report(summary)),
+        ComplexityOutputFormat::Sarif => format_as_sarif(summary)
+            .map_err(|e| anyhow::anyhow!("SARIF serialization failed: {}", e)),
+        ComplexityOutputFormat::Json => {
+            let json_output = serde_json::json!({
+                "summary": summary,
+                "files": file_metrics,
+                "top_files_limit": if top_files > 0 { Some(top_files) } else { None },
+            });
+            serde_json::to_string_pretty(&json_output)
+                .map_err(|e| anyhow::anyhow!("JSON serialization failed: {}", e))
+        }
+    }?;
+
+    if let Some(output_path) = output {
+        tokio::fs::write(&output_path, &formatted_output).await?;
+        eprintln!("📝 Results written to: {}", output_path.display());
+    } else {
+        println!("{}", formatted_output);
+    }
+
+    Ok(())
+}
+
 /// Handle complexity analysis command with MCP tool composition support
 ///
 /// This function enables AI agents to perform sophisticated code analysis workflows
@@ -279,8 +464,7 @@ pub async fn handle_analyze_complexity(
     timeout: u64,
 ) -> Result<()> {
     use crate::services::complexity::{
-        aggregate_results_with_thresholds, format_as_sarif, format_complexity_report,
-        format_complexity_summary,
+        aggregate_results_with_thresholds,
     };
 
     if watch {
@@ -303,151 +487,26 @@ pub async fn handle_analyze_complexity(
     // Detect toolchain (Issue #42 fix: supports multi-language when None)
     let detected_toolchain = config.detect_toolchain();
 
-    // Analyze files
+    // Analyze files using extracted helper functions (reduces complexity)
     eprintln!("⏰ Analysis timeout set to {} seconds", config.timeout);
     let mut file_metrics = if let Some(single_file) = file {
-        // Single file mode
-        eprintln!("🔍 Analyzing complexity of file: {}", single_file.display());
-
-        // Ensure file exists and is within project
-        let full_path = if single_file.is_absolute() {
-            single_file
-        } else {
-            config.project_path.join(&single_file)
-        };
-
-        if !full_path.exists() {
-            anyhow::bail!("File not found: {}", full_path.display());
-        }
-
-        // Analyze single file using the SAME implementation as project analysis (Toyota Way: ONE implementation)
-        let file_content = std::fs::read_to_string(&full_path)
-            .context(format!("Failed to read file: {}", full_path.display()))?;
-
-        let metrics =
-            crate::cli::language_analyzer::analyze_file_complexity(&full_path, &file_content)
-                .await?;
-        vec![metrics]
+        analyze_single_file(&single_file, &config).await?
     } else if !files.is_empty() {
-        // Multiple files mode (MCP tool composition)
-        eprintln!("🔍 Analyzing complexity of {} files...", files.len());
-
-        let mut all_metrics = Vec::new();
-        for file_path in files {
-            let full_path = if file_path.is_absolute() {
-                file_path
-            } else {
-                config.project_path.join(&file_path)
-            };
-
-            if !full_path.exists() {
-                eprintln!("⚠️  Skipping missing file: {}", full_path.display());
-                continue;
-            }
-
-            // Use the same analyzer as single file mode for consistency (Issue #42 fix)
-            // This automatically detects language based on file extension
-            let file_content = std::fs::read_to_string(&full_path)
-                .context(format!("Failed to read file: {}", full_path.display()))?;
-
-            let metrics =
-                crate::cli::language_analyzer::analyze_file_complexity(&full_path, &file_content)
-                    .await?;
-            all_metrics.push(metrics);
-        }
-        all_metrics
+        analyze_multiple_files(&files, &config).await?
     } else {
-        // Project mode
-        // Issue #42 fix: Handle both detected and undetected toolchains
-        match detected_toolchain {
-            Some(ref toolchain) => {
-                eprintln!("🔍 Analyzing {} project complexity...", toolchain);
-                super::super::stubs::analyze_project_files(
-                    &config.project_path,
-                    Some(toolchain),
-                    &config.include,
-                    config.max_cyclomatic,
-                    config.max_cognitive,
-                )
-                .await?
-            }
-            None => {
-                // No specific toolchain detected - analyze all supported file types
-                eprintln!("🔍 Analyzing project complexity (multi-language)...");
-                super::super::stubs::analyze_project_files(
-                    &config.project_path,
-                    None, // This will trigger analysis of all supported languages
-                    &config.include,
-                    config.max_cyclomatic,
-                    config.max_cognitive,
-                )
-                .await?
-            }
-        }
+        analyze_project(detected_toolchain, &config).await?
     };
 
-    // Apply filtering based on max thresholds if specified
-    // Note: We check original args since config has defaults
-    if max_cyclomatic.is_some() || max_cognitive.is_some() {
-        // Filter files to only include those with functions exceeding the thresholds
-        file_metrics.retain(|file| {
-            file.functions.iter().any(|func| {
-                let exceeds_cyclomatic = max_cyclomatic
-                    .map(|threshold| func.metrics.cyclomatic > threshold)
-                    .unwrap_or(false);
-                let exceeds_cognitive = max_cognitive
-                    .map(|threshold| func.metrics.cognitive > threshold)
-                    .unwrap_or(false);
-                exceeds_cyclomatic || exceeds_cognitive
-            })
-        });
-    }
-
-    // Apply top_files filtering if specified
-    if config.top_files > 0 && !file_metrics.is_empty() {
-        // Sort files by complexity (descending)
-        file_metrics.sort_by(|a, b| {
-            let a_complexity =
-                a.total_complexity.cyclomatic as f64 + a.total_complexity.cognitive as f64;
-            let b_complexity =
-                b.total_complexity.cyclomatic as f64 + b.total_complexity.cognitive as f64;
-            b_complexity
-                .partial_cmp(&a_complexity)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-
-        // Keep only top N files
-        file_metrics.truncate(config.top_files);
-    }
+    // Apply filtering using extracted helper functions
+    apply_complexity_filters(&mut file_metrics, max_cyclomatic, max_cognitive);
+    apply_top_files_limit(&mut file_metrics, config.top_files);
 
     // Aggregate results with custom thresholds
     let summary =
         aggregate_results_with_thresholds(file_metrics.clone(), max_cyclomatic, max_cognitive);
 
-    // Format output
-    let formatted_output = match format {
-        ComplexityOutputFormat::Summary => Ok(format_complexity_summary(&summary)),
-        ComplexityOutputFormat::Full => Ok(format_complexity_report(&summary)),
-        ComplexityOutputFormat::Sarif => format_as_sarif(&summary)
-            .map_err(|e| anyhow::anyhow!("SARIF serialization failed: {}", e)),
-        ComplexityOutputFormat::Json => {
-            let json_output = serde_json::json!({
-                "summary": summary,
-                "files": file_metrics,
-                "top_files_limit": if top_files > 0 { Some(top_files) } else { None },
-            });
-            serde_json::to_string_pretty(&json_output)
-                .map_err(|e| anyhow::anyhow!("JSON serialization failed: {}", e))
-        }
-    }?;
-
-    // Write output
-    if let Some(output_path) = output {
-        tokio::fs::write(&output_path, &formatted_output).await?;
-        eprintln!("📝 Results written to: {}", output_path.display());
-    } else {
-        println!("{}", formatted_output);
-    }
+    // Format and write output
+    format_and_write_output(&summary, &file_metrics, format, output, top_files).await?;
 
     // Check for violations and exit with error code if requested
     if fail_on_violation {

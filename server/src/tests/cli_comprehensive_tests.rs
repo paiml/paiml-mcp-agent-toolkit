@@ -506,6 +506,7 @@ fn test_analyze_complexity_full_options() {
     let cli = Cli::try_parse_from(&args).unwrap();
     match cli.command {
         Commands::Analyze(AnalyzeCommands::Complexity {
+            path,
             project_path,
             file,
             files: _,
@@ -520,7 +521,8 @@ fn test_analyze_complexity_full_options() {
             fail_on_violation: _,
             timeout: _,
         }) => {
-            assert_eq!(project_path, PathBuf::from("/workspace"));
+            assert_eq!(path, PathBuf::from("/workspace"));
+            assert_eq!(project_path, None);
             assert_eq!(file, None); // No file specified in this test
             assert_eq!(toolchain, Some("rust".to_string()));
             assert_eq!(format, ComplexityOutputFormat::Sarif);
