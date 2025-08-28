@@ -2,7 +2,7 @@
 
 Complete reference for all PMAT command-line interface commands and options.
 
-> **v2.14.0**: Technical Debt Elimination via TDD - Zero stub implementations, fixed language detection ✅
+> **v2.16.1**: Fixed CLI help output for analyze commands - Full help documentation now accessible ✅
 
 ## Table of Contents
 
@@ -258,6 +258,8 @@ Examples:
 ```
 
 ## Analyze Commands
+
+> **Note**: All analyze commands support `--help` to display detailed usage information (fixed in v2.16.1).
 
 All analyze commands support these common options:
 
