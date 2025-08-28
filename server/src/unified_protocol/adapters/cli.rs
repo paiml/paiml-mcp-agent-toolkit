@@ -1979,7 +1979,8 @@ mod tests {
     async fn test_cli_adapter_decode_analyze_complexity() {
         let adapter = CliAdapter::new();
         let command = Commands::Analyze(AnalyzeCommands::Complexity {
-            project_path: PathBuf::from("."),
+            path: PathBuf::from("."),
+            project_path: None,
             file: None,
             files: vec![],
             toolchain: Some("rust".to_string()),
