@@ -566,15 +566,12 @@ pub mod handlers {
         Ok(Json(analysis))
     }
 
-    /// Analyze deep context
-    pub async fn analyze_deep_context(
-        Extension(_state): Extension<Arc<AppState>>,
-        Json(params): Json<Value>,
-    ) -> Result<Json<Value>, AppError> {
-        use crate::services::deep_context::{AnalysisType, DeepContextAnalyzer, DeepContextConfig};
+    /// Parse deep context analysis parameters from JSON
+    fn parse_deep_context_params(params: &Value) -> Result<(std::path::PathBuf, crate::services::deep_context::DeepContextConfig), AppError> {
+        use crate::services::deep_context::{AnalysisType, DeepContextConfig};
         use std::path::PathBuf;
 
-        // Parse parameters from JSON
+        // Parse project path
         let project_path = params
             .get("project_path")
             .and_then(|v| v.as_str())
@@ -582,6 +579,7 @@ pub mod handlers {
             .parse::<PathBuf>()
             .map_err(|e| AppError::BadRequest(format!("Invalid project_path: {e}")))?;
 
+        // Parse basic config parameters
         let period_days = params
             .get("period_days")
             .and_then(|v| v.as_u64())
@@ -592,7 +590,7 @@ pub mod handlers {
             .and_then(|v| v.as_u64())
             .map(|v| v as usize);
 
-        // Build configuration from HTTP params
+        // Build configuration
         let mut config = DeepContextConfig {
             period_days,
             ..DeepContextConfig::default()
@@ -619,6 +617,19 @@ pub mod handlers {
                 })
                 .collect();
         }
+
+        Ok((project_path, config))
+    }
+
+    /// Analyze deep context
+    pub async fn analyze_deep_context(
+        Extension(_state): Extension<Arc<AppState>>,
+        Json(params): Json<Value>,
+    ) -> Result<Json<Value>, AppError> {
+        use crate::services::deep_context::DeepContextAnalyzer;
+
+        // Parse parameters and build configuration
+        let (project_path, config) = parse_deep_context_params(&params)?;
 
         // Create analyzer and run analysis
         let analyzer = DeepContextAnalyzer::new(config);
@@ -879,6 +890,57 @@ pub mod handlers {
         Ok(Json(analysis))
     }
 
+    /// Route MCP method to appropriate handler implementation
+    async fn route_mcp_method(
+        state: &Arc<AppState>,
+        method: &str,
+        params: Value,
+    ) -> Result<Value, AppError> {
+        match method {
+            "list_templates" => {
+                let query: ListTemplatesQuery = serde_json::from_value(params)?;
+                let result = state.template_service.list_templates(&query).await?;
+                Ok(serde_json::to_value(result)?)
+            }
+            "generate_template" => {
+                let generate_params: GenerateParams = serde_json::from_value(params)?;
+                let result = state
+                    .template_service
+                    .generate_template(&generate_params)
+                    .await?;
+                Ok(serde_json::to_value(result)?)
+            }
+            "analyze_complexity" => {
+                let complexity_params: ComplexityParams = serde_json::from_value(params)?;
+                let result = state
+                    .analysis_service
+                    .analyze_complexity(&complexity_params)
+                    .await?;
+                Ok(serde_json::to_value(result)?)
+            }
+            "analyze_dead_code" => {
+                let dead_code_params: DeadCodeParams = serde_json::from_value(params)?;
+                let result = state
+                    .analysis_service
+                    .analyze_dead_code(&dead_code_params)
+                    .await?;
+                Ok(serde_json::to_value(result)?)
+            }
+            "analyze_satd" => {
+                let satd_params: SatdParams = serde_json::from_value(params)?;
+                let result = analyze_satd(Extension(state.clone()), Json(satd_params)).await?;
+                Ok(serde_json::to_value(result.0)?)
+            }
+            "analyze_lint_hotspot" => {
+                let lint_params: LintHotspotParams = serde_json::from_value(params)?;
+                let result =
+                    analyze_lint_hotspot(Extension(state.clone()), Json(lint_params)).await?;
+                Ok(serde_json::to_value(result.0)?)
+            }
+            _ => Err(AppError::NotFound(format!("Unknown MCP method: {method}"))),
+        }
+    }
+
     /// MCP protocol endpoint
     pub async fn mcp_endpoint(
         Extension(state): Extension<Arc<AppState>>,
@@ -888,49 +950,8 @@ pub mod handlers {
         set_protocol_context(Protocol::Mcp);
 
         // Route MCP method to appropriate handler
-        match method.as_str() {
-            "list_templates" => {
-                let query: ListTemplatesQuery = serde_json::from_value(params)?;
-                let result = state.template_service.list_templates(&query).await?;
-                Ok(Json(serde_json::to_value(result)?))
-            }
-            "generate_template" => {
-                let generate_params: GenerateParams = serde_json::from_value(params)?;
-                let result = state
-                    .template_service
-                    .generate_template(&generate_params)
-                    .await?;
-                Ok(Json(serde_json::to_value(result)?))
-            }
-            "analyze_complexity" => {
-                let complexity_params: ComplexityParams = serde_json::from_value(params)?;
-                let result = state
-                    .analysis_service
-                    .analyze_complexity(&complexity_params)
-                    .await?;
-                Ok(Json(serde_json::to_value(result)?))
-            }
-            "analyze_dead_code" => {
-                let dead_code_params: DeadCodeParams = serde_json::from_value(params)?;
-                let result = state
-                    .analysis_service
-                    .analyze_dead_code(&dead_code_params)
-                    .await?;
-                Ok(Json(serde_json::to_value(result)?))
-            }
-            "analyze_satd" => {
-                let satd_params: SatdParams = serde_json::from_value(params)?;
-                let result = analyze_satd(Extension(state.clone()), Json(satd_params)).await?;
-                Ok(Json(serde_json::to_value(result.0)?))
-            }
-            "analyze_lint_hotspot" => {
-                let lint_params: LintHotspotParams = serde_json::from_value(params)?;
-                let result =
-                    analyze_lint_hotspot(Extension(state.clone()), Json(lint_params)).await?;
-                Ok(Json(serde_json::to_value(result.0)?))
-            }
-            _ => Err(AppError::NotFound(format!("Unknown MCP method: {method}"))),
-        }
+        let result = route_mcp_method(&state, &method, params).await?;
+        Ok(Json(result))
     }
 
     /// Health check endpoint
