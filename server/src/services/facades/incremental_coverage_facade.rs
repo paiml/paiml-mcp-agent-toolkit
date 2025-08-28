@@ -99,7 +99,7 @@ impl IncrementalCoverageFacade {
         target_branch: Option<&str>,
     ) -> Result<Vec<(PathBuf, String)>> {
         use crate::cli::coverage_helpers::get_changed_files_for_coverage;
-        
+
         get_changed_files_for_coverage(project_path, base_branch, target_branch).await
     }
 
@@ -161,8 +161,7 @@ impl IncrementalCoverageFacade {
             .count();
 
         let avg_coverage = if !coverage_data.is_empty() {
-            coverage_data.iter().map(|f| f.coverage_after).sum::<f64>()
-                / coverage_data.len() as f64
+            coverage_data.iter().map(|f| f.coverage_after).sum::<f64>() / coverage_data.len() as f64
         } else {
             0.0
         };

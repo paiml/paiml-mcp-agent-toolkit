@@ -32,7 +32,7 @@ pub async fn handle_analyze_comprehensive(
     top_files: usize,
 ) -> Result<()> {
     use std::time::Instant;
-    
+
     eprintln!("🔍 Running comprehensive analysis...");
     let start = if perf { Some(Instant::now()) } else { None };
 
@@ -79,7 +79,8 @@ pub async fn handle_analyze_comprehensive(
             &include,
             &exclude,
             top_files,
-        ).await?
+        )
+        .await?
     } else {
         result
     };
@@ -88,7 +89,7 @@ pub async fn handle_analyze_comprehensive(
     if let Some(start_time) = start {
         let elapsed = start_time.elapsed();
         eprintln!("✅ Comprehensive analysis completed in {:?}", elapsed);
-        
+
         if perf {
             print_performance_breakdown(&enhanced_result, elapsed.as_millis() as u64);
         }
@@ -120,23 +121,24 @@ async fn enhance_with_additional_analyses(
         // Would integrate with duplicate detector service
         // For now, just note it in the summary
         result.summary.recommendations.push(
-            "Duplicate detection analysis requested - integrate with duplicate detector".to_string()
+            "Duplicate detection analysis requested - integrate with duplicate detector"
+                .to_string(),
         );
     }
 
     // Add defect prediction if requested
     if include_defects {
         eprintln!("🐛 Predicting defects...");
-        
+
         // Use our defect prediction facade
         use crate::services::facades::defect_prediction_facade::{
             DefectPredictionFacade, DefectPredictionRequest,
         };
         use crate::services::service_registry::ServiceRegistry;
-        
+
         let registry = Arc::new(ServiceRegistry::new());
         let facade = DefectPredictionFacade::new(registry);
-        
+
         let request = DefectPredictionRequest {
             project_path: project_path.clone(),
             confidence_threshold,
@@ -148,11 +150,11 @@ async fn enhance_with_additional_analyses(
             exclude: exclude.as_ref().map(|s| vec![s.clone()]),
             top_files,
         };
-        
+
         if let Ok(defect_result) = facade.analyze_project(request).await {
             result.summary.total_issues += defect_result.high_risk_files;
             result.summary.critical_issues += defect_result.high_risk_files;
-            
+
             if defect_result.high_risk_files > 0 {
                 result.summary.recommendations.push(format!(
                     "Focus on {} high-risk files identified by defect prediction",
@@ -172,7 +174,7 @@ fn print_performance_breakdown(result: &ComprehensiveAnalysisResult, total_ms: u
     eprintln!("  Analysis duration: {}ms", result.duration_ms);
     eprintln!("  Files analyzed: {}", result.summary.total_files);
     eprintln!("  Issues found: {}", result.summary.total_issues);
-    
+
     if result.summary.total_files > 0 {
         let ms_per_file = total_ms as f64 / result.summary.total_files as f64;
         eprintln!("  Average time per file: {:.2}ms", ms_per_file);
@@ -219,21 +221,44 @@ fn format_as_json(result: &ComprehensiveAnalysisResult) -> Result<String> {
 }
 
 /// Format as Markdown
-fn format_as_markdown(result: &ComprehensiveAnalysisResult, executive_summary: bool) -> Result<String> {
+fn format_as_markdown(
+    result: &ComprehensiveAnalysisResult,
+    executive_summary: bool,
+) -> Result<String> {
     use std::fmt::Write;
-    
+
     let mut output = String::new();
     writeln!(&mut output, "# Comprehensive Code Analysis Report\n")?;
-    
+
     if executive_summary {
         writeln!(&mut output, "## Executive Summary\n")?;
-        writeln!(&mut output, "Project analysis completed with {} total files analyzed.\n", result.summary.total_files)?;
-        writeln!(&mut output, "- **Quality Score**: {:.1}%", result.summary.quality_score)?;
-        writeln!(&mut output, "- **Total Files**: {}", result.summary.total_files)?;
-        writeln!(&mut output, "- **Total Issues**: {}", result.summary.total_issues)?;
-        writeln!(&mut output, "- **Critical Issues**: {}", result.summary.critical_issues)?;
+        writeln!(
+            &mut output,
+            "Project analysis completed with {} total files analyzed.\n",
+            result.summary.total_files
+        )?;
+        writeln!(
+            &mut output,
+            "- **Quality Score**: {:.1}%",
+            result.summary.quality_score
+        )?;
+        writeln!(
+            &mut output,
+            "- **Total Files**: {}",
+            result.summary.total_files
+        )?;
+        writeln!(
+            &mut output,
+            "- **Total Issues**: {}",
+            result.summary.total_issues
+        )?;
+        writeln!(
+            &mut output,
+            "- **Critical Issues**: {}",
+            result.summary.critical_issues
+        )?;
         writeln!(&mut output)?;
-        
+
         if !result.summary.recommendations.is_empty() {
             writeln!(&mut output, "### Key Recommendations\n")?;
             for rec in &result.summary.recommendations {
@@ -242,19 +267,37 @@ fn format_as_markdown(result: &ComprehensiveAnalysisResult, executive_summary: b
             writeln!(&mut output)?;
         }
     }
-    
+
     // Complexity section
     if let Some(complexity) = &result.complexity {
         writeln!(&mut output, "## Complexity Analysis\n")?;
-        writeln!(&mut output, "- **Files Analyzed**: {}", complexity.total_files)?;
-        writeln!(&mut output, "- **Average Complexity**: {:.1}", complexity.average_complexity)?;
-        writeln!(&mut output, "- **Max Complexity**: {}", complexity.max_complexity)?;
-        writeln!(&mut output, "- **Violations**: {}", complexity.violations.len())?;
-        
+        writeln!(
+            &mut output,
+            "- **Files Analyzed**: {}",
+            complexity.total_files
+        )?;
+        writeln!(
+            &mut output,
+            "- **Average Complexity**: {:.1}",
+            complexity.average_complexity
+        )?;
+        writeln!(
+            &mut output,
+            "- **Max Complexity**: {}",
+            complexity.max_complexity
+        )?;
+        writeln!(
+            &mut output,
+            "- **Violations**: {}",
+            complexity.violations.len()
+        )?;
+
         if !complexity.violations.is_empty() {
             writeln!(&mut output, "\n### Top Complexity Violations\n")?;
             for (i, violation) in complexity.violations.iter().take(5).enumerate() {
-                writeln!(&mut output, "{}. {} - {} (complexity: {})",
+                writeln!(
+                    &mut output,
+                    "{}. {} - {} (complexity: {})",
                     i + 1,
                     violation.file_path,
                     violation.function_name,
@@ -264,18 +307,32 @@ fn format_as_markdown(result: &ComprehensiveAnalysisResult, executive_summary: b
         }
         writeln!(&mut output)?;
     }
-    
+
     // Dead code section
     if let Some(dead_code) = &result.dead_code {
         writeln!(&mut output, "## Dead Code Analysis\n")?;
-        writeln!(&mut output, "- **Files Analyzed**: {}", dead_code.total_files)?;
-        writeln!(&mut output, "- **Dead Items**: {}", dead_code.dead_items.len())?;
-        writeln!(&mut output, "- **Dead Code %**: {:.1}%", dead_code.dead_percentage)?;
-        
+        writeln!(
+            &mut output,
+            "- **Files Analyzed**: {}",
+            dead_code.total_files
+        )?;
+        writeln!(
+            &mut output,
+            "- **Dead Items**: {}",
+            dead_code.dead_items.len()
+        )?;
+        writeln!(
+            &mut output,
+            "- **Dead Code %**: {:.1}%",
+            dead_code.dead_percentage
+        )?;
+
         if !dead_code.dead_items.is_empty() {
             writeln!(&mut output, "\n### Dead Code Items\n")?;
             for (i, item) in dead_code.dead_items.iter().take(5).enumerate() {
-                writeln!(&mut output, "{}. {} - {} ({:?})",
+                writeln!(
+                    &mut output,
+                    "{}. {} - {} ({:?})",
                     i + 1,
                     item.file_path,
                     item.item_name,
@@ -285,17 +342,19 @@ fn format_as_markdown(result: &ComprehensiveAnalysisResult, executive_summary: b
         }
         writeln!(&mut output)?;
     }
-    
+
     // SATD section
     if let Some(satd) = &result.satd {
         writeln!(&mut output, "## Technical Debt (SATD) Analysis\n")?;
         writeln!(&mut output, "- **Files Analyzed**: {}", satd.total_files)?;
         writeln!(&mut output, "- **Violations**: {}", satd.violations.len())?;
-        
+
         if !satd.violations.is_empty() {
             writeln!(&mut output, "\n### SATD Violations\n")?;
             for (i, violation) in satd.violations.iter().take(5).enumerate() {
-                writeln!(&mut output, "{}. {}:{} - {} ({:?})",
+                writeln!(
+                    &mut output,
+                    "{}. {}:{} - {} ({:?})",
                     i + 1,
                     violation.file_path,
                     violation.line_number,
@@ -306,15 +365,14 @@ fn format_as_markdown(result: &ComprehensiveAnalysisResult, executive_summary: b
         }
         writeln!(&mut output)?;
     }
-    
+
     Ok(output)
 }
-
 
 /// Format as SARIF
 fn format_as_sarif(result: &ComprehensiveAnalysisResult) -> Result<String> {
     let mut results = Vec::new();
-    
+
     // Add complexity violations as SARIF results
     if let Some(complexity) = &result.complexity {
         for violation in &complexity.violations {
@@ -339,7 +397,7 @@ fn format_as_sarif(result: &ComprehensiveAnalysisResult) -> Result<String> {
             }
         }
     }
-    
+
     // Add SATD violations
     if let Some(satd) = &result.satd {
         for violation in &satd.violations {
@@ -362,7 +420,7 @@ fn format_as_sarif(result: &ComprehensiveAnalysisResult) -> Result<String> {
             }));
         }
     }
-    
+
     let sarif = serde_json::json!({
         "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
         "version": "2.1.0",
@@ -377,7 +435,7 @@ fn format_as_sarif(result: &ComprehensiveAnalysisResult) -> Result<String> {
             "results": results
         }]
     });
-    
+
     serde_json::to_string_pretty(&sarif).map_err(Into::into)
 }
 
@@ -388,7 +446,7 @@ mod tests {
     #[test]
     fn test_format_as_json() {
         use crate::services::facades::analysis_orchestrator::AnalysisSummary;
-        
+
         let result = ComprehensiveAnalysisResult {
             complexity: None,
             dead_code: None,

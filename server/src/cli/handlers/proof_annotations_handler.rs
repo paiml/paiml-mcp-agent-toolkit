@@ -2,8 +2,8 @@
 //!
 //! Refactored handler for formal proof annotation analysis.
 
-use crate::cli::{ProofAnnotationOutputFormat, PropertyTypeFilter, VerificationMethodFilter};
 use crate::cli::proof_annotation_helpers::*;
+use crate::cli::{ProofAnnotationOutputFormat, PropertyTypeFilter, VerificationMethodFilter};
 use anyhow::Result;
 use std::path::PathBuf;
 use std::time::Instant;

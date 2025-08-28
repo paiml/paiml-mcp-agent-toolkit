@@ -138,7 +138,7 @@ impl CliTestHarness {
             .count();
         let failed = total - passed;
 
-        let mut report = format!("# CLI Functional Test Report\n\n");
+        let mut report = "# CLI Functional Test Report\n\n".to_string();
         report.push_str(&format!("Total Commands Tested: {}\n", total));
         report.push_str(&format!("✅ Passed: {}\n", passed));
         report.push_str(&format!("❌ Failed: {}\n\n", failed));
@@ -157,7 +157,7 @@ impl CliTestHarness {
                     if !result.stderr.is_empty() {
                         report.push_str(&format!("Stderr:\n```\n{}\n```\n", result.stderr));
                     }
-                    report.push_str("\n");
+                    report.push('\n');
                 }
             }
         }
@@ -169,7 +169,7 @@ impl CliTestHarness {
                 if !result.args.is_empty() {
                     report.push_str(&format!(" {}", result.args.join(" ")));
                 }
-                report.push_str("\n");
+                report.push('\n');
             }
         }
 

@@ -46,7 +46,7 @@ pub async fn handle_analyze_satd(
 
     // Format and output
     let content = format_output(&filtered_result, format, evolution, days, metrics);
-    
+
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("✅ SATD analysis written to: {}", output_path.display());
@@ -68,17 +68,21 @@ fn apply_filters(
     critical_only: bool,
 ) -> SatdAnalysisResult {
     if let Some(min_severity) = severity {
-        result.violations.retain(|v| {
-            match min_severity {
-                SatdSeverity::Critical => matches!(v.severity, crate::services::facades::satd_facade::SatdSeverity::Critical),
-                SatdSeverity::High => matches!(
-                    v.severity,
-                    crate::services::facades::satd_facade::SatdSeverity::Critical | 
-                    crate::services::facades::satd_facade::SatdSeverity::High
-                ),
-                SatdSeverity::Medium => !matches!(v.severity, crate::services::facades::satd_facade::SatdSeverity::Low),
-                SatdSeverity::Low => true,
-            }
+        result.violations.retain(|v| match min_severity {
+            SatdSeverity::Critical => matches!(
+                v.severity,
+                crate::services::facades::satd_facade::SatdSeverity::Critical
+            ),
+            SatdSeverity::High => matches!(
+                v.severity,
+                crate::services::facades::satd_facade::SatdSeverity::Critical
+                    | crate::services::facades::satd_facade::SatdSeverity::High
+            ),
+            SatdSeverity::Medium => !matches!(
+                v.severity,
+                crate::services::facades::satd_facade::SatdSeverity::Low
+            ),
+            SatdSeverity::Low => true,
         });
     }
 
@@ -86,8 +90,8 @@ fn apply_filters(
         result.violations.retain(|v| {
             matches!(
                 v.severity,
-                crate::services::facades::satd_facade::SatdSeverity::Critical |
-                crate::services::facades::satd_facade::SatdSeverity::High
+                crate::services::facades::satd_facade::SatdSeverity::Critical
+                    | crate::services::facades::satd_facade::SatdSeverity::High
             )
         });
     }
@@ -116,28 +120,59 @@ fn format_summary(result: &SatdAnalysisResult) -> String {
     let mut output = String::new();
     output.push_str("# SATD Analysis Summary\n\n");
     output.push_str(&result.summary);
-    output.push_str(&format!("\n\nTotal violations: {}\n", result.violations.len()));
-    
+    output.push_str(&format!(
+        "\n\nTotal violations: {}\n",
+        result.violations.len()
+    ));
+
     // Group by severity
-    let critical_count = result.violations.iter()
-        .filter(|v| matches!(v.severity, crate::services::facades::satd_facade::SatdSeverity::Critical))
+    let critical_count = result
+        .violations
+        .iter()
+        .filter(|v| {
+            matches!(
+                v.severity,
+                crate::services::facades::satd_facade::SatdSeverity::Critical
+            )
+        })
         .count();
-    let high_count = result.violations.iter()
-        .filter(|v| matches!(v.severity, crate::services::facades::satd_facade::SatdSeverity::High))
+    let high_count = result
+        .violations
+        .iter()
+        .filter(|v| {
+            matches!(
+                v.severity,
+                crate::services::facades::satd_facade::SatdSeverity::High
+            )
+        })
         .count();
-    let medium_count = result.violations.iter()
-        .filter(|v| matches!(v.severity, crate::services::facades::satd_facade::SatdSeverity::Medium))
+    let medium_count = result
+        .violations
+        .iter()
+        .filter(|v| {
+            matches!(
+                v.severity,
+                crate::services::facades::satd_facade::SatdSeverity::Medium
+            )
+        })
         .count();
-    let low_count = result.violations.iter()
-        .filter(|v| matches!(v.severity, crate::services::facades::satd_facade::SatdSeverity::Low))
+    let low_count = result
+        .violations
+        .iter()
+        .filter(|v| {
+            matches!(
+                v.severity,
+                crate::services::facades::satd_facade::SatdSeverity::Low
+            )
+        })
         .count();
-    
-    output.push_str(&format!("\n## Severity Distribution\n"));
+
+    output.push_str("\n## Severity Distribution\n");
     output.push_str(&format!("- Critical: {}\n", critical_count));
     output.push_str(&format!("- High: {}\n", high_count));
     output.push_str(&format!("- Medium: {}\n", medium_count));
     output.push_str(&format!("- Low: {}\n", low_count));
-    
+
     if !result.violations.is_empty() {
         output.push_str("\n## Top Violations\n");
         for (i, violation) in result.violations.iter().take(10).enumerate() {
@@ -151,7 +186,7 @@ fn format_summary(result: &SatdAnalysisResult) -> String {
             ));
         }
     }
-    
+
     output
 }
 
@@ -171,7 +206,7 @@ fn format_json(result: &SatdAnalysisResult, metrics: bool, evolution: bool) -> S
             })
         }).collect::<Vec<_>>()
     });
-    
+
     if metrics {
         json_data["metrics"] = serde_json::json!({
             "critical_count": result.violations.iter()
@@ -188,56 +223,58 @@ fn format_json(result: &SatdAnalysisResult, metrics: bool, evolution: bool) -> S
                 .count(),
         });
     }
-    
+
     if evolution {
         json_data["evolution"] = serde_json::json!({
             "message": "Evolution tracking would show SATD trends over time"
         });
     }
-    
+
     serde_json::to_string_pretty(&json_data).unwrap_or_else(|_| "{}".to_string())
 }
 
 /// Format as SARIF
 fn format_sarif(result: &SatdAnalysisResult) -> String {
-    let rules = vec![
-        serde_json::json!({
-            "id": "satd-violation",
-            "shortDescription": {
-                "text": "Self-Admitted Technical Debt"
-            },
-            "fullDescription": {
-                "text": "Code contains self-admitted technical debt that should be addressed"
-            }
-        })
-    ];
+    let rules = vec![serde_json::json!({
+        "id": "satd-violation",
+        "shortDescription": {
+            "text": "Self-Admitted Technical Debt"
+        },
+        "fullDescription": {
+            "text": "Code contains self-admitted technical debt that should be addressed"
+        }
+    })];
 
-    let results: Vec<_> = result.violations.iter().map(|violation| {
-        let level = match violation.severity {
-            crate::services::facades::satd_facade::SatdSeverity::Critical => "error",
-            crate::services::facades::satd_facade::SatdSeverity::High => "error",
-            crate::services::facades::satd_facade::SatdSeverity::Medium => "warning",
-            crate::services::facades::satd_facade::SatdSeverity::Low => "note",
-        };
-        
-        serde_json::json!({
-            "ruleId": "satd-violation",
-            "level": level,
-            "message": {
-                "text": format!("{}: {}", violation.violation_type, violation.message)
-            },
-            "locations": [{
-                "physicalLocation": {
-                    "artifactLocation": {
-                        "uri": violation.file_path.clone()
-                    },
-                    "region": {
-                        "startLine": violation.line_number
+    let results: Vec<_> = result
+        .violations
+        .iter()
+        .map(|violation| {
+            let level = match violation.severity {
+                crate::services::facades::satd_facade::SatdSeverity::Critical => "error",
+                crate::services::facades::satd_facade::SatdSeverity::High => "error",
+                crate::services::facades::satd_facade::SatdSeverity::Medium => "warning",
+                crate::services::facades::satd_facade::SatdSeverity::Low => "note",
+            };
+
+            serde_json::json!({
+                "ruleId": "satd-violation",
+                "level": level,
+                "message": {
+                    "text": format!("{}: {}", violation.violation_type, violation.message)
+                },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": violation.file_path.clone()
+                        },
+                        "region": {
+                            "startLine": violation.line_number
+                        }
                     }
-                }
-            }]
+                }]
+            })
         })
-    }).collect();
+        .collect();
 
     serde_json::json!({
         "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
@@ -262,33 +299,50 @@ fn format_markdown(result: &SatdAnalysisResult, evolution: bool, days: u32) -> S
     let mut output = String::new();
     output.push_str("# SATD Analysis Report\n\n");
     output.push_str(&format!("**Summary:** {}\n\n", result.summary));
-    
+
     output.push_str("## Metrics\n\n");
     output.push_str("| Metric | Value |\n");
     output.push_str("|--------|-------|\n");
     output.push_str(&format!("| Total Files | {} |\n", result.total_files));
-    output.push_str(&format!("| Total Violations | {} |\n", result.violations.len()));
-    
-    let critical_count = result.violations.iter()
-        .filter(|v| matches!(v.severity, crate::services::facades::satd_facade::SatdSeverity::Critical))
+    output.push_str(&format!(
+        "| Total Violations | {} |\n",
+        result.violations.len()
+    ));
+
+    let critical_count = result
+        .violations
+        .iter()
+        .filter(|v| {
+            matches!(
+                v.severity,
+                crate::services::facades::satd_facade::SatdSeverity::Critical
+            )
+        })
         .count();
-    let high_count = result.violations.iter()
-        .filter(|v| matches!(v.severity, crate::services::facades::satd_facade::SatdSeverity::High))
+    let high_count = result
+        .violations
+        .iter()
+        .filter(|v| {
+            matches!(
+                v.severity,
+                crate::services::facades::satd_facade::SatdSeverity::High
+            )
+        })
         .count();
-    
+
     output.push_str(&format!("| Critical Violations | {} |\n", critical_count));
     output.push_str(&format!("| High Violations | {} |\n\n", high_count));
-    
+
     if evolution {
         output.push_str(&format!("## Evolution (Last {} Days)\n\n", days));
         output.push_str("*Evolution tracking would show SATD trends over time*\n\n");
     }
-    
+
     if !result.violations.is_empty() {
         output.push_str("## Violations\n\n");
         output.push_str("| File | Line | Type | Severity | Message |\n");
         output.push_str("|------|------|------|----------|----------|\n");
-        
+
         for violation in &result.violations {
             output.push_str(&format!(
                 "| {} | {} | {} | {:?} | {} |\n",
@@ -300,7 +354,7 @@ fn format_markdown(result: &SatdAnalysisResult, evolution: bool, days: u32) -> S
             ));
         }
     }
-    
+
     output
 }
 
@@ -309,17 +363,31 @@ fn print_metrics(result: &SatdAnalysisResult) {
     eprintln!("\n📊 SATD Metrics:");
     eprintln!("  Total files analyzed: {}", result.total_files);
     eprintln!("  Total violations: {}", result.violations.len());
-    
-    let critical_count = result.violations.iter()
-        .filter(|v| matches!(v.severity, crate::services::facades::satd_facade::SatdSeverity::Critical))
+
+    let critical_count = result
+        .violations
+        .iter()
+        .filter(|v| {
+            matches!(
+                v.severity,
+                crate::services::facades::satd_facade::SatdSeverity::Critical
+            )
+        })
         .count();
-    let high_count = result.violations.iter()
-        .filter(|v| matches!(v.severity, crate::services::facades::satd_facade::SatdSeverity::High))
+    let high_count = result
+        .violations
+        .iter()
+        .filter(|v| {
+            matches!(
+                v.severity,
+                crate::services::facades::satd_facade::SatdSeverity::High
+            )
+        })
         .count();
-    
+
     eprintln!("  Critical violations: {}", critical_count);
     eprintln!("  High violations: {}", high_count);
-    
+
     if !result.violations.is_empty() {
         eprintln!("\n  Top violation types:");
         use std::collections::HashMap;
@@ -327,10 +395,10 @@ fn print_metrics(result: &SatdAnalysisResult) {
         for violation in &result.violations {
             *type_counts.entry(&violation.violation_type).or_insert(0) += 1;
         }
-        
+
         let mut sorted_types: Vec<_> = type_counts.iter().collect();
         sorted_types.sort_by(|a, b| b.1.cmp(a.1));
-        
+
         for (violation_type, count) in sorted_types.iter().take(5) {
             eprintln!("    - {}: {}", violation_type, count);
         }
@@ -340,21 +408,19 @@ fn print_metrics(result: &SatdAnalysisResult) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::facades::satd_facade::{SatdViolation, SatdSeverity as FacadeSeverity};
+    use crate::services::facades::satd_facade::{SatdSeverity as FacadeSeverity, SatdViolation};
 
     #[test]
     fn test_format_summary() {
         let result = SatdAnalysisResult {
             total_files: 10,
-            violations: vec![
-                SatdViolation {
-                    file_path: "test.rs".to_string(),
-                    line_number: 42,
-                    violation_type: "TODO".to_string(),
-                    message: "Implement feature".to_string(),
-                    severity: FacadeSeverity::Medium,
-                }
-            ],
+            violations: vec![SatdViolation {
+                file_path: "test.rs".to_string(),
+                line_number: 42,
+                violation_type: "TODO".to_string(),
+                message: "Implement feature".to_string(),
+                severity: FacadeSeverity::Medium,
+            }],
             summary: "Test summary".to_string(),
         };
 

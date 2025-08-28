@@ -1,8 +1,7 @@
 #![cfg(feature = "demo")]
 
-use pmat::demo::server::{EnhancedHotspot, LanguageStats};
+use pmat::demo::server::EnhancedHotspot;
 use pmat::demo::{DemoContent, LocalDemoServer};
-use pmat::services::recommendation_engine::RepositoryRecommendation;
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::timeout;
