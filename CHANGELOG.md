@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.25.0] - 2025-08-29
+
+### Changed
+- **Sprint 12**: Code organization and clarity improvements
+  - Renamed misleading `stubs.rs` to `analysis_utilities.rs`
+  - Updated all imports and references throughout codebase
+  - Improved naming to reflect actual purpose (utilities, not stubs)
+  - Enhanced code maintainability and developer understanding
+
+### Technical Improvements
+- Better module naming following Toyota Way clarity principles
+- Reduced confusion from misleading file names
+- Maintained all functionality while improving organization
+- Zero functional changes, pure refactoring for clarity
+
 ## [2.24.0] - 2025-08-29
 
 ### Changed
