@@ -472,7 +472,9 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             perf,
             top_files,
         } => {
-            super::defect_prediction_handler::handle_analyze_defect_prediction(
+            use super::defect_prediction_handler::DefectPredictionConfig;
+            
+            let config = DefectPredictionConfig {
                 project_path,
                 confidence_threshold,
                 min_lines,
@@ -485,8 +487,9 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 output,
                 perf,
                 top_files,
-            )
-            .await
+            };
+            
+            super::defect_prediction_handler::handle_analyze_defect_prediction(config).await
         }
         AnalyzeCommands::Comprehensive {
             project_path,

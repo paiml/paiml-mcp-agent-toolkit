@@ -152,7 +152,7 @@ pub enum QualityMonitorCommand {
     },
     GetStatus {
         project_id: String,
-        response_tx: oneshot::Sender<Option<ProjectAnalysisResult>>,
+        response_tx: Box<oneshot::Sender<Option<ProjectAnalysisResult>>>,
     },
     Shutdown,
 }
@@ -762,7 +762,7 @@ impl ClaudeCodeAgentMcpServer {
                 let (tx, rx) = oneshot::channel();
                 let command = QualityMonitorCommand::GetStatus {
                     project_id: project_id.to_string(),
-                    response_tx: tx,
+                    response_tx: Box::new(tx),
                 };
 
                 if monitor.send(command).await.is_ok() {
@@ -1084,9 +1084,9 @@ impl ClaudeCodeAgentMcpServer {
 
                     // Get the latest analysis result for this project
                     if let Some(project) = self.monitored_projects.get(&project_id) {
-                        let _ = response_tx.send(project.last_analysis.clone());
+                        let _ = (*response_tx).send(project.last_analysis.clone());
                     } else {
-                        let _ = response_tx.send(None);
+                        let _ = (*response_tx).send(None);
                     }
                 }
                 QualityMonitorCommand::Shutdown => {
