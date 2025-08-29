@@ -233,7 +233,7 @@ fn find_similar_names(
     fuzzy: bool,
     case_sensitive: bool,
 ) -> Result<Vec<NameMatch>> {
-    use crate::cli::stubs::{calculate_edit_distance, calculate_soundex};
+    use crate::cli::analysis_utilities::{calculate_edit_distance, calculate_soundex};
 
     let mut matches = Vec::new();
     let query_lower = if case_sensitive {

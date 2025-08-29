@@ -23,7 +23,7 @@ pub mod name_similarity_helpers;
 pub mod proof_annotation_formatter;
 pub mod proof_annotation_helpers;
 pub mod provability_helpers;
-pub mod stubs;
+pub mod analysis_utilities;
 pub mod symbol_table_helpers;
 pub mod tdg_helpers;
 
@@ -674,4 +674,4 @@ pub async fn handle_analyze_comprehensive(
 }
 
 #[cfg(test)]
-mod stubs_property_tests;
+mod analysis_utilities_property_tests;

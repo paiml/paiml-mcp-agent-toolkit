@@ -75,7 +75,7 @@ pub fn extract_all_identifiers(
 ) -> Vec<NameInfo> {
     let mut all_names = Vec::new();
     for (_file_path, content) in analyzed_files {
-        let names = super::stubs::extract_identifiers(content);
+        let names = super::analysis_utilities::extract_identifiers(content);
         all_names.extend(names);
     }
     all_names
@@ -126,10 +126,10 @@ pub fn calculate_similarities(
 
 /// Calculate combined similarity score
 fn calculate_combined_similarity(query: &str, name: &str, fuzzy: bool, phonetic: bool) -> f32 {
-    let mut score = super::stubs::calculate_string_similarity(query, name);
+    let mut score = super::analysis_utilities::calculate_string_similarity(query, name);
 
     if fuzzy {
-        let edit_distance = super::stubs::calculate_edit_distance(query, name);
+        let edit_distance = super::analysis_utilities::calculate_edit_distance(query, name);
         let max_len = query.len().max(name.len()) as f32;
         let fuzzy_score = if max_len > 0.0 {
             1.0 - (edit_distance as f32 / max_len)
@@ -140,8 +140,8 @@ fn calculate_combined_similarity(query: &str, name: &str, fuzzy: bool, phonetic:
     }
 
     if phonetic {
-        let query_soundex = super::stubs::calculate_soundex(query);
-        let name_soundex = super::stubs::calculate_soundex(name);
+        let query_soundex = super::analysis_utilities::calculate_soundex(query);
+        let name_soundex = super::analysis_utilities::calculate_soundex(name);
         if query_soundex == name_soundex {
             score = score.max(0.8);
         }

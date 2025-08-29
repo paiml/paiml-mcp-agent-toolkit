@@ -55,7 +55,7 @@ impl ComplexityConfig {
     fn detect_toolchain(&self) -> Option<String> {
         self.toolchain
             .clone()
-            .or_else(|| super::super::stubs::detect_toolchain(&self.project_path))
+            .or_else(|| super::super::analysis_utilities::detect_toolchain(&self.project_path))
     }
 }
 
@@ -137,7 +137,7 @@ async fn analyze_project(
     match detected_toolchain {
         Some(ref toolchain) => {
             eprintln!("🔍 Analyzing {} project complexity...", toolchain);
-            super::super::stubs::analyze_project_files(
+            super::super::analysis_utilities::analyze_project_files(
                 &config.project_path,
                 Some(toolchain),
                 &config.include,
@@ -149,7 +149,7 @@ async fn analyze_project(
         None => {
             // No specific toolchain detected - analyze all supported file types
             eprintln!("🔍 Analyzing project complexity (multi-language)...");
-            super::super::stubs::analyze_project_files(
+            super::super::analysis_utilities::analyze_project_files(
                 &config.project_path,
                 None, // This will trigger analysis of all supported languages
                 &config.include,
@@ -824,13 +824,13 @@ pub async fn handle_analyze_churn(
     // Format output based on requested format
     let content = match format {
         ChurnOutputFormat::Json => serde_json::to_string_pretty(&analysis)?,
-        ChurnOutputFormat::Summary => super::super::stubs::format_churn_as_summary(&analysis)?,
-        ChurnOutputFormat::Markdown => super::super::stubs::format_churn_as_markdown(&analysis)?,
-        ChurnOutputFormat::Csv => super::super::stubs::format_churn_as_csv(&analysis)?,
+        ChurnOutputFormat::Summary => super::super::analysis_utilities::format_churn_as_summary(&analysis)?,
+        ChurnOutputFormat::Markdown => super::super::analysis_utilities::format_churn_as_markdown(&analysis)?,
+        ChurnOutputFormat::Csv => super::super::analysis_utilities::format_churn_as_csv(&analysis)?,
     };
 
     // Write output
-    super::super::stubs::write_churn_output(content, output).await?;
+    super::super::analysis_utilities::write_churn_output(content, output).await?;
     Ok(())
 }
 
