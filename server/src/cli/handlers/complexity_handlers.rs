@@ -673,7 +673,7 @@ fn get_changed_paths(event: &Event) -> Option<&Vec<PathBuf>> {
 /// Format and output complexity results in watch mode
 async fn format_and_output_watch_results(
     summary: crate::services::complexity::ComplexityReport,
-    file_metrics: Vec<crate::services::complexity::FileComplexityMetrics>,
+    _file_metrics: Vec<crate::services::complexity::FileComplexityMetrics>,
     format: ComplexityOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
