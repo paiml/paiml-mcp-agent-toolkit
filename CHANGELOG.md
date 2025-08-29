@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.33.0] - 2025-08-29
+
+### Changed
+- **Sprint 20**: Fix various clippy warnings and code quality issues
+  - Fixed unused field warning by prefixing with underscore
+  - Replaced manual clamp pattern with `clamp()` method
+  - Fixed &PathBuf vs &Path in analysis_service.rs
+  - Boxed large enum variant to reduce size difference
+  - Created DefectPredictionConfig struct (12 → 1 argument)
+  - Reduced total clippy warnings from 31 to 26 (16% reduction)
+
+### Technical Improvements
+- Better memory efficiency with boxed large enum variants
+- Cleaner code with idiomatic Rust patterns (clamp method)
+- Consistent use of &Path instead of &PathBuf in service layer
+- Reduced function complexity through configuration structs
+
 ## [2.32.0] - 2025-08-29
 
 ### Changed

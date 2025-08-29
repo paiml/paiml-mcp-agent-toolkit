@@ -11,25 +11,29 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+/// Configuration for defect prediction analysis
+#[derive(Debug, Clone)]
+pub struct DefectPredictionConfig {
+    pub project_path: PathBuf,
+    pub confidence_threshold: f32,
+    pub min_lines: usize,
+    pub include_low_confidence: bool,
+    pub format: DefectPredictionOutputFormat,
+    pub high_risk_only: bool,
+    pub include_recommendations: bool,
+    pub include: Option<String>,
+    pub exclude: Option<String>,
+    pub output: Option<PathBuf>,
+    pub perf: bool,
+    pub top_files: usize,
+}
+
 /// Refactored handler for defect prediction analysis using the facade pattern.
 ///
 /// This reduces complexity from 23 to ~8 by delegating to the facade service.
-pub async fn handle_analyze_defect_prediction(
-    project_path: PathBuf,
-    confidence_threshold: f32,
-    min_lines: usize,
-    include_low_confidence: bool,
-    format: DefectPredictionOutputFormat,
-    high_risk_only: bool,
-    include_recommendations: bool,
-    include: Option<String>,
-    exclude: Option<String>,
-    output: Option<PathBuf>,
-    _perf: bool,
-    top_files: usize,
-) -> Result<()> {
+pub async fn handle_analyze_defect_prediction(config: DefectPredictionConfig) -> Result<()> {
     // Print analysis header
-    print_analysis_header(&project_path, high_risk_only, include_low_confidence);
+    print_analysis_header(&config.project_path, config.high_risk_only, config.include_low_confidence);
 
     // Create service registry and facade
     let registry = Arc::new(ServiceRegistry::new());
@@ -37,22 +41,22 @@ pub async fn handle_analyze_defect_prediction(
 
     // Build analysis request
     let request = DefectPredictionRequest {
-        project_path: project_path.clone(),
-        confidence_threshold,
-        min_lines,
-        include_low_confidence,
-        high_risk_only,
-        include_recommendations,
-        include: include.map(|s| vec![s]),
-        exclude: exclude.map(|s| vec![s]),
-        top_files,
+        project_path: config.project_path.clone(),
+        confidence_threshold: config.confidence_threshold,
+        min_lines: config.min_lines,
+        include_low_confidence: config.include_low_confidence,
+        high_risk_only: config.high_risk_only,
+        include_recommendations: config.include_recommendations,
+        include: config.include.map(|s| vec![s]),
+        exclude: config.exclude.map(|s| vec![s]),
+        top_files: config.top_files,
     };
 
     // Perform analysis using facade
     let result = facade.analyze_project(request).await?;
 
     // Format and output results
-    output_results(result, format, output).await?;
+    output_results(result, config.format, config.output).await?;
 
     eprintln!("✅ Defect prediction analysis complete");
     Ok(())

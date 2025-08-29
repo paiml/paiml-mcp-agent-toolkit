@@ -14,7 +14,7 @@ use tracing::{error, info, warn};
 /// Configuration for starting the agent daemon
 #[derive(Debug, Clone)]
 struct AgentStartConfig {
-    project_path: PathBuf,
+    _project_path: PathBuf,
     config_path: Option<PathBuf>,
     working_dir: Option<PathBuf>,
     pid_file: Option<PathBuf>,
@@ -40,7 +40,7 @@ pub async fn handle_agent_command(command: AgentCommands) -> Result<()> {
             no_auto_restart,
         } => {
             let start_config = AgentStartConfig {
-                project_path,
+                _project_path: project_path,
                 config_path: config,
                 working_dir,
                 pid_file,
