@@ -1671,17 +1671,29 @@ async fn handle_analyze_defect_probability(
                 .to_string_lossy()
                 .to_string();
 
-            // Simple metrics for demonstration
+            // Calculate actual metrics for the file
+            let content = tokio::fs::read_to_string(&path).await.unwrap_or_default();
+            let lines_of_code = content.lines().count();
+            
+            // Calculate basic complexity (count control flow keywords)
+            let control_flow_keywords = ["if", "else", "for", "while", "match", "loop", "?"];
+            let cyclomatic_complexity = control_flow_keywords.iter()
+                .map(|kw| content.matches(kw).count() as u32)
+                .sum::<u32>() + 1;
+            
+            // Cognitive complexity is typically higher than cyclomatic
+            let cognitive_complexity = (cyclomatic_complexity as f32 * 1.5) as u32;
+            
             let metrics = FileMetrics {
                 file_path: relative_path,
-                churn_score: 0.1, // Placeholder
-                complexity: 5.0,  // Placeholder
-                duplicate_ratio: 0.0,
-                afferent_coupling: 1.0,
-                efferent_coupling: 2.0,
-                lines_of_code: 100, // Placeholder
-                cyclomatic_complexity: 5,
-                cognitive_complexity: 8,
+                churn_score: 0.1, // Would need git history
+                complexity: cyclomatic_complexity as f32,
+                duplicate_ratio: 0.0, // Would need duplicate detection
+                afferent_coupling: 1.0, // Would need dependency analysis
+                efferent_coupling: 2.0, // Would need dependency analysis
+                lines_of_code,
+                cyclomatic_complexity,
+                cognitive_complexity,
             };
 
             file_metrics.push(metrics);
