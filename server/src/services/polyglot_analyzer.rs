@@ -323,101 +323,89 @@ impl PolyglotAnalyzer {
         Ok(())
     }
 
+    // Helper function to check frameworks in content
+    fn check_frameworks(content: &str, framework_map: &[(&str, &str)]) -> Vec<String> {
+        framework_map
+            .iter()
+            .filter(|(search_term, _)| content.contains(search_term))
+            .map(|(_, name)| name.to_string())
+            .collect()
+    }
+
     async fn detect_language_frameworks(
         &self,
         project_path: &Path,
         language: &str,
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-        let mut frameworks = Vec::new();
-
         match language {
-            "rust" => {
-                if let Ok(cargo_toml) = std::fs::read_to_string(project_path.join("Cargo.toml")) {
-                    if cargo_toml.contains("tokio") {
-                        frameworks.push("Tokio".to_string());
-                    }
-                    if cargo_toml.contains("actix-web") {
-                        frameworks.push("Actix Web".to_string());
-                    }
-                    if cargo_toml.contains("axum") {
-                        frameworks.push("Axum".to_string());
-                    }
-                    if cargo_toml.contains("diesel") {
-                        frameworks.push("Diesel".to_string());
-                    }
-                    if cargo_toml.contains("serde") {
-                        frameworks.push("Serde".to_string());
-                    }
-                    if cargo_toml.contains("clap") {
-                        frameworks.push("Clap".to_string());
-                    }
-                }
-            }
-            "python" => {
-                // Check for common Python frameworks
-                if project_path.join("requirements.txt").exists() {
-                    if let Ok(reqs) = std::fs::read_to_string(project_path.join("requirements.txt"))
-                    {
-                        if reqs.contains("django") {
-                            frameworks.push("Django".to_string());
-                        }
-                        if reqs.contains("flask") {
-                            frameworks.push("Flask".to_string());
-                        }
-                        if reqs.contains("fastapi") {
-                            frameworks.push("FastAPI".to_string());
-                        }
-                        if reqs.contains("pandas") {
-                            frameworks.push("Pandas".to_string());
-                        }
-                        if reqs.contains("numpy") {
-                            frameworks.push("NumPy".to_string());
-                        }
-                    }
-                }
-                if project_path.join("pyproject.toml").exists() {
-                    if let Ok(pyproject) =
-                        std::fs::read_to_string(project_path.join("pyproject.toml"))
-                    {
-                        if pyproject.contains("django") {
-                            frameworks.push("Django".to_string());
-                        }
-                        if pyproject.contains("flask") {
-                            frameworks.push("Flask".to_string());
-                        }
-                        if pyproject.contains("fastapi") {
-                            frameworks.push("FastAPI".to_string());
-                        }
-                    }
-                }
-            }
-            "typescript" | "javascript" => {
-                if let Ok(package_json) = std::fs::read_to_string(project_path.join("package.json"))
-                {
-                    if package_json.contains("react") {
-                        frameworks.push("React".to_string());
-                    }
-                    if package_json.contains("vue") {
-                        frameworks.push("Vue.js".to_string());
-                    }
-                    if package_json.contains("angular") {
-                        frameworks.push("Angular".to_string());
-                    }
-                    if package_json.contains("express") {
-                        frameworks.push("Express.js".to_string());
-                    }
-                    if package_json.contains("next") {
-                        frameworks.push("Next.js".to_string());
-                    }
-                    if package_json.contains("svelte") {
-                        frameworks.push("Svelte".to_string());
-                    }
-                }
-            }
-            _ => {}
+            "rust" => self.detect_rust_frameworks(project_path).await,
+            "python" => self.detect_python_frameworks(project_path).await,
+            "typescript" | "javascript" => self.detect_js_frameworks(project_path).await,
+            _ => Ok(Vec::new()),
         }
+    }
 
+    async fn detect_rust_frameworks(&self, project_path: &Path) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        let frameworks_map = [
+            ("tokio", "Tokio"),
+            ("actix-web", "Actix Web"),
+            ("axum", "Axum"),
+            ("diesel", "Diesel"),
+            ("serde", "Serde"),
+            ("clap", "Clap"),
+        ];
+        
+        if let Ok(cargo_toml) = std::fs::read_to_string(project_path.join("Cargo.toml")) {
+            Ok(Self::check_frameworks(&cargo_toml, &frameworks_map))
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    async fn detect_python_frameworks(&self, project_path: &Path) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        let frameworks_map = [
+            ("django", "Django"),
+            ("flask", "Flask"),
+            ("fastapi", "FastAPI"),
+            ("pandas", "Pandas"),
+            ("numpy", "NumPy"),
+        ];
+        
+        let mut frameworks = Vec::new();
+        
+        // Check requirements.txt
+        if let Ok(reqs) = std::fs::read_to_string(project_path.join("requirements.txt")) {
+            frameworks.extend(Self::check_frameworks(&reqs, &frameworks_map));
+        }
+        
+        // Check pyproject.toml (only for web frameworks to avoid duplicates)
+        if let Ok(pyproject) = std::fs::read_to_string(project_path.join("pyproject.toml")) {
+            let web_frameworks = &frameworks_map[..3]; // Only Django, Flask, FastAPI
+            for framework in Self::check_frameworks(&pyproject, web_frameworks) {
+                if !frameworks.contains(&framework) {
+                    frameworks.push(framework);
+                }
+            }
+        }
+        
         Ok(frameworks)
+    }
+
+    async fn detect_js_frameworks(&self, project_path: &Path) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        let frameworks_map = [
+            ("react", "React"),
+            ("vue", "Vue.js"),
+            ("angular", "Angular"),
+            ("express", "Express.js"),
+            ("next", "Next.js"),
+            ("svelte", "Svelte"),
+        ];
+        
+        if let Ok(package_json) = std::fs::read_to_string(project_path.join("package.json")) {
+            Ok(Self::check_frameworks(&package_json, &frameworks_map))
+        } else {
+            Ok(Vec::new())
+        }
     }
 
     async fn calculate_language_stats(
@@ -809,84 +797,52 @@ impl PolyglotAnalyzer {
         }
     }
 
+    // Helper to check if any directory contains specified patterns
+    fn has_directory_pattern(directories: &[String], patterns: &[&str]) -> bool {
+        directories.iter().any(|d| patterns.iter().any(|p| d.contains(p)))
+    }
+
     async fn analyze_architecture_indicators(
         &self,
         project_path: &Path,
     ) -> Result<ArchitectureIndicators, Box<dyn std::error::Error>> {
-        let mut indicators = ArchitectureIndicators {
-            has_microservice_indicators: false,
-            has_layered_indicators: false,
-            has_event_indicators: false,
-            has_plugin_indicators: false,
-            directory_structure: Vec::new(),
-            config_files: Vec::new(),
-        };
-
         // Analyze directory structure
-        indicators.directory_structure = self.analyze_directory_structure(project_path).await?;
-
+        let directory_structure = self.analyze_directory_structure(project_path).await?;
+        
         // Check for microservice indicators
-        if project_path.join("docker-compose.yml").exists()
-            || project_path.join("docker-compose.yaml").exists()
-            || project_path.join("kubernetes").exists()
-            || project_path.join("k8s").exists()
-        {
-            indicators.has_microservice_indicators = true;
-        }
+        let microservice_files = ["docker-compose.yml", "docker-compose.yaml", "kubernetes", "k8s"];
+        let has_microservice_indicators = microservice_files
+            .iter()
+            .any(|file| project_path.join(file).exists());
 
         // Check for layered architecture indicators
-        let has_controller = indicators
-            .directory_structure
-            .iter()
-            .any(|d| d.contains("controller"));
-        let has_service = indicators
-            .directory_structure
-            .iter()
-            .any(|d| d.contains("service"));
-        let has_repository = indicators
-            .directory_structure
-            .iter()
-            .any(|d| d.contains("repository") || d.contains("dao"));
-        let has_model = indicators
-            .directory_structure
-            .iter()
-            .any(|d| d.contains("model") || d.contains("entity"));
-
-        if (has_controller && has_service)
-            || (has_service && has_repository)
-            || (has_model && has_service)
-        {
-            indicators.has_layered_indicators = true;
-        }
-
+        let has_layered_indicators = self.check_layered_architecture(&directory_structure);
+        
         // Check for event-driven indicators
-        let has_event = indicators
-            .directory_structure
-            .iter()
-            .any(|d| d.contains("event"));
-        let has_message = indicators
-            .directory_structure
-            .iter()
-            .any(|d| d.contains("message") || d.contains("msg"));
-        let has_queue = indicators
-            .directory_structure
-            .iter()
-            .any(|d| d.contains("queue"));
-
-        if has_event || has_message || has_queue {
-            indicators.has_event_indicators = true;
-        }
-
+        let event_patterns = ["event", "message", "msg", "queue"];
+        let has_event_indicators = Self::has_directory_pattern(&directory_structure, &event_patterns);
+        
         // Check for plugin architecture indicators
-        let has_plugin = indicators
-            .directory_structure
-            .iter()
-            .any(|d| d.contains("plugin") || d.contains("extension"));
-        if has_plugin {
-            indicators.has_plugin_indicators = true;
-        }
+        let plugin_patterns = ["plugin", "extension"];
+        let has_plugin_indicators = Self::has_directory_pattern(&directory_structure, &plugin_patterns);
 
-        Ok(indicators)
+        Ok(ArchitectureIndicators {
+            has_microservice_indicators,
+            has_layered_indicators,
+            has_event_indicators,
+            has_plugin_indicators,
+            directory_structure,
+            config_files: Vec::new(),
+        })
+    }
+    
+    fn check_layered_architecture(&self, directories: &[String]) -> bool {
+        let has_controller = Self::has_directory_pattern(directories, &["controller"]);
+        let has_service = Self::has_directory_pattern(directories, &["service"]);
+        let has_repository = Self::has_directory_pattern(directories, &["repository", "dao"]);
+        let has_model = Self::has_directory_pattern(directories, &["model", "entity"]);
+        
+        (has_controller && has_service) || (has_service && has_repository) || (has_model && has_service)
     }
 
     async fn analyze_directory_structure(
