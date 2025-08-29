@@ -9,34 +9,38 @@ use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+/// Configuration for SATD analysis
+#[derive(Debug, Clone)]
+pub struct SatdAnalysisConfig {
+    pub path: PathBuf,
+    pub format: SatdOutputFormat,
+    pub severity: Option<SatdSeverity>,
+    pub critical_only: bool,
+    pub include_tests: bool,
+    pub strict: bool,
+    pub evolution: bool,
+    pub days: u32,
+    pub metrics: bool,
+    pub output: Option<PathBuf>,
+    pub top_files: usize,
+    pub fail_on_violation: bool,
+    pub timeout: u64,
+    pub include: Vec<String>,
+    pub exclude: Vec<String>,
+}
+
 /// Refactored handler for SATD analysis using the facade pattern.
-pub async fn handle_analyze_satd(
-    path: PathBuf,
-    format: SatdOutputFormat,
-    severity: Option<SatdSeverity>,
-    critical_only: bool,
-    include_tests: bool,
-    strict: bool,
-    evolution: bool,
-    days: u32,
-    metrics: bool,
-    output: Option<PathBuf>,
-    _top_files: usize,
-    _fail_on_violation: bool,
-    _timeout: u64,
-    include: Vec<String>,
-    exclude: Vec<String>,
-) -> Result<()> {
+pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
     eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
 
     // Apply include/exclude filters if specified
-    if !include.is_empty() || !exclude.is_empty() {
+    if !config.include.is_empty() || !config.exclude.is_empty() {
         eprintln!("🔍 Applying file filters...");
-        if !include.is_empty() {
-            eprintln!("  Include patterns: {:?}", include);
+        if !config.include.is_empty() {
+            eprintln!("  Include patterns: {:?}", config.include);
         }
-        if !exclude.is_empty() {
-            eprintln!("  Exclude patterns: {:?}", exclude);
+        if !config.exclude.is_empty() {
+            eprintln!("  Exclude patterns: {:?}", config.exclude);
         }
     }
 
@@ -46,18 +50,18 @@ pub async fn handle_analyze_satd(
 
     // Build analysis request
     let request = SatdAnalysisRequest {
-        path,
-        strict_mode: strict,
-        include_tests,
+        path: config.path.clone(),
+        strict_mode: config.strict,
+        include_tests: config.include_tests,
     };
 
     // Perform analysis
     let mut result = facade.analyze_project(request).await?;
 
     // Apply file filter to results if filters are specified
-    if !include.is_empty() || !exclude.is_empty() {
+    if !config.include.is_empty() || !config.exclude.is_empty() {
         use crate::utils::file_filter::FileFilter;
-        let filter = FileFilter::new(include, exclude)?;
+        let filter = FileFilter::new(config.include.clone(), config.exclude.clone())?;
 
         if filter.has_filters() {
             result.violations.retain(|violation| {
@@ -73,19 +77,25 @@ pub async fn handle_analyze_satd(
     }
 
     // Apply filters
-    let filtered_result = apply_filters(result, severity, critical_only);
+    let filtered_result = apply_filters(result, config.severity, config.critical_only);
 
     // Format and output
-    let content = format_output(&filtered_result, format, evolution, days, metrics);
+    let content = format_output(
+        &filtered_result,
+        config.format,
+        config.evolution,
+        config.days,
+        config.metrics,
+    );
 
-    if let Some(output_path) = output {
+    if let Some(output_path) = config.output {
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("✅ SATD analysis written to: {}", output_path.display());
     } else {
         println!("{}", content);
     }
 
-    if metrics {
+    if config.metrics {
         print_metrics(&filtered_result);
     }
 

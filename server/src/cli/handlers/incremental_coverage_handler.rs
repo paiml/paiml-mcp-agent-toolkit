@@ -11,29 +11,33 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+/// Configuration for incremental coverage analysis
+#[derive(Debug, Clone)]
+pub struct IncrementalCoverageConfig {
+    pub project_path: PathBuf,
+    pub base_branch: String,
+    pub target_branch: Option<String>,
+    pub format: IncrementalCoverageOutputFormat,
+    pub coverage_threshold: f64,
+    pub changed_files_only: bool,
+    pub detailed: bool,
+    pub output: Option<PathBuf>,
+    pub perf: bool,
+    pub cache_dir: Option<PathBuf>,
+    pub force_refresh: bool,
+    pub top_files: usize,
+}
+
 /// Refactored handler for incremental coverage analysis using the facade pattern.
 ///
 /// This reduces complexity from 26 to ~8 by delegating to the facade service.
-pub async fn handle_analyze_incremental_coverage(
-    project_path: PathBuf,
-    base_branch: String,
-    target_branch: Option<String>,
-    format: IncrementalCoverageOutputFormat,
-    coverage_threshold: f64,
-    changed_files_only: bool,
-    detailed: bool,
-    output: Option<PathBuf>,
-    _perf: bool,
-    cache_dir: Option<PathBuf>,
-    force_refresh: bool,
-    top_files: usize,
-) -> Result<()> {
+pub async fn handle_analyze_incremental_coverage(config: IncrementalCoverageConfig) -> Result<()> {
     // Print analysis header
     print_analysis_header(
-        &project_path,
-        &base_branch,
-        &target_branch,
-        coverage_threshold,
+        &config.project_path,
+        &config.base_branch,
+        &config.target_branch,
+        config.coverage_threshold,
     );
 
     // Create service registry and facade
@@ -42,22 +46,22 @@ pub async fn handle_analyze_incremental_coverage(
 
     // Build analysis request
     let request = IncrementalCoverageRequest {
-        project_path,
-        base_branch: base_branch.clone(),
-        target_branch: target_branch.clone(),
-        coverage_threshold,
-        changed_files_only,
-        detailed,
-        cache_dir,
-        force_refresh,
-        top_files,
+        project_path: config.project_path.clone(),
+        base_branch: config.base_branch.clone(),
+        target_branch: config.target_branch.clone(),
+        coverage_threshold: config.coverage_threshold,
+        changed_files_only: config.changed_files_only,
+        detailed: config.detailed,
+        cache_dir: config.cache_dir.clone(),
+        force_refresh: config.force_refresh,
+        top_files: config.top_files,
     };
 
     // Perform analysis using facade
     let result = facade.analyze_project(request).await?;
 
     // Format and output results
-    output_results(result, format, output, top_files).await?;
+    output_results(result, config.format, config.output, config.top_files).await?;
 
     eprintln!("✅ Incremental coverage analysis complete");
     Ok(())
