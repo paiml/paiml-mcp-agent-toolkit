@@ -11,42 +11,50 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+/// Configuration for comprehensive analysis
+#[derive(Debug, Clone)]
+pub struct ComprehensiveAnalysisConfig {
+    pub project_path: PathBuf,
+    pub file: Option<PathBuf>,
+    pub files: Vec<PathBuf>,
+    pub format: ComprehensiveOutputFormat,
+    pub include_duplicates: bool,
+    pub include_dead_code: bool,
+    pub include_defects: bool,
+    pub include_complexity: bool,
+    pub include_tdg: bool,
+    pub confidence_threshold: f32,
+    pub min_lines: usize,
+    pub include: Option<String>,
+    pub exclude: Option<String>,
+    pub output: Option<PathBuf>,
+    pub perf: bool,
+    pub executive_summary: bool,
+    pub top_files: usize,
+}
+
 /// Refactored handler for comprehensive analysis using the orchestrator facade.
-pub async fn handle_analyze_comprehensive(
-    project_path: PathBuf,
-    file: Option<PathBuf>,
-    files: Vec<PathBuf>,
-    format: ComprehensiveOutputFormat,
-    include_duplicates: bool,
-    include_dead_code: bool,
-    include_defects: bool,
-    include_complexity: bool,
-    include_tdg: bool,
-    confidence_threshold: f32,
-    min_lines: usize,
-    include: Option<String>,
-    exclude: Option<String>,
-    output: Option<PathBuf>,
-    perf: bool,
-    executive_summary: bool,
-    top_files: usize,
-) -> Result<()> {
+pub async fn handle_analyze_comprehensive(config: ComprehensiveAnalysisConfig) -> Result<()> {
     use std::time::Instant;
 
     eprintln!("🔍 Running comprehensive analysis...");
-    let start = if perf { Some(Instant::now()) } else { None };
+    let start = if config.perf {
+        Some(Instant::now())
+    } else {
+        None
+    };
 
     // Determine the path to analyze
-    let analysis_path = if let Some(single_file) = file {
+    let analysis_path = if let Some(single_file) = config.file.clone() {
         // Single file analysis
         single_file
-    } else if !files.is_empty() {
+    } else if !config.files.is_empty() {
         // Multiple files - analyze the common parent directory
         // For now, just use the project path
-        project_path.clone()
+        config.project_path.clone()
     } else {
         // Full project analysis
-        project_path.clone()
+        config.project_path.clone()
     };
 
     // Create service registry and orchestrator
@@ -56,9 +64,9 @@ pub async fn handle_analyze_comprehensive(
     // Build analysis request
     let request = ComprehensiveAnalysisRequest {
         path: analysis_path,
-        include_complexity,
-        include_dead_code,
-        include_satd: include_tdg, // Using TDG flag for SATD
+        include_complexity: config.include_complexity,
+        include_dead_code: config.include_dead_code,
+        include_satd: config.include_tdg, // Using TDG flag for SATD
         include_tests: false,
         language: None, // Auto-detect
         parallel: true, // Use parallel execution for performance
@@ -68,17 +76,17 @@ pub async fn handle_analyze_comprehensive(
     let result = orchestrator.analyze(request).await?;
 
     // Add additional analyses if requested
-    let enhanced_result = if include_duplicates || include_defects {
+    let enhanced_result = if config.include_duplicates || config.include_defects {
         enhance_with_additional_analyses(
             result,
-            &project_path,
-            include_duplicates,
-            include_defects,
-            confidence_threshold,
-            min_lines,
-            &include,
-            &exclude,
-            top_files,
+            &config.project_path,
+            config.include_duplicates,
+            config.include_defects,
+            config.confidence_threshold,
+            config.min_lines,
+            &config.include,
+            &config.exclude,
+            config.top_files,
         )
         .await?
     } else {
@@ -90,7 +98,7 @@ pub async fn handle_analyze_comprehensive(
         let elapsed = start_time.elapsed();
         eprintln!("✅ Comprehensive analysis completed in {:?}", elapsed);
 
-        if perf {
+        if config.perf {
             print_performance_breakdown(&enhanced_result, elapsed.as_millis() as u64);
         }
     } else {
@@ -98,7 +106,13 @@ pub async fn handle_analyze_comprehensive(
     }
 
     // Format and output results
-    output_results(enhanced_result, format, executive_summary, output).await?;
+    output_results(
+        enhanced_result,
+        config.format,
+        config.executive_summary,
+        config.output,
+    )
+    .await?;
 
     Ok(())
 }

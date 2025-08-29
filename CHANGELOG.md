@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.32.0] - 2025-08-29
+
+### Changed
+- **Sprint 19**: Reduce functions with too many arguments
+  - Created ComprehensiveAnalysisConfig struct (17 → 1 argument)
+  - Created SatdAnalysisConfig struct (15 → 1 argument)
+  - Created IncrementalCoverageConfig struct (12 → 1 argument)
+  - Reduced functions with too many arguments from 14 to 11
+  - Reduced total clippy warnings from 34 to 31
+
+### Technical Improvements
+- Better encapsulation with configuration structs
+- Improved API clarity and maintainability
+- Reduced function complexity through parameter grouping
+- Enhanced code organization with related parameters grouped together
+
 ## [2.31.0] - 2025-08-29
 
 ### Changed
