@@ -908,50 +908,6 @@ pub async fn handle_analyze_dead_code(
     Ok(())
 }
 
-/// Run dead code analysis
-async fn run_dead_code_analysis(
-    path: &Path,
-    include_unreachable: bool,
-    include_tests: bool,
-    min_dead_lines: usize,
-    top_files: Option<usize>,
-) -> Result<crate::models::dead_code::DeadCodeResult> {
-    use crate::models::dead_code::DeadCodeAnalysisConfig;
-    use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
-
-    let mut analyzer = DeadCodeAnalyzer::new(DeadCodeAnalyzer::DEFAULT_CAPACITY);
-
-    let config = DeadCodeAnalysisConfig {
-        include_unreachable,
-        include_tests,
-        min_dead_lines,
-    };
-
-    let mut analysis_result = analyzer.analyze_with_ranking(path, config).await?;
-
-    eprintln!(
-        "🔍 Found {} ranked files",
-        analysis_result.ranked_files.len()
-    );
-    eprintln!(
-        "🔍 Total files analyzed: {}",
-        analysis_result.summary.total_files_analyzed
-    );
-
-    // Apply top_files limit
-    if let Some(limit) = top_files {
-        analysis_result.ranked_files.truncate(limit);
-    }
-
-    // Convert to DeadCodeResult
-    Ok(crate::models::dead_code::DeadCodeResult {
-        summary: analysis_result.summary.clone(),
-        files: analysis_result.ranked_files,
-        total_files: analysis_result.summary.total_files_analyzed,
-        analyzed_files: analysis_result.summary.total_files_analyzed,
-    })
-}
-
 /// Run dead code analysis with include/exclude filters
 async fn run_dead_code_analysis_with_filters(
     path: &Path,
