@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 
 /// File filter that applies include/exclude patterns
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct FileFilter {
     include_set: Option<GlobSet>,
     exclude_set: Option<GlobSet>,
@@ -74,14 +75,6 @@ impl FileFilter {
     }
 }
 
-impl Default for FileFilter {
-    fn default() -> Self {
-        Self {
-            include_set: None,
-            exclude_set: None,
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {

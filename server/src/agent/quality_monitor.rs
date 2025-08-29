@@ -651,7 +651,7 @@ impl QualityMonitorEngine {
     }
 
     /// Count functions in a file (simple heuristic)
-    fn count_functions(content: &str, file_path: &PathBuf) -> usize {
+    fn count_functions(content: &str, file_path: &Path) -> usize {
         let extension = file_path.extension().and_then(|s| s.to_str()).unwrap_or("");
 
         match extension {
