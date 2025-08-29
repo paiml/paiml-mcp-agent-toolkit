@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.22.0] - 2025-08-29
+
+### Fixed
+- **Sprint 9**: Replaced placeholder implementations with actual calculations
+  - Defect probability analysis now calculates real lines of code from file content
+  - Implements basic complexity calculation based on control flow keywords
+  - Fixed unused variable warning in watch mode complexity handler
+  - Improved metric accuracy for defect probability calculations
+
+### Technical Improvements
+- Reduced technical debt by eliminating placeholder values
+- Enhanced accuracy of complexity metrics in defect analysis
+- Fixed type mismatches in FileMetrics structure
+- Maintained Toyota Way quality standards throughout
+
+### Deferred
+- SWC v23 migration: Requires significant API changes and more testing
+- Will be addressed in a future sprint with dedicated migration effort
+
 ## [2.21.0] - 2025-08-29
 
 ### Added
