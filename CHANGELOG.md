@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.28.0] - 2025-08-29
+
+### Changed
+- **Sprint 15**: CLI analysis utilities complexity reduction
+  - Refactored handle_analyze_incremental_coverage (26 → <20 complexity)
+  - Refactored handle_analyze_defect_prediction (23 → <20 complexity)
+  - Extracted helper functions for better separation of concerns
+  - Applied functional decomposition pattern
+
+### Technical Improvements
+- Reduced complexity in analysis_utilities.rs through extraction of specialized functions
+- Created dedicated functions for printing headers, formatting reports, and outputting results
+- Improved code maintainability with single-responsibility functions
+- All functions now meet the ≤20 complexity threshold
+- Fixed unused import warnings
+
 ## [2.27.0] - 2025-08-29
 
 ### Changed
