@@ -292,31 +292,32 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
     if !params.include.is_empty() || !params.exclude.is_empty() {
         use crate::utils::file_filter::FileFilter;
         let filter = FileFilter::new(params.include.clone(), params.exclude.clone())?;
-        
+
         if filter.has_filters() {
             // Filter detailed violations in the hotspot
             result.hotspot.detailed_violations.retain(|violation| {
                 let path = std::path::Path::new(&violation.file);
                 filter.should_include(path)
             });
-            
+
             // Filter all_violations
             result.all_violations.retain(|violation| {
                 let path = std::path::Path::new(&violation.file);
                 filter.should_include(path)
             });
-            
+
             // Filter summary_by_file - note the key is PathBuf, not a struct with a file field
-            let filtered_summary: HashMap<PathBuf, FileSummary> = result.summary_by_file
+            let filtered_summary: HashMap<PathBuf, FileSummary> = result
+                .summary_by_file
                 .into_iter()
                 .filter(|(path, _summary)| filter.should_include(path))
                 .collect();
             result.summary_by_file = filtered_summary;
-            
+
             // Recalculate hotspot metrics
             result.hotspot.total_violations = result.hotspot.detailed_violations.len();
             if result.hotspot.sloc > 0 {
-                result.hotspot.defect_density = 
+                result.hotspot.defect_density =
                     result.hotspot.total_violations as f64 / result.hotspot.sloc as f64;
             }
         }

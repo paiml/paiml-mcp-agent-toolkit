@@ -74,13 +74,13 @@ impl Default for QualityProfile {
         // RIGID extreme quality profile - the highest standards
         Self {
             coverage_min: 80.0,            // Minimum 80% test coverage
-            complexity_max: 20,            // Toyota Way standard: maximum cyclomatic complexity of 20
-            complexity_target: 10,         // Target complexity of 10 for good readability
-            tdg_max: 1.0,                  // Technical Debt Gradient must be under 1.0
-            satd_allowed: 0,               // Zero self-admitted technical debt
-            duplication_max_lines: 0,      // Zero duplicate code allowed
+            complexity_max: 20, // Toyota Way standard: maximum cyclomatic complexity of 20
+            complexity_target: 10, // Target complexity of 10 for good readability
+            tdg_max: 1.0,       // Technical Debt Gradient must be under 1.0
+            satd_allowed: 0,    // Zero self-admitted technical debt
+            duplication_max_lines: 0, // Zero duplicate code allowed
             big_o_max: "O(n)".to_string(), // Linear complexity or better (was O(n log n))
-            provability_min: 0.9,          // 90% provability score (was 0.8)
+            provability_min: 0.9, // 90% provability score (was 0.8)
         }
     }
 }
@@ -640,14 +640,14 @@ async fn list_all_violations(
     match handle_analyze_dead_code(
         project_path.to_path_buf(),
         DeadCodeOutputFormat::Json,
-        Some(10), // top_files
-        true,     // include_unreachable
-        5,        // min_dead_lines
-        false,    // include_tests
-        None,     // output
-        false,    // fail_on_violation
-        15.0,     // max_percentage
-        60,       // timeout
+        Some(10),   // top_files
+        true,       // include_unreachable
+        5,          // min_dead_lines
+        false,      // include_tests
+        None,       // output
+        false,      // fail_on_violation
+        15.0,       // max_percentage
+        60,         // timeout
         Vec::new(), // include
         Vec::new(), // exclude
     )
