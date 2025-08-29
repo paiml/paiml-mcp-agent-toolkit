@@ -59,6 +59,7 @@ pub enum CoverageStatus {
 /// Facade for incremental coverage analysis operations
 #[derive(Clone)]
 pub struct IncrementalCoverageFacade {
+    #[allow(dead_code)]
     registry: Arc<ServiceRegistry>,
 }
 

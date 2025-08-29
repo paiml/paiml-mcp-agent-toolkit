@@ -49,6 +49,7 @@ pub enum DeadCodeType {
 /// Facade for dead code analysis operations
 #[derive(Clone)]
 pub struct DeadCodeFacade {
+    #[allow(dead_code)]
     registry: Arc<ServiceRegistry>,
 }
 
