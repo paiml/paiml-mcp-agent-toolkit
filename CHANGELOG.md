@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.30.0] - 2025-08-29
+
+### Changed
+- **Sprint 17**: Reduce function arguments and improve code structure
+  - Created AgentStartConfig struct to reduce handle_agent_start from 9 to 1 argument
+  - Applied configuration struct pattern for better maintainability
+  - Improved code organization with grouped configuration
+
+### Technical Improvements
+- Reduced function complexity through parameter grouping
+- Better encapsulation of related configuration parameters
+- Improved API clarity with named configuration structs
+- Following Single Responsibility Principle
+
 ## [2.29.0] - 2025-08-29
 
 ### Changed

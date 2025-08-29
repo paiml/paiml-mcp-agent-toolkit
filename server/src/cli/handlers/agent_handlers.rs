@@ -11,6 +11,20 @@ use std::time::Duration;
 use tokio::fs;
 use tracing::{error, info, warn};
 
+/// Configuration for starting the agent daemon
+#[derive(Debug, Clone)]
+struct AgentStartConfig {
+    project_path: PathBuf,
+    config_path: Option<PathBuf>,
+    working_dir: Option<PathBuf>,
+    pid_file: Option<PathBuf>,
+    log_file: Option<PathBuf>,
+    foreground: bool,
+    health_interval: u64,
+    max_memory_mb: u64,
+    auto_restart: bool,
+}
+
 /// Handle agent commands
 pub async fn handle_agent_command(command: AgentCommands) -> Result<()> {
     match command {
@@ -25,18 +39,18 @@ pub async fn handle_agent_command(command: AgentCommands) -> Result<()> {
             max_memory_mb,
             no_auto_restart,
         } => {
-            handle_agent_start(
+            let start_config = AgentStartConfig {
                 project_path,
-                config,
+                config_path: config,
                 working_dir,
                 pid_file,
                 log_file,
                 foreground,
                 health_interval,
                 max_memory_mb,
-                !no_auto_restart,
-            )
-            .await
+                auto_restart: !no_auto_restart,
+            };
+            handle_agent_start(start_config).await
         }
         AgentCommands::Stop {
             pid_file,
@@ -64,40 +78,30 @@ pub async fn handle_agent_command(command: AgentCommands) -> Result<()> {
 }
 
 /// Start the background agent daemon
-async fn handle_agent_start(
-    _project_path: PathBuf,
-    config_path: Option<PathBuf>,
-    working_dir: Option<PathBuf>,
-    pid_file: Option<PathBuf>,
-    log_file: Option<PathBuf>,
-    foreground: bool,
-    health_interval: u64,
-    max_memory_mb: u64,
-    auto_restart: bool,
-) -> Result<()> {
+async fn handle_agent_start(config: AgentStartConfig) -> Result<()> {
     info!("Starting Claude Code Agent daemon");
 
     // Load or create configuration
-    let mut daemon_config = if let Some(config_path) = config_path {
+    let mut daemon_config = if let Some(config_path) = config.config_path {
         load_daemon_config(&config_path).await?
     } else {
         DaemonConfig::default()
     };
 
     // Override configuration with command-line options
-    daemon_config.daemon.health_check_interval = Duration::from_secs(health_interval);
-    daemon_config.daemon.max_memory_mb = max_memory_mb;
-    daemon_config.daemon.auto_restart = auto_restart;
+    daemon_config.daemon.health_check_interval = Duration::from_secs(config.health_interval);
+    daemon_config.daemon.max_memory_mb = config.max_memory_mb;
+    daemon_config.daemon.auto_restart = config.auto_restart;
 
-    if let Some(working_dir) = working_dir {
+    if let Some(working_dir) = config.working_dir {
         daemon_config.daemon.working_directory = working_dir;
     }
 
-    if let Some(pid_file) = pid_file {
+    if let Some(pid_file) = config.pid_file {
         daemon_config.daemon.pid_file = Some(pid_file);
     }
 
-    if let Some(log_file) = log_file {
+    if let Some(log_file) = config.log_file {
         daemon_config.daemon.log_file = Some(log_file);
     }
 
@@ -111,7 +115,7 @@ async fn handle_agent_start(
     // Create and start daemon
     let mut daemon = AgentDaemon::new(daemon_config);
 
-    if foreground {
+    if config.foreground {
         info!("Starting daemon in foreground mode");
         daemon.start().await
     } else {
