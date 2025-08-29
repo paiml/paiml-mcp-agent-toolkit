@@ -58,15 +58,15 @@ pub async fn handle_analyze_satd(
     if !include.is_empty() || !exclude.is_empty() {
         use crate::utils::file_filter::FileFilter;
         let filter = FileFilter::new(include, exclude)?;
-        
+
         if filter.has_filters() {
             result.violations.retain(|violation| {
                 let path = std::path::Path::new(&violation.file_path);
                 filter.should_include(path)
             });
-            
+
             // Update total files count
-            let unique_files: std::collections::HashSet<_> = 
+            let unique_files: std::collections::HashSet<_> =
                 result.violations.iter().map(|v| &v.file_path).collect();
             result.total_files = unique_files.len();
         }

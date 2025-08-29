@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.23.0] - 2025-08-29
+
+### Added
+- **Sprint 10**: Enhanced defect prediction with real metrics
+  - Real git churn analysis using 30-day window from git history
+  - Duplicate line detection algorithm counting repeated non-empty lines
+  - Coupling metrics calculation (afferent/efferent) based on imports and exports
+  - Parallel file processing using futures for 8x concurrent analysis
+
+### Changed
+- **Defect Prediction**: Replaced all placeholder values with actual calculations
+  - Churn scores now derived from actual git commit history
+  - Duplicate ratio calculated from line-by-line analysis
+  - Coupling metrics based on counting use statements and public items
+  - Improved performance through concurrent file processing
+
+### Technical Improvements
+- Added parallel processing with futures::stream::buffer_unordered(8)
+- Enhanced accuracy of risk assessment with real-world metrics
+- Improved scalability for large codebases through concurrent analysis
+- Maintained Toyota Way quality standards (complexity ≤20)
+
 ## [2.22.0] - 2025-08-29
 
 ### Fixed

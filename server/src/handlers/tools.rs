@@ -397,6 +397,40 @@ fn create_validation_response(
     McpResponse::success(request_id, result)
 }
 
+// Helper to determine template variant
+fn get_template_variant(template_type: &str, toolchain: &str) -> Option<&'static str> {
+    match template_type {
+        "makefile" | "readme" | "gitignore" => match toolchain {
+            "rust" | "deno" | "python-uv" => Some("cli"),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+// Helper to generate a single template
+async fn generate_single_template<T: TemplateServerTrait>(
+    server: &T,
+    template_type: &str,
+    toolchain: &str,
+    parameters: serde_json::Map<String, serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    let variant = get_template_variant(template_type, toolchain)
+        .ok_or_else(|| format!("No variant for {} with {}", template_type, toolchain))?;
+    
+    let uri = format!("template://{}/{}/{}", template_type, toolchain, variant);
+    
+    match template_service::generate_template(server, &uri, parameters).await {
+        Ok(generated) => Ok(json!({
+            "template": template_type,
+            "filename": generated.filename,
+            "content": generated.content,
+            "checksum": generated.checksum,
+        })),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 async fn handle_scaffold_project<T: TemplateServerTrait>(
     server: Arc<T>,
     request_id: serde_json::Value,
@@ -418,40 +452,19 @@ async fn handle_scaffold_project<T: TemplateServerTrait>(
 
     // Generate each requested template
     for template_type in &args.templates {
-        let uri = format!("template://{}/{}/", template_type, args.toolchain);
-
-        // Find the appropriate variant based on project type in parameters
-        let variant = match template_type.as_str() {
-            "makefile" | "readme" | "gitignore" => match args.toolchain.as_str() {
-                "rust" | "deno" | "python-uv" => "cli",
-                _ => continue,
-            },
-            _ => continue,
-        };
-
-        let full_uri = format!("{uri}{variant}");
-
-        match template_service::generate_template(
+        match generate_single_template(
             server.as_ref(),
-            &full_uri,
+            template_type,
+            &args.toolchain,
             args.parameters.clone(),
         )
         .await
         {
-            Ok(generated) => {
-                results.push(json!({
-                    "template": template_type,
-                    "filename": generated.filename,
-                    "content": generated.content,
-                    "checksum": generated.checksum,
-                }));
-            }
-            Err(e) => {
-                errors.push(json!({
-                    "template": template_type,
-                    "error": e.to_string(),
-                }));
-            }
+            Ok(result) => results.push(result),
+            Err(error) => errors.push(json!({
+                "template": template_type,
+                "error": error,
+            })),
         }
     }
 
@@ -1618,6 +1631,92 @@ struct AnalyzeDefectProbabilityArgs {
     format: Option<String>,
 }
 
+// Helper function to calculate file metrics
+async fn calculate_file_metrics(
+    path: PathBuf,
+    project_path: PathBuf,
+    churn_map: std::collections::HashMap<String, f32>,
+) -> crate::services::defect_probability::FileMetrics {
+    use crate::services::defect_probability::FileMetrics;
+
+    let relative_path = path
+        .strip_prefix(&project_path)
+        .unwrap_or(&path)
+        .to_string_lossy()
+        .to_string();
+
+    // Calculate actual metrics for the file
+    let content = tokio::fs::read_to_string(&path).await.unwrap_or_default();
+    let lines: Vec<&str> = content.lines().collect();
+    let lines_of_code = lines.len();
+
+    // Calculate basic complexity (count control flow keywords)
+    let control_flow_keywords = ["if", "else", "for", "while", "match", "loop", "?"];
+    let cyclomatic_complexity = control_flow_keywords
+        .iter()
+        .map(|kw| content.matches(kw).count() as u32)
+        .sum::<u32>()
+        + 1;
+
+    // Cognitive complexity is typically higher than cyclomatic
+    let cognitive_complexity = (cyclomatic_complexity as f32 * 1.5) as u32;
+
+    // Get actual churn score from git history, or default to 0.1
+    let churn_score = churn_map.get(&relative_path).copied().unwrap_or(0.1);
+
+    // Calculate duplicate ratio - count duplicate non-empty lines
+    let mut line_counts = std::collections::HashMap::new();
+    let mut duplicate_lines = 0;
+    for line in &lines {
+        let trimmed = line.trim();
+        if !trimmed.is_empty() && !trimmed.starts_with("//") {
+            *line_counts.entry(trimmed).or_insert(0) += 1;
+        }
+    }
+    for count in line_counts.values() {
+        if *count > 1 {
+            duplicate_lines += count - 1;
+        }
+    }
+    let duplicate_ratio = if lines_of_code > 0 {
+        duplicate_lines as f32 / lines_of_code as f32
+    } else {
+        0.0
+    };
+
+    // Calculate basic coupling metrics
+    // Efferent coupling: count "use" statements (dependencies this file has)
+    let efferent_coupling = content
+        .lines()
+        .filter(|line| line.trim().starts_with("use "))
+        .count() as f32;
+
+    // Afferent coupling: count "pub" items (things other files might depend on)
+    let afferent_coupling = content
+        .lines()
+        .filter(|line| {
+            let trimmed = line.trim();
+            trimmed.starts_with("pub fn")
+                || trimmed.starts_with("pub struct")
+                || trimmed.starts_with("pub enum")
+                || trimmed.starts_with("pub trait")
+                || trimmed.starts_with("pub mod")
+        })
+        .count() as f32;
+
+    FileMetrics {
+        file_path: relative_path,
+        churn_score,
+        complexity: cyclomatic_complexity as f32,
+        duplicate_ratio,
+        afferent_coupling,
+        efferent_coupling,
+        lines_of_code,
+        cyclomatic_complexity,
+        cognitive_complexity,
+    }
+}
+
 #[allow(dead_code)]
 async fn handle_analyze_defect_probability(
     request_id: serde_json::Value,
@@ -1645,9 +1744,21 @@ async fn handle_analyze_defect_probability(
         DefectProbabilityCalculator, FileMetrics, ProjectDefectAnalysis,
     };
     use crate::services::file_discovery::ProjectFileDiscovery;
+    use crate::services::git_analysis::GitAnalysisService;
 
     let calculator = DefectProbabilityCalculator::new();
-    let mut file_metrics = Vec::with_capacity(256);
+
+    // Get git churn data for the last 30 days
+    let churn_analysis = GitAnalysisService::analyze_code_churn(&project_path, 30).ok();
+    let churn_map: std::collections::HashMap<String, f32> = churn_analysis
+        .map(|analysis| {
+            analysis
+                .files
+                .into_iter()
+                .map(|f| (f.relative_path, f.churn_score as f32))
+                .collect()
+        })
+        .unwrap_or_default();
 
     // Use ProjectFileDiscovery which properly respects .gitignore files
     let discovery = ProjectFileDiscovery::new(project_path.clone());
@@ -1663,42 +1774,24 @@ async fn handle_analyze_defect_probability(
         }
     };
 
-    for path in discovered_files {
-        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("rs") {
-            let relative_path = path
-                .strip_prefix(&project_path)
-                .unwrap_or(&path)
-                .to_string_lossy()
-                .to_string();
+    // Process files in parallel for better performance
+    use futures::stream::{self, StreamExt};
 
-            // Calculate actual metrics for the file
-            let content = tokio::fs::read_to_string(&path).await.unwrap_or_default();
-            let lines_of_code = content.lines().count();
-            
-            // Calculate basic complexity (count control flow keywords)
-            let control_flow_keywords = ["if", "else", "for", "while", "match", "loop", "?"];
-            let cyclomatic_complexity = control_flow_keywords.iter()
-                .map(|kw| content.matches(kw).count() as u32)
-                .sum::<u32>() + 1;
-            
-            // Cognitive complexity is typically higher than cyclomatic
-            let cognitive_complexity = (cyclomatic_complexity as f32 * 1.5) as u32;
-            
-            let metrics = FileMetrics {
-                file_path: relative_path,
-                churn_score: 0.1, // Would need git history
-                complexity: cyclomatic_complexity as f32,
-                duplicate_ratio: 0.0, // Would need duplicate detection
-                afferent_coupling: 1.0, // Would need dependency analysis
-                efferent_coupling: 2.0, // Would need dependency analysis
-                lines_of_code,
-                cyclomatic_complexity,
-                cognitive_complexity,
-            };
+    let metrics_futures: Vec<_> = discovered_files
+        .into_iter()
+        .filter(|path| path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("rs"))
+        .map(|path| {
+            let project_path = project_path.clone();
+            let churn_map = churn_map.clone();
+            calculate_file_metrics(path, project_path, churn_map)
+        })
+        .collect();
 
-            file_metrics.push(metrics);
-        }
-    }
+    // Execute futures concurrently with a limit
+    let file_metrics: Vec<FileMetrics> = stream::iter(metrics_futures)
+        .buffer_unordered(8) // Process up to 8 files concurrently
+        .collect()
+        .await;
 
     let scores = calculator.calculate_batch(&file_metrics);
     let analysis = ProjectDefectAnalysis::from_scores(scores);
@@ -2844,8 +2937,8 @@ async fn handle_analyze_lint_hotspot(
         false,                     // perf
         String::new(),             // clippy_flags
         args.top_files,
-        Vec::new(),                // include
-        Vec::new(),                // exclude
+        Vec::new(), // include
+        Vec::new(), // exclude
     )
     .await;
 

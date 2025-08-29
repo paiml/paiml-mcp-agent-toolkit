@@ -2,9 +2,9 @@
 //!
 //! Provides glob-based filtering for analysis commands.
 
+use anyhow::Result;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use std::path::{Path, PathBuf};
-use anyhow::Result;
 
 /// File filter that applies include/exclude patterns
 #[derive(Debug, Clone)]
@@ -89,10 +89,7 @@ mod tests {
 
     #[test]
     fn test_include_patterns() {
-        let filter = FileFilter::new(
-            vec!["src/**/*.rs".to_string()],
-            vec![],
-        ).unwrap();
+        let filter = FileFilter::new(vec!["src/**/*.rs".to_string()], vec![]).unwrap();
 
         assert!(filter.should_include(Path::new("src/main.rs")));
         assert!(filter.should_include(Path::new("src/lib/mod.rs")));
@@ -102,10 +99,8 @@ mod tests {
 
     #[test]
     fn test_exclude_patterns() {
-        let filter = FileFilter::new(
-            vec![],
-            vec!["tests/**".to_string(), "*.tmp".to_string()],
-        ).unwrap();
+        let filter =
+            FileFilter::new(vec![], vec!["tests/**".to_string(), "*.tmp".to_string()]).unwrap();
 
         assert!(filter.should_include(Path::new("src/main.rs")));
         assert!(!filter.should_include(Path::new("tests/test.rs")));
@@ -114,10 +109,8 @@ mod tests {
 
     #[test]
     fn test_combined_patterns() {
-        let filter = FileFilter::new(
-            vec!["**/*.rs".to_string()],
-            vec!["tests/**".to_string()],
-        ).unwrap();
+        let filter =
+            FileFilter::new(vec!["**/*.rs".to_string()], vec!["tests/**".to_string()]).unwrap();
 
         assert!(filter.should_include(Path::new("src/main.rs")));
         assert!(!filter.should_include(Path::new("tests/test.rs")));
@@ -129,7 +122,8 @@ mod tests {
         let filter = FileFilter::new(
             vec!["src/**/*.rs".to_string()],
             vec!["src/generated/**".to_string()],
-        ).unwrap();
+        )
+        .unwrap();
 
         let paths = vec![
             PathBuf::from("src/main.rs"),

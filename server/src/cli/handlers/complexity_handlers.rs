@@ -5,8 +5,8 @@
 
 use crate::cli::*;
 use anyhow::{Context, Result};
-use std::path::{Path, PathBuf};
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::channel;
 use std::time::Duration;
 
@@ -14,7 +14,7 @@ use std::time::Duration;
 mod complexity_handlers_tests;
 
 /// Configuration for complexity analysis operations
-/// 
+///
 /// This struct centralizes all configuration parameters and provides
 /// helper methods to reduce the complexity of the main handler function.
 /// Following Toyota Way single responsibility principle.
@@ -57,16 +57,15 @@ impl ComplexityConfig {
             .clone()
             .or_else(|| super::super::stubs::detect_toolchain(&self.project_path))
     }
-
 }
 
 /// Analyze a single file and return its complexity metrics
-/// 
+///
 /// This helper function handles single file analysis with proper error handling
 /// and maintains consistency with the Issue #42 fix for multi-language support.
 async fn analyze_single_file(
-    file_path: &PathBuf, 
-    config: &ComplexityConfig
+    file_path: &PathBuf,
+    config: &ComplexityConfig,
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
     eprintln!("🔍 Analyzing complexity of file: {}", file_path.display());
 
@@ -85,19 +84,19 @@ async fn analyze_single_file(
     let file_content = std::fs::read_to_string(&full_path)
         .context(format!("Failed to read file: {}", full_path.display()))?;
 
-    let metrics = crate::cli::language_analyzer::analyze_file_complexity(&full_path, &file_content)
-        .await?;
-    
+    let metrics =
+        crate::cli::language_analyzer::analyze_file_complexity(&full_path, &file_content).await?;
+
     Ok(vec![metrics])
 }
 
 /// Analyze multiple files and return aggregated complexity metrics
-/// 
+///
 /// This helper function processes a list of files, maintaining consistency
 /// with single file analysis and proper error handling for missing files.
 async fn analyze_multiple_files(
-    files: &[PathBuf], 
-    config: &ComplexityConfig
+    files: &[PathBuf],
+    config: &ComplexityConfig,
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
     eprintln!("🔍 Analyzing complexity of {} files...", files.len());
 
@@ -118,21 +117,22 @@ async fn analyze_multiple_files(
         let file_content = std::fs::read_to_string(&full_path)
             .context(format!("Failed to read file: {}", full_path.display()))?;
 
-        let metrics = crate::cli::language_analyzer::analyze_file_complexity(&full_path, &file_content)
-            .await?;
+        let metrics =
+            crate::cli::language_analyzer::analyze_file_complexity(&full_path, &file_content)
+                .await?;
         all_metrics.push(metrics);
     }
-    
+
     Ok(all_metrics)
 }
 
 /// Analyze entire project directory based on toolchain detection
-/// 
+///
 /// This helper function handles project-wide analysis with proper toolchain
 /// detection and maintains the Issue #42 fix for multi-language projects.
 async fn analyze_project(
-    detected_toolchain: Option<String>, 
-    config: &ComplexityConfig
+    detected_toolchain: Option<String>,
+    config: &ComplexityConfig,
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
     match detected_toolchain {
         Some(ref toolchain) => {
@@ -162,7 +162,7 @@ async fn analyze_project(
 }
 
 /// Apply complexity threshold filtering to metrics
-/// 
+///
 /// Filters files to only include those with functions exceeding the specified
 /// cyclomatic or cognitive complexity thresholds.
 fn apply_complexity_filters(
@@ -186,7 +186,7 @@ fn apply_complexity_filters(
 }
 
 /// Apply top files limit by sorting and truncating results
-/// 
+///
 /// Sorts files by total complexity (cyclomatic + cognitive) in descending order
 /// and keeps only the top N most complex files.
 fn apply_top_files_limit(
@@ -217,8 +217,10 @@ async fn format_and_write_output(
     output: Option<PathBuf>,
     top_files: usize,
 ) -> Result<()> {
-    use crate::services::complexity::{format_complexity_summary, format_complexity_report, format_as_sarif};
-    
+    use crate::services::complexity::{
+        format_as_sarif, format_complexity_report, format_complexity_summary,
+    };
+
     let formatted_output = match format {
         ComplexityOutputFormat::Summary => Ok(format_complexity_summary(summary)),
         ComplexityOutputFormat::Full => Ok(format_complexity_report(summary)),
@@ -459,9 +461,7 @@ pub async fn handle_analyze_complexity(
     fail_on_violation: bool,
     timeout: u64,
 ) -> Result<()> {
-    use crate::services::complexity::{
-        aggregate_results_with_thresholds,
-    };
+    use crate::services::complexity::aggregate_results_with_thresholds;
 
     if watch {
         return handle_watch_mode(
@@ -595,7 +595,7 @@ fn handle_watch_mode(
                         }
                     }
                     eprintln!();
-                    
+
                     // Run analysis again
                     if let Err(e) = run_complexity_analysis_sync(
                         path,
@@ -630,8 +630,8 @@ fn should_reanalyze(event: &Event, include_patterns: &[String]) -> bool {
             for path in &event.paths {
                 if let Some(path_str) = path.to_str() {
                     // Check for source code files
-                    if path_str.ends_with(".rs") 
-                        || path_str.ends_with(".ts") 
+                    if path_str.ends_with(".rs")
+                        || path_str.ends_with(".ts")
                         || path_str.ends_with(".tsx")
                         || path_str.ends_with(".js")
                         || path_str.ends_with(".jsx")
@@ -639,13 +639,13 @@ fn should_reanalyze(event: &Event, include_patterns: &[String]) -> bool {
                         || path_str.ends_with(".c")
                         || path_str.ends_with(".cpp")
                         || path_str.ends_with(".h")
-                        || path_str.ends_with(".hpp") {
-                        
+                        || path_str.ends_with(".hpp")
+                    {
                         // If no include patterns, analyze all source files
                         if include_patterns.is_empty() {
                             return true;
                         }
-                        
+
                         // Check against include patterns
                         for pattern in include_patterns {
                             if path_str.contains(pattern) {
@@ -693,7 +693,7 @@ async fn format_and_output_watch_results(
 
     // Clear screen for better watch mode experience
     print!("\x1B[2J\x1B[1;1H");
-    
+
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(output_path, &content).await?;
@@ -719,7 +719,7 @@ fn run_complexity_analysis_sync(
 ) -> Result<()> {
     // Create a runtime for the async operation
     let runtime = tokio::runtime::Runtime::new()?;
-    
+
     // Create config
     let config = ComplexityConfig::from_args(
         path.to_path_buf(),
@@ -741,15 +741,19 @@ fn run_complexity_analysis_sync(
         };
 
         // Apply filters
-        apply_complexity_filters(&mut file_metrics, Some(config.max_cyclomatic), Some(config.max_cognitive));
+        apply_complexity_filters(
+            &mut file_metrics,
+            Some(config.max_cyclomatic),
+            Some(config.max_cognitive),
+        );
         apply_top_files_limit(&mut file_metrics, config.top_files);
 
         // Aggregate results
         use crate::services::complexity::aggregate_results_with_thresholds;
         let summary = aggregate_results_with_thresholds(
-            file_metrics.clone(), 
-            Some(config.max_cyclomatic), 
-            Some(config.max_cognitive)
+            file_metrics.clone(),
+            Some(config.max_cyclomatic),
+            Some(config.max_cognitive),
         );
 
         // Format and output results
@@ -797,10 +801,10 @@ pub async fn handle_analyze_churn(
 
     // Apply file filter if filters are active
     if filter.has_filters() {
-        analysis.files.retain(|file| {
-            filter.should_include(&file.path)
-        });
-        
+        analysis
+            .files
+            .retain(|file| filter.should_include(&file.path));
+
         // Update summary
         analysis.summary.total_files_changed = analysis.files.len();
         analysis.summary.total_commits = analysis.files.iter().map(|f| f.commit_count).sum();
@@ -982,10 +986,11 @@ async fn run_dead_code_analysis_with_filters(
             let path = std::path::Path::new(&file.path);
             filter.should_include(path)
         });
-        
+
         // Update summary counts
         analysis_result.summary.files_with_dead_code = analysis_result.ranked_files.len();
-        analysis_result.summary.total_dead_lines = analysis_result.ranked_files
+        analysis_result.summary.total_dead_lines = analysis_result
+            .ranked_files
             .iter()
             .map(|f| f.dead_lines)
             .sum();
