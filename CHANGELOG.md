@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.24.0] - 2025-08-29
+
+### Changed
+- **Sprint 11**: Complexity reduction in core analyzers
+  - Refactored PolyglotAnalyzer::detect_language_frameworks (33 → 7 complexity)
+  - Refactored PolyglotAnalyzer::analyze_architecture_indicators (21 → 3 complexity)
+  - Extracted helper methods for better code organization
+  - Improved maintainability through functional decomposition
+
+### Technical Improvements
+- Reduced cyclomatic complexity by 79% in key analysis functions
+- Enhanced code readability with declarative helper methods
+- Maintained Toyota Way quality standards throughout
+- Improved performance through simplified control flow
+
 ## [2.23.0] - 2025-08-29
 
 ### Added
