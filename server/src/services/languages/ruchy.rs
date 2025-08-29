@@ -26,7 +26,8 @@ use crate::services::complexity::{
     ComplexityMetrics, FileComplexityMetrics, FunctionComplexity, HalsteadMetrics,
 };
 use anyhow::Result;
-use std::collections::HashSet;
+use once_cell::sync::Lazy;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 /// Ruchy language token types based on the official Ruchy lexer specification
@@ -135,6 +136,69 @@ pub enum RuchyToken {
     // Error token
     Error,
 }
+
+// Static maps for O(1) keyword and token lookups
+static KEYWORD_MAP: Lazy<HashMap<&'static str, RuchyToken>> = Lazy::new(|| {
+    use RuchyToken::*;
+    let mut map = HashMap::new();
+    map.insert("fun", Fun);
+    map.insert("if", If);
+    map.insert("else", Else);
+    map.insert("while", While);
+    map.insert("for", For);
+    map.insert("match", Match);
+    map.insert("return", Return);
+    map.insert("let", Let);
+    map.insert("const", Const);
+    map.insert("var", Var);
+    map.insert("class", Class);
+    map.insert("struct", Struct);
+    map.insert("enum", Enum);
+    map.insert("trait", Trait);
+    map.insert("impl", Impl);
+    map.insert("actor", Actor);
+    map.insert("async", Async);
+    map.insert("await", Await);
+    map.insert("spawn", Spawn);
+    map.insert("send", Send);
+    map.insert("receive", Receive);
+    map.insert("break", Break);
+    map.insert("continue", Continue);
+    map.insert("in", In);
+    map.insert("as", As);
+    map.insert("pub", Pub);
+    map.insert("mod", Mod);
+    map.insert("use", Use);
+    map.insert("where", Where);
+    map.insert("type", Type);
+    map.insert("import", Import);
+    map.insert("from", From);
+    map.insert("export", Export);
+    map.insert("true", True);
+    map.insert("false", False);
+    map
+});
+
+static SINGLE_CHAR_TOKEN_MAP: Lazy<HashMap<char, RuchyToken>> = Lazy::new(|| {
+    use RuchyToken::*;
+    let mut map = HashMap::new();
+    map.insert('+', Plus);
+    map.insert('*', Star);
+    map.insert('(', LeftParen);
+    map.insert(')', RightParen);
+    map.insert('{', LeftBrace);
+    map.insert('}', RightBrace);
+    map.insert('[', LeftBracket);
+    map.insert(']', RightBracket);
+    map.insert(';', Semicolon);
+    map.insert(',', Comma);
+    map.insert('?', Question);
+    map.insert('~', Tilde);
+    map.insert('^', Caret);
+    map.insert('%', Percent);
+    map.insert('#', Hash);
+    map
+});
 
 /// Type information for Ruchy expressions
 #[derive(Debug, Clone, PartialEq)]
@@ -1012,44 +1076,9 @@ impl RuchyLexer {
     /// Handle identifier and keyword tokens
     fn handle_identifier(&mut self) -> RuchyToken {
         let ident = self.read_identifier();
-        match ident.as_str() {
-            "fun" => RuchyToken::Fun,
-            "if" => RuchyToken::If,
-            "else" => RuchyToken::Else,
-            "while" => RuchyToken::While,
-            "for" => RuchyToken::For,
-            "match" => RuchyToken::Match,
-            "return" => RuchyToken::Return,
-            "let" => RuchyToken::Let,
-            "const" => RuchyToken::Const,
-            "var" => RuchyToken::Var,
-            "class" => RuchyToken::Class,
-            "struct" => RuchyToken::Struct,
-            "enum" => RuchyToken::Enum,
-            "trait" => RuchyToken::Trait,
-            "impl" => RuchyToken::Impl,
-            "actor" => RuchyToken::Actor,
-            "async" => RuchyToken::Async,
-            "await" => RuchyToken::Await,
-            "spawn" => RuchyToken::Spawn,
-            "send" => RuchyToken::Send,
-            "receive" => RuchyToken::Receive,
-            "break" => RuchyToken::Break,
-            "continue" => RuchyToken::Continue,
-            "in" => RuchyToken::In,
-            "as" => RuchyToken::As,
-            "pub" => RuchyToken::Pub,
-            "mod" => RuchyToken::Mod,
-            "use" => RuchyToken::Use,
-            "where" => RuchyToken::Where,
-            "type" => RuchyToken::Type,
-            "import" => RuchyToken::Import,
-            "from" => RuchyToken::From,
-            "export" => RuchyToken::Export,
-            "true" => RuchyToken::True,
-            "false" => RuchyToken::False,
-            _ => RuchyToken::Identifier(ident),
-        }
+        KEYWORD_MAP.get(ident.as_str())
+            .cloned()
+            .unwrap_or(RuchyToken::Identifier(ident))
     }
 
     /// Handle character literal tokens
@@ -1065,22 +1094,13 @@ impl RuchyLexer {
 
     /// Handle operators and punctuation tokens
     fn handle_operator_or_punctuation(&mut self, ch: char) -> RuchyToken {
+        // Try single-character tokens first
+        if let Some(token) = SINGLE_CHAR_TOKEN_MAP.get(&ch) {
+            return self.handle_single_char_token(token.clone());
+        }
+        
+        // Handle multi-character tokens
         match ch {
-            '+' => self.handle_single_char_token(RuchyToken::Plus),
-            '*' => self.handle_single_char_token(RuchyToken::Star),
-            '(' => self.handle_single_char_token(RuchyToken::LeftParen),
-            ')' => self.handle_single_char_token(RuchyToken::RightParen),
-            '{' => self.handle_single_char_token(RuchyToken::LeftBrace),
-            '}' => self.handle_single_char_token(RuchyToken::RightBrace),
-            '[' => self.handle_single_char_token(RuchyToken::LeftBracket),
-            ']' => self.handle_single_char_token(RuchyToken::RightBracket),
-            ';' => self.handle_single_char_token(RuchyToken::Semicolon),
-            ',' => self.handle_single_char_token(RuchyToken::Comma),
-            '?' => self.handle_single_char_token(RuchyToken::Question),
-            '~' => self.handle_single_char_token(RuchyToken::Tilde),
-            '^' => self.handle_single_char_token(RuchyToken::Caret),
-            '%' => self.handle_single_char_token(RuchyToken::Percent),
-            '#' => self.handle_single_char_token(RuchyToken::Hash),
             '-' => self.handle_dash(),
             '/' => self.handle_slash(),
             '=' => self.handle_equals(),
@@ -1265,118 +1285,137 @@ pub async fn analyze_ruchy_file(path: &Path) -> Result<FileComplexityMetrics> {
     };
 
     let lines: Vec<&str> = content.lines().collect();
-    let mut in_function = false;
-    let mut function_name = String::new();
-    let mut function_start = 0;
-    let mut brace_count = 0;
-    let mut current_metrics = ComplexityMetrics {
-        cyclomatic: 1,
-        cognitive: 0,
-        nesting_max: 0,
-        lines: 0,
-        halstead: None,
-    };
+    let mut parser_state = RuchyParserState::new();
 
     for (i, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
+        
+        // Handle function detection and metrics
+        parser_state.process_line(trimmed, i as u32, &mut metrics);
+    }
 
-        // Detect function start
-        if (trimmed.starts_with("fun ")
-            || trimmed.starts_with("@test")
-            || trimmed.contains("fun test_"))
-            && !in_function
-        {
-            in_function = true;
-            function_start = i as u32 + 1;
+    // Add final function if still open
+    if parser_state.in_function {
+        parser_state.finalize_function(&mut metrics, lines.len() as u32);
+    }
 
-            // Extract function name
-            if let Some(name_start) = trimmed.find("fun ") {
-                let after_fun = &trimmed[name_start + 4..];
-                function_name = after_fun.split('(').next().unwrap_or("").trim().to_string();
-            }
+    // Calculate total complexity
+    for func in &metrics.functions {
+        metrics.total_complexity.cyclomatic += func.metrics.cyclomatic;
+        metrics.total_complexity.cognitive += func.metrics.cognitive;
+        metrics.total_complexity.lines += func.metrics.lines;
+    }
 
-            current_metrics = ComplexityMetrics {
-                cyclomatic: 1,
-                cognitive: 0,
-                nesting_max: 0,
-                lines: 0,
-                halstead: None,
-            };
+    Ok(metrics)
+}
+
+/// State tracker for Ruchy parsing
+struct RuchyParserState {
+    in_function: bool,
+    function_name: String,
+    function_start: u32,
+    brace_count: i32,
+    current_metrics: ComplexityMetrics,
+}
+
+impl RuchyParserState {
+    fn new() -> Self {
+        Self {
+            in_function: false,
+            function_name: String::new(),
+            function_start: 0,
+            brace_count: 0,
+            current_metrics: ComplexityMetrics::default(),
+        }
+    }
+
+    fn process_line(&mut self, trimmed: &str, line_num: u32, metrics: &mut FileComplexityMetrics) {
+        // Check for function start
+        if !self.in_function && self.is_function_start(trimmed) {
+            self.start_function(trimmed, line_num);
         }
 
-        if in_function {
-            current_metrics.lines += 1;
+        if self.in_function {
+            self.current_metrics.lines += 1;
+            self.update_complexity_metrics(trimmed);
+            self.update_brace_count(trimmed);
 
-            // Count control flow keywords
-            if trimmed.starts_with("if ") || trimmed.contains(" if ") {
-                current_metrics.cyclomatic += 1;
-                current_metrics.cognitive += 1;
-            }
-            if trimmed.starts_with("else if ") {
-                current_metrics.cyclomatic += 1;
-                current_metrics.cognitive += 1;
-            }
-            if trimmed.starts_with("while ") || trimmed.contains(" while ") {
-                current_metrics.cyclomatic += 1;
-                current_metrics.cognitive += 2;
-            }
-            if trimmed.starts_with("for ") || trimmed.contains(" for ") {
-                current_metrics.cyclomatic += 1;
-                current_metrics.cognitive += 2;
-            }
-            if trimmed.starts_with("match ") {
-                current_metrics.cyclomatic += 1;
-                current_metrics.cognitive += 2;
-            }
-            if trimmed.contains("&&") || trimmed.contains("||") {
-                current_metrics.cyclomatic += 1;
-                current_metrics.cognitive += 1;
-            }
-
-            // Track braces for function end
-            brace_count += trimmed.chars().filter(|&c| c == '{').count() as i32;
-            brace_count -= trimmed.chars().filter(|&c| c == '}').count() as i32;
-
-            // Function ends when brace count returns to 0
-            if brace_count == 0 && trimmed.contains('}') {
-                metrics.functions.push(FunctionComplexity {
-                    name: function_name.clone(),
-                    line_start: function_start,
-                    line_end: i as u32 + 1,
-                    metrics: current_metrics,
-                });
-
-                in_function = false;
-                function_name.clear();
+            // Check for function end
+            if self.brace_count == 0 && trimmed.contains('}') {
+                self.finalize_function(metrics, line_num + 1);
             }
         }
     }
 
-    // Calculate total complexity
-    metrics.total_complexity = ComplexityMetrics {
-        cyclomatic: metrics
-            .functions
-            .iter()
-            .map(|f| f.metrics.cyclomatic)
-            .sum::<u16>()
-            .max(1),
-        cognitive: metrics
-            .functions
-            .iter()
-            .map(|f| f.metrics.cognitive)
-            .sum::<u16>()
-            .max(1),
-        nesting_max: metrics
-            .functions
-            .iter()
-            .map(|f| f.metrics.nesting_max)
-            .max()
-            .unwrap_or(0),
-        lines: lines.len() as u16,
-        halstead: None,
-    };
+    fn is_function_start(&self, trimmed: &str) -> bool {
+        trimmed.starts_with("fun ") || 
+        trimmed.starts_with("@test") || 
+        trimmed.contains("fun test_")
+    }
 
-    Ok(metrics)
+    fn start_function(&mut self, trimmed: &str, line_num: u32) {
+        self.in_function = true;
+        self.function_start = line_num + 1;
+        self.function_name = self.extract_function_name(trimmed);
+        self.current_metrics = ComplexityMetrics {
+            cyclomatic: 1,
+            cognitive: 0,
+            nesting_max: 0,
+            lines: 0,
+            halstead: None,
+        };
+        self.brace_count = 0;
+    }
+
+    fn extract_function_name(&self, trimmed: &str) -> String {
+        if let Some(name_start) = trimmed.find("fun ") {
+            let after_fun = &trimmed[name_start + 4..];
+            after_fun.split('(').next().unwrap_or("").trim().to_string()
+        } else {
+            String::new()
+        }
+    }
+
+    fn update_complexity_metrics(&mut self, trimmed: &str) {
+        // Control flow patterns and their complexity impacts
+        let patterns = [
+            ("if ", 1, 1),
+            ("else if ", 1, 1),
+            ("while ", 1, 2),
+            ("for ", 1, 2),
+            ("match ", 1, 2),
+        ];
+
+        for (pattern, cyclo, cognitive) in patterns {
+            if trimmed.starts_with(pattern) || trimmed.contains(&format!(" {}", pattern)) {
+                self.current_metrics.cyclomatic += cyclo;
+                self.current_metrics.cognitive += cognitive;
+            }
+        }
+
+        // Logical operators
+        if trimmed.contains("&&") || trimmed.contains("||") {
+            self.current_metrics.cyclomatic += 1;
+            self.current_metrics.cognitive += 1;
+        }
+    }
+
+    fn update_brace_count(&mut self, trimmed: &str) {
+        self.brace_count += trimmed.chars().filter(|&c| c == '{').count() as i32;
+        self.brace_count -= trimmed.chars().filter(|&c| c == '}').count() as i32;
+    }
+
+    fn finalize_function(&mut self, metrics: &mut FileComplexityMetrics, line_end: u32) {
+        metrics.functions.push(FunctionComplexity {
+            name: self.function_name.clone(),
+            line_start: self.function_start,
+            line_end,
+            metrics: self.current_metrics,
+        });
+
+        self.in_function = false;
+        self.function_name.clear();
+    }
 }
 
 #[cfg(test)]

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.27.0] - 2025-08-29
+
+### Changed
+- **Sprint 14**: Ruchy language analyzer complexity reduction
+  - Refactored RuchyLexer::handle_identifier (38 → eliminated via HashMap)
+  - Refactored RuchyLexer::handle_operator_or_punctuation (29 → 15 complexity)
+  - Refactored analyze_ruchy_file (24 → <20 via state machine pattern)
+  - Replaced large match statements with static HashMaps for O(1) lookups
+
+### Technical Improvements
+- Introduced static lookup tables using once_cell::Lazy for keyword and token mapping
+- Extracted RuchyParserState for cleaner separation of concerns
+- Reduced maximum function complexity to 19 (below threshold of 20)
+- Improved performance with HashMap-based lookups instead of match statements
+- Enhanced maintainability through state machine pattern
+
 ## [2.26.0] - 2025-08-29
 
 ### Removed
