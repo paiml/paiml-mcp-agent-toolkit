@@ -23,7 +23,7 @@ pub async fn handle_list(
         list_templates(server.as_ref(), toolchain.as_deref(), category.as_deref()).await?;
 
     match format {
-        OutputFormat::Table => super::super::stubs::print_table(&templates),
+        OutputFormat::Table => super::super::analysis_utilities::print_table(&templates),
         OutputFormat::Json => {
             let templates_deref: Vec<&TemplateResource> =
                 templates.iter().map(|t| t.as_ref()).collect();

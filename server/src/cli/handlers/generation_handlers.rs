@@ -22,7 +22,7 @@ pub async fn handle_generate(
     create_dirs: bool,
 ) -> Result<()> {
     let uri = format!("template://{category}/{template}");
-    let params_json = super::super::stubs::params_to_json(params);
+    let params_json = super::super::analysis_utilities::params_to_json(params);
 
     let result = generate_template(server.as_ref(), &uri, params_json).await?;
 
@@ -50,7 +50,7 @@ pub async fn handle_scaffold(
 ) -> Result<()> {
     use futures::stream::{self, StreamExt};
 
-    let params_json = super::super::stubs::params_to_json(params);
+    let params_json = super::super::analysis_utilities::params_to_json(params);
 
     // If no templates specified, use default templates for the toolchain
     let templates_to_use = if templates.is_empty() {
@@ -134,7 +134,7 @@ pub async fn handle_validate(
     uri: String,
     params: Vec<(String, Value)>,
 ) -> Result<()> {
-    let params_json = super::super::stubs::params_to_json(params);
+    let params_json = super::super::analysis_utilities::params_to_json(params);
     let result = validate_template(
         server.clone(),
         &uri,

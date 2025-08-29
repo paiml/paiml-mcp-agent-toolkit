@@ -592,7 +592,7 @@ pub fn second_function() {
         fs::write(&test_file, content).unwrap();
 
         // Test the CLI stubs layer using analyze_project_files
-        let result = crate::cli::stubs::analyze_project_files(
+        let result = crate::cli::analysis_utilities::analyze_project_files(
             temp_dir.path(),
             Some("rust"),
             &[], // empty include patterns

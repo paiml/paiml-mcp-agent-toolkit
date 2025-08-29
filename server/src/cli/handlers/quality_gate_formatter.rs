@@ -2,7 +2,7 @@
 //! Complexity: Reduced from 20 to individual functions ≤8
 //! Purpose: Quality gate report formatting with clean separation of concerns
 
-use crate::cli::stubs::{QualityGateResults, QualityViolation};
+use crate::cli::analysis_utilities::{QualityGateResults, QualityViolation};
 use crate::cli::{QualityCheckType, QualityGateOutputFormat};
 use anyhow::Result;
 use serde_json::json;
@@ -254,7 +254,7 @@ async fn run_all_checks(
     results: &mut QualityGateResults,
     perf: bool,
 ) -> Result<()> {
-    crate::cli::stubs::run_single_project_check(
+    crate::cli::analysis_utilities::run_single_project_check(
         &QualityCheckType::All,
         project_path,
         max_dead_code,
@@ -283,7 +283,7 @@ async fn run_individual_checks(
     for check in checks {
         let check_start = if perf { Some(Instant::now()) } else { None };
 
-        crate::cli::stubs::run_single_project_check(
+        crate::cli::analysis_utilities::run_single_project_check(
             check,
             project_path,
             max_dead_code,

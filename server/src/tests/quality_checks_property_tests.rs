@@ -3,7 +3,7 @@
 //! These tests verify invariants and properties of the quality checking system
 //! using proptest for comprehensive coverage.
 
-use crate::cli::stubs::{
+use crate::cli::analysis_utilities::{
     check_complexity, check_dead_code, check_duplicates, check_satd, QualityViolation,
 };
 use proptest::prelude::*;
