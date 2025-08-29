@@ -1247,90 +1247,160 @@ pub async fn handle_analyze_defect_prediction(
     _perf: bool,
     top_files: usize,
 ) -> Result<()> {
+    print_defect_analysis_header(&project_path, high_risk_only, include_low_confidence, &format);
+
+    let config = create_defect_config(
+        confidence_threshold,
+        _min_lines,
+        include_low_confidence,
+        high_risk_only,
+        _include_recommendations,
+        _include,
+        _exclude,
+    );
+
+    let predictions = compute_defect_predictions(&project_path, &config, confidence_threshold).await?;
+    let top_predictions = filter_and_sort_predictions(predictions, top_files);
+    
+    // Convert to report format expected by existing formatting functions
+    let report = create_defect_report_from_predictions(top_predictions)?;
+    
+    // Format and output
+    let content = format_defect_report(&report, format)?;
+    output_defect_result(content, output).await?;
+
+    Ok(())
+}
+
+fn print_defect_analysis_header(
+    project_path: &PathBuf,
+    high_risk_only: bool,
+    include_low_confidence: bool,
+    format: &DefectPredictionOutputFormat,
+) {
     eprintln!("🔮 Analyzing defect probability...");
     eprintln!("📁 Project path: {}", project_path.display());
     eprintln!("🎯 High risk only: {}", high_risk_only);
     eprintln!("📊 Include low confidence: {}", include_low_confidence);
     eprintln!("📄 Format: {:?}", format);
+}
 
-    // Real implementation using DefectProbabilityCalculator
-    use crate::cli::defect_prediction_helpers::{
-        discover_source_files_for_defect_analysis, DefectPredictionConfig,
-    };
-    use crate::services::defect_probability::{DefectProbabilityCalculator, RiskLevel};
-
-    let config = DefectPredictionConfig {
+fn create_defect_config(
+    confidence_threshold: f32,
+    min_lines: usize,
+    include_low_confidence: bool,
+    high_risk_only: bool,
+    include_recommendations: bool,
+    include: Option<String>,
+    exclude: Option<String>,
+) -> crate::cli::defect_prediction_helpers::DefectPredictionConfig {
+    crate::cli::defect_prediction_helpers::DefectPredictionConfig {
         confidence_threshold,
-        min_lines: _min_lines,
+        min_lines,
         include_low_confidence,
         high_risk_only,
-        include_recommendations: _include_recommendations,
-        include: _include,
-        exclude: _exclude,
-    };
+        include_recommendations,
+        include,
+        exclude,
+    }
+}
 
+async fn compute_defect_predictions(
+    project_path: &PathBuf,
+    config: &crate::cli::defect_prediction_helpers::DefectPredictionConfig,
+    confidence_threshold: f32,
+) -> Result<Vec<(String, crate::services::defect_probability::DefectScore)>> {
+    use crate::cli::defect_prediction_helpers::discover_source_files_for_defect_analysis;
+    use crate::services::defect_probability::DefectProbabilityCalculator;
+    
     let calculator = DefectProbabilityCalculator::new();
-    let files = discover_source_files_for_defect_analysis(&project_path, &config).await?;
-
+    let files = discover_source_files_for_defect_analysis(project_path, config).await?;
+    
     let mut predictions = Vec::new();
     for (file_path, _content, lines) in files {
-        // Create basic metrics for prediction (in full implementation, these would come from analysis services)
-        use crate::services::defect_probability::FileMetrics;
-        let metrics = FileMetrics {
-            file_path: file_path.to_string_lossy().to_string(),
-            churn_score: 0.5,                 // Would be calculated from git history
-            complexity: (lines as f32) * 0.1, // Rough estimate
-            duplicate_ratio: 0.1,             // Would be calculated from duplicate analysis
-            afferent_coupling: 1.0,
-            efferent_coupling: 1.0,
-            lines_of_code: lines,
-            cyclomatic_complexity: (lines / 20) as u32, // Rough estimate
-            cognitive_complexity: (lines / 15) as u32,  // Rough estimate
-        };
-
+        let metrics = create_file_metrics(&file_path, lines);
         let score = calculator.calculate(&metrics);
-
-        // Apply filters
-        if high_risk_only && matches!(score.risk_level, RiskLevel::Low | RiskLevel::Medium) {
-            continue;
+        
+        if should_include_prediction(&score, config.high_risk_only, config.include_low_confidence, confidence_threshold) {
+            predictions.push((file_path.to_string_lossy().to_string(), score));
         }
-
-        if !include_low_confidence && score.probability < confidence_threshold {
-            continue;
-        }
-
-        predictions.push((file_path.to_string_lossy().to_string(), score));
     }
+    
+    Ok(predictions)
+}
 
-    // Sort by probability (highest first) and limit to top files
+fn create_file_metrics(
+    file_path: &PathBuf,
+    lines: usize,
+) -> crate::services::defect_probability::FileMetrics {
+    crate::services::defect_probability::FileMetrics {
+        file_path: file_path.to_string_lossy().to_string(),
+        churn_score: 0.5,                 // Would be calculated from git history
+        complexity: (lines as f32) * 0.1, // Rough estimate
+        duplicate_ratio: 0.1,             // Would be calculated from duplicate analysis
+        afferent_coupling: 1.0,
+        efferent_coupling: 1.0,
+        lines_of_code: lines,
+        cyclomatic_complexity: (lines / 20) as u32, // Rough estimate
+        cognitive_complexity: (lines / 15) as u32,  // Rough estimate
+    }
+}
+
+fn should_include_prediction(
+    score: &crate::services::defect_probability::DefectScore,
+    high_risk_only: bool,
+    include_low_confidence: bool,
+    confidence_threshold: f32,
+) -> bool {
+    use crate::services::defect_probability::RiskLevel;
+    
+    if high_risk_only && matches!(score.risk_level, RiskLevel::Low | RiskLevel::Medium) {
+        return false;
+    }
+    
+    if !include_low_confidence && score.probability < confidence_threshold {
+        return false;
+    }
+    
+    true
+}
+
+fn filter_and_sort_predictions(
+    mut predictions: Vec<(String, crate::services::defect_probability::DefectScore)>,
+    top_files: usize,
+) -> Vec<(String, crate::services::defect_probability::DefectScore)> {
     predictions.sort_by(|a, b| {
         b.1.probability
             .partial_cmp(&a.1.probability)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
     predictions.truncate(top_files);
+    predictions
+}
 
-    // Convert to report format expected by existing formatting functions
-    let report = create_defect_report_from_predictions(predictions)?;
+fn format_defect_report(
+    report: &DefectPredictionReport,
+    format: DefectPredictionOutputFormat,
+) -> Result<String> {
+    use DefectPredictionOutputFormat::*;
+    match format {
+        Summary => format_defect_summary(report, 10),
+        Json => serde_json::to_string_pretty(report).map_err(Into::into),
+        Detailed => format_defect_full(report, 10),
+        Sarif => format_defect_sarif(report),
+        Csv => format_defect_csv(report),
+    }
+}
 
-    // Format output
-    let content = match format {
-        DefectPredictionOutputFormat::Summary => format_defect_summary(&report, top_files)?,
-        DefectPredictionOutputFormat::Json => serde_json::to_string_pretty(&report)?,
-        DefectPredictionOutputFormat::Detailed => format_defect_full(&report, top_files)?,
-        DefectPredictionOutputFormat::Sarif => format_defect_sarif(&report)?,
-        DefectPredictionOutputFormat::Csv => format_defect_csv(&report)?,
-    };
-
+async fn output_defect_result(content: String, output: Option<PathBuf>) -> Result<()> {
     eprintln!("✅ Defect prediction complete");
-
+    
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("📝 Written to {}", output_path.display());
     } else {
         println!("{}", content);
     }
-
     Ok(())
 }
 /// Analyzes and extracts formal proof annotations from source code.
@@ -1633,46 +1703,19 @@ pub async fn handle_analyze_incremental_coverage(
     _force_refresh: bool,
     top_files: usize,
 ) -> Result<()> {
-    eprintln!("📊 Analyzing incremental coverage...");
-    eprintln!("📁 Project path: {}", project_path.display());
-    eprintln!("🌿 Base branch: {}", base_branch);
-    eprintln!(
-        "🎯 Target branch: {}",
-        target_branch.as_deref().unwrap_or("HEAD")
-    );
-    eprintln!("📈 Coverage threshold: {:.1}%", coverage_threshold * 100.0);
-    eprintln!("📄 Format: {:?}", format);
+    print_coverage_analysis_header(&project_path, &base_branch, &target_branch, coverage_threshold, &format);
 
     // Real implementation using IncrementalCoverageAnalyzer
     use crate::cli::coverage_helpers::{get_changed_files_for_coverage, setup_coverage_analyzer};
-    use crate::services::incremental_coverage_analyzer::{ChangeSet, FileId};
-
+    
     let analyzer = setup_coverage_analyzer(_cache_dir, _force_refresh)?;
     let changed_files =
         get_changed_files_for_coverage(&project_path, &base_branch, target_branch.as_deref())
             .await?;
 
-    // Create FileId objects for changed files
-    let mut modified_files = Vec::new();
-    for (path, status) in &changed_files {
-        if status == "M" || status == "A" {
-            // Create hash for the file path
-            use sha2::{Digest, Sha256};
-            let mut hasher = Sha256::new();
-            hasher.update(path.to_string_lossy().as_bytes());
-            let hash_result = hasher.finalize();
-            let mut hash = [0u8; 32];
-            hash.copy_from_slice(&hash_result);
-
-            let file_id = FileId {
-                path: path.clone(),
-                hash,
-            };
-            modified_files.push(file_id);
-        }
-    }
-
-    let changeset = ChangeSet {
+    let modified_files = create_file_ids_from_changes(&changed_files)?;
+    
+    let changeset = crate::services::incremental_coverage_analyzer::ChangeSet {
         modified_files,
         added_files: Vec::new(), // These are included in modified_files above
         deleted_files: Vec::new(),
@@ -1689,36 +1732,85 @@ pub async fn handle_analyze_incremental_coverage(
         changed_files,
     )?;
 
-    // Format output
-    let content = match format {
-        IncrementalCoverageOutputFormat::Summary => {
-            format_incremental_coverage_summary(&report, top_files)?
-        }
-        IncrementalCoverageOutputFormat::Detailed => {
-            format_incremental_coverage_detailed(&report, top_files)?
-        }
-        IncrementalCoverageOutputFormat::Json => serde_json::to_string_pretty(&report)?,
-        IncrementalCoverageOutputFormat::Markdown => {
-            format_incremental_coverage_markdown(&report, top_files)?
-        }
-        IncrementalCoverageOutputFormat::Lcov => format_incremental_coverage_lcov(&report)?,
-        IncrementalCoverageOutputFormat::Delta => {
-            format_incremental_coverage_delta(&report, top_files)?
-        }
-        IncrementalCoverageOutputFormat::Sarif => format_incremental_coverage_sarif(&report)?,
-    };
+    // Format and output
+    let content = format_coverage_report(&report, format, top_files)?;
+    output_coverage_result(content, output).await?;
 
+    Ok(())
+}
+
+fn print_coverage_analysis_header(
+    project_path: &PathBuf,
+    base_branch: &str,
+    target_branch: &Option<String>,
+    coverage_threshold: f64,
+    format: &IncrementalCoverageOutputFormat,
+) {
+    eprintln!("📊 Analyzing incremental coverage...");
+    eprintln!("📁 Project path: {}", project_path.display());
+    eprintln!("🌿 Base branch: {}", base_branch);
+    eprintln!(
+        "🎯 Target branch: {}",
+        target_branch.as_deref().unwrap_or("HEAD")
+    );
+    eprintln!("📈 Coverage threshold: {:.1}%", coverage_threshold * 100.0);
+    eprintln!("📄 Format: {:?}", format);
+}
+
+fn create_file_ids_from_changes(
+    changed_files: &[(PathBuf, String)],
+) -> Result<Vec<crate::services::incremental_coverage_analyzer::FileId>> {
+    use crate::services::incremental_coverage_analyzer::FileId;
+    use sha2::{Digest, Sha256};
+    
+    let mut modified_files = Vec::new();
+    for (path, status) in changed_files {
+        if status == "M" || status == "A" {
+            // Create hash for the file path
+            let mut hasher = Sha256::new();
+            hasher.update(path.to_string_lossy().as_bytes());
+            let hash_result = hasher.finalize();
+            let mut hash = [0u8; 32];
+            hash.copy_from_slice(&hash_result);
+
+            modified_files.push(FileId {
+                path: path.clone(),
+                hash,
+            });
+        }
+    }
+    Ok(modified_files)
+}
+
+fn format_coverage_report(
+    report: &IncrementalCoverageReport,
+    format: IncrementalCoverageOutputFormat,
+    top_files: usize,
+) -> Result<String> {
+    use IncrementalCoverageOutputFormat::*;
+    match format {
+        Summary => format_incremental_coverage_summary(report, top_files),
+        Detailed => format_incremental_coverage_detailed(report, top_files),
+        Json => serde_json::to_string_pretty(report).map_err(Into::into),
+        Markdown => format_incremental_coverage_markdown(report, top_files),
+        Lcov => format_incremental_coverage_lcov(report),
+        Delta => format_incremental_coverage_delta(report, top_files),
+        Sarif => format_incremental_coverage_sarif(report),
+    }
+}
+
+async fn output_coverage_result(content: String, output: Option<PathBuf>) -> Result<()> {
     eprintln!("✅ Incremental coverage analysis complete");
-
+    
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("📝 Written to {}", output_path.display());
     } else {
         println!("{}", content);
     }
-
     Ok(())
 }
+
 pub async fn handle_analyze_churn(
     project_path: PathBuf,
     days: u32,
