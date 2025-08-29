@@ -56,7 +56,9 @@ mod type_coercion_tests {
 
         if let Ok(parsed) = cli {
             match parsed.command {
-                Commands::Analyze(AnalyzeCommands::Complexity { project_path, path, .. }) => {
+                Commands::Analyze(AnalyzeCommands::Complexity {
+                    project_path, path, ..
+                }) => {
                     assert_eq!(project_path, Some(PathBuf::from("src/main.rs")));
                     assert_eq!(path, PathBuf::from("."));
                 }
@@ -129,7 +131,9 @@ mod type_coercion_tests {
 
         if let Ok(parsed) = cli {
             match parsed.command {
-                Commands::Analyze(AnalyzeCommands::Complexity { project_path, path, .. }) => {
+                Commands::Analyze(AnalyzeCommands::Complexity {
+                    project_path, path, ..
+                }) => {
                     assert_eq!(project_path, Some(PathBuf::from(".")));
                     assert_eq!(path, PathBuf::from("."));
                 }
@@ -144,7 +148,9 @@ mod type_coercion_tests {
 
         if let Ok(parsed) = cli {
             match parsed.command {
-                Commands::Analyze(AnalyzeCommands::Complexity { project_path, path, .. }) => {
+                Commands::Analyze(AnalyzeCommands::Complexity {
+                    project_path, path, ..
+                }) => {
                     assert_eq!(project_path, Some(PathBuf::from("src/")));
                     assert_eq!(path, PathBuf::from("."));
                 }
@@ -232,7 +238,9 @@ mod validation_tests {
 
         if let Ok(parsed) = cli {
             match parsed.command {
-                Commands::Analyze(AnalyzeCommands::Complexity { project_path, path, .. }) => {
+                Commands::Analyze(AnalyzeCommands::Complexity {
+                    project_path, path, ..
+                }) => {
                     assert_eq!(project_path, Some(PathBuf::from("src/../../etc/passwd")));
                     assert_eq!(path, PathBuf::from("."));
                     // Actual path validation would happen in the application logic
@@ -402,7 +410,9 @@ mod edge_case_tests {
 
         if let Ok(parsed) = cli {
             match parsed.command {
-                Commands::Analyze(AnalyzeCommands::Complexity { project_path, path, .. }) => {
+                Commands::Analyze(AnalyzeCommands::Complexity {
+                    project_path, path, ..
+                }) => {
                     assert_eq!(project_path, Some(PathBuf::from("src/测试.rs")));
                     assert_eq!(path, PathBuf::from("."));
                 }
@@ -443,7 +453,9 @@ mod edge_case_tests {
 
         if let Ok(parsed) = cli {
             match parsed.command {
-                Commands::Analyze(AnalyzeCommands::Complexity { project_path, path, .. }) => {
+                Commands::Analyze(AnalyzeCommands::Complexity {
+                    project_path, path, ..
+                }) => {
                     // The quotes should be stripped by the shell/parser
                     assert_eq!(project_path, Some(PathBuf::from("src/my file.rs")));
                     assert_eq!(path, PathBuf::from("."));
@@ -477,7 +489,9 @@ mod edge_case_tests {
 
             if let Ok(parsed) = cli {
                 match parsed.command {
-                    Commands::Analyze(AnalyzeCommands::Complexity { project_path, path, .. }) => {
+                    Commands::Analyze(AnalyzeCommands::Complexity {
+                        project_path, path, ..
+                    }) => {
                         assert_eq!(project_path, Some(PathBuf::from(special_path)));
                         assert_eq!(path, PathBuf::from(".")); // Default value
                     }
@@ -674,7 +688,9 @@ mod parser_behavior_tests {
 
         if let Ok(parsed) = cli {
             match parsed.command {
-                Commands::Analyze(AnalyzeCommands::Complexity { project_path, path, .. }) => {
+                Commands::Analyze(AnalyzeCommands::Complexity {
+                    project_path, path, ..
+                }) => {
                     assert_eq!(project_path, Some(PathBuf::from("./--weird-filename.rs")));
                     assert_eq!(path, PathBuf::from(".")); // Default value
                 }

@@ -1816,7 +1816,9 @@ fn format_churn_as_json(analysis: &crate::models::churn::CodeChurnAnalysis) -> R
 /// assert_eq!(analysis.summary.total_files_changed, 2);
 /// ```
 // Helper function to format churn analysis as summary
-pub fn format_churn_as_summary(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
+pub fn format_churn_as_summary(
+    analysis: &crate::models::churn::CodeChurnAnalysis,
+) -> Result<String> {
     let mut output = String::new();
 
     write_summary_header(&mut output, analysis)?;
@@ -1944,7 +1946,9 @@ fn write_summary_top_contributors(
 }
 
 // Helper function to format churn analysis as markdown
-pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
+pub fn format_churn_as_markdown(
+    analysis: &crate::models::churn::CodeChurnAnalysis,
+) -> Result<String> {
     let mut output = String::new();
 
     write_markdown_header(&mut output, analysis)?;

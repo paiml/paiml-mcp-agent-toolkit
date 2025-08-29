@@ -37,10 +37,10 @@ impl Default for QualityProfile {
     fn default() -> Self {
         // EXTREME quality profile - the highest standards
         Self {
-            coverage_min: 80.0,   // Minimum 80% test coverage
-            complexity_max: 20,   // Toyota Way standard: maximum cyclomatic complexity of 20
+            coverage_min: 80.0,    // Minimum 80% test coverage
+            complexity_max: 20,    // Toyota Way standard: maximum cyclomatic complexity of 20
             complexity_target: 10, // Target complexity of 10 for good readability
-            satd_allowed: 0,      // Zero self-admitted technical debt
+            satd_allowed: 0,       // Zero self-admitted technical debt
         }
     }
 }
