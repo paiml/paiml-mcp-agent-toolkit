@@ -267,7 +267,9 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             include,
             exclude,
         } => {
-            super::satd_handler::handle_analyze_satd(
+            use super::satd_handler::SatdAnalysisConfig;
+            
+            let config = SatdAnalysisConfig {
                 path,
                 format,
                 severity,
@@ -283,8 +285,9 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 timeout,
                 include,
                 exclude,
-            )
-            .await
+            };
+            
+            super::satd_handler::handle_analyze_satd(config).await
         }
         AnalyzeCommands::DeepContext {
             project_path,
@@ -629,7 +632,9 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             force_refresh,
             top_files,
         } => {
-            super::incremental_coverage_handler::handle_analyze_incremental_coverage(
+            use super::incremental_coverage_handler::IncrementalCoverageConfig;
+            
+            let config = IncrementalCoverageConfig {
                 project_path,
                 base_branch,
                 target_branch,
@@ -642,8 +647,9 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 cache_dir,
                 force_refresh,
                 top_files,
-            )
-            .await
+            };
+            
+            super::incremental_coverage_handler::handle_analyze_incremental_coverage(config).await
         }
         AnalyzeCommands::SymbolTable {
             project_path,

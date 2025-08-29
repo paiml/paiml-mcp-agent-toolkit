@@ -267,11 +267,13 @@ pub async fn handle_analyze_comprehensive(
     perf: bool,
     executive_summary: bool,
 ) -> Result<()> {
-    // Use the new orchestrator-based comprehensive handler implementation
-    super::comprehensive_analysis_handler::handle_analyze_comprehensive(
+    use super::comprehensive_analysis_handler::ComprehensiveAnalysisConfig;
+    
+    // Create config struct
+    let config = ComprehensiveAnalysisConfig {
         project_path,
         file,
-        files, // files (MCP composition support)
+        files,
         format,
         include_duplicates,
         include_dead_code,
@@ -285,9 +287,11 @@ pub async fn handle_analyze_comprehensive(
         output,
         perf,
         executive_summary,
-        20, // top_files default
-    )
-    .await
+        top_files: 20, // default value
+    };
+    
+    // Use the new orchestrator-based comprehensive handler implementation
+    super::comprehensive_analysis_handler::handle_analyze_comprehensive(config).await
 }
 
 /// Handle graph metrics analysis command
