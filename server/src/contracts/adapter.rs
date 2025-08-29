@@ -151,7 +151,7 @@ impl ContractAdapter {
         top_files: &usize,
         timeout: &u64,
     ) -> Result<Box<dyn ContractValidation>> {
-        let path = project_path.clone();
+        let path = project_path;
 
         let contract = AnalyzeComplexityContract {
             base: BaseAnalysisContract {
