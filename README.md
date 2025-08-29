@@ -271,7 +271,7 @@ make examples
 ### Library Usage
 ```toml
 [dependencies]
-pmat = "2.31.0"
+pmat = "2.32.0"
 ```
 
 ```rust
