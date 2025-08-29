@@ -177,7 +177,7 @@ impl AnalysisService {
 
     async fn analyze_satd(
         &self,
-        path: &PathBuf,
+        path: &Path,
         _options: &AnalysisOptions,
     ) -> Result<SatdResults> {
         // Use the actual SATD detector
@@ -208,7 +208,7 @@ impl AnalysisService {
 
     async fn analyze_dead_code(
         &self,
-        path: &PathBuf,
+        path: &Path,
         options: &AnalysisOptions,
     ) -> Result<DeadCodeResults> {
         use crate::models::dead_code::DeadCodeAnalysisConfig;
