@@ -67,6 +67,7 @@ pub struct FileRiskMetrics {
 /// Facade for defect prediction analysis
 #[derive(Clone)]
 pub struct DefectPredictionFacade {
+    #[allow(dead_code)]
     registry: Arc<ServiceRegistry>,
 }
 
