@@ -1816,7 +1816,7 @@ fn format_churn_as_json(analysis: &crate::models::churn::CodeChurnAnalysis) -> R
 /// assert_eq!(analysis.summary.total_files_changed, 2);
 /// ```
 // Helper function to format churn analysis as summary
-fn format_churn_as_summary(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
+pub fn format_churn_as_summary(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
     let mut output = String::new();
 
     write_summary_header(&mut output, analysis)?;
@@ -1944,7 +1944,7 @@ fn write_summary_top_contributors(
 }
 
 // Helper function to format churn analysis as markdown
-fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
+pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
     let mut output = String::new();
 
     write_markdown_header(&mut output, analysis)?;
@@ -2090,7 +2090,7 @@ fn write_markdown_recommendations(output: &mut String) -> Result<()> {
 }
 
 // Helper function to format churn analysis as CSV
-fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
+pub fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
 
@@ -2116,7 +2116,7 @@ fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -> Re
 }
 
 // Helper function to write output
-async fn write_churn_output(content: String, output: Option<PathBuf>) -> Result<()> {
+pub async fn write_churn_output(content: String, output: Option<PathBuf>) -> Result<()> {
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("✅ Churn analysis written to: {}", output_path.display());

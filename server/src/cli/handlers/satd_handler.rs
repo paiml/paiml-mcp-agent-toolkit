@@ -24,10 +24,21 @@ pub async fn handle_analyze_satd(
     _top_files: usize,
     _fail_on_violation: bool,
     _timeout: u64,
-    _include: Vec<String>,
-    _exclude: Vec<String>,
+    include: Vec<String>,
+    exclude: Vec<String>,
 ) -> Result<()> {
     eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
+
+    // Apply include/exclude filters if specified
+    if !include.is_empty() || !exclude.is_empty() {
+        eprintln!("🔍 Applying file filters...");
+        if !include.is_empty() {
+            eprintln!("  Include patterns: {:?}", include);
+        }
+        if !exclude.is_empty() {
+            eprintln!("  Exclude patterns: {:?}", exclude);
+        }
+    }
 
     // Create service registry and facade
     let registry = Arc::new(ServiceRegistry::new());
@@ -41,7 +52,25 @@ pub async fn handle_analyze_satd(
     };
 
     // Perform analysis
-    let result = facade.analyze_project(request).await?;
+    let mut result = facade.analyze_project(request).await?;
+
+    // Apply file filter to results if filters are specified
+    if !include.is_empty() || !exclude.is_empty() {
+        use crate::utils::file_filter::FileFilter;
+        let filter = FileFilter::new(include, exclude)?;
+        
+        if filter.has_filters() {
+            result.violations.retain(|violation| {
+                let path = std::path::Path::new(&violation.file_path);
+                filter.should_include(path)
+            });
+            
+            // Update total files count
+            let unique_files: std::collections::HashSet<_> = 
+                result.violations.iter().map(|v| &v.file_path).collect();
+            result.total_files = unique_files.len();
+        }
+    }
 
     // Apply filters
     let filtered_result = apply_filters(result, severity, critical_only);

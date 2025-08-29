@@ -33,6 +33,8 @@ pub struct LintHotspotParams {
     pub perf: bool,
     pub clippy_flags: String,
     pub top_files: usize,
+    pub include: Vec<String>,
+    pub exclude: Vec<String>,
 }
 
 /// Lint hotspot analysis result
@@ -227,9 +229,20 @@ pub async fn handle_analyze_lint_hotspot(
     perf: bool,
     clippy_flags: String,
     top_files: usize,
-    _include: Vec<String>,
-    _exclude: Vec<String>,
+    include: Vec<String>,
+    exclude: Vec<String>,
 ) -> Result<()> {
+    // Apply include/exclude filters if specified
+    if !include.is_empty() || !exclude.is_empty() {
+        eprintln!("🔍 Applying file filters...");
+        if !include.is_empty() {
+            eprintln!("  Include patterns: {:?}", include);
+        }
+        if !exclude.is_empty() {
+            eprintln!("  Exclude patterns: {:?}", exclude);
+        }
+    }
+
     let params = LintHotspotParams {
         project_path,
         file,
@@ -243,6 +256,8 @@ pub async fn handle_analyze_lint_hotspot(
         perf,
         clippy_flags,
         top_files,
+        include,
+        exclude,
     };
 
     handle_analyze_lint_hotspot_with_params(params).await
@@ -261,7 +276,7 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
     }
 
     // Run clippy and analyze output
-    let result = if let Some(ref file_path) = params.file {
+    let mut result = if let Some(ref file_path) = params.file {
         // Single file mode - analyze only the specified file
         if params.format != LintHotspotOutputFormat::Json {
             eprintln!("📄 Analyzing single file: {}", file_path.display());
@@ -272,6 +287,40 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
         // Normal mode - find the hotspot
         run_clippy_analysis(&params.project_path, &params.clippy_flags).await?
     };
+
+    // Apply include/exclude filters to results
+    if !params.include.is_empty() || !params.exclude.is_empty() {
+        use crate::utils::file_filter::FileFilter;
+        let filter = FileFilter::new(params.include.clone(), params.exclude.clone())?;
+        
+        if filter.has_filters() {
+            // Filter detailed violations in the hotspot
+            result.hotspot.detailed_violations.retain(|violation| {
+                let path = std::path::Path::new(&violation.file);
+                filter.should_include(path)
+            });
+            
+            // Filter all_violations
+            result.all_violations.retain(|violation| {
+                let path = std::path::Path::new(&violation.file);
+                filter.should_include(path)
+            });
+            
+            // Filter summary_by_file - note the key is PathBuf, not a struct with a file field
+            let filtered_summary: HashMap<PathBuf, FileSummary> = result.summary_by_file
+                .into_iter()
+                .filter(|(path, _summary)| filter.should_include(path))
+                .collect();
+            result.summary_by_file = filtered_summary;
+            
+            // Recalculate hotspot metrics
+            result.hotspot.total_violations = result.hotspot.detailed_violations.len();
+            if result.hotspot.sloc > 0 {
+                result.hotspot.defect_density = 
+                    result.hotspot.total_violations as f64 / result.hotspot.sloc as f64;
+            }
+        }
+    }
 
     // Generate enforcement metadata if requested
     let enforcement = if params.enforcement_metadata || params.enforce {

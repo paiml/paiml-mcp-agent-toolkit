@@ -21,6 +21,7 @@
 //! ```
 
 pub mod command_suggestions;
+pub mod file_filter;
 pub mod helpers;
 
 #[cfg(test)]

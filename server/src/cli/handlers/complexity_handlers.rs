@@ -768,12 +768,66 @@ pub async fn handle_analyze_churn(
     format: crate::models::churn::ChurnOutputFormat,
     output: Option<PathBuf>,
     top_files: usize,
-    _include: Vec<String>,
-    _exclude: Vec<String>,
+    include: Vec<String>,
+    exclude: Vec<String>,
 ) -> Result<()> {
-    // TODO: Apply include/exclude filters to churn analysis
-    // For now, delegate to main implementation
-    super::super::stubs::handle_analyze_churn(project_path, days, format, output, top_files).await
+    use crate::models::churn::ChurnOutputFormat;
+    use crate::services::git_analysis::GitAnalysisService;
+    use crate::utils::file_filter::FileFilter;
+
+    eprintln!("📊 Analyzing code churn for the last {} days...", days);
+
+    // Apply include/exclude filters if specified
+    if !include.is_empty() || !exclude.is_empty() {
+        eprintln!("🔍 Applying file filters...");
+        if !include.is_empty() {
+            eprintln!("  Include patterns: {:?}", include);
+        }
+        if !exclude.is_empty() {
+            eprintln!("  Exclude patterns: {:?}", exclude);
+        }
+    }
+
+    // Create file filter
+    let filter = FileFilter::new(include, exclude)?;
+
+    // Analyze code churn
+    let mut analysis = GitAnalysisService::analyze_code_churn(&project_path, days)
+        .map_err(|e| anyhow::anyhow!("Churn analysis failed: {}", e))?;
+
+    // Apply file filter if filters are active
+    if filter.has_filters() {
+        analysis.files.retain(|file| {
+            filter.should_include(&file.path)
+        });
+        
+        // Update summary
+        analysis.summary.total_files_changed = analysis.files.len();
+        analysis.summary.total_commits = analysis.files.iter().map(|f| f.commit_count).sum();
+    }
+
+    eprintln!("✅ Analyzed {} files with changes", analysis.files.len());
+
+    // Apply top_files limit if specified (0 means show all)
+    if top_files > 0 && analysis.files.len() > top_files {
+        // Sort files by commit count descending
+        analysis
+            .files
+            .sort_by(|a, b| b.commit_count.cmp(&a.commit_count));
+        analysis.files.truncate(top_files);
+    }
+
+    // Format output based on requested format
+    let content = match format {
+        ChurnOutputFormat::Json => serde_json::to_string_pretty(&analysis)?,
+        ChurnOutputFormat::Summary => super::super::stubs::format_churn_as_summary(&analysis)?,
+        ChurnOutputFormat::Markdown => super::super::stubs::format_churn_as_markdown(&analysis)?,
+        ChurnOutputFormat::Csv => super::super::stubs::format_churn_as_csv(&analysis)?,
+    };
+
+    // Write output
+    super::super::stubs::write_churn_output(content, output).await?;
+    Ok(())
 }
 
 /// Handle dead code analysis command - REFACTORED
@@ -790,22 +844,34 @@ pub async fn handle_analyze_dead_code(
     fail_on_violation: bool,
     max_percentage: f64,
     timeout: u64,
-    _include: Vec<String>,
-    _exclude: Vec<String>,
+    include: Vec<String>,
+    exclude: Vec<String>,
 ) -> Result<()> {
-    // TODO: Apply include/exclude filters to dead code analysis
     eprintln!("☠️ Analyzing dead code in project...");
     eprintln!("⏰ Analysis timeout set to {} seconds", timeout);
+
+    // Apply include/exclude filters if specified
+    if !include.is_empty() || !exclude.is_empty() {
+        eprintln!("🔍 Applying file filters...");
+        if !include.is_empty() {
+            eprintln!("  Include patterns: {:?}", include);
+        }
+        if !exclude.is_empty() {
+            eprintln!("  Exclude patterns: {:?}", exclude);
+        }
+    }
 
     // Run analysis with timeout
     let timeout_duration = tokio::time::Duration::from_secs(timeout);
     let result = tokio::time::timeout(timeout_duration, async {
-        run_dead_code_analysis(
+        run_dead_code_analysis_with_filters(
             &path,
             include_unreachable,
             include_tests,
             min_dead_lines,
             top_files,
+            include,
+            exclude,
         )
         .await
     })
@@ -871,6 +937,65 @@ async fn run_dead_code_analysis(
     // Apply top_files limit
     if let Some(limit) = top_files {
         analysis_result.ranked_files.truncate(limit);
+    }
+
+    // Convert to DeadCodeResult
+    Ok(crate::models::dead_code::DeadCodeResult {
+        summary: analysis_result.summary.clone(),
+        files: analysis_result.ranked_files,
+        total_files: analysis_result.summary.total_files_analyzed,
+        analyzed_files: analysis_result.summary.total_files_analyzed,
+    })
+}
+
+/// Run dead code analysis with include/exclude filters
+async fn run_dead_code_analysis_with_filters(
+    path: &Path,
+    include_unreachable: bool,
+    include_tests: bool,
+    min_dead_lines: usize,
+    top_files: Option<usize>,
+    include: Vec<String>,
+    exclude: Vec<String>,
+) -> Result<crate::models::dead_code::DeadCodeResult> {
+    use crate::models::dead_code::DeadCodeAnalysisConfig;
+    use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
+    use crate::utils::file_filter::FileFilter;
+
+    // Create file filter
+    let filter = FileFilter::new(include, exclude)?;
+
+    let mut analyzer = DeadCodeAnalyzer::new(DeadCodeAnalyzer::DEFAULT_CAPACITY);
+
+    let config = DeadCodeAnalysisConfig {
+        include_unreachable,
+        include_tests,
+        min_dead_lines,
+    };
+
+    // Analyze with ranking
+    let mut analysis_result = analyzer.analyze_with_ranking(path, config).await?;
+
+    // Apply file filter to results if filters are active
+    if filter.has_filters() {
+        analysis_result.ranked_files.retain(|file| {
+            let path = std::path::Path::new(&file.path);
+            filter.should_include(path)
+        });
+        
+        // Update summary counts
+        analysis_result.summary.files_with_dead_code = analysis_result.ranked_files.len();
+        analysis_result.summary.total_dead_lines = analysis_result.ranked_files
+            .iter()
+            .map(|f| f.dead_lines)
+            .sum();
+    }
+
+    // Apply top_files limit if specified
+    if let Some(limit) = top_files {
+        if limit > 0 && analysis_result.ranked_files.len() > limit {
+            analysis_result.ranked_files.truncate(limit);
+        }
     }
 
     // Convert to DeadCodeResult
