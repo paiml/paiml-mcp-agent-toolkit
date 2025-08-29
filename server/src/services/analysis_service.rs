@@ -7,7 +7,7 @@ use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
 use crate::services::satd_detector::SATDDetector;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -162,7 +162,7 @@ impl AnalysisService {
 
     async fn analyze_complexity(
         &self,
-        _path: &PathBuf,
+        _path: &Path,
         _options: &AnalysisOptions,
     ) -> Result<ComplexityResults> {
         // Implementation would call the actual complexity analyzer

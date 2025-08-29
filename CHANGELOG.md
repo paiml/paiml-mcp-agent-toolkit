@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.31.0] - 2025-08-29
+
+### Changed
+- **Sprint 18**: Further code quality improvements and warning reduction
+  - Fixed remaining &PathBuf vs &Path issues in service layer
+  - Reduced clippy warnings from 42 to 34 (19% reduction)
+  - Updated quality_gate_service.rs to use proper path conversions
+  - Fixed defect_prediction_handler.rs compilation issues
+
+### Technical Improvements
+- Completed Path/PathBuf conversion cleanup across service modules
+- Improved type consistency in analysis and quality gate services
+- Better adherence to Rust best practices for path handling
+- Enhanced code maintainability with consistent API patterns
+
 ## [2.30.0] - 2025-08-29
 
 ### Changed

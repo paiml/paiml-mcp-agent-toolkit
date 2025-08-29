@@ -6,7 +6,7 @@ use super::analysis_service::{AnalysisInput, AnalysisOperation, AnalysisOptions,
 use super::service_base::{Service, ServiceMetrics, ValidationError};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -90,10 +90,10 @@ impl QualityGateService {
         }
     }
 
-    async fn check_complexity(&self, path: &PathBuf, max: u32) -> Result<QualityCheckResult> {
+    async fn check_complexity(&self, path: &Path, max: u32) -> Result<QualityCheckResult> {
         let input = AnalysisInput {
             operation: AnalysisOperation::Complexity,
-            path: path.clone(),
+            path: path.to_path_buf(),
             options: AnalysisOptions {
                 max_complexity: Some(max),
                 ..Default::default()
@@ -118,10 +118,10 @@ impl QualityGateService {
         })
     }
 
-    async fn check_satd(&self, path: &PathBuf, tolerance: u32) -> Result<QualityCheckResult> {
+    async fn check_satd(&self, path: &Path, tolerance: u32) -> Result<QualityCheckResult> {
         let input = AnalysisInput {
             operation: AnalysisOperation::Satd,
-            path: path.clone(),
+            path: path.to_path_buf(),
             options: AnalysisOptions::default(),
         };
 
@@ -148,12 +148,12 @@ impl QualityGateService {
 
     async fn check_dead_code(
         &self,
-        path: &PathBuf,
+        path: &Path,
         max_percentage: f64,
     ) -> Result<QualityCheckResult> {
         let input = AnalysisInput {
             operation: AnalysisOperation::DeadCode,
-            path: path.clone(),
+            path: path.to_path_buf(),
             options: AnalysisOptions::default(),
         };
 
@@ -175,7 +175,7 @@ impl QualityGateService {
         })
     }
 
-    async fn check_coverage(&self, _path: &PathBuf, min: f64) -> Result<QualityCheckResult> {
+    async fn check_coverage(&self, _path: &Path, min: f64) -> Result<QualityCheckResult> {
         // Placeholder for coverage check
         Ok(QualityCheckResult {
             check: format!("Coverage (min: {}%)", min),
@@ -185,7 +185,7 @@ impl QualityGateService {
         })
     }
 
-    async fn check_lint(&self, _path: &PathBuf) -> Result<QualityCheckResult> {
+    async fn check_lint(&self, _path: &Path) -> Result<QualityCheckResult> {
         // Placeholder for lint check
         Ok(QualityCheckResult {
             check: "Lint".to_string(),
@@ -195,7 +195,7 @@ impl QualityGateService {
         })
     }
 
-    async fn check_documentation(&self, _path: &PathBuf) -> Result<QualityCheckResult> {
+    async fn check_documentation(&self, _path: &Path) -> Result<QualityCheckResult> {
         // Placeholder for documentation check
         Ok(QualityCheckResult {
             check: "Documentation".to_string(),

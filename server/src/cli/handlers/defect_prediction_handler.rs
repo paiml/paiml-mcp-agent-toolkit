@@ -37,7 +37,7 @@ pub async fn handle_analyze_defect_prediction(
 
     // Build analysis request
     let request = DefectPredictionRequest {
-        project_path,
+        project_path: project_path.clone(),
         confidence_threshold,
         min_lines,
         include_low_confidence,
