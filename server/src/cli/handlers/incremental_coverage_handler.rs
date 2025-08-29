@@ -8,7 +8,7 @@ use crate::services::facades::incremental_coverage_facade::{
 };
 use crate::services::service_registry::ServiceRegistry;
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// Refactored handler for incremental coverage analysis using the facade pattern.
@@ -65,7 +65,7 @@ pub async fn handle_analyze_incremental_coverage(
 
 /// Print analysis header information
 fn print_analysis_header(
-    project_path: &PathBuf,
+    project_path: &Path,
     base_branch: &str,
     target_branch: &Option<String>,
     coverage_threshold: f64,

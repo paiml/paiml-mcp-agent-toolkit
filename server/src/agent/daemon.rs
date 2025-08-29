@@ -5,7 +5,7 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::signal;
@@ -466,7 +466,7 @@ impl DaemonManager {
     }
 
     /// Start monitoring a project
-    pub async fn start_monitoring(_project_path: &PathBuf, _project_id: &str) -> Result<()> {
+    pub async fn start_monitoring(_project_path: &Path, _project_id: &str) -> Result<()> {
         info!("Starting monitoring for project at {:?}", _project_path);
         // Implementation would send start monitoring command to daemon
         Ok(())

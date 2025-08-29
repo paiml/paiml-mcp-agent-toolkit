@@ -4,7 +4,7 @@
 use super::*;
 use crate::cli::commands::AnalyzeCommands;
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Adapter to handle current CLI inconsistencies
 pub struct ContractAdapter;
@@ -142,7 +142,7 @@ impl ContractAdapter {
     }
 
     fn map_complexity_command(
-        project_path: &PathBuf,
+        project_path: &Path,
         _file: &Option<PathBuf>,
         _files: &[PathBuf],
         output: &Option<PathBuf>,
@@ -155,7 +155,7 @@ impl ContractAdapter {
 
         let contract = AnalyzeComplexityContract {
             base: BaseAnalysisContract {
-                path,
+                path: path.to_path_buf(),
                 format: OutputFormat::Table,
                 output: output.clone(),
                 top_files: Some(*top_files),
@@ -172,7 +172,7 @@ impl ContractAdapter {
     }
 
     fn map_satd_command(
-        path: &PathBuf,
+        path: &Path,
         critical_only: &bool,
         strict: &bool,
         include_tests: &bool,
@@ -183,7 +183,7 @@ impl ContractAdapter {
     ) -> Result<Box<dyn ContractValidation>> {
         let contract = AnalyzeSatdContract {
             base: BaseAnalysisContract {
-                path: path.clone(),
+                path: path.to_path_buf(),
                 format: OutputFormat::Summary,
                 output: output.clone(),
                 top_files: Some(*top_files),
@@ -201,7 +201,7 @@ impl ContractAdapter {
     }
 
     fn map_dead_code_command(
-        path: &PathBuf,
+        path: &Path,
         top_files: &Option<usize>,
         include_unreachable: &bool,
         min_dead_lines: &usize,
@@ -213,7 +213,7 @@ impl ContractAdapter {
     ) -> Result<Box<dyn ContractValidation>> {
         let contract = AnalyzeDeadCodeContract {
             base: BaseAnalysisContract {
-                path: path.clone(),
+                path: path.to_path_buf(),
                 format: OutputFormat::Summary,
                 output: output.clone(),
                 top_files: *top_files,
@@ -231,7 +231,7 @@ impl ContractAdapter {
     }
 
     fn map_tdg_command(
-        path: &PathBuf,
+        path: &Path,
         threshold: &f64,
         top_files: &usize,
         include_components: &bool,
@@ -240,7 +240,7 @@ impl ContractAdapter {
     ) -> Result<Box<dyn ContractValidation>> {
         let contract = AnalyzeTdgContract {
             base: BaseAnalysisContract {
-                path: path.clone(),
+                path: path.to_path_buf(),
                 format: OutputFormat::Table,
                 output: output.clone(),
                 top_files: Some(*top_files),
@@ -257,7 +257,7 @@ impl ContractAdapter {
     }
 
     fn map_lint_hotspot_command(
-        project_path: &PathBuf,
+        project_path: &Path,
         file: &Option<PathBuf>,
         max_density: &f64,
         min_confidence: &f64,
@@ -268,7 +268,7 @@ impl ContractAdapter {
     ) -> Result<Box<dyn ContractValidation>> {
         let contract = AnalyzeLintHotspotContract {
             base: BaseAnalysisContract {
-                path: project_path.clone(),
+                path: project_path.to_path_buf(),
                 format: OutputFormat::Summary,
                 output: output.clone(),
                 top_files: Some(*top_files),
