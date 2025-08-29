@@ -60,7 +60,7 @@ use std::path::{Path, PathBuf};
 /// ```rust,no_run
 /// use pmat::cli::analysis_utilities::handle_analyze_tdg;
 /// use pmat::cli::TdgOutputFormat;
-/// use std::path::PathBuf;
+/// use std::path::{Path, PathBuf};
 /// use tempfile::tempdir;
 /// use std::fs;
 ///
@@ -1273,7 +1273,7 @@ pub async fn handle_analyze_defect_prediction(
 }
 
 fn print_defect_analysis_header(
-    project_path: &PathBuf,
+    project_path: &Path,
     high_risk_only: bool,
     include_low_confidence: bool,
     format: &DefectPredictionOutputFormat,
@@ -1306,7 +1306,7 @@ fn create_defect_config(
 }
 
 async fn compute_defect_predictions(
-    project_path: &PathBuf,
+    project_path: &Path,
     config: &crate::cli::defect_prediction_helpers::DefectPredictionConfig,
     confidence_threshold: f32,
 ) -> Result<Vec<(String, crate::services::defect_probability::DefectScore)>> {
@@ -1330,7 +1330,7 @@ async fn compute_defect_predictions(
 }
 
 fn create_file_metrics(
-    file_path: &PathBuf,
+    file_path: &Path,
     lines: usize,
 ) -> crate::services::defect_probability::FileMetrics {
     crate::services::defect_probability::FileMetrics {
@@ -1454,7 +1454,7 @@ async fn output_defect_result(content: String, output: Option<PathBuf>) -> Resul
 /// ```rust,no_run
 /// use pmat::cli::analysis_utilities::handle_analyze_proof_annotations;
 /// use pmat::cli::enums::{ProofAnnotationOutputFormat, PropertyTypeFilter, VerificationMethodFilter};
-/// use std::path::PathBuf;
+/// use std::path::{Path, PathBuf};
 /// use tempfile::tempdir;
 /// use std::fs;
 ///
@@ -1622,7 +1622,7 @@ pub async fn handle_analyze_proof_annotations(
 /// ```rust,no_run
 /// use pmat::cli::analysis_utilities::handle_analyze_incremental_coverage;
 /// use pmat::cli::IncrementalCoverageOutputFormat;
-/// use std::path::PathBuf;
+/// use std::path::{Path, PathBuf};
 /// use tempfile::tempdir;
 /// use std::fs;
 ///
@@ -1740,7 +1740,7 @@ pub async fn handle_analyze_incremental_coverage(
 }
 
 fn print_coverage_analysis_header(
-    project_path: &PathBuf,
+    project_path: &Path,
     base_branch: &str,
     target_branch: &Option<String>,
     coverage_threshold: f64,
@@ -1863,7 +1863,7 @@ fn format_churn_as_json(analysis: &crate::models::churn::CodeChurnAnalysis) -> R
 /// ```no_run
 /// use pmat::models::churn::*;
 /// use chrono::Utc;
-/// use std::path::PathBuf;
+/// use std::path::{Path, PathBuf};
 ///
 /// let analysis = CodeChurnAnalysis {
 ///     generated_at: Utc::now(),
@@ -2577,7 +2577,7 @@ pub async fn handle_analyze_dag(
 /// ```no_run
 /// use pmat::cli::analysis_utilities::handle_quality_gate;
 /// use pmat::cli::{QualityCheckType, QualityGateOutputFormat};
-/// use std::path::PathBuf;
+/// use std::path::{Path, PathBuf};
 ///
 /// # async fn example() -> anyhow::Result<()> {
 /// // Run with default checks (All)
@@ -3597,7 +3597,7 @@ async fn start_full_server(addr: String, _cors: bool) -> Result<()> {
 /// ```rust,no_run
 /// use pmat::cli::analysis_utilities::handle_analyze_comprehensive;
 /// use pmat::cli::enums::ComprehensiveOutputFormat;
-/// use std::path::PathBuf;
+/// use std::path::{Path, PathBuf};
 /// use tempfile::tempdir;
 /// use std::fs;
 ///
@@ -6201,7 +6201,7 @@ fn format_incremental_coverage_sarif(report: &IncrementalCoverageReport) -> Resu
 ///
 /// ```
 /// use pmat::cli::analysis_utilities::format_incremental_coverage_summary;
-/// use std::path::PathBuf;
+/// use std::path::{Path, PathBuf};
 ///
 /// // Create test data (would normally come from generate_stub_incremental_coverage)
 /// let report = r#"{

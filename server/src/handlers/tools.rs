@@ -1755,7 +1755,7 @@ async fn handle_analyze_defect_probability(
             analysis
                 .files
                 .into_iter()
-                .map(|f| (f.relative_path, f.churn_score as f32))
+                .map(|f| (f.relative_path, f.churn_score))
                 .collect()
         })
         .unwrap_or_default();

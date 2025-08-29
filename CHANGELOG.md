@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.29.0] - 2025-08-29
+
+### Changed
+- **Sprint 16**: Code quality improvements and clippy warning fixes
+  - Fixed all &PathBuf vs &Path parameter warnings
+  - Reduced clippy warnings from 58 to 42 (28% reduction)
+  - Updated function signatures to use &Path for better performance
+  - Fixed type conversion issues
+
+### Technical Improvements
+- Improved API ergonomics by using &Path instead of &PathBuf in function parameters
+- Better memory efficiency with slice-based path parameters
+- Fixed unused import warnings
+- Applied clippy's auto-fix suggestions for cleaner code
+- Enhanced type safety with proper Path/PathBuf conversions
+
 ## [2.28.0] - 2025-08-29
 
 ### Changed

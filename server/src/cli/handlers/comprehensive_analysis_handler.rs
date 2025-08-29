@@ -8,7 +8,7 @@ use crate::services::facades::analysis_orchestrator::{
 };
 use crate::services::service_registry::ServiceRegistry;
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// Refactored handler for comprehensive analysis using the orchestrator facade.
@@ -106,7 +106,7 @@ pub async fn handle_analyze_comprehensive(
 /// Enhance results with additional analyses not covered by the orchestrator
 async fn enhance_with_additional_analyses(
     mut result: ComprehensiveAnalysisResult,
-    project_path: &PathBuf,
+    project_path: &Path,
     include_duplicates: bool,
     include_defects: bool,
     confidence_threshold: f32,
@@ -140,7 +140,7 @@ async fn enhance_with_additional_analyses(
         let facade = DefectPredictionFacade::new(registry);
 
         let request = DefectPredictionRequest {
-            project_path: project_path.clone(),
+            project_path: project_path.to_path_buf(),
             confidence_threshold,
             min_lines,
             include_low_confidence: false,

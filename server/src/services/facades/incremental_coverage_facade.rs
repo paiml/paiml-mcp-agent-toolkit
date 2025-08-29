@@ -5,7 +5,7 @@
 use crate::services::service_registry::ServiceRegistry;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// Request for incremental coverage analysis
@@ -95,7 +95,7 @@ impl IncrementalCoverageFacade {
     /// Get changed files between branches
     async fn get_changed_files(
         &self,
-        project_path: &PathBuf,
+        project_path: &Path,
         base_branch: &str,
         target_branch: Option<&str>,
     ) -> Result<Vec<(PathBuf, String)>> {
@@ -107,7 +107,7 @@ impl IncrementalCoverageFacade {
     /// Analyze coverage changes for files
     async fn analyze_coverage_changes(
         &self,
-        _project_path: &PathBuf,
+        _project_path: &Path,
         changed_files: &[(PathBuf, String)],
         request: &IncrementalCoverageRequest,
     ) -> Result<Vec<ChangedFileCoverage>> {

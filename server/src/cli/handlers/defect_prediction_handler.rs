@@ -8,7 +8,7 @@ use crate::services::facades::defect_prediction_facade::{
 };
 use crate::services::service_registry::ServiceRegistry;
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// Refactored handler for defect prediction analysis using the facade pattern.
@@ -60,7 +60,7 @@ pub async fn handle_analyze_defect_prediction(
 
 /// Print analysis header information
 fn print_analysis_header(
-    project_path: &PathBuf,
+    project_path: &Path,
     high_risk_only: bool,
     include_low_confidence: bool,
 ) {
