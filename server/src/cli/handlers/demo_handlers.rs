@@ -86,7 +86,7 @@ pub async fn handle_quality_gate(
     perf: bool,
 ) -> Result<()> {
     // Delegate to main quality gate implementation for now - will be extracted later
-    super::super::stubs::handle_quality_gate(
+    super::super::analysis_utilities::handle_quality_gate(
         project_path,
         file,
         format,

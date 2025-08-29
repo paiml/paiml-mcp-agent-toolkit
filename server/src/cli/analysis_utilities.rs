@@ -58,7 +58,7 @@ use std::path::{Path, PathBuf};
 /// # Examples
 ///
 /// ```rust,no_run
-/// use pmat::cli::stubs::handle_analyze_tdg;
+/// use pmat::cli::analysis_utilities::handle_analyze_tdg;
 /// use pmat::cli::TdgOutputFormat;
 /// use std::path::PathBuf;
 /// use tempfile::tempdir;
@@ -1382,7 +1382,7 @@ pub async fn handle_analyze_defect_prediction(
 /// # Examples
 ///
 /// ```rust,no_run
-/// use pmat::cli::stubs::handle_analyze_proof_annotations;
+/// use pmat::cli::analysis_utilities::handle_analyze_proof_annotations;
 /// use pmat::cli::enums::{ProofAnnotationOutputFormat, PropertyTypeFilter, VerificationMethodFilter};
 /// use std::path::PathBuf;
 /// use tempfile::tempdir;
@@ -1550,7 +1550,7 @@ pub async fn handle_analyze_proof_annotations(
 /// # Examples
 ///
 /// ```rust,no_run
-/// use pmat::cli::stubs::handle_analyze_incremental_coverage;
+/// use pmat::cli::analysis_utilities::handle_analyze_incremental_coverage;
 /// use pmat::cli::IncrementalCoverageOutputFormat;
 /// use std::path::PathBuf;
 /// use tempfile::tempdir;
@@ -2483,7 +2483,7 @@ pub async fn handle_analyze_dag(
 /// # Examples
 ///
 /// ```no_run
-/// use pmat::cli::stubs::handle_quality_gate;
+/// use pmat::cli::analysis_utilities::handle_quality_gate;
 /// use pmat::cli::{QualityCheckType, QualityGateOutputFormat};
 /// use std::path::PathBuf;
 ///
@@ -3503,7 +3503,7 @@ async fn start_full_server(addr: String, _cors: bool) -> Result<()> {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use pmat::cli::stubs::handle_analyze_comprehensive;
+/// use pmat::cli::analysis_utilities::handle_analyze_comprehensive;
 /// use pmat::cli::enums::ComprehensiveOutputFormat;
 /// use std::path::PathBuf;
 /// use tempfile::tempdir;
@@ -3860,7 +3860,7 @@ fn is_source_file(path: &Path) -> bool {
 ///
 /// ```no_run
 /// # use std::path::Path;
-/// # use pmat::cli::stubs::{check_complexity, QualityViolation};
+/// # use pmat::cli::analysis_utilities::{check_complexity, QualityViolation};
 /// # async fn example() -> anyhow::Result<()> {
 /// let violations = check_complexity(Path::new("."), 10).await?;
 /// for violation in violations {
@@ -3875,7 +3875,7 @@ fn is_source_file(path: &Path) -> bool {
 /// ```rust
 /// # tokio_test::block_on(async {
 /// use std::path::Path;
-/// use pmat::cli::stubs::check_complexity;
+/// use pmat::cli::analysis_utilities::check_complexity;
 ///
 /// // Test with a specific threshold
 /// let threshold = 10u32;
@@ -3980,7 +3980,7 @@ pub async fn check_complexity(
 ///
 /// ```no_run
 /// # use std::path::Path;
-/// # use pmat::cli::stubs::{check_dead_code, QualityViolation};
+/// # use pmat::cli::analysis_utilities::{check_dead_code, QualityViolation};
 /// # async fn example() -> anyhow::Result<()> {
 /// let violations = check_dead_code(Path::new("."), 15.0).await?;
 /// if violations.is_empty() {
@@ -3998,7 +3998,7 @@ pub async fn check_complexity(
 ///
 /// ```rust
 /// # use std::path::Path;
-/// # use pmat::cli::stubs::check_dead_code;
+/// # use pmat::cli::analysis_utilities::check_dead_code;
 /// #
 /// # #[tokio::test]
 /// # async fn test_dead_code_detection() -> anyhow::Result<()> {
@@ -4084,7 +4084,7 @@ pub async fn check_dead_code(
 ///
 /// ```no_run
 /// # use std::path::Path;
-/// # use pmat::cli::stubs::{check_satd, QualityViolation};
+/// # use pmat::cli::analysis_utilities::{check_satd, QualityViolation};
 /// # async fn example() -> anyhow::Result<()> {
 /// let violations = check_satd(Path::new(".")).await?;
 ///
@@ -4106,7 +4106,7 @@ pub async fn check_dead_code(
 /// ```rust
 /// # tokio_test::block_on(async {
 /// use std::path::Path;
-/// use pmat::cli::stubs::check_satd;
+/// use pmat::cli::analysis_utilities::check_satd;
 ///
 /// // Property: All detected items should have valid SATD patterns
 /// let violations = check_satd(Path::new(".")).await.unwrap();
@@ -4173,7 +4173,7 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
 ///
 /// ```rust
 /// # use std::path::Path;
-/// # use pmat::cli::stubs::QualityViolation;
+/// # use pmat::cli::analysis_utilities::QualityViolation;
 /// #
 /// # #[tokio::test]
 /// # async fn test_entropy_check() -> anyhow::Result<()> {
@@ -4366,7 +4366,7 @@ async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
 ///
 /// ```no_run
 /// # use std::path::Path;
-/// # use pmat::cli::stubs::{check_duplicates, QualityViolation};
+/// # use pmat::cli::analysis_utilities::{check_duplicates, QualityViolation};
 /// # async fn example() -> anyhow::Result<()> {
 /// let violations = check_duplicates(Path::new(".")).await?;
 ///
@@ -4390,7 +4390,7 @@ async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
 /// ```rust
 /// # tokio_test::block_on(async {
 /// use std::path::Path;
-/// use pmat::cli::stubs::check_duplicates;
+/// use pmat::cli::analysis_utilities::check_duplicates;
 ///
 /// // Property: Duplicate violations come in pairs or more
 /// let violations = check_duplicates(Path::new(".")).await.unwrap();
@@ -4572,7 +4572,7 @@ async fn check_provability(
 ///
 /// ```rust
 /// # use std::path::Path;
-/// # use pmat::cli::stubs::calculate_provability_score;
+/// # use pmat::cli::analysis_utilities::calculate_provability_score;
 /// #
 /// # #[tokio::test]
 /// # async fn test_provability_score() -> anyhow::Result<()> {
@@ -4596,7 +4596,7 @@ async fn check_provability(
 ///
 /// ```rust
 /// # use std::path::Path;
-/// # use pmat::cli::stubs::calculate_provability_score;
+/// # use pmat::cli::analysis_utilities::calculate_provability_score;
 /// #
 /// # #[tokio::test]
 /// # async fn test_provability_bounds() -> anyhow::Result<()> {
@@ -4642,7 +4642,7 @@ pub async fn calculate_provability_score(project_path: &Path) -> Result<f64> {
 /// # Examples
 ///
 /// ```no_run
-/// use pmat::cli::stubs::{format_quality_gate_output, QualityGateResults, QualityViolation};
+/// use pmat::cli::analysis_utilities::{format_quality_gate_output, QualityGateResults, QualityViolation};
 /// use pmat::cli::QualityGateOutputFormat;
 ///
 /// let mut results = QualityGateResults::default();
@@ -4994,7 +4994,7 @@ pub fn build_complexity_thresholds(
 /// # Examples
 ///
 /// ```
-/// use pmat::cli::stubs::analyze_project_files;
+/// use pmat::cli::analysis_utilities::analyze_project_files;
 /// use std::path::Path;
 ///
 /// # async fn example() -> anyhow::Result<()> {
@@ -5069,7 +5069,7 @@ pub async fn analyze_project_files(
 /// # Examples
 ///
 /// ```
-/// # use pmat::cli::stubs::get_file_extensions;
+/// # use pmat::cli::analysis_utilities::get_file_extensions;
 /// let rust_extensions = get_file_extensions(Some("rust"));
 /// assert_eq!(rust_extensions, vec!["rs"]);
 ///
@@ -5301,7 +5301,7 @@ pub fn extract_identifiers(content: &str) -> Vec<super::NameInfo> {
 /// # Examples
 ///
 /// ```rust
-/// use pmat::cli::stubs::calculate_string_similarity;
+/// use pmat::cli::analysis_utilities::calculate_string_similarity;
 ///
 /// assert_eq!(calculate_string_similarity("hello", "hello"), 1.0);
 /// assert_eq!(calculate_string_similarity("", ""), 1.0);
@@ -5366,7 +5366,7 @@ fn get_ngrams(s: &str, n: usize) -> HashSet<String> {
 /// # Examples
 ///
 /// ```rust
-/// use pmat::cli::stubs::calculate_edit_distance;
+/// use pmat::cli::analysis_utilities::calculate_edit_distance;
 ///
 /// assert_eq!(calculate_edit_distance("kitten", "sitting"), 3);
 /// assert_eq!(calculate_edit_distance("hello", "hello"), 0);
@@ -6108,7 +6108,7 @@ fn format_incremental_coverage_sarif(report: &IncrementalCoverageReport) -> Resu
 /// # Examples
 ///
 /// ```
-/// use pmat::cli::stubs::format_incremental_coverage_summary;
+/// use pmat::cli::analysis_utilities::format_incremental_coverage_summary;
 /// use std::path::PathBuf;
 ///
 /// // Create test data (would normally come from generate_stub_incremental_coverage)
@@ -7157,7 +7157,7 @@ pub struct FilePrediction {
 /// # Example
 ///
 /// ```no_run
-/// use pmat::cli::stubs::{format_defect_summary, DefectPredictionReport, FilePrediction};
+/// use pmat::cli::analysis_utilities::{format_defect_summary, DefectPredictionReport, FilePrediction};
 ///
 /// let report = DefectPredictionReport {
 ///     total_files: 100,

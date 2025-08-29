@@ -1,6 +1,6 @@
 //! Property tests for newly implemented stub functions
 
-use crate::cli::stubs::{calculate_provability_score, check_dead_code, check_entropy};
+use crate::cli::analysis_utilities::{calculate_provability_score, check_dead_code, check_entropy};
 use proptest::prelude::*;
 use std::path::Path;
 

@@ -207,7 +207,7 @@ pub async fn handle_analyze_makefile(
     top_files: usize,
 ) -> Result<()> {
     // Delegate to stub implementation for now - will be fully extracted later
-    super::super::stubs::handle_analyze_makefile(path, rules, format, fix, gnu_version, top_files)
+    super::super::analysis_utilities::handle_analyze_makefile(path, rules, format, fix, gnu_version, top_files)
         .await
 }
 

@@ -4,7 +4,7 @@
 //! defect prediction reports in various output formats, following
 //! the Toyota Way principle of single responsibility.
 
-use crate::cli::stubs::DefectPredictionReport;
+use crate::cli::analysis_utilities::DefectPredictionReport;
 use anyhow::Result;
 use std::fmt::Write;
 
@@ -99,7 +99,7 @@ impl FullReportFormatter {
         &self,
         output: &mut String,
         index: usize,
-        prediction: &crate::cli::stubs::FilePrediction,
+        prediction: &crate::cli::analysis_utilities::FilePrediction,
     ) -> Result<()> {
         writeln!(output, "### {}. {}", index, prediction.file_path)?;
         writeln!(
@@ -160,7 +160,7 @@ impl SarifFormatter {
             .collect()
     }
 
-    fn build_result(&self, prediction: &crate::cli::stubs::FilePrediction) -> serde_json::Value {
+    fn build_result(&self, prediction: &crate::cli::analysis_utilities::FilePrediction) -> serde_json::Value {
         serde_json::json!({
             "ruleId": "high-defect-risk",
             "level": "warning",
@@ -207,7 +207,7 @@ impl CsvFormatter {
         }
     }
 
-    fn write_row(&self, output: &mut String, prediction: &crate::cli::stubs::FilePrediction) {
+    fn write_row(&self, output: &mut String, prediction: &crate::cli::analysis_utilities::FilePrediction) {
         output.push_str(&format!(
             "\"{}\",{:.4},{},\"{}\"\n",
             prediction.file_path,
@@ -252,7 +252,7 @@ mod tests {
             high_risk_files: 10,
             medium_risk_files: 20,
             low_risk_files: 70,
-            file_predictions: vec![crate::cli::stubs::FilePrediction {
+            file_predictions: vec![crate::cli::analysis_utilities::FilePrediction {
                 file_path: "src/main.rs".to_string(),
                 risk_score: 0.85,
                 risk_level: "high".to_string(),
