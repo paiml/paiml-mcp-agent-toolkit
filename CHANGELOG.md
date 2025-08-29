@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.26.0] - 2025-08-29
+
+### Removed
+- **Sprint 13**: Code cleanup and warning elimination
+  - Removed unused `run_dead_code_analysis` function
+  - Eliminated all compiler warnings
+  - Cleaned up dead code
+
+### Technical Improvements
+- Added `#[allow(dead_code)]` annotations for legitimately unused fields
+- Fixed all clippy warnings for cleaner compilation
+- Improved code quality following Toyota Way waste elimination (Muda)
+- Zero warnings in compilation output
+
 ## [2.25.0] - 2025-08-29
 
 ### Changed
