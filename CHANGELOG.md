@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.21.0] - 2025-08-29
+
+### Added
+- **Sprint 8**: Actual filtering implementation for include/exclude parameters
+  - Created FileFilter utility module using globset for glob pattern matching
+  - All analysis commands now properly filter results based on patterns
+  - Support for complex glob patterns like "**/*.rs", "tests/**", etc.
+
+### Changed
+- **Dead Code Analysis**: Filters results after analysis to exclude/include files
+- **Churn Analysis**: Filters files and updates summary counts accordingly
+- **SATD Analysis**: Filters violations by file path with dynamic file count updates
+- **Lint Hotspot Analysis**: Filters violations, summaries, and recalculates metrics
+
+### Technical Improvements
+- Added globset 0.4 dependency for robust glob pattern matching
+- Made churn formatting functions public for reuse across modules
+- Implemented comprehensive filtering tests in FileFilter module
+- Maintained backward compatibility with empty filter lists (no filtering)
+
 ## [2.20.0] - 2025-08-28
 
 ### Added
