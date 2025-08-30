@@ -698,6 +698,7 @@ impl PolyglotAnalyzer {
         Ok(dependencies)
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn count_files_recursive(
         &self,
         dir_path: &Path,
@@ -855,6 +856,7 @@ impl PolyglotAnalyzer {
         Ok(directories)
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn collect_directories_recursive(
         &self,
         dir_path: &Path,

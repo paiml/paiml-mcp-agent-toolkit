@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.37.0] - 2025-08-30
+
+### Changed
+- **Sprint 24** (Ticket: SPRINT-24): Final optimizations
+  - Suppressed false positive recursion warnings
+  - Reduced total clippy warnings from 16 to 14 (12.5% reduction)
+  - Cleaned up polyglot analyzer warnings
+
+### Technical Improvements
+- Reduced false positive warnings with targeted suppressions
+- Maintained code clarity while reducing noise
+
 ## [2.36.0] - 2025-08-30
 
 ### Changed
