@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.36.0] - 2025-08-30
+
+### Changed
+- **Sprint 23** (Ticket: SPRINT-23): Quality improvements
+  - Created QualityCheckConfig struct for quality gate functions
+  - Reduced total clippy warnings from 17 to 16 (6% reduction)
+  - Simplified quality gate formatter interface
+
+### Technical Improvements
+- Better encapsulation in quality gate checks
+- Improved type safety with lifetime parameters
+- Consistent configuration pattern usage
+
 ## [2.35.0] - 2025-08-30
 
 ### Changed

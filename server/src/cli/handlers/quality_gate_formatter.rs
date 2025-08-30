@@ -203,41 +203,47 @@ fn print_specific_checks(checks: &[QualityCheckType]) {
     }
 }
 
+/// Configuration for quality checks (SPRINT-23)
+#[derive(Debug, Clone)]
+pub struct QualityCheckConfig<'a> {
+    pub project_path: &'a Path,
+    pub checks: &'a [QualityCheckType],
+    pub max_dead_code: f64,
+    pub min_entropy: f64,
+    pub max_complexity_p99: u32,
+    pub perf: bool,
+}
+
 /// Toyota Way: Extract Method - Run project quality checks (complexity ≤8)
 /// Orchestrates the execution of quality checks based on the specified types
 pub async fn run_project_checks(
-    project_path: &Path,
-    checks: &[QualityCheckType],
-    max_dead_code: f64,
-    min_entropy: f64,
-    max_complexity_p99: u32,
+    config: QualityCheckConfig<'_>,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
-    perf: bool,
 ) -> Result<()> {
     // If checks contains All, run the comprehensive check
-    if checks.contains(&QualityCheckType::All) {
+    if config.checks.contains(&QualityCheckType::All) {
         run_all_checks(
-            project_path,
-            max_dead_code,
-            min_entropy,
-            max_complexity_p99,
+            config.project_path,
+            config.max_dead_code,
+            config.min_entropy,
+            config.max_complexity_p99,
             violations,
             results,
-            perf,
+            config.perf,
         )
         .await?;
     } else {
         // Run individual checks with performance timing
         run_individual_checks(
-            checks,
-            project_path,
-            max_dead_code,
-            min_entropy,
-            max_complexity_p99,
+            config.checks,
+            config.project_path,
+            config.max_dead_code,
+            config.min_entropy,
+            config.max_complexity_p99,
             violations,
             results,
-            perf,
+            config.perf,
         )
         .await?;
     }
