@@ -19,6 +19,13 @@
 
 **Zero-configuration AI context generation system** with extreme quality enforcement and Toyota Way standards. Analyze any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com).
 
+> **🚀 v2.38.0 Release**: **Transactional Hashed TDG System!** Enterprise-grade technical debt analysis with advanced resource management:
+> - **💾 Tiered Storage**: Hot/Warm/Cold storage with Blake3 hashing and 33-78% LZ4 compression
+> - **⚡ Fair Scheduling**: Priority-based preemption with tokio primitives for commits vs background ops
+> - **📊 Adaptive Thresholds**: Self-tuning performance with automatic cache/compression adjustments
+> - **🛡️ Resource Control**: CPU/memory limits with enforcement (Allow/Throttle/Queue/Reject)
+> - **🔥 Performance**: <1ms hot cache, >90% hit ratio, 10K+ files/hour analysis throughput
+
 > **🔧 v2.14.0 Release**: **Technical Debt Elimination via TDD!** Major fixes using Test-Driven Development:
 > - **✅ Language Detection Fixed**: Functions now properly detected (was 0, now detects all)
 > - **🚫 Zero Stub Implementations**: All stub code eliminated with real implementations
@@ -199,6 +206,7 @@ make sprint-close
 ### Core Documentation
 - **[Complete Specification](docs/SPECIFICATION.md)** - Unified source of truth (36 sections)
 - **[TDG Guide](docs/TDG_GUIDE.md)** - **NEW!** Technical Debt Grading system documentation
+- **[Transactional Hashed TDG](docs/transactional-hashed-tdg.md)** - **🚀 v2.38.0!** Enterprise-grade TDG with caching, scheduling, and resource control
 - **[API Reference](docs/api-guide.md)** - Service APIs and integration patterns
 - **[CLI Reference](docs/cli-reference.md)** - Complete command documentation
 

@@ -2,21 +2,42 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
+pub mod adaptive;
 pub mod analyzer_ast;
 pub mod analyzer_simple;
 pub mod config;
 pub mod formatters;
 pub mod language_simple;
+pub mod resource_control;
+pub mod scheduler;
+pub mod storage;
 
-// #[cfg(test)]
-// mod integration_tests; // Disabled temporarily for v2.38.0 release
+#[cfg(test)]
+mod integration_test_sprint30;
 
+pub use adaptive::{
+    AdaptiveConfig, AdaptiveThresholdFactory, AdaptiveThresholdManager, CurrentThresholds,
+    PerformanceSample, PerformanceStatistics, PerformanceTrend, ThresholdAdjustment,
+};
 // Use AST analyzer by default (proper implementation)
 pub use analyzer_ast::TdgAnalyzerAst as TdgAnalyzer;
 pub use analyzer_simple::TdgAnalyzer as TdgAnalyzerSimple;
 pub use config::TdgConfig;
 pub use formatters::{format_human, format_json, format_markdown};
 pub use language_simple::{Language, LanguageRules};
+pub use resource_control::{
+    OperationPriority, PlatformResourceController, ResourceAction, ResourceAllocation,
+    ResourceControllerFactory, ResourceEnforcementStats, ResourceLimits, ResourcePressure,
+    ResourceUsage,
+};
+pub use scheduler::{
+    OperationType, ScheduleError, ScheduleGuard, SchedulePermit, SchedulerFactory, SchedulingStatistics,
+    SimpleFairScheduler,
+};
+pub use storage::{
+    AnalysisMetadata, ComponentScores, FileIdentity, FullTdgRecord, HotCacheEntry, SemanticSignature,
+    StorageStatistics, TieredStore, TieredStorageFactory,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TdgScore {
