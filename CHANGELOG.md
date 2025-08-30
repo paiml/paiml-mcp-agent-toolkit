@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.37.1] - 2025-08-30
+
 ### Fixed
 - **SPRINT-25** (Ticket: SPRINT-25): Emergency TDG refactor - Replace vaporware implementation
   - ⚠️ **CRITICAL FIX**: Replaced string-matching heuristics with proper AST-based analysis
