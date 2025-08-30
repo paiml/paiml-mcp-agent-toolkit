@@ -39,6 +39,7 @@ pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod satd_handler;
 pub mod tdg_formatter;
+pub mod tdg_handlers;
 pub mod telemetry_handlers;
 pub mod test_handlers;
 pub mod utility_handlers;
@@ -78,6 +79,7 @@ pub use utility_handlers::{
     handle_context, handle_diagnose, handle_list, handle_search, handle_serve,
 };
 pub use wasm_handlers::{handle_analyze_assemblyscript, handle_analyze_webassembly};
+pub use tdg_handlers::handle_tdg_command;
 
 #[cfg(test)]
 mod tests {
