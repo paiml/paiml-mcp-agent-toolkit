@@ -145,7 +145,7 @@ pub struct ProjectAnalysisResult {
 pub enum QualityMonitorCommand {
     StartMonitoring {
         project_path: PathBuf,
-        config: MonitoredProject,
+        config: Box<MonitoredProject>,
     },
     StopMonitoring {
         project_id: String,
@@ -712,7 +712,7 @@ impl ClaudeCodeAgentMcpServer {
         if let Some(ref monitor) = self.quality_monitor {
             let command = QualityMonitorCommand::StartMonitoring {
                 project_path: path,
-                config: self.monitored_projects[&project_name].clone(),
+                config: Box::new(self.monitored_projects[&project_name].clone()),
             };
             let _ = monitor.send(command).await;
         }
@@ -1035,7 +1035,7 @@ impl ClaudeCodeAgentMcpServer {
 
                     // Store the project in monitored_projects
                     self.monitored_projects
-                        .insert(config.name.clone(), config.clone());
+                        .insert(config.name.clone(), (*config).clone());
 
                     // Start a monitoring task for this project
                     let project_id = config.name.clone();

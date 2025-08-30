@@ -337,18 +337,18 @@ pub enum Language {
 
 impl Language {
     /// Convert enum variant to array index (Toyota Way: O(1) lookup)
-    fn to_index(&self) -> usize {
-        *self as usize
+    fn to_index(self) -> usize {
+        self as usize
     }
 
     /// Get file extensions associated with this language (Toyota Way: ≤3 complexity)
     pub fn extensions(&self) -> &'static [&'static str] {
-        LANGUAGE_INFO[self.to_index()].extensions
+        LANGUAGE_INFO[(*self).to_index()].extensions
     }
 
     /// Get human-readable name for this language (Toyota Way: ≤3 complexity)  
     pub fn name(&self) -> &'static str {
-        LANGUAGE_INFO[self.to_index()].name
+        LANGUAGE_INFO[(*self).to_index()].name
     }
 
     /// Original extensions method - REPLACED with data-driven approach

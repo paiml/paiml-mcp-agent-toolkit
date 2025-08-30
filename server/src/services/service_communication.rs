@@ -108,33 +108,23 @@ impl<T: Clone + Send> PubSubService<T> {
     }
 }
 
+/// Type alias for message service
+type MessageService = Arc<
+    dyn Service<
+            Input = ServiceMessage<Vec<u8>>,
+            Output = ServiceMessage<Vec<u8>>,
+            Error = anyhow::Error,
+        > + Send
+        + Sync,
+>;
+
+/// Type alias for route map
+type RouteMap = Arc<RwLock<HashMap<String, MessageService>>>;
+
 /// Router service that routes messages to appropriate handlers
 pub struct RouterService {
-    routes: Arc<
-        RwLock<
-            HashMap<
-                String,
-                Arc<
-                    dyn Service<
-                            Input = ServiceMessage<Vec<u8>>,
-                            Output = ServiceMessage<Vec<u8>>,
-                            Error = anyhow::Error,
-                        > + Send
-                        + Sync,
-                >,
-            >,
-        >,
-    >,
-    default_handler: Option<
-        Arc<
-            dyn Service<
-                    Input = ServiceMessage<Vec<u8>>,
-                    Output = ServiceMessage<Vec<u8>>,
-                    Error = anyhow::Error,
-                > + Send
-                + Sync,
-        >,
-    >,
+    routes: RouteMap,
+    default_handler: Option<MessageService>,
     metrics: ServiceMetrics,
 }
 
