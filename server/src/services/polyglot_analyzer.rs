@@ -279,6 +279,7 @@ impl PolyglotAnalyzer {
         Ok(languages)
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn scan_directory_recursive(
         &self,
         dir_path: &Path,
@@ -842,7 +843,7 @@ impl PolyglotAnalyzer {
         let has_repository = Self::has_directory_pattern(directories, &["repository", "dao"]);
         let has_model = Self::has_directory_pattern(directories, &["model", "entity"]);
         
-        (has_controller && has_service) || (has_service && has_repository) || (has_model && has_service)
+        has_service && (has_controller || has_repository || has_model)
     }
 
     async fn analyze_directory_structure(
