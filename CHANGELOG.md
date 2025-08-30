@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.34.0] - 2025-08-30
+
+### Changed
+- **Sprint 21**: Further code quality improvements and warning reduction
+  - Boxed large enum variant (MonitoredProject) for memory efficiency
+  - Created type aliases for complex types (MessageService, RouteMap)
+  - Simplified boolean expression in polyglot_analyzer
+  - Fixed method signature for Copy types (to_index)
+  - Suppressed false positive recursion warning
+  - Reduced total clippy warnings from 26 to 19 (27% reduction)
+
+### Technical Improvements
+- Improved memory efficiency with boxed enum variants
+- Cleaner code with type aliases for complex types
+- More idiomatic Rust with simplified boolean logic
+- Better method signatures for Copy types
+
 ## [2.33.0] - 2025-08-29
 
 ### Changed
