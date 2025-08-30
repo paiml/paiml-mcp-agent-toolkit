@@ -4,7 +4,7 @@
 //! quality check functions with custom thresholds and reporting.
 
 use anyhow::Result;
-use pmat::cli::stubs::{
+use pmat::cli::analysis_utilities::{
     calculate_provability_score, check_dead_code, check_entropy, QualityViolation,
 };
 use std::collections::HashMap;

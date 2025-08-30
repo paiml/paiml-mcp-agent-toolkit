@@ -204,7 +204,7 @@ impl TdgAnalyzerAst {
             use swc_ecma_visit::VisitWith;
 
             let cm: Lrc<SourceMap> = Default::default();
-            let fm = cm.new_source_file(FileName::Custom("test.js".into()).into(), source.into());
+            let fm = cm.new_source_file(FileName::Custom("test.js".into()), source.into());
 
             let lexer = Lexer::new(
                 Syntax::Typescript(TsConfig {
@@ -654,14 +654,14 @@ tree_sitter_c::language()
 
     fn score_consistency_rust(&self, _ast: &syn::File, _tracker: &mut PenaltyTracker) -> f32 {
         // Check naming conventions for Rust
-        let points = self.config.weights.consistency;
+        
 
         // TODO: Implement proper Rust naming convention checks
         // For now, return default score
-        points
+        self.config.weights.consistency
     }
 
-    fn score_consistency_python(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
+    fn score_consistency_python(&self, source: &str, _tracker: &mut PenaltyTracker) -> f32 {
         // Check PEP 8 compliance
         let mut points = self.config.weights.consistency;
 
@@ -699,7 +699,7 @@ tree_sitter_c::language()
 
     fn calculate_max_nesting(&self, node: &tree_sitter::Node) -> usize {
         let mut max_depth = 0;
-        let mut current_depth = 0;
+        let _current_depth = 0;
 
         fn traverse(node: tree_sitter::Node, depth: usize, max: &mut usize) {
             *max = (*max).max(depth);

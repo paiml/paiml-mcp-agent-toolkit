@@ -4,7 +4,7 @@
 //! to assess code quality in a project.
 
 use anyhow::Result;
-use pmat::cli::stubs::{calculate_provability_score, check_dead_code, check_entropy};
+use pmat::cli::analysis_utilities::{calculate_provability_score, check_dead_code, check_entropy};
 use std::path::Path;
 
 #[tokio::main]

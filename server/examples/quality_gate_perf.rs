@@ -2,8 +2,8 @@
 //!
 //! This example addresses issue #31 where --perf flag didn't show performance metrics.
 
-use pmat::cli::stubs::handle_quality_gate;
-use pmat::cli::{QualityCheckType, QualityGateOutputFormat};
+use pmat::cli::analysis_utilities::handle_quality_gate;
+use pmat::cli::enums::{QualityCheckType, QualityGateOutputFormat};
 use tempfile::TempDir;
 
 #[tokio::main]
