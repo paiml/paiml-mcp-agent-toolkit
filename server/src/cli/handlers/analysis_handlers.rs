@@ -268,7 +268,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             exclude,
         } => {
             use super::satd_handler::SatdAnalysisConfig;
-            
+
             let config = SatdAnalysisConfig {
                 path,
                 format,
@@ -286,7 +286,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 include,
                 exclude,
             };
-            
+
             super::satd_handler::handle_analyze_satd(config).await
         }
         AnalyzeCommands::DeepContext {
@@ -345,7 +345,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             verbose,
         } => {
             use super::new_tdg_handler::TdgAnalysisConfig;
-            
+
             let config = TdgAnalysisConfig {
                 path,
                 threshold: Some(threshold),
@@ -356,7 +356,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 critical_only,
                 verbose,
             };
-            
+
             super::new_tdg_handler::handle_analyze_tdg(config).await
         }
         AnalyzeCommands::LintHotspot {
@@ -422,7 +422,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             top_files,
         } => {
             use super::provability_handler::ProvabilityConfig;
-            
+
             let config = ProvabilityConfig {
                 project_path,
                 functions,
@@ -433,7 +433,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 output,
                 top_files,
             };
-            
+
             super::provability_handler::handle_analyze_provability(config).await
         }
         AnalyzeCommands::Duplicates {
@@ -479,7 +479,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             top_files,
         } => {
             use super::defect_prediction_handler::DefectPredictionConfig;
-            
+
             let config = DefectPredictionConfig {
                 project_path,
                 confidence_threshold,
@@ -494,7 +494,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 perf,
                 top_files,
             };
-            
+
             super::defect_prediction_handler::handle_analyze_defect_prediction(config).await
         }
         AnalyzeCommands::Comprehensive {
@@ -642,7 +642,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             top_files,
         } => {
             use super::incremental_coverage_handler::IncrementalCoverageConfig;
-            
+
             let config = IncrementalCoverageConfig {
                 project_path,
                 base_branch,
@@ -657,7 +657,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 force_refresh,
                 top_files,
             };
-            
+
             super::incremental_coverage_handler::handle_analyze_incremental_coverage(config).await
         }
         AnalyzeCommands::SymbolTable {

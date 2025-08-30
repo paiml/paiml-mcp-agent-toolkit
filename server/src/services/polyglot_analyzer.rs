@@ -346,7 +346,10 @@ impl PolyglotAnalyzer {
         }
     }
 
-    async fn detect_rust_frameworks(&self, project_path: &Path) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    async fn detect_rust_frameworks(
+        &self,
+        project_path: &Path,
+    ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let frameworks_map = [
             ("tokio", "Tokio"),
             ("actix-web", "Actix Web"),
@@ -355,7 +358,7 @@ impl PolyglotAnalyzer {
             ("serde", "Serde"),
             ("clap", "Clap"),
         ];
-        
+
         if let Ok(cargo_toml) = std::fs::read_to_string(project_path.join("Cargo.toml")) {
             Ok(Self::check_frameworks(&cargo_toml, &frameworks_map))
         } else {
@@ -363,7 +366,10 @@ impl PolyglotAnalyzer {
         }
     }
 
-    async fn detect_python_frameworks(&self, project_path: &Path) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    async fn detect_python_frameworks(
+        &self,
+        project_path: &Path,
+    ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let frameworks_map = [
             ("django", "Django"),
             ("flask", "Flask"),
@@ -371,14 +377,14 @@ impl PolyglotAnalyzer {
             ("pandas", "Pandas"),
             ("numpy", "NumPy"),
         ];
-        
+
         let mut frameworks = Vec::new();
-        
+
         // Check requirements.txt
         if let Ok(reqs) = std::fs::read_to_string(project_path.join("requirements.txt")) {
             frameworks.extend(Self::check_frameworks(&reqs, &frameworks_map));
         }
-        
+
         // Check pyproject.toml (only for web frameworks to avoid duplicates)
         if let Ok(pyproject) = std::fs::read_to_string(project_path.join("pyproject.toml")) {
             let web_frameworks = &frameworks_map[..3]; // Only Django, Flask, FastAPI
@@ -388,11 +394,14 @@ impl PolyglotAnalyzer {
                 }
             }
         }
-        
+
         Ok(frameworks)
     }
 
-    async fn detect_js_frameworks(&self, project_path: &Path) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    async fn detect_js_frameworks(
+        &self,
+        project_path: &Path,
+    ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let frameworks_map = [
             ("react", "React"),
             ("vue", "Vue.js"),
@@ -401,7 +410,7 @@ impl PolyglotAnalyzer {
             ("next", "Next.js"),
             ("svelte", "Svelte"),
         ];
-        
+
         if let Ok(package_json) = std::fs::read_to_string(project_path.join("package.json")) {
             Ok(Self::check_frameworks(&package_json, &frameworks_map))
         } else {
@@ -801,7 +810,9 @@ impl PolyglotAnalyzer {
 
     // Helper to check if any directory contains specified patterns
     fn has_directory_pattern(directories: &[String], patterns: &[&str]) -> bool {
-        directories.iter().any(|d| patterns.iter().any(|p| d.contains(p)))
+        directories
+            .iter()
+            .any(|d| patterns.iter().any(|p| d.contains(p)))
     }
 
     async fn analyze_architecture_indicators(
@@ -810,23 +821,30 @@ impl PolyglotAnalyzer {
     ) -> Result<ArchitectureIndicators, Box<dyn std::error::Error>> {
         // Analyze directory structure
         let directory_structure = self.analyze_directory_structure(project_path).await?;
-        
+
         // Check for microservice indicators
-        let microservice_files = ["docker-compose.yml", "docker-compose.yaml", "kubernetes", "k8s"];
+        let microservice_files = [
+            "docker-compose.yml",
+            "docker-compose.yaml",
+            "kubernetes",
+            "k8s",
+        ];
         let has_microservice_indicators = microservice_files
             .iter()
             .any(|file| project_path.join(file).exists());
 
         // Check for layered architecture indicators
         let has_layered_indicators = self.check_layered_architecture(&directory_structure);
-        
+
         // Check for event-driven indicators
         let event_patterns = ["event", "message", "msg", "queue"];
-        let has_event_indicators = Self::has_directory_pattern(&directory_structure, &event_patterns);
-        
+        let has_event_indicators =
+            Self::has_directory_pattern(&directory_structure, &event_patterns);
+
         // Check for plugin architecture indicators
         let plugin_patterns = ["plugin", "extension"];
-        let has_plugin_indicators = Self::has_directory_pattern(&directory_structure, &plugin_patterns);
+        let has_plugin_indicators =
+            Self::has_directory_pattern(&directory_structure, &plugin_patterns);
 
         Ok(ArchitectureIndicators {
             has_microservice_indicators,
@@ -837,13 +855,13 @@ impl PolyglotAnalyzer {
             config_files: Vec::new(),
         })
     }
-    
+
     fn check_layered_architecture(&self, directories: &[String]) -> bool {
         let has_controller = Self::has_directory_pattern(directories, &["controller"]);
         let has_service = Self::has_directory_pattern(directories, &["service"]);
         let has_repository = Self::has_directory_pattern(directories, &["repository", "dao"]);
         let has_model = Self::has_directory_pattern(directories, &["model", "entity"]);
-        
+
         has_service && (has_controller || has_repository || has_model)
     }
 

@@ -175,11 +175,7 @@ impl AnalysisService {
         })
     }
 
-    async fn analyze_satd(
-        &self,
-        path: &Path,
-        _options: &AnalysisOptions,
-    ) -> Result<SatdResults> {
+    async fn analyze_satd(&self, path: &Path, _options: &AnalysisOptions) -> Result<SatdResults> {
         // Use the actual SATD detector
         let results = self
             .satd_detector

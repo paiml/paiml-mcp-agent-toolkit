@@ -1076,7 +1076,8 @@ impl RuchyLexer {
     /// Handle identifier and keyword tokens
     fn handle_identifier(&mut self) -> RuchyToken {
         let ident = self.read_identifier();
-        KEYWORD_MAP.get(ident.as_str())
+        KEYWORD_MAP
+            .get(ident.as_str())
             .cloned()
             .unwrap_or(RuchyToken::Identifier(ident))
     }
@@ -1098,7 +1099,7 @@ impl RuchyLexer {
         if let Some(token) = SINGLE_CHAR_TOKEN_MAP.get(&ch) {
             return self.handle_single_char_token(token.clone());
         }
-        
+
         // Handle multi-character tokens
         match ch {
             '-' => self.handle_dash(),
@@ -1289,7 +1290,7 @@ pub async fn analyze_ruchy_file(path: &Path) -> Result<FileComplexityMetrics> {
 
     for (i, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
-        
+
         // Handle function detection and metrics
         parser_state.process_line(trimmed, i as u32, &mut metrics);
     }
@@ -1348,9 +1349,7 @@ impl RuchyParserState {
     }
 
     fn is_function_start(&self, trimmed: &str) -> bool {
-        trimmed.starts_with("fun ") || 
-        trimmed.starts_with("@test") || 
-        trimmed.contains("fun test_")
+        trimmed.starts_with("fun ") || trimmed.starts_with("@test") || trimmed.contains("fun test_")
     }
 
     fn start_function(&mut self, trimmed: &str, line_num: u32) {
