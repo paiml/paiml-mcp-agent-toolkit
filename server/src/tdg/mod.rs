@@ -2,12 +2,18 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
+pub mod analyzer_ast;
 pub mod analyzer_simple;
 pub mod config;
 pub mod formatters;
 pub mod language_simple;
 
-pub use analyzer_simple::TdgAnalyzer;
+// #[cfg(test)]
+// mod integration_tests; // Disabled temporarily for v2.38.0 release
+
+// Use AST analyzer by default (proper implementation)
+pub use analyzer_ast::TdgAnalyzerAst as TdgAnalyzer;
+pub use analyzer_simple::TdgAnalyzer as TdgAnalyzerSimple;
 pub use config::TdgConfig;
 pub use formatters::{format_human, format_json, format_markdown};
 pub use language_simple::{Language, LanguageRules};
