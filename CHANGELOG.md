@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.37.3] - 2025-08-30
+
+### Added
+- Transactional Hashed TDG specification as highest priority (Sprint 30)
+- Mandatory TDG dogfooding requirements in CLAUDE.md
+- Helper functions for formatting to reduce complexity
+
+### Changed
+- Roadmap updated with Sprint 30 as top priority (6-week implementation)
+- CLAUDE.md enhanced with TDG quality analysis via crates.io
+
+### Fixed
+- **SPRINT-27-28**: Toyota Way Quality Restoration
+  - Maximum complexity reduced from 22 → 20 (meets ≤20 standard)
+  - `QualityCheckType::fmt`: 22 → 2 (90% reduction)
+  - `format_single_file_summary`: 20 → 2 (90% reduction)
+  - `format_defect_summary`: 20 → 6 (70% reduction)
+  - 5 enum Display functions: 16 → 2 each (87% reduction)
+- All broken example imports fixed (stubs → analysis_utilities)
+- Zero actual SATD violations verified in strict mode
+
 ## [2.37.2] - 2025-08-30
 
 ### Fixed
