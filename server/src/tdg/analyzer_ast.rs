@@ -306,9 +306,9 @@ impl TdgAnalyzerAst {
 
             let mut parser = Parser::new();
             let language = if score.language == Language::Cpp {
-                tree_sitter_cpp::language()
+tree_sitter_cpp::language()
             } else {
-                tree_sitter_c::language()
+tree_sitter_c::language()
             };
 
             parser
