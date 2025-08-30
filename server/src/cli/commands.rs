@@ -465,6 +465,55 @@ pub enum Commands {
         #[command(subcommand)]
         command: AgentCommands,
     },
+
+    /// Grade technical debt and code quality (TDG - Technical Debt Grading)
+    Tdg {
+        /// File or directory to analyze
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// TDG subcommand (compare two files/directories)
+        #[command(subcommand)]
+        command: Option<TdgCommand>,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "table")]
+        format: TdgOutputFormat,
+
+        /// Configuration file (TOML format)
+        #[arg(long)]
+        config: Option<PathBuf>,
+
+        /// Quiet mode (score only, no details)
+        #[arg(short, long)]
+        quiet: bool,
+
+        /// Include component breakdown in output
+        #[arg(long)]
+        include_components: bool,
+
+        /// Minimum grade to pass (for CI/CD)
+        #[arg(long)]
+        min_grade: Option<String>,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+}
+
+/// TDG subcommands
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum TdgCommand {
+    /// Compare two files or directories
+    Compare {
+        /// First file or directory to compare
+        source1: PathBuf,
+        
+        /// Second file or directory to compare
+        source2: PathBuf,
+    },
 }
 
 /// Analyze subcommands

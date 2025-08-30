@@ -220,7 +220,7 @@ pub async fn analyze_tdg(
 
         if path.is_dir() {
             // Directory analysis
-            let project_score = analyzer.analyze_project(path)?;
+            let project_score = analyzer.analyze_project(path).await?;
             Ok(json!({
                 "status": "completed",
                 "message": "TDG project analysis completed",
@@ -235,7 +235,7 @@ pub async fn analyze_tdg(
             }))
         } else {
             // Single file analysis
-            let score = analyzer.analyze_file(path)?;
+            let score = analyzer.analyze_file(path).await?;
             Ok(json!({
                 "status": "completed",
                 "message": "TDG file analysis completed",
@@ -249,10 +249,10 @@ pub async fn analyze_tdg(
 
         for path in paths {
             if path.is_dir() {
-                let project_score = analyzer.analyze_project(path)?;
+                let project_score = analyzer.analyze_project(path).await?;
                 all_scores.extend(project_score.files);
             } else {
-                let score = analyzer.analyze_file(path)?;
+                let score = analyzer.analyze_file(path).await?;
                 all_scores.push(score);
             }
         }
@@ -280,7 +280,7 @@ pub async fn compare_tdg(path1: &Path, path2: &Path) -> Result<Value> {
     use crate::tdg::TdgAnalyzer;
 
     let analyzer = TdgAnalyzer::new()?;
-    let comparison = analyzer.compare(path1, path2)?;
+    let comparison = analyzer.compare(path1, path2).await?;
 
     Ok(json!({
         "status": "completed",

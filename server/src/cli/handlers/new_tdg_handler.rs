@@ -28,7 +28,7 @@ pub async fn handle_analyze_tdg(config: TdgAnalysisConfig) -> Result<()> {
     let _top_files = config.top_files.unwrap_or(10);
 
     let result = if config.path.is_dir() {
-        let project_score = analyzer.analyze_project(&config.path)?;
+        let project_score = analyzer.analyze_project(&config.path).await?;
 
         match config.format {
             TdgOutputFormat::Table => format_project(&project_score),
@@ -40,7 +40,7 @@ pub async fn handle_analyze_tdg(config: TdgAnalysisConfig) -> Result<()> {
             }
         }
     } else {
-        let score = analyzer.analyze_file(&config.path)?;
+        let score = analyzer.analyze_file(&config.path).await?;
 
         match config.format {
             TdgOutputFormat::Table => format_human(&score),
@@ -73,7 +73,7 @@ pub async fn handle_tdg_compare(
     eprintln!("🔍 Starting TDG comparison...");
 
     let analyzer = TdgAnalyzer::new()?;
-    let comparison = analyzer.compare(&path1, &path2)?;
+    let comparison = analyzer.compare(&path1, &path2).await?;
 
     let result = match format {
         TdgOutputFormat::Table => format_comparison(&comparison),

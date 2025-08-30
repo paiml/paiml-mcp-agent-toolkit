@@ -330,6 +330,29 @@ impl CommandExecutor {
             }
 
             Commands::Agent { command } => super::handlers::handle_agent_command(command).await,
+
+            Commands::Tdg {
+                path,
+                command,
+                format,
+                config,
+                quiet,
+                include_components,
+                min_grade,
+                output,
+            } => {
+                super::handlers::handle_tdg_command(
+                    path,
+                    command,
+                    format,
+                    config,
+                    quiet,
+                    include_components,
+                    min_grade,
+                    output,
+                )
+                .await
+            }
         }
     }
 }
