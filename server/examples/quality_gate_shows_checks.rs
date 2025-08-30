@@ -2,8 +2,8 @@
 //!
 //! This example addresses issue #30 where quality-gate didn't show checks.
 
-use pmat::cli::stubs::handle_quality_gate;
-use pmat::cli::{QualityCheckType, QualityGateOutputFormat};
+use pmat::cli::analysis_utilities::handle_quality_gate;
+use pmat::cli::enums::{QualityCheckType, QualityGateOutputFormat};
 use tempfile::TempDir;
 
 #[tokio::main]

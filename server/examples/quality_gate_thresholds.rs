@@ -3,8 +3,8 @@
 //! This example shows how to use quality gate with custom complexity thresholds.
 //! Addresses issue #32 where --max-cyclomatic didn't affect report output.
 
-use pmat::cli::stubs::handle_quality_gate;
-use pmat::cli::{QualityCheckType, QualityGateOutputFormat};
+use pmat::cli::analysis_utilities::handle_quality_gate;
+use pmat::cli::enums::{QualityCheckType, QualityGateOutputFormat};
 use tempfile::TempDir;
 
 #[tokio::main]

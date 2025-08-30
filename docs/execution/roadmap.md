@@ -1,28 +1,62 @@
 # PMAT Development Roadmap
 
-## Current Sprint: Sprint 25 - Emergency TDG Refactor ✅ COMPLETE
-- **Duration**: 2025-08-30
-- **Priority**: P0 - Critical Fix for Vaporware TDG Implementation
-- **Methodology**: Test-Driven Development (TDD) + Toyota Way Quality Standards
-- **Issue**: TDG feature reported as "vaporware" due to string-matching heuristics
+## Current Sprint: Sprint 30 - Transactional Hashed TDG System 🚀 HIGHEST PRIORITY
+- **Duration**: 2025-08-30 onwards (6-week implementation)
+- **Priority**: P0 - CRITICAL INFRASTRUCTURE
+- **Methodology**: Incremental rollout with performance validation
+- **Focus**: Implement transactional TDG with hashing, tiered storage, and adaptive thresholds
 
-### Sprint 25 Summary
+### Sprint 30 Tasks (Week-by-Week)
+- 🗄️ **Week 1**: Tiered storage with compression (Hot/Warm/Cold with LZ4)
+- ⚡ **Week 2**: Simple fair scheduler with tokio primitives  
+- 🎯 **Week 3**: Adaptive thresholds with feedback loop
+- 🖥️ **Week 4**: Platform-explicit resource control (Linux/macOS/Windows)
+- 💾 **Week 5**: Storage backend flexibility (sled/RocksDB/in-memory)
+- 🔍 **Week 6**: Diagnostic tools and documentation
+
+### Key Features
+- **Transactional Guarantees**: ACID properties for quality scores
+- **Content Hashing**: Blake3-based content fingerprinting  
+- **Semantic Caching**: 94%+ hit rate with adaptive similarity thresholds
+- **Performance Target**: <100ms commit-time validation
+- **Resource Control**: Platform-aware CPU/IO limiting
+
+## Completed Sprint: Sprint 27-28 - Toyota Way Quality Restoration ✅ COMPLETE
+- **Duration**: 2025-08-30
+- **Priority**: P1 - Quality Standards Enforcement  
+- **Result**: Maximum complexity reduced from 22 → 20 (Toyota Way ≤20 achieved)
+
+### Sprint 27-28 Achievements
+- ✅ **Complexity Reduction**: 8 functions refactored using Kaizen decomposition
+- ✅ **SATD Compliance**: Zero actual violations (strict mode verified)
+- ✅ **Integration Fixed**: All 6 broken examples now use correct imports
+- ✅ **Quality Metrics**: All functions now ≤20 complexity threshold
+
+## Previous Sprint: Sprint 25-26 - Emergency TDG Refactor ✅ COMPLETE
+- **Duration**: 2025-08-30
+- **Priority**: P0 - Critical Fix for Vaporware TDG Implementation  
+- **Release**: **v2.37.2** published to GitHub + crates.io
+- **Methodology**: Test-Driven Development (TDD) + Toyota Way Quality Standards
+
+### Sprint 25-26 Summary
 **Emergency TDD-Driven Refactor** - Replace vaporware TDG with proper AST-based analysis
 
 #### Completed Tasks
 - ✅ **TDG Analysis**: Confirmed vaporware status - using string matching instead of AST
 - ✅ **Specification**: Created comprehensive TDG_SPECIFICATION.md document  
-- ✅ **TDD Tests**: Comprehensive test suite with 10+ test scenarios
 - ✅ **AST Implementation**: Full TdgAnalyzerAst with syn/swc/rustpython parsers
 - ✅ **Migration**: Switched default interface to AST analyzer
+- ✅ **Release**: v2.37.2 published to GitHub + crates.io
+- ✅ **Dependencies**: Conservative updates maintaining API stability
 - ✅ **Validation**: Confirmed AST analyzer works with 1.0 confidence for Rust
 
 #### Quality Achievements
 - **Accuracy**: Proper McCabe cyclomatic complexity calculation
-- **Confidence**: Full confidence (1.0) for Rust, high (0.95) for Python/JS
+- **Confidence**: Full confidence (1.0) for Rust, high (0.95) for Python/JS  
 - **AST Parsing**: Real control flow analysis, not pattern matching
 - **Backward Compatibility**: Simple analyzer preserved as fallback
 - **Zero Regression**: All existing functionality maintained
+- **Project Quality**: A grade (92.16/100) across 651 files analyzed
 
 ## Previous Sprint: v2.37.0 Release ✅ COMPLETE
 - **Duration**: 2025-08-28 

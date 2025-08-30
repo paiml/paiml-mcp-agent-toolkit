@@ -87,6 +87,8 @@ mod analysis_timeout_tests {
             false,             // fail_on_violation
             15.0,              // max_percentage
             TEST_TIMEOUT_SECS, // timeout - THIS PARAMETER MUST BE ACCEPTED
+            vec![],            // include
+            vec![],            // exclude
         )
         .await;
         let elapsed = start_time.elapsed();
@@ -284,6 +286,8 @@ mod cli_timeout_integration {
             fail_on_violation: false,
             max_percentage: 15.0,
             timeout: 60, // This field must exist
+            include: vec![],
+            exclude: vec![],
         }) {
             AnalyzeCommands::DeadCode { timeout, .. } => timeout,
             _ => panic!("Pattern match should work"),
@@ -303,6 +307,8 @@ mod cli_timeout_integration {
             top_files: 10,
             fail_on_violation: false,
             timeout: 60, // This field must exist
+            include: vec![],
+            exclude: vec![],
         }) {
             AnalyzeCommands::Satd { timeout, .. } => timeout,
             _ => panic!("Pattern match should work"),

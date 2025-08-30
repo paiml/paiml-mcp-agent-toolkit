@@ -63,6 +63,31 @@ We eat our own dog food by using our MCP tools as the primary interface:
 - Quality Gates: Use MCP `quality_gate` tool before CLI `pmat quality-gate`
 - Todo Generation: Use MCP `pdmt_deterministic_todos` tool
 
+## TDG Quality Analysis (Dogfooding via crates.io)
+
+**MANDATORY**: After publishing to crates.io, we MUST use our own TDG tool for quality analysis:
+
+```bash
+# Install latest from crates.io (dogfooding principle)
+cargo install pmat --force
+
+# Run TDG analysis on our own codebase
+pmat tdg . --include-components
+
+# For specific files
+pmat tdg server/src/tdg/analyzer_ast.rs
+
+# Compare implementations
+pmat tdg compare server/src/tdg/analyzer_simple.rs server/src/tdg/analyzer_ast.rs
+```
+
+**Quality Standards via TDG**:
+- Overall Grade: Must maintain B+ or higher
+- Structural Complexity: ≤20 per function
+- Semantic Complexity: Cognitive complexity ≤15
+- Duplication: <10% code duplication
+- Documentation: >70% coverage for public APIs
+
 ## The Kaizen Refactoring Loop (The "Kata")
 
 This is the core workflow for improving the codebase. Treat it as a repeatable practice (a kata) to drive quality.
