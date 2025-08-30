@@ -77,14 +77,14 @@ impl TdgAnalyzerAst {
             use syn::{visit::Visit, File};
 
             let ast = syn::parse_str::<File>(source)?;
-            
+
             let mut visitor = RustComplexityVisitor::new();
             visitor.visit_file(&ast);
 
             // Calculate structural complexity based on AST
             let cyclomatic = visitor.cyclomatic_complexity;
             let cognitive = visitor.cognitive_complexity;
-            
+
             score.structural_complexity = self.score_structural_complexity(
                 cyclomatic,
                 cognitive,
@@ -163,7 +163,8 @@ impl TdgAnalyzerAst {
                 tracker,
             );
 
-            score.duplication_ratio = self.analyze_duplication_ast(source, Language::Python, tracker);
+            score.duplication_ratio =
+                self.analyze_duplication_ast(source, Language::Python, tracker);
 
             score.coupling_score = self.score_coupling(
                 visitor.import_count,
@@ -217,7 +218,7 @@ impl TdgAnalyzerAst {
             );
 
             let mut parser = Parser::new_from(lexer);
-            
+
             match parser.parse_module() {
                 Ok(module) => {
                     let mut visitor = JavaScriptComplexityVisitor::new();
@@ -238,7 +239,8 @@ impl TdgAnalyzerAst {
                         tracker,
                     );
 
-                    score.duplication_ratio = self.analyze_duplication_ast(source, Language::JavaScript, tracker);
+                    score.duplication_ratio =
+                        self.analyze_duplication_ast(source, Language::JavaScript, tracker);
 
                     score.coupling_score = self.score_coupling(
                         visitor.import_count,
@@ -301,20 +303,21 @@ impl TdgAnalyzerAst {
         #[cfg(feature = "c-ast")]
         {
             use tree_sitter::{Parser, Query, QueryCursor};
-            
+
             let mut parser = Parser::new();
             let language = if score.language == Language::Cpp {
                 tree_sitter_cpp::language()
             } else {
                 tree_sitter_c::language()
             };
-            
-            parser.set_language(&language)
+
+            parser
+                .set_language(&language)
                 .map_err(|e| anyhow::anyhow!("Failed to set language: {:?}", e))?;
 
             if let Some(tree) = parser.parse(source, None) {
                 let root_node = tree.root_node();
-                
+
                 // Count control flow statements for cyclomatic complexity
                 let query_str = r#"
                     (if_statement) @if
@@ -325,10 +328,10 @@ impl TdgAnalyzerAst {
                     (case_statement) @case
                     (conditional_expression) @ternary
                 "#;
-                
+
                 let query = Query::new(&language, query_str)
                     .map_err(|e| anyhow::anyhow!("Query error: {:?}", e))?;
-                
+
                 let mut cursor = QueryCursor::new();
                 let matches = cursor.matches(&query, root_node, source.as_bytes());
                 let cyclomatic = 1 + matches.count() as u32;
@@ -344,7 +347,7 @@ impl TdgAnalyzerAst {
                 // Count includes for coupling
                 let include_query = Query::new(&language, "(preproc_include) @include")
                     .map_err(|e| anyhow::anyhow!("Query error: {:?}", e))?;
-                
+
                 let mut cursor = QueryCursor::new();
                 let include_matches = cursor.matches(&include_query, root_node, source.as_bytes());
                 let import_count = include_matches.count() as u32;
@@ -354,7 +357,7 @@ impl TdgAnalyzerAst {
                 // Basic documentation coverage
                 let comment_query = Query::new(&language, "(comment) @comment")
                     .map_err(|e| anyhow::anyhow!("Query error: {:?}", e))?;
-                
+
                 let mut cursor = QueryCursor::new();
                 let comment_matches = cursor.matches(&comment_query, root_node, source.as_bytes());
                 let comment_count = comment_matches.count() as u32;
@@ -363,7 +366,8 @@ impl TdgAnalyzerAst {
                     .min(self.config.weights.documentation);
 
                 score.semantic_complexity = self.config.weights.semantic_complexity;
-                score.duplication_ratio = self.analyze_duplication_ast(source, score.language, tracker);
+                score.duplication_ratio =
+                    self.analyze_duplication_ast(source, score.language, tracker);
                 score.consistency_score = self.config.weights.consistency;
             } else {
                 self.analyze_heuristic(source, score, tracker)?;
@@ -398,18 +402,18 @@ impl TdgAnalyzerAst {
     ) -> Result<()> {
         // Fallback heuristic analysis (mark as low confidence)
         score.confidence *= 0.3;
-        
+
         // Use the simple analyzer's methods as fallback
         let simple_analyzer = crate::tdg::analyzer_simple::TdgAnalyzer::new()?;
         let simple_score = simple_analyzer.analyze_source(source, score.language, None)?;
-        
+
         score.structural_complexity = simple_score.structural_complexity;
         score.semantic_complexity = simple_score.semantic_complexity;
         score.duplication_ratio = simple_score.duplication_ratio;
         score.coupling_score = simple_score.coupling_score;
         score.doc_coverage = simple_score.doc_coverage;
         score.consistency_score = simple_score.consistency_score;
-        
+
         Ok(())
     }
 
@@ -427,7 +431,7 @@ impl TdgAnalyzerAst {
         if cyclomatic > self.config.thresholds.max_cyclomatic_complexity {
             let excess = (cyclomatic - self.config.thresholds.max_cyclomatic_complexity) as f32;
             let penalty = (excess * 0.5).min(15.0);
-            
+
             if let Some(applied) = tracker.apply(
                 format!("high_cyclomatic_{}", cyclomatic),
                 MetricCategory::StructuralComplexity,
@@ -442,7 +446,7 @@ impl TdgAnalyzerAst {
         if cognitive > 15 {
             let excess = (cognitive - 15) as f32;
             let penalty = (excess * 0.3).min(10.0);
-            
+
             if let Some(applied) = tracker.apply(
                 format!("high_cognitive_{}", cognitive),
                 MetricCategory::StructuralComplexity,
@@ -457,7 +461,7 @@ impl TdgAnalyzerAst {
         if nesting_depth > self.config.thresholds.max_nesting_depth as usize {
             let excess = (nesting_depth - self.config.thresholds.max_nesting_depth as usize) as f32;
             let penalty = excess.min(5.0);
-            
+
             if let Some(applied) = tracker.apply(
                 format!("deep_nesting_{}", nesting_depth),
                 MetricCategory::StructuralComplexity,
@@ -471,7 +475,7 @@ impl TdgAnalyzerAst {
         // Penalize long methods
         if method_length > 50 {
             let excess = ((method_length - 50) as f32 / 10.0).min(5.0);
-            
+
             if let Some(applied) = tracker.apply(
                 format!("long_method_{}", method_length),
                 MetricCategory::StructuralComplexity,
@@ -497,7 +501,7 @@ impl TdgAnalyzerAst {
         // Penalize too many parameters
         if max_params > 5 {
             let penalty = ((max_params - 5) as f32 * 0.5).min(5.0);
-            
+
             if let Some(applied) = tracker.apply(
                 format!("many_params_{}", max_params),
                 MetricCategory::SemanticComplexity,
@@ -511,7 +515,7 @@ impl TdgAnalyzerAst {
         // Penalize high type complexity
         if type_complexity > 10 {
             let penalty = ((type_complexity - 10) as f32 * 0.3).min(5.0);
-            
+
             if let Some(applied) = tracker.apply(
                 format!("complex_types_{}", type_complexity),
                 MetricCategory::SemanticComplexity,
@@ -525,7 +529,7 @@ impl TdgAnalyzerAst {
         // Penalize too many abstraction levels
         if abstraction_levels > 3 {
             let penalty = ((abstraction_levels - 3) as f32).min(5.0);
-            
+
             if let Some(applied) = tracker.apply(
                 format!("deep_abstraction_{}", abstraction_levels),
                 MetricCategory::SemanticComplexity,
@@ -548,7 +552,7 @@ impl TdgAnalyzerAst {
         // TODO: Implement AST-based duplication detection
         // For now, use a simple hash-based approach
         let mut points = self.config.weights.duplication;
-        
+
         let lines: Vec<&str> = source
             .lines()
             .map(|l| l.trim())
@@ -562,7 +566,7 @@ impl TdgAnalyzerAst {
         // Count exact duplicates
         let mut duplicates = 0;
         let mut seen = std::collections::HashSet::new();
-        
+
         for line in &lines {
             if line.len() > 10 && !seen.insert(line) {
                 duplicates += 1;
@@ -570,10 +574,10 @@ impl TdgAnalyzerAst {
         }
 
         let duplication_ratio = duplicates as f32 / lines.len() as f32;
-        
+
         if duplication_ratio > 0.1 {
             let penalty = (duplication_ratio * 20.0).min(20.0);
-            
+
             if let Some(applied) = tracker.apply(
                 format!("duplication_{:.2}", duplication_ratio),
                 MetricCategory::Duplication,
@@ -599,7 +603,7 @@ impl TdgAnalyzerAst {
         // Penalize too many imports
         if import_count > 20 {
             let penalty = ((import_count - 20) as f32 * 0.2).min(10.0);
-            
+
             if let Some(applied) = tracker.apply(
                 format!("many_imports_{}", import_count),
                 MetricCategory::Coupling,
@@ -613,7 +617,7 @@ impl TdgAnalyzerAst {
         // Penalize too many external calls
         if external_calls > 50 {
             let penalty = ((external_calls - 50) as f32 * 0.1).min(5.0);
-            
+
             if let Some(applied) = tracker.apply(
                 format!("many_external_calls_{}", external_calls),
                 MetricCategory::Coupling,
@@ -641,10 +645,10 @@ impl TdgAnalyzerAst {
 
         let coverage = documented_items as f32 / total_public_items as f32;
         let comment_ratio = comment_lines as f32 / total_lines as f32;
-        
+
         // Weight: 70% API documentation, 30% inline comments
         let score = coverage * 0.7 + comment_ratio * 0.3;
-        
+
         (score * self.config.weights.documentation).min(self.config.weights.documentation)
     }
 
@@ -660,7 +664,7 @@ impl TdgAnalyzerAst {
     fn score_consistency_python(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
         // Check PEP 8 compliance
         let mut points = self.config.weights.consistency;
-        
+
         // Simple indentation consistency check
         let lines: Vec<&str> = source.lines().collect();
         let mut tab_count = 0;
@@ -681,7 +685,7 @@ impl TdgAnalyzerAst {
             } else {
                 space_count as f32 / total_indented as f32
             };
-            
+
             points = consistency * self.config.weights.consistency;
         }
 
@@ -696,10 +700,10 @@ impl TdgAnalyzerAst {
     fn calculate_max_nesting(&self, node: &tree_sitter::Node) -> usize {
         let mut max_depth = 0;
         let mut current_depth = 0;
-        
+
         fn traverse(node: tree_sitter::Node, depth: usize, max: &mut usize) {
             *max = (*max).max(depth);
-            
+
             for child in node.children(&mut node.walk()) {
                 let new_depth = if matches!(
                     child.kind(),
@@ -712,14 +716,14 @@ impl TdgAnalyzerAst {
                 traverse(child, new_depth, max);
             }
         }
-        
+
         traverse(*node, 0, &mut max_depth);
         max_depth
     }
 
     fn calculate_max_function_length(&self, node: &tree_sitter::Node, source: &str) -> usize {
         let mut max_length = 0;
-        
+
         fn find_functions(node: tree_sitter::Node, source: &str, max: &mut usize) {
             if node.kind() == "function_definition" {
                 let start_line = node.start_position().row;
@@ -727,12 +731,12 @@ impl TdgAnalyzerAst {
                 let length = end_line - start_line + 1;
                 *max = (*max).max(length);
             }
-            
+
             for child in node.children(&mut node.walk()) {
                 find_functions(child, source, max);
             }
         }
-        
+
         find_functions(*node, source, &mut max_length);
         max_length
     }
@@ -1075,11 +1079,11 @@ impl swc_ecma_visit::Visit for JavaScriptComplexityVisitor {
     fn visit_function(&mut self, node: &swc_ecma_ast::Function) {
         self.function_count += 1;
         self.max_params = self.max_params.max(node.params.len());
-        
+
         if node.is_async {
             self.async_count += 1;
         }
-        
+
         swc_ecma_visit::visit_function(self, node);
     }
 
@@ -1105,9 +1109,18 @@ mod tests {
     #[test]
     fn test_language_detection() {
         use crate::tdg::Language;
-        
-        assert_eq!(Language::from_extension(Path::new("test.rs")), Language::Rust);
-        assert_eq!(Language::from_extension(Path::new("test.py")), Language::Python);
-        assert_eq!(Language::from_extension(Path::new("test.js")), Language::JavaScript);
+
+        assert_eq!(
+            Language::from_extension(Path::new("test.rs")),
+            Language::Rust
+        );
+        assert_eq!(
+            Language::from_extension(Path::new("test.py")),
+            Language::Python
+        );
+        assert_eq!(
+            Language::from_extension(Path::new("test.js")),
+            Language::JavaScript
+        );
     }
 }

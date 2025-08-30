@@ -7,8 +7,7 @@ use globset::{Glob, GlobSet, GlobSetBuilder};
 use std::path::{Path, PathBuf};
 
 /// File filter that applies include/exclude patterns
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct FileFilter {
     include_set: Option<GlobSet>,
     exclude_set: Option<GlobSet>,
@@ -74,7 +73,6 @@ impl FileFilter {
         self.include_set.is_some() || self.exclude_set.is_some()
     }
 }
-
 
 #[cfg(test)]
 mod tests {

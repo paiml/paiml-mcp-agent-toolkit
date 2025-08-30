@@ -185,7 +185,7 @@ pub async fn handle_analyze_tdg(
 ) -> Result<()> {
     // Use the enhanced implementation from stubs that supports all modes
     use super::new_tdg_handler::TdgAnalysisConfig;
-    
+
     let config = TdgAnalysisConfig {
         path,
         threshold,
@@ -196,7 +196,7 @@ pub async fn handle_analyze_tdg(
         critical_only,
         verbose,
     };
-    
+
     super::new_tdg_handler::handle_analyze_tdg(config).await
 }
 
@@ -210,8 +210,15 @@ pub async fn handle_analyze_makefile(
     top_files: usize,
 ) -> Result<()> {
     // Delegate to stub implementation for now - will be fully extracted later
-    super::super::analysis_utilities::handle_analyze_makefile(path, rules, format, fix, gnu_version, top_files)
-        .await
+    super::super::analysis_utilities::handle_analyze_makefile(
+        path,
+        rules,
+        format,
+        fix,
+        gnu_version,
+        top_files,
+    )
+    .await
 }
 
 // handle_analyze_provability has been moved to provability_handler.rs
@@ -271,7 +278,7 @@ pub async fn handle_analyze_comprehensive(
     executive_summary: bool,
 ) -> Result<()> {
     use super::comprehensive_analysis_handler::ComprehensiveAnalysisConfig;
-    
+
     // Create config struct
     let config = ComprehensiveAnalysisConfig {
         project_path,
@@ -292,7 +299,7 @@ pub async fn handle_analyze_comprehensive(
         executive_summary,
         top_files: 20, // default value
     };
-    
+
     // Use the new orchestrator-based comprehensive handler implementation
     super::comprehensive_analysis_handler::handle_analyze_comprehensive(config).await
 }

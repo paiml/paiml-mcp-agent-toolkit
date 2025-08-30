@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **SPRINT-25** (Ticket: SPRINT-25): Emergency TDG refactor - Replace vaporware implementation
+  - ⚠️ **CRITICAL FIX**: Replaced string-matching heuristics with proper AST-based analysis
+  - Added comprehensive TDG specification document (docs/TDG_SPECIFICATION.md)
+  - Implemented TdgAnalyzerAst with syn/swc/rustpython/tree-sitter parsers
+  - Fixed accuracy issues reported as "vaporware" - now using real McCabe complexity
+  - Enable full confidence scoring (1.0) for Rust, high confidence (0.95) for Python/JS
+  - Backward compatibility maintained with TdgAnalyzerSimple fallback
+  - AST analysis replaces estimate_* heuristic methods with proper visitor patterns
+
 ## [2.37.0] - 2025-08-30
 
 ### Changed

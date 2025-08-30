@@ -76,21 +76,27 @@ pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()>
 
     // Format output based on requested format
     let content = match config.format {
-        ProvabilityOutputFormat::Json => {
-            format_provability_json(&function_ids, &filtered_summaries_owned, config.include_evidence)?
-        }
+        ProvabilityOutputFormat::Json => format_provability_json(
+            &function_ids,
+            &filtered_summaries_owned,
+            config.include_evidence,
+        )?,
         ProvabilityOutputFormat::Summary => {
             format_provability_summary(&function_ids, &filtered_summaries_owned, config.top_files)?
         }
-        ProvabilityOutputFormat::Full => {
-            format_provability_detailed(&function_ids, &filtered_summaries_owned, config.include_evidence)?
-        }
+        ProvabilityOutputFormat::Full => format_provability_detailed(
+            &function_ids,
+            &filtered_summaries_owned,
+            config.include_evidence,
+        )?,
         ProvabilityOutputFormat::Sarif => {
             format_provability_sarif(&function_ids, &filtered_summaries_owned)?
         }
-        ProvabilityOutputFormat::Markdown => {
-            format_provability_detailed(&function_ids, &filtered_summaries_owned, config.include_evidence)?
-        }
+        ProvabilityOutputFormat::Markdown => format_provability_detailed(
+            &function_ids,
+            &filtered_summaries_owned,
+            config.include_evidence,
+        )?,
     };
 
     // Write output
