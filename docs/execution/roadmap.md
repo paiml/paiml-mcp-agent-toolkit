@@ -1,6 +1,30 @@
 # PMAT Development Roadmap
 
-## Current Sprint: v2.18.0 Release Preparation ✅ COMPLETE
+## Current Sprint: Sprint 25 - Emergency TDG Refactor ✅ COMPLETE
+- **Duration**: 2025-08-30
+- **Priority**: P0 - Critical Fix for Vaporware TDG Implementation
+- **Methodology**: Test-Driven Development (TDD) + Toyota Way Quality Standards
+- **Issue**: TDG feature reported as "vaporware" due to string-matching heuristics
+
+### Sprint 25 Summary
+**Emergency TDD-Driven Refactor** - Replace vaporware TDG with proper AST-based analysis
+
+#### Completed Tasks
+- ✅ **TDG Analysis**: Confirmed vaporware status - using string matching instead of AST
+- ✅ **Specification**: Created comprehensive TDG_SPECIFICATION.md document  
+- ✅ **TDD Tests**: Comprehensive test suite with 10+ test scenarios
+- ✅ **AST Implementation**: Full TdgAnalyzerAst with syn/swc/rustpython parsers
+- ✅ **Migration**: Switched default interface to AST analyzer
+- ✅ **Validation**: Confirmed AST analyzer works with 1.0 confidence for Rust
+
+#### Quality Achievements
+- **Accuracy**: Proper McCabe cyclomatic complexity calculation
+- **Confidence**: Full confidence (1.0) for Rust, high (0.95) for Python/JS
+- **AST Parsing**: Real control flow analysis, not pattern matching
+- **Backward Compatibility**: Simple analyzer preserved as fallback
+- **Zero Regression**: All existing functionality maintained
+
+## Previous Sprint: v2.37.0 Release ✅ COMPLETE
 - **Duration**: 2025-08-28 
 - **Priority**: P0 - Quality Achievement & Release
 - **Methodology**: Toyota Way Quality Achievement + Canonical Release System
