@@ -5,6 +5,7 @@
 
 pub mod analysis;
 pub mod analysis_helpers;
+pub mod analysis_utilities;
 pub mod args;
 pub mod command_dispatcher;
 pub mod command_structure;
@@ -23,7 +24,6 @@ pub mod name_similarity_helpers;
 pub mod proof_annotation_formatter;
 pub mod proof_annotation_helpers;
 pub mod provability_helpers;
-pub mod analysis_utilities;
 pub mod symbol_table_helpers;
 pub mod tdg_helpers;
 

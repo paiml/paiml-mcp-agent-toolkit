@@ -824,8 +824,12 @@ pub async fn handle_analyze_churn(
     // Format output based on requested format
     let content = match format {
         ChurnOutputFormat::Json => serde_json::to_string_pretty(&analysis)?,
-        ChurnOutputFormat::Summary => super::super::analysis_utilities::format_churn_as_summary(&analysis)?,
-        ChurnOutputFormat::Markdown => super::super::analysis_utilities::format_churn_as_markdown(&analysis)?,
+        ChurnOutputFormat::Summary => {
+            super::super::analysis_utilities::format_churn_as_summary(&analysis)?
+        }
+        ChurnOutputFormat::Markdown => {
+            super::super::analysis_utilities::format_churn_as_markdown(&analysis)?
+        }
         ChurnOutputFormat::Csv => super::super::analysis_utilities::format_churn_as_csv(&analysis)?,
     };
 

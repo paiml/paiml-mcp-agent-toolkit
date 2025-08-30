@@ -417,9 +417,9 @@ async fn generate_single_template<T: TemplateServerTrait>(
 ) -> Result<serde_json::Value, String> {
     let variant = get_template_variant(template_type, toolchain)
         .ok_or_else(|| format!("No variant for {} with {}", template_type, toolchain))?;
-    
+
     let uri = format!("template://{}/{}/{}", template_type, toolchain, variant);
-    
+
     match template_service::generate_template(server, &uri, parameters).await {
         Ok(generated) => Ok(json!({
             "template": template_type,

@@ -33,7 +33,11 @@ pub struct DefectPredictionConfig {
 /// This reduces complexity from 23 to ~8 by delegating to the facade service.
 pub async fn handle_analyze_defect_prediction(config: DefectPredictionConfig) -> Result<()> {
     // Print analysis header
-    print_analysis_header(&config.project_path, config.high_risk_only, config.include_low_confidence);
+    print_analysis_header(
+        &config.project_path,
+        config.high_risk_only,
+        config.include_low_confidence,
+    );
 
     // Create service registry and facade
     let registry = Arc::new(ServiceRegistry::new());
@@ -63,11 +67,7 @@ pub async fn handle_analyze_defect_prediction(config: DefectPredictionConfig) ->
 }
 
 /// Print analysis header information
-fn print_analysis_header(
-    project_path: &Path,
-    high_risk_only: bool,
-    include_low_confidence: bool,
-) {
+fn print_analysis_header(project_path: &Path, high_risk_only: bool, include_low_confidence: bool) {
     eprintln!("🔮 Analyzing defect probability...");
     eprintln!("📁 Project path: {}", project_path.display());
     eprintln!("🎯 High risk only: {}", high_risk_only);

@@ -160,7 +160,10 @@ impl SarifFormatter {
             .collect()
     }
 
-    fn build_result(&self, prediction: &crate::cli::analysis_utilities::FilePrediction) -> serde_json::Value {
+    fn build_result(
+        &self,
+        prediction: &crate::cli::analysis_utilities::FilePrediction,
+    ) -> serde_json::Value {
         serde_json::json!({
             "ruleId": "high-defect-risk",
             "level": "warning",
@@ -207,7 +210,11 @@ impl CsvFormatter {
         }
     }
 
-    fn write_row(&self, output: &mut String, prediction: &crate::cli::analysis_utilities::FilePrediction) {
+    fn write_row(
+        &self,
+        output: &mut String,
+        prediction: &crate::cli::analysis_utilities::FilePrediction,
+    ) {
         output.push_str(&format!(
             "\"{}\",{:.4},{},\"{}\"\n",
             prediction.file_path,
