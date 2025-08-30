@@ -184,17 +184,20 @@ pub async fn handle_analyze_tdg(
     verbose: bool,
 ) -> Result<()> {
     // Use the enhanced implementation from stubs that supports all modes
-    super::new_tdg_handler::handle_analyze_tdg(
+    use super::new_tdg_handler::TdgAnalysisConfig;
+    
+    let config = TdgAnalysisConfig {
         path,
         threshold,
-        top,
+        top_files: top,
         format,
         include_components,
         output,
         critical_only,
         verbose,
-    )
-    .await
+    };
+    
+    super::new_tdg_handler::handle_analyze_tdg(config).await
 }
 
 /// Handle makefile analysis command

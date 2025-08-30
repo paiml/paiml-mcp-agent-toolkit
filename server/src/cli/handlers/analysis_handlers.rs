@@ -344,17 +344,20 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             critical_only,
             verbose,
         } => {
-            super::new_tdg_handler::handle_analyze_tdg(
+            use super::new_tdg_handler::TdgAnalysisConfig;
+            
+            let config = TdgAnalysisConfig {
                 path,
-                Some(threshold),
-                Some(top_files),
+                threshold: Some(threshold),
+                top_files: Some(top_files),
                 format,
                 include_components,
                 output,
                 critical_only,
                 verbose,
-            )
-            .await
+            };
+            
+            super::new_tdg_handler::handle_analyze_tdg(config).await
         }
         AnalyzeCommands::LintHotspot {
             project_path,
@@ -418,7 +421,9 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
             output,
             top_files,
         } => {
-            super::provability_handler::handle_analyze_provability(
+            use super::provability_handler::ProvabilityConfig;
+            
+            let config = ProvabilityConfig {
                 project_path,
                 functions,
                 analysis_depth,
@@ -427,8 +432,9 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
                 include_evidence,
                 output,
                 top_files,
-            )
-            .await
+            };
+            
+            super::provability_handler::handle_analyze_provability(config).await
         }
         AnalyzeCommands::Duplicates {
             project_path,

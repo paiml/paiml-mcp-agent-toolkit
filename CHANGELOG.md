@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.35.0] - 2025-08-30
+
+### Changed
+- **Sprint 22** (Ticket: SPRINT-22): Reduce functions with too many arguments
+  - Created TdgAnalysisConfig struct (8 → 1 argument)
+  - Created ProvabilityConfig struct (8 → 1 argument)
+  - Reduced functions with too many arguments from 10 to 8
+  - Reduced total clippy warnings from 19 to 17 (11% reduction)
+
+### Technical Improvements
+- Better encapsulation with configuration structs
+- Improved API clarity for TDG and provability analysis
+- Consistent pattern application across handlers
+
 ## [2.34.0] - 2025-08-30
 
 ### Changed

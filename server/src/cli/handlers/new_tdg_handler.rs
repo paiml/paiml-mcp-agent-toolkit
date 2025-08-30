@@ -7,26 +7,30 @@ use crate::tdg::formatters::{
 };
 use crate::tdg::TdgAnalyzer;
 
-pub async fn handle_analyze_tdg(
-    path: PathBuf,
-    threshold: Option<f64>,
-    top_files: Option<usize>,
-    format: TdgOutputFormat,
-    _include_components: bool,
-    output: Option<PathBuf>,
-    _critical_only: bool,
-    _verbose: bool,
-) -> Result<()> {
+/// Configuration for TDG analysis (SPRINT-22)
+#[derive(Debug, Clone)]
+pub struct TdgAnalysisConfig {
+    pub path: PathBuf,
+    pub threshold: Option<f64>,
+    pub top_files: Option<usize>,
+    pub format: TdgOutputFormat,
+    pub include_components: bool,
+    pub output: Option<PathBuf>,
+    pub critical_only: bool,
+    pub verbose: bool,
+}
+
+pub async fn handle_analyze_tdg(config: TdgAnalysisConfig) -> Result<()> {
     eprintln!("🔍 Starting TDG (Technical Debt Grading) analysis...");
 
     let analyzer = TdgAnalyzer::new()?;
-    let _threshold = threshold.unwrap_or(1.5);
-    let _top_files = top_files.unwrap_or(10);
+    let _threshold = config.threshold.unwrap_or(1.5);
+    let _top_files = config.top_files.unwrap_or(10);
 
-    let result = if path.is_dir() {
-        let project_score = analyzer.analyze_project(&path)?;
+    let result = if config.path.is_dir() {
+        let project_score = analyzer.analyze_project(&config.path)?;
 
-        match format {
+        match config.format {
             TdgOutputFormat::Table => format_project(&project_score),
             TdgOutputFormat::Json => serde_json::to_string_pretty(&project_score)?,
             TdgOutputFormat::Markdown => format_project(&project_score),
@@ -36,9 +40,9 @@ pub async fn handle_analyze_tdg(
             }
         }
     } else {
-        let score = analyzer.analyze_file(&path)?;
+        let score = analyzer.analyze_file(&config.path)?;
 
-        match format {
+        match config.format {
             TdgOutputFormat::Table => format_human(&score),
             TdgOutputFormat::Json => format_json(&score),
             TdgOutputFormat::Markdown => format_markdown(&score),
@@ -49,7 +53,7 @@ pub async fn handle_analyze_tdg(
         }
     };
 
-    if let Some(output_path) = output {
+    if let Some(output_path) = config.output {
         tokio::fs::write(&output_path, &result).await?;
         eprintln!("📝 Results written to {}", output_path.display());
     } else {
