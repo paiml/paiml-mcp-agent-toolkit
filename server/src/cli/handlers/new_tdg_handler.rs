@@ -287,17 +287,17 @@ mod tests {
             "#
         )?;
 
-        let result = handle_analyze_tdg(
-            temp_file.path().to_path_buf(),
-            Some(0.0),
-            Some(10),
-            TdgOutputFormat::Json,
-            false,
-            None,
-            false,
-            false,
-        )
-        .await;
+        let config = TdgAnalysisConfig {
+            path: temp_file.path().to_path_buf(),
+            threshold: Some(0.0),
+            top_files: Some(10),
+            format: TdgOutputFormat::Json,
+            include_components: false,
+            output: None,
+            critical_only: false,
+            verbose: false,
+        };
+        let result = handle_analyze_tdg(config).await;
 
         assert!(result.is_ok());
         Ok(())
