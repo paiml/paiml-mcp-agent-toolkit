@@ -407,17 +407,24 @@ pub enum GraphMetricType {
     All,
 }
 
+impl GraphMetricType {
+    /// Get the string representation of the graph metric type
+    fn as_str(&self) -> &'static str {
+        match self {
+            GraphMetricType::Centrality => "centrality",
+            GraphMetricType::Betweenness => "betweenness",
+            GraphMetricType::Closeness => "closeness",
+            GraphMetricType::PageRank => "pagerank",
+            GraphMetricType::Clustering => "clustering",
+            GraphMetricType::Components => "components",
+            GraphMetricType::All => "all",
+        }
+    }
+}
+
 impl fmt::Display for GraphMetricType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            GraphMetricType::Centrality => write!(f, "centrality"),
-            GraphMetricType::Betweenness => write!(f, "betweenness"),
-            GraphMetricType::Closeness => write!(f, "closeness"),
-            GraphMetricType::PageRank => write!(f, "pagerank"),
-            GraphMetricType::Clustering => write!(f, "clustering"),
-            GraphMetricType::Components => write!(f, "components"),
-            GraphMetricType::All => write!(f, "all"),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -440,17 +447,24 @@ pub enum GraphMetricsOutputFormat {
     Markdown,
 }
 
+impl GraphMetricsOutputFormat {
+    /// Get the string representation of the output format
+    fn as_str(&self) -> &'static str {
+        match self {
+            GraphMetricsOutputFormat::Summary => "summary",
+            GraphMetricsOutputFormat::Detailed => "detailed",
+            GraphMetricsOutputFormat::Human => "human",
+            GraphMetricsOutputFormat::Json => "json",
+            GraphMetricsOutputFormat::Csv => "csv",
+            GraphMetricsOutputFormat::GraphML => "graphml",
+            GraphMetricsOutputFormat::Markdown => "markdown",
+        }
+    }
+}
+
 impl fmt::Display for GraphMetricsOutputFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            GraphMetricsOutputFormat::Summary => write!(f, "summary"),
-            GraphMetricsOutputFormat::Detailed => write!(f, "detailed"),
-            GraphMetricsOutputFormat::Human => write!(f, "human"),
-            GraphMetricsOutputFormat::Json => write!(f, "json"),
-            GraphMetricsOutputFormat::Csv => write!(f, "csv"),
-            GraphMetricsOutputFormat::GraphML => write!(f, "graphml"),
-            GraphMetricsOutputFormat::Markdown => write!(f, "markdown"),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -853,17 +867,24 @@ pub enum PropertyTypeFilter {
     All,
 }
 
+impl PropertyTypeFilter {
+    /// Get the string representation of the property type filter
+    fn as_str(&self) -> &'static str {
+        match self {
+            PropertyTypeFilter::MemorySafety => "memory-safety",
+            PropertyTypeFilter::ThreadSafety => "thread-safety",
+            PropertyTypeFilter::DataRaceFreeze => "data-race-freeze",
+            PropertyTypeFilter::Termination => "termination",
+            PropertyTypeFilter::FunctionalCorrectness => "functional-correctness",
+            PropertyTypeFilter::ResourceBounds => "resource-bounds",
+            PropertyTypeFilter::All => "all",
+        }
+    }
+}
+
 impl fmt::Display for PropertyTypeFilter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            PropertyTypeFilter::MemorySafety => write!(f, "memory-safety"),
-            PropertyTypeFilter::ThreadSafety => write!(f, "thread-safety"),
-            PropertyTypeFilter::DataRaceFreeze => write!(f, "data-race-freeze"),
-            PropertyTypeFilter::Termination => write!(f, "termination"),
-            PropertyTypeFilter::FunctionalCorrectness => write!(f, "functional-correctness"),
-            PropertyTypeFilter::ResourceBounds => write!(f, "resource-bounds"),
-            PropertyTypeFilter::All => write!(f, "all"),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -905,17 +926,24 @@ pub enum IncrementalCoverageOutputFormat {
     Sarif,
 }
 
+impl IncrementalCoverageOutputFormat {
+    /// Get the string representation of the output format
+    fn as_str(&self) -> &'static str {
+        match self {
+            IncrementalCoverageOutputFormat::Summary => "summary",
+            IncrementalCoverageOutputFormat::Detailed => "detailed",
+            IncrementalCoverageOutputFormat::Json => "json",
+            IncrementalCoverageOutputFormat::Markdown => "markdown",
+            IncrementalCoverageOutputFormat::Lcov => "lcov",
+            IncrementalCoverageOutputFormat::Delta => "delta",
+            IncrementalCoverageOutputFormat::Sarif => "sarif",
+        }
+    }
+}
+
 impl fmt::Display for IncrementalCoverageOutputFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            IncrementalCoverageOutputFormat::Summary => write!(f, "summary"),
-            IncrementalCoverageOutputFormat::Detailed => write!(f, "detailed"),
-            IncrementalCoverageOutputFormat::Json => write!(f, "json"),
-            IncrementalCoverageOutputFormat::Markdown => write!(f, "markdown"),
-            IncrementalCoverageOutputFormat::Lcov => write!(f, "lcov"),
-            IncrementalCoverageOutputFormat::Delta => write!(f, "delta"),
-            IncrementalCoverageOutputFormat::Sarif => write!(f, "sarif"),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -962,17 +990,24 @@ pub enum ReportOutputFormat {
     Dashboard,
 }
 
+impl ReportOutputFormat {
+    /// Get the string representation of the report output format
+    fn as_str(&self) -> &'static str {
+        match self {
+            ReportOutputFormat::Json => "json",
+            ReportOutputFormat::Csv => "csv",
+            ReportOutputFormat::Markdown => "markdown",
+            ReportOutputFormat::Text => "text",
+            ReportOutputFormat::Html => "html",
+            ReportOutputFormat::Pdf => "pdf",
+            ReportOutputFormat::Dashboard => "dashboard",
+        }
+    }
+}
+
 impl fmt::Display for ReportOutputFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ReportOutputFormat::Json => write!(f, "json"),
-            ReportOutputFormat::Csv => write!(f, "csv"),
-            ReportOutputFormat::Markdown => write!(f, "markdown"),
-            ReportOutputFormat::Text => write!(f, "text"),
-            ReportOutputFormat::Html => write!(f, "html"),
-            ReportOutputFormat::Pdf => write!(f, "pdf"),
-            ReportOutputFormat::Dashboard => write!(f, "dashboard"),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -1032,20 +1067,27 @@ impl QualityCheckType {
     }
 }
 
+impl QualityCheckType {
+    /// Get the string representation of the quality check type
+    fn as_str(&self) -> &'static str {
+        match self {
+            QualityCheckType::DeadCode => "dead-code",
+            QualityCheckType::Complexity => "complexity",
+            QualityCheckType::Coverage => "coverage",
+            QualityCheckType::Sections => "sections",
+            QualityCheckType::Provability => "provability",
+            QualityCheckType::Satd => "satd",
+            QualityCheckType::Entropy => "entropy",
+            QualityCheckType::Security => "security",
+            QualityCheckType::Duplicates => "duplicates",
+            QualityCheckType::All => "all",
+        }
+    }
+}
+
 impl fmt::Display for QualityCheckType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            QualityCheckType::DeadCode => write!(f, "dead-code"),
-            QualityCheckType::Complexity => write!(f, "complexity"),
-            QualityCheckType::Coverage => write!(f, "coverage"),
-            QualityCheckType::Sections => write!(f, "sections"),
-            QualityCheckType::Provability => write!(f, "provability"),
-            QualityCheckType::Satd => write!(f, "satd"),
-            QualityCheckType::Entropy => write!(f, "entropy"),
-            QualityCheckType::Security => write!(f, "security"),
-            QualityCheckType::Duplicates => write!(f, "duplicates"),
-            QualityCheckType::All => write!(f, "all"),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 

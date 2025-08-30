@@ -7,7 +7,7 @@
 
 use anyhow::Result;
 use pmat::cli::enums::{QualityCheckType, QualityGateOutputFormat};
-use pmat::cli::stubs::handle_quality_gate;
+use pmat::cli::analysis_utilities::handle_quality_gate;
 use std::path::PathBuf;
 
 #[tokio::main]

@@ -7301,47 +7301,70 @@ pub fn format_defect_summary(report: &DefectPredictionReport, top_files: usize) 
     let mut output = String::new();
 
     writeln!(&mut output, "# Defect Prediction Analysis\n")?;
-    writeln!(&mut output, "## Summary")?;
-    writeln!(
-        &mut output,
-        "- Total files analyzed: {}",
-        report.total_files
-    )?;
-    writeln!(&mut output, "- High risk files: {}", report.high_risk_files)?;
-    writeln!(
-        &mut output,
-        "- Medium risk files: {}",
-        report.medium_risk_files
-    )?;
-    writeln!(&mut output, "- Low risk files: {}\n", report.low_risk_files)?;
-
-    // Show top files by risk
+    format_defect_summary_stats(&mut output, report)?;
+    
     if !report.file_predictions.is_empty() {
-        writeln!(&mut output, "## Top Files by Defect Risk\n")?;
-
-        let files_to_show = if top_files == 0 { 10 } else { top_files };
-        for (i, prediction) in report
-            .file_predictions
-            .iter()
-            .take(files_to_show)
-            .enumerate()
-        {
-            let filename = std::path::Path::new(&prediction.file_path)
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or(&prediction.file_path);
-            writeln!(
-                &mut output,
-                "{}. `{}` - {:.1}% risk ({})",
-                i + 1,
-                filename,
-                prediction.risk_score * 100.0,
-                prediction.risk_level
-            )?;
-        }
+        format_defect_top_files(&mut output, report, top_files)?;
     }
 
     Ok(output)
+}
+
+/// Format the defect prediction summary statistics
+fn format_defect_summary_stats(output: &mut String, report: &DefectPredictionReport) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "## Summary")?;
+    writeln!(output, "- Total files analyzed: {}", report.total_files)?;
+    writeln!(output, "- High risk files: {}", report.high_risk_files)?;
+    writeln!(output, "- Medium risk files: {}", report.medium_risk_files)?;
+    writeln!(output, "- Low risk files: {}\n", report.low_risk_files)?;
+    
+    Ok(())
+}
+
+/// Format the top files by defect risk section
+fn format_defect_top_files(output: &mut String, report: &DefectPredictionReport, top_files: usize) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "## Top Files by Defect Risk\n")?;
+    
+    let files_to_show = if top_files == 0 { 10 } else { top_files };
+    for (i, prediction) in report
+        .file_predictions
+        .iter()
+        .take(files_to_show)
+        .enumerate()
+    {
+        format_defect_prediction_entry(output, i + 1, prediction)?;
+    }
+    
+    Ok(())
+}
+
+/// Format a single defect prediction entry
+fn format_defect_prediction_entry(output: &mut String, index: usize, prediction: &FilePrediction) -> Result<()> {
+    use std::fmt::Write;
+    
+    let filename = extract_filename_from_prediction(prediction);
+    writeln!(
+        output,
+        "{}. `{}` - {:.1}% risk ({})",
+        index,
+        filename,
+        prediction.risk_score * 100.0,
+        prediction.risk_level
+    )?;
+    
+    Ok(())
+}
+
+/// Extract display filename from prediction
+fn extract_filename_from_prediction(prediction: &FilePrediction) -> &str {
+    std::path::Path::new(&prediction.file_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(&prediction.file_path)
 }
 
 fn format_defect_full(report: &DefectPredictionReport, top_files: usize) -> Result<String> {
@@ -7568,18 +7591,33 @@ fn format_single_file_summary(
     violations: &[QualityViolation],
 ) -> String {
     let mut output = String::new();
+    
+    format_report_header(&mut output, file_path, results.passed);
+    format_results_summary(&mut output, results);
+    
+    if !violations.is_empty() {
+        format_violations_section(&mut output, violations);
+    }
+    
+    output
+}
 
+/// Format the report header with title and pass/fail status
+fn format_report_header(output: &mut String, file_path: &Path, passed: bool) {
     output.push_str(&format!(
         "# Quality Gate Report: {}\n\n",
         file_path.display()
     ));
 
-    if results.passed {
+    if passed {
         output.push_str("✅ **Quality Gate: PASSED**\n\n");
     } else {
         output.push_str("❌ **Quality Gate: FAILED**\n\n");
     }
+}
 
+/// Format the summary section with violation counts
+fn format_results_summary(output: &mut String, results: &QualityGateResults) {
     output.push_str("## Summary\n\n");
     output.push_str(&format!(
         "- Total Violations: {}\n",
@@ -7598,45 +7636,61 @@ fn format_single_file_summary(
         "- Security Issues: {}\n",
         results.security_violations
     ));
+}
 
-    if !violations.is_empty() {
-        output.push_str("\n## Violations\n\n");
+/// Format the violations section grouped by type
+fn format_violations_section(output: &mut String, violations: &[QualityViolation]) {
+    use std::collections::HashMap;
+    
+    output.push_str("\n## Violations\n\n");
 
-        // Group violations by type
-        let mut by_type: HashMap<String, Vec<&QualityViolation>> = HashMap::new();
-        for violation in violations {
-            by_type
-                .entry(violation.check_type.clone())
-                .or_default()
-                .push(violation);
-        }
-
-        for (check_type, type_violations) in by_type {
-            output.push_str(&format!(
-                "### {} ({})\n\n",
-                check_type.to_uppercase(),
-                type_violations.len()
-            ));
-
-            for violation in type_violations {
-                let severity_icon = match violation.severity.as_str() {
-                    "error" => "🔴",
-                    "warning" => "🟡",
-                    _ => "🟢",
-                };
-
-                if let Some(line) = violation.line {
-                    output.push_str(&format!(
-                        "- {} Line {}: {}\n",
-                        severity_icon, line, violation.message
-                    ));
-                } else {
-                    output.push_str(&format!("- {} {}\n", severity_icon, violation.message));
-                }
-            }
-            output.push('\n');
-        }
+    // Group violations by type
+    let mut by_type: HashMap<String, Vec<&QualityViolation>> = HashMap::new();
+    for violation in violations {
+        by_type
+            .entry(violation.check_type.clone())
+            .or_default()
+            .push(violation);
     }
 
-    output
+    for (check_type, type_violations) in by_type {
+        format_violation_type_group(output, &check_type, &type_violations);
+    }
+}
+
+/// Format a single violation type group
+fn format_violation_type_group(output: &mut String, check_type: &str, violations: &[&QualityViolation]) {
+    output.push_str(&format!(
+        "### {} ({})\n\n",
+        check_type.to_uppercase(),
+        violations.len()
+    ));
+
+    for violation in violations {
+        format_single_violation(output, violation);
+    }
+    output.push('\n');
+}
+
+/// Format a single violation with severity icon and location
+fn format_single_violation(output: &mut String, violation: &QualityViolation) {
+    let severity_icon = get_severity_icon(&violation.severity);
+    
+    if let Some(line) = violation.line {
+        output.push_str(&format!(
+            "- {} Line {}: {}\n",
+            severity_icon, line, violation.message
+        ));
+    } else {
+        output.push_str(&format!("- {} {}\n", severity_icon, violation.message));
+    }
+}
+
+/// Get the appropriate icon for violation severity
+fn get_severity_icon(severity: &str) -> &'static str {
+    match severity {
+        "error" => "🔴",
+        "warning" => "🟡",
+        _ => "🟢",
+    }
 }
