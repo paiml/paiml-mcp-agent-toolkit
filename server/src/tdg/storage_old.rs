@@ -1,10 +1,10 @@
-use crate::tdg::storage_backend::{StorageBackend, StorageBackendFactory, StorageConfig};
 use crate::tdg::{Grade, Language, TdgScore};
 use anyhow::{anyhow, Result};
 use blake3::Hash as Blake3Hash;
 use dashmap::DashMap;
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use serde::{Deserialize, Serialize};
+use sled::{Db, Tree};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -84,59 +84,35 @@ impl HotCacheEntry {
     }
 }
 
-/// Tiered storage system with Hot/Warm/Cold tiers using flexible backends
+/// Tiered storage system with Hot/Warm/Cold tiers
 pub struct TieredStore {
     /// Hot cache - recent files (in-memory)
     hot: Arc<DashMap<Blake3Hash, HotCacheEntry>>,
-    /// Warm storage - compressed recent records (backend-agnostic)
-    warm_backend: Box<dyn StorageBackend>,
-    /// Cold storage - full historical records (backend-agnostic)
-    cold_backend: Box<dyn StorageBackend>,
+    /// Warm storage - compressed recent records
+    warm: Tree,
+    /// Cold storage - full historical records
+    cold: Tree,
     /// Archival configuration
     archive_after_days: u32,
+    /// Database instance
+    _db: Db,
 }
 
 impl TieredStore {
-    /// Create new tiered storage instance with default Sled backend
+    /// Create new tiered storage instance
     pub fn new(db_path: impl AsRef<Path>) -> Result<Self> {
-        let warm_config = StorageConfig {
-            backend_type: crate::tdg::storage_backend::StorageBackendType::Sled,
-            path: Some(db_path.as_ref().join(".pmat/tdg-warm")),
-            cache_size_mb: Some(128),
-            compression: true,
-        };
+        let db = sled::open(db_path.as_ref().join(".pmat/tdg-storage"))?;
         
-        let cold_config = StorageConfig {
-            backend_type: crate::tdg::storage_backend::StorageBackendType::Sled,
-            path: Some(db_path.as_ref().join(".pmat/tdg-cold")),
-            cache_size_mb: Some(64),
-            compression: false, // Cold storage doesn't need additional compression
-        };
-        
-        Self::with_config(warm_config, cold_config)
-    }
-    
-    /// Create tiered storage with specific backend configurations
-    pub fn with_config(warm_config: StorageConfig, cold_config: StorageConfig) -> Result<Self> {
-        let warm_backend = StorageBackendFactory::create_from_config(&warm_config)?;
-        let cold_backend = StorageBackendFactory::create_from_config(&cold_config)?;
+        let warm = db.open_tree("warm")?;
+        let cold = db.open_tree("cold")?;
         
         Ok(Self {
             hot: Arc::new(DashMap::new()),
-            warm_backend,
-            cold_backend,
+            warm,
+            cold,
             archive_after_days: 30,
+            _db: db,
         })
-    }
-    
-    /// Create in-memory tiered storage for testing
-    pub fn in_memory() -> Self {
-        Self {
-            hot: Arc::new(DashMap::new()),
-            warm_backend: StorageBackendFactory::create_in_memory(),
-            cold_backend: StorageBackendFactory::create_in_memory(),
-            archive_after_days: 30,
-        }
     }
     
     /// Store a complete TDG record in all tiers
@@ -150,7 +126,7 @@ impl TieredStore {
         // Warm storage - compress with LZ4 for space efficiency
         let serialized = bincode::serialize(&record)?;
         let compressed = compress_prepend_size(&serialized);
-        self.warm_backend.put(hash.as_bytes(), &compressed)?;
+        self.warm.insert(hash.as_bytes(), compressed)?;
         
         // Schedule cold archival if record is old enough
         if self.should_archive(&record) {
@@ -168,13 +144,13 @@ impl TieredStore {
     /// Retrieve full record from any tier
     pub async fn retrieve_full(&self, hash: &Blake3Hash) -> Result<Option<FullTdgRecord>> {
         // Check warm storage first (compressed but fast)
-        if let Some(compressed) = self.warm_backend.get(hash.as_bytes())? {
+        if let Ok(Some(compressed)) = self.warm.get(hash.as_bytes()) {
             let decompressed = decompress_size_prepended(&compressed)?;
             return Ok(Some(bincode::deserialize(&decompressed)?));
         }
         
         // Check cold storage (full historical records)
-        if let Some(archived) = self.cold_backend.get(hash.as_bytes())? {
+        if let Ok(Some(archived)) = self.cold.get(hash.as_bytes()) {
             return Ok(Some(bincode::deserialize(&archived)?));
         }
         
@@ -200,10 +176,10 @@ impl TieredStore {
         
         // Store in cold storage (uncompressed for long-term access)
         let serialized = bincode::serialize(&record)?;
-        self.cold_backend.put(hash.as_bytes(), &serialized)?;
+        self.cold.insert(hash.as_bytes(), serialized)?;
         
         // Remove from warm storage to save space
-        self.warm_backend.delete(hash.as_bytes())?;
+        self.warm.remove(hash.as_bytes())?;
         
         Ok(())
     }
@@ -211,20 +187,8 @@ impl TieredStore {
     /// Get storage statistics for diagnostics
     pub fn get_statistics(&self) -> StorageStatistics {
         let hot_count = self.hot.len();
-        
-        // Count warm entries
-        let warm_count = self.warm_backend.iter()
-            .map(|iter| iter.count())
-            .unwrap_or(0);
-        
-        // Count cold entries
-        let cold_count = self.cold_backend.iter()
-            .map(|iter| iter.count())
-            .unwrap_or(0);
-        
-        // Get backend-specific stats
-        let warm_stats = self.warm_backend.get_stats();
-        let cold_stats = self.cold_backend.get_stats();
+        let warm_count = self.warm.len();
+        let cold_count = self.cold.len();
         
         StorageStatistics {
             hot_entries: hot_count,
@@ -233,12 +197,6 @@ impl TieredStore {
             total_entries: hot_count + warm_count + cold_count,
             hot_memory_kb: (hot_count * std::mem::size_of::<HotCacheEntry>()) / 1024,
             compression_ratio: self.estimate_compression_ratio(),
-            warm_backend: self.warm_backend.backend_name().to_string(),
-            cold_backend: self.cold_backend.backend_name().to_string(),
-            backend_stats: HashMap::from([
-                ("warm".to_string(), warm_stats),
-                ("cold".to_string(), cold_stats),
-            ]),
         }
     }
     
@@ -249,14 +207,12 @@ impl TieredStore {
         let mut total_compressed = 0usize;
         let mut samples = 0;
         
-        if let Ok(iter) = self.warm_backend.iter() {
-            for result in iter.take(10) {
-                if let Ok((_, compressed)) = result {
-                    total_compressed += compressed.len();
-                    // Estimate original size (this is approximate)
-                    total_original += compressed.len() * 3; // Typical compression is ~3:1
-                    samples += 1;
-                }
+        for result in self.warm.iter().take(10) {
+            if let Ok((_, compressed)) = result {
+                total_compressed += compressed.len();
+                // Estimate original size (this is approximate)
+                total_original += compressed.len() * 3; // Typical compression is ~3:1
+                samples += 1;
             }
         }
         
@@ -287,46 +243,6 @@ impl TieredStore {
         
         removed
     }
-    
-    /// Migrate between storage backends
-    pub async fn migrate_backend(
-        &mut self,
-        new_warm_config: StorageConfig,
-        new_cold_config: StorageConfig,
-    ) -> Result<()> {
-        // Create new backends
-        let new_warm = StorageBackendFactory::create_from_config(&new_warm_config)?;
-        let new_cold = StorageBackendFactory::create_from_config(&new_cold_config)?;
-        
-        // Migrate warm storage
-        if let Ok(iter) = self.warm_backend.iter() {
-            for result in iter {
-                let (key, value) = result?;
-                new_warm.put(&key, &value)?;
-            }
-        }
-        
-        // Migrate cold storage
-        if let Ok(iter) = self.cold_backend.iter() {
-            for result in iter {
-                let (key, value) = result?;
-                new_cold.put(&key, &value)?;
-            }
-        }
-        
-        // Swap backends
-        self.warm_backend = new_warm;
-        self.cold_backend = new_cold;
-        
-        Ok(())
-    }
-    
-    /// Flush all pending writes
-    pub fn flush(&self) -> Result<()> {
-        self.warm_backend.flush()?;
-        self.cold_backend.flush()?;
-        Ok(())
-    }
 }
 
 /// Storage performance and usage statistics
@@ -338,9 +254,6 @@ pub struct StorageStatistics {
     pub total_entries: usize,
     pub hot_memory_kb: usize,
     pub compression_ratio: f32,
-    pub warm_backend: String,
-    pub cold_backend: String,
-    pub backend_stats: HashMap<String, HashMap<String, String>>,
 }
 
 impl StorageStatistics {
@@ -349,15 +262,13 @@ impl StorageStatistics {
         format!(
             "Storage Tiers:\n\
              - Hot (memory): {} entries, {} KB\n\
-             - Warm ({} backend): {} entries\n\
-             - Cold ({} backend): {} entries\n\
+             - Warm (compressed): {} entries\n\
+             - Cold (archived): {} entries\n\
              - Total: {} entries\n\
              - Compression ratio: {:.1}%",
             self.hot_entries,
             self.hot_memory_kb,
-            self.warm_backend,
             self.warm_entries,
-            self.cold_backend,
             self.cold_entries,
             self.total_entries,
             self.compression_ratio * 100.0
@@ -378,33 +289,6 @@ impl TieredStorageFactory {
     /// Create storage instance at specific path
     pub fn create_at_path(path: impl AsRef<Path>) -> Result<TieredStore> {
         TieredStore::new(path)
-    }
-    
-    /// Create in-memory storage for testing
-    pub fn create_in_memory() -> TieredStore {
-        TieredStore::in_memory()
-    }
-    
-    /// Create with RocksDB backend (if feature enabled)
-    #[cfg(feature = "rocksdb-backend")]
-    pub fn create_with_rocksdb(path: impl AsRef<Path>) -> Result<TieredStore> {
-        use crate::tdg::storage_backend::StorageBackendType;
-        
-        let warm_config = StorageConfig {
-            backend_type: StorageBackendType::RocksDb,
-            path: Some(path.as_ref().join(".pmat/tdg-warm-rocks")),
-            cache_size_mb: Some(256),
-            compression: true,
-        };
-        
-        let cold_config = StorageConfig {
-            backend_type: StorageBackendType::RocksDb,
-            path: Some(path.as_ref().join(".pmat/tdg-cold-rocks")),
-            cache_size_mb: Some(128),
-            compression: false,
-        };
-        
-        TieredStore::with_config(warm_config, cold_config)
     }
 }
 
@@ -452,7 +336,7 @@ mod tests {
                 import_dependencies: Vec::new(),
             },
             metadata: AnalysisMetadata {
-                analyzer_version: "2.38.0".to_string(),
+                analyzer_version: "2.37.3".to_string(),
                 analysis_duration_ms: 5,
                 language_confidence: 1.0,
                 analysis_timestamp: SystemTime::now(),
@@ -470,26 +354,6 @@ mod tests {
         assert_eq!(stats.hot_entries, 0);
         assert_eq!(stats.warm_entries, 0);
         assert_eq!(stats.cold_entries, 0);
-    }
-    
-    #[tokio::test]
-    async fn test_in_memory_storage() {
-        let storage = TieredStore::in_memory();
-        let record = create_test_record();
-        let hash = record.identity.content_hash;
-        
-        // Store record
-        storage.store(record.clone()).await.unwrap();
-        
-        // Check hot cache
-        let hot_entry = storage.get_hot(&hash).unwrap();
-        assert_eq!(hot_entry.total_score, 88.0);
-        assert_eq!(hot_entry.grade, Grade::AMinus as u8);
-        
-        // Retrieve full record
-        let retrieved = storage.retrieve_full(&hash).await.unwrap().unwrap();
-        assert_eq!(retrieved.score.total, record.score.total);
-        assert_eq!(retrieved.identity.path, record.identity.path);
     }
     
     #[tokio::test]
@@ -521,7 +385,6 @@ mod tests {
         
         // Store and verify compression
         storage.store(record.clone()).await.unwrap();
-        storage.flush().unwrap();
         
         let stats = storage.get_statistics();
         assert!(stats.compression_ratio > 0.0);
@@ -530,7 +393,8 @@ mod tests {
     
     #[test]
     fn test_hot_cache_cleanup() {
-        let storage = TieredStore::in_memory();
+        let temp_dir = TempDir::new().unwrap();
+        let storage = TieredStore::new(temp_dir.path()).unwrap();
         
         // Add some entries with old timestamps
         let old_hash = blake3::hash(b"old content");
@@ -549,40 +413,5 @@ mod tests {
         let removed = storage.cleanup_hot_cache(1800);
         assert_eq!(removed, 1);
         assert!(storage.hot.is_empty());
-    }
-    
-    #[tokio::test]
-    async fn test_backend_migration() {
-        use crate::tdg::storage_backend::StorageBackendType;
-        
-        let temp_dir = TempDir::new().unwrap();
-        let mut storage = TieredStore::new(temp_dir.path()).unwrap();
-        
-        // Store some records
-        let record1 = create_test_record();
-        let record2 = create_test_record();
-        storage.store(record1.clone()).await.unwrap();
-        storage.store(record2.clone()).await.unwrap();
-        
-        // Migrate to in-memory backend
-        let new_warm = StorageConfig {
-            backend_type: StorageBackendType::InMemory,
-            path: None,
-            cache_size_mb: None,
-            compression: true,
-        };
-        
-        let new_cold = StorageConfig {
-            backend_type: StorageBackendType::InMemory,
-            path: None,
-            cache_size_mb: None,
-            compression: false,
-        };
-        
-        storage.migrate_backend(new_warm, new_cold).await.unwrap();
-        
-        // Verify data still accessible
-        let retrieved = storage.retrieve_full(&record1.identity.content_hash).await.unwrap();
-        assert!(retrieved.is_some());
     }
 }

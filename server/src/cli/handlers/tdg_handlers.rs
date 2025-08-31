@@ -27,17 +27,25 @@ pub async fn handle_tdg_command(
     // Create analyzer with configuration and storage
     let analyzer = TdgAnalyzer::with_storage(tdg_config)?;
 
-    // Handle compare subcommand
-    if let Some(TdgCommand::Compare { source1, source2 }) = command {
-        let comparison = analyzer.compare(&source1, &source2).await?;
-        let output_str = format_comparison(comparison, format)?;
-        
-        if let Some(output_path) = output {
-            fs::write(output_path, output_str)?;
-        } else {
-            println!("{}", output_str);
+    // Handle subcommands
+    if let Some(cmd) = command {
+        match cmd {
+            TdgCommand::Compare { source1, source2 } => {
+                let comparison = analyzer.compare(&source1, &source2).await?;
+                let output_str = format_comparison(comparison, format)?;
+                
+                if let Some(output_path) = output {
+                    fs::write(output_path, output_str)?;
+                } else {
+                    println!("{}", output_str);
+                }
+                return Ok(());
+            }
+            TdgCommand::Diagnostics { .. } | TdgCommand::Storage { .. } | TdgCommand::Dashboard { .. } => {
+                // Handle diagnostic and dashboard commands
+                return super::tdg_diagnostic_handler::handle_tdg_diagnostics(&cmd, &path).await;
+            }
         }
-        return Ok(());
     }
 
     // Analyze single file or directory

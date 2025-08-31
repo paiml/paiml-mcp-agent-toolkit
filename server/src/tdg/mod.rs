@@ -6,11 +6,18 @@ pub mod adaptive;
 pub mod analyzer_ast;
 pub mod analyzer_simple;
 pub mod config;
+pub mod diagnostics;
 pub mod formatters;
 pub mod language_simple;
 pub mod resource_control;
 pub mod scheduler;
 pub mod storage;
+pub mod storage_backend;
+pub mod web_dashboard;
+pub mod metrics_aggregator;
+pub mod profiler;
+pub mod alerts;
+pub mod export;
 
 #[cfg(test)]
 mod integration_test_sprint30;
@@ -34,9 +41,21 @@ pub use scheduler::{
     OperationType, ScheduleError, ScheduleGuard, SchedulePermit, SchedulerFactory, SchedulingStatistics,
     SimpleFairScheduler,
 };
+pub use diagnostics::{
+    AdaptiveDiagnostics, HealthStatus, ResourceDiagnostics,
+    SchedulerDiagnostics, StorageDiagnostics, SystemDiagnostics,
+};
 pub use storage::{
     AnalysisMetadata, ComponentScores, FileIdentity, FullTdgRecord, HotCacheEntry, SemanticSignature,
     StorageStatistics, TieredStore, TieredStorageFactory,
+};
+pub use storage_backend::{
+    InMemoryBackend, SledBackend, StorageBackend, StorageBackendFactory, StorageBackendType,
+    StorageConfig,
+};
+pub use web_dashboard::{
+    DashboardState, HealthStatus as DashboardHealthStatus, PerformanceMetrics as DashboardPerformanceMetrics,
+    StorageMetrics, SystemMetrics, create_dashboard_router, start_dashboard_server,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

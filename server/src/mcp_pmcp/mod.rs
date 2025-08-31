@@ -42,7 +42,7 @@
 //!
 //! # Available Tools
 //!
-//! The pmcp server implements 20 MCP tools across different categories:
+//! The pmcp server implements 24 MCP tools across different categories:
 //!
 //! ## Analysis Tools
 //! - `analyze_complexity` - Analyze code complexity metrics
@@ -70,6 +70,14 @@
 //! - `generate_template` - Generate file from template
 //! - `scaffold_project` - Create project structure
 //!
+//! ## TDG System Tools (Sprint 31)
+//! - `tdg_system_diagnostics` - Comprehensive TDG system diagnostics
+//! - `tdg_storage_management` - Manage TDG storage operations
+//! - `tdg_analyze_with_storage` - Analyze files with transactional storage
+//! - `tdg_performance_metrics` - Real-time performance metrics
+//! - `tdg_configure_storage` - Configure and validate storage backends
+//! - `tdg_health_check` - Comprehensive system health check
+//!
 //! # Performance
 //!
 //! The pmcp implementation provides significant performance benefits:
@@ -93,6 +101,7 @@ pub mod quality_handlers;
 pub mod quality_proxy_handler;
 pub mod server;
 pub mod simple_unified_server;
+pub mod tdg_handlers;
 pub mod tool_functions;
 
 // Export the simple unified server as the primary interface

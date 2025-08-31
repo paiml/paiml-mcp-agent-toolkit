@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.39.0] - 2025-08-31
+
+### Added
+- **SPRINT-31**: TDG System MCP Integration & Advanced Monitoring
+  - **Week 1: MCP Integration**
+    - 6 enterprise-grade MCP tools for external TDG integration
+    - Web dashboard with real-time monitoring (Axum-based)
+    - REST API with 7 comprehensive endpoints
+    - Server-Sent Events for real-time updates
+    - Complete MCP tools documentation
+  - **Week 2: Advanced Monitoring & Analytics**
+    - Metrics aggregation with time-series analysis (1-hour rolling windows)
+    - Performance profiling with flame graph generation
+    - Alert system with configurable thresholds and multi-channel notifications
+    - Bottleneck detection (CPU, I/O, Memory, Lock contention)
+    - Multi-format export (JSON, CSV, SARIF, HTML, Markdown, XML, Prometheus)
+    - Statistical aggregation (mean, median, p95, p99)
+    - Trend detection (rising, falling, stable, volatile)
+    - Anomaly detection with z-score analysis
+  - **Week 3: Local Development Focus**
+    - Complete local usage examples and scripts
+    - Comprehensive local setup documentation
+    - Dashboard HTML with interactive UI
+    - All compilation issues resolved
+
+### Technical Improvements
+- Added 23 new TDG modules for comprehensive system
+- Implemented serialization fixes for Instant types
+- Added conditional compilation for C/C++ dependencies
+- Optimized build with rust-only feature flag
+- Created usage examples script for quick start
+
 ## [2.38.0] - 2025-08-30
 
 ### Added
