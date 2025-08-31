@@ -1865,50 +1865,80 @@ impl DeepContextAnalyzer {
         output: &mut String,
         context: &DeepContext,
     ) -> anyhow::Result<()> {
-        use std::fmt::Write;
         if let Some(ref satd) = context.analyses.satd_results {
+            use std::fmt::Write;
             writeln!(output, "## Code Quality Analysis\n")?;
-
-            let mut by_severity = FxHashMap::default();
-            for item in &satd.items {
-                *by_severity.entry(&item.severity).or_insert(0) += 1;
-            }
-
-            writeln!(output, "**SATD Summary:**")?;
-            for (severity, count) in by_severity {
-                writeln!(output, "- {severity:?}: {count}")?;
-            }
-
-            // Top critical debt items
-            let critical_items: Vec<_> = satd
-                .items
-                .iter()
-                .filter(|item| {
-                    matches!(
-                        item.severity,
-                        crate::services::satd_detector::Severity::Critical
-                    )
-                })
-                .take(5)
-                .collect();
-
-            if !critical_items.is_empty() {
-                writeln!(output, "\n**Critical Items:**")?;
-                for item in critical_items {
-                    writeln!(
-                        output,
-                        "- `{}:{} {}`: {}",
-                        item.file.display(),
-                        item.line,
-                        item.category,
-                        item.text.trim()
-                    )?;
-                }
-            }
+            self.write_satd_severity_summary(output, satd)?;
+            self.write_critical_items(output, satd)?;
             writeln!(output)?;
         }
-
         Ok(())
+    }
+
+    fn write_satd_severity_summary(
+        &self,
+        output: &mut String,
+        satd: &crate::services::satd_detector::SATDAnalysisResult,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
+        let by_severity = self.group_satd_by_severity(satd);
+        writeln!(output, "**SATD Summary:**")?;
+        for (severity, count) in by_severity {
+            writeln!(output, "- {severity:?}: {count}")?;
+        }
+        Ok(())
+    }
+
+    fn group_satd_by_severity(
+        &self,
+        satd: &crate::services::satd_detector::SATDAnalysisResult,
+    ) -> FxHashMap<&crate::services::satd_detector::Severity, i32> {
+        let mut by_severity = FxHashMap::default();
+        for item in &satd.items {
+            *by_severity.entry(&item.severity).or_insert(0) += 1;
+        }
+        by_severity
+    }
+
+    fn write_critical_items(
+        &self,
+        output: &mut String,
+        satd: &crate::services::satd_detector::SATDAnalysisResult,
+    ) -> anyhow::Result<()> {
+        let critical_items = self.get_critical_satd_items(satd);
+        if critical_items.is_empty() {
+            return Ok(());
+        }
+
+        use std::fmt::Write;
+        writeln!(output, "\n**Critical Items:**")?;
+        for item in critical_items {
+            writeln!(
+                output,
+                "- `{}:{} {}`: {}",
+                item.file.display(),
+                item.line,
+                item.category,
+                item.text.trim()
+            )?;
+        }
+        Ok(())
+    }
+
+    fn get_critical_satd_items(
+        &self,
+        satd: &crate::services::satd_detector::SATDAnalysisResult,
+    ) -> Vec<&crate::services::satd_detector::TechnicalDebt> {
+        satd.items
+            .iter()
+            .filter(|item| {
+                matches!(
+                    item.severity,
+                    crate::services::satd_detector::Severity::Critical
+                )
+            })
+            .take(5)
+            .collect()
     }
 
     fn format_dead_code_analysis(
