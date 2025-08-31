@@ -431,28 +431,30 @@ Examples:
   pmat analyze deep-context --top-files 20           # Show top 20 files by complexity
 ```
 
-#### `analyze tdg`
+#### `tdg`
 Technical Debt Grading (TDG) analysis with 6-metric orthogonal code quality scoring.
 
 ```bash
-pmat analyze tdg [OPTIONS]
+pmat tdg [PATH] [OPTIONS]
+
+Arguments:
+  [PATH]                         Path to analyze [default: .]
 
 Options:
-  -p, --path <PATH>              Path to analyze [default: .]
-  -t, --threshold <THRESHOLD>    TDG threshold for filtering results [default: 1.5]
-  -n, --top-files <TOP_FILES>    Number of top files to show [default: 10]
   -f, --format <FORMAT>          Output format [default: table]
-                                 [possible values: table, json, markdown, sarif]
+                                 [possible values: table, json, markdown, sarif, csv, html, xml, prometheus]
   -o, --output <OUTPUT>          Output file path
       --include-components       Include TDG component breakdown
       --critical-only            Show only critical files (TDG > 2.5)
-      --verbose                  Enable verbose analysis output
+      --threshold <THRESHOLD>    TDG threshold for filtering results [default: 1.5]
+      --storage-backend <BACKEND> Storage backend [possible values: sled, rocksdb, inmemory]
 
 Examples:
-  pmat analyze tdg                                    # Analyze current directory
-  pmat analyze tdg --path src/ --include-components   # Detailed component analysis
-  pmat analyze tdg --format json --output report.json # JSON output to file
-  pmat analyze tdg --critical-only                    # Show only critical issues
+  pmat tdg .                                          # Analyze current directory
+  pmat tdg src/ --include-components                  # Detailed component analysis
+  pmat tdg . --format json                           # JSON output
+  pmat tdg . --critical-only                         # Show only critical issues
+  pmat tdg dashboard --port 8081 --open              # Start web dashboard
 ```
 
 #### `analyze lint-hotspot`
@@ -1215,7 +1217,7 @@ pmat analyze comprehensive . --include-all --format html --output report.html
 pmat analyze duplicates . --algorithm semantic --min-lines 8
 
 # Analyze technical debt with ML predictions
-pmat analyze tdg . --include-predictions --format json
+pmat tdg . --format json
 
 # Generate dependency graph
 pmat analyze dag . --output-format mermaid --max-depth 5

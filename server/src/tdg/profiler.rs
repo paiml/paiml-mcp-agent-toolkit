@@ -3,9 +3,9 @@
 //! Advanced profiling capabilities for the TDG system including flame graphs,
 //! call traces, memory profiling, and bottleneck detection.
 
-use std::collections::{HashMap, BTreeMap};
+use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;

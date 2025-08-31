@@ -6,8 +6,7 @@ use std::time::SystemTime;
 
 use crate::tdg::{
     config::TdgConfig, AdaptiveThresholdFactory, AdaptiveThresholdManager, AnalysisMetadata, 
-    ComponentScores, FileIdentity, FullTdgRecord, Grade, Language, MetricCategory, OperationPriority, 
-    OperationType, PenaltyTracker, PerformanceSample, PlatformResourceController, ProjectScore, 
+    ComponentScores, FileIdentity, FullTdgRecord, Grade, Language, MetricCategory, OperationPriority, PenaltyTracker, PlatformResourceController, ProjectScore, 
     ResourceControllerFactory, SchedulerFactory, SemanticSignature, SimpleFairScheduler, 
     TdgScore, TieredStore, TieredStorageFactory,
 };
