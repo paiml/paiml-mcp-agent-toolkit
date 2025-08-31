@@ -4,10 +4,7 @@
 //! metrics, and reports in various industry-standard formats.
 
 use crate::tdg::{TdgScore, ProjectScore, Grade, Comparison};
-use serde::{Deserialize, Serialize};
 use anyhow::Result;
-use std::collections::HashMap;
-use std::path::Path;
 use std::time::SystemTime;
 
 /// Export format types
@@ -216,7 +213,7 @@ impl TdgExporter {
         }
         
         if options.include_metadata {
-            csv.push_str(&format!("\nSummary\n"));
+            csv.push_str(&"\nSummary\n".to_string());
             csv.push_str(&format!("total_files,{}\n", project.total_files));
             csv.push_str(&format!("average_score,{:.2}\n", project.average_score));
             csv.push_str(&format!("average_grade,{}\n", project.average_grade));

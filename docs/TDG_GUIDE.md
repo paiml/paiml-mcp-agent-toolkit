@@ -21,39 +21,62 @@ Total possible score: **100 points** with letter grades A+ through F.
 
 ```bash
 # Analyze a single file
-pmat analyze tdg --path src/main.rs
+pmat tdg src/main.rs
 
-# Analyze entire project
-pmat analyze tdg --path . --top-files 10
+# Analyze entire project with top files
+pmat tdg . --top-files 10
 
 # Include component breakdown
-pmat analyze tdg --path . --include-components
+pmat tdg . --include-components
+
+# Web dashboard (NEW v2.39.0)
+pmat tdg dashboard --port 8081 --open
 ```
 
-### Output Formats
+### Output Formats (8 Formats in v2.39.0)
 
 ```bash
 # Human-readable table (default)
-pmat analyze tdg --path . --format table
+pmat tdg . --format table
 
 # JSON for programmatic use
-pmat analyze tdg --path . --format json
+pmat tdg . --format json
 
-# Markdown for reports
-pmat analyze tdg --path . --format markdown
+# SARIF for CI/CD integration
+pmat tdg . --format sarif
+
+# CSV for spreadsheet analysis
+pmat tdg . --format csv
+
+# HTML report with visualizations
+pmat tdg . --format html
+
+# Markdown for documentation
+pmat tdg . --format markdown
+
+# XML for enterprise systems
+pmat tdg . --format xml
+
+# Prometheus metrics format
+pmat tdg . --format prometheus
 ```
 
 ### Filtering Results
 
 ```bash
 # Show only files above threshold
-pmat analyze tdg --path . --threshold 2.0
+pmat tdg . --threshold 2.0
 
-# Show only critical issues
-pmat analyze tdg --path . --critical-only
+# Show only critical issues (grade below C)
+pmat tdg . --critical-only
 
 # Limit number of results
-pmat analyze tdg --path . --top-files 5
+pmat tdg . --top-files 5
+
+# Filter by storage backend (NEW v2.39.0)
+pmat tdg . --storage-backend sled
+pmat tdg . --storage-backend inmemory
+pmat tdg . --storage-backend rocksdb
 ```
 
 ## Understanding TDG Scores
@@ -147,45 +170,102 @@ TDG supports analysis for 10+ programming languages:
 | Swift        | `.swift`  | `///`, `/**`         | Medium     |
 | Kotlin       | `.kt`     | `/**`, `*`           | Medium     |
 
-## MCP Integration
+## MCP Integration (v2.39.0 Enterprise Tools)
 
-TDG is fully integrated with the MCP (Model Context Protocol) system:
+TDG provides 6 enterprise-grade MCP tools for external integration:
 
 ### Available MCP Tools
 
-#### `analyze_tdg`
-Analyze files or directories with TDG scoring.
+#### `tdg_analyze_with_storage` (NEW v2.39.0)
+Analyze files with configurable storage backends.
 
 **Parameters:**
 ```json
 {
   "paths": ["src/", "tests/"],
-  "threshold": 1.5,
-  "top_files": 10,
-  "include_components": true
+  "storage_backend": "sled",
+  "priority": "high"
 }
 ```
 
-#### `analyze_tdg_compare`
-Compare TDG scores between two files or directories.
+#### `tdg_system_diagnostics` (NEW v2.39.0)
+Comprehensive system health monitoring.
 
 **Parameters:**
 ```json
 {
-  "path1": "src/old_version/",
-  "path2": "src/new_version/"
+  "detailed": true,
+  "components": ["storage", "performance", "alerts"]
 }
 ```
 
-### Usage in Claude Code
+#### `tdg_storage_management` (NEW v2.39.0)
+Storage operations and management.
+
+**Parameters:**
+```json
+{
+  "action": "flush",
+  "options": {"force": true}
+}
+```
+
+#### `tdg_performance_profiling` (NEW v2.39.0)
+Generate performance profiles and flame graphs.
+
+**Parameters:**
+```json
+{
+  "target_path": "src/tdg/",
+  "profile_type": "flame_graph",
+  "duration_seconds": 30
+}
+```
+
+#### `tdg_alert_management` (NEW v2.39.0)
+Configure and manage alerts.
+
+**Parameters:**
+```json
+{
+  "action": "configure",
+  "threshold_type": "cpu_usage",
+  "threshold_value": 85.0
+}
+```
+
+#### `tdg_export_data` (NEW v2.39.0)
+Export TDG data in multiple formats.
+
+**Parameters:**
+```json
+{
+  "paths": ["."],
+  "format": "prometheus",
+  "output_path": "./tdg-metrics.prom"
+}
+```
+
+#### Legacy Tools
+#### `analyze_tdg`
+Basic TDG analysis (legacy interface).
+
+#### `analyze_tdg_compare`
+Compare TDG scores between files.
+
+### Usage in Claude Code (v2.39.0)
 
 ```bash
-# Start MCP server
-pmat mcp
+# Start MCP server with TDG tools
+pmat mcp serve --port 3000
 
 # In Claude Code, use tools:
-# - analyze_tdg for scoring analysis
-# - analyze_tdg_compare for comparisons
+# - tdg_analyze_with_storage for cached analysis
+# - tdg_system_diagnostics for health monitoring
+# - tdg_storage_management for storage operations
+# - tdg_performance_profiling for flame graphs
+# - tdg_alert_management for alert configuration
+# - tdg_export_data for multi-format export
 ```
 
 ## Advanced Usage
@@ -217,20 +297,38 @@ min_doc_coverage = 0.7
 pmat quality-gate --tdg-threshold 75.0
 
 # Fail build on poor TDG scores
-pmat analyze tdg --path . --critical-only --format json | \
+pmat tdg . --critical-only --format json | \
   jq '.results.files[] | select(.total < 60)' && exit 1
+
+# Enforce grade thresholds (NEW v2.39.0)
+pmat tdg . --enforce-thresholds --fail-on-grade-below A-
+
+# Dashboard-based monitoring
+pmat tdg dashboard --background --alert-on-regression
 ```
 
-### CI/CD Integration
+### CI/CD Integration (v2.39.0)
 
 ```yaml
-# GitHub Actions example
+# GitHub Actions example with multiple formats
 - name: TDG Analysis
   run: |
-    pmat analyze tdg --path . --format json > tdg-results.json
+    # Install latest from crates.io
+    cargo install pmat --version 2.39.0 --force
+    
+    # Run TDG analysis with multiple exports
+    pmat tdg . --format json > tdg-results.json
+    pmat tdg . --format sarif > tdg-results.sarif
+    pmat tdg . --format prometheus > tdg-metrics.prom
+    
     # Fail if average score below threshold
     SCORE=$(jq '.results.average_score' tdg-results.json)
     [ $(echo "$SCORE > 70" | bc -l) -eq 1 ] || exit 1
+    
+    # Upload SARIF results
+    - uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: tdg-results.sarif
 ```
 
 ## Example Output
@@ -320,17 +418,26 @@ pmat analyze tdg --path . --critical-only --format json | \
    - Follow language style guides
    - Use automated formatters
 
-### Continuous Monitoring
+### Continuous Monitoring (v2.39.0)
 
 ```bash
-# Weekly TDG reports
-pmat analyze tdg --path . --format markdown > reports/tdg-$(date +%Y-%m-%d).md
+# Weekly TDG reports with dashboard
+pmat tdg . --format markdown > reports/tdg-$(date +%Y-%m-%d).md
+
+# Real-time dashboard monitoring
+pmat tdg dashboard --background --port 8081 &
+
+# Automated alert monitoring
+pmat tdg alerts --start-monitoring --config-file alerts.toml
+
+# Export time-series metrics
+pmat tdg export . --format prometheus --time-series
 
 # Track improvements over time
 git log --oneline | head -10 | while read commit; do
   echo "=== $commit ==="
   git checkout $(echo $commit | cut -d' ' -f1)
-  pmat analyze tdg --path . --format json | jq '.results.average_score'
+  pmat tdg . --format json | jq '.results.average_score'
 done
 ```
 

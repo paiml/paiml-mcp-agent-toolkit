@@ -135,38 +135,92 @@ async fn handle_analysis_tools(
     request_id: serde_json::Value,
     tool_params: ToolCallParams,
 ) -> McpResponse {
-    match tool_params.name.as_str() {
-        "analyze_code_churn" => handle_analyze_code_churn(request_id, tool_params.arguments).await,
-        "analyze_complexity" => handle_analyze_complexity(request_id, tool_params.arguments).await,
-        "analyze_dag" => handle_analyze_dag(request_id, tool_params.arguments).await,
-        "generate_context" => handle_generate_context(request_id, tool_params.arguments).await,
-        "analyze_system_architecture" => {
-            handle_analyze_system_architecture(request_id, tool_params.arguments).await
-        }
+    dispatch_analysis_tool(request_id, &tool_params.name, tool_params.arguments).await
+}
+
+/// Toyota Way: Extract Method - Dispatch analysis tools with grouped handling (complexity ≤8)
+async fn dispatch_analysis_tool(
+    request_id: serde_json::Value,
+    tool_name: &str,
+    arguments: serde_json::Value,
+) -> McpResponse {
+    // Group 1: Core analysis tools
+    if let Some(response) = handle_core_analysis_tools(request_id.clone(), tool_name, arguments.clone()).await {
+        return response;
+    }
+    
+    // Group 2: Advanced analysis tools  
+    if let Some(response) = handle_advanced_analysis_tools(request_id.clone(), tool_name, arguments.clone()).await {
+        return response;
+    }
+    
+    // Group 3: Specialized analysis tools
+    if let Some(response) = handle_specialized_analysis_tools(request_id.clone(), tool_name, arguments).await {
+        return response;
+    }
+    
+    // Unknown tool
+    McpResponse::error(
+        request_id,
+        -32602,
+        format!("Unsupported analysis tool: {}", tool_name),
+    )
+}
+
+/// Toyota Way: Extract Method - Handle core analysis tools (complexity ≤5)
+async fn handle_core_analysis_tools(
+    request_id: serde_json::Value,
+    tool_name: &str,
+    arguments: serde_json::Value,
+) -> Option<McpResponse> {
+    match tool_name {
+        "analyze_complexity" => Some(handle_analyze_complexity(request_id, arguments).await),
+        "analyze_dead_code" => Some(handle_analyze_dead_code(request_id, arguments).await),
+        "analyze_satd" => Some(handle_analyze_satd(request_id, arguments).await),
+        "analyze_tdg" => Some(handle_analyze_tdg(request_id, arguments).await),
+        _ => None,
+    }
+}
+
+/// Toyota Way: Extract Method - Handle advanced analysis tools (complexity ≤5)
+async fn handle_advanced_analysis_tools(
+    request_id: serde_json::Value,
+    tool_name: &str,
+    arguments: serde_json::Value,
+) -> Option<McpResponse> {
+    match tool_name {
+        "analyze_code_churn" => Some(handle_analyze_code_churn(request_id, arguments).await),
+        "analyze_dag" => Some(handle_analyze_dag(request_id, arguments).await),
+        "generate_context" => Some(handle_generate_context(request_id, arguments).await),
+        "analyze_deep_context" => Some(handle_analyze_deep_context(request_id, arguments).await),
         "analyze_defect_probability" => {
             // Deprecated - redirect to TDG analysis
-            handle_analyze_tdg(request_id, tool_params.arguments).await
+            Some(handle_analyze_tdg(request_id, arguments).await)
         }
-        "analyze_dead_code" => handle_analyze_dead_code(request_id, tool_params.arguments).await,
-        "analyze_deep_context" => {
-            handle_analyze_deep_context(request_id, tool_params.arguments).await
+        _ => None,
+    }
+}
+
+/// Toyota Way: Extract Method - Handle specialized analysis tools (complexity ≤5)
+async fn handle_specialized_analysis_tools(
+    request_id: serde_json::Value,
+    tool_name: &str,
+    arguments: serde_json::Value,
+) -> Option<McpResponse> {
+    match tool_name {
+        "analyze_system_architecture" => {
+            Some(handle_analyze_system_architecture(request_id, arguments).await)
         }
-        "analyze_tdg" => handle_analyze_tdg(request_id, tool_params.arguments).await,
         "analyze_makefile_lint" => {
-            handle_analyze_makefile_lint(request_id, Some(tool_params.arguments)).await
+            Some(handle_analyze_makefile_lint(request_id, Some(arguments)).await)
         }
         "analyze_provability" => {
-            handle_analyze_provability(request_id, Some(tool_params.arguments)).await
+            Some(handle_analyze_provability(request_id, Some(arguments)).await)
         }
-        "analyze_satd" => handle_analyze_satd(request_id, tool_params.arguments).await,
         "analyze_lint_hotspot" => {
-            handle_analyze_lint_hotspot(request_id, tool_params.arguments).await
+            Some(handle_analyze_lint_hotspot(request_id, arguments).await)
         }
-        _ => McpResponse::error(
-            request_id,
-            -32602,
-            format!("Unsupported analysis tool: {}", tool_params.name),
-        ),
+        _ => None,
     }
 }
 
@@ -583,12 +637,14 @@ struct AnalyzeCodeChurnArgs {
     format: Option<String>,
 }
 
+/// Toyota Way: Extract Method - Handle code churn analysis (complexity ≤8)
 async fn handle_analyze_code_churn(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    let args: AnalyzeCodeChurnArgs = match serde_json::from_value(arguments) {
-        Ok(a) => a,
+    // Parse arguments
+    let args = match parse_code_churn_args(arguments) {
+        Ok(args) => args,
         Err(e) => {
             return McpResponse::error(
                 request_id,
@@ -598,43 +654,53 @@ async fn handle_analyze_code_churn(
         }
     };
 
-    let project_path = args
-        .project_path
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-
-    let period_days = args.period_days.unwrap_or(30);
-    let format = args
-        .format
-        .as_deref()
-        .and_then(|f| f.parse::<ChurnOutputFormat>().ok())
-        .unwrap_or(ChurnOutputFormat::Summary);
-
+    // Extract analysis parameters
+    let (project_path, period_days, format) = extract_churn_parameters(&args);
+    
     info!(
         "Analyzing code churn for {:?} over {} days",
         project_path, period_days
     );
 
+    // Run analysis and format response
+    run_and_format_churn_analysis(request_id, project_path, period_days, format).await
+}
+
+/// Toyota Way Helper: Parse code churn arguments
+fn parse_code_churn_args(arguments: serde_json::Value) -> Result<AnalyzeCodeChurnArgs, serde_json::Error> {
+    serde_json::from_value(arguments)
+}
+
+/// Toyota Way Helper: Extract churn analysis parameters
+fn extract_churn_parameters(args: &AnalyzeCodeChurnArgs) -> (PathBuf, u32, ChurnOutputFormat) {
+    let project_path = args
+        .project_path
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+    let period_days = args.period_days.unwrap_or(30);
+    
+    let format = args
+        .format
+        .as_deref()
+        .and_then(|f| f.parse::<ChurnOutputFormat>().ok())
+        .unwrap_or(ChurnOutputFormat::Summary);
+        
+    (project_path, period_days, format)
+}
+
+/// Toyota Way Helper: Run analysis and format response
+async fn run_and_format_churn_analysis(
+    request_id: serde_json::Value,
+    project_path: PathBuf,
+    period_days: u32,
+    format: ChurnOutputFormat,
+) -> McpResponse {
     match GitAnalysisService::analyze_code_churn(&project_path, period_days) {
         Ok(analysis) => {
-            let content_text = match format {
-                ChurnOutputFormat::Json => {
-                    serde_json::to_string_pretty(&analysis).unwrap_or_default()
-                }
-                ChurnOutputFormat::Markdown => format_churn_as_markdown(&analysis),
-                ChurnOutputFormat::Csv => format_churn_as_csv(&analysis),
-                ChurnOutputFormat::Summary => format_churn_summary(&analysis),
-            };
-
-            let result = json!({
-                "content": [{
-                    "type": "text",
-                    "text": content_text
-                }],
-                "analysis": analysis,
-                "format": format!("{:?}", format),
-            });
-
+            let content_text = format_churn_output(&analysis, &format);
+            let result = build_churn_response(content_text, analysis, &format);
             McpResponse::success(request_id, result)
         }
         Err(e) => {
@@ -642,6 +708,35 @@ async fn handle_analyze_code_churn(
             McpResponse::error(request_id, -32000, e.to_string())
         }
     }
+}
+
+/// Toyota Way Helper: Format churn output based on requested format
+fn format_churn_output(
+    analysis: &crate::models::churn::CodeChurnAnalysis,
+    format: &ChurnOutputFormat,
+) -> String {
+    match format {
+        ChurnOutputFormat::Json => serde_json::to_string_pretty(&analysis).unwrap_or_default(),
+        ChurnOutputFormat::Markdown => format_churn_as_markdown(analysis),
+        ChurnOutputFormat::Csv => format_churn_as_csv(analysis),
+        ChurnOutputFormat::Summary => format_churn_summary(analysis),
+    }
+}
+
+/// Toyota Way Helper: Build churn response JSON
+fn build_churn_response(
+    content_text: String,
+    analysis: crate::models::churn::CodeChurnAnalysis,
+    format: &ChurnOutputFormat,
+) -> serde_json::Value {
+    json!({
+        "content": [{
+            "type": "text",
+            "text": content_text
+        }],
+        "analysis": analysis,
+        "format": format!("{:?}", format),
+    })
 }
 
 /// Formats a code churn analysis into a human-readable summary
@@ -1308,12 +1403,14 @@ struct GenerateContextArgs {
     max_line_length: Option<usize>,
 }
 
+/// Toyota Way: Extract Method - Handle context generation (complexity ≤8)
 async fn handle_generate_context(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    let args: GenerateContextArgs = match serde_json::from_value(arguments) {
-        Ok(a) => a,
+    // Parse and validate arguments
+    let (args, project_path) = match parse_generate_context_args(arguments) {
+        Ok(result) => result,
         Err(e) => {
             return McpResponse::error(
                 request_id,
@@ -1323,36 +1420,11 @@ async fn handle_generate_context(
         }
     };
 
-    let project_path = args
-        .project_path
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-
     info!("Generating comprehensive context for {:?}", project_path);
 
-    // Use the proven deep context analyzer for comprehensive analysis
-    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
-    use crate::services::file_classifier::FileClassifierConfig;
-
-    // Create analyzer and run analysis using proven implementation
-    let mut config = DeepContextConfig::default();
-
-    // Configure FileClassifier settings if debug options are provided
-    if args.debug.unwrap_or(false)
-        || args.skip_vendor.unwrap_or(false)
-        || args.max_line_length.is_some()
-    {
-        let file_classifier_config = FileClassifierConfig {
-            skip_vendor: args.skip_vendor.unwrap_or(true),
-            max_line_length: args.max_line_length.unwrap_or(10_000),
-            max_file_size: 1_048_576, // 1MB default
-        };
-        config.file_classifier_config = Some(file_classifier_config);
-    }
-
-    let analyzer = DeepContextAnalyzer::new(config);
-
-    let deep_context = match analyzer.analyze_project(&project_path).await {
+    // Configure and run analysis
+    let config = build_context_generation_config(&args);
+    let deep_context = match run_deep_context_analysis_with_config(&project_path, config).await {
         Ok(ctx) => ctx,
         Err(e) => {
             return McpResponse::error(
@@ -1363,22 +1435,104 @@ async fn handle_generate_context(
         }
     };
 
-    // Format the output
+    // Format and respond
+    format_and_respond_context(request_id, args, deep_context).await
+}
+
+/// Toyota Way: Extract Method - Parse context generation arguments (complexity ≤5)
+fn parse_generate_context_args(
+    arguments: serde_json::Value,
+) -> Result<(GenerateContextArgs, PathBuf), Box<dyn std::error::Error>> {
+    let args: GenerateContextArgs = serde_json::from_value(arguments)?;
+    
+    let project_path = args
+        .project_path
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    
+    Ok((args, project_path))
+}
+
+/// Toyota Way: Extract Method - Build context generation config (complexity ≤6)
+fn build_context_generation_config(
+    args: &GenerateContextArgs,
+) -> crate::services::deep_context::DeepContextConfig {
+    use crate::services::deep_context::DeepContextConfig;
+    use crate::services::file_classifier::FileClassifierConfig;
+
+    let mut config = DeepContextConfig::default();
+
+    // Configure FileClassifier settings if debug options are provided
+    if should_configure_file_classifier(args) {
+        let file_classifier_config = FileClassifierConfig {
+            skip_vendor: args.skip_vendor.unwrap_or(true),
+            max_line_length: args.max_line_length.unwrap_or(10_000),
+            max_file_size: 1_048_576, // 1MB default
+        };
+        config.file_classifier_config = Some(file_classifier_config);
+    }
+
+    config
+}
+
+/// Toyota Way: Extract Method - Check if file classifier config needed (complexity ≤3)
+fn should_configure_file_classifier(args: &GenerateContextArgs) -> bool {
+    args.debug.unwrap_or(false)
+        || args.skip_vendor.unwrap_or(false)
+        || args.max_line_length.is_some()
+}
+
+/// Toyota Way: Extract Method - Run deep context analysis with config (complexity ≤5)
+async fn run_deep_context_analysis_with_config(
+    project_path: &Path,
+    config: crate::services::deep_context::DeepContextConfig,
+) -> Result<crate::services::deep_context::DeepContext, Box<dyn std::error::Error>> {
+    use crate::services::deep_context::DeepContextAnalyzer;
+
+    let analyzer = DeepContextAnalyzer::new(config);
+    Ok(analyzer.analyze_project(&project_path.to_path_buf()).await?)
+}
+
+/// Toyota Way: Extract Method - Format and respond with context (complexity ≤8)
+async fn format_and_respond_context(
+    request_id: serde_json::Value,
+    args: GenerateContextArgs,
+    deep_context: crate::services::deep_context::DeepContext,
+) -> McpResponse {
     let format = args.format.as_deref().unwrap_or("markdown");
-    let content = match format {
-        "json" => serde_json::to_string_pretty(&deep_context).unwrap_or_default(),
+    let content = format_context_content(format, &deep_context).await;
+    
+    let result = build_context_response(&args, format, content, &deep_context);
+    McpResponse::success(request_id, result)
+}
+
+/// Toyota Way: Extract Method - Format context content (complexity ≤5)
+async fn format_context_content(
+    format: &str,
+    deep_context: &crate::services::deep_context::DeepContext,
+) -> String {
+    match format {
+        "json" => serde_json::to_string_pretty(deep_context).unwrap_or_default(),
         _ => {
-            // Use the comprehensive formatter that includes README and Makefile
             use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
             let analyzer = DeepContextAnalyzer::new(DeepContextConfig::default());
             analyzer
-                .format_as_comprehensive_markdown(&deep_context)
+                .format_as_comprehensive_markdown(deep_context)
                 .await
                 .unwrap_or_else(|_| "Error formatting deep context".to_string())
         }
-    };
+    }
+}
 
-    let result = json!({
+/// Toyota Way: Extract Method - Build context response JSON (complexity ≤5)
+fn build_context_response(
+    args: &GenerateContextArgs,
+    format: &str,
+    content: String,
+    deep_context: &crate::services::deep_context::DeepContext,
+) -> serde_json::Value {
+    json!({
         "content": [{
             "type": "text",
             "text": content
@@ -1398,9 +1552,7 @@ async fn handle_generate_context(
             "maintainability_index": deep_context.quality_scorecard.maintainability_index,
             "technical_debt_hours": deep_context.quality_scorecard.technical_debt_hours,
         }
-    });
-
-    McpResponse::success(request_id, result)
+    })
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -1517,18 +1669,14 @@ fn format_architecture_result(
     }
 }
 
+/// Toyota Way: Extract Method - Handle system architecture analysis (complexity ≤8)
 async fn handle_analyze_system_architecture(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    use crate::services::canonical_query::{
-        AnalysisContext, CanonicalQuery, SystemArchitectureQuery,
-    };
-    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
-
     // Parse arguments
-    let args: AnalyzeSystemArchitectureArgs = match serde_json::from_value(arguments) {
-        Ok(a) => a,
+    let (args, project_path) = match parse_architecture_analysis_args(arguments) {
+        Ok(result) => result,
         Err(e) => {
             return McpResponse::error(
                 request_id,
@@ -1538,26 +1686,10 @@ async fn handle_analyze_system_architecture(
         }
     };
 
-    let project_path = args
-        .project_path
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-
     info!("Analyzing system architecture for {:?}", project_path);
 
-    // Create analyzer config
-    let config = DeepContextConfig {
-        include_analyses: vec![
-            crate::services::deep_context::AnalysisType::Ast,
-            crate::services::deep_context::AnalysisType::Complexity,
-            crate::services::deep_context::AnalysisType::Dag,
-        ],
-        ..Default::default()
-    };
-
-    // Run analysis
-    let analyzer = DeepContextAnalyzer::new(config);
-    let deep_context = match analyzer.analyze_project(&project_path).await {
+    // Run deep context analysis
+    let deep_context = match run_architecture_deep_context_analysis(&project_path).await {
         Ok(ctx) => ctx,
         Err(e) => {
             return McpResponse::error(
@@ -1568,32 +1700,86 @@ async fn handle_analyze_system_architecture(
         }
     };
 
-    // Extract dependency graph
-    let dag_result = match deep_context.analyses.dependency_graph {
-        Some(dag) => dag,
-        None => {
-            return McpResponse::error(
-                request_id,
-                -32000,
-                "Failed to generate dependency graph".to_string(),
-            );
+    // Build analysis context
+    let context = match build_architecture_analysis_context(&project_path, &deep_context) {
+        Ok(ctx) => ctx,
+        Err(e) => {
+            return McpResponse::error(request_id, -32000, e.to_string());
         }
     };
 
-    // Build components for analysis context
+    // Execute and format results
+    execute_architecture_query_and_respond(request_id, args, context, &deep_context)
+}
+
+/// Toyota Way: Extract Method - Parse architecture analysis arguments (complexity ≤5)
+fn parse_architecture_analysis_args(
+    arguments: serde_json::Value,
+) -> Result<(AnalyzeSystemArchitectureArgs, PathBuf), Box<dyn std::error::Error>> {
+    let args: AnalyzeSystemArchitectureArgs = serde_json::from_value(arguments)?;
+    
+    let project_path = args
+        .project_path
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    
+    Ok((args, project_path))
+}
+
+/// Toyota Way: Extract Method - Run deep context analysis for architecture (complexity ≤5)
+async fn run_architecture_deep_context_analysis(
+    project_path: &Path,
+) -> Result<crate::services::deep_context::DeepContext, Box<dyn std::error::Error>> {
+    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
+
+    let config = DeepContextConfig {
+        include_analyses: vec![
+            crate::services::deep_context::AnalysisType::Ast,
+            crate::services::deep_context::AnalysisType::Complexity,
+            crate::services::deep_context::AnalysisType::Dag,
+        ],
+        ..Default::default()
+    };
+
+    let analyzer = DeepContextAnalyzer::new(config);
+    Ok(analyzer.analyze_project(&project_path.to_path_buf()).await?)
+}
+
+/// Toyota Way: Extract Method - Build architecture analysis context (complexity ≤6)
+fn build_architecture_analysis_context(
+    project_path: &Path,
+    deep_context: &crate::services::deep_context::DeepContext,
+) -> Result<crate::services::canonical_query::AnalysisContext, String> {
+    use crate::services::canonical_query::AnalysisContext;
+
+    let dag_result = deep_context
+        .analyses
+        .dependency_graph
+        .clone()
+        .ok_or_else(|| "Failed to generate dependency graph".to_string())?;
+
     let call_graph = build_call_graph(&dag_result);
     let complexity_map = build_complexity_map(deep_context.analyses.complexity_report.as_ref());
 
-    // Create analysis context
-    let context = AnalysisContext {
-        project_path: project_path.clone(),
+    Ok(AnalysisContext {
+        project_path: project_path.to_path_buf(),
         ast_dag: dag_result,
         call_graph,
         complexity_map,
-        churn_analysis: deep_context.analyses.churn_analysis,
-    };
+        churn_analysis: deep_context.analyses.churn_analysis.clone(),
+    })
+}
 
-    // Execute query
+/// Toyota Way: Extract Method - Execute architecture query and respond (complexity ≤8)
+fn execute_architecture_query_and_respond(
+    request_id: serde_json::Value,
+    args: AnalyzeSystemArchitectureArgs,
+    context: crate::services::canonical_query::AnalysisContext,
+    deep_context: &crate::services::deep_context::DeepContext,
+) -> McpResponse {
+    use crate::services::canonical_query::{CanonicalQuery, SystemArchitectureQuery};
+
     let query = SystemArchitectureQuery;
     match query.execute(&context) {
         Ok(result) => {
@@ -1611,6 +1797,7 @@ async fn handle_analyze_system_architecture(
                     "edges": result.metadata.edges,
                     "analysis_time_ms": result.metadata.analysis_time_ms,
                     "complexity_hotspots": deep_context.analyses.complexity_report
+                        .as_ref()
                         .map(|r| r.hotspots.len())
                         .unwrap_or(0),
                 }
@@ -1718,12 +1905,14 @@ async fn calculate_file_metrics(
 }
 
 #[allow(dead_code)]
+/// Toyota Way: Extract Method - Handle defect probability analysis (complexity ≤8)
 async fn handle_analyze_defect_probability(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    let args: AnalyzeDefectProbabilityArgs = match serde_json::from_value(arguments) {
-        Ok(a) => a,
+    // Parse arguments
+    let (args, project_path) = match parse_defect_probability_args(arguments) {
+        Ok(result) => result,
         Err(e) => {
             return McpResponse::error(
                 request_id,
@@ -1733,24 +1922,42 @@ async fn handle_analyze_defect_probability(
         }
     };
 
-    let project_path = args
-        .project_path
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-
     info!("Analyzing defect probability for {:?}", project_path);
 
-    use crate::services::defect_probability::{
-        DefectProbabilityCalculator, FileMetrics, ProjectDefectAnalysis,
+    // Build churn map from git analysis
+    let churn_map = build_churn_map(&project_path);
+
+    // Discover and analyze files
+    let file_metrics = match discover_and_analyze_files(&project_path, churn_map, request_id.clone()).await {
+        Ok(metrics) => metrics,
+        Err(response) => return response,
     };
-    use crate::services::file_discovery::ProjectFileDiscovery;
+
+    // Calculate defect probabilities and create response
+    create_defect_probability_response(request_id, args, file_metrics)
+}
+
+/// Toyota Way: Extract Method - Parse defect probability arguments (complexity ≤5)
+fn parse_defect_probability_args(
+    arguments: serde_json::Value,
+) -> Result<(AnalyzeDefectProbabilityArgs, PathBuf), Box<dyn std::error::Error>> {
+    let args: AnalyzeDefectProbabilityArgs = serde_json::from_value(arguments)?;
+    
+    let project_path = args
+        .project_path
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    
+    Ok((args, project_path))
+}
+
+/// Toyota Way: Extract Method - Build churn map from git analysis (complexity ≤5)
+fn build_churn_map(project_path: &Path) -> std::collections::HashMap<String, f32> {
     use crate::services::git_analysis::GitAnalysisService;
 
-    let calculator = DefectProbabilityCalculator::new();
-
-    // Get git churn data for the last 30 days
-    let churn_analysis = GitAnalysisService::analyze_code_churn(&project_path, 30).ok();
-    let churn_map: std::collections::HashMap<String, f32> = churn_analysis
+    let churn_analysis = GitAnalysisService::analyze_code_churn(project_path, 30).ok();
+    churn_analysis
         .map(|analysis| {
             analysis
                 .files
@@ -1758,54 +1965,65 @@ async fn handle_analyze_defect_probability(
                 .map(|f| (f.relative_path, f.churn_score))
                 .collect()
         })
-        .unwrap_or_default();
+        .unwrap_or_default()
+}
 
-    // Use ProjectFileDiscovery which properly respects .gitignore files
-    let discovery = ProjectFileDiscovery::new(project_path.clone());
+/// Toyota Way: Extract Method - Discover and analyze files (complexity ≤8)
+async fn discover_and_analyze_files(
+    project_path: &Path,
+    churn_map: std::collections::HashMap<String, f32>,
+    request_id: serde_json::Value,
+) -> Result<Vec<crate::services::defect_probability::FileMetrics>, McpResponse> {
+    use crate::services::file_discovery::ProjectFileDiscovery;
+    use futures::stream::{self, StreamExt};
+
+    // Discover files
+    let discovery = ProjectFileDiscovery::new(project_path.to_path_buf());
     let discovered_files = match discovery.discover_files() {
         Ok(files) => files,
         Err(e) => {
             error!("Failed to discover files: {}", e);
-            return McpResponse::error(
+            return Err(McpResponse::error(
                 request_id,
                 -32603,
                 format!("Failed to discover files: {e}"),
-            );
+            ));
         }
     };
 
-    // Process files in parallel for better performance
-    use futures::stream::{self, StreamExt};
-
+    // Process files in parallel
     let metrics_futures: Vec<_> = discovered_files
         .into_iter()
         .filter(|path| path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("rs"))
         .map(|path| {
-            let project_path = project_path.clone();
+            let project_path = project_path.to_path_buf();
             let churn_map = churn_map.clone();
             calculate_file_metrics(path, project_path, churn_map)
         })
         .collect();
 
-    // Execute futures concurrently with a limit
-    let file_metrics: Vec<FileMetrics> = stream::iter(metrics_futures)
-        .buffer_unordered(8) // Process up to 8 files concurrently
+    // Execute futures concurrently
+    let file_metrics = stream::iter(metrics_futures)
+        .buffer_unordered(8)
         .collect()
         .await;
 
+    Ok(file_metrics)
+}
+
+/// Toyota Way: Extract Method - Create defect probability response (complexity ≤6)
+fn create_defect_probability_response(
+    request_id: serde_json::Value,
+    args: AnalyzeDefectProbabilityArgs,
+    file_metrics: Vec<crate::services::defect_probability::FileMetrics>,
+) -> McpResponse {
+    use crate::services::defect_probability::{DefectProbabilityCalculator, ProjectDefectAnalysis};
+
+    let calculator = DefectProbabilityCalculator::new();
     let scores = calculator.calculate_batch(&file_metrics);
     let analysis = ProjectDefectAnalysis::from_scores(scores);
 
-    let content_text = match args.format.as_deref() {
-        Some("json") => serde_json::to_string_pretty(&analysis).unwrap_or_default(),
-        _ => format!(
-            "# Defect Probability Analysis\n\nTotal files: {}\nHigh-risk files: {}\nMedium-risk files: {}\nAverage probability: {:.2}",
-            analysis.total_files,
-            analysis.high_risk_files.len(),
-            analysis.medium_risk_files.len(),
-            analysis.average_probability
-        ),
-    };
+    let content_text = format_defect_probability_output(&args, &analysis);
 
     let result = json!({
         "content": [{
@@ -1819,6 +2037,23 @@ async fn handle_analyze_defect_probability(
     McpResponse::success(request_id, result)
 }
 
+/// Toyota Way: Extract Method - Format defect probability output (complexity ≤5)
+fn format_defect_probability_output(
+    args: &AnalyzeDefectProbabilityArgs,
+    analysis: &crate::services::defect_probability::ProjectDefectAnalysis,
+) -> String {
+    match args.format.as_deref() {
+        Some("json") => serde_json::to_string_pretty(analysis).unwrap_or_default(),
+        _ => format!(
+            "# Defect Probability Analysis\n\nTotal files: {}\nHigh-risk files: {}\nMedium-risk files: {}\nAverage probability: {:.2}",
+            analysis.total_files,
+            analysis.high_risk_files.len(),
+            analysis.medium_risk_files.len(),
+            analysis.average_probability
+        ),
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 struct AnalyzeDeadCodeArgs {
     project_path: Option<String>,
@@ -1829,12 +2064,14 @@ struct AnalyzeDeadCodeArgs {
     include_tests: Option<bool>,
 }
 
+/// Toyota Way: Extract Method - Handle dead code analysis (complexity ≤8)
 async fn handle_analyze_dead_code(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    let args: AnalyzeDeadCodeArgs = match serde_json::from_value(arguments) {
-        Ok(a) => a,
+    // Parse arguments
+    let (args, project_path) = match parse_dead_code_args(arguments) {
+        Ok(result) => result,
         Err(e) => {
             return McpResponse::error(
                 request_id,
@@ -1844,28 +2081,10 @@ async fn handle_analyze_dead_code(
         }
     };
 
-    let project_path = args
-        .project_path
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-
     info!("Analyzing dead code for {:?}", project_path);
 
-    use crate::models::dead_code::DeadCodeAnalysisConfig;
-    use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
-
-    // Create analyzer with a reasonable capacity
-    let mut analyzer = DeadCodeAnalyzer::new(10000);
-
-    // Configure analysis
-    let config = DeadCodeAnalysisConfig {
-        include_unreachable: args.include_unreachable.unwrap_or(false),
-        include_tests: args.include_tests.unwrap_or(false),
-        min_dead_lines: args.min_dead_lines.unwrap_or(10),
-    };
-
-    // Run analysis with ranking
-    let mut result = match analyzer.analyze_with_ranking(&project_path, config).await {
+    // Run dead code analysis
+    let mut result = match run_dead_code_analysis(&project_path, &args).await {
         Ok(r) => r,
         Err(e) => {
             return McpResponse::error(
@@ -1881,8 +2100,52 @@ async fn handle_analyze_dead_code(
         result.ranked_files.truncate(limit);
     }
 
-    // Format output based on requested format
+    // Format and respond
+    format_and_respond_dead_code(request_id, args, result)
+}
+
+/// Toyota Way: Extract Method - Parse dead code arguments (complexity ≤5)
+fn parse_dead_code_args(
+    arguments: serde_json::Value,
+) -> Result<(AnalyzeDeadCodeArgs, PathBuf), Box<dyn std::error::Error>> {
+    let args: AnalyzeDeadCodeArgs = serde_json::from_value(arguments)?;
+    
+    let project_path = args
+        .project_path
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    
+    Ok((args, project_path))
+}
+
+/// Toyota Way: Extract Method - Run dead code analysis (complexity ≤6)
+async fn run_dead_code_analysis(
+    project_path: &Path,
+    args: &AnalyzeDeadCodeArgs,
+) -> Result<crate::models::dead_code::DeadCodeRankingResult, Box<dyn std::error::Error>> {
+    use crate::models::dead_code::DeadCodeAnalysisConfig;
+    use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
+
+    let mut analyzer = DeadCodeAnalyzer::new(10000);
+
+    let config = DeadCodeAnalysisConfig {
+        include_unreachable: args.include_unreachable.unwrap_or(false),
+        include_tests: args.include_tests.unwrap_or(false),
+        min_dead_lines: args.min_dead_lines.unwrap_or(10),
+    };
+
+    Ok(analyzer.analyze_with_ranking(project_path, config).await?)
+}
+
+/// Toyota Way: Extract Method - Format and respond with dead code results (complexity ≤8)
+fn format_and_respond_dead_code(
+    request_id: serde_json::Value,
+    args: AnalyzeDeadCodeArgs,
+    result: crate::models::dead_code::DeadCodeRankingResult,
+) -> McpResponse {
     let format = args.format.as_deref().unwrap_or("summary");
+    
     let content_text = match format_dead_code_output(&result, format) {
         Ok(content) => content,
         Err(e) => {
@@ -1890,7 +2153,17 @@ async fn handle_analyze_dead_code(
         }
     };
 
-    let response = json!({
+    let response = build_dead_code_response(format, content_text, &result);
+    McpResponse::success(request_id, response)
+}
+
+/// Toyota Way: Extract Method - Build dead code response JSON (complexity ≤5)
+fn build_dead_code_response(
+    format: &str,
+    content_text: String,
+    result: &crate::models::dead_code::DeadCodeRankingResult,
+) -> serde_json::Value {
+    json!({
         "content": [{
             "type": "text",
             "text": content_text
@@ -1901,9 +2174,7 @@ async fn handle_analyze_dead_code(
         "files_with_dead_code": result.summary.files_with_dead_code,
         "total_dead_lines": result.summary.total_dead_lines,
         "dead_percentage": result.summary.dead_percentage,
-    });
-
-    McpResponse::success(request_id, response)
+    })
 }
 
 /// Format dead code analysis output for MCP response
@@ -1933,83 +2204,97 @@ fn format_dead_code_output(
     }
 }
 
-/// Format dead code analysis as summary text for MCP
+/// Toyota Way: Extract Method - Format dead code analysis as summary text for MCP (complexity ≤8)
 fn format_dead_code_summary_mcp(
     result: &crate::models::dead_code::DeadCodeRankingResult,
 ) -> anyhow::Result<String> {
     let mut output = String::with_capacity(1024);
 
     output.push_str("# Dead Code Analysis Summary\n\n");
+    format_dead_code_summary_stats(&mut output, &result.summary);
+    format_top_dead_code_files(&mut output, &result.ranked_files);
+
+    Ok(output)
+}
+
+/// Toyota Way: Extract Method - Format summary statistics section (complexity ≤5)
+fn format_dead_code_summary_stats(
+    output: &mut String,
+    summary: &crate::models::dead_code::DeadCodeSummary,
+) {
     output.push_str(&format!(
         "**Total files analyzed:** {}\n",
-        result.summary.total_files_analyzed
+        summary.total_files_analyzed
     ));
+    
+    let files_with_dead_percentage = if summary.total_files_analyzed > 0 {
+        (summary.files_with_dead_code as f32 / summary.total_files_analyzed as f32) * 100.0
+    } else {
+        0.0
+    };
+    
     output.push_str(&format!(
         "**Files with dead code:** {} ({:.1}%)\n",
-        result.summary.files_with_dead_code,
-        if result.summary.total_files_analyzed > 0 {
-            (result.summary.files_with_dead_code as f32
-                / result.summary.total_files_analyzed as f32)
-                * 100.0
-        } else {
-            0.0
-        }
+        summary.files_with_dead_code, files_with_dead_percentage
     ));
     output.push_str(&format!(
         "**Total dead lines:** {} ({:.1}% of codebase)\n",
-        result.summary.total_dead_lines, result.summary.dead_percentage
+        summary.total_dead_lines, summary.dead_percentage
     ));
-    output.push_str(&format!(
-        "**Dead functions:** {}\n",
-        result.summary.dead_functions
-    ));
-    output.push_str(&format!(
-        "**Dead classes:** {}\n",
-        result.summary.dead_classes
-    ));
-    output.push_str(&format!(
-        "**Dead modules:** {}\n",
-        result.summary.dead_modules
-    ));
-    output.push_str(&format!(
-        "**Unreachable blocks:** {}\n\n",
-        result.summary.unreachable_blocks
-    ));
+    output.push_str(&format!("**Dead functions:** {}\n", summary.dead_functions));
+    output.push_str(&format!("**Dead classes:** {}\n", summary.dead_classes));
+    output.push_str(&format!("**Dead modules:** {}\n", summary.dead_modules));
+    output.push_str(&format!("**Unreachable blocks:** {}\n\n", summary.unreachable_blocks));
+}
 
-    // Show top files if available
-    if !result.ranked_files.is_empty() {
-        let top_count = result.ranked_files.len().min(5);
+/// Toyota Way: Extract Method - Format top files with dead code (complexity ≤8)
+fn format_top_dead_code_files(
+    output: &mut String,
+    ranked_files: &[crate::models::dead_code::FileDeadCodeMetrics],
+) {
+    if !ranked_files.is_empty() {
+        let top_count = ranked_files.len().min(5);
         output.push_str(&format!("## Top {top_count} Files with Most Dead Code\n\n"));
 
-        for (i, file_metrics) in result.ranked_files.iter().take(top_count).enumerate() {
-            let confidence_text = match file_metrics.confidence {
-                crate::models::dead_code::ConfidenceLevel::High => "HIGH",
-                crate::models::dead_code::ConfidenceLevel::Medium => "MEDIUM",
-                crate::models::dead_code::ConfidenceLevel::Low => "LOW",
-            };
-
-            output.push_str(&format!(
-                "{}. **{}** (Score: {:.1}) [{}confidence]\n",
-                i + 1,
-                file_metrics.path,
-                file_metrics.dead_score,
-                confidence_text
-            ));
-            output.push_str(&format!(
-                "   - {} dead lines ({:.1}% of file)\n",
-                file_metrics.dead_lines, file_metrics.dead_percentage
-            ));
-            if file_metrics.dead_functions > 0 || file_metrics.dead_classes > 0 {
-                output.push_str(&format!(
-                    "   - {} functions, {} classes\n",
-                    file_metrics.dead_functions, file_metrics.dead_classes
-                ));
-            }
-            output.push('\n');
+        for (i, file_metrics) in ranked_files.iter().take(top_count).enumerate() {
+            format_dead_code_file_entry(output, i + 1, file_metrics);
         }
     }
+}
 
-    Ok(output)
+/// Toyota Way: Extract Method - Format individual file entry (complexity ≤5)
+fn format_dead_code_file_entry(
+    output: &mut String,
+    index: usize,
+    file_metrics: &crate::models::dead_code::FileDeadCodeMetrics,
+) {
+    let confidence_text = get_confidence_level_text(file_metrics.confidence);
+
+    output.push_str(&format!(
+        "{}. **{}** (Score: {:.1}) [{}confidence]\n",
+        index, file_metrics.path, file_metrics.dead_score, confidence_text
+    ));
+    output.push_str(&format!(
+        "   - {} dead lines ({:.1}% of file)\n",
+        file_metrics.dead_lines, file_metrics.dead_percentage
+    ));
+    
+    if file_metrics.dead_functions > 0 || file_metrics.dead_classes > 0 {
+        output.push_str(&format!(
+            "   - {} functions, {} classes\n",
+            file_metrics.dead_functions, file_metrics.dead_classes
+        ));
+    }
+    output.push('\n');
+}
+
+/// Toyota Way: Extract Method - Get confidence level text (complexity ≤3)
+fn get_confidence_level_text(confidence: crate::models::dead_code::ConfidenceLevel) -> &'static str {
+    match confidence {
+        crate::models::dead_code::ConfidenceLevel::High => "HIGH ",
+        crate::models::dead_code::ConfidenceLevel::Medium => "MEDIUM ",
+        crate::models::dead_code::ConfidenceLevel::Low => "LOW ",
+    }
 }
 
 /// Format dead code analysis as SARIF for MCP
@@ -2065,84 +2350,130 @@ fn format_dead_code_as_sarif_mcp(
 }
 
 /// Format dead code analysis as Markdown for MCP
+/// Toyota Way: Extract Method - Format dead code analysis as markdown (complexity ≤8)
 fn format_dead_code_as_markdown_mcp(
     result: &crate::models::dead_code::DeadCodeRankingResult,
 ) -> anyhow::Result<String> {
     let mut output = String::with_capacity(1024);
 
+    write_dead_code_header(&mut output, &result.analysis_timestamp);
+    write_dead_code_summary_section(&mut output, &result.summary);
+    write_dead_code_top_files_section(&mut output, &result.ranked_files);
+
+    Ok(output)
+}
+
+/// Toyota Way: Extract Method - Write dead code report header (complexity ≤3)
+fn write_dead_code_header(output: &mut String, timestamp: &chrono::DateTime<chrono::Utc>) {
     output.push_str("# Dead Code Analysis Report\n\n");
     output.push_str(&format!(
         "**Analysis Date:** {}\n\n",
-        result.analysis_timestamp.format("%Y-%m-%d %H:%M:%S UTC")
+        timestamp.format("%Y-%m-%d %H:%M:%S UTC")
     ));
+}
 
-    // Summary section
+/// Toyota Way: Extract Method - Write dead code summary section (complexity ≤8)
+fn write_dead_code_summary_section(
+    output: &mut String,
+    summary: &crate::models::dead_code::DeadCodeSummary,
+) {
     output.push_str("## Summary\n\n");
+    
     output.push_str(&format!(
         "- **Total files analyzed:** {}\n",
-        result.summary.total_files_analyzed
+        summary.total_files_analyzed
     ));
+    
+    let files_with_dead_percentage = calculate_dead_files_percentage(summary);
     output.push_str(&format!(
         "- **Files with dead code:** {} ({:.1}%)\n",
-        result.summary.files_with_dead_code,
-        if result.summary.total_files_analyzed > 0 {
-            (result.summary.files_with_dead_code as f32
-                / result.summary.total_files_analyzed as f32)
-                * 100.0
-        } else {
-            0.0
-        }
+        summary.files_with_dead_code, files_with_dead_percentage
     ));
+    
+    write_dead_code_metrics(output, summary);
+}
+
+/// Toyota Way: Extract Method - Calculate dead files percentage (complexity ≤3)
+fn calculate_dead_files_percentage(summary: &crate::models::dead_code::DeadCodeSummary) -> f32 {
+    if summary.total_files_analyzed > 0 {
+        (summary.files_with_dead_code as f32 / summary.total_files_analyzed as f32) * 100.0
+    } else {
+        0.0
+    }
+}
+
+/// Toyota Way: Extract Method - Write dead code metrics (complexity ≤5)
+fn write_dead_code_metrics(
+    output: &mut String,
+    summary: &crate::models::dead_code::DeadCodeSummary,
+) {
     output.push_str(&format!(
         "- **Total dead lines:** {} ({:.1}% of codebase)\n",
-        result.summary.total_dead_lines, result.summary.dead_percentage
+        summary.total_dead_lines, summary.dead_percentage
     ));
-    output.push_str(&format!(
-        "- **Dead functions:** {}\n",
-        result.summary.dead_functions
-    ));
-    output.push_str(&format!(
-        "- **Dead classes:** {}\n",
-        result.summary.dead_classes
-    ));
-    output.push_str(&format!(
-        "- **Dead modules:** {}\n",
-        result.summary.dead_modules
-    ));
-    output.push_str(&format!(
-        "- **Unreachable blocks:** {}\n\n",
-        result.summary.unreachable_blocks
-    ));
+    output.push_str(&format!("- **Dead functions:** {}\n", summary.dead_functions));
+    output.push_str(&format!("- **Dead classes:** {}\n", summary.dead_classes));
+    output.push_str(&format!("- **Dead modules:** {}\n", summary.dead_modules));
+    output.push_str(&format!("- **Unreachable blocks:** {}\n\n", summary.unreachable_blocks));
+}
 
-    // Top files section
-    if !result.ranked_files.is_empty() {
-        output.push_str("## Top Files with Dead Code\n\n");
-        output.push_str("| Rank | File | Dead Lines | Percentage | Functions | Classes | Score | Confidence |\n");
-        output.push_str("|------|------|------------|------------|-----------|---------|-------|------------|\n");
-
-        for (i, file_metrics) in result.ranked_files.iter().enumerate() {
-            let confidence_text = match file_metrics.confidence {
-                crate::models::dead_code::ConfidenceLevel::High => "🔴 High",
-                crate::models::dead_code::ConfidenceLevel::Medium => "🟡 Medium",
-                crate::models::dead_code::ConfidenceLevel::Low => "🟢 Low",
-            };
-
-            output.push_str(&format!(
-                "| {:>4} | `{}` | {:>10} | {:>9.1}% | {:>9} | {:>7} | {:>5.1} | {} |\n",
-                i + 1,
-                file_metrics.path,
-                file_metrics.dead_lines,
-                file_metrics.dead_percentage,
-                file_metrics.dead_functions,
-                file_metrics.dead_classes,
-                file_metrics.dead_score,
-                confidence_text
-            ));
-        }
+/// Toyota Way: Extract Method - Write top dead code files section (complexity ≤8)
+fn write_dead_code_top_files_section(
+    output: &mut String,
+    ranked_files: &[crate::models::dead_code::FileDeadCodeMetrics],
+) {
+    if !ranked_files.is_empty() {
+        write_dead_code_table_header(output);
+        write_dead_code_table_rows(output, ranked_files);
         output.push('\n');
     }
+}
 
-    Ok(output)
+/// Toyota Way: Extract Method - Write dead code table header (complexity ≤3)
+fn write_dead_code_table_header(output: &mut String) {
+    output.push_str("## Top Files with Dead Code\n\n");
+    output.push_str("| Rank | File | Dead Lines | Percentage | Functions | Classes | Score | Confidence |\n");
+    output.push_str("|------|------|------------|------------|-----------|---------|-------|------------|\n");
+}
+
+/// Toyota Way: Extract Method - Write dead code table rows (complexity ≤5)
+fn write_dead_code_table_rows(
+    output: &mut String,
+    ranked_files: &[crate::models::dead_code::FileDeadCodeMetrics],
+) {
+    for (i, file_metrics) in ranked_files.iter().enumerate() {
+        write_single_dead_code_row(output, i + 1, file_metrics);
+    }
+}
+
+/// Toyota Way: Extract Method - Write single dead code table row (complexity ≤5)
+fn write_single_dead_code_row(
+    output: &mut String,
+    rank: usize,
+    file_metrics: &crate::models::dead_code::FileDeadCodeMetrics,
+) {
+    let confidence_text = format_confidence_emoji(file_metrics.confidence);
+
+    output.push_str(&format!(
+        "| {:>4} | `{}` | {:>10} | {:>9.1}% | {:>9} | {:>7} | {:>5.1} | {} |\n",
+        rank,
+        file_metrics.path,
+        file_metrics.dead_lines,
+        file_metrics.dead_percentage,
+        file_metrics.dead_functions,
+        file_metrics.dead_classes,
+        file_metrics.dead_score,
+        confidence_text
+    ));
+}
+
+/// Toyota Way: Extract Method - Format confidence level with emoji (complexity ≤3)
+fn format_confidence_emoji(confidence: crate::models::dead_code::ConfidenceLevel) -> &'static str {
+    match confidence {
+        crate::models::dead_code::ConfidenceLevel::High => "🔴 High",
+        crate::models::dead_code::ConfidenceLevel::Medium => "🟡 Medium",
+        crate::models::dead_code::ConfidenceLevel::Low => "🟢 Low",
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -2154,12 +2485,14 @@ struct AnalyzeTdgArgs {
     max_results: Option<usize>,
 }
 
+/// Toyota Way: Extract Method - Handle TDG analysis (complexity ≤8)
 async fn handle_analyze_tdg(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    let args: AnalyzeTdgArgs = match serde_json::from_value(arguments) {
-        Ok(a) => a,
+    // Parse arguments
+    let args = match parse_tdg_args(arguments) {
+        Ok(args) => args,
         Err(e) => {
             return McpResponse::error(
                 request_id,
@@ -2169,15 +2502,35 @@ async fn handle_analyze_tdg(
         }
     };
 
-    let project_path = args
-        .project_path
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-
+    // Extract project path
+    let project_path = extract_tdg_project_path(&args);
     info!("Analyzing Technical Debt Gradient for {:?}", project_path);
 
-    use crate::services::tdg_calculator::TDGCalculator;
+    // Run analysis and format response
+    run_and_format_tdg_analysis(request_id, project_path, args.format).await
+}
 
+/// Toyota Way Helper: Parse TDG arguments
+fn parse_tdg_args(arguments: serde_json::Value) -> Result<AnalyzeTdgArgs, serde_json::Error> {
+    serde_json::from_value(arguments)
+}
+
+/// Toyota Way Helper: Extract TDG project path
+fn extract_tdg_project_path(args: &AnalyzeTdgArgs) -> PathBuf {
+    args.project_path
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+}
+
+/// Toyota Way Helper: Run TDG analysis and format response
+async fn run_and_format_tdg_analysis(
+    request_id: serde_json::Value,
+    project_path: PathBuf,
+    format: Option<String>,
+) -> McpResponse {
+    use crate::services::tdg_calculator::TDGCalculator;
+    
     // Create TDG calculator (primary service for analysis)
     let calculator = TDGCalculator::new();
 
@@ -2189,8 +2542,18 @@ async fn handle_analyze_tdg(
         }
     };
 
+    // Format and respond
+    format_and_respond_tdg(request_id, analysis, format)
+}
+
+/// Toyota Way Helper: Format TDG analysis and build response
+fn format_and_respond_tdg(
+    request_id: serde_json::Value,
+    analysis: crate::models::tdg::TDGSummary,
+    format: Option<String>,
+) -> McpResponse {
     // Format output
-    let content_text = match args.format.as_deref() {
+    let content_text = match format.as_deref() {
         Some("json") => serde_json::to_string_pretty(&analysis).unwrap_or_default(),
         _ => format_tdg_summary(&analysis),
     };
@@ -2201,82 +2564,95 @@ async fn handle_analyze_tdg(
             "text": content_text
         }],
         "analysis": analysis,
-        "format": args.format.unwrap_or_else(|| "summary".to_string()),
+        "format": format.unwrap_or_else(|| "summary".to_string()),
     });
 
     McpResponse::success(request_id, result)
 }
 
+/// Toyota Way: Extract Method - Format TDG summary (complexity ≤8)
 fn format_tdg_summary(summary: &crate::models::tdg::TDGSummary) -> String {
     let mut output = String::with_capacity(1024);
 
     output.push_str("# Technical Debt Gradient Analysis\n\n");
+    
+    // Build each section
+    append_tdg_summary_section(&mut output, summary);
+    append_tdg_hotspots_section(&mut output, summary);
+    append_tdg_severity_section(&mut output, summary);
 
-    // Summary
+    output
+}
+
+/// Toyota Way Helper: Append TDG summary statistics
+fn append_tdg_summary_section(output: &mut String, summary: &crate::models::tdg::TDGSummary) {
     output.push_str("## Summary\n\n");
     output.push_str(&format!("**Total files:** {}\n", summary.total_files));
+    
+    // Calculate and append percentages
+    let critical_pct = calculate_percentage(summary.critical_files, summary.total_files);
+    let warning_pct = calculate_percentage(summary.warning_files, summary.total_files);
+    
     output.push_str(&format!(
         "**Critical files:** {} ({:.1}%)\n",
-        summary.critical_files,
-        if summary.total_files > 0 {
-            (summary.critical_files as f64 / summary.total_files as f64) * 100.0
-        } else {
-            0.0
-        }
+        summary.critical_files, critical_pct
     ));
     output.push_str(&format!(
         "**Warning files:** {} ({:.1}%)\n",
-        summary.warning_files,
-        if summary.total_files > 0 {
-            (summary.warning_files as f64 / summary.total_files as f64) * 100.0
-        } else {
-            0.0
-        }
+        summary.warning_files, warning_pct
     ));
+    
+    // Append metrics
+    append_tdg_metrics(output, summary);
+}
+
+/// Toyota Way Helper: Append TDG metrics
+fn append_tdg_metrics(output: &mut String, summary: &crate::models::tdg::TDGSummary) {
     output.push_str(&format!("**Average TDG:** {:.2}\n", summary.average_tdg));
-    output.push_str(&format!(
-        "**95th percentile TDG:** {:.2}\n",
-        summary.p95_tdg
-    ));
-    output.push_str(&format!(
-        "**99th percentile TDG:** {:.2}\n",
-        summary.p99_tdg
-    ));
+    output.push_str(&format!("**95th percentile TDG:** {:.2}\n", summary.p95_tdg));
+    output.push_str(&format!("**99th percentile TDG:** {:.2}\n", summary.p99_tdg));
     output.push_str(&format!(
         "**Estimated technical debt:** {:.0} hours\n\n",
         summary.estimated_debt_hours
     ));
+}
 
-    // Hotspots
-    if !summary.hotspots.is_empty() {
-        output.push_str("## Top Hotspots\n\n");
-        output.push_str("| File | TDG Score | Primary Factor | Estimated Hours |\n");
-        output.push_str("|------|-----------|----------------|----------------|\n");
-
-        for hotspot in &summary.hotspots {
-            output.push_str(&format!(
-                "| {} | {:.2} | {} | {:.0} |\n",
-                hotspot.path, hotspot.tdg_score, hotspot.primary_factor, hotspot.estimated_hours
-            ));
-        }
-        output.push('\n');
+/// Toyota Way Helper: Append TDG hotspots table
+fn append_tdg_hotspots_section(output: &mut String, summary: &crate::models::tdg::TDGSummary) {
+    if summary.hotspots.is_empty() {
+        return;
     }
+    
+    output.push_str("## Top Hotspots\n\n");
+    output.push_str("| File | TDG Score | Primary Factor | Estimated Hours |\n");
+    output.push_str("|------|-----------|----------------|----------------|\n");
 
+    for hotspot in &summary.hotspots {
+        output.push_str(&format!(
+            "| {} | {:.2} | {} | {:.0} |\n",
+            hotspot.path, hotspot.tdg_score, hotspot.primary_factor, hotspot.estimated_hours
+        ));
+    }
+    output.push('\n');
+}
+
+/// Toyota Way Helper: Append TDG severity distribution
+fn append_tdg_severity_section(output: &mut String, summary: &crate::models::tdg::TDGSummary) {
     output.push_str("## Severity Distribution\n\n");
-    output.push_str(&format!(
-        "- 🔴 Critical (>2.5): {} files\n",
-        summary.critical_files
-    ));
-    output.push_str(&format!(
-        "- 🟡 Warning (1.5-2.5): {} files\n",
-        summary.warning_files
-    ));
-    output.push_str(&format!(
-        "- 🟢 Normal (<1.5): {} files\n",
-        summary.total_files - summary.critical_files - summary.warning_files
-    ));
+    output.push_str(&format!("- 🔴 Critical (>2.5): {} files\n", summary.critical_files));
+    output.push_str(&format!("- 🟡 Warning (1.5-2.5): {} files\n", summary.warning_files));
+    
+    let normal_files = summary.total_files.saturating_sub(summary.critical_files + summary.warning_files);
+    output.push_str(&format!("- 🟢 Normal (<1.5): {} files\n", normal_files));
+}
 
-    output
+/// Toyota Way Helper: Calculate percentage safely
+fn calculate_percentage(part: usize, total: usize) -> f64 {
+    if total > 0 {
+        (part as f64 / total as f64) * 100.0
+    } else {
+        0.0
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -2470,6 +2846,7 @@ fn format_deep_context_as_sarif(_context: &crate::services::deep_context::DeepCo
     serde_json::to_string_pretty(&sarif).unwrap_or_default()
 }
 
+/// Toyota Way: Extract Method - Format deep context analysis as markdown (complexity ≤8)
 fn format_deep_context_as_markdown(context: &crate::services::deep_context::DeepContext) -> String {
     use crate::cli::formatting_helpers::*;
 
@@ -2478,8 +2855,26 @@ fn format_deep_context_as_markdown(context: &crate::services::deep_context::Deep
 
     // Reuse helper functions from cli module
     output.push_str(&format_executive_summary(context));
+    format_essential_metadata(&mut output, context);
+    
+    // Quality Scorecard and other sections
+    output.push_str(&format_quality_scorecard(context));
+    output.push_str(&format_defect_summary(context));
+    output.push_str(&format_recommendations(context));
 
-    // Essential Project Metadata (README and Makefile)
+    format_analysis_results(&mut output, context);
+    format_deep_context_recommendations(&mut output, context);
+
+    output
+}
+
+/// Toyota Way: Extract Method - Format essential project metadata section (complexity ≤5)
+fn format_essential_metadata(
+    output: &mut String,
+    context: &crate::services::deep_context::DeepContext,
+) {
+    use crate::cli::formatting_helpers::*;
+
     if context.project_overview.is_some() || context.build_info.is_some() {
         output.push_str("\n## Essential Project Metadata\n\n");
 
@@ -2491,13 +2886,13 @@ fn format_deep_context_as_markdown(context: &crate::services::deep_context::Deep
             output.push_str(&format_build_info(build_info));
         }
     }
+}
 
-    // Quality Scorecard and other sections
-    output.push_str(&format_quality_scorecard(context));
-    output.push_str(&format_defect_summary(context));
-    output.push_str(&format_recommendations(context));
-
-    // Continue with remaining sections specific to this function
+/// Toyota Way: Extract Method - Format analysis results section (complexity ≤8)
+fn format_analysis_results(
+    output: &mut String,
+    context: &crate::services::deep_context::DeepContext,
+) {
     output.push_str("\n## Analysis Results\n\n");
     output.push_str(&format!(
         "**Total Defects:** {}\n",
@@ -2508,27 +2903,46 @@ fn format_deep_context_as_markdown(context: &crate::services::deep_context::Deep
         context.defect_summary.defect_density
     ));
 
-    // Show defects by type
-    if !context.defect_summary.by_type.is_empty() {
-        output.push_str("**By Type:**\n");
-        for (defect_type, count) in &context.defect_summary.by_type {
-            output.push_str(&format!("- {defect_type}: {count}\n"));
-        }
-    }
-
-    // Show defects by severity
-    if !context.defect_summary.by_severity.is_empty() {
-        output.push_str("**By Severity:**\n");
-        for (severity, count) in &context.defect_summary.by_severity {
-            output.push_str(&format!("- {severity}: {count}\n"));
-        }
-    }
+    format_defects_by_type(output, &context.defect_summary.by_type);
+    format_defects_by_severity(output, &context.defect_summary.by_severity);
+    
     output.push_str(&format!(
         "**Total Files:** {}\n\n",
         context.file_tree.total_files
     ));
+}
 
-    // Recommendations
+/// Toyota Way: Extract Method - Format defects by type (complexity ≤5)
+fn format_defects_by_type(
+    output: &mut String,
+    by_type: &rustc_hash::FxHashMap<String, usize>,
+) {
+    if !by_type.is_empty() {
+        output.push_str("**By Type:**\n");
+        for (defect_type, count) in by_type {
+            output.push_str(&format!("- {defect_type}: {count}\n"));
+        }
+    }
+}
+
+/// Toyota Way: Extract Method - Format defects by severity (complexity ≤5)
+fn format_defects_by_severity(
+    output: &mut String,
+    by_severity: &rustc_hash::FxHashMap<String, usize>,
+) {
+    if !by_severity.is_empty() {
+        output.push_str("**By Severity:**\n");
+        for (severity, count) in by_severity {
+            output.push_str(&format!("- {severity}: {count}\n"));
+        }
+    }
+}
+
+/// Toyota Way: Extract Method - Format recommendations section (complexity ≤5)
+fn format_deep_context_recommendations(
+    output: &mut String,
+    context: &crate::services::deep_context::DeepContext,
+) {
     if !context.recommendations.is_empty() {
         output.push_str("## Recommendations\n\n");
         for (i, rec) in context.recommendations.iter().take(5).enumerate() {
@@ -2541,8 +2955,6 @@ fn format_deep_context_as_markdown(context: &crate::services::deep_context::Deep
             output.push_str(&format!("   {}\n\n", rec.description));
         }
     }
-
-    output
 }
 
 async fn handle_analyze_makefile_lint(

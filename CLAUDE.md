@@ -63,30 +63,116 @@ We eat our own dog food by using our MCP tools as the primary interface:
 - Quality Gates: Use MCP `quality_gate` tool before CLI `pmat quality-gate`
 - Todo Generation: Use MCP `pdmt_deterministic_todos` tool
 
-## TDG Quality Analysis (Dogfooding via crates.io)
+## TDG Quality Analysis (Mandatory Dogfooding)
 
-**MANDATORY**: After publishing to crates.io, we MUST use our own TDG tool for quality analysis:
+**MANDATORY**: We MUST use our own TDG (Technical Debt Grading) system for all quality analysis and continuous improvement. This is core dogfooding practice.
 
+### Installation and Setup
 ```bash
 # Install latest from crates.io (dogfooding principle)
 cargo install pmat --force
 
-# Run TDG analysis on our own codebase
-pmat tdg . --include-components
+# Verify installation
+pmat --version  # Should show v2.39.0+
 
-# For specific files
-pmat tdg server/src/tdg/analyzer_ast.rs
-
-# Compare implementations
-pmat tdg compare server/src/tdg/analyzer_simple.rs server/src/tdg/analyzer_ast.rs
+# Quick health check
+pmat tdg --help
 ```
 
-**Quality Standards via TDG**:
-- Overall Grade: Must maintain B+ or higher
-- Structural Complexity: ≤20 per function
-- Semantic Complexity: Cognitive complexity ≤15
-- Duplication: <10% code duplication
-- Documentation: >70% coverage for public APIs
+### Core TDG Workflows (Sprint 31 Delivered)
+
+#### 1. File Analysis (Primary Workflow)
+```bash
+# Analyze single file with detailed breakdown
+pmat tdg server/src/tdg/analyzer_ast.rs
+
+# Analyze with component breakdown
+pmat tdg server/src/tdg/storage.rs --include-components
+
+# Get top problematic files
+pmat tdg . --top-files 10
+
+# Export analysis results
+pmat tdg . --format json > analysis.json
+pmat tdg . --format csv > analysis.csv
+pmat tdg . --format sarif > analysis.sarif
+```
+
+#### 2. Web Dashboard (Real-time Monitoring)
+```bash
+# Start web dashboard for real-time TDG monitoring
+pmat tdg dashboard --port 8081 --open
+
+# Access at: http://localhost:8081
+# Features:
+# - Real-time system metrics
+# - Storage backend monitoring
+# - Performance profiling
+# - Interactive analysis
+```
+
+#### 3. MCP Integration (External Tools)
+```bash
+# Start MCP server for external tool integration
+pmat mcp serve --port 3000
+
+# Available MCP tools:
+# - tdg_analyze_with_storage
+# - tdg_system_diagnostics  
+# - tdg_storage_management
+# - tdg_performance_profiling
+# - tdg_alert_management
+# - tdg_export_data
+```
+
+#### 4. Advanced Features
+```bash
+# Performance profiling with flame graphs
+pmat tdg profile server/src/tdg/ --flame-graph
+
+# Alert system configuration
+pmat tdg alerts --configure --threshold high
+
+# Batch export all formats
+pmat tdg export . --all-formats --output-dir ./tdg-reports/
+```
+
+### Quality Standards via TDG (v2.39.0)
+
+**Mandatory Thresholds** (Toyota Way Zero-Defect):
+- **Overall Grade**: Must maintain A- or higher (≥85 points)
+- **Structural Complexity**: ≤20 per function (enforced)
+- **Semantic Complexity**: Cognitive complexity ≤15 (enforced)
+- **Duplication**: <10% code duplication (measured)
+- **Documentation**: >70% coverage for public APIs (tracked)
+- **Technical Debt**: Zero SATD comments (zero-tolerance)
+
+**Enforcement Commands**:
+```bash
+# Run quality gate (fails build if standards not met)
+pmat quality-gate --file <file.rs>
+
+# Comprehensive project analysis
+pmat tdg . --enforce-thresholds --fail-on-grade-below A-
+
+# Integration with make commands
+make lint    # Includes TDG quality checks
+make test    # Includes TDG validation
+```
+
+### Daily Dogfooding Practice
+
+**Before Every Commit**:
+1. **TDG Analysis**: `pmat tdg <changed-files>` 
+2. **Quality Gate**: `pmat quality-gate --file <changed-files>`
+3. **Dashboard Check**: `pmat tdg dashboard` (verify no regressions)
+4. **Standard Gates**: `make lint && make test`
+
+**Weekly Quality Review**:
+1. **Full Project Analysis**: `pmat tdg . --top-files 20`
+2. **Trend Analysis**: `pmat tdg dashboard` (check performance trends)
+3. **Export Reports**: `pmat tdg export . --format markdown --output weekly-report.md`
+4. **Kaizen Planning**: Use worst-graded files for next improvement cycle
 
 ## The Kaizen Refactoring Loop (The "Kata")
 

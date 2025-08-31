@@ -1,13 +1,11 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{RwLock, Semaphore};
 use tokio::time::{interval, sleep};
 
-use super::scheduler::OperationType as SchedulerOperationType;
 
 /// Operation types for resource planning
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

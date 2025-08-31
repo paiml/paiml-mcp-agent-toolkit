@@ -12,12 +12,11 @@
 //! - System health monitoring
 
 use crate::tdg::{
-    TieredStore, TieredStorageFactory, AdaptiveThresholdFactory, SchedulerFactory, 
-    ResourceControllerFactory, TdgAnalyzer
+    TieredStore, TieredStorageFactory, AdaptiveThresholdFactory, SchedulerFactory, TdgAnalyzer
 };
 use axum::{
     extract::{Query, State},
-    http::{header, StatusCode},
+    http::StatusCode,
     response::{Html, IntoResponse},
     routing::{get, post},
     Json, Router,
@@ -25,7 +24,6 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
-    collections::HashMap,
     path::PathBuf,
     sync::Arc,
     time::{Duration, SystemTime},

@@ -309,7 +309,7 @@ jobs:
       - name: Run Analysis
         run: |
           pmat analyze complexity --format sarif > complexity.sarif
-          pmat analyze tdg --format json > tdg.json
+          pmat tdg . --format json > tdg.json
           pmat lint-makefile Makefile > makefile-lint.txt
       - name: Upload Results
         uses: github/codeql-action/upload-sarif@v2

@@ -19,7 +19,7 @@ use crate::mcp_pmcp::tool_functions::{
 use async_trait::async_trait;
 use pmcp::{Error, RequestHandlerExtra, Result, ToolHandler};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::path::PathBuf;
 use tracing::debug;
 

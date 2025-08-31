@@ -19,12 +19,13 @@
 
 **Zero-configuration AI context generation system** with extreme quality enforcement and Toyota Way standards. Analyze any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com).
 
-> **🚀 v2.38.0 Release**: **Transactional Hashed TDG System!** Enterprise-grade technical debt analysis with advanced resource management:
-> - **💾 Tiered Storage**: Hot/Warm/Cold storage with Blake3 hashing and 33-78% LZ4 compression
-> - **⚡ Fair Scheduling**: Priority-based preemption with tokio primitives for commits vs background ops
-> - **📊 Adaptive Thresholds**: Self-tuning performance with automatic cache/compression adjustments
-> - **🛡️ Resource Control**: CPU/memory limits with enforcement (Allow/Throttle/Queue/Reject)
-> - **🔥 Performance**: <1ms hot cache, >90% hit ratio, 10K+ files/hour analysis throughput
+> **🚀 v2.39.0 Release**: **TDG System with MCP Integration & Advanced Monitoring!** Production-ready technical debt analysis:
+> - **🌐 Web Dashboard**: Real-time monitoring with Axum-based interface and Server-Sent Events
+> - **🛠️ 6 MCP Tools**: Enterprise-grade external integration (tdg_analyze_with_storage, tdg_system_diagnostics, etc.)
+> - **📊 Advanced Analytics**: Metrics aggregation, performance profiling, bottleneck detection
+> - **🚨 Alert System**: Configurable thresholds with multi-channel notifications
+> - **📤 Multi-format Export**: JSON, CSV, SARIF, HTML, Markdown, XML, Prometheus support
+> - **💾 Storage Flexibility**: Pluggable backends (Sled, RocksDB, InMemory) with trait abstraction
 
 > **🔧 v2.14.0 Release**: **Technical Debt Elimination via TDD!** Major fixes using Test-Driven Development:
 > - **✅ Language Detection Fixed**: Functions now properly detected (was 0, now detects all)
@@ -117,8 +118,14 @@ curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/maste
 # Analyze current directory
 pmat context
 
-# Technical Debt Grading (TDG) - NEW!
-pmat analyze tdg --path . --include-components
+# Technical Debt Grading (TDG) - v2.39.0!
+pmat tdg . --include-components
+
+# Start TDG web dashboard
+pmat tdg dashboard --port 8081 --open
+
+# TDG analysis with storage
+pmat tdg server/src/tdg/analyzer_ast.rs --storage-backend sled
 
 # Get complexity metrics
 pmat analyze complexity --top-files 10
@@ -177,6 +184,13 @@ make sprint-close
 
 ### Analysis Engine
 - **Technical Debt Grading (TDG)**: 6-metric orthogonal code quality scoring with A+ through F grading
+- **Real-time Dashboard**: Web-based monitoring with live metrics and performance tracking
+- **Advanced Analytics**: Metrics aggregation, trend detection, bottleneck analysis
+- **Performance Profiling**: Flame graph generation, CPU/I/O/Memory analysis
+- **Alert Management**: Configurable thresholds with notification channels
+- **Multi-format Export**: 8 export formats (JSON, CSV, SARIF, HTML, Markdown, XML, Prometheus)
+- **Storage Flexibility**: Pluggable backends with tiered Hot/Warm/Cold architecture
+- **MCP Integration**: 6 enterprise tools for external system integration
 - **Complexity Analysis**: McCabe cyclomatic & cognitive complexity with AST precision
 - **Dead Code Detection**: Graph-based reachability analysis across 30+ languages
 - **SATD Detection**: Self-admitted technical debt with severity classification
@@ -197,9 +211,10 @@ make sprint-close
 - **Refactoring Engine**: State machine-based code transformation with ACID snapshots
 
 ### Integration Protocols
-- **MCP Protocol**: 18 tools via unified pmcp SDK 1.2.0 server (includes TDG analysis tools)
+- **MCP Protocol**: 24 tools via unified pmcp SDK 1.3.0 server (includes 6 new TDG enterprise tools)
+- **TDG Web Dashboard**: Axum-based real-time interface with SSE streaming
 - **HTTP API**: RESTful with Server-Sent Events streaming
-- **CLI Interface**: 47 commands with POSIX-compliant exit semantics
+- **CLI Interface**: 50+ commands with POSIX-compliant exit semantics
 
 ## 📖 Documentation
 
@@ -279,7 +294,7 @@ make examples
 ### Library Usage
 ```toml
 [dependencies]
-pmat = "2.37.3"
+pmat = "2.39.0"
 ```
 
 ```rust
@@ -330,8 +345,14 @@ cargo run --example test_pmcp_server
 ```
 
 ### Available Tools
-- `analyze_tdg` - **NEW!** Technical Debt Grading with 6-metric scoring
-- `analyze_tdg_compare` - **NEW!** Compare TDG scores between files/projects
+- `analyze_tdg` - Technical Debt Grading with 6-metric scoring
+- `analyze_tdg_compare` - Compare TDG scores between files/projects
+- `tdg_analyze_with_storage` - **NEW v2.39.0!** TDG analysis with configurable storage backends
+- `tdg_system_diagnostics` - **NEW v2.39.0!** Comprehensive system health monitoring
+- `tdg_storage_management` - **NEW v2.39.0!** Storage operations and management
+- `tdg_performance_profiling` - **NEW v2.39.0!** Performance analysis with flame graphs
+- `tdg_alert_management` - **NEW v2.39.0!** Alert configuration and monitoring
+- `tdg_export_data` - **NEW v2.39.0!** Multi-format data export (8 formats)
 - `analyze_complexity` - Complexity metrics
 - `analyze_satd` - Technical debt detection  
 - `analyze_dead_code` - Unused code analysis
@@ -339,8 +360,8 @@ cargo run --example test_pmcp_server
 - `refactor_start` - Begin refactoring workflow
 - `pdmt_deterministic_todos` - Generate quality todos
 - `github_create_issue` - Create GitHub issues
-- **NEW**: AI recommendation tools for intelligent repository analysis
-- And 9 more...
+- AI recommendation tools for intelligent repository analysis
+- And 10 more...
 
 ## 🤖 Claude Code Agent Mode (NEW v2.10.0)
 
@@ -395,7 +416,31 @@ pmat agent stop
 
 See [Claude Code Agent Guide](docs/CLAUDE_CODE_AGENT.md) for detailed setup and deployment instructions.
 
-### 🌐 Web Demo API Endpoints (NEW)
+### 🌐 TDG Web Dashboard API Endpoints (NEW v2.39.0)
+```bash
+# Real-time TDG metrics
+GET /api/metrics
+
+# System health status
+GET /api/health
+
+# Storage statistics
+GET /api/storage/stats
+
+# Run TDG analysis
+GET /api/analysis?path=src/main.rs
+
+# System diagnostics
+GET /api/diagnostics
+
+# Real-time metrics stream (SSE)
+GET /api/events
+
+# Storage operations
+POST /api/storage/operation
+```
+
+### 🌐 Web Demo API Endpoints
 ```bash
 # AI-powered repository recommendations
 GET /api/recommendations

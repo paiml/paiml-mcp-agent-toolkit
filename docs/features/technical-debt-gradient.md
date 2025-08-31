@@ -42,20 +42,16 @@ Older debt compounds, making it progressively more expensive to fix.
 
 ```bash
 # Calculate TDG for current project
-pmat analyze tdg
+pmat tdg .
 
-# Detailed TDG analysis
-pmat analyze tdg --detailed
+# Detailed TDG analysis with component breakdown
+pmat tdg . --include-components
 
-# Track TDG over time
-pmat analyze tdg --trend --days 90
-
-# Compare branches
-pmat analyze tdg --compare main..feature/new-ui
+# Note: Time trend and branch comparison features depend on implementation
 
 # Output formats
-pmat analyze tdg --format json
-pmat analyze tdg --format csv
+pmat tdg . --format json
+pmat tdg . --format csv
 ```
 
 ### API Usage
@@ -214,11 +210,9 @@ Shows if debt accumulation is speeding up or slowing down.
 ### Predictive Modeling
 
 ```bash
-# Predict TDG in 30 days
-pmat analyze tdg --predict 30
-
-# Show confidence intervals
-pmat analyze tdg --predict 30 --confidence 95
+# Note: Predictive modeling features may require specialized implementation
+# Basic TDG analysis for current state
+pmat tdg . --format json
 ```
 
 **Output:**
@@ -254,7 +248,7 @@ jobs:
       
       - name: Calculate TDG
         run: |
-          pmat analyze tdg --format json > tdg-report.json
+          pmat tdg . --format json > tdg-report.json
           tdg_score=$(jq .score tdg-report.json)
           
           # Fail if TDG > 1.5
@@ -266,8 +260,8 @@ jobs:
       - name: Comment on PR
         if: github.event_name == 'pull_request'
         run: |
-          pmat analyze tdg --compare ${{ github.base_ref }}..${{ github.head_ref }} \
-            --format markdown > tdg-diff.md
+          # Note: Branch comparison requires additional implementation
+          pmat tdg . --format markdown > tdg-report.md
           # Post comment with TDG changes
 ```
 
@@ -292,7 +286,7 @@ def collect_tdg_history(days=90):
         
         # Calculate TDG
         result = subprocess.run(
-            ['pmat', 'analyze', 'tdg', '--format', 'json'],
+            ['pmat', 'tdg', '.', '--format', 'json'],
             capture_output=True,
             text=True
         )
