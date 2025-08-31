@@ -19,8 +19,8 @@ cargo build --package pmat
 # Analyze a directory
 ./target/debug/pmat tdg src/
 
-# Get top 10 files by technical debt
-./target/debug/pmat tdg . --top-files 10
+# Analyze entire project (top files automatically included)
+./target/debug/pmat tdg .
 ```
 
 ### 3. Start Web Dashboard
@@ -156,7 +156,7 @@ rm -rf /tmp/tdg-cache
 cargo build --package pmat --no-default-features --features rust-only,demo
 
 # 2. Analyze your codebase
-./target/debug/pmat tdg . --top-files 20
+./target/debug/pmat tdg .
 
 # 3. Start dashboard for monitoring
 ./target/debug/pmat tdg dashboard --open &

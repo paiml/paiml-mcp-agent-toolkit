@@ -1,5 +1,62 @@
 # PMAT Development Roadmap
 
+## Active Sprint: Sprint 37 - All-Night Refactoring Marathon 🚀 IN PROGRESS
+- **Duration**: 2025-08-31 (All-night sprint)
+- **Priority**: P0 - TOYOTA WAY EXCELLENCE
+- **Target**: TDG Score 95+/100 (A+ grade) - Need 2.9 more points
+- **Methodology**: Relentless Extract Method pattern application
+- **Progress**: Currently at 92.1/100 (A grade) - **1.4 points gained!**
+
+### Sprint 37 Achievements (10 Functions Refactored)
+- ✅ **print_checks_to_run**: Complexity 19 → ≤8 (-58% reduction)
+- ✅ **format_qg_as_junit**: Complexity 18 → ≤8 (-56% reduction)
+- ✅ **handle_analyze_system_architecture**: Complexity 18 → ≤8 (-56% reduction)
+- ✅ **format_dead_code_as_markdown_mcp**: Complexity 16 → ≤8 (-50% reduction)
+- ✅ **handle_generate_context**: Complexity 17 → ≤8 (-53% reduction)
+- ✅ **handle_analyze_defect_probability**: Complexity 16 → ≤8 (-50% reduction)
+- ✅ **handle_analyze_dead_code**: Complexity 16 → ≤8 (-50% reduction)
+- ✅ **handle_analyze_code_churn**: Complexity 15 → ≤8 (-47% reduction)
+- ✅ **handle_analyze_tdg**: Complexity 14 → ≤8 (-43% reduction)
+- ✅ **format_tdg_summary**: Complexity 14 → ≤8 (-43% reduction)
+
+### Sprint 37 Remaining Targets
+- 🔄 More functions to refactor for final 2.9 points
+- 🔄 **CliAdapter::decode_analyze_command**: Complexity 24 → Target ≤10
+- 🔄 **CliInput::from_commands**: Complexity 24 → Target ≤10
+
+## Completed Sprint: Sprint 36 - Path to A+ Grade ✅ COMPLETE
+- **Duration**: 2025-08-31 (Sprint continuation)
+- **Priority**: P0 - TOYOTA WAY EXCELLENCE
+- **Release**: **v2.42.0** - Major Complexity Reduction Achievement
+- **Methodology**: Extract Method pattern systematically applied
+- **Result**: TDG Score 90.7/100 (A grade), significant progress toward A+
+
+### Sprint 36 Achievements
+- ✅ **handle_analysis_tools**: Complexity 18 → ≤8 (-56% reduction)
+  * Applied grouped dispatch pattern with 3 helper functions
+  * Clean logical organization of MCP tool handling
+- ✅ **format_dead_code_summary_mcp**: Complexity 20 → ≤8 (-60% reduction)
+  * Extracted 4 specialized formatting functions
+  * Improved maintainability with single responsibility
+- ✅ **format_deep_context_as_markdown**: Complexity 18 → ≤8 (-56% reduction)
+  * Created 5 helper functions for formatting sections
+  * Better separation of concerns for markdown generation
+- ✅ **PolyglotAnalyzer::scan_directory_recursive**: Complexity 17 → ≤5 (-71% reduction)
+  * Fixed critical compilation issues
+  * Applied proper method extraction with handle_directory/handle_file
+- ✅ **Quality Metrics**: 90.7/100 TDG score (A grade)
+  * Structural: 17.8/25 (needs improvement for A+)
+  * Semantic: 19.8/20 (Excellent)
+  * Documentation: 10.0/10 (Perfect)
+  * Consistency: 10.0/10 (Perfect)
+
+### Toyota Way Success Metrics
+- **Total Complexity Reduction**: ~44 points across 4 major functions
+- **Zero SATD Violations**: Maintained throughout refactoring
+- **Compilation Success**: All refactoring successful with no errors
+- **Kaizen Applied**: Continuous incremental improvements
+- **Extract Method**: Classic pattern consistently applied
+
 ## Completed Sprint: Sprint 35 - Final Push for A+ Grade ✅ COMPLETE
 - **Duration**: 2025-08-31 (Sprint continuation)  
 - **Priority**: P0 - TOYOTA WAY EXCELLENCE

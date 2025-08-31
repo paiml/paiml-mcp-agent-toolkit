@@ -6,7 +6,7 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, SystemTime};
 use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
@@ -174,6 +174,12 @@ impl Default for AlertThresholds {
             cache_hit_ratio_warning: 0.5,
             storage_usage_warning_percent: 85.0,
         }
+    }
+}
+
+impl Default for MetricsAggregator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

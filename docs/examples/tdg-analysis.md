@@ -10,7 +10,7 @@ The Technical Debt Gradient (TDG) is a comprehensive metric that quantifies accu
 
 ```bash
 # Analyze current directory with default settings
-pmat analyze tdg
+pmat tdg .
 
 # Output:
 # Technical Debt Gradient Analysis
@@ -27,8 +27,8 @@ pmat analyze tdg
 ### Show Top Hotspots
 
 ```bash
-# Show top 5 files with highest TDG scores
-pmat analyze tdg --top-files 5
+# Show top 5 files with highest TDG scores (automatically limited)
+pmat tdg .
 
 # Output includes table of hotspots:
 # | File | TDG Score | Primary Factor | Est. Hours |
@@ -43,7 +43,7 @@ pmat analyze tdg --top-files 5
 
 ```bash
 # Get detailed JSON output with component weights
-pmat analyze tdg --format json --include-components
+pmat tdg . --format json --include-components
 
 # Output:
 {
@@ -71,7 +71,7 @@ pmat analyze tdg --format json --include-components
 
 ```bash
 # Show only files with TDG > 2.5 (critical threshold)
-pmat analyze tdg --critical-only --format markdown
+pmat tdg . --critical-only --format markdown
 
 # Output in markdown format for documentation
 ```
@@ -80,7 +80,7 @@ pmat analyze tdg --critical-only --format markdown
 
 ```bash
 # Generate SARIF output for GitHub/GitLab integration
-pmat analyze tdg --format sarif --output tdg-report.sarif
+pmat tdg . --format sarif --output tdg-report.sarif
 
 # The SARIF format can be uploaded to GitHub Code Scanning
 ```
@@ -138,7 +138,7 @@ impl CacheManager {
 Analyze the file:
 
 ```bash
-pmat analyze tdg --path examples/analysis --format json
+pmat tdg examples/analysis --format json
 
 # Output:
 {
@@ -160,10 +160,10 @@ pmat analyze tdg --path examples/analysis --format json
 
 ```bash
 # Save baseline
-pmat analyze tdg --format json --output tdg-baseline.json
+pmat tdg . --format json --output tdg-baseline.json
 
 # After refactoring, compare
-pmat analyze tdg --format json --output tdg-after.json
+pmat tdg . --format json --output tdg-after.json
 
 # Use jq to compare
 jq -r '.summary.average_tdg' tdg-baseline.json tdg-after.json
@@ -188,7 +188,7 @@ jobs:
       
       - name: Run TDG Analysis
         run: |
-          pmat analyze tdg --format json > tdg-report.json
+          pmat tdg . --format json > tdg-report.json
           
           # Extract average TDG
           avg_tdg=$(jq -r '.summary.average_tdg' tdg-report.json)
@@ -202,7 +202,7 @@ jobs:
       - name: Upload SARIF
         if: always()
         run: |
-          pmat analyze tdg --format sarif --output tdg.sarif
+          pmat tdg . --format sarif --output tdg.sarif
           # Upload to GitHub Code Scanning
 ```
 
@@ -265,10 +265,9 @@ Initialize a git repository or use the tool in a git-managed project.
 For large codebases:
 ```bash
 # Analyze specific directories
-pmat analyze tdg --path src/core --top-files 20
+pmat tdg src/core
 
-# Exclude test files
-pmat analyze tdg --exclude "**/test_*.rs"
+# Note: File exclusion patterns depend on CLI implementation
 ```
 
 ## See Also

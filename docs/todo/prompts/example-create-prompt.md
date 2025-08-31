@@ -18,7 +18,7 @@ Rapidly create working examples for `pmat` CLI commands using a fast, iterative 
   - Improved error handling for non-zero clippy exit codes
   - Created validation example: `lint_hotspot_demo.rs` (114 violations)
   - Validated on real codebase: 13,204 violations across 301 files
-- `pmat analyze tdg` - Implemented full interface parity with complexity handler
+- `pmat tdg` - Implemented full interface parity with complexity handler
   - Replaced stub implementation with full TDGCalculator integration
   - Added support for single file, multiple files, and project modes
   - Implemented all output formats (Table, JSON, Markdown, SARIF)
@@ -539,7 +539,7 @@ All analysis command handlers (`handle_analyze_*`) MUST support these three mode
 #### Mode 1: Single File Analysis
 ```rust
 // Handler MUST accept: file: Option<PathBuf>
-// Usage: pmat analyze tdg --file src/main.rs
+// Usage: pmat tdg src/main.rs
 if let Some(single_file) = file {
     // Analyze just this one file
 }

@@ -47,9 +47,9 @@ impl RefactoringRegistry {
         self.refactorings.insert(function_name.to_string(), refactoring);
     }
     
-/// # Errors
-///
-/// Returns an error if the operation fails
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
     pub async fn apply_refactoring(&self, function_name: &str, file_path: &Path) -> Result<bool> {
         if let Some(refactoring) = self.refactorings.get(function_name) {
             refactoring.apply(file_path).await
@@ -61,9 +61,10 @@ impl RefactoringRegistry {
 
 /// Trait for automated refactorings
 trait Refactoring: Send + Sync {
-/// # Errors
-///
-/// Returns an error if the operation fails
+    /// Apply refactoring to a file
+    /// 
+    /// # Errors
+    /// Returns an error if the refactoring operation fails
     fn apply(&self, file_path: &Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool>> + Send + '_>>;
 }
 
@@ -71,9 +72,10 @@ trait Refactoring: Send + Sync {
 struct DeadCodeAnalysisRefactoring;
 
 impl Refactoring for DeadCodeAnalysisRefactoring {
-/// # Errors
-///
-/// Returns an error if the operation fails
+    /// Apply dead code analysis refactoring
+    /// 
+    /// # Errors
+    /// Returns an error if the operation fails
     fn apply(&self, file_path: &Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool>> + Send + '_>> {
         Box::pin(async move {
             if !file_path.ends_with("complexity_handlers.rs") {
@@ -122,9 +124,9 @@ impl Refactoring for DeadCodeAnalysisRefactoring {
 struct FormatOutputRefactoring;
 
 impl Refactoring for FormatOutputRefactoring {
-/// # Errors
-///
-/// Returns an error if the operation fails
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
     fn apply(&self, file_path: &Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool>> + Send + '_>> {
         Box::pin(async move {
             if !file_path.ends_with("lint_hotspot_handlers.rs") {
@@ -154,9 +156,10 @@ impl Refactoring for FormatOutputRefactoring {
 struct RefactorAutoRefactoring;
 
 impl Refactoring for RefactorAutoRefactoring {
-/// # Errors
-///
-/// Returns an error if the operation fails
+    /// Apply refactor auto refactoring
+    /// 
+    /// # Errors
+    /// Returns an error if the operation fails
     fn apply(&self, file_path: &Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool>> + Send + '_>> {
         Box::pin(async move {
             if !file_path.ends_with("refactor_auto_handlers.rs") {
@@ -186,9 +189,9 @@ impl Refactoring for RefactorAutoRefactoring {
 struct DefectMarkdownRefactoring;
 
 impl Refactoring for DefectMarkdownRefactoring {
-/// # Errors
-///
-/// Returns an error if the operation fails
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
     fn apply(&self, file_path: &Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool>> + Send + '_>> {
         Box::pin(async move {
             if !file_path.ends_with("defect_helpers.rs") {
@@ -242,10 +245,10 @@ fn replace_function(
 }
 
 /// Find the end of a function
-///
-/// # Errors
-///
-/// Returns an error if the operation fails
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
 fn find_function_end(content: &str, start: usize) -> Result<usize> {
     let content_after = &content[start..];
     let mut brace_count = 0;
@@ -273,10 +276,10 @@ fn find_function_end(content: &str, start: usize) -> Result<usize> {
 }
 
 /// Extract a function from content
-///
-/// # Errors
-///
-/// Returns an error if the operation fails
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
 fn extract_function(content: &str, function_name: &str) -> Result<String> {
     let signature = format!("pub async fn {}", function_name);
     let start = content
@@ -289,10 +292,10 @@ fn extract_function(content: &str, function_name: &str) -> Result<String> {
 }
 
 /// Apply format_output refactoring
-///
-/// # Errors
-///
-/// Returns an error if the operation fails
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
 fn apply_format_output_refactoring(content: &str) -> Result<String> {
     // This would contain the actual refactoring logic
     // For now, we'll use a simplified version
@@ -325,33 +328,33 @@ impl<'a> OutputFormatter<'a> {
     fn new(result: &'a LintHotspotResult, perf: bool, elapsed: std::time::Duration) -> Self {
         Self { result, perf, elapsed }
     }
-/// # Errors
-///
-/// Returns an error if the operation fails
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
     
     fn format_summary(&self) -> Result<String> {
         // Implementation details...
         Ok(String::new())
     }
-/// # Errors
-///
-/// Returns an error if the operation fails
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
     
     fn format_detailed(&self) -> Result<String> {
         // Implementation details...
         Ok(String::new())
     }
-/// # Errors
-///
-/// Returns an error if the operation fails
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
     
     fn format_json(&self, enforcement: bool) -> Result<String> {
         // Implementation details...
         Ok(String::new())
     }
-/// # Errors
-///
-/// Returns an error if the operation fails
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
     
     fn format_sarif(&self) -> Result<String> {
         // Implementation details...
@@ -364,10 +367,10 @@ impl<'a> OutputFormatter<'a> {
 }
 
 /// Apply handle_refactor_auto refactoring
-///
-/// # Errors
-///
-/// Returns an error if the operation fails
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
 fn apply_refactor_auto_refactoring(content: &str) -> Result<String> {
     // Implementation would go here
     // For brevity, returning the original content
@@ -375,24 +378,24 @@ fn apply_refactor_auto_refactoring(content: &str) -> Result<String> {
 }
 
 /// Apply format_defect_markdown refactoring
-///
-/// # Errors
-///
-/// Returns an error if the operation fails
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
 fn apply_defect_markdown_refactoring(content: &str) -> Result<String> {
     // Implementation would go here
     // For brevity, returning the original content
     Ok(content.to_string())
-/// # Errors
-///
-/// Returns an error if the operation fails
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
 }
 
 /// Main entry point for automated refactoring
-///
-/// # Errors
-///
-/// Returns an error if the operation fails
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
 pub async fn apply_automated_refactorings(project_path: &Path) -> Result<()> {
     eprintln!("🤖 Starting fully automated refactoring...");
     
@@ -422,10 +425,10 @@ pub async fn apply_automated_refactorings(project_path: &Path) -> Result<()> {
 }
 
 /// Find high complexity functions in the project
-///
-/// # Errors
-///
-/// Returns an error if the operation fails
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails
 async fn find_high_complexity_functions(project_path: &Path) -> Result<Vec<(PathBuf, String, u32)>> {
     use crate::services::complexity::analyze_file_complexity;
     use walkdir::WalkDir;

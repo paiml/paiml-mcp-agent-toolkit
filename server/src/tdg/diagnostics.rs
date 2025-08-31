@@ -6,14 +6,11 @@
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fmt;
-use std::path::Path;
 use std::time::{Duration, Instant, SystemTime};
 
 use super::{
-    AdaptiveThresholdManager, PlatformResourceController, SimpleFairScheduler,
-    StorageStatistics, TdgAnalyzer, TieredStore,
+    AdaptiveThresholdManager, PlatformResourceController, SimpleFairScheduler, TieredStore,
 };
 
 /// Comprehensive system diagnostics
@@ -84,6 +81,7 @@ pub struct ResourceDiagnostics {
 
 /// Resource enforcement statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct EnforcementStats {
     pub total_requests: u64,
     pub allowed: u64,
@@ -553,18 +551,6 @@ impl Default for ResourceDiagnostics {
     }
 }
 
-impl Default for EnforcementStats {
-    fn default() -> Self {
-        Self {
-            total_requests: 0,
-            allowed: 0,
-            throttled: 0,
-            queued: 0,
-            rejected: 0,
-            emergency_stops: 0,
-        }
-    }
-}
 
 impl Default for PerformanceDiagnostics {
     fn default() -> Self {

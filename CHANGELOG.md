@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Sprint 37 - All-Night Refactoring Marathon (In Progress)
+- **Current Score**: 92.1/100 (A grade) - **1.4 points gained!**
+- Targeting TDG Score 95+/100 (A+ grade) - Need 2.9 more points
+- All-night Toyota Way refactoring session - relentless progress
+
+#### Sprint 37 Achievements (10 functions refactored)
+- **print_checks_to_run**: Complexity 19 → ≤8 (-58% reduction)
+  - Extracted 3 helper functions for check printing
+- **format_qg_as_junit**: Complexity 18 → ≤8 (-56% reduction)
+  - Extracted 5 XML formatting helpers
+- **handle_analyze_system_architecture**: Complexity 18 → ≤8 (-56% reduction)
+  - Extracted 4 helper functions for architecture analysis
+- **format_dead_code_as_markdown_mcp**: Complexity 16 → ≤8 (-50% reduction)
+  - Extracted 4 helper functions for markdown formatting
+- **handle_generate_context**: Complexity 17 → ≤8 (-53% reduction)
+  - Extracted 5 helper functions for context generation
+- **handle_analyze_defect_probability**: Complexity 16 → ≤8 (-50% reduction)
+  - Extracted 5 helper functions for defect analysis
+- **handle_analyze_dead_code**: Complexity 16 → ≤8 (-50% reduction)
+  - Extracted 4 helper functions for dead code analysis
+- **handle_analyze_code_churn**: Complexity 15 → ≤8 (-47% reduction)
+  - Extracted 5 helper functions for churn analysis
+- **handle_analyze_tdg**: Complexity 14 → ≤8 (-43% reduction)
+  - Extracted 4 helper functions for TDG analysis
+- **format_tdg_summary**: Complexity 14 → ≤8 (-43% reduction)
+  - Extracted 5 helper functions for TDG formatting
+
+## [2.42.0] - 2025-08-31
+
+### Added
+- **SPRINT-36**: Path to A+ Grade - Major Complexity Reduction
+  - **Quality Achievement**: TDG Score 90.7/100 (A grade) - significant progress toward A+ target
+  - **Major Refactoring**: 4 high-complexity functions systematically reduced
+  - **Toyota Way Success**: ~44 complexity points eliminated across critical functions
+  - **Perfect Scores**: Documentation 10.0/10, Consistency 10.0/10
+
+### Changed
+- **handle_analysis_tools**: Complexity 18 → ≤8 (-56% reduction)
+  - Applied grouped dispatch pattern with 3 helper functions
+  - Clean logical organization of MCP tool handling
+- **format_dead_code_summary_mcp**: Complexity 20 → ≤8 (-60% reduction)
+  - Extracted 4 specialized formatting functions
+  - Improved maintainability with single responsibility
+- **format_deep_context_as_markdown**: Complexity 18 → ≤8 (-56% reduction)
+  - Created 5 helper functions for formatting sections
+  - Better separation of concerns for markdown generation
+- **PolyglotAnalyzer::scan_directory_recursive**: Complexity 17 → ≤5 (-71% reduction)
+  - Fixed critical compilation issues
+  - Applied proper method extraction with handle_directory/handle_file
+
+### Fixed
+- Resolved PolyglotAnalyzer impl block structure issues
+- Fixed method scope and duplicate function definitions
+- Corrected type mismatches (FileMetrics → FileDeadCodeMetrics)
+- Fixed FxHashMap vs HashMap type inconsistencies
+
+### Quality Metrics
+- **TDG Score**: 90.7/100 (A grade)
+- **Structural**: 17.8/25 (needs improvement for A+)
+- **Semantic**: 19.8/20 (Excellent)
+- **Duplication**: 18.2/20 (Excellent)
+- **Documentation**: 10.0/10 (Perfect)
+- **Consistency**: 10.0/10 (Perfect)
+
 ## [2.41.0] - 2025-08-31
 
 ### Added

@@ -4062,8 +4062,8 @@ fn is_type_used_in_file(lines: &[&str], type_name: &str) -> bool {
 async fn analyze_duplicate_code(
     path: &std::path::Path,
 ) -> anyhow::Result<crate::services::duplicate_detector::CloneReport> {
-    use crate::services::duplicate_detector::{DuplicateDetectionEngine, Language};
-    use crate::services::file_discovery::ProjectFileDiscovery;
+    use crate::services::duplicate_detector::DuplicateDetectionEngine;
+    
 
     let all_files = discover_project_files(path)?;
     let files_for_analysis = filter_and_categorize_files(all_files)?;
@@ -4080,7 +4080,7 @@ fn discover_project_files(path: &std::path::Path) -> anyhow::Result<Vec<std::pat
 fn filter_and_categorize_files(
     all_files: Vec<std::path::PathBuf>,
 ) -> anyhow::Result<Vec<(std::path::PathBuf, String, crate::services::duplicate_detector::Language)>> {
-    use crate::services::duplicate_detector::Language;
+    
     
     let mut files_for_analysis = Vec::new();
     for file_path in all_files {
@@ -4094,7 +4094,7 @@ fn filter_and_categorize_files(
 fn process_file_for_duplicate_detection(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Option<(std::path::PathBuf, String, crate::services::duplicate_detector::Language)>> {
-    use crate::services::duplicate_detector::Language;
+    
     
     let ext = match file_path.extension().and_then(|e| e.to_str()) {
         Some(e) => e,

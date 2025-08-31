@@ -1232,7 +1232,7 @@ pub async fn handle_analyze_provability(
     output: Option<PathBuf>,
     top_files: usize,
 ) -> Result<()> {
-    use crate::cli::provability_helpers::*;
+    
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
 
     eprintln!("🔬 Analyzing function provability...");
@@ -2840,32 +2840,48 @@ fn print_quality_gate_start_message(file: &Option<PathBuf>) {
 }
 
 /// Prints which checks will be run
+/// Toyota Way: Extract Method - Print checks to run (complexity ≤8)
 fn print_checks_to_run(checks: &[QualityCheckType]) {
     eprintln!("\n📋 Checks to run:");
 
     if checks.contains(&QualityCheckType::All) {
-        eprintln!("  ✓ Complexity analysis");
-        eprintln!("  ✓ Dead code detection");
-        eprintln!("  ✓ Self-admitted technical debt (SATD)");
-        eprintln!("  ✓ Security vulnerabilities");
-        eprintln!("  ✓ Code entropy");
-        eprintln!("  ✓ Duplicate code");
-        eprintln!("  ✓ Test coverage");
+        print_all_checks();
     } else {
-        for check in checks {
-            match check {
-                QualityCheckType::Complexity => eprintln!("  ✓ Complexity analysis"),
-                QualityCheckType::DeadCode => eprintln!("  ✓ Dead code detection"),
-                QualityCheckType::Satd => eprintln!("  ✓ Self-admitted technical debt (SATD)"),
-                QualityCheckType::Security => eprintln!("  ✓ Security vulnerabilities"),
-                QualityCheckType::Entropy => eprintln!("  ✓ Code entropy"),
-                QualityCheckType::Duplicates => eprintln!("  ✓ Duplicate code"),
-                QualityCheckType::Coverage => eprintln!("  ✓ Test coverage"),
-                _ => {}
-            }
-        }
+        print_selected_checks(checks);
     }
     eprintln!();
+}
+
+/// Toyota Way: Extract Method - Print all quality checks (complexity ≤5)
+fn print_all_checks() {
+    eprintln!("  ✓ Complexity analysis");
+    eprintln!("  ✓ Dead code detection");
+    eprintln!("  ✓ Self-admitted technical debt (SATD)");
+    eprintln!("  ✓ Security vulnerabilities");
+    eprintln!("  ✓ Code entropy");
+    eprintln!("  ✓ Duplicate code");
+    eprintln!("  ✓ Test coverage");
+}
+
+/// Toyota Way: Extract Method - Print selected checks (complexity ≤8)
+fn print_selected_checks(checks: &[QualityCheckType]) {
+    for check in checks {
+        print_single_check(check);
+    }
+}
+
+/// Toyota Way: Extract Method - Print single check description (complexity ≤7)
+fn print_single_check(check: &QualityCheckType) {
+    match check {
+        QualityCheckType::Complexity => eprintln!("  ✓ Complexity analysis"),
+        QualityCheckType::DeadCode => eprintln!("  ✓ Dead code detection"),
+        QualityCheckType::Satd => eprintln!("  ✓ Self-admitted technical debt (SATD)"),
+        QualityCheckType::Security => eprintln!("  ✓ Security vulnerabilities"),
+        QualityCheckType::Entropy => eprintln!("  ✓ Code entropy"),
+        QualityCheckType::Duplicates => eprintln!("  ✓ Duplicate code"),
+        QualityCheckType::Coverage => eprintln!("  ✓ Test coverage"),
+        _ => {}
+    }
 }
 
 /// Handles quality gate checks for a single file
@@ -5033,36 +5049,69 @@ fn write_qg_violations_list(output: &mut String, violations: &[QualityViolation]
 }
 
 // Helper: Format as JUnit XML
+/// Toyota Way: Extract Method - Format quality gate as JUnit XML (complexity ≤8)
 fn format_qg_as_junit(violations: &[QualityViolation]) -> Result<String> {
-    use std::fmt::Write;
+    
     let mut output = String::new();
 
-    writeln!(&mut output, r#"<?xml version="1.0" encoding="UTF-8"?>"#)?;
-    writeln!(&mut output, r#"<testsuites name="Quality Gate">"#)?;
-    writeln!(
-        &mut output,
-        r#"  <testsuite name="Quality Checks" tests="{}" failures="{}">"#,
-        violations.len(),
-        violations.len()
-    )?;
-
-    for v in violations {
-        writeln!(
-            &mut output,
-            r#"    <testcase name="{}" classname="{}">"#,
-            v.message, v.check_type
-        )?;
-        writeln!(
-            &mut output,
-            r#"      <failure message="{}" type="{}"/>"#,
-            v.message, v.severity
-        )?;
-        writeln!(&mut output, r"    </testcase>")?;
-    }
-
-    writeln!(&mut output, r"  </testsuite>")?;
-    writeln!(&mut output, r"</testsuites>")?;
+    write_junit_header(&mut output)?;
+    write_junit_testsuite_start(&mut output, violations.len())?;
+    write_junit_testcases(&mut output, violations)?;
+    write_junit_footer(&mut output)?;
+    
     Ok(output)
+}
+
+/// Toyota Way: Extract Method - Write JUnit XML header (complexity ≤3)
+fn write_junit_header(output: &mut String) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, r#"<?xml version="1.0" encoding="UTF-8"?>"#)?;
+    writeln!(output, r#"<testsuites name="Quality Gate">"#)?;
+    Ok(())
+}
+
+/// Toyota Way: Extract Method - Write JUnit testsuite start (complexity ≤3)
+fn write_junit_testsuite_start(output: &mut String, count: usize) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(
+        output,
+        r#"  <testsuite name="Quality Checks" tests="{}" failures="{}">"#,
+        count, count
+    )?;
+    Ok(())
+}
+
+/// Toyota Way: Extract Method - Write JUnit testcases (complexity ≤5)
+fn write_junit_testcases(output: &mut String, violations: &[QualityViolation]) -> Result<()> {
+    for v in violations {
+        write_single_junit_testcase(output, v)?;
+    }
+    Ok(())
+}
+
+/// Toyota Way: Extract Method - Write single JUnit testcase (complexity ≤5)
+fn write_single_junit_testcase(output: &mut String, v: &QualityViolation) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(
+        output,
+        r#"    <testcase name="{}" classname="{}">"#,
+        v.message, v.check_type
+    )?;
+    writeln!(
+        output,
+        r#"      <failure message="{}" type="{}"/>"#,
+        v.message, v.severity
+    )?;
+    writeln!(output, r"    </testcase>")?;
+    Ok(())
+}
+
+/// Toyota Way: Extract Method - Write JUnit XML footer (complexity ≤3)
+fn write_junit_footer(output: &mut String) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, r"  </testsuite>")?;
+    writeln!(output, r"</testsuites>")?;
+    Ok(())
 }
 
 // Helper: Format as summary

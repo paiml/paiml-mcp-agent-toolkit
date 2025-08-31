@@ -292,36 +292,47 @@ impl PolyglotAnalyzer {
                 let path = entry.path();
 
                 if path.is_dir() {
-                    // Skip common non-source directories
-                    if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
-                        if matches!(
-                            dir_name,
-                            "node_modules"
-                                | "target"
-                                | "build"
-                                | ".git"
-                                | "__pycache__"
-                                | ".venv"
-                                | "venv"
-                        ) {
-                            continue;
-                        }
-                    }
-                    self.scan_directory_recursive(&path, extensions, file_count, total_lines)?;
+                    self.handle_directory(&path, extensions, file_count, total_lines)?;
                 } else if path.is_file() {
-                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                        let full_ext = format!(".{}", ext);
-                        if extensions.contains(&full_ext) {
-                            *file_count += 1;
-                            if let Ok(content) = std::fs::read_to_string(&path) {
-                                *total_lines += content.lines().count();
-                            }
-                        }
-                    }
+                    self.handle_file(&path, extensions, file_count, total_lines);
                 }
             }
         }
         Ok(())
+    }
+
+    /// Toyota Way: Extract Method - Handle directory processing (complexity ≤5)
+    fn handle_directory(
+        &self,
+        path: &Path,
+        extensions: &[String],
+        file_count: &mut usize,
+        total_lines: &mut usize,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if should_skip_directory(path) {
+            return Ok(());
+        }
+        
+        self.scan_directory_recursive(path, extensions, file_count, total_lines)
+    }
+
+    /// Toyota Way: Extract Method - Handle file processing (complexity ≤5)
+    fn handle_file(
+        &self,
+        path: &Path,
+        extensions: &[String],
+        file_count: &mut usize,
+        total_lines: &mut usize,
+    ) {
+        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+            let full_ext = format!(".{}", ext);
+            if extensions.contains(&full_ext) {
+                *file_count += 1;
+                if let Ok(content) = std::fs::read_to_string(path) {
+                    *total_lines += content.lines().count();
+                }
+            }
+        }
     }
 
     // Helper function to check frameworks in content
@@ -1094,6 +1105,24 @@ impl PolyglotAnalyzer {
         ));
 
         insights
+    }
+}
+
+/// Toyota Way: Extract Method - Check if directory should be skipped (complexity ≤3)
+fn should_skip_directory(path: &Path) -> bool {
+    if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+        matches!(
+            dir_name,
+            "node_modules"
+                | "target"
+                | "build"
+                | ".git"
+                | "__pycache__"
+                | ".venv"
+                | "venv"
+        )
+    } else {
+        false
     }
 }
 

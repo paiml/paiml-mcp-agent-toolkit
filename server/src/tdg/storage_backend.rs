@@ -6,7 +6,6 @@
 /// - InMemory: Fast testing and development backend
 
 use anyhow::Result;
-use blake3::Hash as Blake3Hash;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -93,7 +92,7 @@ impl StorageBackend for SledBackend {
     }
     
     fn size_on_disk(&self) -> Result<u64> {
-        Ok(self.db.size_on_disk()? as u64)
+        Ok(self.db.size_on_disk()?)
     }
     
     fn flush(&self) -> Result<()> {
