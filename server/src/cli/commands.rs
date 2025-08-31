@@ -502,6 +502,53 @@ pub enum Commands {
     },
 }
 
+/// Diagnostic output format
+#[derive(Clone, Debug, clap::ValueEnum)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum DiagnosticOutputFormat {
+    /// Human-readable format
+    Human,
+    /// JSON format
+    Json,
+    /// YAML format
+    Yaml,
+    /// Compact table format
+    Table,
+}
+
+/// Storage management commands
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum StorageCommand {
+    /// Show storage statistics
+    Stats {
+        /// Include backend-specific details
+        #[arg(long)]
+        detailed: bool,
+    },
+    
+    /// Clean up hot cache entries
+    Cleanup {
+        /// Maximum age in seconds for hot cache entries
+        #[arg(long, default_value = "3600")]
+        max_age: u64,
+    },
+    
+    /// Migrate to different storage backend
+    Migrate {
+        /// Target backend type (sled, rocksdb, inmemory)
+        #[arg(long)]
+        backend: String,
+        
+        /// Storage path for new backend
+        #[arg(long)]
+        path: Option<PathBuf>,
+    },
+    
+    /// Flush all pending writes
+    Flush,
+}
+
 /// TDG subcommands
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
@@ -513,6 +560,62 @@ pub enum TdgCommand {
         
         /// Second file or directory to compare
         source2: PathBuf,
+    },
+    
+    /// Show TDG system diagnostics and health status
+    Diagnostics {
+        /// Show detailed backend statistics
+        #[arg(long)]
+        detailed: bool,
+        
+        /// Show storage tier breakdown
+        #[arg(long)]
+        storage: bool,
+        
+        /// Show scheduler status
+        #[arg(long)]
+        scheduler: bool,
+        
+        /// Show adaptive threshold information
+        #[arg(long)]
+        adaptive: bool,
+        
+        /// Show resource usage and limits
+        #[arg(long)]
+        resources: bool,
+        
+        /// Show all diagnostic information
+        #[arg(long)]
+        all: bool,
+        
+        /// Output format
+        #[arg(long, value_enum, default_value = "human")]
+        format: DiagnosticOutputFormat,
+    },
+    
+    /// Manage TDG storage backends
+    Storage {
+        #[command(subcommand)]
+        command: StorageCommand,
+    },
+    
+    /// Start TDG web dashboard server (Sprint 31)
+    Dashboard {
+        /// Port to bind the dashboard server
+        #[arg(short, long, default_value = "8080")]
+        port: u16,
+        
+        /// Host to bind the dashboard server
+        #[arg(long, default_value = "127.0.0.1")]
+        host: String,
+        
+        /// Auto-open dashboard in browser
+        #[arg(long)]
+        open: bool,
+        
+        /// Update interval for real-time metrics (seconds)
+        #[arg(long, default_value = "5")]
+        update_interval: u64,
     },
 }
 
