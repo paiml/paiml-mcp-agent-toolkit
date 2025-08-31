@@ -635,6 +635,37 @@ fn generate_tool_registry(out_dir: &str) {
             "Create project scaffolding",
             vec!["scaffold", "create", "generate", "project"],
         ),
+        // Sprint 31: TDG System MCP Tools
+        (
+            "tdg_system_diagnostics",
+            "Get comprehensive TDG system diagnostics and health monitoring",
+            vec!["tdg", "diagnostics", "health", "monitoring", "system"],
+        ),
+        (
+            "tdg_storage_management",
+            "Manage TDG storage operations (stats, cleanup, flush, migrate)",
+            vec!["tdg", "storage", "management", "cleanup", "migrate"],
+        ),
+        (
+            "tdg_analyze_with_storage",
+            "Analyze files using transactional TDG storage with caching",
+            vec!["tdg", "analyze", "storage", "transactional", "cache"],
+        ),
+        (
+            "tdg_performance_metrics",
+            "Get real-time TDG performance metrics and adaptive thresholds",
+            vec!["tdg", "performance", "metrics", "adaptive", "thresholds"],
+        ),
+        (
+            "tdg_configure_storage",
+            "Configure and validate TDG storage backends",
+            vec!["tdg", "configure", "storage", "backend", "sled", "rocksdb"],
+        ),
+        (
+            "tdg_health_check",
+            "Comprehensive TDG system health check with recommendations",
+            vec!["tdg", "health", "check", "recommendations", "status"],
+        ),
     ];
 
     let mut registry_code = String::from(
@@ -777,6 +808,78 @@ fn generate_alias_table(out_dir: &str) {
                 "merge",
                 "git command",
                 "source control",
+            ],
+        ),
+        // Sprint 31: TDG System MCP Tool Aliases
+        (
+            "tdg_system_diagnostics",
+            vec![
+                "tdg diagnostics",
+                "system health",
+                "tdg health",
+                "monitoring",
+                "system status",
+                "tdg status",
+                "diagnostics",
+                "health check",
+            ],
+        ),
+        (
+            "tdg_storage_management",
+            vec![
+                "tdg storage",
+                "storage stats",
+                "cleanup storage",
+                "storage cleanup",
+                "flush storage",
+                "migrate storage",
+                "storage migrate",
+                "tdg cache",
+            ],
+        ),
+        (
+            "tdg_analyze_with_storage",
+            vec![
+                "tdg analyze",
+                "analyze tdg",
+                "transactional analysis",
+                "cached analysis",
+                "storage analysis",
+                "tdg file",
+            ],
+        ),
+        (
+            "tdg_performance_metrics",
+            vec![
+                "tdg performance",
+                "performance metrics",
+                "adaptive thresholds",
+                "tdg metrics",
+                "system performance",
+                "threshold management",
+            ],
+        ),
+        (
+            "tdg_configure_storage",
+            vec![
+                "configure tdg",
+                "storage config",
+                "backend config",
+                "tdg backend",
+                "sled config",
+                "rocksdb config",
+                "storage backend",
+            ],
+        ),
+        (
+            "tdg_health_check",
+            vec![
+                "tdg health",
+                "system health",
+                "health status",
+                "tdg check",
+                "system check",
+                "health recommendations",
             ],
         ),
     ];

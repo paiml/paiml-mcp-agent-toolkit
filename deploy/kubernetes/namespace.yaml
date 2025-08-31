@@ -1,0 +1,13 @@
+---
+# Sprint 31 Week 3 - Kubernetes Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tdg-system
+  labels:
+    name: tdg-system
+    app.kubernetes.io/name: tdg
+    app.kubernetes.io/part-of: paiml-mcp-agent-toolkit
+    app.kubernetes.io/managed-by: kubectl
+  annotations:
+    description: "TDG (Technical Debt Grading) System namespace"

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TDG System Dashboard - Sprint 31</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .status-item {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 15px 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            min-width: 150px;
+            text-align: center;
+        }
+        
+        .status-item.healthy { border-left: 4px solid #10B981; }
+        .status-item.warning { border-left: 4px solid #F59E0B; }
+        .status-item.critical { border-left: 4px solid #EF4444; }
+        
+        .status-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .card h3 {
+            margin-bottom: 20px;
+            color: #4F46E5;
+            font-size: 1.3em;
+            border-bottom: 2px solid #E5E7EB;
+            padding-bottom: 10px;
+        }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px 0;
+            border-bottom: 1px solid #F3F4F6;
+        }
+        
+        .metric-label {
+            font-weight: 500;
+            color: #6B7280;
+        }
+        
+        .metric-value {
+            font-weight: 600;
+            color: #111827;
+            font-size: 1.1em;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #E5E7EB;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10B981, #059669);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-fill.warning {
+            background: linear-gradient(90deg, #F59E0B, #D97706);
+        }
+        
+        .progress-fill.critical {
+            background: linear-gradient(90deg, #EF4444, #DC2626);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #4F46E5, #7C3AED);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+        }
+        
+        .btn.secondary {
+            background: linear-gradient(135deg, #6B7280, #4B5563);
+        }
+        
+        .btn.danger {
+            background: linear-gradient(135deg, #EF4444, #DC2626);
+        }
+        
+        .analysis-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: #F9FAFB;
+            border-radius: 10px;
+            border: 2px dashed #D1D5DB;
+        }
+        
+        .file-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #D1D5DB;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        
+        .file-input:focus {
+            outline: none;
+            border-color: #4F46E5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        
+        .result-box {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 15px;
+            border: 1px solid #E5E7EB;
+            display: none;
+        }
+        
+        .result-box.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .grade {
+            font-size: 2em;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .grade.A { background: linear-gradient(135deg, #10B981, #059669); color: white; }
+        .grade.B { background: linear-gradient(135deg, #3B82F6, #1D4ED8); color: white; }
+        .grade.C { background: linear-gradient(135deg, #F59E0B, #D97706); color: white; }
+        .grade.D { background: linear-gradient(135deg, #EF4444, #DC2626); color: white; }
+        .grade.F { background: linear-gradient(135deg, #7F1D1D, #450A0A); color: white; }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6B7280;
+        }
+        
+        .error {
+            background: #FEF2F2;
+            color: #DC2626;
+            border: 1px solid #FECACA;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: #F0FDF4;
+            color: #166534;
+            border: 1px solid #BBF7D0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .live-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #10B981;
+            border-radius: 50%;
+            margin-left: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .connection-lost {
+            background: #EF4444;
+            animation: none;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .status-bar {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .status-item {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 TDG System Dashboard</h1>
+            <p class="subtitle">Transactional Hashed Technical Debt Grading - Sprint 31</p>
+        </div>
+        
+        <div class="status-bar">
+            <div class="status-item healthy" id="health-status">
+                <div class="status-label">System Health</div>
+                <div class="status-value" id="health-value">Healthy</div>
+                <span class="live-indicator" id="connection-indicator"></span>
+            </div>
+            <div class="status-item" id="cache-status">
+                <div class="status-label">Cache Hit Ratio</div>
+                <div class="status-value" id="cache-value">--</div>
+            </div>
+            <div class="status-item" id="operations-status">
+                <div class="status-label">Active Operations</div>
+                <div class="status-value" id="operations-value">--</div>
+            </div>
+            <div class="status-item" id="performance-status">
+                <div class="status-label">Avg Analysis Time</div>
+                <div class="status-value" id="performance-value">--</div>
+            </div>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3>📊 Storage Metrics</h3>
+                <div class="metric-row">
+                    <span class="metric-label">Total Entries</span>
+                    <span class="metric-value" id="total-entries">--</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Backend Type</span>
+                    <span class="metric-value" id="backend-type">--</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Compression Ratio</span>
+                    <span class="metric-value" id="compression-ratio">--</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Storage Size</span>
+                    <span class="metric-value" id="storage-size">--</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="cache-progress" style="width: 0%"></div>
+                </div>
+                <div class="controls">
+                    <button class="btn secondary" onclick="flushCache()">Flush Cache</button>
+                    <button class="btn secondary" onclick="cleanupStorage()">Cleanup</button>
+                    <button class="btn secondary" onclick="refreshStats()">Refresh</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>⚡ Performance Monitor</h3>
+                <div class="metric-row">
+                    <span class="metric-label">CPU Usage</span>
+                    <span class="metric-value" id="cpu-usage">--</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Memory Usage</span>
+                    <span class="metric-value" id="memory-usage">--</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Queue Depth</span>
+                    <span class="metric-value" id="queue-depth">--</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="cpu-progress" style="width: 0%"></div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="memory-progress" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🔍 Quick Analysis</h3>
+                <div class="analysis-section">
+                    <input type="text" class="file-input" id="analysis-path" placeholder="Enter file path (e.g., src/main.rs)" value="src/lib.rs">
+                    <div class="controls">
+                        <button class="btn" onclick="runAnalysis()">Analyze File</button>
+                        <select id="backend-select" style="padding: 10px; border-radius: 5px; border: 2px solid #D1D5DB;">
+                            <option value="sled">Sled Backend</option>
+                            <option value="inmemory">In-Memory</option>
+                            <option value="rocksdb">RocksDB</option>
+                        </select>
+                    </div>
+                    <div class="result-box" id="analysis-result">
+                        <div class="grade" id="analysis-grade">A+</div>
+                        <div class="metric-row">
+                            <span class="metric-label">Score</span>
+                            <span class="metric-value" id="analysis-score">--</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Confidence</span>
+                            <span class="metric-value" id="analysis-confidence">--</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Language</span>
+                            <span class="metric-value" id="analysis-language">--</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Analysis Time</span>
+                            <span class="metric-value" id="analysis-time">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🩺 System Health</h3>
+                <div id="health-issues">
+                    <div class="success">✅ All systems operating normally</div>
+                </div>
+                <div id="recommendations" style="margin-top: 15px;">
+                    <div style="font-weight: 600; color: #4F46E5; margin-bottom: 10px;">💡 Recommendations:</div>
+                    <div id="recommendations-list">
+                        <div style="color: #6B7280; font-style: italic;">No recommendations at this time</div>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button class="btn" onclick="runHealthCheck()">Health Check</button>
+                    <button class="btn secondary" onclick="getDiagnostics()">Full Diagnostics</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global state
+        let eventSource = null;
+        let isConnected = false;
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 TDG Dashboard initializing...');
+            initializeEventStream();
+            loadInitialData();
+            
+            // Set up periodic refresh as fallback
+            setInterval(refreshData, 30000); // Every 30 seconds
+        });
+        
+        // Initialize Server-Sent Events for real-time updates
+        function initializeEventStream() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            eventSource = new EventSource('/api/events');
+            
+            eventSource.onopen = function() {
+                console.log('✅ Connected to real-time updates');
+                isConnected = true;
+                updateConnectionStatus();
+            };
+            
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    updateDashboard(data);
+                } catch (e) {
+                    console.error('❌ Failed to parse event data:', e);
+                }
+            };
+            
+            eventSource.onerror = function(error) {
+                console.error('❌ EventSource failed:', error);
+                isConnected = false;
+                updateConnectionStatus();
+                
+                // Attempt to reconnect after 5 seconds
+                setTimeout(initializeEventStream, 5000);
+            };
+        }
+        
+        // Load initial data
+        async function loadInitialData() {
+            try {
+                const response = await fetch('/api/metrics');
+                const data = await response.json();
+                updateDashboard(data);
+            } catch (error) {
+                console.error('❌ Failed to load initial data:', error);
+                showError('Failed to load dashboard data');
+            }
+        }
+        
+        // Update entire dashboard with new data
+        function updateDashboard(data) {
+            if (!data) return;
+            
+            console.log('📊 Updating dashboard with:', data);
+            
+            // Update status bar
+            updateElement('health-value', data.health_status?.overall || 'Unknown');
+            updateHealthStatus(data.health_status?.overall || 'unknown');
+            
+            updateElement('cache-value', formatPercentage(data.storage_stats?.cache_hit_ratio));
+            updateElement('operations-value', data.performance_stats?.active_operations || 0);
+            updateElement('performance-value', formatTime(data.performance_stats?.avg_analysis_time_ms));
+            
+            // Update storage metrics
+            updateElement('total-entries', data.storage_stats?.total_entries || 0);
+            updateElement('backend-type', data.storage_stats?.backend_type || 'Unknown');
+            updateElement('compression-ratio', formatPercentage(data.storage_stats?.compression_ratio));
+            updateElement('storage-size', formatBytes(data.storage_stats?.storage_size_mb * 1048576));
+            
+            // Update progress bars
+            updateProgressBar('cache-progress', (data.storage_stats?.cache_hit_ratio || 0) * 100);
+            updateProgressBar('cpu-progress', data.performance_stats?.cpu_usage_percent || 0);
+            updateProgressBar('memory-progress', Math.min((data.performance_stats?.memory_usage_mb || 0) / 1024 * 100, 100));
+            
+            // Update performance metrics
+            updateElement('cpu-usage', formatPercentage(data.performance_stats?.cpu_usage_percent / 100));
+            updateElement('memory-usage', formatBytes((data.performance_stats?.memory_usage_mb || 0) * 1048576));
+            updateElement('queue-depth', data.performance_stats?.queue_depth || 0);
+            
+            // Update health information
+            updateHealthInfo(data.health_status);
+        }
+        
+        // Update health status styling
+        function updateHealthStatus(status) {
+            const healthElement = document.getElementById('health-status');
+            healthElement.className = `status-item ${status.toLowerCase()}`;
+        }
+        
+        // Update health information section
+        function updateHealthInfo(health) {
+            if (!health) return;
+            
+            const issuesDiv = document.getElementById('health-issues');
+            const recommendationsDiv = document.getElementById('recommendations-list');
+            
+            if (health.issues && health.issues.length > 0) {
+                issuesDiv.innerHTML = health.issues.map(issue => 
+                    `<div class="error">⚠️ ${issue}</div>`
+                ).join('');
+            } else {
+                issuesDiv.innerHTML = '<div class="success">✅ All systems operating normally</div>';
+            }
+            
+            if (health.recommendations && health.recommendations.length > 0) {
+                recommendationsDiv.innerHTML = health.recommendations.map(rec => 
+                    `<div style="margin-bottom: 5px;">• ${rec}</div>`
+                ).join('');
+            } else {
+                recommendationsDiv.innerHTML = '<div style="color: #6B7280; font-style: italic;">No recommendations at this time</div>';
+            }
+        }
+        
+        // Update connection status indicator
+        function updateConnectionStatus() {
+            const indicator = document.getElementById('connection-indicator');
+            if (isConnected) {
+                indicator.className = 'live-indicator';
+            } else {
+                indicator.className = 'live-indicator connection-lost';
+            }
+        }
+        
+        // Update progress bar
+        function updateProgressBar(id, percentage) {
+            const bar = document.getElementById(id);
+            if (bar) {
+                bar.style.width = Math.min(percentage, 100) + '%';
+                bar.className = `progress-fill ${getProgressClass(percentage)}`;
+            }
+        }
+        
+        function getProgressClass(percentage) {
+            if (percentage >= 90) return 'critical';
+            if (percentage >= 70) return 'warning';
+            return '';
+        }
+        
+        // Utility functions
+        function updateElement(id, value) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            }
+        }
+        
+        function formatPercentage(value) {
+            if (typeof value !== 'number' || isNaN(value)) return '--';
+            return (value * 100).toFixed(1) + '%';
+        }
+        
+        function formatTime(ms) {
+            if (typeof ms !== 'number' || isNaN(ms)) return '--';
+            return ms.toFixed(1) + 'ms';
+        }
+        
+        function formatBytes(bytes) {
+            if (typeof bytes !== 'number' || isNaN(bytes)) return '--';
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
+        }
+        
+        function showError(message) {
+            // Could implement toast notifications here
+            console.error('Dashboard Error:', message);
+        }
+        
+        function showSuccess(message) {
+            // Could implement toast notifications here
+            console.log('Dashboard Success:', message);
+        }
+        
+        // Dashboard controls
+        async function refreshData() {
+            await loadInitialData();
+        }
+        
+        async function flushCache() {
+            try {
+                const response = await fetch('/api/storage/operation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'flush' })
+                });
+                const result = await response.json();
+                showSuccess('Cache flushed successfully');
+                await refreshData();
+            } catch (error) {
+                showError('Failed to flush cache: ' + error.message);
+            }
+        }
+        
+        async function cleanupStorage() {
+            try {
+                const response = await fetch('/api/storage/operation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'cleanup' })
+                });
+                const result = await response.json();
+                showSuccess('Storage cleanup completed');
+                await refreshData();
+            } catch (error) {
+                showError('Failed to cleanup storage: ' + error.message);
+            }
+        }
+        
+        async function refreshStats() {
+            await refreshData();
+            showSuccess('Statistics refreshed');
+        }
+        
+        async function runAnalysis() {
+            const pathInput = document.getElementById('analysis-path');
+            const backendSelect = document.getElementById('backend-select');
+            const resultBox = document.getElementById('analysis-result');
+            
+            if (!pathInput.value.trim()) {
+                showError('Please enter a file path');
+                return;
+            }
+            
+            try {
+                resultBox.style.display = 'block';
+                resultBox.innerHTML = '<div class="loading">🔄 Analyzing...</div>';
+                
+                const params = new URLSearchParams({
+                    path: pathInput.value,
+                    backend: backendSelect.value
+                });
+                
+                const response = await fetch(`/api/analysis?${params}`);
+                const result = await response.json();
+                
+                if (response.ok) {
+                    displayAnalysisResult(result);
+                } else {
+                    resultBox.innerHTML = `<div class="error">${result.error || 'Analysis failed'}</div>`;
+                }
+            } catch (error) {
+                resultBox.innerHTML = `<div class="error">Analysis failed: ${error.message}</div>`;
+            }
+        }
+        
+        function displayAnalysisResult(result) {
+            const resultBox = document.getElementById('analysis-result');
+            const gradeElement = document.getElementById('analysis-grade');
+            
+            gradeElement.textContent = result.grade || 'N/A';
+            gradeElement.className = `grade ${(result.grade || 'F').charAt(0)}`;
+            
+            updateElement('analysis-score', (result.score || 0).toFixed(1));
+            updateElement('analysis-confidence', formatPercentage(result.confidence));
+            updateElement('analysis-language', result.language || 'Unknown');
+            updateElement('analysis-time', formatTime(result.analysis_time_ms));
+            
+            resultBox.className = 'result-box show';
+        }
+        
+        async function runHealthCheck() {
+            try {
+                const response = await fetch('/api/health');
+                const health = await response.json();
+                updateHealthInfo(health);
+                showSuccess('Health check completed');
+            } catch (error) {
+                showError('Health check failed: ' + error.message);
+            }
+        }
+        
+        async function getDiagnostics() {
+            try {
+                const response = await fetch('/api/diagnostics');
+                const diagnostics = await response.json();
+                console.log('Full Diagnostics:', diagnostics);
+                showSuccess('Diagnostics retrieved (check console)');
+            } catch (error) {
+                showError('Diagnostics failed: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

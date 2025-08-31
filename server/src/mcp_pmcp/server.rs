@@ -8,6 +8,10 @@ use crate::mcp_pmcp::handlers::{
 };
 use crate::mcp_pmcp::quality_handlers::QualityGateTool;
 use crate::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
+use crate::mcp_pmcp::tdg_handlers::{
+    TdgAnalyzeWithStorageTool, TdgConfigureStorageTool, TdgHealthCheckTool,
+    TdgPerformanceMetricsTool, TdgStorageManagementTool, TdgSystemDiagnosticsTool,
+};
 use crate::mcp_server::state_manager::StateManager;
 use pmcp::{Server, ServerCapabilities, ToolCapabilities};
 use std::sync::Arc;
@@ -18,8 +22,8 @@ use tracing::info;
 ///
 /// This server provides a complete MCP implementation with all PMAT tools,
 /// offering significant performance improvements over the standard implementation.
-/// It supports 19 different tools across analysis, refactoring, quality, and
-/// context generation categories.
+/// It supports 24 different tools across analysis, refactoring, quality, TDG system,
+/// and context generation categories.
 ///
 /// # Architecture
 ///
@@ -159,11 +163,18 @@ impl PmcpServer {
             // Context tools
             .tool("generate_context", GenerateContextTool)
             .tool("scaffold_project", ScaffoldProjectTool)
+            // TDG System tools (Sprint 31)
+            .tool("tdg_system_diagnostics", TdgSystemDiagnosticsTool)
+            .tool("tdg_storage_management", TdgStorageManagementTool)
+            .tool("tdg_analyze_with_storage", TdgAnalyzeWithStorageTool)
+            .tool("tdg_performance_metrics", TdgPerformanceMetricsTool)
+            .tool("tdg_configure_storage", TdgConfigureStorageTool)
+            .tool("tdg_health_check", TdgHealthCheckTool)
             .build()?;
 
         info!(
             "PMAT MCP server ready with {} tools, listening on stdio",
-            18
+            24
         );
 
         // Run server with stdio transport

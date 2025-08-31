@@ -949,6 +949,7 @@ tree_sitter_c::language()
         self.score_consistency_python(source, tracker) // Use same logic for now
     }
 
+    #[cfg(any(feature = "c-ast", feature = "cpp-ast"))]
     fn calculate_max_nesting(&self, node: &tree_sitter::Node) -> usize {
         let mut max_depth = 0;
         let _current_depth = 0;
@@ -973,6 +974,13 @@ tree_sitter_c::language()
         max_depth
     }
 
+    #[cfg(not(any(feature = "c-ast", feature = "cpp-ast")))]
+    fn calculate_max_nesting(&self, _node: &str) -> usize {
+        // Simplified implementation for rust-only builds
+        5 // Default approximation
+    }
+
+    #[cfg(any(feature = "c-ast", feature = "cpp-ast"))]
     fn calculate_max_function_length(&self, node: &tree_sitter::Node, source: &str) -> usize {
         let mut max_length = 0;
 
@@ -991,6 +999,12 @@ tree_sitter_c::language()
 
         find_functions(*node, source, &mut max_length);
         max_length
+    }
+
+    #[cfg(not(any(feature = "c-ast", feature = "cpp-ast")))]
+    fn calculate_max_function_length(&self, _source: &str) -> usize {
+        // Simplified implementation for rust-only builds  
+        20 // Default approximation
     }
 
     pub async fn analyze_project(&self, dir: &Path) -> Result<ProjectScore> {

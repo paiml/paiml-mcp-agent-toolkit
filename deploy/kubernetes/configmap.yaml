@@ -1,0 +1,122 @@
+---
+# Sprint 31 Week 3 - Configuration ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tdg-config
+  namespace: tdg-system
+  labels:
+    app.kubernetes.io/name: tdg
+    app.kubernetes.io/component: configuration
+data:
+  tdg-config.yaml: |
+    # TDG System Configuration
+    server:
+      host: 0.0.0.0
+      port: 8080
+      workers: 4
+      max_connections: 1000
+      request_timeout_seconds: 30
+      
+    dashboard:
+      enabled: true
+      port: 8081
+      update_interval_seconds: 10
+      max_websocket_connections: 100
+      
+    storage:
+      backend: sled
+      path: /data/tdg
+      cache_size_mb: 256
+      compression: true
+      hot_cache_ttl_seconds: 300
+      warm_tier_threshold_mb: 512
+      cold_tier_threshold_mb: 2048
+      
+    metrics:
+      enabled: true
+      retention_hours: 168  # 1 week
+      aggregation_interval_seconds: 60
+      export_formats:
+        - prometheus
+        - json
+        
+    alerts:
+      enabled: true
+      evaluation_interval_seconds: 10
+      max_active_alerts: 100
+      cooldown_period_seconds: 300
+      
+    profiling:
+      enabled: false  # Enable only when debugging
+      sample_interval_ms: 100
+      max_profiles_retained: 100
+      
+    mcp:
+      enabled: true
+      max_concurrent_tools: 10
+      timeout_seconds: 60
+      
+    logging:
+      level: info
+      format: json
+      output: stdout
+      
+  alert-rules.yaml: |
+    # Default Alert Rules
+    rules:
+      - id: high_cpu
+        name: High CPU Usage
+        metric: cpu_usage_percent
+        condition: greater_than
+        threshold: 85.0
+        duration_seconds: 60
+        severity: warning
+        
+      - id: critical_cpu
+        name: Critical CPU Usage
+        metric: cpu_usage_percent
+        condition: greater_than
+        threshold: 95.0
+        duration_seconds: 30
+        severity: critical
+        
+      - id: high_memory
+        name: High Memory Usage
+        metric: memory_usage_mb
+        condition: greater_than
+        threshold: 7168.0  # 7GB
+        duration_seconds: 120
+        severity: warning
+        
+      - id: critical_memory
+        name: Critical Memory Usage
+        metric: memory_usage_mb
+        condition: greater_than
+        threshold: 8192.0  # 8GB
+        duration_seconds: 60
+        severity: critical
+        
+      - id: slow_analysis
+        name: Slow Analysis Performance
+        metric: avg_analysis_time_ms
+        condition: greater_than
+        threshold: 5000.0
+        duration_seconds: 300
+        severity: warning
+        
+      - id: low_cache_hit
+        name: Low Cache Hit Ratio
+        metric: cache_hit_ratio
+        condition: less_than
+        threshold: 0.6
+        duration_seconds: 600
+        severity: info
+        
+      - id: storage_full
+        name: Storage Near Capacity
+        metric: storage_usage_percent
+        condition: greater_than
+        threshold: 85.0
+        duration_seconds: 300
+        severity: warning
