@@ -868,38 +868,59 @@ impl DeepContextAnalyzer {
         output: &mut String,
         context: &DeepContext,
     ) -> anyhow::Result<()> {
-        use std::fmt::Write;
+        self.write_quality_scorecard_section(output, &context.quality_scorecard)?;
+        self.write_project_structure_section(output, &context.file_tree)?;
+        self.write_ast_section_if_present(output, &context.analyses.ast_contexts)?;
+        Ok(())
+    }
 
-        // Quality scorecard summary
+    fn write_quality_scorecard_section(
+        &self,
+        output: &mut String,
+        scorecard: &QualityScorecard,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
         writeln!(output, "\n## Quality Scorecard\n")?;
         writeln!(
             output,
             "- **Overall Health**: {} ({:.1}/100)",
-            self.overall_health_emoji(context.quality_scorecard.overall_health),
-            context.quality_scorecard.overall_health
+            self.overall_health_emoji(scorecard.overall_health),
+            scorecard.overall_health
         )?;
         writeln!(
             output,
             "- **Maintainability Index**: {:.1}",
-            context.quality_scorecard.maintainability_index
+            scorecard.maintainability_index
         )?;
         writeln!(
             output,
             "- **Refactoring Time**: {:.1} hours estimated",
-            context.quality_scorecard.technical_debt_hours
+            scorecard.technical_debt_hours
         )?;
+        Ok(())
+    }
 
-        // Project structure with annotations
+    fn write_project_structure_section(
+        &self,
+        output: &mut String,
+        file_tree: &AnnotatedFileTree,
+    ) -> anyhow::Result<()> {
+        use std::fmt::Write;
         writeln!(output, "\n## Project Structure\n")?;
         writeln!(output, "```")?;
-        self.format_annotated_tree(output, &context.file_tree)?;
+        self.format_annotated_tree(output, file_tree)?;
         writeln!(output, "```\n")?;
+        Ok(())
+    }
 
-        // Enhanced AST with complexity indicators
-        if !context.analyses.ast_contexts.is_empty() {
-            self.format_enhanced_ast_section(output, &context.analyses.ast_contexts)?;
+    fn write_ast_section_if_present(
+        &self,
+        output: &mut String,
+        ast_contexts: &[EnhancedFileContext],
+    ) -> anyhow::Result<()> {
+        if !ast_contexts.is_empty() {
+            self.format_enhanced_ast_section(output, ast_contexts)?;
         }
-
         Ok(())
     }
 
@@ -4044,42 +4065,68 @@ async fn analyze_duplicate_code(
     use crate::services::duplicate_detector::{DuplicateDetectionEngine, Language};
     use crate::services::file_discovery::ProjectFileDiscovery;
 
-    // Phase 1: Discover source files
+    let all_files = discover_project_files(path)?;
+    let files_for_analysis = filter_and_categorize_files(all_files)?;
+    let engine = DuplicateDetectionEngine::default();
+    engine.detect_duplicates(&files_for_analysis)
+}
+
+fn discover_project_files(path: &std::path::Path) -> anyhow::Result<Vec<std::path::PathBuf>> {
+    use crate::services::file_discovery::ProjectFileDiscovery;
     let discovery_service = ProjectFileDiscovery::new(path.to_path_buf());
-    let all_files = discovery_service.discover_files()?;
+    discovery_service.discover_files()
+}
 
-    // Phase 2: Filter and categorize files by language
+fn filter_and_categorize_files(
+    all_files: Vec<std::path::PathBuf>,
+) -> anyhow::Result<Vec<(std::path::PathBuf, String, crate::services::duplicate_detector::Language)>> {
+    use crate::services::duplicate_detector::Language;
+    
     let mut files_for_analysis = Vec::new();
-
     for file_path in all_files {
-        if let Some(ext) = file_path.extension().and_then(|e| e.to_str()) {
-            let language = match ext {
-                "rs" => Some(Language::Rust),
-                "ts" | "tsx" => Some(Language::TypeScript),
-                "js" | "jsx" => Some(Language::JavaScript),
-                "py" => Some(Language::Python),
-                "c" | "h" => Some(Language::C),
-                "cpp" | "cc" | "cxx" | "hpp" | "hxx" => Some(Language::Cpp),
-                "kt" | "kts" => Some(Language::Kotlin),
-                _ => None,
-            };
-
-            if let Some(lang) = language {
-                if let Ok(content) = std::fs::read_to_string(&file_path) {
-                    // Skip very small files (likely not worth analyzing)
-                    if content.lines().count() >= 10 {
-                        files_for_analysis.push((file_path, content, lang));
-                    }
-                }
-            }
+        if let Some((file, content, lang)) = process_file_for_duplicate_detection(&file_path)? {
+            files_for_analysis.push((file, content, lang));
         }
     }
+    Ok(files_for_analysis)
+}
 
-    // Phase 3: Run duplicate detection
-    let engine = DuplicateDetectionEngine::default();
-    let report = engine.detect_duplicates(&files_for_analysis)?;
+fn process_file_for_duplicate_detection(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Option<(std::path::PathBuf, String, crate::services::duplicate_detector::Language)>> {
+    use crate::services::duplicate_detector::Language;
+    
+    let ext = match file_path.extension().and_then(|e| e.to_str()) {
+        Some(e) => e,
+        None => return Ok(None),
+    };
+    
+    let language = match_extension_to_language(ext)?;
+    if language.is_none() {
+        return Ok(None);
+    }
+    
+    let content = match std::fs::read_to_string(file_path) {
+        Ok(c) if c.lines().count() >= 10 => c,
+        _ => return Ok(None),
+    };
+    
+    Ok(Some((file_path.to_path_buf(), content, language.unwrap())))
+}
 
-    Ok(report)
+fn match_extension_to_language(ext: &str) -> anyhow::Result<Option<crate::services::duplicate_detector::Language>> {
+    use crate::services::duplicate_detector::Language;
+    
+    Ok(match ext {
+        "rs" => Some(Language::Rust),
+        "ts" | "tsx" => Some(Language::TypeScript),
+        "js" | "jsx" => Some(Language::JavaScript),
+        "py" => Some(Language::Python),
+        "c" | "h" => Some(Language::C),
+        "cpp" | "cc" | "cxx" | "hpp" | "hxx" => Some(Language::Cpp),
+        "kt" | "kts" => Some(Language::Kotlin),
+        _ => None,
+    })
 }
 
 async fn analyze_satd(path: &std::path::Path) -> anyhow::Result<SATDAnalysisResult> {
