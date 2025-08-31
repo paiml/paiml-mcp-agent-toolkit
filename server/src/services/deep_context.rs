@@ -1910,10 +1910,10 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
-    fn group_satd_by_severity(
+    fn group_satd_by_severity<'a>(
         &self,
-        satd: &crate::services::satd_detector::SATDAnalysisResult,
-    ) -> FxHashMap<&crate::services::satd_detector::Severity, i32> {
+        satd: &'a crate::services::satd_detector::SATDAnalysisResult,
+    ) -> FxHashMap<&'a crate::services::satd_detector::Severity, i32> {
         let mut by_severity = FxHashMap::default();
         for item in &satd.items {
             *by_severity.entry(&item.severity).or_insert(0) += 1;
@@ -1946,10 +1946,10 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
-    fn get_critical_satd_items(
+    fn get_critical_satd_items<'a>(
         &self,
-        satd: &crate::services::satd_detector::SATDAnalysisResult,
-    ) -> Vec<&crate::services::satd_detector::TechnicalDebt> {
+        satd: &'a crate::services::satd_detector::SATDAnalysisResult,
+    ) -> Vec<&'a crate::services::satd_detector::TechnicalDebt> {
         satd.items
             .iter()
             .filter(|item| {

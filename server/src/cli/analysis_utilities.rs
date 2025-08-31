@@ -177,58 +177,17 @@ pub async fn handle_analyze_tdg(
     use crate::services::tdg_calculator::TDGCalculator;
 
     if watch {
-        use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-        use std::sync::mpsc;
-        use tokio::time::Duration;
-
-        eprintln!("👁️  Watching for changes in TDG analysis...");
-        let (tx, rx) = mpsc::channel();
-
-        let mut watcher = RecommendedWatcher::new(
-            tx,
-            notify::Config::default().with_poll_interval(Duration::from_secs(2)),
-        )?;
-        watcher.watch(&path, RecursiveMode::Recursive)?;
-
-        // Initial analysis
-        let calculator = crate::services::tdg_calculator::TDGCalculator::new();
-        perform_tdg_analysis(
-            &calculator,
-            &path,
+        return run_tdg_watch_mode(
+            path,
             threshold,
             top,
-            &format,
+            format,
             _include_components,
-            &output,
+            output,
             _critical_only,
             _verbose,
         )
-        .await?;
-
-        loop {
-            match rx.recv() {
-                Ok(_event) => {
-                    eprintln!("🔄 Change detected, re-analyzing...");
-                    perform_tdg_analysis(
-                        &calculator,
-                        &path,
-                        threshold,
-                        top,
-                        &format,
-                        _include_components,
-                        &output,
-                        _critical_only,
-                        _verbose,
-                    )
-                    .await?;
-                }
-                Err(e) => {
-                    eprintln!("❌ Watch error: {}", e);
-                    break;
-                }
-            }
-        }
-        return Ok(());
+        .await;
     }
 
     eprintln!("🔍 Analyzing Technical Debt Gradient...");
@@ -237,59 +196,161 @@ pub async fn handle_analyze_tdg(
     let calculator = TDGCalculator::new();
 
     // Determine analysis mode and generate output
-    let output_content = if let Some(single_file) = file {
+    let output_content = run_tdg_analysis(
+        &calculator,
+        &path,
+        file,
+        files,
+        include,
+        threshold,
+        top,
+        format,
+        _include_components,
+        _critical_only,
+        _verbose,
+    )
+    .await?;
+
+    // Output results
+    write_tdg_output(output, &output_content).await?;
+
+    eprintln!("✅ TDG analysis complete");
+    Ok(())
+}
+
+/// Run TDG analysis in watch mode
+#[allow(clippy::too_many_arguments)]
+async fn run_tdg_watch_mode(
+    path: PathBuf,
+    threshold: f64,
+    top: usize,
+    format: TdgOutputFormat,
+    include_components: bool,
+    output: Option<PathBuf>,
+    critical_only: bool,
+    verbose: bool,
+) -> Result<()> {
+    use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+    use std::sync::mpsc;
+    use tokio::time::Duration;
+
+    eprintln!("👁️  Watching for changes in TDG analysis...");
+    let (tx, rx) = mpsc::channel();
+
+    let mut watcher = RecommendedWatcher::new(
+        tx,
+        notify::Config::default().with_poll_interval(Duration::from_secs(2)),
+    )?;
+    watcher.watch(&path, RecursiveMode::Recursive)?;
+
+    // Initial analysis
+    let calculator = crate::services::tdg_calculator::TDGCalculator::new();
+    perform_tdg_analysis(
+        &calculator,
+        &path,
+        threshold,
+        top,
+        &format,
+        include_components,
+        &output,
+        critical_only,
+        verbose,
+    )
+    .await?;
+
+    loop {
+        match rx.recv() {
+            Ok(_event) => {
+                eprintln!("🔄 Change detected, re-analyzing...");
+                perform_tdg_analysis(
+                    &calculator,
+                    &path,
+                    threshold,
+                    top,
+                    &format,
+                    include_components,
+                    &output,
+                    critical_only,
+                    verbose,
+                )
+                .await?;
+            }
+            Err(e) => {
+                eprintln!("❌ Watch error: {}", e);
+                break;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Run the appropriate TDG analysis based on input mode
+#[allow(clippy::too_many_arguments)]
+async fn run_tdg_analysis(
+    calculator: &crate::services::tdg_calculator::TDGCalculator,
+    path: &Path,
+    file: Option<PathBuf>,
+    files: Vec<PathBuf>,
+    include: Vec<String>,
+    threshold: f64,
+    top: usize,
+    format: TdgOutputFormat,
+    include_components: bool,
+    critical_only: bool,
+    verbose: bool,
+) -> Result<String> {
+    if let Some(single_file) = file {
         // Single file mode
         analyze_single_file(
-            &calculator,
-            &path,
+            calculator,
+            path,
             single_file,
             threshold,
             format,
-            _include_components,
-            _critical_only,
-            _verbose,
+            include_components,
+            critical_only,
+            verbose,
         )
-        .await?
+        .await
     } else if !files.is_empty() {
         // Multiple files mode (MCP tool composition)
         analyze_multiple_files(
-            &calculator,
-            &path,
+            calculator,
+            path,
             files,
             threshold,
             top,
             format,
-            _include_components,
-            _critical_only,
-            _verbose,
+            include_components,
+            critical_only,
+            verbose,
         )
-        .await?
+        .await
     } else {
         // Project mode
         analyze_project(
-            &calculator,
-            &path,
+            calculator,
+            path,
             include,
             threshold,
             top,
             format,
-            _include_components,
-            _critical_only,
-            _verbose,
+            include_components,
+            critical_only,
+            verbose,
         )
-        .await?
-    };
+        .await
+    }
+}
 
-    // Output results
+/// Write TDG output to file or stdout
+async fn write_tdg_output(output: Option<PathBuf>, content: &str) -> Result<()> {
     if let Some(output_path) = output {
-        tokio::fs::write(&output_path, &output_content).await?;
+        tokio::fs::write(&output_path, content).await?;
         eprintln!("📝 Results written to {}", output_path.display());
     } else {
-        println!("{output_content}");
+        println!("{content}");
     }
-
-    eprintln!("✅ TDG analysis complete");
-
     Ok(())
 }
 
@@ -1180,47 +1241,92 @@ pub async fn handle_analyze_provability(
     let analyzer = LightweightProvabilityAnalyzer::new();
 
     // Get function IDs based on input
-    let function_ids = if functions.is_empty() {
-        discover_project_functions(&project_path).await?
-    } else {
-        let mut ids = Vec::new();
-        for spec in &functions {
-            ids.push(parse_function_spec(spec, &project_path)?);
-        }
-        ids
-    };
+    let function_ids = get_function_ids(&project_path, &functions).await?;
 
     // Analyze the functions
     let summaries = analyzer.analyze_incrementally(&function_ids).await;
     eprintln!("✅ Analyzed {} functions", summaries.len());
 
-    // Filter by confidence if requested
-    let filtered_summaries = filter_summaries(&summaries, high_confidence_only);
-    let filtered_summaries_owned: Vec<ProofSummary> =
-        filtered_summaries.into_iter().cloned().collect();
+    // Filter and format the summaries
+    let filtered_summaries_owned = prepare_summaries(&summaries, high_confidence_only);
 
     // Format output based on requested format
-    let content = match format {
-        ProvabilityOutputFormat::Json => {
-            format_provability_json(&function_ids, &filtered_summaries_owned, include_evidence)?
-        }
-        ProvabilityOutputFormat::Summary => {
-            format_provability_summary(&function_ids, &filtered_summaries_owned, top_files)?
-        }
-        ProvabilityOutputFormat::Full => {
-            format_provability_detailed(&function_ids, &filtered_summaries_owned, include_evidence)?
-        }
-        ProvabilityOutputFormat::Sarif => {
-            format_provability_sarif(&function_ids, &filtered_summaries_owned)?
-        }
-        ProvabilityOutputFormat::Markdown => {
-            format_provability_detailed(&function_ids, &filtered_summaries_owned, include_evidence)?
-        }
-    };
+    let content = format_provability_output(
+        format,
+        &function_ids,
+        &filtered_summaries_owned,
+        include_evidence,
+        top_files,
+    )?;
 
     // Write output
+    write_provability_output(output, &content).await?;
+
+    Ok(())
+}
+
+/// Get function IDs based on input parameters
+async fn get_function_ids(
+    project_path: &Path,
+    functions: &[String],
+) -> Result<Vec<crate::services::lightweight_provability_analyzer::FunctionId>> {
+    use crate::cli::provability_helpers::*;
+    
+    if functions.is_empty() {
+        discover_project_functions(project_path).await
+    } else {
+        let mut ids = Vec::new();
+        for spec in functions {
+            ids.push(parse_function_spec(spec, project_path)?);
+        }
+        Ok(ids)
+    }
+}
+
+/// Prepare summaries by filtering and converting
+fn prepare_summaries(
+    summaries: &[ProofSummary],
+    high_confidence_only: bool,
+) -> Vec<ProofSummary> {
+    use crate::cli::provability_helpers::filter_summaries;
+    
+    let filtered_summaries = filter_summaries(summaries, high_confidence_only);
+    filtered_summaries.into_iter().cloned().collect()
+}
+
+/// Format provability output based on the specified format
+fn format_provability_output(
+    format: ProvabilityOutputFormat,
+    function_ids: &[crate::services::lightweight_provability_analyzer::FunctionId],
+    summaries: &[ProofSummary],
+    include_evidence: bool,
+    top_files: usize,
+) -> Result<String> {
+    use crate::cli::provability_helpers::*;
+    
+    match format {
+        ProvabilityOutputFormat::Json => {
+            format_provability_json(function_ids, summaries, include_evidence)
+        }
+        ProvabilityOutputFormat::Summary => {
+            format_provability_summary(function_ids, summaries, top_files)
+        }
+        ProvabilityOutputFormat::Full | ProvabilityOutputFormat::Markdown => {
+            format_provability_detailed(function_ids, summaries, include_evidence)
+        }
+        ProvabilityOutputFormat::Sarif => {
+            format_provability_sarif(function_ids, summaries)
+        }
+    }
+}
+
+/// Write provability output to file or stdout
+async fn write_provability_output(
+    output: Option<PathBuf>,
+    content: &str,
+) -> Result<()> {
     if let Some(output_path) = output {
-        tokio::fs::write(&output_path, &content).await?;
+        tokio::fs::write(&output_path, content).await?;
         eprintln!(
             "✅ Provability analysis written to: {}",
             output_path.display()
@@ -1228,7 +1334,6 @@ pub async fn handle_analyze_provability(
     } else {
         println!("{}", content);
     }
-
     Ok(())
 }
 
@@ -3076,7 +3181,6 @@ async fn run_project_checks(
     results: &mut QualityGateResults,
     perf: bool,
 ) -> Result<()> {
-    use std::time::Instant;
     // If checks contains All, just run that single check which will run all checks
     if checks.contains(&QualityCheckType::All) {
         run_single_project_check(
@@ -3092,43 +3196,77 @@ async fn run_project_checks(
         .await?;
     } else {
         // Otherwise run each specified check
-        for check in checks {
-            let check_start = if perf { Some(Instant::now()) } else { None };
+        run_individual_project_checks(
+            checks,
+            project_path,
+            max_dead_code,
+            min_entropy,
+            max_complexity_p99,
+            violations,
+            results,
+            perf,
+        )
+        .await?;
+    }
+    Ok(())
+}
 
-            run_single_project_check(
-                check,
-                project_path,
-                max_dead_code,
-                min_entropy,
-                max_complexity_p99,
-                violations,
-                results,
-                perf,
-            )
-            .await?;
+/// Run individual quality checks with optional performance timing
+#[allow(clippy::too_many_arguments)]
+async fn run_individual_project_checks(
+    checks: &[QualityCheckType],
+    project_path: &Path,
+    max_dead_code: f64,
+    min_entropy: f64,
+    max_complexity_p99: u32,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+    perf: bool,
+) -> Result<()> {
+    use std::time::Instant;
+    
+    for check in checks {
+        let check_start = if perf { Some(Instant::now()) } else { None };
 
-            if let Some(start) = check_start {
-                let check_name = match check {
-                    QualityCheckType::Complexity => "Complexity",
-                    QualityCheckType::DeadCode => "Dead code",
-                    QualityCheckType::Satd => "SATD",
-                    QualityCheckType::Security => "Security",
-                    QualityCheckType::Entropy => "Entropy",
-                    QualityCheckType::Duplicates => "Duplicates",
-                    QualityCheckType::Coverage => "Coverage",
-                    QualityCheckType::Sections => "Sections",
-                    QualityCheckType::Provability => "Provability",
-                    QualityCheckType::All => "All",
-                };
-                eprintln!(
-                    "    ⏱️  {} check: {:.3}s",
-                    check_name,
-                    start.elapsed().as_secs_f64()
-                );
-            }
+        run_single_project_check(
+            check,
+            project_path,
+            max_dead_code,
+            min_entropy,
+            max_complexity_p99,
+            violations,
+            results,
+            perf,
+        )
+        .await?;
+
+        if let Some(start) = check_start {
+            print_check_performance(check, start.elapsed().as_secs_f64());
         }
     }
     Ok(())
+}
+
+/// Print performance timing for a quality check
+fn print_check_performance(check: &QualityCheckType, elapsed_secs: f64) {
+    let check_name = get_check_display_name(check);
+    eprintln!("    ⏱️  {} check: {:.3}s", check_name, elapsed_secs);
+}
+
+/// Get display name for a quality check type
+fn get_check_display_name(check: &QualityCheckType) -> &'static str {
+    match check {
+        QualityCheckType::Complexity => "Complexity",
+        QualityCheckType::DeadCode => "Dead code",
+        QualityCheckType::Satd => "SATD",
+        QualityCheckType::Security => "Security",
+        QualityCheckType::Entropy => "Entropy",
+        QualityCheckType::Duplicates => "Duplicates",
+        QualityCheckType::Coverage => "Coverage",
+        QualityCheckType::Sections => "Sections",
+        QualityCheckType::Provability => "Provability",
+        QualityCheckType::All => "All",
+    }
 }
 
 /// Runs a single project-wide check
@@ -3723,7 +3861,7 @@ pub async fn handle_analyze_comprehensive(
     // Run TDG analysis if requested
     if include_tdg {
         eprintln!("📈 Analyzing technical debt gradient...");
-        report.tdg = Some(run_tdg_analysis(&project_path).await?);
+        report.tdg = Some(create_tdg_report(&project_path).await?);
     }
 
     // Run dead code analysis if requested
@@ -5825,7 +5963,7 @@ async fn run_satd_analysis(
     })
 }
 
-async fn run_tdg_analysis(_project_path: &Path) -> Result<TdgReport> {
+async fn create_tdg_report(_project_path: &Path) -> Result<TdgReport> {
     // Simplified TDG analysis
     // Mock data for now
     let files = vec![TdgFile {

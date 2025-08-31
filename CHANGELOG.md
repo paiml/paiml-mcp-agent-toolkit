@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.41.0] - 2025-08-31
+
+### Added
+- **SPRINT-35**: Toyota Way Complexity Reduction Final Push
+  - **Quality Achievement**: TDG Score 92.1/100 (A grade) - significant improvement toward A+ target
+  - **High-Complexity Function Elimination**: All identified high-complexity functions reduced to Toyota Way ≤15 standard
+  - **Systematic Toyota Way Application**
+    - Genchi Genbutsu (現地現物): Precise TDG analysis to identify exact complexity hotspots
+    - Jidoka (自働化): Quality-at-source with helper function extraction patterns
+    - Kaizen (改善): Function-by-function continuous improvement methodology
+
+### Changed
+- **handle_analyze_provability**: Complexity 19 → ≤8 (-58% reduction)
+  - Extracted `get_function_ids` helper for function discovery logic
+  - Added `prepare_summaries` helper for filtering and conversion
+  - Created `format_provability_output` helper for format-specific output
+  - Added `write_provability_output` helper for file/stdout writing
+- **run_project_checks**: Complexity 19 → ≤8 (-58% reduction)
+  - Extracted `run_individual_project_checks` helper for loop iteration
+  - Added `print_check_performance` helper for timing display
+  - Created `get_check_display_name` helper to eliminate complex match statements
+- **handle_analyze_tdg**: Complexity 18 → ≤8 (-56% reduction)
+  - Extracted `run_tdg_watch_mode` helper for file watching functionality
+  - Added `run_tdg_analysis` helper for analysis mode dispatch
+  - Created `write_tdg_output` helper for output writing logic
+
+### Fixed
+- Resolved lifetime issues in deep_context.rs SATD helper functions
+- Fixed `FunctionID` vs `FunctionId` type consistency issues
+- Resolved duplicate function name conflicts in analysis_utilities.rs
+- Binary compilation restored (compiles successfully with only warnings)
+
+### Technical Debt Status
+- **Current SATD Violations**: 215 (target <50 for A+ grade)
+- **Binary Status**: ✅ Compiles successfully
+- **Toyota Way Compliance**: ✅ All target high-complexity functions ≤15
+
 ## [2.40.0] - 2025-08-31
 
 ### Added
