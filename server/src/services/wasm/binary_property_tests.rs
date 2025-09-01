@@ -160,7 +160,7 @@ mod tests {
 
             // Use a larger chunk for efficiency
             let chunk_size = 1024; // 1KB chunks
-            let mut chunk = Vec::with_capacity(chunk_size);
+            let mut chunk: Vec<u8> = Vec::with_capacity(chunk_size);
             while chunk.len() < chunk_size {
                 chunk.extend(&seed_data);
             }

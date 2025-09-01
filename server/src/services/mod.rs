@@ -51,6 +51,8 @@
 // Service architecture (SPECIFICATION.md Section 2)
 pub mod analysis_service;
 pub mod analyzer; // Toyota Way: Unified analyzer framework
+pub mod ast; // Toyota Way: Unified AST module (consolidates 25+ AST files)
+pub mod detection; // Toyota Way: Unified detection framework (consolidates detection services)
 pub mod facades;
 pub mod language_analyzer;
 pub mod language_registry;
@@ -89,6 +91,8 @@ pub mod ast_typescript;
 #[cfg(feature = "typescript-ast")]
 pub mod ast_typescript_dispatch;
 pub mod big_o_analyzer;
+#[cfg(test)]
+mod big_o_analyzer_issue54_test;
 #[cfg(test)]
 mod big_o_analyzer_property_tests;
 pub mod cache;

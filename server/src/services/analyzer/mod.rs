@@ -8,8 +8,11 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+pub mod big_o;
 pub mod complexity;
 pub mod dead_code;
+pub mod defect;
+pub mod integration_tests;
 pub mod satd;
 
 /// Core analyzer trait for unified analysis framework
@@ -252,18 +255,18 @@ mod tests {
         let satd = SATDAnalyzer::new();
         
         // All analyzer names should be lowercase with underscores
-        assert_eq!(dead_code.name(), "dead_code");
-        assert_eq!(complexity.name(), "complexity");
-        assert_eq!(satd.name(), "satd");
+        assert_eq!(Analyzer::name(&dead_code), "dead_code");
+        assert_eq!(Analyzer::name(&complexity), "complexity");
+        assert_eq!(Analyzer::name(&satd), "satd");
         
         // All analyzers should have version information
-        assert_eq!(dead_code.version(), env!("CARGO_PKG_VERSION"));
-        assert_eq!(complexity.version(), env!("CARGO_PKG_VERSION"));
-        assert_eq!(satd.version(), env!("CARGO_PKG_VERSION"));
+        assert_eq!(Analyzer::version(&dead_code), env!("CARGO_PKG_VERSION"));
+        assert_eq!(Analyzer::version(&complexity), env!("CARGO_PKG_VERSION"));
+        assert_eq!(Analyzer::version(&satd), env!("CARGO_PKG_VERSION"));
         
         // All analyzers should have meaningful descriptions
-        assert!(!dead_code.description().is_empty());
-        assert!(!complexity.description().is_empty());
-        assert!(!satd.description().is_empty());
+        assert!(!AnalyzerInfo::description(&dead_code).is_empty());
+        assert!(!AnalyzerInfo::description(&complexity).is_empty());
+        assert!(!AnalyzerInfo::description(&satd).is_empty());
     }
 }
