@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.40.1] - 2025-09-01
+
 ### Fixed
 - **Critical Bug Fix (Issue #54)**: Big-O analyzer function count discrepancy
   - Fixed Big-O analyzer matching ALL language patterns on every file
