@@ -10,6 +10,7 @@ use std::path::Path;
 
 pub mod complexity;
 pub mod dead_code;
+pub mod satd;
 
 /// Core analyzer trait for unified analysis framework
 #[async_trait]
