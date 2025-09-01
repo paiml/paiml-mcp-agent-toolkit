@@ -210,4 +210,60 @@ mod tests {
         assert!(!config.strict_mode);
         assert!(config.language.is_none());
     }
+    
+    #[test]
+    fn test_unified_analyzer_framework() {
+        use crate::services::analyzer::{complexity::ComplexityAnalyzer, dead_code::DeadCodeAnalyzer, satd::SATDAnalyzer};
+        
+        let mut registry = AnalyzerRegistry::new();
+        
+        // Register all unified analyzers
+        registry.register(DeadCodeAnalyzer::new());
+        registry.register(ComplexityAnalyzer::new());
+        registry.register(SATDAnalyzer::new());
+        
+        // Verify all analyzers are registered
+        assert_eq!(registry.list_analyzers().len(), 3);
+        assert!(registry.list_analyzers().contains(&"dead_code"));
+        assert!(registry.list_analyzers().contains(&"complexity"));
+        assert!(registry.list_analyzers().contains(&"satd"));
+        
+        // Test analyzer info retrieval
+        let dead_code_info = registry.get_info("dead_code").unwrap();
+        assert_eq!(dead_code_info.name(), "dead_code");
+        assert!(dead_code_info.description().contains("unreachable"));
+        
+        let complexity_info = registry.get_info("complexity").unwrap();
+        assert_eq!(complexity_info.name(), "complexity");
+        assert!(complexity_info.description().contains("complexity"));
+        
+        let satd_info = registry.get_info("satd").unwrap();
+        assert_eq!(satd_info.name(), "satd");
+        assert!(satd_info.description().contains("Technical Debt"));
+    }
+    
+    #[test]
+    fn test_analyzer_consistency() {
+        use crate::services::analyzer::{complexity::ComplexityAnalyzer, dead_code::DeadCodeAnalyzer, satd::SATDAnalyzer};
+        
+        // Ensure all analyzers follow naming convention
+        let dead_code = DeadCodeAnalyzer::new();
+        let complexity = ComplexityAnalyzer::new();
+        let satd = SATDAnalyzer::new();
+        
+        // All analyzer names should be lowercase with underscores
+        assert_eq!(dead_code.name(), "dead_code");
+        assert_eq!(complexity.name(), "complexity");
+        assert_eq!(satd.name(), "satd");
+        
+        // All analyzers should have version information
+        assert_eq!(dead_code.version(), env!("CARGO_PKG_VERSION"));
+        assert_eq!(complexity.version(), env!("CARGO_PKG_VERSION"));
+        assert_eq!(satd.version(), env!("CARGO_PKG_VERSION"));
+        
+        // All analyzers should have meaningful descriptions
+        assert!(!dead_code.description().is_empty());
+        assert!(!complexity.description().is_empty());
+        assert!(!satd.description().is_empty());
+    }
 }
