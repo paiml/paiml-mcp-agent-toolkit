@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+pub mod complexity;
 pub mod dead_code;
 
 /// Core analyzer trait for unified analysis framework
