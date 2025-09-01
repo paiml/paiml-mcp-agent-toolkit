@@ -136,8 +136,8 @@ mod tests {
     #[tokio::test]
     async fn test_satd_analyzer_creation() {
         let analyzer = SATDAnalyzer::new();
-        assert_eq!(analyzer.name(), "satd");
-        assert_eq!(analyzer.version(), env!("CARGO_PKG_VERSION"));
+        assert_eq!(Analyzer::name(&analyzer), "satd");
+        assert_eq!(Analyzer::version(&analyzer), env!("CARGO_PKG_VERSION"));
     }
     
     #[tokio::test]
@@ -151,14 +151,14 @@ mod tests {
     #[tokio::test]
     async fn test_analyzer_info() {
         let analyzer = SATDAnalyzer::new();
-        assert_eq!(analyzer.name(), "satd");
-        assert!(analyzer.description().contains("Technical Debt"));
+        assert_eq!(Analyzer::name(&analyzer), "satd");
+        assert!(AnalyzerInfo::description(&analyzer).contains("Technical Debt"));
     }
     
     #[tokio::test]
     async fn test_factory_creation() {
         let analyzer = SATDAnalyzerFactory::create();
-        assert_eq!(analyzer.name(), "satd");
+        assert_eq!(Analyzer::name(&analyzer), "satd");
         
         let strict_analyzer = SATDAnalyzerFactory::create_strict();
         assert_eq!(strict_analyzer.name(), "satd");
@@ -200,7 +200,7 @@ mod tests {
     #[tokio::test]
     async fn test_strict_mode_analyzer() {
         let analyzer = SATDAnalyzer::new_with_strict_mode(true);
-        assert_eq!(analyzer.name(), "satd");
+        assert_eq!(Analyzer::name(&analyzer), "satd");
         
         // In strict mode, analyzer should still work but potentially find more issues
         let temp_dir = TempDir::new().unwrap();
