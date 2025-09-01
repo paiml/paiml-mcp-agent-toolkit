@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Targeting TDG Score 95+/100 (A+ grade) - Need 2.9 more points
 - All-night Toyota Way refactoring session - relentless progress
 
-#### Sprint 37 Achievements (10 functions refactored)
+#### Sprint 37 Achievements (11 functions refactored)
 - **print_checks_to_run**: Complexity 19 → ≤8 (-58% reduction)
   - Extracted 3 helper functions for check printing
 - **format_qg_as_junit**: Complexity 18 → ≤8 (-56% reduction)
@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Extracted 4 helper functions for TDG analysis
 - **format_tdg_summary**: Complexity 14 → ≤8 (-43% reduction)
   - Extracted 5 helper functions for TDG formatting
+- **handle_analyze_satd**: Complexity ~20 → ≤8 (-60% reduction)
+  - Extracted 7 helper functions for SATD analysis
+  - Clean separation: initialization, analysis, filtering, formatting, output, violations
 
 ## [2.42.0] - 2025-08-31
 
