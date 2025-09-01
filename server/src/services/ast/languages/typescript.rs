@@ -1,0 +1,49 @@
+// Toyota Way: Unified TypeScript AST Strategy
+//
+// Consolidates functionality from ast_typescript.rs and ast_typescript_dispatch.rs
+
+use super::super::AstStrategy;
+use crate::services::context::FileContext;
+use crate::services::file_classifier::FileClassifier;
+use anyhow::Result;
+use async_trait::async_trait;
+use std::path::Path;
+
+/// TypeScript AST analysis strategy
+#[cfg(feature = "typescript-ast")]
+pub struct TypeScriptStrategy;
+
+#[cfg(feature = "typescript-ast")]
+impl TypeScriptStrategy {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+#[cfg(feature = "typescript-ast")]
+#[async_trait]
+impl AstStrategy for TypeScriptStrategy {
+    async fn analyze(
+        &self,
+        file_path: &Path,
+        _classifier: &FileClassifier,
+    ) -> Result<FileContext> {
+        // Delegate to existing TypeScript analysis
+        // Convert TemplateError to anyhow::Error
+        let context = crate::services::ast_typescript::analyze_typescript_file(file_path).await
+            .map_err(|e| anyhow::anyhow!("TypeScript analysis failed: {}", e))?;
+        Ok(context)
+    }
+    
+    fn primary_extension(&self) -> &'static str {
+        "ts"
+    }
+    
+    fn supported_extensions(&self) -> Vec<&'static str> {
+        vec!["ts", "tsx"]
+    }
+    
+    fn language_name(&self) -> &'static str {
+        "TypeScript"
+    }
+}

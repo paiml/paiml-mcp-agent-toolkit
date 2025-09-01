@@ -431,6 +431,7 @@ pub struct ProfilingSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio::time::Duration;
 
     #[tokio::test]
     async fn test_operation_profiling() {

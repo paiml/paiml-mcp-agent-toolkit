@@ -48,6 +48,10 @@
 //! ```
 
 use crate::models::complexity_bound::{BigOClass, ComplexityBound};
+
+#[cfg(test)]
+#[path = "big_o_analyzer_issue54_test.rs"]
+mod issue54_tests;
 use crate::services::complexity_patterns::{ComplexityAnalysisResult, ComplexityPatternMatcher};
 use anyhow::Result;
 use std::path::PathBuf;
@@ -308,43 +312,53 @@ impl BigOAnalyzer {
         let content = tokio::fs::read_to_string(file_path).await?;
         let mut functions = Vec::new();
 
-        // Simple function detection
-        let function_patterns = [
-            (r"fn\s+(\w+)", "rust"),
-            (r"function\s+(\w+)", "javascript"),
-            (r"def\s+(\w+)", "python"),
-            (r"func\s+(\w+)", "go"),
-            (
-                r"(public|private|protected)?\s*(static)?\s*\w+\s+(\w+)\s*\(",
-                "java",
-            ),
-        ];
+        // Detect language based on file extension
+        let extension = file_path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .unwrap_or("");
+        
+        let (pattern, lang) = match extension {
+            "rs" => (r"fn\s+(\w+)", "rust"),
+            "js" | "jsx" => (r"function\s+(\w+)", "javascript"),
+            "ts" | "tsx" => (r"function\s+(\w+)", "typescript"),
+            "py" => (r"def\s+(\w+)", "python"),
+            "go" => (r"func\s+(\w+)", "go"),
+            "java" => (r"(public|private|protected)?\s*(static)?\s*\w+\s+(\w+)\s*\(", "java"),
+            "c" | "cpp" | "cc" | "cxx" | "h" | "hpp" => {
+                // For C/C++, use a more specific pattern
+                (r"(?:int|void|bool|char|float|double|long|short|unsigned|static|const)*\s+(\w+)\s*\([^)]*\)\s*\{", "c")
+            },
+            _ => {
+                // Unknown file type, skip analysis
+                return Ok(functions);
+            }
+        };
 
-        for (pattern, lang) in &function_patterns {
-            let regex = regex::Regex::new(pattern)?;
-            for cap in regex.captures_iter(&content) {
-                if let Some(name_match) = cap.get(cap.len() - 1) {
-                    let function_name = name_match.as_str().to_string();
-                    let line_number = content[..name_match.start()].lines().count();
+        // Use only the appropriate pattern for this file's language
+        let regex = regex::Regex::new(pattern)?;
+        for cap in regex.captures_iter(&content) {
+            if let Some(name_match) = cap.get(cap.len() - 1) {
+                let function_name = name_match.as_str().to_string();
+                let line_number = content[..name_match.start()].lines().count();
 
-                    // Analyze function complexity
-                    let complexity = self.analyze_function_complexity(
-                        &function_name,
-                        &content[name_match.start()..],
-                        lang,
-                    );
+                // Analyze function complexity
+                let complexity = self.analyze_function_complexity(
+                    &function_name,
+                    &content[name_match.start()..],
+                    lang,
+                );
 
-                    if complexity.confidence >= config.confidence_threshold {
-                        functions.push(FunctionComplexity {
-                            file_path: file_path.clone(),
-                            function_name,
-                            line_number,
-                            time_complexity: complexity.time_complexity,
-                            space_complexity: complexity.space_complexity,
-                            confidence: complexity.confidence,
-                            notes: complexity.notes,
-                        });
-                    }
+                if complexity.confidence >= config.confidence_threshold {
+                    functions.push(FunctionComplexity {
+                        file_path: file_path.clone(),
+                        function_name,
+                        line_number,
+                        time_complexity: complexity.time_complexity,
+                        space_complexity: complexity.space_complexity,
+                        confidence: complexity.confidence,
+                        notes: complexity.notes,
+                    });
                 }
             }
         }
