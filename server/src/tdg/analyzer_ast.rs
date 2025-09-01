@@ -5,10 +5,11 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use crate::tdg::{
-    config::TdgConfig, AdaptiveThresholdFactory, AdaptiveThresholdManager, AnalysisMetadata, 
-    ComponentScores, FileIdentity, FullTdgRecord, Grade, Language, MetricCategory, OperationPriority, PenaltyTracker, PlatformResourceController, ProjectScore, 
-    ResourceControllerFactory, SchedulerFactory, SemanticSignature, SimpleFairScheduler, 
-    TdgScore, TieredStore, TieredStorageFactory,
+    config::TdgConfig, AdaptiveThresholdFactory, AdaptiveThresholdManager, AnalysisMetadata,
+    ComponentScores, FileIdentity, FullTdgRecord, Grade, Language, MetricCategory,
+    OperationPriority, PenaltyTracker, PlatformResourceController, ProjectScore,
+    ResourceControllerFactory, SchedulerFactory, SemanticSignature, SimpleFairScheduler, TdgScore,
+    TieredStorageFactory, TieredStore,
 };
 
 /// AST-based TDG analyzer - proper implementation per specification
@@ -32,9 +33,9 @@ impl TdgAnalyzerAst {
     }
 
     pub fn with_config(config: TdgConfig) -> Result<Self> {
-        Ok(Self { 
-            config, 
-            storage: None, 
+        Ok(Self {
+            config,
+            storage: None,
             scheduler: None,
             adaptive_manager: None,
             resource_controller: None,
@@ -61,10 +62,10 @@ impl TdgAnalyzerAst {
         let scheduler = SchedulerFactory::create_background_optimized();
         let adaptive_manager = AdaptiveThresholdFactory::create_prod_optimized();
         let resource_controller = ResourceControllerFactory::create_prod_optimized();
-        
+
         // Start resource monitoring
         resource_controller.start_monitoring().await?;
-        
+
         Ok(Self {
             config,
             storage: Some(storage),
@@ -75,32 +76,41 @@ impl TdgAnalyzerAst {
     }
 
     pub async fn analyze_file(&self, path: &Path) -> Result<TdgScore> {
-        self.analyze_file_with_priority(path, OperationPriority::Medium).await
+        self.analyze_file_with_priority(path, OperationPriority::Medium)
+            .await
     }
 
-    pub async fn analyze_file_with_priority(&self, path: &Path, priority: OperationPriority) -> Result<TdgScore> {
+    pub async fn analyze_file_with_priority(
+        &self,
+        path: &Path,
+        priority: OperationPriority,
+    ) -> Result<TdgScore> {
         let start_time = SystemTime::now();
         let language = Language::from_extension(path);
-        
+
         // Request resources if resource controller is available
         let _resource_allocation = if let Some(controller) = &self.resource_controller {
             let estimated_memory = self.estimate_analysis_memory(path)?;
-            Some(controller.request_resources(
-                format!("analyze_{}", path.display()),
-                crate::tdg::resource_control::OperationType::Analysis,
-                priority,
-                estimated_memory,
-            ).await?)
+            Some(
+                controller
+                    .request_resources(
+                        format!("analyze_{}", path.display()),
+                        crate::tdg::resource_control::OperationType::Analysis,
+                        priority,
+                        estimated_memory,
+                    )
+                    .await?,
+            )
         } else {
             None
         };
 
         let source = fs::read_to_string(path)?;
-        
+
         // Calculate content hash for caching
         let content_hash = blake3::hash(source.as_bytes());
         let mut cache_hit = false;
-        
+
         // Check storage cache if available
         if let Some(storage) = &self.storage {
             if let Some(hot_entry) = storage.get_hot(&content_hash) {
@@ -111,7 +121,7 @@ impl TdgAnalyzerAst {
                     let sample = adaptive.create_sample(duration, cache_hit, 0).await;
                     adaptive.record_sample(sample).await?;
                 }
-                
+
                 // Return cached score with updated timestamp
                 let mut cached_score = TdgScore {
                     total: hot_entry.total_score,
@@ -125,12 +135,12 @@ impl TdgAnalyzerAst {
                 return Ok(cached_score);
             }
         }
-        
+
         // Perform fresh analysis
         let analysis_start = SystemTime::now();
         let score = self.analyze_source(&source, language, Some(path.to_path_buf()))?;
         let analysis_duration = analysis_start.elapsed().unwrap_or_default();
-        
+
         // Store in tiered storage if enabled
         if let Some(storage) = &self.storage {
             let file_metadata = fs::metadata(path)?;
@@ -151,7 +161,9 @@ impl TdgAnalyzerAst {
                 },
                 semantic_sig: SemanticSignature {
                     ast_structure_hash: u64::from_le_bytes(
-                        blake3::hash(source.as_bytes()).as_bytes()[0..8].try_into().unwrap()
+                        blake3::hash(source.as_bytes()).as_bytes()[0..8]
+                            .try_into()
+                            .unwrap(),
                     ),
                     identifier_pattern: String::new(),
                     control_flow_pattern: String::new(),
@@ -165,44 +177,54 @@ impl TdgAnalyzerAst {
                     cache_hit: false,
                 },
             };
-            
+
             storage.store(record).await?;
         }
-        
+
         // Record performance sample for fresh analysis
         if let Some(adaptive) = &self.adaptive_manager {
             let total_duration = start_time.elapsed().unwrap_or_default();
             let sample = adaptive.create_sample(total_duration, cache_hit, 0).await;
             adaptive.record_sample(sample).await?;
         }
-        
+
         Ok(score)
     }
-    
+
     /// Analyze file with commit priority (for git hooks, CI/CD)
     pub async fn analyze_file_commit(&self, path: &Path) -> Result<TdgScore> {
         let _guard = if let Some(scheduler) = &self.scheduler {
-            Some(scheduler.schedule_commit(path.to_path_buf()).await
-                .map_err(|e| anyhow::anyhow!("Scheduling failed: {}", e))?)
+            Some(
+                scheduler
+                    .schedule_commit(path.to_path_buf())
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Scheduling failed: {}", e))?,
+            )
         } else {
             None
         };
-        
-        self.analyze_file_with_priority(path, OperationPriority::Critical).await
+
+        self.analyze_file_with_priority(path, OperationPriority::Critical)
+            .await
     }
-    
+
     /// Analyze file with background priority (for daemon, IDE plugins)
     pub async fn analyze_file_background(&self, path: &Path) -> Result<TdgScore> {
         let _guard = if let Some(scheduler) = &self.scheduler {
-            Some(scheduler.schedule_background(path.to_path_buf()).await
-                .map_err(|e| anyhow::anyhow!("Scheduling failed: {}", e))?)
+            Some(
+                scheduler
+                    .schedule_background(path.to_path_buf())
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Scheduling failed: {}", e))?,
+            )
         } else {
             None
         };
-        
-        self.analyze_file_with_priority(path, OperationPriority::Low).await
+
+        self.analyze_file_with_priority(path, OperationPriority::Low)
+            .await
     }
-    
+
     /// Get scheduler statistics for diagnostics
     pub async fn get_scheduler_stats(&self) -> Option<crate::tdg::SchedulingStatistics> {
         if let Some(scheduler) = &self.scheduler {
@@ -211,7 +233,7 @@ impl TdgAnalyzerAst {
             None
         }
     }
-    
+
     /// Get adaptive threshold statistics for diagnostics
     pub async fn get_adaptive_stats(&self) -> Option<crate::tdg::PerformanceStatistics> {
         if let Some(adaptive) = &self.adaptive_manager {
@@ -220,7 +242,7 @@ impl TdgAnalyzerAst {
             None
         }
     }
-    
+
     /// Get current adaptive thresholds
     pub async fn get_current_thresholds(&self) -> Option<crate::tdg::CurrentThresholds> {
         if let Some(adaptive) = &self.adaptive_manager {
@@ -229,7 +251,7 @@ impl TdgAnalyzerAst {
             None
         }
     }
-    
+
     /// Reset adaptive thresholds to defaults
     pub async fn reset_adaptive_thresholds(&self) -> Result<()> {
         if let Some(adaptive) = &self.adaptive_manager {
@@ -237,7 +259,7 @@ impl TdgAnalyzerAst {
         }
         Ok(())
     }
-    
+
     /// Get resource controller statistics for diagnostics
     pub async fn get_resource_stats(&self) -> Option<crate::tdg::ResourceEnforcementStats> {
         if let Some(controller) = &self.resource_controller {
@@ -246,7 +268,7 @@ impl TdgAnalyzerAst {
             None
         }
     }
-    
+
     /// Get current resource usage
     pub async fn get_resource_usage(&self) -> Option<crate::tdg::ResourceUsage> {
         if let Some(controller) = &self.resource_controller {
@@ -255,27 +277,27 @@ impl TdgAnalyzerAst {
             None
         }
     }
-    
+
     /// Estimate memory required for file analysis
     fn estimate_analysis_memory(&self, path: &Path) -> Result<f64> {
         let metadata = fs::metadata(path)?;
         let file_size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
-        
+
         // Estimate memory as 3-5x file size (for AST parsing, analysis structures)
         let base_memory = file_size_mb * 4.0;
-        
+
         // Add language-specific memory overhead
         let language = Language::from_extension(path);
         let language_overhead = match language {
-            Language::Rust => 20.0, // Rust AST is memory intensive
+            Language::Rust => 20.0,              // Rust AST is memory intensive
             Language::Cpp | Language::C => 15.0, // C++ templates can be large
-            Language::Java => 12.0, // Java reflection analysis
-            Language::TypeScript => 10.0, // TS type checking
-            Language::Python => 8.0, // Python AST is relatively compact
-            Language::JavaScript => 6.0, // JS AST is simple
-            _ => 5.0, // Default overhead for other languages
+            Language::Java => 12.0,              // Java reflection analysis
+            Language::TypeScript => 10.0,        // TS type checking
+            Language::Python => 8.0,             // Python AST is relatively compact
+            Language::JavaScript => 6.0,         // JS AST is simple
+            _ => 5.0,                            // Default overhead for other languages
         };
-        
+
         Ok((base_memory + language_overhead).max(5.0)) // Minimum 5MB estimate
     }
 
@@ -557,9 +579,9 @@ impl TdgAnalyzerAst {
 
             let mut parser = Parser::new();
             let language = if score.language == Language::Cpp {
-tree_sitter_cpp::language()
+                tree_sitter_cpp::language()
             } else {
-tree_sitter_c::language()
+                tree_sitter_c::language()
             };
 
             parser
@@ -905,7 +927,6 @@ tree_sitter_c::language()
 
     fn score_consistency_rust(&self, _ast: &syn::File, _tracker: &mut PenaltyTracker) -> f32 {
         // Check naming conventions for Rust
-        
 
         // Rust naming convention analysis: snake_case for functions/variables, PascalCase for types
         // Returns full score as this represents completed implementation with proper conventions
@@ -1002,7 +1023,7 @@ tree_sitter_c::language()
 
     #[cfg(not(any(feature = "c-ast", feature = "cpp-ast")))]
     fn calculate_max_function_length(&self, _source: &str) -> usize {
-        // Simplified implementation for rust-only builds  
+        // Simplified implementation for rust-only builds
         20 // Default approximation
     }
 
@@ -1283,7 +1304,7 @@ impl PythonComplexityVisitor {
             }
         }
     }
-    
+
     fn analyze_python_statement(&mut self, _stmt: &rustpython_parser::ast::Stmt) {
         // Simplified Python statement analysis - proper implementation deferred
         // This fixes the compilation error while maintaining basic functionality

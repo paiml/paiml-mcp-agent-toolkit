@@ -1,13 +1,12 @@
+use crate::cli::commands::{DiagnosticOutputFormat, StorageCommand, TdgCommand};
+use crate::cli::handlers::tdg_diagnostic_handler;
+use crate::tdg::{
+    AdaptiveThresholdFactory, SchedulerFactory, StorageBackendType, StorageConfig, TdgAnalyzer,
+    TieredStorageFactory,
+};
 use anyhow::Result;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
-use crate::tdg::{
-    TdgAnalyzer, TieredStorageFactory,
-    SchedulerFactory, AdaptiveThresholdFactory,
-    StorageBackendType, StorageConfig,
-};
-use crate::cli::handlers::tdg_diagnostic_handler;
-use crate::cli::commands::{DiagnosticOutputFormat, StorageCommand, TdgCommand};
 
 // Simple placeholder implementations that return success results
 // In a full implementation, these would call the actual CLI handlers with proper arguments
@@ -305,7 +304,7 @@ pub async fn tdg_system_diagnostics(
     components: Vec<String>, // ["storage", "scheduler", "adaptive", "resources"]
 ) -> Result<Value> {
     let base_path = PathBuf::from(".");
-    
+
     // Create diagnostic command
     let show_all = components.contains(&"all".to_string()) || components.is_empty();
     let command = TdgCommand::Diagnostics {
@@ -317,16 +316,16 @@ pub async fn tdg_system_diagnostics(
         all: show_all,
         format: DiagnosticOutputFormat::Json,
     };
-    
+
     // Execute diagnostics
     match tdg_diagnostic_handler::handle_tdg_diagnostics(&command, &base_path).await {
         Ok(_) => Ok(json!({
             "status": "completed",
             "message": "TDG system diagnostics completed",
             "result_type": "diagnostics",
-            "components_checked": if show_all { 
-                vec!["storage", "scheduler", "adaptive", "resources"] 
-            } else { 
+            "components_checked": if show_all {
+                vec!["storage", "scheduler", "adaptive", "resources"]
+            } else {
                 components.iter().map(|s| s.as_str()).collect::<Vec<&str>>()
             },
             "detailed": detailed
@@ -335,7 +334,7 @@ pub async fn tdg_system_diagnostics(
             "status": "error",
             "message": format!("Diagnostics failed: {}", e),
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
@@ -345,28 +344,45 @@ pub async fn tdg_storage_management(
     options: Value,
 ) -> Result<Value> {
     let base_path = PathBuf::from(".");
-    
+
     let storage_command = match action.as_str() {
         "stats" => StorageCommand::Stats {
-            detailed: options.get("detailed").and_then(|v| v.as_bool()).unwrap_or(false),
+            detailed: options
+                .get("detailed")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false),
         },
         "cleanup" => StorageCommand::Cleanup {
-            max_age: options.get("max_age").and_then(|v| v.as_u64()).unwrap_or(3600),
+            max_age: options
+                .get("max_age")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(3600),
         },
         "flush" => StorageCommand::Flush,
         "migrate" => StorageCommand::Migrate {
-            backend: options.get("backend").and_then(|v| v.as_str()).unwrap_or("sled").to_string(),
-            path: options.get("path").and_then(|v| v.as_str()).map(PathBuf::from),
+            backend: options
+                .get("backend")
+                .and_then(|v| v.as_str())
+                .unwrap_or("sled")
+                .to_string(),
+            path: options
+                .get("path")
+                .and_then(|v| v.as_str())
+                .map(PathBuf::from),
         },
-        _ => return Ok(json!({
-            "status": "error",
-            "message": format!("Unknown storage action: {}", action),
-            "valid_actions": ["stats", "cleanup", "flush", "migrate"]
-        })),
+        _ => {
+            return Ok(json!({
+                "status": "error",
+                "message": format!("Unknown storage action: {}", action),
+                "valid_actions": ["stats", "cleanup", "flush", "migrate"]
+            }))
+        }
     };
-    
-    let command = TdgCommand::Storage { command: storage_command };
-    
+
+    let command = TdgCommand::Storage {
+        command: storage_command,
+    };
+
     match tdg_diagnostic_handler::handle_tdg_diagnostics(&command, &base_path).await {
         Ok(_) => Ok(json!({
             "status": "completed",
@@ -379,7 +395,7 @@ pub async fn tdg_storage_management(
             "status": "error",
             "message": format!("Storage {} failed: {}", action, e),
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
@@ -387,7 +403,7 @@ pub async fn tdg_storage_management(
 pub async fn tdg_analyze_with_storage(
     paths: Vec<PathBuf>,
     storage_backend: Option<String>, // "sled", "rocksdb", "inmemory"
-    priority: Option<String>, // "critical", "high", "medium", "low"
+    priority: Option<String>,        // "critical", "high", "medium", "low"
 ) -> Result<Value> {
     // Create appropriate storage backend
     let storage = match storage_backend.as_deref() {
@@ -397,19 +413,21 @@ pub async fn tdg_analyze_with_storage(
         Some("rocksdb") => {
             let temp_path = std::env::temp_dir().join("tdg-mcp-rocksdb");
             TieredStorageFactory::create_with_rocksdb(&temp_path)?
-        },
-        Some(backend) => return Ok(json!({
-            "status": "error",
-            "message": format!("Unsupported storage backend: {}", backend),
-            "supported_backends": ["sled", "inmemory", "rocksdb"]
-        })),
+        }
+        Some(backend) => {
+            return Ok(json!({
+                "status": "error",
+                "message": format!("Unsupported storage backend: {}", backend),
+                "supported_backends": ["sled", "inmemory", "rocksdb"]
+            }))
+        }
     };
-    
+
     let analyzer = TdgAnalyzer::new()?;
     let mut results = Vec::new();
     let mut total_files = 0;
     let mut avg_score = 0.0;
-    
+
     for path in paths {
         match if path.is_dir() {
             analyzer.analyze_project(&path).await
@@ -422,14 +440,14 @@ pub async fn tdg_analyze_with_storage(
             Ok(project_score) => {
                 total_files += project_score.total_files;
                 avg_score += project_score.average_score;
-                
+
                 // Store results in TDG storage system
                 for file_score in &project_score.files {
                     if let Some(file_path) = &file_score.file_path {
                         // Create a full TDG record for storage
                         let content = std::fs::read(file_path).unwrap_or_default();
                         let hash = blake3::hash(&content);
-                        
+
                         let record = crate::tdg::FullTdgRecord {
                             identity: crate::tdg::FileIdentity {
                                 path: file_path.clone(),
@@ -446,7 +464,8 @@ pub async fn tdg_analyze_with_storage(
                                 consistency_violations: Vec::new(),
                             },
                             semantic_sig: crate::tdg::SemanticSignature {
-                                ast_structure_hash: hash.as_bytes()[0..8].iter()
+                                ast_structure_hash: hash.as_bytes()[0..8]
+                                    .iter()
                                     .fold(0u64, |acc, &b| acc.wrapping_mul(256) + b as u64),
                                 identifier_pattern: "mcp_analysis".to_string(),
                                 control_flow_pattern: "function_call".to_string(),
@@ -460,14 +479,14 @@ pub async fn tdg_analyze_with_storage(
                                 cache_hit: false,
                             },
                         };
-                        
+
                         // Store in TDG system
                         if let Err(e) = storage.store(record).await {
                             eprintln!("Warning: Failed to store TDG record: {}", e);
                         }
                     }
                 }
-                
+
                 results.push(json!({
                     "path": path.display().to_string(),
                     "total_files": project_score.total_files,
@@ -485,14 +504,14 @@ pub async fn tdg_analyze_with_storage(
             }
         }
     }
-    
+
     if total_files > 0 {
         avg_score /= results.len() as f32;
     }
-    
+
     // Get storage statistics
     let storage_stats = storage.get_statistics();
-    
+
     Ok(json!({
         "status": "completed",
         "message": "TDG analysis with transactional storage completed",
@@ -519,11 +538,11 @@ pub async fn tdg_performance_metrics() -> Result<Value> {
     let adaptive = AdaptiveThresholdFactory::create_default();
     let thresholds = adaptive.get_current_thresholds().await;
     let performance = adaptive.get_performance_stats().await;
-    
+
     // Create scheduler for scheduling stats
     let scheduler = SchedulerFactory::create_balanced();
     let scheduler_stats = scheduler.get_statistics().await;
-    
+
     Ok(json!({
         "status": "completed",
         "message": "TDG performance metrics retrieved",
@@ -563,20 +582,22 @@ pub async fn tdg_configure_storage(
         "sled" => StorageBackendType::Sled,
         "inmemory" => StorageBackendType::InMemory,
         "rocksdb" => StorageBackendType::RocksDb,
-        _ => return Ok(json!({
-            "status": "error",
-            "message": format!("Unsupported backend type: {}", backend_type),
-            "supported_types": ["sled", "inmemory", "rocksdb"]
-        })),
+        _ => {
+            return Ok(json!({
+                "status": "error",
+                "message": format!("Unsupported backend type: {}", backend_type),
+                "supported_types": ["sled", "inmemory", "rocksdb"]
+            }))
+        }
     };
-    
+
     let config = StorageConfig {
         backend_type: backend_enum,
         path: path.clone().map(PathBuf::from),
         cache_size_mb,
         compression: compression.unwrap_or(true),
     };
-    
+
     // Test the configuration by creating a storage instance
     match crate::tdg::StorageBackendFactory::create_from_config(&config) {
         Ok(backend) => {
@@ -595,7 +616,7 @@ pub async fn tdg_configure_storage(
                 "backend_stats": stats,
                 "validation": "success"
             }))
-        },
+        }
         Err(e) => Ok(json!({
             "status": "error",
             "message": format!("Storage configuration validation failed: {}", e),
@@ -610,46 +631,52 @@ pub async fn tdg_health_check() -> Result<Value> {
     let mut health_issues = Vec::new();
     let mut recommendations = Vec::new();
     let mut overall_status = "healthy".to_string();
-    
+
     // Check storage health
     match TieredStorageFactory::create_default() {
         Ok(storage) => {
             let stats = storage.get_statistics();
-            if stats.hot_memory_kb > 100_000 { // > 100MB
+            if stats.hot_memory_kb > 100_000 {
+                // > 100MB
                 health_issues.push("High hot cache memory usage detected".to_string());
-                recommendations.push("Consider cleaning up hot cache or increasing archival frequency".to_string());
+                recommendations.push(
+                    "Consider cleaning up hot cache or increasing archival frequency".to_string(),
+                );
             }
             if stats.compression_ratio > 0.9 {
                 health_issues.push("Low compression ratio detected".to_string());
-                recommendations.push("Consider different compression settings or backend".to_string());
+                recommendations
+                    .push("Consider different compression settings or backend".to_string());
             }
-        },
+        }
         Err(e) => {
             health_issues.push(format!("Storage system unavailable: {}", e));
             overall_status = "critical".to_string();
         }
     }
-    
+
     // Check scheduler health
     let scheduler = SchedulerFactory::create_balanced();
     let scheduler_stats = scheduler.get_statistics().await;
     if scheduler_stats.avg_wait_time_ms > 1000 {
         health_issues.push("High scheduler wait times detected".to_string());
-        recommendations.push("Consider increasing scheduler permits or optimizing workload".to_string());
+        recommendations
+            .push("Consider increasing scheduler permits or optimizing workload".to_string());
     }
-    
+
     // Check adaptive thresholds health
     let adaptive = AdaptiveThresholdFactory::create_default();
     let performance = adaptive.get_performance_stats().await;
     if performance.avg_cache_hit_ratio < 0.7 {
         health_issues.push("Low cache hit ratio detected".to_string());
-        recommendations.push("Consider increasing cache size or reviewing access patterns".to_string());
+        recommendations
+            .push("Consider increasing cache size or reviewing access patterns".to_string());
     }
-    
+
     if !health_issues.is_empty() && overall_status == "healthy" {
         overall_status = "warning".to_string();
     }
-    
+
     Ok(json!({
         "status": "completed",
         "message": "TDG system health check completed",

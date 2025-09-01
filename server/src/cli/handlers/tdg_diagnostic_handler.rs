@@ -1,14 +1,11 @@
 use crate::cli::commands::{DiagnosticOutputFormat, StorageCommand, TdgCommand};
-use crate::tdg::{TieredStorageFactory, StorageBackendType, StorageConfig};
+use crate::tdg::{StorageBackendType, StorageConfig, TieredStorageFactory};
 use anyhow::Result;
 use serde_json::json;
 use std::path::PathBuf;
 
 /// Handle TDG diagnostic commands
-pub async fn handle_tdg_diagnostics(
-    command: &TdgCommand,
-    base_path: &PathBuf,
-) -> Result<()> {
+pub async fn handle_tdg_diagnostics(command: &TdgCommand, base_path: &PathBuf) -> Result<()> {
     match command {
         TdgCommand::Diagnostics {
             detailed,
@@ -35,9 +32,12 @@ pub async fn handle_tdg_diagnostics(
             // This is handled elsewhere in the existing TDG handler
             Ok(())
         }
-        TdgCommand::Dashboard { port, host, open, update_interval } => {
-            handle_dashboard_command(*port, host.clone(), *open, *update_interval).await
-        }
+        TdgCommand::Dashboard {
+            port,
+            host,
+            open,
+            update_interval,
+        } => handle_dashboard_command(*port, host.clone(), *open, *update_interval).await,
     }
 }
 
@@ -54,11 +54,11 @@ async fn show_diagnostics(
     // For now, we'll show basic storage diagnostics since that's what we have implemented
     let storage = TieredStorageFactory::create_at_path(base_path)?;
     let stats = storage.get_statistics();
-    
+
     match format {
         DiagnosticOutputFormat::Human => {
             println!("=== TDG System Diagnostics ===\n");
-            
+
             if show_storage {
                 println!("Storage Diagnostics:");
                 println!("{}", stats.format_diagnostic());
@@ -73,7 +73,7 @@ async fn show_diagnostics(
                 }
                 println!();
             }
-            
+
             // Placeholder for other diagnostics
             println!("Note: Full diagnostic infrastructure is in development.");
             println!("Currently showing storage statistics only.");
@@ -93,38 +93,38 @@ async fn show_diagnostics(
             println!("{}", serde_yaml::to_string(&yaml_output)?);
         }
         DiagnosticOutputFormat::Table => {
-            use prettytable::{Table, row};
-            
+            use prettytable::{row, Table};
+
             let mut table = Table::new();
             table.add_row(row!["Component", "Status", "Details"]);
-            
+
             if show_storage {
                 table.add_row(row![
                     "Storage",
                     format!("{} entries", stats.total_entries),
-                    format!("Hot: {}, Warm: {}, Cold: {}", 
-                        stats.hot_entries,
-                        stats.warm_entries,
-                        stats.cold_entries)
+                    format!(
+                        "Hot: {}, Warm: {}, Cold: {}",
+                        stats.hot_entries, stats.warm_entries, stats.cold_entries
+                    )
                 ]);
-                
+
                 table.add_row(row![
                     "Backends",
                     format!("Warm: {}", stats.warm_backend),
                     format!("Cold: {}", stats.cold_backend)
                 ]);
-                
+
                 table.add_row(row![
                     "Compression",
                     format!("{:.1}%", stats.compression_ratio * 100.0),
                     format!("Memory: {} KB", stats.hot_memory_kb)
                 ]);
             }
-            
+
             table.printstd();
         }
     }
-    
+
     Ok(())
 }
 
@@ -132,13 +132,13 @@ async fn show_diagnostics(
 async fn handle_storage_command(command: &StorageCommand, base_path: &PathBuf) -> Result<()> {
     // Create storage instance
     let storage = TieredStorageFactory::create_at_path(base_path)?;
-    
+
     match command {
         StorageCommand::Stats { detailed } => {
             let stats = storage.get_statistics();
             println!("=== TDG Storage Statistics ===\n");
             println!("{}", stats.format_diagnostic());
-            
+
             if *detailed {
                 println!("\nBackend Statistics:");
                 for (tier, backend_stats) in &stats.backend_stats {
@@ -165,7 +165,7 @@ async fn handle_storage_command(command: &StorageCommand, base_path: &PathBuf) -
                     ));
                 }
             };
-            
+
             // Create new backend configurations
             let warm_config = StorageConfig {
                 backend_type,
@@ -173,16 +173,16 @@ async fn handle_storage_command(command: &StorageCommand, base_path: &PathBuf) -
                 cache_size_mb: Some(128),
                 compression: true,
             };
-            
+
             let cold_config = StorageConfig {
                 backend_type,
                 path: path.as_ref().map(|p| p.join("tdg-cold")),
                 cache_size_mb: Some(64),
                 compression: false,
             };
-            
+
             println!("Migrating storage to {} backend...", backend);
-            
+
             // Note: This requires mutable access to storage which we don't have here
             // In a real implementation, we'd need to refactor the storage API
             println!("⚠️  Migration requires restart to take effect");
@@ -195,7 +195,7 @@ async fn handle_storage_command(command: &StorageCommand, base_path: &PathBuf) -
             println!("✅ All pending writes flushed to storage");
         }
     }
-    
+
     Ok(())
 }
 
@@ -208,15 +208,18 @@ async fn handle_dashboard_command(
 ) -> Result<()> {
     use crate::tdg::web_dashboard::start_dashboard_server;
     use std::net::{IpAddr, SocketAddr};
-    
+
     println!("🚀 Starting TDG Dashboard server...");
-    
+
     let addr: IpAddr = host.parse()?;
     let socket_addr = SocketAddr::new(addr, port);
-    
-    println!("📊 Dashboard will be available at: http://{}:{}", host, port);
+
+    println!(
+        "📊 Dashboard will be available at: http://{}:{}",
+        host, port
+    );
     println!("🔄 Real-time metrics updates enabled");
-    
+
     // Open browser if requested
     if open {
         if let Err(e) = webbrowser::open(&format!("http://{}:{}", host, port)) {
@@ -225,11 +228,13 @@ async fn handle_dashboard_command(
             println!("🌐 Opening dashboard in browser...");
         }
     }
-    
+
     println!("Press Ctrl+C to stop the server");
-    
+
     // Start the dashboard server (this will block)
-    start_dashboard_server(socket_addr).await.map_err(|e| anyhow::anyhow!("Dashboard server error: {}", e))?;
-    
+    start_dashboard_server(socket_addr)
+        .await
+        .map_err(|e| anyhow::anyhow!("Dashboard server error: {}", e))?;
+
     Ok(())
 }

@@ -1305,7 +1305,7 @@ async fn run_satd_analysis(
     })
     .await
     .map_err(|_| anyhow::anyhow!("SATD analysis timed out after {} seconds", timeout))??;
-    
+
     Ok(result)
 }
 
@@ -1326,12 +1326,16 @@ fn apply_satd_filters(
             SatdSeverity::Medium => DetectorSeverity::Medium,
             SatdSeverity::Low => DetectorSeverity::Low,
         };
-        result.items.retain(|item| item.severity >= min_detector_severity);
+        result
+            .items
+            .retain(|item| item.severity >= min_detector_severity);
     }
 
     // Filter critical only
     if critical_only {
-        result.items.retain(|item| item.severity == DetectorSeverity::Critical);
+        result
+            .items
+            .retain(|item| item.severity == DetectorSeverity::Critical);
     }
 
     // Apply top files filter
@@ -1346,7 +1350,7 @@ fn filter_top_files(
     top_files: usize,
 ) {
     use std::collections::HashMap;
-    
+
     // Count items per file
     let mut file_counts: HashMap<std::path::PathBuf, usize> = HashMap::new();
     for item in &result.items {
@@ -1364,7 +1368,9 @@ fn filter_top_files(
         .collect();
 
     // Keep only items from top files
-    result.items.retain(|item| top_file_paths.contains(&item.file));
+    result
+        .items
+        .retain(|item| top_file_paths.contains(&item.file));
 }
 
 /// Toyota Way Helper: Format SATD output
@@ -1378,11 +1384,11 @@ fn format_satd_output(
     match format {
         SatdOutputFormat::Json => Ok(serde_json::to_string_pretty(&result)?),
         SatdOutputFormat::Sarif => {
-            let sarif = generate_satd_sarif(&result);
+            let sarif = generate_satd_sarif(result);
             Ok(serde_json::to_string_pretty(&sarif)?)
         }
-        SatdOutputFormat::Summary => Ok(format_satd_summary(&result, metrics)),
-        SatdOutputFormat::Markdown => Ok(format_satd_markdown(&result, metrics, evolution, days)),
+        SatdOutputFormat::Summary => Ok(format_satd_summary(result, metrics)),
+        SatdOutputFormat::Markdown => Ok(format_satd_markdown(result, metrics, evolution, days)),
     }
 }
 

@@ -1,8 +1,7 @@
 /// Diagnostic tools for Transactional Hashed TDG System
-/// 
+///
 /// Provides comprehensive monitoring, profiling, and debugging capabilities
 /// for the TDG system including storage, scheduling, and performance metrics.
-
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
@@ -80,8 +79,7 @@ pub struct ResourceDiagnostics {
 }
 
 /// Resource enforcement statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EnforcementStats {
     pub total_requests: u64,
     pub allowed: u64,
@@ -149,7 +147,7 @@ impl DiagnosticTool {
             analysis_count: 0,
         }
     }
-    
+
     /// Collect comprehensive system diagnostics
     pub async fn collect_diagnostics(
         &self,
@@ -159,34 +157,34 @@ impl DiagnosticTool {
         resources: Option<&PlatformResourceController>,
     ) -> Result<SystemDiagnostics> {
         let uptime = self.start_time.elapsed();
-        
+
         let storage_diag = if let Some(store) = storage {
             self.collect_storage_diagnostics(store).await?
         } else {
             StorageDiagnostics::default()
         };
-        
+
         let scheduler_diag = if let Some(sched) = scheduler {
             self.collect_scheduler_diagnostics(sched).await?
         } else {
             SchedulerDiagnostics::default()
         };
-        
+
         let adaptive_diag = if let Some(mgr) = adaptive {
             self.collect_adaptive_diagnostics(mgr).await?
         } else {
             AdaptiveDiagnostics::default()
         };
-        
+
         let resource_diag = if let Some(ctrl) = resources {
             self.collect_resource_diagnostics(ctrl).await?
         } else {
             ResourceDiagnostics::default()
         };
-        
+
         let performance_diag = self.calculate_performance_metrics();
         let health = self.assess_health(&storage_diag, &resource_diag, &performance_diag);
-        
+
         Ok(SystemDiagnostics {
             timestamp: SystemTime::now(),
             uptime,
@@ -198,11 +196,14 @@ impl DiagnosticTool {
             health,
         })
     }
-    
+
     /// Collect storage diagnostics
-    async fn collect_storage_diagnostics(&self, storage: &TieredStore) -> Result<StorageDiagnostics> {
+    async fn collect_storage_diagnostics(
+        &self,
+        storage: &TieredStore,
+    ) -> Result<StorageDiagnostics> {
         let stats = storage.get_statistics();
-        
+
         Ok(StorageDiagnostics {
             backend_type: "sled".to_string(),
             total_entries: stats.total_entries,
@@ -216,15 +217,18 @@ impl DiagnosticTool {
             },
             compression_ratio: stats.compression_ratio as f64,
             storage_size_mb: stats.hot_memory_kb as f64 / 1024.0,
-            last_archival: None, // Would need to track this
+            last_archival: None,        // Would need to track this
             deduplication_savings: 0.0, // Would need to calculate
         })
     }
-    
+
     /// Collect scheduler diagnostics
-    async fn collect_scheduler_diagnostics(&self, scheduler: &SimpleFairScheduler) -> Result<SchedulerDiagnostics> {
+    async fn collect_scheduler_diagnostics(
+        &self,
+        scheduler: &SimpleFairScheduler,
+    ) -> Result<SchedulerDiagnostics> {
         let stats = scheduler.get_statistics().await;
-        
+
         Ok(SchedulerDiagnostics {
             active_operations: stats.total_active_operations,
             queued_operations: 0, // Would need to track
@@ -240,29 +244,40 @@ impl DiagnosticTool {
             },
         })
     }
-    
+
     /// Collect adaptive threshold diagnostics
-    async fn collect_adaptive_diagnostics(&self, adaptive: &AdaptiveThresholdManager) -> Result<AdaptiveDiagnostics> {
+    async fn collect_adaptive_diagnostics(
+        &self,
+        adaptive: &AdaptiveThresholdManager,
+    ) -> Result<AdaptiveDiagnostics> {
         let thresholds = adaptive.get_current_thresholds().await;
         let stats = adaptive.get_performance_stats().await;
-        
+
         Ok(AdaptiveDiagnostics {
             current_cache_size: thresholds.hot_cache_size,
             current_compression_level: thresholds.compression_level as u32,
             high_priority_permits: thresholds.high_priority_permits,
             low_priority_permits: thresholds.low_priority_permits,
-            performance_trend: if stats.avg_analysis_duration_ms > 100.0 { "Degrading" } else { "Stable" }.to_string(),
+            performance_trend: if stats.avg_analysis_duration_ms > 100.0 {
+                "Degrading"
+            } else {
+                "Stable"
+            }
+            .to_string(),
             adjustments_made: stats.total_samples,
             avg_analysis_time_ms: stats.avg_analysis_duration_ms as f64,
             optimization_effectiveness: stats.avg_cache_hit_ratio as f64,
         })
     }
-    
+
     /// Collect resource diagnostics
-    async fn collect_resource_diagnostics(&self, controller: &PlatformResourceController) -> Result<ResourceDiagnostics> {
+    async fn collect_resource_diagnostics(
+        &self,
+        controller: &PlatformResourceController,
+    ) -> Result<ResourceDiagnostics> {
         let usage = controller.get_current_usage().await;
         let stats = controller.get_enforcement_stats().await;
-        
+
         Ok(ResourceDiagnostics {
             memory_usage_mb: usage.memory_mb,
             memory_limit_mb: 1024.0, // Would need to get from config
@@ -280,27 +295,29 @@ impl DiagnosticTool {
             },
         })
     }
-    
+
     /// Calculate performance metrics
     fn calculate_performance_metrics(&self) -> PerformanceDiagnostics {
         if self.performance_samples.is_empty() {
             return PerformanceDiagnostics::default();
         }
-        
-        let mut response_times: Vec<f64> = self.performance_samples
+
+        let mut response_times: Vec<f64> = self
+            .performance_samples
             .iter()
             .map(|s| s.response_time_ms)
             .collect();
         response_times.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        
+
         let len = response_times.len();
         let sum: f64 = response_times.iter().sum();
-        
-        let error_count = self.performance_samples
+
+        let error_count = self
+            .performance_samples
             .iter()
             .filter(|s| !s.success)
             .count() as f64;
-        
+
         PerformanceDiagnostics {
             analyses_per_hour: if self.start_time.elapsed().as_secs() > 0 {
                 (self.analysis_count as f64 * 3600.0) / self.start_time.elapsed().as_secs() as f64
@@ -315,7 +332,7 @@ impl DiagnosticTool {
             error_rate: error_count / len as f64,
         }
     }
-    
+
     /// Assess system health
     fn assess_health(
         &self,
@@ -325,46 +342,50 @@ impl DiagnosticTool {
     ) -> HealthStatus {
         let mut critical_reasons = Vec::new();
         let mut degraded_reasons = Vec::new();
-        
+
         // Check resource pressure
         if resources.memory_usage_mb > resources.memory_limit_mb * 0.95 {
             critical_reasons.push("Memory critical (>95%)".to_string());
         } else if resources.memory_usage_mb > resources.memory_limit_mb * 0.8 {
             degraded_reasons.push("Memory high (>80%)".to_string());
         }
-        
+
         if resources.cpu_utilization > 0.95 {
             critical_reasons.push("CPU critical (>95%)".to_string());
         } else if resources.cpu_utilization > 0.8 {
             degraded_reasons.push("CPU high (>80%)".to_string());
         }
-        
+
         // Check cache performance
         if storage.cache_hit_ratio < 0.5 {
             degraded_reasons.push("Low cache hit ratio (<50%)".to_string());
         }
-        
+
         // Check error rate
         if performance.error_rate > 0.1 {
             critical_reasons.push("High error rate (>10%)".to_string());
         } else if performance.error_rate > 0.05 {
             degraded_reasons.push("Elevated error rate (>5%)".to_string());
         }
-        
+
         // Check response times
         if performance.p99_response_time_ms > 5000.0 {
             degraded_reasons.push("Slow response times (p99 >5s)".to_string());
         }
-        
+
         if !critical_reasons.is_empty() {
-            HealthStatus::Critical { reasons: critical_reasons }
+            HealthStatus::Critical {
+                reasons: critical_reasons,
+            }
         } else if !degraded_reasons.is_empty() {
-            HealthStatus::Degraded { reasons: degraded_reasons }
+            HealthStatus::Degraded {
+                reasons: degraded_reasons,
+            }
         } else {
             HealthStatus::Healthy
         }
     }
-    
+
     /// Record a performance sample
     pub fn record_sample(&mut self, response_time_ms: f64, success: bool) {
         self.performance_samples.push(PerformanceSample {
@@ -372,23 +393,23 @@ impl DiagnosticTool {
             response_time_ms,
             success,
         });
-        
+
         if success {
             self.analysis_count += 1;
         } else {
             self.error_count += 1;
         }
-        
+
         // Keep only recent samples (last 1000)
         if self.performance_samples.len() > 1000 {
             self.performance_samples.drain(0..500);
         }
     }
-    
+
     /// Format diagnostics for display
     pub fn format_diagnostics(diag: &SystemDiagnostics) -> String {
         let local_time: DateTime<Local> = diag.timestamp.into();
-        
+
         format!(
             r#"
 ╔══════════════════════════════════════════════════════════════════╗
@@ -551,7 +572,6 @@ impl Default for ResourceDiagnostics {
     }
 }
 
-
 impl Default for PerformanceDiagnostics {
     fn default() -> Self {
         Self {
@@ -569,49 +589,49 @@ impl Default for PerformanceDiagnostics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_diagnostic_tool_creation() {
         let tool = DiagnosticTool::new();
         assert_eq!(tool.analysis_count, 0);
         assert_eq!(tool.error_count, 0);
     }
-    
+
     #[test]
     fn test_health_assessment() {
         let tool = DiagnosticTool::new();
-        
+
         let storage = StorageDiagnostics {
             cache_hit_ratio: 0.9,
             ..Default::default()
         };
-        
+
         let resources = ResourceDiagnostics {
             memory_usage_mb: 500.0,
             memory_limit_mb: 1024.0,
             cpu_utilization: 0.5,
             ..Default::default()
         };
-        
+
         let performance = PerformanceDiagnostics {
             error_rate: 0.01,
             p99_response_time_ms: 1000.0,
             ..Default::default()
         };
-        
+
         let health = tool.assess_health(&storage, &resources, &performance);
         assert_eq!(health, HealthStatus::Healthy);
     }
-    
+
     #[test]
     fn test_performance_sampling() {
         let mut tool = DiagnosticTool::new();
-        
+
         // Record some samples
         tool.record_sample(100.0, true);
         tool.record_sample(200.0, true);
         tool.record_sample(150.0, false);
-        
+
         assert_eq!(tool.analysis_count, 2);
         assert_eq!(tool.error_count, 1);
         assert_eq!(tool.performance_samples.len(), 3);

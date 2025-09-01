@@ -1232,7 +1232,6 @@ pub async fn handle_analyze_provability(
     output: Option<PathBuf>,
     top_files: usize,
 ) -> Result<()> {
-    
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
 
     eprintln!("🔬 Analyzing function provability...");
@@ -1271,7 +1270,7 @@ async fn get_function_ids(
     functions: &[String],
 ) -> Result<Vec<crate::services::lightweight_provability_analyzer::FunctionId>> {
     use crate::cli::provability_helpers::*;
-    
+
     if functions.is_empty() {
         discover_project_functions(project_path).await
     } else {
@@ -1284,12 +1283,9 @@ async fn get_function_ids(
 }
 
 /// Prepare summaries by filtering and converting
-fn prepare_summaries(
-    summaries: &[ProofSummary],
-    high_confidence_only: bool,
-) -> Vec<ProofSummary> {
+fn prepare_summaries(summaries: &[ProofSummary], high_confidence_only: bool) -> Vec<ProofSummary> {
     use crate::cli::provability_helpers::filter_summaries;
-    
+
     let filtered_summaries = filter_summaries(summaries, high_confidence_only);
     filtered_summaries.into_iter().cloned().collect()
 }
@@ -1303,7 +1299,7 @@ fn format_provability_output(
     top_files: usize,
 ) -> Result<String> {
     use crate::cli::provability_helpers::*;
-    
+
     match format {
         ProvabilityOutputFormat::Json => {
             format_provability_json(function_ids, summaries, include_evidence)
@@ -1314,17 +1310,12 @@ fn format_provability_output(
         ProvabilityOutputFormat::Full | ProvabilityOutputFormat::Markdown => {
             format_provability_detailed(function_ids, summaries, include_evidence)
         }
-        ProvabilityOutputFormat::Sarif => {
-            format_provability_sarif(function_ids, summaries)
-        }
+        ProvabilityOutputFormat::Sarif => format_provability_sarif(function_ids, summaries),
     }
 }
 
 /// Write provability output to file or stdout
-async fn write_provability_output(
-    output: Option<PathBuf>,
-    content: &str,
-) -> Result<()> {
+async fn write_provability_output(output: Option<PathBuf>, content: &str) -> Result<()> {
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, content).await?;
         eprintln!(
@@ -3240,7 +3231,7 @@ async fn run_individual_project_checks(
     perf: bool,
 ) -> Result<()> {
     use std::time::Instant;
-    
+
     for check in checks {
         let check_start = if perf { Some(Instant::now()) } else { None };
 
@@ -5051,14 +5042,13 @@ fn write_qg_violations_list(output: &mut String, violations: &[QualityViolation]
 // Helper: Format as JUnit XML
 /// Toyota Way: Extract Method - Format quality gate as JUnit XML (complexity ≤8)
 fn format_qg_as_junit(violations: &[QualityViolation]) -> Result<String> {
-    
     let mut output = String::new();
 
     write_junit_header(&mut output)?;
     write_junit_testsuite_start(&mut output, violations.len())?;
     write_junit_testcases(&mut output, violations)?;
     write_junit_footer(&mut output)?;
-    
+
     Ok(output)
 }
 
@@ -7489,7 +7479,7 @@ pub fn format_defect_summary(report: &DefectPredictionReport, top_files: usize) 
 
     writeln!(&mut output, "# Defect Prediction Analysis\n")?;
     format_defect_summary_stats(&mut output, report)?;
-    
+
     if !report.file_predictions.is_empty() {
         format_defect_top_files(&mut output, report, top_files)?;
     }
@@ -7500,22 +7490,26 @@ pub fn format_defect_summary(report: &DefectPredictionReport, top_files: usize) 
 /// Format the defect prediction summary statistics
 fn format_defect_summary_stats(output: &mut String, report: &DefectPredictionReport) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "## Summary")?;
     writeln!(output, "- Total files analyzed: {}", report.total_files)?;
     writeln!(output, "- High risk files: {}", report.high_risk_files)?;
     writeln!(output, "- Medium risk files: {}", report.medium_risk_files)?;
     writeln!(output, "- Low risk files: {}\n", report.low_risk_files)?;
-    
+
     Ok(())
 }
 
 /// Format the top files by defect risk section
-fn format_defect_top_files(output: &mut String, report: &DefectPredictionReport, top_files: usize) -> Result<()> {
+fn format_defect_top_files(
+    output: &mut String,
+    report: &DefectPredictionReport,
+    top_files: usize,
+) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "## Top Files by Defect Risk\n")?;
-    
+
     let files_to_show = if top_files == 0 { 10 } else { top_files };
     for (i, prediction) in report
         .file_predictions
@@ -7525,14 +7519,18 @@ fn format_defect_top_files(output: &mut String, report: &DefectPredictionReport,
     {
         format_defect_prediction_entry(output, i + 1, prediction)?;
     }
-    
+
     Ok(())
 }
 
 /// Format a single defect prediction entry
-fn format_defect_prediction_entry(output: &mut String, index: usize, prediction: &FilePrediction) -> Result<()> {
+fn format_defect_prediction_entry(
+    output: &mut String,
+    index: usize,
+    prediction: &FilePrediction,
+) -> Result<()> {
     use std::fmt::Write;
-    
+
     let filename = extract_filename_from_prediction(prediction);
     writeln!(
         output,
@@ -7542,7 +7540,7 @@ fn format_defect_prediction_entry(output: &mut String, index: usize, prediction:
         prediction.risk_score * 100.0,
         prediction.risk_level
     )?;
-    
+
     Ok(())
 }
 
@@ -7778,14 +7776,14 @@ fn format_single_file_summary(
     violations: &[QualityViolation],
 ) -> String {
     let mut output = String::new();
-    
+
     format_report_header(&mut output, file_path, results.passed);
     format_results_summary(&mut output, results);
-    
+
     if !violations.is_empty() {
         format_violations_section(&mut output, violations);
     }
-    
+
     output
 }
 
@@ -7828,7 +7826,7 @@ fn format_results_summary(output: &mut String, results: &QualityGateResults) {
 /// Format the violations section grouped by type
 fn format_violations_section(output: &mut String, violations: &[QualityViolation]) {
     use std::collections::HashMap;
-    
+
     output.push_str("\n## Violations\n\n");
 
     // Group violations by type
@@ -7846,7 +7844,11 @@ fn format_violations_section(output: &mut String, violations: &[QualityViolation
 }
 
 /// Format a single violation type group
-fn format_violation_type_group(output: &mut String, check_type: &str, violations: &[&QualityViolation]) {
+fn format_violation_type_group(
+    output: &mut String,
+    check_type: &str,
+    violations: &[&QualityViolation],
+) {
     output.push_str(&format!(
         "### {} ({})\n\n",
         check_type.to_uppercase(),
@@ -7862,7 +7864,7 @@ fn format_violation_type_group(output: &mut String, check_type: &str, violations
 /// Format a single violation with severity icon and location
 fn format_single_violation(output: &mut String, violation: &QualityViolation) {
     let severity_icon = get_severity_icon(&violation.severity);
-    
+
     if let Some(line) = violation.line {
         output.push_str(&format!(
             "- {} Line {}: {}\n",

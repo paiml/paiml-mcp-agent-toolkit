@@ -3,21 +3,21 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 pub mod adaptive;
+pub mod alerts;
 pub mod analyzer_ast;
 pub mod analyzer_simple;
 pub mod config;
 pub mod diagnostics;
+pub mod export;
 pub mod formatters;
 pub mod language_simple;
+pub mod metrics_aggregator;
+pub mod profiler;
 pub mod resource_control;
 pub mod scheduler;
 pub mod storage;
 pub mod storage_backend;
 pub mod web_dashboard;
-pub mod metrics_aggregator;
-pub mod profiler;
-pub mod alerts;
-pub mod export;
 
 #[cfg(test)]
 mod integration_test_sprint30;
@@ -30,6 +30,10 @@ pub use adaptive::{
 pub use analyzer_ast::TdgAnalyzerAst as TdgAnalyzer;
 pub use analyzer_simple::TdgAnalyzer as TdgAnalyzerSimple;
 pub use config::TdgConfig;
+pub use diagnostics::{
+    AdaptiveDiagnostics, HealthStatus, ResourceDiagnostics, SchedulerDiagnostics,
+    StorageDiagnostics, SystemDiagnostics,
+};
 pub use formatters::{format_human, format_json, format_markdown};
 pub use language_simple::{Language, LanguageRules};
 pub use resource_control::{
@@ -38,24 +42,21 @@ pub use resource_control::{
     ResourceUsage,
 };
 pub use scheduler::{
-    OperationType, ScheduleError, ScheduleGuard, SchedulePermit, SchedulerFactory, SchedulingStatistics,
-    SimpleFairScheduler,
-};
-pub use diagnostics::{
-    AdaptiveDiagnostics, HealthStatus, ResourceDiagnostics,
-    SchedulerDiagnostics, StorageDiagnostics, SystemDiagnostics,
+    OperationType, ScheduleError, ScheduleGuard, SchedulePermit, SchedulerFactory,
+    SchedulingStatistics, SimpleFairScheduler,
 };
 pub use storage::{
-    AnalysisMetadata, ComponentScores, FileIdentity, FullTdgRecord, HotCacheEntry, SemanticSignature,
-    StorageStatistics, TieredStore, TieredStorageFactory,
+    AnalysisMetadata, ComponentScores, FileIdentity, FullTdgRecord, HotCacheEntry,
+    SemanticSignature, StorageStatistics, TieredStorageFactory, TieredStore,
 };
 pub use storage_backend::{
     InMemoryBackend, SledBackend, StorageBackend, StorageBackendFactory, StorageBackendType,
     StorageConfig,
 };
 pub use web_dashboard::{
-    DashboardState, HealthStatus as DashboardHealthStatus, PerformanceMetrics as DashboardPerformanceMetrics,
-    StorageMetrics, SystemMetrics, create_dashboard_router, start_dashboard_server,
+    create_dashboard_router, start_dashboard_server, DashboardState,
+    HealthStatus as DashboardHealthStatus, PerformanceMetrics as DashboardPerformanceMetrics,
+    StorageMetrics, SystemMetrics,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
