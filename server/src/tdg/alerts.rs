@@ -1,14 +1,14 @@
 //! Sprint 31 Week 2 - Alert System with Configurable Thresholds
-//! 
+//!
 //! Provides real-time alerting capabilities with configurable thresholds,
 //! notification channels, and alert management features.
 
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
-use tokio::sync::{RwLock, mpsc};
-use serde::{Deserialize, Serialize};
-use anyhow::Result;
+use tokio::sync::{mpsc, RwLock};
 
 /// Alert definition with threshold and conditions
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,11 +61,23 @@ impl AlertSeverity {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NotificationChannel {
     Dashboard,
-    Email { recipients: Vec<String> },
-    Webhook { url: String, method: String },
-    Slack { webhook_url: String, channel: String },
-    PagerDuty { integration_key: String },
-    Log { level: String },
+    Email {
+        recipients: Vec<String>,
+    },
+    Webhook {
+        url: String,
+        method: String,
+    },
+    Slack {
+        webhook_url: String,
+        channel: String,
+    },
+    PagerDuty {
+        integration_key: String,
+    },
+    Log {
+        level: String,
+    },
 }
 
 /// Active alert instance
@@ -137,14 +149,14 @@ pub struct AlertManagerConfig {
 mod serde_duration {
     use serde::{Deserialize, Deserializer, Serializer};
     use std::time::Duration;
-    
+
     pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         serializer.serialize_u64(duration.as_secs())
     }
-    
+
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
     where
         D: Deserializer<'de>,
@@ -188,7 +200,7 @@ pub struct AlertStatistics {
 impl AlertManager {
     pub fn new(config: AlertManagerConfig) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
-        
+
         Self {
             rules: Arc::new(RwLock::new(HashMap::new())),
             active_alerts: Arc::new(RwLock::new(HashMap::new())),
@@ -212,7 +224,7 @@ impl AlertManager {
     pub async fn remove_rule(&self, rule_id: &str) -> Result<()> {
         let mut rules = self.rules.write().await;
         rules.remove(rule_id);
-        
+
         // Also resolve any active alerts for this rule
         let mut active = self.active_alerts.write().await;
         let alerts_to_resolve: Vec<String> = active
@@ -220,7 +232,7 @@ impl AlertManager {
             .filter(|(_, alert)| alert.rule_id == rule_id)
             .map(|(id, _)| id.clone())
             .collect();
-            
+
         for alert_id in alerts_to_resolve {
             if let Some(mut alert) = active.remove(&alert_id) {
                 alert.state = AlertState::Resolved;
@@ -228,7 +240,7 @@ impl AlertManager {
                 self.add_to_history(alert).await;
             }
         }
-        
+
         Ok(())
     }
 
@@ -246,7 +258,7 @@ impl AlertManager {
 
         // Trigger evaluation for rules using this metric
         self.evaluate_rules_for_metric(&metric_name).await?;
-        
+
         Ok(())
     }
 
@@ -254,13 +266,16 @@ impl AlertManager {
     async fn evaluate_rules_for_metric(&self, metric_name: &str) -> Result<()> {
         let rules = self.rules.read().await;
         let metrics = self.metric_values.read().await;
-        
+
         if let Some(metric_value) = metrics.get(metric_name) {
-            for rule in rules.values().filter(|r| r.metric == metric_name && r.enabled) {
+            for rule in rules
+                .values()
+                .filter(|r| r.metric == metric_name && r.enabled)
+            {
                 self.evaluate_rule(rule, metric_value).await?;
             }
         }
-        
+
         Ok(())
     }
 
@@ -295,11 +310,10 @@ impl AlertManager {
     /// Trigger a new alert
     async fn trigger_alert(&self, rule: &AlertRule, metric_value: f64) -> Result<()> {
         let mut active = self.active_alerts.write().await;
-        
+
         // Check if alert already exists
         let existing = active.values().any(|a| {
-            a.rule_id == rule.id && 
-            matches!(a.state, AlertState::Triggered | AlertState::Active)
+            a.rule_id == rule.id && matches!(a.state, AlertState::Triggered | AlertState::Active)
         });
 
         if existing && self.config.silence_duplicate_alerts {
@@ -319,7 +333,8 @@ impl AlertManager {
         }
 
         let alert = Alert {
-            id: format!("alert_{}_{}",
+            id: format!(
+                "alert_{}_{}",
                 rule.id,
                 SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
@@ -350,14 +365,17 @@ impl AlertManager {
 
         // Add to active alerts
         active.insert(alert.id.clone(), alert.clone());
-        
+
         // Send notification
         let _ = self.notification_tx.send(alert.clone());
-        
+
         // Update statistics
         let mut stats = self.statistics.write().await;
         stats.total_triggered += 1;
-        *stats.alerts_by_severity.entry(rule.severity.clone()).or_insert(0) += 1;
+        *stats
+            .alerts_by_severity
+            .entry(rule.severity.clone())
+            .or_insert(0) += 1;
 
         Ok(())
     }
@@ -365,12 +383,12 @@ impl AlertManager {
     /// Auto-resolve alerts when condition is no longer met
     async fn auto_resolve_alert(&self, rule_id: &str) -> Result<()> {
         let mut active = self.active_alerts.write().await;
-        
+
         let alerts_to_resolve: Vec<String> = active
             .iter()
             .filter(|(_, alert)| {
-                alert.rule_id == rule_id &&
-                matches!(alert.state, AlertState::Triggered | AlertState::Active)
+                alert.rule_id == rule_id
+                    && matches!(alert.state, AlertState::Triggered | AlertState::Active)
             })
             .map(|(id, _)| id.clone())
             .collect();
@@ -379,22 +397,24 @@ impl AlertManager {
             if let Some(mut alert) = active.remove(&alert_id) {
                 alert.state = AlertState::Resolved;
                 alert.resolved_at = Some(SystemTime::now());
-                
+
                 // Update statistics
                 let mut stats = self.statistics.write().await;
                 stats.total_resolved += 1;
-                
+
                 if let (Some(resolved), triggered) = (alert.resolved_at, alert.triggered_at) {
-                    let duration = resolved.duration_since(triggered)
+                    let duration = resolved
+                        .duration_since(triggered)
                         .unwrap_or(Duration::ZERO)
                         .as_millis() as f64;
-                    
+
                     // Update mean time to resolve (simple moving average)
-                    stats.mean_time_to_resolve_ms = 
-                        (stats.mean_time_to_resolve_ms * (stats.total_resolved - 1) as f64 + duration)
+                    stats.mean_time_to_resolve_ms = (stats.mean_time_to_resolve_ms
+                        * (stats.total_resolved - 1) as f64
+                        + duration)
                         / stats.total_resolved as f64;
                 }
-                
+
                 self.add_to_history(alert).await;
             }
         }
@@ -410,7 +430,7 @@ impl AlertManager {
         comment: Option<String>,
     ) -> Result<()> {
         let mut active = self.active_alerts.write().await;
-        
+
         if let Some(alert) = active.get_mut(alert_id) {
             alert.state = AlertState::Acknowledged;
             alert.acknowledgement = Some(Acknowledgement {
@@ -422,16 +442,18 @@ impl AlertManager {
             // Update statistics
             let mut stats = self.statistics.write().await;
             stats.total_acknowledged += 1;
-            
+
             if let Some(ack) = &alert.acknowledgement {
-                let duration = ack.acknowledged_at
+                let duration = ack
+                    .acknowledged_at
                     .duration_since(alert.triggered_at)
                     .unwrap_or(Duration::ZERO)
                     .as_millis() as f64;
-                
+
                 // Update mean time to acknowledge
-                stats.mean_time_to_acknowledge_ms = 
-                    (stats.mean_time_to_acknowledge_ms * (stats.total_acknowledged - 1) as f64 + duration)
+                stats.mean_time_to_acknowledge_ms = (stats.mean_time_to_acknowledge_ms
+                    * (stats.total_acknowledged - 1) as f64
+                    + duration)
                     / stats.total_acknowledged as f64;
             }
         }
@@ -442,7 +464,7 @@ impl AlertManager {
     /// Silence an alert
     pub async fn silence_alert(&self, alert_id: &str, duration: Duration) -> Result<()> {
         let mut active = self.active_alerts.write().await;
-        
+
         if let Some(alert) = active.get_mut(alert_id) {
             alert.state = AlertState::Silenced;
             // Would implement silence expiration logic here
@@ -454,17 +476,14 @@ impl AlertManager {
     /// Get last alert for a rule
     async fn get_last_alert_for_rule(&self, rule_id: &str) -> Option<Alert> {
         let history = self.alert_history.read().await;
-        history.iter()
-            .rev()
-            .find(|a| a.rule_id == rule_id)
-            .cloned()
+        history.iter().rev().find(|a| a.rule_id == rule_id).cloned()
     }
 
     /// Add alert to history
     async fn add_to_history(&self, alert: Alert) {
         let mut history = self.alert_history.write().await;
         history.push_back(alert);
-        
+
         // Enforce history size limit
         while history.len() > self.config.max_history_size {
             history.pop_front();
@@ -480,7 +499,8 @@ impl AlertManager {
     /// Get alerts by severity
     pub async fn get_alerts_by_severity(&self, severity: AlertSeverity) -> Vec<Alert> {
         let active = self.active_alerts.read().await;
-        active.values()
+        active
+            .values()
             .filter(|a| a.severity == severity)
             .cloned()
             .collect()
@@ -494,7 +514,7 @@ impl AlertManager {
     /// Export alert configuration
     pub async fn export_config(&self) -> AlertConfiguration {
         let rules = self.rules.read().await;
-        
+
         AlertConfiguration {
             rules: rules.values().cloned().collect(),
             config: self.config.clone(),
@@ -577,7 +597,7 @@ mod tests {
     #[tokio::test]
     async fn test_alert_triggering() {
         let manager = AlertManager::new(AlertManagerConfig::default());
-        
+
         let rule = AlertRule {
             id: "test_rule".to_string(),
             name: "Test Alert".to_string(),
@@ -592,12 +612,15 @@ mod tests {
             cooldown_period: Duration::from_secs(60),
             metadata: HashMap::new(),
         };
-        
+
         manager.add_rule(rule).await.unwrap();
-        
+
         // Should trigger alert
-        manager.update_metric("test_metric".to_string(), 75.0).await.unwrap();
-        
+        manager
+            .update_metric("test_metric".to_string(), 75.0)
+            .await
+            .unwrap();
+
         let active = manager.get_active_alerts().await;
         assert_eq!(active.len(), 1);
         assert_eq!(active[0].severity, AlertSeverity::Warning);
@@ -606,7 +629,7 @@ mod tests {
     #[tokio::test]
     async fn test_alert_acknowledgement() {
         let manager = AlertManager::new(AlertManagerConfig::default());
-        
+
         let rule = AlertRule {
             id: "ack_test".to_string(),
             name: "Ack Test".to_string(),
@@ -621,20 +644,26 @@ mod tests {
             cooldown_period: Duration::from_secs(30),
             metadata: HashMap::new(),
         };
-        
+
         manager.add_rule(rule).await.unwrap();
-        manager.update_metric("test_metric".to_string(), 20.0).await.unwrap();
-        
+        manager
+            .update_metric("test_metric".to_string(), 20.0)
+            .await
+            .unwrap();
+
         let active = manager.get_active_alerts().await;
         assert!(!active.is_empty());
-        
+
         let alert_id = &active[0].id;
-        manager.acknowledge_alert(
-            alert_id,
-            "test_user".to_string(),
-            Some("Acknowledged for testing".to_string()),
-        ).await.unwrap();
-        
+        manager
+            .acknowledge_alert(
+                alert_id,
+                "test_user".to_string(),
+                Some("Acknowledged for testing".to_string()),
+            )
+            .await
+            .unwrap();
+
         let updated = manager.get_active_alerts().await;
         assert_eq!(updated[0].state, AlertState::Acknowledged);
         assert!(updated[0].acknowledgement.is_some());
@@ -644,9 +673,9 @@ mod tests {
     async fn test_auto_resolve() {
         let mut config = AlertManagerConfig::default();
         config.enable_auto_resolve = true;
-        
+
         let manager = AlertManager::new(config);
-        
+
         let rule = AlertRule {
             id: "resolve_test".to_string(),
             name: "Resolve Test".to_string(),
@@ -661,17 +690,23 @@ mod tests {
             cooldown_period: Duration::from_secs(10),
             metadata: HashMap::new(),
         };
-        
+
         manager.add_rule(rule).await.unwrap();
-        
+
         // Trigger alert
-        manager.update_metric("test_metric".to_string(), 50.0).await.unwrap();
+        manager
+            .update_metric("test_metric".to_string(), 50.0)
+            .await
+            .unwrap();
         assert_eq!(manager.get_active_alerts().await.len(), 1);
-        
+
         // Should auto-resolve
-        manager.update_metric("test_metric".to_string(), 20.0).await.unwrap();
+        manager
+            .update_metric("test_metric".to_string(), 20.0)
+            .await
+            .unwrap();
         assert_eq!(manager.get_active_alerts().await.len(), 0);
-        
+
         let stats = manager.get_statistics().await;
         assert_eq!(stats.total_resolved, 1);
     }

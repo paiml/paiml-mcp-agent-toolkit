@@ -4063,7 +4063,6 @@ async fn analyze_duplicate_code(
     path: &std::path::Path,
 ) -> anyhow::Result<crate::services::duplicate_detector::CloneReport> {
     use crate::services::duplicate_detector::DuplicateDetectionEngine;
-    
 
     let all_files = discover_project_files(path)?;
     let files_for_analysis = filter_and_categorize_files(all_files)?;
@@ -4079,9 +4078,13 @@ fn discover_project_files(path: &std::path::Path) -> anyhow::Result<Vec<std::pat
 
 fn filter_and_categorize_files(
     all_files: Vec<std::path::PathBuf>,
-) -> anyhow::Result<Vec<(std::path::PathBuf, String, crate::services::duplicate_detector::Language)>> {
-    
-    
+) -> anyhow::Result<
+    Vec<(
+        std::path::PathBuf,
+        String,
+        crate::services::duplicate_detector::Language,
+    )>,
+> {
     let mut files_for_analysis = Vec::new();
     for file_path in all_files {
         if let Some((file, content, lang)) = process_file_for_duplicate_detection(&file_path)? {
@@ -4093,30 +4096,36 @@ fn filter_and_categorize_files(
 
 fn process_file_for_duplicate_detection(
     file_path: &std::path::Path,
-) -> anyhow::Result<Option<(std::path::PathBuf, String, crate::services::duplicate_detector::Language)>> {
-    
-    
+) -> anyhow::Result<
+    Option<(
+        std::path::PathBuf,
+        String,
+        crate::services::duplicate_detector::Language,
+    )>,
+> {
     let ext = match file_path.extension().and_then(|e| e.to_str()) {
         Some(e) => e,
         None => return Ok(None),
     };
-    
+
     let language = match_extension_to_language(ext)?;
     if language.is_none() {
         return Ok(None);
     }
-    
+
     let content = match std::fs::read_to_string(file_path) {
         Ok(c) if c.lines().count() >= 10 => c,
         _ => return Ok(None),
     };
-    
+
     Ok(Some((file_path.to_path_buf(), content, language.unwrap())))
 }
 
-fn match_extension_to_language(ext: &str) -> anyhow::Result<Option<crate::services::duplicate_detector::Language>> {
+fn match_extension_to_language(
+    ext: &str,
+) -> anyhow::Result<Option<crate::services::duplicate_detector::Language>> {
     use crate::services::duplicate_detector::Language;
-    
+
     Ok(match ext {
         "rs" => Some(Language::Rust),
         "ts" | "tsx" => Some(Language::TypeScript),

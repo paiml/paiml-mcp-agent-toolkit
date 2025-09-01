@@ -74,13 +74,13 @@ pub use provability_handler::handle_analyze_provability;
 pub use refactor_docs_handlers::handle_refactor_docs;
 pub use refactor_handlers::{route_refactor_command, RefactorServeParams};
 pub use satd_handler::handle_analyze_satd;
+pub use tdg_handlers::handle_tdg_command;
 pub use telemetry_handlers::handle_telemetry;
 pub use test_handlers::handle_test;
 pub use utility_handlers::{
     handle_context, handle_diagnose, handle_list, handle_search, handle_serve,
 };
 pub use wasm_handlers::{handle_analyze_assemblyscript, handle_analyze_webassembly};
-pub use tdg_handlers::handle_tdg_command;
 
 #[cfg(test)]
 mod tests {

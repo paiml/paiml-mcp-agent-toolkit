@@ -1,14 +1,14 @@
 //! Sprint 31 Week 2 - Performance Profiling Tools
-//! 
+//!
 //! Advanced profiling capabilities for the TDG system including flame graphs,
 //! call traces, memory profiling, and bottleneck detection.
 
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
-use serde::{Deserialize, Serialize};
-use anyhow::Result;
 
 /// Performance profile for a single operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -147,7 +147,7 @@ impl PerformanceProfiler {
         operation_type: String,
     ) -> Result<ProfileHandle> {
         let memory_before = self.get_current_memory_usage();
-        
+
         let profile = OperationProfile {
             operation_id: operation_id.clone(),
             operation_type,
@@ -174,13 +174,16 @@ impl PerformanceProfiler {
     /// Complete profiling an operation
     pub async fn complete_operation(&self, operation_id: &str) -> Result<()> {
         let mut active = self.active_profiles.write().await;
-        
+
         if let Some(mut profile) = active.remove(operation_id) {
             profile.end_time = Some(Instant::now());
             profile.duration_ms = Some(
-                profile.end_time.unwrap()
+                profile
+                    .end_time
+                    .unwrap()
                     .duration_since(profile.start_time)
-                    .as_secs_f64() * 1000.0
+                    .as_secs_f64()
+                    * 1000.0,
             );
             profile.memory_after_mb = Some(self.get_current_memory_usage());
 
@@ -229,7 +232,7 @@ impl PerformanceProfiler {
     /// Generate flame graph from completed profiles
     pub async fn generate_flame_graph(&self) -> Result<FlameGraphNode> {
         let completed = self.completed_profiles.read().await;
-        
+
         let mut root = FlameGraphNode {
             name: "root".to_string(),
             value: 0.0,
@@ -315,7 +318,10 @@ impl PerformanceProfiler {
                     },
                     impact_ms: duration,
                     occurrence_count: 1,
-                    recommendation: format!("High memory allocation detected: {:.1} MB", mem_growth),
+                    recommendation: format!(
+                        "High memory allocation detected: {:.1} MB",
+                        mem_growth
+                    ),
                 });
             }
         }
@@ -345,16 +351,12 @@ impl PerformanceProfiler {
 
         let total_operations = completed.len() + active.len();
         let avg_duration = if !completed.is_empty() {
-            completed.iter()
-                .filter_map(|p| p.duration_ms)
-                .sum::<f64>() / completed.len() as f64
+            completed.iter().filter_map(|p| p.duration_ms).sum::<f64>() / completed.len() as f64
         } else {
             0.0
         };
 
-        let memory_usage = memory_samples.last()
-            .map(|s| s.heap_used_mb)
-            .unwrap_or(0.0);
+        let memory_usage = memory_samples.last().map(|s| s.heap_used_mb).unwrap_or(0.0);
 
         ProfilingSummary {
             total_operations,
@@ -362,7 +364,8 @@ impl PerformanceProfiler {
             active_operations: active.len(),
             avg_operation_duration_ms: avg_duration,
             total_bottlenecks: bottlenecks.len(),
-            critical_bottlenecks: bottlenecks.iter()
+            critical_bottlenecks: bottlenecks
+                .iter()
                 .filter(|b| b.severity == BottleneckSeverity::Critical)
                 .count(),
             current_memory_mb: memory_usage,
@@ -432,14 +435,14 @@ mod tests {
     #[tokio::test]
     async fn test_operation_profiling() {
         let profiler = PerformanceProfiler::new(ProfilerConfig::default());
-        
-        let handle = profiler.start_operation(
-            "test_op_1".to_string(),
-            "analysis".to_string(),
-        ).await.unwrap();
+
+        let handle = profiler
+            .start_operation("test_op_1".to_string(), "analysis".to_string())
+            .await
+            .unwrap();
 
         tokio::time::sleep(Duration::from_millis(100)).await;
-        
+
         handle.complete().await.unwrap();
 
         let summary = profiler.get_summary().await;
@@ -450,7 +453,7 @@ mod tests {
     #[tokio::test]
     async fn test_bottleneck_detection() {
         let profiler = PerformanceProfiler::new(ProfilerConfig::default());
-        
+
         let mut profile = OperationProfile {
             operation_id: "slow_op".to_string(),
             operation_type: "compute".to_string(),
@@ -466,24 +469,28 @@ mod tests {
         };
 
         profiler.detect_bottlenecks(&profile).await.unwrap();
-        
+
         let bottlenecks = profiler.get_top_bottlenecks(10).await;
         assert!(!bottlenecks.is_empty());
-        assert!(bottlenecks.iter().any(|b| b.bottleneck_type == BottleneckType::CpuBound));
-        assert!(bottlenecks.iter().any(|b| b.bottleneck_type == BottleneckType::MemoryBound));
+        assert!(bottlenecks
+            .iter()
+            .any(|b| b.bottleneck_type == BottleneckType::CpuBound));
+        assert!(bottlenecks
+            .iter()
+            .any(|b| b.bottleneck_type == BottleneckType::MemoryBound));
     }
 
     #[tokio::test]
     async fn test_flame_graph_generation() {
         let profiler = PerformanceProfiler::new(ProfilerConfig::default());
-        
+
         // Create some operations
         for i in 0..3 {
-            let handle = profiler.start_operation(
-                format!("op_{}", i),
-                "test".to_string(),
-            ).await.unwrap();
-            
+            let handle = profiler
+                .start_operation(format!("op_{}", i), "test".to_string())
+                .await
+                .unwrap();
+
             tokio::time::sleep(Duration::from_millis(50)).await;
             handle.complete().await.unwrap();
         }

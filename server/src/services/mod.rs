@@ -14,6 +14,7 @@
 //! # Service Categories
 //!
 //! ## Analysis Services
+//! - **analyzer**: Unified analyzer framework (Toyota Way consolidation)
 //! - **complexity**: Cyclomatic complexity analysis
 //! - **satd_detector**: Self-Admitted Technical Debt detection
 //! - **dead_code_detector**: Unused code identification
@@ -49,6 +50,7 @@
 
 // Service architecture (SPECIFICATION.md Section 2)
 pub mod analysis_service;
+pub mod analyzer; // Toyota Way: Unified analyzer framework
 pub mod facades;
 pub mod language_analyzer;
 pub mod language_registry;

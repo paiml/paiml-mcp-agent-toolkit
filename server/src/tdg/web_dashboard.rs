@@ -1,6 +1,6 @@
 //! TDG Web Dashboard - Sprint 31 Week 1
 //!
-//! Provides a real-time web dashboard for monitoring and managing the Transactional 
+//! Provides a real-time web dashboard for monitoring and managing the Transactional
 //! Hashed TDG System. Built on Axum for high performance with server-sent events
 //! for real-time updates.
 //!
@@ -12,7 +12,7 @@
 //! - System health monitoring
 
 use crate::tdg::{
-    TieredStore, TieredStorageFactory, AdaptiveThresholdFactory, SchedulerFactory, TdgAnalyzer
+    AdaptiveThresholdFactory, SchedulerFactory, TdgAnalyzer, TieredStorageFactory, TieredStore,
 };
 use axum::{
     extract::{Query, State},
@@ -31,7 +31,7 @@ use std::{
 use tokio::sync::RwLock;
 use tower::ServiceBuilder;
 use tower_http::{
-    cors::{CorsLayer, Any},
+    cors::{Any, CorsLayer},
     trace::TraceLayer,
 };
 use tracing::{debug, error, info};
@@ -101,10 +101,10 @@ impl DashboardState {
     /// Create new dashboard state with initialized TDG system
     pub async fn new() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         info!("Initializing TDG Dashboard state");
-        
+
         let storage = Arc::new(TieredStorageFactory::create_default()?);
         let analyzer = Arc::new(TdgAnalyzer::new()?);
-        
+
         let initial_metrics = SystemMetrics {
             timestamp: SystemTime::now(),
             storage_stats: StorageMetrics {
@@ -145,7 +145,7 @@ impl DashboardState {
         let scheduler_stats = scheduler.get_statistics().await;
 
         let mut metrics = self.metrics_cache.write().await;
-        
+
         metrics.timestamp = SystemTime::now();
         metrics.storage_stats = StorageMetrics {
             total_entries: storage_stats.total_entries as u64,
@@ -166,12 +166,13 @@ impl DashboardState {
         // Basic health assessment
         let mut issues = Vec::new();
         let mut recommendations = Vec::new();
-        
+
         if metrics.performance_stats.avg_analysis_time_ms > 1000.0 {
             issues.push("High analysis times detected".to_string());
-            recommendations.push("Consider increasing cache size or optimizing queries".to_string());
+            recommendations
+                .push("Consider increasing cache size or optimizing queries".to_string());
         }
-        
+
         if metrics.storage_stats.cache_hit_ratio < 0.7 {
             issues.push("Low cache hit ratio".to_string());
             recommendations.push("Review access patterns and consider cache tuning".to_string());
@@ -195,7 +196,10 @@ impl DashboardState {
                 .as_secs(),
         };
 
-        debug!("Updated dashboard metrics: health={}", metrics.health_status.overall);
+        debug!(
+            "Updated dashboard metrics: health={}",
+            metrics.health_status.overall
+        );
         Ok(())
     }
 }
@@ -206,7 +210,6 @@ pub fn create_dashboard_router(state: DashboardState) -> Router {
         // Static dashboard HTML
         .route("/", get(dashboard_index))
         .route("/dashboard", get(dashboard_index))
-        
         // API endpoints
         .route("/api/metrics", get(get_metrics))
         .route("/api/health", get(get_health))
@@ -214,10 +217,8 @@ pub fn create_dashboard_router(state: DashboardState) -> Router {
         .route("/api/storage/operation", post(storage_operation))
         .route("/api/analysis", get(run_analysis))
         .route("/api/diagnostics", get(get_diagnostics))
-        
         // Real-time updates via Server-Sent Events
         .route("/api/events", get(metrics_stream))
-        
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
@@ -225,8 +226,8 @@ pub fn create_dashboard_router(state: DashboardState) -> Router {
                     CorsLayer::new()
                         .allow_origin(Any)
                         .allow_methods(Any)
-                        .allow_headers(Any)
-                )
+                        .allow_headers(Any),
+                ),
         )
         .with_state(state)
 }
@@ -241,9 +242,13 @@ async fn dashboard_index() -> impl IntoResponse {
 async fn get_metrics(State(state): State<DashboardState>) -> impl IntoResponse {
     if let Err(e) = state.update_metrics().await {
         error!("Failed to update metrics: {}", e);
-        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "error": "Failed to update metrics"
-        }))).into_response();
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": "Failed to update metrics"
+            })),
+        )
+            .into_response();
     }
 
     let metrics = state.metrics_cache.read().await.clone();
@@ -269,7 +274,8 @@ async fn get_storage_stats(State(state): State<DashboardState>) -> impl IntoResp
         "warm_entries": stats.warm_entries,
         "cold_entries": stats.cold_entries,
         "detailed": true
-    })).into_response()
+    }))
+    .into_response()
 }
 
 /// Execute storage operations
@@ -278,7 +284,7 @@ async fn storage_operation(
     Json(operation): Json<StorageOperation>,
 ) -> impl IntoResponse {
     debug!("Executing storage operation: {}", operation.action);
-    
+
     match operation.action.as_str() {
         "flush" => {
             // Flush hot cache to persistent storage
@@ -286,16 +292,18 @@ async fn storage_operation(
                 "status": "completed",
                 "message": "Cache flushed successfully",
                 "action": "flush"
-            })).into_response()
+            }))
+            .into_response()
         }
         "cleanup" => {
             // Clean up old entries
             Json(json!({
-                "status": "completed", 
+                "status": "completed",
                 "message": "Cleanup completed",
                 "action": "cleanup",
                 "entries_cleaned": 0
-            })).into_response()
+            }))
+            .into_response()
         }
         "stats" => {
             let stats = state.storage.get_statistics();
@@ -303,14 +311,17 @@ async fn storage_operation(
                 "status": "completed",
                 "action": "stats",
                 "data": stats
-            })).into_response()
+            }))
+            .into_response()
         }
-        _ => {
-            (StatusCode::BAD_REQUEST, Json(json!({
+        _ => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
                 "error": "Unsupported operation",
                 "supported": ["flush", "cleanup", "stats"]
-            }))).into_response()
-        }
+            })),
+        )
+            .into_response(),
     }
 }
 
@@ -320,12 +331,16 @@ async fn run_analysis(
     Query(params): Query<AnalysisQuery>,
 ) -> impl IntoResponse {
     info!("Running TDG analysis on: {}", params.path);
-    
+
     let path = PathBuf::from(params.path);
     if !path.exists() {
-        return (StatusCode::NOT_FOUND, Json(json!({
-            "error": "File or path not found"
-        }))).into_response();
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!({
+                "error": "File or path not found"
+            })),
+        )
+            .into_response();
     }
 
     match state.analyzer.analyze_file(&path).await {
@@ -341,14 +356,19 @@ async fn run_analysis(
                 "language": score.language,
                 "analysis_time_ms": 50, // Would be measured in real implementation
                 "cached": false
-            })).into_response()
+            }))
+            .into_response()
         }
         Err(e) => {
             error!("Analysis failed for {}: {}", path.display(), e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-                "error": "Analysis failed",
-                "message": e.to_string()
-            }))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "error": "Analysis failed",
+                    "message": e.to_string()
+                })),
+            )
+                .into_response()
         }
     }
 }
@@ -388,18 +408,20 @@ async fn get_diagnostics(State(state): State<DashboardState>) -> impl IntoRespon
 async fn metrics_stream(State(state): State<DashboardState>) -> impl IntoResponse {
     let _ = state.update_metrics().await;
     let metrics = state.metrics_cache.read().await.clone();
-    
+
     // Return as chunked JSON response to simulate streaming
     (
         StatusCode::OK,
-        [("Content-Type", "application/json"), 
-         ("Cache-Control", "no-cache"),
-         ("Connection", "keep-alive")],
+        [
+            ("Content-Type", "application/json"),
+            ("Cache-Control", "no-cache"),
+            ("Connection", "keep-alive"),
+        ],
         Json(json!({
             "type": "metrics_update",
             "data": metrics,
             "timestamp": SystemTime::now()
-        }))
+        })),
     )
 }
 
@@ -408,9 +430,9 @@ pub async fn start_dashboard_server(
     addr: std::net::SocketAddr,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     info!("Starting TDG Dashboard server on {}", addr);
-    
+
     let state = DashboardState::new().await?;
-    
+
     // Start background metrics update task
     let metrics_state = state.clone();
     tokio::spawn(async move {
@@ -424,12 +446,12 @@ pub async fn start_dashboard_server(
     });
 
     let app = create_dashboard_router(state);
-    
+
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     info!("TDG Dashboard listening on http://{}", addr);
-    
+
     axum::serve(listener, app).await?;
-    
+
     Ok(())
 }
 
@@ -443,7 +465,7 @@ mod tests {
     async fn test_dashboard_state_creation() {
         let result = DashboardState::new().await;
         assert!(result.is_ok());
-        
+
         let state = result.unwrap();
         let metrics = state.metrics_cache.read().await;
         assert_eq!(metrics.health_status.overall, "healthy");
@@ -454,7 +476,7 @@ mod tests {
         let state = DashboardState::new().await.unwrap();
         let result = state.update_metrics().await;
         assert!(result.is_ok());
-        
+
         let metrics = state.metrics_cache.read().await;
         assert!(metrics.timestamp > SystemTime::UNIX_EPOCH);
     }
@@ -471,23 +493,23 @@ mod tests {
     #[tokio::test]
     async fn test_background_metrics_updates() {
         let state = DashboardState::new().await.unwrap();
-        
+
         // Get initial timestamp
         let initial_time = {
             let metrics = state.metrics_cache.read().await;
             metrics.timestamp
         };
-        
+
         // Update metrics
         sleep(Duration::from_millis(10)).await;
         state.update_metrics().await.unwrap();
-        
+
         // Verify timestamp was updated
         let updated_time = {
             let metrics = state.metrics_cache.read().await;
             metrics.timestamp
         };
-        
+
         assert!(updated_time > initial_time);
     }
 }

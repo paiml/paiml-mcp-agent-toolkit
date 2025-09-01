@@ -36,12 +36,12 @@ pub struct AdaptiveConfig {
 impl Default for AdaptiveConfig {
     fn default() -> Self {
         Self {
-            target_analysis_time_ms: 100,  // 100ms target
-            min_cache_hit_ratio: 0.6,      // 60% cache hits
-            max_memory_mb: 512.0,          // 512MB limit
+            target_analysis_time_ms: 100, // 100ms target
+            min_cache_hit_ratio: 0.6,     // 60% cache hits
+            max_memory_mb: 512.0,         // 512MB limit
             max_cpu_utilization: 0.8,     // 80% CPU max
-            sample_window_size: 50,        // 50 sample rolling window
-            adjustment_sensitivity: 0.1,   // 10% adjustment steps
+            sample_window_size: 50,       // 50 sample rolling window
+            adjustment_sensitivity: 0.1,  // 10% adjustment steps
         }
     }
 }
@@ -50,9 +50,15 @@ impl Default for AdaptiveConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ThresholdAdjustment {
     /// Increase cache size and permits
-    ScaleUp { cache_factor: f32, permit_factor: f32 },
+    ScaleUp {
+        cache_factor: f32,
+        permit_factor: f32,
+    },
     /// Decrease cache size and permits
-    ScaleDown { cache_factor: f32, permit_factor: f32 },
+    ScaleDown {
+        cache_factor: f32,
+        permit_factor: f32,
+    },
     /// Increase compression ratio
     MoreCompression { compression_level: u8 },
     /// Reduce compression for speed
@@ -86,7 +92,7 @@ impl Default for CurrentThresholds {
             hot_cache_size: 1000,
             high_priority_permits: 10,
             low_priority_permits: 2,
-            compression_level: 4, // Balanced LZ4 level
+            compression_level: 4,         // Balanced LZ4 level
             archive_after_hours: 24 * 30, // 30 days
             cleanup_interval_minutes: 60, // 1 hour
         }
@@ -107,54 +113,49 @@ impl AdaptiveThresholdManager {
     /// Record performance sample for adaptation
     pub async fn record_sample(&self, sample: PerformanceSample) -> Result<()> {
         let mut history = self.performance_history.write().await;
-        
+
         // Add new sample
         history.push_back(sample);
-        
+
         // Maintain window size
         while history.len() > self.config.sample_window_size {
             history.pop_front();
         }
-        
+
         // Check if adaptation is needed
-        if history.len() >= 10 { // Minimum samples for reliable adjustment
+        if history.len() >= 10 {
+            // Minimum samples for reliable adjustment
             if let Some(adjustment) = self.calculate_adjustment(&history).await? {
                 self.apply_adjustment(adjustment).await?;
             }
         }
-        
+
         Ok(())
     }
 
     /// Calculate recommended threshold adjustment based on performance
     async fn calculate_adjustment(
         &self,
-        history: &VecDeque<PerformanceSample>
+        history: &VecDeque<PerformanceSample>,
     ) -> Result<Option<ThresholdAdjustment>> {
         if history.len() < 5 {
             return Ok(None);
         }
 
         // Calculate performance metrics
-        let avg_duration = history.iter()
-            .map(|s| s.analysis_duration_ms)
-            .sum::<u64>() as f32 / history.len() as f32;
-        
-        let avg_cache_hit = history.iter()
-            .map(|s| s.cache_hit_ratio)
-            .sum::<f32>() / history.len() as f32;
-        
-        let avg_memory = history.iter()
-            .map(|s| s.memory_usage_mb)
-            .sum::<f32>() / history.len() as f32;
-        
-        let avg_cpu = history.iter()
-            .map(|s| s.cpu_utilization)
-            .sum::<f32>() / history.len() as f32;
+        let avg_duration = history.iter().map(|s| s.analysis_duration_ms).sum::<u64>() as f32
+            / history.len() as f32;
 
-        let avg_queue_depth = history.iter()
-            .map(|s| s.queue_depth)
-            .sum::<usize>() as f32 / history.len() as f32;
+        let avg_cache_hit =
+            history.iter().map(|s| s.cache_hit_ratio).sum::<f32>() / history.len() as f32;
+
+        let avg_memory =
+            history.iter().map(|s| s.memory_usage_mb).sum::<f32>() / history.len() as f32;
+
+        let avg_cpu = history.iter().map(|s| s.cpu_utilization).sum::<f32>() / history.len() as f32;
+
+        let avg_queue_depth =
+            history.iter().map(|s| s.queue_depth).sum::<usize>() as f32 / history.len() as f32;
 
         // Performance is too slow
         if avg_duration > self.config.target_analysis_time_ms as f32 * 1.5 {
@@ -180,7 +181,9 @@ impl AdaptiveThresholdManager {
 
         // Resource usage too high
         if avg_memory > self.config.max_memory_mb || avg_cpu > self.config.max_cpu_utilization {
-            if avg_cache_hit > 0.9 && avg_duration < self.config.target_analysis_time_ms as f32 * 0.8 {
+            if avg_cache_hit > 0.9
+                && avg_duration < self.config.target_analysis_time_ms as f32 * 0.8
+            {
                 // High cache hit and fast performance - can reduce cache
                 return Ok(Some(ThresholdAdjustment::ScaleDown {
                     cache_factor: 1.0 - self.config.adjustment_sensitivity,
@@ -195,9 +198,10 @@ impl AdaptiveThresholdManager {
         }
 
         // Performance is excellent - maintain current settings
-        if avg_duration < self.config.target_analysis_time_ms as f32 * 0.5 
+        if avg_duration < self.config.target_analysis_time_ms as f32 * 0.5
             && avg_cache_hit > 0.8
-            && avg_memory < self.config.max_memory_mb * 0.5 {
+            && avg_memory < self.config.max_memory_mb * 0.5
+        {
             return Ok(Some(ThresholdAdjustment::Maintain));
         }
 
@@ -208,43 +212,49 @@ impl AdaptiveThresholdManager {
     async fn apply_adjustment(&self, adjustment: ThresholdAdjustment) -> Result<()> {
         let mut thresholds = self.current_thresholds.write().await;
         let mut adjustments = self.adjustment_history.write().await;
-        
+
         match adjustment.clone() {
-            ThresholdAdjustment::ScaleUp { cache_factor, permit_factor } => {
-                thresholds.hot_cache_size = 
+            ThresholdAdjustment::ScaleUp {
+                cache_factor,
+                permit_factor,
+            } => {
+                thresholds.hot_cache_size =
                     ((thresholds.hot_cache_size as f32 * cache_factor) as usize).min(10000);
-                thresholds.high_priority_permits = 
+                thresholds.high_priority_permits =
                     ((thresholds.high_priority_permits as f32 * permit_factor) as usize).min(50);
-                thresholds.low_priority_permits = 
+                thresholds.low_priority_permits =
                     ((thresholds.low_priority_permits as f32 * permit_factor) as usize).min(20);
-            },
-            ThresholdAdjustment::ScaleDown { cache_factor, permit_factor } => {
-                thresholds.hot_cache_size = 
+            }
+            ThresholdAdjustment::ScaleDown {
+                cache_factor,
+                permit_factor,
+            } => {
+                thresholds.hot_cache_size =
                     ((thresholds.hot_cache_size as f32 * cache_factor) as usize).max(100);
-                thresholds.high_priority_permits = 
+                thresholds.high_priority_permits =
                     ((thresholds.high_priority_permits as f32 * permit_factor) as usize).max(2);
-                thresholds.low_priority_permits = 
+                thresholds.low_priority_permits =
                     ((thresholds.low_priority_permits as f32 * permit_factor) as usize).max(1);
-            },
+            }
             ThresholdAdjustment::MoreCompression { compression_level } => {
                 thresholds.compression_level = compression_level.min(9);
-            },
+            }
             ThresholdAdjustment::LessCompression { compression_level } => {
                 thresholds.compression_level = compression_level.max(1);
-            },
+            }
             ThresholdAdjustment::Maintain => {
                 // No changes needed
-            },
+            }
         }
-        
+
         // Record adjustment
         adjustments.push_back(adjustment);
-        
+
         // Maintain adjustment history size
         while adjustments.len() > 100 {
             adjustments.pop_front();
         }
-        
+
         Ok(())
     }
 
@@ -257,28 +267,23 @@ impl AdaptiveThresholdManager {
     pub async fn get_performance_stats(&self) -> PerformanceStatistics {
         let history = self.performance_history.read().await;
         let adjustments = self.adjustment_history.read().await;
-        
+
         if history.is_empty() {
             return PerformanceStatistics::default();
         }
 
         let recent = history.iter().rev().take(10).collect::<Vec<_>>();
-        
-        let avg_duration = recent.iter()
-            .map(|s| s.analysis_duration_ms)
-            .sum::<u64>() as f32 / recent.len() as f32;
-        
-        let avg_cache_hit = recent.iter()
-            .map(|s| s.cache_hit_ratio)
-            .sum::<f32>() / recent.len() as f32;
-        
-        let avg_memory = recent.iter()
-            .map(|s| s.memory_usage_mb)
-            .sum::<f32>() / recent.len() as f32;
-        
-        let avg_cpu = recent.iter()
-            .map(|s| s.cpu_utilization)
-            .sum::<f32>() / recent.len() as f32;
+
+        let avg_duration =
+            recent.iter().map(|s| s.analysis_duration_ms).sum::<u64>() as f32 / recent.len() as f32;
+
+        let avg_cache_hit =
+            recent.iter().map(|s| s.cache_hit_ratio).sum::<f32>() / recent.len() as f32;
+
+        let avg_memory =
+            recent.iter().map(|s| s.memory_usage_mb).sum::<f32>() / recent.len() as f32;
+
+        let avg_cpu = recent.iter().map(|s| s.cpu_utilization).sum::<f32>() / recent.len() as f32;
 
         let recent_adjustments = adjustments.len().min(10); // Simplified recent count
 
@@ -304,13 +309,17 @@ impl AdaptiveThresholdManager {
         let recent_half = &history_vec[mid_point..];
         let older_half = &history_vec[..mid_point];
 
-        let recent_avg = recent_half.iter()
+        let recent_avg = recent_half
+            .iter()
             .map(|s| s.analysis_duration_ms)
-            .sum::<u64>() as f32 / recent_half.len() as f32;
-        
-        let older_avg = older_half.iter()
+            .sum::<u64>() as f32
+            / recent_half.len() as f32;
+
+        let older_avg = older_half
+            .iter()
             .map(|s| s.analysis_duration_ms)
-            .sum::<u64>() as f32 / older_half.len() as f32;
+            .sum::<u64>() as f32
+            / older_half.len() as f32;
 
         let change_ratio = (recent_avg - older_avg) / older_avg;
 
@@ -354,12 +363,13 @@ impl AdaptiveThresholdManager {
         // In a full implementation, this would use system APIs
         // For now, estimate based on active operations
         let history = self.performance_history.read().await;
-        let recent_activity = history.iter()
+        let recent_activity = history
+            .iter()
             .rev()
             .take(5)
             .filter(|s| s.timestamp.elapsed() < Duration::from_secs(10))
             .count();
-        
+
         (recent_activity as f32 * 0.1).min(1.0) // Estimate 10% CPU per recent operation
     }
 
@@ -367,10 +377,10 @@ impl AdaptiveThresholdManager {
     pub async fn reset_to_defaults(&self) -> Result<()> {
         let mut thresholds = self.current_thresholds.write().await;
         *thresholds = CurrentThresholds::default();
-        
+
         let mut adjustments = self.adjustment_history.write().await;
         adjustments.push_back(ThresholdAdjustment::Maintain);
-        
+
         Ok(())
     }
 }
@@ -417,7 +427,7 @@ impl PerformanceStatistics {
             PerformanceTrend::Stable => "➡️ STABLE",
             PerformanceTrend::Degrading => "📉 DEGRADING",
         };
-        
+
         format!(
             "Adaptive Thresholds:\n\
              - Performance: {}\n\
@@ -446,18 +456,18 @@ impl AdaptiveThresholdFactory {
     pub fn create_default() -> AdaptiveThresholdManager {
         AdaptiveThresholdManager::new(AdaptiveConfig::default())
     }
-    
+
     /// Create manager optimized for development (fast feedback)
     pub fn create_dev_optimized() -> AdaptiveThresholdManager {
         let config = AdaptiveConfig {
-            target_analysis_time_ms: 50,  // Faster target for dev
-            sample_window_size: 20,       // Smaller window for quicker adaptation
-            adjustment_sensitivity: 0.2,  // More aggressive adjustments
+            target_analysis_time_ms: 50, // Faster target for dev
+            sample_window_size: 20,      // Smaller window for quicker adaptation
+            adjustment_sensitivity: 0.2, // More aggressive adjustments
             ..Default::default()
         };
         AdaptiveThresholdManager::new(config)
     }
-    
+
     /// Create manager optimized for production (stable)
     pub fn create_prod_optimized() -> AdaptiveThresholdManager {
         let config = AdaptiveConfig {
@@ -490,7 +500,7 @@ mod tests {
     async fn test_threshold_manager_creation() {
         let manager = AdaptiveThresholdManager::new(AdaptiveConfig::default());
         let stats = manager.get_performance_stats().await;
-        
+
         assert_eq!(stats.total_samples, 0);
         assert!(matches!(stats.performance_trend, PerformanceTrend::Stable));
     }
@@ -499,9 +509,9 @@ mod tests {
     async fn test_performance_sample_recording() {
         let manager = AdaptiveThresholdManager::new(AdaptiveConfig::default());
         let sample = create_sample(80, true, 100.0);
-        
+
         manager.record_sample(sample).await.unwrap();
-        
+
         let stats = manager.get_performance_stats().await;
         assert_eq!(stats.total_samples, 1);
         assert_eq!(stats.avg_analysis_duration_ms, 80.0);
@@ -514,13 +524,13 @@ mod tests {
             ..Default::default()
         };
         let manager = AdaptiveThresholdManager::new(config);
-        
+
         // Add more samples than window size
         for i in 0..5 {
             let sample = create_sample(100 + i * 10, true, 100.0);
             manager.record_sample(sample).await.unwrap();
         }
-        
+
         let stats = manager.get_performance_stats().await;
         assert_eq!(stats.total_samples, 3); // Should maintain window size
     }
@@ -534,16 +544,16 @@ mod tests {
             ..Default::default()
         };
         let manager = AdaptiveThresholdManager::new(config);
-        
+
         // Add samples showing slow performance and low cache hits
         for _ in 0..12 {
             let sample = create_sample(200, false, 100.0); // Slow + cache miss
             manager.record_sample(sample).await.unwrap();
         }
-        
+
         let thresholds = manager.get_current_thresholds().await;
         let stats = manager.get_performance_stats().await;
-        
+
         // Should have triggered scale-up adjustment
         assert!(thresholds.hot_cache_size > 1000); // Should be increased from default
         assert!(stats.recent_adjustments_count > 0);
@@ -557,15 +567,15 @@ mod tests {
             ..Default::default()
         };
         let manager = AdaptiveThresholdManager::new(config);
-        
+
         // Add samples showing high memory usage
         for _ in 0..12 {
             let sample = create_sample(80, true, 300.0); // High memory
             manager.record_sample(sample).await.unwrap();
         }
-        
+
         let thresholds = manager.get_current_thresholds().await;
-        
+
         // Should have increased compression level
         assert!(thresholds.compression_level > 4);
     }
@@ -575,18 +585,18 @@ mod tests {
         let default_mgr = AdaptiveThresholdFactory::create_default();
         let dev_mgr = AdaptiveThresholdFactory::create_dev_optimized();
         let prod_mgr = AdaptiveThresholdFactory::create_prod_optimized();
-        
+
         // Test that all managers can record samples
         let sample = create_sample(100, true, 100.0);
-        
+
         default_mgr.record_sample(sample.clone()).await.unwrap();
         dev_mgr.record_sample(sample.clone()).await.unwrap();
         prod_mgr.record_sample(sample).await.unwrap();
-        
+
         // Verify different configurations
         let dev_stats = dev_mgr.get_performance_stats().await;
         let prod_stats = prod_mgr.get_performance_stats().await;
-        
+
         assert_eq!(dev_stats.total_samples, 1);
         assert_eq!(prod_stats.total_samples, 1);
     }
@@ -594,15 +604,18 @@ mod tests {
     #[tokio::test]
     async fn test_trend_calculation() {
         let manager = AdaptiveThresholdManager::new(AdaptiveConfig::default());
-        
+
         // Add improving trend samples (getting faster)
         for i in 0..20 {
             let duration = 200 - (i * 5); // Getting faster over time
             let sample = create_sample(duration, true, 100.0);
             manager.record_sample(sample).await.unwrap();
         }
-        
+
         let stats = manager.get_performance_stats().await;
-        assert!(matches!(stats.performance_trend, PerformanceTrend::Improving));
+        assert!(matches!(
+            stats.performance_trend,
+            PerformanceTrend::Improving
+        ));
     }
 }

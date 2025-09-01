@@ -6,7 +6,6 @@ use std::time::{Duration, Instant};
 use tokio::sync::{RwLock, Semaphore};
 use tokio::time::{interval, sleep};
 
-
 /// Operation types for resource planning
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum OperationType {
@@ -37,12 +36,12 @@ pub struct ResourceLimits {
 impl Default for ResourceLimits {
     fn default() -> Self {
         Self {
-            max_memory_mb: 1024.0,      // 1GB limit
-            max_cpu_utilization: 0.8,   // 80% CPU max
-            max_concurrent_ops: 20,     // 20 concurrent operations
+            max_memory_mb: 1024.0,         // 1GB limit
+            max_cpu_utilization: 0.8,      // 80% CPU max
+            max_concurrent_ops: 20,        // 20 concurrent operations
             memory_warning_threshold: 0.7, // 70% warning
             cpu_warning_threshold: 0.6,    // 60% warning
-            check_interval_secs: 5,     // Check every 5 seconds
+            check_interval_secs: 5,        // Check every 5 seconds
         }
     }
 }
@@ -62,9 +61,9 @@ pub struct ResourceUsage {
 /// Resource pressure levels
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ResourcePressure {
-    Low,     // Below warning threshold
-    Medium,  // Above warning, below limit
-    High,    // At or above limit
+    Low,      // Below warning threshold
+    Medium,   // Above warning, below limit
+    High,     // At or above limit
     Critical, // Emergency conditions
 }
 
@@ -103,14 +102,13 @@ pub struct OperationContext {
     pub priority: OperationPriority,
 }
 
-
 /// Operation priority for resource allocation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum OperationPriority {
-    Critical,  // User commits, must succeed
-    High,      // Interactive analysis
-    Medium,    // Background analysis
-    Low,       // Cleanup, maintenance
+    Critical, // User commits, must succeed
+    High,     // Interactive analysis
+    Medium,   // Background analysis
+    Low,      // Cleanup, maintenance
 }
 
 /// Resource enforcement event for auditing
@@ -128,7 +126,7 @@ impl PlatformResourceController {
     /// Create new resource controller
     pub fn new(limits: ResourceLimits) -> Self {
         let semaphore = Arc::new(Semaphore::new(limits.max_concurrent_ops));
-        
+
         let initial_usage = ResourceUsage {
             timestamp: Instant::now(),
             memory_mb: 0.0,
@@ -164,10 +162,10 @@ impl PlatformResourceController {
 
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_secs(limits.check_interval_secs));
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // Check if monitoring should continue
                 {
                     let monitoring = monitoring_flag.read().await;
@@ -175,10 +173,10 @@ impl PlatformResourceController {
                         break;
                     }
                 }
-                
+
                 // Update resource usage
                 let new_usage = Self::measure_current_usage(&limits, &active_ops).await;
-                
+
                 {
                     let mut usage = usage_arc.write().await;
                     *usage = new_usage;
@@ -204,20 +202,19 @@ impl PlatformResourceController {
         estimated_memory_mb: f64,
     ) -> Result<ResourceAllocation> {
         let current_usage = self.current_usage.read().await.clone();
-        
+
         // Check if operation should be allowed
-        let action = self.evaluate_resource_request(
-            &current_usage,
-            &op_type,
-            &priority,
-            estimated_memory_mb,
-        ).await?;
+        let action = self
+            .evaluate_resource_request(&current_usage, &op_type, &priority, estimated_memory_mb)
+            .await?;
 
         match action.clone() {
             ResourceAction::Allow => {
                 // Acquire semaphore permit
-                let permit = Arc::clone(&self.operation_semaphore).acquire_owned().await?;
-                
+                let permit = Arc::clone(&self.operation_semaphore)
+                    .acquire_owned()
+                    .await?;
+
                 // Register operation
                 let context = OperationContext {
                     id: operation_id.clone(),
@@ -226,7 +223,7 @@ impl PlatformResourceController {
                     estimated_memory_mb,
                     priority,
                 };
-                
+
                 {
                     let mut active_ops = self.active_operations.write().await;
                     active_ops.insert(operation_id.clone(), context);
@@ -238,21 +235,28 @@ impl PlatformResourceController {
                     action,
                     current_usage,
                     "Operation allowed".to_string(),
-                ).await;
+                )
+                .await;
 
                 Ok(ResourceAllocation::new(
                     operation_id,
                     permit,
                     self.active_operations.clone(),
                 ))
-            },
+            }
             ResourceAction::Throttle { delay_ms } => {
                 // Add delay before allowing
                 sleep(Duration::from_millis(delay_ms)).await;
-                
+
                 // Retry allocation after throttling
-                Box::pin(self.request_resources(operation_id, op_type, priority, estimated_memory_mb)).await
-            },
+                Box::pin(self.request_resources(
+                    operation_id,
+                    op_type,
+                    priority,
+                    estimated_memory_mb,
+                ))
+                .await
+            }
             ResourceAction::Queue { estimated_wait_ms } => {
                 // Log queuing event
                 self.log_enforcement_event(
@@ -260,34 +264,45 @@ impl PlatformResourceController {
                     action,
                     current_usage,
                     format!("Operation queued, estimated wait: {}ms", estimated_wait_ms),
-                ).await;
-                
+                )
+                .await;
+
                 // Wait and retry
                 sleep(Duration::from_millis(estimated_wait_ms)).await;
-                Box::pin(self.request_resources(operation_id, op_type, priority, estimated_memory_mb)).await
-            },
+                Box::pin(self.request_resources(
+                    operation_id,
+                    op_type,
+                    priority,
+                    estimated_memory_mb,
+                ))
+                .await
+            }
             ResourceAction::Reject { reason } => {
                 self.log_enforcement_event(
                     operation_id.clone(),
                     action,
                     current_usage,
                     reason.clone(),
-                ).await;
-                
+                )
+                .await;
+
                 Err(anyhow::anyhow!("Resource request rejected: {}", reason))
-            },
+            }
             ResourceAction::EmergencyStop => {
                 self.log_enforcement_event(
                     operation_id.clone(),
                     action,
                     current_usage,
                     "Emergency resource stop triggered".to_string(),
-                ).await;
-                
+                )
+                .await;
+
                 // Trigger emergency cleanup
                 self.emergency_cleanup().await?;
-                
-                Err(anyhow::anyhow!("Operation rejected due to emergency resource conditions"))
+
+                Err(anyhow::anyhow!(
+                    "Operation rejected due to emergency resource conditions"
+                ))
             }
         }
     }
@@ -315,9 +330,7 @@ impl PlatformResourceController {
                 return Ok(ResourceAction::Reject {
                     reason: format!(
                         "Memory limit exceeded: {:.1}MB + {:.1}MB > {:.1}MB",
-                        current_usage.memory_mb,
-                        estimated_memory_mb,
-                        self.limits.max_memory_mb
+                        current_usage.memory_mb, estimated_memory_mb, self.limits.max_memory_mb
                     ),
                 });
             } else {
@@ -334,11 +347,12 @@ impl PlatformResourceController {
             match priority {
                 OperationPriority::Critical | OperationPriority::High => {
                     // Throttle high priority operations
-                    let delay = ((current_usage.cpu_utilization - self.limits.max_cpu_utilization) * 1000.0) as u64;
+                    let delay = ((current_usage.cpu_utilization - self.limits.max_cpu_utilization)
+                        * 1000.0) as u64;
                     return Ok(ResourceAction::Throttle {
                         delay_ms: delay.min(5000), // Max 5s delay
                     });
-                },
+                }
                 _ => {
                     return Ok(ResourceAction::Reject {
                         reason: format!(
@@ -362,8 +376,7 @@ impl PlatformResourceController {
                 return Ok(ResourceAction::Reject {
                     reason: format!(
                         "Too many concurrent operations: {} >= {}",
-                        current_usage.active_operations,
-                        self.limits.max_concurrent_ops
+                        current_usage.active_operations, self.limits.max_concurrent_ops
                     ),
                 });
             }
@@ -379,14 +392,14 @@ impl PlatformResourceController {
     ) -> ResourceUsage {
         let ops = active_ops.read().await;
         let active_count = ops.len();
-        
+
         // Estimate memory usage from active operations
-        let estimated_memory: f64 = ops.values()
-            .map(|ctx| ctx.estimated_memory_mb)
-            .sum::<f64>() + 100.0; // Base memory usage
-        
+        let estimated_memory: f64 =
+            ops.values().map(|ctx| ctx.estimated_memory_mb).sum::<f64>() + 100.0; // Base memory usage
+
         // Estimate CPU usage based on operation types and age
-        let estimated_cpu = ops.values()
+        let estimated_cpu = ops
+            .values()
             .map(|ctx| {
                 let age_factor = (ctx.started_at.elapsed().as_secs() as f64 / 60.0).min(1.0);
                 match ctx.operation_type {
@@ -439,7 +452,8 @@ impl PlatformResourceController {
         }
 
         // Find oldest non-critical operation
-        let oldest_age = ops.values()
+        let oldest_age = ops
+            .values()
             .filter(|ctx| ctx.priority != OperationPriority::Critical)
             .map(|ctx| ctx.started_at.elapsed().as_millis() as u64)
             .max()
@@ -461,7 +475,8 @@ impl PlatformResourceController {
         let avg_age = if ops.is_empty() {
             5000 // Default 5s estimate
         } else {
-            let total_age: u64 = ops.values()
+            let total_age: u64 = ops
+                .values()
                 .map(|ctx| ctx.started_at.elapsed().as_millis() as u64)
                 .sum();
             total_age / ops.len() as u64
@@ -473,7 +488,8 @@ impl PlatformResourceController {
     /// Trigger emergency cleanup of non-critical operations
     async fn emergency_cleanup(&self) -> Result<()> {
         let ops = self.active_operations.read().await;
-        let low_priority_count = ops.values()
+        let low_priority_count = ops
+            .values()
             .filter(|ctx| ctx.priority == OperationPriority::Low)
             .count();
 
@@ -520,21 +536,26 @@ impl PlatformResourceController {
     /// Get resource enforcement statistics
     pub async fn get_enforcement_stats(&self) -> ResourceEnforcementStats {
         let history = self.enforcement_history.read().await;
-        let recent_events: Vec<_> = history.iter()
+        let recent_events: Vec<_> = history
+            .iter()
             .filter(|e| e.timestamp.elapsed() < Duration::from_secs(300)) // Last 5 minutes
             .collect();
 
         let total_requests = recent_events.len();
-        let allowed = recent_events.iter()
+        let allowed = recent_events
+            .iter()
             .filter(|e| matches!(e.action, ResourceAction::Allow))
             .count();
-        let throttled = recent_events.iter()
+        let throttled = recent_events
+            .iter()
             .filter(|e| matches!(e.action, ResourceAction::Throttle { .. }))
             .count();
-        let queued = recent_events.iter()
+        let queued = recent_events
+            .iter()
             .filter(|e| matches!(e.action, ResourceAction::Queue { .. }))
             .count();
-        let rejected = recent_events.iter()
+        let rejected = recent_events
+            .iter()
             .filter(|e| matches!(e.action, ResourceAction::Reject { .. }))
             .count();
 
@@ -554,7 +575,7 @@ impl PlatformResourceController {
     /// Update resource limits at runtime
     pub async fn update_limits(&mut self, new_limits: ResourceLimits) {
         self.limits = new_limits.clone();
-        
+
         // Update semaphore if concurrent ops limit changed
         if new_limits.max_concurrent_ops != self.limits.max_concurrent_ops {
             self.operation_semaphore = Arc::new(Semaphore::new(new_limits.max_concurrent_ops));
@@ -589,7 +610,7 @@ impl Drop for ResourceAllocation {
         // Remove operation from active list when dropped
         let operation_id = self.operation_id.clone();
         let active_ops = self.active_operations.clone();
-        
+
         tokio::spawn(async move {
             let mut ops = active_ops.write().await;
             ops.remove(&operation_id);
@@ -646,9 +667,9 @@ impl ResourceControllerFactory {
     /// Create controller optimized for development
     pub fn create_dev_optimized() -> PlatformResourceController {
         let limits = ResourceLimits {
-            max_memory_mb: 512.0,       // Lower memory for dev
-            max_concurrent_ops: 5,      // Fewer concurrent ops
-            check_interval_secs: 2,     // More frequent checks
+            max_memory_mb: 512.0,   // Lower memory for dev
+            max_concurrent_ops: 5,  // Fewer concurrent ops
+            check_interval_secs: 2, // More frequent checks
             ..Default::default()
         };
         PlatformResourceController::new(limits)
@@ -657,10 +678,10 @@ impl ResourceControllerFactory {
     /// Create controller optimized for production
     pub fn create_prod_optimized() -> PlatformResourceController {
         let limits = ResourceLimits {
-            max_memory_mb: 2048.0,      // Higher memory for prod
-            max_concurrent_ops: 50,     // More concurrent ops
-            check_interval_secs: 10,    // Less frequent checks
-            cpu_warning_threshold: 0.5, // Conservative CPU warning
+            max_memory_mb: 2048.0,         // Higher memory for prod
+            max_concurrent_ops: 50,        // More concurrent ops
+            check_interval_secs: 10,       // Less frequent checks
+            cpu_warning_threshold: 0.5,    // Conservative CPU warning
             memory_warning_threshold: 0.6, // Conservative memory warning
             ..Default::default()
         };
@@ -671,7 +692,7 @@ impl ResourceControllerFactory {
     pub fn create_ci_optimized() -> PlatformResourceController {
         let limits = ResourceLimits {
             max_memory_mb: 1024.0,
-            max_cpu_utilization: 0.9,   // Can use more CPU in CI
+            max_cpu_utilization: 0.9, // Can use more CPU in CI
             max_concurrent_ops: 10,
             check_interval_secs: 5,
             cpu_warning_threshold: 0.8,
@@ -690,7 +711,7 @@ mod tests {
     async fn test_resource_controller_creation() {
         let controller = PlatformResourceController::new(ResourceLimits::default());
         let usage = controller.get_current_usage().await;
-        
+
         assert_eq!(usage.active_operations, 0);
         assert_eq!(usage.memory_pressure, ResourcePressure::Low);
     }
@@ -700,19 +721,22 @@ mod tests {
         let controller = PlatformResourceController::new(ResourceLimits::default());
         controller.start_monitoring().await.unwrap();
 
-        let allocation = controller.request_resources(
-            "test-op-1".to_string(),
-            OperationType::Analysis,
-            OperationPriority::High,
-            100.0,
-        ).await.unwrap();
+        let allocation = controller
+            .request_resources(
+                "test-op-1".to_string(),
+                OperationType::Analysis,
+                OperationPriority::High,
+                100.0,
+            )
+            .await
+            .unwrap();
 
         let usage = controller.get_current_usage().await;
         assert_eq!(usage.active_operations, 1);
-        
+
         drop(allocation);
         sleep(Duration::from_millis(100)).await; // Allow cleanup to complete
-        
+
         controller.stop_monitoring().await;
     }
 
@@ -726,12 +750,14 @@ mod tests {
         controller.start_monitoring().await.unwrap();
 
         // Request more memory than limit
-        let result = controller.request_resources(
-            "test-op-memory".to_string(),
-            OperationType::Analysis,
-            OperationPriority::Low,
-            300.0, // Exceeds 200MB limit
-        ).await;
+        let result = controller
+            .request_resources(
+                "test-op-memory".to_string(),
+                OperationType::Analysis,
+                OperationPriority::Low,
+                300.0, // Exceeds 200MB limit
+            )
+            .await;
 
         assert!(result.is_err());
         controller.stop_monitoring().await;
@@ -747,12 +773,14 @@ mod tests {
         controller.start_monitoring().await.unwrap();
 
         // Critical operations should bypass normal limits
-        let allocation = controller.request_resources(
-            "critical-op".to_string(),
-            OperationType::Commit,
-            OperationPriority::Critical,
-            150.0, // Exceeds limit but should be allowed
-        ).await;
+        let allocation = controller
+            .request_resources(
+                "critical-op".to_string(),
+                OperationType::Commit,
+                OperationPriority::Critical,
+                150.0, // Exceeds limit but should be allowed
+            )
+            .await;
 
         assert!(allocation.is_ok());
         controller.stop_monitoring().await;
@@ -767,27 +795,35 @@ mod tests {
         let controller = PlatformResourceController::new(limits);
         controller.start_monitoring().await.unwrap();
 
-        let _alloc1 = controller.request_resources(
-            "op-1".to_string(),
-            OperationType::Analysis,
-            OperationPriority::High,
-            50.0,
-        ).await.unwrap();
+        let _alloc1 = controller
+            .request_resources(
+                "op-1".to_string(),
+                OperationType::Analysis,
+                OperationPriority::High,
+                50.0,
+            )
+            .await
+            .unwrap();
 
-        let _alloc2 = controller.request_resources(
-            "op-2".to_string(),
-            OperationType::Analysis,
-            OperationPriority::High,
-            50.0,
-        ).await.unwrap();
+        let _alloc2 = controller
+            .request_resources(
+                "op-2".to_string(),
+                OperationType::Analysis,
+                OperationPriority::High,
+                50.0,
+            )
+            .await
+            .unwrap();
 
         // Third operation should be rejected or queued
-        let result = controller.request_resources(
-            "op-3".to_string(),
-            OperationType::Background,
-            OperationPriority::Low,
-            50.0,
-        ).await;
+        let result = controller
+            .request_resources(
+                "op-3".to_string(),
+                OperationType::Background,
+                OperationPriority::Low,
+                50.0,
+            )
+            .await;
 
         assert!(result.is_err());
         controller.stop_monitoring().await;
@@ -799,12 +835,15 @@ mod tests {
         controller.start_monitoring().await.unwrap();
 
         // Make some resource requests
-        let _alloc = controller.request_resources(
-            "stats-test".to_string(),
-            OperationType::Analysis,
-            OperationPriority::Medium,
-            100.0,
-        ).await.unwrap();
+        let _alloc = controller
+            .request_resources(
+                "stats-test".to_string(),
+                OperationType::Analysis,
+                OperationPriority::Medium,
+                100.0,
+            )
+            .await
+            .unwrap();
 
         let stats = controller.get_enforcement_stats().await;
         assert!(stats.total_requests > 0);
@@ -827,19 +866,25 @@ mod tests {
         ci_ctrl.start_monitoring().await.unwrap();
 
         // Verify they can handle resource requests
-        let _alloc1 = default_ctrl.request_resources(
-            "factory-test-1".to_string(),
-            OperationType::Analysis,
-            OperationPriority::Medium,
-            50.0,
-        ).await.unwrap();
+        let _alloc1 = default_ctrl
+            .request_resources(
+                "factory-test-1".to_string(),
+                OperationType::Analysis,
+                OperationPriority::Medium,
+                50.0,
+            )
+            .await
+            .unwrap();
 
-        let _alloc2 = dev_ctrl.request_resources(
-            "factory-test-2".to_string(),
-            OperationType::Analysis,
-            OperationPriority::Medium,
-            50.0,
-        ).await.unwrap();
+        let _alloc2 = dev_ctrl
+            .request_resources(
+                "factory-test-2".to_string(),
+                OperationType::Analysis,
+                OperationPriority::Medium,
+                50.0,
+            )
+            .await
+            .unwrap();
 
         // Cleanup
         default_ctrl.stop_monitoring().await;
@@ -851,16 +896,16 @@ mod tests {
     #[tokio::test]
     async fn test_resource_monitoring_lifecycle() {
         let controller = PlatformResourceController::new(ResourceLimits::default());
-        
+
         // Should start successfully
         controller.start_monitoring().await.unwrap();
-        
+
         // Starting again should be idempotent
         controller.start_monitoring().await.unwrap();
-        
+
         // Should stop cleanly
         controller.stop_monitoring().await;
-        
+
         // Should be able to restart
         controller.start_monitoring().await.unwrap();
         controller.stop_monitoring().await;
@@ -877,23 +922,29 @@ mod tests {
         controller.start_monitoring().await.unwrap();
 
         // Low pressure - under warning threshold
-        let _alloc1 = controller.request_resources(
-            "pressure-low".to_string(),
-            OperationType::Analysis,
-            OperationPriority::Medium,
-            500.0, // 50% of limit
-        ).await.unwrap();
+        let _alloc1 = controller
+            .request_resources(
+                "pressure-low".to_string(),
+                OperationType::Analysis,
+                OperationPriority::Medium,
+                500.0, // 50% of limit
+            )
+            .await
+            .unwrap();
 
         let usage1 = controller.get_current_usage().await;
         assert_eq!(usage1.memory_pressure, ResourcePressure::Low);
 
         // Medium pressure - over warning threshold
-        let _alloc2 = controller.request_resources(
-            "pressure-medium".to_string(),
-            OperationType::Analysis,
-            OperationPriority::Medium,
-            250.0, // Total ~75% of limit
-        ).await.unwrap();
+        let _alloc2 = controller
+            .request_resources(
+                "pressure-medium".to_string(),
+                OperationType::Analysis,
+                OperationPriority::Medium,
+                250.0, // Total ~75% of limit
+            )
+            .await
+            .unwrap();
 
         let usage2 = controller.get_current_usage().await;
         assert_eq!(usage2.memory_pressure, ResourcePressure::Medium);
