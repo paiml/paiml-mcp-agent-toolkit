@@ -1,9 +1,9 @@
 //! TDG (Technical Debt Grading) MCP tool handlers for Sprint 31.
-//! 
+//!
 //! This module provides comprehensive MCP tools for the Transactional Hashed TDG System,
 //! enabling external clients to interact with enterprise-grade technical debt analysis
 //! through the Model Context Protocol.
-//! 
+//!
 //! The tools include:
 //! - System diagnostics and health monitoring
 //! - Storage management operations
@@ -13,8 +13,8 @@
 //! - Comprehensive health checks
 
 use crate::mcp_pmcp::tool_functions::{
-    tdg_analyze_with_storage, tdg_configure_storage, tdg_health_check,
-    tdg_performance_metrics, tdg_storage_management, tdg_system_diagnostics,
+    tdg_analyze_with_storage, tdg_configure_storage, tdg_health_check, tdg_performance_metrics,
+    tdg_storage_management, tdg_system_diagnostics,
 };
 use async_trait::async_trait;
 use pmcp::{Error, RequestHandlerExtra, Result, ToolHandler};
@@ -36,7 +36,7 @@ struct TdgSystemDiagnosticsArgs {
 }
 
 /// Tool handler for TDG system diagnostics.
-/// 
+///
 /// Provides comprehensive system health monitoring, component status,
 /// and performance statistics for the TDG system.
 pub struct TdgSystemDiagnosticsTool;
@@ -79,7 +79,7 @@ struct TdgStorageManagementArgs {
 }
 
 /// Tool handler for TDG storage management.
-/// 
+///
 /// Provides storage operations including statistics, cleanup, flush,
 /// and backend migration capabilities.
 pub struct TdgStorageManagementTool;
@@ -124,7 +124,7 @@ struct TdgAnalyzeWithStorageArgs {
 }
 
 /// Tool handler for TDG file analysis with storage.
-/// 
+///
 /// Performs transactional technical debt analysis with automatic
 /// caching and storage backend integration.
 pub struct TdgAnalyzeWithStorageTool;
@@ -152,7 +152,9 @@ impl ToolHandler for TdgAnalyzeWithStorageTool {
         let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
 
         if paths.is_empty() {
-            return Err(Error::validation("At least one path must be specified".to_string()));
+            return Err(Error::validation(
+                "At least one path must be specified".to_string(),
+            ));
         }
 
         let result = tdg_analyze_with_storage(paths, params.storage_backend, params.priority)
@@ -174,7 +176,7 @@ struct TdgPerformanceMetricsArgs {
 }
 
 /// Tool handler for TDG performance metrics.
-/// 
+///
 /// Provides real-time performance metrics, adaptive threshold status,
 /// and system performance trend analysis.
 pub struct TdgPerformanceMetricsTool;
@@ -221,7 +223,7 @@ struct TdgConfigureStorageArgs {
 }
 
 /// Tool handler for TDG storage configuration.
-/// 
+///
 /// Configures and validates TDG storage backends with support for
 /// Sled, RocksDB, and in-memory backends.
 pub struct TdgConfigureStorageTool;
@@ -246,9 +248,14 @@ impl ToolHandler for TdgConfigureStorageTool {
         let params: TdgConfigureStorageArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {}", e)))?;
 
-        let result = tdg_configure_storage(params.backend_type, params.path, params.cache_size_mb, params.compression)
-            .await
-            .map_err(|e| Error::internal(format!("TDG storage configuration failed: {}", e)))?;
+        let result = tdg_configure_storage(
+            params.backend_type,
+            params.path,
+            params.cache_size_mb,
+            params.compression,
+        )
+        .await
+        .map_err(|e| Error::internal(format!("TDG storage configuration failed: {}", e)))?;
 
         Ok(result)
     }
@@ -271,7 +278,7 @@ fn default_true() -> bool {
 }
 
 /// Tool handler for TDG health check.
-/// 
+///
 /// Performs comprehensive system health check with actionable
 /// recommendations for optimization and issue resolution.
 pub struct TdgHealthCheckTool;
@@ -312,12 +319,12 @@ mod tests {
     #[tokio::test]
     async fn test_tdg_system_diagnostics_tool() {
         let tool = TdgSystemDiagnosticsTool::new();
-        
+
         let args = json!({
             "detailed": true,
             "components": ["storage", "scheduler"]
         });
-        
+
         // Test that the handler doesn't panic
         let result = tool.handle(args, RequestHandlerExtra::default()).await;
         // We expect this to fail in test environment since TDG system isn't fully initialized
@@ -327,11 +334,11 @@ mod tests {
     #[tokio::test]
     async fn test_tdg_storage_management_tool() {
         let tool = TdgStorageManagementTool::new();
-        
+
         let args = json!({
             "action": "stats"
         });
-        
+
         // Test that the handler doesn't panic
         let result = tool.handle(args, RequestHandlerExtra::default()).await;
         // We expect this to fail in test environment since TDG system isn't fully initialized
@@ -341,11 +348,11 @@ mod tests {
     #[tokio::test]
     async fn test_tdg_analyze_with_storage_tool() {
         let tool = TdgAnalyzeWithStorageTool::new();
-        
+
         let args = json!({
             "paths": ["test.rs"]
         });
-        
+
         // Test that the handler doesn't panic
         let result = tool.handle(args, RequestHandlerExtra::default()).await;
         // We expect this to fail in test environment since TDG system isn't fully initialized

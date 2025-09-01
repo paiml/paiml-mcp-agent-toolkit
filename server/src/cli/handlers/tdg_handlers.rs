@@ -33,7 +33,7 @@ pub async fn handle_tdg_command(
             TdgCommand::Compare { source1, source2 } => {
                 let comparison = analyzer.compare(&source1, &source2).await?;
                 let output_str = format_comparison(comparison, format)?;
-                
+
                 if let Some(output_path) = output {
                     fs::write(output_path, output_str)?;
                 } else {
@@ -41,7 +41,9 @@ pub async fn handle_tdg_command(
                 }
                 return Ok(());
             }
-            TdgCommand::Diagnostics { .. } | TdgCommand::Storage { .. } | TdgCommand::Dashboard { .. } => {
+            TdgCommand::Diagnostics { .. }
+            | TdgCommand::Storage { .. }
+            | TdgCommand::Dashboard { .. } => {
                 // Handle diagnostic and dashboard commands
                 return super::tdg_diagnostic_handler::handle_tdg_diagnostics(&cmd, &path).await;
             }
@@ -92,7 +94,7 @@ fn format_tdg_score(
     match format {
         TdgOutputFormat::Table => {
             let mut output = String::new();
-            
+
             // Header
             output.push_str("╭─────────────────────────────────────────────────╮\n");
             if let Some(file_path) = &score.file_path {
@@ -104,7 +106,7 @@ fn format_tdg_score(
                 output.push_str("│  TDG Score Report                              │\n");
             }
             output.push_str("├─────────────────────────────────────────────────┤\n");
-            
+
             // Overall score
             output.push_str(&format!(
                 "│  Overall Score: {:.1}/100 ({})                  │\n",
@@ -116,7 +118,7 @@ fn format_tdg_score(
                 score.language,
                 score.confidence * 100.0
             ));
-            
+
             if include_components {
                 output.push_str("│                                                 │\n");
                 output.push_str("│  📊 Breakdown:                                  │\n");
@@ -145,7 +147,7 @@ fn format_tdg_score(
                     score.consistency_score
                 ));
             }
-            
+
             output.push_str("╰─────────────────────────────────────────────────╯\n");
             Ok(output)
         }
@@ -175,27 +177,53 @@ fn format_tdg_score(
         }
         TdgOutputFormat::Markdown => {
             let mut output = String::new();
-            
+
             output.push_str("# TDG Score Report\n\n");
             if let Some(file_path) = &score.file_path {
                 output.push_str(&format!("**File**: `{}`\n\n", file_path.display()));
             }
-            
-            output.push_str(&format!("**Overall Score**: {:.1}/100 ({})\n", score.total, format_grade(score.grade)));
-            output.push_str(&format!("**Language**: {:?} (confidence: {:.0}%)\n\n", score.language, score.confidence * 100.0));
-            
+
+            output.push_str(&format!(
+                "**Overall Score**: {:.1}/100 ({})\n",
+                score.total,
+                format_grade(score.grade)
+            ));
+            output.push_str(&format!(
+                "**Language**: {:?} (confidence: {:.0}%)\n\n",
+                score.language,
+                score.confidence * 100.0
+            ));
+
             if include_components {
                 output.push_str("## Component Breakdown\n\n");
                 output.push_str("| Component | Score | Max |\n");
                 output.push_str("|-----------|-------|-----|\n");
-                output.push_str(&format!("| Structural Complexity | {:.1} | 25 |\n", score.structural_complexity));
-                output.push_str(&format!("| Semantic Complexity | {:.1} | 20 |\n", score.semantic_complexity));
-                output.push_str(&format!("| Duplication | {:.1} | 20 |\n", score.duplication_ratio));
-                output.push_str(&format!("| Coupling | {:.1} | 15 |\n", score.coupling_score));
-                output.push_str(&format!("| Documentation | {:.1} | 10 |\n", score.doc_coverage));
-                output.push_str(&format!("| Consistency | {:.1} | 10 |\n", score.consistency_score));
+                output.push_str(&format!(
+                    "| Structural Complexity | {:.1} | 25 |\n",
+                    score.structural_complexity
+                ));
+                output.push_str(&format!(
+                    "| Semantic Complexity | {:.1} | 20 |\n",
+                    score.semantic_complexity
+                ));
+                output.push_str(&format!(
+                    "| Duplication | {:.1} | 20 |\n",
+                    score.duplication_ratio
+                ));
+                output.push_str(&format!(
+                    "| Coupling | {:.1} | 15 |\n",
+                    score.coupling_score
+                ));
+                output.push_str(&format!(
+                    "| Documentation | {:.1} | 10 |\n",
+                    score.doc_coverage
+                ));
+                output.push_str(&format!(
+                    "| Consistency | {:.1} | 10 |\n",
+                    score.consistency_score
+                ));
             }
-            
+
             Ok(output)
         }
         TdgOutputFormat::Sarif => {
@@ -229,12 +257,12 @@ fn format_comparison(
                 "│  Difference: {:+.1}                             │\n",
                 comparison.delta
             ));
-            
+
             output.push_str(&format!(
                 "│  Winner: {}                                      │\n",
                 comparison.winner
             ));
-            
+
             output.push_str("╰─────────────────────────────────────────────────╯\n");
             Ok(output)
         }
@@ -287,6 +315,9 @@ fn parse_grade(grade_str: &str) -> Result<Grade> {
         "C-" | "CMINUS" => Ok(Grade::CMinus),
         "D" => Ok(Grade::D),
         "F" => Ok(Grade::F),
-        _ => Err(anyhow!("Invalid grade: {}. Valid grades are: A+, A, A-, B+, B, B-, C+, C, C-, D, F", grade_str)),
+        _ => Err(anyhow!(
+            "Invalid grade: {}. Valid grades are: A+, A, A-, B+, B, B-, C+, C, C-, D, F",
+            grade_str
+        )),
     }
 }

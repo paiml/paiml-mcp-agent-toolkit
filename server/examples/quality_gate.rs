@@ -6,8 +6,8 @@
 //! Run with: `cargo run --example quality_gate`
 
 use anyhow::Result;
-use pmat::cli::enums::{QualityCheckType, QualityGateOutputFormat};
 use pmat::cli::analysis_utilities::handle_quality_gate;
+use pmat::cli::enums::{QualityCheckType, QualityGateOutputFormat};
 use std::path::PathBuf;
 
 #[tokio::main]

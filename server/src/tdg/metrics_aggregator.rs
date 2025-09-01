@@ -1,15 +1,15 @@
 //! Sprint 31 Week 2 - Advanced Metrics Aggregation and Trending
-//! 
+//!
 //! Provides sophisticated metrics aggregation, time-series analysis, and trending
 //! capabilities for the TDG system. Supports rolling windows, percentile calculations,
 //! and anomaly detection.
 
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::sync::RwLock;
-use serde::{Deserialize, Serialize};
-use anyhow::Result;
 
 /// Time-series data point
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,7 +38,7 @@ impl<T: Clone> RollingWindow<T> {
 
     pub fn push(&mut self, value: T, tags: HashMap<String, String>) {
         let now = SystemTime::now();
-        
+
         // Remove old data points outside the window
         let cutoff = now - self.window_size;
         while let Some(front) = self.data.front() {
@@ -48,14 +48,14 @@ impl<T: Clone> RollingWindow<T> {
                 break;
             }
         }
-        
+
         // Add new data point
         self.data.push_back(DataPoint {
             timestamp: now,
             value,
             tags,
         });
-        
+
         // Enforce max points limit
         while self.data.len() > self.max_points {
             self.data.pop_front();
@@ -188,7 +188,7 @@ impl MetricsAggregator {
         Self {
             storage_metrics: Arc::new(RwLock::new(RollingWindow::new(
                 Duration::from_secs(3600), // 1 hour window
-                360, // Max 360 points (10 second intervals)
+                360,                       // Max 360 points (10 second intervals)
             ))),
             performance_metrics: Arc::new(RwLock::new(RollingWindow::new(
                 Duration::from_secs(3600),
@@ -213,11 +213,11 @@ impl MetricsAggregator {
     /// Record performance metrics
     pub async fn record_performance_metrics(&self, metrics: PerformanceMetricPoint) -> Result<()> {
         let mut window = self.performance_metrics.write().await;
-        
+
         // Check for alerts
         let thresholds = self.alert_thresholds.read().await;
         let mut tags = HashMap::new();
-        
+
         if metrics.cpu_usage_percent > thresholds.cpu_critical {
             tags.insert("alert".to_string(), "cpu_critical".to_string());
         }
@@ -227,7 +227,7 @@ impl MetricsAggregator {
         if metrics.queue_depth > thresholds.queue_depth_warning {
             tags.insert("alert".to_string(), "queue_depth_warning".to_string());
         }
-        
+
         window.push(metrics, tags);
         Ok(())
     }
@@ -243,7 +243,7 @@ impl MetricsAggregator {
     pub async fn aggregate_performance_stats(&self) -> AggregatedStats {
         let window = self.performance_metrics.read().await;
         let data = window.get_window();
-        
+
         if data.is_empty() {
             return AggregatedStats {
                 count: 0,
@@ -259,9 +259,7 @@ impl MetricsAggregator {
             };
         }
 
-        let values: Vec<f64> = data.iter()
-            .map(|p| p.value.avg_analysis_time_ms)
-            .collect();
+        let values: Vec<f64> = data.iter().map(|p| p.value.avg_analysis_time_ms).collect();
 
         self.calculate_stats(&values, &data)
     }
@@ -285,9 +283,7 @@ impl MetricsAggregator {
         let max = *sorted.last().unwrap_or(&0.0);
 
         // Calculate standard deviation
-        let variance: f64 = values.iter()
-            .map(|v| (v - mean).powi(2))
-            .sum::<f64>() / count as f64;
+        let variance: f64 = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / count as f64;
         let std_dev = variance.sqrt();
 
         // Calculate percentiles
@@ -353,7 +349,7 @@ impl MetricsAggregator {
         for (i, value) in values.iter().enumerate() {
             if std_dev > 0.0 {
                 let z_score = (value - mean).abs() / std_dev;
-                
+
                 if z_score > 3.0 {
                     let severity = match z_score {
                         z if z > 4.0 => AnomalySeverity::Critical,
@@ -395,7 +391,10 @@ impl MetricsAggregator {
             if latest.value.memory_usage_mb > thresholds.memory_critical_mb {
                 alerts.push(Alert {
                     severity: AlertSeverity::Critical,
-                    message: format!("Memory usage critical: {:.1} MB", latest.value.memory_usage_mb),
+                    message: format!(
+                        "Memory usage critical: {:.1} MB",
+                        latest.value.memory_usage_mb
+                    ),
                     timestamp: SystemTime::now(),
                     metric: "memory_usage".to_string(),
                 });
@@ -433,7 +432,7 @@ impl MetricsAggregator {
             ExportFormat::Csv => {
                 let mut csv = String::new();
                 csv.push_str("timestamp,metric_type,metric_name,value\n");
-                
+
                 for point in storage {
                     csv.push_str(&format!(
                         "{:?},storage,total_entries,{}\n",
@@ -444,7 +443,7 @@ impl MetricsAggregator {
                         point.timestamp, point.value.cache_hit_ratio
                     ));
                 }
-                
+
                 for point in performance {
                     csv.push_str(&format!(
                         "{:?},performance,avg_analysis_time_ms,{}\n",
@@ -455,12 +454,12 @@ impl MetricsAggregator {
                         point.timestamp, point.value.cpu_usage_percent
                     ));
                 }
-                
+
                 Ok(csv)
             }
             ExportFormat::Prometheus => {
                 let mut prom = String::new();
-                
+
                 if let Some(latest_storage) = storage.last() {
                     prom.push_str(&format!(
                         "# HELP tdg_storage_entries Total storage entries\n\
@@ -475,7 +474,7 @@ impl MetricsAggregator {
                         latest_storage.value.cache_hit_ratio
                     ));
                 }
-                
+
                 if let Some(latest_perf) = performance.last() {
                     prom.push_str(&format!(
                         "# HELP tdg_analysis_time_ms Average analysis time\n\
@@ -490,7 +489,7 @@ impl MetricsAggregator {
                         latest_perf.value.cpu_usage_percent
                     ));
                 }
-                
+
                 Ok(prom)
             }
         }
@@ -529,19 +528,19 @@ mod tests {
     #[tokio::test]
     async fn test_rolling_window() {
         let mut window = RollingWindow::new(Duration::from_secs(60), 10);
-        
+
         for i in 0..5 {
             window.push(i as f64, HashMap::new());
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
-        
+
         assert_eq!(window.get_window().len(), 5);
     }
 
     #[tokio::test]
     async fn test_metrics_aggregation() {
         let aggregator = MetricsAggregator::new();
-        
+
         for i in 0..10 {
             let metrics = PerformanceMetricPoint {
                 avg_analysis_time_ms: (i * 100) as f64,
@@ -551,9 +550,12 @@ mod tests {
                 memory_usage_mb: (i * 100) as f64,
                 gc_pause_ms: 0.0,
             };
-            aggregator.record_performance_metrics(metrics).await.unwrap();
+            aggregator
+                .record_performance_metrics(metrics)
+                .await
+                .unwrap();
         }
-        
+
         let stats = aggregator.aggregate_performance_stats().await;
         assert!(stats.count > 0);
         assert!(stats.mean > 0.0);
@@ -562,7 +564,7 @@ mod tests {
     #[tokio::test]
     async fn test_alert_detection() {
         let aggregator = MetricsAggregator::new();
-        
+
         let critical_metrics = PerformanceMetricPoint {
             avg_analysis_time_ms: 10000.0,
             active_operations: 10,
@@ -571,9 +573,12 @@ mod tests {
             memory_usage_mb: 9000.0,
             gc_pause_ms: 100.0,
         };
-        
-        aggregator.record_performance_metrics(critical_metrics).await.unwrap();
-        
+
+        aggregator
+            .record_performance_metrics(critical_metrics)
+            .await
+            .unwrap();
+
         let alerts = aggregator.get_alert_status().await;
         assert!(!alerts.is_empty());
         assert!(alerts.iter().any(|a| a.severity == AlertSeverity::Critical));

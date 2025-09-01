@@ -1,9 +1,8 @@
 //! Integration tests for TDG storage backend flexibility
 
 use pmat::tdg::{
-    StorageBackend, StorageBackendFactory, StorageBackendType, StorageConfig,
-    InMemoryBackend, SledBackend, TieredStore, TieredStorageFactory,
-    Grade, Language, TdgScore,
+    Grade, InMemoryBackend, Language, SledBackend, StorageBackend, StorageBackendFactory,
+    StorageBackendType, StorageConfig, TdgScore, TieredStorageFactory, TieredStore,
 };
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -11,17 +10,17 @@ use tempfile::TempDir;
 #[test]
 fn test_in_memory_backend_basic_operations() {
     let backend = InMemoryBackend::new();
-    
+
     // Test basic put/get
     let key = b"test_key";
     let value = b"test_value";
-    
+
     backend.put(key, value).unwrap();
     assert!(backend.contains(key).unwrap());
-    
+
     let retrieved = backend.get(key).unwrap().unwrap();
     assert_eq!(retrieved, value);
-    
+
     // Test delete
     backend.delete(key).unwrap();
     assert!(!backend.contains(key).unwrap());
@@ -31,14 +30,14 @@ fn test_in_memory_backend_basic_operations() {
 fn test_sled_backend_persistence() {
     let temp_dir = TempDir::new().unwrap();
     let backend = SledBackend::new(temp_dir.path()).unwrap();
-    
+
     // Test persistence
     let key = b"persist_key";
     let value = b"persist_value";
-    
+
     backend.put(key, value).unwrap();
     backend.flush().unwrap();
-    
+
     // Reopen the same database
     let backend2 = SledBackend::new(temp_dir.path()).unwrap();
     let retrieved = backend2.get(key).unwrap().unwrap();
@@ -50,11 +49,11 @@ fn test_backend_factory_creation() {
     // Test in-memory creation
     let backend = StorageBackendFactory::create_in_memory();
     assert_eq!(backend.backend_name(), "in-memory");
-    
+
     // Test temporary sled creation
     let backend = StorageBackendFactory::create_sled_temporary().unwrap();
     assert_eq!(backend.backend_name(), "sled");
-    
+
     // Test config-based creation
     let config = StorageConfig {
         backend_type: StorageBackendType::InMemory,
@@ -70,18 +69,17 @@ fn test_backend_factory_creation() {
 async fn test_tiered_storage_with_backends() {
     // Test with in-memory backend
     let storage = TieredStore::in_memory();
-    
+
     // Create a test record
     use pmat::tdg::{
-        AnalysisMetadata, ComponentScores, FileIdentity, FullTdgRecord,
-        SemanticSignature,
+        AnalysisMetadata, ComponentScores, FileIdentity, FullTdgRecord, SemanticSignature,
     };
     use std::collections::HashMap;
     use std::time::SystemTime;
-    
+
     let content = b"fn test() { println!(\"hello\"); }";
     let hash = blake3::hash(content);
-    
+
     let record = FullTdgRecord {
         identity: FileIdentity {
             path: PathBuf::from("test.rs"),
@@ -124,14 +122,14 @@ async fn test_tiered_storage_with_backends() {
             cache_hit: false,
         },
     };
-    
+
     // Store and retrieve
     storage.store(record.clone()).await.unwrap();
-    
+
     // Check hot cache
     let hot_entry = storage.get_hot(&hash).unwrap();
     assert_eq!(hot_entry.total_score, 88.0);
-    
+
     // Retrieve full record
     let retrieved = storage.retrieve_full(&hash).await.unwrap().unwrap();
     assert_eq!(retrieved.score.total, record.score.total);
@@ -141,7 +139,7 @@ async fn test_tiered_storage_with_backends() {
 async fn test_storage_statistics() {
     let temp_dir = TempDir::new().unwrap();
     let storage = TieredStore::new(temp_dir.path()).unwrap();
-    
+
     let stats = storage.get_statistics();
     assert_eq!(stats.hot_entries, 0);
     assert_eq!(stats.warm_entries, 0);
@@ -153,14 +151,14 @@ async fn test_storage_statistics() {
 #[test]
 fn test_backend_iteration() {
     let backend = InMemoryBackend::new();
-    
+
     // Add multiple entries
     for i in 0..10 {
         let key = format!("key_{}", i);
         let value = format!("value_{}", i);
         backend.put(key.as_bytes(), value.as_bytes()).unwrap();
     }
-    
+
     // Test iteration
     let mut count = 0;
     for result in backend.iter().unwrap() {
@@ -173,16 +171,16 @@ fn test_backend_iteration() {
 #[test]
 fn test_backend_clear() {
     let backend = InMemoryBackend::new();
-    
+
     // Add entries
     backend.put(b"key1", b"value1").unwrap();
     backend.put(b"key2", b"value2").unwrap();
-    
+
     assert!(backend.contains(b"key1").unwrap());
-    
+
     // Clear all
     backend.clear().unwrap();
-    
+
     assert!(!backend.contains(b"key1").unwrap());
     assert!(!backend.contains(b"key2").unwrap());
 }
@@ -191,20 +189,20 @@ fn test_backend_clear() {
 #[test]
 fn test_rocksdb_backend() {
     use pmat::tdg::RocksDbBackend;
-    
+
     let temp_dir = TempDir::new().unwrap();
     let backend = RocksDbBackend::new(temp_dir.path()).unwrap();
-    
+
     // Test basic operations
     let key = b"rocks_key";
     let value = b"rocks_value";
-    
+
     backend.put(key, value).unwrap();
     assert!(backend.contains(key).unwrap());
-    
+
     let retrieved = backend.get(key).unwrap().unwrap();
     assert_eq!(retrieved, value);
-    
+
     assert_eq!(backend.backend_name(), "rocksdb");
 }
 
