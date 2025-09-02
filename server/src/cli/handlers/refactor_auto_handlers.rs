@@ -2023,3 +2023,341 @@ fn print_single_file_summary(_request: &serde_json::Value) {
 fn print_single_file_detailed(_request: &serde_json::Value) {
     eprintln!("📋 Single file refactoring details");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+    use tokio;
+
+    #[test]
+    fn test_quality_profile_default() {
+        let profile = QualityProfile::default();
+        
+        assert_eq!(profile.coverage_min, 80.0);
+        assert_eq!(profile.complexity_max, 20);
+        assert_eq!(profile.complexity_target, 10);
+        assert_eq!(profile.satd_allowed, 0);
+    }
+
+    #[test]
+    fn test_quality_profile_creation() {
+        let profile = QualityProfile {
+            coverage_min: 75.0,
+            complexity_max: 15,
+            complexity_target: 8,
+            satd_allowed: 2,
+        };
+        
+        assert_eq!(profile.coverage_min, 75.0);
+        assert_eq!(profile.complexity_max, 15);
+        assert_eq!(profile.complexity_target, 8);
+        assert_eq!(profile.satd_allowed, 2);
+    }
+
+    #[test]
+    fn test_quality_metrics_default() {
+        let metrics = QualityMetrics::default();
+        
+        assert_eq!(metrics.total_violations, 0);
+        assert_eq!(metrics.coverage_percent, 0.0);
+        assert_eq!(metrics.max_complexity, 0);
+        assert_eq!(metrics.satd_count, 0);
+        assert_eq!(metrics.files_with_issues, 0);
+        assert_eq!(metrics.total_files, 0);
+        assert_eq!(metrics.functions_with_high_complexity, 0);
+    }
+
+    #[test]
+    fn test_quality_metrics_creation() {
+        let metrics = QualityMetrics {
+            total_violations: 50,
+            coverage_percent: 75.5,
+            max_complexity: 25,
+            satd_count: 3,
+            files_with_issues: 8,
+            total_files: 20,
+            functions_with_high_complexity: 12,
+        };
+        
+        assert_eq!(metrics.total_violations, 50);
+        assert_eq!(metrics.coverage_percent, 75.5);
+        assert_eq!(metrics.max_complexity, 25);
+        assert_eq!(metrics.satd_count, 3);
+        assert_eq!(metrics.files_with_issues, 8);
+        assert_eq!(metrics.total_files, 20);
+        assert_eq!(metrics.functions_with_high_complexity, 12);
+    }
+
+    #[test]
+    fn test_refactor_progress_default() {
+        let progress = RefactorProgress::default();
+        
+        assert_eq!(progress.files_analyzed, 0);
+        assert_eq!(progress.files_refactored, 0);
+        assert_eq!(progress.iterations_completed, 0);
+        assert!(!progress.is_complete);
+        assert!(progress.current_phase.contains("Starting"));
+    }
+
+    #[test]
+    fn test_refactor_progress_creation() {
+        let progress = RefactorProgress {
+            files_analyzed: 15,
+            files_refactored: 8,
+            iterations_completed: 3,
+            is_complete: false,
+            current_phase: "Analysis".to_string(),
+        };
+        
+        assert_eq!(progress.files_analyzed, 15);
+        assert_eq!(progress.files_refactored, 8);
+        assert_eq!(progress.iterations_completed, 3);
+        assert!(!progress.is_complete);
+        assert_eq!(progress.current_phase, "Analysis");
+    }
+
+    #[test]
+    fn test_refactor_state_creation() {
+        let start_time = std::time::SystemTime::now();
+        let state = RefactorState {
+            iteration: 2,
+            context_generated: true,
+            context_path: PathBuf::from("/tmp/context"),
+            current_file: Some(PathBuf::from("/src/test.rs")),
+            files_completed: vec![PathBuf::from("/src/lib.rs")],
+            quality_metrics: QualityMetrics::default(),
+            progress: RefactorProgress::default(),
+            start_time,
+        };
+        
+        assert_eq!(state.iteration, 2);
+        assert!(state.context_generated);
+        assert_eq!(state.context_path, PathBuf::from("/tmp/context"));
+        assert_eq!(state.current_file, Some(PathBuf::from("/src/test.rs")));
+        assert_eq!(state.files_completed.len(), 1);
+        assert_eq!(state.files_completed[0], PathBuf::from("/src/lib.rs"));
+    }
+
+    #[test]
+    fn test_lint_hotspot_json_creation() {
+        let hotspot = LintHotspotJson {
+            file: PathBuf::from("/src/main.rs"),
+            defect_density: 2.5,
+            total_violations: 10,
+        };
+        
+        assert_eq!(hotspot.file, PathBuf::from("/src/main.rs"));
+        assert_eq!(hotspot.defect_density, 2.5);
+        assert_eq!(hotspot.total_violations, 10);
+    }
+
+    #[test]
+    fn test_violation_detail_json_creation() {
+        let violation = ViolationDetailJson {
+            file: PathBuf::from("/src/test.rs"),
+            line: 42,
+            column: 10,
+            end_line: 42,
+            end_column: 15,
+            lint_name: "dead_code".to_string(),
+            message: "unused variable".to_string(),
+            severity: "warning".to_string(),
+            suggestion: Some("remove unused variable".to_string()),
+            machine_applicable: true,
+        };
+        
+        assert_eq!(violation.file, PathBuf::from("/src/test.rs"));
+        assert_eq!(violation.line, 42);
+        assert_eq!(violation.column, 10);
+        assert_eq!(violation.end_line, 42);
+        assert_eq!(violation.end_column, 15);
+        assert_eq!(violation.lint_name, "dead_code");
+        assert_eq!(violation.message, "unused variable");
+        assert_eq!(violation.severity, "warning");
+        assert_eq!(violation.suggestion, Some("remove unused variable".to_string()));
+        assert!(violation.machine_applicable);
+    }
+
+    #[test]
+    fn test_lint_hotspot_json_response_creation() {
+        let hotspot = LintHotspotJson {
+            file: PathBuf::from("/src/lib.rs"),
+            defect_density: 1.5,
+            total_violations: 5,
+        };
+        
+        let violation = ViolationDetailJson {
+            file: PathBuf::from("/src/lib.rs"),
+            line: 10,
+            column: 5,
+            end_line: 10,
+            end_column: 8,
+            lint_name: "clippy::complexity".to_string(),
+            message: "complex expression".to_string(),
+            severity: "error".to_string(),
+            suggestion: None,
+            machine_applicable: false,
+        };
+        
+        let response = LintHotspotJsonResponse {
+            hotspot,
+            all_violations: vec![violation],
+            total_project_violations: 25,
+        };
+        
+        assert_eq!(response.hotspot.file, PathBuf::from("/src/lib.rs"));
+        assert_eq!(response.hotspot.defect_density, 1.5);
+        assert_eq!(response.all_violations.len(), 1);
+        assert_eq!(response.all_violations[0].lint_name, "clippy::complexity");
+        assert_eq!(response.total_project_violations, 25);
+    }
+
+    #[test]
+    fn test_parse_github_issue_url_valid() {
+        let url = "https://github.com/owner/repo/issues/123";
+        let result = parse_github_issue_url(url);
+        
+        assert!(result.is_ok());
+        let issue_ref = result.unwrap();
+        assert_eq!(issue_ref.owner, "owner");
+        assert_eq!(issue_ref.repo, "repo");
+        assert_eq!(issue_ref.issue_number, 123);
+    }
+
+    #[test]
+    fn test_parse_github_issue_url_invalid() {
+        let url = "https://invalid-url.com/not-github";
+        let result = parse_github_issue_url(url);
+        
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_coverage_from_output_valid() {
+        let output = b"Coverage: 85.5%\nTotal lines: 1000";
+        let result = parse_coverage_from_output(output);
+        
+        assert_eq!(result, Some(85.5));
+    }
+
+    #[test]
+    fn test_parse_coverage_from_output_no_match() {
+        let output = b"No coverage information available";
+        let result = parse_coverage_from_output(output);
+        
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_parse_coverage_from_output_multiple_matches() {
+        let output = b"Test Coverage: 78.2%\nLine Coverage: 85.0%";
+        let result = parse_coverage_from_output(output);
+        
+        // Should return the first match
+        assert_eq!(result, Some(78.2));
+    }
+
+    #[tokio::test]
+    async fn test_load_ignore_patterns_with_gitignore() {
+        let temp_dir = TempDir::new().unwrap();
+        let gitignore_path = temp_dir.path().join(".gitignore");
+        std::fs::write(&gitignore_path, "target/\n*.tmp\n").unwrap();
+        
+        let config = PatternConfig {
+            root_path: temp_dir.path().to_path_buf(),
+            ignore_file: Some(".gitignore".to_string()),
+            patterns: vec![],
+        };
+        
+        let result = load_ignore_patterns(&config).await;
+        
+        assert!(result.is_ok());
+        let patterns = result.unwrap();
+        assert!(patterns.contains(&"target/".to_string()));
+        assert!(patterns.contains(&"*.tmp".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_load_ignore_patterns_no_file() {
+        let temp_dir = TempDir::new().unwrap();
+        
+        let config = PatternConfig {
+            root_path: temp_dir.path().to_path_buf(),
+            ignore_file: Some(".nonexistent".to_string()),
+            patterns: vec!["manual_pattern".to_string()],
+        };
+        
+        let result = load_ignore_patterns(&config).await;
+        
+        assert!(result.is_ok());
+        let patterns = result.unwrap();
+        assert!(patterns.contains(&"manual_pattern".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_discover_source_files_empty_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        
+        let config = PatternConfig {
+            root_path: temp_dir.path().to_path_buf(),
+            ignore_file: None,
+            patterns: vec![],
+        };
+        
+        let result = discover_source_files(&config).await;
+        
+        assert!(result.is_ok());
+        let files = result.unwrap();
+        assert!(files.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_discover_source_files_with_rust_files() {
+        let temp_dir = TempDir::new().unwrap();
+        let rust_file = temp_dir.path().join("main.rs");
+        std::fs::write(&rust_file, "fn main() {}").unwrap();
+        
+        let config = PatternConfig {
+            root_path: temp_dir.path().to_path_buf(),
+            ignore_file: None,
+            patterns: vec![],
+        };
+        
+        let result = discover_source_files(&config).await;
+        
+        assert!(result.is_ok());
+        let files = result.unwrap();
+        assert_eq!(files.len(), 1);
+        assert!(files[0].ends_with("main.rs"));
+    }
+
+    #[test]
+    fn test_extract_target_files_from_issue() {
+        let content = GitHubIssueContent {
+            title: "Fix issues in src/main.rs and tests/test.rs".to_string(),
+            body: "Found problems in:\n- src/lib.rs\n- src/utils.rs\n\nNeed to refactor these files.".to_string(),
+        };
+        
+        let result = extract_target_files_from_issue(&content, Path::new("/project"));
+        
+        assert_eq!(result.len(), 4); // main.rs, test.rs, lib.rs, utils.rs
+        assert!(result.iter().any(|p| p.ends_with("main.rs")));
+        assert!(result.iter().any(|p| p.ends_with("test.rs")));
+        assert!(result.iter().any(|p| p.ends_with("lib.rs")));
+        assert!(result.iter().any(|p| p.ends_with("utils.rs")));
+    }
+
+    #[test]
+    fn test_extract_target_files_from_issue_no_files() {
+        let content = GitHubIssueContent {
+            title: "General refactoring needed".to_string(),
+            body: "This project needs general improvements.".to_string(),
+        };
+        
+        let result = extract_target_files_from_issue(&content, Path::new("/project"));
+        
+        assert!(result.is_empty());
+    }
+}
