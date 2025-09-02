@@ -1408,106 +1408,118 @@ impl DeepContextAnalyzer {
         let mut categorized = CategorizedAstItems::new();
 
         for item in items {
-            match item {
-                crate::services::context::AstItem::Function {
-                    name,
-                    visibility,
-                    is_async,
-                    line,
-                } => {
-                    categorized.functions.push(AstFunction {
-                        name: name.clone(),
-                        visibility: visibility.clone(),
-                        is_async: *is_async,
-                        line: *line,
-                    });
-                }
-                crate::services::context::AstItem::Struct {
-                    name,
-                    visibility,
-                    fields_count,
-                    derives,
-                    line,
-                } => {
-                    categorized.structs.push(AstStruct {
-                        name: name.clone(),
-                        visibility: visibility.clone(),
-                        fields_count: *fields_count,
-                        derives: derives.clone(),
-                        line: *line,
-                    });
-                }
-                crate::services::context::AstItem::Enum {
-                    name,
-                    visibility,
-                    variants_count,
-                    line,
-                } => {
-                    categorized.enums.push(AstEnum {
-                        name: name.clone(),
-                        visibility: visibility.clone(),
-                        variants_count: *variants_count,
-                        line: *line,
-                    });
-                }
-                crate::services::context::AstItem::Trait {
-                    name,
-                    visibility,
-                    line,
-                } => {
-                    categorized.traits.push(AstTrait {
-                        name: name.clone(),
-                        visibility: visibility.clone(),
-                        line: *line,
-                    });
-                }
-                crate::services::context::AstItem::Impl {
-                    type_name,
-                    trait_name,
-                    line,
-                } => {
-                    categorized.impls.push(AstImpl {
-                        type_name: type_name.clone(),
-                        trait_name: trait_name.clone(),
-                        line: *line,
-                    });
-                }
-                crate::services::context::AstItem::Module {
-                    name,
-                    visibility,
-                    line,
-                } => {
-                    categorized.modules.push(AstModule {
-                        name: name.clone(),
-                        visibility: visibility.clone(),
-                        line: *line,
-                    });
-                }
-                crate::services::context::AstItem::Use { path, line } => {
-                    categorized.uses.push(AstUse {
-                        path: path.clone(),
-                        line: *line,
-                    });
-                }
-                crate::services::context::AstItem::Import {
-                    module,
-                    items,
-                    alias,
-                    line,
-                } => {
-                    let path = if let Some(alias) = alias {
-                        format!("{} as {}", module, alias)
-                    } else if !items.is_empty() {
-                        format!("{} ({})", module, items.join(", "))
-                    } else {
-                        module.clone()
-                    };
-                    categorized.uses.push(AstUse { path, line: *line });
-                }
-            }
+            self.categorize_single_ast_item(item, &mut categorized);
         }
 
         categorized
+    }
+
+    fn categorize_single_ast_item(
+        &self,
+        item: &crate::services::context::AstItem,
+        categorized: &mut CategorizedAstItems,
+    ) {
+        match item {
+            crate::services::context::AstItem::Function {
+                name,
+                visibility,
+                is_async,
+                line,
+            } => {
+                categorized.functions.push(AstFunction {
+                    name: name.clone(),
+                    visibility: visibility.clone(),
+                    is_async: *is_async,
+                    line: *line,
+                });
+            }
+            crate::services::context::AstItem::Struct {
+                name,
+                visibility,
+                fields_count,
+                derives,
+                line,
+            } => {
+                categorized.structs.push(AstStruct {
+                    name: name.clone(),
+                    visibility: visibility.clone(),
+                    fields_count: *fields_count,
+                    derives: derives.clone(),
+                    line: *line,
+                });
+            }
+            crate::services::context::AstItem::Enum {
+                name,
+                visibility,
+                variants_count,
+                line,
+            } => {
+                categorized.enums.push(AstEnum {
+                    name: name.clone(),
+                    visibility: visibility.clone(),
+                    variants_count: *variants_count,
+                    line: *line,
+                });
+            }
+            crate::services::context::AstItem::Trait {
+                name,
+                visibility,
+                line,
+            } => {
+                categorized.traits.push(AstTrait {
+                    name: name.clone(),
+                    visibility: visibility.clone(),
+                    line: *line,
+                });
+            }
+            crate::services::context::AstItem::Impl {
+                type_name,
+                trait_name,
+                line,
+            } => {
+                categorized.impls.push(AstImpl {
+                    type_name: type_name.clone(),
+                    trait_name: trait_name.clone(),
+                    line: *line,
+                });
+            }
+            crate::services::context::AstItem::Module {
+                name,
+                visibility,
+                line,
+            } => {
+                categorized.modules.push(AstModule {
+                    name: name.clone(),
+                    visibility: visibility.clone(),
+                    line: *line,
+                });
+            }
+            crate::services::context::AstItem::Use { path, line } => {
+                categorized.uses.push(AstUse {
+                    path: path.clone(),
+                    line: *line,
+                });
+            }
+            crate::services::context::AstItem::Import {
+                module,
+                items,
+                alias,
+                line,
+            } => {
+                let path = self.format_import_path(module, items, alias);
+                categorized.uses.push(AstUse { path, line: *line });
+            }
+        }
+    }
+
+    fn format_import_path(&self, module: &str, items: &[String], alias: &Option<String>) -> String {
+        if let Some(alias) = alias {
+            format!("{} as {}", module, alias)
+        } else if !items.is_empty() {
+            format!("{} ({})", module, items.join(", "))
+        } else {
+            module.to_string()
+        }
     }
 
     fn write_ast_summary(
@@ -2896,75 +2908,18 @@ impl DeepContextAnalyzer {
         tdg_summary: &TDGSummary,
         analyses: &ParallelAnalysisResults,
     ) -> anyhow::Result<DefectSummary> {
-        // Enumerate actual defects from all analysis sources
         let mut total_defects = 0usize;
         let mut by_severity = FxHashMap::default();
         let mut by_type = FxHashMap::default();
         let mut total_loc = 0usize;
 
-        // Count complexity violations
-        if let Some(ref complexity_report) = analyses.complexity_report {
-            let complexity_violations = complexity_report.violations.len();
-            total_defects += complexity_violations;
-            by_type.insert("Complexity".to_string(), complexity_violations);
+        // Process each analysis type
+        self.process_complexity_violations(analyses, &mut total_defects, &mut by_severity, &mut by_type, &mut total_loc);
+        self.process_satd_violations(analyses, &mut total_defects, &mut by_severity, &mut by_type);
+        self.process_dead_code_violations(analyses, &mut total_defects, &mut by_severity, &mut by_type);
+        self.process_tdg_violations(tdg_summary, &mut total_defects, &mut by_severity, &mut by_type);
 
-            // Count violations by severity
-            for violation in &complexity_report.violations {
-                let severity = match violation {
-                    crate::services::complexity::Violation::Error { .. } => "Critical",
-                    crate::services::complexity::Violation::Warning { .. } => "Warning",
-                };
-                *by_severity.entry(severity.to_string()).or_insert(0) += 1;
-            }
-
-            // Count total lines of code from file metrics
-            for file in &complexity_report.files {
-                total_loc += file.total_complexity.lines as usize;
-            }
-        }
-
-        // Count SATD items
-        if let Some(ref satd_results) = analyses.satd_results {
-            let satd_count = satd_results.items.len();
-            total_defects += satd_count;
-            by_type.insert("TechnicalDebt".to_string(), satd_count);
-
-            for item in &satd_results.items {
-                let severity = match item.severity {
-                    crate::services::satd_detector::Severity::Critical => "Critical",
-                    crate::services::satd_detector::Severity::High => "Critical",
-                    crate::services::satd_detector::Severity::Medium => "Warning",
-                    crate::services::satd_detector::Severity::Low => "Normal",
-                };
-                *by_severity.entry(severity.to_string()).or_insert(0) += 1;
-            }
-        }
-
-        // Count dead code items
-        if let Some(ref dead_code_results) = analyses.dead_code_results {
-            let dead_code_count = dead_code_results.summary.dead_functions
-                + dead_code_results.summary.dead_classes
-                + dead_code_results.summary.dead_modules;
-            total_defects += dead_code_count;
-            by_type.insert("DeadCode".to_string(), dead_code_count);
-
-            // Dead code is typically warning level
-            *by_severity.entry("Warning".to_string()).or_insert(0) += dead_code_count;
-        }
-
-        // Count high TDG scores as defects
-        let high_tdg_count = tdg_summary.critical_files + tdg_summary.warning_files;
-        total_defects += high_tdg_count;
-        by_type.insert("TDG".to_string(), high_tdg_count);
-        *by_severity.entry("Critical".to_string()).or_insert(0) += tdg_summary.critical_files;
-        *by_severity.entry("Warning".to_string()).or_insert(0) += tdg_summary.warning_files;
-
-        // Calculate proper defect density: defects per 1000 lines of code
-        let defect_density = if total_loc > 0 {
-            (total_defects as f64 * 1000.0) / total_loc as f64
-        } else {
-            0.0
-        };
+        let defect_density = self.calculate_defect_density(total_defects, total_loc);
 
         debug!(
             "Calculated defect summary: {} total defects, {} LOC, density = {:.2}",
@@ -2977,6 +2932,96 @@ impl DeepContextAnalyzer {
             by_type,
             defect_density,
         })
+    }
+
+    fn process_complexity_violations(
+        &self,
+        analyses: &ParallelAnalysisResults,
+        total_defects: &mut usize,
+        by_severity: &mut FxHashMap<String, usize>,
+        by_type: &mut FxHashMap<String, usize>,
+        total_loc: &mut usize,
+    ) {
+        if let Some(ref complexity_report) = analyses.complexity_report {
+            let complexity_violations = complexity_report.violations.len();
+            *total_defects += complexity_violations;
+            by_type.insert("Complexity".to_string(), complexity_violations);
+
+            for violation in &complexity_report.violations {
+                let severity = match violation {
+                    crate::services::complexity::Violation::Error { .. } => "Critical",
+                    crate::services::complexity::Violation::Warning { .. } => "Warning",
+                };
+                *by_severity.entry(severity.to_string()).or_insert(0) += 1;
+            }
+
+            for file in &complexity_report.files {
+                *total_loc += file.total_complexity.lines as usize;
+            }
+        }
+    }
+
+    fn process_satd_violations(
+        &self,
+        analyses: &ParallelAnalysisResults,
+        total_defects: &mut usize,
+        by_severity: &mut FxHashMap<String, usize>,
+        by_type: &mut FxHashMap<String, usize>,
+    ) {
+        if let Some(ref satd_results) = analyses.satd_results {
+            let satd_count = satd_results.items.len();
+            *total_defects += satd_count;
+            by_type.insert("TechnicalDebt".to_string(), satd_count);
+
+            for item in &satd_results.items {
+                let severity = match item.severity {
+                    crate::services::satd_detector::Severity::Critical => "Critical",
+                    crate::services::satd_detector::Severity::High => "Critical",
+                    crate::services::satd_detector::Severity::Medium => "Warning",
+                    crate::services::satd_detector::Severity::Low => "Normal",
+                };
+                *by_severity.entry(severity.to_string()).or_insert(0) += 1;
+            }
+        }
+    }
+
+    fn process_dead_code_violations(
+        &self,
+        analyses: &ParallelAnalysisResults,
+        total_defects: &mut usize,
+        by_severity: &mut FxHashMap<String, usize>,
+        by_type: &mut FxHashMap<String, usize>,
+    ) {
+        if let Some(ref dead_code_results) = analyses.dead_code_results {
+            let dead_code_count = dead_code_results.summary.dead_functions
+                + dead_code_results.summary.dead_classes
+                + dead_code_results.summary.dead_modules;
+            *total_defects += dead_code_count;
+            by_type.insert("DeadCode".to_string(), dead_code_count);
+            *by_severity.entry("Warning".to_string()).or_insert(0) += dead_code_count;
+        }
+    }
+
+    fn process_tdg_violations(
+        &self,
+        tdg_summary: &TDGSummary,
+        total_defects: &mut usize,
+        by_severity: &mut FxHashMap<String, usize>,
+        by_type: &mut FxHashMap<String, usize>,
+    ) {
+        let high_tdg_count = tdg_summary.critical_files + tdg_summary.warning_files;
+        *total_defects += high_tdg_count;
+        by_type.insert("TDG".to_string(), high_tdg_count);
+        *by_severity.entry("Critical".to_string()).or_insert(0) += tdg_summary.critical_files;
+        *by_severity.entry("Warning".to_string()).or_insert(0) += tdg_summary.warning_files;
+    }
+
+    fn calculate_defect_density(&self, total_defects: usize, total_loc: usize) -> f64 {
+        if total_loc > 0 {
+            (total_defects as f64 * 1000.0) / total_loc as f64
+        } else {
+            0.0
+        }
     }
 
     /// Generate hotspots from TDG scores
