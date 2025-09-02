@@ -46,7 +46,7 @@ impl PdmtTodo {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TodoStatus {
     Pending,
@@ -54,7 +54,7 @@ pub enum TodoStatus {
     Completed,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TodoPriority {
     Low,
@@ -63,7 +63,7 @@ pub enum TodoPriority {
     Critical,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TodoQualityGates {
     pub coverage_requirement: f32,
     pub doctest_requirement: bool,
@@ -86,7 +86,7 @@ impl Default for TodoQualityGates {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ValidationCommands {
     pub unit_tests: String,
     pub doctests: String,
@@ -109,7 +109,7 @@ impl Default for ValidationCommands {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ImplementationSpecs {
     pub primary_files: Vec<String>,
     pub test_files: Vec<String>,
@@ -212,5 +212,102 @@ impl ValidationOutcome {
             message,
             violations,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pdmt_todo_creation() {
+        let content = "Implement new feature".to_string();
+        let priority = TodoPriority::High;
+        let todo = PdmtTodo::new(content.clone(), priority);
+
+        assert_eq!(todo.content, content);
+        assert_eq!(todo.priority, TodoPriority::High);
+        assert_eq!(todo.status, TodoStatus::Pending);
+        assert_eq!(todo.estimated_hours, 4.0);
+        assert!(!todo.id.is_empty());
+        assert_eq!(todo.success_criteria.len(), 4);
+        assert!(todo.success_criteria.contains(&"Unit tests pass with >80% coverage".to_string()));
+    }
+
+    #[test]
+    fn test_pdmt_todo_default_values() {
+        let todo = PdmtTodo::new("Test content".to_string(), TodoPriority::Medium);
+        
+        assert_eq!(todo.dependencies.len(), 0);
+        assert_eq!(todo.quality_gates, TodoQualityGates::default());
+        assert_eq!(todo.validation_commands, ValidationCommands::default());
+        assert_eq!(todo.implementation_specs, ImplementationSpecs::default());
+    }
+
+    #[test]
+    fn test_get_primary_file_path_with_files() {
+        let mut todo = PdmtTodo::new("Test".to_string(), TodoPriority::Low);
+        todo.implementation_specs.primary_files = vec!["src/main.rs".to_string(), "src/lib.rs".to_string()];
+        
+        assert_eq!(todo.get_primary_file_path(), "src/main.rs");
+    }
+
+    #[test]
+    fn test_get_primary_file_path_empty() {
+        let todo = PdmtTodo::new("Test".to_string(), TodoPriority::Low);
+        assert_eq!(todo.get_primary_file_path(), "src/lib.rs");
+    }
+
+    #[test]
+    fn test_validation_outcome_success() {
+        let outcome = ValidationOutcome::success("All tests passed".to_string());
+        
+        assert!(outcome.passed);
+        assert_eq!(outcome.message, "All tests passed");
+        assert_eq!(outcome.violations.len(), 0);
+    }
+
+    #[test]
+    fn test_validation_outcome_failure() {
+        let violations = vec!["Missing test".to_string(), "Low coverage".to_string()];
+        let outcome = ValidationOutcome::failure("Tests failed".to_string(), violations.clone());
+        
+        assert!(!outcome.passed);
+        assert_eq!(outcome.message, "Tests failed");
+        assert_eq!(outcome.violations, violations);
+    }
+
+    #[test]
+    fn test_todo_status_values() {
+        // Ensure all enum variants can be created
+        let _pending = TodoStatus::Pending;
+        let _in_progress = TodoStatus::InProgress;
+        let _completed = TodoStatus::Completed;
+        let _blocked = TodoStatus::Blocked;
+    }
+
+    #[test]
+    fn test_todo_priority_values() {
+        // Test priority enum variants
+        let _low = TodoPriority::Low;
+        let _medium = TodoPriority::Medium;
+        let _high = TodoPriority::High;
+        let _critical = TodoPriority::Critical;
+    }
+
+    #[test]
+    fn test_serde_roundtrip() {
+        let original = PdmtTodo::new("Test serialization".to_string(), TodoPriority::High);
+        
+        // Serialize to JSON
+        let json = serde_json::to_string(&original).expect("Serialization failed");
+        
+        // Deserialize back
+        let deserialized: PdmtTodo = serde_json::from_str(&json).expect("Deserialization failed");
+        
+        assert_eq!(original.id, deserialized.id);
+        assert_eq!(original.content, deserialized.content);
+        assert_eq!(original.priority, deserialized.priority);
+        assert_eq!(original.status, deserialized.status);
     }
 }
