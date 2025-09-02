@@ -714,23 +714,52 @@ fn format_markdown_output(
     include_components: bool,
 ) -> String {
     let mut md = String::new();
+    
+    add_markdown_header(&mut md);
+    add_markdown_summary(&mut md, summary);
+    add_markdown_hotspots(&mut md, summary);
+    
+    if include_components {
+        add_markdown_components(&mut md);
+    }
+    
+    md
+}
+
+/// Extract Method: Add markdown header
+fn add_markdown_header(md: &mut String) {
     md.push_str("# Technical Debt Gradient Analysis\n\n");
+}
+
+/// Extract Method: Add summary section
+fn add_markdown_summary(md: &mut String, summary: &crate::models::tdg::TDGSummary) {
     md.push_str("## Summary\n\n");
     md.push_str(&format!("- **Total Files**: {}\n", summary.total_files));
 
     if summary.total_files > 0 {
-        md.push_str(&format!(
-            "- **Critical Files**: {} ({:.1}%)\n",
-            summary.critical_files,
-            (summary.critical_files as f64 / summary.total_files as f64) * 100.0
-        ));
-        md.push_str(&format!(
-            "- **Warning Files**: {} ({:.1}%)\n",
-            summary.warning_files,
-            (summary.warning_files as f64 / summary.total_files as f64) * 100.0
-        ));
+        add_markdown_file_stats(md, summary);
     }
 
+    add_markdown_tdg_stats(md, summary);
+}
+
+/// Extract Method: Add file statistics
+fn add_markdown_file_stats(md: &mut String, summary: &crate::models::tdg::TDGSummary) {
+    let critical_pct = (summary.critical_files as f64 / summary.total_files as f64) * 100.0;
+    let warning_pct = (summary.warning_files as f64 / summary.total_files as f64) * 100.0;
+    
+    md.push_str(&format!(
+        "- **Critical Files**: {} ({:.1}%)\n",
+        summary.critical_files, critical_pct
+    ));
+    md.push_str(&format!(
+        "- **Warning Files**: {} ({:.1}%)\n",
+        summary.warning_files, warning_pct
+    ));
+}
+
+/// Extract Method: Add TDG statistics
+fn add_markdown_tdg_stats(md: &mut String, summary: &crate::models::tdg::TDGSummary) {
     md.push_str(&format!("- **Average TDG**: {:.2}\n", summary.average_tdg));
     md.push_str(&format!("- **95th Percentile**: {:.2}\n", summary.p95_tdg));
     md.push_str(&format!("- **99th Percentile**: {:.2}\n", summary.p99_tdg));
@@ -738,7 +767,10 @@ fn format_markdown_output(
         "- **Estimated Technical Debt**: {:.1} hours\n\n",
         summary.estimated_debt_hours
     ));
+}
 
+/// Extract Method: Add hotspots section
+fn add_markdown_hotspots(md: &mut String, summary: &crate::models::tdg::TDGSummary) {
     if !summary.hotspots.is_empty() {
         md.push_str("## Hotspots\n\n");
         for (i, hotspot) in summary.hotspots.iter().enumerate() {
@@ -754,18 +786,17 @@ fn format_markdown_output(
             ));
         }
     }
+}
 
-    if include_components {
-        md.push_str("## TDG Components\n\n");
-        md.push_str("The Technical Debt Gradient is calculated using the following weighted components:\n\n");
-        md.push_str("- **Complexity** (30%): Cyclomatic and cognitive complexity\n");
-        md.push_str("- **Code Churn** (35%): Frequency of changes over time\n");
-        md.push_str("- **Coupling** (15%): Dependencies between modules\n");
-        md.push_str("- **Domain Risk** (10%): Critical domain areas (auth, crypto, etc.)\n");
-        md.push_str("- **Duplication** (10%): Code duplication percentage\n");
-    }
-
-    md
+/// Extract Method: Add components section
+fn add_markdown_components(md: &mut String) {
+    md.push_str("## TDG Components\n\n");
+    md.push_str("The Technical Debt Gradient is calculated using the following weighted components:\n\n");
+    md.push_str("- **Complexity** (30%): Cyclomatic and cognitive complexity\n");
+    md.push_str("- **Code Churn** (35%): Frequency of changes over time\n");
+    md.push_str("- **Coupling** (15%): Dependencies between modules\n");
+    md.push_str("- **Domain Risk** (10%): Critical domain areas (auth, crypto, etc.)\n");
+    md.push_str("- **Duplication** (10%): Code duplication percentage\n");
 }
 
 fn format_sarif_output(summary: &crate::models::tdg::TDGSummary) -> String {
@@ -2941,49 +2972,71 @@ async fn run_single_file_checks(
     results: &mut QualityGateResults,
 ) -> Result<()> {
     for check in checks_to_run {
-        match check {
-            QualityCheckType::Complexity => {
-                run_single_file_complexity_check(
-                    project_path,
-                    single_file,
-                    max_complexity_p99,
-                    violations,
-                    results,
-                )
-                .await?;
-            }
-            QualityCheckType::DeadCode => {
-                run_single_file_dead_code_check(project_path, single_file, violations, results)
-                    .await?;
-            }
-            QualityCheckType::Satd => {
-                run_single_file_satd_check(project_path, single_file, violations, results).await?;
-            }
-            QualityCheckType::Security => {
-                run_single_file_security_check(project_path, single_file, violations, results)
-                    .await?;
-            }
-            QualityCheckType::All => {
-                // Run all applicable single file checks
-                run_all_single_file_checks(
-                    project_path,
-                    single_file,
-                    max_complexity_p99,
-                    violations,
-                    results,
-                )
-                .await?;
-            }
-            _ => {
-                // Skip checks that don't apply to single files
-                eprintln!(
-                    "⚠️  Skipping {} check - not applicable to single file",
-                    check
-                );
-            }
-        }
+        execute_single_file_check(
+            check,
+            project_path,
+            single_file,
+            max_complexity_p99,
+            violations,
+            results,
+        )
+        .await?;
     }
     Ok(())
+}
+
+/// Extract Method: Execute a specific single file check
+async fn execute_single_file_check(
+    check: &QualityCheckType,
+    project_path: &Path,
+    single_file: &Path,
+    max_complexity_p99: u32,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    match check {
+        QualityCheckType::Complexity => {
+            run_single_file_complexity_check(
+                project_path,
+                single_file,
+                max_complexity_p99,
+                violations,
+                results,
+            )
+            .await
+        }
+        QualityCheckType::DeadCode => {
+            run_single_file_dead_code_check(project_path, single_file, violations, results).await
+        }
+        QualityCheckType::Satd => {
+            run_single_file_satd_check(project_path, single_file, violations, results).await
+        }
+        QualityCheckType::Security => {
+            run_single_file_security_check(project_path, single_file, violations, results).await
+        }
+        QualityCheckType::All => {
+            run_all_single_file_checks(
+                project_path,
+                single_file,
+                max_complexity_p99,
+                violations,
+                results,
+            )
+            .await
+        }
+        _ => {
+            handle_unsupported_single_file_check(check);
+            Ok(())
+        }
+    }
+}
+
+/// Extract Method: Handle unsupported single file check types
+fn handle_unsupported_single_file_check(check: &QualityCheckType) {
+    eprintln!(
+        "⚠️  Skipping {} check - not applicable to single file",
+        check
+    );
 }
 
 /// Runs all single file checks
@@ -3563,81 +3616,89 @@ pub async fn handle_serve(
     use crate::cli::commands::ServeTransport;
 
     match transport {
-        ServeTransport::Http => {
-            eprintln!("🚀 Starting PMAT HTTP server on http://{host}:{port}");
-            eprintln!("✅ Server ready!");
-            eprintln!("📍 Health check: http://{host}:{port}/health");
-            eprintln!("📍 API base: http://{host}:{port}/api/v1");
-            if cors {
-                eprintln!("🌐 CORS enabled for all origins");
-            }
-            eprintln!("\n🔧 HTTP server functionality ready for implementation.");
-        }
-
-        ServeTransport::WebSocket => {
-            eprintln!("🚀 Starting PMAT WebSocket server on ws://{host}:{port}");
-            eprintln!("✅ WebSocket server ready!");
-            eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
-            eprintln!("🔌 MCP protocol over WebSocket");
-
-            // Start actual WebSocket server
-            let addr = format!("{}:{}", host, port);
-            return start_websocket_server(addr).await;
-        }
-
-        ServeTransport::HttpSse => {
-            eprintln!("🚀 Starting PMAT HTTP-SSE server on http://{host}:{port}");
-            eprintln!("✅ HTTP-SSE server ready!");
-            eprintln!("📍 SSE endpoint: http://{host}:{port}/sse");
-            eprintln!("📍 Message endpoint: http://{host}:{port}/message");
-            eprintln!("🌊 MCP protocol over Server-Sent Events");
-            if cors {
-                eprintln!("🌐 CORS enabled for all origins");
-            }
-
-            // Start HTTP-SSE server
-            let addr = format!("{}:{}", host, port);
-            return start_http_sse_server(addr, cors).await;
-        }
-
-        ServeTransport::Both => {
-            eprintln!("🚀 Starting PMAT hybrid server (HTTP + WebSocket) on {host}:{port}");
-            eprintln!("✅ Hybrid server ready!");
-            eprintln!("📍 HTTP endpoint: http://{host}:{port}");
-            eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
-            eprintln!("🔌 MCP protocol over both transports");
-            if cors {
-                eprintln!("🌐 CORS enabled for all origins");
-            }
-
-            // Start hybrid server (HTTP + WebSocket)
-            let addr = format!("{}:{}", host, port);
-            return start_hybrid_server(addr, cors).await;
-        }
-
-        ServeTransport::All => {
-            eprintln!("🚀 Starting PMAT full server (HTTP + WebSocket + SSE) on {host}:{port}");
-            eprintln!("✅ All transports ready!");
-            eprintln!("📍 HTTP endpoint: http://{host}:{port}");
-            eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
-            eprintln!("📍 SSE endpoint: http://{host}:{port}/sse");
-            eprintln!("🌐 MCP protocol over all transports");
-            if cors {
-                eprintln!("🌐 CORS enabled for all origins");
-            }
-
-            // Start full multi-transport server
-            let addr = format!("{}:{}", host, port);
-            return start_full_server(addr, cors).await;
-        }
+        ServeTransport::Http => handle_http_server(&host, port, cors).await,
+        ServeTransport::WebSocket => handle_websocket_server(&host, port).await,
+        ServeTransport::HttpSse => handle_http_sse_server(&host, port, cors).await,
+        ServeTransport::Both => handle_hybrid_server(&host, port, cors).await,
+        ServeTransport::All => handle_full_server(&host, port, cors).await,
     }
+}
 
+/// Extract Method: Handle HTTP server startup
+async fn handle_http_server(host: &str, port: u16, cors: bool) -> Result<()> {
+    eprintln!("🚀 Starting PMAT HTTP server on http://{host}:{port}");
+    eprintln!("✅ Server ready!");
+    eprintln!("📍 Health check: http://{host}:{port}/health");
+    eprintln!("📍 API base: http://{host}:{port}/api/v1");
+    print_cors_status(cors);
+    eprintln!("\n🔧 HTTP server functionality ready for implementation.");
+    
+    await_shutdown_signal().await
+}
+
+/// Extract Method: Handle WebSocket server startup
+async fn handle_websocket_server(host: &str, port: u16) -> Result<()> {
+    eprintln!("🚀 Starting PMAT WebSocket server on ws://{host}:{port}");
+    eprintln!("✅ WebSocket server ready!");
+    eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
+    eprintln!("🔌 MCP protocol over WebSocket");
+    
+    let addr = format!("{}:{}", host, port);
+    start_websocket_server(addr).await
+}
+
+/// Extract Method: Handle HTTP-SSE server startup
+async fn handle_http_sse_server(host: &str, port: u16, cors: bool) -> Result<()> {
+    eprintln!("🚀 Starting PMAT HTTP-SSE server on http://{host}:{port}");
+    eprintln!("✅ HTTP-SSE server ready!");
+    eprintln!("📍 SSE endpoint: http://{host}:{port}/sse");
+    eprintln!("📍 Message endpoint: http://{host}:{port}/message");
+    eprintln!("🌊 MCP protocol over Server-Sent Events");
+    print_cors_status(cors);
+    
+    let addr = format!("{}:{}", host, port);
+    start_http_sse_server(addr, cors).await
+}
+
+/// Extract Method: Handle hybrid server startup
+async fn handle_hybrid_server(host: &str, port: u16, cors: bool) -> Result<()> {
+    eprintln!("🚀 Starting PMAT hybrid server (HTTP + WebSocket) on {host}:{port}");
+    eprintln!("✅ Hybrid server ready!");
+    eprintln!("📍 HTTP endpoint: http://{host}:{port}");
+    eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
+    eprintln!("🔌 MCP protocol over both transports");
+    print_cors_status(cors);
+    
+    let addr = format!("{}:{}", host, port);
+    start_hybrid_server(addr, cors).await
+}
+
+/// Extract Method: Handle full server startup  
+async fn handle_full_server(host: &str, port: u16, cors: bool) -> Result<()> {
+    eprintln!("🚀 Starting PMAT full server (HTTP + WebSocket + SSE) on {host}:{port}");
+    eprintln!("✅ All transports ready!");
+    eprintln!("📍 HTTP endpoint: http://{host}:{port}");
+    eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
+    eprintln!("📍 SSE endpoint: http://{host}:{port}/sse");
+    eprintln!("🌐 MCP protocol over all transports");
+    print_cors_status(cors);
+    
+    let addr = format!("{}:{}", host, port);
+    start_full_server(addr, cors).await
+}
+
+/// Extract Method: Print CORS status
+fn print_cors_status(cors: bool) {
+    if cors {
+        eprintln!("🌐 CORS enabled for all origins");
+    }
+}
+
+/// Extract Method: Await shutdown signal
+async fn await_shutdown_signal() -> Result<()> {
     eprintln!("Press Ctrl+C to exit.\n");
-
-    // Wait for shutdown signal
     tokio::signal::ctrl_c().await?;
     eprintln!("🛑 Shutting down server...");
-
     Ok(())
 }
 
@@ -4057,19 +4118,21 @@ pub struct QualityViolation {
 
 // Helper function to check if file is source code
 fn is_source_file(path: &Path) -> bool {
-    // Check if it has a source code extension
-    let has_source_extension = matches!(
+    has_source_extension(path) && !is_excluded_test_path(path) && !is_test_filename(path)
+}
+
+/// Extract Method: Check if path has a source code extension
+fn has_source_extension(path: &Path) -> bool {
+    matches!(
         path.extension().and_then(|s| s.to_str()),
         Some("rs" | "js" | "ts" | "py" | "java" | "cpp" | "c")
-    );
+    )
+}
 
-    if !has_source_extension {
-        return false;
-    }
-
-    // Exclude test and example files
+/// Extract Method: Check if path should be excluded (test/example directories)
+fn is_excluded_test_path(path: &Path) -> bool {
     let path_str = path.to_string_lossy();
-    if path_str.contains("/tests/")
+    path_str.contains("/tests/")
         || path_str.contains("/test/")
         || path_str.contains("/examples/")
         || path_str.contains("/benches/")
@@ -4078,23 +4141,19 @@ fn is_source_file(path: &Path) -> bool {
         || path_str.contains("/test_data/")
         || path_str.contains("/debug_test/")
         || path_str.contains("/test-")
-    {
-        return false;
-    }
+}
 
-    // Exclude test files by name pattern (but not simple test.rs in non-test dirs)
+/// Extract Method: Check if filename follows test patterns
+fn is_test_filename(path: &Path) -> bool {
     if let Some(file_name) = path.file_name() {
         let fname = file_name.to_string_lossy();
-        if fname.ends_with("_test.rs")
+        fname.ends_with("_test.rs")
             || fname.ends_with("_tests.rs")
             || fname.starts_with("test_")
             || fname.contains("_test_")
-        {
-            return false;
-        }
+    } else {
+        false
     }
-
-    true
 }
 
 // Quality check functions
@@ -4553,11 +4612,26 @@ fn calculate_code_entropy(content: &str) -> f64 {
 }
 
 async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
-    // Basic security checks
     let mut violations = Vec::new();
+    let patterns = get_security_patterns();
 
-    // Check for common security patterns
-    let patterns = vec![
+    use tokio::fs;
+
+    if let Ok(mut entries) = fs::read_dir(project_path).await {
+        while let Some(entry) = entries.next_entry().await? {
+            let path = entry.path();
+            if path.is_file() && is_source_file(&path) {
+                check_file_security(&path, &patterns, &mut violations).await?;
+            }
+        }
+    }
+
+    Ok(violations)
+}
+
+/// Extract Method: Get security violation patterns
+fn get_security_patterns() -> Vec<(&'static str, &'static str)> {
+    vec![
         (
             r#"(?i)password\s*=\s*["'][^"']+["']"#,
             "Hardcoded password detected",
@@ -4570,38 +4644,53 @@ async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
             r#"(?i)secret\s*=\s*["'][^"']+["']"#,
             "Hardcoded secret detected",
         ),
-    ];
+    ]
+}
 
-    // Walk through files
+/// Extract Method: Check a single file for security violations
+async fn check_file_security(
+    path: &std::path::Path,
+    patterns: &[(&str, &str)],
+    violations: &mut Vec<QualityViolation>,
+) -> Result<()> {
     use regex::Regex;
     use tokio::fs;
 
-    if let Ok(mut entries) = fs::read_dir(project_path).await {
-        while let Some(entry) = entries.next_entry().await? {
-            let path = entry.path();
-            if path.is_file() && is_source_file(&path) {
-                if let Ok(content) = fs::read_to_string(&path).await {
-                    for (pattern_str, message) in &patterns {
-                        if let Ok(regex) = Regex::new(pattern_str) {
-                            for (line_no, line) in content.lines().enumerate() {
-                                if regex.is_match(line) {
-                                    violations.push(QualityViolation {
-                                        check_type: "security".to_string(),
-                                        severity: "error".to_string(),
-                                        file: path.to_string_lossy().to_string(),
-                                        line: Some(line_no + 1),
-                                        message: message.to_string(),
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
+    if let Ok(content) = fs::read_to_string(path).await {
+        for (pattern_str, message) in patterns {
+            if let Ok(regex) = Regex::new(pattern_str) {
+                scan_content_for_pattern(
+                    &content,
+                    &regex,
+                    message,
+                    path,
+                    violations,
+                );
             }
         }
     }
+    Ok(())
+}
 
-    Ok(violations)
+/// Extract Method: Scan file content for a specific security pattern
+fn scan_content_for_pattern(
+    content: &str,
+    regex: &regex::Regex,
+    message: &str,
+    path: &std::path::Path,
+    violations: &mut Vec<QualityViolation>,
+) {
+    for (line_no, line) in content.lines().enumerate() {
+        if regex.is_match(line) {
+            violations.push(QualityViolation {
+                check_type: "security".to_string(),
+                severity: "error".to_string(),
+                file: path.to_string_lossy().to_string(),
+                line: Some(line_no + 1),
+                message: message.to_string(),
+            });
+        }
+    }
 }
 
 /// Detects duplicate code blocks in a project.
@@ -5966,31 +6055,14 @@ async fn run_satd_analysis(
         let path = entry.path();
 
         if path.is_file() && is_source_file(path) {
-            if let Ok(content) = tokio::fs::read_to_string(path).await {
-                for (line_no, line) in content.lines().enumerate() {
-                    if let Some(captures) = satd_pattern.captures(line) {
-                        let satd_type = captures.get(1).unwrap().as_str().to_uppercase();
-                        let text = captures.get(2).unwrap().as_str().to_string();
-
-                        let severity = match satd_type.as_str() {
-                            "HACK" | "XXX" => "high",
-                            "FIXME" | "REFACTOR" => "medium",
-                            _ => "low",
-                        };
-
-                        *by_type.entry(satd_type.clone()).or_insert(0) += 1;
-                        *by_severity.entry(severity.to_string()).or_insert(0) += 1;
-
-                        items.push(SatdItem {
-                            file: path.to_string_lossy().to_string(),
-                            line: line_no + 1,
-                            text,
-                            satd_type,
-                            severity: severity.to_string(),
-                        });
-                    }
-                }
-            }
+            process_file_for_satd(
+                path,
+                &satd_pattern,
+                &mut items,
+                &mut by_type,
+                &mut by_severity,
+            )
+            .await?;
         }
     }
 
@@ -6000,6 +6072,65 @@ async fn run_satd_analysis(
         by_severity,
         items,
     })
+}
+
+/// Extract Method: Process a single file for SATD detection
+async fn process_file_for_satd(
+    path: &std::path::Path,
+    satd_pattern: &regex::Regex,
+    items: &mut Vec<SatdItem>,
+    by_type: &mut HashMap<String, usize>,
+    by_severity: &mut HashMap<String, usize>,
+) -> Result<()> {
+    if let Ok(content) = tokio::fs::read_to_string(path).await {
+        for (line_no, line) in content.lines().enumerate() {
+            if let Some(captures) = satd_pattern.captures(line) {
+                process_satd_match(
+                    path,
+                    line_no,
+                    captures,
+                    items,
+                    by_type,
+                    by_severity,
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Extract Method: Process a single SATD match
+fn process_satd_match(
+    path: &std::path::Path,
+    line_no: usize,
+    captures: regex::Captures,
+    items: &mut Vec<SatdItem>,
+    by_type: &mut HashMap<String, usize>,
+    by_severity: &mut HashMap<String, usize>,
+) {
+    let satd_type = captures.get(1).unwrap().as_str().to_uppercase();
+    let text = captures.get(2).unwrap().as_str().to_string();
+    let severity = determine_satd_severity(&satd_type);
+
+    *by_type.entry(satd_type.clone()).or_insert(0) += 1;
+    *by_severity.entry(severity.to_string()).or_insert(0) += 1;
+
+    items.push(SatdItem {
+        file: path.to_string_lossy().to_string(),
+        line: line_no + 1,
+        text,
+        satd_type,
+        severity: severity.to_string(),
+    });
+}
+
+/// Extract Method: Determine SATD severity based on type
+fn determine_satd_severity(satd_type: &str) -> &'static str {
+    match satd_type {
+        "HACK" | "XXX" => "high",
+        "FIXME" | "REFACTOR" => "medium",
+        _ => "low",
+    }
 }
 
 async fn create_tdg_report(_project_path: &Path) -> Result<TdgReport> {
