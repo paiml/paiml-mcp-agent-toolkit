@@ -1,0 +1,14 @@
+[[package]]
+name = "pmat"
+
+[[package.metadata.release.replacements]]
+file = "CHANGELOG.md"
+search = "## \\[Unreleased\\]"
+replace = """## [Unreleased]
+
+## [{{version}}] - {{date}}"""
+
+[[package.metadata.release.replacements]]
+file = "CHANGELOG.md"
+search = "\\[Unreleased\\]: https://github.com/.*"
+replace = "[Unreleased]: https://github.com/paiml/paiml-mcp-agent-toolkit/compare/v{{version}}...HEAD\n[{{version}}]: https://github.com/paiml/paiml-mcp-agent-toolkit/compare/v{{prev_version}}...v{{version}}"
