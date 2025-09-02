@@ -259,7 +259,7 @@ impl ProgressReporter {
         for item in &sprint.definition_of_done {
             report.push_str(&format!("- {}\n", item));
         }
-        report.push_str("\n");
+        report.push('\n');
 
         // Quality Gates
         report.push_str("### Quality Gates\n");
