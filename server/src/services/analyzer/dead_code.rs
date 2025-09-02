@@ -150,8 +150,8 @@ mod tests {
     #[tokio::test]
     async fn test_dead_code_analyzer_creation() {
         let analyzer = DeadCodeAnalyzer::new();
-        assert_eq!(analyzer.name(), "dead_code");
-        assert_eq!(analyzer.version(), env!("CARGO_PKG_VERSION"));
+        assert_eq!(Analyzer::name(&analyzer), "dead_code");
+        assert_eq!(Analyzer::version(&analyzer), env!("CARGO_PKG_VERSION"));
     }
 
     #[tokio::test]
@@ -165,16 +165,16 @@ mod tests {
     #[tokio::test]
     async fn test_analyzer_info() {
         let analyzer = DeadCodeAnalyzer::new();
-        assert_eq!(analyzer.name(), "dead_code");
-        assert!(analyzer.description().contains("unreachable"));
+        assert_eq!(Analyzer::name(&analyzer), "dead_code");
+        assert!(AnalyzerInfo::description(&analyzer).contains("unreachable"));
     }
 
     #[tokio::test]
     async fn test_factory_creation() {
         let analyzer = DeadCodeAnalyzerFactory::create();
-        assert_eq!(analyzer.name(), "dead_code");
+        assert_eq!(Analyzer::name(&analyzer), "dead_code");
 
         let analyzer_with_capacity = DeadCodeAnalyzerFactory::create_with_capacity(50000);
-        assert_eq!(analyzer_with_capacity.name(), "dead_code");
+        assert_eq!(Analyzer::name(&analyzer_with_capacity), "dead_code");
     }
 }

@@ -161,10 +161,10 @@ mod tests {
         assert_eq!(Analyzer::name(&analyzer), "satd");
         
         let strict_analyzer = SATDAnalyzerFactory::create_strict();
-        assert_eq!(strict_analyzer.name(), "satd");
+        assert_eq!(Analyzer::name(&strict_analyzer), "satd");
         
         let critical_analyzer = SATDAnalyzerFactory::create_critical_only();
-        assert_eq!(critical_analyzer.name(), "satd");
+        assert_eq!(Analyzer::name(&critical_analyzer), "satd");
     }
     
     #[tokio::test]

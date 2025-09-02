@@ -165,8 +165,8 @@ mod tests {
     #[tokio::test]
     async fn test_complexity_analyzer_creation() {
         let analyzer = ComplexityAnalyzer::new();
-        assert_eq!(analyzer.name(), "complexity");
-        assert_eq!(analyzer.version(), env!("CARGO_PKG_VERSION"));
+        assert_eq!(Analyzer::name(&analyzer), "complexity");
+        assert_eq!(Analyzer::version(&analyzer), env!("CARGO_PKG_VERSION"));
     }
     
     #[tokio::test]
@@ -180,17 +180,17 @@ mod tests {
     #[tokio::test]
     async fn test_analyzer_info() {
         let analyzer = ComplexityAnalyzer::new();
-        assert_eq!(analyzer.name(), "complexity");
-        assert!(analyzer.description().contains("complexity"));
+        assert_eq!(Analyzer::name(&analyzer), "complexity");
+        assert!(AnalyzerInfo::description(&analyzer).contains("complexity"));
     }
     
     #[tokio::test]
     async fn test_factory_creation() {
         let analyzer = ComplexityAnalyzerFactory::create();
-        assert_eq!(analyzer.name(), "complexity");
+        assert_eq!(Analyzer::name(&analyzer), "complexity");
         
         let analyzer_with_thresholds = ComplexityAnalyzerFactory::create_with_thresholds(15, 20);
-        assert_eq!(analyzer_with_thresholds.name(), "complexity");
+        assert_eq!(Analyzer::name(&analyzer_with_thresholds), "complexity");
     }
     
     #[tokio::test]

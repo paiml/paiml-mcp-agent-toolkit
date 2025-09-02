@@ -246,6 +246,52 @@ mod tests {
     }
     
     #[test]
+    fn test_analyzer_registry_operations() {
+        use crate::services::analyzer::{complexity::ComplexityAnalyzer, dead_code::DeadCodeAnalyzer, satd::SATDAnalyzer};
+        
+        let mut registry = AnalyzerRegistry::new();
+        
+        // Test registration
+        registry.register(ComplexityAnalyzer::new());
+        registry.register(DeadCodeAnalyzer::new());
+        registry.register(SATDAnalyzer::new());
+        
+        // Test listing
+        let analyzers = registry.list_analyzers();
+        assert_eq!(analyzers.len(), 3);
+        assert!(analyzers.contains(&"complexity"));
+        assert!(analyzers.contains(&"dead_code"));
+        assert!(analyzers.contains(&"satd"));
+        
+        // Test get_info
+        let complexity_info = registry.get_info("complexity");
+        assert!(complexity_info.is_some());
+        if let Some(info) = complexity_info {
+            assert_eq!(info.name(), "complexity");
+            assert!(!info.description().is_empty());
+        }
+        
+        // Test non-existent analyzer
+        assert!(registry.get_info("nonexistent").is_none());
+    }
+    
+    #[test]
+    fn test_project_input_creation() {
+        use std::path::PathBuf;
+        
+        let path = PathBuf::from("/test/project");
+        let input = ProjectInput {
+            project_path: path.clone(),
+        };
+        
+        assert_eq!(input.project_path, path);
+    }
+    
+    // FileInput test removed - type doesn't exist in current implementation
+    
+    // BatchAnalyzer test removed - type doesn't exist in current implementation
+
+    #[test]
     fn test_analyzer_consistency() {
         use crate::services::analyzer::{complexity::ComplexityAnalyzer, dead_code::DeadCodeAnalyzer, satd::SATDAnalyzer};
         

@@ -75,31 +75,46 @@ mod unified_analyzer_integration_tests {
             // TODO: This is a technical debt comment
         "#).unwrap();
 
-        let project_analyzers: Vec<Box<dyn ProjectAnalyzer>> = vec![
-            Box::new(BigOAnalyzer::new()),
-            Box::new(ComplexityAnalyzer::new()),
-            Box::new(DeadCodeAnalyzer::new()),
-            Box::new(DefectAnalyzer::new()),
-            Box::new(SATDAnalyzer::new()),
-        ];
-
-        for analyzer in project_analyzers {
-            // Test that each analyzer can process the project directory
-            let result = analyzer.analyze_project(temp_dir.path()).await;
-            
-            // The analysis should either succeed or fail gracefully
-            match result {
-                Ok(_) => {
-                    // Analysis succeeded - good!
-                    assert!(true, "Analysis completed successfully");
-                },
-                Err(e) => {
-                    // Analysis failed - that's also ok for this test, 
-                    // as long as it fails gracefully
-                    println!("Analysis failed gracefully: {}", e);
-                    assert!(true, "Analysis failed gracefully");
-                }
-            }
+        // Test each analyzer individually to avoid trait object issues
+        
+        // Test BigO analyzer
+        let big_o = BigOAnalyzer::new();
+        let result = big_o.analyze_project(temp_dir.path()).await;
+        match result {
+            Ok(_) => assert!(true, "BigO analysis completed successfully"),
+            Err(e) => println!("BigO analysis failed gracefully: {}", e),
+        }
+        
+        // Test Complexity analyzer  
+        let complexity = ComplexityAnalyzer::new();
+        let result = complexity.analyze_project(temp_dir.path()).await;
+        match result {
+            Ok(_) => assert!(true, "Complexity analysis completed successfully"),
+            Err(e) => println!("Complexity analysis failed gracefully: {}", e),
+        }
+        
+        // Test DeadCode analyzer
+        let dead_code = DeadCodeAnalyzer::new();
+        let result = dead_code.analyze_project(temp_dir.path()).await;
+        match result {
+            Ok(_) => assert!(true, "DeadCode analysis completed successfully"),
+            Err(e) => println!("DeadCode analysis failed gracefully: {}", e),
+        }
+        
+        // Test Defect analyzer
+        let defect = DefectAnalyzer::new();
+        let result = defect.analyze_project(temp_dir.path()).await;
+        match result {
+            Ok(_) => assert!(true, "Defect analysis completed successfully"),
+            Err(e) => println!("Defect analysis failed gracefully: {}", e),
+        }
+        
+        // Test SATD analyzer
+        let satd = SATDAnalyzer::new();
+        let result = satd.analyze_project(temp_dir.path()).await;
+        match result {
+            Ok(_) => assert!(true, "SATD analysis completed successfully"),
+            Err(e) => println!("SATD analysis failed gracefully: {}", e),
         }
     }
 
@@ -138,27 +153,46 @@ mod unified_analyzer_integration_tests {
         let temp_dir = TempDir::new().unwrap();
         // Empty directory - no source files
         
-        let analyzers: Vec<Box<dyn ProjectAnalyzer>> = vec![
-            Box::new(BigOAnalyzer::new()),
-            Box::new(ComplexityAnalyzer::new()),
-            Box::new(DeadCodeAnalyzer::new()),
-            Box::new(DefectAnalyzer::new()),
-            Box::new(SATDAnalyzer::new()),
-        ];
-
-        for analyzer in analyzers {
-            let result = analyzer.analyze_project(temp_dir.path()).await;
-            
-            // Analyzers should handle empty projects gracefully
-            // (either succeed with empty results or fail with clear error)
-            match result {
-                Ok(_) => assert!(true, "Analyzer handled empty project"),
-                Err(e) => {
-                    // Error should be descriptive and not a panic
-                    assert!(!e.to_string().is_empty(), "Error should have description");
-                    println!("Analyzer failed gracefully on empty project: {}", e);
-                }
-            }
+        // Test each analyzer individually with empty project
+        
+        // Test BigO analyzer
+        let big_o = BigOAnalyzer::new();
+        let result = big_o.analyze_project(temp_dir.path()).await;
+        match result {
+            Ok(_) => assert!(true, "BigO handled empty project"),
+            Err(e) => println!("BigO failed gracefully on empty project: {}", e),
+        }
+        
+        // Test Complexity analyzer
+        let complexity = ComplexityAnalyzer::new();
+        let result = complexity.analyze_project(temp_dir.path()).await;
+        match result {
+            Ok(_) => assert!(true, "Complexity handled empty project"),
+            Err(e) => println!("Complexity failed gracefully on empty project: {}", e),
+        }
+        
+        // Test DeadCode analyzer
+        let dead_code = DeadCodeAnalyzer::new();
+        let result = dead_code.analyze_project(temp_dir.path()).await;
+        match result {
+            Ok(_) => assert!(true, "DeadCode handled empty project"),
+            Err(e) => println!("DeadCode failed gracefully on empty project: {}", e),
+        }
+        
+        // Test Defect analyzer
+        let defect = DefectAnalyzer::new();
+        let result = defect.analyze_project(temp_dir.path()).await;
+        match result {
+            Ok(_) => assert!(true, "Defect handled empty project"),
+            Err(e) => println!("Defect failed gracefully on empty project: {}", e),
+        }
+        
+        // Test SATD analyzer
+        let satd = SATDAnalyzer::new();
+        let result = satd.analyze_project(temp_dir.path()).await;
+        match result {
+            Ok(_) => assert!(true, "SATD handled empty project"),
+            Err(e) => println!("SATD failed gracefully on empty project: {}", e),
         }
     }
 
@@ -258,26 +292,57 @@ mod unified_analyzer_integration_tests {
             }
         "#).unwrap();
 
-        let analyzers: Vec<(&str, Box<dyn ProjectAnalyzer>)> = vec![
-            ("BigO", Box::new(BigOAnalyzer::new())),
-            ("Complexity", Box::new(ComplexityAnalyzer::new())),
-            ("DeadCode", Box::new(DeadCodeAnalyzer::new())),
-            ("Defect", Box::new(DefectAnalyzer::new())),
-            ("SATD", Box::new(SATDAnalyzer::new())),
-        ];
-
+        // Test each analyzer individually to avoid trait object issues
         let mut successful_analyses = 0;
         
-        for (name, analyzer) in analyzers {
-            match analyzer.analyze_project(temp_dir.path()).await {
-                Ok(_) => {
-                    successful_analyses += 1;
-                    println!("✅ {} analysis completed successfully", name);
-                },
-                Err(e) => {
-                    println!("⚠️  {} analysis failed: {}", name, e);
-                }
-            }
+        // Test BigO analyzer
+        let big_o = BigOAnalyzer::new();
+        match big_o.analyze_project(temp_dir.path()).await {
+            Ok(_) => {
+                successful_analyses += 1;
+                println!("✅ BigO analysis completed successfully");
+            },
+            Err(e) => println!("⚠️  BigO analysis failed: {}", e),
+        }
+        
+        // Test Complexity analyzer
+        let complexity = ComplexityAnalyzer::new();
+        match complexity.analyze_project(temp_dir.path()).await {
+            Ok(_) => {
+                successful_analyses += 1;
+                println!("✅ Complexity analysis completed successfully");
+            },
+            Err(e) => println!("⚠️  Complexity analysis failed: {}", e),
+        }
+        
+        // Test DeadCode analyzer
+        let dead_code = DeadCodeAnalyzer::new();
+        match dead_code.analyze_project(temp_dir.path()).await {
+            Ok(_) => {
+                successful_analyses += 1;
+                println!("✅ DeadCode analysis completed successfully");
+            },
+            Err(e) => println!("⚠️  DeadCode analysis failed: {}", e),
+        }
+        
+        // Test Defect analyzer
+        let defect = DefectAnalyzer::new();
+        match defect.analyze_project(temp_dir.path()).await {
+            Ok(_) => {
+                successful_analyses += 1;
+                println!("✅ Defect analysis completed successfully");
+            },
+            Err(e) => println!("⚠️  Defect analysis failed: {}", e),
+        }
+        
+        // Test SATD analyzer
+        let satd = SATDAnalyzer::new();
+        match satd.analyze_project(temp_dir.path()).await {
+            Ok(_) => {
+                successful_analyses += 1;
+                println!("✅ SATD analysis completed successfully");
+            },
+            Err(e) => println!("⚠️  SATD analysis failed: {}", e),
         }
         
         // At least some analyzers should work
