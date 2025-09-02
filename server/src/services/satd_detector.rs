@@ -987,7 +987,8 @@ impl SATDDetector {
         self.is_url_or_path(trimmed) ||
         self.is_security_documentation(trimmed) ||
         self.is_pattern_definition(trimmed) ||
-        self.is_enum_or_struct_field(trimmed)
+        self.is_enum_or_struct_field(trimmed) ||
+        self.is_functional_description(trimmed)
     }
     
     fn is_string_literal(&self, trimmed: &str) -> bool {
@@ -1046,6 +1047,29 @@ impl SATDDetector {
         // Enum variants or struct fields that mention SATD concepts
         (trimmed.contains("Security") || trimmed.contains("Design") || trimmed.contains("Defect")) &&
         (trimmed.contains(",") || trimmed.contains("=") || trimmed.contains("::"))
+    }
+    
+    fn is_functional_description(&self, trimmed: &str) -> bool {
+        // Comments describing functionality, not admitting technical debt
+        if trimmed.starts_with("//") {
+            let comment_text = trimmed.trim_start_matches("//").trim().to_lowercase();
+            
+            // Check for common functional description patterns
+            comment_text.starts_with("check for") ||
+            comment_text.starts_with("handle ") ||
+            comment_text.starts_with("phase ") ||
+            comment_text.starts_with("load ") ||
+            comment_text.starts_with("create ") ||
+            comment_text.starts_with("process ") ||
+            comment_text.contains("relative links") ||
+            comment_text.contains("special modes") ||
+            comment_text.contains("documentation issues") ||
+            comment_text.contains("single file") ||
+            (comment_text.contains("broken") && comment_text.contains("links")) ||
+            (comment_text.contains("bug") && comment_text.contains("report"))
+        } else {
+            false
+        }
     }
     
     /// Check if line is documentation, test, or metadata about SATD
