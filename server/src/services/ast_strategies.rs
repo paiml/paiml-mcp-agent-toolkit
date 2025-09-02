@@ -192,7 +192,6 @@ impl StrategyRegistry {
             strategies.insert("hxx".to_string(), cpp_strategy);
         }
 
-
         Self { strategies }
     }
 
@@ -543,7 +542,6 @@ impl CppAstStrategy {
         content_lines.len() // Return last line if position is beyond content
     }
 }
-
 
 #[cfg(feature = "kotlin-ast")]
 impl KotlinAstStrategy {

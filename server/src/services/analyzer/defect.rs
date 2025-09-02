@@ -25,12 +25,12 @@ impl Analyzer for DefectAnalyzer {
     type Input = super::ProjectInput;
     type Output = DefectReport;
     type Config = super::ProjectConfig;
-    
+
     async fn analyze(&self, input: Self::Input, _config: Self::Config) -> Result<Self::Output> {
         // For now, return a basic defect report
         // In a complete implementation, this would delegate to actual defect analyzers
         let total_files_analyzed = self.count_analyzed_files(&input.project_path)?;
-        
+
         Ok(DefectReport {
             defects: Vec::new(), // Placeholder - would contain actual defects
             categories_analyzed: vec![
@@ -40,25 +40,28 @@ impl Analyzer for DefectAnalyzer {
             total_files_analyzed,
         })
     }
-    
+
     fn name(&self) -> &'static str {
         "defect"
     }
 }
 
-impl DefectAnalyzer {    
+impl DefectAnalyzer {
     fn count_analyzed_files(&self, path: &Path) -> Result<usize> {
         let mut count = 0;
         if path.is_dir() {
             for entry in std::fs::read_dir(path)? {
                 let entry = entry?;
                 let file_path = entry.path();
-                
+
                 if file_path.is_file() {
                     // Check if it's a source file
                     if let Some(extension) = file_path.extension() {
                         if let Some(ext_str) = extension.to_str() {
-                            if matches!(ext_str, "rs" | "ts" | "js" | "py" | "c" | "cpp" | "h" | "hpp") {
+                            if matches!(
+                                ext_str,
+                                "rs" | "ts" | "js" | "py" | "c" | "cpp" | "h" | "hpp"
+                            ) {
                                 count += 1;
                             }
                         }
@@ -83,4 +86,3 @@ pub struct DefectReport {
     pub categories_analyzed: Vec<crate::models::defect_report::DefectCategory>,
     pub total_files_analyzed: usize,
 }
-

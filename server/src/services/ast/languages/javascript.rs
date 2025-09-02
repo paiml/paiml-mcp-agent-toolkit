@@ -27,26 +27,23 @@ impl JavaScriptStrategy {
 #[cfg(feature = "typescript-ast")]
 #[async_trait]
 impl AstStrategy for JavaScriptStrategy {
-    async fn analyze(
-        &self,
-        file_path: &Path,
-        _classifier: &FileClassifier,
-    ) -> Result<FileContext> {
+    async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
         // JavaScript analysis (similar to TypeScript but for JS files)
         // Convert TemplateError to anyhow::Error
-        let context = crate::services::ast_typescript::analyze_javascript_file(file_path).await
+        let context = crate::services::ast_typescript::analyze_javascript_file(file_path)
+            .await
             .map_err(|e| anyhow::anyhow!("JavaScript analysis failed: {}", e))?;
         Ok(context)
     }
-    
+
     fn primary_extension(&self) -> &'static str {
         "js"
     }
-    
+
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec!["js", "jsx", "mjs"]
     }
-    
+
     fn language_name(&self) -> &'static str {
         "JavaScript"
     }

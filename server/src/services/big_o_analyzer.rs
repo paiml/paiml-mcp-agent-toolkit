@@ -317,18 +317,24 @@ impl BigOAnalyzer {
             .extension()
             .and_then(|ext| ext.to_str())
             .unwrap_or("");
-        
+
         let (pattern, lang) = match extension {
             "rs" => (r"fn\s+(\w+)", "rust"),
             "js" | "jsx" => (r"function\s+(\w+)", "javascript"),
             "ts" | "tsx" => (r"function\s+(\w+)", "typescript"),
             "py" => (r"def\s+(\w+)", "python"),
             "go" => (r"func\s+(\w+)", "go"),
-            "java" => (r"(public|private|protected)?\s*(static)?\s*\w+\s+(\w+)\s*\(", "java"),
+            "java" => (
+                r"(public|private|protected)?\s*(static)?\s*\w+\s+(\w+)\s*\(",
+                "java",
+            ),
             "c" | "cpp" | "cc" | "cxx" | "h" | "hpp" => {
                 // For C/C++, use a more specific pattern
-                (r"(?:int|void|bool|char|float|double|long|short|unsigned|static|const)*\s+(\w+)\s*\([^)]*\)\s*\{", "c")
-            },
+                (
+                    r"(?:int|void|bool|char|float|double|long|short|unsigned|static|const)*\s+(\w+)\s*\([^)]*\)\s*\{",
+                    "c",
+                )
+            }
             _ => {
                 // Unknown file type, skip analysis
                 return Ok(functions);

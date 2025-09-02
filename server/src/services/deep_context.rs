@@ -3107,25 +3107,28 @@ impl DeepContextAnalyzer {
             },
         }
     }
-    
+
     /// Create fallback complexity metrics from file discovery
-    fn create_fallback_complexity_metrics(&self, context: &DeepContext) -> Option<ComplexityMetricsForQA> {
+    fn create_fallback_complexity_metrics(
+        &self,
+        context: &DeepContext,
+    ) -> Option<ComplexityMetricsForQA> {
         let file_paths = self.collect_file_paths(&context.file_tree.root);
         let mut files_with_lines = Vec::new();
         let project_root = &context.metadata.project_root;
-        
+
         debug!(
             "QA Fallback: Counting lines from {} files in {:?}",
             file_paths.len(),
             project_root
         );
-        
+
         for path_str in &file_paths {
             if let Some(file_metrics) = self.process_file_for_fallback(path_str, project_root) {
                 files_with_lines.push(file_metrics);
             }
         }
-        
+
         if !files_with_lines.is_empty() {
             Some(ComplexityMetricsForQA {
                 files: files_with_lines,
@@ -3138,19 +3141,23 @@ impl DeepContextAnalyzer {
             None
         }
     }
-    
+
     /// Process single file for fallback metrics
-    fn process_file_for_fallback(&self, path_str: &str, project_root: &std::path::Path) -> Option<FileComplexityMetricsForQA> {
+    fn process_file_for_fallback(
+        &self,
+        path_str: &str,
+        project_root: &std::path::Path,
+    ) -> Option<FileComplexityMetricsForQA> {
         let full_path = if std::path::Path::new(path_str).is_absolute() {
             std::path::PathBuf::from(path_str)
         } else {
             project_root.join(path_str)
         };
-        
+
         if full_path.exists() && full_path.is_file() {
             if let Ok(content) = std::fs::read_to_string(&full_path) {
                 let line_count = content.lines().count();
-                
+
                 if line_count > 0 {
                     return Some(FileComplexityMetricsForQA {
                         path: full_path,
@@ -3162,10 +3169,10 @@ impl DeepContextAnalyzer {
                 }
             }
         }
-        
+
         None
     }
-    
+
     fn create_qa_compatible_result(
         &self,
         context: &DeepContext,

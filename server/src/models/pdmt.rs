@@ -232,13 +232,15 @@ mod tests {
         assert_eq!(todo.estimated_hours, 4.0);
         assert!(!todo.id.is_empty());
         assert_eq!(todo.success_criteria.len(), 4);
-        assert!(todo.success_criteria.contains(&"Unit tests pass with >80% coverage".to_string()));
+        assert!(todo
+            .success_criteria
+            .contains(&"Unit tests pass with >80% coverage".to_string()));
     }
 
     #[test]
     fn test_pdmt_todo_default_values() {
         let todo = PdmtTodo::new("Test content".to_string(), TodoPriority::Medium);
-        
+
         assert_eq!(todo.dependencies.len(), 0);
         assert_eq!(todo.quality_gates, TodoQualityGates::default());
         assert_eq!(todo.validation_commands, ValidationCommands::default());
@@ -248,8 +250,9 @@ mod tests {
     #[test]
     fn test_get_primary_file_path_with_files() {
         let mut todo = PdmtTodo::new("Test".to_string(), TodoPriority::Low);
-        todo.implementation_specs.primary_files = vec!["src/main.rs".to_string(), "src/lib.rs".to_string()];
-        
+        todo.implementation_specs.primary_files =
+            vec!["src/main.rs".to_string(), "src/lib.rs".to_string()];
+
         assert_eq!(todo.get_primary_file_path(), "src/main.rs");
     }
 
@@ -262,7 +265,7 @@ mod tests {
     #[test]
     fn test_validation_outcome_success() {
         let outcome = ValidationOutcome::success("All tests passed".to_string());
-        
+
         assert!(outcome.passed);
         assert_eq!(outcome.message, "All tests passed");
         assert_eq!(outcome.violations.len(), 0);
@@ -272,7 +275,7 @@ mod tests {
     fn test_validation_outcome_failure() {
         let violations = vec!["Missing test".to_string(), "Low coverage".to_string()];
         let outcome = ValidationOutcome::failure("Tests failed".to_string(), violations.clone());
-        
+
         assert!(!outcome.passed);
         assert_eq!(outcome.message, "Tests failed");
         assert_eq!(outcome.violations, violations);
@@ -299,13 +302,13 @@ mod tests {
     #[test]
     fn test_serde_roundtrip() {
         let original = PdmtTodo::new("Test serialization".to_string(), TodoPriority::High);
-        
+
         // Serialize to JSON
         let json = serde_json::to_string(&original).expect("Serialization failed");
-        
+
         // Deserialize back
         let deserialized: PdmtTodo = serde_json::from_str(&json).expect("Deserialization failed");
-        
+
         assert_eq!(original.id, deserialized.id);
         assert_eq!(original.content, deserialized.content);
         assert_eq!(original.priority, deserialized.priority);
