@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.41.0] - 2025-09-02
+
 ### Sprint 40 - Test Excellence & Final Quality Push ✅ COMPLETE
 - **Phase 1 COMPLETE**: Fixed all test infrastructure compilation errors (18 → 0)
 - **Phase 2 COMPLETE**: Test coverage excellence achieved
