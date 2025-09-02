@@ -121,9 +121,8 @@ impl SATDAnalyzerFactory {
     }
     
     pub fn create_critical_only() -> SATDAnalyzer {
-        // For now, just return the basic analyzer
-        // TODO: Add critical-only filtering when configuration system is enhanced
-        SATDAnalyzer::new()
+        // Create analyzer with strict mode for critical issues
+        SATDAnalyzer::new_with_strict_mode(true)
     }
 }
 

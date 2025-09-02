@@ -14,6 +14,12 @@ use std::path::Path;
 pub struct TypeScriptStrategy;
 
 #[cfg(feature = "typescript-ast")]
+impl Default for TypeScriptStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TypeScriptStrategy {
     pub fn new() -> Self {
         Self

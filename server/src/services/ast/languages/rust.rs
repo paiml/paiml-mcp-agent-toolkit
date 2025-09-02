@@ -12,6 +12,12 @@ use std::path::Path;
 /// Rust AST analysis strategy using syn parser
 pub struct RustStrategy;
 
+impl Default for RustStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RustStrategy {
     pub fn new() -> Self {
         Self

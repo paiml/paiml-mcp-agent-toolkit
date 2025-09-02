@@ -12,6 +12,12 @@ use std::path::Path;
 pub struct PythonStrategy;
 
 #[cfg(feature = "python-ast")]
+impl Default for PythonStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PythonStrategy {
     pub fn new() -> Self {
         Self

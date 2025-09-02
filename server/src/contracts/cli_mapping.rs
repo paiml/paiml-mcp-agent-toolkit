@@ -12,8 +12,6 @@ pub fn map_analyze_command(cmd: &AnalyzeCommands) -> Result<Box<dyn ContractVali
     super::adapter::ContractAdapter::from_cli(cmd)
 }
 
-// TODO: Add actual CLI to uniform type mapping functions when needed
-
 #[cfg(test)]
 mod tests {
 

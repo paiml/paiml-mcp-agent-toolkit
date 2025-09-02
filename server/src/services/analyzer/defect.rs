@@ -8,6 +8,12 @@ use std::path::Path;
 /// Defect analyzer strategy wrapping the existing defect analyzer framework
 pub struct DefectAnalyzer;
 
+impl Default for DefectAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DefectAnalyzer {
     pub fn new() -> Self {
         Self
