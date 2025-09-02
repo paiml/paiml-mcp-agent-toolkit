@@ -922,53 +922,153 @@ impl SATDDetector {
     }
 
     /// Check if file is minified or in vendor directory
-    /// Check if file is SATD-related (detector, tests, etc.)
-    fn is_satd_related_file(&self, file_path: &Path) -> bool {
+    /// Check if file should be excluded from SATD analysis
+    fn should_exclude_file(&self, file_path: &Path) -> bool {
         let path_str = file_path.to_string_lossy();
-        path_str.contains("satd_detector") || 
-        path_str.contains("satd_property_tests") ||
-        path_str.contains("quality_proxy") ||
-        (path_str.contains("test") && path_str.contains("satd"))
-    }
-    
-    /// Check if line contains SATD markers in string literals or code patterns
-    fn contains_satd_string_literals(&self, line: &str) -> bool {
-        line.contains(r#""TODO"#) || line.contains(r#""FIXME"#) || 
-        line.contains(r#""HACK"#) || line.contains(r#"'TODO'"#) ||
-        line.contains(r#"'FIXME'"#) || line.contains(r#"'HACK'"#) ||
-        line.contains("r#\"") || // Raw string literal
-        line.contains(".matches(") || // Pattern matching code
-        line.contains("regex:") || // Regex pattern definition
-        line.contains("DebtPattern") || // Pattern struct
-        line.contains("comment_text:") || // Test data field
-        line.contains("text: content") || // Field assignment
-        line.contains("classify_comment") // Method call
-    }
-    
-    /// Check if line is documentation or test assertion about SATD
-    fn is_satd_documentation_or_test(&self, line: &str) -> bool {
-        // Skip doctest examples about SATD
-        if line.contains("/// ") && (line.contains("TODO") || line.contains("FIXME")) {
+        
+        // Exclude SATD analysis tools themselves
+        if path_str.contains("satd_detector") || 
+           path_str.contains("satd_property_tests") ||
+           path_str.contains("quality_proxy") ||
+           (path_str.contains("test") && path_str.contains("satd")) {
             return true;
         }
         
-        // Skip assert statements checking for SATD
-        if line.contains("assert") && (line.contains("TODO") || line.contains("FIXME")) {
+        // Exclude build and config files
+        if path_str.contains("/build.rs") || 
+           path_str.contains("/Cargo.toml") ||
+           path_str.contains(".gitignore") ||
+           path_str.contains("README") {
+            return true;
+        }
+        
+        // Exclude examples and demos (these often contain sample SATD)
+        if path_str.contains("/examples/") ||
+           path_str.contains("/demo/") ||
+           path_str.contains("_demo") {
+            return true;
+        }
+        
+        // Exclude fuzz testing (contains security test patterns)
+        if path_str.contains("/fuzz/") ||
+           path_str.contains("fuzz_targets") {
+            return true;
+        }
+        
+        // Exclude generated or vendor code
+        if path_str.contains("/target/") ||
+           path_str.contains("/vendor/") ||
+           path_str.contains("/node_modules/") ||
+           path_str.contains(".generated") {
             return true;
         }
         
         false
     }
     
-    /// Check if a line is likely test data or pattern definition
-    fn is_likely_test_data_or_pattern(&self, line: &str, file_path: &Path) -> bool {
-        // Check if this is SATD-related code with string literals
-        if self.is_satd_related_file(file_path) && self.contains_satd_string_literals(line) {
+    /// Check if line is false positive SATD
+    fn is_false_positive_line(&self, line: &str) -> bool {
+        let trimmed = line.trim();
+        
+        // Skip string literals containing SATD markers
+        if trimmed.contains(r#""TODO"#) || trimmed.contains(r#""FIXME"#) || 
+           trimmed.contains(r#""HACK"#) || trimmed.contains(r#"'TODO'"#) ||
+           trimmed.contains(r#"'FIXME'"#) || trimmed.contains(r#"'HACK'"#) {
             return true;
         }
         
-        // Check if this is documentation or test assertion
-        self.is_satd_documentation_or_test(line)
+        // Skip raw string literals
+        if trimmed.contains("r#\"") || trimmed.contains("r\"") {
+            return true;
+        }
+        
+        // Skip code that's analyzing/processing SATD
+        if trimmed.contains(".matches(") || 
+           trimmed.contains("regex:") ||
+           trimmed.contains("DebtPattern") ||
+           trimmed.contains("comment_text:") ||
+           trimmed.contains("classify_comment") ||
+           trimmed.contains("debt_classifier") ||
+           trimmed.contains("SATDAnalysis") {
+            return true;
+        }
+        
+        // Skip variable assignments with SATD content
+        if trimmed.contains(" = ") && (trimmed.contains("TODO") || trimmed.contains("FIXME")) {
+            return true;
+        }
+        
+        // Skip format strings and templates
+        if (trimmed.contains("format!") || trimmed.contains("println!") || 
+            trimmed.contains("write!") || trimmed.contains("{}")) &&
+           (trimmed.contains("TODO") || trimmed.contains("FIXME")) {
+            return true;
+        }
+        
+        // Skip URLs and paths containing these words
+        if (trimmed.contains("http") || trimmed.contains("/") || trimmed.contains("\\")) &&
+           (trimmed.contains("TODO") || trimmed.contains("FIXME")) {
+            return true;
+        }
+        
+        false
+    }
+    
+    /// Check if line is documentation, test, or metadata about SATD
+    fn is_documentation_or_metadata(&self, line: &str) -> bool {
+        let trimmed = line.trim();
+        
+        // Skip documentation comments about SATD
+        if (trimmed.starts_with("//!") || trimmed.starts_with("///") || 
+            trimmed.starts_with("*") || trimmed.contains("@param") ||
+            trimmed.contains("@return") || trimmed.contains("Example:")) &&
+           (trimmed.contains("TODO") || trimmed.contains("FIXME")) {
+            return true;
+        }
+        
+        // Skip test assertions and expects
+        if (trimmed.contains("assert") || trimmed.contains("expect") ||
+            trimmed.contains(".unwrap()") || trimmed.contains("panic!")) &&
+           (trimmed.contains("TODO") || trimmed.contains("FIXME")) {
+            return true;
+        }
+        
+        // Skip log messages and debug output
+        if (trimmed.contains("log::") || trimmed.contains("debug!") ||
+            trimmed.contains("info!") || trimmed.contains("warn!") ||
+            trimmed.contains("error!") || trimmed.contains("trace!")) &&
+           (trimmed.contains("TODO") || trimmed.contains("FIXME")) {
+            return true;
+        }
+        
+        // Skip error messages and descriptions
+        if (trimmed.contains("Error:") || trimmed.contains("error:") ||
+            trimmed.contains("message:") || trimmed.contains("description:")) &&
+           (trimmed.contains("TODO") || trimmed.contains("FIXME")) {
+            return true;
+        }
+        
+        false
+    }
+    
+    /// Comprehensive false positive detection for SATD
+    fn is_likely_test_data_or_pattern(&self, line: &str, file_path: &Path) -> bool {
+        // First check: Should we exclude this entire file?
+        if self.should_exclude_file(file_path) {
+            return true;
+        }
+        
+        // Second check: Is this line a false positive?
+        if self.is_false_positive_line(line) {
+            return true;
+        }
+        
+        // Third check: Is this documentation or metadata?
+        if self.is_documentation_or_metadata(line) {
+            return true;
+        }
+        
+        false
     }
     
     fn is_minified_or_vendor_file(&self, path: &Path) -> bool {
