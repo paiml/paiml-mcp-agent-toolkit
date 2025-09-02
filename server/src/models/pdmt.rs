@@ -52,6 +52,7 @@ pub enum TodoStatus {
     Pending,
     InProgress,
     Completed,
+    Blocked,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
