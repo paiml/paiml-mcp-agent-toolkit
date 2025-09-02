@@ -1,4 +1,5 @@
-use crate::tdg::{Grade, Language, TdgScore};
+use crate::tdg::{Grade, TdgScore};
+use crate::models::unified_ast::Language;
 use anyhow::{anyhow, Result};
 use blake3::Hash as Blake3Hash;
 use dashmap::DashMap;
