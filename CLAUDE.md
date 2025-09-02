@@ -292,7 +292,7 @@ Following successful Toyota Way Kaizen refactoring and comprehensive verificatio
 **Achievement Protection System**: Never drop below our 80.2% Sprint 46 achievement.
 
 **Pre-commit Hook Enhancement:**
-- Real-time coverage analysis using `cargo-tarpaulin`
+- Real-time coverage analysis using `cargo-llvm-cov` (faster, more accurate than tarpaulin)
 - Blocks commits that drop below 80% minimum threshold
 - Integrated with existing quality gate system  
 - Located: `.git/hooks/pre-commit`
@@ -309,12 +309,15 @@ Following successful Toyota Way Kaizen refactoring and comprehensive verificatio
 
 **Installation Requirements:**
 ```bash
-# Required for coverage enforcement
-cargo install cargo-tarpaulin
+# RECOMMENDED: Fast, accurate LLVM-based coverage (2024+ standard)
+cargo install cargo-llvm-cov
 
 # Verification command
-cargo tarpaulin --out Stdout
+cargo llvm-cov --summary-only
 # Should show ≥80% coverage
+
+# FALLBACK: Slower tarpaulin (if llvm-cov unavailable)
+cargo install cargo-tarpaulin
 ```
 
 **Benefits:**
