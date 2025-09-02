@@ -5637,24 +5637,32 @@ pub async fn analyze_project_files(
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
     use walkdir::WalkDir;
 
-    let mut results = Vec::new();
+    // PERFORMANCE OPTIMIZATION: Collect files first, then process in parallel batches
     let extensions = get_file_extensions(toolchain);
-
-    for entry in WalkDir::new(project_path)
+    
+    // Collect all files to analyze
+    let files_to_analyze: Vec<_> = WalkDir::new(project_path)
         .follow_links(false)
         .into_iter()
         .filter_map(|e| e.ok())
         .filter(|e| e.file_type().is_file())
-    {
-        let path = entry.path();
+        .map(|e| e.path().to_owned())
+        .filter(|path| should_analyze_file(path, project_path, &extensions, include))
+        .collect();
 
-        if !should_analyze_file(path, project_path, &extensions, include) {
-            continue;
-        }
-
-        if let Some(metrics) =
-            analyze_complexity_file(path, cyclomatic_threshold, cognitive_threshold).await?
-        {
+    // PERFORMANCE OPTIMIZATION: Process files in parallel batches  
+    let batch_size = std::cmp::min(files_to_analyze.len(), 20); // Optimize batch size
+    let mut results = Vec::new();
+    
+    for batch in files_to_analyze.chunks(batch_size) {
+        let batch_futures: Vec<_> = batch
+            .iter()
+            .map(|path| analyze_complexity_file(path, cyclomatic_threshold, cognitive_threshold))
+            .collect();
+            
+        let batch_results = futures::future::try_join_all(batch_futures).await?;
+        
+        for metrics in batch_results.into_iter().flatten() {
             results.push(metrics);
         }
     }
@@ -5805,9 +5813,8 @@ async fn analyze_complexity_file(
     cyclomatic_threshold: u16,
     cognitive_threshold: u16,
 ) -> Result<Option<crate::services::complexity::FileComplexityMetrics>> {
-    use std::fs;
-
-    match fs::read_to_string(path) {
+    // PERFORMANCE OPTIMIZATION: Use async file I/O instead of blocking
+    match tokio::fs::read_to_string(path).await {
         Ok(content) => {
             let metrics = analyze_file_complexity_async(
                 path,
