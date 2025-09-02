@@ -1,13 +1,18 @@
 // Toyota Way: Unified Big-O Complexity Analyzer Strategy
 
-use super::{Analyzer, ProjectAnalyzer, FileAnalyzer};
+use super::{Analyzer, ProjectAnalyzer};
 use anyhow::Result;
 use async_trait::async_trait;
-use std::path::Path;
 
 /// Big-O complexity analyzer strategy using the existing big_o_analyzer
 pub struct BigOAnalyzer {
     analyzer: crate::services::big_o_analyzer::BigOAnalyzer,
+}
+
+impl Default for BigOAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BigOAnalyzer {

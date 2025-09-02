@@ -9,6 +9,12 @@ use std::path::Path;
 /// SATD detection strategy using the existing SATD detector
 pub struct SATDDetector;
 
+impl Default for SATDDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SATDDetector {
     pub fn new() -> Self {
         Self

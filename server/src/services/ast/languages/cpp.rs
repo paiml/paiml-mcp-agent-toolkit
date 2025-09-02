@@ -12,6 +12,12 @@ use std::path::Path;
 pub struct CppStrategy;
 
 #[cfg(feature = "cpp-ast")]
+impl Default for CppStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CppStrategy {
     pub fn new() -> Self {
         Self
@@ -26,15 +32,14 @@ impl AstStrategy for CppStrategy {
         file_path: &Path,
         _classifier: &FileClassifier,
     ) -> Result<FileContext> {
-        // Create basic context for C++ files
-        // TODO: Integrate with actual C++ AST parsing when available
-        let context = FileContext {
+        // Create context for C++ files
+        // Tree-sitter C++ parsing is available but integration needs proper setup
+        Ok(FileContext {
             path: file_path.to_string_lossy().to_string(),
             language: "C++".to_string(),
             items: Vec::new(),
             complexity_metrics: None,
-        };
-        Ok(context)
+        })
     }
     
     fn primary_extension(&self) -> &'static str {

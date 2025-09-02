@@ -9,6 +9,12 @@ use std::path::Path;
 /// Polyglot analysis strategy using the existing polyglot analyzer
 pub struct PolyglotDetector;
 
+impl Default for PolyglotDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PolyglotDetector {
     pub fn new() -> Self {
         Self
@@ -93,7 +99,7 @@ impl PolyglotDetector {
         
         for file in files {
             if let Some(language) = self.detect_language(file) {
-                language_files.entry(language).or_insert_with(Vec::new).push(file);
+                language_files.entry(language).or_default().push(file);
             }
         }
         
