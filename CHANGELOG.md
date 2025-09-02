@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **SATD False Positives (86% reduction)**: Fixed SATD detector's overly broad pattern matching that flagged legitimate documentation as technical debt
+  - Security pattern: Changed `(?i)\b(security|vuln|cve)\b` to context-aware detection requiring TODO/FIXME context
+  - Added comprehensive filtering for module documentation, API docs, doctest examples
+  - Enhanced context-aware filtering to exclude pattern definitions and structural comments
+  - Impact: 222 → 31 violations (86% reduction), eliminated all 39 critical false positives
+  - TDG grade improved to 92.1/100 (A grade, approaching A+)
+  - Top files cleaned: analysis_utilities.rs (24→0), satd_detector.rs (16→0), wasm/security.rs (14→0)
+
 ## [2.41.0] - 2025-09-02
 
 ### Sprint 40 - Test Excellence & Final Quality Push ✅ COMPLETE
