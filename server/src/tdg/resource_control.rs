@@ -311,7 +311,7 @@ impl PlatformResourceController {
     async fn evaluate_resource_request(
         &self,
         current_usage: &ResourceUsage,
-        op_type: &OperationType,
+        _op_type: &OperationType,
         priority: &OperationPriority,
         estimated_memory_mb: f64,
     ) -> Result<ResourceAction> {

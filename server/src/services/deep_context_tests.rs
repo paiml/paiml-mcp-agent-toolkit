@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod deep_context_test_suite {
-    use super::super::*;
     use crate::services::complexity::ComplexitySummary;
     use crate::services::context::AstItem;
     use crate::services::deep_context::{
@@ -78,7 +77,6 @@ impl Calculator {
     /// - Panics if assertions fail
 #[cfg(test)]
 mod deep_context_test_suite {
-    use super::super::*;
     use crate::services::complexity::ComplexitySummary;
     use crate::services::context::AstItem;
     use crate::services::deep_context::{

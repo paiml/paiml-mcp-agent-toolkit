@@ -75,7 +75,7 @@ impl SATDDetector {
     async fn detect_satd_in_file(
         &self,
         file_path: &Path,
-        config: &SATDConfig
+        _config: &SATDConfig
     ) -> Result<SATDAnalysisResult> {
         // Delegate to the existing satd_detector module functionality
         let detector = crate::services::satd_detector::SATDDetector::new();
@@ -90,7 +90,7 @@ impl SATDDetector {
     async fn detect_satd_in_files(
         &self,
         files: &[std::path::PathBuf],
-        config: &SATDConfig
+        _config: &SATDConfig
     ) -> Result<SATDAnalysisResult> {
         let detector = crate::services::satd_detector::SATDDetector::new();
         
@@ -112,17 +112,17 @@ impl SATDDetector {
     async fn detect_satd_in_directory(
         &self,
         dir_path: &Path,
-        config: &SATDConfig
+        _config: &SATDConfig
     ) -> Result<SATDAnalysisResult> {
         // Scan directory for source files
         let files = self.scan_directory_for_source_files(dir_path)?;
-        self.detect_satd_in_files(&files, config).await
+        self.detect_satd_in_files(&files, _config).await
     }
     
     fn detect_satd_in_content(
         &self,
         content: &str,
-        config: &SATDConfig
+        _config: &SATDConfig
     ) -> Result<SATDAnalysisResult> {
         let detector = crate::services::satd_detector::SATDDetector::new();
         

@@ -106,14 +106,14 @@ impl DuplicateDetector {
             ignore_comments: config.ignore_whitespace,
             min_group_size: 2,
         };
-        let detector = crate::services::duplicate_detector::DuplicateDetectionEngine::new(duplicate_config);
+        let _detector = crate::services::duplicate_detector::DuplicateDetectionEngine::new(duplicate_config);
         
         let all_duplicates = Vec::new();
         let mut files_analyzed = 0;
         
         // Process files using existing detector
         for file in files {
-            if let Ok(content) = std::fs::read_to_string(file) {
+            if let Ok(_content) = std::fs::read_to_string(file) {
                 // Use existing detector methods (adapting interface)
                 // Note: This delegates to the actual implementation in duplicate_detector.rs
                 files_analyzed += 1;
