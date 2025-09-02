@@ -412,47 +412,96 @@ impl SATDDetector {
         file_path: &Path,
     ) -> Result<Vec<TechnicalDebt>, TemplateError> {
         let mut debts = Vec::new();
-        let mut in_test_block = false;
-        let mut test_block_depth = 0;
+        let mut test_tracker = TestBlockTracker::new(self.is_rust_file(file_path));
 
         for (line_num, line) in content.lines().enumerate() {
-            let trimmed = line.trim();
-
-            // Track test blocks in Rust files
-            if file_path.extension().and_then(|s| s.to_str()) == Some("rs") {
-                if trimmed.starts_with("#[cfg(test)]") {
-                    in_test_block = true;
-                    test_block_depth = 0;
-                } else if in_test_block {
-                    if trimmed.contains('{') {
-                        test_block_depth += trimmed.matches('{').count();
-                    }
-                    if trimmed.contains('}') {
-                        test_block_depth =
-                            test_block_depth.saturating_sub(trimmed.matches('}').count());
-                        if test_block_depth == 0 && trimmed.ends_with('}') {
-                            in_test_block = false;
-                        }
-                    }
+            test_tracker.update_from_line(line.trim());
+            
+            if !test_tracker.is_in_test_block() {
+                if let Some(debt) = self.extract_from_line(line, file_path, line_num as u32 + 1)? {
+                    debts.push(debt);
                 }
-            }
-
-            // Skip lines inside test blocks
-            if in_test_block {
-                continue;
-            }
-
-            if let Some(debt) = self.extract_from_line(line, file_path, line_num as u32 + 1)? {
-                debts.push(debt);
             }
         }
 
-        // Sort by file, line, column for deterministic output
-        debts.sort_by_key(|d| (d.file.clone(), d.line, d.column));
-
+        self.sort_debts(&mut debts);
         Ok(debts)
     }
+    
+    fn is_rust_file(&self, file_path: &Path) -> bool {
+        file_path.extension().and_then(|s| s.to_str()) == Some("rs")
+    }
+    
+    fn sort_debts(&self, debts: &mut Vec<TechnicalDebt>) {
+        debts.sort_by_key(|d| (d.file.clone(), d.line, d.column));
+    }
+}
 
+/// Tracks test block boundaries in Rust files to exclude test-only technical debt
+struct TestBlockTracker {
+    is_rust_file: bool,
+    in_test_block: bool,
+    test_block_depth: usize,
+}
+
+impl TestBlockTracker {
+    fn new(is_rust_file: bool) -> Self {
+        Self {
+            is_rust_file,
+            in_test_block: false,
+            test_block_depth: 0,
+        }
+    }
+    
+    fn update_from_line(&mut self, trimmed_line: &str) {
+        if !self.is_rust_file {
+            return;
+        }
+        
+        if self.is_test_block_start(trimmed_line) {
+            self.start_test_block();
+        } else if self.in_test_block {
+            self.update_test_block_depth(trimmed_line);
+        }
+    }
+    
+    fn is_in_test_block(&self) -> bool {
+        self.in_test_block
+    }
+    
+    fn is_test_block_start(&self, trimmed_line: &str) -> bool {
+        trimmed_line.starts_with("#[cfg(test)]")
+    }
+    
+    fn start_test_block(&mut self) {
+        self.in_test_block = true;
+        self.test_block_depth = 0;
+    }
+    
+    fn update_test_block_depth(&mut self, trimmed_line: &str) {
+        self.add_opening_braces(trimmed_line);
+        self.subtract_closing_braces(trimmed_line);
+    }
+    
+    fn add_opening_braces(&mut self, trimmed_line: &str) {
+        if trimmed_line.contains('{') {
+            self.test_block_depth += trimmed_line.matches('{').count();
+        }
+    }
+    
+    fn subtract_closing_braces(&mut self, trimmed_line: &str) {
+        if trimmed_line.contains('}') {
+            self.test_block_depth = self.test_block_depth
+                .saturating_sub(trimmed_line.matches('}').count());
+            
+            if self.test_block_depth == 0 && trimmed_line.ends_with('}') {
+                self.in_test_block = false;
+            }
+        }
+    }
+}
+
+impl SATDDetector {
     /// Extract debt from a single line
     fn extract_from_line(
         &self,
@@ -1300,62 +1349,87 @@ impl SATDDetector {
         debts: &[TechnicalDebt],
         project_root: &Path,
     ) -> Result<f64, TemplateError> {
-        use chrono::{DateTime, Utc};
-        use std::process::Command;
-
+        use chrono::Utc;
+        
         let mut total_age_days = 0.0;
         let mut valid_debt_count = 0;
         let now = Utc::now();
 
         for debt in debts {
-            // Skip if file doesn't exist or isn't relative to project root
-            let relative_path = match debt.file.strip_prefix(project_root) {
-                Ok(path) => path,
-                Err(_) => continue,
-            };
-
-            // Use git blame to find when the line with the debt comment was last modified
-            let output = Command::new("git")
-                .args([
-                    "blame",
-                    "-L",
-                    &format!("{},{}", debt.line, debt.line),
-                    "--porcelain",
-                    relative_path.to_str().unwrap_or_default(),
-                ])
-                .current_dir(project_root)
-                .output();
-
-            if let Ok(output) = output {
-                if output.status.success() {
-                    let blame_output = String::from_utf8_lossy(&output.stdout);
-
-                    // Parse git blame output to find commit timestamp
-                    // Format: "author-time <timestamp>"
-                    for line in blame_output.lines() {
-                        if line.starts_with("author-time ") {
-                            if let Some(timestamp_str) = line.strip_prefix("author-time ") {
-                                if let Ok(timestamp) = timestamp_str.parse::<i64>() {
-                                    if let Some(debt_date) = DateTime::from_timestamp(timestamp, 0)
-                                    {
-                                        let age_days = (now - debt_date).num_days() as f64;
-                                        total_age_days += age_days;
-                                        valid_debt_count += 1;
-                                    }
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
+            if let Some(age_days) = self.calculate_debt_age(debt, project_root, &now).await {
+                total_age_days += age_days;
+                valid_debt_count += 1;
             }
         }
 
-        if valid_debt_count > 0 {
-            Ok(total_age_days / valid_debt_count as f64)
+        Ok(if valid_debt_count > 0 {
+            total_age_days / valid_debt_count as f64
         } else {
-            Ok(0.0)
+            0.0
+        })
+    }
+    
+    async fn calculate_debt_age(
+        &self,
+        debt: &TechnicalDebt,
+        project_root: &Path,
+        now: &chrono::DateTime<chrono::Utc>,
+    ) -> Option<f64> {
+        let relative_path = self.get_relative_path(&debt.file, project_root)?;
+        let blame_output = self.run_git_blame(&relative_path, debt.line, project_root).await?;
+        let timestamp = self.parse_git_blame_timestamp(&blame_output)?;
+        self.calculate_age_from_timestamp(timestamp, now)
+    }
+    
+    fn get_relative_path(&self, file_path: &Path, project_root: &Path) -> Option<PathBuf> {
+        file_path.strip_prefix(project_root).ok().map(|p| p.to_path_buf())
+    }
+    
+    async fn run_git_blame(
+        &self,
+        relative_path: &PathBuf,
+        line: u32,
+        project_root: &Path,
+    ) -> Option<String> {
+        use std::process::Command;
+        
+        let output = Command::new("git")
+            .args([
+                "blame",
+                "-L",
+                &format!("{},{}", line, line),
+                "--porcelain",
+                relative_path.to_str()?,
+            ])
+            .current_dir(project_root)
+            .output()
+            .ok()?;
+
+        if output.status.success() {
+            Some(String::from_utf8_lossy(&output.stdout).to_string())
+        } else {
+            None
         }
+    }
+    
+    fn parse_git_blame_timestamp(&self, blame_output: &str) -> Option<i64> {
+        for line in blame_output.lines() {
+            if let Some(timestamp_str) = line.strip_prefix("author-time ") {
+                return timestamp_str.parse::<i64>().ok();
+            }
+        }
+        None
+    }
+    
+    fn calculate_age_from_timestamp(
+        &self,
+        timestamp: i64,
+        now: &chrono::DateTime<chrono::Utc>,
+    ) -> Option<f64> {
+        use chrono::DateTime;
+        
+        let debt_date = DateTime::from_timestamp(timestamp, 0)?;
+        Some((*now - debt_date).num_days() as f64)
     }
 }
 
@@ -2496,5 +2570,129 @@ fn helper_test() {{
         let defect_metrics = metrics.by_category.get("Defect").unwrap();
         assert_eq!(defect_metrics.count, 2);
         assert_eq!(defect_metrics.critical_count, 1);
+    }
+
+    // TDD RED phase - Tests for calculate_average_debt_age (37 cognitive complexity)
+    #[tokio::test]
+    async fn test_calculate_average_debt_age_empty_debts() {
+        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let temp_dir = tempfile::tempdir().unwrap();
+        let project_root = temp_dir.path();
+
+        let result = detector.calculate_average_debt_age(&[], project_root).await.unwrap();
+        assert_eq!(result, 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_calculate_average_debt_age_no_git() {
+        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let temp_dir = tempfile::tempdir().unwrap();
+        let project_root = temp_dir.path();
+        
+        // Create a test file
+        let test_file = project_root.join("test.rs");
+        std::fs::write(&test_file, "// TODO: test debt").unwrap();
+        
+        let debts = vec![create_test_debt_with_file(
+            DebtCategory::Design, 
+            Severity::Medium,
+            test_file.clone(),
+            1
+        )];
+
+        let result = detector.calculate_average_debt_age(&debts, project_root).await.unwrap();
+        assert_eq!(result, 0.0); // No git history, should default to 0
+    }
+
+    #[tokio::test]
+    async fn test_calculate_average_debt_age_invalid_file_path() {
+        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let temp_dir = tempfile::tempdir().unwrap();
+        let project_root = temp_dir.path();
+        
+        // Create debt with path outside project root
+        let external_file = PathBuf::from("/external/file.rs");
+        let debts = vec![create_test_debt_with_file(
+            DebtCategory::Design,
+            Severity::Medium,
+            external_file,
+            1
+        )];
+
+        let result = detector.calculate_average_debt_age(&debts, project_root).await.unwrap();
+        assert_eq!(result, 0.0); // External files should be skipped
+    }
+
+    // Helper function for debt with custom file
+    fn create_test_debt_with_file(category: DebtCategory, severity: Severity, file: PathBuf, line: u32) -> TechnicalDebt {
+        TechnicalDebt {
+            text: "test debt".to_string(),
+            category,
+            severity,
+            file,
+            line,
+            column: 1,
+            pattern: "TODO".to_string(),
+            context_lines: vec!["// TODO: test debt".to_string()],
+            created_at: Utc::now(),
+            metadata: std::collections::HashMap::new(),
+        }
+    }
+
+    // TDD RED phase - Tests for extract_from_content (30 cognitive complexity)
+    #[test]
+    fn test_extract_from_content_complex_test_blocks() {
+        let detector = SATDDetector::new(vec!["TODO".to_string(), "FIXME".to_string()]);
+        
+        let content = r#"
+// TODO: regular debt
+fn main() {
+    #[cfg(test)]
+    mod nested_tests {
+        // TODO: should be ignored
+        #[test] 
+        fn test_with_nested_blocks() {
+            if true {
+                // FIXME: nested ignored
+                let x = {
+                    // TODO: deeply nested ignored
+                    42
+                };
+            }
+        }
+    }
+    // TODO: after test block
+}
+        "#;
+        
+        let debts = detector.extract_from_content(content, Path::new("test.rs")).unwrap();
+        
+        // Should only find debts outside test blocks
+        assert_eq!(debts.len(), 2);
+        assert!(debts.iter().any(|d| d.text.contains("regular debt")));
+        assert!(debts.iter().any(|d| d.text.contains("after test block")));
+        assert!(!debts.iter().any(|d| d.text.contains("should be ignored")));
+        assert!(!debts.iter().any(|d| d.text.contains("nested ignored")));
+        assert!(!debts.iter().any(|d| d.text.contains("deeply nested ignored")));
+    }
+
+    #[test]
+    fn test_extract_from_content_non_rust_files() {
+        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        
+        let content = r#"
+// TODO: python debt
+#[cfg(test)]  // This should not be treated as test block in Python
+def test_something():
+    # TODO: python test debt should be found
+    pass
+        "#;
+        
+        let debts = detector.extract_from_content(content, Path::new("test.py")).unwrap();
+        
+        // Python files don't have Rust test block logic
+        assert_eq!(debts.len(), 2);
+        assert!(debts.iter().any(|d| d.text.contains("python debt")));
+        assert!(debts.iter().any(|d| d.text.contains("python test debt")));
     }
 }
