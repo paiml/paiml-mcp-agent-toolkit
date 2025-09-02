@@ -944,11 +944,279 @@ impl From<String> for EngineError {
 
 #[cfg(test)]
 mod tests {
-    // use super::*; // Unused in simple tests
+    use super::*;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    // === Sprint 46 Phase 8: TDD Tests for refactor_engine.rs ===
 
     #[test]
-    fn test_refactor_engine_basic() {
-        // Basic test
-        assert_eq!(1 + 1, 2);
+    fn test_engine_mode_variants() {
+        // Test Server mode
+        let server_mode = EngineMode::Server {
+            emit_buffer: Arc::new(RwLock::new(RingBuffer::new(100))),
+            latency_target: Duration::from_millis(100),
+        };
+        assert!(matches!(server_mode, EngineMode::Server { .. }));
+
+        // Test Interactive mode
+        let interactive_mode = EngineMode::Interactive {
+            checkpoint_file: PathBuf::from("checkpoint.json"),
+            explain_level: ExplainLevel::Detailed,
+        };
+        assert!(matches!(interactive_mode, EngineMode::Interactive { .. }));
+
+        // Test Batch mode
+        let batch_mode = EngineMode::Batch {
+            checkpoint_dir: PathBuf::from("/tmp/checkpoints"),
+            resume: true,
+            parallel_workers: 4,
+        };
+        if let EngineMode::Batch { parallel_workers, resume, .. } = batch_mode {
+            assert_eq!(parallel_workers, 4);
+            assert!(resume);
+        }
+    }
+
+    #[test]
+    fn test_explain_level() {
+        let brief = ExplainLevel::Brief;
+        let detailed = ExplainLevel::Detailed;
+        let verbose = ExplainLevel::Verbose;
+
+        // Test serialization
+        let brief_json = serde_json::to_string(&brief).unwrap();
+        assert!(brief_json.contains("Brief"));
+
+        let detailed_json = serde_json::to_string(&detailed).unwrap();
+        assert!(detailed_json.contains("Detailed"));
+
+        let verbose_json = serde_json::to_string(&verbose).unwrap();
+        assert!(verbose_json.contains("Verbose"));
+    }
+
+    #[test]
+    fn test_ring_buffer_creation() {
+        let buffer: RingBuffer<i32> = RingBuffer::new(10);
+        assert_eq!(buffer.capacity, 10);
+        assert!(buffer.buffer.is_empty());
+    }
+
+    #[test]
+    fn test_ring_buffer_push() {
+        let mut buffer = RingBuffer::new(3);
+        
+        // Push items
+        buffer.push(1);
+        buffer.push(2);
+        buffer.push(3);
+        
+        assert_eq!(buffer.buffer.len(), 3);
+        assert_eq!(buffer.buffer[0], 1);
+        assert_eq!(buffer.buffer[2], 3);
+        
+        // Push beyond capacity - should wrap around
+        buffer.push(4);
+        assert_eq!(buffer.buffer.len(), 3);
+        assert_eq!(buffer.buffer[0], 2); // First item should be removed
+        assert_eq!(buffer.buffer[2], 4); // New item at end
+    }
+
+    #[test]
+    fn test_ring_buffer_drain() {
+        let mut buffer = RingBuffer::new(5);
+        buffer.push(1);
+        buffer.push(2);
+        buffer.push(3);
+        
+        let drained: Vec<i32> = buffer.drain();
+        assert_eq!(drained, vec![1, 2, 3]);
+        assert!(buffer.buffer.is_empty());
+    }
+
+    #[test]
+    fn test_engine_metrics_default() {
+        let metrics = EngineMetrics::default();
+        
+        assert_eq!(metrics.operations_processed, 0);
+        assert_eq!(metrics.refactors_applied, 0);
+        assert_eq!(metrics.average_latency, Duration::from_secs(0));
+        assert_eq!(metrics.errors_encountered, 0);
+    }
+
+    #[test]
+    fn test_engine_metrics_record_operations() {
+        let mut metrics = EngineMetrics::default();
+        
+        metrics.operations_processed += 10;
+        metrics.refactors_applied += 5;
+        metrics.average_latency = Duration::from_millis(150);
+        metrics.errors_encountered += 1;
+        
+        assert_eq!(metrics.operations_processed, 10);
+        assert_eq!(metrics.refactors_applied, 5);
+        assert_eq!(metrics.average_latency, Duration::from_millis(150));
+        assert_eq!(metrics.errors_encountered, 1);
+    }
+
+    #[test]
+    fn test_engine_error_variants() {
+        // Test StateMachine error
+        let state_error = EngineError::StateMachine("Invalid state".to_string());
+        assert_eq!(state_error.to_string(), "State machine error: Invalid state");
+
+        // Test Analysis error
+        let analysis_error = EngineError::Analysis("Parse failed".to_string());
+        assert_eq!(analysis_error.to_string(), "Analysis error: Parse failed");
+
+        // Test IO error conversion
+        let io_error: EngineError = std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "File not found"
+        ).into();
+        assert!(io_error.to_string().contains("IO error"));
+    }
+
+    #[test]
+    fn test_engine_error_from_string() {
+        let error: EngineError = "Test error".to_string().into();
+        assert!(matches!(error, EngineError::StateMachine(_)));
+        assert_eq!(error.to_string(), "State machine error: Test error");
+    }
+
+    #[tokio::test]
+    async fn test_unified_engine_new_server() {
+        let config = RefactorConfig::default();
+        let engine = UnifiedEngine::new_server(config);
+        
+        // Verify server mode is set
+        assert!(matches!(engine.mode, EngineMode::Server { .. }));
+        
+        // Check that state machine is initialized
+        let state = engine.state_machine.read().await;
+        assert!(matches!(state.current_state(), State::Idle));
+    }
+
+    #[tokio::test]
+    async fn test_unified_engine_new_interactive() {
+        let temp_dir = TempDir::new().unwrap();
+        let checkpoint = temp_dir.path().join("checkpoint.json");
+        let config = RefactorConfig::default();
+        
+        let result = UnifiedEngine::new_interactive(checkpoint.clone(), config);
+        assert!(result.is_ok());
+        
+        let engine = result.unwrap();
+        if let EngineMode::Interactive { checkpoint_file, .. } = engine.mode {
+            assert_eq!(checkpoint_file, checkpoint);
+        } else {
+            panic!("Expected interactive mode");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_unified_engine_new_batch() {
+        let temp_dir = TempDir::new().unwrap();
+        let config = RefactorConfig::default();
+        
+        let engine = UnifiedEngine::new_batch(temp_dir.path().to_path_buf(), config, 4);
+        
+        if let EngineMode::Batch { parallel_workers, resume, .. } = engine.mode {
+            assert_eq!(parallel_workers, 4);
+            assert!(!resume); // Default is false for new batch
+        } else {
+            panic!("Expected batch mode");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_state_machine_transitions() {
+        let mut state_machine = RefactorStateMachine::new();
+        
+        // Initial state should be Idle
+        assert!(matches!(state_machine.current_state(), State::Idle));
+        
+        // Transition to Analyzing
+        let targets = vec![PathBuf::from("test.rs")];
+        let config = RefactorConfig::default();
+        let result = state_machine.start(targets, config);
+        assert!(result.is_ok());
+        assert!(matches!(state_machine.current_state(), State::Analyzing { .. }));
+    }
+
+    #[test]
+    fn test_refactor_config_default() {
+        let config = RefactorConfig::default();
+        
+        // Verify default values are sensible
+        assert!(config.complexity_threshold > 0);
+        assert!(config.max_file_size > 0);
+        assert!(!config.dry_run);
+    }
+
+    #[test]
+    fn test_summary_creation() {
+        let summary = Summary {
+            total_files: 10,
+            files_analyzed: 8,
+            defects_found: 15,
+            defects_fixed: 12,
+            skipped_files: 2,
+            duration: Duration::from_secs(120),
+        };
+        
+        assert_eq!(summary.total_files, 10);
+        assert_eq!(summary.files_analyzed, 8);
+        assert_eq!(summary.defects_found, 15);
+        assert_eq!(summary.defects_fixed, 12);
+        assert_eq!(summary.skipped_files, 2);
+        assert_eq!(summary.duration, Duration::from_secs(120));
+    }
+
+    #[test]
+    fn test_refactor_type_variants() {
+        let extract = RefactorType::ExtractFunction;
+        let rename = RefactorType::Rename;
+        let simplify = RefactorType::SimplifyLogic;
+        
+        // Test that variants exist and can be matched
+        assert!(matches!(extract, RefactorType::ExtractFunction));
+        assert!(matches!(rename, RefactorType::Rename));
+        assert!(matches!(simplify, RefactorType::SimplifyLogic));
+    }
+
+    #[tokio::test]
+    async fn test_engine_is_complete() {
+        let config = RefactorConfig::default();
+        let engine = UnifiedEngine::new_server(config);
+        
+        // Initially should not be complete
+        let is_complete = engine.is_complete().await;
+        assert!(!is_complete);
+        
+        // Manually set to complete state
+        {
+            let mut state = engine.state_machine.write().await;
+            let _ = state.complete(Summary {
+                total_files: 1,
+                files_analyzed: 1,
+                defects_found: 0,
+                defects_fixed: 0,
+                skipped_files: 0,
+                duration: Duration::from_secs(1),
+            });
+        }
+        
+        let is_complete = engine.is_complete().await;
+        assert!(is_complete);
+    }
+
+    #[tokio::test]
+    async fn test_engine_get_state() {
+        let config = RefactorConfig::default();
+        let engine = UnifiedEngine::new_server(config);
+        
+        let state = engine.get_state().await;
+        assert!(matches!(state, State::Idle));
     }
 }
