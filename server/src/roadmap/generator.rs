@@ -73,13 +73,16 @@ impl RoadmapTodoGenerator {
     }
 
     /// Generate todos from a single task
-    pub fn generate_todos_from_task(&mut self, task: &RoadmapTask) -> Result<Vec<QualityEnforcedTodo>> {
+    pub fn generate_todos_from_task(
+        &mut self,
+        task: &RoadmapTask,
+    ) -> Result<Vec<QualityEnforcedTodo>> {
         let mut todos = Vec::new();
-        
+
         // Create main implementation todo
         let todo = self.create_quality_enforced_todo(task, 1);
         todos.push(todo);
-        
+
         // Add testing todo if task is complex
         if task.estimated_hours > 4.0 {
             let test_todo = QualityEnforcedTodo {
@@ -95,24 +98,48 @@ impl RoadmapTodoGenerator {
             };
             todos.push(test_todo);
         }
-        
+
         Ok(todos)
     }
 
     /// Generate todos from entire sprint
-    pub fn generate_todos_from_sprint(&mut self, sprint: &Sprint) -> Result<Vec<QualityEnforcedTodo>> {
+    pub fn generate_todos_from_sprint(
+        &mut self,
+        sprint: &Sprint,
+    ) -> Result<Vec<QualityEnforcedTodo>> {
         let mut all_todos = Vec::new();
-        
+
         for task in &sprint.tasks {
-            let task_todos = self.generate_todos_from_task(task)?;
+            // Convert Task to RoadmapTask
+            let roadmap_task = RoadmapTask {
+                id: task.id.clone(),
+                title: task.description.clone(),
+                description: task.description.clone(),
+                status: task.status,
+                priority: task.priority,
+                estimated_hours: match task.complexity {
+                    Complexity::Low => 2.0,
+                    Complexity::Medium => 4.0,
+                    Complexity::High => 8.0,
+                },
+                assigned_to: task.assignee.clone(),
+                dependencies: Vec::new(),
+                tags: Vec::new(),
+            };
+
+            let task_todos = self.generate_todos_from_task(&roadmap_task)?;
             all_todos.extend(task_todos);
         }
-        
+
         Ok(all_todos)
     }
 
     /// Create quality-enforced todo from task
-    pub fn create_quality_enforced_todo(&self, task: &RoadmapTask, sequence: usize) -> QualityEnforcedTodo {
+    pub fn create_quality_enforced_todo(
+        &self,
+        task: &RoadmapTask,
+        sequence: usize,
+    ) -> QualityEnforcedTodo {
         QualityEnforcedTodo {
             id: format!("{}-{}", task.id, sequence),
             task_id: task.id.clone(),
@@ -133,15 +160,15 @@ impl RoadmapTodoGenerator {
             "cargo clippy -- -D warnings".to_string(),
             "cargo fmt --check".to_string(),
         ];
-        
+
         if task.tags.contains(&"backend".to_string()) {
             commands.push("cargo doc --no-deps".to_string());
         }
-        
+
         if task.tags.contains(&"api".to_string()) {
             commands.push("cargo test --test integration".to_string());
         }
-        
+
         commands
     }
 
@@ -153,16 +180,16 @@ impl RoadmapTodoGenerator {
             "Zero SATD violations".to_string(),
             "Lint checks pass".to_string(),
         ];
-        
+
         if task.priority == Priority::P0 {
             criteria.push("Performance benchmarks pass".to_string());
         }
-        
+
         if task.estimated_hours > 8.0 {
             criteria.push("Documentation updated".to_string());
             criteria.push("Integration tests pass".to_string());
         }
-        
+
         criteria
     }
 
@@ -170,37 +197,31 @@ impl RoadmapTodoGenerator {
     pub fn format_todos_as_markdown(&self, todos: &[QualityEnforcedTodo]) -> String {
         let mut output = String::new();
         output.push_str("# Quality-Enforced Todo List\n\n");
-        
+
         for todo in todos {
             output.push_str(&format!("## {} - {}\n\n", todo.task_id, todo.description));
-            output.push_str(&format!("**Implementation**: {}\n\n", todo.implementation_spec));
-            
+            output.push_str(&format!(
+                "**Implementation**: {}\n\n",
+                todo.implementation_spec
+            ));
+
             output.push_str("### Validation Commands\n");
             for cmd in &todo.validation_commands {
                 output.push_str(&format!("- `{}`\n", cmd));
             }
             output.push('\n');
-            
+
             output.push_str("### Success Criteria\n");
             for criterion in &todo.success_criteria {
                 output.push_str(&format!("- {}\n", criterion));
             }
             output.push_str("\n---\n\n");
         }
-        
+
         output
     }
-}
 
-impl RoadmapTodoGenerator {
-    pub fn new(quality_config: QualityGateConfig) -> Self {
-        Self {
-            pdmt_service: PdmtService::new(),
-            quality_config,
-        }
-    }
-
-    /// Generate todos for an entire sprint
+    /// Generate todos for an entire sprint (async version)
     pub async fn generate_sprint_todos(&self, sprint: &Sprint) -> Result<Vec<QualityEnforcedTodo>> {
         let mut todos = Vec::new();
 
@@ -400,7 +421,7 @@ mod tests {
     #[test]
     fn test_quality_requirements_default() {
         let qr = QualityRequirements::default();
-        
+
         assert_eq!(qr.max_complexity, 20);
         assert_eq!(qr.min_test_coverage, 80);
         assert!(qr.required_docs);
@@ -421,7 +442,7 @@ mod tests {
             estimated_time: Duration::from_hours(4),
             dependencies: vec![],
         };
-        
+
         assert_eq!(todo.id, "todo-001");
         assert_eq!(todo.task_id, "PMAT-1001");
         assert!(todo.description.contains("feature X"));
@@ -433,31 +454,34 @@ mod tests {
     fn test_roadmap_todo_generator_new() {
         let config = QualityGateConfig::default();
         let generator = RoadmapTodoGenerator::new(config.clone());
-        
+
         // Verify generator is created properly
-        assert_eq!(generator.quality_config.coverage_threshold, config.coverage_threshold);
+        assert_eq!(
+            generator.quality_config.coverage_threshold,
+            config.coverage_threshold
+        );
     }
 
     #[test]
     fn test_generate_todos_from_task() {
         let config = QualityGateConfig::default();
         let mut generator = RoadmapTodoGenerator::new(config);
-        
+
         let task = RoadmapTask {
             id: "PMAT-2001".to_string(),
             title: "Test task".to_string(),
             description: "Test description".to_string(),
-            status: TaskStatus::Open,
+            status: TaskStatus::Planned,
             priority: Priority::P1,
             estimated_hours: 8.0,
             assigned_to: None,
             dependencies: vec![],
             tags: vec![],
         };
-        
+
         let result = generator.generate_todos_from_task(&task);
         assert!(result.is_ok());
-        
+
         let todos = result.unwrap();
         assert!(!todos.is_empty());
         assert!(todos[0].task_id.contains("PMAT-2001"));
@@ -467,33 +491,31 @@ mod tests {
     fn test_generate_todos_from_sprint() {
         let config = QualityGateConfig::default();
         let mut generator = RoadmapTodoGenerator::new(config);
-        
+
         let sprint = Sprint {
             version: "v1.0.0".to_string(),
             title: "Test Sprint".to_string(),
             start_date: chrono::Utc::now(),
             end_date: chrono::Utc::now() + chrono::Duration::days(14),
             priority: Priority::P0,
-            tasks: vec![
-                RoadmapTask {
-                    id: "PMAT-3001".to_string(),
-                    title: "Task 1".to_string(),
-                    description: "Description 1".to_string(),
-                    status: TaskStatus::Open,
-                    priority: Priority::P1,
-                    estimated_hours: 4.0,
-                    assigned_to: None,
-                    dependencies: vec![],
-                    tags: vec![],
-                },
-            ],
+            tasks: vec![RoadmapTask {
+                id: "PMAT-3001".to_string(),
+                title: "Task 1".to_string(),
+                description: "Description 1".to_string(),
+                status: TaskStatus::Planned,
+                priority: Priority::P1,
+                estimated_hours: 4.0,
+                assigned_to: None,
+                dependencies: vec![],
+                tags: vec![],
+            }],
             definition_of_done: vec!["All tests pass".to_string()],
             quality_gates: vec!["Coverage >80%".to_string()],
         };
-        
+
         let result = generator.generate_todos_from_sprint(&sprint);
         assert!(result.is_ok());
-        
+
         let todos = result.unwrap();
         assert!(!todos.is_empty());
     }
@@ -502,21 +524,21 @@ mod tests {
     fn test_create_quality_enforced_todo() {
         let config = QualityGateConfig::default();
         let generator = RoadmapTodoGenerator::new(config);
-        
+
         let task = RoadmapTask {
             id: "PMAT-4001".to_string(),
             title: "Complex task".to_string(),
             description: "A complex implementation task".to_string(),
-            status: TaskStatus::Open,
+            status: TaskStatus::Planned,
             priority: Priority::P0,
             estimated_hours: 12.0,
             assigned_to: Some("developer".to_string()),
             dependencies: vec!["PMAT-4000".to_string()],
             tags: vec!["feature".to_string(), "backend".to_string()],
         };
-        
+
         let todo = generator.create_quality_enforced_todo(&task, 1);
-        
+
         assert_eq!(todo.task_id, "PMAT-4001");
         assert!(todo.description.contains("Complex task"));
         assert!(todo.quality_requirements.min_test_coverage >= 80);
@@ -529,21 +551,21 @@ mod tests {
     fn test_generate_validation_commands() {
         let config = QualityGateConfig::default();
         let generator = RoadmapTodoGenerator::new(config);
-        
+
         let task = RoadmapTask {
             id: "PMAT-5001".to_string(),
             title: "Test validation".to_string(),
             description: "Test validation commands generation".to_string(),
-            status: TaskStatus::Open,
+            status: TaskStatus::Planned,
             priority: Priority::P2,
             estimated_hours: 2.0,
             assigned_to: None,
             dependencies: vec![],
             tags: vec!["testing".to_string()],
         };
-        
+
         let commands = generator.generate_validation_commands(&task);
-        
+
         assert!(!commands.is_empty());
         assert!(commands.iter().any(|cmd| cmd.contains("cargo test")));
         assert!(commands.iter().any(|cmd| cmd.contains("cargo clippy")));
@@ -553,21 +575,21 @@ mod tests {
     fn test_generate_success_criteria() {
         let config = QualityGateConfig::default();
         let generator = RoadmapTodoGenerator::new(config);
-        
+
         let task = RoadmapTask {
             id: "PMAT-6001".to_string(),
             title: "Success criteria test".to_string(),
             description: "Test success criteria generation".to_string(),
-            status: TaskStatus::Open,
+            status: TaskStatus::Planned,
             priority: Priority::P1,
             estimated_hours: 6.0,
             assigned_to: None,
             dependencies: vec![],
             tags: vec![],
         };
-        
+
         let criteria = generator.generate_success_criteria(&task);
-        
+
         assert!(!criteria.is_empty());
         assert!(criteria.iter().any(|c| c.contains("test")));
         assert!(criteria.iter().any(|c| c.contains("coverage")));
@@ -578,23 +600,21 @@ mod tests {
     fn test_format_todos_as_markdown() {
         let config = QualityGateConfig::default();
         let generator = RoadmapTodoGenerator::new(config);
-        
-        let todos = vec![
-            QualityEnforcedTodo {
-                id: "todo-001".to_string(),
-                task_id: "PMAT-7001".to_string(),
-                description: "Test todo 1".to_string(),
-                implementation_spec: "Implement with TDD".to_string(),
-                quality_requirements: QualityRequirements::default(),
-                validation_commands: vec!["cargo test".to_string()],
-                success_criteria: vec!["Tests pass".to_string()],
-                estimated_time: Duration::from_hours(2),
-                dependencies: vec![],
-            },
-        ];
-        
+
+        let todos = vec![QualityEnforcedTodo {
+            id: "todo-001".to_string(),
+            task_id: "PMAT-7001".to_string(),
+            description: "Test todo 1".to_string(),
+            implementation_spec: "Implement with TDD".to_string(),
+            quality_requirements: QualityRequirements::default(),
+            validation_commands: vec!["cargo test".to_string()],
+            success_criteria: vec!["Tests pass".to_string()],
+            estimated_time: Duration::from_hours(2),
+            dependencies: vec![],
+        }];
+
         let markdown = generator.format_todos_as_markdown(&todos);
-        
+
         assert!(markdown.contains("PMAT-7001"));
         assert!(markdown.contains("Test todo 1"));
         assert!(markdown.contains("cargo test"));
@@ -610,10 +630,10 @@ mod tests {
             satd_allowed: 0,
             lint_compliance: true,
         };
-        
+
         let json = serde_json::to_string(&qr).unwrap();
         let deserialized: QualityRequirements = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(deserialized.max_complexity, 15);
         assert_eq!(deserialized.min_test_coverage, 90);
         assert!(!deserialized.required_docs);

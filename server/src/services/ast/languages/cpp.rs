@@ -27,11 +27,7 @@ impl CppStrategy {
 #[cfg(feature = "cpp-ast")]
 #[async_trait]
 impl AstStrategy for CppStrategy {
-    async fn analyze(
-        &self,
-        file_path: &Path,
-        _classifier: &FileClassifier,
-    ) -> Result<FileContext> {
+    async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
         // Create context for C++ files
         // Tree-sitter C++ parsing is available but integration needs proper setup
         Ok(FileContext {
@@ -41,15 +37,15 @@ impl AstStrategy for CppStrategy {
             complexity_metrics: None,
         })
     }
-    
+
     fn primary_extension(&self) -> &'static str {
         "cpp"
     }
-    
+
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec!["cpp", "cxx", "cc", "hpp", "hxx", "hh"]
     }
-    
+
     fn language_name(&self) -> &'static str {
         "C++"
     }

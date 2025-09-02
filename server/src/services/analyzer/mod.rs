@@ -213,56 +213,60 @@ mod tests {
         assert!(!config.strict_mode);
         assert!(config.language.is_none());
     }
-    
+
     #[test]
     fn test_unified_analyzer_framework() {
-        use crate::services::analyzer::{complexity::ComplexityAnalyzer, dead_code::DeadCodeAnalyzer, satd::SATDAnalyzer};
-        
+        use crate::services::analyzer::{
+            complexity::ComplexityAnalyzer, dead_code::DeadCodeAnalyzer, satd::SATDAnalyzer,
+        };
+
         let mut registry = AnalyzerRegistry::new();
-        
+
         // Register all unified analyzers
         registry.register(DeadCodeAnalyzer::new());
         registry.register(ComplexityAnalyzer::new());
         registry.register(SATDAnalyzer::new());
-        
+
         // Verify all analyzers are registered
         assert_eq!(registry.list_analyzers().len(), 3);
         assert!(registry.list_analyzers().contains(&"dead_code"));
         assert!(registry.list_analyzers().contains(&"complexity"));
         assert!(registry.list_analyzers().contains(&"satd"));
-        
+
         // Test analyzer info retrieval
         let dead_code_info = registry.get_info("dead_code").unwrap();
         assert_eq!(dead_code_info.name(), "dead_code");
         assert!(dead_code_info.description().contains("unreachable"));
-        
+
         let complexity_info = registry.get_info("complexity").unwrap();
         assert_eq!(complexity_info.name(), "complexity");
         assert!(complexity_info.description().contains("complexity"));
-        
+
         let satd_info = registry.get_info("satd").unwrap();
         assert_eq!(satd_info.name(), "satd");
         assert!(satd_info.description().contains("Technical Debt"));
     }
-    
+
     #[test]
     fn test_analyzer_registry_operations() {
-        use crate::services::analyzer::{complexity::ComplexityAnalyzer, dead_code::DeadCodeAnalyzer, satd::SATDAnalyzer};
-        
+        use crate::services::analyzer::{
+            complexity::ComplexityAnalyzer, dead_code::DeadCodeAnalyzer, satd::SATDAnalyzer,
+        };
+
         let mut registry = AnalyzerRegistry::new();
-        
+
         // Test registration
         registry.register(ComplexityAnalyzer::new());
         registry.register(DeadCodeAnalyzer::new());
         registry.register(SATDAnalyzer::new());
-        
+
         // Test listing
         let analyzers = registry.list_analyzers();
         assert_eq!(analyzers.len(), 3);
         assert!(analyzers.contains(&"complexity"));
         assert!(analyzers.contains(&"dead_code"));
         assert!(analyzers.contains(&"satd"));
-        
+
         // Test get_info
         let complexity_info = registry.get_info("complexity");
         assert!(complexity_info.is_some());
@@ -270,46 +274,48 @@ mod tests {
             assert_eq!(info.name(), "complexity");
             assert!(!info.description().is_empty());
         }
-        
+
         // Test non-existent analyzer
         assert!(registry.get_info("nonexistent").is_none());
     }
-    
+
     #[test]
     fn test_project_input_creation() {
         use std::path::PathBuf;
-        
+
         let path = PathBuf::from("/test/project");
         let input = ProjectInput {
             project_path: path.clone(),
         };
-        
+
         assert_eq!(input.project_path, path);
     }
-    
+
     // FileInput test removed - type doesn't exist in current implementation
-    
+
     // BatchAnalyzer test removed - type doesn't exist in current implementation
 
     #[test]
     fn test_analyzer_consistency() {
-        use crate::services::analyzer::{complexity::ComplexityAnalyzer, dead_code::DeadCodeAnalyzer, satd::SATDAnalyzer};
-        
+        use crate::services::analyzer::{
+            complexity::ComplexityAnalyzer, dead_code::DeadCodeAnalyzer, satd::SATDAnalyzer,
+        };
+
         // Ensure all analyzers follow naming convention
         let dead_code = DeadCodeAnalyzer::new();
         let complexity = ComplexityAnalyzer::new();
         let satd = SATDAnalyzer::new();
-        
+
         // All analyzer names should be lowercase with underscores
         assert_eq!(Analyzer::name(&dead_code), "dead_code");
         assert_eq!(Analyzer::name(&complexity), "complexity");
         assert_eq!(Analyzer::name(&satd), "satd");
-        
+
         // All analyzers should have version information
         assert_eq!(Analyzer::version(&dead_code), env!("CARGO_PKG_VERSION"));
         assert_eq!(Analyzer::version(&complexity), env!("CARGO_PKG_VERSION"));
         assert_eq!(Analyzer::version(&satd), env!("CARGO_PKG_VERSION"));
-        
+
         // All analyzers should have meaningful descriptions
         assert!(!AnalyzerInfo::description(&dead_code).is_empty());
         assert!(!AnalyzerInfo::description(&complexity).is_empty());

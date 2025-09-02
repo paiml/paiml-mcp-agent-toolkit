@@ -1,6 +1,9 @@
 // Toyota Way: Unified Duplicate Detection Strategy
 
-use super::{Detector, DetectorCapabilities, DetectionInput, DetectionOutput, DetectionConfig, DetectorSpecificConfig};
+use super::{
+    DetectionConfig, DetectionInput, DetectionOutput, Detector, DetectorCapabilities,
+    DetectorSpecificConfig,
+};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -26,34 +29,33 @@ impl Detector for DuplicateDetector {
     type Input = DetectionInput;
     type Output = DetectionOutput;
     type Config = DetectionConfig;
-    
-    async fn detect(
-        &self,
-        input: Self::Input,
-        config: Self::Config,
-    ) -> Result<Self::Output> {
+
+    async fn detect(&self, input: Self::Input, config: Self::Config) -> Result<Self::Output> {
         // Extract duplicate-specific config
         let duplicate_config = match config.detector_specific {
             DetectorSpecificConfig::Duplicates(config) => config,
             _ => DuplicateConfig::default(),
         };
-        
+
         // Delegate to the existing duplicate detector functionality
         let result = match input {
             DetectionInput::SingleFile(path) => {
                 // Use the existing duplicate detector for single file
                 let files = vec![path];
-                self.detect_duplicates_in_files(&files, &duplicate_config).await?
-            },
+                self.detect_duplicates_in_files(&files, &duplicate_config)
+                    .await?
+            }
             DetectionInput::MultipleFiles(files) => {
                 // Use the existing duplicate detector for multiple files
-                self.detect_duplicates_in_files(&files, &duplicate_config).await?
-            },
+                self.detect_duplicates_in_files(&files, &duplicate_config)
+                    .await?
+            }
             DetectionInput::ProjectDirectory(dir) => {
                 // Scan directory for supported files and detect duplicates
                 let files = self.scan_directory_for_files(&dir)?;
-                self.detect_duplicates_in_files(&files, &duplicate_config).await?
-            },
+                self.detect_duplicates_in_files(&files, &duplicate_config)
+                    .await?
+            }
             DetectionInput::Content(_content) => {
                 // For content-based detection, we'd need to create temporary files
                 // This is a placeholder - in practice we'd implement content hashing
@@ -68,14 +70,14 @@ impl Detector for DuplicateDetector {
                 }
             }
         };
-        
+
         Ok(DetectionOutput::Duplicates(result))
     }
-    
+
     fn name(&self) -> &'static str {
         "duplicates"
     }
-    
+
     fn capabilities(&self) -> DetectorCapabilities {
         DetectorCapabilities {
             supports_batch: true,
@@ -89,8 +91,8 @@ impl Detector for DuplicateDetector {
 impl DuplicateDetector {
     async fn detect_duplicates_in_files(
         &self,
-        files: &[std::path::PathBuf], 
-        config: &DuplicateConfig
+        files: &[std::path::PathBuf],
+        config: &DuplicateConfig,
     ) -> Result<DuplicateDetectionResult> {
         // Delegate to the existing duplicate_detector module functionality
         // Convert to the existing detector's expected input format
@@ -106,11 +108,12 @@ impl DuplicateDetector {
             ignore_comments: config.ignore_whitespace,
             min_group_size: 2,
         };
-        let _detector = crate::services::duplicate_detector::DuplicateDetectionEngine::new(duplicate_config);
-        
+        let _detector =
+            crate::services::duplicate_detector::DuplicateDetectionEngine::new(duplicate_config);
+
         let all_duplicates = Vec::new();
         let mut files_analyzed = 0;
-        
+
         // Process files using existing detector
         for file in files {
             if let Ok(_content) = std::fs::read_to_string(file) {
@@ -119,7 +122,7 @@ impl DuplicateDetector {
                 files_analyzed += 1;
             }
         }
-        
+
         // For now, create a basic result structure
         // In a complete implementation, this would use the full existing detector
         let result = DuplicateDetectionResult {
@@ -131,23 +134,26 @@ impl DuplicateDetector {
                 time_saved_hours: 0.0,
             },
         };
-        
+
         Ok(result)
     }
-    
+
     fn scan_directory_for_files(&self, dir: &Path) -> Result<Vec<std::path::PathBuf>> {
         let mut files = Vec::new();
-        
+
         if dir.is_dir() {
             for entry in std::fs::read_dir(dir)? {
                 let entry = entry?;
                 let path = entry.path();
-                
+
                 if path.is_file() {
                     // Check if it's a supported file type
                     if let Some(extension) = path.extension() {
                         if let Some(ext_str) = extension.to_str() {
-                            if matches!(ext_str, "rs" | "ts" | "js" | "py" | "c" | "cpp" | "h" | "hpp") {
+                            if matches!(
+                                ext_str,
+                                "rs" | "ts" | "js" | "py" | "c" | "cpp" | "h" | "hpp"
+                            ) {
                                 files.push(path);
                             }
                         }
@@ -159,7 +165,7 @@ impl DuplicateDetector {
                 }
             }
         }
-        
+
         Ok(files)
     }
 }

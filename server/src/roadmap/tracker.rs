@@ -55,6 +55,17 @@ impl VelocityTracker {
         }
     }
 
+    /// Add a completed task (overloaded for CompletedTask)
+    pub fn add_completed_task(&mut self, task: CompletedTask) {
+        self.quality_scores.push(QualityScore {
+            task_id: task.task_id.clone(),
+            score: task.quality_score,
+            timestamp: Utc::now(),
+        });
+        self.tasks_completed.push(task);
+        self.update_average_cycle_time();
+    }
+
     /// Load tracker from file
     pub fn load(sprint_id: &str) -> Result<Self> {
         let path = format!("docs/execution/velocity_{}.json", sprint_id);
@@ -70,8 +81,8 @@ impl VelocityTracker {
         Ok(())
     }
 
-    /// Add a completed task
-    pub fn add_completed_task(&mut self, task: &Task, quality_score: f64) {
+    /// Add a completed task from Task struct
+    pub fn add_completed_task_from_task(&mut self, task: &Task, quality_score: f64) {
         if let (Some(started), Some(completed)) = (task.started_at, task.completed_at) {
             self.tasks_completed.push(CompletedTask {
                 task_id: task.id.clone(),
@@ -135,6 +146,128 @@ impl VelocityTracker {
         }
 
         self.tasks_completed.len() as f64 / days_elapsed
+    }
+
+    /// Calculate velocity
+    pub fn calculate_velocity(&self) -> f64 {
+        self.velocity()
+    }
+
+    /// Add a quality score
+    pub fn add_quality_score(&mut self, task_id: &str, score: f64) {
+        self.quality_scores.push(QualityScore {
+            task_id: task_id.to_string(),
+            score,
+            timestamp: Utc::now(),
+        });
+    }
+
+    /// Update burndown data
+    pub fn update_burndown(&mut self, day: u32, remaining_tasks: u32) {
+        self.burndown_data.push(BurndownPoint {
+            day,
+            remaining_tasks,
+            timestamp: Utc::now(),
+        });
+    }
+
+    /// Get average quality score
+    pub fn get_average_quality(&self) -> f64 {
+        self.average_quality_score()
+    }
+
+    /// Get cycle time statistics
+    pub fn get_cycle_time_stats(&self) -> CycleTimeStats {
+        let mut min_cycle_time = Duration::from_secs(u64::MAX);
+        let mut max_cycle_time = Duration::from_secs(0);
+        let mut total_cycle_time = Duration::from_secs(0);
+
+        for task in &self.tasks_completed {
+            let cycle_time = (task.completed_at - task.started_at)
+                .to_std()
+                .unwrap_or_default();
+            if cycle_time < min_cycle_time {
+                min_cycle_time = cycle_time;
+            }
+            if cycle_time > max_cycle_time {
+                max_cycle_time = cycle_time;
+            }
+            total_cycle_time += cycle_time;
+        }
+
+        if self.tasks_completed.is_empty() {
+            min_cycle_time = Duration::from_secs(0);
+        }
+
+        CycleTimeStats {
+            min_cycle_time,
+            max_cycle_time,
+            avg_cycle_time: if self.tasks_completed.is_empty() {
+                Duration::from_secs(0)
+            } else {
+                total_cycle_time / self.tasks_completed.len() as u32
+            },
+            task_count: self.tasks_completed.len(),
+        }
+    }
+}
+
+/// Cycle time statistics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CycleTimeStats {
+    pub min_cycle_time: Duration,
+    pub max_cycle_time: Duration,
+    pub avg_cycle_time: Duration,
+    pub task_count: usize,
+}
+
+/// Progress reporter for sprints
+pub struct ProgressReporter;
+
+impl ProgressReporter {
+    /// Generate a progress report for a sprint
+    pub fn generate_report(sprint: &Sprint) -> Result<String> {
+        let mut report = String::new();
+
+        report.push_str(&format!("# Sprint {} Progress Report\n\n", sprint.version));
+        report.push_str(&format!("## {}\n\n", sprint.title));
+
+        // Task summary
+        report.push_str("### Tasks\n");
+        let completed = sprint
+            .tasks
+            .iter()
+            .filter(|t| t.status == TaskStatus::Completed)
+            .count();
+        let in_progress = sprint
+            .tasks
+            .iter()
+            .filter(|t| t.status == TaskStatus::InProgress)
+            .count();
+        let planned = sprint
+            .tasks
+            .iter()
+            .filter(|t| t.status == TaskStatus::Planned)
+            .count();
+
+        report.push_str(&format!("- Completed: {}\n", completed));
+        report.push_str(&format!("- In Progress: {}\n", in_progress));
+        report.push_str(&format!("- Planned: {}\n\n", planned));
+
+        // Definition of Done
+        report.push_str("### Definition of Done\n");
+        for item in &sprint.definition_of_done {
+            report.push_str(&format!("- {}\n", item));
+        }
+        report.push_str("\n");
+
+        // Quality Gates
+        report.push_str("### Quality Gates\n");
+        for gate in &sprint.quality_gates {
+            report.push_str(&format!("- {}\n", gate));
+        }
+
+        Ok(report)
     }
 }
 
@@ -293,7 +426,7 @@ mod tests {
     #[test]
     fn test_velocity_tracker_creation() {
         let tracker = VelocityTracker::new("sprint-45");
-        
+
         assert_eq!(tracker.sprint_id, "sprint-45");
         assert!(tracker.tasks_completed.is_empty());
         assert!(tracker.quality_scores.is_empty());
@@ -306,7 +439,7 @@ mod tests {
         let mut tracker = VelocityTracker::new("test-sprint");
         let started = Utc.with_ymd_and_hms(2025, 9, 1, 10, 0, 0).unwrap();
         let completed = Utc.with_ymd_and_hms(2025, 9, 2, 15, 0, 0).unwrap();
-        
+
         let task = CompletedTask {
             task_id: "TASK-001".to_string(),
             started_at: started,
@@ -315,9 +448,9 @@ mod tests {
             quality_score: 85.0,
             rework_count: 1,
         };
-        
+
         tracker.add_completed_task(task.clone());
-        
+
         assert_eq!(tracker.tasks_completed.len(), 1);
         assert_eq!(tracker.tasks_completed[0].task_id, "TASK-001");
         assert_eq!(tracker.tasks_completed[0].quality_score, 85.0);
@@ -326,7 +459,7 @@ mod tests {
     #[test]
     fn test_calculate_velocity() {
         let mut tracker = VelocityTracker::new("test-sprint");
-        
+
         // Add some completed tasks
         let task1 = CompletedTask {
             task_id: "TASK-001".to_string(),
@@ -336,7 +469,7 @@ mod tests {
             quality_score: 90.0,
             rework_count: 0,
         };
-        
+
         let task2 = CompletedTask {
             task_id: "TASK-002".to_string(),
             started_at: Utc::now(),
@@ -345,10 +478,10 @@ mod tests {
             quality_score: 85.0,
             rework_count: 1,
         };
-        
+
         tracker.add_completed_task(task1);
         tracker.add_completed_task(task2);
-        
+
         let velocity = tracker.calculate_velocity();
         assert!(velocity > 0.0);
     }
@@ -356,9 +489,9 @@ mod tests {
     #[test]
     fn test_add_quality_score() {
         let mut tracker = VelocityTracker::new("test-sprint");
-        
+
         tracker.add_quality_score("TASK-001", 92.5);
-        
+
         assert_eq!(tracker.quality_scores.len(), 1);
         assert_eq!(tracker.quality_scores[0].task_id, "TASK-001");
         assert_eq!(tracker.quality_scores[0].score, 92.5);
@@ -367,10 +500,10 @@ mod tests {
     #[test]
     fn test_update_burndown() {
         let mut tracker = VelocityTracker::new("test-sprint");
-        
+
         tracker.update_burndown(5, 10);
         tracker.update_burndown(6, 8);
-        
+
         assert_eq!(tracker.burndown_data.len(), 2);
         assert_eq!(tracker.burndown_data[0].day, 5);
         assert_eq!(tracker.burndown_data[0].remaining_tasks, 10);
@@ -381,11 +514,11 @@ mod tests {
     #[test]
     fn test_get_average_quality() {
         let mut tracker = VelocityTracker::new("test-sprint");
-        
+
         tracker.add_quality_score("TASK-001", 90.0);
         tracker.add_quality_score("TASK-002", 85.0);
         tracker.add_quality_score("TASK-003", 95.0);
-        
+
         let avg_quality = tracker.get_average_quality();
         assert_eq!(avg_quality, 90.0); // (90+85+95)/3 = 90
     }
@@ -393,7 +526,7 @@ mod tests {
     #[test]
     fn test_get_cycle_time_stats() {
         let mut tracker = VelocityTracker::new("test-sprint");
-        
+
         let base_time = Utc::now();
         let task = CompletedTask {
             task_id: "TASK-001".to_string(),
@@ -403,10 +536,10 @@ mod tests {
             quality_score: 85.0,
             rework_count: 0,
         };
-        
+
         tracker.add_completed_task(task);
         let stats = tracker.get_cycle_time_stats();
-        
+
         assert!(stats.min_cycle_time > Duration::new(0, 0));
         assert_eq!(stats.task_count, 1);
     }
@@ -423,9 +556,9 @@ mod tests {
             definition_of_done: vec!["All tests pass".to_string()],
             quality_gates: vec!["Code coverage > 80%".to_string()],
         };
-        
+
         let report = ProgressReporter::generate_report(&sprint).unwrap();
-        
+
         assert!(report.contains("v2.43.0"));
         assert!(report.contains("Test Sprint"));
         assert!(report.contains("All tests pass"));

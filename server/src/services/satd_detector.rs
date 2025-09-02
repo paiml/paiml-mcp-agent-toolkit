@@ -223,7 +223,8 @@ impl DebtClassifier {
                 description: "Missing feature".to_string(),
             },
             DebtPattern {
-                regex: r"(?i)\b(fixme|todo|hack)\s+.*\b(security|vuln|vulnerability|cve)\b".to_string(),
+                regex: r"(?i)\b(fixme|todo|hack)\s+.*\b(security|vuln|vulnerability|cve)\b"
+                    .to_string(),
                 category: DebtCategory::Security,
                 severity: Severity::Critical,
                 description: "Security concern in TODO/FIXME".to_string(),
@@ -463,7 +464,7 @@ impl SATDDetector {
         if self.is_likely_test_data_or_pattern(line, file_path) {
             return Ok(None);
         }
-        
+
         // Look for comment patterns
         let comment_content = self.extract_comment_content(line)?;
 
@@ -757,17 +758,20 @@ impl SATDDetector {
         let files = self.find_source_files(root).await?;
 
         for file_path in files {
-            if self.should_skip_file_for_analysis(&file_path, include_tests).await {
+            if self
+                .should_skip_file_for_analysis(&file_path, include_tests)
+                .await
+            {
                 continue;
             }
-            
+
             let debts = self.process_file_for_debts(&file_path).await;
             all_debts.extend(debts);
         }
 
         Ok(all_debts)
     }
-    
+
     async fn should_skip_file_for_analysis(&self, file_path: &Path, include_tests: bool) -> bool {
         // Skip test files unless explicitly requested
         if !include_tests && self.is_test_file(file_path) {
@@ -782,7 +786,7 @@ impl SATDDetector {
         // Check file size and minification for large files
         self.should_skip_large_file(file_path).await
     }
-    
+
     async fn should_skip_large_file(&self, file_path: &Path) -> bool {
         if let Ok(metadata) = tokio::fs::metadata(file_path).await {
             if metadata.len() > 1_000_000 && self.is_likely_minified_content(file_path).await {
@@ -791,17 +795,21 @@ impl SATDDetector {
         }
         false
     }
-    
+
     async fn process_file_for_debts(&self, file_path: &Path) -> Vec<TechnicalDebt> {
         match tokio::fs::read_to_string(file_path).await {
             Ok(content) => self.extract_debts_from_content(&content, file_path),
             Err(e) => {
-                eprintln!("Warning: Could not read file {}: {}", file_path.display(), e);
+                eprintln!(
+                    "Warning: Could not read file {}: {}",
+                    file_path.display(),
+                    e
+                );
                 Vec::new()
             }
         }
     }
-    
+
     fn extract_debts_from_content(&self, content: &str, file_path: &Path) -> Vec<TechnicalDebt> {
         // Validate file size before processing
         if content.len() > 10_000_000 {
@@ -935,236 +943,249 @@ impl SATDDetector {
     /// Check if file should be excluded from SATD analysis
     fn should_exclude_file(&self, file_path: &Path) -> bool {
         let path_str = file_path.to_string_lossy();
-        
-        self.is_satd_analysis_tool(&path_str) ||
-        self.is_build_or_config_file(&path_str) ||
-        self.is_example_or_demo(&path_str) ||
-        self.is_fuzz_target(&path_str) ||
-        self.is_generated_or_vendor(&path_str)
+
+        self.is_satd_analysis_tool(&path_str)
+            || self.is_build_or_config_file(&path_str)
+            || self.is_example_or_demo(&path_str)
+            || self.is_fuzz_target(&path_str)
+            || self.is_generated_or_vendor(&path_str)
     }
-    
+
     fn is_satd_analysis_tool(&self, path_str: &str) -> bool {
-        path_str.contains("satd_detector") || 
-        path_str.contains("satd_property_tests") ||
-        path_str.contains("quality_proxy") ||
-        (path_str.contains("test") && path_str.contains("satd"))
+        path_str.contains("satd_detector")
+            || path_str.contains("satd_property_tests")
+            || path_str.contains("quality_proxy")
+            || (path_str.contains("test") && path_str.contains("satd"))
     }
-    
+
     fn is_build_or_config_file(&self, path_str: &str) -> bool {
-        path_str.contains("/build.rs") || 
-        path_str.contains("/Cargo.toml") ||
-        path_str.contains(".gitignore") ||
-        path_str.contains("README")
+        path_str.contains("/build.rs")
+            || path_str.contains("/Cargo.toml")
+            || path_str.contains(".gitignore")
+            || path_str.contains("README")
     }
-    
+
     fn is_example_or_demo(&self, path_str: &str) -> bool {
-        path_str.contains("/examples/") ||
-        path_str.contains("/demo/") ||
-        path_str.contains("_demo")
+        path_str.contains("/examples/") || path_str.contains("/demo/") || path_str.contains("_demo")
     }
-    
+
     fn is_fuzz_target(&self, path_str: &str) -> bool {
-        path_str.contains("/fuzz/") ||
-        path_str.contains("fuzz_targets")
+        path_str.contains("/fuzz/") || path_str.contains("fuzz_targets")
     }
-    
+
     fn is_generated_or_vendor(&self, path_str: &str) -> bool {
-        path_str.contains("/target/") ||
-        path_str.contains("/vendor/") ||
-        path_str.contains("/node_modules/") ||
-        path_str.contains(".generated")
+        path_str.contains("/target/")
+            || path_str.contains("/vendor/")
+            || path_str.contains("/node_modules/")
+            || path_str.contains(".generated")
     }
-    
+
     /// Check if line is false positive SATD
     fn is_false_positive_line(&self, line: &str) -> bool {
         let trimmed = line.trim();
-        
-        self.is_string_literal(trimmed) ||
-        self.is_raw_string_literal(trimmed) ||
-        self.is_satd_processing_code(trimmed) ||
-        self.is_assignment_with_satd(trimmed) ||
-        self.is_format_string(trimmed) ||
-        self.is_url_or_path(trimmed) ||
-        self.is_security_documentation(trimmed) ||
-        self.is_pattern_definition(trimmed) ||
-        self.is_enum_or_struct_field(trimmed) ||
-        self.is_functional_description(trimmed)
+
+        self.is_string_literal(trimmed)
+            || self.is_raw_string_literal(trimmed)
+            || self.is_satd_processing_code(trimmed)
+            || self.is_assignment_with_satd(trimmed)
+            || self.is_format_string(trimmed)
+            || self.is_url_or_path(trimmed)
+            || self.is_security_documentation(trimmed)
+            || self.is_pattern_definition(trimmed)
+            || self.is_enum_or_struct_field(trimmed)
+            || self.is_functional_description(trimmed)
     }
-    
+
     fn is_string_literal(&self, trimmed: &str) -> bool {
-        trimmed.contains(r#""TODO"#) || trimmed.contains(r#""FIXME"#) || 
-        trimmed.contains(r#""HACK"#) || trimmed.contains(r#"'TODO'"#) ||
-        trimmed.contains(r#"'FIXME'"#) || trimmed.contains(r#"'HACK'"#)
+        trimmed.contains(r#""TODO"#)
+            || trimmed.contains(r#""FIXME"#)
+            || trimmed.contains(r#""HACK"#)
+            || trimmed.contains(r#"'TODO'"#)
+            || trimmed.contains(r#"'FIXME'"#)
+            || trimmed.contains(r#"'HACK'"#)
     }
-    
+
     fn is_raw_string_literal(&self, trimmed: &str) -> bool {
         trimmed.contains("r#\"") || trimmed.contains("r\"")
     }
-    
+
     fn is_satd_processing_code(&self, trimmed: &str) -> bool {
-        trimmed.contains(".matches(") || 
-        trimmed.contains("regex:") ||
-        trimmed.contains("DebtPattern") ||
-        trimmed.contains("comment_text:") ||
-        trimmed.contains("classify_comment") ||
-        trimmed.contains("debt_classifier") ||
-        trimmed.contains("SATDAnalysis")
+        trimmed.contains(".matches(")
+            || trimmed.contains("regex:")
+            || trimmed.contains("DebtPattern")
+            || trimmed.contains("comment_text:")
+            || trimmed.contains("classify_comment")
+            || trimmed.contains("debt_classifier")
+            || trimmed.contains("SATDAnalysis")
     }
-    
+
     fn is_assignment_with_satd(&self, trimmed: &str) -> bool {
         trimmed.contains(" = ") && (trimmed.contains("TODO") || trimmed.contains("FIXME"))
     }
-    
+
     fn is_format_string(&self, trimmed: &str) -> bool {
-        (trimmed.contains("format!") || trimmed.contains("println!") || 
-         trimmed.contains("write!") || trimmed.contains("{}")) &&
-        (trimmed.contains("TODO") || trimmed.contains("FIXME"))
+        (trimmed.contains("format!")
+            || trimmed.contains("println!")
+            || trimmed.contains("write!")
+            || trimmed.contains("{}"))
+            && (trimmed.contains("TODO") || trimmed.contains("FIXME"))
     }
-    
+
     fn is_url_or_path(&self, trimmed: &str) -> bool {
-        (trimmed.contains("http") || trimmed.contains("/") || trimmed.contains("\\")) &&
-        (trimmed.contains("TODO") || trimmed.contains("FIXME"))
+        (trimmed.contains("http") || trimmed.contains("/") || trimmed.contains("\\"))
+            && (trimmed.contains("TODO") || trimmed.contains("FIXME"))
     }
-    
+
     fn is_security_documentation(&self, trimmed: &str) -> bool {
         // Security-related documentation/comments (not actual security debt)
-        (trimmed.contains("Security") || trimmed.contains("security")) &&
-        (trimmed.contains("check") || trimmed.contains("validation") ||
-         trimmed.contains("properties") || trimmed.contains("vulnerabilities") ||
-         trimmed.contains("patterns") || trimmed.contains("issues") ||
-         trimmed.contains("concerns") || trimmed.starts_with("//") ||
-         trimmed.starts_with("*") || trimmed.starts_with("/"))
+        (trimmed.contains("Security") || trimmed.contains("security"))
+            && (trimmed.contains("check")
+                || trimmed.contains("validation")
+                || trimmed.contains("properties")
+                || trimmed.contains("vulnerabilities")
+                || trimmed.contains("patterns")
+                || trimmed.contains("issues")
+                || trimmed.contains("concerns")
+                || trimmed.starts_with("//")
+                || trimmed.starts_with("*")
+                || trimmed.starts_with("/"))
     }
-    
+
     fn is_pattern_definition(&self, trimmed: &str) -> bool {
         // Pattern definitions in SATD detection code
-        trimmed.contains("let valid_patterns") || trimmed.contains("let patterns") ||
-        trimmed.contains("vec![\"") || (trimmed.contains("\"TODO\"") && trimmed.contains("[")) ||
-        (trimmed.contains("FIXME") && trimmed.contains("regex"))
+        trimmed.contains("let valid_patterns")
+            || trimmed.contains("let patterns")
+            || trimmed.contains("vec![\"")
+            || (trimmed.contains("\"TODO\"") && trimmed.contains("["))
+            || (trimmed.contains("FIXME") && trimmed.contains("regex"))
     }
-    
+
     fn is_enum_or_struct_field(&self, trimmed: &str) -> bool {
         // Enum variants or struct fields that mention SATD concepts
-        (trimmed.contains("Security") || trimmed.contains("Design") || trimmed.contains("Defect")) &&
-        (trimmed.contains(",") || trimmed.contains("=") || trimmed.contains("::"))
+        (trimmed.contains("Security") || trimmed.contains("Design") || trimmed.contains("Defect"))
+            && (trimmed.contains(",") || trimmed.contains("=") || trimmed.contains("::"))
     }
-    
+
     fn is_functional_description(&self, trimmed: &str) -> bool {
         // Comments describing functionality, not admitting technical debt
         if trimmed.starts_with("//") {
             let comment_text = trimmed.trim_start_matches("//").trim().to_lowercase();
-            
+
             // Check for common functional description patterns
-            comment_text.starts_with("check for") ||
-            comment_text.starts_with("handle ") ||
-            comment_text.starts_with("phase ") ||
-            comment_text.starts_with("load ") ||
-            comment_text.starts_with("create ") ||
-            comment_text.starts_with("process ") ||
-            comment_text.contains("relative links") ||
-            comment_text.contains("special modes") ||
-            comment_text.contains("documentation issues") ||
-            comment_text.contains("single file") ||
-            (comment_text.contains("broken") && comment_text.contains("links")) ||
-            (comment_text.contains("bug") && comment_text.contains("report"))
+            comment_text.starts_with("check for")
+                || comment_text.starts_with("handle ")
+                || comment_text.starts_with("phase ")
+                || comment_text.starts_with("load ")
+                || comment_text.starts_with("create ")
+                || comment_text.starts_with("process ")
+                || comment_text.contains("relative links")
+                || comment_text.contains("special modes")
+                || comment_text.contains("documentation issues")
+                || comment_text.contains("single file")
+                || (comment_text.contains("broken") && comment_text.contains("links"))
+                || (comment_text.contains("bug") && comment_text.contains("report"))
         } else {
             false
         }
     }
-    
+
     /// Check if line is documentation, test, or metadata about SATD
     fn is_documentation_or_metadata(&self, line: &str) -> bool {
         let trimmed = line.trim();
-        
-        self.is_documentation_comment(trimmed) ||
-        self.is_test_code(trimmed) ||
-        self.is_log_message(trimmed) ||
-        self.is_error_description(trimmed)
+
+        self.is_documentation_comment(trimmed)
+            || self.is_test_code(trimmed)
+            || self.is_log_message(trimmed)
+            || self.is_error_description(trimmed)
     }
-    
+
     fn is_documentation_comment(&self, trimmed: &str) -> bool {
-        self.is_module_documentation(trimmed) ||
-        self.is_technical_debt_documentation(trimmed) ||
-        self.is_api_documentation(trimmed) ||
-        self.is_doctest_example(trimmed)
+        self.is_module_documentation(trimmed)
+            || self.is_technical_debt_documentation(trimmed)
+            || self.is_api_documentation(trimmed)
+            || self.is_doctest_example(trimmed)
     }
-    
+
     fn is_module_documentation(&self, trimmed: &str) -> bool {
         trimmed.starts_with("//!") || trimmed.starts_with("///")
     }
-    
+
     fn is_technical_debt_documentation(&self, trimmed: &str) -> bool {
-        let mentions_td_concepts = trimmed.contains("Technical Debt") || 
-                                  trimmed.contains("TDG") || 
-                                  trimmed.contains("SATD") || 
-                                  trimmed.contains("Self-Admitted");
-        let is_comment = trimmed.starts_with("//") || 
-                        trimmed.starts_with("*") || 
-                        trimmed.starts_with("/");
+        let mentions_td_concepts = trimmed.contains("Technical Debt")
+            || trimmed.contains("TDG")
+            || trimmed.contains("SATD")
+            || trimmed.contains("Self-Admitted");
+        let is_comment =
+            trimmed.starts_with("//") || trimmed.starts_with("*") || trimmed.starts_with("/");
         mentions_td_concepts && is_comment
     }
-    
+
     fn is_api_documentation(&self, trimmed: &str) -> bool {
-        let is_doc_marker = trimmed.starts_with("*") || 
-                           trimmed.contains("@param") ||
-                           trimmed.contains("@return") || 
-                           trimmed.contains("Example:") ||
-                           trimmed.contains("# Examples") || 
-                           trimmed.contains("# Parameters");
-        let mentions_markers = trimmed.contains("TODO") || 
-                              trimmed.contains("FIXME") || 
-                              trimmed.contains("security");
+        let is_doc_marker = trimmed.starts_with("*")
+            || trimmed.contains("@param")
+            || trimmed.contains("@return")
+            || trimmed.contains("Example:")
+            || trimmed.contains("# Examples")
+            || trimmed.contains("# Parameters");
+        let mentions_markers =
+            trimmed.contains("TODO") || trimmed.contains("FIXME") || trimmed.contains("security");
         is_doc_marker && mentions_markers
     }
-    
+
     fn is_doctest_example(&self, trimmed: &str) -> bool {
         let has_comment_marker = trimmed.contains("// ");
         let has_debt_marker = trimmed.contains("TODO") || trimmed.contains("FIXME");
-        let has_code_marker = trimmed.contains("let ") || 
-                             trimmed.contains("assert") || 
-                             trimmed.contains("unwrap");
+        let has_code_marker =
+            trimmed.contains("let ") || trimmed.contains("assert") || trimmed.contains("unwrap");
         has_comment_marker && has_debt_marker && has_code_marker
     }
-    
+
     fn is_test_code(&self, trimmed: &str) -> bool {
-        (trimmed.contains("assert") || trimmed.contains("expect") ||
-         trimmed.contains(".unwrap()") || trimmed.contains("panic!")) &&
-        (trimmed.contains("TODO") || trimmed.contains("FIXME"))
+        (trimmed.contains("assert")
+            || trimmed.contains("expect")
+            || trimmed.contains(".unwrap()")
+            || trimmed.contains("panic!"))
+            && (trimmed.contains("TODO") || trimmed.contains("FIXME"))
     }
-    
+
     fn is_log_message(&self, trimmed: &str) -> bool {
-        (trimmed.contains("log::") || trimmed.contains("debug!") ||
-         trimmed.contains("info!") || trimmed.contains("warn!") ||
-         trimmed.contains("error!") || trimmed.contains("trace!")) &&
-        (trimmed.contains("TODO") || trimmed.contains("FIXME"))
+        (trimmed.contains("log::")
+            || trimmed.contains("debug!")
+            || trimmed.contains("info!")
+            || trimmed.contains("warn!")
+            || trimmed.contains("error!")
+            || trimmed.contains("trace!"))
+            && (trimmed.contains("TODO") || trimmed.contains("FIXME"))
     }
-    
+
     fn is_error_description(&self, trimmed: &str) -> bool {
-        (trimmed.contains("Error:") || trimmed.contains("error:") ||
-         trimmed.contains("message:") || trimmed.contains("description:")) &&
-        (trimmed.contains("TODO") || trimmed.contains("FIXME"))
+        (trimmed.contains("Error:")
+            || trimmed.contains("error:")
+            || trimmed.contains("message:")
+            || trimmed.contains("description:"))
+            && (trimmed.contains("TODO") || trimmed.contains("FIXME"))
     }
-    
+
     /// Comprehensive false positive detection for SATD
     fn is_likely_test_data_or_pattern(&self, line: &str, file_path: &Path) -> bool {
         // First check: Should we exclude this entire file?
         if self.should_exclude_file(file_path) {
             return true;
         }
-        
+
         // Second check: Is this line a false positive?
         if self.is_false_positive_line(line) {
             return true;
         }
-        
+
         // Third check: Is this documentation or metadata?
         if self.is_documentation_or_metadata(line) {
             return true;
         }
-        
+
         false
     }
-    
+
     fn is_minified_or_vendor_file(&self, path: &Path) -> bool {
         // Check if path contains vendor directory
         if path.components().any(|c| c.as_os_str() == "vendor") {

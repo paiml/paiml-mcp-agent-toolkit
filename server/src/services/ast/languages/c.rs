@@ -27,11 +27,7 @@ impl CStrategy {
 #[cfg(feature = "c-ast")]
 #[async_trait]
 impl AstStrategy for CStrategy {
-    async fn analyze(
-        &self,
-        file_path: &Path,
-        _classifier: &FileClassifier,
-    ) -> Result<FileContext> {
+    async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
         // Create context for C files
         // Tree-sitter C parsing is available but integration needs proper setup
         Ok(FileContext {
@@ -41,15 +37,15 @@ impl AstStrategy for CStrategy {
             complexity_metrics: None,
         })
     }
-    
+
     fn primary_extension(&self) -> &'static str {
         "c"
     }
-    
+
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec!["c", "h"]
     }
-    
+
     fn language_name(&self) -> &'static str {
         "C"
     }

@@ -26,26 +26,23 @@ impl RustStrategy {
 
 #[async_trait]
 impl AstStrategy for RustStrategy {
-    async fn analyze(
-        &self,
-        file_path: &Path,
-        _classifier: &FileClassifier,
-    ) -> Result<FileContext> {
+    async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
         // Delegate to the existing ast_rust functionality that returns FileContext
         // Convert TemplateError to anyhow::Error
-        let context = crate::services::ast_rust::analyze_rust_file(file_path).await
+        let context = crate::services::ast_rust::analyze_rust_file(file_path)
+            .await
             .map_err(|e| anyhow::anyhow!("Rust analysis failed: {}", e))?;
         Ok(context)
     }
-    
+
     fn primary_extension(&self) -> &'static str {
         "rs"
     }
-    
+
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec!["rs"]
     }
-    
+
     fn language_name(&self) -> &'static str {
         "Rust"
     }
