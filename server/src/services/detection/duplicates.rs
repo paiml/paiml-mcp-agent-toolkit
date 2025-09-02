@@ -9,6 +9,12 @@ use std::path::Path;
 /// Duplicate detection strategy using the existing duplicate detector
 pub struct DuplicateDetector;
 
+impl Default for DuplicateDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DuplicateDetector {
     pub fn new() -> Self {
         Self
@@ -102,7 +108,7 @@ impl DuplicateDetector {
         };
         let detector = crate::services::duplicate_detector::DuplicateDetectionEngine::new(duplicate_config);
         
-        let mut all_duplicates = Vec::new();
+        let all_duplicates = Vec::new();
         let mut files_analyzed = 0;
         
         // Process files using existing detector

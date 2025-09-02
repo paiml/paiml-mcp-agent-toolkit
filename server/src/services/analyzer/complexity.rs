@@ -6,10 +6,12 @@
 use super::{Analyzer, AnalyzerInfo, ProjectAnalyzer, ProjectConfig, ProjectInput};
 use crate::services::verified_complexity::VerifiedComplexityAnalyzer as OriginalAnalyzer;
 use crate::services::complexity::ComplexityMetrics as ComplexityService;
+use crate::services::ast_rust::analyze_rust_file_with_complexity;
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use walkdir::WalkDir;
 
 /// Unified complexity analyzer implementation
 pub struct ComplexityAnalyzer {
@@ -52,6 +54,14 @@ impl Default for ComplexityConfig {
     }
 }
 
+/// Simple file metric for internal use
+#[derive(Debug, Clone)]
+struct FileMetric {
+    path: PathBuf,
+    functions: usize,
+    average_complexity: f64,
+}
+
 /// Output from complexity analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComplexityOutput {
@@ -86,6 +96,80 @@ pub struct ComplexitySummary {
     pub max_cognitive: u32,
 }
 
+/// Helper function to find source files
+async fn find_source_files(root: &Path, extensions: &[String]) -> Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
+    let root = root.to_path_buf();
+    let extensions = extensions.to_vec();
+    
+    for entry in WalkDir::new(&root)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        
+        let path_str = path.to_string_lossy();
+        if path_str.contains("/target/") || 
+           path_str.contains("/node_modules/") ||
+           path_str.contains("/.git/") ||
+           path_str.contains("/vendor/") {
+            continue;
+        }
+        
+        if let Some(ext) = path.extension() {
+            if extensions.iter().any(|e| e == ext.to_string_lossy().as_ref()) {
+                files.push(path.to_path_buf());
+            }
+        }
+    }
+    
+    Ok(files)
+}
+
+/// Check if file should be analyzed
+fn should_analyze_file(file_path: &Path) -> bool {
+    let path_str = file_path.to_string_lossy();
+    !path_str.contains("/tests/") && 
+    !path_str.contains("/test/") && 
+    !path_str.ends_with("_test.rs") && 
+    !path_str.ends_with("_tests.rs")
+}
+
+/// Process metrics from a single function
+fn process_function_metrics(
+    func: &crate::services::complexity::FunctionComplexity,
+    high_complexity_functions: &mut usize,
+    total_cyclomatic: &mut u32,
+    total_cognitive: &mut u32,
+    max_cyclomatic: &mut u32,
+    max_cognitive: &mut u32,
+) {
+    let cyclo = func.metrics.cyclomatic as u32;
+    let cogn = func.metrics.cognitive as u32;
+    
+    if cyclo > 20 || cogn > 15 {
+        *high_complexity_functions += 1;
+    }
+    
+    *total_cyclomatic += cyclo;
+    *total_cognitive += cogn;
+    *max_cyclomatic = (*max_cyclomatic).max(cyclo);
+    *max_cognitive = (*max_cognitive).max(cogn);
+}
+
+/// Calculate average metrics
+fn calculate_averages(total: u32, count: usize) -> f64 {
+    if count > 0 {
+        total as f64 / count as f64
+    } else {
+        0.0
+    }
+}
+
 #[async_trait]
 impl Analyzer for ComplexityAnalyzer {
     type Input = ProjectInput;
@@ -93,19 +177,76 @@ impl Analyzer for ComplexityAnalyzer {
     type Config = ProjectConfig;
     
     async fn analyze(&self, input: Self::Input, _config: Self::Config) -> Result<Self::Output> {
-        // For now, create a basic implementation that works with project structure
-        // TODO: Integrate with actual AST analysis when project has proper AST infrastructure
+        // Analyze all Rust files in the project
+        let source_files = find_source_files(&input.project_path, &["rs".to_string()]).await?;
+        let mut file_metrics = Vec::new();
+        let mut total_functions = 0;
+        let mut high_complexity_functions = 0;
+        let mut total_cyclomatic = 0u32;
+        let mut total_cognitive = 0u32;
+        let mut max_cyclomatic = 0u32;
+        let mut max_cognitive = 0u32;
+        let mut function_count = 0;
+        
+        for file_path in source_files {
+            if !should_analyze_file(&file_path) {
+                continue;
+            }
+            
+            // Analyze the file
+            if let Ok(metrics) = analyze_rust_file_with_complexity(&file_path).await {
+                total_functions += metrics.functions.len();
+                function_count += metrics.functions.len();
+                
+                for func in &metrics.functions {
+                    process_function_metrics(
+                        func,
+                        &mut high_complexity_functions,
+                        &mut total_cyclomatic,
+                        &mut total_cognitive,
+                        &mut max_cyclomatic,
+                        &mut max_cognitive,
+                    );
+                }
+                
+                let avg_complexity = if metrics.functions.is_empty() { 
+                    0.0 
+                } else {
+                    metrics.functions.iter()
+                        .map(|f| f.metrics.cyclomatic as f64)
+                        .sum::<f64>() / metrics.functions.len() as f64
+                };
+                
+                file_metrics.push(FileMetric {
+                    path: file_path.clone(),
+                    functions: metrics.functions.len(),
+                    average_complexity: avg_complexity,
+                });
+            }
+        }
+        
+        let avg_cyclomatic = calculate_averages(total_cyclomatic, function_count);
+        let avg_cognitive = calculate_averages(total_cognitive, function_count);
+        
+        // Convert FileMetric to FileComplexityReport  
+        let file_complexity_reports = file_metrics.into_iter().map(|fm| {
+            FileComplexityReport {
+                file_path: fm.path.to_string_lossy().to_string(),
+                functions: Vec::new(), // Would need actual function data
+                file_total: ComplexityService::default(),
+            }
+        }).collect();
         
         Ok(ComplexityOutput {
             project_path: input.project_path.clone(),
-            file_metrics: Vec::new(), // Placeholder - would be populated with actual analysis
+            file_metrics: file_complexity_reports,
             summary: ComplexitySummary {
-                total_functions: 0,
-                high_complexity_functions: 0,
-                average_cyclomatic: 0.0,
-                average_cognitive: 0.0,
-                max_cyclomatic: 0,
-                max_cognitive: 0,
+                total_functions,
+                high_complexity_functions,
+                average_cyclomatic: avg_cyclomatic,
+                average_cognitive: avg_cognitive,
+                max_cyclomatic,
+                max_cognitive,
             },
         })
     }

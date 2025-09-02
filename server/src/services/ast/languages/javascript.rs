@@ -12,6 +12,12 @@ use std::path::Path;
 pub struct JavaScriptStrategy;
 
 #[cfg(feature = "typescript-ast")]
+impl Default for JavaScriptStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl JavaScriptStrategy {
     pub fn new() -> Self {
         Self

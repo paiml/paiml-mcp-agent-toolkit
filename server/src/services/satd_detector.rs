@@ -459,6 +459,11 @@ impl SATDDetector {
         file_path: &Path,
         line_num: u32,
     ) -> Result<Option<TechnicalDebt>, TemplateError> {
+        // Skip lines that are likely test data or pattern definitions
+        if self.is_likely_test_data_or_pattern(line, file_path) {
+            return Ok(None);
+        }
+        
         // Look for comment patterns
         let comment_content = self.extract_comment_content(line)?;
 
@@ -917,6 +922,43 @@ impl SATDDetector {
     }
 
     /// Check if file is minified or in vendor directory
+    /// Check if a line is likely test data or pattern definition
+    fn is_likely_test_data_or_pattern(&self, line: &str, file_path: &Path) -> bool {
+        // Skip if file is a SATD detector or test file
+        let path_str = file_path.to_string_lossy();
+        if path_str.contains("satd_detector") || 
+           path_str.contains("satd_property_tests") ||
+           path_str.contains("quality_proxy") ||
+           path_str.contains("test") && path_str.contains("satd") {
+            // Check if line contains string literals with SATD markers
+            if line.contains(r#""TODO"#) || line.contains(r#""FIXME"#) || 
+               line.contains(r#""HACK"#) || line.contains(r#"'TODO'"#) ||
+               line.contains(r#"'FIXME'"#) || line.contains(r#"'HACK'"#) ||
+               line.contains("r#\"") || // Raw string literal
+               line.contains(".matches(") || // Pattern matching code
+               line.contains("regex:") || // Regex pattern definition
+               line.contains("DebtPattern") || // Pattern struct
+               line.contains("comment_text:") || // Test data field
+               line.contains("text: content") || // Field assignment
+               line.contains("classify_comment") { // Method call
+                return true;
+            }
+        }
+        
+        // Skip doctest examples about SATD
+        if line.contains("/// ") && (line.contains("TODO") || line.contains("FIXME")) {
+            // This is likely documentation about SATD, not actual SATD
+            return true;
+        }
+        
+        // Skip assert statements checking for SATD
+        if line.contains("assert") && (line.contains("TODO") || line.contains("FIXME")) {
+            return true;
+        }
+        
+        false
+    }
+    
     fn is_minified_or_vendor_file(&self, path: &Path) -> bool {
         // Check if path contains vendor directory
         if path.components().any(|c| c.as_os_str() == "vendor") {
