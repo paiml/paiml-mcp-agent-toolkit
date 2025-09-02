@@ -4,9 +4,9 @@
 // to reduce structural complexity and achieve A+ grade.
 
 use super::{Analyzer, AnalyzerInfo, ProjectAnalyzer, ProjectConfig, ProjectInput};
-use crate::services::verified_complexity::VerifiedComplexityAnalyzer as OriginalAnalyzer;
-use crate::services::complexity::ComplexityMetrics as ComplexityService;
 use crate::services::ast_rust::analyze_rust_file_with_complexity;
+use crate::services::complexity::ComplexityMetrics as ComplexityService;
+use crate::services::verified_complexity::VerifiedComplexityAnalyzer as OriginalAnalyzer;
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -24,7 +24,7 @@ impl ComplexityAnalyzer {
             inner: OriginalAnalyzer::new(),
         }
     }
-    
+
     const DEFAULT_THRESHOLD: u32 = 10;
 }
 
@@ -101,7 +101,7 @@ async fn find_source_files(root: &Path, extensions: &[String]) -> Result<Vec<Pat
     let mut files = Vec::new();
     let root = root.to_path_buf();
     let extensions = extensions.to_vec();
-    
+
     for entry in WalkDir::new(&root)
         .follow_links(true)
         .into_iter()
@@ -111,32 +111,36 @@ async fn find_source_files(root: &Path, extensions: &[String]) -> Result<Vec<Pat
         if !path.is_file() {
             continue;
         }
-        
+
         let path_str = path.to_string_lossy();
-        if path_str.contains("/target/") || 
-           path_str.contains("/node_modules/") ||
-           path_str.contains("/.git/") ||
-           path_str.contains("/vendor/") {
+        if path_str.contains("/target/")
+            || path_str.contains("/node_modules/")
+            || path_str.contains("/.git/")
+            || path_str.contains("/vendor/")
+        {
             continue;
         }
-        
+
         if let Some(ext) = path.extension() {
-            if extensions.iter().any(|e| e == ext.to_string_lossy().as_ref()) {
+            if extensions
+                .iter()
+                .any(|e| e == ext.to_string_lossy().as_ref())
+            {
                 files.push(path.to_path_buf());
             }
         }
     }
-    
+
     Ok(files)
 }
 
 /// Check if file should be analyzed
 fn should_analyze_file(file_path: &Path) -> bool {
     let path_str = file_path.to_string_lossy();
-    !path_str.contains("/tests/") && 
-    !path_str.contains("/test/") && 
-    !path_str.ends_with("_test.rs") && 
-    !path_str.ends_with("_tests.rs")
+    !path_str.contains("/tests/")
+        && !path_str.contains("/test/")
+        && !path_str.ends_with("_test.rs")
+        && !path_str.ends_with("_tests.rs")
 }
 
 /// Process metrics from a single function
@@ -150,11 +154,11 @@ fn process_function_metrics(
 ) {
     let cyclo = func.metrics.cyclomatic as u32;
     let cogn = func.metrics.cognitive as u32;
-    
+
     if cyclo > 20 || cogn > 15 {
         *high_complexity_functions += 1;
     }
-    
+
     *total_cyclomatic += cyclo;
     *total_cognitive += cogn;
     *max_cyclomatic = (*max_cyclomatic).max(cyclo);
@@ -175,7 +179,7 @@ impl Analyzer for ComplexityAnalyzer {
     type Input = ProjectInput;
     type Output = ComplexityOutput;
     type Config = ProjectConfig;
-    
+
     async fn analyze(&self, input: Self::Input, _config: Self::Config) -> Result<Self::Output> {
         // Analyze all Rust files in the project
         let source_files = find_source_files(&input.project_path, &["rs".to_string()]).await?;
@@ -187,17 +191,17 @@ impl Analyzer for ComplexityAnalyzer {
         let mut max_cyclomatic = 0u32;
         let mut max_cognitive = 0u32;
         let mut function_count = 0;
-        
+
         for file_path in source_files {
             if !should_analyze_file(&file_path) {
                 continue;
             }
-            
+
             // Analyze the file
             if let Ok(metrics) = analyze_rust_file_with_complexity(&file_path).await {
                 total_functions += metrics.functions.len();
                 function_count += metrics.functions.len();
-                
+
                 for func in &metrics.functions {
                     process_function_metrics(
                         func,
@@ -208,15 +212,18 @@ impl Analyzer for ComplexityAnalyzer {
                         &mut max_cognitive,
                     );
                 }
-                
-                let avg_complexity = if metrics.functions.is_empty() { 
-                    0.0 
+
+                let avg_complexity = if metrics.functions.is_empty() {
+                    0.0
                 } else {
-                    metrics.functions.iter()
+                    metrics
+                        .functions
+                        .iter()
                         .map(|f| f.metrics.cyclomatic as f64)
-                        .sum::<f64>() / metrics.functions.len() as f64
+                        .sum::<f64>()
+                        / metrics.functions.len() as f64
                 };
-                
+
                 file_metrics.push(FileMetric {
                     path: file_path.clone(),
                     functions: metrics.functions.len(),
@@ -224,19 +231,22 @@ impl Analyzer for ComplexityAnalyzer {
                 });
             }
         }
-        
+
         let avg_cyclomatic = calculate_averages(total_cyclomatic, function_count);
         let avg_cognitive = calculate_averages(total_cognitive, function_count);
-        
-        // Convert FileMetric to FileComplexityReport  
-        let file_complexity_reports = file_metrics.into_iter().map(|fm| {
-            FileComplexityReport {
-                file_path: fm.path.to_string_lossy().to_string(),
-                functions: Vec::new(), // Would need actual function data
-                file_total: ComplexityService::default(),
-            }
-        }).collect();
-        
+
+        // Convert FileMetric to FileComplexityReport
+        let file_complexity_reports = file_metrics
+            .into_iter()
+            .map(|fm| {
+                FileComplexityReport {
+                    file_path: fm.path.to_string_lossy().to_string(),
+                    functions: Vec::new(), // Would need actual function data
+                    file_total: ComplexityService::default(),
+                }
+            })
+            .collect();
+
         Ok(ComplexityOutput {
             project_path: input.project_path.clone(),
             file_metrics: file_complexity_reports,
@@ -250,7 +260,7 @@ impl Analyzer for ComplexityAnalyzer {
             },
         })
     }
-    
+
     fn name(&self) -> &'static str {
         "complexity"
     }
@@ -267,16 +277,15 @@ impl ProjectAnalyzer for ComplexityAnalyzer {
     }
 }
 
-
 impl AnalyzerInfo for ComplexityAnalyzer {
     fn name(&self) -> &str {
         "complexity"
     }
-    
+
     fn version(&self) -> &str {
         env!("CARGO_PKG_VERSION")
     }
-    
+
     fn description(&self) -> &str {
         "Analyzes code complexity using cyclomatic, cognitive, and Halstead metrics"
     }
@@ -289,7 +298,7 @@ impl ComplexityAnalyzerFactory {
     pub fn create() -> ComplexityAnalyzer {
         ComplexityAnalyzer::new()
     }
-    
+
     pub fn create_with_thresholds(_max_cyclomatic: u32, _max_cognitive: u32) -> ComplexityAnalyzer {
         // For now, just return the basic analyzer
         // TODO: Store thresholds when configuration system is enhanced
@@ -300,16 +309,16 @@ impl ComplexityAnalyzerFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
-    
+    use tempfile::TempDir;
+
     #[tokio::test]
     async fn test_complexity_analyzer_creation() {
         let analyzer = ComplexityAnalyzer::new();
         assert_eq!(Analyzer::name(&analyzer), "complexity");
         assert_eq!(Analyzer::version(&analyzer), env!("CARGO_PKG_VERSION"));
     }
-    
+
     #[tokio::test]
     async fn test_complexity_config_default() {
         let config = ComplexityConfig::default();
@@ -317,28 +326,30 @@ mod tests {
         assert_eq!(config.max_cognitive, 15);
         assert!(config.include_halstead);
     }
-    
+
     #[tokio::test]
     async fn test_analyzer_info() {
         let analyzer = ComplexityAnalyzer::new();
         assert_eq!(Analyzer::name(&analyzer), "complexity");
         assert!(AnalyzerInfo::description(&analyzer).contains("complexity"));
     }
-    
+
     #[tokio::test]
     async fn test_factory_creation() {
         let analyzer = ComplexityAnalyzerFactory::create();
         assert_eq!(Analyzer::name(&analyzer), "complexity");
-        
+
         let analyzer_with_thresholds = ComplexityAnalyzerFactory::create_with_thresholds(15, 20);
         assert_eq!(Analyzer::name(&analyzer_with_thresholds), "complexity");
     }
-    
+
     #[tokio::test]
     async fn test_project_analysis() {
         let temp_dir = TempDir::new().unwrap();
         let test_file = temp_dir.path().join("test.rs");
-        fs::write(&test_file, r#"
+        fs::write(
+            &test_file,
+            r#"
             fn simple_function() -> i32 { 42 }
             fn complex_function(x: i32) -> i32 {
                 if x > 0 {
@@ -351,11 +362,13 @@ mod tests {
                     return 0;
                 }
             }
-        "#).unwrap();
-        
+        "#,
+        )
+        .unwrap();
+
         let analyzer = ComplexityAnalyzer::new();
         let result = analyzer.analyze_project(temp_dir.path()).await.unwrap();
-        
+
         assert_eq!(result.project_path, temp_dir.path());
         // Basic structure validation - actual complexity analysis would be implemented later
         assert!(result.file_metrics.is_empty()); // Placeholder implementation

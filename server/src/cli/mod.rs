@@ -232,13 +232,13 @@ fn detect_by_project_files(path: &Path) -> Option<String> {
         ("build.gradle", "kotlin"),
         ("build.gradle.kts", "kotlin"),
     ];
-    
+
     for (file, lang) in MARKERS {
         if path.join(file).exists() {
             return Some(lang.to_string());
         }
     }
-    
+
     // Special handling for JS/TS projects
     if path.join("package.json").exists() {
         if path.join("deno.json").exists() || path.join("deno.jsonc").exists() {
@@ -246,12 +246,16 @@ fn detect_by_project_files(path: &Path) -> Option<String> {
         }
         return Some("deno".to_string());
     }
-    
+
     None
 }
 
 fn should_exclude_dir(name: &str) -> bool {
-    name.starts_with('.') || matches!(name, "target" | "node_modules" | "build" | "dist" | "archive")
+    name.starts_with('.')
+        || matches!(
+            name,
+            "target" | "node_modules" | "build" | "dist" | "archive"
+        )
 }
 
 fn count_extension(ext: &str, lang_counts: &mut std::collections::HashMap<&'static str, usize>) {
@@ -267,7 +271,7 @@ fn count_extension(ext: &str, lang_counts: &mut std::collections::HashMap<&'stat
 fn detect_by_file_extensions(path: &Path) -> Option<String> {
     use walkdir::WalkDir;
     let mut lang_counts = std::collections::HashMap::new();
-    
+
     for entry in WalkDir::new(path)
         .max_depth(5)
         .into_iter()
@@ -283,7 +287,7 @@ fn detect_by_file_extensions(path: &Path) -> Option<String> {
             }
         }
     }
-    
+
     lang_counts
         .into_iter()
         .max_by_key(|&(_, count)| count)
@@ -295,12 +299,12 @@ pub fn detect_primary_language(path: &Path) -> Option<String> {
     if has_ruchy_files(path) {
         return Some("ruchy".to_string());
     }
-    
+
     // Check project marker files
     if let Some(lang) = detect_by_project_files(path) {
         return Some(lang);
     }
-    
+
     // Fall back to file extension counting
     detect_by_file_extensions(path)
 }
@@ -315,13 +319,13 @@ fn detect_with_confidence_by_markers(path: &Path) -> Option<(String, f64)> {
         ("build.gradle", "kotlin"),
         ("build.gradle.kts", "kotlin"),
     ];
-    
+
     for (file, lang) in CONFIDENT_MARKERS {
         if path.join(file).exists() {
             return Some((lang.to_string(), 100.0));
         }
     }
-    
+
     // Special JS/TS handling
     if path.join("package.json").exists() {
         let confidence = if path.join("deno.json").exists() || path.join("deno.jsonc").exists() {
@@ -331,7 +335,7 @@ fn detect_with_confidence_by_markers(path: &Path) -> Option<(String, f64)> {
         };
         return Some(("deno".to_string(), confidence));
     }
-    
+
     None
 }
 
@@ -339,7 +343,7 @@ fn count_files_by_extension(path: &Path) -> Option<(String, f64)> {
     use walkdir::WalkDir;
     let mut lang_counts = std::collections::HashMap::new();
     let mut total_files = 0;
-    
+
     for entry in WalkDir::new(path)
         .max_depth(5)
         .into_iter()
@@ -358,7 +362,7 @@ fn count_files_by_extension(path: &Path) -> Option<(String, f64)> {
                     "kt" | "kts" => Some("kotlin"),
                     _ => None,
                 };
-                
+
                 if let Some(l) = lang {
                     *lang_counts.entry(l).or_insert(0) += 1;
                     total_files += 1;
@@ -366,11 +370,11 @@ fn count_files_by_extension(path: &Path) -> Option<(String, f64)> {
             }
         }
     }
-    
+
     if total_files == 0 {
         return None;
     }
-    
+
     lang_counts
         .into_iter()
         .max_by_key(|&(_, count)| count)
@@ -385,7 +389,7 @@ pub fn detect_primary_language_with_confidence(path: &Path) -> Option<(String, f
     if let Some(result) = detect_with_confidence_by_markers(path) {
         return Some(result);
     }
-    
+
     // Fall back to file counting
     count_files_by_extension(path)
 }

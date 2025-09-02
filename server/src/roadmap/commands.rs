@@ -510,7 +510,7 @@ fn handle_init(
     // Validate priority
     Priority::from_str(&priority)
         .map_err(|_| anyhow::anyhow!("Invalid priority format. Use P0, P1, or P2"))?;
-    
+
     // Create basic roadmap structure
     let content = format!(
         r#"# Roadmap
@@ -534,10 +534,10 @@ fn handle_init(
         duration_days = duration_days,
         priority = priority
     );
-    
+
     std::fs::write(&roadmap_path, content)
         .with_context(|| format!("Failed to write roadmap to {:?}", roadmap_path))?;
-    
+
     println!("✅ Initialized roadmap at {:?}", roadmap_path);
     Ok(())
 }
@@ -548,18 +548,18 @@ fn handle_start(task_id: String, create_branch: bool) -> Result<()> {
     if !task_id.starts_with("PMAT-") {
         anyhow::bail!("Invalid task ID format. Expected PMAT-XXXX");
     }
-    
+
     println!("🚀 Starting work on task: {}", task_id);
-    
+
     if create_branch {
         let branch_name = format!("feature/{}", task_id.to_lowercase());
         println!("🌿 Creating branch: {}", branch_name);
-        
+
         // Attempt to create git branch (may fail in test environment)
         let result = std::process::Command::new("git")
             .args(&["checkout", "-b", &branch_name])
             .output();
-            
+
         match result {
             Ok(output) if output.status.success() => {
                 println!("✅ Branch created successfully");
@@ -572,7 +572,7 @@ fn handle_start(task_id: String, create_branch: bool) -> Result<()> {
             }
         }
     }
-    
+
     println!("✅ Task {} is now active", task_id);
     Ok(())
 }
@@ -580,25 +580,34 @@ fn handle_start(task_id: String, create_branch: bool) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn test_roadmap_command_parsing() {
         // Test CLI parsing for RoadmapCommand
         let cmd = RoadmapCommand::try_parse_from(&[
-            "roadmap", 
-            "init", 
-            "--version", "v1.0.0", 
-            "--title", "Test Sprint",
-            "--duration-days", "7",
-            "--priority", "P0"
+            "roadmap",
+            "init",
+            "--version",
+            "v1.0.0",
+            "--title",
+            "Test Sprint",
+            "--duration-days",
+            "7",
+            "--priority",
+            "P0",
         ]);
-        
+
         assert!(cmd.is_ok());
         if let Ok(parsed) = cmd {
             match parsed.command {
-                RoadmapSubcommand::Init { version, title, duration_days, priority } => {
+                RoadmapSubcommand::Init {
+                    version,
+                    title,
+                    duration_days,
+                    priority,
+                } => {
                     assert_eq!(version, "v1.0.0");
                     assert_eq!(title, "Test Sprint");
                     assert_eq!(duration_days, 7);
@@ -613,7 +622,7 @@ mod tests {
     fn test_handle_init_command() {
         let temp_dir = TempDir::new().unwrap();
         let roadmap_path = temp_dir.path().join("roadmap.md");
-        
+
         let result = handle_init(
             "v2.0.0".to_string(),
             "Test Initiative".to_string(),
@@ -621,10 +630,10 @@ mod tests {
             "P1".to_string(),
             roadmap_path.clone(),
         );
-        
+
         assert!(result.is_ok());
         assert!(roadmap_path.exists());
-        
+
         let content = fs::read_to_string(&roadmap_path).unwrap();
         assert!(content.contains("v2.0.0"));
         assert!(content.contains("Test Initiative"));
@@ -635,7 +644,7 @@ mod tests {
     fn test_handle_init_invalid_priority() {
         let temp_dir = TempDir::new().unwrap();
         let roadmap_path = temp_dir.path().join("roadmap.md");
-        
+
         let result = handle_init(
             "v1.0.0".to_string(),
             "Test".to_string(),
@@ -643,24 +652,30 @@ mod tests {
             "INVALID_PRIORITY".to_string(),
             roadmap_path,
         );
-        
+
         assert!(result.is_err());
     }
 
-    #[test] 
+    #[test]
     fn test_todos_subcommand_parsing() {
         let cmd = RoadmapCommand::try_parse_from(&[
             "roadmap",
-            "todos", 
-            "--sprint", "v1.0.0",
-            "--output", "custom_todos.md",
-            "--include-quality-gates"
+            "todos",
+            "--sprint",
+            "v1.0.0",
+            "--output",
+            "custom_todos.md",
+            "--include-quality-gates",
         ]);
-        
+
         assert!(cmd.is_ok());
         if let Ok(parsed) = cmd {
             match parsed.command {
-                RoadmapSubcommand::Todos { sprint, output, include_quality_gates } => {
+                RoadmapSubcommand::Todos {
+                    sprint,
+                    output,
+                    include_quality_gates,
+                } => {
                     assert_eq!(sprint, Some("v1.0.0".to_string()));
                     assert_eq!(output, PathBuf::from("custom_todos.md"));
                     assert!(include_quality_gates);
@@ -672,17 +687,16 @@ mod tests {
 
     #[test]
     fn test_start_subcommand_parsing() {
-        let cmd = RoadmapCommand::try_parse_from(&[
-            "roadmap",
-            "start",
-            "PMAT-1001",
-            "--create-branch"
-        ]);
-        
+        let cmd =
+            RoadmapCommand::try_parse_from(&["roadmap", "start", "PMAT-1001", "--create-branch"]);
+
         assert!(cmd.is_ok());
         if let Ok(parsed) = cmd {
             match parsed.command {
-                RoadmapSubcommand::Start { task_id, create_branch } => {
+                RoadmapSubcommand::Start {
+                    task_id,
+                    create_branch,
+                } => {
                     assert_eq!(task_id, "PMAT-1001");
                     assert!(create_branch);
                 }
@@ -695,16 +709,21 @@ mod tests {
     fn test_complete_subcommand_parsing() {
         let cmd = RoadmapCommand::try_parse_from(&[
             "roadmap",
-            "complete", 
+            "complete",
             "PMAT-1001",
-            "--format", "json",
-            "--skip-quality-checks"
+            "--format",
+            "json",
+            "--skip-quality-checks",
         ]);
-        
+
         assert!(cmd.is_ok());
         if let Ok(parsed) = cmd {
             match parsed.command {
-                RoadmapSubcommand::Complete { task_id, format, skip_quality_checks } => {
+                RoadmapSubcommand::Complete {
+                    task_id,
+                    format,
+                    skip_quality_checks,
+                } => {
                     assert_eq!(task_id, "PMAT-1001");
                     assert_eq!(format, Some(OutputFormat::Json));
                     assert!(skip_quality_checks);
@@ -725,7 +744,7 @@ mod tests {
     #[test]
     fn test_handle_start_task() {
         let result = handle_start("PMAT-1001".to_string(), false);
-        
+
         // Should complete without error for valid task ID format
         assert!(result.is_ok());
     }
@@ -733,7 +752,7 @@ mod tests {
     #[test]
     fn test_handle_start_task_with_branch() {
         let result = handle_start("PMAT-2001".to_string(), true);
-        
+
         // Should attempt to create branch (may fail in test environment)
         // This tests the branch creation code path
         assert!(result.is_ok() || result.is_err()); // Either outcome acceptable in test

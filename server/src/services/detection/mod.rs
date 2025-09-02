@@ -5,7 +5,7 @@
 //
 // Consolidates:
 // - duplicate_detector.rs (high-performance LSH duplicate detection)
-// - satd_detector.rs (Self-Admitted Technical Debt detection)  
+// - satd_detector.rs (Self-Admitted Technical Debt detection)
 // - polyglot_analyzer.rs (cross-language analysis)
 
 use anyhow::Result;
@@ -28,17 +28,13 @@ pub trait Detector: Send + Sync {
     type Output;
     /// Configuration type for this detector
     type Config;
-    
+
     /// Perform detection analysis
-    async fn detect(
-        &self,
-        input: Self::Input,
-        config: Self::Config,
-    ) -> Result<Self::Output>;
-    
+    async fn detect(&self, input: Self::Input, config: Self::Config) -> Result<Self::Output>;
+
     /// Get the detector name
     fn name(&self) -> &'static str;
-    
+
     /// Get detector capabilities/features
     fn capabilities(&self) -> DetectorCapabilities;
 }
@@ -54,7 +50,16 @@ pub struct DetectorCapabilities {
 
 /// Registry for managing detection strategies
 pub struct DetectionRegistry {
-    detectors: std::collections::HashMap<String, Arc<dyn Detector<Input = DetectionInput, Output = DetectionOutput, Config = DetectionConfig>>>,
+    detectors: std::collections::HashMap<
+        String,
+        Arc<
+            dyn Detector<
+                Input = DetectionInput,
+                Output = DetectionOutput,
+                Config = DetectionConfig,
+            >,
+        >,
+    >,
 }
 
 /// Unified detection input wrapper
@@ -104,35 +109,56 @@ impl DetectionRegistry {
         let mut registry = Self {
             detectors: std::collections::HashMap::new(),
         };
-        
+
         // Register all available detection strategies
         registry.register_defaults();
         registry
     }
-    
+
     fn register_defaults(&mut self) {
         // Register duplicate detector
         self.register("duplicates", Arc::new(duplicates::DuplicateDetector::new()));
-        
+
         // Register SATD detector
         self.register("satd", Arc::new(satd::SATDDetector::new()));
-        
+
         // Register polyglot analyzer
         self.register("polyglot", Arc::new(polyglot::PolyglotDetector::new()));
     }
-    
-    pub fn register(&mut self, name: &str, detector: Arc<dyn Detector<Input = DetectionInput, Output = DetectionOutput, Config = DetectionConfig>>) {
+
+    pub fn register(
+        &mut self,
+        name: &str,
+        detector: Arc<
+            dyn Detector<
+                Input = DetectionInput,
+                Output = DetectionOutput,
+                Config = DetectionConfig,
+            >,
+        >,
+    ) {
         self.detectors.insert(name.to_string(), detector);
     }
-    
-    pub fn get_detector(&self, name: &str) -> Option<Arc<dyn Detector<Input = DetectionInput, Output = DetectionOutput, Config = DetectionConfig>>> {
+
+    pub fn get_detector(
+        &self,
+        name: &str,
+    ) -> Option<
+        Arc<
+            dyn Detector<
+                Input = DetectionInput,
+                Output = DetectionOutput,
+                Config = DetectionConfig,
+            >,
+        >,
+    > {
         self.detectors.get(name).cloned()
     }
-    
+
     pub fn list_detectors(&self) -> Vec<&str> {
         self.detectors.keys().map(|s| s.as_str()).collect()
     }
-    
+
     /// Run detection using the specified detector
     pub async fn detect(
         &self,
@@ -160,7 +186,9 @@ impl Default for DetectionConfig {
             max_files: None,
             parallel_processing: true,
             output_format: OutputFormat::Json,
-            detector_specific: DetectorSpecificConfig::Duplicates(duplicates::DuplicateConfig::default()),
+            detector_specific: DetectorSpecificConfig::Duplicates(
+                duplicates::DuplicateConfig::default(),
+            ),
         }
     }
 }
@@ -176,21 +204,28 @@ impl UnifiedDetectionProcessor {
             registry: DetectionRegistry::new(),
         }
     }
-    
+
     /// Detect duplicates in files
-    pub async fn detect_duplicates(&self, files: Vec<std::path::PathBuf>) -> Result<duplicates::DuplicateDetectionResult> {
+    pub async fn detect_duplicates(
+        &self,
+        files: Vec<std::path::PathBuf>,
+    ) -> Result<duplicates::DuplicateDetectionResult> {
         let input = DetectionInput::MultipleFiles(files);
         let config = DetectionConfig {
-            detector_specific: DetectorSpecificConfig::Duplicates(duplicates::DuplicateConfig::default()),
+            detector_specific: DetectorSpecificConfig::Duplicates(
+                duplicates::DuplicateConfig::default(),
+            ),
             ..Default::default()
         };
-        
+
         match self.registry.detect("duplicates", input, config).await? {
             DetectionOutput::Duplicates(result) => Ok(result),
-            _ => Err(anyhow::anyhow!("Invalid output type for duplicates detector")),
+            _ => Err(anyhow::anyhow!(
+                "Invalid output type for duplicates detector"
+            )),
         }
     }
-    
+
     /// Detect SATD in project
     pub async fn detect_satd(&self, project_path: &Path) -> Result<satd::SATDAnalysisResult> {
         let input = DetectionInput::ProjectDirectory(project_path.to_path_buf());
@@ -198,27 +233,30 @@ impl UnifiedDetectionProcessor {
             detector_specific: DetectorSpecificConfig::SATD(satd::SATDConfig::default()),
             ..Default::default()
         };
-        
+
         match self.registry.detect("satd", input, config).await? {
             DetectionOutput::SATD(result) => Ok(result),
             _ => Err(anyhow::anyhow!("Invalid output type for SATD detector")),
         }
     }
-    
+
     /// Analyze polyglot architecture
-    pub async fn analyze_polyglot(&self, project_path: &Path) -> Result<polyglot::PolyglotAnalysis> {
+    pub async fn analyze_polyglot(
+        &self,
+        project_path: &Path,
+    ) -> Result<polyglot::PolyglotAnalysis> {
         let input = DetectionInput::ProjectDirectory(project_path.to_path_buf());
         let config = DetectionConfig {
             detector_specific: DetectorSpecificConfig::Polyglot(polyglot::PolyglotConfig::default()),
             ..Default::default()
         };
-        
+
         match self.registry.detect("polyglot", input, config).await? {
             DetectionOutput::Polyglot(result) => Ok(result),
             _ => Err(anyhow::anyhow!("Invalid output type for polyglot detector")),
         }
     }
-    
+
     pub fn available_detectors(&self) -> Vec<&str> {
         self.registry.list_detectors()
     }
@@ -233,42 +271,45 @@ impl Default for UnifiedDetectionProcessor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
     use std::io::Write;
-    
+    use tempfile::NamedTempFile;
+
     #[tokio::test]
     async fn test_detection_registry_creation() {
         let registry = DetectionRegistry::new();
         let detectors = registry.list_detectors();
-        
+
         // Should have all three detectors
         assert!(detectors.contains(&"duplicates"));
         assert!(detectors.contains(&"satd"));
         assert!(detectors.contains(&"polyglot"));
         assert_eq!(detectors.len(), 3);
     }
-    
+
     #[tokio::test]
     async fn test_unified_processor() {
         let processor = UnifiedDetectionProcessor::new();
         let available = processor.available_detectors();
-        
+
         assert!(available.contains(&"duplicates"));
         assert!(available.contains(&"satd"));
         assert!(available.contains(&"polyglot"));
         assert_eq!(available.len(), 3);
     }
-    
+
     #[test]
     fn test_detection_config_default() {
         let config = DetectionConfig::default();
-        
+
         assert!(config.parallel_processing);
         assert!(config.max_files.is_none());
         assert_eq!(config.output_format, OutputFormat::Json);
-        assert!(matches!(config.detector_specific, DetectorSpecificConfig::Duplicates(_)));
+        assert!(matches!(
+            config.detector_specific,
+            DetectorSpecificConfig::Duplicates(_)
+        ));
     }
-    
+
     #[test]
     fn test_detector_capabilities() {
         let caps = DetectorCapabilities {
@@ -277,7 +318,7 @@ mod tests {
             language_agnostic: true,
             requires_ast: false,
         };
-        
+
         assert!(caps.supports_batch);
         assert!(!caps.supports_streaming);
         assert!(caps.language_agnostic);
@@ -288,9 +329,9 @@ mod tests {
 #[cfg(test)]
 mod additional_tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
-    
+    use tempfile::TempDir;
+
     #[test]
     fn test_detector_capabilities() {
         let caps = DetectorCapabilities {
@@ -299,13 +340,13 @@ mod additional_tests {
             language_agnostic: true,
             requires_ast: false,
         };
-        
+
         assert!(caps.supports_batch);
         assert!(!caps.supports_streaming);
         assert!(caps.language_agnostic);
         assert!(!caps.requires_ast);
     }
-    
+
     #[test]
     fn test_detection_config_custom() {
         let config = DetectionConfig {
@@ -314,25 +355,28 @@ mod additional_tests {
             output_format: OutputFormat::Yaml,
             detector_specific: DetectorSpecificConfig::SATD(satd::SATDConfig::default()),
         };
-        
+
         assert_eq!(config.max_files, Some(100));
         assert!(!config.parallel_processing);
         assert_eq!(config.output_format, OutputFormat::Yaml);
-        assert!(matches!(config.detector_specific, DetectorSpecificConfig::SATD(_)));
+        assert!(matches!(
+            config.detector_specific,
+            DetectorSpecificConfig::SATD(_)
+        ));
     }
-    
+
     #[test]
     fn test_output_format_enum() {
         let json_format = OutputFormat::Json;
         let yaml_format = OutputFormat::Yaml;
         let summary_format = OutputFormat::Summary;
-        
+
         assert_eq!(json_format, OutputFormat::Json);
         assert_eq!(yaml_format, OutputFormat::Yaml);
         assert_eq!(summary_format, OutputFormat::Summary);
         assert_ne!(json_format, yaml_format);
     }
-    
+
     #[test]
     fn test_detection_input_variants() {
         let single = DetectionInput::SingleFile(std::path::PathBuf::from("/test.rs"));
@@ -342,114 +386,118 @@ mod additional_tests {
         ]);
         let project = DetectionInput::ProjectDirectory(std::path::PathBuf::from("/project"));
         let content = DetectionInput::Content("test content".to_string());
-        
+
         assert!(matches!(single, DetectionInput::SingleFile(_)));
         assert!(matches!(multiple, DetectionInput::MultipleFiles(_)));
         assert!(matches!(project, DetectionInput::ProjectDirectory(_)));
         assert!(matches!(content, DetectionInput::Content(_)));
     }
-    
+
     #[tokio::test]
     async fn test_unified_detection_processor_creation() {
         let processor = UnifiedDetectionProcessor::new();
         let detectors = processor.available_detectors();
-        
+
         assert_eq!(detectors.len(), 3);
         assert!(detectors.contains(&"duplicates"));
         assert!(detectors.contains(&"satd"));
         assert!(detectors.contains(&"polyglot"));
     }
-    
+
     #[tokio::test]
     async fn test_detect_duplicates_empty_list() {
         let processor = UnifiedDetectionProcessor::new();
         let result = processor.detect_duplicates(vec![]).await;
-        
+
         match result {
             Ok(duplicates) => {
                 // Should handle empty input gracefully
                 assert!(true);
-            },
+            }
             Err(_) => {
                 // Graceful failure is also acceptable
                 assert!(true);
             }
         }
     }
-    
+
     #[tokio::test]
     async fn test_detect_satd_with_temp_project() {
         let temp_dir = TempDir::new().unwrap();
         let test_file = temp_dir.path().join("test.rs");
-        
-        fs::write(&test_file, r#"
+
+        fs::write(
+            &test_file,
+            r#"
             // TODO: Fix this later
             fn bad_function() {
                 // FIXME: This is broken
                 panic!("Not implemented");
             }
-        "#).unwrap();
-        
+        "#,
+        )
+        .unwrap();
+
         let processor = UnifiedDetectionProcessor::new();
         let result = processor.detect_satd(temp_dir.path()).await;
-        
+
         match result {
             Ok(satd_result) => {
                 // Should find at least the TODO and FIXME
                 // Should find some debt items (field name may vary)
                 assert!(true);
-            },
+            }
             Err(_) => {
                 // Graceful failure is acceptable
                 assert!(true);
             }
         }
     }
-    
+
     #[tokio::test]
     async fn test_analyze_polyglot_project() {
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Create files in different languages
         fs::write(temp_dir.path().join("main.rs"), "fn main() {}").unwrap();
         fs::write(temp_dir.path().join("script.py"), "def main(): pass").unwrap();
         fs::write(temp_dir.path().join("app.js"), "function main() {}").unwrap();
-        
+
         let processor = UnifiedDetectionProcessor::new();
         let result = processor.analyze_polyglot(temp_dir.path()).await;
-        
+
         match result {
             Ok(polyglot_analysis) => {
                 // Should detect multiple languages
                 assert!(polyglot_analysis.languages.len() >= 1);
-            },
+            }
             Err(_) => {
                 // Graceful failure is acceptable
                 assert!(true);
             }
         }
     }
-    
+
     #[test]
     fn test_registry_list_detectors() {
         let registry = DetectionRegistry::new();
         let detectors = registry.list_detectors();
-        
+
         assert_eq!(detectors.len(), 3);
         let detector_set: std::collections::HashSet<_> = detectors.into_iter().collect();
         assert!(detector_set.contains("duplicates"));
         assert!(detector_set.contains("satd"));
         assert!(detector_set.contains("polyglot"));
     }
-    
+
     #[tokio::test]
     async fn test_registry_detect_with_unknown_detector() {
         let registry = DetectionRegistry::new();
         let input = DetectionInput::Content("test".to_string());
         let config = DetectionConfig::default();
-        
+
         let result = registry.detect("unknown_detector", input, config).await;
-        
+
         assert!(result.is_err());
         if let Err(e) = result {
             assert!(e.to_string().contains("Unknown detector"));

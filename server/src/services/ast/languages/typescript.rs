@@ -29,26 +29,23 @@ impl TypeScriptStrategy {
 #[cfg(feature = "typescript-ast")]
 #[async_trait]
 impl AstStrategy for TypeScriptStrategy {
-    async fn analyze(
-        &self,
-        file_path: &Path,
-        _classifier: &FileClassifier,
-    ) -> Result<FileContext> {
+    async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
         // Delegate to existing TypeScript analysis
         // Convert TemplateError to anyhow::Error
-        let context = crate::services::ast_typescript::analyze_typescript_file(file_path).await
+        let context = crate::services::ast_typescript::analyze_typescript_file(file_path)
+            .await
             .map_err(|e| anyhow::anyhow!("TypeScript analysis failed: {}", e))?;
         Ok(context)
     }
-    
+
     fn primary_extension(&self) -> &'static str {
         "ts"
     }
-    
+
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec!["ts", "tsx"]
     }
-    
+
     fn language_name(&self) -> &'static str {
         "TypeScript"
     }

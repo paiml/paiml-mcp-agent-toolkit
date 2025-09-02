@@ -1,14 +1,14 @@
 // TDD Test for GitHub Issue #54: Function Count Discrepancy
-// 
+//
 // This test verifies that the Big-O analyzer correctly counts functions
 // and doesn't over-count by matching multiple language patterns.
 
 #[cfg(test)]
 mod issue_54_function_count_tests {
-    use crate::services::big_o_analyzer::{BigOAnalyzer, BigOAnalysisConfig};
-    use tempfile::TempDir;
+    use crate::services::big_o_analyzer::{BigOAnalysisConfig, BigOAnalyzer};
     use std::fs;
     use std::path::PathBuf;
+    use tempfile::TempDir;
 
     /// Test that Big-O analyzer counts Rust functions correctly
     /// and doesn't match patterns from other languages
@@ -16,10 +16,12 @@ mod issue_54_function_count_tests {
     async fn test_rust_function_count_accuracy() {
         let analyzer = BigOAnalyzer::new();
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Create a Rust file with exactly 3 functions
         let rust_file = temp_dir.path().join("test.rs");
-        fs::write(&rust_file, r#"
+        fs::write(
+            &rust_file,
+            r#"
 // This file has exactly 3 Rust functions
 
 fn first_function() -> i32 {
@@ -50,7 +52,9 @@ const NOT_A_FUNCTION: i32 = 100;
 
 // The string "fn fake" shouldn't match
 static ALSO_NOT: &str = "fn pseudo_function";
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
 
         let config = BigOAnalysisConfig {
             project_path: temp_dir.path().to_path_buf(),
@@ -61,7 +65,7 @@ static ALSO_NOT: &str = "fn pseudo_function";
         };
 
         let report = analyzer.analyze(config).await.unwrap();
-        
+
         // CRITICAL ASSERTION: Should find exactly 3 functions, not more!
         assert_eq!(
             report.analyzed_functions, 3,
@@ -76,10 +80,12 @@ static ALSO_NOT: &str = "fn pseudo_function";
     async fn test_language_specific_patterns() {
         let analyzer = BigOAnalyzer::new();
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Create a Python file with Python functions
         let python_file = temp_dir.path().join("test.py");
-        fs::write(&python_file, r#"
+        fs::write(
+            &python_file,
+            r#"
 # Python file with exactly 2 functions
 
 def python_function_one():
@@ -98,11 +104,15 @@ class NotAFunction:
 
 # String with function keyword
 comment = "function javascript() { }"
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
 
         // Create a JavaScript file with JavaScript functions
         let js_file = temp_dir.path().join("test.js");
-        fs::write(&js_file, r#"
+        fs::write(
+            &js_file,
+            r#"
 // JavaScript file with exactly 2 functions
 
 function javascript_function_one() {
@@ -119,7 +129,9 @@ function javascript_function_two(x) {
 // Not a function
 const notAFunction = "fn fake_rust_function";
 let alsoNot = "def fake_python_function";
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
 
         let config = BigOAnalysisConfig {
             project_path: temp_dir.path().to_path_buf(),
@@ -130,7 +142,7 @@ let alsoNot = "def fake_python_function";
         };
 
         let report = analyzer.analyze(config).await.unwrap();
-        
+
         // Should find exactly 4 functions total (2 Python + 2 JavaScript)
         assert_eq!(
             report.analyzed_functions, 4,
@@ -144,10 +156,12 @@ let alsoNot = "def fake_python_function";
     async fn test_no_cross_language_matching() {
         let analyzer = BigOAnalyzer::new();
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Create a Rust file with many language keywords in strings/comments
         let rust_file = temp_dir.path().join("mixed_keywords.rs");
-        fs::write(&rust_file, r#"
+        fs::write(
+            &rust_file,
+            r#"
 // Rust file with only 1 actual function but many false-positive keywords
 
 fn only_real_function() -> String {
@@ -177,7 +191,9 @@ const STRINGS_WITH_KEYWORDS: &[&str] = &[
     "func fake3",
     "public void fake4",
 ];
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
 
         let config = BigOAnalysisConfig {
             project_path: temp_dir.path().to_path_buf(),
@@ -188,7 +204,7 @@ const STRINGS_WITH_KEYWORDS: &[&str] = &[
         };
 
         let report = analyzer.analyze(config).await.unwrap();
-        
+
         // CRITICAL: Should find exactly 1 function, not be confused by other language keywords
         assert_eq!(
             report.analyzed_functions, 1,
@@ -203,18 +219,23 @@ const STRINGS_WITH_KEYWORDS: &[&str] = &[
     async fn test_issue_54_regression() {
         let analyzer = BigOAnalyzer::new();
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Create multiple Rust files simulating a real project
         let files = vec![
-            ("mod.rs", r#"
+            (
+                "mod.rs",
+                r#"
 pub mod analyzer;
 pub mod processor;
 
 pub fn init() {
     println!("Initialized");
 }
-            "#),
-            ("analyzer.rs", r#"
+            "#,
+            ),
+            (
+                "analyzer.rs",
+                r#"
 pub fn analyze_data(data: &[i32]) -> i32 {
     data.iter().sum()
 }
@@ -222,8 +243,11 @@ pub fn analyze_data(data: &[i32]) -> i32 {
 fn helper_function(x: i32) -> i32 {
     x * 2
 }
-            "#),
-            ("processor.rs", r#"
+            "#,
+            ),
+            (
+                "processor.rs",
+                r#"
 pub fn process_items(items: Vec<String>) -> Vec<String> {
     items.into_iter().map(|s| s.to_uppercase()).collect()
 }
@@ -235,7 +259,8 @@ pub fn validate_item(item: &str) -> bool {
 fn internal_helper() {
     // Some internal logic
 }
-            "#),
+            "#,
+            ),
         ];
 
         for (name, content) in files {
@@ -252,25 +277,25 @@ fn internal_helper() {
         };
 
         let report = analyzer.analyze(config).await.unwrap();
-        
+
         // Count expected functions:
         // mod.rs: 1 (init)
         // analyzer.rs: 2 (analyze_data, helper_function)
         // processor.rs: 3 (process_items, validate_item, internal_helper)
         // Total: 6 functions
-        
+
         assert_eq!(
             report.analyzed_functions, 6,
             "Expected exactly 6 Rust functions across all files, but found {}",
             report.analyzed_functions
         );
-        
+
         // Also verify the distribution is reasonable
         assert!(
             report.complexity_distribution.linear > 0,
             "Should have found at least some O(n) functions"
         );
-        
+
         // Verify we're not getting absurd numbers like 104 vs 44
         assert!(
             report.analyzed_functions < 20,
@@ -284,11 +309,13 @@ fn internal_helper() {
     async fn test_consistency_with_complexity_analyzer() {
         // This test would compare Big-O count with Complexity analyzer count
         // For now, we'll create a simple consistency check
-        
+
         let temp_dir = TempDir::new().unwrap();
         let test_file = temp_dir.path().join("consistency.rs");
-        
-        fs::write(&test_file, r#"
+
+        fs::write(
+            &test_file,
+            r#"
 fn function_one() -> i32 { 1 }
 fn function_two() -> i32 { 2 }
 fn function_three() -> i32 { 3 }
@@ -305,7 +332,9 @@ trait TestTrait {
 impl TestTrait for TestStruct {
     fn trait_method(&self) -> i32 { 6 }
 }
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
 
         let analyzer = BigOAnalyzer::new();
         let config = BigOAnalysisConfig {
@@ -317,7 +346,7 @@ impl TestTrait for TestStruct {
         };
 
         let report = analyzer.analyze(config).await.unwrap();
-        
+
         // Should find: function_one, function_two, function_three,
         // method_one, method_two, trait_method (impl)
         // Total: 6 functions

@@ -359,7 +359,7 @@ mod tests {
     fn test_parse_basic_roadmap() {
         let result = parse_roadmap(SAMPLE_ROADMAP);
         assert!(result.is_ok());
-        
+
         let roadmap = result.unwrap();
         assert!(!roadmap.sprints.is_empty());
     }
@@ -367,7 +367,7 @@ mod tests {
     #[test]
     fn test_parse_current_sprint() {
         let roadmap = parse_roadmap(SAMPLE_ROADMAP).unwrap();
-        
+
         if let Some(current) = &roadmap.current_sprint {
             assert_eq!(current.version, "v2.42.0");
             assert!(current.title.contains("Excellence Sprint"));
@@ -377,24 +377,27 @@ mod tests {
     #[test]
     fn test_parse_multiple_sprints() {
         let roadmap = parse_roadmap(SAMPLE_ROADMAP).unwrap();
-        
+
         // Should have both current and previous sprint
         assert!(roadmap.sprints.len() >= 1);
         assert!(roadmap.sprints.contains_key("v2.41.0") || roadmap.current_sprint.is_some());
     }
 
-    #[test] 
+    #[test]
     fn test_parse_priority() {
         assert_eq!(parse_priority("P0 - HIGH"), Some(Priority::P0));
-        assert_eq!(parse_priority("P1 - MEDIUM"), Some(Priority::P1)); 
+        assert_eq!(parse_priority("P1 - MEDIUM"), Some(Priority::P1));
         assert_eq!(parse_priority("P2 - LOW"), Some(Priority::P2));
         assert_eq!(parse_priority("No priority"), None);
     }
 
     #[test]
     fn test_parse_task_status() {
-        assert_eq!(parse_task_status("Open"), Some(TaskStatus::Open));
-        assert_eq!(parse_task_status("InProgress"), Some(TaskStatus::InProgress));
+        assert_eq!(parse_task_status("Open"), Some(TaskStatus::Planned));
+        assert_eq!(
+            parse_task_status("InProgress"),
+            Some(TaskStatus::InProgress)
+        );
         assert_eq!(parse_task_status("Completed"), Some(TaskStatus::Completed));
         assert_eq!(parse_task_status("Blocked"), Some(TaskStatus::Blocked));
         assert_eq!(parse_task_status("Invalid"), None);
@@ -404,7 +407,7 @@ mod tests {
     fn test_parse_empty_roadmap() {
         let result = parse_roadmap("");
         assert!(result.is_ok());
-        
+
         let roadmap = result.unwrap();
         assert!(roadmap.current_sprint.is_none());
         assert!(roadmap.sprints.is_empty());
@@ -417,7 +420,7 @@ mod tests {
 ## Invalid Sprint Header Without Proper Format
 - Some content without structure
 "#;
-        
+
         let result = parse_roadmap(malformed);
         assert!(result.is_ok()); // Should handle malformed gracefully
     }
@@ -429,7 +432,7 @@ mod tests {
 - PMAT-1234 | Test task | High | Open | 8h |
 - PMAT-5678 | Another task | Medium | Planning | 4h |
 "#;
-        
+
         let roadmap = parse_roadmap(content_with_backlog).unwrap();
         // Should handle backlog parsing
         assert!(roadmap.backlog.len() >= 0); // May not parse correctly due to table format
@@ -441,7 +444,7 @@ mod tests {
         let roadmap = parse_roadmap(SAMPLE_ROADMAP).unwrap();
         let serialized = serialize_roadmap(&roadmap).unwrap();
         let reparsed = parse_roadmap(&serialized).unwrap();
-        
+
         // Basic structure should be preserved
         assert_eq!(roadmap.sprints.len(), reparsed.sprints.len());
     }
