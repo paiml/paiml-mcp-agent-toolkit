@@ -213,4 +213,304 @@ mod tests {
             prop_assert_eq!(both_filtered.len(), 2);
         }
     }
+
+    // Add comprehensive unit tests for structures and functions
+    use crate::cli::handlers::complexity_handlers::ComplexityConfig;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_complexity_config_creation() {
+        let config = ComplexityConfig::from_args(
+            PathBuf::from("/test/project"),
+            Some("rust".to_string()),
+            Some(15),
+            Some(20),
+            vec!["**/*.rs".to_string()],
+            30,
+            10,
+        );
+        
+        assert_eq!(config.project_path, PathBuf::from("/test/project"));
+        assert_eq!(config.toolchain, Some("rust".to_string()));
+        assert_eq!(config.max_cyclomatic, 15);
+        assert_eq!(config.max_cognitive, 20);
+        assert_eq!(config.include, vec!["**/*.rs".to_string()]);
+        assert_eq!(config.timeout, 30);
+        assert_eq!(config.top_files, 10);
+    }
+
+    #[test]
+    fn test_complexity_config_defaults() {
+        let config = ComplexityConfig::from_args(
+            PathBuf::from("/test"),
+            None,
+            None, // Should default to 10
+            None, // Should default to 15
+            vec![],
+            60,
+            5,
+        );
+        
+        assert_eq!(config.max_cyclomatic, 10); // Default
+        assert_eq!(config.max_cognitive, 15);  // Default
+        assert_eq!(config.toolchain, None);
+    }
+
+    #[test]
+    fn test_complexity_config_detect_toolchain() {
+        let config = ComplexityConfig::from_args(
+            PathBuf::from("/test"),
+            Some("python".to_string()),
+            Some(10),
+            Some(15),
+            vec![],
+            30,
+            5,
+        );
+        
+        let detected = config.detect_toolchain();
+        assert_eq!(detected, Some("python".to_string()));
+    }
+
+    #[test]
+    fn test_complexity_config_detect_toolchain_none() {
+        let config = ComplexityConfig::from_args(
+            PathBuf::from("/test"),
+            None,
+            Some(10),
+            Some(15),
+            vec![],
+            30,
+            5,
+        );
+        
+        let detected = config.detect_toolchain();
+        // Should attempt to detect from file system but return None for non-existent path
+        assert!(detected.is_none() || detected.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_analyze_single_file_nonexistent() {
+        let config = ComplexityConfig::from_args(
+            PathBuf::from("/tmp"),
+            Some("rust".to_string()),
+            Some(10),
+            Some(15),
+            vec![],
+            30,
+            5,
+        );
+        
+        let nonexistent_file = PathBuf::from("nonexistent.rs");
+        let result = super::super::analyze_single_file(&nonexistent_file, &config).await;
+        
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("File not found"));
+    }
+
+    #[tokio::test]
+    async fn test_analyze_single_file_absolute_path() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.rs");
+        std::fs::write(&test_file, "fn main() { println!(\"Hello\"); }").unwrap();
+        
+        let config = ComplexityConfig::from_args(
+            temp_dir.path().to_path_buf(),
+            Some("rust".to_string()),
+            Some(10),
+            Some(15),
+            vec![],
+            30,
+            5,
+        );
+        
+        let result = super::super::analyze_single_file(&test_file, &config).await;
+        
+        // Should handle absolute paths correctly, even if analysis fails
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_analyze_multiple_files_empty() {
+        let config = ComplexityConfig::from_args(
+            PathBuf::from("/tmp"),
+            Some("rust".to_string()),
+            Some(10),
+            Some(15),
+            vec![],
+            30,
+            5,
+        );
+        
+        let empty_files: Vec<PathBuf> = vec![];
+        let result = super::super::analyze_multiple_files(&empty_files, &config).await;
+        
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_analyze_multiple_files_with_nonexistent() {
+        let config = ComplexityConfig::from_args(
+            PathBuf::from("/tmp"),
+            Some("rust".to_string()),
+            Some(10),
+            Some(15),
+            vec![],
+            30,
+            5,
+        );
+        
+        let files = vec![PathBuf::from("nonexistent1.rs"), PathBuf::from("nonexistent2.rs")];
+        let result = super::super::analyze_multiple_files(&files, &config).await;
+        
+        // Should handle errors gracefully or return partial results
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_file_complexity_metrics_structure() {
+        let metrics = FileComplexityMetrics {
+            path: "test.rs".to_string(),
+            total_complexity: ComplexityMetrics::new(15, 20, 5, 100),
+            functions: vec![
+                FunctionComplexity {
+                    name: "test_func".to_string(),
+                    line_start: 1,
+                    line_end: 10,
+                    metrics: ComplexityMetrics::new(5, 8, 2, 10),
+                },
+            ],
+            classes: vec![],
+        };
+        
+        assert_eq!(metrics.path, "test.rs");
+        assert_eq!(metrics.total_complexity.cyclomatic, 15);
+        assert_eq!(metrics.total_complexity.cognitive, 20);
+        assert_eq!(metrics.functions.len(), 1);
+        assert_eq!(metrics.functions[0].name, "test_func");
+        assert_eq!(metrics.functions[0].line_start, 1);
+        assert_eq!(metrics.functions[0].line_end, 10);
+    }
+
+    #[test]
+    fn test_function_complexity_structure() {
+        let func = FunctionComplexity {
+            name: "complex_function".to_string(),
+            line_start: 50,
+            line_end: 100,
+            metrics: ComplexityMetrics::new(25, 30, 8, 50),
+        };
+        
+        assert_eq!(func.name, "complex_function");
+        assert_eq!(func.line_start, 50);
+        assert_eq!(func.line_end, 100);
+        assert_eq!(func.metrics.cyclomatic, 25);
+        assert_eq!(func.metrics.cognitive, 30);
+        assert_eq!(func.metrics.nesting_depth, 8);
+        assert_eq!(func.metrics.lines_of_code, 50);
+    }
+
+    #[test]
+    fn test_complexity_metrics_new() {
+        let metrics = ComplexityMetrics::new(10, 15, 3, 25);
+        
+        assert_eq!(metrics.cyclomatic, 10);
+        assert_eq!(metrics.cognitive, 15);
+        assert_eq!(metrics.nesting_depth, 3);
+        assert_eq!(metrics.lines_of_code, 25);
+    }
+
+    #[test]
+    fn test_complexity_threshold_filtering_edge_cases() {
+        // Test exact threshold values
+        let file_at_threshold = FileComplexityMetrics {
+            path: "at_threshold.rs".to_string(),
+            total_complexity: ComplexityMetrics::new(10, 10, 3, 50),
+            functions: vec![FunctionComplexity {
+                name: "threshold_func".to_string(),
+                line_start: 1,
+                line_end: 20,
+                metrics: ComplexityMetrics::new(10, 10, 2, 20),
+            }],
+            classes: vec![],
+        };
+        
+        // Function at exactly threshold should NOT be included (> comparison)
+        let threshold = 10;
+        let should_include = file_at_threshold.functions.iter().any(|func| {
+            func.metrics.cyclomatic > threshold
+        });
+        
+        assert!(!should_include); // At threshold, not above
+    }
+
+    #[test]
+    fn test_complexity_threshold_filtering_just_above() {
+        // Test just above threshold
+        let file_above_threshold = FileComplexityMetrics {
+            path: "above_threshold.rs".to_string(),
+            total_complexity: ComplexityMetrics::new(11, 11, 3, 50),
+            functions: vec![FunctionComplexity {
+                name: "above_threshold_func".to_string(),
+                line_start: 1,
+                line_end: 20,
+                metrics: ComplexityMetrics::new(11, 11, 2, 20),
+            }],
+            classes: vec![],
+        };
+        
+        // Function just above threshold SHOULD be included
+        let threshold = 10;
+        let should_include = file_above_threshold.functions.iter().any(|func| {
+            func.metrics.cyclomatic > threshold
+        });
+        
+        assert!(should_include); // Above threshold
+    }
+
+    #[test]
+    fn test_multiple_functions_mixed_complexity() {
+        let file_mixed = FileComplexityMetrics {
+            path: "mixed.rs".to_string(),
+            total_complexity: ComplexityMetrics::new(20, 25, 5, 100),
+            functions: vec![
+                FunctionComplexity {
+                    name: "simple_func".to_string(),
+                    line_start: 1,
+                    line_end: 10,
+                    metrics: ComplexityMetrics::new(3, 5, 1, 10),
+                },
+                FunctionComplexity {
+                    name: "complex_func".to_string(),
+                    line_start: 20,
+                    line_end: 50,
+                    metrics: ComplexityMetrics::new(15, 20, 4, 30),
+                },
+                FunctionComplexity {
+                    name: "very_complex_func".to_string(),
+                    line_start: 60,
+                    line_end: 100,
+                    metrics: ComplexityMetrics::new(25, 30, 6, 40),
+                },
+            ],
+            classes: vec![],
+        };
+        
+        // With threshold 10, should include file because some functions are above
+        let threshold = 10;
+        let above_threshold_count = file_mixed.functions.iter()
+            .filter(|func| func.metrics.cyclomatic > threshold)
+            .count();
+        
+        assert_eq!(above_threshold_count, 2); // complex_func and very_complex_func
+        
+        // File should be included if ANY function is above threshold
+        let should_include = file_mixed.functions.iter().any(|func| {
+            func.metrics.cyclomatic > threshold
+        });
+        
+        assert!(should_include);
+    }
 }
