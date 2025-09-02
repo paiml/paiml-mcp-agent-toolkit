@@ -1,6 +1,5 @@
 use crate::tdg::storage_backend::{StorageBackend, StorageBackendFactory, StorageConfig};
-use crate::tdg::{TdgScore, Grade};
-use crate::models::unified_ast::Language;
+use crate::tdg::TdgScore;
 use anyhow::{anyhow, Result};
 use blake3::Hash as Blake3Hash;
 use dashmap::DashMap;
