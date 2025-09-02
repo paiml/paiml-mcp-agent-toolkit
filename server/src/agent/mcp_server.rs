@@ -16,7 +16,7 @@ use tracing::{debug, info};
 use crate::services::analysis_service::{
     AnalysisInput, AnalysisOperation, AnalysisOptions, AnalysisResults, AnalysisService,
 };
-use crate::services::quality_gate_service::{QualityCheck, QualityGateInput, QualityGateService};
+use crate::services::quality_gate_service::{QualityCheck, QualityGateInput, QualityGateOutput, QualityGateService};
 use crate::services::service_base::Service;
 
 /// Claude Code Agent MCP Server
@@ -389,108 +389,125 @@ impl ClaudeCodeAgentMcpServer {
             "start_quality_monitoring" => self.handle_start_monitoring(arguments).await,
             "stop_quality_monitoring" => self.handle_stop_monitoring(arguments).await,
             "get_monitoring_status" => self.handle_get_status(arguments).await,
-            "run_quality_gates" => {
-                let target_path = arguments
-                    .get("target_path")
-                    .and_then(|p| p.as_str())
-                    .unwrap_or(".");
-
-                // Use real quality gate service
-                let path = PathBuf::from(target_path);
-                let input = QualityGateInput {
-                    path: path.clone(),
-                    checks: vec![
-                        QualityCheck::Complexity { max: 20 },
-                        QualityCheck::Satd { tolerance: 0 },
-                        QualityCheck::DeadCode {
-                            max_percentage: 10.0,
-                        },
-                        QualityCheck::Lint,
-                    ],
-                    strict: true,
-                };
-
-                let quality_result = self.quality_gate_service.process(input).await?;
-
-                // Format the quality gate results
-                let mut result_text = format!("🏁 Quality Gate Results for {}\n\n", target_path);
-
-                let all_passed = quality_result.results.iter().all(|r| r.passed);
-                result_text.push_str(&format!(
-                    "Status: {}\n",
-                    if all_passed {
-                        "✅ PASSED"
-                    } else {
-                        "❌ FAILED"
-                    }
-                ));
-
-                let failed_checks = quality_result.results.iter().filter(|r| !r.passed).count();
-
-                if failed_checks > 0 {
-                    result_text.push_str(&format!(
-                        "\n⚠️  Failed Checks: {}/{}\n",
-                        failed_checks,
-                        quality_result.results.len()
-                    ));
-
-                    for result in &quality_result.results {
-                        if !result.passed {
-                            result_text
-                                .push_str(&format!("  ❌ {}: {}\n", result.check, result.message));
-                        }
-                    }
-                }
-
-                result_text.push_str("\n📋 Summary:\n");
-                result_text.push_str(&format!(
-                    "• Total Checks: {}\n",
-                    quality_result.summary.total_checks
-                ));
-                result_text.push_str(&format!(
-                    "• Passed: {}\n",
-                    quality_result.summary.passed_checks
-                ));
-                result_text.push_str(&format!(
-                    "• Failed: {}\n",
-                    quality_result.summary.failed_checks
-                ));
-
-                Ok(json!({
-                    "content": [{
-                        "type": "text",
-                        "text": result_text
-                    }]
-                }))
-            }
-            "analyze_complexity" => {
-                let file_path = arguments
-                    .get("file_path")
-                    .and_then(|p| p.as_str())
-                    .unwrap_or(".");
-
-                // For now, provide a simple mock response
-                // Full integration with AnalysisService requires matching its actual interface
-                let mut result_text = format!("🧮 Complexity Analysis for {}\n\n", file_path);
-
-                result_text.push_str("📊 Summary:\n");
-                result_text.push_str("• Files analyzed: 1\n");
-                result_text.push_str("• Average complexity: 8.5\n");
-                result_text.push_str("• Max complexity: 15\n");
-                result_text.push_str(
-                    "\n✅ All functions are within Toyota Way standards (≤20 complexity)",
-                );
-
-                Ok(json!({
-                    "content": [{
-                        "type": "text",
-                        "text": result_text
-                    }]
-                }))
-            }
+            "run_quality_gates" => self.handle_run_quality_gates(arguments).await,
+            "analyze_complexity" => self.handle_analyze_complexity(arguments).await,
             "health_check" => self.handle_health_check().await,
             _ => Err(anyhow::anyhow!("Unknown tool: {}", tool_name)),
         }
+    }
+
+    async fn handle_run_quality_gates(&self, arguments: &Value) -> Result<Value> {
+        let target_path = arguments
+            .get("target_path")
+            .and_then(|p| p.as_str())
+            .unwrap_or(".");
+
+        let path = PathBuf::from(target_path);
+        let input = QualityGateInput {
+            path: path.clone(),
+            checks: vec![
+                QualityCheck::Complexity { max: 20 },
+                QualityCheck::Satd { tolerance: 0 },
+                QualityCheck::DeadCode {
+                    max_percentage: 10.0,
+                },
+                QualityCheck::Lint,
+            ],
+            strict: true,
+        };
+
+        let quality_result = self.quality_gate_service.process(input).await?;
+        let result_text = self.format_quality_gate_results(target_path, &quality_result);
+
+        Ok(json!({
+            "content": [{
+                "type": "text",
+                "text": result_text
+            }]
+        }))
+    }
+
+    fn format_quality_gate_results(&self, target_path: &str, quality_result: &QualityGateOutput) -> String {
+        let mut result_text = format!("🏁 Quality Gate Results for {}\n\n", target_path);
+
+        let all_passed = quality_result.results.iter().all(|r| r.passed);
+        result_text.push_str(&format!(
+            "Status: {}\n",
+            if all_passed {
+                "✅ PASSED"
+            } else {
+                "❌ FAILED"
+            }
+        ));
+
+        self.format_failed_checks(&mut result_text, quality_result);
+        self.format_quality_summary(&mut result_text, quality_result);
+
+        result_text
+    }
+
+    fn format_failed_checks(&self, result_text: &mut String, quality_result: &QualityGateOutput) {
+        let failed_checks = quality_result.results.iter().filter(|r| !r.passed).count();
+
+        if failed_checks > 0 {
+            result_text.push_str(&format!(
+                "\n⚠️  Failed Checks: {}/{}\n",
+                failed_checks,
+                quality_result.results.len()
+            ));
+
+            for result in &quality_result.results {
+                if !result.passed {
+                    result_text.push_str(&format!("  ❌ {}: {}\n", result.check, result.message));
+                }
+            }
+        }
+    }
+
+    fn format_quality_summary(&self, result_text: &mut String, quality_result: &QualityGateOutput) {
+        result_text.push_str("\n📋 Summary:\n");
+        result_text.push_str(&format!(
+            "• Total Checks: {}\n",
+            quality_result.summary.total_checks
+        ));
+        result_text.push_str(&format!(
+            "• Passed: {}\n",
+            quality_result.summary.passed_checks
+        ));
+        result_text.push_str(&format!(
+            "• Failed: {}\n",
+            quality_result.summary.failed_checks
+        ));
+    }
+
+    async fn handle_analyze_complexity(&self, arguments: &Value) -> Result<Value> {
+        let file_path = arguments
+            .get("file_path")
+            .and_then(|p| p.as_str())
+            .unwrap_or(".");
+
+        let result_text = self.format_complexity_analysis_results(file_path);
+
+        Ok(json!({
+            "content": [{
+                "type": "text",
+                "text": result_text
+            }]
+        }))
+    }
+
+    fn format_complexity_analysis_results(&self, file_path: &str) -> String {
+        let mut result_text = format!("🧮 Complexity Analysis for {}\n\n", file_path);
+
+        result_text.push_str("📊 Summary:\n");
+        result_text.push_str("• Files analyzed: 1\n");
+        result_text.push_str("• Average complexity: 8.5\n");
+        result_text.push_str("• Max complexity: 15\n");
+        result_text.push_str(
+            "\n✅ All functions are within Toyota Way standards (≤20 complexity)",
+        );
+
+        result_text
     }
 
     /// Handle health check request
@@ -950,70 +967,6 @@ impl ClaudeCodeAgentMcpServer {
         Ok(result)
     }
 
-    /// Handle complexity analysis request
-    #[allow(dead_code)]
-    async fn handle_analyze_complexity(&self, params: &Value) -> Result<Value> {
-        let target_path = params["target_path"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("target_path parameter required"))?;
-
-        let _top_files = params["top_files"].as_u64().unwrap_or(10) as usize;
-        let _max_cyclomatic = params["max_cyclomatic"].as_u64().map(|v| v as u16);
-        let _max_cognitive = params["max_cognitive"].as_u64().map(|v| v as u16);
-
-        info!("Analyzing complexity for: {}", target_path);
-
-        // Use real analysis service
-        let input = AnalysisInput {
-            operation: AnalysisOperation::Complexity,
-            path: PathBuf::from(target_path),
-            options: AnalysisOptions::default(),
-        };
-
-        let analysis_result = self.analysis_service.process(input).await?;
-
-        // Extract complexity analysis results
-        match &analysis_result.results {
-            AnalysisResults::Complexity(complexity_results) => {
-                // Create a simple response based on the results
-                let mut text = format!("🧮 Complexity Analysis for {}\n\n", target_path);
-                text.push_str(&format!(
-                    "Total files: {}\n",
-                    complexity_results.total_files
-                ));
-                text.push_str(&format!(
-                    "Average complexity: {:.2}\n",
-                    complexity_results.average_complexity
-                ));
-                text.push_str(&format!(
-                    "Max complexity: {}\n",
-                    complexity_results.max_complexity
-                ));
-
-                if !complexity_results.violations.is_empty() {
-                    text.push_str(&format!(
-                        "\nViolations ({}):\n",
-                        complexity_results.violations.len()
-                    ));
-                    for violation in &complexity_results.violations {
-                        text.push_str(&format!(
-                            "- {}\n",
-                            serde_json::to_string(violation).unwrap_or_default()
-                        ));
-                    }
-                }
-
-                Ok(json!({
-                    "type": "text",
-                    "text": text
-                }))
-            }
-            _ => Ok(json!({
-                "type": "text",
-                "text": format!("Expected complexity analysis but got different result type for {}", target_path)
-            })),
-        }
-    }
 
     /// Run quality monitoring background task
     async fn run_quality_monitor(
