@@ -416,6 +416,8 @@ impl TieredStorageFactory {
 mod tests {
     use super::*;
     use tempfile::TempDir;
+    use crate::tdg::Grade;
+    use crate::models::unified_ast::Language;
 
     fn create_test_record() -> FullTdgRecord {
         let content = b"fn test() { println!(\"hello\"); }";
