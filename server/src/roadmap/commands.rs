@@ -557,7 +557,7 @@ fn handle_start(task_id: String, create_branch: bool) -> Result<()> {
 
         // Attempt to create git branch (may fail in test environment)
         let result = std::process::Command::new("git")
-            .args(&["checkout", "-b", &branch_name])
+            .args(["checkout", "-b", &branch_name])
             .output();
 
         match result {
