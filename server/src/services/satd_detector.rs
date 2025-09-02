@@ -922,32 +922,33 @@ impl SATDDetector {
     }
 
     /// Check if file is minified or in vendor directory
-    /// Check if a line is likely test data or pattern definition
-    fn is_likely_test_data_or_pattern(&self, line: &str, file_path: &Path) -> bool {
-        // Skip if file is a SATD detector or test file
+    /// Check if file is SATD-related (detector, tests, etc.)
+    fn is_satd_related_file(&self, file_path: &Path) -> bool {
         let path_str = file_path.to_string_lossy();
-        if path_str.contains("satd_detector") || 
-           path_str.contains("satd_property_tests") ||
-           path_str.contains("quality_proxy") ||
-           path_str.contains("test") && path_str.contains("satd") {
-            // Check if line contains string literals with SATD markers
-            if line.contains(r#""TODO"#) || line.contains(r#""FIXME"#) || 
-               line.contains(r#""HACK"#) || line.contains(r#"'TODO'"#) ||
-               line.contains(r#"'FIXME'"#) || line.contains(r#"'HACK'"#) ||
-               line.contains("r#\"") || // Raw string literal
-               line.contains(".matches(") || // Pattern matching code
-               line.contains("regex:") || // Regex pattern definition
-               line.contains("DebtPattern") || // Pattern struct
-               line.contains("comment_text:") || // Test data field
-               line.contains("text: content") || // Field assignment
-               line.contains("classify_comment") { // Method call
-                return true;
-            }
-        }
-        
+        path_str.contains("satd_detector") || 
+        path_str.contains("satd_property_tests") ||
+        path_str.contains("quality_proxy") ||
+        (path_str.contains("test") && path_str.contains("satd"))
+    }
+    
+    /// Check if line contains SATD markers in string literals or code patterns
+    fn contains_satd_string_literals(&self, line: &str) -> bool {
+        line.contains(r#""TODO"#) || line.contains(r#""FIXME"#) || 
+        line.contains(r#""HACK"#) || line.contains(r#"'TODO'"#) ||
+        line.contains(r#"'FIXME'"#) || line.contains(r#"'HACK'"#) ||
+        line.contains("r#\"") || // Raw string literal
+        line.contains(".matches(") || // Pattern matching code
+        line.contains("regex:") || // Regex pattern definition
+        line.contains("DebtPattern") || // Pattern struct
+        line.contains("comment_text:") || // Test data field
+        line.contains("text: content") || // Field assignment
+        line.contains("classify_comment") // Method call
+    }
+    
+    /// Check if line is documentation or test assertion about SATD
+    fn is_satd_documentation_or_test(&self, line: &str) -> bool {
         // Skip doctest examples about SATD
         if line.contains("/// ") && (line.contains("TODO") || line.contains("FIXME")) {
-            // This is likely documentation about SATD, not actual SATD
             return true;
         }
         
@@ -957,6 +958,17 @@ impl SATDDetector {
         }
         
         false
+    }
+    
+    /// Check if a line is likely test data or pattern definition
+    fn is_likely_test_data_or_pattern(&self, line: &str, file_path: &Path) -> bool {
+        // Check if this is SATD-related code with string literals
+        if self.is_satd_related_file(file_path) && self.contains_satd_string_literals(line) {
+            return true;
+        }
+        
+        // Check if this is documentation or test assertion
+        self.is_satd_documentation_or_test(line)
     }
     
     fn is_minified_or_vendor_file(&self, path: &Path) -> bool {

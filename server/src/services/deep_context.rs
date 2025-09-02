@@ -3076,94 +3076,105 @@ impl DeepContextAnalyzer {
     }
 
     /// Create a DeepContextResult that's compatible with quality_gates expectations
+    /// Convert complexity report to QA format
+    fn convert_complexity_report_to_qa(&self, report: &ComplexityReport) -> ComplexityMetricsForQA {
+        ComplexityMetricsForQA {
+            files: report
+                .files
+                .iter()
+                .map(|f| FileComplexityMetricsForQA {
+                    path: std::path::PathBuf::from(&f.path),
+                    functions: f
+                        .functions
+                        .iter()
+                        .map(|func| FunctionComplexityForQA {
+                            name: func.name.clone(),
+                            cyclomatic: func.metrics.cyclomatic as u32,
+                            cognitive: func.metrics.cognitive as u32,
+                            nesting_depth: func.metrics.nesting_max as u32,
+                            start_line: func.line_start as usize,
+                            end_line: func.line_end as usize,
+                        })
+                        .collect(),
+                    total_cyclomatic: f.total_complexity.cyclomatic as u32,
+                    total_cognitive: f.total_complexity.cognitive as u32,
+                    total_lines: f.total_complexity.lines as usize,
+                })
+                .collect(),
+            summary: ComplexitySummaryForQA {
+                total_files: report.files.len(),
+                total_functions: report.files.par_iter().map(|f| f.functions.len()).sum(),
+            },
+        }
+    }
+    
+    /// Create fallback complexity metrics from file discovery
+    fn create_fallback_complexity_metrics(&self, context: &DeepContext) -> Option<ComplexityMetricsForQA> {
+        let file_paths = self.collect_file_paths(&context.file_tree.root);
+        let mut files_with_lines = Vec::new();
+        let project_root = &context.metadata.project_root;
+        
+        debug!(
+            "QA Fallback: Counting lines from {} files in {:?}",
+            file_paths.len(),
+            project_root
+        );
+        
+        for path_str in &file_paths {
+            if let Some(file_metrics) = self.process_file_for_fallback(path_str, project_root) {
+                files_with_lines.push(file_metrics);
+            }
+        }
+        
+        if !files_with_lines.is_empty() {
+            Some(ComplexityMetricsForQA {
+                files: files_with_lines,
+                summary: ComplexitySummaryForQA {
+                    total_files: 0,
+                    total_functions: 0,
+                },
+            })
+        } else {
+            None
+        }
+    }
+    
+    /// Process single file for fallback metrics
+    fn process_file_for_fallback(&self, path_str: &str, project_root: &std::path::Path) -> Option<FileComplexityMetricsForQA> {
+        let full_path = if std::path::Path::new(path_str).is_absolute() {
+            std::path::PathBuf::from(path_str)
+        } else {
+            project_root.join(path_str)
+        };
+        
+        if full_path.exists() && full_path.is_file() {
+            if let Ok(content) = std::fs::read_to_string(&full_path) {
+                let line_count = content.lines().count();
+                
+                if line_count > 0 {
+                    return Some(FileComplexityMetricsForQA {
+                        path: full_path,
+                        functions: Vec::new(),
+                        total_cyclomatic: 0,
+                        total_cognitive: 0,
+                        total_lines: line_count,
+                    });
+                }
+            }
+        }
+        
+        None
+    }
+    
     fn create_qa_compatible_result(
         &self,
         context: &DeepContext,
     ) -> anyhow::Result<DeepContextResult> {
-        // For QA verification, we need to ensure certain fields are populated
-        // that the quality_gates module expects
-
-        // Create complexity metrics from the analysis results
-        // If we don't have a complexity report, create basic metrics from file discovery
+        // Create complexity metrics from analysis results or fallback
         let complexity_metrics = if let Some(report) = context.analyses.complexity_report.as_ref() {
-            Some(ComplexityMetricsForQA {
-                files: report
-                    .files
-                    .iter()
-                    .map(|f| FileComplexityMetricsForQA {
-                        path: std::path::PathBuf::from(&f.path),
-                        functions: f
-                            .functions
-                            .iter()
-                            .map(|func| FunctionComplexityForQA {
-                                name: func.name.clone(),
-                                cyclomatic: func.metrics.cyclomatic as u32,
-                                cognitive: func.metrics.cognitive as u32,
-                                nesting_depth: func.metrics.nesting_max as u32,
-                                start_line: func.line_start as usize,
-                                end_line: func.line_end as usize,
-                            })
-                            .collect(),
-                        total_cyclomatic: f.total_complexity.cyclomatic as u32,
-                        total_cognitive: f.total_complexity.cognitive as u32,
-                        total_lines: f.total_complexity.lines as usize,
-                    })
-                    .collect(),
-                summary: ComplexitySummaryForQA {
-                    total_files: report.files.len(),
-                    total_functions: report.files.par_iter().map(|f| f.functions.len()).sum(),
-                },
-            })
+            Some(self.convert_complexity_report_to_qa(report))
         } else {
-            // Fallback: Count lines from all discovered files
-            let file_paths = self.collect_file_paths(&context.file_tree.root);
-            let mut files_with_lines = Vec::new();
-
-            // Build full paths using the project root
-            let project_root = &context.metadata.project_root;
-
-            debug!(
-                "QA Fallback: Counting lines from {} files in {:?}",
-                file_paths.len(),
-                project_root
-            );
-
-            for path_str in &file_paths {
-                // Try both relative and absolute paths
-                let full_path = if std::path::Path::new(path_str).is_absolute() {
-                    std::path::PathBuf::from(path_str)
-                } else {
-                    project_root.join(path_str)
-                };
-
-                if full_path.exists() && full_path.is_file() {
-                    if let Ok(content) = std::fs::read_to_string(&full_path) {
-                        let line_count = content.lines().count();
-
-                        if line_count > 0 {
-                            files_with_lines.push(FileComplexityMetricsForQA {
-                                path: full_path.clone(),
-                                functions: Vec::new(),
-                                total_cyclomatic: 0,
-                                total_cognitive: 0,
-                                total_lines: line_count,
-                            });
-                        }
-                    }
-                }
-            }
-
-            if !files_with_lines.is_empty() {
-                Some(ComplexityMetricsForQA {
-                    files: files_with_lines,
-                    summary: ComplexitySummaryForQA {
-                        total_files: file_paths.len(),
-                        total_functions: 0,
-                    },
-                })
-            } else {
-                None
-            }
+            self.create_fallback_complexity_metrics(context)
         };
 
         // Create dead code analysis from the results
