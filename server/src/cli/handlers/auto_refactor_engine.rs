@@ -377,25 +377,22 @@ fn apply_refactor_auto_refactoring(content: &str) -> Result<String> {
     Ok(content.to_string())
 }
 
-/// Apply format_defect_markdown refactoring
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the operation fails
+/// Apply defect markdown refactoring to content
+/// 
+/// # Errors
+///
+/// Returns an error if the operation fails
 fn apply_defect_markdown_refactoring(content: &str) -> Result<String> {
     // Implementation would go here
     // For brevity, returning the original content
     Ok(content.to_string())
-    /// # Errors
-    ///
-    /// Returns an error if the operation fails
 }
 
 /// Main entry point for automated refactoring
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the operation fails
+///
+/// # Errors
+///
+/// Returns an error if the operation fails
 pub async fn apply_automated_refactorings(project_path: &Path) -> Result<()> {
     eprintln!("🤖 Starting fully automated refactoring...");
     

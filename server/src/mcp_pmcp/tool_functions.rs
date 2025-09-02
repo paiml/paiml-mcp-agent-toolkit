@@ -403,7 +403,7 @@ pub async fn tdg_storage_management(
 pub async fn tdg_analyze_with_storage(
     paths: Vec<PathBuf>,
     storage_backend: Option<String>, // "sled", "rocksdb", "inmemory"
-    priority: Option<String>,        // "critical", "high", "medium", "low"
+    _priority: Option<String>,        // "critical", "high", "medium", "low"
 ) -> Result<Value> {
     // Create appropriate storage backend
     let storage = match storage_backend.as_deref() {

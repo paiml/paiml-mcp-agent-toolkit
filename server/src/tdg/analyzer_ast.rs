@@ -671,7 +671,7 @@ impl TdgAnalyzerAst {
         &self,
         source: &str,
         score: &mut TdgScore,
-        tracker: &mut PenaltyTracker,
+        _tracker: &mut PenaltyTracker,
     ) -> Result<()> {
         // Fallback heuristic analysis (mark as low confidence)
         score.confidence *= 0.3;
