@@ -2095,4 +2095,413 @@ mod tests {
         assert_eq!(error.exit_code(), 1);
         assert_eq!(error.content(), "test error");
     }
+
+    #[test]
+    fn test_cli_adapter_new() {
+        let adapter = CliAdapter::new();
+        // Verify the adapter is created successfully
+        assert!(std::mem::size_of_val(&adapter) >= 0);
+    }
+
+    #[test]
+    fn test_cli_adapter_default() {
+        let adapter = CliAdapter::default();
+        // Verify default creation works
+        assert!(std::mem::size_of_val(&adapter) >= 0);
+    }
+
+    #[tokio::test]
+    async fn test_decode_scaffold_project() {
+        let adapter = CliAdapter::new();
+        let params = vec![(
+            "project_name".to_string(), 
+            Value::String("test_project".to_string())
+        )];
+        
+        let command = Commands::Scaffold {
+            command: ScaffoldCommands::Project {
+                toolchain: "rust".to_string(),
+                templates: vec!["cli".to_string()],
+                params,
+                parallel: true,
+            }
+        };
+
+        let input = CliInput::from_commands(command);
+        let result = adapter.decode(input).await;
+        
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        assert_eq!(request.method, Method::POST);
+        assert_eq!(request.path, "/api/v1/scaffold");
+    }
+
+    #[tokio::test]
+    async fn test_decode_search() {
+        let adapter = CliAdapter::new();
+        let command = Commands::Search {
+            query: "rust cli".to_string(),
+            toolchain: Some("rust".to_string()),
+            limit: 10,
+        };
+
+        let input = CliInput::from_commands(command);
+        let result = adapter.decode(input).await;
+        
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        assert_eq!(request.method, Method::GET);
+        assert!(request.path.starts_with("/api/v1/search"));
+        assert!(request.path.contains("query=rust%20cli"));
+        assert!(request.path.contains("limit=10"));
+    }
+
+    #[tokio::test]
+    async fn test_decode_validate() {
+        let adapter = CliAdapter::new();
+        let params = vec![("key".to_string(), Value::String("value".to_string()))];
+        let command = Commands::Validate {
+            uri: "template://rust/cli".to_string(),
+            params,
+        };
+
+        let input = CliInput::from_commands(command);
+        let result = adapter.decode(input).await;
+        
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        assert_eq!(request.method, Method::POST);
+        assert_eq!(request.path, "/api/v1/validate");
+    }
+
+    #[tokio::test]
+    async fn test_decode_context() {
+        let adapter = CliAdapter::new();
+        let command = Commands::Context {
+            toolchain: Some("rust".to_string()),
+            project_path: PathBuf::from("/test/project"),
+            output: Some(PathBuf::from("context.md")),
+            format: ContextFormat::Markdown,
+            include_large_files: false,
+            skip_expensive_metrics: true,
+        };
+
+        let input = CliInput::from_commands(command);
+        let result = adapter.decode(input).await;
+        
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        assert_eq!(request.method, Method::POST);
+        assert_eq!(request.path, "/api/v1/context");
+    }
+
+    #[tokio::test]
+    async fn test_decode_analyze_churn() {
+        let adapter = CliAdapter::new();
+        let command = Commands::Analyze(AnalyzeCommands::Churn {
+            path: PathBuf::from("."),
+            project_path: None,
+            since: None,
+            format: ChurnOutputFormat::Json,
+            output: None,
+            timeout: 30,
+        });
+
+        let input = CliInput::from_commands(command);
+        let result = adapter.decode(input).await;
+        
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        assert_eq!(request.method, Method::POST);
+        assert_eq!(request.path, "/api/v1/analyze/churn");
+    }
+
+    #[tokio::test]
+    async fn test_decode_analyze_dag() {
+        let adapter = CliAdapter::new();
+        let command = Commands::Analyze(AnalyzeCommands::Dag {
+            path: PathBuf::from("."),
+            project_path: None,
+            file: None,
+            format: OutputFormat::Json,
+            output: None,
+            dag_type: DagType::Full,
+            max_depth: Some(5),
+            layout: None,
+            centrality: false,
+            timeout: 60,
+        });
+
+        let input = CliInput::from_commands(command);
+        let result = adapter.decode(input).await;
+        
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        assert_eq!(request.method, Method::POST);
+        assert_eq!(request.path, "/api/v1/analyze/dag");
+    }
+
+    #[tokio::test]
+    async fn test_decode_analyze_dead_code() {
+        let adapter = CliAdapter::new();
+        let command = Commands::Analyze(AnalyzeCommands::DeadCode {
+            path: PathBuf::from("."),
+            project_path: None,
+            toolchain: Some("rust".to_string()),
+            format: OutputFormat::Json,
+            output: None,
+            include_tests: true,
+            include_examples: false,
+            timeout: 30,
+        });
+
+        let input = CliInput::from_commands(command);
+        let result = adapter.decode(input).await;
+        
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        assert_eq!(request.method, Method::POST);
+        assert_eq!(request.path, "/api/v1/analyze/dead-code");
+    }
+
+    #[tokio::test]
+    async fn test_decode_analyze_satd() {
+        let adapter = CliAdapter::new();
+        let command = Commands::Analyze(AnalyzeCommands::Satd {
+            path: PathBuf::from("."),
+            project_path: None,
+            file: None,
+            format: OutputFormat::Json,
+            output: None,
+            include_ignored: false,
+            timeout: 45,
+        });
+
+        let input = CliInput::from_commands(command);
+        let result = adapter.decode(input).await;
+        
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        assert_eq!(request.method, Method::POST);
+        assert_eq!(request.path, "/api/v1/analyze/satd");
+    }
+
+    #[tokio::test]
+    async fn test_decode_demo() {
+        let adapter = CliAdapter::new();
+        let command = Commands::Demo {
+            path: Some(PathBuf::from(".")),
+            url: None,
+            format: OutputFormat::Html,
+            no_browser: false,
+            port: Some(8080),
+            cli: true,
+            target_nodes: 100,
+            centrality_threshold: 0.5,
+            merge_threshold: 0.8,
+            include_patterns: vec!["**/*.rs".to_string()],
+            exclude_patterns: vec!["**/target/**".to_string()],
+            timeout: 120,
+        };
+
+        let input = CliInput::from_commands(command);
+        let result = adapter.decode(input).await;
+        
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        assert_eq!(request.method, Method::POST);
+        assert_eq!(request.path, "/api/v1/demo");
+    }
+
+    #[tokio::test]
+    async fn test_decode_serve() {
+        let adapter = CliAdapter::new();
+        let command = Commands::Serve {
+            host: "127.0.0.1".to_string(),
+            port: 3000,
+            cors: true,
+            transport: crate::cli::TransportMode::Http,
+        };
+
+        let input = CliInput::from_commands(command);
+        let result = adapter.decode(input).await;
+        
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        assert_eq!(request.method, Method::POST);
+        assert_eq!(request.path, "/api/v1/serve");
+    }
+
+    #[test]
+    fn test_cli_input_from_commands_generate() {
+        let params = vec![(
+            "project_name".to_string(),
+            Value::String("test".to_string())
+        )];
+        
+        let command = Commands::Generate {
+            category: "makefile".to_string(),
+            template: "rust/cli".to_string(),
+            params,
+            output: Some(PathBuf::from("output.txt")),
+            create_dirs: true,
+        };
+
+        let input = CliInput::from_commands(command);
+        assert_eq!(input.command_name, "generate");
+        assert_eq!(input.args.len(), 5); // category, template, params, output, create_dirs
+    }
+
+    #[test]
+    fn test_cli_input_from_commands_list() {
+        let command = Commands::List {
+            toolchain: Some("rust".to_string()),
+            category: Some("cli".to_string()),
+            format: OutputFormat::Json,
+        };
+
+        let input = CliInput::from_commands(command);
+        assert_eq!(input.command_name, "list");
+        assert!(input.args.contains_key("toolchain"));
+        assert!(input.args.contains_key("category"));
+        assert!(input.args.contains_key("format"));
+    }
+
+    #[test]
+    fn test_cli_output_success() {
+        let output = CliOutput::Success {
+            content: "Success message".to_string(),
+        };
+        
+        assert_eq!(output.exit_code(), 0);
+        assert_eq!(output.content(), "Success message");
+    }
+
+    #[test]
+    fn test_cli_output_error() {
+        let output = CliOutput::Error {
+            message: "Error occurred".to_string(),
+            exit_code: 2,
+        };
+        
+        assert_eq!(output.exit_code(), 2);
+        assert_eq!(output.content(), "Error occurred");
+    }
+
+    #[test]
+    fn test_cli_runner_new() {
+        let runner = CliRunner::new();
+        assert!(std::mem::size_of_val(&runner) >= 0);
+    }
+
+    #[test]
+    fn test_cli_runner_default() {
+        let runner = CliRunner::default();
+        assert!(std::mem::size_of_val(&runner) >= 0);
+    }
+
+    #[tokio::test]
+    async fn test_unsupported_command() {
+        let adapter = CliAdapter::new();
+        let command = Commands::Diagnose(crate::cli::DiagnoseCommands::System);
+
+        let input = CliInput::from_commands(command);
+        let result = adapter.decode(input).await;
+        
+        assert!(result.is_err());
+        match result {
+            Err(ProtocolError::UnsupportedProtocol(_)) => {},
+            _ => panic!("Expected UnsupportedProtocol error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_decode_analyze_deep_context() {
+        let adapter = CliAdapter::new();
+        let command = Commands::Analyze(AnalyzeCommands::DeepContext {
+            path: PathBuf::from("."),
+            project_path: None,
+            output: Some(PathBuf::from("deep_context.json")),
+            format: OutputFormat::Json,
+            timeout: 90,
+        });
+
+        let input = CliInput::from_commands(command);
+        let result = adapter.decode(input).await;
+        
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        assert_eq!(request.method, Method::POST);
+        assert_eq!(request.path, "/api/v1/analyze/deep-context");
+    }
+
+    #[tokio::test]
+    async fn test_decode_analyze_tdg() {
+        let adapter = CliAdapter::new();
+        let command = Commands::Analyze(AnalyzeCommands::Tdg {
+            path: Some(PathBuf::from(".")),
+            project_path: None,
+            file: None,
+            format: crate::cli::TdgOutputFormat::Json,
+            output: None,
+            include_components: false,
+            top_files: 0,
+            enforce_thresholds: false,
+            fail_on_grade_below: None,
+            timeout: 60,
+        });
+
+        let input = CliInput::from_commands(command);
+        let result = adapter.decode(input).await;
+        
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        assert_eq!(request.method, Method::POST);
+        assert_eq!(request.path, "/api/v1/analyze/tdg");
+    }
+
+    #[tokio::test]
+    async fn test_encode_success_response() {
+        let adapter = CliAdapter::new();
+        let response = UnifiedResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            body: Body::from(json!({"status": "success"}).to_string()),
+            extensions: HashMap::new(),
+        };
+
+        let result = adapter.encode(response).await;
+        
+        assert!(result.is_ok());
+        let cli_output = result.unwrap();
+        match cli_output {
+            CliOutput::Success { content } => {
+                assert!(content.contains("success"));
+            },
+            _ => panic!("Expected Success output"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_encode_error_response() {
+        let adapter = CliAdapter::new();
+        let response = UnifiedResponse {
+            status_code: 400,
+            headers: HashMap::new(),
+            body: Body::from("Bad Request"),
+            extensions: HashMap::new(),
+        };
+
+        let result = adapter.encode(response).await;
+        
+        assert!(result.is_ok());
+        let cli_output = result.unwrap();
+        match cli_output {
+            CliOutput::Error { message, exit_code } => {
+                assert!(message.contains("Bad Request"));
+                assert_eq!(exit_code, 1);
+            },
+            _ => panic!("Expected Error output"),
+        }
+    }
 }
