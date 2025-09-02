@@ -411,37 +411,97 @@ async fn analyze_multiple_files(
 ) -> Result<String> {
     eprintln!("📄 Analyzing TDG for {} files...", files.len());
 
+    let results = process_files_for_tdg(
+        calculator,
+        project_path,
+        files,
+        threshold,
+        critical_only,
+    ).await;
+
+    let filtered_results = apply_results_filtering(results, top_files);
+    let summary = create_summary_from_file_results(&filtered_results);
+    
+    format_output_from_summary(&summary, format, include_components, verbose)
+}
+
+/// Process multiple files for TDG analysis
+async fn process_files_for_tdg(
+    calculator: &crate::services::tdg_calculator::TDGCalculator,
+    project_path: &Path,
+    files: Vec<PathBuf>,
+    threshold: f64,
+    critical_only: bool,
+) -> Vec<(crate::models::tdg::TDGScore, PathBuf)> {
     let mut results = Vec::new();
 
     for file_path in files {
-        let full_path = if file_path.is_absolute() {
-            file_path
-        } else {
-            project_path.join(&file_path)
-        };
+        let full_path = resolve_file_path(project_path, file_path);
 
         if !full_path.exists() {
             eprintln!("⚠️  Skipping missing file: {}", full_path.display());
             continue;
         }
 
-        match calculator.calculate_file(&full_path).await {
-            Ok(score) => {
-                // Apply filters
-                if critical_only && score.value <= 2.5 {
-                    continue;
-                }
-                if score.value < threshold {
-                    continue;
-                }
-                results.push((score, full_path));
-            }
-            Err(e) => {
-                eprintln!("⚠️  Error analyzing {}: {}", full_path.display(), e);
-            }
+        if let Some(score) = calculate_and_filter_file(calculator, &full_path, threshold, critical_only).await {
+            results.push((score, full_path));
         }
     }
 
+    results
+}
+
+/// Resolve file path relative to project directory
+fn resolve_file_path(project_path: &Path, file_path: PathBuf) -> PathBuf {
+    if file_path.is_absolute() {
+        file_path
+    } else {
+        project_path.join(&file_path)
+    }
+}
+
+/// Calculate TDG score for file and apply filters
+async fn calculate_and_filter_file(
+    calculator: &crate::services::tdg_calculator::TDGCalculator,
+    full_path: &Path,
+    threshold: f64,
+    critical_only: bool,
+) -> Option<crate::models::tdg::TDGScore> {
+    match calculator.calculate_file(full_path).await {
+        Ok(score) => {
+            if should_include_score(&score, threshold, critical_only) {
+                Some(score)
+            } else {
+                None
+            }
+        }
+        Err(e) => {
+            eprintln!("⚠️  Error analyzing {}: {}", full_path.display(), e);
+            None
+        }
+    }
+}
+
+/// Check if score should be included based on filters
+fn should_include_score(
+    score: &crate::models::tdg::TDGScore,
+    threshold: f64,
+    critical_only: bool,
+) -> bool {
+    if critical_only && score.value <= 2.5 {
+        return false;
+    }
+    if score.value < threshold {
+        return false;
+    }
+    true
+}
+
+/// Apply sorting and top_files limit to results
+fn apply_results_filtering(
+    mut results: Vec<(crate::models::tdg::TDGScore, PathBuf)>,
+    top_files: usize,
+) -> Vec<(crate::models::tdg::TDGScore, PathBuf)> {
     // Sort by TDG score descending
     results.sort_by(|a, b| b.0.value.partial_cmp(&a.0.value).unwrap());
 
@@ -450,11 +510,7 @@ async fn analyze_multiple_files(
         results.truncate(top_files);
     }
 
-    // Create synthetic summary
-    let summary = create_summary_from_file_results(&results);
-
-    // Format output
-    format_output_from_summary(&summary, format, include_components, verbose)
+    results
 }
 
 /// Analyze entire project and return formatted output
@@ -2219,28 +2275,68 @@ fn write_markdown_summary_table(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
-    use std::fmt::Write;
+    write_markdown_table_header(output)?;
+    write_summary_data_rows(output, summary)?;
+    Ok(())
+}
 
+/// Write the markdown table header for summary statistics
+fn write_markdown_table_header(output: &mut String) -> Result<()> {
+    use std::fmt::Write;
+    
     writeln!(output, "## Summary Statistics\n")?;
     writeln!(output, "| Metric | Value |")?;
     writeln!(output, "|--------|-------|")?;
-    writeln!(output, "| Total Commits | {} |", summary.total_commits)?;
-    writeln!(
-        output,
-        "| Files Changed | {} |",
-        summary.total_files_changed
-    )?;
-    writeln!(
-        output,
-        "| Hotspot Files | {} |",
-        summary.hotspot_files.len()
-    )?;
-    writeln!(output, "| Stable Files | {} |", summary.stable_files.len())?;
-    writeln!(
-        output,
-        "| Contributing Authors | {} |",
-        summary.author_contributions.len()
-    )?;
+    Ok(())
+}
+
+/// Write all summary data rows to the markdown table
+fn write_summary_data_rows(
+    output: &mut String,
+    summary: &crate::models::churn::ChurnSummary,
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    write_commits_row(output, summary.total_commits)?;
+    write_files_changed_row(output, summary.total_files_changed)?;
+    write_hotspot_files_row(output, summary.hotspot_files.len())?;
+    write_stable_files_row(output, summary.stable_files.len())?;
+    write_authors_row(output, summary.author_contributions.len())?;
+    Ok(())
+}
+
+/// Write total commits row
+fn write_commits_row(output: &mut String, total_commits: usize) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "| Total Commits | {} |", total_commits)?;
+    Ok(())
+}
+
+/// Write files changed row
+fn write_files_changed_row(output: &mut String, files_changed: usize) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "| Files Changed | {} |", files_changed)?;
+    Ok(())
+}
+
+/// Write hotspot files row
+fn write_hotspot_files_row(output: &mut String, hotspot_count: usize) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "| Hotspot Files | {} |", hotspot_count)?;
+    Ok(())
+}
+
+/// Write stable files row
+fn write_stable_files_row(output: &mut String, stable_count: usize) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "| Stable Files | {} |", stable_count)?;
+    Ok(())
+}
+
+/// Write contributing authors row
+fn write_authors_row(output: &mut String, author_count: usize) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "| Contributing Authors | {} |", author_count)?;
     Ok(())
 }
 
@@ -2894,16 +2990,28 @@ fn print_selected_checks(checks: &[QualityCheckType]) {
 
 /// Toyota Way: Extract Method - Print single check description (complexity ≤7)
 fn print_single_check(check: &QualityCheckType) {
-    match check {
-        QualityCheckType::Complexity => eprintln!("  ✓ Complexity analysis"),
-        QualityCheckType::DeadCode => eprintln!("  ✓ Dead code detection"),
-        QualityCheckType::Satd => eprintln!("  ✓ Self-admitted technical debt (SATD)"),
-        QualityCheckType::Security => eprintln!("  ✓ Security vulnerabilities"),
-        QualityCheckType::Entropy => eprintln!("  ✓ Code entropy"),
-        QualityCheckType::Duplicates => eprintln!("  ✓ Duplicate code"),
-        QualityCheckType::Coverage => eprintln!("  ✓ Test coverage"),
-        _ => {}
+    if let Some(message) = get_check_message(check) {
+        print_check_success(&message);
     }
+}
+
+/// Get the success message for a specific quality check type
+fn get_check_message(check: &QualityCheckType) -> Option<&'static str> {
+    match check {
+        QualityCheckType::Complexity => Some("Complexity analysis"),
+        QualityCheckType::DeadCode => Some("Dead code detection"),
+        QualityCheckType::Satd => Some("Self-admitted technical debt (SATD)"),
+        QualityCheckType::Security => Some("Security vulnerabilities"),
+        QualityCheckType::Entropy => Some("Code entropy"),
+        QualityCheckType::Duplicates => Some("Duplicate code"),
+        QualityCheckType::Coverage => Some("Test coverage"),
+        _ => None,
+    }
+}
+
+/// Print a check success message with consistent formatting
+fn print_check_success(message: &str) {
+    eprintln!("  ✓ {}", message);
 }
 
 /// Handles quality gate checks for a single file
@@ -4440,37 +4548,66 @@ pub async fn check_dead_code(
 /// # });
 /// ```
 pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
-    use regex::Regex;
     use walkdir::WalkDir;
 
     let mut violations = Vec::new();
-    let satd_pattern = Regex::new(r"(?i)\b(TODO|FIXME|HACK|XXX|BUG|REFACTOR):\s*(.+)").unwrap();
+    let satd_pattern = create_satd_pattern();
 
     for entry in WalkDir::new(project_path) {
         let entry = entry?;
         let path = entry.path();
 
-        if path.is_file() && is_source_file(path) {
+        if should_process_file_for_satd(path) {
             if let Ok(content) = tokio::fs::read_to_string(path).await {
-                for (line_no, line) in content.lines().enumerate() {
-                    if let Some(captures) = satd_pattern.captures(line) {
-                        let satd_type = captures.get(1).unwrap().as_str();
-                        let text = captures.get(2).unwrap().as_str();
-
-                        violations.push(QualityViolation {
-                            check_type: "satd".to_string(),
-                            severity: "warning".to_string(),
-                            file: path.to_string_lossy().to_string(),
-                            line: Some(line_no + 1),
-                            message: format!("Technical debt: {satd_type} - {text}"),
-                        });
-                    }
-                }
+                process_file_content_for_satd(&content, path, &satd_pattern, &mut violations);
             }
         }
     }
 
     Ok(violations)
+}
+
+/// Create the SATD detection regex pattern
+fn create_satd_pattern() -> regex::Regex {
+    regex::Regex::new(r"(?i)\b(TODO|FIXME|HACK|XXX|BUG|REFACTOR):\s*(.+)").unwrap()
+}
+
+/// Check if a file should be processed for SATD detection
+fn should_process_file_for_satd(path: &Path) -> bool {
+    path.is_file() && is_source_file(path)
+}
+
+/// Process file content for SATD violations
+fn process_file_content_for_satd(
+    content: &str,
+    file_path: &Path,
+    pattern: &regex::Regex,
+    violations: &mut Vec<QualityViolation>,
+) {
+    for (line_no, line) in content.lines().enumerate() {
+        if let Some(captures) = pattern.captures(line) {
+            let violation = create_satd_violation(file_path, line_no + 1, &captures);
+            violations.push(violation);
+        }
+    }
+}
+
+/// Create a SATD quality violation from regex captures
+fn create_satd_violation(
+    file_path: &Path,
+    line_number: usize,
+    captures: &regex::Captures,
+) -> QualityViolation {
+    let satd_type = captures.get(1).unwrap().as_str();
+    let text = captures.get(2).unwrap().as_str();
+
+    QualityViolation {
+        check_type: "satd".to_string(),
+        severity: "warning".to_string(),
+        file: file_path.to_string_lossy().to_string(),
+        line: Some(line_number),
+        message: format!("Technical debt: {satd_type} - {text}"),
+    }
 }
 
 /// Check code entropy (diversity) across the project
@@ -4521,41 +4658,99 @@ pub async fn check_entropy(project_path: &Path, min_entropy: f64) -> Result<Vec<
     use walkdir::WalkDir;
 
     let mut violations = Vec::new();
-    let mut total_entropy = 0.0;
-    let mut file_count = 0;
+    let mut entropy_stats = EntropyStats::new();
 
-    // Calculate entropy for each source file
     for entry in WalkDir::new(project_path) {
         let entry = entry?;
         let path = entry.path();
 
-        if path.is_file() && is_source_file(path) {
+        if should_process_file_for_entropy(path) {
             if let Ok(content) = tokio::fs::read_to_string(path).await {
-                // Calculate Shannon entropy at character level for code diversity
-                let entropy = calculate_code_entropy(&content);
-
-                if entropy < min_entropy {
-                    violations.push(QualityViolation {
-                        check_type: "entropy".to_string(),
-                        severity: "warning".to_string(),
-                        file: path.to_string_lossy().to_string(),
-                        line: None,
-                        message: format!(
-                            "Low code diversity detected: entropy {:.2} is below minimum {:.2}",
-                            entropy, min_entropy
-                        ),
-                    });
-                }
-
-                total_entropy += entropy;
-                file_count += 1;
+                process_file_entropy(&content, path, min_entropy, &mut violations, &mut entropy_stats);
             }
         }
     }
 
-    // Check project-wide average entropy
-    if file_count > 0 {
-        let avg_entropy = total_entropy / file_count as f64;
+    check_project_average_entropy(project_path, min_entropy, &entropy_stats, &mut violations);
+    Ok(violations)
+}
+
+/// Statistics tracker for entropy analysis
+struct EntropyStats {
+    total_entropy: f64,
+    file_count: usize,
+}
+
+impl EntropyStats {
+    fn new() -> Self {
+        Self {
+            total_entropy: 0.0,
+            file_count: 0,
+        }
+    }
+    
+    fn add_file_entropy(&mut self, entropy: f64) {
+        self.total_entropy += entropy;
+        self.file_count += 1;
+    }
+    
+    fn average_entropy(&self) -> Option<f64> {
+        if self.file_count > 0 {
+            Some(self.total_entropy / self.file_count as f64)
+        } else {
+            None
+        }
+    }
+}
+
+/// Check if a file should be processed for entropy analysis
+fn should_process_file_for_entropy(path: &Path) -> bool {
+    path.is_file() && is_source_file(path)
+}
+
+/// Process a single file's entropy and update violations
+fn process_file_entropy(
+    content: &str,
+    file_path: &Path,
+    min_entropy: f64,
+    violations: &mut Vec<QualityViolation>,
+    entropy_stats: &mut EntropyStats,
+) {
+    let entropy = calculate_code_entropy(content);
+    
+    if entropy < min_entropy {
+        violations.push(create_entropy_violation(file_path, entropy, min_entropy));
+    }
+    
+    entropy_stats.add_file_entropy(entropy);
+}
+
+/// Create an entropy quality violation
+fn create_entropy_violation(
+    file_path: &Path,
+    entropy: f64,
+    min_entropy: f64,
+) -> QualityViolation {
+    QualityViolation {
+        check_type: "entropy".to_string(),
+        severity: "warning".to_string(),
+        file: file_path.to_string_lossy().to_string(),
+        line: None,
+        message: format!(
+            "Low code diversity detected: entropy {:.2} is below minimum {:.2}",
+            entropy, min_entropy
+        ),
+    }
+}
+
+/// Check project-wide average entropy and add violation if needed
+fn check_project_average_entropy(
+    project_path: &Path,
+    min_entropy: f64,
+    entropy_stats: &EntropyStats,
+    violations: &mut Vec<QualityViolation>,
+) {
+    if let Some(avg_entropy) = entropy_stats.average_entropy() {
         if avg_entropy < min_entropy {
             violations.push(QualityViolation {
                 check_type: "entropy".to_string(),
@@ -4569,8 +4764,6 @@ pub async fn check_entropy(project_path: &Path, min_entropy: f64) -> Result<Vec<
             });
         }
     }
-
-    Ok(violations)
 }
 
 /// Calculate Shannon entropy for code content (character-level)
@@ -4754,56 +4947,97 @@ fn scan_content_for_pattern(
 /// ```
 pub async fn check_duplicates(project_path: &Path) -> Result<Vec<QualityViolation>> {
     use std::collections::HashMap;
-    use walkdir::WalkDir;
 
     let mut violations = Vec::new();
     let mut file_hashes: HashMap<u64, Vec<PathBuf>> = HashMap::new();
 
-    // Simple duplicate detection using file content hashing
+    collect_file_hashes(project_path, &mut file_hashes).await?;
+    generate_duplicate_violations(&file_hashes, &mut violations);
+
+    Ok(violations)
+}
+
+/// Collect content hashes for all source files
+async fn collect_file_hashes(
+    project_path: &Path,
+    file_hashes: &mut std::collections::HashMap<u64, Vec<PathBuf>>,
+) -> Result<()> {
+    use walkdir::WalkDir;
+
     for entry in WalkDir::new(project_path) {
         let entry = entry?;
         let path = entry.path();
 
-        if path.is_file() && is_source_file(path) {
-            if let Ok(content) = tokio::fs::read_to_string(path).await {
-                // Normalize content by removing whitespace and comments
-                let normalized = normalize_code_content(&content);
-
-                if normalized.len() > 50 {
-                    // Skip very small files
-                    let hash = calculate_content_hash(&normalized);
-
-                    file_hashes
-                        .entry(hash)
-                        .or_default()
-                        .push(path.to_path_buf());
-                }
+        if should_process_file_for_duplicates(path) {
+            if let Some(hash) = process_file_for_hash(path).await {
+                file_hashes.entry(hash).or_default().push(path.to_path_buf());
             }
         }
     }
+    Ok(())
+}
 
-    // Report duplicates
-    for (_, paths) in file_hashes.iter() {
+/// Check if file should be processed for duplicate detection
+fn should_process_file_for_duplicates(path: &Path) -> bool {
+    path.is_file() && is_source_file(path)
+}
+
+/// Process a file and return its content hash if valid
+async fn process_file_for_hash(path: &Path) -> Option<u64> {
+    if let Ok(content) = tokio::fs::read_to_string(path).await {
+        let normalized = normalize_code_content(&content);
+        if is_file_large_enough(&normalized) {
+            Some(calculate_content_hash(&normalized))
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+/// Check if file content is large enough to consider for duplicate detection
+fn is_file_large_enough(normalized_content: &str) -> bool {
+    normalized_content.len() > 50
+}
+
+/// Generate duplicate violation reports from hash map
+fn generate_duplicate_violations(
+    file_hashes: &std::collections::HashMap<u64, Vec<PathBuf>>,
+    violations: &mut Vec<QualityViolation>,
+) {
+    for paths in file_hashes.values() {
         if paths.len() > 1 {
-            let files_str = paths
-                .iter()
-                .map(|p| p.to_string_lossy().to_string())
-                .collect::<Vec<_>>()
-                .join(", ");
-
-            for path in paths {
-                violations.push(QualityViolation {
-                    check_type: "duplicate".to_string(),
-                    severity: "warning".to_string(),
-                    file: path.to_string_lossy().to_string(),
-                    line: None,
-                    message: format!("Duplicate code found in: {}", files_str),
-                });
-            }
+            create_violations_for_duplicate_group(paths, violations);
         }
     }
+}
 
-    Ok(violations)
+/// Create quality violations for a group of duplicate files
+fn create_violations_for_duplicate_group(
+    paths: &[PathBuf],
+    violations: &mut Vec<QualityViolation>,
+) {
+    let files_str = format_file_list(paths);
+    
+    for path in paths {
+        violations.push(QualityViolation {
+            check_type: "duplicate".to_string(),
+            severity: "warning".to_string(),
+            file: path.to_string_lossy().to_string(),
+            line: None,
+            message: format!("Duplicate code found in: {}", files_str),
+        });
+    }
+}
+
+/// Format list of file paths for violation message
+fn format_file_list(paths: &[PathBuf]) -> String {
+    paths
+        .iter()
+        .map(|p| p.to_string_lossy().to_string())
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 // Helper function to normalize code content
@@ -6748,6 +6982,549 @@ mod tests {
     use std::io::Write;
     use tempfile::TempDir;
 
+    /// Test check_satd functionality with comprehensive SATD patterns
+    #[tokio::test]
+    async fn test_check_satd_comprehensive() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        let test_file = temp_dir.path().join("test.rs");
+        
+        tokio::fs::write(
+            &test_file,
+            r#"// TODO: implement error handling
+fn test() {
+    // FIXME: this is broken
+    // HACK: workaround for issue
+    // XXX: remove this code
+    // BUG: causes crash
+    // REFACTOR: improve design
+    let x = 42;
+}
+"#,
+        ).await?;
+        
+        let violations = check_satd(temp_dir.path()).await?;
+        assert_eq!(violations.len(), 6);
+        
+        // Verify all SATD types detected
+        let messages: Vec<&str> = violations.iter().map(|v| v.message.as_str()).collect();
+        assert!(messages.iter().any(|m| m.contains("TODO")));
+        assert!(messages.iter().any(|m| m.contains("FIXME")));
+        assert!(messages.iter().any(|m| m.contains("HACK")));
+        assert!(messages.iter().any(|m| m.contains("XXX")));
+        assert!(messages.iter().any(|m| m.contains("BUG")));
+        assert!(messages.iter().any(|m| m.contains("REFACTOR")));
+        
+        Ok(())
+    }
+    
+    /// Test check_satd with non-source files (should be ignored)
+    #[tokio::test]
+    async fn test_check_satd_non_source_files() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        let text_file = temp_dir.path().join("readme.txt");
+        
+        tokio::fs::write(&text_file, "TODO: update documentation").await?;
+        
+        let violations = check_satd(temp_dir.path()).await?;
+        assert_eq!(violations.len(), 0); // Should ignore non-source files
+        
+        Ok(())
+    }
+    
+    /// Test check_satd with case insensitive patterns
+    #[tokio::test]
+    async fn test_check_satd_case_insensitive() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        let test_file = temp_dir.path().join("case.rs");
+        
+        tokio::fs::write(
+            &test_file,
+            "// todo: lowercase\n// Todo: mixed case\n// TODO: uppercase",
+        ).await?;
+        
+        let violations = check_satd(temp_dir.path()).await?;
+        assert_eq!(violations.len(), 3); // All cases should be detected
+        
+        Ok(())
+    }
+
+    /// Test check_entropy functionality with low and high entropy code
+    #[tokio::test]
+    async fn test_check_entropy_comprehensive() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        
+        // Low entropy file (repetitive code)
+        let low_entropy_file = temp_dir.path().join("low.rs");
+        tokio::fs::write(
+            &low_entropy_file,
+            "let x = 1;\nlet x = 1;\nlet x = 1;\nlet x = 1;\nlet x = 1;",
+        ).await?;
+        
+        // High entropy file (diverse code)  
+        let high_entropy_file = temp_dir.path().join("high.rs");
+        tokio::fs::write(
+            &high_entropy_file,
+            r#"
+use std::collections::HashMap;
+fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
+    let mut counts = HashMap::new();
+    for word in input.split_whitespace() {
+        *counts.entry(word.to_string()).or_insert(0) += 1;
+    }
+    Ok(counts)
+}
+"#,
+        ).await?;
+        
+        let violations = check_entropy(temp_dir.path(), 0.5).await?;
+        
+        // Should detect low entropy file
+        let low_entropy_violations: Vec<_> = violations.iter()
+            .filter(|v| v.file.contains("low.rs"))
+            .collect();
+        assert!(!low_entropy_violations.is_empty());
+        assert_eq!(low_entropy_violations[0].check_type, "entropy");
+        
+        Ok(())
+    }
+    
+    /// Test check_entropy with different threshold values
+    #[tokio::test] 
+    async fn test_check_entropy_thresholds() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        let test_file = temp_dir.path().join("test.rs");
+        
+        tokio::fs::write(&test_file, "let a = 1; let b = 2; let c = 3;").await?;
+        
+        let low_threshold = check_entropy(temp_dir.path(), 0.1).await?;
+        let high_threshold = check_entropy(temp_dir.path(), 0.9).await?;
+        
+        // Higher threshold should find more or equal violations
+        assert!(high_threshold.len() >= low_threshold.len());
+        
+        Ok(())
+    }
+    
+    /// Test check_entropy project-wide average calculation
+    #[tokio::test]
+    async fn test_check_entropy_project_average() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        
+        // Multiple low entropy files should trigger project-wide violation
+        for i in 0..3 {
+            let file = temp_dir.path().join(format!("low{}.rs", i));
+            tokio::fs::write(&file, "a a a a a a a a a a").await?;
+        }
+        
+        let violations = check_entropy(temp_dir.path(), 0.8).await?;
+        
+        // Should have individual file violations plus project average violation
+        let project_violations: Vec<_> = violations.iter()
+            .filter(|v| v.message.contains("Project average"))
+            .collect();
+        assert!(!project_violations.is_empty());
+        assert_eq!(project_violations[0].severity, "error");
+        
+        Ok(())
+    }
+
+    /// Test analyze_multiple_files functionality with various file scenarios
+    #[tokio::test]
+    async fn test_analyze_multiple_files_comprehensive() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        let calculator = crate::services::tdg_calculator::TDGCalculator::new();
+        
+        // Create test files with different complexities
+        let high_file = temp_dir.path().join("high.rs");
+        tokio::fs::write(&high_file, "// High complexity file\nfn complex() { if true { if true { if true { } } } }").await?;
+        
+        let low_file = temp_dir.path().join("low.rs");
+        tokio::fs::write(&low_file, "// Low complexity file\nfn simple() { println!(\"hello\"); }").await?;
+        
+        let missing_file = temp_dir.path().join("missing.rs");
+        
+        let files = vec![high_file, low_file, missing_file];
+        
+        let result = analyze_multiple_files(
+            &calculator,
+            temp_dir.path(),
+            files,
+            0.0, // threshold
+            10,  // top_files
+            TdgOutputFormat::Human,
+            false, // include_components
+            false, // critical_only
+            false, // verbose
+        ).await?;
+        
+        // Should return formatted output without errors
+        assert!(!result.is_empty());
+        
+        Ok(())
+    }
+    
+    /// Test analyze_multiple_files with threshold filtering
+    #[tokio::test]
+    async fn test_analyze_multiple_files_threshold() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        let calculator = crate::services::tdg_calculator::TDGCalculator::new();
+        
+        let test_file = temp_dir.path().join("test.rs");
+        tokio::fs::write(&test_file, "fn test() {}").await?;
+        
+        let files = vec![test_file];
+        
+        // High threshold should potentially filter out results
+        let result_high = analyze_multiple_files(
+            &calculator,
+            temp_dir.path(),
+            files.clone(),
+            100.0, // very high threshold
+            10,
+            TdgOutputFormat::Human,
+            false, false, false,
+        ).await?;
+        
+        // Low threshold should include more results
+        let result_low = analyze_multiple_files(
+            &calculator,
+            temp_dir.path(),
+            files,
+            0.0, // very low threshold
+            10,
+            TdgOutputFormat::Human,
+            false, false, false,
+        ).await?;
+        
+        // Low threshold result should have content
+        assert!(!result_low.is_empty());
+        
+        Ok(())
+    }
+    
+    /// Test analyze_multiple_files with critical_only filter
+    #[tokio::test]
+    async fn test_analyze_multiple_files_critical_filter() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        let calculator = crate::services::tdg_calculator::TDGCalculator::new();
+        
+        let test_file = temp_dir.path().join("test.rs");
+        tokio::fs::write(&test_file, "fn test() {}").await?;
+        
+        let files = vec![test_file];
+        
+        let result = analyze_multiple_files(
+            &calculator,
+            temp_dir.path(),
+            files,
+            0.0, // threshold
+            10,  // top_files
+            TdgOutputFormat::Human,
+            false, // include_components
+            true,  // critical_only = true
+            false, // verbose
+        ).await?;
+        
+        // Should handle critical filtering without errors
+        assert!(!result.is_empty());
+        
+        Ok(())
+    }
+
+    /// Test check_duplicates functionality with identical files
+    #[tokio::test]
+    async fn test_check_duplicates_identical_files() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        
+        // Create identical files
+        let identical_content = "fn calculate(a: i32, b: i32) -> i32 {\n    a + b\n}\n\nfn main() {\n    println!(\"result: {}\", calculate(5, 3));\n}";
+        
+        let file1 = temp_dir.path().join("file1.rs");
+        let file2 = temp_dir.path().join("file2.rs");
+        
+        tokio::fs::write(&file1, identical_content).await?;
+        tokio::fs::write(&file2, identical_content).await?;
+        
+        let violations = check_duplicates(temp_dir.path()).await?;
+        
+        // Should detect both files as duplicates
+        assert_eq!(violations.len(), 2);
+        assert!(violations.iter().all(|v| v.check_type == "duplicate"));
+        assert!(violations.iter().any(|v| v.file.contains("file1.rs")));
+        assert!(violations.iter().any(|v| v.file.contains("file2.rs")));
+        
+        Ok(())
+    }
+    
+    /// Test check_duplicates with unique files
+    #[tokio::test]
+    async fn test_check_duplicates_unique_files() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        
+        let file1 = temp_dir.path().join("unique1.rs");
+        let file2 = temp_dir.path().join("unique2.rs");
+        
+        tokio::fs::write(&file1, "fn unique_function_one() { println!(\"one\"); }").await?;
+        tokio::fs::write(&file2, "fn unique_function_two() { println!(\"two\"); }").await?;
+        
+        let violations = check_duplicates(temp_dir.path()).await?;
+        
+        // Should detect no duplicates
+        assert_eq!(violations.len(), 0);
+        
+        Ok(())
+    }
+    
+    /// Test check_duplicates ignores small files
+    #[tokio::test]
+    async fn test_check_duplicates_ignores_small_files() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        
+        // Create small identical files (should be ignored)
+        let small_content = "x";
+        
+        let small1 = temp_dir.path().join("small1.rs");
+        let small2 = temp_dir.path().join("small2.rs");
+        
+        tokio::fs::write(&small1, small_content).await?;
+        tokio::fs::write(&small2, small_content).await?;
+        
+        let violations = check_duplicates(temp_dir.path()).await?;
+        
+        // Should ignore small files
+        assert_eq!(violations.len(), 0);
+        
+        Ok(())
+    }
+
+    /// Test check_single_file_complexity with high complexity function
+    #[tokio::test]
+    async fn test_check_single_file_complexity_violations() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        
+        // Create Rust file with high complexity function
+        let rust_file = temp_dir.path().join("complex.rs");
+        tokio::fs::write(
+            &rust_file,
+            r#"
+fn high_complexity_function(x: i32) -> i32 {
+    if x > 10 {
+        if x > 20 {
+            if x > 30 {
+                if x > 40 {
+                    if x > 50 {
+                        100
+                    } else {
+                        90
+                    }
+                } else {
+                    80
+                }
+            } else {
+                70
+            }
+        } else {
+            60
+        }
+    } else {
+        50
+    }
+}
+"#,
+        ).await?;
+        
+        let violations = check_single_file_complexity(
+            temp_dir.path(),
+            &rust_file,
+            5, // Low threshold to catch high complexity
+        ).await?;
+        
+        // Should detect complexity violation
+        assert!(!violations.is_empty());
+        assert!(violations.iter().any(|v| v.check_type == "complexity"));
+        assert!(violations.iter().any(|v| v.severity == "error"));
+        
+        Ok(())
+    }
+    
+    /// Test check_single_file_complexity with missing file
+    #[tokio::test]
+    async fn test_check_single_file_complexity_missing_file() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        let missing_file = temp_dir.path().join("missing.rs");
+        
+        let result = check_single_file_complexity(
+            temp_dir.path(),
+            &missing_file,
+            10,
+        ).await;
+        
+        // Should return error for missing file
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("File not found"));
+        
+        Ok(())
+    }
+    
+    /// Test check_single_file_complexity with low complexity function
+    #[tokio::test]
+    async fn test_check_single_file_complexity_no_violations() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new()?;
+        
+        let simple_file = temp_dir.path().join("simple.rs");
+        tokio::fs::write(
+            &simple_file,
+            r#"
+fn simple_function(x: i32) -> i32 {
+    x * 2
+}
+
+fn another_simple(y: i32) -> i32 {
+    y + 1
+}
+"#,
+        ).await?;
+        
+        let violations = check_single_file_complexity(
+            temp_dir.path(),
+            &simple_file,
+            10, // High threshold
+        ).await?;
+        
+        // Should detect no violations
+        assert_eq!(violations.len(), 0);
+        
+        Ok(())
+    }
+
+    /// Test write_markdown_summary_table functionality
+    #[test]
+    fn test_write_markdown_summary_table() -> anyhow::Result<()> {
+        use crate::models::churn::ChurnSummary;
+        use std::collections::HashMap;
+        
+        let mut output = String::new();
+        
+        // Create test summary data
+        let summary = ChurnSummary {
+            total_commits: 42,
+            total_files_changed: 15,
+            hotspot_files: vec!["file1.rs".into(), "file2.rs".into()],
+            stable_files: vec!["lib.rs".into()],
+            author_contributions: {
+                let mut map = HashMap::new();
+                map.insert("alice".to_string(), 5);
+                map.insert("bob".to_string(), 3);
+                map
+            },
+        };
+        
+        write_markdown_summary_table(&mut output, &summary)?;
+        
+        // Verify table structure
+        assert!(output.contains("## Summary Statistics"));
+        assert!(output.contains("| Metric | Value |"));
+        assert!(output.contains("| Total Commits | 42 |"));
+        assert!(output.contains("| Files Changed | 15 |"));
+        assert!(output.contains("| Hotspot Files | 2 |"));
+        assert!(output.contains("| Stable Files | 1 |"));
+        assert!(output.contains("| Contributing Authors | 2 |"));
+        
+        Ok(())
+    }
+    
+    /// Test write_markdown_summary_table with empty data
+    #[test]
+    fn test_write_markdown_summary_table_empty() -> anyhow::Result<()> {
+        use crate::models::churn::ChurnSummary;
+        use std::collections::HashMap;
+        
+        let mut output = String::new();
+        
+        let empty_summary = ChurnSummary {
+            total_commits: 0,
+            total_files_changed: 0,
+            hotspot_files: vec![],
+            stable_files: vec![],
+            author_contributions: HashMap::new(),
+        };
+        
+        write_markdown_summary_table(&mut output, &empty_summary)?;
+        
+        // Should still create proper table structure
+        assert!(output.contains("## Summary Statistics"));
+        assert!(output.contains("| Total Commits | 0 |"));
+        assert!(output.contains("| Hotspot Files | 0 |"));
+        
+        Ok(())
+    }
+    
+    /// Test write_markdown_summary_table output format
+    #[test]
+    fn test_write_markdown_summary_table_format() -> anyhow::Result<()> {
+        use crate::models::churn::ChurnSummary;
+        use std::collections::HashMap;
+        
+        let mut output = String::new();
+        let summary = ChurnSummary {
+            total_commits: 1,
+            total_files_changed: 1,
+            hotspot_files: vec!["test.rs".into()],
+            stable_files: vec!["mod.rs".into()],
+            author_contributions: {
+                let mut map = HashMap::new();
+                map.insert("dev".to_string(), 1);
+                map
+            },
+        };
+        
+        write_markdown_summary_table(&mut output, &summary)?;
+        
+        // Check markdown table separator format
+        assert!(output.contains("|--------|-------|"));
+        // Check all rows have proper pipe separators
+        let lines: Vec<&str> = output.lines().collect();
+        let table_lines: Vec<&str> = lines.iter()
+            .filter(|line| line.contains("|"))
+            .cloned()
+            .collect();
+        
+        assert!(table_lines.len() >= 3); // Header, separator, data rows
+        
+        Ok(())
+    }
+
+    /// Test print_single_check for different check types
+    #[test]  
+    fn test_print_single_check_all_types() {
+        use crate::models::quality_gate::QualityCheckType;
+        
+        // Test each check type (output goes to stderr, so we can't easily capture it)
+        // But we can verify the function doesn't panic
+        print_single_check(&QualityCheckType::Complexity);
+        print_single_check(&QualityCheckType::DeadCode); 
+        print_single_check(&QualityCheckType::Satd);
+        print_single_check(&QualityCheckType::Security);
+        print_single_check(&QualityCheckType::Entropy);
+        print_single_check(&QualityCheckType::Duplicates);
+        print_single_check(&QualityCheckType::Coverage);
+        
+        // Should complete without panicking
+        assert!(true);
+    }
+    
+    /// Test print_single_check with All type (should be handled by wildcard)
+    #[test]
+    fn test_print_single_check_all_and_wildcard() {
+        use crate::models::quality_gate::QualityCheckType;
+        
+        // Test the wildcard case
+        print_single_check(&QualityCheckType::All);
+        
+        // Should complete without panicking
+        assert!(true);
+    }
+
     #[tokio::test]
     async fn test_handle_analyze_makefile_basic() {
         // Create a temporary directory and Makefile
@@ -7702,51 +8479,95 @@ async fn check_single_file_complexity(
     file_path: &Path,
     max_complexity_p99: u32,
 ) -> Result<Vec<QualityViolation>> {
-    use crate::services::ast_rust::analyze_rust_file_with_complexity;
-
+    let abs_file_path = resolve_absolute_file_path(project_path, file_path);
+    validate_file_exists(&abs_file_path)?;
+    
     let mut violations = Vec::new();
+    analyze_file_complexity(&abs_file_path, file_path, max_complexity_p99, &mut violations).await?;
+    
+    Ok(violations)
+}
 
-    // Make file path absolute if needed
-    let abs_file_path = if file_path.is_absolute() {
+/// Resolve file path to absolute path
+fn resolve_absolute_file_path(project_path: &Path, file_path: &Path) -> PathBuf {
+    if file_path.is_absolute() {
         file_path.to_path_buf()
     } else {
         project_path.join(file_path)
-    };
+    }
+}
 
-    // Check if file exists
+/// Validate that file exists
+fn validate_file_exists(abs_file_path: &Path) -> Result<()> {
     if !abs_file_path.exists() {
         return Err(anyhow::anyhow!(
             "File not found: {}",
             abs_file_path.display()
         ));
     }
+    Ok(())
+}
 
-    // Analyze complexity based on file extension
+/// Analyze file complexity based on file extension
+async fn analyze_file_complexity(
+    abs_file_path: &Path,
+    original_path: &Path,
+    max_complexity: u32,
+    violations: &mut Vec<QualityViolation>,
+) -> Result<()> {
     if let Some(ext) = abs_file_path.extension() {
         if ext == "rs" {
-            // Rust file analysis
-            let metrics = analyze_rust_file_with_complexity(&abs_file_path).await?;
-
-            // Check each function for complexity violations
-            for func in &metrics.functions {
-                if func.metrics.cyclomatic > max_complexity_p99 as u16 {
-                    violations.push(QualityViolation {
-                        check_type: "complexity".to_string(),
-                        severity: "error".to_string(),
-                        file: file_path.to_string_lossy().to_string(),
-                        line: Some(func.line_start as usize),
-                        message: format!(
-                            "Function '{}' has cyclomatic complexity {} (max: {})",
-                            func.name, func.metrics.cyclomatic, max_complexity_p99
-                        ),
-                    });
-                }
-            }
+            analyze_rust_file_complexity(abs_file_path, original_path, max_complexity, violations).await?;
         }
         // Add support for other languages as needed
     }
+    Ok(())
+}
 
-    Ok(violations)
+/// Analyze Rust file complexity and generate violations
+async fn analyze_rust_file_complexity(
+    abs_file_path: &Path,
+    original_path: &Path,
+    max_complexity: u32,
+    violations: &mut Vec<QualityViolation>,
+) -> Result<()> {
+    use crate::services::ast_rust::analyze_rust_file_with_complexity;
+    
+    let metrics = analyze_rust_file_with_complexity(abs_file_path).await?;
+    
+    for func in &metrics.functions {
+        if function_exceeds_complexity_threshold(func, max_complexity) {
+            violations.push(create_complexity_violation(func, original_path, max_complexity));
+        }
+    }
+    
+    Ok(())
+}
+
+/// Check if function exceeds complexity threshold
+fn function_exceeds_complexity_threshold(
+    func: &crate::services::complexity::FunctionComplexity,
+    max_complexity: u32,
+) -> bool {
+    func.metrics.cyclomatic > max_complexity as u16
+}
+
+/// Create complexity violation for a function
+fn create_complexity_violation(
+    func: &crate::services::complexity::FunctionComplexity,
+    file_path: &Path,
+    max_complexity: u32,
+) -> QualityViolation {
+    QualityViolation {
+        check_type: "complexity".to_string(),
+        severity: "error".to_string(),
+        file: file_path.to_string_lossy().to_string(),
+        line: Some(func.line_start as usize),
+        message: format!(
+            "Function '{}' has cyclomatic complexity {} (max: {})",
+            func.name, func.metrics.cyclomatic, max_complexity
+        ),
+    }
 }
 
 async fn check_single_file_dead_code(
