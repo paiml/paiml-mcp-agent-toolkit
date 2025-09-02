@@ -462,7 +462,7 @@ impl AlertManager {
     }
 
     /// Silence an alert
-    pub async fn silence_alert(&self, alert_id: &str, duration: Duration) -> Result<()> {
+    pub async fn silence_alert(&self, alert_id: &str, _duration: Duration) -> Result<()> {
         let mut active = self.active_alerts.write().await;
 
         if let Some(alert) = active.get_mut(alert_id) {

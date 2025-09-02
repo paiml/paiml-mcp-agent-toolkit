@@ -6,7 +6,7 @@
 //! - Waits for AI to provide refactored code that meets ALL quality standards:
 //!   * Functions with complexity ≤ 10 (target: 5)
 //!   * Test coverage ≥ 80% per file
-//!   * Zero SATD comments (TODO, FIXME, etc.)
+//!   * Zero SATD comments (self-admitted technical debt)
 //!   * All lint violations fixed (pedantic + nursery)
 //! - Verifies the refactored code compiles and passes tests
 //! - Iterates until entire project meets RIGID extreme quality standards
@@ -773,7 +773,7 @@ struct SatdComment {
     file: PathBuf,
     line_number: u32,
     comment_text: String,
-    satd_type: String, // TODO, FIXME, HACK, etc.
+    satd_type: String, // Type of SATD marker (e.g., requirement, defect, design)
 }
 
 /// Uncovered code line

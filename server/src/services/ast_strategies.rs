@@ -192,12 +192,6 @@ impl StrategyRegistry {
             strategies.insert("hxx".to_string(), cpp_strategy);
         }
 
-        #[cfg(feature = "kotlin-ast")]
-        {
-            let kotlin_strategy = Arc::new(KotlinAstStrategy) as Arc<dyn AstStrategy>;
-            strategies.insert("kt".to_string(), kotlin_strategy.clone());
-            strategies.insert("kts".to_string(), kotlin_strategy);
-        }
 
         Self { strategies }
     }
@@ -550,89 +544,6 @@ impl CppAstStrategy {
     }
 }
 
-// Kotlin language strategy
-#[cfg(feature = "kotlin-ast")]
-pub struct KotlinAstStrategy;
-
-#[cfg(feature = "kotlin-ast")]
-#[async_trait]
-impl AstStrategy for KotlinAstStrategy {
-    async fn analyze(&self, path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
-        use crate::services::ast_kotlin::KotlinAstParser;
-        use tokio::fs;
-
-        // Read file content
-        let content = fs::read_to_string(path).await?;
-
-        // Parse using Kotlin AST parser
-        let mut parser = KotlinAstParser::new();
-        match parser.parse_file(path, &content) {
-            Ok(ast_dag) => {
-                // Convert AST DAG to FileContext items
-                let mut items = Vec::new();
-                let content_lines: Vec<&str> = content.lines().collect();
-
-                for node in ast_dag.nodes.iter() {
-                    // Extract name from source using source range
-                    let name = Self::extract_name_from_node(node, &content);
-                    let line_number =
-                        Self::byte_pos_to_line(node.source_range.start as usize, &content_lines);
-
-                    let item = match &node.kind {
-                        crate::models::unified_ast::AstKind::Function(_) => {
-                            crate::services::context::AstItem::Function {
-                                name: name.unwrap_or_else(|| "anonymousFunction".to_string()),
-                                visibility: "public".to_string(),
-                                is_async: false, // Kotlin uses coroutines, not async
-                                line: line_number,
-                            }
-                        }
-                        crate::models::unified_ast::AstKind::Type(type_kind) => match type_kind {
-                            crate::models::unified_ast::TypeKind::Enum => {
-                                crate::services::context::AstItem::Enum {
-                                    name: name.unwrap_or_else(|| "AnonymousEnum".to_string()),
-                                    visibility: "public".to_string(),
-                                    variants_count: 0,
-                                    line: line_number,
-                                }
-                            }
-                            _ => crate::services::context::AstItem::Struct {
-                                name: name.unwrap_or_else(|| "AnonymousClass".to_string()),
-                                visibility: "public".to_string(),
-                                fields_count: 0,
-                                derives: vec![],
-                                line: line_number,
-                            },
-                        },
-                        _ => continue,
-                    };
-                    items.push(item);
-                }
-
-                Ok(FileContext {
-                    path: path.to_string_lossy().to_string(),
-                    language: "kotlin".to_string(),
-                    items,
-                    complexity_metrics: None,
-                })
-            }
-            Err(e) => {
-                // Return empty context on parse error but don't fail completely
-                tracing::warn!("Failed to parse Kotlin file {}: {}", path.display(), e);
-                Ok(FileContext {
-                    path: path.to_string_lossy().to_string(),
-                    language: "kotlin".to_string(),
-                    items: vec![],
-                    complexity_metrics: None,
-                })
-            }
-        }
-    }
-
-    fn supports_extension(&self, ext: &str) -> bool {
-        matches!(ext, "kt" | "kts")
-    }
-}
 
 #[cfg(feature = "kotlin-ast")]
 impl KotlinAstStrategy {
