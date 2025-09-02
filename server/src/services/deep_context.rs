@@ -4254,11 +4254,287 @@ async fn analyze_big_o(
 
 #[cfg(test)]
 mod tests {
-    // use super::*; // Unused in simple tests
-
+    use super::*;
+    use std::path::PathBuf;
+    use tokio;
+    
     #[test]
-    fn test_deep_context_basic() {
-        // Basic test
-        assert_eq!(1 + 1, 2);
+    fn test_analysis_type_variants() {
+        let ast_type = AnalysisType::Ast;
+        let complexity_type = AnalysisType::Complexity;
+        let churn_type = AnalysisType::Churn;
+        let dag_type = AnalysisType::Dag;
+        
+        // Test enum variants exist and can be created
+        assert_eq!(ast_type, AnalysisType::Ast);
+        assert_eq!(complexity_type, AnalysisType::Complexity);
+        assert_eq!(churn_type, AnalysisType::Churn);
+        assert_eq!(dag_type, AnalysisType::Dag);
+    }
+    
+    #[test]
+    fn test_dag_type_variants() {
+        let minimal = DagType::Minimal;
+        let standard = DagType::Standard;
+        let full = DagType::Full;
+        
+        assert_eq!(minimal, DagType::Minimal);
+        assert_eq!(standard, DagType::Standard);
+        assert_eq!(full, DagType::Full);
+    }
+    
+    #[test]
+    fn test_cache_strategy_variants() {
+        let none = CacheStrategy::None;
+        let memory = CacheStrategy::Memory;
+        let persistent = CacheStrategy::Persistent;
+        
+        assert_eq!(none, CacheStrategy::None);
+        assert_eq!(memory, CacheStrategy::Memory);
+        assert_eq!(persistent, CacheStrategy::Persistent);
+    }
+    
+    #[test]
+    fn test_complexity_thresholds_creation() {
+        let thresholds = ComplexityThresholds {
+            low: 5,
+            medium: 10,
+            high: 20,
+        };
+        
+        assert_eq!(thresholds.low, 5);
+        assert_eq!(thresholds.medium, 10);
+        assert_eq!(thresholds.high, 20);
+    }
+    
+    #[test]
+    fn test_deep_context_config_default() {
+        let config = DeepContextConfig::default();
+        
+        assert_eq!(config.period_days, 30);
+        assert_eq!(config.dag_type, DagType::Standard);
+        assert_eq!(config.max_depth, Some(3));
+        assert_eq!(config.cache_strategy, CacheStrategy::Memory);
+        assert_eq!(config.parallel, 4);
+        assert!(config.include_analyses.contains(&AnalysisType::Ast));
+        assert!(config.include_analyses.contains(&AnalysisType::Complexity));
+        assert!(config.include_patterns.contains(&"**/*.rs".to_string()));
+    }
+    
+    #[test]
+    fn test_deep_context_analyzer_creation() {
+        let config = DeepContextConfig::default();
+        let analyzer = DeepContextAnalyzer::new(config.clone());
+        
+        assert_eq!(analyzer.config.period_days, config.period_days);
+        assert_eq!(analyzer.config.parallel, config.parallel);
+    }
+    
+    #[test]
+    fn test_ast_summary_creation() {
+        let summary = AstSummary {
+            total_files: 10,
+            total_functions: 50,
+            total_structs: 20,
+            total_enums: 5,
+            total_traits: 8,
+            total_impls: 15,
+            average_functions_per_file: 5.0,
+        };
+        
+        assert_eq!(summary.total_files, 10);
+        assert_eq!(summary.total_functions, 50);
+        assert_eq!(summary.total_structs, 20);
+        assert_eq!(summary.total_enums, 5);
+        assert_eq!(summary.total_traits, 8);
+        assert_eq!(summary.total_impls, 15);
+        assert_eq!(summary.average_functions_per_file, 5.0);
+    }
+    
+    #[test]
+    fn test_dead_code_summary_creation() {
+        let summary = DeadCodeSummary {
+            total_files_analyzed: 100,
+            files_with_dead_code: 15,
+            total_dead_lines: 450,
+            dead_percentage: 4.5,
+        };
+        
+        assert_eq!(summary.total_files_analyzed, 100);
+        assert_eq!(summary.files_with_dead_code, 15);
+        assert_eq!(summary.total_dead_lines, 450);
+        assert_eq!(summary.dead_percentage, 4.5);
+    }
+    
+    #[test]
+    fn test_dead_code_analysis_creation() {
+        let summary = DeadCodeSummary {
+            total_files_analyzed: 50,
+            files_with_dead_code: 8,
+            total_dead_lines: 200,
+            dead_percentage: 4.0,
+        };
+        
+        let analysis = DeadCodeAnalysis {
+            summary,
+            files: vec![], // Empty for test
+        };
+        
+        assert_eq!(analysis.summary.total_files_analyzed, 50);
+        assert_eq!(analysis.summary.files_with_dead_code, 8);
+        assert_eq!(analysis.files.len(), 0);
+    }
+    
+    #[test]
+    fn test_context_metadata_creation() {
+        let now = chrono::Utc::now();
+        let metadata = ContextMetadata {
+            generated_at: now,
+            analysis_duration: Duration::from_secs(30),
+            total_files_processed: 100,
+            cache_hit_rate: 0.75,
+            version: "1.0.0".to_string(),
+        };
+        
+        assert_eq!(metadata.generated_at, now);
+        assert_eq!(metadata.analysis_duration, Duration::from_secs(30));
+        assert_eq!(metadata.total_files_processed, 100);
+        assert_eq!(metadata.cache_hit_rate, 0.75);
+        assert_eq!(metadata.version, "1.0.0");
+    }
+    
+    #[test]
+    fn test_cache_stats_creation() {
+        let stats = CacheStats {
+            hits: 80,
+            misses: 20,
+            hit_rate: 0.8,
+            size_bytes: 1024 * 1024,
+        };
+        
+        assert_eq!(stats.hits, 80);
+        assert_eq!(stats.misses, 20);
+        assert_eq!(stats.hit_rate, 0.8);
+        assert_eq!(stats.size_bytes, 1024 * 1024);
+    }
+    
+    #[test]
+    fn test_node_type_variants() {
+        let file = NodeType::File;
+        let directory = NodeType::Directory;
+        
+        assert_eq!(file, NodeType::File);
+        assert_eq!(directory, NodeType::Directory);
+    }
+    
+    #[test]
+    fn test_node_annotations_creation() {
+        let annotations = NodeAnnotations {
+            complexity_score: Some(15.5),
+            lines_of_code: Some(250),
+            churn_risk: Some(0.3),
+            technical_debt_score: Some(2.1),
+            last_modified: Some(chrono::Utc::now()),
+        };
+        
+        assert_eq!(annotations.complexity_score, Some(15.5));
+        assert_eq!(annotations.lines_of_code, Some(250));
+        assert_eq!(annotations.churn_risk, Some(0.3));
+        assert_eq!(annotations.technical_debt_score, Some(2.1));
+        assert!(annotations.last_modified.is_some());
+    }
+    
+    #[test]
+    fn test_annotated_node_creation() {
+        let path = PathBuf::from("/test/file.rs");
+        let annotations = NodeAnnotations {
+            complexity_score: Some(10.0),
+            lines_of_code: Some(100),
+            churn_risk: Some(0.2),
+            technical_debt_score: Some(1.5),
+            last_modified: None,
+        };
+        
+        let node = AnnotatedNode {
+            path: path.clone(),
+            node_type: NodeType::File,
+            annotations,
+            children: vec![],
+        };
+        
+        assert_eq!(node.path, path);
+        assert_eq!(node.node_type, NodeType::File);
+        assert_eq!(node.annotations.complexity_score, Some(10.0));
+        assert_eq!(node.children.len(), 0);
+    }
+    
+    #[test]
+    fn test_annotated_file_tree_creation() {
+        let root_path = PathBuf::from("/project");
+        let root_annotations = NodeAnnotations {
+            complexity_score: Some(50.0),
+            lines_of_code: Some(1000),
+            churn_risk: Some(0.1),
+            technical_debt_score: Some(3.0),
+            last_modified: None,
+        };
+        
+        let root_node = AnnotatedNode {
+            path: root_path.clone(),
+            node_type: NodeType::Directory,
+            annotations: root_annotations,
+            children: vec![],
+        };
+        
+        let tree = AnnotatedFileTree {
+            root: root_node,
+            total_nodes: 1,
+            max_depth: 1,
+        };
+        
+        assert_eq!(tree.root.path, root_path);
+        assert_eq!(tree.total_nodes, 1);
+        assert_eq!(tree.max_depth, 1);
+    }
+    
+    #[test]
+    fn test_deep_context_result_creation() {
+        let result = DeepContextResult {
+            project_path: PathBuf::from("/test/project"),
+            file_contexts: FxHashMap::default(),
+            ast_summary: None,
+            complexity_report: None,
+            churn_analysis: None,
+            dag_analysis: None,
+            dead_code_analysis: None,
+            satd_analysis: None,
+            tdg_analysis: None,
+            big_o_analysis: None,
+            qa_verification: None,
+            annotated_tree: None,
+            metadata: ContextMetadata {
+                generated_at: chrono::Utc::now(),
+                analysis_duration: Duration::from_secs(10),
+                total_files_processed: 0,
+                cache_hit_rate: 0.0,
+                version: "test".to_string(),
+            },
+            cache_stats: None,
+        };
+        
+        assert_eq!(result.project_path, PathBuf::from("/test/project"));
+        assert_eq!(result.file_contexts.len(), 0);
+        assert!(result.ast_summary.is_none());
+        assert!(result.complexity_report.is_none());
+        assert_eq!(result.metadata.version, "test");
+    }
+    
+    #[tokio::test]
+    async fn test_analyze_single_file_nonexistent() {
+        let nonexistent_path = std::path::Path::new("/nonexistent/file.rs");
+        let result = analyze_single_file(nonexistent_path).await;
+        
+        // Should return an error for nonexistent file
+        assert!(result.is_err());
     }
 }

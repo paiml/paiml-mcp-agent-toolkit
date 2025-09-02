@@ -173,7 +173,7 @@ impl UnifiedService {
         // Record metrics
         let duration = start.elapsed().as_millis() as u64;
         self.record_request_metrics_by_data(
-            &request_method,
+            request_method.as_str(),
             &request_path,
             &request_extensions,
             &unified_response,
