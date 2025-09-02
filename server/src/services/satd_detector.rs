@@ -906,25 +906,61 @@ impl SATDDetector {
 
             while let Some(entry) = entries.next_entry().await.map_err(TemplateError::Io)? {
                 let path = entry.path();
-
-                if path.is_dir() {
-                    // Skip hidden directories and common non-source directories
-                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                        if name.starts_with('.')
-                            || ["target", "node_modules", "dist", "build", "__pycache__"]
-                                .contains(&name)
-                        {
-                            continue;
-                        }
-                    }
-                    self.collect_files_recursive(&path, files).await?;
-                } else if self.is_source_file(&path) && !self.is_test_file(&path) {
-                    files.push(path);
-                }
+                self.process_directory_entry(&path, files).await?;
             }
 
             Ok(())
         })
+    }
+    
+    async fn process_directory_entry(
+        &self,
+        path: &Path,
+        files: &mut Vec<PathBuf>,
+    ) -> Result<(), TemplateError> {
+        if path.is_dir() {
+            self.process_subdirectory(path, files).await
+        } else {
+            self.process_file(path, files);
+            Ok(())
+        }
+    }
+    
+    async fn process_subdirectory(
+        &self,
+        path: &Path,
+        files: &mut Vec<PathBuf>,
+    ) -> Result<(), TemplateError> {
+        if self.should_skip_directory(path) {
+            return Ok(());
+        }
+        self.collect_files_recursive(path, files).await
+    }
+    
+    fn should_skip_directory(&self, path: &Path) -> bool {
+        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+            self.is_excluded_directory_name(name)
+        } else {
+            false
+        }
+    }
+    
+    fn is_excluded_directory_name(&self, name: &str) -> bool {
+        name.starts_with('.') || self.is_common_build_directory(name)
+    }
+    
+    fn is_common_build_directory(&self, name: &str) -> bool {
+        ["target", "node_modules", "dist", "build", "__pycache__"].contains(&name)
+    }
+    
+    fn process_file(&self, path: &Path, files: &mut Vec<PathBuf>) {
+        if self.is_valid_source_file(path) {
+            files.push(path.to_path_buf());
+        }
+    }
+    
+    fn is_valid_source_file(&self, path: &Path) -> bool {
+        self.is_source_file(path) && !self.is_test_file(path)
     }
 
     /// Check if a file is a supported source file
@@ -2694,5 +2730,113 @@ def test_something():
         assert_eq!(debts.len(), 2);
         assert!(debts.iter().any(|d| d.text.contains("python debt")));
         assert!(debts.iter().any(|d| d.text.contains("python test debt")));
+    }
+
+    // TDD RED phase - Tests for collect_files_recursive (22 cognitive complexity)
+    #[tokio::test]
+    async fn test_collect_files_recursive_empty_directory() {
+        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let temp_dir = tempfile::tempdir().unwrap();
+        let empty_dir = temp_dir.path().join("empty");
+        std::fs::create_dir(&empty_dir).unwrap();
+        
+        let mut files = Vec::new();
+        detector.collect_files_recursive(&empty_dir, &mut files).await.unwrap();
+        
+        assert_eq!(files.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_collect_files_recursive_with_source_files() {
+        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let temp_dir = tempfile::tempdir().unwrap();
+        let project_root = temp_dir.path();
+        
+        // Create source files
+        std::fs::write(project_root.join("main.rs"), "fn main() {}").unwrap();
+        std::fs::write(project_root.join("lib.py"), "def func(): pass").unwrap();
+        std::fs::write(project_root.join("script.js"), "console.log('hello');").unwrap();
+        std::fs::write(project_root.join("readme.txt"), "Not a source file").unwrap();
+        
+        let mut files = Vec::new();
+        detector.collect_files_recursive(project_root, &mut files).await.unwrap();
+        
+        assert_eq!(files.len(), 3); // Only source files
+        assert!(files.iter().any(|f| f.file_name().unwrap() == "main.rs"));
+        assert!(files.iter().any(|f| f.file_name().unwrap() == "lib.py"));
+        assert!(files.iter().any(|f| f.file_name().unwrap() == "script.js"));
+        assert!(!files.iter().any(|f| f.file_name().unwrap() == "readme.txt"));
+    }
+
+    #[tokio::test]
+    async fn test_collect_files_recursive_skips_excluded_directories() {
+        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let temp_dir = tempfile::tempdir().unwrap();
+        let project_root = temp_dir.path();
+        
+        // Create source files in excluded directories
+        std::fs::create_dir_all(project_root.join("target/debug")).unwrap();
+        std::fs::create_dir_all(project_root.join("node_modules/lib")).unwrap();
+        std::fs::create_dir_all(project_root.join(".git/hooks")).unwrap();
+        std::fs::create_dir_all(project_root.join("src")).unwrap();
+        
+        std::fs::write(project_root.join("target/debug/main.rs"), "fn main() {}").unwrap();
+        std::fs::write(project_root.join("node_modules/lib/index.js"), "console.log('test');").unwrap();
+        std::fs::write(project_root.join(".git/hooks/pre-commit.sh"), "#!/bin/bash").unwrap();
+        std::fs::write(project_root.join("src/lib.rs"), "pub fn test() {}").unwrap();
+        
+        let mut files = Vec::new();
+        detector.collect_files_recursive(project_root, &mut files).await.unwrap();
+        
+        assert_eq!(files.len(), 1); // Only src/lib.rs should be found
+        assert!(files.iter().any(|f| f.ends_with("src/lib.rs")));
+    }
+
+    #[tokio::test]
+    async fn test_collect_files_recursive_skips_test_files() {
+        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let temp_dir = tempfile::tempdir().unwrap();
+        let project_root = temp_dir.path();
+        
+        // Create test files and regular files
+        std::fs::create_dir_all(project_root.join("src")).unwrap();
+        std::fs::create_dir_all(project_root.join("tests")).unwrap();
+        
+        std::fs::write(project_root.join("src/lib.rs"), "pub fn func() {}").unwrap();
+        std::fs::write(project_root.join("src/main_test.rs"), "fn test_main() {}").unwrap();
+        std::fs::write(project_root.join("tests/integration.rs"), "#[test] fn test() {}").unwrap();
+        
+        let mut files = Vec::new();
+        detector.collect_files_recursive(project_root, &mut files).await.unwrap();
+        
+        // Should only find lib.rs, not test files
+        assert_eq!(files.len(), 1);
+        assert!(files.iter().any(|f| f.ends_with("src/lib.rs")));
+        assert!(!files.iter().any(|f| f.to_string_lossy().contains("test")));
+    }
+
+    #[tokio::test]
+    async fn test_collect_files_recursive_nested_directories() {
+        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let temp_dir = tempfile::tempdir().unwrap();
+        let project_root = temp_dir.path();
+        
+        // Create nested directory structure
+        std::fs::create_dir_all(project_root.join("src/utils/helpers")).unwrap();
+        std::fs::create_dir_all(project_root.join("src/models")).unwrap();
+        
+        std::fs::write(project_root.join("src/main.rs"), "fn main() {}").unwrap();
+        std::fs::write(project_root.join("src/utils/mod.rs"), "pub mod helpers;").unwrap();
+        std::fs::write(project_root.join("src/utils/helpers/string.rs"), "pub fn trim() {}").unwrap();
+        std::fs::write(project_root.join("src/models/user.rs"), "pub struct User {}").unwrap();
+        
+        let mut files = Vec::new();
+        detector.collect_files_recursive(project_root, &mut files).await.unwrap();
+        
+        assert_eq!(files.len(), 4);
+        assert!(files.iter().any(|f| f.ends_with("main.rs")));
+        assert!(files.iter().any(|f| f.ends_with("mod.rs")));
+        assert!(files.iter().any(|f| f.ends_with("string.rs")));
+        assert!(files.iter().any(|f| f.ends_with("user.rs")));
     }
 }
