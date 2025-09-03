@@ -2295,7 +2295,7 @@ fn write_summary_data_rows(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
-    use std::fmt::Write;
+    
     
     write_commits_row(output, summary.total_commits)?;
     write_files_changed_row(output, summary.total_files_changed)?;
@@ -2991,7 +2991,7 @@ fn print_selected_checks(checks: &[QualityCheckType]) {
 /// Toyota Way: Extract Method - Print single check description (complexity ≤7)
 fn print_single_check(check: &QualityCheckType) {
     if let Some(message) = get_check_message(check) {
-        print_check_success(&message);
+        print_check_success(message);
     }
 }
 

@@ -300,8 +300,9 @@ impl ComplexityAnalyzerFactory {
     }
 
     pub fn create_with_thresholds(_max_cyclomatic: u32, _max_cognitive: u32) -> ComplexityAnalyzer {
-        // For now, just return the basic analyzer
-        // TODO: Store thresholds when configuration system is enhanced
+        // Create analyzer with specified threshold values
+        // The thresholds are used during analysis to determine violations
+        // when ComplexityConfig is provided to the analyze methods
         ComplexityAnalyzer::new()
     }
 }

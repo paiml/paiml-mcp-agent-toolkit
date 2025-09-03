@@ -130,9 +130,13 @@ impl TemplateRegistry {
 
         // Load custom template from filesystem
         // Currently returns a basic template generator for custom paths
-        if path.is_file() && path.extension().map_or(false, |ext| ext == "toml" || ext == "yaml") {
-            // Return a basic template that can be extended
-            Ok(Arc::new(crate::scaffold::agent::templates::basic::BasicAgentTemplate::new()))
+        if path.is_file() && path.extension().is_some_and(|ext| ext == "toml" || ext == "yaml") {
+            // Return a placeholder error for custom templates
+            // Custom templates would be loaded and parsed here in production
+            Err(ScaffoldError::InvalidTemplate(format!(
+                "Custom template support requires template file parsing: {}",
+                path.display()
+            )))
         } else {
             Err(ScaffoldError::InvalidTemplate(format!(
                 "Template file must be a TOML or YAML file: {}",

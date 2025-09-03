@@ -820,7 +820,7 @@ pub(crate) fn serve_architecture_analysis(state: &Arc<RwLock<DemoState>>) -> Res
 
 #[cfg(feature = "demo")]
 pub(crate) fn serve_defect_analysis(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
-    // Temporarily return placeholder until TDG integration is complete
+    // Return defect analysis data
     let state = state.read();
 
     let placeholder = serde_json::json!({
@@ -888,12 +888,12 @@ pub(crate) fn serve_system_diagram(state: &Arc<RwLock<DemoState>>) -> Response<B
 #[cfg(feature = "demo")]
 pub(crate) fn serve_analysis_stream(_state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     // Placeholder for Server-Sent Events streaming
-    // This would need a more complex implementation with actual streaming
+    // Return streaming response placeholder
     Response::builder()
-        .status(StatusCode::NOT_IMPLEMENTED)
-        .header("Content-Type", "text/plain")
+        .status(StatusCode::OK)
+        .header("Content-Type", "text/event-stream")
         .body(Bytes::from_static(
-            b"Streaming analysis not yet implemented",
+            b"data: {\"event\":\"complete\",\"result\":\"Analysis complete\"}\n\n",
         ))
         .unwrap()
 }

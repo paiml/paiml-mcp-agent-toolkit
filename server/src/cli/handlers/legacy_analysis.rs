@@ -38,7 +38,7 @@ pub async fn analyze_router(cmd: super::super::AnalyzeCommands) -> Result<()> {
         AnalyzeCommands::Provability { .. } => ml_analysis::handle_provability(cmd).await,
         AnalyzeCommands::ProofAnnotations { .. } => ml_analysis::handle_proof_annotations(cmd).await,
         
-        // Technical debt and comprehensive analysis
+        // Code quality and comprehensive analysis
         AnalyzeCommands::Tdg { .. } => technical_debt::handle_tdg(cmd).await,
         AnalyzeCommands::DeepContext { .. } => technical_debt::handle_deep_context(cmd).await,
         AnalyzeCommands::Comprehensive { .. } => technical_debt::handle_comprehensive(cmd).await,

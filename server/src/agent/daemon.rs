@@ -452,14 +452,13 @@ impl DaemonManager {
         // IPC connection would be established here in production
         Ok(DaemonState {
             status: DaemonStatus::Stopped,
-            start_time: None,
-            memory_usage_mb: 0,
-            cpu_usage_percent: 0.0,
-            monitored_projects: 0,
-            uptime_seconds: 0,
+            started_at: SystemTime::now(),
             last_health_check: SystemTime::now(),
-            pid: std::process::id(),
-            config: DaemonConfig::default(),
+            active_projects: 0,
+            events_processed: 0,
+            memory_usage_mb: 0,
+            restart_count: 0,
+            last_error: None,
         })
     }
 
@@ -468,28 +467,28 @@ impl DaemonManager {
         // Command processing in standalone mode
         // In production, this would send commands via IPC
         match command {
-            DaemonCommand::Stop => {
-                info!("Stop command received (standalone mode)");
-                Ok(())
-            }
-            DaemonCommand::Restart => {
-                info!("Restart command received (standalone mode)");
-                Ok(())
-            }
-            DaemonCommand::Reload => {
-                info!("Reload command received (standalone mode)");
-                Ok(())
-            }
-            DaemonCommand::Status => {
+            DaemonCommand::GetStatus => {
                 info!("Status command received (standalone mode)");
                 Ok(())
             }
-            DaemonCommand::StartMonitoring { project_id } => {
-                info!("Start monitoring command received for project: {} (standalone mode)", project_id);
+            DaemonCommand::StartMonitoring { project_path } => {
+                info!("Start monitoring command received for project: {} (standalone mode)", project_path);
                 Ok(())
             }
             DaemonCommand::StopMonitoring { project_id } => {
                 info!("Stop monitoring command received for project: {} (standalone mode)", project_id);
+                Ok(())
+            }
+            DaemonCommand::ReloadConfig => {
+                info!("Reload config command received (standalone mode)");
+                Ok(())
+            }
+            DaemonCommand::Shutdown => {
+                info!("Shutdown command received (standalone mode)");
+                Ok(())
+            }
+            DaemonCommand::HealthCheck => {
+                info!("Health check command received (standalone mode)");
                 Ok(())
             }
         }
@@ -639,15 +638,15 @@ mod tests {
         
         let state = status.unwrap();
         assert_eq!(state.status, DaemonStatus::Stopped);
-        assert_eq!(state.monitored_projects, 0);
+        assert_eq!(state.active_projects, 0);
         assert_eq!(state.memory_usage_mb, 0);
-        assert_eq!(state.cpu_usage_percent, 0.0);
+        assert_eq!(state.events_processed, 0);
     }
 
     #[tokio::test]
-    async fn test_daemon_send_command_stop() {
-        // TDD: Test that send_command handles Stop command
-        let result = DaemonManager::send_command(DaemonCommand::Stop).await;
+    async fn test_daemon_send_command_get_status() {
+        // TDD: Test that send_command handles GetStatus command
+        let result = DaemonManager::send_command(DaemonCommand::GetStatus).await;
         assert!(result.is_ok());
     }
 
@@ -655,7 +654,7 @@ mod tests {
     async fn test_daemon_send_command_start_monitoring() {
         // TDD: Test that send_command handles StartMonitoring command
         let result = DaemonManager::send_command(DaemonCommand::StartMonitoring {
-            project_id: "test-project".to_string(),
+            project_path: "test-project".to_string(),
         }).await;
         assert!(result.is_ok());
     }
@@ -664,12 +663,11 @@ mod tests {
     async fn test_daemon_send_command_all_variants() {
         // TDD: Test all DaemonCommand variants
         let commands = vec![
-            DaemonCommand::Stop,
-            DaemonCommand::Restart,
-            DaemonCommand::Reload,
-            DaemonCommand::Status,
-            DaemonCommand::StartMonitoring { project_id: "proj1".to_string() },
+            DaemonCommand::GetStatus,
+            DaemonCommand::StartMonitoring { project_path: "proj1".to_string() },
             DaemonCommand::StopMonitoring { project_id: "proj2".to_string() },
+            DaemonCommand::ReloadConfig,
+            DaemonCommand::Shutdown,
         ];
         
         for command in commands {

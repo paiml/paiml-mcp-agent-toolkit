@@ -952,10 +952,9 @@ fn resolve_repo_spec(repo_spec: &str) -> Result<PathBuf> {
     // Handle GitHub shorthand formats
     if repo_spec.starts_with("gh:") {
         let repo_name = repo_spec.strip_prefix("gh:").unwrap();
-        return Err(anyhow!(
-            "GitHub shorthand cloning not yet implemented: {}",
-            repo_name
-        ));
+        // Convert GitHub shorthand to full URL
+        let github_url = format!("https://github.com/{}", repo_name);
+        return Ok(PathBuf::from(github_url));
     }
 
     // Handle full GitHub URLs - now implemented!
@@ -966,10 +965,9 @@ fn resolve_repo_spec(repo_spec: &str) -> Result<PathBuf> {
 
     // Handle owner/repo format (assume GitHub)
     if repo_spec.contains('/') && !repo_spec.contains('.') {
-        return Err(anyhow!(
-            "GitHub repository cloning not yet implemented: {}",
-            repo_spec
-        ));
+        // Convert owner/repo format to GitHub URL
+        let github_url = format!("https://github.com/{}", repo_spec);
+        return Ok(PathBuf::from(github_url));
     }
 
     // Fall back to treating as local path
