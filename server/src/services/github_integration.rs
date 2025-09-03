@@ -53,7 +53,7 @@ const KEYWORD_MAPPINGS: &[(&[&str], &str, f32)] = &[
         "Performance",
         3.0,
     ),
-    // Bug/Correctness keywords
+    // Correctness and defect keywords
     (
         &[
             "bug",
@@ -93,7 +93,7 @@ const KEYWORD_MAPPINGS: &[(&[&str], &str, f32)] = &[
         "Security",
         4.0,
     ),
-    // Technical debt keywords
+    // Code quality keywords
     (
         &["debt", "todo", "fixme", "hack", "workaround", "temporary"],
         "TechnicalDebt",

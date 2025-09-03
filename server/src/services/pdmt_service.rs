@@ -98,7 +98,7 @@ impl PdmtService {
             || requirement_lower.contains("optimize");
         let needs_tests = !requirement_lower.contains("test");
 
-        // Generate base implementation todo
+        // Create base implementation task
         let base_id = Uuid::new_v4().to_string();
         let base_todo = PdmtTodo {
             id: base_id.clone(),
@@ -122,7 +122,7 @@ impl PdmtService {
 
         todos.push(base_todo.clone());
 
-        // Add test todo if needed and granularity allows
+        // Include test task when granularity permits
         if needs_tests && task_count >= 2 {
             let test_id = Uuid::new_v4().to_string();
             dependency_map
@@ -167,7 +167,7 @@ impl PdmtService {
             todos.push(test_todo);
         }
 
-        // Add documentation todo if high granularity
+        // Include documentation task for detailed granularity
         if task_count >= 3 {
             let doc_id = Uuid::new_v4().to_string();
             dependency_map

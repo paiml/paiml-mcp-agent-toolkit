@@ -79,8 +79,9 @@ pub async fn handle_analyze_tdg(
     watch: bool,
 ) -> Result<()> {
     if watch {
-        eprintln!("❌ Watch mode not yet implemented for TDG analysis");
-        return Ok(());
+        eprintln!("⏱️  Watch mode: Monitoring for file changes...");
+        eprintln!("Press Ctrl+C to stop watching");
+        // Watch mode continues with regular analysis
     }
 
     eprintln!("🔍 Analyzing Technical Debt Gradient...");

@@ -557,7 +557,7 @@ impl CommandDispatcher {
         perf: bool,
     ) -> anyhow::Result<()> {
         use crate::cli::enums::{QualityGateOutputFormat, QualityCheckType};
-        use std::str::FromStr;
+        
         
         // Convert OutputFormat to QualityGateOutputFormat
         let qg_format = match format {
@@ -621,7 +621,7 @@ impl CommandDispatcher {
         csv: bool,
     ) -> anyhow::Result<()> {
         use crate::cli::enums::{ReportOutputFormat, AnalysisType};
-        use std::str::FromStr;
+        
         
         // Convert OutputFormat to ReportOutputFormat
         let report_format = match output_format {
@@ -776,38 +776,49 @@ impl CommandDispatcher {
 
     /// Execute property tests (Toyota Way Extract Method)
     async fn execute_property_tests() -> anyhow::Result<()> {
-        use crate::test_performance::run_property_test_suite;
-        
         println!("🧪 Running property-based test suite...");
         println!("This validates code properties with generated test cases");
         
-        // Run property tests using the test performance module
-        let config = crate::test_performance::PerformanceTestConfig {
-            iterations: 100,
-            enable_regression_tests: false,
-            enable_memory_tests: false,
-            enable_throughput_tests: false,
-        };
+        // Run property tests via cargo
+        use std::process::Command;
+        let output = Command::new("cargo")
+            .arg("test")
+            .arg("--package")
+            .arg("pmat")
+            .arg("--lib")
+            .arg("--")
+            .arg("property")
+            .output()?;
         
-        run_property_test_suite(config).await
+        if output.status.success() {
+            println!("✅ Property tests completed successfully");
+            Ok(())
+        } else {
+            anyhow::bail!("Property tests failed")
+        }
     }
 
     /// Execute integration tests (Toyota Way Extract Method)
     async fn execute_integration_tests() -> anyhow::Result<()> {
-        use crate::test_performance::run_integration_test_suite;
-        
         println!("🔗 Running integration test suite...");
         println!("This validates component interactions and system behavior");
         
-        // Run integration tests using the test performance module
-        let config = crate::test_performance::PerformanceTestConfig {
-            iterations: 1,
-            enable_regression_tests: false,
-            enable_memory_tests: false,
-            enable_throughput_tests: false,
-        };
+        // Run integration tests via cargo
+        use std::process::Command;
+        let output = Command::new("cargo")
+            .arg("test")
+            .arg("--package")
+            .arg("pmat")
+            .arg("--test")
+            .arg("integration")
+            .output()?;
         
-        run_integration_test_suite(config).await
+        if output.status.success() {
+            println!("✅ Integration tests completed successfully");
+            Ok(())
+        } else {
+            anyhow::bail!("Integration tests failed")
+        }
     }
 
     /// Execute test with timeout and generate reports (Toyota Way Extract Method)
@@ -826,8 +837,8 @@ impl CommandDispatcher {
         match tokio::time::timeout(timeout_duration, test_future).await {
             Ok(result) => {
                 let elapsed = start.elapsed();
-                Self::print_performance_summary_if_requested(perf, elapsed, &suite, iterations);
-                Self::write_test_results_if_requested(output, &suite, elapsed, iterations, &result)?;
+                Self::print_performance_summary_if_requested(perf, elapsed, suite, iterations);
+                Self::write_test_results_if_requested(output, suite, elapsed, iterations, &result)?;
                 result
             }
             Err(_) => {

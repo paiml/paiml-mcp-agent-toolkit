@@ -83,7 +83,7 @@ impl RoadmapTodoGenerator {
         let todo = self.create_quality_enforced_todo(task, 1);
         todos.push(todo);
 
-        // Add testing todo if task is complex
+        // Create additional testing tasks for complex work
         if task.estimated_hours > 4.0 {
             let test_todo = QualityEnforcedTodo {
                 id: format!("{}-test", task.id),

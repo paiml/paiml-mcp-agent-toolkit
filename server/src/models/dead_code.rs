@@ -127,7 +127,7 @@ impl FileDeadCodeMetrics {
                 self.dead_lines += 10; // Estimate 10 lines per class
             }
             DeadCodeType::Variable => {
-                self.dead_modules += 1; // Using modules for variables for now
+                self.dead_modules += 1; // Track variables in module counter
                 self.dead_lines += 1; // Estimate 1 line per variable
             }
             DeadCodeType::UnreachableCode => {

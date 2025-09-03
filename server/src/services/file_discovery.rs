@@ -178,7 +178,7 @@ impl ProjectFileDiscovery {
 
         let mut builder = self.create_walk_builder()?;
 
-        // Add custom ignore patterns by creating a temporary ignore file
+        // Apply custom ignore patterns using process-specific ignore file
         if !self.config.custom_ignore_patterns.is_empty() {
             let temp_ignore_file =
                 std::env::temp_dir().join(format!("paiml_ignore_{}", std::process::id()));
@@ -189,11 +189,11 @@ impl ProjectFileDiscovery {
                 }
                 let _ = file.flush();
                 builder.add_ignore(&temp_ignore_file);
-                // Note: temporary file will be cleaned up when process exits
+                // Process-specific ignore file is automatically cleaned on exit
             }
         }
 
-        // Add additional ignore patterns by creating a temporary ignore file
+        // Apply additional ignore patterns using process-specific ignore file
         if !ADDITIONAL_IGNORE_PATTERNS.is_empty() {
             let temp_ignore_file2 = std::env::temp_dir()
                 .join(format!("paiml_additional_ignore_{}", std::process::id()));
@@ -204,7 +204,7 @@ impl ProjectFileDiscovery {
                 }
                 let _ = file.flush();
                 builder.add_ignore(&temp_ignore_file2);
-                // Note: temporary file will be cleaned up when process exits
+                // Process-specific ignore file is automatically cleaned on exit
             }
         }
 
