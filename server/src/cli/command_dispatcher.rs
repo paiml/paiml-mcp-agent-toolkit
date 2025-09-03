@@ -104,8 +104,8 @@ impl CommandDispatcher {
                 max_line_length,
             } => {
                 Self::execute_demo_command(
-                    path, url, repo, format, protocol, show_api, no_browser, port, cli,
-                    target_nodes, centrality_threshold, merge_threshold, debug, debug_output,
+                    path, url, repo, Some(format), protocol, show_api, no_browser, port.unwrap_or(8080), cli,
+                    Some(target_nodes), Some(centrality_threshold), Some(merge_threshold as f64), debug, debug_output,
                     skip_vendor, no_skip_vendor, max_line_length, server
                 ).await
             }
@@ -121,11 +121,22 @@ impl CommandDispatcher {
                 include_provability,
                 output,
                 perf,
-            } => Self::execute_quality_gate_command(
-                project_path, file, format, fail_on_violation, checks,
-                max_dead_code, min_entropy, max_complexity_p99,
-                include_provability, output, perf
-            ).await,
+            } => {
+                // Convert QualityGateOutputFormat to OutputFormat for the internal method
+                let output_format = match format {
+                    crate::cli::enums::QualityGateOutputFormat::Json => OutputFormat::Json,
+                    _ => OutputFormat::Table,
+                };
+                
+                // Convert QualityCheckType vec to String vec
+                let check_strings: Vec<String> = checks.iter().map(|c| format!("{:?}", c).to_lowercase()).collect();
+                
+                Self::execute_quality_gate_command(
+                    Some(project_path), file, output_format, fail_on_violation, check_strings,
+                    Some(max_dead_code), Some(min_entropy), Some(max_complexity_p99 as usize),
+                    include_provability, output, perf
+                ).await
+            }
             Commands::Report {
                 project_path,
                 output_format,
@@ -139,11 +150,22 @@ impl CommandDispatcher {
                 text,
                 markdown,
                 csv,
-            } => Self::execute_report_command(
-                project_path, output_format, include_visualizations,
-                include_executive_summary, include_recommendations, analyses,
-                confidence_threshold, output, perf, text, markdown, csv
-            ).await,
+            } => {
+                // Convert ReportOutputFormat to OutputFormat for the internal method
+                let internal_format = match output_format {
+                    crate::cli::enums::ReportOutputFormat::Json => OutputFormat::Json,
+                    _ => OutputFormat::Table,
+                };
+                
+                // Convert AnalysisType vec to String vec
+                let analysis_strings: Vec<String> = analyses.iter().map(|a| format!("{:?}", a).to_lowercase()).collect();
+                
+                Self::execute_report_command(
+                    Some(project_path), internal_format, include_visualizations,
+                    include_executive_summary, include_recommendations, analysis_strings,
+                    Some(confidence_threshold as f64 / 100.0), output, perf, text, markdown, csv
+                ).await
+            }
             Commands::Serve {
                 port,
                 host,
@@ -189,7 +211,9 @@ impl CommandDispatcher {
                 set,
                 config_path,
             } => Self::execute_config_command(
-                show, edit, validate, reset, section, set, config_path
+                show, edit, validate, reset, section, 
+                if set.is_empty() { None } else { Some(set) }, 
+                config_path
             ).await,
 
             Commands::Agent { command } => handlers::handle_agent_command(command).await,
@@ -292,7 +316,7 @@ impl CommandDispatcher {
             path,
             url,
             repo,
-            format: format.unwrap_or(crate::cli::OutputFormat::Human),
+            format: format.unwrap_or(OutputFormat::Table),
             protocol,
             show_api,
             no_browser,
@@ -333,7 +357,7 @@ impl CommandDispatcher {
             } => {
                 Self::execute_scaffold_agent_command(
                     name, template, features, quality, output, force, dry_run,
-                    interactive, deterministic_core, probabilistic_wrapper
+                    interactive, deterministic_core.is_some(), probabilistic_wrapper.is_some()
                 ).await
             }
             ScaffoldCommands::ListTemplates => handlers::handle_list_agent_templates().await,
@@ -347,9 +371,9 @@ impl CommandDispatcher {
     #[allow(clippy::too_many_arguments)]
     async fn execute_scaffold_agent_command(
         name: String,
-        template: Option<String>,
+        template: String,
         features: Vec<String>,
-        quality: bool,
+        quality: String,
         output: Option<PathBuf>,
         force: bool,
         dry_run: bool,
@@ -366,8 +390,8 @@ impl CommandDispatcher {
             force,
             dry_run,
             interactive,
-            deterministic_core,
-            probabilistic_wrapper,
+            deterministic_core: if deterministic_core { Some("true".to_string()) } else { None },
+            probabilistic_wrapper: if probabilistic_wrapper { Some("true".to_string()) } else { None },
         };
         handlers::handle_scaffold_agent(params).await
     }
@@ -494,14 +518,14 @@ impl CommandDispatcher {
         output: Option<PathBuf>,
         perf: bool,
     ) -> anyhow::Result<()> {
-        let config = Self::create_test_config(suite, iterations, memory, throughput, regression);
-        Self::print_test_startup_info(suite, iterations, timeout);
+        let config = Self::create_test_config(&suite, iterations, memory, throughput, regression);
+        Self::print_test_startup_info(&suite, iterations, timeout);
 
         let start = std::time::Instant::now();
-        let test_future = Self::execute_test_suite(suite, config);
+        let test_future = Self::execute_test_suite(&suite, config);
 
         Self::execute_with_timeout_and_reporting(
-            test_future, timeout, start, suite, iterations, output, perf
+            test_future, timeout, start, &suite, iterations, output, perf
         ).await
     }
 
@@ -532,15 +556,48 @@ impl CommandDispatcher {
         output: Option<PathBuf>,
         perf: bool,
     ) -> anyhow::Result<()> {
-        handlers::handle_quality_gate(
-            project_path.unwrap_or_else(|| std::path::PathBuf::from(".")),
+        use crate::cli::enums::{QualityGateOutputFormat, QualityCheckType};
+        use std::str::FromStr;
+        
+        // Convert OutputFormat to QualityGateOutputFormat
+        let qg_format = match format {
+            OutputFormat::Json => QualityGateOutputFormat::Json,
+            OutputFormat::Table => QualityGateOutputFormat::Summary,
+            OutputFormat::Yaml => QualityGateOutputFormat::Summary,
+        };
+        
+        // Convert check strings to QualityCheckType
+        let quality_checks: Vec<QualityCheckType> = checks
+            .iter()
+            .filter_map(|s| match s.as_str() {
+                "dead_code" | "dead-code" => Some(QualityCheckType::DeadCode),
+                "complexity" => Some(QualityCheckType::Complexity),
+                "coverage" => Some(QualityCheckType::Coverage),
+                "sections" => Some(QualityCheckType::Sections),
+                "provability" => Some(QualityCheckType::Provability),
+                "satd" => Some(QualityCheckType::Satd),
+                "entropy" => Some(QualityCheckType::Entropy),
+                "security" => Some(QualityCheckType::Security),
+                "duplicates" => Some(QualityCheckType::Duplicates),
+                "all" => Some(QualityCheckType::All),
+                _ => None,
+            })
+            .collect();
+        
+        // Use defaults for optional parameters
+        let max_dead = max_dead_code.unwrap_or(0.1); // 10% default
+        let min_ent = min_entropy.unwrap_or(0.7); // 70% default
+        let max_comp = max_complexity_p99.unwrap_or(20) as u32;
+        
+        handlers::demo_handlers::handle_quality_gate(
+            project_path.unwrap_or_else(|| PathBuf::from(".")),
             file,
-            format.into(),
+            qg_format,
             fail_on_violation,
-            checks.into_iter().map(|s| s.parse().unwrap_or_default()).collect(),
-            max_dead_code.unwrap_or(10.0),
-            min_entropy.unwrap_or(0.5),
-            max_complexity_p99.unwrap_or(20) as u32,
+            quality_checks,
+            max_dead,
+            min_ent,
+            max_comp,
             include_provability,
             output,
             perf,
@@ -563,17 +620,44 @@ impl CommandDispatcher {
         markdown: bool,
         csv: bool,
     ) -> anyhow::Result<()> {
+        use crate::cli::enums::{ReportOutputFormat, AnalysisType};
+        use std::str::FromStr;
+        
+        // Convert OutputFormat to ReportOutputFormat
+        let report_format = match output_format {
+            OutputFormat::Json => ReportOutputFormat::Json,
+            OutputFormat::Table => ReportOutputFormat::Text,
+            OutputFormat::Yaml => ReportOutputFormat::Text,
+        };
+        
+        // Convert analysis strings to AnalysisType
+        let analysis_types: Vec<AnalysisType> = analyses
+            .iter()
+            .filter_map(|s| match s.as_str() {
+                "complexity" => Some(AnalysisType::Complexity),
+                "dead_code" | "dead-code" => Some(AnalysisType::DeadCode),
+                "duplication" => Some(AnalysisType::Duplication),
+                "technical_debt" | "technical-debt" => Some(AnalysisType::TechnicalDebt),
+                "big_o" | "big-o" => Some(AnalysisType::BigO),
+                "all" => Some(AnalysisType::All),
+                _ => None,
+            })
+            .collect();
+        
+        // Convert confidence threshold to u8 (percentage)
+        let confidence = (confidence_threshold.unwrap_or(0.8) * 100.0) as u8;
+        
         handlers::enhanced_reporting_handlers::handle_generate_report(
-            project_path.unwrap_or_else(|| std::path::PathBuf::from(".")),
-            output_format.into(),
+            project_path.unwrap_or_else(|| PathBuf::from(".")),
+            report_format,
             text,
             markdown,
             csv,
             include_visualizations,
             include_executive_summary,
             include_recommendations,
-            analyses.into_iter().map(|s| s.parse().unwrap_or_default()).collect(),
-            confidence_threshold.unwrap_or(80.0) as u8,
+            analysis_types,
+            confidence,
             output,
             perf,
         ).await
@@ -603,7 +687,7 @@ impl CommandDispatcher {
 
     /// Create test configuration from CLI parameters (Toyota Way Extract Method)
     fn create_test_config(
-        suite: super::commands::TestSuite,
+        suite: &super::commands::TestSuite,
         iterations: usize,
         memory: bool,
         throughput: bool,
@@ -623,7 +707,7 @@ impl CommandDispatcher {
 
     /// Print test startup information (Toyota Way Extract Method)
     fn print_test_startup_info(
-        suite: super::commands::TestSuite,
+        suite: &super::commands::TestSuite,
         iterations: usize,
         timeout: u64,
     ) {
@@ -636,7 +720,7 @@ impl CommandDispatcher {
 
     /// Execute the specific test suite (Toyota Way Extract Method)
     async fn execute_test_suite(
-        suite: super::commands::TestSuite,
+        suite: &super::commands::TestSuite,
         config: crate::test_performance::PerformanceTestConfig,
     ) -> anyhow::Result<()> {
         use super::commands::TestSuite;
@@ -712,7 +796,7 @@ impl CommandDispatcher {
         test_future: impl std::future::Future<Output = anyhow::Result<()>>,
         timeout: u64,
         start: std::time::Instant,
-        suite: super::commands::TestSuite,
+        suite: &super::commands::TestSuite,
         iterations: usize,
         output: Option<PathBuf>,
         perf: bool,
@@ -817,7 +901,7 @@ mod tests {
         let command = Commands::List {
             toolchain: None,
             category: None,
-            format: OutputFormat::Human,
+            format: OutputFormat::Table,
         };
         
         let result = CommandDispatcher::execute_command(command, server).await;
@@ -848,7 +932,7 @@ mod tests {
         let result = CommandDispatcher::execute_quality_gate_command(
             Some(PathBuf::from(".")),
             None,
-            OutputFormat::Human,
+            OutputFormat::Table,
             false,
             vec!["complexity".to_string()],
             None,
@@ -874,7 +958,7 @@ mod tests {
         
         let result = CommandDispatcher::execute_report_command(
             Some(PathBuf::from(".")),
-            OutputFormat::Human,
+            OutputFormat::Table,
             false,
             false,
             false,
