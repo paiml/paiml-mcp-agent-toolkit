@@ -254,8 +254,8 @@ impl ProjectFileDiscovery {
             files.len()
         );
 
-        // Sort for deterministic output
-        files.sort();
+        // Sort for deterministic output (using unstable for performance)
+        files.sort_unstable();
 
         Ok(files)
     }

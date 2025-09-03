@@ -299,7 +299,7 @@ impl BigOAnalyzer {
             }
         }
 
-        files.sort();
+        files.sort_unstable();
         Ok(files)
     }
 
