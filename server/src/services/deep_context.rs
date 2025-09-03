@@ -3087,7 +3087,7 @@ impl DeepContextAnalyzer {
             .filter(|s| matches!(s, TDGSeverity::Warning))
             .count();
 
-        tdg_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        tdg_values.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
 
         let average_tdg = if tdg_values.is_empty() {
             0.0
@@ -3119,7 +3119,7 @@ impl DeepContextAnalyzer {
                 estimated_hours: score.value * 2.0,       // Simple estimation
             })
             .collect();
-        hotspots.sort_by(|a, b| b.tdg_score.partial_cmp(&a.tdg_score).unwrap());
+        hotspots.sort_unstable_by(|a, b| b.tdg_score.partial_cmp(&a.tdg_score).unwrap());
         hotspots.truncate(10);
 
         Ok(TDGSummary {
@@ -3285,7 +3285,7 @@ impl DeepContextAnalyzer {
             })
             .collect();
 
-        hotspots.sort_by(|a, b| b.composite_score.partial_cmp(&a.composite_score).unwrap());
+        hotspots.sort_unstable_by(|a, b| b.composite_score.partial_cmp(&a.composite_score).unwrap());
         hotspots.truncate(20);
 
         Ok(hotspots)
@@ -4066,7 +4066,7 @@ async fn analyze_dead_code(
     };
 
     // Phase 4: Sort files by dead code score
-    file_metrics.sort_by(|a, b| {
+    file_metrics.sort_unstable_by(|a, b| {
         b.dead_score
             .partial_cmp(&a.dead_score)
             .unwrap_or(std::cmp::Ordering::Equal)
