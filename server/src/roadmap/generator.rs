@@ -25,7 +25,7 @@ pub struct RoadmapTask {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QualityEnforcedTodo {
     pub id: String,
-    pub task_id: String, // PMAT-XXXX
+    pub task_id: String, // Task identifier in PMAT-XXXX format
     pub description: String,
     pub implementation_spec: String,
     pub quality_requirements: QualityRequirements,
