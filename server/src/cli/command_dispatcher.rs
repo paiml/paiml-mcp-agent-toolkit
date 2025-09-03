@@ -776,18 +776,38 @@ impl CommandDispatcher {
 
     /// Execute property tests (Toyota Way Extract Method)
     async fn execute_property_tests() -> anyhow::Result<()> {
-        println!("Property-based testing not yet implemented in this context");
-        println!("Use the pmat test --suite property command for property tests");
-        Ok(())
+        use crate::test_performance::run_property_test_suite;
+        
+        println!("🧪 Running property-based test suite...");
+        println!("This validates code properties with generated test cases");
+        
+        // Run property tests using the test performance module
+        let config = crate::test_performance::PerformanceTestConfig {
+            iterations: 100,
+            enable_regression_tests: false,
+            enable_memory_tests: false,
+            enable_throughput_tests: false,
+        };
+        
+        run_property_test_suite(config).await
     }
 
     /// Execute integration tests (Toyota Way Extract Method)
     async fn execute_integration_tests() -> anyhow::Result<()> {
-        println!("Integration testing not yet implemented in this context");
-        println!(
-            "Use the pmat test --suite integration command for integration tests"
-        );
-        Ok(())
+        use crate::test_performance::run_integration_test_suite;
+        
+        println!("🔗 Running integration test suite...");
+        println!("This validates component interactions and system behavior");
+        
+        // Run integration tests using the test performance module
+        let config = crate::test_performance::PerformanceTestConfig {
+            iterations: 1,
+            enable_regression_tests: false,
+            enable_memory_tests: false,
+            enable_throughput_tests: false,
+        };
+        
+        run_integration_test_suite(config).await
     }
 
     /// Execute test with timeout and generate reports (Toyota Way Extract Method)
@@ -992,6 +1012,22 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    /// Test execute_property_tests (TDD for property test implementation)
+    #[tokio::test]
+    async fn test_execute_property_tests() {
+        let result = CommandDispatcher::execute_property_tests().await;
+        // Property tests should run successfully
+        assert!(result.is_ok());
+    }
+    
+    /// Test execute_integration_tests (TDD for integration test implementation)
+    #[tokio::test]
+    async fn test_execute_integration_tests() {
+        let result = CommandDispatcher::execute_integration_tests().await;
+        // Integration tests should run successfully
+        assert!(result.is_ok());
+    }
+    
     /// Test create_test_config (Toyota Way Extract Method test)
     #[test]
     fn test_create_test_config() {

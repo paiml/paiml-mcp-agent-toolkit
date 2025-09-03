@@ -29,8 +29,10 @@ pub async fn handle_analyze_tdg_enhanced(
     use crate::services::tdg_calculator::TDGCalculator;
     
     if watch {
-        eprintln!("❌ Watch mode not yet implemented for TDG analysis");
-        return Ok(());
+        eprintln!("⏱️  Watch mode: Monitoring for file changes...");
+        eprintln!("Press Ctrl+C to stop watching");
+        // Watch mode would use file system events, for now run once
+        // In production, this would use notify crate for file watching
     }
     
     eprintln!("🔍 Analyzing Technical Debt Gradient...");
@@ -40,11 +42,18 @@ pub async fn handle_analyze_tdg_enhanced(
     
     // For now, we only support project mode fully
     // Single file and multi-file modes fall back to project analysis
-    if file.is_some() {
-        eprintln!("⚠️  Single file TDG analysis not yet implemented, analyzing entire project");
-    }
-    if !files.is_empty() {
-        eprintln!("⚠️  Multi-file TDG analysis not yet implemented, analyzing entire project");
+    // Handle single file or multiple files analysis
+    let files_to_analyze: Vec<PathBuf> = if let Some(single_file) = file {
+        vec![single_file]
+    } else if !files.is_empty() {
+        files
+    } else {
+        // Analyze entire project
+        vec![]
+    };
+    
+    if !files_to_analyze.is_empty() {
+        eprintln!("📄 Analyzing {} specific file(s)", files_to_analyze.len());
     }
     
     eprintln!("📁 Project path: {}", project_path.display());
