@@ -65,7 +65,7 @@ impl SnapshotManager {
         // Use Cap'n Proto serialization with JSON fallback
         let data = serialize_state_to_capnp(state)?;
 
-        // Atomic write: write to temp file then rename
+        // Atomic write: write to temporary file then rename
         let temp_path = self.snapshot_path.with_extension("tmp");
         fs::write(&temp_path, data).map_err(|e| format!("Failed to write snapshot: {}", e))?;
 

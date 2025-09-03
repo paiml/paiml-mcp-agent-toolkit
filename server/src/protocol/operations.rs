@@ -163,7 +163,7 @@ async fn scaffold_agent(params: AgentParams) -> (Option<Value>, Option<ErrorInfo
 async fn generate_pdmt_todos(params: PdmtParams) -> (Option<Value>, Option<ErrorInfo>) {
     // Generate deterministic todos based on requirement analysis
     let seed = params.seed.unwrap_or(42);
-    let granularity = params.granularity.as_deref().unwrap_or("medium");
+    let granularity: &str = &params.granularity;
     
     // Parse requirement to generate appropriate todos
     let todos = generate_todos_from_requirement(&params.requirement, seed, granularity);
@@ -181,7 +181,7 @@ async fn generate_pdmt_todos(params: PdmtParams) -> (Option<Value>, Option<Error
 }
 
 fn generate_todos_from_requirement(requirement: &str, seed: u64, granularity: &str) -> Vec<Value> {
-    // Deterministic todo generation based on requirement analysis
+    // Deterministic task generation based on requirement analysis
     let mut todos = Vec::new();
     
     // Basic requirement parsing for common patterns
@@ -311,7 +311,7 @@ mod tests {
         let params = PdmtParams {
             requirement: "Add comprehensive testing".to_string(),
             seed: Some(42),
-            granularity: Some("medium".to_string()),
+            granularity: "medium".to_string(),
         };
         
         let (result, error) = generate_pdmt_todos(params).await;

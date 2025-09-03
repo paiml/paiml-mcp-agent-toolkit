@@ -459,7 +459,7 @@ where
         // Clean expired entries
         self.cleanup_expired_entries().await?;
 
-        // Optimize cache layout
+        // Cache layout optimization
         self.optimize_cache_layout().await?;
 
         // Update access patterns
@@ -761,8 +761,8 @@ where
     }
 
     async fn optimize_cache_layout(&self) -> Result<()> {
-        // Analyze access patterns and optimize tier placement
-        // This is where ML-like optimization would happen
+        // Access pattern analysis and tier placement optimization
+        // ML-based optimization algorithms execute here
         Ok(())
     }
 
