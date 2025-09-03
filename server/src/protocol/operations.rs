@@ -161,13 +161,165 @@ async fn scaffold_agent(params: AgentParams) -> (Option<Value>, Option<ErrorInfo
 }
 
 async fn generate_pdmt_todos(params: PdmtParams) -> (Option<Value>, Option<ErrorInfo>) {
-    // Implementation would call the actual PDMT service
+    // Generate deterministic todos based on requirement analysis
+    let seed = params.seed.unwrap_or(42);
+    let granularity = params.granularity.as_deref().unwrap_or("medium");
+    
+    // Parse requirement to generate appropriate todos
+    let todos = generate_todos_from_requirement(&params.requirement, seed, granularity);
+    
     (
         Some(serde_json::json!({
             "requirement": params.requirement,
-            "todos": [],
-            "seed": params.seed.unwrap_or(42)
+            "todos": todos,
+            "seed": seed,
+            "granularity": granularity,
+            "total_todos": todos.len()
         })),
         None,
     )
+}
+
+fn generate_todos_from_requirement(requirement: &str, seed: u64, granularity: &str) -> Vec<Value> {
+    // Deterministic todo generation based on requirement analysis
+    let mut todos = Vec::new();
+    
+    // Basic requirement parsing for common patterns
+    let requirement_lower = requirement.to_lowercase();
+    
+    if requirement_lower.contains("test") {
+        todos.push(serde_json::json!({
+            "id": format!("todo-{}-1", seed),
+            "task": "Write unit tests for core functionality",
+            "priority": "high",
+            "validation": "cargo test",
+            "success_criteria": "All tests pass with >80% coverage"
+        }));
+    }
+    
+    if requirement_lower.contains("refactor") {
+        todos.push(serde_json::json!({
+            "id": format!("todo-{}-2", seed),
+            "task": "Analyze code complexity and identify refactoring targets",
+            "priority": "medium",
+            "validation": "pmat analyze complexity",
+            "success_criteria": "Complexity reduced to <20"
+        }));
+    }
+    
+    if requirement_lower.contains("implement") || requirement_lower.contains("feature") {
+        todos.push(serde_json::json!({
+            "id": format!("todo-{}-3", seed),
+            "task": "Design and implement feature architecture",
+            "priority": "high",
+            "validation": "pmat quality-gate",
+            "success_criteria": "Quality gate passes"
+        }));
+    }
+    
+    // Adjust granularity
+    match granularity {
+        "fine" => {
+            // Add more detailed sub-tasks
+            for (i, todo) in todos.clone().iter().enumerate() {
+                if let Some(task) = todo.get("task").and_then(|t| t.as_str()) {
+                    todos.push(serde_json::json!({
+                        "id": format!("todo-{}-{}-a", seed, i),
+                        "task": format!("Plan: {}", task),
+                        "priority": "medium",
+                        "parent": todo.get("id")
+                    }));
+                }
+            }
+        }
+        "coarse" => {
+            // Keep only high-priority items
+            todos.retain(|todo| {
+                todo.get("priority")
+                    .and_then(|p| p.as_str())
+                    .map(|p| p == "high")
+                    .unwrap_or(false)
+            });
+        }
+        _ => {} // medium granularity - keep as is
+    }
+    
+    todos
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_generate_todos_from_requirement_test() {
+        // TDD: Test that test requirements generate appropriate todos
+        let todos = generate_todos_from_requirement("Add unit tests for the new feature", 42, "medium");
+        assert!(!todos.is_empty());
+        assert!(todos.iter().any(|t| 
+            t.get("task").and_then(|v| v.as_str())
+                .map(|s| s.contains("unit tests"))
+                .unwrap_or(false)
+        ));
+    }
+    
+    #[test]
+    fn test_generate_todos_from_requirement_refactor() {
+        // TDD: Test that refactor requirements generate appropriate todos
+        let todos = generate_todos_from_requirement("Refactor the complex module", 42, "medium");
+        assert!(!todos.is_empty());
+        assert!(todos.iter().any(|t| 
+            t.get("task").and_then(|v| v.as_str())
+                .map(|s| s.contains("complexity"))
+                .unwrap_or(false)
+        ));
+    }
+    
+    #[test]
+    fn test_generate_todos_granularity_fine() {
+        // TDD: Test fine granularity generates more todos
+        let todos_medium = generate_todos_from_requirement("Implement new feature", 42, "medium");
+        let todos_fine = generate_todos_from_requirement("Implement new feature", 42, "fine");
+        assert!(todos_fine.len() > todos_medium.len());
+    }
+    
+    #[test]
+    fn test_generate_todos_granularity_coarse() {
+        // TDD: Test coarse granularity keeps only high priority
+        let todos = generate_todos_from_requirement("Implement feature and refactor code", 42, "coarse");
+        for todo in &todos {
+            let priority = todo.get("priority").and_then(|p| p.as_str()).unwrap_or("");
+            assert_eq!(priority, "high");
+        }
+    }
+    
+    #[test]
+    fn test_generate_todos_deterministic() {
+        // TDD: Test that same inputs produce same outputs (deterministic)
+        let todos1 = generate_todos_from_requirement("Test requirement", 42, "medium");
+        let todos2 = generate_todos_from_requirement("Test requirement", 42, "medium");
+        assert_eq!(todos1.len(), todos2.len());
+        
+        // Different seed should still work
+        let todos3 = generate_todos_from_requirement("Test requirement", 99, "medium");
+        assert_eq!(todos1.len(), todos3.len()); // Same structure, different IDs
+    }
+    
+    #[tokio::test]
+    async fn test_generate_pdmt_todos() {
+        // TDD: Test the async wrapper function
+        let params = PdmtParams {
+            requirement: "Add comprehensive testing".to_string(),
+            seed: Some(42),
+            granularity: Some("medium".to_string()),
+        };
+        
+        let (result, error) = generate_pdmt_todos(params).await;
+        assert!(result.is_some());
+        assert!(error.is_none());
+        
+        let value = result.unwrap();
+        assert!(value.get("todos").is_some());
+        assert_eq!(value.get("seed"), Some(&serde_json::json!(42)));
+    }
 }
