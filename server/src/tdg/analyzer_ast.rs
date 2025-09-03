@@ -2,7 +2,7 @@ use anyhow::Result;
 use blake3;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use crate::tdg::{
     config::TdgConfig, AdaptiveThresholdFactory, AdaptiveThresholdManager, AnalysisMetadata,
@@ -88,10 +88,32 @@ impl TdgAnalyzerAst {
         let start_time = SystemTime::now();
         let language = Language::from_extension(path);
 
-        // Request resources if resource controller is available
-        let _resource_allocation = if let Some(controller) = &self.resource_controller {
+        // Toyota Way Extract Method: Resource allocation
+        let _resource_allocation = self.request_analysis_resources(path, priority).await?;
+
+        let source = fs::read_to_string(path)?;
+        let content_hash = blake3::hash(source.as_bytes());
+
+        // Toyota Way Extract Method: Cache check and return if hit
+        if let Some(cached_score) = self.check_cache_and_return(&content_hash, language, path, start_time).await? {
+            return Ok(cached_score);
+        }
+
+        // Toyota Way Extract Method: Fresh analysis and storage
+        let score = self.perform_analysis_and_store(path, &source, language, content_hash, start_time).await?;
+
+        Ok(score)
+    }
+
+    /// Toyota Way Extract Method: Request analysis resources if controller available
+    async fn request_analysis_resources(
+        &self,
+        path: &Path,
+        priority: OperationPriority,
+    ) -> Result<Option<crate::tdg::resource_control::ResourceAllocation>> {
+        if let Some(controller) = &self.resource_controller {
             let estimated_memory = self.estimate_analysis_memory(path)?;
-            Some(
+            Ok(Some(
                 controller
                     .request_resources(
                         format!("analyze_{}", path.display()),
@@ -100,25 +122,26 @@ impl TdgAnalyzerAst {
                         estimated_memory,
                     )
                     .await?,
-            )
+            ))
         } else {
-            None
-        };
+            Ok(None)
+        }
+    }
 
-        let source = fs::read_to_string(path)?;
-
-        // Calculate content hash for caching
-        let content_hash = blake3::hash(source.as_bytes());
-        let mut cache_hit = false;
-
-        // Check storage cache if available
+    /// Toyota Way Extract Method: Check cache and return score if hit
+    async fn check_cache_and_return(
+        &self,
+        content_hash: &blake3::Hash,
+        language: Language,
+        path: &Path,
+        start_time: SystemTime,
+    ) -> Result<Option<TdgScore>> {
         if let Some(storage) = &self.storage {
-            if let Some(hot_entry) = storage.get_hot(&content_hash) {
-                cache_hit = true;
+            if let Some(hot_entry) = storage.get_hot(content_hash) {
                 // Record performance sample for cache hit
                 if let Some(adaptive) = &self.adaptive_manager {
                     let duration = start_time.elapsed().unwrap_or_default();
-                    let sample = adaptive.create_sample(duration, cache_hit, 0).await;
+                    let sample = adaptive.create_sample(duration, true, 0).await;
                     adaptive.record_sample(sample).await?;
                 }
 
@@ -132,16 +155,48 @@ impl TdgAnalyzerAst {
                     ..Default::default()
                 };
                 cached_score.calculate_total();
-                return Ok(cached_score);
+                return Ok(Some(cached_score));
             }
         }
+        Ok(None)
+    }
 
+    /// Toyota Way Extract Method: Perform fresh analysis and store results
+    async fn perform_analysis_and_store(
+        &self,
+        path: &Path,
+        source: &str,
+        language: Language,
+        content_hash: blake3::Hash,
+        start_time: SystemTime,
+    ) -> Result<TdgScore> {
         // Perform fresh analysis
         let analysis_start = SystemTime::now();
-        let score = self.analyze_source(&source, language, Some(path.to_path_buf()))?;
+        let score = self.analyze_source(source, language, Some(path.to_path_buf()))?;
         let analysis_duration = analysis_start.elapsed().unwrap_or_default();
 
         // Store in tiered storage if enabled
+        self.store_analysis_record(path, &score, content_hash, analysis_duration, language).await?;
+
+        // Record performance sample for fresh analysis
+        if let Some(adaptive) = &self.adaptive_manager {
+            let total_duration = start_time.elapsed().unwrap_or_default();
+            let sample = adaptive.create_sample(total_duration, false, 0).await;
+            adaptive.record_sample(sample).await?;
+        }
+
+        Ok(score)
+    }
+
+    /// Toyota Way Extract Method: Store analysis record in tiered storage
+    async fn store_analysis_record(
+        &self,
+        path: &Path,
+        score: &TdgScore,
+        content_hash: blake3::Hash,
+        analysis_duration: Duration,
+        language: Language,
+    ) -> Result<()> {
         if let Some(storage) = &self.storage {
             let file_metadata = fs::metadata(path)?;
             let record = FullTdgRecord {
@@ -161,9 +216,7 @@ impl TdgAnalyzerAst {
                 },
                 semantic_sig: SemanticSignature {
                     ast_structure_hash: u64::from_le_bytes(
-                        blake3::hash(source.as_bytes()).as_bytes()[0..8]
-                            .try_into()
-                            .unwrap(),
+                        content_hash.as_bytes()[0..8].try_into().unwrap(),
                     ),
                     identifier_pattern: String::new(),
                     control_flow_pattern: String::new(),
@@ -180,15 +233,7 @@ impl TdgAnalyzerAst {
 
             storage.store(record).await?;
         }
-
-        // Record performance sample for fresh analysis
-        if let Some(adaptive) = &self.adaptive_manager {
-            let total_duration = start_time.elapsed().unwrap_or_default();
-            let sample = adaptive.create_sample(total_duration, cache_hit, 0).await;
-            adaptive.record_sample(sample).await?;
-        }
-
-        Ok(score)
+        Ok(())
     }
 
     /// Analyze file with commit priority (for git hooks, CI/CD)
