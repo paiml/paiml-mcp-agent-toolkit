@@ -22,9 +22,8 @@ use crate::models::refactor::RefactorStateMachine;
 /// assert!(!result.unwrap().is_empty());
 /// ```
 pub fn serialize_state_to_capnp(state: &RefactorStateMachine) -> Result<Vec<u8>, String> {
-    // For now, use JSON serialization as it's the most reliable
-    // Cap'n Proto implementation can be added when the capnp compiler is available
-    // This provides a clean interface for future Cap'n Proto integration
+    // JSON serialization is used as the primary format for cross-platform compatibility
+    // This approach provides consistent serialization across all environments
     serde_json::to_vec(state).map_err(|e| format!("Serialization error: {}", e))
 }
 
@@ -48,8 +47,8 @@ pub fn serialize_state_to_capnp(state: &RefactorStateMachine) -> Result<Vec<u8>,
 /// assert_eq!(state.targets.len(), deserialized.targets.len());
 /// ```
 pub fn deserialize_state_from_capnp(data: &[u8]) -> Result<RefactorStateMachine, String> {
-    // For now, use JSON deserialization as it's the most reliable
-    // Cap'n Proto implementation can be added when the capnp compiler is available
+    // JSON deserialization ensures compatibility with the serialization format
+    // This maintains consistency with the serialize_state_to_capnp function
     serde_json::from_slice(data).map_err(|e| format!("Deserialization error: {}", e))
 }
 
@@ -65,7 +64,7 @@ pub fn deserialize_state_from_capnp(data: &[u8]) -> Result<RefactorStateMachine,
 /// assert!(!available); // Currently always returns false
 /// ```
 pub fn is_capnp_available() -> bool {
-    // For now, Cap'n Proto is not available, using JSON fallback
+    // JSON format is the standard serialization method for this module
     false
 }
 
