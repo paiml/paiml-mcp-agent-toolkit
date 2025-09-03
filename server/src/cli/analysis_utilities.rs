@@ -11,10 +11,17 @@ use crate::cli::{
 use crate::services::lightweight_provability_analyzer::ProofSummary;
 use crate::services::makefile_linter;
 use anyhow::Result;
+use once_cell::sync::Lazy;
+use regex::Regex;
 use serde::Serialize;
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+
+// Performance optimization: Compile regex once at startup
+static SATD_PATTERN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)\b(TODO|FIXME|HACK|XXX|BUG|REFACTOR):\s*(.+)").unwrap()
+});
 
 /// Analyzes Technical Debt Gradient (TDG) for a project.
 ///
@@ -503,7 +510,7 @@ fn apply_results_filtering(
     top_files: usize,
 ) -> Vec<(crate::models::tdg::TDGScore, PathBuf)> {
     // Sort by TDG score descending
-    results.sort_by(|a, b| b.0.value.partial_cmp(&a.0.value).unwrap());
+    results.sort_unstable_by(|a, b| b.0.value.partial_cmp(&a.0.value).unwrap());
 
     // Apply top_files limit
     if top_files > 0 && results.len() > top_files {
@@ -574,7 +581,7 @@ fn create_summary_from_file_results(
 
     // Calculate percentiles
     let mut sorted_values = tdg_values.clone();
-    sorted_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted_values.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
 
     let p95_tdg = percentile(&sorted_values, 0.95);
     let p99_tdg = percentile(&sorted_values, 0.99);
@@ -929,7 +936,7 @@ fn identify_primary_factor(components: &crate::models::tdg::TDGComponents) -> St
         (components.duplication * 0.10, "Code Duplication"),
     ];
 
-    factors.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+    factors.sort_unstable_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
     factors[0].1.to_string()
 }
 
@@ -1563,7 +1570,7 @@ fn filter_and_sort_predictions(
     mut predictions: Vec<(String, crate::services::defect_probability::DefectScore)>,
     top_files: usize,
 ) -> Vec<(String, crate::services::defect_probability::DefectScore)> {
-    predictions.sort_by(|a, b| {
+    predictions.sort_unstable_by(|a, b| {
         b.1.probability
             .partial_cmp(&a.1.probability)
             .unwrap_or(std::cmp::Ordering::Equal)
@@ -2142,7 +2149,7 @@ fn write_summary_top_files(
 
         // Sort files by churn score or commit count (descending)
         let mut sorted_files: Vec<_> = analysis.files.iter().collect();
-        sorted_files.sort_by(|a, b| {
+        sorted_files.sort_unstable_by(|a, b| {
             // Primary sort by commit count, secondary by churn score
             match b.commit_count.cmp(&a.commit_count) {
                 std::cmp::Ordering::Equal => b
@@ -2215,7 +2222,7 @@ fn write_summary_top_contributors(
     if !summary.author_contributions.is_empty() {
         writeln!(output, "\n## Top Contributors\n")?;
         let mut authors: Vec<_> = summary.author_contributions.iter().collect();
-        authors.sort_by(|a, b| b.1.cmp(a.1));
+        authors.sort_unstable_by(|a, b| b.1.cmp(a.1));
         for (author, files) in authors.iter().take(10) {
             writeln!(output, "- {}: {} files", author, files)?;
         }
@@ -2346,7 +2353,7 @@ fn write_markdown_file_details(
 
         // Sort by churn score descending
         let mut sorted_files = files.to_vec();
-        sorted_files.sort_by(|a, b| b.churn_score.partial_cmp(&a.churn_score).unwrap());
+        sorted_files.sort_unstable_by(|a, b| b.churn_score.partial_cmp(&a.churn_score).unwrap());
 
         for file in sorted_files.iter().take(20) {
             writeln!(
@@ -2378,7 +2385,7 @@ fn write_markdown_author_contributions(
         writeln!(output, "|--------|----------------|")?;
 
         let mut authors: Vec<_> = summary.author_contributions.iter().collect();
-        authors.sort_by(|a, b| b.1.cmp(a.1));
+        authors.sort_unstable_by(|a, b| b.1.cmp(a.1));
 
         for (author, count) in authors.iter().take(15) {
             writeln!(output, "| {} | {} |", author, count)?;
@@ -2459,7 +2466,7 @@ fn apply_churn_file_filtering(analysis: &mut crate::models::churn::CodeChurnAnal
         // Sort files by commit count descending
         analysis
             .files
-            .sort_by(|a, b| b.commit_count.cmp(&a.commit_count));
+            .sort_unstable_by(|a, b| b.commit_count.cmp(&a.commit_count));
         analysis.files.truncate(top_files);
     }
 }
@@ -4619,7 +4626,6 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
     use walkdir::WalkDir;
 
     let mut violations = Vec::new();
-    let satd_pattern = create_satd_pattern();
 
     for entry in WalkDir::new(project_path) {
         let entry = entry?;
@@ -4627,7 +4633,7 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
 
         if should_process_file_for_satd(path) {
             if let Ok(content) = tokio::fs::read_to_string(path).await {
-                process_file_content_for_satd(&content, path, &satd_pattern, &mut violations);
+                process_file_content_for_satd(&content, path, &*SATD_PATTERN, &mut violations);
             }
         }
     }
@@ -4635,10 +4641,6 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
     Ok(violations)
 }
 
-/// Create the SATD detection regex pattern
-fn create_satd_pattern() -> regex::Regex {
-    regex::Regex::new(r"(?i)\b(TODO|FIXME|HACK|XXX|BUG|REFACTOR):\s*(.+)").unwrap()
-}
 
 /// Check if a file should be processed for SATD detection
 fn should_process_file_for_satd(path: &Path) -> bool {
@@ -6360,7 +6362,7 @@ async fn run_complexity_analysis(
     }
 
     // Sort hotspots by complexity
-    functions.sort_by(|a, b| b.complexity.cmp(&a.complexity));
+    functions.sort_unstable_by(|a, b| b.complexity.cmp(&a.complexity));
     functions.truncate(10);
 
     // Calculate p99
@@ -6990,7 +6992,7 @@ fn write_coverage_file_details(
     writeln!(output, "## Top Files by Coverage Change\n")?;
 
     let mut sorted_files = files.to_vec();
-    sorted_files.sort_by(|a, b| {
+    sorted_files.sort_unstable_by(|a, b| {
         b.coverage_delta
             .abs()
             .partial_cmp(&a.coverage_delta.abs())

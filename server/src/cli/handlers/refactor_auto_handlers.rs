@@ -2104,18 +2104,23 @@ mod tests {
     #[test]
     fn test_refactor_progress_creation() {
         let progress = RefactorProgress {
-            files_analyzed: 15,
-            files_refactored: 8,
-            iterations_completed: 3,
-            is_complete: false,
-            current_phase: "Analysis".to_string(),
+            overall_completion_percent: 75.0,
+            lint_completion_percent: 80.0,
+            complexity_completion_percent: 70.0,
+            satd_completion_percent: 85.0,
+            coverage_completion_percent: 60.0,
+            files_completed: 8,
+            files_remaining: 7,
+            estimated_time_remaining_minutes: 15,
+            quality_gates_passed: vec!["lint".to_string(), "complexity".to_string()],
+            quality_gates_remaining: vec!["satd".to_string(), "coverage".to_string()],
+            current_phase: RefactorPhase::Analysis,
         };
         
-        assert_eq!(progress.files_analyzed, 15);
-        assert_eq!(progress.files_refactored, 8);
-        assert_eq!(progress.iterations_completed, 3);
-        assert!(!progress.is_complete);
-        assert_eq!(progress.current_phase, "Analysis");
+        assert_eq!(progress.files_completed, 8);
+        assert_eq!(progress.files_remaining, 7);
+        assert_eq!(progress.overall_completion_percent, 75.0);
+        assert_eq!(progress.quality_gates_passed.len(), 2);
     }
 
     #[test]
