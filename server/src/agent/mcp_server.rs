@@ -14,7 +14,7 @@ use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, info};
 
 use crate::services::analysis_service::{
-    AnalysisInput, AnalysisOperation, AnalysisOptions, AnalysisResults, AnalysisService,
+    AnalysisInput, AnalysisOperation, AnalysisOptions, AnalysisService,
 };
 use crate::services::quality_gate_service::{QualityCheck, QualityGateInput, QualityGateOutput, QualityGateService};
 use crate::services::service_base::Service;

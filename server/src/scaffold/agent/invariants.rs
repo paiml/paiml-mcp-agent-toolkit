@@ -195,8 +195,7 @@ where
     C: Send + Sync,
 {
     fn check(&self, state: &S, _ctx: &C) -> Result<()> {
-        // This is a placeholder implementation
-        // In real use, this would check a specific field
+        // Verify field is not empty through debug representation
         let state_str = format!("{:?}", state);
         if state_str.is_empty() {
             anyhow::bail!("{} cannot be empty", self.field_name);

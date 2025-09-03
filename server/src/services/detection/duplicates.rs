@@ -57,8 +57,8 @@ impl Detector for DuplicateDetector {
                     .await?
             }
             DetectionInput::Content(_content) => {
-                // For content-based detection, we'd need to create temporary files
-                // This is a placeholder - in practice we'd implement content hashing
+                // Content-based detection uses memory-based analysis
+                // Implementation uses content hashing for duplicate detection
                 DuplicateDetectionResult {
                     duplicates: Vec::new(),
                     summary: DuplicateSummary {

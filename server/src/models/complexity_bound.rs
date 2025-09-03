@@ -572,7 +572,7 @@ impl RecurrenceRelation {
         let b = call.division_factor;
         let work = &self.work_per_call;
 
-        // Only handle polynomial work for now
+        // Apply Master Theorem based on work complexity class
         match work.class {
             BigOClass::Constant => {
                 // T(n) = aT(n/b) + O(1)

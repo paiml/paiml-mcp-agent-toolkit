@@ -4,7 +4,6 @@ use std::time::Duration;
 
 use anyhow;
 use axum::extract::{Extension, Path, Query};
-use axum::http::Method;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};

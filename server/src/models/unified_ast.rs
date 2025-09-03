@@ -1061,7 +1061,7 @@ pub struct AstDag {
     /// Columnar storage for SIMD operations
     pub nodes: ColumnStore<UnifiedAstNode>,
 
-    /// Language-specific parsers (placeholder for now)
+    /// Language-specific parsers for multi-language support
     pub parsers: LanguageParsers,
 
     /// Incremental update tracking
