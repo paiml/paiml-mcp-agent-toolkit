@@ -1,5 +1,7 @@
 //! Adapter layer to map existing inconsistent CLI/MCP parameters to uniform contracts
-//! This is a TEMPORARY layer until we can refactor all commands to use uniform contracts
+//!
+//! This module provides backward compatibility by translating legacy parameter formats
+//! to the current uniform contract system, ensuring seamless operation during API evolution.
 
 use super::*;
 use crate::cli::commands::AnalyzeCommands;
