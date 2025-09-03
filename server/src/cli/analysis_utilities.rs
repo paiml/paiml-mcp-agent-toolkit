@@ -2018,7 +2018,6 @@ pub async fn handle_analyze_churn(
     output: Option<PathBuf>,
     top_files: usize,
 ) -> Result<()> {
-    use crate::models::churn::ChurnOutputFormat;
     use crate::services::git_analysis::GitAnalysisService;
 
     eprintln!("📊 Analyzing code churn for the last {} days...", days);
@@ -2029,24 +2028,11 @@ pub async fn handle_analyze_churn(
 
     eprintln!("✅ Analyzed {} files with changes", analysis.files.len());
 
-    // Apply top_files limit if specified (0 means show all)
-    if top_files > 0 && analysis.files.len() > top_files {
-        // Sort files by commit count descending
-        analysis
-            .files
-            .sort_by(|a, b| b.commit_count.cmp(&a.commit_count));
-        analysis.files.truncate(top_files);
-    }
+    // Apply filtering and sorting to analysis results
+    apply_churn_file_filtering(&mut analysis, top_files);
 
-    // Format output based on requested format
-    let content = match format {
-        ChurnOutputFormat::Json => format_churn_as_json(&analysis)?,
-        ChurnOutputFormat::Summary => format_churn_as_summary(&analysis)?,
-        ChurnOutputFormat::Markdown => format_churn_as_markdown(&analysis)?,
-        ChurnOutputFormat::Csv => format_churn_as_csv(&analysis)?,
-    };
-
-    // Write output
+    // Format and write output
+    let content = format_churn_content(&analysis, format)?;
     write_churn_output(content, output).await?;
     Ok(())
 }
@@ -2460,6 +2446,38 @@ pub async fn write_churn_output(content: String, output: Option<PathBuf>) -> Res
         println!("{}", content);
     }
     Ok(())
+}
+
+// Helper functions for handle_analyze_churn
+// Toyota Way Extract Method: Reduce complexity by separating filtering and formatting logic
+
+/// Applies file filtering and sorting to churn analysis results
+/// Toyota Way: Extract Method - reduce complexity by extracting file processing logic
+fn apply_churn_file_filtering(analysis: &mut crate::models::churn::CodeChurnAnalysis, top_files: usize) {
+    // Apply top_files limit if specified (0 means show all)
+    if top_files > 0 && analysis.files.len() > top_files {
+        // Sort files by commit count descending
+        analysis
+            .files
+            .sort_by(|a, b| b.commit_count.cmp(&a.commit_count));
+        analysis.files.truncate(top_files);
+    }
+}
+
+/// Formats churn analysis based on requested format
+/// Toyota Way: Extract Method - reduce complexity by extracting format selection logic
+fn format_churn_content(
+    analysis: &crate::models::churn::CodeChurnAnalysis,
+    format: crate::models::churn::ChurnOutputFormat,
+) -> Result<String> {
+    use crate::models::churn::ChurnOutputFormat;
+    
+    match format {
+        ChurnOutputFormat::Json => format_churn_as_json(analysis),
+        ChurnOutputFormat::Summary => format_churn_as_summary(analysis),
+        ChurnOutputFormat::Markdown => format_churn_as_markdown(analysis),
+        ChurnOutputFormat::Csv => format_churn_as_csv(analysis),
+    }
 }
 
 /// Format SATD items as JSON
@@ -4024,46 +4042,96 @@ pub async fn handle_analyze_comprehensive(
 
     let mut report = ComprehensiveReport::default();
 
+    // Execute all requested analyses
+    run_comprehensive_analyses(
+        &mut report, 
+        &project_path, 
+        include_complexity,
+        include_tdg,
+        include_dead_code,
+        include_defects,
+        include_duplicates,
+        &include,
+        &exclude,
+        _confidence_threshold,
+        _min_lines,
+    ).await?;
+
+    let elapsed = start.elapsed();
+    eprintln!("✅ Comprehensive analysis completed in {:?}", elapsed);
+
+    // Format and write output
+    write_comprehensive_output(&report, format, executive_summary, output).await?;
+
+    Ok(())
+}
+
+// Helper functions for handle_analyze_comprehensive
+// Toyota Way Extract Method: Reduce complexity by separating analysis execution from output formatting
+
+/// Executes all requested comprehensive analyses and populates the report
+/// Toyota Way: Extract Method - reduce complexity by extracting analysis orchestration logic
+#[allow(clippy::too_many_arguments)]
+async fn run_comprehensive_analyses(
+    report: &mut ComprehensiveReport,
+    project_path: &PathBuf,
+    include_complexity: bool,
+    include_tdg: bool,
+    include_dead_code: bool,
+    include_defects: bool,
+    include_duplicates: bool,
+    include: &Option<String>,
+    exclude: &Option<String>,
+    confidence_threshold: f32,
+    min_lines: usize,
+) -> Result<()> {
     // Run complexity analysis if requested
     if include_complexity {
         eprintln!("📊 Analyzing complexity...");
-        report.complexity = Some(run_complexity_analysis(&project_path, &include, &exclude).await?);
+        report.complexity = Some(run_complexity_analysis(project_path, include, exclude).await?);
     }
 
-    // Run SATD analysis
+    // Run SATD analysis (always run)
     eprintln!("🔍 Analyzing technical debt...");
-    report.satd = Some(run_satd_analysis(&project_path, &include, &exclude).await?);
+    report.satd = Some(run_satd_analysis(project_path, include, exclude).await?);
 
     // Run TDG analysis if requested
     if include_tdg {
         eprintln!("📈 Analyzing technical debt gradient...");
-        report.tdg = Some(create_tdg_report(&project_path).await?);
+        report.tdg = Some(create_tdg_report(project_path).await?);
     }
 
     // Run dead code analysis if requested
     if include_dead_code {
         eprintln!("💀 Analyzing dead code...");
-        report.dead_code = Some(run_dead_code_analysis(&project_path, &include, &exclude).await?);
+        report.dead_code = Some(run_dead_code_analysis(project_path, include, exclude).await?);
     }
 
     // Run defect prediction if requested
     if include_defects {
         eprintln!("🐛 Predicting defects...");
-        report.defects =
-            Some(run_defect_prediction(&project_path, _confidence_threshold, _min_lines).await?);
+        report.defects = Some(run_defect_prediction(project_path, confidence_threshold, min_lines).await?);
     }
 
     // Run duplicate detection if requested
     if include_duplicates {
         eprintln!("👥 Detecting duplicates...");
-        report.duplicates = Some(run_duplicate_detection(&project_path, &include, &exclude).await?);
+        report.duplicates = Some(run_duplicate_detection(project_path, include, exclude).await?);
     }
 
-    let elapsed = start.elapsed();
-    eprintln!("✅ Comprehensive analysis completed in {:?}", elapsed);
+    Ok(())
+}
 
+/// Formats and writes comprehensive analysis output
+/// Toyota Way: Extract Method - reduce complexity by extracting output handling logic
+async fn write_comprehensive_output(
+    report: &ComprehensiveReport,
+    format: ComprehensiveOutputFormat,
+    executive_summary: bool,
+    output: Option<PathBuf>,
+) -> Result<()> {
     // Format output
-    let content = format_comprehensive_report(&report, format, executive_summary)?;
+    let content = format_comprehensive_report(report, format, executive_summary)?;
 
     // Write output
     if let Some(output_path) = output {
@@ -5526,47 +5594,83 @@ fn write_qg_detailed_violations(
 }
 
 // Helper: Format as Markdown
+/// Toyota Way: Extract Method - Format quality gate as Markdown (complexity ≤8)
 fn format_qg_as_markdown(results: &QualityGateResults) -> Result<String> {
-    use std::fmt::Write;
     let mut output = String::new();
 
-    writeln!(output, "# Quality Gate Report\n")?;
-    writeln!(
-        output,
-        "**Status**: {}\n",
-        if results.passed {
-            "✅ PASSED"
-        } else {
-            "❌ FAILED"
-        }
-    )?;
-    writeln!(
-        output,
-        "**Total violations**: {}\n",
-        results.total_violations
-    )?;
+    write_qg_markdown_header(&mut output, results)?;
+    write_qg_markdown_summary_table(&mut output, results)?;
 
+    Ok(output)
+}
+
+/// Toyota Way: Extract Method - Write QG Markdown header section (complexity ≤5)
+fn write_qg_markdown_header(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "# Quality Gate Report\n")?;
+    writeln!(output, "**Status**: {}\n", format_qg_status_badge(results.passed))?;
+    writeln!(output, "**Total violations**: {}\n", results.total_violations)?;
+    
+    Ok(())
+}
+
+/// Toyota Way: Extract Method - Format QG status badge (complexity ≤3)
+fn format_qg_status_badge(passed: bool) -> &'static str {
+    if passed {
+        "✅ PASSED"
+    } else {
+        "❌ FAILED"
+    }
+}
+
+/// Toyota Way: Extract Method - Write QG Markdown summary table (complexity ≤8)
+fn write_qg_markdown_summary_table(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    use std::fmt::Write;
+    
     writeln!(output, "## Summary\n")?;
+    write_qg_markdown_table_headers(output)?;
+    write_qg_markdown_table_rows(output, results)?;
+    
+    Ok(())
+}
+
+/// Toyota Way: Extract Method - Write QG Markdown table headers (complexity ≤3)
+fn write_qg_markdown_table_headers(output: &mut String) -> Result<()> {
+    use std::fmt::Write;
+    
     writeln!(output, "| Check Type | Violations |")?;
     writeln!(output, "|------------|------------|")?;
+    
+    Ok(())
+}
 
-    let rows = [
-        ("Complexity", results.complexity_violations),
-        ("Dead Code", results.dead_code_violations),
-        ("SATD", results.satd_violations),
-        ("Entropy", results.entropy_violations),
-        ("Security", results.security_violations),
-        ("Duplicates", results.duplicate_violations),
-        ("Coverage", results.coverage_violations),
-        ("Sections", results.section_violations),
-        ("Provability", results.provability_violations),
-    ];
-
+/// Toyota Way: Extract Method - Write QG Markdown table rows (complexity ≤5)
+fn write_qg_markdown_table_rows(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    use std::fmt::Write;
+    
+    let rows = get_qg_violation_summary_rows(results);
+    
     for (name, count) in rows {
         writeln!(output, "| {} | {} |", name, count)?;
     }
+    
+    Ok(())
+}
 
-    Ok(output)
+/// Toyota Way: Extract Method - Get QG violation summary data rows (complexity ≤3)
+fn get_qg_violation_summary_rows(results: &QualityGateResults) -> [(& 'static str, u64); 9] {
+    [
+        ("Complexity", results.complexity_violations.try_into().unwrap_or(0)),
+        ("Dead Code", results.dead_code_violations.try_into().unwrap_or(0)),
+        ("SATD", results.satd_violations.try_into().unwrap_or(0)),
+        ("Entropy", results.entropy_violations.try_into().unwrap_or(0)),
+        ("Security", results.security_violations.try_into().unwrap_or(0)),
+        ("Duplicates", results.duplicate_violations.try_into().unwrap_or(0)),
+        ("Coverage", results.coverage_violations.try_into().unwrap_or(0)),
+        ("Sections", results.section_violations.try_into().unwrap_or(0)),
+        ("Provability", results.provability_violations.try_into().unwrap_or(0)),
+    ]
 }
 
 // Helper functions
@@ -7829,52 +7933,79 @@ fn another_simple(y: i32) -> i32 {
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path();
 
-        // Create a test file with known complexity
-        let src_dir = project_path.join("src");
-        std::fs::create_dir_all(&src_dir).unwrap();
-        let test_file = src_dir.join("complex.rs");
-        let mut file = std::fs::File::create(&test_file).unwrap();
-        writeln!(file, "fn simple_function() {{").unwrap();
-        writeln!(file, "    if true {{").unwrap();
-        writeln!(file, "        println!(\"simple\");").unwrap();
-        writeln!(file, "    }}").unwrap();
-        writeln!(file, "}}").unwrap();
-        writeln!(file).unwrap();
-        // Add a more complex function
-        writeln!(file, "fn moderate_function() {{").unwrap();
-        writeln!(file, "    for i in 0..10 {{").unwrap();
-        writeln!(file, "        if i > 5 {{").unwrap();
-        writeln!(file, "            println!(\"big: {{}}\", i);").unwrap();
-        writeln!(file, "        }}").unwrap();
-        writeln!(file, "    }}").unwrap();
-        writeln!(file, "}}").unwrap();
+        // Create test file with known complexity patterns
+        create_complexity_test_file(project_path).unwrap();
 
         // Test with threshold that should pass
-        // Note: check_complexity uses a hardcoded cognitive complexity of 15
-        let violations = check_complexity(project_path, 20).await.unwrap();
-        if !violations.is_empty() {
-            eprintln!("Debug: violations with threshold 20:");
-            for v in &violations {
-                eprintln!("  - {} {}: {}", v.severity, v.check_type, v.message);
-            }
-        }
-        assert_eq!(
-            violations.len(),
-            0,
-            "Expected no violations with threshold 20"
-        );
+        validate_complexity_threshold_pass(project_path, 20).await;
 
         // Test with threshold that should fail
-        // With threshold 5, warning threshold is 0, so everything is a warning
-        let violations = check_complexity(project_path, 5).await.unwrap();
-        assert!(
-            !violations.is_empty(),
-            "Expected violations with threshold 5"
-        );
-        assert_eq!(violations[0].check_type, "complexity");
-        // With threshold 5, functions will be warnings (not errors) unless complexity > 5
-        assert!(violations[0].severity == "warning" || violations[0].severity == "error");
+        validate_complexity_threshold_fail(project_path, 5).await;
     }
+
+// Helper functions for test_check_complexity_with_custom_threshold
+// Toyota Way Extract Method: Reduce complexity by extracting logical components
+
+/// Creates a test file with known complexity patterns for testing
+fn create_complexity_test_file(project_path: &std::path::Path) -> Result<()> {
+    let src_dir = project_path.join("src");
+    std::fs::create_dir_all(&src_dir)?;
+    let test_file = src_dir.join("complex.rs");
+    
+    let content = build_test_file_content();
+    std::fs::write(&test_file, content)?;
+    
+    Ok(())
+}
+
+/// Builds the content for the test file
+fn build_test_file_content() -> String {
+    let mut content = String::new();
+    content.push_str(&build_simple_function());
+    content.push('\n');
+    content.push_str(&build_moderate_function());
+    content
+}
+
+/// Builds a simple function for testing
+fn build_simple_function() -> String {
+    "fn simple_function() {\n    if true {\n        println!(\"simple\");\n    }\n}".to_string()
+}
+
+/// Builds a moderate complexity function for testing  
+fn build_moderate_function() -> String {
+    "fn moderate_function() {\n    for i in 0..10 {\n        if i > 5 {\n            println!(\"big: {}\", i);\n        }\n    }\n}".to_string()
+}
+
+/// Validates that complexity check passes with higher threshold
+async fn validate_complexity_threshold_pass(project_path: &std::path::Path, threshold: u32) {
+    // Note: check_complexity uses a hardcoded cognitive complexity of 15
+    let violations = check_complexity(project_path, threshold).await.unwrap();
+    if !violations.is_empty() {
+        eprintln!("Debug: violations with threshold {}:", threshold);
+        for v in &violations {
+            eprintln!("  - {} {}: {}", v.severity, v.check_type, v.message);
+        }
+    }
+    assert_eq!(
+        violations.len(),
+        0,
+        "Expected no violations with threshold {}", threshold
+    );
+}
+
+/// Validates that complexity check fails with lower threshold
+async fn validate_complexity_threshold_fail(project_path: &std::path::Path, threshold: u32) {
+    // With threshold 5, warning threshold is 0, so everything is a warning
+    let violations = check_complexity(project_path, threshold).await.unwrap();
+    assert!(
+        !violations.is_empty(),
+        "Expected violations with threshold {}", threshold
+    );
+    assert_eq!(violations[0].check_type, "complexity");
+    // With threshold 5, functions will be warnings (not errors) unless complexity > 5
+    assert!(violations[0].severity == "warning" || violations[0].severity == "error");
+}
 
     #[tokio::test]
     async fn test_quality_gate_single_file() {
@@ -8289,6 +8420,237 @@ fn another_simple(y: i32) -> i32 {
         assert!(text.contains("## Entropy violations: 1"));
         assert!(text.contains("## Security violations: 1"));
         assert!(text.contains("## Duplicate code violations: 1"));
+    }
+
+    // TDD Tests for extracted helper functions (Toyota Way)
+    // Testing the functions we extracted to reduce complexity
+
+    #[test]
+    fn test_create_complexity_test_file() {
+        use tempfile::TempDir;
+        use std::io::Read;
+
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = temp_dir.path();
+        
+        // Test successful file creation
+        let result = create_complexity_test_file(project_path);
+        assert!(result.is_ok());
+        
+        // Verify file was created
+        let src_dir = project_path.join("src");
+        let test_file = src_dir.join("complex.rs");
+        assert!(test_file.exists());
+        
+        // Verify file contents contain expected functions
+        let mut contents = String::new();
+        std::fs::File::open(&test_file).unwrap().read_to_string(&mut contents).unwrap();
+        assert!(contents.contains("fn simple_function()"));
+        assert!(contents.contains("fn moderate_function()"));
+        assert!(contents.contains("for i in 0..10"));
+    }
+
+    #[tokio::test]
+    async fn test_validate_complexity_threshold_pass() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = temp_dir.path();
+        
+        // Create test file first
+        create_complexity_test_file(project_path).unwrap();
+        
+        // This should not panic since threshold is high enough
+        validate_complexity_threshold_pass(project_path, 25).await;
+        
+        // Test passes if no assertion fails
+    }
+
+    #[tokio::test]
+    async fn test_validate_complexity_threshold_fail() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = temp_dir.path();
+        
+        // Create test file first
+        create_complexity_test_file(project_path).unwrap();
+        
+        // This should not panic - it should find violations with low threshold
+        validate_complexity_threshold_fail(project_path, 1).await;
+        
+        // Test passes if no assertion fails
+    }
+
+    #[test]
+    fn test_apply_churn_file_filtering() {
+        use crate::models::churn::{CodeChurnAnalysis, FileChurnMetrics, ChurnSummary};
+        use chrono::Utc;
+        use std::collections::HashMap;
+        
+        // Create test analysis with multiple files
+        let mut analysis = CodeChurnAnalysis {
+            generated_at: Utc::now(),
+            period_days: 30,
+            repository_root: std::path::PathBuf::from("."),
+            files: vec![
+                FileChurnMetrics {
+                    path: std::path::PathBuf::from("file1.rs"),
+                    relative_path: "file1.rs".to_string(),
+                    commit_count: 10,
+                    unique_authors: vec!["dev1".to_string()],
+                    additions: 100,
+                    deletions: 50,
+                    churn_score: 0.8,
+                    last_modified: Utc::now(),
+                    first_seen: Utc::now(),
+                },
+                FileChurnMetrics {
+                    path: std::path::PathBuf::from("file2.rs"),
+                    relative_path: "file2.rs".to_string(),
+                    commit_count: 15,
+                    unique_authors: vec!["dev2".to_string()],
+                    additions: 200,
+                    deletions: 100,
+                    churn_score: 0.9,
+                    last_modified: Utc::now(),
+                    first_seen: Utc::now(),
+                },
+                FileChurnMetrics {
+                    path: std::path::PathBuf::from("file3.rs"),
+                    relative_path: "file3.rs".to_string(),
+                    commit_count: 5,
+                    unique_authors: vec!["dev3".to_string()],
+                    additions: 50,
+                    deletions: 25,
+                    churn_score: 0.3,
+                    last_modified: Utc::now(),
+                    first_seen: Utc::now(),
+                }
+            ],
+            summary: ChurnSummary {
+                total_commits: 30,
+                total_files_changed: 3,
+                author_contributions: HashMap::new(),
+                hotspot_files: vec![],
+                stable_files: vec![],
+            },
+        };
+        
+        // Test with no filtering (top_files = 0)
+        let original_count = analysis.files.len();
+        apply_churn_file_filtering(&mut analysis, 0);
+        assert_eq!(analysis.files.len(), original_count);
+        
+        // Test with filtering (top_files = 2)
+        apply_churn_file_filtering(&mut analysis, 2);
+        assert_eq!(analysis.files.len(), 2);
+        // Should be sorted by commit count desc, so file2 (15) and file1 (10)
+        assert_eq!(analysis.files[0].commit_count, 15);
+        assert_eq!(analysis.files[1].commit_count, 10);
+    }
+
+    #[test]
+    fn test_format_churn_content() {
+        use crate::models::churn::{CodeChurnAnalysis, ChurnSummary, ChurnOutputFormat};
+        use chrono::Utc;
+        use std::collections::HashMap;
+        
+        let analysis = CodeChurnAnalysis {
+            generated_at: Utc::now(),
+            period_days: 30,
+            repository_root: std::path::PathBuf::from("."),
+            files: vec![],
+            summary: ChurnSummary {
+                total_commits: 0,
+                total_files_changed: 0,
+                author_contributions: HashMap::new(),
+                hotspot_files: vec![],
+                stable_files: vec![],
+            },
+        };
+        
+        // Test JSON format
+        let json_result = format_churn_content(&analysis, ChurnOutputFormat::Json);
+        assert!(json_result.is_ok());
+        let json_content = json_result.unwrap();
+        assert!(json_content.contains("generated_at"));
+        
+        // Test Summary format
+        let summary_result = format_churn_content(&analysis, ChurnOutputFormat::Summary);
+        assert!(summary_result.is_ok());
+        
+        // Test Markdown format
+        let markdown_result = format_churn_content(&analysis, ChurnOutputFormat::Markdown);
+        assert!(markdown_result.is_ok());
+        
+        // Test CSV format
+        let csv_result = format_churn_content(&analysis, ChurnOutputFormat::Csv);
+        assert!(csv_result.is_ok());
+    }
+
+    #[test]
+    fn test_run_comprehensive_analyses_basic() {
+        // This is a simple test to verify the function signature and basic structure
+        // In a real scenario, we'd need to mock the analysis functions
+        
+        use std::path::PathBuf;
+        
+        // Create basic test data
+        let mut report = ComprehensiveReport::default();
+        let project_path = PathBuf::from(".");
+        
+        // Test with all options disabled (minimal execution path)
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(async {
+            run_comprehensive_analyses(
+                &mut report,
+                &project_path,
+                false, // include_complexity
+                false, // include_tdg
+                false, // include_dead_code
+                false, // include_defects
+                false, // include_duplicates
+                &None, // include
+                &None, // exclude
+                0.5,   // confidence_threshold
+                10,    // min_lines
+            ).await
+        });
+        
+        // Should succeed with minimal configuration
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_write_comprehensive_output() {
+        use tempfile::TempDir;
+        
+        let temp_dir = TempDir::new().unwrap();
+        let output_file = temp_dir.path().join("test_output.json");
+        
+        let report = ComprehensiveReport::default();
+        
+        // Test writing to file
+        let result = write_comprehensive_output(
+            &report,
+            ComprehensiveOutputFormat::Json,
+            false, // executive_summary
+            Some(output_file.clone()),
+        ).await;
+        
+        assert!(result.is_ok());
+        assert!(output_file.exists());
+        
+        // Test writing to stdout (no file path)
+        let stdout_result = write_comprehensive_output(
+            &report,
+            ComprehensiveOutputFormat::Json,
+            false,
+            None,
+        ).await;
+        
+        assert!(stdout_result.is_ok());
     }
 }
 
@@ -8840,5 +9202,213 @@ fn get_severity_icon(severity: &str) -> &'static str {
         "error" => "🔴",
         "warning" => "🟡",
         _ => "🟢",
+    }
+}
+
+#[cfg(test)]
+mod markdown_formatting_tests {
+    use super::*;
+    use super::QualityGateResults;
+    
+    /// Create test quality gate results for testing
+    fn create_test_quality_results(passed: bool, violations: u64) -> QualityGateResults {
+        QualityGateResults {
+            passed,
+            total_violations: violations,
+            complexity_violations: violations / 3,
+            dead_code_violations: violations / 4,
+            satd_violations: violations / 5,
+            entropy_violations: violations / 6,
+            security_violations: violations / 7,
+            duplicate_violations: violations / 8,
+            coverage_violations: violations / 9,
+            section_violations: violations / 10,
+            provability_violations: violations / 11,
+            provability_score: Some(0.85),
+        }
+    }
+
+    #[test]
+    fn test_format_status_badge_passed() {
+        let badge = format_qg_status_badge(true);
+        assert_eq!(badge, "✅ PASSED");
+    }
+
+    #[test]
+    fn test_format_status_badge_failed() {
+        let badge = format_qg_status_badge(false);
+        assert_eq!(badge, "❌ FAILED");
+    }
+
+    #[test]
+    fn test_write_markdown_header() {
+        let mut output = String::new();
+        let results = create_test_quality_results(true, 10);
+        
+        let result = write_qg_markdown_header(&mut output, &results);
+        assert!(result.is_ok());
+        
+        assert!(output.contains("# Quality Gate Report"));
+        assert!(output.contains("**Status**: ✅ PASSED"));
+        assert!(output.contains("**Total violations**: 10"));
+    }
+
+    #[test]
+    fn test_write_markdown_header_failed() {
+        let mut output = String::new();
+        let results = create_test_quality_results(false, 25);
+        
+        let result = write_qg_markdown_header(&mut output, &results);
+        assert!(result.is_ok());
+        
+        assert!(output.contains("**Status**: ❌ FAILED"));
+        assert!(output.contains("**Total violations**: 25"));
+    }
+
+    #[test]
+    fn test_write_markdown_table_headers() {
+        let mut output = String::new();
+        
+        let result = write_qg_markdown_table_headers(&mut output);
+        assert!(result.is_ok());
+        
+        assert!(output.contains("| Check Type | Violations |"));
+        assert!(output.contains("|------------|------------|"));
+    }
+
+    #[test]
+    fn test_get_violation_summary_rows() {
+        let results = create_test_quality_results(false, 90);
+        let rows = get_qg_violation_summary_rows(&results);
+        
+        assert_eq!(rows.len(), 9);
+        assert_eq!(rows[0], ("Complexity", 30));         // 90/3
+        assert_eq!(rows[1], ("Dead Code", 22));          // 90/4
+        assert_eq!(rows[2], ("SATD", 18));               // 90/5
+        assert_eq!(rows[3], ("Entropy", 15));            // 90/6
+        assert_eq!(rows[4], ("Security", 12));           // 90/7
+        assert_eq!(rows[5], ("Duplicates", 11));         // 90/8
+        assert_eq!(rows[6], ("Coverage", 10));           // 90/9
+        assert_eq!(rows[7], ("Sections", 9));            // 90/10
+        assert_eq!(rows[8], ("Provability", 8));         // 90/11
+    }
+
+    #[test]
+    fn test_write_markdown_table_rows() {
+        let mut output = String::new();
+        let results = create_test_quality_results(false, 45);
+        
+        let result = write_qg_markdown_table_rows(&mut output, &results);
+        assert!(result.is_ok());
+        
+        // Check that all violation types are included
+        assert!(output.contains("| Complexity | 15 |"));     // 45/3
+        assert!(output.contains("| Dead Code | 11 |"));       // 45/4
+        assert!(output.contains("| SATD | 9 |"));             // 45/5
+        assert!(output.contains("| Entropy | 7 |"));          // 45/6
+        assert!(output.contains("| Security | 6 |"));         // 45/7
+        assert!(output.contains("| Duplicates | 5 |"));       // 45/8
+        assert!(output.contains("| Coverage | 5 |"));         // 45/9
+        assert!(output.contains("| Sections | 4 |"));         // 45/10
+        assert!(output.contains("| Provability | 4 |"));      // 45/11
+    }
+
+    #[test]
+    fn test_write_markdown_summary_table() {
+        let mut output = String::new();
+        let results = create_test_quality_results(true, 0);
+        
+        let result = write_qg_markdown_summary_table(&mut output, &results);
+        assert!(result.is_ok());
+        
+        assert!(output.contains("## Summary"));
+        assert!(output.contains("| Check Type | Violations |"));
+        assert!(output.contains("|------------|------------|"));
+        assert!(output.contains("| Complexity | 0 |"));
+        assert!(output.contains("| Dead Code | 0 |"));
+        assert!(output.contains("| SATD | 0 |"));
+    }
+
+    #[test]
+    fn test_format_qg_as_markdown_integration() {
+        let results = create_test_quality_results(false, 33);
+        
+        let output = format_qg_as_markdown(&results);
+        assert!(output.is_ok());
+        
+        let markdown = output.unwrap();
+        
+        // Check all sections are present
+        assert!(markdown.contains("# Quality Gate Report"));
+        assert!(markdown.contains("**Status**: ❌ FAILED"));
+        assert!(markdown.contains("**Total violations**: 33"));
+        assert!(markdown.contains("## Summary"));
+        assert!(markdown.contains("| Check Type | Violations |"));
+        assert!(markdown.contains("|------------|------------|"));
+        
+        // Check specific violation counts (33 divided by denominators)
+        assert!(markdown.contains("| Complexity | 11 |"));     // 33/3
+        assert!(markdown.contains("| Dead Code | 8 |"));        // 33/4
+        assert!(markdown.contains("| SATD | 6 |"));             // 33/5
+        assert!(markdown.contains("| Entropy | 5 |"));          // 33/6
+        assert!(markdown.contains("| Security | 4 |"));         // 33/7
+        assert!(markdown.contains("| Duplicates | 4 |"));       // 33/8
+        assert!(markdown.contains("| Coverage | 3 |"));         // 33/9
+        assert!(markdown.contains("| Sections | 3 |"));         // 33/10
+        assert!(markdown.contains("| Provability | 3 |"));      // 33/11
+    }
+
+    #[test]
+    fn test_format_qg_as_markdown_passed_state() {
+        let results = create_test_quality_results(true, 0);
+        
+        let output = format_qg_as_markdown(&results);
+        assert!(output.is_ok());
+        
+        let markdown = output.unwrap();
+        
+        assert!(markdown.contains("**Status**: ✅ PASSED"));
+        assert!(markdown.contains("**Total violations**: 0"));
+        
+        // All violation counts should be zero
+        assert!(markdown.contains("| Complexity | 0 |"));
+        assert!(markdown.contains("| Dead Code | 0 |"));
+        assert!(markdown.contains("| SATD | 0 |"));
+        assert!(markdown.contains("| Entropy | 0 |"));
+        assert!(markdown.contains("| Security | 0 |"));
+        assert!(markdown.contains("| Duplicates | 0 |"));
+        assert!(markdown.contains("| Coverage | 0 |"));
+        assert!(markdown.contains("| Sections | 0 |"));
+        assert!(markdown.contains("| Provability | 0 |"));
+    }
+
+    /// Property test: Markdown output should always be valid and complete
+    #[test]
+    fn test_markdown_output_completeness() {
+        for violations in [0, 1, 10, 50, 100, 999] {
+            for passed in [true, false] {
+                let results = create_test_quality_results(passed, violations);
+                let output = format_qg_as_markdown(&results);
+                
+                assert!(output.is_ok(), "Markdown formatting failed for violations={}, passed={}", violations, passed);
+                
+                let markdown = output.unwrap();
+                
+                // Essential sections must always be present
+                assert!(markdown.contains("# Quality Gate Report"), "Missing header");
+                assert!(markdown.contains("**Status**:"), "Missing status");
+                assert!(markdown.contains("**Total violations**:"), "Missing total violations");
+                assert!(markdown.contains("## Summary"), "Missing summary section");
+                assert!(markdown.contains("| Check Type | Violations |"), "Missing table header");
+                assert!(markdown.contains("|------------|------------|"), "Missing table separator");
+                
+                // All violation types must be present
+                for violation_type in ["Complexity", "Dead Code", "SATD", "Entropy", "Security", 
+                                       "Duplicates", "Coverage", "Sections", "Provability"] {
+                    assert!(markdown.contains(&format!("| {} |", violation_type)), 
+                           "Missing violation type: {}", violation_type);
+                }
+            }
+        }
     }
 }
