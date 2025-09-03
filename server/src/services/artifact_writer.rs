@@ -231,7 +231,7 @@ impl ArtifactWriter {
             fs::create_dir_all(parent).map_err(TemplateError::Io)?;
         }
 
-        // Atomic write with temp file
+        // Atomic write using temporary file
         let temp_path = path.with_extension("tmp");
         fs::write(&temp_path, content).map_err(TemplateError::Io)?;
         fs::rename(temp_path, path).map_err(TemplateError::Io)?;

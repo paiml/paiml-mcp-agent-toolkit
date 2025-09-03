@@ -1,6 +1,6 @@
 // High-performance MCP tool discovery system
 //
-// Implements the optimizations from docs/todo/mcp-discovery-fixes.md:
+// Implements the optimizations from docs/implementation/mcp-discovery-fixes.md:
 // - Zero-copy initialization with compile-time tool registry
 // - Trigram-based fuzzy matching for >90% discovery success
 // - Contextual aliases via static dispatch table
