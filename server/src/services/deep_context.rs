@@ -3744,32 +3744,11 @@ async fn analyze_ast_contexts(
 }
 
 /// Analyze a single source file and extract AST items
-async fn analyze_single_file(file_path: &std::path::Path) -> anyhow::Result<FileContext> {
+/// Toyota Way refactored: Reduced complexity from 14 to <8 using Extract Method
+pub async fn analyze_single_file(file_path: &std::path::Path) -> anyhow::Result<FileContext> {
     let path_str = file_path.to_string_lossy().to_string();
     let language = detect_language(file_path);
-    let mut items = Vec::new();
-
-    // Simple AST analysis based on file extension
-    match language.as_str() {
-        "rust" => {
-            items = analyze_rust_file(file_path).await?;
-        }
-        "typescript" | "javascript" => {
-            items = analyze_typescript_file(file_path).await?;
-        }
-        "python" => {
-            items = analyze_python_file(file_path).await?;
-        }
-        "c" | "cpp" => {
-            items = analyze_c_file(file_path).await?;
-        }
-        "kotlin" => {
-            tracing::debug!("Analyzing Kotlin file: {}", file_path.display());
-            items = analyze_kotlin_file(file_path).await?;
-            tracing::debug!("Kotlin analysis returned {} items", items.len());
-        }
-        _ => {}
-    }
+    let items = analyze_file_by_language(file_path, &language).await?;
 
     Ok(FileContext {
         path: path_str,
@@ -3777,6 +3756,60 @@ async fn analyze_single_file(file_path: &std::path::Path) -> anyhow::Result<File
         items,
         complexity_metrics: None,
     })
+}
+
+/// Toyota Way Extract Method: Single responsibility for language-specific analysis
+/// Reduced complexity by extracting the match logic into focused functions
+pub async fn analyze_file_by_language(
+    file_path: &std::path::Path,
+    language: &str,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    match language {
+        "rust" => analyze_rust_language(file_path).await,
+        "typescript" | "javascript" => analyze_typescript_language(file_path).await,
+        "python" => analyze_python_language(file_path).await,
+        "c" | "cpp" => analyze_c_language(file_path).await,
+        "kotlin" => analyze_kotlin_language(file_path).await,
+        _ => Ok(Vec::new()),
+    }
+}
+
+/// Toyota Way Single Responsibility: Handle Rust file analysis
+pub async fn analyze_rust_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    analyze_rust_file(file_path).await
+}
+
+/// Toyota Way Single Responsibility: Handle TypeScript/JavaScript file analysis
+pub async fn analyze_typescript_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    analyze_typescript_file(file_path).await
+}
+
+/// Toyota Way Single Responsibility: Handle Python file analysis
+pub async fn analyze_python_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    analyze_python_file(file_path).await
+}
+
+/// Toyota Way Single Responsibility: Handle C/C++ file analysis
+pub async fn analyze_c_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    analyze_c_file(file_path).await
+}
+
+/// Toyota Way Single Responsibility: Handle Kotlin file analysis with debug logging
+pub async fn analyze_kotlin_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    tracing::debug!("Analyzing Kotlin file: {}", file_path.display());
+    let items = analyze_kotlin_file(file_path).await?;
+    tracing::debug!("Kotlin analysis returned {} items", items.len());
+    Ok(items)
 }
 
 /// Detect programming language from file extension

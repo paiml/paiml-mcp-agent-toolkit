@@ -218,7 +218,25 @@ impl CliAdapter {
         ))
     }
 
+    /// Toyota Way Extract Method: Focused analyze command dispatch with reduced complexity
+    /// Original complexity: 24 -> Target: <10 through categorized dispatch
     fn decode_analyze_command(
+        analyze_cmd: &AnalyzeCommands,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        // Toyota Way Extract Method: Determine command category and dispatch accordingly
+        let command_category = Self::get_analyze_command_category(analyze_cmd);
+        
+        match command_category {
+            AnalyzeCommandCategory::Basic => Self::dispatch_basic_analysis(analyze_cmd),
+            AnalyzeCommandCategory::Advanced => Self::dispatch_advanced_analysis(analyze_cmd),
+            AnalyzeCommandCategory::Structural => Self::dispatch_structural_analysis(analyze_cmd),
+            AnalyzeCommandCategory::Specialized => Self::dispatch_specialized_analysis(analyze_cmd),
+        }
+    }
+
+    /// Toyota Way Extract Method: Basic analysis commands dispatch
+    /// Handles core metrics: churn, complexity, dead code, SATD, TDG, lint hotspots
+    fn dispatch_basic_analysis(
         analyze_cmd: &AnalyzeCommands,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         match analyze_cmd {
@@ -246,49 +264,19 @@ impl CliAdapter {
                 top_files,
                 fail_on_violation: _,
                 timeout: _,
-            } => {
-                // Handle parameter migration: use new 'path' or deprecated 'project_path'
-                let analysis_path = if let Some(deprecated_path) = project_path {
-                    deprecated_path.as_ref()
-                } else {
-                    path.as_ref()
-                };
-                Self::decode_analyze_complexity(
-                    analysis_path,
-                    file,
-                    files,
-                    toolchain,
-                    format,
-                    output,
-                    max_cyclomatic,
-                    max_cognitive,
-                    include,
-                    *watch,
-                    *top_files,
-                )
-            }
-            AnalyzeCommands::Dag {
-                dag_type,
+            } => Self::decode_analyze_complexity_with_migration(
+                path,
                 project_path,
+                file,
+                files,
+                toolchain,
+                format,
                 output,
-                max_depth,
-                target_nodes,
-                filter_external,
-                show_complexity,
-                include_duplicates,
-                include_dead_code,
-                enhanced,
-            } => Self::decode_analyze_dag(
-                dag_type,
-                project_path,
-                output,
-                max_depth,
-                target_nodes,
-                *filter_external,
-                *show_complexity,
-                *include_duplicates,
-                *include_dead_code,
-                *enhanced,
+                max_cyclomatic,
+                max_cognitive,
+                include,
+                *watch,
+                *top_files,
             ),
             AnalyzeCommands::DeadCode {
                 path,
@@ -341,38 +329,6 @@ impl CliAdapter {
                 output,
                 *top_files,
             ),
-            AnalyzeCommands::DeepContext {
-                project_path,
-                output,
-                format,
-                full,
-                include,
-                exclude,
-                period_days,
-                dag_type,
-                max_depth,
-                include_patterns,
-                exclude_patterns,
-                cache_strategy,
-                parallel,
-                verbose,
-                top_files: _,
-            } => Self::decode_analyze_deep_context(
-                project_path,
-                output,
-                format,
-                *full,
-                include,
-                exclude,
-                *period_days,
-                dag_type,
-                max_depth,
-                include_patterns,
-                exclude_patterns,
-                cache_strategy,
-                parallel,
-                *verbose,
-            ),
             AnalyzeCommands::Tdg {
                 path,
                 threshold,
@@ -421,84 +377,49 @@ impl CliAdapter {
                 clippy_flags,
                 top_files,
             ),
-            AnalyzeCommands::Makefile {
-                path,
-                rules,
-                format,
-                fix,
-                gnu_version,
-                top_files,
-            } => Self::decode_analyze_makefile(path, rules, format, fix, gnu_version, top_files),
-            AnalyzeCommands::Provability {
+            _ => Err(ProtocolError::UnsupportedProtocol(
+                "Command not supported in basic analysis dispatch".to_string(),
+            )),
+        }
+    }
+
+    /// Toyota Way Extract Method: Advanced analysis commands dispatch
+    /// Handles comprehensive analysis: deep context, comprehensive, defect prediction, duplicates, BigO
+    fn dispatch_advanced_analysis(
+        analyze_cmd: &AnalyzeCommands,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        match analyze_cmd {
+            AnalyzeCommands::DeepContext {
                 project_path,
-                functions,
-                analysis_depth,
-                format,
-                high_confidence_only,
-                include_evidence,
                 output,
-                top_files,
-            } => Self::decode_analyze_provability(
-                project_path,
-                functions,
-                *analysis_depth,
                 format,
-                *high_confidence_only,
-                *include_evidence,
-                output,
-                *top_files,
-            ),
-            AnalyzeCommands::Duplicates {
-                project_path,
-                detection_type,
-                threshold,
-                min_lines,
-                max_tokens,
-                format,
-                perf,
+                full,
                 include,
                 exclude,
-                output,
-                top_files,
-            } => Self::decode_analyze_duplicates(
+                period_days,
+                dag_type,
+                max_depth,
+                include_patterns,
+                exclude_patterns,
+                cache_strategy,
+                parallel,
+                verbose,
+                top_files: _,
+            } => Self::decode_analyze_deep_context(
                 project_path,
-                detection_type,
-                threshold,
-                min_lines,
-                max_tokens,
+                output,
                 format,
-                perf,
+                *full,
                 include,
                 exclude,
-                output,
-                top_files,
-            ),
-            AnalyzeCommands::DefectPrediction {
-                project_path,
-                confidence_threshold,
-                min_lines,
-                include_low_confidence,
-                format,
-                high_risk_only,
-                include_recommendations,
-                include,
-                exclude,
-                output,
-                perf,
-                top_files,
-            } => Self::decode_analyze_defect_prediction(
-                project_path,
-                confidence_threshold,
-                min_lines,
-                include_low_confidence,
-                format,
-                high_risk_only,
-                include_recommendations,
-                include,
-                exclude,
-                output,
-                perf,
-                top_files,
+                *period_days,
+                dag_type,
+                max_depth,
+                include_patterns,
+                exclude_patterns,
+                cache_strategy,
+                parallel,
+                *verbose,
             ),
             AnalyzeCommands::Comprehensive {
                 project_path,
@@ -537,6 +458,116 @@ impl CliAdapter {
                 executive_summary,
                 top_files,
             ),
+            AnalyzeCommands::DefectPrediction {
+                project_path,
+                confidence_threshold,
+                min_lines,
+                include_low_confidence,
+                format,
+                high_risk_only,
+                include_recommendations,
+                include,
+                exclude,
+                output,
+                perf,
+                top_files,
+            } => Self::decode_analyze_defect_prediction(
+                project_path,
+                confidence_threshold,
+                min_lines,
+                include_low_confidence,
+                format,
+                high_risk_only,
+                include_recommendations,
+                include,
+                exclude,
+                output,
+                perf,
+                top_files,
+            ),
+            AnalyzeCommands::Duplicates {
+                project_path,
+                detection_type,
+                threshold,
+                min_lines,
+                max_tokens,
+                format,
+                perf,
+                include,
+                exclude,
+                output,
+                top_files,
+            } => Self::decode_analyze_duplicates(
+                project_path,
+                detection_type,
+                threshold,
+                min_lines,
+                max_tokens,
+                format,
+                perf,
+                include,
+                exclude,
+                output,
+                top_files,
+            ),
+            AnalyzeCommands::BigO {
+                project_path,
+                format,
+                confidence_threshold,
+                analyze_space,
+                include,
+                exclude,
+                output,
+                perf,
+                high_complexity_only,
+                top_files,
+            } => Self::decode_analyze_big_o(
+                project_path,
+                format,
+                confidence_threshold,
+                analyze_space,
+                include,
+                exclude,
+                output,
+                perf,
+                high_complexity_only,
+                top_files,
+            ),
+            _ => Err(ProtocolError::UnsupportedProtocol(
+                "Command not supported in advanced analysis dispatch".to_string(),
+            )),
+        }
+    }
+
+    /// Toyota Way Extract Method: Structural analysis commands dispatch
+    /// Handles graph and structural analysis: DAG, graph metrics, symbol table, name similarity
+    fn dispatch_structural_analysis(
+        analyze_cmd: &AnalyzeCommands,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        match analyze_cmd {
+            AnalyzeCommands::Dag {
+                dag_type,
+                project_path,
+                output,
+                max_depth,
+                target_nodes,
+                filter_external,
+                show_complexity,
+                include_duplicates,
+                include_dead_code,
+                enhanced,
+            } => Self::decode_analyze_dag(
+                dag_type,
+                project_path,
+                output,
+                max_depth,
+                target_nodes,
+                *filter_external,
+                *show_complexity,
+                *include_duplicates,
+                *include_dead_code,
+                *enhanced,
+            ),
             AnalyzeCommands::GraphMetrics {
                 project_path,
                 metrics,
@@ -568,6 +599,31 @@ impl CliAdapter {
                 top_k,
                 min_centrality,
             ),
+            AnalyzeCommands::SymbolTable {
+                project_path,
+                format,
+                query,
+                filter,
+                include,
+                exclude,
+                show_unreferenced,
+                show_references,
+                output,
+                perf,
+                top_files,
+            } => Self::decode_analyze_symbol_table(
+                project_path,
+                format,
+                query,
+                filter,
+                include,
+                exclude,
+                show_unreferenced,
+                show_references,
+                output,
+                perf,
+                top_files,
+            ),
             AnalyzeCommands::NameSimilarity {
                 project_path,
                 query,
@@ -596,6 +652,45 @@ impl CliAdapter {
                 perf,
                 fuzzy,
                 case_sensitive,
+            ),
+            _ => Err(ProtocolError::UnsupportedProtocol(
+                "Command not supported in structural analysis dispatch".to_string(),
+            )),
+        }
+    }
+
+    /// Toyota Way Extract Method: Specialized analysis commands dispatch
+    /// Handles specialized analysis: makefile, provability, proof annotations, coverage, WebAssembly
+    fn dispatch_specialized_analysis(
+        analyze_cmd: &AnalyzeCommands,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        match analyze_cmd {
+            AnalyzeCommands::Makefile {
+                path,
+                rules,
+                format,
+                fix,
+                gnu_version,
+                top_files,
+            } => Self::decode_analyze_makefile(path, rules, format, fix, gnu_version, top_files),
+            AnalyzeCommands::Provability {
+                project_path,
+                functions,
+                analysis_depth,
+                format,
+                high_confidence_only,
+                include_evidence,
+                output,
+                top_files,
+            } => Self::decode_analyze_provability(
+                project_path,
+                functions,
+                *analysis_depth,
+                format,
+                *high_confidence_only,
+                *include_evidence,
+                output,
+                *top_files,
             ),
             AnalyzeCommands::ProofAnnotations {
                 project_path,
@@ -647,59 +742,52 @@ impl CliAdapter {
                 force_refresh,
                 top_files,
             ),
-            AnalyzeCommands::SymbolTable {
-                project_path,
-                format,
-                query,
-                filter,
-                include,
-                exclude,
-                show_unreferenced,
-                show_references,
-                output,
-                perf,
-                top_files,
-            } => Self::decode_analyze_symbol_table(
-                project_path,
-                format,
-                query,
-                filter,
-                include,
-                exclude,
-                show_unreferenced,
-                show_references,
-                output,
-                perf,
-                top_files,
-            ),
-            AnalyzeCommands::BigO {
-                project_path,
-                format,
-                confidence_threshold,
-                analyze_space,
-                include,
-                exclude,
-                output,
-                perf,
-                high_complexity_only,
-                top_files,
-            } => Self::decode_analyze_big_o(
-                project_path,
-                format,
-                confidence_threshold,
-                analyze_space,
-                include,
-                exclude,
-                output,
-                perf,
-                high_complexity_only,
-                top_files,
-            ),
             AnalyzeCommands::AssemblyScript { top_files: _, .. } => {
                 Self::decode_analyze_assemblyscript()
             }
             AnalyzeCommands::WebAssembly { top_files: _, .. } => Self::decode_analyze_webassembly(),
+            _ => Err(ProtocolError::UnsupportedProtocol(
+                "Command not supported in specialized analysis dispatch".to_string(),
+            )),
         }
+    }
+
+    /// Extract Method (Toyota Way): Handle parameter migration for complexity analysis
+    /// Complexity reduction: Extracted complex parameter logic from main dispatch
+    #[allow(clippy::too_many_arguments)]
+    fn decode_analyze_complexity_with_migration(
+        path: &std::path::Path,
+        project_path: &Option<std::path::PathBuf>,
+        file: &Option<std::path::PathBuf>,
+        files: &[std::path::PathBuf],
+        toolchain: &Option<String>,
+        format: &ComplexityOutputFormat,
+        output: &Option<std::path::PathBuf>,
+        max_cyclomatic: &Option<u16>,
+        max_cognitive: &Option<u16>,
+        include: &[String],
+        watch: bool,
+        top_files: usize,
+    ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        // Handle parameter migration: use new 'path' or deprecated 'project_path'
+        let analysis_path = if let Some(deprecated_path) = project_path {
+            deprecated_path.as_ref()
+        } else {
+            path
+        };
+        Self::decode_analyze_complexity(
+            analysis_path,
+            file,
+            files,
+            toolchain,
+            format,
+            output,
+            max_cyclomatic,
+            max_cognitive,
+            include,
+            watch,
+            top_files,
+        )
     }
 
     fn decode_analyze_churn(
@@ -1541,63 +1629,251 @@ impl CliInput {
 
     /// Create from the parsed CLI arguments
     fn get_analyze_command_name(analyze_cmd: &AnalyzeCommands) -> &'static str {
-        // Toyota Way: Simple, readable, and efficient - no complexity for simple mappings
+        // Toyota Way Extract Method: Use categorized dispatch for analyze command names
+        let category = CliAdapter::get_analyze_command_category(analyze_cmd);
+        
+        match category {
+            AnalyzeCommandCategory::Basic => Self::get_basic_analyze_command_name(analyze_cmd),
+            AnalyzeCommandCategory::Advanced => Self::get_advanced_analyze_command_name(analyze_cmd),
+            AnalyzeCommandCategory::Structural => Self::get_structural_analyze_command_name(analyze_cmd),
+            AnalyzeCommandCategory::Specialized => Self::get_specialized_analyze_command_name(analyze_cmd),
+        }
+    }
+
+    /// Toyota Way Extract Method: Basic analysis command names
+    fn get_basic_analyze_command_name(analyze_cmd: &AnalyzeCommands) -> &'static str {
         match analyze_cmd {
             AnalyzeCommands::Churn { .. } => "analyze-churn",
             AnalyzeCommands::Complexity { .. } => "analyze-complexity",
-            AnalyzeCommands::Dag { .. } => "analyze-dag",
             AnalyzeCommands::DeadCode { .. } => "analyze-dead-code",
             AnalyzeCommands::Satd { .. } => "analyze-satd",
-            AnalyzeCommands::DeepContext { .. } => "analyze-deep-context",
             AnalyzeCommands::Tdg { .. } => "analyze-tdg",
             AnalyzeCommands::LintHotspot { .. } => "analyze-lint-hotspot",
+            _ => unreachable!("Non-basic command passed to basic command name extractor"),
+        }
+    }
+
+    /// Toyota Way Extract Method: Advanced analysis command names
+    fn get_advanced_analyze_command_name(analyze_cmd: &AnalyzeCommands) -> &'static str {
+        match analyze_cmd {
+            AnalyzeCommands::DeepContext { .. } => "analyze-deep-context",
+            AnalyzeCommands::Comprehensive { .. } => "analyze-comprehensive",
+            AnalyzeCommands::DefectPrediction { .. } => "analyze-defect-prediction",
+            AnalyzeCommands::Duplicates { .. } => "analyze-duplicates",
+            AnalyzeCommands::BigO { .. } => "analyze-big-o",
+            _ => unreachable!("Non-advanced command passed to advanced command name extractor"),
+        }
+    }
+
+    /// Toyota Way Extract Method: Structural analysis command names
+    fn get_structural_analyze_command_name(analyze_cmd: &AnalyzeCommands) -> &'static str {
+        match analyze_cmd {
+            AnalyzeCommands::Dag { .. } => "analyze-dag",
+            AnalyzeCommands::GraphMetrics { .. } => "analyze-graph-metrics",
+            AnalyzeCommands::SymbolTable { .. } => "analyze-symbol-table",
+            AnalyzeCommands::NameSimilarity { .. } => "analyze-name-similarity",
+            _ => unreachable!("Non-structural command passed to structural command name extractor"),
+        }
+    }
+
+    /// Toyota Way Extract Method: Specialized analysis command names
+    fn get_specialized_analyze_command_name(analyze_cmd: &AnalyzeCommands) -> &'static str {
+        match analyze_cmd {
             AnalyzeCommands::Makefile { .. } => "analyze-makefile",
             AnalyzeCommands::Provability { .. } => "analyze-provability",
-            AnalyzeCommands::Duplicates { .. } => "analyze-duplicates",
-            AnalyzeCommands::DefectPrediction { .. } => "analyze-defect-prediction",
-            AnalyzeCommands::Comprehensive { .. } => "analyze-comprehensive",
-            AnalyzeCommands::GraphMetrics { .. } => "analyze-graph-metrics",
-            AnalyzeCommands::NameSimilarity { .. } => "analyze-name-similarity",
             AnalyzeCommands::ProofAnnotations { .. } => "analyze-proof-annotations",
             AnalyzeCommands::IncrementalCoverage { .. } => "analyze-incremental-coverage",
-            AnalyzeCommands::SymbolTable { .. } => "analyze-symbol-table",
-            AnalyzeCommands::BigO { .. } => "analyze-big-o",
             AnalyzeCommands::AssemblyScript { .. } => "analyze-assemblyscript",
             AnalyzeCommands::WebAssembly { .. } => "analyze-webassembly",
+            _ => unreachable!("Non-specialized command passed to specialized command name extractor"),
         }
     }
 
     pub fn from_commands(command: Commands) -> Self {
-        let command_name = match &command {
-            Commands::Generate { .. } => "generate",
-            Commands::Scaffold { .. } => "scaffold",
-            Commands::List { .. } => "list",
-            Commands::Search { .. } => "search",
-            Commands::Validate { .. } => "validate",
-            Commands::Context { .. } => "context",
-            Commands::Analyze(analyze_cmd) => Self::get_analyze_command_name(analyze_cmd),
-            Commands::Demo { .. } => "demo",
-            Commands::Serve { .. } => "serve",
-            Commands::Diagnose(_) => "diagnose",
-            Commands::QualityGate { .. } => "quality-gate",
-            Commands::Report { .. } => "report",
-            Commands::Enforce(_) => "enforce",
-            Commands::Refactor(_) => "refactor",
-            Commands::Roadmap(_) => "roadmap",
-            Commands::Test { .. } => "test",
-            Commands::Memory { .. } => "memory",
-            Commands::Cache { .. } => "cache",
-            Commands::Telemetry { .. } => "telemetry",
-            Commands::Config { .. } => "config",
-            Commands::Agent { .. } => "agent",
-            Commands::Tdg { .. } => "tdg",
-        }
-        .to_string();
+        // Toyota Way Extract Method: Get command name using categorized dispatch
+        let command_name = Self::get_command_name_by_category(&command);
 
         Self {
             command,
             command_name,
             raw_args: std::env::args().collect(),
+        }
+    }
+
+    /// Toyota Way Extract Method: Get command name using categorized dispatch
+    /// Reduces complexity from 23 branches to category-based logic
+    fn get_command_name_by_category(command: &Commands) -> String {
+        match command {
+            // Special case: Analyze command needs sub-command delegation
+            Commands::Analyze(analyze_cmd) => Self::get_analyze_command_name(analyze_cmd),
+            // All other commands: extract name directly using category dispatch
+            _ => Self::get_simple_command_name(command),
+        }.to_string()
+    }
+
+    /// Toyota Way Extract Method: Get simple command name for non-analyze commands
+    /// Single responsibility: name extraction using category-based dispatch
+    fn get_simple_command_name(command: &Commands) -> &'static str {
+        let category = Self::get_command_category(command);
+        
+        match category {
+            CommandCategory::Generation => Self::get_generation_command_name(command),
+            CommandCategory::Analysis => Self::get_analysis_command_name(command),
+            CommandCategory::Operations => Self::get_operations_command_name(command),
+            CommandCategory::Workflow => Self::get_workflow_command_name(command),
+            CommandCategory::System => Self::get_system_command_name(command),
+            CommandCategory::Configuration => Self::get_configuration_command_name(command),
+            CommandCategory::Demo => "demo",
+            CommandCategory::Enforcement => "enforce",
+        }
+    }
+
+    /// Toyota Way Extract Method: Determine command category
+    fn get_command_category(command: &Commands) -> CommandCategory {
+        match command {
+            Commands::Generate { .. } | Commands::Scaffold { .. } => CommandCategory::Generation,
+            Commands::QualityGate { .. } | Commands::Report { .. } => CommandCategory::Analysis,
+            Commands::Serve { .. } | Commands::Cache { .. } | Commands::Memory { .. } | Commands::Telemetry { .. } => CommandCategory::Operations,
+            Commands::Refactor(_) | Commands::Test { .. } | Commands::Roadmap(_) | Commands::Validate { .. } => CommandCategory::Workflow,
+            Commands::List { .. } | Commands::Search { .. } | Commands::Context { .. } | Commands::Diagnose(_) => CommandCategory::System,
+            Commands::Config { .. } | Commands::Agent { .. } | Commands::Tdg { .. } => CommandCategory::Configuration,
+            Commands::Demo { .. } => CommandCategory::Demo,
+            Commands::Enforce(_) => CommandCategory::Enforcement,
+            Commands::Analyze(_) => unreachable!("Analyze commands handled by get_analyze_command_name"),
+        }
+    }
+
+    /// Toyota Way Extract Method: Generation command names
+    fn get_generation_command_name(command: &Commands) -> &'static str {
+        match command {
+            Commands::Generate { .. } => "generate",
+            Commands::Scaffold { .. } => "scaffold",
+            _ => unreachable!("Non-generation command passed to generation command name extractor"),
+        }
+    }
+
+    /// Toyota Way Extract Method: Analysis command names (non-analyze)
+    fn get_analysis_command_name(command: &Commands) -> &'static str {
+        match command {
+            Commands::QualityGate { .. } => "quality-gate",
+            Commands::Report { .. } => "report",
+            _ => unreachable!("Non-analysis command passed to analysis command name extractor"),
+        }
+    }
+
+    /// Toyota Way Extract Method: Operations command names
+    fn get_operations_command_name(command: &Commands) -> &'static str {
+        match command {
+            Commands::Serve { .. } => "serve",
+            Commands::Cache { .. } => "cache",
+            Commands::Memory { .. } => "memory",
+            Commands::Telemetry { .. } => "telemetry",
+            _ => unreachable!("Non-operations command passed to operations command name extractor"),
+        }
+    }
+
+    /// Toyota Way Extract Method: Workflow command names
+    fn get_workflow_command_name(command: &Commands) -> &'static str {
+        match command {
+            Commands::Refactor(_) => "refactor",
+            Commands::Test { .. } => "test",
+            Commands::Roadmap(_) => "roadmap",
+            Commands::Validate { .. } => "validate",
+            _ => unreachable!("Non-workflow command passed to workflow command name extractor"),
+        }
+    }
+
+    /// Toyota Way Extract Method: System command names
+    fn get_system_command_name(command: &Commands) -> &'static str {
+        match command {
+            Commands::List { .. } => "list",
+            Commands::Search { .. } => "search",
+            Commands::Context { .. } => "context",
+            Commands::Diagnose(_) => "diagnose",
+            _ => unreachable!("Non-system command passed to system command name extractor"),
+        }
+    }
+
+    /// Toyota Way Extract Method: Configuration command names
+    fn get_configuration_command_name(command: &Commands) -> &'static str {
+        match command {
+            Commands::Config { .. } => "config",
+            Commands::Agent { .. } => "agent",
+            Commands::Tdg { .. } => "tdg",
+            _ => unreachable!("Non-configuration command passed to configuration command name extractor"),
+        }
+    }
+}
+
+/// Toyota Way Extract Method: Categories for analyze command dispatch
+/// Reduces complexity from 24 branches to 4 categories
+#[derive(Debug, Clone, Copy)]
+enum AnalyzeCommandCategory {
+    /// Core analysis commands (basic metrics): churn, complexity, dead code, SATD, TDG, lint hotspots
+    Basic,
+    /// Advanced analysis commands (comprehensive): deep context, comprehensive, defect prediction, duplicates, BigO
+    Advanced,
+    /// Graph and structural analysis: DAG, graph metrics, symbol table, name similarity
+    Structural,
+    /// Specialized analysis commands: makefile, provability, proof annotations, coverage, WebAssembly
+    Specialized,
+}
+
+/// Toyota Way Extract Method: Categories for general CLI command dispatch
+/// Reduces complexity from 23 branches to logical groups
+#[derive(Debug, Clone, Copy)]
+enum CommandCategory {
+    /// Generation and creation commands: generate, scaffold
+    Generation,
+    /// Analysis and assessment commands: analyze (delegated), quality-gate, report
+    Analysis,
+    /// Operations and maintenance commands: serve, cache, memory, telemetry
+    Operations,
+    /// Development workflow commands: refactor, test, roadmap, validate
+    Workflow,
+    /// System interaction commands: list, search, context, diagnose
+    System,
+    /// Configuration and setup commands: config, agent, tdg
+    Configuration,
+    /// Demo and examples: demo
+    Demo,
+    /// Runtime enforcement: enforce
+    Enforcement,
+}
+
+impl CliAdapter {
+    /// Toyota Way Extract Method: Categorize analyze command by type
+    /// Single responsibility: classification logic only
+    fn get_analyze_command_category(analyze_cmd: &AnalyzeCommands) -> AnalyzeCommandCategory {
+        match analyze_cmd {
+            // Core analysis commands (basic metrics)
+            AnalyzeCommands::Churn { .. } 
+            | AnalyzeCommands::Complexity { .. } 
+            | AnalyzeCommands::DeadCode { .. } 
+            | AnalyzeCommands::Satd { .. } 
+            | AnalyzeCommands::Tdg { .. } 
+            | AnalyzeCommands::LintHotspot { .. } => AnalyzeCommandCategory::Basic,
+            
+            // Advanced analysis commands (comprehensive)
+            AnalyzeCommands::DeepContext { .. } 
+            | AnalyzeCommands::Comprehensive { .. } 
+            | AnalyzeCommands::DefectPrediction { .. } 
+            | AnalyzeCommands::Duplicates { .. } 
+            | AnalyzeCommands::BigO { .. } => AnalyzeCommandCategory::Advanced,
+            
+            // Graph and structural analysis
+            AnalyzeCommands::Dag { .. } 
+            | AnalyzeCommands::GraphMetrics { .. } 
+            | AnalyzeCommands::SymbolTable { .. } 
+            | AnalyzeCommands::NameSimilarity { .. } => AnalyzeCommandCategory::Structural,
+            
+            // Specialized analysis commands
+            AnalyzeCommands::Makefile { .. } 
+            | AnalyzeCommands::Provability { .. } 
+            | AnalyzeCommands::ProofAnnotations { .. } 
+            | AnalyzeCommands::IncrementalCoverage { .. } 
+            | AnalyzeCommands::AssemblyScript { .. } 
+            | AnalyzeCommands::WebAssembly { .. } => AnalyzeCommandCategory::Specialized,
         }
     }
 }
@@ -2502,6 +2778,193 @@ mod tests {
                 assert_eq!(exit_code, 1);
             },
             _ => panic!("Expected Error output"),
+        }
+    }
+
+    // Toyota Way TDD: Tests for extracted dispatch functions
+    
+    #[tokio::test]
+    async fn test_dispatch_basic_analysis_churn() {
+        let command = AnalyzeCommands::Churn {
+            project_path: PathBuf::from("."),
+            days: 30,
+            format: ChurnOutputFormat::Json,
+            output: None,
+            top_files: 10,
+            include: vec![],
+            exclude: vec![],
+        };
+        
+        let result = CliAdapter::dispatch_basic_analysis(&command);
+        assert!(result.is_ok());
+        let (method, path, _, _) = result.unwrap();
+        assert_eq!(method, Method::POST);
+        assert_eq!(path, "/api/v1/analyze/churn");
+    }
+    
+    #[tokio::test]
+    async fn test_dispatch_basic_analysis_complexity() {
+        let command = AnalyzeCommands::Complexity {
+            path: PathBuf::from("."),
+            project_path: None,
+            file: None,
+            files: vec![],
+            toolchain: Some("rust".to_string()),
+            format: ComplexityOutputFormat::Json,
+            output: None,
+            max_cyclomatic: Some(10),
+            max_cognitive: Some(15),
+            include: vec![],
+            watch: false,
+            top_files: 0,
+            fail_on_violation: false,
+            timeout: 60,
+        };
+        
+        let result = CliAdapter::dispatch_basic_analysis(&command);
+        assert!(result.is_ok());
+        let (method, path, _, _) = result.unwrap();
+        assert_eq!(method, Method::POST);
+        assert_eq!(path, "/api/v1/analyze/complexity");
+    }
+    
+    #[tokio::test]
+    async fn test_dispatch_advanced_analysis_comprehensive() {
+        let command = AnalyzeCommands::Comprehensive {
+            project_path: PathBuf::from("."),
+            file: None,
+            files: vec![],
+            format: crate::cli::ComprehensiveOutputFormat::Json,
+            include_duplicates: true,
+            include_dead_code: true,
+            include_defects: true,
+            include_complexity: true,
+            include_tdg: false,
+            confidence_threshold: 0.8,
+            min_lines: 10,
+            include: None,
+            exclude: None,
+            output: None,
+            perf: false,
+            executive_summary: false,
+            top_files: 10,
+        };
+        
+        let result = CliAdapter::dispatch_advanced_analysis(&command);
+        assert!(result.is_ok());
+        let (method, path, _, _) = result.unwrap();
+        assert_eq!(method, Method::POST);
+        assert_eq!(path, "/api/v1/analyze/comprehensive");
+    }
+    
+    #[tokio::test]
+    async fn test_dispatch_structural_analysis_dag() {
+        let command = AnalyzeCommands::Dag {
+            dag_type: DagType::CallGraph,
+            project_path: PathBuf::from("."),
+            output: None,
+            max_depth: Some(5),
+            target_nodes: Some(100),
+            filter_external: true,
+            show_complexity: false,
+            include_duplicates: false,
+            include_dead_code: false,
+            enhanced: false,
+        };
+        
+        let result = CliAdapter::dispatch_structural_analysis(&command);
+        assert!(result.is_ok());
+        let (method, path, _, _) = result.unwrap();
+        assert_eq!(method, Method::POST);
+        assert_eq!(path, "/api/v1/analyze/dag");
+    }
+    
+    #[tokio::test]
+    async fn test_dispatch_specialized_analysis_makefile() {
+        let command = AnalyzeCommands::Makefile {
+            path: PathBuf::from("."),
+            rules: vec!["all".to_string()],
+            format: crate::cli::MakefileOutputFormat::Json,
+            fix: false,
+            gnu_version: "4.3".to_string(),
+            top_files: 5,
+        };
+        
+        let result = CliAdapter::dispatch_specialized_analysis(&command);
+        assert!(result.is_ok());
+        let (method, path, _, _) = result.unwrap();
+        assert_eq!(method, Method::POST);
+        assert_eq!(path, "/api/v1/analyze/makefile");
+    }
+    
+    #[test]
+    fn test_decode_analyze_complexity_with_migration_new_path() {
+        let result = CliAdapter::decode_analyze_complexity_with_migration(
+            &PathBuf::from("."),
+            &None, // No deprecated path
+            &None,
+            &[],
+            &Some("rust".to_string()),
+            &ComplexityOutputFormat::Json,
+            &None,
+            &Some(10),
+            &Some(15),
+            &[],
+            false,
+            0,
+        );
+        
+        assert!(result.is_ok());
+        let (method, path, _, _) = result.unwrap();
+        assert_eq!(method, Method::POST);
+        assert_eq!(path, "/api/v1/analyze/complexity");
+    }
+    
+    #[test]
+    fn test_decode_analyze_complexity_with_migration_deprecated_path() {
+        let result = CliAdapter::decode_analyze_complexity_with_migration(
+            &PathBuf::from("new_path"),
+            &Some(PathBuf::from("deprecated_path")), // Has deprecated path
+            &None,
+            &[],
+            &Some("rust".to_string()),
+            &ComplexityOutputFormat::Json,
+            &None,
+            &Some(10),
+            &Some(15),
+            &[],
+            false,
+            0,
+        );
+        
+        assert!(result.is_ok());
+        let (method, path, _, _) = result.unwrap();
+        assert_eq!(method, Method::POST);
+        assert_eq!(path, "/api/v1/analyze/complexity");
+        // The function should use the deprecated path when provided
+    }
+    
+    #[test]
+    fn test_dispatch_wrong_category_returns_error() {
+        let churn_command = AnalyzeCommands::Churn {
+            project_path: PathBuf::from("."),
+            days: 30,
+            format: ChurnOutputFormat::Json,
+            output: None,
+            top_files: 10,
+            include: vec![],
+            exclude: vec![],
+        };
+        
+        // Try to dispatch a basic command through advanced dispatch - should fail
+        let result = CliAdapter::dispatch_advanced_analysis(&churn_command);
+        assert!(result.is_err());
+        
+        match result {
+            Err(ProtocolError::UnsupportedProtocol(msg)) => {
+                assert!(msg.contains("Command not supported in advanced analysis dispatch"));
+            }
+            _ => panic!("Expected UnsupportedProtocol error"),
         }
     }
 }

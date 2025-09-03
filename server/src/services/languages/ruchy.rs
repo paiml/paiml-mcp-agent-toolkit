@@ -767,7 +767,22 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze binary operation complexity
     fn analyze_binary_op(&mut self, left: &RuchyAst, op: &RuchyToken, right: &RuchyAst) {
-        let op_str = match op {
+        // Toyota Way Extract Method: Separate concerns for operator processing
+        let op_str = Self::get_operator_string(op);
+        self.track_operator(op_str);
+
+        // Toyota Way Extract Method: Handle complexity tracking for logical operators
+        self.handle_logical_operator_complexity(op);
+        
+        // Analyze operands
+        self.analyze_node(left);
+        self.analyze_node(right);
+    }
+
+    /// Toyota Way Extract Method: Get string representation of operator
+    /// Single responsibility: operator token to string conversion
+    fn get_operator_string(op: &RuchyToken) -> &'static str {
+        match op {
             RuchyToken::Plus => "+",
             RuchyToken::Minus => "-",
             RuchyToken::Star => "*",
@@ -783,15 +798,16 @@ impl RuchyComplexityAnalyzer {
             RuchyToken::Or => "||",
             RuchyToken::PipeForward => "|>",
             _ => "op",
-        };
-        self.track_operator(op_str);
+        }
+    }
 
+    /// Toyota Way Extract Method: Handle complexity tracking for logical operators
+    /// Single responsibility: complexity increment for short-circuit operators
+    fn handle_logical_operator_complexity(&mut self, op: &RuchyToken) {
         if matches!(op, RuchyToken::And | RuchyToken::Or) {
             self.current_complexity.cyclomatic += 1;
             self.current_complexity.cognitive += 1;
         }
-        self.analyze_node(left);
-        self.analyze_node(right);
     }
 
     /// Analyze block complexity
