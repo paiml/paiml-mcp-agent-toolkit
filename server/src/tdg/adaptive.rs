@@ -157,7 +157,7 @@ impl AdaptiveThresholdManager {
         let avg_queue_depth =
             history.iter().map(|s| s.queue_depth).sum::<usize>() as f32 / history.len() as f32;
 
-        // Performance is too slow
+        // Performance below threshold
         if avg_duration > self.config.target_analysis_time_ms as f32 * 1.5 {
             if avg_cache_hit < self.config.min_cache_hit_ratio {
                 // Low cache hit ratio - scale up cache
