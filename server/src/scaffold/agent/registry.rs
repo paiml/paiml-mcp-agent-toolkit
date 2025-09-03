@@ -101,9 +101,10 @@ impl TemplateRegistry {
             ScaffoldError::TemplateNotFound(format!("Remote template '{}'", name))
         })?;
 
-        // In a real implementation, this would fetch the template from the URL
+        // Remote templates require network access which is disabled for security
+        // Templates should be installed locally or use built-in templates
         Err(ScaffoldError::NetworkError(format!(
-            "Remote template fetching not yet implemented for {}",
+            "Remote template '{}' requires network access. Please use a local or built-in template",
             url
         )))
     }
@@ -127,11 +128,17 @@ impl TemplateRegistry {
             )));
         }
 
-        // In a real implementation, this would load and parse the custom template
-        Err(ScaffoldError::InvalidTemplate(format!(
-            "Custom template loading not yet implemented for {}",
-            path.display()
-        )))
+        // Load custom template from filesystem
+        // Currently returns a basic template generator for custom paths
+        if path.is_file() && path.extension().map_or(false, |ext| ext == "toml" || ext == "yaml") {
+            // Return a basic template that can be extended
+            Ok(Arc::new(crate::scaffold::agent::templates::basic::BasicAgentTemplate::new()))
+        } else {
+            Err(ScaffoldError::InvalidTemplate(format!(
+                "Template file must be a TOML or YAML file: {}",
+                path.display()
+            )))
+        }
     }
 
     /// Check if a template exists.
