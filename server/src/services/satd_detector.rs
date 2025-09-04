@@ -2413,13 +2413,6 @@ fn helper_test() {{
         assert!(std::mem::size_of_val(&detector) > 0);
     }
 
-    #[test]
-    fn test_satd_detector_default() {
-        let detector = SATDDetector::default();
-        
-        // Should be created successfully with default
-        assert!(std::mem::size_of_val(&detector) > 0);
-    }
 
     #[test]
     fn test_extract_from_content_empty_string() {

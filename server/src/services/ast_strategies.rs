@@ -543,7 +543,9 @@ impl CppAstStrategy {
     }
 }
 
-#[cfg(feature = "kotlin-ast")]
+// kotlin-ast feature is disabled
+// #[cfg(feature = "kotlin-ast")]
+/*
 impl KotlinAstStrategy {
     /// Extract name from UnifiedAstNode by analyzing the source range
     fn extract_name_from_node(
@@ -639,6 +641,7 @@ impl KotlinAstStrategy {
         content_lines.len() // Return last line if position is beyond content
     }
 }
+*/
 
 impl Default for StrategyRegistry {
     fn default() -> Self {

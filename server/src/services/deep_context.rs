@@ -3916,33 +3916,7 @@ async fn analyze_c_file(
 async fn analyze_kotlin_file(
     #[allow(unused_variables)] file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    #[cfg(feature = "kotlin-ast")]
-    {
-        use crate::services::ast_strategies::{AstStrategy, KotlinAstStrategy};
-        use crate::services::file_classifier::FileClassifier;
-
-        tracing::debug!("analyze_kotlin_file called for: {}", file_path.display());
-        let classifier = FileClassifier::new();
-        let strategy = KotlinAstStrategy;
-        match strategy.analyze(file_path, &classifier).await {
-            Ok(file_context) => {
-                tracing::debug!(
-                    "KotlinAstStrategy returned {} items",
-                    file_context.items.len()
-                );
-                Ok(file_context.items)
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to analyze Kotlin file {}: {}",
-                    file_path.display(),
-                    e
-                );
-                Ok(Vec::new())
-            }
-        }
-    }
-    #[cfg(not(feature = "kotlin-ast"))]
+    // kotlin-ast feature is disabled
     Ok(Vec::new())
 }
 

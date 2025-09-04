@@ -116,7 +116,7 @@ pub async fn analyze_typescript_file_with_classifier(
     // Extract information using the new API
     let functions = strategy.extract_functions(&ast);
     let types = strategy.extract_types(&ast);
-    let imports = strategy.extract_imports(&ast);
+    let _imports = strategy.extract_imports(&ast);
     
     // Convert to old format
     let mut items = Vec::new();
@@ -232,7 +232,7 @@ pub async fn analyze_javascript_file_with_classifier(
     // Extract information using the new API
     let functions = strategy.extract_functions(&ast);
     let types = strategy.extract_types(&ast);
-    let imports = strategy.extract_imports(&ast);
+    let _imports = strategy.extract_imports(&ast);
     
     // Convert to old format
     let mut items = Vec::new();
