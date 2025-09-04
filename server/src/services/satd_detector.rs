@@ -49,6 +49,25 @@ pub struct SATDSummary {
     pub avg_age_days: f64,
 }
 
+/// Test-only structures for SATD metrics
+#[cfg(test)]
+#[derive(Debug, Clone)]
+struct DebtFileMetrics {
+    file: PathBuf,
+    count: usize,
+    critical_count: usize,
+    categories: Vec<String>,
+    lines: Vec<usize>,
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone)]
+struct DebtCategoryMetrics {
+    count: usize,
+    critical_count: usize,
+    files: Vec<PathBuf>,
+}
+
 /// Categories of technical debt
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DebtCategory {
