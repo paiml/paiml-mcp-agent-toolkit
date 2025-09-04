@@ -666,20 +666,7 @@ async fn analyze_file_by_toolchain(
             None
         }
         "kotlin" => {
-            #[cfg(feature = "kotlin-ast")]
-            {
-                use crate::services::ast_strategies::{AstStrategy, KotlinAstStrategy};
-                use crate::services::file_classifier::FileClassifier;
-                let ext = path.extension().and_then(|s| s.to_str());
-                if matches!(ext, Some("kt") | Some("kts")) {
-                    let classifier = FileClassifier::new();
-                    let strategy = KotlinAstStrategy;
-                    strategy.analyze(path, &classifier).await.ok()
-                } else {
-                    None
-                }
-            }
-            #[cfg(not(feature = "kotlin-ast"))]
+            // kotlin-ast feature is disabled
             None
         }
         _ => None,
@@ -915,20 +902,7 @@ async fn analyze_file_by_toolchain_persistent(
             None
         }
         "kotlin" => {
-            #[cfg(feature = "kotlin-ast")]
-            {
-                use crate::services::ast_strategies::{AstStrategy, KotlinAstStrategy};
-                use crate::services::file_classifier::FileClassifier;
-                let ext = path.extension().and_then(|s| s.to_str());
-                if matches!(ext, Some("kt") | Some("kts")) {
-                    let classifier = FileClassifier::new();
-                    let strategy = KotlinAstStrategy;
-                    strategy.analyze(path, &classifier).await.ok()
-                } else {
-                    None
-                }
-            }
-            #[cfg(not(feature = "kotlin-ast"))]
+            // kotlin-ast feature is disabled
             None
         }
         _ => None,
