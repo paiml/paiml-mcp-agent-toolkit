@@ -294,11 +294,19 @@ mod tests {
             rt.block_on(async {
                 let temp_dir = TempDir::new().unwrap();
                 let config = UnifiedCacheConfig {
-                    max_memory_bytes: 1024 * 1024,
-                    persistent: true,
-                    storage_path: Some(temp_dir.path().to_string_lossy().to_string()),
-                    ttl: Some(Duration::from_secs(3600)),
-                    max_entries: 1000,
+                    max_memory_mb: 1,
+                    enable_watch: true,
+                    ast_ttl_secs: 300,
+                    template_ttl_secs: 600,
+                    dag_ttl_secs: 180,
+                    churn_ttl_secs: 1800,
+                    git_stats_ttl_secs: 900,
+                    warmup_on_startup: false,
+                    warmup_patterns: vec!["src/**/*.rs".to_string()],
+                    git_cache_by_branch: true,
+                    git_cache_max_age_days: 30,
+                    parallel_warmup_threads: 4,
+                    cache_compression: false,
                     eviction_batch_size: 10,
                 };
 

@@ -14,8 +14,8 @@ pub mod orchestrator;
 pub mod persistent;
 pub mod persistent_manager;
 pub mod strategies;
-pub mod unified;
-pub mod unified_manager;
+pub mod unified; // Compatibility stub
+pub mod unified_manager; // Compatibility stub
 
 pub use advanced_strategies::{
     AdaptiveCache, AdaptiveCacheStats, AdvancedCacheConfig, CacheTier, CacheWarmingConfig,
@@ -36,5 +36,3 @@ pub use strategies::{
     AstCacheStrategy, ChurnCacheStrategy, DagCacheStrategy, GitStats, GitStatsCacheStrategy,
     TemplateCacheStrategy,
 };
-pub use unified::{LayeredCache, UnifiedCache, UnifiedCacheConfig, VectorizedCacheKey};
-pub use unified_manager::{UnifiedCacheDiagnostics, UnifiedCacheManager};

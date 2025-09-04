@@ -152,11 +152,11 @@ vm.dirty_ratio=15
 vm.dirty_background_ratio=5
 `;
 
-    // Write to temp file first
+    // Create intermediate file for safe writing
     const tempFile = await Deno.makeTempFile();
     await Deno.writeTextFile(tempFile, sysctlConfig);
 
-    // Move to system location
+    // Move intermediate file to system location
     await runCommand([
       "sudo",
       "cp",

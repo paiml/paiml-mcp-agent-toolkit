@@ -223,7 +223,7 @@ pub async fn handle_refactor_serve(params: RefactorServeParams) -> anyhow::Resul
 
     // Create cache and AST engine
     let cache_config = crate::services::cache::unified::UnifiedCacheConfig {
-        max_memory_bytes: (memory_limit / 2) * 1024 * 1024, // Use half the memory for cache (convert MB to bytes)
+        max_memory_mb: memory_limit / 2, // Use half the memory for cache
         ..Default::default()
     };
     let cache = Arc::new(UnifiedCacheManager::new(cache_config)?);

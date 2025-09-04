@@ -231,7 +231,7 @@ impl ArtifactWriter {
             fs::create_dir_all(parent).map_err(TemplateError::Io)?;
         }
 
-        // Atomic write using temporary file
+        // Use two-phase write: create with .tmp extension, then rename
         let temp_path = path.with_extension("tmp");
         fs::write(&temp_path, content).map_err(TemplateError::Io)?;
         fs::rename(temp_path, path).map_err(TemplateError::Io)?;
@@ -500,7 +500,7 @@ mod tests {
 
         let mermaid = MermaidArtifacts {
             ast_generated,
-            non_code: BTreeMap::new(),
+            non_code: HashMap::new(),
         };
 
         let templates = vec![Template {

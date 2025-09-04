@@ -1,6 +1,6 @@
-//! Compatibility shim for ast_rust module during migration to new AST architecture
+//! Compatibility shim for ast_python module during migration to new AST architecture
 //! 
-//! This module provides backward compatibility for services still using the old AST API.
+//! This module provides backward compatibility for services still using the old Python AST API.
 //! It will be removed once all services are migrated to the new ast:: module.
 
 use std::path::Path;
@@ -12,18 +12,20 @@ use crate::services::context::{FileContext, AstItem};
 use crate::services::file_classifier::FileClassifier;
 
 // Import the new AST module
-use crate::ast::languages::rust::RustStrategy;
+use crate::ast::languages::python::PythonStrategy;
 use crate::ast::languages::LanguageStrategy;
 
-/// Analyze a Rust file and return complexity metrics (compatibility function)
-pub async fn analyze_rust_file_with_complexity(
+/// Analyze a Python file and return complexity metrics (compatibility function)
+pub async fn analyze_python_file_with_complexity(
     path: &Path,
+    classifier: Option<&FileClassifier>,
 ) -> Result<FileComplexityMetrics, TemplateError> {
-    analyze_rust_file_with_complexity_and_classifier(path, None).await
+    // Delegate to the version with classifier
+    analyze_python_file_with_complexity_and_classifier(path, classifier).await
 }
 
-/// Analyze a Rust file with optional classifier (compatibility function)
-pub async fn analyze_rust_file_with_complexity_and_classifier(
+/// Analyze a Python file with optional classifier (compatibility function)
+async fn analyze_python_file_with_complexity_and_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
 ) -> Result<FileComplexityMetrics, TemplateError> {
@@ -33,7 +35,7 @@ pub async fn analyze_rust_file_with_complexity_and_classifier(
         .map_err(TemplateError::Io)?;
     
     // Use the new AST module to parse
-    let strategy = RustStrategy::new();
+    let strategy = PythonStrategy::new();
     let ast = strategy.parse_file(path, &content).await
         .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
     
@@ -70,17 +72,17 @@ pub async fn analyze_rust_file_with_complexity_and_classifier(
             halstead: None,
         },
         functions: function_metrics,
-        classes: Vec::new(), // Rust doesn't have classes in the traditional sense
+        classes: Vec::new(), // Will be populated from types
     })
 }
 
-/// Analyze a Rust file and return context (compatibility function)
-pub async fn analyze_rust_file(path: &Path) -> Result<FileContext, TemplateError> {
-    analyze_rust_file_with_classifier(path, None).await
+/// Analyze a Python file and return context (compatibility function)
+pub async fn analyze_python_file(path: &Path) -> Result<FileContext, TemplateError> {
+    analyze_python_file_with_classifier(path, None).await
 }
 
-/// Analyze a Rust file with optional classifier and return context (compatibility function)
-pub async fn analyze_rust_file_with_classifier(
+/// Analyze a Python file with optional classifier and return context (compatibility function)
+pub async fn analyze_python_file_with_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
 ) -> Result<FileContext, TemplateError> {
@@ -90,7 +92,7 @@ pub async fn analyze_rust_file_with_classifier(
         .map_err(TemplateError::Io)?;
     
     // Use the new AST module to parse
-    let strategy = RustStrategy::new();
+    let strategy = PythonStrategy::new();
     let ast = strategy.parse_file(path, &content).await
         .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
     
@@ -106,26 +108,26 @@ pub async fn analyze_rust_file_with_classifier(
     for (i, _node) in functions.iter().enumerate() {
         items.push(AstItem::Function {
             name: format!("function_{}", i),
-            visibility: "pub".to_string(),
-            is_async: false,
+            visibility: "".to_string(),  // Python doesn't have visibility modifiers
+            is_async: false,  // Could check node flags for async
             line: i * 10,
         });
     }
     
-    // Add types as items
+    // Add classes as items (using Struct variant for Python classes)
     for (i, _node) in types.iter().enumerate() {
         items.push(AstItem::Struct {
-            name: format!("type_{}", i),
-            visibility: "pub".to_string(),
+            name: format!("class_{}", i),
+            visibility: "".to_string(),
             fields_count: 0,
-            derives: vec![],  // Empty derives for now
+            derives: vec![],
             line: (functions.len() + i) * 10,
         });
     }
     
     Ok(FileContext {
         path: path.display().to_string(),
-        language: "rust".to_string(),
+        language: "python".to_string(),
         items,
         complexity_metrics: None,
     })

@@ -78,6 +78,16 @@ impl DependencyGraph {
         self.nodes.insert(node.id.clone(), node);
     }
 
+    /// Get the number of nodes in the graph
+    pub fn node_count(&self) -> usize {
+        self.nodes.len()
+    }
+
+    /// Get the number of edges in the graph  
+    pub fn edge_count(&self) -> usize {
+        self.edges.len()
+    }
+
     /// Adds an edge between two nodes in the dependency graph
     ///
     /// # Examples

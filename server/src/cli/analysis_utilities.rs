@@ -4633,7 +4633,7 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
 
         if should_process_file_for_satd(path) {
             if let Ok(content) = tokio::fs::read_to_string(path).await {
-                process_file_content_for_satd(&content, path, &*SATD_PATTERN, &mut violations);
+                process_file_content_for_satd(&content, path, &SATD_PATTERN, &mut violations);
             }
         }
     }
