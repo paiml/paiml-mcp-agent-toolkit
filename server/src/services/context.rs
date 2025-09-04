@@ -1342,9 +1342,9 @@ fn count_ast_items(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
     use std::path::PathBuf;
     use tempfile::TempDir;
-    use std::fs;
 
     // === Sprint 46 Phase 7: TDD Tests for context.rs ===
 
@@ -1411,7 +1411,12 @@ mod tests {
         };
 
         assert_eq!(struct_item.display_name(), "MyStruct");
-        if let AstItem::Struct { fields_count, derives, .. } = struct_item {
+        if let AstItem::Struct {
+            fields_count,
+            derives,
+            ..
+        } = struct_item
+        {
             assert_eq!(fields_count, 3);
             assert_eq!(derives.len(), 2);
         }
@@ -1503,7 +1508,12 @@ mod tests {
         };
 
         assert_eq!(class.display_name(), "MyClass");
-        if let AstItem::Class { base_classes, decorators, .. } = class {
+        if let AstItem::Class {
+            base_classes,
+            decorators,
+            ..
+        } = class
+        {
             assert_eq!(base_classes.len(), 1);
             assert_eq!(decorators.len(), 1);
         }
@@ -1532,8 +1542,10 @@ mod tests {
         // Create a temporary Rust file
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("test.rs");
-        
-        fs::write(&file_path, r#"
+
+        fs::write(
+            &file_path,
+            r#"
 pub fn hello() {
     println!("Hello, world!");
 }
@@ -1546,20 +1558,34 @@ pub enum TestEnum {
     Variant1,
     Variant2,
 }
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
 
         let result = analyze_rust_file(&file_path).await;
         assert!(result.is_ok());
-        
+
         let context = result.unwrap();
         assert!(context.path.ends_with("test.rs"));
         assert_eq!(context.language, "rust");
-        
+
         // Check that we found the function, struct, and enum
-        let func_count = context.items.iter().filter(|item| matches!(item, AstItem::Function { .. })).count();
-        let struct_count = context.items.iter().filter(|item| matches!(item, AstItem::Struct { .. })).count();
-        let enum_count = context.items.iter().filter(|item| matches!(item, AstItem::Enum { .. })).count();
-        
+        let func_count = context
+            .items
+            .iter()
+            .filter(|item| matches!(item, AstItem::Function { .. }))
+            .count();
+        let struct_count = context
+            .items
+            .iter()
+            .filter(|item| matches!(item, AstItem::Struct { .. }))
+            .count();
+        let enum_count = context
+            .items
+            .iter()
+            .filter(|item| matches!(item, AstItem::Enum { .. }))
+            .count();
+
         assert_eq!(func_count, 1);
         assert_eq!(struct_count, 1);
         assert_eq!(enum_count, 1);
@@ -1569,21 +1595,17 @@ pub enum TestEnum {
     fn test_format_context_as_markdown() {
         let context = ProjectContext {
             project_type: "rust".to_string(),
-            files: vec![
-                FileContext {
-                    path: "src/main.rs".to_string(),
-                    language: "rust".to_string(),
-                    items: vec![
-                        AstItem::Function {
-                            name: "main".to_string(),
-                            visibility: "pub".to_string(),
-                            is_async: false,
-                            line: 1,
-                        },
-                    ],
-                    complexity_metrics: None,
-                },
-            ],
+            files: vec![FileContext {
+                path: "src/main.rs".to_string(),
+                language: "rust".to_string(),
+                items: vec![AstItem::Function {
+                    name: "main".to_string(),
+                    visibility: "pub".to_string(),
+                    is_async: false,
+                    line: 1,
+                }],
+                complexity_metrics: None,
+            }],
             summary: ProjectSummary {
                 total_files: 1,
                 total_functions: 1,
@@ -1596,7 +1618,7 @@ pub enum TestEnum {
         };
 
         let markdown = format_context_as_markdown(&context);
-        
+
         assert!(markdown.contains("# Project Context"));
         assert!(markdown.contains("Type: rust"));
         assert!(markdown.contains("Total Files: 1"));
@@ -1624,7 +1646,7 @@ pub enum TestEnum {
         };
 
         let markdown = format_deep_context_as_markdown(&context);
-        
+
         assert!(markdown.contains("# Deep Context Analysis"));
         assert!(markdown.contains("Project Root:"));
         assert!(markdown.contains("/test/project"));
@@ -1639,20 +1661,23 @@ pub enum TestEnum {
     #[test]
     fn test_rust_visitor_struct() {
         use syn::parse_str;
-        
+
         let code = r#"
             pub struct TestStruct {
                 field1: String,
                 field2: i32,
             }
         "#;
-        
+
         let syntax = parse_str::<syn::File>(code).unwrap();
         let mut visitor = RustVisitor::new(code.to_string());
         visitor.visit_file(&syntax);
-        
+
         assert_eq!(visitor.items.len(), 1);
-        if let AstItem::Struct { name, fields_count, .. } = &visitor.items[0] {
+        if let AstItem::Struct {
+            name, fields_count, ..
+        } = &visitor.items[0]
+        {
             assert_eq!(name, "TestStruct");
             assert_eq!(*fields_count, 2);
         } else {
@@ -1663,17 +1688,17 @@ pub enum TestEnum {
     #[test]
     fn test_rust_visitor_function() {
         use syn::parse_str;
-        
+
         let code = r#"
             pub async fn test_function(param: String) -> Result<(), Error> {
                 Ok(())
             }
         "#;
-        
+
         let syntax = parse_str::<syn::File>(code).unwrap();
         let mut visitor = RustVisitor::new(code.to_string());
         visitor.visit_file(&syntax);
-        
+
         assert_eq!(visitor.items.len(), 1);
         if let AstItem::Function { name, is_async, .. } = &visitor.items[0] {
             assert_eq!(name, "test_function");
@@ -1686,7 +1711,7 @@ pub enum TestEnum {
     #[test]
     fn test_rust_visitor_enum() {
         use syn::parse_str;
-        
+
         let code = r#"
             #[derive(Debug, Clone)]
             pub enum TestEnum {
@@ -1695,13 +1720,18 @@ pub enum TestEnum {
                 Variant3 { field: i32 },
             }
         "#;
-        
+
         let syntax = parse_str::<syn::File>(code).unwrap();
         let mut visitor = RustVisitor::new(code.to_string());
         visitor.visit_file(&syntax);
-        
+
         assert_eq!(visitor.items.len(), 1);
-        if let AstItem::Enum { name, variants_count, .. } = &visitor.items[0] {
+        if let AstItem::Enum {
+            name,
+            variants_count,
+            ..
+        } = &visitor.items[0]
+        {
             assert_eq!(name, "TestEnum");
             assert_eq!(*variants_count, 3);
         } else {
@@ -1712,17 +1742,17 @@ pub enum TestEnum {
     #[test]
     fn test_rust_visitor_trait() {
         use syn::parse_str;
-        
+
         let code = r#"
             pub trait TestTrait {
                 fn method(&self);
             }
         "#;
-        
+
         let syntax = parse_str::<syn::File>(code).unwrap();
         let mut visitor = RustVisitor::new(code.to_string());
         visitor.visit_file(&syntax);
-        
+
         assert_eq!(visitor.items.len(), 1);
         if let AstItem::Trait { name, .. } = &visitor.items[0] {
             assert_eq!(name, "TestTrait");
@@ -1734,7 +1764,7 @@ pub enum TestEnum {
     #[test]
     fn test_rust_visitor_impl() {
         use syn::parse_str;
-        
+
         let code = r#"
             impl Display for TestStruct {
                 fn fmt(&self, f: &mut Formatter) -> Result {
@@ -1742,13 +1772,18 @@ pub enum TestEnum {
                 }
             }
         "#;
-        
+
         let syntax = parse_str::<syn::File>(code).unwrap();
         let mut visitor = RustVisitor::new(code.to_string());
         visitor.visit_file(&syntax);
-        
+
         assert_eq!(visitor.items.len(), 1);
-        if let AstItem::Impl { type_name, trait_name, .. } = &visitor.items[0] {
+        if let AstItem::Impl {
+            type_name,
+            trait_name,
+            ..
+        } = &visitor.items[0]
+        {
             assert_eq!(type_name, "TestStruct");
             assert_eq!(trait_name, &Some("Display".to_string()));
         } else {

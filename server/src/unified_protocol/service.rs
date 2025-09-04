@@ -223,6 +223,7 @@ impl UnifiedService {
     }
 
     /// Extract protocol from request path
+    #[allow(dead_code)]
     fn extract_protocol_from_path(&self, path: &str) -> Protocol {
         if path.starts_with("/mcp/") {
             Protocol::Mcp
@@ -230,7 +231,7 @@ impl UnifiedService {
             Protocol::Http
         }
     }
-    
+
     fn record_request_metrics_by_data(
         &self,
         method: &str,
@@ -1390,21 +1391,27 @@ mod tests {
     #[tokio::test]
     async fn test_unified_service_with_custom_template_service() {
         struct MockTemplateService;
-        
+
         #[async_trait::async_trait]
         impl TemplateService for MockTemplateService {
-            async fn list_templates(&self, _query: &ListTemplatesQuery) -> Result<TemplateList, AppError> {
+            async fn list_templates(
+                &self,
+                _query: &ListTemplatesQuery,
+            ) -> Result<TemplateList, AppError> {
                 Ok(TemplateList {
                     total: 0,
                     templates: vec![],
                 })
             }
-            
+
             async fn get_template(&self, _id: &str) -> Result<TemplateInfo, AppError> {
                 Err(AppError::NotFound("Mock template".to_string()))
             }
-            
-            async fn generate_template(&self, _params: &GenerateParams) -> Result<GeneratedTemplate, AppError> {
+
+            async fn generate_template(
+                &self,
+                _params: &GenerateParams,
+            ) -> Result<GeneratedTemplate, AppError> {
                 Ok(GeneratedTemplate {
                     content: "Mock generated content".to_string(),
                     metadata: TemplateMetadata {
@@ -1415,20 +1422,22 @@ mod tests {
                 })
             }
         }
-        
-        let service = UnifiedService::new()
-            .with_template_service(MockTemplateService);
-        
+
+        let service = UnifiedService::new().with_template_service(MockTemplateService);
+
         assert!(Arc::strong_count(&service.state) >= 1);
     }
 
     #[tokio::test]
     async fn test_unified_service_with_custom_analysis_service() {
         struct MockAnalysisService;
-        
+
         #[async_trait::async_trait]
         impl AnalysisService for MockAnalysisService {
-            async fn analyze_complexity(&self, _params: &ComplexityParams) -> Result<ComplexityAnalysis, AppError> {
+            async fn analyze_complexity(
+                &self,
+                _params: &ComplexityParams,
+            ) -> Result<ComplexityAnalysis, AppError> {
                 Ok(ComplexityAnalysis {
                     summary: ComplexitySummary {
                         total_functions: 10,
@@ -1439,8 +1448,11 @@ mod tests {
                     files: vec![],
                 })
             }
-            
-            async fn analyze_churn(&self, _params: &ChurnParams) -> Result<ChurnAnalysis, AppError> {
+
+            async fn analyze_churn(
+                &self,
+                _params: &ChurnParams,
+            ) -> Result<ChurnAnalysis, AppError> {
                 Ok(ChurnAnalysis {
                     total_commits: 100,
                     files_changed: 50,
@@ -1448,7 +1460,7 @@ mod tests {
                     hotspots: vec![],
                 })
             }
-            
+
             async fn analyze_dag(&self, _params: &DagParams) -> Result<DagAnalysis, AppError> {
                 Ok(DagAnalysis {
                     nodes: vec![],
@@ -1456,16 +1468,22 @@ mod tests {
                     cycles: vec![],
                 })
             }
-            
-            async fn generate_context(&self, _params: &ContextParams) -> Result<ProjectContext, AppError> {
+
+            async fn generate_context(
+                &self,
+                _params: &ContextParams,
+            ) -> Result<ProjectContext, AppError> {
                 Ok(ProjectContext {
                     project_root: "/mock".to_string(),
                     files: vec![],
                     total_lines: 0,
                 })
             }
-            
-            async fn analyze_dead_code(&self, _params: &DeadCodeParams) -> Result<DeadCodeAnalysis, AppError> {
+
+            async fn analyze_dead_code(
+                &self,
+                _params: &DeadCodeParams,
+            ) -> Result<DeadCodeAnalysis, AppError> {
                 Ok(DeadCodeAnalysis {
                     dead_functions: vec![],
                     dead_structs: vec![],
@@ -1474,23 +1492,22 @@ mod tests {
                 })
             }
         }
-        
-        let service = UnifiedService::new()
-            .with_analysis_service(MockAnalysisService);
-        
+
+        let service = UnifiedService::new().with_analysis_service(MockAnalysisService);
+
         assert!(Arc::strong_count(&service.state) >= 1);
     }
 
     #[tokio::test]
     async fn test_service_metrics_initialization() {
         let metrics = ServiceMetrics::default();
-        
+
         let requests = metrics.requests_total.lock();
         assert_eq!(requests.len(), 0);
-        
+
         let errors = metrics.errors_total.lock();
         assert_eq!(errors.len(), 0);
-        
+
         let durations = metrics.request_duration_ms.lock();
         assert_eq!(durations.len(), 0);
     }
@@ -1498,7 +1515,7 @@ mod tests {
     #[tokio::test]
     async fn test_app_state_default() {
         let state = AppState::default();
-        
+
         assert!(Arc::strong_count(&state.template_service) >= 1);
         assert!(Arc::strong_count(&state.analysis_service) >= 1);
         assert!(Arc::strong_count(&state.metrics) >= 1);
@@ -1506,11 +1523,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_unified_request_creation() {
-        let request = UnifiedRequest::new(
-            axum::http::Method::GET,
-            "/api/v1/templates".to_string(),
-        );
-        
+        let request = UnifiedRequest::new(axum::http::Method::GET, "/api/v1/templates".to_string());
+
         assert_eq!(request.method, axum::http::Method::GET);
         assert_eq!(request.path, "/api/v1/templates");
         assert!(request.extensions.is_empty());
@@ -1519,11 +1533,8 @@ mod tests {
     #[tokio::test]
     async fn test_process_request_health_check() {
         let service = UnifiedService::new();
-        let request = UnifiedRequest::new(
-            axum::http::Method::GET,
-            "/health".to_string(),
-        );
-        
+        let request = UnifiedRequest::new(axum::http::Method::GET, "/health".to_string());
+
         let response = service.process_request(request).await.unwrap();
         assert_eq!(response.status, axum::http::StatusCode::OK);
     }
@@ -1531,11 +1542,8 @@ mod tests {
     #[tokio::test]
     async fn test_process_request_metrics_endpoint() {
         let service = UnifiedService::new();
-        let request = UnifiedRequest::new(
-            axum::http::Method::GET,
-            "/metrics".to_string(),
-        );
-        
+        let request = UnifiedRequest::new(axum::http::Method::GET, "/metrics".to_string());
+
         let response = service.process_request(request).await.unwrap();
         assert_eq!(response.status, axum::http::StatusCode::OK);
     }
@@ -1549,7 +1557,7 @@ mod tests {
             body: Default::default(),
             trace_id: uuid::Uuid::new_v4(),
         };
-        
+
         service.record_request_metrics_by_data(
             "GET",
             "/api/v1/templates",
@@ -1557,7 +1565,7 @@ mod tests {
             &response,
             100,
         );
-        
+
         let requests = service.state.metrics.requests_total.lock();
         assert!(requests.contains_key(&Protocol::Http));
     }
@@ -1565,11 +1573,11 @@ mod tests {
     #[tokio::test]
     async fn test_protocol_extraction_from_path() {
         let service = UnifiedService::new();
-        
+
         // Test MCP protocol detection
         let protocol = service.extract_protocol_from_path("/mcp/call_tool");
         assert_eq!(protocol, Protocol::Mcp);
-        
+
         // Test HTTP protocol default
         let protocol = service.extract_protocol_from_path("/api/v1/templates");
         assert_eq!(protocol, Protocol::Http);
@@ -1584,7 +1592,7 @@ mod tests {
             body: Default::default(),
             trace_id: uuid::Uuid::new_v4(),
         };
-        
+
         service.record_request_metrics_by_data(
             "GET",
             "/api/v1/templates",
@@ -1592,7 +1600,7 @@ mod tests {
             &response,
             50,
         );
-        
+
         let errors = service.state.metrics.errors_total.lock();
         assert!(errors.contains_key(&Protocol::Http));
         assert_eq!(*errors.get(&Protocol::Http).unwrap(), 1);
@@ -1607,7 +1615,7 @@ mod tests {
             body: Default::default(),
             trace_id: uuid::Uuid::new_v4(),
         };
-        
+
         service.record_request_metrics_by_data(
             "GET",
             "/api/v1/templates",
@@ -1615,7 +1623,7 @@ mod tests {
             &response,
             250,
         );
-        
+
         let durations = service.state.metrics.request_duration_ms.lock();
         assert!(durations.contains_key(&Protocol::Http));
         assert_eq!(durations.get(&Protocol::Http).unwrap()[0], 250);
@@ -1626,7 +1634,7 @@ mod tests {
         let service = UnifiedService::new();
         let router1 = service.router();
         let router2 = service.router();
-        
+
         // Both should be valid router instances
         // This test verifies the router can be cloned for multi-threaded usage
         assert!(format!("{:?}", router1).contains("Router"));
@@ -1636,11 +1644,9 @@ mod tests {
     #[tokio::test]
     async fn test_invalid_request_path() {
         let service = UnifiedService::new();
-        let request = UnifiedRequest::new(
-            axum::http::Method::GET,
-            "/nonexistent/endpoint".to_string(),
-        );
-        
+        let request =
+            UnifiedRequest::new(axum::http::Method::GET, "/nonexistent/endpoint".to_string());
+
         let response = service.process_request(request).await.unwrap();
         assert_eq!(response.status, axum::http::StatusCode::NOT_FOUND);
     }
@@ -1655,7 +1661,7 @@ mod tests {
             max_cognitive: Some(15),
             top_files: Some(10),
         };
-        
+
         assert_eq!(params.project_path, "/test/path");
         assert_eq!(params.toolchain, "stable");
         assert_eq!(params.max_cyclomatic, Some(20));
@@ -1666,21 +1672,16 @@ mod tests {
     async fn test_satd_analysis_structure() {
         let analysis = SatdAnalysis {
             total_satd: 5,
-            by_category: HashMap::from([
-                ("TODO".to_string(), 3),
-                ("FIXME".to_string(), 2),
-            ]),
-            items: vec![
-                SatdItem {
-                    line: 42,
-                    category: "TODO".to_string(),
-                    severity: "Medium".to_string(),
-                    text: "Implement this feature".to_string(),
-                    context: None,
-                },
-            ],
+            by_category: HashMap::from([("TODO".to_string(), 3), ("FIXME".to_string(), 2)]),
+            items: vec![SatdItem {
+                line: 42,
+                category: "TODO".to_string(),
+                severity: "Medium".to_string(),
+                text: "Implement this feature".to_string(),
+                context: None,
+            }],
         };
-        
+
         assert_eq!(analysis.total_satd, 5);
         assert_eq!(analysis.by_category.get("TODO"), Some(&3));
         assert_eq!(analysis.items[0].line, 42);

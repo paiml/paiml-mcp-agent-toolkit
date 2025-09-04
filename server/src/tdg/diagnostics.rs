@@ -133,6 +133,7 @@ pub struct DiagnosticTool {
 
 #[derive(Clone)]
 struct PerformanceSample {
+    #[allow(dead_code)]
     timestamp: Instant,
     response_time_ms: f64,
     success: bool,

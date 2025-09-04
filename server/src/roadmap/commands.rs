@@ -500,6 +500,7 @@ async fn quality_check(task_id: &str, config: &RoadmapConfig) -> Result<()> {
 }
 
 /// Initialize a new sprint in the roadmap
+#[allow(dead_code)]
 fn handle_init(
     version: String,
     title: String,
@@ -543,6 +544,7 @@ fn handle_init(
 }
 
 /// Start working on a task
+#[allow(dead_code)]
 fn handle_start(task_id: String, create_branch: bool) -> Result<()> {
     // Validate task ID format (basic check)
     if !task_id.starts_with("PMAT-") {

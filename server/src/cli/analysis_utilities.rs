@@ -19,9 +19,8 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 // Performance optimization: Compile regex once at startup
-static SATD_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?i)\b(TODO|FIXME|HACK|XXX|BUG|REFACTOR):\s*(.+)").unwrap()
-});
+static SATD_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)\b(TODO|FIXME|HACK|XXX|BUG|REFACTOR):\s*(.+)").unwrap());
 
 /// Analyzes Technical Debt Gradient (TDG) for a project.
 ///
@@ -418,17 +417,12 @@ async fn analyze_multiple_files(
 ) -> Result<String> {
     eprintln!("📄 Analyzing TDG for {} files...", files.len());
 
-    let results = process_files_for_tdg(
-        calculator,
-        project_path,
-        files,
-        threshold,
-        critical_only,
-    ).await;
+    let results =
+        process_files_for_tdg(calculator, project_path, files, threshold, critical_only).await;
 
     let filtered_results = apply_results_filtering(results, top_files);
     let summary = create_summary_from_file_results(&filtered_results);
-    
+
     format_output_from_summary(&summary, format, include_components, verbose)
 }
 
@@ -450,7 +444,9 @@ async fn process_files_for_tdg(
             continue;
         }
 
-        if let Some(score) = calculate_and_filter_file(calculator, &full_path, threshold, critical_only).await {
+        if let Some(score) =
+            calculate_and_filter_file(calculator, &full_path, threshold, critical_only).await
+        {
             results.push((score, full_path));
         }
     }
@@ -777,15 +773,15 @@ fn format_markdown_output(
     include_components: bool,
 ) -> String {
     let mut md = String::new();
-    
+
     add_markdown_header(&mut md);
     add_markdown_summary(&mut md, summary);
     add_markdown_hotspots(&mut md, summary);
-    
+
     if include_components {
         add_markdown_components(&mut md);
     }
-    
+
     md
 }
 
@@ -810,7 +806,7 @@ fn add_markdown_summary(md: &mut String, summary: &crate::models::tdg::TDGSummar
 fn add_markdown_file_stats(md: &mut String, summary: &crate::models::tdg::TDGSummary) {
     let critical_pct = (summary.critical_files as f64 / summary.total_files as f64) * 100.0;
     let warning_pct = (summary.warning_files as f64 / summary.total_files as f64) * 100.0;
-    
+
     md.push_str(&format!(
         "- **Critical Files**: {} ({:.1}%)\n",
         summary.critical_files, critical_pct
@@ -854,7 +850,9 @@ fn add_markdown_hotspots(md: &mut String, summary: &crate::models::tdg::TDGSumma
 /// Extract Method: Add components section
 fn add_markdown_components(md: &mut String) {
     md.push_str("## TDG Components\n\n");
-    md.push_str("The Technical Debt Gradient is calculated using the following weighted components:\n\n");
+    md.push_str(
+        "The Technical Debt Gradient is calculated using the following weighted components:\n\n",
+    );
     md.push_str("- **Complexity** (30%): Cyclomatic and cognitive complexity\n");
     md.push_str("- **Code Churn** (35%): Frequency of changes over time\n");
     md.push_str("- **Coupling** (15%): Dependencies between modules\n");
@@ -2276,7 +2274,7 @@ fn write_markdown_summary_table(
 /// Write the markdown table header for summary statistics
 fn write_markdown_table_header(output: &mut String) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "## Summary Statistics\n")?;
     writeln!(output, "| Metric | Value |")?;
     writeln!(output, "|--------|-------|")?;
@@ -2288,8 +2286,6 @@ fn write_summary_data_rows(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
-    
-    
     write_commits_row(output, summary.total_commits)?;
     write_files_changed_row(output, summary.total_files_changed)?;
     write_hotspot_files_row(output, summary.hotspot_files.len())?;
@@ -2460,7 +2456,10 @@ pub async fn write_churn_output(content: String, output: Option<PathBuf>) -> Res
 
 /// Applies file filtering and sorting to churn analysis results
 /// Toyota Way: Extract Method - reduce complexity by extracting file processing logic
-fn apply_churn_file_filtering(analysis: &mut crate::models::churn::CodeChurnAnalysis, top_files: usize) {
+fn apply_churn_file_filtering(
+    analysis: &mut crate::models::churn::CodeChurnAnalysis,
+    top_files: usize,
+) {
     // Apply top_files limit if specified (0 means show all)
     if top_files > 0 && analysis.files.len() > top_files {
         // Sort files by commit count descending
@@ -2478,7 +2477,7 @@ fn format_churn_content(
     format: crate::models::churn::ChurnOutputFormat,
 ) -> Result<String> {
     use crate::models::churn::ChurnOutputFormat;
-    
+
     match format {
         ChurnOutputFormat::Json => format_churn_as_json(analysis),
         ChurnOutputFormat::Summary => format_churn_as_summary(analysis),
@@ -3765,7 +3764,7 @@ async fn handle_http_server(host: &str, port: u16, cors: bool) -> Result<()> {
     eprintln!("📍 API base: http://{host}:{port}/api/v1");
     print_cors_status(cors);
     eprintln!("\n🔧 HTTP server functionality ready for implementation.");
-    
+
     await_shutdown_signal().await
 }
 
@@ -3775,7 +3774,7 @@ async fn handle_websocket_server(host: &str, port: u16) -> Result<()> {
     eprintln!("✅ WebSocket server ready!");
     eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
     eprintln!("🔌 MCP protocol over WebSocket");
-    
+
     let addr = format!("{}:{}", host, port);
     start_websocket_server(addr).await
 }
@@ -3788,7 +3787,7 @@ async fn handle_http_sse_server(host: &str, port: u16, cors: bool) -> Result<()>
     eprintln!("📍 Message endpoint: http://{host}:{port}/message");
     eprintln!("🌊 MCP protocol over Server-Sent Events");
     print_cors_status(cors);
-    
+
     let addr = format!("{}:{}", host, port);
     start_http_sse_server(addr, cors).await
 }
@@ -3801,7 +3800,7 @@ async fn handle_hybrid_server(host: &str, port: u16, cors: bool) -> Result<()> {
     eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
     eprintln!("🔌 MCP protocol over both transports");
     print_cors_status(cors);
-    
+
     let addr = format!("{}:{}", host, port);
     start_hybrid_server(addr, cors).await
 }
@@ -3815,7 +3814,7 @@ async fn handle_full_server(host: &str, port: u16, cors: bool) -> Result<()> {
     eprintln!("📍 SSE endpoint: http://{host}:{port}/sse");
     eprintln!("🌐 MCP protocol over all transports");
     print_cors_status(cors);
-    
+
     let addr = format!("{}:{}", host, port);
     start_full_server(addr, cors).await
 }
@@ -4051,8 +4050,8 @@ pub async fn handle_analyze_comprehensive(
 
     // Execute all requested analyses
     run_comprehensive_analyses(
-        &mut report, 
-        &project_path, 
+        &mut report,
+        &project_path,
         include_complexity,
         include_tdg,
         include_dead_code,
@@ -4062,7 +4061,8 @@ pub async fn handle_analyze_comprehensive(
         &exclude,
         _confidence_threshold,
         _min_lines,
-    ).await?;
+    )
+    .await?;
 
     let elapsed = start.elapsed();
     eprintln!("✅ Comprehensive analysis completed in {:?}", elapsed);
@@ -4117,7 +4117,8 @@ async fn run_comprehensive_analyses(
     // Run defect prediction if requested
     if include_defects {
         eprintln!("🐛 Predicting defects...");
-        report.defects = Some(run_defect_prediction(project_path, confidence_threshold, min_lines).await?);
+        report.defects =
+            Some(run_defect_prediction(project_path, confidence_threshold, min_lines).await?);
     }
 
     // Run duplicate detection if requested
@@ -4641,7 +4642,6 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
     Ok(violations)
 }
 
-
 /// Check if a file should be processed for SATD detection
 fn should_process_file_for_satd(path: &Path) -> bool {
     path.is_file() && is_source_file(path)
@@ -4736,7 +4736,13 @@ pub async fn check_entropy(project_path: &Path, min_entropy: f64) -> Result<Vec<
 
         if should_process_file_for_entropy(path) {
             if let Ok(content) = tokio::fs::read_to_string(path).await {
-                process_file_entropy(&content, path, min_entropy, &mut violations, &mut entropy_stats);
+                process_file_entropy(
+                    &content,
+                    path,
+                    min_entropy,
+                    &mut violations,
+                    &mut entropy_stats,
+                );
             }
         }
     }
@@ -4758,12 +4764,12 @@ impl EntropyStats {
             file_count: 0,
         }
     }
-    
+
     fn add_file_entropy(&mut self, entropy: f64) {
         self.total_entropy += entropy;
         self.file_count += 1;
     }
-    
+
     fn average_entropy(&self) -> Option<f64> {
         if self.file_count > 0 {
             Some(self.total_entropy / self.file_count as f64)
@@ -4787,20 +4793,16 @@ fn process_file_entropy(
     entropy_stats: &mut EntropyStats,
 ) {
     let entropy = calculate_code_entropy(content);
-    
+
     if entropy < min_entropy {
         violations.push(create_entropy_violation(file_path, entropy, min_entropy));
     }
-    
+
     entropy_stats.add_file_entropy(entropy);
 }
 
 /// Create an entropy quality violation
-fn create_entropy_violation(
-    file_path: &Path,
-    entropy: f64,
-    min_entropy: f64,
-) -> QualityViolation {
+fn create_entropy_violation(file_path: &Path, entropy: f64, min_entropy: f64) -> QualityViolation {
     QualityViolation {
         check_type: "entropy".to_string(),
         severity: "warning".to_string(),
@@ -4922,13 +4924,7 @@ async fn check_file_security(
     if let Ok(content) = fs::read_to_string(path).await {
         for (pattern_str, message) in patterns {
             if let Ok(regex) = Regex::new(pattern_str) {
-                scan_content_for_pattern(
-                    &content,
-                    &regex,
-                    message,
-                    path,
-                    violations,
-                );
+                scan_content_for_pattern(&content, &regex, message, path, violations);
             }
         }
     }
@@ -5040,7 +5036,10 @@ async fn collect_file_hashes(
 
         if should_process_file_for_duplicates(path) {
             if let Some(hash) = process_file_for_hash(path).await {
-                file_hashes.entry(hash).or_default().push(path.to_path_buf());
+                file_hashes
+                    .entry(hash)
+                    .or_default()
+                    .push(path.to_path_buf());
             }
         }
     }
@@ -5089,7 +5088,7 @@ fn create_violations_for_duplicate_group(
     violations: &mut Vec<QualityViolation>,
 ) {
     let files_str = format_file_list(paths);
-    
+
     for path in paths {
         violations.push(QualityViolation {
             check_type: "duplicate".to_string(),
@@ -5609,11 +5608,19 @@ fn format_qg_as_markdown(results: &QualityGateResults) -> Result<String> {
 /// Toyota Way: Extract Method - Write QG Markdown header section (complexity ≤5)
 fn write_qg_markdown_header(output: &mut String, results: &QualityGateResults) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "# Quality Gate Report\n")?;
-    writeln!(output, "**Status**: {}\n", format_qg_status_badge(results.passed))?;
-    writeln!(output, "**Total violations**: {}\n", results.total_violations)?;
-    
+    writeln!(
+        output,
+        "**Status**: {}\n",
+        format_qg_status_badge(results.passed)
+    )?;
+    writeln!(
+        output,
+        "**Total violations**: {}\n",
+        results.total_violations
+    )?;
+
     Ok(())
 }
 
@@ -5627,51 +5634,78 @@ fn format_qg_status_badge(passed: bool) -> &'static str {
 }
 
 /// Toyota Way: Extract Method - Write QG Markdown summary table (complexity ≤8)
-fn write_qg_markdown_summary_table(output: &mut String, results: &QualityGateResults) -> Result<()> {
+fn write_qg_markdown_summary_table(
+    output: &mut String,
+    results: &QualityGateResults,
+) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "## Summary\n")?;
     write_qg_markdown_table_headers(output)?;
     write_qg_markdown_table_rows(output, results)?;
-    
+
     Ok(())
 }
 
 /// Toyota Way: Extract Method - Write QG Markdown table headers (complexity ≤3)
 fn write_qg_markdown_table_headers(output: &mut String) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "| Check Type | Violations |")?;
     writeln!(output, "|------------|------------|")?;
-    
+
     Ok(())
 }
 
 /// Toyota Way: Extract Method - Write QG Markdown table rows (complexity ≤5)
 fn write_qg_markdown_table_rows(output: &mut String, results: &QualityGateResults) -> Result<()> {
     use std::fmt::Write;
-    
+
     let rows = get_qg_violation_summary_rows(results);
-    
+
     for (name, count) in rows {
         writeln!(output, "| {} | {} |", name, count)?;
     }
-    
+
     Ok(())
 }
 
 /// Toyota Way: Extract Method - Get QG violation summary data rows (complexity ≤3)
-fn get_qg_violation_summary_rows(results: &QualityGateResults) -> [(& 'static str, u64); 9] {
+fn get_qg_violation_summary_rows(results: &QualityGateResults) -> [(&'static str, u64); 9] {
     [
-        ("Complexity", results.complexity_violations.try_into().unwrap_or(0)),
-        ("Dead Code", results.dead_code_violations.try_into().unwrap_or(0)),
+        (
+            "Complexity",
+            results.complexity_violations.try_into().unwrap_or(0),
+        ),
+        (
+            "Dead Code",
+            results.dead_code_violations.try_into().unwrap_or(0),
+        ),
         ("SATD", results.satd_violations.try_into().unwrap_or(0)),
-        ("Entropy", results.entropy_violations.try_into().unwrap_or(0)),
-        ("Security", results.security_violations.try_into().unwrap_or(0)),
-        ("Duplicates", results.duplicate_violations.try_into().unwrap_or(0)),
-        ("Coverage", results.coverage_violations.try_into().unwrap_or(0)),
-        ("Sections", results.section_violations.try_into().unwrap_or(0)),
-        ("Provability", results.provability_violations.try_into().unwrap_or(0)),
+        (
+            "Entropy",
+            results.entropy_violations.try_into().unwrap_or(0),
+        ),
+        (
+            "Security",
+            results.security_violations.try_into().unwrap_or(0),
+        ),
+        (
+            "Duplicates",
+            results.duplicate_violations.try_into().unwrap_or(0),
+        ),
+        (
+            "Coverage",
+            results.coverage_violations.try_into().unwrap_or(0),
+        ),
+        (
+            "Sections",
+            results.section_violations.try_into().unwrap_or(0),
+        ),
+        (
+            "Provability",
+            results.provability_violations.try_into().unwrap_or(0),
+        ),
     ]
 }
 
@@ -5745,7 +5779,7 @@ pub async fn analyze_project_files(
 
     // PERFORMANCE OPTIMIZATION: Collect files first, then process in parallel batches
     let extensions = get_file_extensions(toolchain);
-    
+
     // Collect all files to analyze
     let files_to_analyze: Vec<_> = WalkDir::new(project_path)
         .follow_links(false)
@@ -5756,18 +5790,18 @@ pub async fn analyze_project_files(
         .filter(|path| should_analyze_file(path, project_path, &extensions, include))
         .collect();
 
-    // PERFORMANCE OPTIMIZATION: Process files in parallel batches  
+    // PERFORMANCE OPTIMIZATION: Process files in parallel batches
     let batch_size = std::cmp::min(files_to_analyze.len(), 20); // Optimize batch size
     let mut results = Vec::new();
-    
+
     for batch in files_to_analyze.chunks(batch_size) {
         let batch_futures: Vec<_> = batch
             .iter()
             .map(|path| analyze_complexity_file(path, cyclomatic_threshold, cognitive_threshold))
             .collect();
-            
+
         let batch_results = futures::future::try_join_all(batch_futures).await?;
-        
+
         for metrics in batch_results.into_iter().flatten() {
             results.push(metrics);
         }
@@ -6432,14 +6466,7 @@ async fn process_file_for_satd(
     if let Ok(content) = tokio::fs::read_to_string(path).await {
         for (line_no, line) in content.lines().enumerate() {
             if let Some(captures) = satd_pattern.captures(line) {
-                process_satd_match(
-                    path,
-                    line_no,
-                    captures,
-                    items,
-                    by_type,
-                    by_severity,
-                );
+                process_satd_match(path, line_no, captures, items, by_type, by_severity);
             }
         }
     }
@@ -7100,7 +7127,7 @@ mod tests {
     async fn test_check_satd_comprehensive() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
         let test_file = temp_dir.path().join("test.rs");
-        
+
         tokio::fs::write(
             &test_file,
             r#"// TODO: implement error handling
@@ -7113,11 +7140,12 @@ fn test() {
     let x = 42;
 }
 "#,
-        ).await?;
-        
+        )
+        .await?;
+
         let violations = check_satd(temp_dir.path()).await?;
         assert_eq!(violations.len(), 6);
-        
+
         // Verify all SATD types detected
         let messages: Vec<&str> = violations.iter().map(|v| v.message.as_str()).collect();
         assert!(messages.iter().any(|m| m.contains("TODO")));
@@ -7126,38 +7154,39 @@ fn test() {
         assert!(messages.iter().any(|m| m.contains("XXX")));
         assert!(messages.iter().any(|m| m.contains("BUG")));
         assert!(messages.iter().any(|m| m.contains("REFACTOR")));
-        
+
         Ok(())
     }
-    
+
     /// Test check_satd with non-source files (should be ignored)
     #[tokio::test]
     async fn test_check_satd_non_source_files() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
         let text_file = temp_dir.path().join("readme.txt");
-        
+
         tokio::fs::write(&text_file, "TODO: update documentation").await?;
-        
+
         let violations = check_satd(temp_dir.path()).await?;
         assert_eq!(violations.len(), 0); // Should ignore non-source files
-        
+
         Ok(())
     }
-    
+
     /// Test check_satd with case insensitive patterns
     #[tokio::test]
     async fn test_check_satd_case_insensitive() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
         let test_file = temp_dir.path().join("case.rs");
-        
+
         tokio::fs::write(
             &test_file,
             "// todo: lowercase\n// Todo: mixed case\n// TODO: uppercase",
-        ).await?;
-        
+        )
+        .await?;
+
         let violations = check_satd(temp_dir.path()).await?;
         assert_eq!(violations.len(), 3); // All cases should be detected
-        
+
         Ok(())
     }
 
@@ -7165,15 +7194,16 @@ fn test() {
     #[tokio::test]
     async fn test_check_entropy_comprehensive() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
-        
+
         // Low entropy file (repetitive code)
         let low_entropy_file = temp_dir.path().join("low.rs");
         tokio::fs::write(
             &low_entropy_file,
             "let x = 1;\nlet x = 1;\nlet x = 1;\nlet x = 1;\nlet x = 1;",
-        ).await?;
-        
-        // High entropy file (diverse code)  
+        )
+        .await?;
+
+        // High entropy file (diverse code)
         let high_entropy_file = temp_dir.path().join("high.rs");
         tokio::fs::write(
             &high_entropy_file,
@@ -7187,57 +7217,60 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
     Ok(counts)
 }
 "#,
-        ).await?;
-        
+        )
+        .await?;
+
         let violations = check_entropy(temp_dir.path(), 0.5).await?;
-        
+
         // Should detect low entropy file
-        let low_entropy_violations: Vec<_> = violations.iter()
+        let low_entropy_violations: Vec<_> = violations
+            .iter()
             .filter(|v| v.file.contains("low.rs"))
             .collect();
         assert!(!low_entropy_violations.is_empty());
         assert_eq!(low_entropy_violations[0].check_type, "entropy");
-        
+
         Ok(())
     }
-    
+
     /// Test check_entropy with different threshold values
-    #[tokio::test] 
+    #[tokio::test]
     async fn test_check_entropy_thresholds() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
         let test_file = temp_dir.path().join("test.rs");
-        
+
         tokio::fs::write(&test_file, "let a = 1; let b = 2; let c = 3;").await?;
-        
+
         let low_threshold = check_entropy(temp_dir.path(), 0.1).await?;
         let high_threshold = check_entropy(temp_dir.path(), 0.9).await?;
-        
+
         // Higher threshold should find more or equal violations
         assert!(high_threshold.len() >= low_threshold.len());
-        
+
         Ok(())
     }
-    
+
     /// Test check_entropy project-wide average calculation
     #[tokio::test]
     async fn test_check_entropy_project_average() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
-        
+
         // Multiple low entropy files should trigger project-wide violation
         for i in 0..3 {
             let file = temp_dir.path().join(format!("low{}.rs", i));
             tokio::fs::write(&file, "a a a a a a a a a a").await?;
         }
-        
+
         let violations = check_entropy(temp_dir.path(), 0.8).await?;
-        
+
         // Should have individual file violations plus project average violation
-        let project_violations: Vec<_> = violations.iter()
+        let project_violations: Vec<_> = violations
+            .iter()
             .filter(|v| v.message.contains("Project average"))
             .collect();
         assert!(!project_violations.is_empty());
         assert_eq!(project_violations[0].severity, "error");
-        
+
         Ok(())
     }
 
@@ -7246,18 +7279,26 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
     async fn test_analyze_multiple_files_comprehensive() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
         let calculator = crate::services::tdg_calculator::TDGCalculator::new();
-        
+
         // Create test files with different complexities
         let high_file = temp_dir.path().join("high.rs");
-        tokio::fs::write(&high_file, "// High complexity file\nfn complex() { if true { if true { if true { } } } }").await?;
-        
+        tokio::fs::write(
+            &high_file,
+            "// High complexity file\nfn complex() { if true { if true { if true { } } } }",
+        )
+        .await?;
+
         let low_file = temp_dir.path().join("low.rs");
-        tokio::fs::write(&low_file, "// Low complexity file\nfn simple() { println!(\"hello\"); }").await?;
-        
+        tokio::fs::write(
+            &low_file,
+            "// Low complexity file\nfn simple() { println!(\"hello\"); }",
+        )
+        .await?;
+
         let missing_file = temp_dir.path().join("missing.rs");
-        
+
         let files = vec![high_file, low_file, missing_file];
-        
+
         let result = analyze_multiple_files(
             &calculator,
             temp_dir.path(),
@@ -7268,25 +7309,26 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
             false, // include_components
             false, // critical_only
             false, // verbose
-        ).await?;
-        
+        )
+        .await?;
+
         // Should return formatted output without errors
         assert!(!result.is_empty());
-        
+
         Ok(())
     }
-    
+
     /// Test analyze_multiple_files with threshold filtering
     #[tokio::test]
     async fn test_analyze_multiple_files_threshold() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
         let calculator = crate::services::tdg_calculator::TDGCalculator::new();
-        
+
         let test_file = temp_dir.path().join("test.rs");
         tokio::fs::write(&test_file, "fn test() {}").await?;
-        
+
         let files = vec![test_file];
-        
+
         // High threshold should potentially filter out results
         let result_high = analyze_multiple_files(
             &calculator,
@@ -7295,9 +7337,12 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
             100.0, // very high threshold
             10,
             TdgOutputFormat::Human,
-            false, false, false,
-        ).await?;
-        
+            false,
+            false,
+            false,
+        )
+        .await?;
+
         // Low threshold should include more results
         let result_low = analyze_multiple_files(
             &calculator,
@@ -7306,26 +7351,29 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
             0.0, // very low threshold
             10,
             TdgOutputFormat::Human,
-            false, false, false,
-        ).await?;
-        
+            false,
+            false,
+            false,
+        )
+        .await?;
+
         // Low threshold result should have content
         assert!(!result_low.is_empty());
-        
+
         Ok(())
     }
-    
+
     /// Test analyze_multiple_files with critical_only filter
     #[tokio::test]
     async fn test_analyze_multiple_files_critical_filter() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
         let calculator = crate::services::tdg_calculator::TDGCalculator::new();
-        
+
         let test_file = temp_dir.path().join("test.rs");
         tokio::fs::write(&test_file, "fn test() {}").await?;
-        
+
         let files = vec![test_file];
-        
+
         let result = analyze_multiple_files(
             &calculator,
             temp_dir.path(),
@@ -7336,11 +7384,12 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
             false, // include_components
             true,  // critical_only = true
             false, // verbose
-        ).await?;
-        
+        )
+        .await?;
+
         // Should handle critical filtering without errors
         assert!(!result.is_empty());
-        
+
         Ok(())
     }
 
@@ -7348,65 +7397,65 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
     #[tokio::test]
     async fn test_check_duplicates_identical_files() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
-        
+
         // Create identical files
         let identical_content = "fn calculate(a: i32, b: i32) -> i32 {\n    a + b\n}\n\nfn main() {\n    println!(\"result: {}\", calculate(5, 3));\n}";
-        
+
         let file1 = temp_dir.path().join("file1.rs");
         let file2 = temp_dir.path().join("file2.rs");
-        
+
         tokio::fs::write(&file1, identical_content).await?;
         tokio::fs::write(&file2, identical_content).await?;
-        
+
         let violations = check_duplicates(temp_dir.path()).await?;
-        
+
         // Should detect both files as duplicates
         assert_eq!(violations.len(), 2);
         assert!(violations.iter().all(|v| v.check_type == "duplicate"));
         assert!(violations.iter().any(|v| v.file.contains("file1.rs")));
         assert!(violations.iter().any(|v| v.file.contains("file2.rs")));
-        
+
         Ok(())
     }
-    
+
     /// Test check_duplicates with unique files
     #[tokio::test]
     async fn test_check_duplicates_unique_files() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
-        
+
         let file1 = temp_dir.path().join("unique1.rs");
         let file2 = temp_dir.path().join("unique2.rs");
-        
+
         tokio::fs::write(&file1, "fn unique_function_one() { println!(\"one\"); }").await?;
         tokio::fs::write(&file2, "fn unique_function_two() { println!(\"two\"); }").await?;
-        
+
         let violations = check_duplicates(temp_dir.path()).await?;
-        
+
         // Should detect no duplicates
         assert_eq!(violations.len(), 0);
-        
+
         Ok(())
     }
-    
+
     /// Test check_duplicates ignores small files
     #[tokio::test]
     async fn test_check_duplicates_ignores_small_files() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
-        
+
         // Create small identical files (should be ignored)
         let small_content = "x";
-        
+
         let small1 = temp_dir.path().join("small1.rs");
         let small2 = temp_dir.path().join("small2.rs");
-        
+
         tokio::fs::write(&small1, small_content).await?;
         tokio::fs::write(&small2, small_content).await?;
-        
+
         let violations = check_duplicates(temp_dir.path()).await?;
-        
+
         // Should ignore small files
         assert_eq!(violations.len(), 0);
-        
+
         Ok(())
     }
 
@@ -7414,7 +7463,7 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
     #[tokio::test]
     async fn test_check_single_file_complexity_violations() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
-        
+
         // Create Rust file with high complexity function
         let rust_file = temp_dir.path().join("complex.rs");
         tokio::fs::write(
@@ -7444,46 +7493,44 @@ fn high_complexity_function(x: i32) -> i32 {
     }
 }
 "#,
-        ).await?;
-        
+        )
+        .await?;
+
         let violations = check_single_file_complexity(
             temp_dir.path(),
             &rust_file,
             5, // Low threshold to catch high complexity
-        ).await?;
-        
+        )
+        .await?;
+
         // Should detect complexity violation
         assert!(!violations.is_empty());
         assert!(violations.iter().any(|v| v.check_type == "complexity"));
         assert!(violations.iter().any(|v| v.severity == "error"));
-        
+
         Ok(())
     }
-    
+
     /// Test check_single_file_complexity with missing file
     #[tokio::test]
     async fn test_check_single_file_complexity_missing_file() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
         let missing_file = temp_dir.path().join("missing.rs");
-        
-        let result = check_single_file_complexity(
-            temp_dir.path(),
-            &missing_file,
-            10,
-        ).await;
-        
+
+        let result = check_single_file_complexity(temp_dir.path(), &missing_file, 10).await;
+
         // Should return error for missing file
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("File not found"));
-        
+
         Ok(())
     }
-    
+
     /// Test check_single_file_complexity with low complexity function
     #[tokio::test]
     async fn test_check_single_file_complexity_no_violations() -> anyhow::Result<()> {
         let temp_dir = TempDir::new()?;
-        
+
         let simple_file = temp_dir.path().join("simple.rs");
         tokio::fs::write(
             &simple_file,
@@ -7496,17 +7543,19 @@ fn another_simple(y: i32) -> i32 {
     y + 1
 }
 "#,
-        ).await?;
-        
+        )
+        .await?;
+
         let violations = check_single_file_complexity(
             temp_dir.path(),
             &simple_file,
             10, // High threshold
-        ).await?;
-        
+        )
+        .await?;
+
         // Should detect no violations
         assert_eq!(violations.len(), 0);
-        
+
         Ok(())
     }
 
@@ -7515,9 +7564,9 @@ fn another_simple(y: i32) -> i32 {
     fn test_write_markdown_summary_table() -> anyhow::Result<()> {
         use crate::models::churn::ChurnSummary;
         use std::collections::HashMap;
-        
+
         let mut output = String::new();
-        
+
         // Create test summary data
         let summary = ChurnSummary {
             total_commits: 42,
@@ -7531,9 +7580,9 @@ fn another_simple(y: i32) -> i32 {
                 map
             },
         };
-        
+
         write_markdown_summary_table(&mut output, &summary)?;
-        
+
         // Verify table structure
         assert!(output.contains("## Summary Statistics"));
         assert!(output.contains("| Metric | Value |"));
@@ -7542,18 +7591,18 @@ fn another_simple(y: i32) -> i32 {
         assert!(output.contains("| Hotspot Files | 2 |"));
         assert!(output.contains("| Stable Files | 1 |"));
         assert!(output.contains("| Contributing Authors | 2 |"));
-        
+
         Ok(())
     }
-    
+
     /// Test write_markdown_summary_table with empty data
     #[test]
     fn test_write_markdown_summary_table_empty() -> anyhow::Result<()> {
         use crate::models::churn::ChurnSummary;
         use std::collections::HashMap;
-        
+
         let mut output = String::new();
-        
+
         let empty_summary = ChurnSummary {
             total_commits: 0,
             total_files_changed: 0,
@@ -7561,23 +7610,23 @@ fn another_simple(y: i32) -> i32 {
             stable_files: vec![],
             author_contributions: HashMap::new(),
         };
-        
+
         write_markdown_summary_table(&mut output, &empty_summary)?;
-        
+
         // Should still create proper table structure
         assert!(output.contains("## Summary Statistics"));
         assert!(output.contains("| Total Commits | 0 |"));
         assert!(output.contains("| Hotspot Files | 0 |"));
-        
+
         Ok(())
     }
-    
+
     /// Test write_markdown_summary_table output format
     #[test]
     fn test_write_markdown_summary_table_format() -> anyhow::Result<()> {
         use crate::models::churn::ChurnSummary;
         use std::collections::HashMap;
-        
+
         let mut output = String::new();
         let summary = ChurnSummary {
             total_commits: 1,
@@ -7590,50 +7639,51 @@ fn another_simple(y: i32) -> i32 {
                 map
             },
         };
-        
+
         write_markdown_summary_table(&mut output, &summary)?;
-        
+
         // Check markdown table separator format
         assert!(output.contains("|--------|-------|"));
         // Check all rows have proper pipe separators
         let lines: Vec<&str> = output.lines().collect();
-        let table_lines: Vec<&str> = lines.iter()
+        let table_lines: Vec<&str> = lines
+            .iter()
             .filter(|line| line.contains("|"))
             .cloned()
             .collect();
-        
+
         assert!(table_lines.len() >= 3); // Header, separator, data rows
-        
+
         Ok(())
     }
 
     /// Test print_single_check for different check types
-    #[test]  
+    #[test]
     fn test_print_single_check_all_types() {
         use crate::models::quality_gate::QualityCheckType;
-        
+
         // Test each check type (output goes to stderr, so we can't easily capture it)
         // But we can verify the function doesn't panic
         print_single_check(&QualityCheckType::Complexity);
-        print_single_check(&QualityCheckType::DeadCode); 
+        print_single_check(&QualityCheckType::DeadCode);
         print_single_check(&QualityCheckType::Satd);
         print_single_check(&QualityCheckType::Security);
         print_single_check(&QualityCheckType::Entropy);
         print_single_check(&QualityCheckType::Duplicates);
         print_single_check(&QualityCheckType::Coverage);
-        
+
         // Should complete without panicking
         assert!(true);
     }
-    
+
     /// Test print_single_check with All type (should be handled by wildcard)
     #[test]
     fn test_print_single_check_all_and_wildcard() {
         use crate::models::quality_gate::QualityCheckType;
-        
+
         // Test the wildcard case
         print_single_check(&QualityCheckType::All);
-        
+
         // Should complete without panicking
         assert!(true);
     }
@@ -7945,69 +7995,71 @@ fn another_simple(y: i32) -> i32 {
         validate_complexity_threshold_fail(project_path, 5).await;
     }
 
-// Helper functions for test_check_complexity_with_custom_threshold
-// Toyota Way Extract Method: Reduce complexity by extracting logical components
+    // Helper functions for test_check_complexity_with_custom_threshold
+    // Toyota Way Extract Method: Reduce complexity by extracting logical components
 
-/// Creates a test file with known complexity patterns for testing
-fn create_complexity_test_file(project_path: &std::path::Path) -> Result<()> {
-    let src_dir = project_path.join("src");
-    std::fs::create_dir_all(&src_dir)?;
-    let test_file = src_dir.join("complex.rs");
-    
-    let content = build_test_file_content();
-    std::fs::write(&test_file, content)?;
-    
-    Ok(())
-}
+    /// Creates a test file with known complexity patterns for testing
+    fn create_complexity_test_file(project_path: &std::path::Path) -> Result<()> {
+        let src_dir = project_path.join("src");
+        std::fs::create_dir_all(&src_dir)?;
+        let test_file = src_dir.join("complex.rs");
 
-/// Builds the content for the test file
-fn build_test_file_content() -> String {
-    let mut content = String::new();
-    content.push_str(&build_simple_function());
-    content.push('\n');
-    content.push_str(&build_moderate_function());
-    content
-}
+        let content = build_test_file_content();
+        std::fs::write(&test_file, content)?;
 
-/// Builds a simple function for testing
-fn build_simple_function() -> String {
-    "fn simple_function() {\n    if true {\n        println!(\"simple\");\n    }\n}".to_string()
-}
-
-/// Builds a moderate complexity function for testing  
-fn build_moderate_function() -> String {
-    "fn moderate_function() {\n    for i in 0..10 {\n        if i > 5 {\n            println!(\"big: {}\", i);\n        }\n    }\n}".to_string()
-}
-
-/// Validates that complexity check passes with higher threshold
-async fn validate_complexity_threshold_pass(project_path: &std::path::Path, threshold: u32) {
-    // Note: check_complexity uses a hardcoded cognitive complexity of 15
-    let violations = check_complexity(project_path, threshold).await.unwrap();
-    if !violations.is_empty() {
-        eprintln!("Debug: violations with threshold {}:", threshold);
-        for v in &violations {
-            eprintln!("  - {} {}: {}", v.severity, v.check_type, v.message);
-        }
+        Ok(())
     }
-    assert_eq!(
-        violations.len(),
-        0,
-        "Expected no violations with threshold {}", threshold
-    );
-}
 
-/// Validates that complexity check fails with lower threshold
-async fn validate_complexity_threshold_fail(project_path: &std::path::Path, threshold: u32) {
-    // With threshold 5, warning threshold is 0, so everything is a warning
-    let violations = check_complexity(project_path, threshold).await.unwrap();
-    assert!(
-        !violations.is_empty(),
-        "Expected violations with threshold {}", threshold
-    );
-    assert_eq!(violations[0].check_type, "complexity");
-    // With threshold 5, functions will be warnings (not errors) unless complexity > 5
-    assert!(violations[0].severity == "warning" || violations[0].severity == "error");
-}
+    /// Builds the content for the test file
+    fn build_test_file_content() -> String {
+        let mut content = String::new();
+        content.push_str(&build_simple_function());
+        content.push('\n');
+        content.push_str(&build_moderate_function());
+        content
+    }
+
+    /// Builds a simple function for testing
+    fn build_simple_function() -> String {
+        "fn simple_function() {\n    if true {\n        println!(\"simple\");\n    }\n}".to_string()
+    }
+
+    /// Builds a moderate complexity function for testing  
+    fn build_moderate_function() -> String {
+        "fn moderate_function() {\n    for i in 0..10 {\n        if i > 5 {\n            println!(\"big: {}\", i);\n        }\n    }\n}".to_string()
+    }
+
+    /// Validates that complexity check passes with higher threshold
+    async fn validate_complexity_threshold_pass(project_path: &std::path::Path, threshold: u32) {
+        // Note: check_complexity uses a hardcoded cognitive complexity of 15
+        let violations = check_complexity(project_path, threshold).await.unwrap();
+        if !violations.is_empty() {
+            eprintln!("Debug: violations with threshold {}:", threshold);
+            for v in &violations {
+                eprintln!("  - {} {}: {}", v.severity, v.check_type, v.message);
+            }
+        }
+        assert_eq!(
+            violations.len(),
+            0,
+            "Expected no violations with threshold {}",
+            threshold
+        );
+    }
+
+    /// Validates that complexity check fails with lower threshold
+    async fn validate_complexity_threshold_fail(project_path: &std::path::Path, threshold: u32) {
+        // With threshold 5, warning threshold is 0, so everything is a warning
+        let violations = check_complexity(project_path, threshold).await.unwrap();
+        assert!(
+            !violations.is_empty(),
+            "Expected violations with threshold {}",
+            threshold
+        );
+        assert_eq!(violations[0].check_type, "complexity");
+        // With threshold 5, functions will be warnings (not errors) unless complexity > 5
+        assert!(violations[0].severity == "warning" || violations[0].severity == "error");
+    }
 
     #[tokio::test]
     async fn test_quality_gate_single_file() {
@@ -8429,24 +8481,27 @@ async fn validate_complexity_threshold_fail(project_path: &std::path::Path, thre
 
     #[test]
     fn test_create_complexity_test_file() {
-        use tempfile::TempDir;
         use std::io::Read;
+        use tempfile::TempDir;
 
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path();
-        
+
         // Test successful file creation
         let result = create_complexity_test_file(project_path);
         assert!(result.is_ok());
-        
+
         // Verify file was created
         let src_dir = project_path.join("src");
         let test_file = src_dir.join("complex.rs");
         assert!(test_file.exists());
-        
+
         // Verify file contents contain expected functions
         let mut contents = String::new();
-        std::fs::File::open(&test_file).unwrap().read_to_string(&mut contents).unwrap();
+        std::fs::File::open(&test_file)
+            .unwrap()
+            .read_to_string(&mut contents)
+            .unwrap();
         assert!(contents.contains("fn simple_function()"));
         assert!(contents.contains("fn moderate_function()"));
         assert!(contents.contains("for i in 0..10"));
@@ -8458,13 +8513,13 @@ async fn validate_complexity_threshold_fail(project_path: &std::path::Path, thre
 
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path();
-        
+
         // Create test file first
         create_complexity_test_file(project_path).unwrap();
-        
+
         // This should not panic since threshold is high enough
         validate_complexity_threshold_pass(project_path, 25).await;
-        
+
         // Test passes if no assertion fails
     }
 
@@ -8474,22 +8529,22 @@ async fn validate_complexity_threshold_fail(project_path: &std::path::Path, thre
 
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path();
-        
+
         // Create test file first
         create_complexity_test_file(project_path).unwrap();
-        
+
         // This should not panic - it should find violations with low threshold
         validate_complexity_threshold_fail(project_path, 1).await;
-        
+
         // Test passes if no assertion fails
     }
 
     #[test]
     fn test_apply_churn_file_filtering() {
-        use crate::models::churn::{CodeChurnAnalysis, FileChurnMetrics, ChurnSummary};
+        use crate::models::churn::{ChurnSummary, CodeChurnAnalysis, FileChurnMetrics};
         use chrono::Utc;
         use std::collections::HashMap;
-        
+
         // Create test analysis with multiple files
         let mut analysis = CodeChurnAnalysis {
             generated_at: Utc::now(),
@@ -8528,7 +8583,7 @@ async fn validate_complexity_threshold_fail(project_path: &std::path::Path, thre
                     churn_score: 0.3,
                     last_modified: Utc::now(),
                     first_seen: Utc::now(),
-                }
+                },
             ],
             summary: ChurnSummary {
                 total_commits: 30,
@@ -8538,12 +8593,12 @@ async fn validate_complexity_threshold_fail(project_path: &std::path::Path, thre
                 stable_files: vec![],
             },
         };
-        
+
         // Test with no filtering (top_files = 0)
         let original_count = analysis.files.len();
         apply_churn_file_filtering(&mut analysis, 0);
         assert_eq!(analysis.files.len(), original_count);
-        
+
         // Test with filtering (top_files = 2)
         apply_churn_file_filtering(&mut analysis, 2);
         assert_eq!(analysis.files.len(), 2);
@@ -8554,10 +8609,10 @@ async fn validate_complexity_threshold_fail(project_path: &std::path::Path, thre
 
     #[test]
     fn test_format_churn_content() {
-        use crate::models::churn::{CodeChurnAnalysis, ChurnSummary, ChurnOutputFormat};
+        use crate::models::churn::{ChurnOutputFormat, ChurnSummary, CodeChurnAnalysis};
         use chrono::Utc;
         use std::collections::HashMap;
-        
+
         let analysis = CodeChurnAnalysis {
             generated_at: Utc::now(),
             period_days: 30,
@@ -8571,21 +8626,21 @@ async fn validate_complexity_threshold_fail(project_path: &std::path::Path, thre
                 stable_files: vec![],
             },
         };
-        
+
         // Test JSON format
         let json_result = format_churn_content(&analysis, ChurnOutputFormat::Json);
         assert!(json_result.is_ok());
         let json_content = json_result.unwrap();
         assert!(json_content.contains("generated_at"));
-        
+
         // Test Summary format
         let summary_result = format_churn_content(&analysis, ChurnOutputFormat::Summary);
         assert!(summary_result.is_ok());
-        
+
         // Test Markdown format
         let markdown_result = format_churn_content(&analysis, ChurnOutputFormat::Markdown);
         assert!(markdown_result.is_ok());
-        
+
         // Test CSV format
         let csv_result = format_churn_content(&analysis, ChurnOutputFormat::Csv);
         assert!(csv_result.is_ok());
@@ -8595,13 +8650,13 @@ async fn validate_complexity_threshold_fail(project_path: &std::path::Path, thre
     fn test_run_comprehensive_analyses_basic() {
         // This is a simple test to verify the function signature and basic structure
         // In a real scenario, we'd need to mock the analysis functions
-        
+
         use std::path::PathBuf;
-        
+
         // Create basic test data
         let mut report = ComprehensiveReport::default();
         let project_path = PathBuf::from(".");
-        
+
         // Test with all options disabled (minimal execution path)
         let rt = tokio::runtime::Runtime::new().unwrap();
         let result = rt.block_on(async {
@@ -8617,9 +8672,10 @@ async fn validate_complexity_threshold_fail(project_path: &std::path::Path, thre
                 &None, // exclude
                 0.5,   // confidence_threshold
                 10,    // min_lines
-            ).await
+            )
+            .await
         });
-        
+
         // Should succeed with minimal configuration
         assert!(result.is_ok());
     }
@@ -8627,31 +8683,28 @@ async fn validate_complexity_threshold_fail(project_path: &std::path::Path, thre
     #[tokio::test]
     async fn test_write_comprehensive_output() {
         use tempfile::TempDir;
-        
+
         let temp_dir = TempDir::new().unwrap();
         let output_file = temp_dir.path().join("test_output.json");
-        
+
         let report = ComprehensiveReport::default();
-        
+
         // Test writing to file
         let result = write_comprehensive_output(
             &report,
             ComprehensiveOutputFormat::Json,
             false, // executive_summary
             Some(output_file.clone()),
-        ).await;
-        
+        )
+        .await;
+
         assert!(result.is_ok());
         assert!(output_file.exists());
-        
+
         // Test writing to stdout (no file path)
-        let stdout_result = write_comprehensive_output(
-            &report,
-            ComprehensiveOutputFormat::Json,
-            false,
-            None,
-        ).await;
-        
+        let stdout_result =
+            write_comprehensive_output(&report, ComprehensiveOutputFormat::Json, false, None).await;
+
         assert!(stdout_result.is_ok());
     }
 }
@@ -8852,10 +8905,16 @@ async fn check_single_file_complexity(
 ) -> Result<Vec<QualityViolation>> {
     let abs_file_path = resolve_absolute_file_path(project_path, file_path);
     validate_file_exists(&abs_file_path)?;
-    
+
     let mut violations = Vec::new();
-    analyze_file_complexity(&abs_file_path, file_path, max_complexity_p99, &mut violations).await?;
-    
+    analyze_file_complexity(
+        &abs_file_path,
+        file_path,
+        max_complexity_p99,
+        &mut violations,
+    )
+    .await?;
+
     Ok(violations)
 }
 
@@ -8888,7 +8947,8 @@ async fn analyze_file_complexity(
 ) -> Result<()> {
     if let Some(ext) = abs_file_path.extension() {
         if ext == "rs" {
-            analyze_rust_file_complexity(abs_file_path, original_path, max_complexity, violations).await?;
+            analyze_rust_file_complexity(abs_file_path, original_path, max_complexity, violations)
+                .await?;
         }
         // Add support for other languages as needed
     }
@@ -8903,15 +8963,19 @@ async fn analyze_rust_file_complexity(
     violations: &mut Vec<QualityViolation>,
 ) -> Result<()> {
     use crate::services::ast_rust::analyze_rust_file_with_complexity;
-    
+
     let metrics = analyze_rust_file_with_complexity(abs_file_path).await?;
-    
+
     for func in &metrics.functions {
         if function_exceeds_complexity_threshold(func, max_complexity) {
-            violations.push(create_complexity_violation(func, original_path, max_complexity));
+            violations.push(create_complexity_violation(
+                func,
+                original_path,
+                max_complexity,
+            ));
         }
     }
-    
+
     Ok(())
 }
 
@@ -9209,9 +9273,9 @@ fn get_severity_icon(severity: &str) -> &'static str {
 
 #[cfg(test)]
 mod markdown_formatting_tests {
-    use super::*;
     use super::QualityGateResults;
-    
+    use super::*;
+
     /// Create test quality gate results for testing
     fn create_test_quality_results(passed: bool, violations: u64) -> QualityGateResults {
         QualityGateResults {
@@ -9246,10 +9310,10 @@ mod markdown_formatting_tests {
     fn test_write_markdown_header() {
         let mut output = String::new();
         let results = create_test_quality_results(true, 10);
-        
+
         let result = write_qg_markdown_header(&mut output, &results);
         assert!(result.is_ok());
-        
+
         assert!(output.contains("# Quality Gate Report"));
         assert!(output.contains("**Status**: ✅ PASSED"));
         assert!(output.contains("**Total violations**: 10"));
@@ -9259,10 +9323,10 @@ mod markdown_formatting_tests {
     fn test_write_markdown_header_failed() {
         let mut output = String::new();
         let results = create_test_quality_results(false, 25);
-        
+
         let result = write_qg_markdown_header(&mut output, &results);
         assert!(result.is_ok());
-        
+
         assert!(output.contains("**Status**: ❌ FAILED"));
         assert!(output.contains("**Total violations**: 25"));
     }
@@ -9270,10 +9334,10 @@ mod markdown_formatting_tests {
     #[test]
     fn test_write_markdown_table_headers() {
         let mut output = String::new();
-        
+
         let result = write_qg_markdown_table_headers(&mut output);
         assert!(result.is_ok());
-        
+
         assert!(output.contains("| Check Type | Violations |"));
         assert!(output.contains("|------------|------------|"));
     }
@@ -9282,47 +9346,47 @@ mod markdown_formatting_tests {
     fn test_get_violation_summary_rows() {
         let results = create_test_quality_results(false, 90);
         let rows = get_qg_violation_summary_rows(&results);
-        
+
         assert_eq!(rows.len(), 9);
-        assert_eq!(rows[0], ("Complexity", 30));         // 90/3
-        assert_eq!(rows[1], ("Dead Code", 22));          // 90/4
-        assert_eq!(rows[2], ("SATD", 18));               // 90/5
-        assert_eq!(rows[3], ("Entropy", 15));            // 90/6
-        assert_eq!(rows[4], ("Security", 12));           // 90/7
-        assert_eq!(rows[5], ("Duplicates", 11));         // 90/8
-        assert_eq!(rows[6], ("Coverage", 10));           // 90/9
-        assert_eq!(rows[7], ("Sections", 9));            // 90/10
-        assert_eq!(rows[8], ("Provability", 8));         // 90/11
+        assert_eq!(rows[0], ("Complexity", 30)); // 90/3
+        assert_eq!(rows[1], ("Dead Code", 22)); // 90/4
+        assert_eq!(rows[2], ("SATD", 18)); // 90/5
+        assert_eq!(rows[3], ("Entropy", 15)); // 90/6
+        assert_eq!(rows[4], ("Security", 12)); // 90/7
+        assert_eq!(rows[5], ("Duplicates", 11)); // 90/8
+        assert_eq!(rows[6], ("Coverage", 10)); // 90/9
+        assert_eq!(rows[7], ("Sections", 9)); // 90/10
+        assert_eq!(rows[8], ("Provability", 8)); // 90/11
     }
 
     #[test]
     fn test_write_markdown_table_rows() {
         let mut output = String::new();
         let results = create_test_quality_results(false, 45);
-        
+
         let result = write_qg_markdown_table_rows(&mut output, &results);
         assert!(result.is_ok());
-        
+
         // Check that all violation types are included
-        assert!(output.contains("| Complexity | 15 |"));     // 45/3
-        assert!(output.contains("| Dead Code | 11 |"));       // 45/4
-        assert!(output.contains("| SATD | 9 |"));             // 45/5
-        assert!(output.contains("| Entropy | 7 |"));          // 45/6
-        assert!(output.contains("| Security | 6 |"));         // 45/7
-        assert!(output.contains("| Duplicates | 5 |"));       // 45/8
-        assert!(output.contains("| Coverage | 5 |"));         // 45/9
-        assert!(output.contains("| Sections | 4 |"));         // 45/10
-        assert!(output.contains("| Provability | 4 |"));      // 45/11
+        assert!(output.contains("| Complexity | 15 |")); // 45/3
+        assert!(output.contains("| Dead Code | 11 |")); // 45/4
+        assert!(output.contains("| SATD | 9 |")); // 45/5
+        assert!(output.contains("| Entropy | 7 |")); // 45/6
+        assert!(output.contains("| Security | 6 |")); // 45/7
+        assert!(output.contains("| Duplicates | 5 |")); // 45/8
+        assert!(output.contains("| Coverage | 5 |")); // 45/9
+        assert!(output.contains("| Sections | 4 |")); // 45/10
+        assert!(output.contains("| Provability | 4 |")); // 45/11
     }
 
     #[test]
     fn test_write_markdown_summary_table() {
         let mut output = String::new();
         let results = create_test_quality_results(true, 0);
-        
+
         let result = write_qg_markdown_summary_table(&mut output, &results);
         assert!(result.is_ok());
-        
+
         assert!(output.contains("## Summary"));
         assert!(output.contains("| Check Type | Violations |"));
         assert!(output.contains("|------------|------------|"));
@@ -9334,12 +9398,12 @@ mod markdown_formatting_tests {
     #[test]
     fn test_format_qg_as_markdown_integration() {
         let results = create_test_quality_results(false, 33);
-        
+
         let output = format_qg_as_markdown(&results);
         assert!(output.is_ok());
-        
+
         let markdown = output.unwrap();
-        
+
         // Check all sections are present
         assert!(markdown.contains("# Quality Gate Report"));
         assert!(markdown.contains("**Status**: ❌ FAILED"));
@@ -9347,31 +9411,31 @@ mod markdown_formatting_tests {
         assert!(markdown.contains("## Summary"));
         assert!(markdown.contains("| Check Type | Violations |"));
         assert!(markdown.contains("|------------|------------|"));
-        
+
         // Check specific violation counts (33 divided by denominators)
-        assert!(markdown.contains("| Complexity | 11 |"));     // 33/3
-        assert!(markdown.contains("| Dead Code | 8 |"));        // 33/4
-        assert!(markdown.contains("| SATD | 6 |"));             // 33/5
-        assert!(markdown.contains("| Entropy | 5 |"));          // 33/6
-        assert!(markdown.contains("| Security | 4 |"));         // 33/7
-        assert!(markdown.contains("| Duplicates | 4 |"));       // 33/8
-        assert!(markdown.contains("| Coverage | 3 |"));         // 33/9
-        assert!(markdown.contains("| Sections | 3 |"));         // 33/10
-        assert!(markdown.contains("| Provability | 3 |"));      // 33/11
+        assert!(markdown.contains("| Complexity | 11 |")); // 33/3
+        assert!(markdown.contains("| Dead Code | 8 |")); // 33/4
+        assert!(markdown.contains("| SATD | 6 |")); // 33/5
+        assert!(markdown.contains("| Entropy | 5 |")); // 33/6
+        assert!(markdown.contains("| Security | 4 |")); // 33/7
+        assert!(markdown.contains("| Duplicates | 4 |")); // 33/8
+        assert!(markdown.contains("| Coverage | 3 |")); // 33/9
+        assert!(markdown.contains("| Sections | 3 |")); // 33/10
+        assert!(markdown.contains("| Provability | 3 |")); // 33/11
     }
 
     #[test]
     fn test_format_qg_as_markdown_passed_state() {
         let results = create_test_quality_results(true, 0);
-        
+
         let output = format_qg_as_markdown(&results);
         assert!(output.is_ok());
-        
+
         let markdown = output.unwrap();
-        
+
         assert!(markdown.contains("**Status**: ✅ PASSED"));
         assert!(markdown.contains("**Total violations**: 0"));
-        
+
         // All violation counts should be zero
         assert!(markdown.contains("| Complexity | 0 |"));
         assert!(markdown.contains("| Dead Code | 0 |"));
@@ -9391,24 +9455,50 @@ mod markdown_formatting_tests {
             for passed in [true, false] {
                 let results = create_test_quality_results(passed, violations);
                 let output = format_qg_as_markdown(&results);
-                
-                assert!(output.is_ok(), "Markdown formatting failed for violations={}, passed={}", violations, passed);
-                
+
+                assert!(
+                    output.is_ok(),
+                    "Markdown formatting failed for violations={}, passed={}",
+                    violations,
+                    passed
+                );
+
                 let markdown = output.unwrap();
-                
+
                 // Essential sections must always be present
                 assert!(markdown.contains("# Quality Gate Report"), "Missing header");
                 assert!(markdown.contains("**Status**:"), "Missing status");
-                assert!(markdown.contains("**Total violations**:"), "Missing total violations");
+                assert!(
+                    markdown.contains("**Total violations**:"),
+                    "Missing total violations"
+                );
                 assert!(markdown.contains("## Summary"), "Missing summary section");
-                assert!(markdown.contains("| Check Type | Violations |"), "Missing table header");
-                assert!(markdown.contains("|------------|------------|"), "Missing table separator");
-                
+                assert!(
+                    markdown.contains("| Check Type | Violations |"),
+                    "Missing table header"
+                );
+                assert!(
+                    markdown.contains("|------------|------------|"),
+                    "Missing table separator"
+                );
+
                 // All violation types must be present
-                for violation_type in ["Complexity", "Dead Code", "SATD", "Entropy", "Security", 
-                                       "Duplicates", "Coverage", "Sections", "Provability"] {
-                    assert!(markdown.contains(&format!("| {} |", violation_type)), 
-                           "Missing violation type: {}", violation_type);
+                for violation_type in [
+                    "Complexity",
+                    "Dead Code",
+                    "SATD",
+                    "Entropy",
+                    "Security",
+                    "Duplicates",
+                    "Coverage",
+                    "Sections",
+                    "Provability",
+                ] {
+                    assert!(
+                        markdown.contains(&format!("| {} |", violation_type)),
+                        "Missing violation type: {}",
+                        violation_type
+                    );
                 }
             }
         }

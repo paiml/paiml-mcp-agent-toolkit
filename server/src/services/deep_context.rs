@@ -2208,22 +2208,41 @@ impl DeepContextAnalyzer {
 
     pub async fn analyze_project(&self, project_path: &PathBuf) -> anyhow::Result<DeepContext> {
         let start_time = std::time::Instant::now();
-        info!("Starting deep context analysis for project: {:?}", project_path);
+        info!(
+            "Starting deep context analysis for project: {:?}",
+            project_path
+        );
 
         // Create progress tracker
         let progress = crate::services::progress::ProgressTracker::new(true);
         let main_progress = progress.create_spinner("Analyzing project...");
 
         // Execute all analysis phases using extracted methods
-        let mut file_tree = self.execute_discovery_phase(project_path, &main_progress).await?;
-        let analyses = self.execute_analysis_phase(project_path, &progress, &main_progress).await?;
+        let mut file_tree = self
+            .execute_discovery_phase(project_path, &main_progress)
+            .await?;
+        let analyses = self
+            .execute_analysis_phase(project_path, &progress, &main_progress)
+            .await?;
         self.enrich_file_tree_if_dag_present(&mut file_tree, &analyses, &main_progress)?;
-        let cross_refs = self.execute_cross_reference_phase(&analyses, &main_progress).await?;
-        let (defect_summary, hotspots) = self.execute_defect_correlation_phase(&analyses, &main_progress).await?;
-        let quality_scorecard = self.execute_quality_scoring_phase(&analyses, &defect_summary, &main_progress).await?;
-        let recommendations = self.execute_recommendations_phase(&analyses, &defect_summary, &main_progress).await?;
-        let template_provenance = self.execute_template_provenance_phase(&analyses, &main_progress).await?;
-        let (build_info, project_overview) = self.execute_metadata_analysis_phase(project_path, &main_progress).await?;
+        let cross_refs = self
+            .execute_cross_reference_phase(&analyses, &main_progress)
+            .await?;
+        let (defect_summary, hotspots) = self
+            .execute_defect_correlation_phase(&analyses, &main_progress)
+            .await?;
+        let quality_scorecard = self
+            .execute_quality_scoring_phase(&analyses, &defect_summary, &main_progress)
+            .await?;
+        let recommendations = self
+            .execute_recommendations_phase(&analyses, &defect_summary, &main_progress)
+            .await?;
+        let template_provenance = self
+            .execute_template_provenance_phase(&analyses, &main_progress)
+            .await?;
+        let (build_info, project_overview) = self
+            .execute_metadata_analysis_phase(project_path, &main_progress)
+            .await?;
 
         // Build the deep context from all phases
         let analysis_duration = start_time.elapsed();
@@ -2243,7 +2262,10 @@ impl DeepContextAnalyzer {
         );
 
         // Execute final QA verification phase
-        deep_context.qa_verification = Some(self.execute_qa_verification_phase(&deep_context, &main_progress).await?);
+        deep_context.qa_verification = Some(
+            self.execute_qa_verification_phase(&deep_context, &main_progress)
+                .await?,
+        );
 
         // Complete progress tracking
         main_progress.finish_with_message("Analysis complete!");
@@ -2277,7 +2299,9 @@ impl DeepContextAnalyzer {
     ) -> anyhow::Result<ParallelAnalysisResults> {
         progress.set_message("Running parallel analyses...");
         let analysis_start = std::time::Instant::now();
-        let analyses = self.execute_parallel_analyses_with_progress(project_path, tracker).await?;
+        let analyses = self
+            .execute_parallel_analyses_with_progress(project_path, tracker)
+            .await?;
         info!("Analysis phase completed in {:?}", analysis_start.elapsed());
         debug!("Analysis phase completed");
         Ok(analyses)
@@ -2326,7 +2350,9 @@ impl DeepContextAnalyzer {
         progress: &indicatif::ProgressBar,
     ) -> anyhow::Result<QualityScorecard> {
         progress.set_message("Calculating quality scores...");
-        let quality_scorecard = self.calculate_quality_scorecard(analyses, defect_summary).await?;
+        let quality_scorecard = self
+            .calculate_quality_scorecard(analyses, defect_summary)
+            .await?;
         debug!("Quality scoring completed");
         Ok(quality_scorecard)
     }
@@ -2338,7 +2364,9 @@ impl DeepContextAnalyzer {
         progress: &indicatif::ProgressBar,
     ) -> anyhow::Result<Vec<PrioritizedRecommendation>> {
         progress.set_message("Generating recommendations...");
-        let recommendations = self.generate_recommendations(analyses, defect_summary).await?;
+        let recommendations = self
+            .generate_recommendations(analyses, defect_summary)
+            .await?;
         debug!("Recommendations generated");
         Ok(recommendations)
     }
@@ -2462,15 +2490,15 @@ impl DeepContextAnalyzer {
         defect_summary: &DefectSummary,
     ) -> anyhow::Result<Vec<PrioritizedRecommendation>> {
         let mut recommendations = Vec::new();
-        
+
         // Extract Method: Each recommendation type is handled by a focused method
         self.add_complexity_recommendations(&mut recommendations, analyses);
         self.add_defect_recommendations(&mut recommendations, defect_summary);
         self.add_satd_recommendations(&mut recommendations, analyses);
-        
+
         Ok(recommendations)
     }
-    
+
     fn add_complexity_recommendations(
         &self,
         recommendations: &mut Vec<PrioritizedRecommendation>,
@@ -2484,26 +2512,43 @@ impl DeepContextAnalyzer {
             }
         }
     }
-    
+
     fn create_complexity_recommendation(
         &self,
         violation: &crate::services::complexity::Violation,
     ) -> Option<PrioritizedRecommendation> {
         match violation {
-            crate::services::complexity::Violation::Error { function, value, threshold, message, .. } |
-            crate::services::complexity::Violation::Warning { function, value, threshold, message, .. } => {
-                function.as_ref().map(|func_name| PrioritizedRecommendation {
-                    title: format!("Refactor high-complexity function: {}", func_name),
-                    description: format!("{} (complexity: {}, threshold: {})", message, value, threshold),
-                    priority: self.determine_complexity_priority(*value),
-                    estimated_effort: Duration::from_secs(3600), // 1 hour estimate
-                    impact: Impact::High,
-                    prerequisites: vec![],
-                })
+            crate::services::complexity::Violation::Error {
+                function,
+                value,
+                threshold,
+                message,
+                ..
+            }
+            | crate::services::complexity::Violation::Warning {
+                function,
+                value,
+                threshold,
+                message,
+                ..
+            } => {
+                function
+                    .as_ref()
+                    .map(|func_name| PrioritizedRecommendation {
+                        title: format!("Refactor high-complexity function: {}", func_name),
+                        description: format!(
+                            "{} (complexity: {}, threshold: {})",
+                            message, value, threshold
+                        ),
+                        priority: self.determine_complexity_priority(*value),
+                        estimated_effort: Duration::from_secs(3600), // 1 hour estimate
+                        impact: Impact::High,
+                        prerequisites: vec![],
+                    })
             }
         }
     }
-    
+
     fn determine_complexity_priority(&self, value: u16) -> Priority {
         if value > 25 {
             Priority::Critical
@@ -2513,7 +2558,7 @@ impl DeepContextAnalyzer {
             Priority::Medium
         }
     }
-    
+
     fn add_defect_recommendations(
         &self,
         recommendations: &mut Vec<PrioritizedRecommendation>,
@@ -2533,7 +2578,7 @@ impl DeepContextAnalyzer {
             });
         }
     }
-    
+
     fn add_satd_recommendations(
         &self,
         recommendations: &mut Vec<PrioritizedRecommendation>,
@@ -3146,10 +3191,26 @@ impl DeepContextAnalyzer {
         let mut total_loc = 0usize;
 
         // Process each analysis type
-        self.process_complexity_violations(analyses, &mut total_defects, &mut by_severity, &mut by_type, &mut total_loc);
+        self.process_complexity_violations(
+            analyses,
+            &mut total_defects,
+            &mut by_severity,
+            &mut by_type,
+            &mut total_loc,
+        );
         self.process_satd_violations(analyses, &mut total_defects, &mut by_severity, &mut by_type);
-        self.process_dead_code_violations(analyses, &mut total_defects, &mut by_severity, &mut by_type);
-        self.process_tdg_violations(tdg_summary, &mut total_defects, &mut by_severity, &mut by_type);
+        self.process_dead_code_violations(
+            analyses,
+            &mut total_defects,
+            &mut by_severity,
+            &mut by_type,
+        );
+        self.process_tdg_violations(
+            tdg_summary,
+            &mut total_defects,
+            &mut by_severity,
+            &mut by_type,
+        );
 
         let defect_density = self.calculate_defect_density(total_defects, total_loc);
 
@@ -3285,7 +3346,8 @@ impl DeepContextAnalyzer {
             })
             .collect();
 
-        hotspots.sort_unstable_by(|a, b| b.composite_score.partial_cmp(&a.composite_score).unwrap());
+        hotspots
+            .sort_unstable_by(|a, b| b.composite_score.partial_cmp(&a.composite_score).unwrap());
         hotspots.truncate(20);
 
         Ok(hotspots)
@@ -3922,62 +3984,78 @@ async fn analyze_kotlin_file(
 
 async fn analyze_complexity(path: &std::path::Path) -> anyhow::Result<ComplexityReport> {
     use crate::services::complexity::aggregate_results;
-    
+
     info!("Starting complexity analysis for path: {:?}", path);
-    
+
     // Extract Method: Discover source files
     let source_files = discover_source_files_for_complexity(path)?;
-    info!("Discovered {} source files for complexity analysis", source_files.len());
-    
+    info!(
+        "Discovered {} source files for complexity analysis",
+        source_files.len()
+    );
+
     // Extract Method: Analyze all files
     let file_metrics = analyze_files_complexity(source_files).await;
-    info!("Complexity analysis completed. Analyzed {} files", file_metrics.len());
-    
+    info!(
+        "Complexity analysis completed. Analyzed {} files",
+        file_metrics.len()
+    );
+
     // Aggregate results into final report
     Ok(aggregate_results(file_metrics))
 }
 
-fn discover_source_files_for_complexity(path: &std::path::Path) -> anyhow::Result<Vec<std::path::PathBuf>> {
+fn discover_source_files_for_complexity(
+    path: &std::path::Path,
+) -> anyhow::Result<Vec<std::path::PathBuf>> {
     use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
-    
+
     let discovery_config = FileDiscoveryConfig {
         respect_gitignore: true,
         filter_external_repos: true,
         max_files: Some(5_000), // Reasonable limit for complexity analysis
         ..Default::default()
     };
-    
+
     let discovery = ProjectFileDiscovery::new(path.to_path_buf()).with_config(discovery_config);
     discovery.discover_files()
 }
 
-async fn analyze_files_complexity(source_files: Vec<std::path::PathBuf>) -> Vec<crate::services::complexity::FileComplexityMetrics> {
+async fn analyze_files_complexity(
+    source_files: Vec<std::path::PathBuf>,
+) -> Vec<crate::services::complexity::FileComplexityMetrics> {
     let mut file_metrics = Vec::new();
-    
+
     for file_path in source_files {
         if let Some(metrics) = analyze_single_file_complexity(&file_path).await {
             file_metrics.push(metrics);
         }
     }
-    
+
     file_metrics
 }
 
-async fn analyze_single_file_complexity(file_path: &std::path::Path) -> Option<crate::services::complexity::FileComplexityMetrics> {
+async fn analyze_single_file_complexity(
+    file_path: &std::path::Path,
+) -> Option<crate::services::complexity::FileComplexityMetrics> {
     #[cfg(feature = "python-ast")]
     use crate::services::ast_python::analyze_python_file_with_complexity;
     use crate::services::ast_rust::analyze_rust_file_with_complexity;
     #[cfg(feature = "typescript-ast")]
     use crate::services::ast_typescript::analyze_typescript_file_with_complexity;
-    
+
     let ext = file_path.extension()?.to_str()?;
-    
+
     match ext {
         "rs" => analyze_rust_file_with_complexity(file_path).await.ok(),
         #[cfg(feature = "typescript-ast")]
-        "ts" | "js" | "jsx" | "tsx" => analyze_typescript_file_with_complexity(file_path).await.ok(),
+        "ts" | "js" | "jsx" | "tsx" => analyze_typescript_file_with_complexity(file_path)
+            .await
+            .ok(),
         #[cfg(feature = "python-ast")]
-        "py" => analyze_python_file_with_complexity(file_path, None).await.ok(),
+        "py" => analyze_python_file_with_complexity(file_path, None)
+            .await
+            .ok(),
         _ => None,
     }
 }
@@ -4545,43 +4623,43 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
     use tokio;
-    
+
     #[test]
     fn test_analysis_type_variants() {
         let ast_type = AnalysisType::Ast;
         let complexity_type = AnalysisType::Complexity;
         let churn_type = AnalysisType::Churn;
         let dag_type = AnalysisType::Dag;
-        
+
         // Test enum variants exist and can be created
         assert_eq!(ast_type, AnalysisType::Ast);
         assert_eq!(complexity_type, AnalysisType::Complexity);
         assert_eq!(churn_type, AnalysisType::Churn);
         assert_eq!(dag_type, AnalysisType::Dag);
     }
-    
+
     #[test]
     fn test_dag_type_variants() {
         let minimal = DagType::Minimal;
         let standard = DagType::Standard;
         let full = DagType::Full;
-        
+
         assert_eq!(minimal, DagType::Minimal);
         assert_eq!(standard, DagType::Standard);
         assert_eq!(full, DagType::Full);
     }
-    
+
     #[test]
     fn test_cache_strategy_variants() {
         let none = CacheStrategy::None;
         let memory = CacheStrategy::Memory;
         let persistent = CacheStrategy::Persistent;
-        
+
         assert_eq!(none, CacheStrategy::None);
         assert_eq!(memory, CacheStrategy::Memory);
         assert_eq!(persistent, CacheStrategy::Persistent);
     }
-    
+
     #[test]
     fn test_complexity_thresholds_creation() {
         let thresholds = ComplexityThresholds {
@@ -4589,16 +4667,16 @@ mod tests {
             medium: 10,
             high: 20,
         };
-        
+
         assert_eq!(thresholds.low, 5);
         assert_eq!(thresholds.medium, 10);
         assert_eq!(thresholds.high, 20);
     }
-    
+
     #[test]
     fn test_deep_context_config_default() {
         let config = DeepContextConfig::default();
-        
+
         assert_eq!(config.period_days, 30);
         assert_eq!(config.dag_type, DagType::Standard);
         assert_eq!(config.max_depth, Some(3));
@@ -4608,16 +4686,16 @@ mod tests {
         assert!(config.include_analyses.contains(&AnalysisType::Complexity));
         assert!(config.include_patterns.contains(&"**/*.rs".to_string()));
     }
-    
+
     #[test]
     fn test_deep_context_analyzer_creation() {
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config.clone());
-        
+
         assert_eq!(analyzer.config.period_days, config.period_days);
         assert_eq!(analyzer.config.parallel, config.parallel);
     }
-    
+
     #[test]
     fn test_ast_summary_creation() {
         let summary = AstSummary {
@@ -4629,7 +4707,7 @@ mod tests {
             total_impls: 15,
             average_functions_per_file: 5.0,
         };
-        
+
         assert_eq!(summary.total_files, 10);
         assert_eq!(summary.total_functions, 50);
         assert_eq!(summary.total_structs, 20);
@@ -4638,7 +4716,7 @@ mod tests {
         assert_eq!(summary.total_impls, 15);
         assert_eq!(summary.average_functions_per_file, 5.0);
     }
-    
+
     #[test]
     fn test_dead_code_summary_creation() {
         let summary = DeadCodeSummary {
@@ -4647,13 +4725,13 @@ mod tests {
             total_dead_lines: 450,
             dead_percentage: 4.5,
         };
-        
+
         assert_eq!(summary.total_files_analyzed, 100);
         assert_eq!(summary.files_with_dead_code, 15);
         assert_eq!(summary.total_dead_lines, 450);
         assert_eq!(summary.dead_percentage, 4.5);
     }
-    
+
     #[test]
     fn test_dead_code_analysis_creation() {
         let summary = DeadCodeSummary {
@@ -4662,17 +4740,17 @@ mod tests {
             total_dead_lines: 200,
             dead_percentage: 4.0,
         };
-        
+
         let analysis = DeadCodeAnalysis {
             summary,
             files: vec![], // Empty for test
         };
-        
+
         assert_eq!(analysis.summary.total_files_analyzed, 50);
         assert_eq!(analysis.summary.files_with_dead_code, 8);
         assert_eq!(analysis.files.len(), 0);
     }
-    
+
     #[test]
     fn test_context_metadata_creation() {
         let now = chrono::Utc::now();
@@ -4683,14 +4761,14 @@ mod tests {
             cache_hit_rate: 0.75,
             version: "1.0.0".to_string(),
         };
-        
+
         assert_eq!(metadata.generated_at, now);
         assert_eq!(metadata.analysis_duration, Duration::from_secs(30));
         assert_eq!(metadata.total_files_processed, 100);
         assert_eq!(metadata.cache_hit_rate, 0.75);
         assert_eq!(metadata.version, "1.0.0");
     }
-    
+
     #[test]
     fn test_cache_stats_creation() {
         let stats = CacheStats {
@@ -4699,22 +4777,22 @@ mod tests {
             hit_rate: 0.8,
             size_bytes: 1024 * 1024,
         };
-        
+
         assert_eq!(stats.hits, 80);
         assert_eq!(stats.misses, 20);
         assert_eq!(stats.hit_rate, 0.8);
         assert_eq!(stats.size_bytes, 1024 * 1024);
     }
-    
+
     #[test]
     fn test_node_type_variants() {
         let file = NodeType::File;
         let directory = NodeType::Directory;
-        
+
         assert_eq!(file, NodeType::File);
         assert_eq!(directory, NodeType::Directory);
     }
-    
+
     #[test]
     fn test_node_annotations_creation() {
         let annotations = NodeAnnotations {
@@ -4724,14 +4802,14 @@ mod tests {
             technical_debt_score: Some(2.1),
             last_modified: Some(chrono::Utc::now()),
         };
-        
+
         assert_eq!(annotations.complexity_score, Some(15.5));
         assert_eq!(annotations.lines_of_code, Some(250));
         assert_eq!(annotations.churn_risk, Some(0.3));
         assert_eq!(annotations.technical_debt_score, Some(2.1));
         assert!(annotations.last_modified.is_some());
     }
-    
+
     #[test]
     fn test_annotated_node_creation() {
         let path = PathBuf::from("/test/file.rs");
@@ -4742,20 +4820,20 @@ mod tests {
             technical_debt_score: Some(1.5),
             last_modified: None,
         };
-        
+
         let node = AnnotatedNode {
             path: path.clone(),
             node_type: NodeType::File,
             annotations,
             children: vec![],
         };
-        
+
         assert_eq!(node.path, path);
         assert_eq!(node.node_type, NodeType::File);
         assert_eq!(node.annotations.complexity_score, Some(10.0));
         assert_eq!(node.children.len(), 0);
     }
-    
+
     #[test]
     fn test_annotated_file_tree_creation() {
         let root_path = PathBuf::from("/project");
@@ -4766,25 +4844,25 @@ mod tests {
             technical_debt_score: Some(3.0),
             last_modified: None,
         };
-        
+
         let root_node = AnnotatedNode {
             path: root_path.clone(),
             node_type: NodeType::Directory,
             annotations: root_annotations,
             children: vec![],
         };
-        
+
         let tree = AnnotatedFileTree {
             root: root_node,
             total_nodes: 1,
             max_depth: 1,
         };
-        
+
         assert_eq!(tree.root.path, root_path);
         assert_eq!(tree.total_nodes, 1);
         assert_eq!(tree.max_depth, 1);
     }
-    
+
     #[test]
     fn test_deep_context_result_creation() {
         let result = DeepContextResult {
@@ -4809,19 +4887,19 @@ mod tests {
             },
             cache_stats: None,
         };
-        
+
         assert_eq!(result.project_path, PathBuf::from("/test/project"));
         assert_eq!(result.file_contexts.len(), 0);
         assert!(result.ast_summary.is_none());
         assert!(result.complexity_report.is_none());
         assert_eq!(result.metadata.version, "test");
     }
-    
+
     #[tokio::test]
     async fn test_analyze_single_file_nonexistent() {
         let nonexistent_path = std::path::Path::new("/nonexistent/file.rs");
         let result = analyze_single_file(nonexistent_path).await;
-        
+
         // Should return an error for nonexistent file
         assert!(result.is_err());
     }
@@ -4830,7 +4908,7 @@ mod tests {
     // TDD TESTS FOR analyze_project REFACTORING - Sprint 47 Phase 3
     // Toyota Way: Test-Driven Development for Perfect Quality
     // ============================================================================
-    
+
     #[tokio::test]
     async fn test_analyze_project_phase1_discovery_isolated() {
         // TDD: Phase 1 (Discovery) should be extractable as independent method
@@ -4838,17 +4916,20 @@ mod tests {
         let analyzer = DeepContextAnalyzer::new(config);
         let test_project = tempfile::tempdir().unwrap();
         let project_path = test_project.path().to_path_buf();
-        
+
         // Create test structure
         std::fs::create_dir_all(project_path.join("src")).unwrap();
         std::fs::write(project_path.join("src/main.rs"), "fn main() {}").unwrap();
-        
+
         // Phase 1 should work independently
-        let file_tree = analyzer.discover_project_structure(&project_path).await.unwrap();
+        let file_tree = analyzer
+            .discover_project_structure(&project_path)
+            .await
+            .unwrap();
         assert!(file_tree.total_files > 0);
         assert_eq!(file_tree.root.node_type, NodeType::Directory);
     }
-    
+
     #[tokio::test]
     async fn test_analyze_project_phase2_parallel_analyses_isolated() {
         // TDD: Phase 2 (Parallel Analyses) should be extractable
@@ -4856,40 +4937,46 @@ mod tests {
         let analyzer = DeepContextAnalyzer::new(config);
         let test_project = tempfile::tempdir().unwrap();
         let project_path = test_project.path().to_path_buf();
-        
+
         std::fs::create_dir_all(project_path.join("src")).unwrap();
         std::fs::write(project_path.join("src/lib.rs"), "pub fn test() {}").unwrap();
-        
+
         let progress = crate::services::progress::ProgressTracker::new(false);
-        let analyses = analyzer.execute_parallel_analyses_with_progress(&project_path, &progress).await.unwrap();
-        
+        let analyses = analyzer
+            .execute_parallel_analyses_with_progress(&project_path, &progress)
+            .await
+            .unwrap();
+
         // Should complete without panicking
         assert!(analyses.ast_contexts.is_some() || analyses.complexity_report.is_some());
     }
-    
+
     #[tokio::test]
     async fn test_analyze_project_phase3_cross_references_isolated() {
         // TDD: Phase 3 (Cross-Language References) should be extractable
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
         let analyses = ParallelAnalysisResults::default();
-        
-        let cross_refs = analyzer.build_cross_language_references(&analyses).await.unwrap();
+
+        let cross_refs = analyzer
+            .build_cross_language_references(&analyses)
+            .await
+            .unwrap();
         assert!(cross_refs.is_empty() || !cross_refs.is_empty());
     }
-    
+
     #[tokio::test]
     async fn test_analyze_project_phase4_defect_correlation_isolated() {
         // TDD: Phase 4 (Defect Correlation) should be extractable
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
         let analyses = ParallelAnalysisResults::default();
-        
+
         let (defect_summary, hotspots) = analyzer.correlate_defects(&analyses).await.unwrap();
         assert!(defect_summary.total_defects >= 0);
         assert!(hotspots.is_empty() || !hotspots.is_empty());
     }
-    
+
     #[tokio::test]
     async fn test_analyze_project_phase5_quality_scoring_isolated() {
         // TDD: Phase 5 (Quality Scoring) should be extractable
@@ -4897,24 +4984,30 @@ mod tests {
         let analyzer = DeepContextAnalyzer::new(config);
         let analyses = ParallelAnalysisResults::default();
         let defect_summary = DefectSummary::default();
-        
+
         // This method needs to be created during refactoring
-        let quality = analyzer.calculate_quality_scorecard(&analyses, &defect_summary).await.unwrap();
+        let quality = analyzer
+            .calculate_quality_scorecard(&analyses, &defect_summary)
+            .await
+            .unwrap();
         assert!(quality.overall_health >= 0.0 && quality.overall_health <= 100.0);
     }
-    
+
     #[tokio::test]
     async fn test_analyze_project_phase6_recommendations_isolated() {
         // TDD: Phase 6 (Recommendations) should be extractable
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
         let deep_context = DeepContext::default();
-        
+
         // This method needs to be created during refactoring
-        let recommendations = analyzer.generate_recommendations(&deep_context).await.unwrap();
+        let recommendations = analyzer
+            .generate_recommendations(&deep_context)
+            .await
+            .unwrap();
         assert!(recommendations.is_empty() || !recommendations.is_empty());
     }
-    
+
     #[tokio::test]
     async fn test_analyze_project_phase7_metadata_analysis_isolated() {
         // TDD: Phase 7.5 (Project Metadata) should be extractable
@@ -4922,15 +5015,18 @@ mod tests {
         let analyzer = DeepContextAnalyzer::new(config);
         let test_project = tempfile::tempdir().unwrap();
         let project_path = test_project.path().to_path_buf();
-        
+
         std::fs::write(project_path.join("Makefile"), "test:\n\tcargo test").unwrap();
         std::fs::write(project_path.join("README.md"), "# Test").unwrap();
-        
-        let (build_info, overview) = analyzer.analyze_project_metadata(&project_path).await.unwrap();
+
+        let (build_info, overview) = analyzer
+            .analyze_project_metadata(&project_path)
+            .await
+            .unwrap();
         assert!(build_info.is_some() || build_info.is_none());
         assert!(overview.is_some() || overview.is_none());
     }
-    
+
     #[tokio::test]
     async fn test_analyze_project_phase8_qa_verification_isolated() {
         // TDD: Phase 8 (QA Verification) should be extractable
@@ -4938,12 +5034,12 @@ mod tests {
         let analyzer = DeepContextAnalyzer::new(config);
         let mut context = DeepContext::default();
         context.metadata.project_root = PathBuf::from("/test");
-        
+
         let qa = analyzer.run_qa_verification(&context).await.unwrap();
         assert!(qa.passed || !qa.passed);
         assert!(qa.checks_run >= 0);
     }
-    
+
     #[tokio::test]
     async fn test_analyze_project_integration_all_phases() {
         // TDD: Integration test - refactored analyze_project should still work
@@ -4951,15 +5047,16 @@ mod tests {
         let analyzer = DeepContextAnalyzer::new(config);
         let test_project = tempfile::tempdir().unwrap();
         let project_path = test_project.path().to_path_buf();
-        
+
         std::fs::create_dir_all(project_path.join("src")).unwrap();
         std::fs::write(
             project_path.join("src/lib.rs"),
-            "//! Test\npub fn add(a: i32, b: i32) -> i32 { a + b }"
-        ).unwrap();
-        
+            "//! Test\npub fn add(a: i32, b: i32) -> i32 { a + b }",
+        )
+        .unwrap();
+
         let result = analyzer.analyze_project(&project_path).await.unwrap();
-        
+
         // All phases should complete successfully
         assert_eq!(result.metadata.project_root, project_path);
         assert!(result.file_tree.total_files > 0);
@@ -4972,28 +5069,29 @@ mod tests {
         // TDD RED: Test complexity violation recommendations
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
-        
+
         let mut analyses = ParallelAnalysisResults::default();
         analyses.complexity_report = Some(crate::services::complexity::ComplexityReport {
             summary: Default::default(),
-            violations: vec![
-                crate::services::complexity::Violation::Error {
-                    rule: "complexity".to_string(),
-                    message: "Function too complex".to_string(),
-                    value: 30,
-                    threshold: 20,
-                    file: "test.rs".to_string(),
-                    line: 10,
-                    function: Some("complex_fn".to_string()),
-                },
-            ],
+            violations: vec![crate::services::complexity::Violation::Error {
+                rule: "complexity".to_string(),
+                message: "Function too complex".to_string(),
+                value: 30,
+                threshold: 20,
+                file: "test.rs".to_string(),
+                line: 10,
+                function: Some("complex_fn".to_string()),
+            }],
             hotspots: vec![],
             files: vec![],
         });
-        
+
         let defect_summary = DefectSummary::default();
-        let recommendations = analyzer.generate_recommendations(&analyses, &defect_summary).await.unwrap();
-        
+        let recommendations = analyzer
+            .generate_recommendations(&analyses, &defect_summary)
+            .await
+            .unwrap();
+
         assert_eq!(recommendations.len(), 1);
         assert!(recommendations[0].title.contains("complex_fn"));
         assert_eq!(recommendations[0].priority, Priority::Critical);
@@ -5004,7 +5102,7 @@ mod tests {
         // TDD RED: Test high defect count recommendations
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
-        
+
         let analyses = ParallelAnalysisResults::default();
         let defect_summary = DefectSummary {
             total_defects: 100,
@@ -5012,9 +5110,12 @@ mod tests {
             medium_priority_defects: 30,
             low_priority_defects: 20,
         };
-        
-        let recommendations = analyzer.generate_recommendations(&analyses, &defect_summary).await.unwrap();
-        
+
+        let recommendations = analyzer
+            .generate_recommendations(&analyses, &defect_summary)
+            .await
+            .unwrap();
+
         assert_eq!(recommendations.len(), 1);
         assert!(recommendations[0].title.contains("High defect count"));
         assert_eq!(recommendations[0].priority, Priority::High);
@@ -5025,7 +5126,7 @@ mod tests {
         // TDD RED: Test SATD detection recommendations
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
-        
+
         let mut analyses = ParallelAnalysisResults::default();
         analyses.satd_results = Some(crate::services::satd_detector::SATDAnalysisResult {
             items: vec![],
@@ -5040,27 +5141,31 @@ mod tests {
             files_with_debt: 3,
             analysis_timestamp: chrono::Utc::now(),
         });
-        
+
         let defect_summary = DefectSummary::default();
-        let recommendations = analyzer.generate_recommendations(&analyses, &defect_summary).await.unwrap();
-        
+        let recommendations = analyzer
+            .generate_recommendations(&analyses, &defect_summary)
+            .await
+            .unwrap();
+
         assert_eq!(recommendations.len(), 1);
         assert!(recommendations[0].title.contains("Technical debt"));
         assert_eq!(recommendations[0].priority, Priority::Critical);
     }
-    
+
     #[tokio::test]
     async fn test_analyze_complexity_function() {
         // TDD RED: Test analyze_complexity function refactoring
         let test_project = tempfile::tempdir().unwrap();
         let project_path = test_project.path();
-        
+
         // Create a simple Rust file
         std::fs::write(
             project_path.join("test.rs"),
-            "fn simple() { println!(\"test\"); }"
-        ).unwrap();
-        
+            "fn simple() { println!(\"test\"); }",
+        )
+        .unwrap();
+
         let result = analyze_complexity(project_path).await.unwrap();
         assert_eq!(result.summary.total_files, 1);
     }

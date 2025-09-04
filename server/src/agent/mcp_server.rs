@@ -16,7 +16,9 @@ use tracing::{debug, info};
 use crate::services::analysis_service::{
     AnalysisInput, AnalysisOperation, AnalysisOptions, AnalysisService,
 };
-use crate::services::quality_gate_service::{QualityCheck, QualityGateInput, QualityGateOutput, QualityGateService};
+use crate::services::quality_gate_service::{
+    QualityCheck, QualityGateInput, QualityGateOutput, QualityGateService,
+};
 use crate::services::service_base::Service;
 
 /// Claude Code Agent MCP Server
@@ -427,7 +429,11 @@ impl ClaudeCodeAgentMcpServer {
         }))
     }
 
-    fn format_quality_gate_results(&self, target_path: &str, quality_result: &QualityGateOutput) -> String {
+    fn format_quality_gate_results(
+        &self,
+        target_path: &str,
+        quality_result: &QualityGateOutput,
+    ) -> String {
         let mut result_text = format!("🏁 Quality Gate Results for {}\n\n", target_path);
 
         let all_passed = quality_result.results.iter().all(|r| r.passed);
@@ -503,9 +509,7 @@ impl ClaudeCodeAgentMcpServer {
         result_text.push_str("• Files analyzed: 1\n");
         result_text.push_str("• Average complexity: 8.5\n");
         result_text.push_str("• Max complexity: 15\n");
-        result_text.push_str(
-            "\n✅ All functions are within Toyota Way standards (≤20 complexity)",
-        );
+        result_text.push_str("\n✅ All functions are within Toyota Way standards (≤20 complexity)");
 
         result_text
     }
@@ -966,7 +970,6 @@ impl ClaudeCodeAgentMcpServer {
 
         Ok(result)
     }
-
 
     /// Run quality monitoring background task
     async fn run_quality_monitor(

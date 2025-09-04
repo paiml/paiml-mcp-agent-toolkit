@@ -8,9 +8,7 @@
 
 // Re-export compatibility functions
 pub use super::ast_python_compat::{
-    analyze_python_file,
-    analyze_python_file_with_classifier,
-    analyze_python_file_with_complexity,
+    analyze_python_file, analyze_python_file_with_classifier, analyze_python_file_with_complexity,
 };
 
 // Keep any other types that were exported

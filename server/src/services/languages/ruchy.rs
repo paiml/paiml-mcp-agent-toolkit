@@ -773,7 +773,7 @@ impl RuchyComplexityAnalyzer {
 
         // Toyota Way Extract Method: Handle complexity tracking for logical operators
         self.handle_logical_operator_complexity(op);
-        
+
         // Analyze operands
         self.analyze_node(left);
         self.analyze_node(right);
