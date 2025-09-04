@@ -103,8 +103,11 @@ pub mod cargo_dead_code_analyzer;
 pub mod code_intelligence;
 pub mod complexity;
 pub mod complexity_patterns;
+pub mod accurate_complexity_analyzer;
 #[cfg(test)]
 mod complexity_property_tests;
+#[cfg(test)]
+mod complexity_analyzer_tests;
 pub mod configuration_service;
 pub mod context;
 pub mod coupling_analyzer;
