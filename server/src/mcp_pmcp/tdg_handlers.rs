@@ -319,7 +319,6 @@ impl ToolHandler for TdgHealthCheckTool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
 
     // Temporarily disabled due to RequestHandlerExtra construction complexity
     // #[tokio::test]

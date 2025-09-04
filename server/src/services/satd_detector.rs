@@ -2541,9 +2541,8 @@ fn helper_test() {{
         let result = detector.analyze_directory(temp_dir.path()).await;
         assert!(result.is_ok());
 
-        let analysis = result.unwrap();
-        assert_eq!(analysis.debts.len(), 0);
-        assert_eq!(analysis.metrics.total_debts, 0);
+        let debts = result.unwrap();
+        assert_eq!(debts.len(), 0);
     }
 
     #[tokio::test]
@@ -2561,9 +2560,8 @@ fn helper_test() {{
         let result = detector.analyze_directory(temp_dir.path()).await;
         assert!(result.is_ok());
 
-        let analysis = result.unwrap();
-        assert_eq!(analysis.debts.len(), 2);
-        assert_eq!(analysis.metrics.total_debts, 2);
+        let debts = result.unwrap();
+        assert_eq!(debts.len(), 2);
     }
 
     #[tokio::test]
@@ -2582,9 +2580,9 @@ fn helper_test() {{
         let result = detector.analyze_directory(temp_dir.path()).await;
         assert!(result.is_ok());
 
-        let analysis = result.unwrap();
-        assert_eq!(analysis.debts.len(), 1); // Only the .rs file should be analyzed
-        assert!(analysis.debts[0].file.ends_with("source.rs"));
+        let debts = result.unwrap();
+        assert_eq!(debts.len(), 1); // Only the .rs file should be analyzed
+        assert!(debts[0].file.ends_with("source.rs"));
     }
 
     #[test]
@@ -2633,7 +2631,7 @@ fn helper_test() {{
     // TDD RED phase - Tests for calculate_average_debt_age (37 cognitive complexity)
     #[tokio::test]
     async fn test_calculate_average_debt_age_empty_debts() {
-        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let detector = SATDDetector::new();
         let temp_dir = tempfile::tempdir().unwrap();
         let project_root = temp_dir.path();
 
@@ -2646,7 +2644,7 @@ fn helper_test() {{
 
     #[tokio::test]
     async fn test_calculate_average_debt_age_no_git() {
-        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let detector = SATDDetector::new();
         let temp_dir = tempfile::tempdir().unwrap();
         let project_root = temp_dir.path();
 
@@ -2670,7 +2668,7 @@ fn helper_test() {{
 
     #[tokio::test]
     async fn test_calculate_average_debt_age_invalid_file_path() {
-        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let detector = SATDDetector::new();
         let temp_dir = tempfile::tempdir().unwrap();
         let project_root = temp_dir.path();
 
@@ -2754,7 +2752,7 @@ fn main() {
 
     #[test]
     fn test_extract_from_content_non_rust_files() {
-        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let detector = SATDDetector::new();
 
         let content = r#"
 // TODO: python debt
@@ -2777,7 +2775,7 @@ def test_something():
     // TDD RED phase - Tests for collect_files_recursive (22 cognitive complexity)
     #[tokio::test]
     async fn test_collect_files_recursive_empty_directory() {
-        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let detector = SATDDetector::new();
         let temp_dir = tempfile::tempdir().unwrap();
         let empty_dir = temp_dir.path().join("empty");
         std::fs::create_dir(&empty_dir).unwrap();
@@ -2793,7 +2791,7 @@ def test_something():
 
     #[tokio::test]
     async fn test_collect_files_recursive_with_source_files() {
-        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let detector = SATDDetector::new();
         let temp_dir = tempfile::tempdir().unwrap();
         let project_root = temp_dir.path();
 
@@ -2818,7 +2816,7 @@ def test_something():
 
     #[tokio::test]
     async fn test_collect_files_recursive_skips_excluded_directories() {
-        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let detector = SATDDetector::new();
         let temp_dir = tempfile::tempdir().unwrap();
         let project_root = temp_dir.path();
 
@@ -2849,7 +2847,7 @@ def test_something():
 
     #[tokio::test]
     async fn test_collect_files_recursive_skips_test_files() {
-        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let detector = SATDDetector::new();
         let temp_dir = tempfile::tempdir().unwrap();
         let project_root = temp_dir.path();
 
@@ -2879,7 +2877,7 @@ def test_something():
 
     #[tokio::test]
     async fn test_collect_files_recursive_nested_directories() {
-        let detector = SATDDetector::new(vec!["TODO".to_string()]);
+        let detector = SATDDetector::new();
         let temp_dir = tempfile::tempdir().unwrap();
         let project_root = temp_dir.path();
 

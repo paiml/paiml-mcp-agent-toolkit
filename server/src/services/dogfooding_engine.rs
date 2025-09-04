@@ -360,9 +360,9 @@ impl DogfoodingEngine {
     fn analyze_all_files(&self, forest: &AstForest) -> Result<Vec<FileContext>, TemplateError> {
         let mut contexts = Vec::new();
 
-        for module in forest.files() {
+        for (module_path, _module) in forest.files() {
             // Create dummy path and AST for now - this is a compatibility stub
-            let path = Path::new(&module.path);
+            let path = Path::new(module_path);
             let dummy_ast = crate::services::unified_ast_engine::FileAst::Rust(
                 syn::parse_str("").unwrap_or_else(|_| syn::File {
                     shebang: None,

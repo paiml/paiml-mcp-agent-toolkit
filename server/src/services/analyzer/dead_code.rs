@@ -144,8 +144,6 @@ impl DeadCodeAnalyzerFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
-    use tempfile::TempDir;
 
     #[tokio::test]
     async fn test_dead_code_analyzer_creation() {

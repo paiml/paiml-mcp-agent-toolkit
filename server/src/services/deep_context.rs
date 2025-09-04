@@ -4640,24 +4640,26 @@ mod tests {
 
     #[test]
     fn test_dag_type_variants() {
-        let minimal = DagType::Minimal;
-        let standard = DagType::Standard;
-        let full = DagType::Full;
+        let call_graph = DagType::CallGraph;
+        let import_graph = DagType::ImportGraph;
+        let inheritance = DagType::Inheritance;
+        let full_dependency = DagType::FullDependency;
 
-        assert_eq!(minimal, DagType::Minimal);
-        assert_eq!(standard, DagType::Standard);
-        assert_eq!(full, DagType::Full);
+        assert_eq!(call_graph, DagType::CallGraph);
+        assert_eq!(import_graph, DagType::ImportGraph);
+        assert_eq!(inheritance, DagType::Inheritance);
+        assert_eq!(full_dependency, DagType::FullDependency);
     }
 
     #[test]
     fn test_cache_strategy_variants() {
-        let none = CacheStrategy::None;
-        let memory = CacheStrategy::Memory;
-        let persistent = CacheStrategy::Persistent;
+        let normal = CacheStrategy::Normal;
+        let force_refresh = CacheStrategy::ForceRefresh;
+        let offline = CacheStrategy::Offline;
 
-        assert_eq!(none, CacheStrategy::None);
-        assert_eq!(memory, CacheStrategy::Memory);
-        assert_eq!(persistent, CacheStrategy::Persistent);
+        assert_eq!(normal, CacheStrategy::Normal);
+        assert_eq!(force_refresh, CacheStrategy::ForceRefresh);
+        assert_eq!(offline, CacheStrategy::Offline);
     }
 
     #[test]
@@ -4999,10 +5001,16 @@ mod tests {
         let config = DeepContextConfig::default();
         let analyzer = DeepContextAnalyzer::new(config);
         let deep_context = DeepContext::default();
+        let defect_summary = DefectSummary {
+            total_defects: 0,
+            by_severity: FxHashMap::default(),
+            by_type: FxHashMap::default(),
+            defect_density: 0.0,
+        };
 
         // This method needs to be created during refactoring
         let recommendations = analyzer
-            .generate_recommendations(&deep_context)
+            .generate_recommendations(&deep_context, &defect_summary)
             .await
             .unwrap();
         assert!(recommendations.is_empty() || !recommendations.is_empty());

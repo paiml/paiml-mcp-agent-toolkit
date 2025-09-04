@@ -152,6 +152,9 @@ enum RefactorMode {
 /// Pattern configuration for file discovery and filtering
 #[derive(Debug, Clone)]
 struct PatternConfig {
+    root_path: PathBuf,
+    ignore_file: Option<String>,
+    patterns: Vec<String>,
     include_patterns: Vec<String>,
     exclude_patterns: Vec<String>,
     ignore_file_path: Option<PathBuf>,
@@ -219,6 +222,11 @@ async fn setup_refactoring_context(
         mode,
         quality_profile: QualityProfile::default(),
         patterns: PatternConfig {
+            root_path: project_path.clone(),
+            ignore_file: ignore_file
+                .as_ref()
+                .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string())),
+            patterns: vec![],
             include_patterns,
             exclude_patterns,
             ignore_file_path: ignore_file,
@@ -2277,6 +2285,10 @@ mod tests {
             root_path: temp_dir.path().to_path_buf(),
             ignore_file: Some(".gitignore".to_string()),
             patterns: vec![],
+            include_patterns: vec![],
+            exclude_patterns: vec![],
+            ignore_file_path: Some(gitignore_path),
+            file_extensions: vec!["rs".to_string()],
         };
 
         let result = load_ignore_patterns(&config).await;
@@ -2295,6 +2307,10 @@ mod tests {
             root_path: temp_dir.path().to_path_buf(),
             ignore_file: Some(".nonexistent".to_string()),
             patterns: vec!["manual_pattern".to_string()],
+            include_patterns: vec![],
+            exclude_patterns: vec![],
+            ignore_file_path: None,
+            file_extensions: vec!["rs".to_string()],
         };
 
         let result = load_ignore_patterns(&config).await;
@@ -2312,9 +2328,13 @@ mod tests {
             root_path: temp_dir.path().to_path_buf(),
             ignore_file: None,
             patterns: vec![],
+            include_patterns: vec![],
+            exclude_patterns: vec![],
+            ignore_file_path: None,
+            file_extensions: vec!["rs".to_string()],
         };
 
-        let result = discover_source_files(&config).await;
+        let result = discover_source_files(&config.root_path, &config, &[]).await;
 
         assert!(result.is_ok());
         let files = result.unwrap();
@@ -2331,9 +2351,13 @@ mod tests {
             root_path: temp_dir.path().to_path_buf(),
             ignore_file: None,
             patterns: vec![],
+            include_patterns: vec![],
+            exclude_patterns: vec![],
+            ignore_file_path: None,
+            file_extensions: vec!["rs".to_string()],
         };
 
-        let result = discover_source_files(&config).await;
+        let result = discover_source_files(&config.root_path, &config, &[]).await;
 
         assert!(result.is_ok());
         let files = result.unwrap();

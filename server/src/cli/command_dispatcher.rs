@@ -999,9 +999,9 @@ mod tests {
         let server = create_test_server();
 
         let command = Commands::Generate {
-            category: None,
+            category: String::new(),
             template: "test_template".to_string(),
-            params: None,
+            params: Vec::new(),
             output: None,
             create_dirs: false,
         };
@@ -1139,7 +1139,7 @@ mod tests {
         use crate::cli::commands::TestSuite;
 
         let config = CommandDispatcher::create_test_config(
-            TestSuite::All,
+            &TestSuite::All,
             100,  // iterations
             true, // memory
             true, // throughput
@@ -1158,7 +1158,7 @@ mod tests {
         use crate::cli::commands::TestSuite;
 
         let config = CommandDispatcher::create_test_config(
-            TestSuite::Memory,
+            &TestSuite::Memory,
             50,    // iterations
             false, // memory flag (should be enabled by suite)
             false, // throughput
