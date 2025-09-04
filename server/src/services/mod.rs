@@ -99,6 +99,7 @@ mod big_o_analyzer_issue54_test;
 mod big_o_analyzer_property_tests;
 pub mod cache;
 pub mod canonical_query;
+pub mod cargo_dead_code_analyzer;
 pub mod code_intelligence;
 pub mod complexity;
 pub mod complexity_patterns;
@@ -109,6 +110,8 @@ pub mod context;
 pub mod coupling_analyzer;
 pub mod dag_builder;
 pub mod dead_code_analyzer;
+#[cfg(test)]
+mod dead_code_analyzer_tests;
 #[cfg(test)]
 mod dead_code_property_tests;
 pub mod dead_code_prover;
