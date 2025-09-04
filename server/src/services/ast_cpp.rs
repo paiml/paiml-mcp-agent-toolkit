@@ -1,30 +1,27 @@
-//! C++ language AST parser implementation
+//! C++ AST analysis - MIGRATION IN PROGRESS
 //!
-//! Refactored with dispatch table architecture for reduced complexity.
-//! Uses modular design patterns to improve maintainability.
+//! This module is being migrated to the new unified AST architecture.
+//! It now acts as a facade, delegating to the compatibility layer.
 //!
-//! The complex implementation has been moved to ast_cpp_dispatch.rs
-//! This file now serves as a compatibility wrapper.
+//! Migration status: Using compatibility shim
+//! Target: server/src/ast/languages/cpp.rs
 
-use crate::models::unified_ast::AstDag;
-use anyhow::Result;
 use std::path::Path;
+use anyhow::Result;
+use crate::models::unified_ast::AstDag;
 
-// Re-export the improved dispatch parser
-pub use crate::services::ast_cpp_dispatch::CppAstDispatchParser;
+// Re-export compatibility functions
+pub use super::ast_cpp_compat::{
+    analyze_cpp_file,
+    analyze_cpp_file_with_classifier,
+    analyze_cpp_file_with_complexity,
+    analyze_cpp_file_with_complexity_and_classifier,
+};
 
-/// C++ language AST parser implementation (Legacy compatibility wrapper)
-///
-/// This is a compatibility wrapper around the new CppAstDispatchParser.
-/// The actual implementation with improved dispatch table architecture
-/// is located in ast_cpp_dispatch.rs.
-///
-/// This reduces the complexity of this file from ~840 lines to ~60 lines
-/// while maintaining backward compatibility.
-pub struct CppAstParser {
-    #[cfg(feature = "cpp-ast")]
-    inner: CppAstDispatchParser,
-}
+// Dispatch parser removed - functionality moved to new AST module
+
+// Legacy compatibility types (may be referenced by other modules)
+pub struct CppAstParser {}
 
 impl Default for CppAstParser {
     fn default() -> Self {
@@ -34,32 +31,14 @@ impl Default for CppAstParser {
 
 impl CppAstParser {
     pub fn new() -> Self {
-        #[cfg(feature = "cpp-ast")]
-        {
-            Self {
-                inner: CppAstDispatchParser::new(),
-            }
-        }
-
-        #[cfg(not(feature = "cpp-ast"))]
-        {
-            Self {}
-        }
+        Self {}
     }
 
-    pub fn parse_file(&mut self, path: &Path, content: &str) -> Result<AstDag> {
-        #[cfg(feature = "cpp-ast")]
-        {
-            self.inner.parse_file(path, content)
-        }
-
-        #[cfg(not(feature = "cpp-ast"))]
-        {
-            let _ = (path, content);
-            Err(anyhow::anyhow!(
-                "C++ AST parsing requires the 'cpp-ast' feature"
-            ))
-        }
+    pub fn parse_file(&mut self, _path: &Path, _content: &str) -> Result<AstDag> {
+        // Placeholder - use new AST module for C++ parsing
+        Err(anyhow::anyhow!(
+            "C++ AST parsing has been moved to the new AST module"
+        ))
     }
 }
 

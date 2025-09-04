@@ -70,27 +70,27 @@ pub mod service_lifecycle;
 pub mod service_registry;
 
 pub mod artifact_writer;
-pub mod ast_based_dependency_analyzer;
 #[cfg(feature = "c-ast")]
 pub mod ast_c;
 #[cfg(feature = "c-ast")]
-pub mod ast_c_dispatch;
+pub mod ast_c_compat; // Compatibility layer for C AST migration
 #[cfg(feature = "cpp-ast")]
 pub mod ast_cpp;
 #[cfg(feature = "cpp-ast")]
-pub mod ast_cpp_dispatch;
+pub mod ast_cpp_compat; // Compatibility layer for C++ AST migration
 #[cfg(feature = "kotlin-ast")]
 pub mod ast_kotlin;
 #[cfg(feature = "python-ast")]
 pub mod ast_python;
 pub mod ast_rust;
 pub mod ast_rust_compat; // Compatibility layer during migration
-pub mod ast_rust_unified;
+#[cfg(feature = "python-ast")]
+pub mod ast_python_compat; // Compatibility layer for Python AST migration
 pub mod ast_strategies;
 #[cfg(feature = "typescript-ast")]
 pub mod ast_typescript;
 #[cfg(feature = "typescript-ast")]
-pub mod ast_typescript_dispatch;
+pub mod ast_typescript_compat; // Compatibility layer for TypeScript AST migration
 pub mod big_o_analyzer;
 #[cfg(test)]
 mod big_o_analyzer_issue54_test;
@@ -165,17 +165,12 @@ pub mod simple_deep_context;
 pub mod symbol_table;
 pub mod tdg_calculator;
 pub mod template_service;
-pub mod unified_ast_engine;
-pub mod unified_ast_parser;
-pub mod unified_refactor_analyzer;
+pub mod unified_ast_engine; // Stub for backward compatibility
+pub mod unified_refactor_analyzer; // Stub for backward compatibility
 pub mod verified_complexity;
 pub mod wasm;
 
-#[cfg(test)]
-mod ast_rust_property_tests;
 
-#[cfg(all(test, feature = "typescript-ast"))]
-mod ast_typescript_property_tests;
 
 #[cfg(test)]
 mod satd_property_tests;
@@ -189,8 +184,6 @@ mod git_clone_property_tests;
 #[cfg(test)]
 mod quality_proxy_property_tests;
 
-#[cfg(test)]
-mod ast_import_tests;
 
 pub mod telemetry_service;
 

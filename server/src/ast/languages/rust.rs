@@ -13,6 +13,12 @@ pub struct RustStrategy {
     // Configuration options can be added here
 }
 
+impl Default for RustStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RustStrategy {
     pub fn new() -> Self {
         Self {}

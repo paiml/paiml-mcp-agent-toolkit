@@ -11,6 +11,12 @@ use super::LanguageStrategy;
 /// C language parsing strategy  
 pub struct CStrategy;
 
+impl Default for CStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CStrategy {
     pub fn new() -> Self {
         Self
@@ -108,6 +114,12 @@ impl LanguageStrategy for CStrategy {
 
 /// C++ language parsing strategy
 pub struct CppStrategy;
+
+impl Default for CppStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl CppStrategy {
     pub fn new() -> Self {

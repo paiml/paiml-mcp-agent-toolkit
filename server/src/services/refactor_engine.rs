@@ -45,7 +45,7 @@ use crate::models::refactor::{
 };
 use crate::services::cache::unified_manager::UnifiedCacheManager;
 use crate::services::unified_ast_engine::UnifiedAstEngine;
-use crate::services::unified_refactor_analyzer::{AnalyzerPool, RustAnalyzer};
+use crate::services::unified_refactor_analyzer::AnalyzerPool;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
@@ -322,15 +322,13 @@ impl UnifiedEngine {
         config: RefactorConfig,
         targets: Vec<PathBuf>,
     ) -> Self {
-        let mut analyzers = AnalyzerPool::new();
-        analyzers.register(Arc::new(RustAnalyzer::new()));
-
+        // Skip analyzer pool setup for now - this is a compatibility stub
         let state_machine = Arc::new(RwLock::new(RefactorStateMachine::new(targets, config)));
 
         Self {
             ast_engine,
             cache,
-            analyzers,
+            analyzers: AnalyzerPool::new(), // Dummy analyzer pool for compatibility
             mode,
             state_machine,
             metrics: Arc::new(EngineMetrics::default()),

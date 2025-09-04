@@ -4003,7 +4003,7 @@ async fn analyze_single_file_complexity(file_path: &std::path::Path) -> Option<c
         #[cfg(feature = "typescript-ast")]
         "ts" | "js" | "jsx" | "tsx" => analyze_typescript_file_with_complexity(file_path).await.ok(),
         #[cfg(feature = "python-ast")]
-        "py" => analyze_python_file_with_complexity(file_path).await.ok(),
+        "py" => analyze_python_file_with_complexity(file_path, None).await.ok(),
         _ => None,
     }
 }

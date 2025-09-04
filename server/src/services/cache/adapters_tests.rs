@@ -214,7 +214,7 @@ async fn test_persistent_cache_adapter_evict_if_needed() {
     let temp_dir = TempDir::new().unwrap();
     let strategy = HashCacheStrategy::<TestKey, TestValue>::new();
     let mut config = CacheConfig::default();
-    config.max_memory_bytes = 100; // Small limit to trigger eviction
+    config.max_memory_mb = 1; // Small limit to trigger eviction
     
     let cache = PersistentCache::new(strategy, config, temp_dir.path()).unwrap();
     let adapter = PersistentCacheAdapter::new(cache);

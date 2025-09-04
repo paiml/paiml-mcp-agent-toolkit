@@ -1192,7 +1192,7 @@ async fn analyze_file_complexity(
             #[cfg(feature = "python-ast")]
             {
                 use crate::services::ast_python;
-                ast_python::analyze_python_file_with_complexity(path)
+                ast_python::analyze_python_file_with_complexity(path, None)
                     .await
                     .ok()
             }
@@ -3372,7 +3372,7 @@ async fn handle_analyze_lint_hotspot(
     };
     let output_path = temp_file.path().to_path_buf();
 
-    // Run lint hotspot analysis with JSON output to temp file
+    // Execute lint hotspot analysis with JSON output format
     let result = handle_analyze_lint_hotspot(
         project_path.clone(),
         None, // file
