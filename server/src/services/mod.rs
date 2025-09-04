@@ -84,6 +84,7 @@ pub mod ast_kotlin;
 #[cfg(feature = "python-ast")]
 pub mod ast_python;
 pub mod ast_rust;
+pub mod ast_rust_compat; // Compatibility layer during migration
 pub mod ast_rust_unified;
 pub mod ast_strategies;
 #[cfg(feature = "typescript-ast")]
