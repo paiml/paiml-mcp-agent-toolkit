@@ -13,6 +13,12 @@ use super::LanguageStrategy;
 /// TypeScript language parsing strategy
 pub struct TypeScriptStrategy;
 
+impl Default for TypeScriptStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TypeScriptStrategy {
     pub fn new() -> Self {
         Self
@@ -21,7 +27,7 @@ impl TypeScriptStrategy {
     fn parse_module(&self, content: &str, filename: &str) -> Result<Module> {
         let source_map = SourceMap::default();
         let source_file = source_map.new_source_file(
-            FileName::Custom(filename.to_string()).into(),
+            FileName::Custom(filename.to_string()),
             content.to_string(),
         );
         
@@ -124,6 +130,12 @@ impl LanguageStrategy for TypeScriptStrategy {
 /// JavaScript language parsing strategy
 pub struct JavaScriptStrategy;
 
+impl Default for JavaScriptStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl JavaScriptStrategy {
     pub fn new() -> Self {
         Self
@@ -132,7 +144,7 @@ impl JavaScriptStrategy {
     fn parse_module(&self, content: &str, filename: &str) -> Result<Module> {
         let source_map = SourceMap::default();
         let source_file = source_map.new_source_file(
-            FileName::Custom(filename.to_string()).into(),
+            FileName::Custom(filename.to_string()),
             content.to_string(),
         );
         

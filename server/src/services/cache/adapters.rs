@@ -22,6 +22,10 @@ impl<T: CacheStrategy> ContentCacheAdapter<T> {
             inner: Arc::new(RwLock::new(cache)),
         }
     }
+    
+    pub fn is_empty(&self) -> bool {
+        self.inner.read().len() == 0
+    }
 }
 
 #[async_trait]
@@ -62,12 +66,6 @@ where
 
     fn len(&self) -> usize {
         self.inner.read().len()
-    }
-
-    async fn evict_if_needed(&self) -> Result<()> {
-        // ContentCache doesn't have explicit eviction control
-        // LRU eviction happens automatically on insert
-        Ok(())
     }
 }
 
@@ -123,11 +121,6 @@ where
 
     fn len(&self) -> usize {
         self.inner.read().len()
-    }
-
-    async fn evict_if_needed(&self) -> Result<()> {
-        self.inner.write().evict_if_needed();
-        Ok(())
     }
 }
 

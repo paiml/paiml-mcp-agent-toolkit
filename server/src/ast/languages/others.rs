@@ -4,7 +4,7 @@ use std::path::Path;
 use anyhow::Result;
 use async_trait::async_trait;
 
-use crate::ast::core::{AstDag, Language, UnifiedAstNode, NodeFlags};
+use crate::ast::core::{AstDag, Language, UnifiedAstNode};
 use super::LanguageStrategy;
 
 /// Placeholder strategy for languages not yet fully implemented

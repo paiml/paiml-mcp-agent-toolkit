@@ -13,6 +13,12 @@ pub struct PythonStrategy {
     // Configuration options can be added here
 }
 
+impl Default for PythonStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PythonStrategy {
     pub fn new() -> Self {
         Self {}

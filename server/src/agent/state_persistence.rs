@@ -186,7 +186,7 @@ impl StatePersistence {
             fs::create_dir_all(parent).await?;
         }
 
-        // Write atomically using temp file
+        // Use safe two-phase write pattern with .tmp extension
         let temp_file = self.state_file.with_extension("tmp");
         fs::write(&temp_file, json).await?;
         fs::rename(&temp_file, &self.state_file).await?;
