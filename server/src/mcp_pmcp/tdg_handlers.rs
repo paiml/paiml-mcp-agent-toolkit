@@ -170,8 +170,10 @@ impl ToolHandler for TdgAnalyzeWithStorageTool {
 #[derive(Debug, Deserialize)]
 struct TdgPerformanceMetricsArgs {
     #[serde(default)]
+    #[allow(dead_code)]
     include_history: bool,
     #[serde(default)]
+    #[allow(dead_code)]
     metrics: Vec<String>,
 }
 
@@ -266,10 +268,13 @@ impl ToolHandler for TdgConfigureStorageTool {
 #[derive(Debug, Deserialize)]
 struct TdgHealthCheckArgs {
     #[serde(default = "default_true")]
+    #[allow(dead_code)]
     include_recommendations: bool,
     #[serde(default = "default_true")]
+    #[allow(dead_code)]
     check_storage: bool,
     #[serde(default = "default_true")]
+    #[allow(dead_code)]
     check_performance: bool,
 }
 

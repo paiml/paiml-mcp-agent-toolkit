@@ -472,11 +472,17 @@ impl DaemonManager {
                 Ok(())
             }
             DaemonCommand::StartMonitoring { project_path } => {
-                info!("Start monitoring command received for project: {} (standalone mode)", project_path);
+                info!(
+                    "Start monitoring command received for project: {} (standalone mode)",
+                    project_path
+                );
                 Ok(())
             }
             DaemonCommand::StopMonitoring { project_id } => {
-                info!("Stop monitoring command received for project: {} (standalone mode)", project_id);
+                info!(
+                    "Stop monitoring command received for project: {} (standalone mode)",
+                    project_id
+                );
                 Ok(())
             }
             DaemonCommand::ReloadConfig => {
@@ -635,7 +641,7 @@ mod tests {
         // TDD: Test that get_status returns a valid DaemonState
         let status = DaemonManager::get_status().await;
         assert!(status.is_ok());
-        
+
         let state = status.unwrap();
         assert_eq!(state.status, DaemonStatus::Stopped);
         assert_eq!(state.active_projects, 0);
@@ -655,7 +661,8 @@ mod tests {
         // TDD: Test that send_command handles StartMonitoring command
         let result = DaemonManager::send_command(DaemonCommand::StartMonitoring {
             project_path: "test-project".to_string(),
-        }).await;
+        })
+        .await;
         assert!(result.is_ok());
     }
 
@@ -664,12 +671,16 @@ mod tests {
         // TDD: Test all DaemonCommand variants
         let commands = vec![
             DaemonCommand::GetStatus,
-            DaemonCommand::StartMonitoring { project_path: "proj1".to_string() },
-            DaemonCommand::StopMonitoring { project_id: "proj2".to_string() },
+            DaemonCommand::StartMonitoring {
+                project_path: "proj1".to_string(),
+            },
+            DaemonCommand::StopMonitoring {
+                project_id: "proj2".to_string(),
+            },
             DaemonCommand::ReloadConfig,
             DaemonCommand::Shutdown,
         ];
-        
+
         for command in commands {
             let result = DaemonManager::send_command(command).await;
             assert!(result.is_ok(), "Command should be handled successfully");

@@ -6,15 +6,13 @@
 //! Migration status: Using compatibility shim
 //! Target: server/src/ast/languages/c.rs
 
-use std::path::Path;
-use anyhow::Result;
 use crate::models::unified_ast::AstDag;
+use anyhow::Result;
+use std::path::Path;
 
 // Re-export compatibility functions
 pub use super::ast_c_compat::{
-    analyze_c_file,
-    analyze_c_file_with_classifier,
-    analyze_c_file_with_complexity,
+    analyze_c_file, analyze_c_file_with_classifier, analyze_c_file_with_complexity,
     analyze_c_file_with_complexity_and_classifier,
 };
 

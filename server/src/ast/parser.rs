@@ -31,6 +31,7 @@ pub struct ParseResult {
 
 /// Unified parser placeholder
 pub struct UnifiedParser {
+    #[allow(dead_code)]
     config: ParserConfig,
 }
 
@@ -40,11 +41,11 @@ impl UnifiedParser {
             config: ParserConfig::default(),
         }
     }
-    
+
     pub fn with_config(config: ParserConfig) -> Self {
         Self { config }
     }
-    
+
     pub fn capabilities(&self) -> ParserCapabilities {
         ParserCapabilities {
             languages: vec![Language::Rust, Language::Python, Language::TypeScript],

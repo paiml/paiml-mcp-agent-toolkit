@@ -2034,7 +2034,7 @@ mod tests {
     #[test]
     fn test_quality_profile_default() {
         let profile = QualityProfile::default();
-        
+
         assert_eq!(profile.coverage_min, 80.0);
         assert_eq!(profile.complexity_max, 20);
         assert_eq!(profile.complexity_target, 10);
@@ -2049,7 +2049,7 @@ mod tests {
             complexity_target: 8,
             satd_allowed: 2,
         };
-        
+
         assert_eq!(profile.coverage_min, 75.0);
         assert_eq!(profile.complexity_max, 15);
         assert_eq!(profile.complexity_target, 8);
@@ -2059,7 +2059,7 @@ mod tests {
     #[test]
     fn test_quality_metrics_default() {
         let metrics = QualityMetrics::default();
-        
+
         assert_eq!(metrics.total_violations, 0);
         assert_eq!(metrics.coverage_percent, 0.0);
         assert_eq!(metrics.max_complexity, 0);
@@ -2080,7 +2080,7 @@ mod tests {
             total_files: 20,
             functions_with_high_complexity: 12,
         };
-        
+
         assert_eq!(metrics.total_violations, 50);
         assert_eq!(metrics.coverage_percent, 75.5);
         assert_eq!(metrics.max_complexity, 25);
@@ -2093,7 +2093,7 @@ mod tests {
     #[test]
     fn test_refactor_progress_default() {
         let progress = RefactorProgress::default();
-        
+
         assert_eq!(progress.files_analyzed, 0);
         assert_eq!(progress.files_refactored, 0);
         assert_eq!(progress.iterations_completed, 0);
@@ -2116,7 +2116,7 @@ mod tests {
             quality_gates_remaining: vec!["satd".to_string(), "coverage".to_string()],
             current_phase: RefactorPhase::Analysis,
         };
-        
+
         assert_eq!(progress.files_completed, 8);
         assert_eq!(progress.files_remaining, 7);
         assert_eq!(progress.overall_completion_percent, 75.0);
@@ -2136,7 +2136,7 @@ mod tests {
             progress: RefactorProgress::default(),
             start_time,
         };
-        
+
         assert_eq!(state.iteration, 2);
         assert!(state.context_generated);
         assert_eq!(state.context_path, PathBuf::from("/tmp/context"));
@@ -2152,7 +2152,7 @@ mod tests {
             defect_density: 2.5,
             total_violations: 10,
         };
-        
+
         assert_eq!(hotspot.file, PathBuf::from("/src/main.rs"));
         assert_eq!(hotspot.defect_density, 2.5);
         assert_eq!(hotspot.total_violations, 10);
@@ -2172,7 +2172,7 @@ mod tests {
             suggestion: Some("remove unused variable".to_string()),
             machine_applicable: true,
         };
-        
+
         assert_eq!(violation.file, PathBuf::from("/src/test.rs"));
         assert_eq!(violation.line, 42);
         assert_eq!(violation.column, 10);
@@ -2181,7 +2181,10 @@ mod tests {
         assert_eq!(violation.lint_name, "dead_code");
         assert_eq!(violation.message, "unused variable");
         assert_eq!(violation.severity, "warning");
-        assert_eq!(violation.suggestion, Some("remove unused variable".to_string()));
+        assert_eq!(
+            violation.suggestion,
+            Some("remove unused variable".to_string())
+        );
         assert!(violation.machine_applicable);
     }
 
@@ -2192,7 +2195,7 @@ mod tests {
             defect_density: 1.5,
             total_violations: 5,
         };
-        
+
         let violation = ViolationDetailJson {
             file: PathBuf::from("/src/lib.rs"),
             line: 10,
@@ -2205,13 +2208,13 @@ mod tests {
             suggestion: None,
             machine_applicable: false,
         };
-        
+
         let response = LintHotspotJsonResponse {
             hotspot,
             all_violations: vec![violation],
             total_project_violations: 25,
         };
-        
+
         assert_eq!(response.hotspot.file, PathBuf::from("/src/lib.rs"));
         assert_eq!(response.hotspot.defect_density, 1.5);
         assert_eq!(response.all_violations.len(), 1);
@@ -2223,7 +2226,7 @@ mod tests {
     fn test_parse_github_issue_url_valid() {
         let url = "https://github.com/owner/repo/issues/123";
         let result = parse_github_issue_url(url);
-        
+
         assert!(result.is_ok());
         let issue_ref = result.unwrap();
         assert_eq!(issue_ref.owner, "owner");
@@ -2235,7 +2238,7 @@ mod tests {
     fn test_parse_github_issue_url_invalid() {
         let url = "https://invalid-url.com/not-github";
         let result = parse_github_issue_url(url);
-        
+
         assert!(result.is_err());
     }
 
@@ -2243,7 +2246,7 @@ mod tests {
     fn test_parse_coverage_from_output_valid() {
         let output = b"Coverage: 85.5%\nTotal lines: 1000";
         let result = parse_coverage_from_output(output);
-        
+
         assert_eq!(result, Some(85.5));
     }
 
@@ -2251,7 +2254,7 @@ mod tests {
     fn test_parse_coverage_from_output_no_match() {
         let output = b"No coverage information available";
         let result = parse_coverage_from_output(output);
-        
+
         assert_eq!(result, None);
     }
 
@@ -2259,7 +2262,7 @@ mod tests {
     fn test_parse_coverage_from_output_multiple_matches() {
         let output = b"Test Coverage: 78.2%\nLine Coverage: 85.0%";
         let result = parse_coverage_from_output(output);
-        
+
         // Should return the first match
         assert_eq!(result, Some(78.2));
     }
@@ -2269,15 +2272,15 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let gitignore_path = temp_dir.path().join(".gitignore");
         std::fs::write(&gitignore_path, "target/\n*.tmp\n").unwrap();
-        
+
         let config = PatternConfig {
             root_path: temp_dir.path().to_path_buf(),
             ignore_file: Some(".gitignore".to_string()),
             patterns: vec![],
         };
-        
+
         let result = load_ignore_patterns(&config).await;
-        
+
         assert!(result.is_ok());
         let patterns = result.unwrap();
         assert!(patterns.contains(&"target/".to_string()));
@@ -2287,15 +2290,15 @@ mod tests {
     #[tokio::test]
     async fn test_load_ignore_patterns_no_file() {
         let temp_dir = TempDir::new().unwrap();
-        
+
         let config = PatternConfig {
             root_path: temp_dir.path().to_path_buf(),
             ignore_file: Some(".nonexistent".to_string()),
             patterns: vec!["manual_pattern".to_string()],
         };
-        
+
         let result = load_ignore_patterns(&config).await;
-        
+
         assert!(result.is_ok());
         let patterns = result.unwrap();
         assert!(patterns.contains(&"manual_pattern".to_string()));
@@ -2304,15 +2307,15 @@ mod tests {
     #[tokio::test]
     async fn test_discover_source_files_empty_directory() {
         let temp_dir = TempDir::new().unwrap();
-        
+
         let config = PatternConfig {
             root_path: temp_dir.path().to_path_buf(),
             ignore_file: None,
             patterns: vec![],
         };
-        
+
         let result = discover_source_files(&config).await;
-        
+
         assert!(result.is_ok());
         let files = result.unwrap();
         assert!(files.is_empty());
@@ -2323,15 +2326,15 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let rust_file = temp_dir.path().join("main.rs");
         std::fs::write(&rust_file, "fn main() {}").unwrap();
-        
+
         let config = PatternConfig {
             root_path: temp_dir.path().to_path_buf(),
             ignore_file: None,
             patterns: vec![],
         };
-        
+
         let result = discover_source_files(&config).await;
-        
+
         assert!(result.is_ok());
         let files = result.unwrap();
         assert_eq!(files.len(), 1);
@@ -2342,11 +2345,13 @@ mod tests {
     fn test_extract_target_files_from_issue() {
         let content = GitHubIssueContent {
             title: "Fix issues in src/main.rs and tests/test.rs".to_string(),
-            body: "Found problems in:\n- src/lib.rs\n- src/utils.rs\n\nNeed to refactor these files.".to_string(),
+            body:
+                "Found problems in:\n- src/lib.rs\n- src/utils.rs\n\nNeed to refactor these files."
+                    .to_string(),
         };
-        
+
         let result = extract_target_files_from_issue(&content, Path::new("/project"));
-        
+
         assert_eq!(result.len(), 4); // main.rs, test.rs, lib.rs, utils.rs
         assert!(result.iter().any(|p| p.ends_with("main.rs")));
         assert!(result.iter().any(|p| p.ends_with("test.rs")));
@@ -2360,9 +2365,9 @@ mod tests {
             title: "General refactoring needed".to_string(),
             body: "This project needs general improvements.".to_string(),
         };
-        
+
         let result = extract_target_files_from_issue(&content, Path::new("/project"));
-        
+
         assert!(result.is_empty());
     }
 }

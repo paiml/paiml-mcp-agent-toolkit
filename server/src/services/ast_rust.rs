@@ -8,9 +8,7 @@
 
 // Re-export compatibility functions
 pub use super::ast_rust_compat::{
-    analyze_rust_file,
-    analyze_rust_file_with_classifier,
-    analyze_rust_file_with_complexity,
+    analyze_rust_file, analyze_rust_file_with_classifier, analyze_rust_file_with_complexity,
     analyze_rust_file_with_complexity_and_classifier,
 };
 

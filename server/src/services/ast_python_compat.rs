@@ -1,14 +1,14 @@
 //! Compatibility shim for ast_python module during migration to new AST architecture
-//! 
+//!
 //! This module provides backward compatibility for services still using the old Python AST API.
 //! It will be removed once all services are migrated to the new ast:: module.
 
-use std::path::Path;
 use anyhow::Result;
+use std::path::Path;
 
 use crate::models::error::TemplateError;
-use crate::services::complexity::{FileComplexityMetrics, FunctionComplexity, ComplexityMetrics};
-use crate::services::context::{FileContext, AstItem};
+use crate::services::complexity::{ComplexityMetrics, FileComplexityMetrics, FunctionComplexity};
+use crate::services::context::{AstItem, FileContext};
 use crate::services::file_classifier::FileClassifier;
 
 // Import the new AST module
@@ -33,15 +33,17 @@ async fn analyze_python_file_with_complexity_and_classifier(
     let content = tokio::fs::read_to_string(path)
         .await
         .map_err(TemplateError::Io)?;
-    
+
     // Use the new AST module to parse
     let strategy = PythonStrategy::new();
-    let ast = strategy.parse_file(path, &content).await
+    let ast = strategy
+        .parse_file(path, &content)
+        .await
         .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
-    
+
     // Extract functions using the new API
     let functions = strategy.extract_functions(&ast);
-    
+
     // Convert to old format
     let mut function_metrics = Vec::new();
     for (i, _node) in functions.iter().enumerate() {
@@ -50,18 +52,18 @@ async fn analyze_python_file_with_complexity_and_classifier(
             line_start: (i * 10) as u32,
             line_end: ((i + 1) * 10) as u32,
             metrics: ComplexityMetrics {
-                cyclomatic: 1,  // Placeholder
-                cognitive: 1,   // Placeholder
+                cyclomatic: 1, // Placeholder
+                cognitive: 1,  // Placeholder
                 nesting_max: 0,
                 lines: 10,
                 halstead: None,
             },
         });
     }
-    
+
     // Calculate total complexity
     let (cyclomatic, cognitive) = strategy.calculate_complexity(&ast);
-    
+
     Ok(FileComplexityMetrics {
         path: path.display().to_string(),
         total_complexity: ComplexityMetrics {
@@ -90,30 +92,32 @@ pub async fn analyze_python_file_with_classifier(
     let content = tokio::fs::read_to_string(path)
         .await
         .map_err(TemplateError::Io)?;
-    
+
     // Use the new AST module to parse
     let strategy = PythonStrategy::new();
-    let ast = strategy.parse_file(path, &content).await
+    let ast = strategy
+        .parse_file(path, &content)
+        .await
         .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
-    
+
     // Extract information using the new API
     let functions = strategy.extract_functions(&ast);
     let types = strategy.extract_types(&ast);
     let _imports = strategy.extract_imports(&ast);
-    
+
     // Convert to old format
     let mut items = Vec::new();
-    
+
     // Add functions as items
     for (i, _node) in functions.iter().enumerate() {
         items.push(AstItem::Function {
             name: format!("function_{}", i),
-            visibility: "".to_string(),  // Python doesn't have visibility modifiers
-            is_async: false,  // Could check node flags for async
+            visibility: "".to_string(), // Python doesn't have visibility modifiers
+            is_async: false,            // Could check node flags for async
             line: i * 10,
         });
     }
-    
+
     // Add classes as items (using Struct variant for Python classes)
     for (i, _node) in types.iter().enumerate() {
         items.push(AstItem::Struct {
@@ -124,7 +128,7 @@ pub async fn analyze_python_file_with_classifier(
             line: (functions.len() + i) * 10,
         });
     }
-    
+
     Ok(FileContext {
         path: path.display().to_string(),
         language: "python".to_string(),

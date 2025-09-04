@@ -96,6 +96,7 @@ pub struct PerformanceProfiler {
     /// Completed profiles
     completed_profiles: Arc<RwLock<Vec<OperationProfile>>>,
     /// Call stack traces
+    #[allow(dead_code)]
     call_stacks: Arc<RwLock<Vec<Vec<CallFrame>>>>,
     /// Memory samples
     memory_samples: Arc<RwLock<Vec<MemorySample>>>,

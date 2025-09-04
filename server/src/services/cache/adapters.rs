@@ -22,7 +22,7 @@ impl<T: CacheStrategy> ContentCacheAdapter<T> {
             inner: Arc::new(RwLock::new(cache)),
         }
     }
-    
+
     pub fn is_empty(&self) -> bool {
         self.inner.read().len() == 0
     }

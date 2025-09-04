@@ -225,7 +225,7 @@ impl CliAdapter {
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         // Toyota Way Extract Method: Determine command category and dispatch accordingly
         let command_category = Self::get_analyze_command_category(analyze_cmd);
-        
+
         match command_category {
             AnalyzeCommandCategory::Basic => Self::dispatch_basic_analysis(analyze_cmd),
             AnalyzeCommandCategory::Advanced => Self::dispatch_advanced_analysis(analyze_cmd),
@@ -1631,12 +1631,18 @@ impl CliInput {
     fn get_analyze_command_name(analyze_cmd: &AnalyzeCommands) -> &'static str {
         // Toyota Way Extract Method: Use categorized dispatch for analyze command names
         let category = CliAdapter::get_analyze_command_category(analyze_cmd);
-        
+
         match category {
             AnalyzeCommandCategory::Basic => Self::get_basic_analyze_command_name(analyze_cmd),
-            AnalyzeCommandCategory::Advanced => Self::get_advanced_analyze_command_name(analyze_cmd),
-            AnalyzeCommandCategory::Structural => Self::get_structural_analyze_command_name(analyze_cmd),
-            AnalyzeCommandCategory::Specialized => Self::get_specialized_analyze_command_name(analyze_cmd),
+            AnalyzeCommandCategory::Advanced => {
+                Self::get_advanced_analyze_command_name(analyze_cmd)
+            }
+            AnalyzeCommandCategory::Structural => {
+                Self::get_structural_analyze_command_name(analyze_cmd)
+            }
+            AnalyzeCommandCategory::Specialized => {
+                Self::get_specialized_analyze_command_name(analyze_cmd)
+            }
         }
     }
 
@@ -1685,7 +1691,9 @@ impl CliInput {
             AnalyzeCommands::IncrementalCoverage { .. } => "analyze-incremental-coverage",
             AnalyzeCommands::AssemblyScript { .. } => "analyze-assemblyscript",
             AnalyzeCommands::WebAssembly { .. } => "analyze-webassembly",
-            _ => unreachable!("Non-specialized command passed to specialized command name extractor"),
+            _ => {
+                unreachable!("Non-specialized command passed to specialized command name extractor")
+            }
         }
     }
 
@@ -1708,14 +1716,15 @@ impl CliInput {
             Commands::Analyze(analyze_cmd) => Self::get_analyze_command_name(analyze_cmd),
             // All other commands: extract name directly using category dispatch
             _ => Self::get_simple_command_name(command),
-        }.to_string()
+        }
+        .to_string()
     }
 
     /// Toyota Way Extract Method: Get simple command name for non-analyze commands
     /// Single responsibility: name extraction using category-based dispatch
     fn get_simple_command_name(command: &Commands) -> &'static str {
         let category = Self::get_command_category(command);
-        
+
         match category {
             CommandCategory::Generation => Self::get_generation_command_name(command),
             CommandCategory::Analysis => Self::get_analysis_command_name(command),
@@ -1733,13 +1742,26 @@ impl CliInput {
         match command {
             Commands::Generate { .. } | Commands::Scaffold { .. } => CommandCategory::Generation,
             Commands::QualityGate { .. } | Commands::Report { .. } => CommandCategory::Analysis,
-            Commands::Serve { .. } | Commands::Cache { .. } | Commands::Memory { .. } | Commands::Telemetry { .. } => CommandCategory::Operations,
-            Commands::Refactor(_) | Commands::Test { .. } | Commands::Roadmap(_) | Commands::Validate { .. } => CommandCategory::Workflow,
-            Commands::List { .. } | Commands::Search { .. } | Commands::Context { .. } | Commands::Diagnose(_) => CommandCategory::System,
-            Commands::Config { .. } | Commands::Agent { .. } | Commands::Tdg { .. } => CommandCategory::Configuration,
+            Commands::Serve { .. }
+            | Commands::Cache { .. }
+            | Commands::Memory { .. }
+            | Commands::Telemetry { .. } => CommandCategory::Operations,
+            Commands::Refactor(_)
+            | Commands::Test { .. }
+            | Commands::Roadmap(_)
+            | Commands::Validate { .. } => CommandCategory::Workflow,
+            Commands::List { .. }
+            | Commands::Search { .. }
+            | Commands::Context { .. }
+            | Commands::Diagnose(_) => CommandCategory::System,
+            Commands::Config { .. } | Commands::Agent { .. } | Commands::Tdg { .. } => {
+                CommandCategory::Configuration
+            }
             Commands::Demo { .. } => CommandCategory::Demo,
             Commands::Enforce(_) => CommandCategory::Enforcement,
-            Commands::Analyze(_) => unreachable!("Analyze commands handled by get_analyze_command_name"),
+            Commands::Analyze(_) => {
+                unreachable!("Analyze commands handled by get_analyze_command_name")
+            }
         }
     }
 
@@ -1800,7 +1822,9 @@ impl CliInput {
             Commands::Config { .. } => "config",
             Commands::Agent { .. } => "agent",
             Commands::Tdg { .. } => "tdg",
-            _ => unreachable!("Non-configuration command passed to configuration command name extractor"),
+            _ => unreachable!(
+                "Non-configuration command passed to configuration command name extractor"
+            ),
         }
     }
 }
@@ -1847,32 +1871,32 @@ impl CliAdapter {
     fn get_analyze_command_category(analyze_cmd: &AnalyzeCommands) -> AnalyzeCommandCategory {
         match analyze_cmd {
             // Core analysis commands (basic metrics)
-            AnalyzeCommands::Churn { .. } 
-            | AnalyzeCommands::Complexity { .. } 
-            | AnalyzeCommands::DeadCode { .. } 
-            | AnalyzeCommands::Satd { .. } 
-            | AnalyzeCommands::Tdg { .. } 
+            AnalyzeCommands::Churn { .. }
+            | AnalyzeCommands::Complexity { .. }
+            | AnalyzeCommands::DeadCode { .. }
+            | AnalyzeCommands::Satd { .. }
+            | AnalyzeCommands::Tdg { .. }
             | AnalyzeCommands::LintHotspot { .. } => AnalyzeCommandCategory::Basic,
-            
+
             // Advanced analysis commands (comprehensive)
-            AnalyzeCommands::DeepContext { .. } 
-            | AnalyzeCommands::Comprehensive { .. } 
-            | AnalyzeCommands::DefectPrediction { .. } 
-            | AnalyzeCommands::Duplicates { .. } 
+            AnalyzeCommands::DeepContext { .. }
+            | AnalyzeCommands::Comprehensive { .. }
+            | AnalyzeCommands::DefectPrediction { .. }
+            | AnalyzeCommands::Duplicates { .. }
             | AnalyzeCommands::BigO { .. } => AnalyzeCommandCategory::Advanced,
-            
+
             // Graph and structural analysis
-            AnalyzeCommands::Dag { .. } 
-            | AnalyzeCommands::GraphMetrics { .. } 
-            | AnalyzeCommands::SymbolTable { .. } 
+            AnalyzeCommands::Dag { .. }
+            | AnalyzeCommands::GraphMetrics { .. }
+            | AnalyzeCommands::SymbolTable { .. }
             | AnalyzeCommands::NameSimilarity { .. } => AnalyzeCommandCategory::Structural,
-            
+
             // Specialized analysis commands
-            AnalyzeCommands::Makefile { .. } 
-            | AnalyzeCommands::Provability { .. } 
-            | AnalyzeCommands::ProofAnnotations { .. } 
-            | AnalyzeCommands::IncrementalCoverage { .. } 
-            | AnalyzeCommands::AssemblyScript { .. } 
+            AnalyzeCommands::Makefile { .. }
+            | AnalyzeCommands::Provability { .. }
+            | AnalyzeCommands::ProofAnnotations { .. }
+            | AnalyzeCommands::IncrementalCoverage { .. }
+            | AnalyzeCommands::AssemblyScript { .. }
             | AnalyzeCommands::WebAssembly { .. } => AnalyzeCommandCategory::Specialized,
         }
     }
@@ -2390,22 +2414,22 @@ mod tests {
     async fn test_decode_scaffold_project() {
         let adapter = CliAdapter::new();
         let params = vec![(
-            "project_name".to_string(), 
-            Value::String("test_project".to_string())
+            "project_name".to_string(),
+            Value::String("test_project".to_string()),
         )];
-        
+
         let command = Commands::Scaffold {
             command: ScaffoldCommands::Project {
                 toolchain: "rust".to_string(),
                 templates: vec!["cli".to_string()],
                 params,
                 parallel: true,
-            }
+            },
         };
 
         let input = CliInput::from_commands(command);
         let result = adapter.decode(input).await;
-        
+
         assert!(result.is_ok());
         let request = result.unwrap();
         assert_eq!(request.method, Method::POST);
@@ -2423,7 +2447,7 @@ mod tests {
 
         let input = CliInput::from_commands(command);
         let result = adapter.decode(input).await;
-        
+
         assert!(result.is_ok());
         let request = result.unwrap();
         assert_eq!(request.method, Method::GET);
@@ -2443,7 +2467,7 @@ mod tests {
 
         let input = CliInput::from_commands(command);
         let result = adapter.decode(input).await;
-        
+
         assert!(result.is_ok());
         let request = result.unwrap();
         assert_eq!(request.method, Method::POST);
@@ -2464,7 +2488,7 @@ mod tests {
 
         let input = CliInput::from_commands(command);
         let result = adapter.decode(input).await;
-        
+
         assert!(result.is_ok());
         let request = result.unwrap();
         assert_eq!(request.method, Method::POST);
@@ -2485,7 +2509,7 @@ mod tests {
 
         let input = CliInput::from_commands(command);
         let result = adapter.decode(input).await;
-        
+
         assert!(result.is_ok());
         let request = result.unwrap();
         assert_eq!(request.method, Method::POST);
@@ -2510,7 +2534,7 @@ mod tests {
 
         let input = CliInput::from_commands(command);
         let result = adapter.decode(input).await;
-        
+
         assert!(result.is_ok());
         let request = result.unwrap();
         assert_eq!(request.method, Method::POST);
@@ -2533,7 +2557,7 @@ mod tests {
 
         let input = CliInput::from_commands(command);
         let result = adapter.decode(input).await;
-        
+
         assert!(result.is_ok());
         let request = result.unwrap();
         assert_eq!(request.method, Method::POST);
@@ -2555,7 +2579,7 @@ mod tests {
 
         let input = CliInput::from_commands(command);
         let result = adapter.decode(input).await;
-        
+
         assert!(result.is_ok());
         let request = result.unwrap();
         assert_eq!(request.method, Method::POST);
@@ -2582,7 +2606,7 @@ mod tests {
 
         let input = CliInput::from_commands(command);
         let result = adapter.decode(input).await;
-        
+
         assert!(result.is_ok());
         let request = result.unwrap();
         assert_eq!(request.method, Method::POST);
@@ -2601,7 +2625,7 @@ mod tests {
 
         let input = CliInput::from_commands(command);
         let result = adapter.decode(input).await;
-        
+
         assert!(result.is_ok());
         let request = result.unwrap();
         assert_eq!(request.method, Method::POST);
@@ -2612,9 +2636,9 @@ mod tests {
     fn test_cli_input_from_commands_generate() {
         let params = vec![(
             "project_name".to_string(),
-            Value::String("test".to_string())
+            Value::String("test".to_string()),
         )];
-        
+
         let command = Commands::Generate {
             category: "makefile".to_string(),
             template: "rust/cli".to_string(),
@@ -2648,7 +2672,7 @@ mod tests {
         let output = CliOutput::Success {
             content: "Success message".to_string(),
         };
-        
+
         assert_eq!(output.exit_code(), 0);
         assert_eq!(output.content(), "Success message");
     }
@@ -2659,7 +2683,7 @@ mod tests {
             message: "Error occurred".to_string(),
             exit_code: 2,
         };
-        
+
         assert_eq!(output.exit_code(), 2);
         assert_eq!(output.content(), "Error occurred");
     }
@@ -2683,10 +2707,10 @@ mod tests {
 
         let input = CliInput::from_commands(command);
         let result = adapter.decode(input).await;
-        
+
         assert!(result.is_err());
         match result {
-            Err(ProtocolError::UnsupportedProtocol(_)) => {},
+            Err(ProtocolError::UnsupportedProtocol(_)) => {}
             _ => panic!("Expected UnsupportedProtocol error"),
         }
     }
@@ -2704,7 +2728,7 @@ mod tests {
 
         let input = CliInput::from_commands(command);
         let result = adapter.decode(input).await;
-        
+
         assert!(result.is_ok());
         let request = result.unwrap();
         assert_eq!(request.method, Method::POST);
@@ -2729,7 +2753,7 @@ mod tests {
 
         let input = CliInput::from_commands(command);
         let result = adapter.decode(input).await;
-        
+
         assert!(result.is_ok());
         let request = result.unwrap();
         assert_eq!(request.method, Method::POST);
@@ -2747,13 +2771,13 @@ mod tests {
         };
 
         let result = adapter.encode(response).await;
-        
+
         assert!(result.is_ok());
         let cli_output = result.unwrap();
         match cli_output {
             CliOutput::Success { content } => {
                 assert!(content.contains("success"));
-            },
+            }
             _ => panic!("Expected Success output"),
         }
     }
@@ -2769,20 +2793,20 @@ mod tests {
         };
 
         let result = adapter.encode(response).await;
-        
+
         assert!(result.is_ok());
         let cli_output = result.unwrap();
         match cli_output {
             CliOutput::Error { message, exit_code } => {
                 assert!(message.contains("Bad Request"));
                 assert_eq!(exit_code, 1);
-            },
+            }
             _ => panic!("Expected Error output"),
         }
     }
 
     // Toyota Way TDD: Tests for extracted dispatch functions
-    
+
     #[tokio::test]
     async fn test_dispatch_basic_analysis_churn() {
         let command = AnalyzeCommands::Churn {
@@ -2794,14 +2818,14 @@ mod tests {
             include: vec![],
             exclude: vec![],
         };
-        
+
         let result = CliAdapter::dispatch_basic_analysis(&command);
         assert!(result.is_ok());
         let (method, path, _, _) = result.unwrap();
         assert_eq!(method, Method::POST);
         assert_eq!(path, "/api/v1/analyze/churn");
     }
-    
+
     #[tokio::test]
     async fn test_dispatch_basic_analysis_complexity() {
         let command = AnalyzeCommands::Complexity {
@@ -2820,14 +2844,14 @@ mod tests {
             fail_on_violation: false,
             timeout: 60,
         };
-        
+
         let result = CliAdapter::dispatch_basic_analysis(&command);
         assert!(result.is_ok());
         let (method, path, _, _) = result.unwrap();
         assert_eq!(method, Method::POST);
         assert_eq!(path, "/api/v1/analyze/complexity");
     }
-    
+
     #[tokio::test]
     async fn test_dispatch_advanced_analysis_comprehensive() {
         let command = AnalyzeCommands::Comprehensive {
@@ -2849,14 +2873,14 @@ mod tests {
             executive_summary: false,
             top_files: 10,
         };
-        
+
         let result = CliAdapter::dispatch_advanced_analysis(&command);
         assert!(result.is_ok());
         let (method, path, _, _) = result.unwrap();
         assert_eq!(method, Method::POST);
         assert_eq!(path, "/api/v1/analyze/comprehensive");
     }
-    
+
     #[tokio::test]
     async fn test_dispatch_structural_analysis_dag() {
         let command = AnalyzeCommands::Dag {
@@ -2871,14 +2895,14 @@ mod tests {
             include_dead_code: false,
             enhanced: false,
         };
-        
+
         let result = CliAdapter::dispatch_structural_analysis(&command);
         assert!(result.is_ok());
         let (method, path, _, _) = result.unwrap();
         assert_eq!(method, Method::POST);
         assert_eq!(path, "/api/v1/analyze/dag");
     }
-    
+
     #[tokio::test]
     async fn test_dispatch_specialized_analysis_makefile() {
         let command = AnalyzeCommands::Makefile {
@@ -2889,14 +2913,14 @@ mod tests {
             gnu_version: "4.3".to_string(),
             top_files: 5,
         };
-        
+
         let result = CliAdapter::dispatch_specialized_analysis(&command);
         assert!(result.is_ok());
         let (method, path, _, _) = result.unwrap();
         assert_eq!(method, Method::POST);
         assert_eq!(path, "/api/v1/analyze/makefile");
     }
-    
+
     #[test]
     fn test_decode_analyze_complexity_with_migration_new_path() {
         let result = CliAdapter::decode_analyze_complexity_with_migration(
@@ -2913,13 +2937,13 @@ mod tests {
             false,
             0,
         );
-        
+
         assert!(result.is_ok());
         let (method, path, _, _) = result.unwrap();
         assert_eq!(method, Method::POST);
         assert_eq!(path, "/api/v1/analyze/complexity");
     }
-    
+
     #[test]
     fn test_decode_analyze_complexity_with_migration_deprecated_path() {
         let result = CliAdapter::decode_analyze_complexity_with_migration(
@@ -2936,14 +2960,14 @@ mod tests {
             false,
             0,
         );
-        
+
         assert!(result.is_ok());
         let (method, path, _, _) = result.unwrap();
         assert_eq!(method, Method::POST);
         assert_eq!(path, "/api/v1/analyze/complexity");
         // The function should use the deprecated path when provided
     }
-    
+
     #[test]
     fn test_dispatch_wrong_category_returns_error() {
         let churn_command = AnalyzeCommands::Churn {
@@ -2955,11 +2979,11 @@ mod tests {
             include: vec![],
             exclude: vec![],
         };
-        
+
         // Try to dispatch a basic command through advanced dispatch - should fail
         let result = CliAdapter::dispatch_advanced_analysis(&churn_command);
         assert!(result.is_err());
-        
+
         match result {
             Err(ProtocolError::UnsupportedProtocol(msg)) => {
                 assert!(msg.contains("Command not supported in advanced analysis dispatch"));

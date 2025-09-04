@@ -1,11 +1,11 @@
 //! Stub module for backward compatibility during AST migration
-//! 
+//!
 //! This module provides minimal stubs to prevent compilation errors.
 //! All functionality has been moved to server/src/ast/
 
-use std::path::Path;
 use anyhow::Result;
 use std::collections::HashMap;
+use std::path::Path;
 
 // Stub types for backward compatibility
 pub struct UnifiedAstEngine;
@@ -20,20 +20,23 @@ impl UnifiedAstEngine {
     pub fn new() -> Self {
         Self
     }
-    
+
     pub async fn analyze_project(&self, _path: &Path) -> Result<AstForest> {
         Ok(AstForest::default())
     }
-    
+
     pub async fn parse_project(&self, _path: &Path) -> Result<AstForest> {
         Ok(AstForest::default())
     }
-    
+
     pub fn compute_metrics(&self, _forest: &AstForest) -> Result<ProjectMetrics> {
         Ok(ProjectMetrics::default())
     }
-    
-    pub fn extract_dependencies(&self, _forest: &AstForest) -> Result<crate::models::dag::DependencyGraph> {
+
+    pub fn extract_dependencies(
+        &self,
+        _forest: &AstForest,
+    ) -> Result<crate::models::dag::DependencyGraph> {
         Ok(crate::models::dag::DependencyGraph::new())
     }
 }
@@ -73,7 +76,6 @@ pub struct ProjectMetrics {
     pub max_complexity: u32,
 }
 
-
 // Additional stub types for deterministic_mermaid_engine
 #[derive(Default, Debug, Clone)]
 pub struct ArtifactTree {
@@ -100,7 +102,7 @@ pub struct Template {
 pub enum FileAst {
     Rust(syn::File),
     TypeScript(String),
-    Python(String), 
+    Python(String),
     C(String),
     Cpp(String),
     Cython(String),

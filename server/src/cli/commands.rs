@@ -2073,7 +2073,7 @@ mod tests {
     fn test_mode_variants() {
         let cli_mode = Mode::Cli;
         let mcp_mode = Mode::Mcp;
-        
+
         assert_eq!(cli_mode, Mode::Cli);
         assert_eq!(mcp_mode, Mode::Mcp);
         assert_ne!(cli_mode, mcp_mode);
@@ -2084,7 +2084,7 @@ mod tests {
         let plain = DiagnosticOutputFormat::Plain;
         let json = DiagnosticOutputFormat::Json;
         let yaml = DiagnosticOutputFormat::Yaml;
-        
+
         assert_eq!(plain, DiagnosticOutputFormat::Plain);
         assert_eq!(json, DiagnosticOutputFormat::Json);
         assert_eq!(yaml, DiagnosticOutputFormat::Yaml);
@@ -2096,27 +2096,27 @@ mod tests {
         let clear = StorageCommand::Clear;
         let compact = StorageCommand::Compact;
         let backup = StorageCommand::Backup {
-            output: PathBuf::from("backup.db")
+            output: PathBuf::from("backup.db"),
         };
         let restore = StorageCommand::Restore {
-            input: PathBuf::from("backup.db")
+            input: PathBuf::from("backup.db"),
         };
-        
+
         assert_eq!(stats, StorageCommand::Stats);
         assert_eq!(clear, StorageCommand::Clear);
         assert_eq!(compact, StorageCommand::Compact);
-        
+
         match backup {
             StorageCommand::Backup { output } => {
                 assert_eq!(output, PathBuf::from("backup.db"));
-            },
+            }
             _ => panic!("Expected Backup variant"),
         }
-        
+
         match restore {
             StorageCommand::Restore { input } => {
                 assert_eq!(input, PathBuf::from("backup.db"));
-            },
+            }
             _ => panic!("Expected Restore variant"),
         }
     }
@@ -2133,39 +2133,44 @@ mod tests {
             enforce_thresholds: true,
             fail_on_grade_below: Some("B".to_string()),
         };
-        
+
         let dashboard = TdgCommand::Dashboard {
             port: 8080,
             open: true,
         };
-        
+
         let profile = TdgCommand::Profile {
             path: PathBuf::from("."),
             flame_graph: true,
         };
-        
+
         match analyze {
-            TdgCommand::Analyze { path, top_files, enforce_thresholds, .. } => {
+            TdgCommand::Analyze {
+                path,
+                top_files,
+                enforce_thresholds,
+                ..
+            } => {
                 assert_eq!(path, Some(PathBuf::from(".")));
                 assert_eq!(top_files, 10);
                 assert!(enforce_thresholds);
-            },
+            }
             _ => panic!("Expected Analyze variant"),
         }
-        
+
         match dashboard {
             TdgCommand::Dashboard { port, open } => {
                 assert_eq!(port, 8080);
                 assert!(open);
-            },
+            }
             _ => panic!("Expected Dashboard variant"),
         }
-        
+
         match profile {
             TdgCommand::Profile { path, flame_graph } => {
                 assert_eq!(path, PathBuf::from("."));
                 assert!(flame_graph);
-            },
+            }
             _ => panic!("Expected Profile variant"),
         }
     }
@@ -2188,7 +2193,7 @@ mod tests {
             fail_on_violation: true,
             timeout: 60,
         };
-        
+
         let churn = AnalyzeCommands::Churn {
             path: PathBuf::from("."),
             project_path: None,
@@ -2197,23 +2202,34 @@ mod tests {
             output: None,
             timeout: 30,
         };
-        
+
         match complexity {
-            AnalyzeCommands::Complexity { path, file, max_cyclomatic, top_files, .. } => {
+            AnalyzeCommands::Complexity {
+                path,
+                file,
+                max_cyclomatic,
+                top_files,
+                ..
+            } => {
                 assert_eq!(path, PathBuf::from("."));
                 assert_eq!(file, Some(PathBuf::from("test.rs")));
                 assert_eq!(max_cyclomatic, Some(10));
                 assert_eq!(top_files, 5);
-            },
+            }
             _ => panic!("Expected Complexity variant"),
         }
-        
+
         match churn {
-            AnalyzeCommands::Churn { path, since, timeout, .. } => {
+            AnalyzeCommands::Churn {
+                path,
+                since,
+                timeout,
+                ..
+            } => {
                 assert_eq!(path, PathBuf::from("."));
                 assert_eq!(since, Some("1 month ago".to_string()));
                 assert_eq!(timeout, 30);
-            },
+            }
             _ => panic!("Expected Churn variant"),
         }
     }
@@ -2226,14 +2242,19 @@ mod tests {
             config: Some(PathBuf::from("quality.toml")),
             format: QualityGateOutputFormat::Json,
         };
-        
+
         match quality_gate {
-            EnforceCommands::QualityGate { path, file, config, format } => {
+            EnforceCommands::QualityGate {
+                path,
+                file,
+                config,
+                format,
+            } => {
                 assert_eq!(path, Some(PathBuf::from(".")));
                 assert_eq!(file, Some(PathBuf::from("test.rs")));
                 assert_eq!(config, Some(PathBuf::from("quality.toml")));
                 assert_eq!(format, QualityGateOutputFormat::Json);
-            },
+            }
             _ => panic!("Expected QualityGate variant"),
         }
     }
@@ -2248,30 +2269,44 @@ mod tests {
             interactive: true,
             dry_run: false,
         };
-        
+
         let docs_refactor = RefactorCommands::Docs {
             path: PathBuf::from("."),
             format: RefactorDocsOutputFormat::Markdown,
             output: Some(PathBuf::from("docs.md")),
             timeout: 120,
         };
-        
+
         match auto_refactor {
-            RefactorCommands::Auto { path, file, github_issue, interactive, .. } => {
+            RefactorCommands::Auto {
+                path,
+                file,
+                github_issue,
+                interactive,
+                ..
+            } => {
                 assert_eq!(path, Some(PathBuf::from(".")));
                 assert_eq!(file, Some(PathBuf::from("test.rs")));
-                assert_eq!(github_issue, Some("https://github.com/owner/repo/issues/123".to_string()));
+                assert_eq!(
+                    github_issue,
+                    Some("https://github.com/owner/repo/issues/123".to_string())
+                );
                 assert!(interactive);
-            },
+            }
             _ => panic!("Expected Auto variant"),
         }
-        
+
         match docs_refactor {
-            RefactorCommands::Docs { path, format, timeout, .. } => {
+            RefactorCommands::Docs {
+                path,
+                format,
+                timeout,
+                ..
+            } => {
                 assert_eq!(path, PathBuf::from("."));
                 assert_eq!(format, RefactorDocsOutputFormat::Markdown);
                 assert_eq!(timeout, 120);
-            },
+            }
             _ => panic!("Expected Docs variant"),
         }
     }
@@ -2284,29 +2319,38 @@ mod tests {
             params: vec![("name".to_string(), Value::String("test".to_string()))],
             parallel: 4,
         };
-        
+
         let agent = ScaffoldCommands::Agent {
             name: "test-agent".to_string(),
             template: "basic".to_string(),
             params: vec![("version".to_string(), Value::String("1.0.0".to_string()))],
         };
-        
+
         match project {
-            ScaffoldCommands::Project { toolchain, templates, params, parallel } => {
+            ScaffoldCommands::Project {
+                toolchain,
+                templates,
+                params,
+                parallel,
+            } => {
                 assert_eq!(toolchain, "rust");
                 assert_eq!(templates, vec!["cli", "lib"]);
                 assert_eq!(params.len(), 1);
                 assert_eq!(parallel, 4);
-            },
+            }
             _ => panic!("Expected Project variant"),
         }
-        
+
         match agent {
-            ScaffoldCommands::Agent { name, template, params } => {
+            ScaffoldCommands::Agent {
+                name,
+                template,
+                params,
+            } => {
                 assert_eq!(name, "test-agent");
                 assert_eq!(template, "basic");
                 assert_eq!(params.len(), 1);
-            },
+            }
             _ => panic!("Expected Agent variant"),
         }
     }
@@ -2317,38 +2361,42 @@ mod tests {
             path: PathBuf::from("."),
             template: Some("default".to_string()),
         };
-        
+
         let start = RoadmapCommands::Start {
             id: "task-123".to_string(),
         };
-        
+
         let complete = RoadmapCommands::Complete {
             id: "task-123".to_string(),
             format: OutputFormat::Json,
             skip_quality_checks: true,
         };
-        
+
         match init {
             RoadmapCommands::Init { path, template } => {
                 assert_eq!(path, PathBuf::from("."));
                 assert_eq!(template, Some("default".to_string()));
-            },
+            }
             _ => panic!("Expected Init variant"),
         }
-        
+
         match start {
             RoadmapCommands::Start { id } => {
                 assert_eq!(id, "task-123");
-            },
+            }
             _ => panic!("Expected Start variant"),
         }
-        
+
         match complete {
-            RoadmapCommands::Complete { id, format, skip_quality_checks } => {
+            RoadmapCommands::Complete {
+                id,
+                format,
+                skip_quality_checks,
+            } => {
                 assert_eq!(id, "task-123");
                 assert_eq!(format, OutputFormat::Json);
                 assert!(skip_quality_checks);
-            },
+            }
             _ => panic!("Expected Complete variant"),
         }
     }
@@ -2359,7 +2407,7 @@ mod tests {
         let integration = TestSuite::Integration;
         let property = TestSuite::Property;
         let all = TestSuite::All;
-        
+
         assert_eq!(unit, TestSuite::Unit);
         assert_eq!(integration, TestSuite::Integration);
         assert_eq!(property, TestSuite::Property);
@@ -2370,7 +2418,7 @@ mod tests {
     fn test_serve_transport_variants() {
         let http = ServeTransport::Http;
         let stdio = ServeTransport::Stdio;
-        
+
         assert_eq!(http, ServeTransport::Http);
         assert_eq!(stdio, ServeTransport::Stdio);
     }
@@ -2380,26 +2428,30 @@ mod tests {
         let list = AgentCommands::List {
             format: OutputFormat::Json,
         };
-        
+
         let create = AgentCommands::Create {
             name: "test-agent".to_string(),
             template: "basic".to_string(),
             output: Some(PathBuf::from("agents/")),
         };
-        
+
         match list {
             AgentCommands::List { format } => {
                 assert_eq!(format, OutputFormat::Json);
-            },
+            }
             _ => panic!("Expected List variant"),
         }
-        
+
         match create {
-            AgentCommands::Create { name, template, output } => {
+            AgentCommands::Create {
+                name,
+                template,
+                output,
+            } => {
                 assert_eq!(name, "test-agent");
                 assert_eq!(template, "basic");
                 assert_eq!(output, Some(PathBuf::from("agents/")));
-            },
+            }
             _ => panic!("Expected Create variant"),
         }
     }
@@ -2413,15 +2465,21 @@ mod tests {
             output: Some(PathBuf::from("Makefile")),
             create_dirs: true,
         };
-        
+
         match generate {
-            Commands::Generate { category, template, params, output, create_dirs } => {
+            Commands::Generate {
+                category,
+                template,
+                params,
+                output,
+                create_dirs,
+            } => {
                 assert_eq!(category, "makefile");
                 assert_eq!(template, "rust/cli");
                 assert_eq!(params.len(), 1);
                 assert_eq!(output, Some(PathBuf::from("Makefile")));
                 assert!(create_dirs);
-            },
+            }
             _ => panic!("Expected Generate variant"),
         }
     }
@@ -2433,13 +2491,17 @@ mod tests {
             category: Some("cli".to_string()),
             format: OutputFormat::Json,
         };
-        
+
         match list {
-            Commands::List { toolchain, category, format } => {
+            Commands::List {
+                toolchain,
+                category,
+                format,
+            } => {
                 assert_eq!(toolchain, Some("rust".to_string()));
                 assert_eq!(category, Some("cli".to_string()));
                 assert_eq!(format, OutputFormat::Json);
-            },
+            }
             _ => panic!("Expected List variant"),
         }
     }
@@ -2451,13 +2513,17 @@ mod tests {
             toolchain: Some("rust".to_string()),
             limit: 10,
         };
-        
+
         match search {
-            Commands::Search { query, toolchain, limit } => {
+            Commands::Search {
+                query,
+                toolchain,
+                limit,
+            } => {
                 assert_eq!(query, "rust cli");
                 assert_eq!(toolchain, Some("rust".to_string()));
                 assert_eq!(limit, 10);
-            },
+            }
             _ => panic!("Expected Search variant"),
         }
     }
@@ -2468,12 +2534,12 @@ mod tests {
             uri: "template://rust/cli".to_string(),
             params: vec![("name".to_string(), Value::String("test".to_string()))],
         };
-        
+
         match validate {
             Commands::Validate { uri, params } => {
                 assert_eq!(uri, "template://rust/cli");
                 assert_eq!(params.len(), 1);
-            },
+            }
             _ => panic!("Expected Validate variant"),
         }
     }
@@ -2488,16 +2554,23 @@ mod tests {
             include_large_files: false,
             skip_expensive_metrics: true,
         };
-        
+
         match context {
-            Commands::Context { toolchain, project_path, output, format, include_large_files, skip_expensive_metrics } => {
+            Commands::Context {
+                toolchain,
+                project_path,
+                output,
+                format,
+                include_large_files,
+                skip_expensive_metrics,
+            } => {
                 assert_eq!(toolchain, Some("rust".to_string()));
                 assert_eq!(project_path, PathBuf::from("."));
                 assert_eq!(output, Some(PathBuf::from("context.md")));
                 assert_eq!(format, ContextFormat::Markdown);
                 assert!(!include_large_files);
                 assert!(skip_expensive_metrics);
-            },
+            }
             _ => panic!("Expected Context variant"),
         }
     }
@@ -2510,13 +2583,15 @@ mod tests {
             cors: true,
             transport: crate::cli::TransportMode::Http,
         };
-        
+
         match serve {
-            Commands::Serve { host, port, cors, .. } => {
+            Commands::Serve {
+                host, port, cors, ..
+            } => {
                 assert_eq!(host, "127.0.0.1");
                 assert_eq!(port, 3000);
                 assert!(cors);
-            },
+            }
             _ => panic!("Expected Serve variant"),
         }
     }
