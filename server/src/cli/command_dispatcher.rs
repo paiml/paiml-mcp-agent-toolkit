@@ -784,7 +784,7 @@ impl CommandDispatcher {
         throughput: bool,
         regression: bool,
     ) -> crate::test_performance::PerformanceTestConfig {
-        use super::commands::TestSuite;
+        use crate::cli::commands::TestSuite;
 
         crate::test_performance::PerformanceTestConfig {
             enable_regression_tests: regression
@@ -814,7 +814,7 @@ impl CommandDispatcher {
         suite: &super::commands::TestSuite,
         config: crate::test_performance::PerformanceTestConfig,
     ) -> anyhow::Result<()> {
-        use super::commands::TestSuite;
+        use crate::cli::commands::TestSuite;
         use crate::test_performance::*;
 
         match suite {
@@ -1136,7 +1136,7 @@ mod tests {
     /// Test create_test_config (Toyota Way Extract Method test)
     #[test]
     fn test_create_test_config() {
-        use super::commands::TestSuite;
+        use crate::cli::commands::TestSuite;
 
         let config = CommandDispatcher::create_test_config(
             TestSuite::All,
@@ -1155,7 +1155,7 @@ mod tests {
     /// Test create_test_config with specific suite
     #[test]
     fn test_create_test_config_memory_suite() {
-        use super::commands::TestSuite;
+        use crate::cli::commands::TestSuite;
 
         let config = CommandDispatcher::create_test_config(
             TestSuite::Memory,
@@ -1174,7 +1174,7 @@ mod tests {
     /// Test print_performance_summary_if_requested (extracted method)
     #[test]
     fn test_print_performance_summary_if_requested() {
-        use super::commands::TestSuite;
+        use crate::cli::commands::TestSuite;
         use std::time::Duration;
 
         // Test with perf enabled (should not panic)
@@ -1197,7 +1197,7 @@ mod tests {
     /// Test write_test_results_if_requested with no output
     #[test]
     fn test_write_test_results_no_output() {
-        use super::commands::TestSuite;
+        use crate::cli::commands::TestSuite;
         use std::time::Duration;
 
         let result: anyhow::Result<()> = Ok(());
