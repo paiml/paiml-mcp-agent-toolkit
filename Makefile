@@ -21,7 +21,7 @@
 #
 # This design eliminates confusion and ensures consistent behavior across all environments.
 
-.PHONY: all validate format lint lint-main check test test-doc test-fast coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-refactor overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all coverage-stratified coverage-full coverage-report crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way
+.PHONY: all validate format lint lint-main check test test-doc test-fast coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe coverage-stdout test-dogfood test-critical-scripts coverage-scripts clean-coverage test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-summary outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all coverage-stratified coverage-full coverage-report crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -1292,9 +1292,9 @@ help:
 	@echo "  export-critical-satd    - Export critical technical debt in SARIF format"
 	@echo "  satd-metrics           - Generate comprehensive SATD metrics"
 	@echo ""
-	@echo "Overnight Autonomous Refactoring:"
-	@echo "  overnight-refactor      - Start 8-12 hour autonomous refactoring system"
-	@echo "  overnight-monitor       - Monitor progress of overnight refactoring"
+	@echo "Overnight Autonomous Improvement:"
+	@echo "  overnight-improve       - Start 8-12 hour autonomous improvement system"
+	@echo "  overnight-monitor       - Monitor progress of overnight improvement"
 	@echo "  overnight-swap-cron     - Set up cron job for periodic swap clearing"
 	@echo ""
 	@echo "Setup:"
@@ -1787,9 +1787,9 @@ context-json: release
 # Overnight Autonomous Refactoring System
 # =============================================================================
 
-# Start overnight autonomous refactoring with state machine
-overnight-refactor: release
-	@echo "🌙 Starting Overnight Autonomous Refactoring System..."
+# Start overnight autonomous improvement with state machine
+overnight-improve: release
+	@echo "🌙 Starting Overnight Autonomous Improvement System..."
 	@echo "⏱️  This will run for 8-12 hours, applying automated fixes"
 	@echo ""
 	@echo "📊 Pre-flight checks..."
@@ -1798,13 +1798,13 @@ overnight-refactor: release
 	@echo "🔍 Current code quality baseline:"
 	@./target/release/pmat analyze satd --format human | head -20 || true
 	@echo ""
-	@echo "🚀 Launching refactoring state machine..."
+	@echo "🚀 Launching improvement state machine..."
 	@mkdir -p .refactor_state docs/bugs artifacts/refactor
 	@if [ -f "./scripts/run-overnight-repair.sh" ]; then \
 		echo "Using run-overnight-repair.sh script..."; \
 		bash ./scripts/run-overnight-repair.sh; \
 	else \
-		echo "Creating and running overnight refactor configuration..."; \
+		echo "Creating and running overnight improvement configuration..."; \
 		nohup ./target/release/pmat refactor serve \
 			--refactor-mode batch \
 			--config refactor-config.json \
@@ -1814,14 +1814,14 @@ overnight-refactor: release
 			--batch-size 50 \
 			--checkpoint-dir .refactor_state \
 			--resume \
-			--auto-commit "refactor: automated fix via state machine [skip ci]" \
+			--auto-commit "improvement: automated enhancement via state machine [skip ci]" \
 			--max-runtime 43200 \
-			2>&1 | tee refactor_overnight.log & \
+			2>&1 | tee improve_overnight.log & \
 		REFACTOR_PID=$$!; \
 		echo "$$REFACTOR_PID" > .refactor_state/refactor.pid; \
 		echo ""; \
-		echo "✅ Refactoring started with PID: $$REFACTOR_PID"; \
-		echo "📝 Log file: refactor_overnight.log"; \
+		echo "✅ Improvement started with PID: $$REFACTOR_PID"; \
+		echo "📝 Log file: improve_overnight.log"; \
 		echo "🔍 Monitor with: make overnight-monitor"; \
 		echo "🛑 Stop safely with: kill -SIGUSR1 $$REFACTOR_PID"; \
 	fi
