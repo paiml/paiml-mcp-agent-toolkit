@@ -532,6 +532,22 @@ pub async fn analyze_rust_file_with_persistent_cache(
     }
 }
 
+/// Optimized project analysis for dead code detection - focuses only on source files
+pub async fn analyze_project_for_dead_code(
+    root_path: &Path,
+    toolchain: &str,
+) -> Result<ProjectContext, TemplateError> {
+    let gitignore = build_gitignore(root_path)?;
+    let files = scan_rust_files_only(root_path, toolchain, None, &gitignore).await;
+    let summary = build_project_summary(&files, root_path, toolchain).await;
+
+    Ok(ProjectContext {
+        project_type: toolchain.to_string(),
+        files,
+        summary,
+    })
+}
+
 pub async fn analyze_project_with_cache(
     root_path: &Path,
     toolchain: &str,
@@ -564,6 +580,83 @@ fn build_gitignore(root_path: &Path) -> Result<ignore::gitignore::Gitignore, Tem
     gitignore
         .build()
         .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))
+}
+
+/// Optimized file scanner for dead code - only scans Rust source files
+async fn scan_rust_files_only(
+    root_path: &Path,
+    toolchain: &str,
+    cache_manager: Option<Arc<SessionCacheManager>>,
+    gitignore: &ignore::gitignore::Gitignore,
+) -> Vec<FileContext> {
+    const MAX_DEPTH: usize = 5; // Shallower search for performance
+    const MAX_FILES: usize = 100; // Even lower limit for fast dead code analysis
+    const BATCH_SIZE: usize = 20; // Smaller batches for responsiveness
+
+    // Only scan Rust source files, skip tests and examples
+    let paths: Vec<_> = WalkDir::new(root_path)
+        .follow_links(false)
+        .max_depth(MAX_DEPTH)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|entry| {
+            let path = entry.path();
+            if path.is_dir() || gitignore.matched(path, false).is_ignore() {
+                return false;
+            }
+            // Only Rust files
+            if !path.extension().map_or(false, |ext| ext == "rs") {
+                return false;
+            }
+            // Skip test and example files for dead code analysis
+            let path_str = path.to_string_lossy();
+            !path_str.contains("/tests/")
+                && !path_str.contains("/test/")
+                && !path_str.contains("/examples/")
+                && !path_str.contains("/benches/")
+                && !path_str.contains("_test.rs")
+                && !path_str.ends_with("/build.rs")
+        })
+        .take(MAX_FILES)
+        .map(|entry| entry.path().to_path_buf())
+        .collect();
+
+    eprintln!(
+        "🎯 Dead code analysis: scanning {} Rust source files (max {})",
+        paths.len(),
+        MAX_FILES
+    );
+
+    let mut all_results = Vec::new();
+    for chunk in paths.chunks(BATCH_SIZE) {
+        let batch_tasks: Vec<_> = chunk
+            .iter()
+            .map(|path| {
+                let path = path.clone();
+                let toolchain = toolchain.to_string();
+                let cache_manager = cache_manager.clone();
+                tokio::spawn(async move {
+                    let timeout_duration = tokio::time::Duration::from_secs(2);
+                    tokio::time::timeout(timeout_duration, async move {
+                        analyze_file_by_toolchain(&path, &toolchain, cache_manager).await
+                    })
+                    .await
+                    .ok()
+                    .flatten()
+                })
+            })
+            .collect();
+
+        let batch_results = join_all(batch_tasks).await;
+        all_results.extend(
+            batch_results
+                .into_iter()
+                .filter_map(|result| result.ok())
+                .flatten(),
+        );
+    }
+
+    all_results
 }
 
 async fn scan_and_analyze_files(

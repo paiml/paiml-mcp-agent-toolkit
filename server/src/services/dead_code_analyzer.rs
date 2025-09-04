@@ -752,11 +752,11 @@ impl DeadCodeAnalyzer {
         project_path: &Path,
         config: crate::models::dead_code::DeadCodeAnalysisConfig,
     ) -> anyhow::Result<crate::models::dead_code::DeadCodeRankingResult> {
-        use crate::services::context::analyze_project;
+        use crate::services::context::analyze_project_for_dead_code;
         use chrono::Utc;
 
-        // 1. Build AST DAG for project - we'll analyze as Rust by default for now
-        let project_context = analyze_project(project_path, "rust").await?;
+        // 1. Use optimized dead code analysis that only scans relevant source files
+        let project_context = analyze_project_for_dead_code(project_path, "rust").await?;
 
         // Track total files analyzed
         let total_files_in_project = project_context.files.len();
