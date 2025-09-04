@@ -238,7 +238,7 @@ impl<'a> TypeScriptAstVisitor<'a> {
     fn visit_module_item(&mut self, item: &ModuleItem) {
         match item {
             ModuleItem::ModuleDecl(decl) => match decl {
-                ModuleDecl::Import(import) => {
+                ModuleDecl::Import(_import) => {
                     let mut node = UnifiedAstNode::new(
                         AstKind::Import(ImportKind::Module),
                         self.language
@@ -289,7 +289,7 @@ impl<'a> TypeScriptAstVisitor<'a> {
                 // Visit function body if needed
                 self.current_parent = old_parent;
             }
-            Decl::Class(c) => {
+            Decl::Class(_c) => {
                 let node = UnifiedAstNode::new(
                     AstKind::Class(ClassKind::Regular),
                     self.language

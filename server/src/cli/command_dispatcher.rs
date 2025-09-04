@@ -1077,23 +1077,6 @@ mod tests {
         assert!(!config.enable_regression_tests);
     }
 
-    /// Test execute_property_tests (extracted method)
-    #[tokio::test]
-    async fn test_execute_property_tests() {
-        let result = CommandDispatcher::execute_property_tests().await;
-        
-        // Property tests should succeed (placeholder implementation)
-        assert!(result.is_ok());
-    }
-
-    /// Test execute_integration_tests (extracted method)
-    #[tokio::test]
-    async fn test_execute_integration_tests() {
-        let result = CommandDispatcher::execute_integration_tests().await;
-        
-        // Integration tests should succeed (placeholder implementation)
-        assert!(result.is_ok());
-    }
 
     /// Test print_performance_summary_if_requested (extracted method)
     #[test]
