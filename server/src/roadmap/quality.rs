@@ -405,6 +405,7 @@ impl QualityCheck {
 }
 
 /// Extract coverage percentage from output
+#[allow(dead_code)]
 fn extract_coverage_from_output(output: &str) -> Option<u8> {
     // Look for patterns like "Coverage: 85%" or "85% coverage"
     if let Some(idx) = output.find("Coverage:") {

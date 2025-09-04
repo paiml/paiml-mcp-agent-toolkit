@@ -31,7 +31,6 @@ pub struct CacheConfig {
     pub eviction_batch_size: usize,
 }
 
-
 impl Default for CacheConfig {
     fn default() -> Self {
         Self {

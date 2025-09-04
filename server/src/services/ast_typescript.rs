@@ -8,14 +8,11 @@
 
 // Re-export compatibility functions
 pub use super::ast_typescript_compat::{
-    analyze_typescript_file,
-    analyze_typescript_file_with_classifier,
-    analyze_typescript_file_with_complexity,
-    analyze_typescript_file_with_complexity_and_classifier,
-    analyze_javascript_file,
-    analyze_javascript_file_with_classifier,
+    analyze_javascript_file, analyze_javascript_file_with_classifier,
     analyze_javascript_file_with_complexity,
-    analyze_javascript_file_with_complexity_and_classifier,
+    analyze_javascript_file_with_complexity_and_classifier, analyze_typescript_file,
+    analyze_typescript_file_with_classifier, analyze_typescript_file_with_complexity,
+    analyze_typescript_file_with_complexity_and_classifier,
 };
 
 // Dispatch parser removed - functionality moved to new AST module
@@ -66,7 +63,8 @@ pub async fn analyze_typescript_file_with_complexity_cached(
     _cache_manager: Option<
         std::sync::Arc<crate::services::cache::persistent_manager::PersistentCacheManager>,
     >,
-) -> Result<crate::services::complexity::FileComplexityMetrics, crate::models::error::TemplateError> {
+) -> Result<crate::services::complexity::FileComplexityMetrics, crate::models::error::TemplateError>
+{
     // Delegate to main complexity function (caching to be implemented in dispatch parser)
     analyze_typescript_file_with_complexity(path).await
 }

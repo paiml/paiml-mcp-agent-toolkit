@@ -750,7 +750,8 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
                 (f, total_score)
             })
             .collect();
-        files_with_score.sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        files_with_score
+            .sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         for (i, (file, _score)) in files_with_score.iter().take(10).enumerate() {
             let filename = std::path::Path::new(&file.path)
@@ -781,8 +782,9 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
                     (f, total)
                 })
                 .collect();
-            functions_with_score
-                .sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+            functions_with_score.sort_unstable_by(|a, b| {
+                b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
+            });
 
             for (i, (func, _)) in functions_with_score.iter().enumerate() {
                 output.push_str(&format!(

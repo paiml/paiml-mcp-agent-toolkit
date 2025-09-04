@@ -1,10 +1,10 @@
 //! Compatibility stub for UnifiedCacheManager
-//! 
+//!
 //! This module provides a compatibility wrapper around SessionCacheManager
 //! to fix compilation errors after the unified cache module was removed.
 
-use super::manager::SessionCacheManager;
 use super::config::CacheConfig;
+use super::manager::SessionCacheManager;
 use anyhow::Result;
 
 /// Stub for UnifiedCacheConfig - redirects to CacheConfig
@@ -21,7 +21,7 @@ impl UnifiedCacheManager {
             inner: SessionCacheManager::new(config),
         })
     }
-    
+
     // Add any other methods that are needed by refactor_engine
     pub fn clear_all(&self) {
         self.inner.clear_all();

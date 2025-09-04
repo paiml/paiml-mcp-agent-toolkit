@@ -416,7 +416,7 @@ impl SATDDetector {
 
         for (line_num, line) in content.lines().enumerate() {
             test_tracker.update_from_line(line.trim());
-            
+
             if !test_tracker.is_in_test_block() {
                 if let Some(debt) = self.extract_from_line(line, file_path, line_num as u32 + 1)? {
                     debts.push(debt);
@@ -427,11 +427,11 @@ impl SATDDetector {
         self.sort_debts(&mut debts);
         Ok(debts)
     }
-    
+
     fn is_rust_file(&self, file_path: &Path) -> bool {
         file_path.extension().and_then(|s| s.to_str()) == Some("rs")
     }
-    
+
     fn sort_debts(&self, debts: &mut Vec<TechnicalDebt>) {
         debts.sort_by_key(|d| (d.file.clone(), d.line, d.column));
     }
@@ -452,48 +452,49 @@ impl TestBlockTracker {
             test_block_depth: 0,
         }
     }
-    
+
     fn update_from_line(&mut self, trimmed_line: &str) {
         if !self.is_rust_file {
             return;
         }
-        
+
         if self.is_test_block_start(trimmed_line) {
             self.start_test_block();
         } else if self.in_test_block {
             self.update_test_block_depth(trimmed_line);
         }
     }
-    
+
     fn is_in_test_block(&self) -> bool {
         self.in_test_block
     }
-    
+
     fn is_test_block_start(&self, trimmed_line: &str) -> bool {
         trimmed_line.starts_with("#[cfg(test)]")
     }
-    
+
     fn start_test_block(&mut self) {
         self.in_test_block = true;
         self.test_block_depth = 0;
     }
-    
+
     fn update_test_block_depth(&mut self, trimmed_line: &str) {
         self.add_opening_braces(trimmed_line);
         self.subtract_closing_braces(trimmed_line);
     }
-    
+
     fn add_opening_braces(&mut self, trimmed_line: &str) {
         if trimmed_line.contains('{') {
             self.test_block_depth += trimmed_line.matches('{').count();
         }
     }
-    
+
     fn subtract_closing_braces(&mut self, trimmed_line: &str) {
         if trimmed_line.contains('}') {
-            self.test_block_depth = self.test_block_depth
+            self.test_block_depth = self
+                .test_block_depth
                 .saturating_sub(trimmed_line.matches('}').count());
-            
+
             if self.test_block_depth == 0 && trimmed_line.ends_with('}') {
                 self.in_test_block = false;
             }
@@ -912,7 +913,7 @@ impl SATDDetector {
             Ok(())
         })
     }
-    
+
     async fn process_directory_entry(
         &self,
         path: &Path,
@@ -925,7 +926,7 @@ impl SATDDetector {
             Ok(())
         }
     }
-    
+
     async fn process_subdirectory(
         &self,
         path: &Path,
@@ -936,7 +937,7 @@ impl SATDDetector {
         }
         self.collect_files_recursive(path, files).await
     }
-    
+
     fn should_skip_directory(&self, path: &Path) -> bool {
         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
             self.is_excluded_directory_name(name)
@@ -944,21 +945,21 @@ impl SATDDetector {
             false
         }
     }
-    
+
     fn is_excluded_directory_name(&self, name: &str) -> bool {
         name.starts_with('.') || self.is_common_build_directory(name)
     }
-    
+
     fn is_common_build_directory(&self, name: &str) -> bool {
         ["target", "node_modules", "dist", "build", "__pycache__"].contains(&name)
     }
-    
+
     fn process_file(&self, path: &Path, files: &mut Vec<PathBuf>) {
         if self.is_valid_source_file(path) {
             files.push(path.to_path_buf());
         }
     }
-    
+
     fn is_valid_source_file(&self, path: &Path) -> bool {
         self.is_source_file(path) && !self.is_test_file(path)
     }
@@ -1386,7 +1387,7 @@ impl SATDDetector {
         project_root: &Path,
     ) -> Result<f64, TemplateError> {
         use chrono::Utc;
-        
+
         let mut total_age_days = 0.0;
         let mut valid_debt_count = 0;
         let now = Utc::now();
@@ -1404,7 +1405,7 @@ impl SATDDetector {
             0.0
         })
     }
-    
+
     async fn calculate_debt_age(
         &self,
         debt: &TechnicalDebt,
@@ -1412,15 +1413,20 @@ impl SATDDetector {
         now: &chrono::DateTime<chrono::Utc>,
     ) -> Option<f64> {
         let relative_path = self.get_relative_path(&debt.file, project_root)?;
-        let blame_output = self.run_git_blame(&relative_path, debt.line, project_root).await?;
+        let blame_output = self
+            .run_git_blame(&relative_path, debt.line, project_root)
+            .await?;
         let timestamp = self.parse_git_blame_timestamp(&blame_output)?;
         self.calculate_age_from_timestamp(timestamp, now)
     }
-    
+
     fn get_relative_path(&self, file_path: &Path, project_root: &Path) -> Option<PathBuf> {
-        file_path.strip_prefix(project_root).ok().map(|p| p.to_path_buf())
+        file_path
+            .strip_prefix(project_root)
+            .ok()
+            .map(|p| p.to_path_buf())
     }
-    
+
     async fn run_git_blame(
         &self,
         relative_path: &PathBuf,
@@ -1428,7 +1434,7 @@ impl SATDDetector {
         project_root: &Path,
     ) -> Option<String> {
         use std::process::Command;
-        
+
         let output = Command::new("git")
             .args([
                 "blame",
@@ -1447,7 +1453,7 @@ impl SATDDetector {
             None
         }
     }
-    
+
     fn parse_git_blame_timestamp(&self, blame_output: &str) -> Option<i64> {
         for line in blame_output.lines() {
             if let Some(timestamp_str) = line.strip_prefix("author-time ") {
@@ -1456,14 +1462,14 @@ impl SATDDetector {
         }
         None
     }
-    
+
     fn calculate_age_from_timestamp(
         &self,
         timestamp: i64,
         now: &chrono::DateTime<chrono::Utc>,
     ) -> Option<f64> {
         use chrono::DateTime;
-        
+
         let debt_date = DateTime::from_timestamp(timestamp, 0)?;
         Some((*now - debt_date).num_days() as f64)
     }
@@ -2301,7 +2307,7 @@ fn helper_test() {{
         let documentation = DebtCategory::Documentation;
         let requirement = DebtCategory::Requirement;
         let test_debt = DebtCategory::Test;
-        
+
         assert_eq!(design, DebtCategory::Design);
         assert_eq!(defect, DebtCategory::Defect);
         assert_eq!(documentation, DebtCategory::Documentation);
@@ -2315,7 +2321,7 @@ fn helper_test() {{
         let medium = Severity::Medium;
         let high = Severity::High;
         let critical = Severity::Critical;
-        
+
         assert_eq!(low, Severity::Low);
         assert_eq!(medium, Severity::Medium);
         assert_eq!(high, Severity::High);
@@ -2333,7 +2339,7 @@ fn helper_test() {{
             column: 5,
             context_hash: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
         };
-        
+
         assert_eq!(debt.category, DebtCategory::Design);
         assert_eq!(debt.severity, Severity::High);
         assert_eq!(debt.text, "Refactor this complex function");
@@ -2352,7 +2358,7 @@ fn helper_test() {{
             categories: vec!["Design".to_string(), "Defect".to_string()],
             lines: vec![10, 20, 30, 40, 50],
         };
-        
+
         assert_eq!(file_metrics.file, PathBuf::from("test.rs"));
         assert_eq!(file_metrics.count, 5);
         assert_eq!(file_metrics.critical_count, 2);
@@ -2367,7 +2373,7 @@ fn helper_test() {{
             critical_count: 3,
             files: vec![PathBuf::from("file1.rs"), PathBuf::from("file2.rs")],
         };
-        
+
         assert_eq!(category_metrics.count, 10);
         assert_eq!(category_metrics.critical_count, 3);
         assert_eq!(category_metrics.files.len(), 2);
@@ -2376,14 +2382,17 @@ fn helper_test() {{
     #[test]
     fn test_satd_metrics_creation() {
         use rustc_hash::FxHashMap;
-        
+
         let mut by_category = FxHashMap::default();
-        by_category.insert("Design".to_string(), DebtCategoryMetrics {
-            count: 5,
-            critical_count: 2,
-            files: vec![PathBuf::from("design.rs")],
-        });
-        
+        by_category.insert(
+            "Design".to_string(),
+            DebtCategoryMetrics {
+                count: 5,
+                critical_count: 2,
+                files: vec![PathBuf::from("design.rs")],
+            },
+        );
+
         let metrics = SATDMetrics {
             total_debts: 15,
             critical_debts: vec![create_test_debt(DebtCategory::Defect, Severity::Critical)],
@@ -2397,7 +2406,7 @@ fn helper_test() {{
                 lines: vec![10, 20, 30],
             }],
         };
-        
+
         assert_eq!(metrics.total_debts, 15);
         assert_eq!(metrics.critical_debts.len(), 1);
         assert_eq!(metrics.debt_density_per_kloc, 7.5);
@@ -2408,17 +2417,16 @@ fn helper_test() {{
     #[test]
     fn test_satd_detector_creation() {
         let detector = SATDDetector::new();
-        
+
         // Should be created successfully
         assert!(std::mem::size_of_val(&detector) > 0);
     }
-
 
     #[test]
     fn test_extract_from_content_empty_string() {
         let detector = SATDDetector::new();
         let empty_content = "";
-        
+
         let result = detector.extract_from_content(empty_content, Path::new("empty.rs"));
         assert!(result.is_ok());
         assert_eq!(result.unwrap().len(), 0);
@@ -2436,7 +2444,7 @@ fn helper_test() {{
             field: i32,
         }
         "#;
-        
+
         let result = detector.extract_from_content(clean_content, Path::new("clean.rs"));
         assert!(result.is_ok());
         assert_eq!(result.unwrap().len(), 0);
@@ -2451,7 +2459,7 @@ fn helper_test() {{
             println!("Hello, world!");
         }
         "#;
-        
+
         let result = detector.extract_from_content(content_with_todo, Path::new("todo.rs"));
         assert!(result.is_ok());
         let debts = result.unwrap();
@@ -2472,15 +2480,17 @@ fn helper_test() {{
             println!("Hello, world!");
         }
         "#;
-        
+
         let result = detector.extract_from_content(mixed_content, Path::new("mixed.rs"));
         assert!(result.is_ok());
         let debts = result.unwrap();
         assert_eq!(debts.len(), 4);
-        
+
         // Check different debt types are detected
         let debt_texts: Vec<&str> = debts.iter().map(|d| d.text.as_str()).collect();
-        assert!(debt_texts.iter().any(|&text| text.contains("error handling")));
+        assert!(debt_texts
+            .iter()
+            .any(|&text| text.contains("error handling")));
         assert!(debt_texts.iter().any(|&text| text.contains("inefficient")));
         assert!(debt_texts.iter().any(|&text| text.contains("workaround")));
         assert!(debt_texts.iter().any(|&text| text.contains("problematic")));
@@ -2497,7 +2507,7 @@ fn helper_test() {{
             // tOdO: Mixed case todo
         }
         "#;
-        
+
         let result = detector.extract_from_content(case_content, Path::new("case.rs"));
         assert!(result.is_ok());
         let debts = result.unwrap();
@@ -2508,10 +2518,10 @@ fn helper_test() {{
     async fn test_analyze_directory_empty() {
         let temp_dir = TempDir::new().unwrap();
         let detector = SATDDetector::new();
-        
+
         let result = detector.analyze_directory(temp_dir.path()).await;
         assert!(result.is_ok());
-        
+
         let analysis = result.unwrap();
         assert_eq!(analysis.debts.len(), 0);
         assert_eq!(analysis.metrics.total_debts, 0);
@@ -2521,17 +2531,17 @@ fn helper_test() {{
     async fn test_analyze_directory_with_rust_files() {
         let temp_dir = TempDir::new().unwrap();
         let detector = SATDDetector::new();
-        
+
         // Create test files
         let file1 = temp_dir.path().join("test1.rs");
         fs::write(&file1, "// TODO: Test debt in file 1\nfn main() {}").unwrap();
-        
+
         let file2 = temp_dir.path().join("test2.rs");
         fs::write(&file2, "// FIXME: Test debt in file 2\nfn test() {}").unwrap();
-        
+
         let result = detector.analyze_directory(temp_dir.path()).await;
         assert!(result.is_ok());
-        
+
         let analysis = result.unwrap();
         assert_eq!(analysis.debts.len(), 2);
         assert_eq!(analysis.metrics.total_debts, 2);
@@ -2541,18 +2551,18 @@ fn helper_test() {{
     async fn test_analyze_directory_ignores_non_source_files() {
         let temp_dir = TempDir::new().unwrap();
         let detector = SATDDetector::new();
-        
+
         // Create source file with debt
         let rust_file = temp_dir.path().join("source.rs");
         fs::write(&rust_file, "// TODO: This should be found").unwrap();
-        
+
         // Create non-source file with debt (should be ignored)
         let text_file = temp_dir.path().join("readme.txt");
         fs::write(&text_file, "TODO: This should be ignored").unwrap();
-        
+
         let result = detector.analyze_directory(temp_dir.path()).await;
         assert!(result.is_ok());
-        
+
         let analysis = result.unwrap();
         assert_eq!(analysis.debts.len(), 1); // Only the .rs file should be analyzed
         assert!(analysis.debts[0].file.ends_with("source.rs"));
@@ -2561,11 +2571,11 @@ fn helper_test() {{
     #[test]
     fn test_generate_metrics_edge_cases() {
         let detector = SATDDetector::new();
-        
+
         // Test with empty debt list
         let empty_debts = vec![];
         let metrics = detector.generate_metrics(&empty_debts, 1000);
-        
+
         assert_eq!(metrics.total_debts, 0);
         assert_eq!(metrics.critical_debts.len(), 0);
         assert_eq!(metrics.debt_density_per_kloc, 0.0);
@@ -2576,26 +2586,26 @@ fn helper_test() {{
     #[test]
     fn test_generate_metrics_with_mixed_severities() {
         let detector = SATDDetector::new();
-        
+
         let debts = vec![
             create_test_debt(DebtCategory::Design, Severity::Low),
             create_test_debt(DebtCategory::Design, Severity::Medium),
             create_test_debt(DebtCategory::Defect, Severity::High),
             create_test_debt(DebtCategory::Defect, Severity::Critical),
         ];
-        
+
         let metrics = detector.generate_metrics(&debts, 2000);
-        
+
         assert_eq!(metrics.total_debts, 4);
         assert_eq!(metrics.critical_debts.len(), 1); // Only Critical severity
         assert_eq!(metrics.debt_density_per_kloc, 2.0); // 4 debts per 2 KLOC
         assert_eq!(metrics.by_category.len(), 2); // Design and Defect
-        
+
         // Check category breakdown
         let design_metrics = metrics.by_category.get("Design").unwrap();
         assert_eq!(design_metrics.count, 2);
         assert_eq!(design_metrics.critical_count, 0);
-        
+
         let defect_metrics = metrics.by_category.get("Defect").unwrap();
         assert_eq!(defect_metrics.count, 2);
         assert_eq!(defect_metrics.critical_count, 1);
@@ -2608,7 +2618,10 @@ fn helper_test() {{
         let temp_dir = tempfile::tempdir().unwrap();
         let project_root = temp_dir.path();
 
-        let result = detector.calculate_average_debt_age(&[], project_root).await.unwrap();
+        let result = detector
+            .calculate_average_debt_age(&[], project_root)
+            .await
+            .unwrap();
         assert_eq!(result, 0.0);
     }
 
@@ -2617,19 +2630,22 @@ fn helper_test() {{
         let detector = SATDDetector::new(vec!["TODO".to_string()]);
         let temp_dir = tempfile::tempdir().unwrap();
         let project_root = temp_dir.path();
-        
+
         // Create a test file
         let test_file = project_root.join("test.rs");
         std::fs::write(&test_file, "// TODO: test debt").unwrap();
-        
+
         let debts = vec![create_test_debt_with_file(
-            DebtCategory::Design, 
+            DebtCategory::Design,
             Severity::Medium,
             test_file.clone(),
-            1
+            1,
         )];
 
-        let result = detector.calculate_average_debt_age(&debts, project_root).await.unwrap();
+        let result = detector
+            .calculate_average_debt_age(&debts, project_root)
+            .await
+            .unwrap();
         assert_eq!(result, 0.0); // No git history, should default to 0
     }
 
@@ -2638,22 +2654,30 @@ fn helper_test() {{
         let detector = SATDDetector::new(vec!["TODO".to_string()]);
         let temp_dir = tempfile::tempdir().unwrap();
         let project_root = temp_dir.path();
-        
+
         // Create debt with path outside project root
         let external_file = PathBuf::from("/external/file.rs");
         let debts = vec![create_test_debt_with_file(
             DebtCategory::Design,
             Severity::Medium,
             external_file,
-            1
+            1,
         )];
 
-        let result = detector.calculate_average_debt_age(&debts, project_root).await.unwrap();
+        let result = detector
+            .calculate_average_debt_age(&debts, project_root)
+            .await
+            .unwrap();
         assert_eq!(result, 0.0); // External files should be skipped
     }
 
     // Helper function for debt with custom file
-    fn create_test_debt_with_file(category: DebtCategory, severity: Severity, file: PathBuf, line: u32) -> TechnicalDebt {
+    fn create_test_debt_with_file(
+        category: DebtCategory,
+        severity: Severity,
+        file: PathBuf,
+        line: u32,
+    ) -> TechnicalDebt {
         TechnicalDebt {
             text: "test debt".to_string(),
             category,
@@ -2672,7 +2696,7 @@ fn helper_test() {{
     #[test]
     fn test_extract_from_content_complex_test_blocks() {
         let detector = SATDDetector::new(vec!["TODO".to_string(), "FIXME".to_string()]);
-        
+
         let content = r#"
 // TODO: regular debt
 fn main() {
@@ -2693,22 +2717,26 @@ fn main() {
     // TODO: after test block
 }
         "#;
-        
-        let debts = detector.extract_from_content(content, Path::new("test.rs")).unwrap();
-        
+
+        let debts = detector
+            .extract_from_content(content, Path::new("test.rs"))
+            .unwrap();
+
         // Should only find debts outside test blocks
         assert_eq!(debts.len(), 2);
         assert!(debts.iter().any(|d| d.text.contains("regular debt")));
         assert!(debts.iter().any(|d| d.text.contains("after test block")));
         assert!(!debts.iter().any(|d| d.text.contains("should be ignored")));
         assert!(!debts.iter().any(|d| d.text.contains("nested ignored")));
-        assert!(!debts.iter().any(|d| d.text.contains("deeply nested ignored")));
+        assert!(!debts
+            .iter()
+            .any(|d| d.text.contains("deeply nested ignored")));
     }
 
     #[test]
     fn test_extract_from_content_non_rust_files() {
         let detector = SATDDetector::new(vec!["TODO".to_string()]);
-        
+
         let content = r#"
 // TODO: python debt
 #[cfg(test)]  // This should not be treated as test block in Python
@@ -2716,9 +2744,11 @@ def test_something():
     # TODO: python test debt should be found
     pass
         "#;
-        
-        let debts = detector.extract_from_content(content, Path::new("test.py")).unwrap();
-        
+
+        let debts = detector
+            .extract_from_content(content, Path::new("test.py"))
+            .unwrap();
+
         // Python files don't have Rust test block logic
         assert_eq!(debts.len(), 2);
         assert!(debts.iter().any(|d| d.text.contains("python debt")));
@@ -2732,10 +2762,13 @@ def test_something():
         let temp_dir = tempfile::tempdir().unwrap();
         let empty_dir = temp_dir.path().join("empty");
         std::fs::create_dir(&empty_dir).unwrap();
-        
+
         let mut files = Vec::new();
-        detector.collect_files_recursive(&empty_dir, &mut files).await.unwrap();
-        
+        detector
+            .collect_files_recursive(&empty_dir, &mut files)
+            .await
+            .unwrap();
+
         assert_eq!(files.len(), 0);
     }
 
@@ -2744,16 +2777,19 @@ def test_something():
         let detector = SATDDetector::new(vec!["TODO".to_string()]);
         let temp_dir = tempfile::tempdir().unwrap();
         let project_root = temp_dir.path();
-        
+
         // Create source files
         std::fs::write(project_root.join("main.rs"), "fn main() {}").unwrap();
         std::fs::write(project_root.join("lib.py"), "def func(): pass").unwrap();
         std::fs::write(project_root.join("script.js"), "console.log('hello');").unwrap();
         std::fs::write(project_root.join("readme.txt"), "Not a source file").unwrap();
-        
+
         let mut files = Vec::new();
-        detector.collect_files_recursive(project_root, &mut files).await.unwrap();
-        
+        detector
+            .collect_files_recursive(project_root, &mut files)
+            .await
+            .unwrap();
+
         assert_eq!(files.len(), 3); // Only source files
         assert!(files.iter().any(|f| f.file_name().unwrap() == "main.rs"));
         assert!(files.iter().any(|f| f.file_name().unwrap() == "lib.py"));
@@ -2766,21 +2802,28 @@ def test_something():
         let detector = SATDDetector::new(vec!["TODO".to_string()]);
         let temp_dir = tempfile::tempdir().unwrap();
         let project_root = temp_dir.path();
-        
+
         // Create source files in excluded directories
         std::fs::create_dir_all(project_root.join("target/debug")).unwrap();
         std::fs::create_dir_all(project_root.join("node_modules/lib")).unwrap();
         std::fs::create_dir_all(project_root.join(".git/hooks")).unwrap();
         std::fs::create_dir_all(project_root.join("src")).unwrap();
-        
+
         std::fs::write(project_root.join("target/debug/main.rs"), "fn main() {}").unwrap();
-        std::fs::write(project_root.join("node_modules/lib/index.js"), "console.log('test');").unwrap();
+        std::fs::write(
+            project_root.join("node_modules/lib/index.js"),
+            "console.log('test');",
+        )
+        .unwrap();
         std::fs::write(project_root.join(".git/hooks/pre-commit.sh"), "#!/bin/bash").unwrap();
         std::fs::write(project_root.join("src/lib.rs"), "pub fn test() {}").unwrap();
-        
+
         let mut files = Vec::new();
-        detector.collect_files_recursive(project_root, &mut files).await.unwrap();
-        
+        detector
+            .collect_files_recursive(project_root, &mut files)
+            .await
+            .unwrap();
+
         assert_eq!(files.len(), 1); // Only src/lib.rs should be found
         assert!(files.iter().any(|f| f.ends_with("src/lib.rs")));
     }
@@ -2790,18 +2833,25 @@ def test_something():
         let detector = SATDDetector::new(vec!["TODO".to_string()]);
         let temp_dir = tempfile::tempdir().unwrap();
         let project_root = temp_dir.path();
-        
+
         // Create test files and regular files
         std::fs::create_dir_all(project_root.join("src")).unwrap();
         std::fs::create_dir_all(project_root.join("tests")).unwrap();
-        
+
         std::fs::write(project_root.join("src/lib.rs"), "pub fn func() {}").unwrap();
         std::fs::write(project_root.join("src/main_test.rs"), "fn test_main() {}").unwrap();
-        std::fs::write(project_root.join("tests/integration.rs"), "#[test] fn test() {}").unwrap();
-        
+        std::fs::write(
+            project_root.join("tests/integration.rs"),
+            "#[test] fn test() {}",
+        )
+        .unwrap();
+
         let mut files = Vec::new();
-        detector.collect_files_recursive(project_root, &mut files).await.unwrap();
-        
+        detector
+            .collect_files_recursive(project_root, &mut files)
+            .await
+            .unwrap();
+
         // Should only find lib.rs, not test files
         assert_eq!(files.len(), 1);
         assert!(files.iter().any(|f| f.ends_with("src/lib.rs")));
@@ -2813,19 +2863,30 @@ def test_something():
         let detector = SATDDetector::new(vec!["TODO".to_string()]);
         let temp_dir = tempfile::tempdir().unwrap();
         let project_root = temp_dir.path();
-        
+
         // Create nested directory structure
         std::fs::create_dir_all(project_root.join("src/utils/helpers")).unwrap();
         std::fs::create_dir_all(project_root.join("src/models")).unwrap();
-        
+
         std::fs::write(project_root.join("src/main.rs"), "fn main() {}").unwrap();
         std::fs::write(project_root.join("src/utils/mod.rs"), "pub mod helpers;").unwrap();
-        std::fs::write(project_root.join("src/utils/helpers/string.rs"), "pub fn trim() {}").unwrap();
-        std::fs::write(project_root.join("src/models/user.rs"), "pub struct User {}").unwrap();
-        
+        std::fs::write(
+            project_root.join("src/utils/helpers/string.rs"),
+            "pub fn trim() {}",
+        )
+        .unwrap();
+        std::fs::write(
+            project_root.join("src/models/user.rs"),
+            "pub struct User {}",
+        )
+        .unwrap();
+
         let mut files = Vec::new();
-        detector.collect_files_recursive(project_root, &mut files).await.unwrap();
-        
+        detector
+            .collect_files_recursive(project_root, &mut files)
+            .await
+            .unwrap();
+
         assert_eq!(files.len(), 4);
         assert!(files.iter().any(|f| f.ends_with("main.rs")));
         assert!(files.iter().any(|f| f.ends_with("mod.rs")));

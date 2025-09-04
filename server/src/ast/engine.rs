@@ -3,7 +3,6 @@
 // This module is temporarily disabled during architecture consolidation
 // It will be rewritten to use the actual AstDag structure from core.rs
 
-
 /// Placeholder engine structure
 pub struct AstEngine;
 

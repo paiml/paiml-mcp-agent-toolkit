@@ -95,12 +95,17 @@ impl TdgAnalyzerAst {
         let content_hash = blake3::hash(source.as_bytes());
 
         // Toyota Way Extract Method: Cache check and return if hit
-        if let Some(cached_score) = self.check_cache_and_return(&content_hash, language, path, start_time).await? {
+        if let Some(cached_score) = self
+            .check_cache_and_return(&content_hash, language, path, start_time)
+            .await?
+        {
             return Ok(cached_score);
         }
 
         // Toyota Way Extract Method: Fresh analysis and storage
-        let score = self.perform_analysis_and_store(path, &source, language, content_hash, start_time).await?;
+        let score = self
+            .perform_analysis_and_store(path, &source, language, content_hash, start_time)
+            .await?;
 
         Ok(score)
     }
@@ -176,7 +181,8 @@ impl TdgAnalyzerAst {
         let analysis_duration = analysis_start.elapsed().unwrap_or_default();
 
         // Store in tiered storage if enabled
-        self.store_analysis_record(path, &score, content_hash, analysis_duration, language).await?;
+        self.store_analysis_record(path, &score, content_hash, analysis_duration, language)
+            .await?;
 
         // Record performance sample for fresh analysis
         if let Some(adaptive) = &self.adaptive_manager {
@@ -1350,6 +1356,7 @@ impl PythonComplexityVisitor {
         }
     }
 
+    #[allow(dead_code)]
     fn analyze_python_statement(&mut self, _stmt: &rustpython_parser::ast::Stmt) {
         // Simplified Python statement analysis - proper implementation deferred
         // This fixes the compilation error while maintaining basic functionality

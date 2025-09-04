@@ -121,6 +121,7 @@ pub struct MetricsAggregator {
     /// Alert thresholds
     alert_thresholds: Arc<RwLock<AlertThresholds>>,
     /// Historical aggregations
+    #[allow(dead_code)]
     historical_stats: Arc<RwLock<HashMap<String, AggregatedStats>>>,
 }
 

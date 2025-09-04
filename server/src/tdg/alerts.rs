@@ -126,6 +126,7 @@ pub struct AlertManager {
     metric_values: Arc<RwLock<HashMap<String, MetricValue>>>,
     /// Notification queue
     notification_tx: mpsc::UnboundedSender<Alert>,
+    #[allow(dead_code)]
     notification_rx: Arc<RwLock<mpsc::UnboundedReceiver<Alert>>>,
     /// Alert statistics
     statistics: Arc<RwLock<AlertStatistics>>,

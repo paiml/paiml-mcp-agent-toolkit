@@ -78,15 +78,15 @@ pub mod ast_c_compat; // Compatibility layer for C AST migration
 pub mod ast_cpp;
 #[cfg(feature = "cpp-ast")]
 pub mod ast_cpp_compat; // Compatibility layer for C++ AST migration
-// kotlin-ast feature is disabled
-// #[cfg(feature = "kotlin-ast")]
-// pub mod ast_kotlin;
+                        // kotlin-ast feature is disabled
+                        // #[cfg(feature = "kotlin-ast")]
+                        // pub mod ast_kotlin;
 #[cfg(feature = "python-ast")]
 pub mod ast_python;
-pub mod ast_rust;
-pub mod ast_rust_compat; // Compatibility layer during migration
 #[cfg(feature = "python-ast")]
 pub mod ast_python_compat; // Compatibility layer for Python AST migration
+pub mod ast_rust;
+pub mod ast_rust_compat; // Compatibility layer during migration
 pub mod ast_strategies;
 #[cfg(feature = "typescript-ast")]
 pub mod ast_typescript;
@@ -171,8 +171,6 @@ pub mod unified_refactor_analyzer; // Stub for backward compatibility
 pub mod verified_complexity;
 pub mod wasm;
 
-
-
 #[cfg(test)]
 mod satd_property_tests;
 
@@ -184,7 +182,6 @@ mod git_clone_property_tests;
 
 #[cfg(test)]
 mod quality_proxy_property_tests;
-
 
 pub mod telemetry_service;
 

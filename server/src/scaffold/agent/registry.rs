@@ -130,7 +130,11 @@ impl TemplateRegistry {
 
         // Load custom template from filesystem
         // Currently returns a basic template generator for custom paths
-        if path.is_file() && path.extension().is_some_and(|ext| ext == "toml" || ext == "yaml") {
+        if path.is_file()
+            && path
+                .extension()
+                .is_some_and(|ext| ext == "toml" || ext == "yaml")
+        {
             // Return a placeholder error for custom templates
             // Custom templates would be loaded and parsed here in production
             Err(ScaffoldError::InvalidTemplate(format!(

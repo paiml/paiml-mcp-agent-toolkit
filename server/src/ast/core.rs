@@ -86,7 +86,7 @@ impl NodeFlags {
     pub const EXPORTED: u8 = 0b0010_0000;
     pub const PRIVATE: u8 = 0b0100_0000;
     pub const DEPRECATED: u8 = 0b1000_0000;
-    
+
     // Node type flags - these indicate what kind of AST node this is
     pub const FUNCTION: u8 = 0b0000_0001;
     pub const STRUCT: u8 = 0b0000_0010;

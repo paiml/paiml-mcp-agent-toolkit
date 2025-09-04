@@ -4,7 +4,7 @@
 //! in the CLI module by delegating command execution to specialized handlers.
 
 use super::commands::{RoadmapCommands, ScaffoldCommands};
-use super::{AnalyzeCommands, Commands, DemoProtocol, RefactorCommands, OutputFormat};
+use super::{AnalyzeCommands, Commands, DemoProtocol, OutputFormat, RefactorCommands};
 use crate::cli::handlers;
 use crate::cli::handlers::cache::CacheCommand;
 use crate::cli::handlers::memory::MemoryCommand;
@@ -39,7 +39,10 @@ impl CommandDispatcher {
     }
 
     /// Route commands to appropriate handlers (reduces complexity)
-    async fn route_command(command: Commands, server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
+    async fn route_command(
+        command: Commands,
+        server: Arc<StatelessTemplateServer>,
+    ) -> anyhow::Result<()> {
         match command {
             Commands::Generate {
                 category,
@@ -104,10 +107,26 @@ impl CommandDispatcher {
                 max_line_length,
             } => {
                 Self::execute_demo_command(
-                    path, url, repo, Some(format), protocol, show_api, no_browser, port.unwrap_or(8080), cli,
-                    Some(target_nodes), Some(centrality_threshold), Some(merge_threshold as f64), debug, debug_output,
-                    skip_vendor, no_skip_vendor, max_line_length, server
-                ).await
+                    path,
+                    url,
+                    repo,
+                    Some(format),
+                    protocol,
+                    show_api,
+                    no_browser,
+                    port.unwrap_or(8080),
+                    cli,
+                    Some(target_nodes),
+                    Some(centrality_threshold),
+                    Some(merge_threshold as f64),
+                    debug,
+                    debug_output,
+                    skip_vendor,
+                    no_skip_vendor,
+                    max_line_length,
+                    server,
+                )
+                .await
             }
             Commands::QualityGate {
                 project_path,
@@ -127,15 +146,27 @@ impl CommandDispatcher {
                     crate::cli::enums::QualityGateOutputFormat::Json => OutputFormat::Json,
                     _ => OutputFormat::Table,
                 };
-                
+
                 // Convert QualityCheckType vec to String vec
-                let check_strings: Vec<String> = checks.iter().map(|c| format!("{:?}", c).to_lowercase()).collect();
-                
+                let check_strings: Vec<String> = checks
+                    .iter()
+                    .map(|c| format!("{:?}", c).to_lowercase())
+                    .collect();
+
                 Self::execute_quality_gate_command(
-                    Some(project_path), file, output_format, fail_on_violation, check_strings,
-                    Some(max_dead_code), Some(min_entropy), Some(max_complexity_p99 as usize),
-                    include_provability, output, perf
-                ).await
+                    Some(project_path),
+                    file,
+                    output_format,
+                    fail_on_violation,
+                    check_strings,
+                    Some(max_dead_code),
+                    Some(min_entropy),
+                    Some(max_complexity_p99 as usize),
+                    include_provability,
+                    output,
+                    perf,
+                )
+                .await
             }
             Commands::Report {
                 project_path,
@@ -156,15 +187,28 @@ impl CommandDispatcher {
                     crate::cli::enums::ReportOutputFormat::Json => OutputFormat::Json,
                     _ => OutputFormat::Table,
                 };
-                
+
                 // Convert AnalysisType vec to String vec
-                let analysis_strings: Vec<String> = analyses.iter().map(|a| format!("{:?}", a).to_lowercase()).collect();
-                
+                let analysis_strings: Vec<String> = analyses
+                    .iter()
+                    .map(|a| format!("{:?}", a).to_lowercase())
+                    .collect();
+
                 Self::execute_report_command(
-                    Some(project_path), internal_format, include_visualizations,
-                    include_executive_summary, include_recommendations, analysis_strings,
-                    Some(confidence_threshold as f64 / 100.0), output, perf, text, markdown, csv
-                ).await
+                    Some(project_path),
+                    internal_format,
+                    include_visualizations,
+                    include_executive_summary,
+                    include_recommendations,
+                    analysis_strings,
+                    Some(confidence_threshold as f64 / 100.0),
+                    output,
+                    perf,
+                    text,
+                    markdown,
+                    csv,
+                )
+                .await
             }
             Commands::Serve {
                 port,
@@ -210,11 +254,18 @@ impl CommandDispatcher {
                 section,
                 set,
                 config_path,
-            } => Self::execute_config_command(
-                show, edit, validate, reset, section, 
-                if set.is_empty() { None } else { Some(set) }, 
-                config_path
-            ).await,
+            } => {
+                Self::execute_config_command(
+                    show,
+                    edit,
+                    validate,
+                    reset,
+                    section,
+                    if set.is_empty() { None } else { Some(set) },
+                    config_path,
+                )
+                .await
+            }
 
             Commands::Agent { command } => handlers::handle_agent_command(command).await,
 
@@ -248,7 +299,7 @@ impl CommandDispatcher {
     async fn execute_demo_command(
         path: Option<PathBuf>,
         url: Option<String>,
-        repo: Option<String>, 
+        repo: Option<String>,
         format: Option<OutputFormat>,
         protocol: DemoProtocol,
         show_api: bool,
@@ -267,11 +318,25 @@ impl CommandDispatcher {
     ) -> anyhow::Result<()> {
         let demo_protocol = Self::convert_demo_protocol(protocol, cli);
         let demo_args = Self::create_demo_args(
-            path, url, repo, format, demo_protocol, show_api, no_browser, port, cli,
-            target_nodes, centrality_threshold, merge_threshold, debug, debug_output,
-            skip_vendor, no_skip_vendor, max_line_length
+            path,
+            url,
+            repo,
+            format,
+            demo_protocol,
+            show_api,
+            no_browser,
+            port,
+            cli,
+            target_nodes,
+            centrality_threshold,
+            merge_threshold,
+            debug,
+            debug_output,
+            skip_vendor,
+            no_skip_vendor,
+            max_line_length,
         );
-        
+
         crate::demo::run_demo(demo_args, server).await
     }
 
@@ -333,16 +398,17 @@ impl CommandDispatcher {
     }
 
     /// Execute scaffold commands using handler pattern (reduces complexity)
-    async fn execute_scaffold_command(command: ScaffoldCommands, server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
+    async fn execute_scaffold_command(
+        command: ScaffoldCommands,
+        server: Arc<StatelessTemplateServer>,
+    ) -> anyhow::Result<()> {
         match command {
             ScaffoldCommands::Project {
                 toolchain,
                 templates,
                 params,
                 parallel,
-            } => {
-                handlers::handle_scaffold(server, toolchain, templates, params, parallel).await
-            }
+            } => handlers::handle_scaffold(server, toolchain, templates, params, parallel).await,
             ScaffoldCommands::Agent {
                 name,
                 template,
@@ -356,9 +422,18 @@ impl CommandDispatcher {
                 probabilistic_wrapper,
             } => {
                 Self::execute_scaffold_agent_command(
-                    name, template, features, quality, output, force, dry_run,
-                    interactive, deterministic_core.is_some(), probabilistic_wrapper.is_some()
-                ).await
+                    name,
+                    template,
+                    features,
+                    quality,
+                    output,
+                    force,
+                    dry_run,
+                    interactive,
+                    deterministic_core.is_some(),
+                    probabilistic_wrapper.is_some(),
+                )
+                .await
             }
             ScaffoldCommands::ListTemplates => handlers::handle_list_agent_templates().await,
             ScaffoldCommands::ValidateTemplate { path } => {
@@ -390,8 +465,16 @@ impl CommandDispatcher {
             force,
             dry_run,
             interactive,
-            deterministic_core: if deterministic_core { Some("true".to_string()) } else { None },
-            probabilistic_wrapper: if probabilistic_wrapper { Some("true".to_string()) } else { None },
+            deterministic_core: if deterministic_core {
+                Some("true".to_string())
+            } else {
+                None
+            },
+            probabilistic_wrapper: if probabilistic_wrapper {
+                Some("true".to_string())
+            } else {
+                None
+            },
         };
         handlers::handle_scaffold_agent(params).await
     }
@@ -525,8 +608,15 @@ impl CommandDispatcher {
         let test_future = Self::execute_test_suite(&suite, config);
 
         Self::execute_with_timeout_and_reporting(
-            test_future, timeout, start, &suite, iterations, output, perf
-        ).await
+            test_future,
+            timeout,
+            start,
+            &suite,
+            iterations,
+            output,
+            perf,
+        )
+        .await
     }
 
     /// Execute memory management commands using handler pattern (reduces CC)
@@ -550,22 +640,21 @@ impl CommandDispatcher {
         fail_on_violation: bool,
         checks: Vec<String>,
         max_dead_code: Option<f64>,
-        min_entropy: Option<f64>, 
+        min_entropy: Option<f64>,
         max_complexity_p99: Option<usize>,
         include_provability: bool,
         output: Option<PathBuf>,
         perf: bool,
     ) -> anyhow::Result<()> {
-        use crate::cli::enums::{QualityGateOutputFormat, QualityCheckType};
-        
-        
+        use crate::cli::enums::{QualityCheckType, QualityGateOutputFormat};
+
         // Convert OutputFormat to QualityGateOutputFormat
         let qg_format = match format {
             OutputFormat::Json => QualityGateOutputFormat::Json,
             OutputFormat::Table => QualityGateOutputFormat::Summary,
             OutputFormat::Yaml => QualityGateOutputFormat::Summary,
         };
-        
+
         // Convert check strings to QualityCheckType
         let quality_checks: Vec<QualityCheckType> = checks
             .iter()
@@ -583,12 +672,12 @@ impl CommandDispatcher {
                 _ => None,
             })
             .collect();
-        
+
         // Use defaults for optional parameters
         let max_dead = max_dead_code.unwrap_or(0.1); // 10% default
         let min_ent = min_entropy.unwrap_or(0.7); // 70% default
         let max_comp = max_complexity_p99.unwrap_or(20) as u32;
-        
+
         handlers::demo_handlers::handle_quality_gate(
             project_path.unwrap_or_else(|| PathBuf::from(".")),
             file,
@@ -601,7 +690,8 @@ impl CommandDispatcher {
             include_provability,
             output,
             perf,
-        ).await
+        )
+        .await
     }
 
     /// Execute report command (extracted for complexity reduction)
@@ -620,16 +710,15 @@ impl CommandDispatcher {
         markdown: bool,
         csv: bool,
     ) -> anyhow::Result<()> {
-        use crate::cli::enums::{ReportOutputFormat, AnalysisType};
-        
-        
+        use crate::cli::enums::{AnalysisType, ReportOutputFormat};
+
         // Convert OutputFormat to ReportOutputFormat
         let report_format = match output_format {
             OutputFormat::Json => ReportOutputFormat::Json,
             OutputFormat::Table => ReportOutputFormat::Text,
             OutputFormat::Yaml => ReportOutputFormat::Text,
         };
-        
+
         // Convert analysis strings to AnalysisType
         let analysis_types: Vec<AnalysisType> = analyses
             .iter()
@@ -643,10 +732,10 @@ impl CommandDispatcher {
                 _ => None,
             })
             .collect();
-        
+
         // Convert confidence threshold to u8 (percentage)
         let confidence = (confidence_threshold.unwrap_or(0.8) * 100.0) as u8;
-        
+
         handlers::enhanced_reporting_handlers::handle_generate_report(
             project_path.unwrap_or_else(|| PathBuf::from(".")),
             report_format,
@@ -660,7 +749,8 @@ impl CommandDispatcher {
             confidence,
             output,
             perf,
-        ).await
+        )
+        .await
     }
 
     /// Execute config command (extracted for complexity reduction)
@@ -682,7 +772,8 @@ impl CommandDispatcher {
             section,
             set.unwrap_or_default(),
             config_path,
-        ).await
+        )
+        .await
     }
 
     /// Create test configuration from CLI parameters (Toyota Way Extract Method)
@@ -694,7 +785,7 @@ impl CommandDispatcher {
         regression: bool,
     ) -> crate::test_performance::PerformanceTestConfig {
         use super::commands::TestSuite;
-        
+
         crate::test_performance::PerformanceTestConfig {
             enable_regression_tests: regression
                 || matches!(suite, TestSuite::Regression | TestSuite::All),
@@ -778,7 +869,7 @@ impl CommandDispatcher {
     async fn execute_property_tests() -> anyhow::Result<()> {
         println!("🧪 Running property-based test suite...");
         println!("This validates code properties with generated test cases");
-        
+
         // Run property tests via cargo
         use std::process::Command;
         let output = Command::new("cargo")
@@ -789,7 +880,7 @@ impl CommandDispatcher {
             .arg("--")
             .arg("property")
             .output()?;
-        
+
         if output.status.success() {
             println!("✅ Property tests completed successfully");
             Ok(())
@@ -802,7 +893,7 @@ impl CommandDispatcher {
     async fn execute_integration_tests() -> anyhow::Result<()> {
         println!("🔗 Running integration test suite...");
         println!("This validates component interactions and system behavior");
-        
+
         // Run integration tests via cargo
         use std::process::Command;
         let output = Command::new("cargo")
@@ -812,7 +903,7 @@ impl CommandDispatcher {
             .arg("--test")
             .arg("integration")
             .output()?;
-        
+
         if output.status.success() {
             println!("✅ Integration tests completed successfully");
             Ok(())
@@ -833,7 +924,7 @@ impl CommandDispatcher {
         perf: bool,
     ) -> anyhow::Result<()> {
         let timeout_duration = std::time::Duration::from_secs(timeout);
-        
+
         match tokio::time::timeout(timeout_duration, test_future).await {
             Ok(result) => {
                 let elapsed = start.elapsed();
@@ -906,7 +997,7 @@ mod tests {
     #[tokio::test]
     async fn test_execute_command_generate() {
         let server = create_test_server();
-        
+
         let command = Commands::Generate {
             category: None,
             template: "test_template".to_string(),
@@ -914,41 +1005,41 @@ mod tests {
             output: None,
             create_dirs: false,
         };
-        
+
         // Should delegate to handler without panicking
         // Note: This will likely fail in actual execution due to missing template
         // but tests our routing logic
         let result = CommandDispatcher::execute_command(command, server).await;
-        
+
         // We expect this to fail cleanly (not panic)
         assert!(result.is_err());
     }
-    
+
     /// Test execute_command with List command
     #[tokio::test]
     async fn test_execute_command_list() {
         let server = create_test_server();
-        
+
         let command = Commands::List {
             toolchain: None,
             category: None,
             format: OutputFormat::Table,
         };
-        
+
         let result = CommandDispatcher::execute_command(command, server).await;
         // List command should succeed with basic server
         assert!(result.is_ok());
     }
-    
+
     /// Test execute_command with Scaffold::ListTemplates command
     #[tokio::test]
     async fn test_execute_command_scaffold_list() {
         let server = create_test_server();
-        
+
         let command = Commands::Scaffold {
             command: ScaffoldCommands::ListTemplates,
         };
-        
+
         let result = CommandDispatcher::execute_command(command, server).await;
         // ListTemplates should succeed
         assert!(result.is_ok());
@@ -959,7 +1050,7 @@ mod tests {
     async fn test_execute_quality_gate_command() {
         // OutputFormat already imported
         use std::path::PathBuf;
-        
+
         let result = CommandDispatcher::execute_quality_gate_command(
             Some(PathBuf::from(".")),
             None,
@@ -972,21 +1063,22 @@ mod tests {
             false,
             None,
             false,
-        ).await;
-        
+        )
+        .await;
+
         // Quality gate should execute without panicking
         // Note: May fail due to actual quality violations but routing works
         assert!(result.is_ok() || result.is_err());
     }
-    
+
     /// Test execute_report_command (extracted method test)
     #[tokio::test]
     async fn test_execute_report_command() {
         // OutputFormat already imported
         use std::path::PathBuf;
-        
+
         let analyses = vec![String::from("complexity")];
-        
+
         let result = CommandDispatcher::execute_report_command(
             Some(PathBuf::from(".")),
             OutputFormat::Table,
@@ -1000,12 +1092,13 @@ mod tests {
             false,
             false,
             false,
-        ).await;
-        
+        )
+        .await;
+
         // Report command should execute without panicking
         assert!(result.is_ok() || result.is_err());
     }
-    
+
     /// Test execute_config_command (extracted method test)
     #[tokio::test]
     async fn test_execute_config_command() {
@@ -1017,8 +1110,9 @@ mod tests {
             None,  // section
             None,  // set
             None,  // config_path
-        ).await;
-        
+        )
+        .await;
+
         // Config show command should succeed
         assert!(result.is_ok());
     }
@@ -1030,7 +1124,7 @@ mod tests {
         // Property tests should run successfully
         assert!(result.is_ok());
     }
-    
+
     /// Test execute_integration_tests (TDD for integration test implementation)
     #[tokio::test]
     async fn test_execute_integration_tests() {
@@ -1038,20 +1132,20 @@ mod tests {
         // Integration tests should run successfully
         assert!(result.is_ok());
     }
-    
+
     /// Test create_test_config (Toyota Way Extract Method test)
     #[test]
     fn test_create_test_config() {
         use super::commands::TestSuite;
-        
+
         let config = CommandDispatcher::create_test_config(
             TestSuite::All,
-            100,    // iterations
-            true,   // memory
-            true,   // throughput
-            true,   // regression
+            100,  // iterations
+            true, // memory
+            true, // throughput
+            true, // regression
         );
-        
+
         assert_eq!(config.test_iterations, 100);
         assert!(config.enable_memory_tests);
         assert!(config.enable_throughput_tests);
@@ -1062,28 +1156,27 @@ mod tests {
     #[test]
     fn test_create_test_config_memory_suite() {
         use super::commands::TestSuite;
-        
+
         let config = CommandDispatcher::create_test_config(
             TestSuite::Memory,
-            50,     // iterations
-            false,  // memory flag (should be enabled by suite)
-            false,  // throughput
-            false,  // regression
+            50,    // iterations
+            false, // memory flag (should be enabled by suite)
+            false, // throughput
+            false, // regression
         );
-        
+
         assert_eq!(config.test_iterations, 50);
         assert!(config.enable_memory_tests); // Enabled by TestSuite::Memory
         assert!(!config.enable_throughput_tests);
         assert!(!config.enable_regression_tests);
     }
 
-
     /// Test print_performance_summary_if_requested (extracted method)
     #[test]
     fn test_print_performance_summary_if_requested() {
         use super::commands::TestSuite;
         use std::time::Duration;
-        
+
         // Test with perf enabled (should not panic)
         CommandDispatcher::print_performance_summary_if_requested(
             true,
@@ -1091,7 +1184,7 @@ mod tests {
             &TestSuite::Memory,
             100,
         );
-        
+
         // Test with perf disabled (should not print)
         CommandDispatcher::print_performance_summary_if_requested(
             false,
@@ -1106,7 +1199,7 @@ mod tests {
     fn test_write_test_results_no_output() {
         use super::commands::TestSuite;
         use std::time::Duration;
-        
+
         let result: anyhow::Result<()> = Ok(());
         let write_result = CommandDispatcher::write_test_results_if_requested(
             None, // no output file
@@ -1115,7 +1208,7 @@ mod tests {
             100,
             &result,
         );
-        
+
         // Should succeed without writing anything
         assert!(write_result.is_ok());
     }

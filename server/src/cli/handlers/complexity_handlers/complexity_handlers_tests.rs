@@ -230,7 +230,7 @@ mod tests {
             30,
             10,
         );
-        
+
         assert_eq!(config.project_path, PathBuf::from("/test/project"));
         assert_eq!(config.toolchain, Some("rust".to_string()));
         assert_eq!(config.max_cyclomatic, 15);
@@ -251,9 +251,9 @@ mod tests {
             60,
             5,
         );
-        
+
         assert_eq!(config.max_cyclomatic, 10); // Default
-        assert_eq!(config.max_cognitive, 15);  // Default
+        assert_eq!(config.max_cognitive, 15); // Default
         assert_eq!(config.toolchain, None);
     }
 
@@ -268,7 +268,7 @@ mod tests {
             30,
             5,
         );
-        
+
         let detected = config.detect_toolchain();
         assert_eq!(detected, Some("python".to_string()));
     }
@@ -284,7 +284,7 @@ mod tests {
             30,
             5,
         );
-        
+
         let detected = config.detect_toolchain();
         // Should attempt to detect from file system but return None for non-existent path
         assert!(detected.is_none() || detected.is_some());
@@ -301,10 +301,10 @@ mod tests {
             30,
             5,
         );
-        
+
         let nonexistent_file = PathBuf::from("nonexistent.rs");
         let result = super::super::analyze_single_file(&nonexistent_file, &config).await;
-        
+
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("File not found"));
     }
@@ -314,7 +314,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let test_file = temp_dir.path().join("test.rs");
         std::fs::write(&test_file, "fn main() { println!(\"Hello\"); }").unwrap();
-        
+
         let config = ComplexityConfig::from_args(
             temp_dir.path().to_path_buf(),
             Some("rust".to_string()),
@@ -324,9 +324,9 @@ mod tests {
             30,
             5,
         );
-        
+
         let result = super::super::analyze_single_file(&test_file, &config).await;
-        
+
         // Should handle absolute paths correctly, even if analysis fails
         assert!(result.is_ok() || result.is_err());
     }
@@ -342,10 +342,10 @@ mod tests {
             30,
             5,
         );
-        
+
         let empty_files: Vec<PathBuf> = vec![];
         let result = super::super::analyze_multiple_files(&empty_files, &config).await;
-        
+
         assert!(result.is_ok());
         assert_eq!(result.unwrap().len(), 0);
     }
@@ -361,10 +361,13 @@ mod tests {
             30,
             5,
         );
-        
-        let files = vec![PathBuf::from("nonexistent1.rs"), PathBuf::from("nonexistent2.rs")];
+
+        let files = vec![
+            PathBuf::from("nonexistent1.rs"),
+            PathBuf::from("nonexistent2.rs"),
+        ];
         let result = super::super::analyze_multiple_files(&files, &config).await;
-        
+
         // Should handle errors gracefully or return partial results
         assert!(result.is_ok() || result.is_err());
     }
@@ -374,17 +377,15 @@ mod tests {
         let metrics = FileComplexityMetrics {
             path: "test.rs".to_string(),
             total_complexity: ComplexityMetrics::new(15, 20, 5, 100),
-            functions: vec![
-                FunctionComplexity {
-                    name: "test_func".to_string(),
-                    line_start: 1,
-                    line_end: 10,
-                    metrics: ComplexityMetrics::new(5, 8, 2, 10),
-                },
-            ],
+            functions: vec![FunctionComplexity {
+                name: "test_func".to_string(),
+                line_start: 1,
+                line_end: 10,
+                metrics: ComplexityMetrics::new(5, 8, 2, 10),
+            }],
             classes: vec![],
         };
-        
+
         assert_eq!(metrics.path, "test.rs");
         assert_eq!(metrics.total_complexity.cyclomatic, 15);
         assert_eq!(metrics.total_complexity.cognitive, 20);
@@ -402,7 +403,7 @@ mod tests {
             line_end: 100,
             metrics: ComplexityMetrics::new(25, 30, 8, 50),
         };
-        
+
         assert_eq!(func.name, "complex_function");
         assert_eq!(func.line_start, 50);
         assert_eq!(func.line_end, 100);
@@ -415,7 +416,7 @@ mod tests {
     #[test]
     fn test_complexity_metrics_new() {
         let metrics = ComplexityMetrics::new(10, 15, 3, 25);
-        
+
         assert_eq!(metrics.cyclomatic, 10);
         assert_eq!(metrics.cognitive, 15);
         assert_eq!(metrics.nesting_depth, 3);
@@ -436,13 +437,14 @@ mod tests {
             }],
             classes: vec![],
         };
-        
+
         // Function at exactly threshold should NOT be included (> comparison)
         let threshold = 10;
-        let should_include = file_at_threshold.functions.iter().any(|func| {
-            func.metrics.cyclomatic > threshold
-        });
-        
+        let should_include = file_at_threshold
+            .functions
+            .iter()
+            .any(|func| func.metrics.cyclomatic > threshold);
+
         assert!(!should_include); // At threshold, not above
     }
 
@@ -460,13 +462,14 @@ mod tests {
             }],
             classes: vec![],
         };
-        
+
         // Function just above threshold SHOULD be included
         let threshold = 10;
-        let should_include = file_above_threshold.functions.iter().any(|func| {
-            func.metrics.cyclomatic > threshold
-        });
-        
+        let should_include = file_above_threshold
+            .functions
+            .iter()
+            .any(|func| func.metrics.cyclomatic > threshold);
+
         assert!(should_include); // Above threshold
     }
 
@@ -497,20 +500,23 @@ mod tests {
             ],
             classes: vec![],
         };
-        
+
         // With threshold 10, should include file because some functions are above
         let threshold = 10;
-        let above_threshold_count = file_mixed.functions.iter()
+        let above_threshold_count = file_mixed
+            .functions
+            .iter()
             .filter(|func| func.metrics.cyclomatic > threshold)
             .count();
-        
+
         assert_eq!(above_threshold_count, 2); // complex_func and very_complex_func
-        
+
         // File should be included if ANY function is above threshold
-        let should_include = file_mixed.functions.iter().any(|func| {
-            func.metrics.cyclomatic > threshold
-        });
-        
+        let should_include = file_mixed
+            .functions
+            .iter()
+            .any(|func| func.metrics.cyclomatic > threshold);
+
         assert!(should_include);
     }
 }
