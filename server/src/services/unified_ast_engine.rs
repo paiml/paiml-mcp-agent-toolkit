@@ -4,8 +4,8 @@
 //! All functionality has been moved to server/src/ast/
 
 use anyhow::Result;
-use std::collections::HashMap;
-use std::path::Path;
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 
 // Stub types for backward compatibility
 pub struct UnifiedAstEngine;
@@ -39,6 +39,12 @@ impl UnifiedAstEngine {
     ) -> Result<crate::models::dag::DependencyGraph> {
         Ok(crate::models::dag::DependencyGraph::new())
     }
+
+    /// Generate artifacts for the project
+    /// This is a stub implementation for backward compatibility
+    pub async fn generate_artifacts(&self, _path: &Path) -> Result<ArtifactTree> {
+        Ok(ArtifactTree::default())
+    }
 }
 
 #[derive(Default, Debug, Clone)]
@@ -48,15 +54,16 @@ pub struct AstForest {
 }
 
 impl AstForest {
-    pub fn files(&self) -> impl Iterator<Item = &ModuleNode> {
-        self.modules.iter()
+    pub fn files(&self) -> impl Iterator<Item = (&PathBuf, &ModuleNode)> {
+        self.modules.iter().map(|module| (&module.path, module))
     }
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct ModuleNode {
-    pub path: String,
+    pub path: std::path::PathBuf,
     pub name: String,
+    pub visibility: String,
     pub metrics: ModuleMetrics,
 }
 
@@ -64,6 +71,8 @@ pub struct ModuleNode {
 pub struct ModuleMetrics {
     pub complexity: u32,
     pub lines: usize,
+    pub functions: usize,
+    pub classes: usize,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -79,23 +88,34 @@ pub struct ProjectMetrics {
 // Additional stub types for deterministic_mermaid_engine
 #[derive(Default, Debug, Clone)]
 pub struct ArtifactTree {
-    pub nodes: Vec<String>,
-    pub dogfooding: Vec<(String, String)>, // (name, content) pairs
+    pub dogfooding: BTreeMap<String, String>,
     pub mermaid: MermaidArtifacts,
     pub templates: Vec<Template>,
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct MermaidArtifacts {
-    pub diagrams: Vec<String>,
-    pub ast_generated: HashMap<String, String>,
-    pub non_code: HashMap<String, String>,
+    pub ast_generated: BTreeMap<String, String>,
+    pub non_code: BTreeMap<String, String>,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Template {
     pub name: String,
     pub content: String,
+    pub hash: blake3::Hash,
+    pub source_location: PathBuf,
+}
+
+impl Default for Template {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            content: String::new(),
+            hash: blake3::hash(b""),
+            source_location: PathBuf::new(),
+        }
+    }
 }
 
 // FileAst stub enum for backward compatibility

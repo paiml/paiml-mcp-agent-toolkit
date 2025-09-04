@@ -483,7 +483,6 @@ impl AdaptiveThresholdFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::time::sleep;
 
     fn create_sample(duration_ms: u64, cache_hit: bool, memory_mb: f32) -> PerformanceSample {
         PerformanceSample {

@@ -56,6 +56,32 @@ async fn show_diagnostics(
     let stats = storage.get_statistics();
 
     match format {
+        DiagnosticOutputFormat::Plain => {
+            // Plain text format without decorations
+            if show_storage {
+                println!("TDG System Diagnostics\n");
+                println!("Storage: {} entries", stats.total_entries);
+                println!(
+                    "Hot: {}, Warm: {}, Cold: {}",
+                    stats.hot_entries, stats.warm_entries, stats.cold_entries
+                );
+                println!(
+                    "Backends - Warm: {}, Cold: {}",
+                    stats.warm_backend, stats.cold_backend
+                );
+                println!(
+                    "Compression: {:.1}%, Memory: {} KB",
+                    stats.compression_ratio * 100.0,
+                    stats.hot_memory_kb
+                );
+                if detailed {
+                    println!("\nBackend Details:");
+                    for (tier, backend_stats) in &stats.backend_stats {
+                        println!("{}: {:?}", tier, backend_stats);
+                    }
+                }
+            }
+        }
         DiagnosticOutputFormat::Human => {
             println!("=== TDG System Diagnostics ===\n");
 

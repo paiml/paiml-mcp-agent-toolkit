@@ -7,7 +7,6 @@
 mod issue_54_function_count_tests {
     use crate::services::big_o_analyzer::{BigOAnalysisConfig, BigOAnalyzer};
     use std::fs;
-    use std::path::PathBuf;
     use tempfile::TempDir;
 
     /// Test that Big-O analyzer counts Rust functions correctly

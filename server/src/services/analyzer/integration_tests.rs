@@ -7,8 +7,7 @@
 mod unified_analyzer_integration_tests {
     use super::super::{
         big_o::BigOAnalyzer, complexity::ComplexityAnalyzer, dead_code::DeadCodeAnalyzer,
-        defect::DefectAnalyzer, satd::SATDAnalyzer, Analyzer, ProjectAnalyzer, ProjectConfig,
-        ProjectInput,
+        defect::DefectAnalyzer, satd::SATDAnalyzer, Analyzer, ProjectAnalyzer,
     };
     use std::fs;
     use std::path::PathBuf;

@@ -605,7 +605,7 @@ async fn scan_rust_files_only(
                 return false;
             }
             // Only Rust files
-            if !path.extension().map_or(false, |ext| ext == "rs") {
+            if !path.extension().is_some_and(|ext| ext == "rs") {
                 return false;
             }
             // Skip test and example files for dead code analysis

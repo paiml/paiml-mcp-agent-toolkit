@@ -1671,19 +1671,26 @@ mod tests {
     #[tokio::test]
     async fn test_satd_analysis_structure() {
         let analysis = SatdAnalysis {
-            total_satd: 5,
-            by_category: HashMap::from([("TODO".to_string(), 3), ("FIXME".to_string(), 2)]),
-            items: vec![SatdItem {
-                line: 42,
-                category: "TODO".to_string(),
-                severity: "Medium".to_string(),
-                text: "Implement this feature".to_string(),
-                context: None,
+            project_path: "/test/project".to_string(),
+            total_debt_items: 5,
+            debt_density: 0.02,
+            critical_items: 2,
+            categories: HashMap::from([("TODO".to_string(), 3), ("FIXME".to_string(), 2)]),
+            files: vec![SatdFile {
+                path: "test.rs".to_string(),
+                debt_count: 1,
+                items: vec![SatdItem {
+                    line: 42,
+                    category: "TODO".to_string(),
+                    severity: "Medium".to_string(),
+                    text: "Implement this feature".to_string(),
+                    context: None,
+                }],
             }],
         };
 
-        assert_eq!(analysis.total_satd, 5);
-        assert_eq!(analysis.by_category.get("TODO"), Some(&3));
-        assert_eq!(analysis.items[0].line, 42);
+        assert_eq!(analysis.total_debt_items, 5);
+        assert_eq!(analysis.categories.get("TODO"), Some(&3));
+        assert_eq!(analysis.files[0].items[0].line, 42);
     }
 }

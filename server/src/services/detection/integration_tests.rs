@@ -7,8 +7,7 @@
 mod unified_detection_integration_tests {
     use super::super::{
         duplicates::DuplicateDetector, polyglot::PolyglotDetector, satd::SATDDetector,
-        DetectionConfig, DetectionInput, DetectionOutput, Detector, DetectorCapabilities,
-        UnifiedDetectionProcessor,
+        DetectionConfig, DetectionInput, DetectionOutput, Detector, UnifiedDetectionProcessor,
     };
     use std::fs;
     use tempfile::TempDir;

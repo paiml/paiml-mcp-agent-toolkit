@@ -7,7 +7,6 @@ mod tests {
     use proptest::prelude::*;
     use std::collections::HashMap;
     use std::sync::Arc;
-    use std::time::Duration;
     use tempfile::TempDir;
     use tokio::runtime::Runtime;
 
