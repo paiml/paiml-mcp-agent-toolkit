@@ -7305,7 +7305,7 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
             files,
             0.0, // threshold
             10,  // top_files
-            TdgOutputFormat::Human,
+            TdgOutputFormat::Table,
             false, // include_components
             false, // critical_only
             false, // verbose
@@ -7336,7 +7336,7 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
             files.clone(),
             100.0, // very high threshold
             10,
-            TdgOutputFormat::Human,
+            TdgOutputFormat::Table,
             false,
             false,
             false,
@@ -7350,7 +7350,7 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
             files,
             0.0, // very low threshold
             10,
-            TdgOutputFormat::Human,
+            TdgOutputFormat::Table,
             false,
             false,
             false,
@@ -7380,7 +7380,7 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
             files,
             0.0, // threshold
             10,  // top_files
-            TdgOutputFormat::Human,
+            TdgOutputFormat::Table,
             false, // include_components
             true,  // critical_only = true
             false, // verbose
