@@ -422,7 +422,7 @@ pub struct CleanupReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, HashMap};
     use tempfile::TempDir;
 
     #[test]
