@@ -15,6 +15,7 @@
 //! - **mcp**: Model Context Protocol specific structures
 //! - **pdmt**: PDMT integration for deterministic todo generation with quality enforcement
 //! - **project_meta**: Project metadata and configuration
+//! - **quality_gate**: Quality gate results and violations
 //! - **refactor**: Refactoring state machine and operations
 //! - **tdg**: Task Dependency Graph for workflow analysis
 //! - **template**: Template structures for code generation
@@ -57,6 +58,7 @@ pub mod mcp;
 pub mod pdmt;
 pub mod project_meta;
 pub mod proxy;
+pub mod quality_gate;
 pub mod refactor;
 pub mod tdg;
 pub mod template;
