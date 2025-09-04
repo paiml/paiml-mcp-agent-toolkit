@@ -2581,7 +2581,6 @@ mod tests {
             host: "127.0.0.1".to_string(),
             port: 3000,
             cors: true,
-            transport: crate::cli::TransportMode::Http,
         };
 
         match serve {

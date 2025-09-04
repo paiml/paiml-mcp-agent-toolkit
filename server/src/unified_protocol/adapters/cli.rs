@@ -2620,7 +2620,6 @@ mod tests {
             host: "127.0.0.1".to_string(),
             port: 3000,
             cors: true,
-            transport: crate::cli::TransportMode::Http,
         };
 
         let input = CliInput::from_commands(command);
@@ -2703,7 +2702,15 @@ mod tests {
     #[tokio::test]
     async fn test_unsupported_command() {
         let adapter = CliAdapter::new();
-        let command = Commands::Diagnose(crate::cli::DiagnoseCommands::System);
+        // Create a default DiagnoseArgs for testing
+        let diagnose_args = crate::cli::diagnose::DiagnoseArgs {
+            format: crate::cli::diagnose::DiagnosticFormat::Pretty,
+            only: vec![],
+            skip: vec![],
+            quick: false,
+            output: None,
+        };
+        let command = Commands::Diagnose(diagnose_args);
 
         let input = CliInput::from_commands(command);
         let result = adapter.decode(input).await;
