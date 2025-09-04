@@ -506,6 +506,8 @@ pub enum Commands {
 #[derive(Clone, Debug, clap::ValueEnum)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum DiagnosticOutputFormat {
+    /// Plain text format
+    Plain,
     /// Human-readable format
     Human,
     /// JSON format
@@ -2092,9 +2094,11 @@ mod tests {
 
     #[test]
     fn test_storage_command_variants() {
-        let stats = StorageCommand::Stats;
-        let clear = StorageCommand::Clear;
-        let compact = StorageCommand::Compact;
+        let stats = StorageCommand::Stats { detailed: false };
+        let cleanup = StorageCommand::Cleanup { max_age: 3600 };
+        let migrate = StorageCommand::Migrate {
+            backend: "sled".to_string(),
+        };
         let backup = StorageCommand::Backup {
             output: PathBuf::from("backup.db"),
         };
@@ -2102,9 +2106,15 @@ mod tests {
             input: PathBuf::from("backup.db"),
         };
 
-        assert_eq!(stats, StorageCommand::Stats);
-        assert_eq!(clear, StorageCommand::Clear);
-        assert_eq!(compact, StorageCommand::Compact);
+        // Test variant construction
+        match stats {
+            StorageCommand::Stats { detailed } => assert!(!detailed),
+            _ => panic!("Unexpected variant"),
+        }
+        match cleanup {
+            StorageCommand::Cleanup { max_age } => assert_eq!(max_age, 3600),
+            _ => panic!("Unexpected variant"),
+        }
 
         match backup {
             StorageCommand::Backup { output } => {

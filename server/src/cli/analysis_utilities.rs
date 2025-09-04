@@ -4167,6 +4167,7 @@ pub struct QualityGateResults {
     pub section_violations: usize,
     pub provability_violations: usize,
     pub provability_score: Option<f64>,
+    pub violations: Vec<String>, // Simplified for test purposes
 }
 
 impl Default for QualityGateResults {
@@ -4184,6 +4185,7 @@ impl Default for QualityGateResults {
             section_violations: 0,
             provability_violations: 0,
             provability_score: None,
+            violations: Vec::new(),
         }
     }
 }
@@ -7660,7 +7662,7 @@ fn another_simple(y: i32) -> i32 {
     /// Test print_single_check for different check types
     #[test]
     fn test_print_single_check_all_types() {
-        use crate::models::quality_gate::QualityCheckType;
+        use crate::cli::enums::QualityCheckType;
 
         // Test each check type (output goes to stderr, so we can't easily capture it)
         // But we can verify the function doesn't panic
@@ -7679,7 +7681,7 @@ fn another_simple(y: i32) -> i32 {
     /// Test print_single_check with All type (should be handled by wildcard)
     #[test]
     fn test_print_single_check_all_and_wildcard() {
-        use crate::models::quality_gate::QualityCheckType;
+        use crate::cli::enums::QualityCheckType;
 
         // Test the wildcard case
         print_single_check(&QualityCheckType::All);
@@ -8280,6 +8282,7 @@ fn another_simple(y: i32) -> i32 {
             section_violations: 0,
             provability_violations: 0,
             provability_score: Some(85.5),
+            violations: Vec::new(),
         };
 
         let violations = vec![
@@ -8325,6 +8328,7 @@ fn another_simple(y: i32) -> i32 {
             section_violations: 0,
             provability_violations: 0,
             provability_score: Some(95.0),
+            violations: Vec::new(),
         };
 
         let violations = vec![];
@@ -8354,6 +8358,7 @@ fn another_simple(y: i32) -> i32 {
             section_violations: 0,
             provability_violations: 0,
             provability_score: None,
+            violations: Vec::new(),
         };
 
         let violations = vec![QualityViolation {
@@ -8392,6 +8397,7 @@ fn another_simple(y: i32) -> i32 {
             section_violations: 0,
             provability_violations: 0,
             provability_score: None,
+            violations: Vec::new(),
         };
 
         let violations = vec![];
@@ -8421,6 +8427,7 @@ fn another_simple(y: i32) -> i32 {
             section_violations: 0,
             provability_violations: 0,
             provability_score: Some(78.5),
+            violations: Vec::new(),
         };
 
         let violations = vec![QualityViolation {
@@ -8459,6 +8466,7 @@ fn another_simple(y: i32) -> i32 {
             section_violations: 1,
             provability_violations: 1,
             provability_score: Some(65.0),
+            violations: Vec::new(),
         };
 
         let violations = vec![];
@@ -9280,17 +9288,18 @@ mod markdown_formatting_tests {
     fn create_test_quality_results(passed: bool, violations: u64) -> QualityGateResults {
         QualityGateResults {
             passed,
-            total_violations: violations,
-            complexity_violations: violations / 3,
-            dead_code_violations: violations / 4,
-            satd_violations: violations / 5,
-            entropy_violations: violations / 6,
-            security_violations: violations / 7,
-            duplicate_violations: violations / 8,
-            coverage_violations: violations / 9,
-            section_violations: violations / 10,
-            provability_violations: violations / 11,
-            provability_score: Some(0.85),
+            total_violations: violations as usize,
+            complexity_violations: (violations / 3) as usize,
+            dead_code_violations: (violations / 4) as usize,
+            satd_violations: (violations / 5) as usize,
+            entropy_violations: (violations / 6) as usize,
+            security_violations: (violations / 7) as usize,
+            duplicate_violations: (violations / 8) as usize,
+            coverage_violations: (violations / 9) as usize,
+            section_violations: (violations / 10) as usize,
+            provability_violations: 0,
+            provability_score: None,
+            violations: Vec::new(),
         }
     }
 

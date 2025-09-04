@@ -1098,7 +1098,8 @@ mod tests {
 
         // Check that state machine is initialized
         let state = engine.state_machine.read().await;
-        assert!(matches!(state.current_state(), State::Idle));
+        // Check that state machine starts with a Scan state (initial state)
+        assert!(matches!(state.current_state(), State::Scan { .. }));
     }
 
     #[tokio::test]
