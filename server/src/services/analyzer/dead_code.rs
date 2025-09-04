@@ -67,33 +67,68 @@ impl Analyzer for DeadCodeAnalyzer {
     type Config = ProjectConfig;
 
     async fn analyze(&self, input: Self::Input, config: Self::Config) -> Result<Self::Output> {
-        // Use the existing analyze_with_ranking method for async analysis
-        use crate::models::dead_code::DeadCodeAnalysisConfig;
-        let analysis_config = DeadCodeAnalysisConfig {
-            include_unreachable: true, // Default for now
-            include_tests: config.include_tests,
-            min_dead_lines: 5, // Default value
+        // Use the new accurate cargo-based analyzer
+        use crate::services::cargo_dead_code_analyzer::{CargoDeadCodeAnalyzer, DeadCodeKind};
+
+        let cargo_analyzer = if config.include_tests {
+            CargoDeadCodeAnalyzer::new(&input.project_path).include_tests()
+        } else {
+            CargoDeadCodeAnalyzer::new(&input.project_path)
         };
 
-        // Clone the inner analyzer to make it mutable
-        let mut analyzer = DeadCodeAnalyzer::new();
-        let ranking_result = analyzer
-            .inner
-            .analyze_with_ranking(&input.project_path, analysis_config)
-            .await?;
+        // Run accurate cargo-based analysis
+        let accurate_report = cargo_analyzer.analyze().await?;
 
-        // Convert ranking result to DeadCodeReport format
-        // For now, return a basic report - can be enhanced later
+        // Convert to legacy DeadCodeReport format for compatibility
+        let mut dead_functions = Vec::new();
+        let mut dead_classes = Vec::new();
+        let mut dead_variables = Vec::new();
+
+        use crate::models::unified_ast::NodeKey;
+        use crate::services::dead_code_analyzer::{DeadCodeItem, DeadCodeType};
+
+        let mut node_id = 0u32;
+        for file in &accurate_report.files_with_dead_code {
+            for item in &file.dead_items {
+                let dead_item = DeadCodeItem {
+                    node_key: node_id as NodeKey,
+                    name: item.name.clone(),
+                    file_path: file.file_path.display().to_string(),
+                    line_number: item.line as u32,
+                    dead_type: match item.kind {
+                        DeadCodeKind::Function | DeadCodeKind::Method => {
+                            DeadCodeType::UnusedFunction
+                        }
+                        DeadCodeKind::Struct | DeadCodeKind::Enum => DeadCodeType::UnusedClass,
+                        DeadCodeKind::Field | DeadCodeKind::Static | DeadCodeKind::Constant => {
+                            DeadCodeType::UnusedVariable
+                        }
+                        _ => DeadCodeType::UnreachableCode,
+                    },
+                    confidence: 0.95, // High confidence from cargo
+                    reason: item.message.clone(),
+                };
+
+                match dead_item.dead_type {
+                    DeadCodeType::UnusedFunction => dead_functions.push(dead_item),
+                    DeadCodeType::UnusedClass => dead_classes.push(dead_item),
+                    DeadCodeType::UnusedVariable => dead_variables.push(dead_item),
+                    _ => {}
+                }
+                node_id += 1;
+            }
+        }
+
         Ok(DeadCodeReport {
-            dead_functions: Vec::new(),
-            dead_classes: Vec::new(),
-            dead_variables: Vec::new(),
+            dead_functions,
+            dead_classes,
+            dead_variables,
             unreachable_code: Vec::new(),
             summary: crate::services::dead_code_analyzer::DeadCodeSummary {
-                total_dead_code_lines: ranking_result.summary.total_dead_lines,
-                percentage_dead: ranking_result.summary.dead_percentage,
-                dead_by_type: std::collections::HashMap::new(),
-                confidence_level: 0.85,
+                total_dead_code_lines: accurate_report.dead_lines,
+                percentage_dead: accurate_report.dead_code_percentage as f32,
+                dead_by_type: accurate_report.dead_by_type,
+                confidence_level: 0.95, // High confidence with cargo-based detection
             },
         })
     }
