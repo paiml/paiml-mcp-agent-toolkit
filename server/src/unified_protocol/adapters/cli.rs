@@ -2423,7 +2423,7 @@ mod tests {
                 toolchain: "rust".to_string(),
                 templates: vec!["cli".to_string()],
                 params,
-                parallel: true,
+                parallel: 4,
             },
         };
 
@@ -2499,12 +2499,13 @@ mod tests {
     async fn test_decode_analyze_churn() {
         let adapter = CliAdapter::new();
         let command = Commands::Analyze(AnalyzeCommands::Churn {
-            path: PathBuf::from("."),
-            project_path: None,
-            since: None,
+            project_path: PathBuf::from("."),
+            days: 30,
             format: ChurnOutputFormat::Json,
             output: None,
-            timeout: 30,
+            top_files: 10,
+            include: vec![],
+            exclude: vec![],
         });
 
         let input = CliInput::from_commands(command);
@@ -2520,16 +2521,11 @@ mod tests {
     async fn test_decode_analyze_dag() {
         let adapter = CliAdapter::new();
         let command = Commands::Analyze(AnalyzeCommands::Dag {
-            path: PathBuf::from("."),
-            project_path: None,
-            file: None,
-            format: OutputFormat::Json,
+            dag_type: DagType::FullDependency,
+            project_path: PathBuf::from("."),
             output: None,
-            dag_type: DagType::Full,
             max_depth: Some(5),
-            layout: None,
-            centrality: false,
-            timeout: 60,
+            target_nodes: None,
         });
 
         let input = CliInput::from_commands(command);
