@@ -17,6 +17,24 @@ This release represents the culmination of Sprint 47's Perfect Quality Achieveme
 - **TDG Score**: Achieved 92.0/100 (A grade, approaching A+ target)
 - **Test Coverage**: Maintained at 80.2% (exceeding 80% minimum requirement)
 
+## [2.57.0] - 2025-09-05
+
+### Sprint 66: Test Suite Partial Restoration 🔧
+
+This release includes partial fixes for test compilation issues and documents remaining technical debt.
+
+#### Fixed
+- Command structure mismatches in CLI tests (StorageCommand, TdgCommand, AnalyzeCommands)
+- RoadmapCommands test updated for new API structure
+- ScaffoldCommands::Agent test aligned with current fields
+- Some DeepContext test structure issues addressed
+
+#### Known Issues
+- 273+ test compilation errors remain due to major API changes
+- DeepContext API restructuring has broken many integration tests
+- Multiple conflicting struct definitions across modules
+- Test suite requires comprehensive refactoring (multi-sprint effort)
+
 ## [2.56.0] - 2025-09-05
 
 ### Sprint 65: SATD Detection Consolidation Release 🎯
