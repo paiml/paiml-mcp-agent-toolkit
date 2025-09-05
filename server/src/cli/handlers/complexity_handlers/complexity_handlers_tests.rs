@@ -409,8 +409,8 @@ mod tests {
         assert_eq!(func.line_end, 100);
         assert_eq!(func.metrics.cyclomatic, 25);
         assert_eq!(func.metrics.cognitive, 30);
-        assert_eq!(func.metrics.nesting_depth, 8);
-        assert_eq!(func.metrics.lines_of_code, 50);
+        assert_eq!(func.metrics.nesting_max, 8);
+        assert_eq!(func.metrics.lines, 50);
     }
 
     #[test]
@@ -419,8 +419,8 @@ mod tests {
 
         assert_eq!(metrics.cyclomatic, 10);
         assert_eq!(metrics.cognitive, 15);
-        assert_eq!(metrics.nesting_depth, 3);
-        assert_eq!(metrics.lines_of_code, 25);
+        assert_eq!(metrics.nesting_max, 3);
+        assert_eq!(metrics.lines, 25);
     }
 
     #[test]

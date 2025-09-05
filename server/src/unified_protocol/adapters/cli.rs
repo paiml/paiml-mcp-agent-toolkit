@@ -2211,7 +2211,7 @@ fn provability_format_to_string(format: &crate::cli::ProvabilityOutputFormat) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::{AnalyzeCommands, Commands, ComplexityOutputFormat, DagType, OutputFormat};
+    use crate::cli::{AnalyzeCommands, Commands, ComplexityOutputFormat, DagType, DeadCodeOutputFormat, OutputFormat, SatdOutputFormat};
     use crate::models::churn::ChurnOutputFormat;
     use serde_json::{json, Value};
     use std::path::PathBuf;
@@ -2542,13 +2542,9 @@ mod tests {
         let adapter = CliAdapter::new();
         let command = Commands::Analyze(AnalyzeCommands::DeadCode {
             path: PathBuf::from("."),
-            project_path: None,
-            toolchain: Some("rust".to_string()),
-            format: OutputFormat::Json,
-            output: None,
-            include_tests: true,
-            include_examples: false,
-            timeout: 30,
+            format: DeadCodeOutputFormat::Json,
+            top_files: Some(10),
+            include_unreachable: true,
         });
 
         let input = CliInput::from_commands(command);
@@ -2565,12 +2561,9 @@ mod tests {
         let adapter = CliAdapter::new();
         let command = Commands::Analyze(AnalyzeCommands::Satd {
             path: PathBuf::from("."),
-            project_path: None,
-            file: None,
-            format: OutputFormat::Json,
-            output: None,
-            include_ignored: false,
-            timeout: 45,
+            format: SatdOutputFormat::Json,
+            severity: None,
+            include_tests: false,
         });
 
         let input = CliInput::from_commands(command);

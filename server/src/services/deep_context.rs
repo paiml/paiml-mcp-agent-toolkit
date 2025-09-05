@@ -107,7 +107,7 @@ pub enum AnalysisType {
     BigO,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum DagType {
     CallGraph,
     ImportGraph,
@@ -121,14 +121,14 @@ pub struct ComplexityThresholds {
     pub max_cognitive: u16,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum CacheStrategy {
     Normal,
     ForceRefresh,
     Offline,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DeepContext {
     pub metadata: ContextMetadata,
     pub file_tree: AnnotatedFileTree,
@@ -230,7 +230,7 @@ pub struct ComplexitySummaryForQA {
     pub total_functions: usize,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ContextMetadata {
     pub generated_at: DateTime<Utc>,
     pub tool_version: String,
@@ -239,21 +239,21 @@ pub struct ContextMetadata {
     pub analysis_duration: Duration,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CacheStats {
     pub hit_rate: f64,
     pub memory_efficiency: f64,
     pub time_saved_ms: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AnnotatedFileTree {
     pub root: AnnotatedNode,
     pub total_files: usize,
     pub total_size_bytes: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AnnotatedNode {
     pub name: String,
     pub path: PathBuf,
@@ -263,12 +263,15 @@ pub struct AnnotatedNode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum NodeType {
     Directory,
+    #[default]
     File,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NodeAnnotations {
     pub defect_score: Option<f32>,
     pub complexity_score: Option<f32>,
@@ -283,7 +286,7 @@ pub struct NodeAnnotations {
     pub duplication_score: Option<f32>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AnalysisResults {
     pub ast_contexts: Vec<EnhancedFileContext>,
     pub complexity_report: Option<ComplexityReport>,
@@ -412,7 +415,7 @@ pub enum CrossLangReferenceType {
     TypeDefinition,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct QualityScorecard {
     pub overall_health: f64,
     pub complexity_score: f64,
@@ -438,7 +441,7 @@ pub struct DriftAnalysis {
     pub drift_score: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DefectSummary {
     pub total_defects: usize,
     pub by_severity: FxHashMap<String, usize>,
@@ -4678,9 +4681,9 @@ mod tests {
         let config = DeepContextConfig::default();
 
         assert_eq!(config.period_days, 30);
-        assert_eq!(config.dag_type, DagType::Standard);
+        assert_eq!(config.dag_type, DagType::CallGraph);
         assert_eq!(config.max_depth, Some(3));
-        assert_eq!(config.cache_strategy, CacheStrategy::Memory);
+        assert_eq!(config.cache_strategy, CacheStrategy::Normal);
         assert_eq!(config.parallel, 4);
         assert!(config.include_analyses.contains(&AnalysisType::Ast));
         assert!(config.include_analyses.contains(&AnalysisType::Complexity));
@@ -4718,14 +4721,16 @@ mod tests {
     #[test]
     fn test_dead_code_summary_creation() {
         let summary = DeadCodeSummary {
-            total_files_analyzed: 100,
-            files_with_dead_code: 15,
+            total_functions: 100,
+            dead_functions: 15,
+            total_lines: 10000,
             total_dead_lines: 450,
             dead_percentage: 4.5,
         };
 
-        assert_eq!(summary.total_files_analyzed, 100);
-        assert_eq!(summary.files_with_dead_code, 15);
+        assert_eq!(summary.total_functions, 100);
+        assert_eq!(summary.dead_functions, 15);
+        assert_eq!(summary.total_lines, 10000);
         assert_eq!(summary.total_dead_lines, 450);
         assert_eq!(summary.dead_percentage, 4.5);
     }
@@ -4733,53 +4738,58 @@ mod tests {
     #[test]
     fn test_dead_code_analysis_creation() {
         let summary = DeadCodeSummary {
-            total_files_analyzed: 50,
-            files_with_dead_code: 8,
+            total_functions: 50,
+            dead_functions: 8,
+            total_lines: 5000,
             total_dead_lines: 200,
             dead_percentage: 4.0,
         };
 
         let analysis = DeadCodeAnalysis {
             summary,
-            files: vec![], // Empty for test
+            dead_functions: vec![],
+            warnings: vec![],
         };
 
-        assert_eq!(analysis.summary.total_files_analyzed, 50);
-        assert_eq!(analysis.summary.files_with_dead_code, 8);
-        assert_eq!(analysis.files.len(), 0);
+        assert_eq!(analysis.summary.total_functions, 50);
+        assert_eq!(analysis.summary.dead_functions, 8);
+        assert_eq!(analysis.dead_functions.len(), 0);
     }
 
     #[test]
     fn test_context_metadata_creation() {
         let now = chrono::Utc::now();
+        let cache_stats = CacheStats {
+            hit_rate: 0.75,
+            memory_efficiency: 0.8,
+            time_saved_ms: 2000,
+        };
         let metadata = ContextMetadata {
             generated_at: now,
+            tool_version: "1.0.0".to_string(),
+            project_root: PathBuf::from("/test"),
+            cache_stats,
             analysis_duration: Duration::from_secs(30),
-            total_files_processed: 100,
-            cache_hit_rate: 0.75,
-            version: "1.0.0".to_string(),
         };
 
         assert_eq!(metadata.generated_at, now);
+        assert_eq!(metadata.tool_version, "1.0.0");
+        assert_eq!(metadata.project_root, PathBuf::from("/test"));
+        assert_eq!(metadata.cache_stats.hit_rate, 0.75);
         assert_eq!(metadata.analysis_duration, Duration::from_secs(30));
-        assert_eq!(metadata.total_files_processed, 100);
-        assert_eq!(metadata.cache_hit_rate, 0.75);
-        assert_eq!(metadata.version, "1.0.0");
     }
 
     #[test]
     fn test_cache_stats_creation() {
         let stats = CacheStats {
-            hits: 80,
-            misses: 20,
             hit_rate: 0.8,
-            size_bytes: 1024 * 1024,
+            memory_efficiency: 0.75,
+            time_saved_ms: 1500,
         };
 
-        assert_eq!(stats.hits, 80);
-        assert_eq!(stats.misses, 20);
         assert_eq!(stats.hit_rate, 0.8);
-        assert_eq!(stats.size_bytes, 1024 * 1024);
+        assert_eq!(stats.memory_efficiency, 0.75);
+        assert_eq!(stats.time_saved_ms, 1500);
     }
 
     #[test]
@@ -4794,29 +4804,29 @@ mod tests {
     #[test]
     fn test_node_annotations_creation() {
         let annotations = NodeAnnotations {
-            complexity_score: Some(15.5),
-            lines_of_code: Some(250),
-            churn_risk: Some(0.3),
-            technical_debt_score: Some(2.1),
-            last_modified: Some(chrono::Utc::now()),
+            defect_score: Some(15.5),
+            complexity_score: Some(12.3),
+            cognitive_complexity: Some(8),
+            churn_score: Some(0.3),
+            dead_code_items: 2,
         };
 
-        assert_eq!(annotations.complexity_score, Some(15.5));
-        assert_eq!(annotations.lines_of_code, Some(250));
-        assert_eq!(annotations.churn_risk, Some(0.3));
-        assert_eq!(annotations.technical_debt_score, Some(2.1));
-        assert!(annotations.last_modified.is_some());
+        assert_eq!(annotations.defect_score, Some(15.5));
+        assert_eq!(annotations.complexity_score, Some(12.3));
+        assert_eq!(annotations.cognitive_complexity, Some(8));
+        assert_eq!(annotations.churn_score, Some(0.3));
+        assert_eq!(annotations.dead_code_items, 2);
     }
 
     #[test]
     fn test_annotated_node_creation() {
         let path = PathBuf::from("/test/file.rs");
         let annotations = NodeAnnotations {
-            complexity_score: Some(10.0),
-            lines_of_code: Some(100),
-            churn_risk: Some(0.2),
-            technical_debt_score: Some(1.5),
-            last_modified: None,
+            defect_score: Some(10.0),
+            complexity_score: Some(8.5),
+            cognitive_complexity: Some(12),
+            churn_score: Some(0.2),
+            dead_code_items: 2,
         };
 
         let node = AnnotatedNode {
@@ -4836,14 +4846,15 @@ mod tests {
     fn test_annotated_file_tree_creation() {
         let root_path = PathBuf::from("/project");
         let root_annotations = NodeAnnotations {
-            complexity_score: Some(50.0),
-            lines_of_code: Some(1000),
-            churn_risk: Some(0.1),
-            technical_debt_score: Some(3.0),
-            last_modified: None,
+            defect_score: Some(50.0),
+            complexity_score: Some(15.2),
+            cognitive_complexity: Some(18),
+            churn_score: Some(0.1),
+            dead_code_items: 5,
         };
 
         let root_node = AnnotatedNode {
+            name: "test".to_string(),
             path: root_path.clone(),
             node_type: NodeType::Directory,
             annotations: root_annotations,
@@ -4852,13 +4863,13 @@ mod tests {
 
         let tree = AnnotatedFileTree {
             root: root_node,
-            total_nodes: 1,
-            max_depth: 1,
+            total_files: 1,
+            total_size_bytes: 1024,
         };
 
         assert_eq!(tree.root.path, root_path);
-        assert_eq!(tree.total_nodes, 1);
-        assert_eq!(tree.max_depth, 1);
+        assert_eq!(tree.total_files, 1);
+        assert_eq!(tree.total_size_bytes, 1024);
     }
 
     #[test]
@@ -4980,8 +4991,19 @@ mod tests {
         };
 
         // This method needs to be created during refactoring
+        let parallel_results = ParallelAnalysisResults {
+            ast_contexts: None,
+            complexity_report: None,
+            churn_analysis: None,
+            dependency_graph: None,
+            dead_code_results: None,
+            duplicate_code_results: None,
+            satd_results: None,
+            provability_results: None,
+            big_o_analysis: None,
+        };
         let recommendations = analyzer
-            .generate_recommendations(&deep_context, &defect_summary)
+            .generate_recommendations(&parallel_results, &defect_summary)
             .await
             .unwrap();
         assert!(recommendations.is_empty() || !recommendations.is_empty());
@@ -5015,8 +5037,9 @@ mod tests {
         context.metadata.project_root = PathBuf::from("/test");
 
         let qa = analyzer.run_qa_verification(&context).await.unwrap();
-        assert!(qa.passed || !qa.passed);
-        assert!(qa.checks_run >= 0);
+        // Check that we have a valid verification result
+        assert!(!qa.timestamp.is_empty());
+        assert!(!qa.version.is_empty());
     }
 
     #[tokio::test]
@@ -5083,11 +5106,16 @@ mod tests {
         let analyzer = DeepContextAnalyzer::new(config);
 
         let analyses = ParallelAnalysisResults::default();
+        let mut by_severity = FxHashMap::default();
+        by_severity.insert("high".to_string(), 50);
+        by_severity.insert("medium".to_string(), 30);
+        by_severity.insert("low".to_string(), 20);
+        
         let defect_summary = DefectSummary {
             total_defects: 100,
-            high_priority_defects: 50,
-            medium_priority_defects: 30,
-            low_priority_defects: 20,
+            by_severity,
+            by_type: FxHashMap::default(),
+            defect_density: 10.0,
         };
 
         let recommendations = analyzer

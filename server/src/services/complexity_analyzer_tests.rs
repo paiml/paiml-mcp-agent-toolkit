@@ -5,9 +5,7 @@
 
 #[cfg(test)]
 mod accurate_complexity_tests {
-    use super::super::*;
     use crate::services::accurate_complexity_analyzer::AccurateComplexityAnalyzer;
-    use std::path::PathBuf;
     use tempfile::TempDir;
     use std::fs;
 

@@ -457,8 +457,8 @@ mod tests {
 
         // Verify generator is created properly
         assert_eq!(
-            generator.quality_config.coverage_threshold,
-            config.coverage_threshold
+            generator.quality_config.coverage_min,
+            config.coverage_min
         );
     }
 

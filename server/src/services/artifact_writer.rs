@@ -422,7 +422,7 @@ pub struct CleanupReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::BTreeMap;
     use tempfile::TempDir;
 
     #[test]
@@ -500,7 +500,7 @@ mod tests {
 
         let mermaid = MermaidArtifacts {
             ast_generated,
-            non_code: HashMap::new(),
+            non_code: BTreeMap::new(),
         };
 
         let templates = vec![Template {
