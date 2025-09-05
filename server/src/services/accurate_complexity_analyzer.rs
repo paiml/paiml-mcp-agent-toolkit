@@ -6,8 +6,8 @@
 //! - Supports test exclusion and annotation suppression
 
 use anyhow::Result;
-use syn::{visit::Visit, File, Item, ItemFn, Expr, Stmt, Pat, Attribute};
-use std::path::{Path, PathBuf};
+use syn::{visit::Visit, Item, ItemFn, Expr, Stmt, Attribute};
+use std::path::Path;
 use walkdir::WalkDir;
 
 /// Accurate complexity analyzer with proper AST-based calculation
@@ -226,7 +226,7 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
                 syn::visit::visit_expr(self, expr);
             }
             // Recursion detection (simplified - checks for function calls with same name)
-            Expr::Call(call) => {
+            Expr::Call(_call) => {
                 // In real implementation, would check if calling self
                 self.add_cognitive(1);
                 syn::visit::visit_expr(self, expr);

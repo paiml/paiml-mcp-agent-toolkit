@@ -11,16 +11,13 @@ use crate::cli::{
 use crate::services::lightweight_provability_analyzer::ProofSummary;
 use crate::services::makefile_linter;
 use anyhow::Result;
-use once_cell::sync::Lazy;
-use regex::Regex;
 use serde::Serialize;
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-// Performance optimization: Compile regex once at startup
-static SATD_PATTERN: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)\b(TODO|FIXME|HACK|XXX|BUG|REFACTOR):\s*(.+)").unwrap());
+// REMOVED: SATD_PATTERN regex - violates Toyota Way (duplicate implementation)
+// Now using proper SATDDetector service for all SATD detection
 
 /// Analyzes Technical Debt Gradient (TDG) for a project.
 ///
@@ -4626,60 +4623,34 @@ pub async fn check_dead_code(
 /// # });
 /// ```
 pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
-    use walkdir::WalkDir;
-
-    let mut violations = Vec::new();
-
-    for entry in WalkDir::new(project_path) {
-        let entry = entry?;
-        let path = entry.path();
-
-        if should_process_file_for_satd(path) {
-            if let Ok(content) = tokio::fs::read_to_string(path).await {
-                process_file_content_for_satd(&content, path, &SATD_PATTERN, &mut violations);
-            }
-        }
-    }
-
+    // Toyota Way: Use the ONE proper implementation, not duplicate logic
+    use crate::services::satd_detector::SATDDetector;
+    
+    let detector = SATDDetector::new();
+    let include_tests = false; // Don't include test files in quality gate
+    
+    // Use the proper SATD analyzer with context awareness
+    let satd_result = detector.analyze_project(project_path, include_tests).await?;
+    
+    // Convert SATD items to quality violations
+    let violations: Vec<QualityViolation> = satd_result
+        .items
+        .into_iter()
+        .map(|debt| QualityViolation {
+            check_type: "satd".to_string(),
+            severity: match debt.severity {
+                crate::services::satd_detector::Severity::Critical => "error",
+                crate::services::satd_detector::Severity::High => "error", 
+                crate::services::satd_detector::Severity::Medium => "warning",
+                crate::services::satd_detector::Severity::Low => "info",
+            }.to_string(),
+            file: debt.file.display().to_string(),
+            line: Some(debt.line as usize),
+            message: format!("{}: {} (at column {})", debt.category, debt.text, debt.column),
+        })
+        .collect();
+    
     Ok(violations)
-}
-
-/// Check if a file should be processed for SATD detection
-fn should_process_file_for_satd(path: &Path) -> bool {
-    path.is_file() && is_source_file(path)
-}
-
-/// Process file content for SATD violations
-fn process_file_content_for_satd(
-    content: &str,
-    file_path: &Path,
-    pattern: &regex::Regex,
-    violations: &mut Vec<QualityViolation>,
-) {
-    for (line_no, line) in content.lines().enumerate() {
-        if let Some(captures) = pattern.captures(line) {
-            let violation = create_satd_violation(file_path, line_no + 1, &captures);
-            violations.push(violation);
-        }
-    }
-}
-
-/// Create a SATD quality violation from regex captures
-fn create_satd_violation(
-    file_path: &Path,
-    line_number: usize,
-    captures: &regex::Captures,
-) -> QualityViolation {
-    let satd_type = captures.get(1).unwrap().as_str();
-    let text = captures.get(2).unwrap().as_str();
-
-    QualityViolation {
-        check_type: "satd".to_string(),
-        severity: "warning".to_string(),
-        file: file_path.to_string_lossy().to_string(),
-        line: Some(line_number),
-        message: format!("Technical debt: {satd_type} - {text}"),
-    }
 }
 
 /// Check code entropy (diversity) across the project
