@@ -2326,8 +2326,8 @@ mod tests {
             force: false,
             dry_run: false,
             interactive: false,
-            deterministic_core: true,
-            probabilistic_wrapper: false,
+            deterministic_core: Some("state-machine".to_string()),
+            probabilistic_wrapper: None,
         };
 
         match project {
@@ -2366,8 +2366,8 @@ mod tests {
                 assert!(!force);
                 assert!(!dry_run);
                 assert!(!interactive);
-                assert!(deterministic_core);
-                assert!(!probabilistic_wrapper);
+                assert_eq!(deterministic_core, Some("state-machine".to_string()));
+                assert!(probabilistic_wrapper.is_none());
             }
             _ => panic!("Expected Agent variant"),
         }
@@ -2424,56 +2424,56 @@ mod tests {
 
     #[test]
     fn test_test_suite_variants() {
-        let unit = TestSuite::Unit;
+        let performance = TestSuite::Performance;
         let integration = TestSuite::Integration;
         let property = TestSuite::Property;
-        let all = TestSuite::All;
+        let memory = TestSuite::Memory;
 
-        assert_eq!(unit, TestSuite::Unit);
+        assert_eq!(performance, TestSuite::Performance);
         assert_eq!(integration, TestSuite::Integration);
         assert_eq!(property, TestSuite::Property);
-        assert_eq!(all, TestSuite::All);
+        assert_eq!(memory, TestSuite::Memory);
     }
 
     #[test]
     fn test_serve_transport_variants() {
         let http = ServeTransport::Http;
-        let stdio = ServeTransport::Stdio;
+        let websocket = ServeTransport::WebSocket;
 
         assert_eq!(http, ServeTransport::Http);
-        assert_eq!(stdio, ServeTransport::Stdio);
+        assert_eq!(websocket, ServeTransport::WebSocket);
     }
 
     #[test]
     fn test_agent_commands_variants() {
-        let list = AgentCommands::List {
+        let status = AgentCommands::Status {
+            pid_file: None,
             format: OutputFormat::Json,
         };
 
-        let create = AgentCommands::Create {
-            name: "test-agent".to_string(),
-            template: "basic".to_string(),
-            output: Some(PathBuf::from("agents/")),
+        let stop = AgentCommands::Stop {
+            pid_file: None,
+            force: false,
+            timeout: 10,
         };
 
-        match list {
-            AgentCommands::List { format } => {
+        match status {
+            AgentCommands::Status { format, .. } => {
                 assert_eq!(format, OutputFormat::Json);
             }
-            _ => panic!("Expected List variant"),
+            _ => panic!("Expected Status variant"),
         }
 
-        match create {
-            AgentCommands::Create {
-                name,
-                template,
-                output,
+        match stop {
+            AgentCommands::Stop {
+                force,
+                timeout,
+                ..
             } => {
-                assert_eq!(name, "test-agent");
-                assert_eq!(template, "basic");
-                assert_eq!(output, Some(PathBuf::from("agents/")));
+                assert!(!force);
+                assert_eq!(timeout, 10);
             }
-            _ => panic!("Expected Create variant"),
+            _ => panic!("Expected Stop variant"),
         }
     }
 
@@ -2602,6 +2602,7 @@ mod tests {
             host: "127.0.0.1".to_string(),
             port: 3000,
             cors: true,
+            transport: ServeTransport::Http,
         };
 
         match serve {

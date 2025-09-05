@@ -1413,11 +1413,12 @@ mod tests {
                 _params: &GenerateParams,
             ) -> Result<GeneratedTemplate, AppError> {
                 Ok(GeneratedTemplate {
+                    template_id: "mock-template".to_string(),
                     content: "Mock generated content".to_string(),
                     metadata: TemplateMetadata {
-                        template_id: "mock".to_string(),
-                        generated_at: chrono::Utc::now(),
-                        parameters_used: HashMap::new(),
+                        name: "Mock Template".to_string(),
+                        version: "1.0.0".to_string(),
+                        generated_at: chrono::Utc::now().to_rfc3339(),
                     },
                 })
             }
@@ -1454,17 +1455,20 @@ mod tests {
                 _params: &ChurnParams,
             ) -> Result<ChurnAnalysis, AppError> {
                 Ok(ChurnAnalysis {
-                    total_commits: 100,
-                    files_changed: 50,
-                    churn_rate: 0.5,
+                    summary: ChurnSummary {
+                        total_commits: 100,
+                        files_changed: 50,
+                        period_days: 30,
+                    },
                     hotspots: vec![],
                 })
             }
 
             async fn analyze_dag(&self, _params: &DagParams) -> Result<DagAnalysis, AppError> {
                 Ok(DagAnalysis {
-                    nodes: vec![],
-                    edges: vec![],
+                    graph: "digraph { A -> B; }".to_string(),
+                    nodes: 2,
+                    edges: 1,
                     cycles: vec![],
                 })
             }
@@ -1483,8 +1487,7 @@ mod tests {
                     metrics: ContextMetrics {
                         total_lines: 0,
                         total_files: 0,
-                        complexity_average: 0.0,
-                        tech_stack: vec![],
+                        complexity_score: 0.0,
                     },
                 })
             }

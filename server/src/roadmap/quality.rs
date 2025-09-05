@@ -498,10 +498,10 @@ mod tests {
         let enforcer = QualityGateEnforcer::new(config.clone());
 
         assert_eq!(
-            enforcer.config.coverage_threshold,
-            config.coverage_threshold
+            enforcer.config.coverage_min,
+            config.coverage_min
         );
-        assert_eq!(enforcer.config.max_complexity, config.max_complexity);
+        assert_eq!(enforcer.config.complexity_max, config.complexity_max);
     }
 
     #[test]

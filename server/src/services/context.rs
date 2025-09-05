@@ -1592,23 +1592,24 @@ mod tests {
     }
 
     #[test]
-    fn test_ast_item_class() {
-        let class = AstItem::Class {
-            name: "MyClass".to_string(),
-            base_classes: vec!["BaseClass".to_string()],
-            decorators: vec!["dataclass".to_string()],
+    fn test_ast_item_struct_fields_and_derives() {
+        let struct_item = AstItem::Struct {
+            name: "MyStruct".to_string(),
+            visibility: "pub".to_string(),
+            fields_count: 3,
+            derives: vec!["Debug".to_string(), "Clone".to_string()],
             line: 10,
         };
 
-        assert_eq!(class.display_name(), "MyClass");
-        if let AstItem::Class {
-            base_classes,
-            decorators,
+        assert_eq!(struct_item.display_name(), "MyStruct");
+        if let AstItem::Struct {
+            fields_count,
+            derives,
             ..
-        } = class
+        } = struct_item
         {
-            assert_eq!(base_classes.len(), 1);
-            assert_eq!(decorators.len(), 1);
+            assert_eq!(fields_count, 3);
+            assert_eq!(derives.len(), 2);
         }
     }
 

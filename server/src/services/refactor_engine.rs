@@ -1132,28 +1132,26 @@ mod tests {
         let config = RefactorConfig::default();
 
         // Verify default values are sensible
-        assert!(config.complexity_threshold > 0);
-        assert!(config.max_file_size > 0);
-        assert!(!config.dry_run);
+        assert!(config.target_complexity > 0);
+        assert!(config.max_function_lines > 0);
+        assert!(config.memory_limit_mb > 0);
     }
 
     #[test]
     fn test_summary_creation() {
         let summary = Summary {
-            total_files: 10,
-            files_analyzed: 8,
-            defects_found: 15,
-            defects_fixed: 12,
-            skipped_files: 2,
-            duration: Duration::from_secs(120),
+            files_processed: 10,
+            refactors_applied: 8,
+            complexity_reduction: 25.5,
+            satd_removed: 12,
+            total_time: Duration::from_secs(120),
         };
 
-        assert_eq!(summary.total_files, 10);
-        assert_eq!(summary.files_analyzed, 8);
-        assert_eq!(summary.defects_found, 15);
-        assert_eq!(summary.defects_fixed, 12);
-        assert_eq!(summary.skipped_files, 2);
-        assert_eq!(summary.duration, Duration::from_secs(120));
+        assert_eq!(summary.files_processed, 10);
+        assert_eq!(summary.refactors_applied, 8);
+        assert_eq!(summary.complexity_reduction, 25.5);
+        assert_eq!(summary.satd_removed, 12);
+        assert_eq!(summary.total_time, Duration::from_secs(120));
     }
 
     #[test]
@@ -1181,12 +1179,11 @@ mod tests {
         {
             let mut state = engine.state_machine.write().await;
             let _ = state.complete(Summary {
-                total_files: 1,
-                files_analyzed: 1,
-                defects_found: 0,
-                defects_fixed: 0,
-                skipped_files: 0,
-                duration: Duration::from_secs(1),
+                files_processed: 1,
+                refactors_applied: 0,
+                complexity_reduction: 0.0,
+                satd_removed: 0,
+                total_time: Duration::from_secs(1),
             });
         }
 

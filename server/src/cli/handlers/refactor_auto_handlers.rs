@@ -102,7 +102,7 @@ pub struct QualityMetrics {
 }
 
 /// Refactor progress tracking with percentage completion
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RefactorProgress {
     pub overall_completion_percent: f64,
     pub lint_completion_percent: f64,
@@ -118,8 +118,9 @@ pub struct RefactorProgress {
 }
 
 /// Current phase of refactoring
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum RefactorPhase {
+    #[default]
     Initialization,
     LintFixes,
     BuildFixes,
@@ -2087,6 +2088,7 @@ mod tests {
             files_with_issues: 8,
             total_files: 20,
             functions_with_high_complexity: 12,
+            total_functions: 100,
         };
 
         assert_eq!(metrics.total_violations, 50);
@@ -2122,7 +2124,7 @@ mod tests {
             estimated_time_remaining_minutes: 15,
             quality_gates_passed: vec!["lint".to_string(), "complexity".to_string()],
             quality_gates_remaining: vec!["satd".to_string(), "coverage".to_string()],
-            current_phase: RefactorPhase::Analysis,
+            current_phase: RefactorPhase::ComplexityReduction,
         };
 
         assert_eq!(progress.files_completed, 8);
@@ -2372,15 +2374,16 @@ mod tests {
             body:
                 "Found problems in:\n- src/lib.rs\n- src/utils.rs\n\nNeed to refactor these files."
                     .to_string(),
+            number: 123,
         };
 
-        let result = extract_target_files_from_issue(&content, Path::new("/project"));
+        let result = extract_target_files_from_issue(&content, Path::new("/project")).unwrap();
 
         assert_eq!(result.len(), 4); // main.rs, test.rs, lib.rs, utils.rs
-        assert!(result.iter().any(|p| p.ends_with("main.rs")));
-        assert!(result.iter().any(|p| p.ends_with("test.rs")));
-        assert!(result.iter().any(|p| p.ends_with("lib.rs")));
-        assert!(result.iter().any(|p| p.ends_with("utils.rs")));
+        assert!(result.iter().any(|p| p.to_string_lossy().ends_with("main.rs")));
+        assert!(result.iter().any(|p| p.to_string_lossy().ends_with("test.rs")));
+        assert!(result.iter().any(|p| p.to_string_lossy().ends_with("lib.rs")));
+        assert!(result.iter().any(|p| p.to_string_lossy().ends_with("utils.rs")));
     }
 
     #[test]
@@ -2388,9 +2391,10 @@ mod tests {
         let content = GitHubIssueContent {
             title: "General refactoring needed".to_string(),
             body: "This project needs general improvements.".to_string(),
+            number: 456,
         };
 
-        let result = extract_target_files_from_issue(&content, Path::new("/project"));
+        let result = extract_target_files_from_issue(&content, Path::new("/project")).unwrap();
 
         assert!(result.is_empty());
     }

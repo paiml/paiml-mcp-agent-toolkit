@@ -723,12 +723,10 @@ mod tests {
             match parsed.command {
                 RoadmapSubcommand::Complete {
                     task_id,
-                    format,
-                    skip_quality_checks,
+                    skip_quality_check,
                 } => {
                     assert_eq!(task_id, "PMAT-1001");
-                    assert_eq!(format, Some(OutputFormat::Json));
-                    assert!(skip_quality_checks);
+                    assert!(skip_quality_check);
                 }
                 _ => panic!("Expected Complete subcommand"),
             }

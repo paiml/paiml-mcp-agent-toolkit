@@ -29,6 +29,8 @@ async fn main() -> Result<()> {
         false,    // Don't fail on violation
         15.0,     // Default max percentage
         60,       // Timeout in seconds
+        vec![],   // Include patterns
+        vec![],   // Exclude patterns
     )
     .await;
 
@@ -52,6 +54,8 @@ async fn main() -> Result<()> {
         false,                      // Don't fail on violation in example (to avoid CI failure)
         5.0,                        // Max 5% dead code allowed (strict!)
         60,                         // Timeout in seconds
+        vec![],                     // Include patterns
+        vec![],                     // Exclude patterns
     )
     .await;
 
@@ -82,6 +86,8 @@ async fn main() -> Result<()> {
         false, // Don't fail
         10.0,  // 10% threshold (moderate)
         60,    // Timeout in seconds
+        vec![], // Include patterns
+        vec![], // Exclude patterns
     )
     .await;
 
@@ -106,6 +112,8 @@ async fn main() -> Result<()> {
         false,
         15.0, // Default threshold
         60,   // Timeout in seconds
+        vec![], // Include patterns
+        vec![], // Exclude patterns
     )
     .await;
 
