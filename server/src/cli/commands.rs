@@ -2098,10 +2098,12 @@ mod tests {
         let cleanup = StorageCommand::Cleanup { max_age: 3600 };
         let migrate = StorageCommand::Migrate {
             backend: "sled".to_string(),
+            path: None,
         };
         // Backup and Restore variants have been removed - test Migrate instead
-        let migrate = StorageCommand::Migrate {
+        let migrate2 = StorageCommand::Migrate {
             backend: "rocksdb".to_string(),
+            path: None,
         };
 
         // Test variant construction
@@ -2115,7 +2117,7 @@ mod tests {
         }
 
         match migrate {
-            StorageCommand::Migrate { backend } => {
+            StorageCommand::Migrate { backend, path: _ } => {
                 assert_eq!(backend, "rocksdb");
             }
             _ => panic!("Expected Migrate variant"),
@@ -2137,6 +2139,8 @@ mod tests {
             scheduler: false,
             adaptive: false,
             resources: false,
+            all: false,
+            format: DiagnosticOutputFormat::Human,
         };
 
         // Test Dashboard variant (this one still exists)
@@ -2198,6 +2202,8 @@ mod tests {
             format: ChurnOutputFormat::Json,
             output: None,
             top_files: 10,
+            include: vec![],
+            exclude: vec![],
         };
 
         match complexity {
@@ -2314,7 +2320,14 @@ mod tests {
         let agent = ScaffoldCommands::Agent {
             name: "test-agent".to_string(),
             template: "basic".to_string(),
-            params: vec![("version".to_string(), Value::String("1.0.0".to_string()))],
+            features: vec!["logging".to_string()],
+            quality: "strict".to_string(),
+            output: None,
+            force: false,
+            dry_run: false,
+            interactive: false,
+            deterministic_core: true,
+            probabilistic_wrapper: false,
         };
 
         match project {
@@ -2336,11 +2349,25 @@ mod tests {
             ScaffoldCommands::Agent {
                 name,
                 template,
-                params,
+                features,
+                quality,
+                output,
+                force,
+                dry_run,
+                interactive,
+                deterministic_core,
+                probabilistic_wrapper,
             } => {
                 assert_eq!(name, "test-agent");
                 assert_eq!(template, "basic");
-                assert_eq!(params.len(), 1);
+                assert_eq!(features, vec!["logging"]);
+                assert_eq!(quality, "strict");
+                assert!(output.is_none());
+                assert!(!force);
+                assert!(!dry_run);
+                assert!(!interactive);
+                assert!(deterministic_core);
+                assert!(!probabilistic_wrapper);
             }
             _ => panic!("Expected Agent variant"),
         }
@@ -2349,44 +2376,47 @@ mod tests {
     #[test]
     fn test_roadmap_commands_variants() {
         let init = RoadmapCommands::Init {
-            path: PathBuf::from("."),
-            template: Some("default".to_string()),
+            version: "v2.6.0".to_string(),
+            title: "Test Sprint".to_string(),
+            duration_days: 14,
+            priority: "P0".to_string(),
         };
 
         let start = RoadmapCommands::Start {
-            id: "task-123".to_string(),
+            task_id: "task-123".to_string(),
+            create_branch: false,
         };
 
         let complete = RoadmapCommands::Complete {
-            id: "task-123".to_string(),
-            format: OutputFormat::Json,
-            skip_quality_checks: true,
+            task_id: "task-123".to_string(),
+            skip_quality_check: true,
         };
 
         match init {
-            RoadmapCommands::Init { path, template } => {
-                assert_eq!(path, PathBuf::from("."));
-                assert_eq!(template, Some("default".to_string()));
+            RoadmapCommands::Init { version, title, duration_days, priority } => {
+                assert_eq!(version, "v2.6.0");
+                assert_eq!(title, "Test Sprint");
+                assert_eq!(duration_days, 14);
+                assert_eq!(priority, "P0");
             }
             _ => panic!("Expected Init variant"),
         }
 
         match start {
-            RoadmapCommands::Start { id } => {
-                assert_eq!(id, "task-123");
+            RoadmapCommands::Start { task_id, create_branch } => {
+                assert_eq!(task_id, "task-123");
+                assert!(!create_branch);
             }
             _ => panic!("Expected Start variant"),
         }
 
         match complete {
             RoadmapCommands::Complete {
-                id,
-                format,
-                skip_quality_checks,
+                task_id,
+                skip_quality_check,
             } => {
-                assert_eq!(id, "task-123");
-                assert_eq!(format, OutputFormat::Json);
-                assert!(skip_quality_checks);
+                assert_eq!(task_id, "task-123");
+                assert!(skip_quality_check);
             }
             _ => panic!("Expected Complete variant"),
         }
