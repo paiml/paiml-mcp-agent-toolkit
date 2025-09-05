@@ -1474,9 +1474,18 @@ mod tests {
                 _params: &ContextParams,
             ) -> Result<ProjectContext, AppError> {
                 Ok(ProjectContext {
-                    project_root: "/mock".to_string(),
-                    files: vec![],
-                    total_lines: 0,
+                    project_name: "mock".to_string(),
+                    toolchain: "rust".to_string(),
+                    structure: ProjectStructure {
+                        directories: vec![],
+                        files: vec![],
+                    },
+                    metrics: ContextMetrics {
+                        total_lines: 0,
+                        total_files: 0,
+                        complexity_average: 0.0,
+                        tech_stack: vec![],
+                    },
                 })
             }
 
@@ -1485,10 +1494,13 @@ mod tests {
                 _params: &DeadCodeParams,
             ) -> Result<DeadCodeAnalysis, AppError> {
                 Ok(DeadCodeAnalysis {
-                    dead_functions: vec![],
-                    dead_structs: vec![],
-                    dead_traits: vec![],
-                    total_dead_code: 0,
+                    summary: DeadCodeSummary {
+                        total_files_analyzed: 0,
+                        files_with_dead_code: 0,
+                        total_dead_lines: 0,
+                        dead_percentage: 0.0,
+                    },
+                    files: vec![],
                 })
             }
         }
