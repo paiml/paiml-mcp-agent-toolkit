@@ -393,14 +393,15 @@ mod tests {
 
     #[test]
     fn test_parse_task_status() {
-        assert_eq!(parse_task_status("Open"), Some(TaskStatus::Planned));
+        assert_eq!(parse_task_status("Open"), TaskStatus::Planned);
         assert_eq!(
             parse_task_status("InProgress"),
-            Some(TaskStatus::InProgress)
+            TaskStatus::InProgress
         );
-        assert_eq!(parse_task_status("Completed"), Some(TaskStatus::Completed));
-        assert_eq!(parse_task_status("Blocked"), Some(TaskStatus::Blocked));
-        assert_eq!(parse_task_status("Invalid"), None);
+        assert_eq!(parse_task_status("Completed"), TaskStatus::Completed);
+        assert_eq!(parse_task_status("Blocked"), TaskStatus::Blocked);
+        // Note: Invalid status returns Planned as default
+        assert_eq!(parse_task_status("Invalid"), TaskStatus::Planned);
     }
 
     #[test]

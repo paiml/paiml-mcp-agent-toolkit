@@ -16,6 +16,12 @@ pub struct AccurateComplexityAnalyzer {
     respect_annotations: bool,
 }
 
+impl Default for AccurateComplexityAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AccurateComplexityAnalyzer {
     pub fn new() -> Self {
         Self {

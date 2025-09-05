@@ -2323,15 +2323,17 @@ fn helper_test() {{
     fn test_debt_category_variants() {
         let design = DebtCategory::Design;
         let defect = DebtCategory::Defect;
-        let documentation = DebtCategory::Documentation;
+        let performance = DebtCategory::Performance;
         let requirement = DebtCategory::Requirement;
         let test_debt = DebtCategory::Test;
+        let security = DebtCategory::Security;
 
         assert_eq!(design, DebtCategory::Design);
         assert_eq!(defect, DebtCategory::Defect);
-        assert_eq!(documentation, DebtCategory::Documentation);
+        assert_eq!(performance, DebtCategory::Performance);
         assert_eq!(requirement, DebtCategory::Requirement);
         assert_eq!(test_debt, DebtCategory::Test);
+        assert_eq!(security, DebtCategory::Security);
     }
 
     #[test]
@@ -2400,15 +2402,18 @@ fn helper_test() {{
 
     #[test]
     fn test_satd_metrics_creation() {
-        use rustc_hash::FxHashMap;
+        use std::collections::{BTreeMap, BTreeSet};
 
-        let mut by_category = FxHashMap::default();
+        let mut by_category = BTreeMap::new();
+        let mut files = BTreeSet::new();
+        files.insert("design.rs".to_string());
+        
         by_category.insert(
             "Design".to_string(),
-            DebtCategoryMetrics {
+            CategoryMetrics {
                 count: 5,
-                critical_count: 2,
-                files: vec![PathBuf::from("design.rs")],
+                files,
+                avg_severity: 2.5,
             },
         );
 
@@ -2417,20 +2422,14 @@ fn helper_test() {{
             critical_debts: vec![create_test_debt(DebtCategory::Defect, Severity::Critical)],
             debt_density_per_kloc: 7.5,
             by_category,
-            by_file: vec![DebtFileMetrics {
-                file: PathBuf::from("test.rs"),
-                count: 3,
-                critical_count: 1,
-                categories: vec!["Design".to_string()],
-                lines: vec![10, 20, 30],
-            }],
+            debt_age_distribution: vec![1.0, 2.0, 3.0],
         };
 
         assert_eq!(metrics.total_debts, 15);
         assert_eq!(metrics.critical_debts.len(), 1);
         assert_eq!(metrics.debt_density_per_kloc, 7.5);
         assert_eq!(metrics.by_category.len(), 1);
-        assert_eq!(metrics.by_file.len(), 1);
+        assert_eq!(metrics.debt_age_distribution.len(), 3);
     }
 
     #[test]
@@ -2597,7 +2596,7 @@ fn helper_test() {{
         assert_eq!(metrics.critical_debts.len(), 0);
         assert_eq!(metrics.debt_density_per_kloc, 0.0);
         assert_eq!(metrics.by_category.len(), 0);
-        assert_eq!(metrics.by_file.len(), 0);
+        assert_eq!(metrics.debt_age_distribution.len(), 0);
     }
 
     #[test]
@@ -2621,11 +2620,11 @@ fn helper_test() {{
         // Check category breakdown
         let design_metrics = metrics.by_category.get("Design").unwrap();
         assert_eq!(design_metrics.count, 2);
-        assert_eq!(design_metrics.critical_count, 0);
+        assert!((design_metrics.avg_severity - 1.5).abs() < 0.1); // (1+2)/2 = 1.5
 
         let defect_metrics = metrics.by_category.get("Defect").unwrap();
         assert_eq!(defect_metrics.count, 2);
-        assert_eq!(defect_metrics.critical_count, 1);
+        assert!((defect_metrics.avg_severity - 3.5).abs() < 0.1); // (3+4)/2 = 3.5
     }
 
     // TDD RED phase - Tests for calculate_average_debt_age (37 cognitive complexity)
@@ -2702,17 +2701,14 @@ fn helper_test() {{
             file,
             line,
             column: 1,
-            pattern: "TODO".to_string(),
-            context_lines: vec!["// TODO: test debt".to_string()],
-            created_at: Utc::now(),
-            metadata: std::collections::HashMap::new(),
+            context_hash: [0; 16], // Test hash
         }
     }
 
     // TDD RED phase - Tests for extract_from_content (30 cognitive complexity)
     #[test]
     fn test_extract_from_content_complex_test_blocks() {
-        let detector = SATDDetector::new(vec!["TODO".to_string(), "FIXME".to_string()]);
+        let detector = SATDDetector::new();
 
         let content = r#"
 // TODO: regular debt

@@ -151,7 +151,7 @@ pub enum Violation {
 }
 
 /// Summary statistics for complexity analysis
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ComplexitySummary {
     pub total_files: usize,
     pub total_functions: usize,
