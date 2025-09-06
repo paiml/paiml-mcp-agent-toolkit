@@ -287,7 +287,6 @@ pub enum SatdSeverity {
 #[cfg(test)]
 mod new_tests {
     use super::*;
-    use std::collections::HashMap;
 
     #[test]
     fn test_tdg_score_creation() {
