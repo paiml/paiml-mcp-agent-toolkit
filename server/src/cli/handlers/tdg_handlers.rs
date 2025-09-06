@@ -5,20 +5,23 @@ use anyhow::{anyhow, Result};
 use std::fs;
 use std::path::PathBuf;
 
+/// Configuration for TDG command handling
+pub struct TdgCommandConfig {
+    pub path: PathBuf,
+    pub command: Option<TdgCommand>,
+    pub format: TdgOutputFormat,
+    pub config: Option<PathBuf>,
+    pub quiet: bool,
+    pub include_components: bool,
+    pub min_grade: Option<String>,
+    pub output: Option<PathBuf>,
+}
+
 /// Handle TDG command execution
-pub async fn handle_tdg_command(
-    path: PathBuf,
-    command: Option<TdgCommand>,
-    format: TdgOutputFormat,
-    config: Option<PathBuf>,
-    quiet: bool,
-    include_components: bool,
-    min_grade: Option<String>,
-    output: Option<PathBuf>,
-) -> Result<()> {
+pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
     // Load configuration if provided
-    let tdg_config = if let Some(config_path) = config {
-        let config_content = fs::read_to_string(&config_path)?;
+    let tdg_config = if let Some(config_path) = &config.config {
+        let config_content = fs::read_to_string(config_path)?;
         toml::from_str(&config_content)?
     } else {
         TdgConfig::default()
@@ -28,13 +31,13 @@ pub async fn handle_tdg_command(
     let analyzer = TdgAnalyzer::with_storage(tdg_config)?;
 
     // Handle subcommands
-    if let Some(cmd) = command {
+    if let Some(cmd) = config.command {
         match cmd {
             TdgCommand::Compare { source1, source2 } => {
                 let comparison = analyzer.compare(&source1, &source2).await?;
-                let output_str = format_comparison(comparison, format)?;
+                let output_str = format_comparison(comparison, config.format)?;
 
-                if let Some(output_path) = output {
+                if let Some(output_path) = &config.output {
                     fs::write(output_path, output_str)?;
                 } else {
                     println!("{}", output_str);
@@ -45,21 +48,21 @@ pub async fn handle_tdg_command(
             | TdgCommand::Storage { .. }
             | TdgCommand::Dashboard { .. } => {
                 // Handle diagnostic and dashboard commands
-                return super::tdg_diagnostic_handler::handle_tdg_diagnostics(&cmd, &path).await;
+                return super::tdg_diagnostic_handler::handle_tdg_diagnostics(&cmd, &config.path).await;
             }
         }
     }
 
     // Analyze single file or directory
-    let score = if path.is_dir() {
-        analyzer.analyze_project(&path).await?.average()
+    let score = if config.path.is_dir() {
+        analyzer.analyze_project(&config.path).await?.average()
     } else {
-        analyzer.analyze_file(&path).await?
+        analyzer.analyze_file(&config.path).await?
     };
 
     // Check minimum grade if specified (for CI/CD)
-    if let Some(min_grade_str) = min_grade {
-        let min_grade = parse_grade(&min_grade_str)?;
+    if let Some(min_grade_str) = &config.min_grade {
+        let min_grade = parse_grade(min_grade_str)?;
         if score.grade < min_grade {
             return Err(anyhow!(
                 "Grade {} is below minimum required grade {}",
@@ -70,14 +73,14 @@ pub async fn handle_tdg_command(
     }
 
     // Format output
-    let output_str = if quiet {
+    let output_str = if config.quiet {
         format!("{:.1}", score.total)
     } else {
-        format_tdg_score(score, format, include_components)?
+        format_tdg_score(score, config.format, config.include_components)?
     };
 
     // Write output
-    if let Some(output_path) = output {
+    if let Some(output_path) = &config.output {
         fs::write(output_path, output_str)?;
     } else {
         println!("{}", output_str);
