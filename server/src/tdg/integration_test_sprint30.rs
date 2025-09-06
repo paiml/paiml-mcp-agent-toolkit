@@ -10,8 +10,8 @@
 mod sprint30_integration_tests {
     use crate::models::unified_ast::Language;
     use crate::tdg::{
-        AdaptiveThresholdFactory, Grade, OperationPriority, ResourceControllerFactory,
-        SchedulerFactory, TdgAnalyzer, TdgConfig, TieredStorageFactory,
+        AdaptiveThresholdFactory, OperationPriority, ResourceControllerFactory,
+        SchedulerFactory, TdgAnalyzer, TdgConfig, TieredStorageFactory, Grade,
     };
     use std::path::Path;
     use tokio::time::{sleep, Duration};

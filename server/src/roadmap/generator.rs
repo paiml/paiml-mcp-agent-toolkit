@@ -439,7 +439,7 @@ mod tests {
             quality_requirements: QualityRequirements::default(),
             validation_commands: vec!["cargo test".to_string()],
             success_criteria: vec!["All tests pass".to_string()],
-            estimated_time: Duration::from_hours(4),
+            estimated_time: Duration::from_secs(4 * 3600),
             dependencies: vec![],
         };
 
@@ -498,16 +498,15 @@ mod tests {
             start_date: chrono::Utc::now(),
             end_date: chrono::Utc::now() + chrono::Duration::days(14),
             priority: Priority::P0,
-            tasks: vec![RoadmapTask {
+            tasks: vec![Task {
                 id: "PMAT-3001".to_string(),
-                title: "Task 1".to_string(),
-                description: "Description 1".to_string(),
+                description: "Task 1: Description 1".to_string(),
                 status: TaskStatus::Planned,
+                complexity: Complexity::Medium,
                 priority: Priority::P1,
-                estimated_hours: 4.0,
-                assigned_to: None,
-                dependencies: vec![],
-                tags: vec![],
+                assignee: None,
+                started_at: None,
+                completed_at: None,
             }],
             definition_of_done: vec!["All tests pass".to_string()],
             quality_gates: vec!["Coverage >80%".to_string()],
@@ -609,7 +608,7 @@ mod tests {
             quality_requirements: QualityRequirements::default(),
             validation_commands: vec!["cargo test".to_string()],
             success_criteria: vec!["Tests pass".to_string()],
-            estimated_time: Duration::from_hours(2),
+            estimated_time: Duration::from_secs(2 * 3600),
             dependencies: vec![],
         }];
 

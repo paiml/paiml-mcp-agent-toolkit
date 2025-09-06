@@ -314,8 +314,7 @@ impl PolyglotDetector {
 
         // Score between 0.0 and 1.0
         (language_diversity + dependency_complexity + (1.0 - avg_complexity / 100.0))
-            .min(1.0)
-            .max(0.0)
+            .clamp(0.0, 1.0)
     }
 
     fn estimate_file_complexity(&self, content: &str) -> f64 {

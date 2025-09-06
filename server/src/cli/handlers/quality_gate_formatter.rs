@@ -487,6 +487,7 @@ mod tests {
             section_violations: 0,
             provability_violations: 0,
             provability_score: None,
+            violations: vec![],
         }
     }
 
