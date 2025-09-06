@@ -11,6 +11,55 @@ use std::path::{Path, PathBuf};
 /// Adapter to handle current CLI inconsistencies
 pub struct ContractAdapter;
 
+/// Parameters for complexity command mapping
+struct ComplexityMapParams<'a> {
+    project_path: &'a Path,
+    _file: &'a Option<PathBuf>,
+    _files: &'a [PathBuf],
+    output: &'a Option<PathBuf>,
+    max_cyclomatic: &'a Option<u16>,
+    max_cognitive: &'a Option<u16>,
+    top_files: &'a usize,
+    timeout: &'a u64,
+}
+
+/// Parameters for SATD command mapping
+struct SatdMapParams<'a> {
+    path: &'a Path,
+    critical_only: &'a bool,
+    strict: &'a bool,
+    include_tests: &'a bool,
+    output: &'a Option<PathBuf>,
+    top_files: &'a usize,
+    fail_on_violation: &'a bool,
+    timeout: &'a u64,
+}
+
+/// Parameters for dead code command mapping
+struct DeadCodeMapParams<'a> {
+    path: &'a Path,
+    top_files: &'a Option<usize>,
+    include_unreachable: &'a bool,
+    min_dead_lines: &'a usize,
+    include_tests: &'a bool,
+    output: &'a Option<PathBuf>,
+    fail_on_violation: &'a bool,
+    max_percentage: &'a f64,
+    timeout: &'a u64,
+}
+
+/// Parameters for lint hotspot command mapping
+struct LintHotspotMapParams<'a> {
+    project_path: &'a Path,
+    file: &'a Option<PathBuf>,
+    max_density: &'a f64,
+    min_confidence: &'a f64,
+    enforce: &'a bool,
+    dry_run: &'a bool,
+    output: &'a Option<PathBuf>,
+    top_files: &'a usize,
+}
+
 impl ContractAdapter {
     /// Generate deprecation warnings for inconsistent parameters
     pub fn deprecation_warnings(cmd: &AnalyzeCommands) -> Vec<String> {
@@ -48,16 +97,17 @@ impl ContractAdapter {
                 } else {
                     path.clone()
                 };
-                Self::map_complexity_command(
-                    &analysis_path,
-                    file,
-                    files,
+                let params = ComplexityMapParams {
+                    project_path: &analysis_path,
+                    _file: file,
+                    _files: files,
                     output,
                     max_cyclomatic,
                     max_cognitive,
                     top_files,
                     timeout,
-                )
+                };
+                Self::map_complexity_command(params)
             }
             AnalyzeCommands::Satd {
                 path,
@@ -69,16 +119,19 @@ impl ContractAdapter {
                 fail_on_violation,
                 timeout,
                 ..
-            } => Self::map_satd_command(
-                path,
-                critical_only,
-                strict,
-                include_tests,
-                output,
-                top_files,
-                fail_on_violation,
-                timeout,
-            ),
+            } => {
+                let params = SatdMapParams {
+                    path,
+                    critical_only,
+                    strict,
+                    include_tests,
+                    output,
+                    top_files,
+                    fail_on_violation,
+                    timeout,
+                };
+                Self::map_satd_command(params)
+            }
             AnalyzeCommands::DeadCode {
                 path,
                 top_files,
@@ -90,17 +143,20 @@ impl ContractAdapter {
                 max_percentage,
                 timeout,
                 ..
-            } => Self::map_dead_code_command(
-                path,
-                top_files,
-                include_unreachable,
-                min_dead_lines,
-                include_tests,
-                output,
-                fail_on_violation,
-                max_percentage,
-                timeout,
-            ),
+            } => {
+                let params = DeadCodeMapParams {
+                    path,
+                    top_files,
+                    include_unreachable,
+                    min_dead_lines,
+                    include_tests,
+                    output,
+                    fail_on_violation,
+                    max_percentage,
+                    timeout,
+                };
+                Self::map_dead_code_command(params)
+            }
             AnalyzeCommands::Tdg {
                 path,
                 threshold,
@@ -127,45 +183,39 @@ impl ContractAdapter {
                 output,
                 top_files,
                 ..
-            } => Self::map_lint_hotspot_command(
-                project_path,
-                file,
-                max_density,
-                min_confidence,
-                enforce,
-                dry_run,
-                output,
-                top_files,
-            ),
+            } => {
+                let params = LintHotspotMapParams {
+                    project_path,
+                    file,
+                    max_density,
+                    min_confidence,
+                    enforce,
+                    dry_run,
+                    output,
+                    top_files,
+                };
+                Self::map_lint_hotspot_command(params)
+            }
             _ => {
                 anyhow::bail!("Command not yet adapted to uniform contract")
             }
         }
     }
 
-    fn map_complexity_command(
-        project_path: &Path,
-        _file: &Option<PathBuf>,
-        _files: &[PathBuf],
-        output: &Option<PathBuf>,
-        max_cyclomatic: &Option<u16>,
-        max_cognitive: &Option<u16>,
-        top_files: &usize,
-        timeout: &u64,
-    ) -> Result<Box<dyn ContractValidation>> {
-        let path = project_path;
+    fn map_complexity_command(params: ComplexityMapParams) -> Result<Box<dyn ContractValidation>> {
+        let path = params.project_path;
 
         let contract = AnalyzeComplexityContract {
             base: BaseAnalysisContract {
                 path: path.to_path_buf(),
                 format: OutputFormat::Table,
-                output: output.clone(),
-                top_files: Some(*top_files),
+                output: params.output.clone(),
+                top_files: Some(*params.top_files),
                 include_tests: false,
-                timeout: *timeout,
+                timeout: *params.timeout,
             },
-            max_cyclomatic: max_cyclomatic.map(|v| v as u32),
-            max_cognitive: max_cognitive.map(|v| v as u32),
+            max_cyclomatic: params.max_cyclomatic.map(|v| v as u32),
+            max_cognitive: params.max_cognitive.map(|v| v as u32),
             max_halstead: None,
         };
 
@@ -173,59 +223,40 @@ impl ContractAdapter {
         Ok(Box::new(contract))
     }
 
-    fn map_satd_command(
-        path: &Path,
-        critical_only: &bool,
-        strict: &bool,
-        include_tests: &bool,
-        output: &Option<PathBuf>,
-        top_files: &usize,
-        fail_on_violation: &bool,
-        timeout: &u64,
-    ) -> Result<Box<dyn ContractValidation>> {
+    fn map_satd_command(params: SatdMapParams) -> Result<Box<dyn ContractValidation>> {
         let contract = AnalyzeSatdContract {
             base: BaseAnalysisContract {
-                path: path.to_path_buf(),
+                path: params.path.to_path_buf(),
                 format: OutputFormat::Summary,
-                output: output.clone(),
-                top_files: Some(*top_files),
-                include_tests: *include_tests,
-                timeout: *timeout,
+                output: params.output.clone(),
+                top_files: Some(*params.top_files),
+                include_tests: *params.include_tests,
+                timeout: *params.timeout,
             },
             severity: None,
-            critical_only: *critical_only,
-            strict: *strict,
-            fail_on_violation: *fail_on_violation,
+            critical_only: *params.critical_only,
+            strict: *params.strict,
+            fail_on_violation: *params.fail_on_violation,
         };
 
         contract.validate()?;
         Ok(Box::new(contract))
     }
 
-    fn map_dead_code_command(
-        path: &Path,
-        top_files: &Option<usize>,
-        include_unreachable: &bool,
-        min_dead_lines: &usize,
-        include_tests: &bool,
-        output: &Option<PathBuf>,
-        fail_on_violation: &bool,
-        max_percentage: &f64,
-        timeout: &u64,
-    ) -> Result<Box<dyn ContractValidation>> {
+    fn map_dead_code_command(params: DeadCodeMapParams) -> Result<Box<dyn ContractValidation>> {
         let contract = AnalyzeDeadCodeContract {
             base: BaseAnalysisContract {
-                path: path.to_path_buf(),
+                path: params.path.to_path_buf(),
                 format: OutputFormat::Summary,
-                output: output.clone(),
-                top_files: *top_files,
-                include_tests: *include_tests,
-                timeout: *timeout,
+                output: params.output.clone(),
+                top_files: *params.top_files,
+                include_tests: *params.include_tests,
+                timeout: *params.timeout,
             },
-            include_unreachable: *include_unreachable,
-            min_dead_lines: *min_dead_lines,
-            max_percentage: *max_percentage,
-            fail_on_violation: *fail_on_violation,
+            include_unreachable: *params.include_unreachable,
+            min_dead_lines: *params.min_dead_lines,
+            max_percentage: *params.max_percentage,
+            fail_on_violation: *params.fail_on_violation,
         };
 
         contract.validate()?;
@@ -258,30 +289,21 @@ impl ContractAdapter {
         Ok(Box::new(contract))
     }
 
-    fn map_lint_hotspot_command(
-        project_path: &Path,
-        file: &Option<PathBuf>,
-        max_density: &f64,
-        min_confidence: &f64,
-        enforce: &bool,
-        dry_run: &bool,
-        output: &Option<PathBuf>,
-        top_files: &usize,
-    ) -> Result<Box<dyn ContractValidation>> {
+    fn map_lint_hotspot_command(params: LintHotspotMapParams) -> Result<Box<dyn ContractValidation>> {
         let contract = AnalyzeLintHotspotContract {
             base: BaseAnalysisContract {
-                path: project_path.to_path_buf(),
+                path: params.project_path.to_path_buf(),
                 format: OutputFormat::Summary,
-                output: output.clone(),
-                top_files: Some(*top_files),
+                output: params.output.clone(),
+                top_files: Some(*params.top_files),
                 include_tests: false,
                 timeout: 60,
             },
-            file: file.clone(),
-            max_density: *max_density,
-            min_confidence: *min_confidence,
-            enforce: *enforce,
-            dry_run: *dry_run,
+            file: params.file.clone(),
+            max_density: *params.max_density,
+            min_confidence: *params.min_confidence,
+            enforce: *params.enforce,
+            dry_run: *params.dry_run,
         };
 
         contract.validate()?;

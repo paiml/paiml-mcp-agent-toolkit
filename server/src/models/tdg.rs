@@ -349,63 +349,62 @@ mod new_tests {
     #[test]
     fn test_tdg_summary_creation() {
         let summary = TDGSummary {
-            total_files: 100,
-            files_analyzed: 95,
-            high_risk_count: 10,
-            medium_risk_count: 20,
-            low_risk_count: 65,
+            total_files: 95,
+            critical_files: 10,
+            warning_files: 20,
             average_tdg: 2.5,
-            max_tdg: 5.0,
-            median_tdg: 2.0,
-            p90_tdg: 4.0,
+            p95_tdg: 4.5,
             p99_tdg: 4.9,
+            estimated_debt_hours: 120.0,
+            hotspots: vec![],
         };
 
-        assert_eq!(summary.total_files, 100);
-        assert_eq!(summary.files_analyzed, 95);
-        assert_eq!(summary.high_risk_count, 10);
+        assert_eq!(summary.total_files, 95);
+        assert_eq!(summary.critical_files, 10);
+        assert_eq!(summary.warning_files, 20);
         assert_eq!(summary.average_tdg, 2.5);
+        assert_eq!(summary.p95_tdg, 4.5);
+        assert_eq!(summary.p99_tdg, 4.9);
+        assert_eq!(summary.estimated_debt_hours, 120.0);
     }
 
     #[test]
     fn test_tdg_hotspot() {
         let hotspot = TDGHotspot {
-            file_path: PathBuf::from("src/complex.rs"),
+            path: "src/complex.rs".to_string(),
             tdg_score: 4.5,
-            severity: TDGSeverity::Critical,
-            reason: "High complexity and churn".to_string(),
-            line_count: 1500,
+            primary_factor: "High complexity and churn".to_string(),
+            estimated_hours: 8.0,
         };
 
-        assert_eq!(hotspot.file_path, PathBuf::from("src/complex.rs"));
+        assert_eq!(hotspot.path, "src/complex.rs");
         assert_eq!(hotspot.tdg_score, 4.5);
-        assert_eq!(hotspot.severity, TDGSeverity::Critical);
-        assert_eq!(hotspot.reason, "High complexity and churn");
-        assert_eq!(hotspot.line_count, 1500);
+        assert_eq!(hotspot.primary_factor, "High complexity and churn");
+        assert_eq!(hotspot.estimated_hours, 8.0);
     }
 
     #[test]
     fn test_tdg_analysis() {
         let analysis = TDGAnalysis {
-            summary: TDGSummary {
-                total_files: 50,
-                files_analyzed: 50,
-                high_risk_count: 5,
-                medium_risk_count: 10,
-                low_risk_count: 35,
-                average_tdg: 2.0,
-                max_tdg: 4.5,
-                median_tdg: 1.8,
-                p90_tdg: 3.5,
-                p99_tdg: 4.4,
+            score: TDGScore {
+                total: 75.0,
+                structural_complexity: 15.0,
+                semantic_complexity: 15.0,
+                duplication_ratio: 10.0,
+                coupling_score: 10.0,
+                doc_coverage: 8.0,
+                consistency_score: 8.0,
+                maintenance_burden: 9.0,
+                grade: Grade::B,
+                file_path: None,
+                confidence: 0.95,
+                language: Language::Rust,
             },
-            hotspots: vec![],
+            explanation: "Test explanation".to_string(),
             recommendations: vec![],
-            timestamp: chrono::Utc::now(),
         };
 
-        assert_eq!(analysis.summary.total_files, 50);
-        assert!(analysis.hotspots.is_empty());
+        assert_eq!(analysis.score.total, 75.0);
         assert!(analysis.recommendations.is_empty());
     }
 

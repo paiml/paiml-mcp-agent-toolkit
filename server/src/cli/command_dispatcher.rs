@@ -279,7 +279,7 @@ impl CommandDispatcher {
                 min_grade,
                 output,
             } => {
-                handlers::handle_tdg_command(
+                let tdg_config = handlers::tdg_handlers::TdgCommandConfig {
                     path,
                     command,
                     format,
@@ -288,8 +288,8 @@ impl CommandDispatcher {
                     include_components,
                     min_grade,
                     output,
-                )
-                .await
+                };
+                handlers::handle_tdg_command(tdg_config).await
             }
         }
     }

@@ -628,6 +628,22 @@ impl Default for DeepContextConfig {
     }
 }
 
+/// Parameters for building deep context
+struct DeepContextBuildParams<'a> {
+    project_path: &'a Path,
+    file_tree: AnnotatedFileTree,
+    analyses: ParallelAnalysisResults,
+    cross_refs: FxHashMap<String, Vec<CrossLangReference>>,
+    quality_scorecard: QualityScorecard,
+    template_provenance: Option<TemplateProvenance>,
+    defect_summary: DefectSummary,
+    hotspots: Vec<DefectHotspot>,
+    recommendations: Vec<PrioritizedRecommendation>,
+    build_info: Option<BuildInfo>,
+    project_overview: Option<ProjectOverview>,
+    analysis_duration: std::time::Duration,
+}
+
 pub struct DeepContextAnalyzer {
     config: DeepContextConfig,
 }
@@ -2249,7 +2265,7 @@ impl DeepContextAnalyzer {
 
         // Build the deep context from all phases
         let analysis_duration = start_time.elapsed();
-        let mut deep_context = self.build_deep_context(
+        let build_params = DeepContextBuildParams {
             project_path,
             file_tree,
             analyses,
@@ -2262,7 +2278,8 @@ impl DeepContextAnalyzer {
             build_info,
             project_overview,
             analysis_duration,
-        );
+        };
+        let mut deep_context = self.build_deep_context(build_params);
 
         // Execute final QA verification phase
         deep_context.qa_verification = Some(
@@ -2395,54 +2412,40 @@ impl DeepContextAnalyzer {
         Ok((build_info, project_overview))
     }
 
-    fn build_deep_context(
-        &self,
-        project_path: &Path,
-        file_tree: AnnotatedFileTree,
-        analyses: ParallelAnalysisResults,
-        cross_refs: FxHashMap<String, Vec<CrossLangReference>>,
-        quality_scorecard: QualityScorecard,
-        template_provenance: Option<TemplateProvenance>,
-        defect_summary: DefectSummary,
-        hotspots: Vec<DefectHotspot>,
-        recommendations: Vec<PrioritizedRecommendation>,
-        build_info: Option<BuildInfo>,
-        project_overview: Option<ProjectOverview>,
-        analysis_duration: std::time::Duration,
-    ) -> DeepContext {
+    fn build_deep_context(&self, params: DeepContextBuildParams) -> DeepContext {
         DeepContext {
             metadata: ContextMetadata {
                 generated_at: Utc::now(),
                 tool_version: env!("CARGO_PKG_VERSION").to_string(),
-                project_root: project_path.to_path_buf(),
+                project_root: params.project_path.to_path_buf(),
                 cache_stats: CacheStats {
                     hit_rate: 0.0,
                     memory_efficiency: 0.0,
                     time_saved_ms: 0,
                 },
-                analysis_duration,
+                analysis_duration: params.analysis_duration,
             },
-            file_tree,
+            file_tree: params.file_tree,
             analyses: AnalysisResults {
-                ast_contexts: analyses.ast_contexts.unwrap_or_default(),
-                complexity_report: analyses.complexity_report,
-                churn_analysis: analyses.churn_analysis,
-                dependency_graph: analyses.dependency_graph,
-                dead_code_results: analyses.dead_code_results,
-                duplicate_code_results: analyses.duplicate_code_results,
-                satd_results: analyses.satd_results,
-                provability_results: analyses.provability_results,
-                cross_language_refs: cross_refs.into_iter().flat_map(|(_, refs)| refs).collect(),
-                big_o_analysis: analyses.big_o_analysis,
+                ast_contexts: params.analyses.ast_contexts.unwrap_or_default(),
+                complexity_report: params.analyses.complexity_report,
+                churn_analysis: params.analyses.churn_analysis,
+                dependency_graph: params.analyses.dependency_graph,
+                dead_code_results: params.analyses.dead_code_results,
+                duplicate_code_results: params.analyses.duplicate_code_results,
+                satd_results: params.analyses.satd_results,
+                provability_results: params.analyses.provability_results,
+                cross_language_refs: params.cross_refs.into_iter().flat_map(|(_, refs)| refs).collect(),
+                big_o_analysis: params.analyses.big_o_analysis,
             },
-            quality_scorecard,
-            template_provenance,
-            defect_summary,
-            hotspots,
-            recommendations,
+            quality_scorecard: params.quality_scorecard,
+            template_provenance: params.template_provenance,
+            defect_summary: params.defect_summary,
+            hotspots: params.hotspots,
+            recommendations: params.recommendations,
             qa_verification: None,
-            build_info,
-            project_overview,
+            build_info: params.build_info,
+            project_overview: params.project_overview,
         }
     }
 

@@ -570,17 +570,18 @@ fn handle_watch_mode(
 
     // Initial analysis
     eprintln!("📊 Running initial complexity analysis...\n");
-    run_complexity_analysis_sync(
+    let config = SyncAnalysisConfig {
         path,
         toolchain,
         max_cyclomatic,
         max_cognitive,
-        &include,
+        include: &include,
         timeout,
         top_files,
-        format.clone(),
+        format: format.clone(),
         output,
-    )?;
+    };
+    run_complexity_analysis_sync(config)?;
 
     // Watch for changes
     loop {
@@ -597,17 +598,18 @@ fn handle_watch_mode(
                     eprintln!();
 
                     // Run analysis again
-                    if let Err(e) = run_complexity_analysis_sync(
+                    let config = SyncAnalysisConfig {
                         path,
                         toolchain,
                         max_cyclomatic,
                         max_cognitive,
-                        &include,
+                        include: &include,
                         timeout,
                         top_files,
-                        format.clone(),
+                        format: format.clone(),
                         output,
-                    ) {
+                    };
+                    if let Err(e) = run_complexity_analysis_sync(config) {
                         eprintln!("⚠️  Analysis error: {}", e);
                     }
                 }
@@ -705,59 +707,62 @@ async fn format_and_output_watch_results(
     Ok(())
 }
 
-/// Synchronous wrapper for complexity analysis in watch mode
-fn run_complexity_analysis_sync(
-    path: &Path,
-    toolchain: Option<&str>,
+/// Configuration for synchronous complexity analysis
+struct SyncAnalysisConfig<'a> {
+    path: &'a Path,
+    toolchain: Option<&'a str>,
     max_cyclomatic: Option<u16>,
     max_cognitive: Option<u16>,
-    include: &[String],
+    include: &'a [String],
     timeout: u64,
     top_files: usize,
     format: ComplexityOutputFormat,
-    output: Option<&Path>,
-) -> Result<()> {
+    output: Option<&'a Path>,
+}
+
+/// Synchronous wrapper for complexity analysis in watch mode
+fn run_complexity_analysis_sync(config: SyncAnalysisConfig) -> Result<()> {
     // Create a runtime for the async operation
     let runtime = tokio::runtime::Runtime::new()?;
 
     // Create config
-    let config = ComplexityConfig::from_args(
-        path.to_path_buf(),
-        toolchain.map(String::from),
-        max_cyclomatic,
-        max_cognitive,
-        include.to_vec(),
-        timeout,
-        top_files,
+    let complexity_config = ComplexityConfig::from_args(
+        config.path.to_path_buf(),
+        config.toolchain.map(String::from),
+        config.max_cyclomatic,
+        config.max_cognitive,
+        config.include.to_vec(),
+        config.timeout,
+        config.top_files,
     );
 
     // Run the analysis
     runtime.block_on(async {
-        let mut file_metrics = if path.is_file() {
-            analyze_single_file(path, &config).await?
+        let mut file_metrics = if config.path.is_file() {
+            analyze_single_file(config.path, &complexity_config).await?
         } else {
-            let detected_toolchain = config.detect_toolchain();
-            analyze_project(detected_toolchain, &config).await?
+            let detected_toolchain = complexity_config.detect_toolchain();
+            analyze_project(detected_toolchain, &complexity_config).await?
         };
 
         // Apply filters
         apply_complexity_filters(
             &mut file_metrics,
-            Some(config.max_cyclomatic),
-            Some(config.max_cognitive),
+            Some(complexity_config.max_cyclomatic),
+            Some(complexity_config.max_cognitive),
         );
-        apply_top_files_limit(&mut file_metrics, config.top_files);
+        apply_top_files_limit(&mut file_metrics, complexity_config.top_files);
 
         // Aggregate results
         use crate::services::complexity::aggregate_results_with_thresholds;
         let summary = aggregate_results_with_thresholds(
             file_metrics.clone(),
-            Some(config.max_cyclomatic),
-            Some(config.max_cognitive),
+            Some(complexity_config.max_cyclomatic),
+            Some(complexity_config.max_cognitive),
         );
 
         // Format and output results
-        format_and_output_watch_results(summary, file_metrics, format, output).await?;
+        format_and_output_watch_results(summary, file_metrics, config.format, config.output).await?;
         Ok::<(), anyhow::Error>(())
     })?;
 
