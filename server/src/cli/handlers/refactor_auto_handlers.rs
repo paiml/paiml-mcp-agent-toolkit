@@ -2400,4 +2400,102 @@ mod tests {
 
         assert!(result.is_empty());
     }
+
+    #[test]
+    fn test_refactor_auto_config_creation() {
+        use std::path::PathBuf;
+        
+        let config = RefactorAutoConfig {
+            project_path: PathBuf::from("/test/project"),
+            single_file_mode: true,
+            file: Some(PathBuf::from("test.rs")),
+            format: RefactorAutoOutputFormat::Json,
+            max_iterations: 5,
+            cache_dir: Some(PathBuf::from("/tmp/cache")),
+            dry_run: true,
+            ci_mode: false,
+            exclude_patterns: vec!["*.tmp".to_string()],
+            include_patterns: vec!["*.rs".to_string()],
+            ignore_file: Some(PathBuf::from(".gitignore")),
+            test_file: None,
+            test_name: None,
+            github_issue_url: None,
+            bug_report_path: None,
+        };
+        
+        assert_eq!(config.project_path, PathBuf::from("/test/project"));
+        assert!(config.single_file_mode);
+        assert_eq!(config.file, Some(PathBuf::from("test.rs")));
+        assert_eq!(config.max_iterations, 5);
+        assert!(config.dry_run);
+        assert!(!config.ci_mode);
+        assert_eq!(config.exclude_patterns.len(), 1);
+        assert_eq!(config.include_patterns.len(), 1);
+    }
+
+    #[test]
+    fn test_refactor_auto_config_default_values() {
+        use std::path::PathBuf;
+        
+        let config = RefactorAutoConfig {
+            project_path: PathBuf::from("."),
+            single_file_mode: false,
+            file: None,
+            format: RefactorAutoOutputFormat::Summary,
+            max_iterations: 1,
+            cache_dir: None,
+            dry_run: false,
+            ci_mode: false,
+            exclude_patterns: Vec::new(),
+            include_patterns: Vec::new(),
+            ignore_file: None,
+            test_file: None,
+            test_name: None,
+            github_issue_url: None,
+            bug_report_path: None,
+        };
+        
+        assert_eq!(config.project_path, PathBuf::from("."));
+        assert!(!config.single_file_mode);
+        assert!(config.file.is_none());
+        assert_eq!(config.max_iterations, 1);
+        assert!(!config.dry_run);
+        assert!(config.exclude_patterns.is_empty());
+        assert!(config.include_patterns.is_empty());
+    }
+
+    #[test]
+    fn test_refactor_auto_config_clone() {
+        use std::path::PathBuf;
+        
+        let original = RefactorAutoConfig {
+            project_path: PathBuf::from("/original"),
+            single_file_mode: true,
+            file: Some(PathBuf::from("original.rs")),
+            format: RefactorAutoOutputFormat::Detailed,
+            max_iterations: 10,
+            cache_dir: Some(PathBuf::from("/cache")),
+            dry_run: true,
+            ci_mode: true,
+            exclude_patterns: vec!["exclude".to_string()],
+            include_patterns: vec!["include".to_string()],
+            ignore_file: Some(PathBuf::from(".ignore")),
+            test_file: Some(PathBuf::from("test.rs")),
+            test_name: Some("test_name".to_string()),
+            github_issue_url: Some("https://github.com/test".to_string()),
+            bug_report_path: Some(PathBuf::from("bug.md")),
+        };
+        
+        let cloned = original.clone();
+        
+        assert_eq!(cloned.project_path, original.project_path);
+        assert_eq!(cloned.single_file_mode, original.single_file_mode);
+        assert_eq!(cloned.file, original.file);
+        assert_eq!(cloned.max_iterations, original.max_iterations);
+        assert_eq!(cloned.dry_run, original.dry_run);
+        assert_eq!(cloned.ci_mode, original.ci_mode);
+        assert_eq!(cloned.exclude_patterns, original.exclude_patterns);
+        assert_eq!(cloned.include_patterns, original.include_patterns);
+        assert_eq!(cloned.test_name, original.test_name);
+    }
 }
