@@ -235,17 +235,15 @@ pub async fn run_project_checks(
         .await?;
     } else {
         // Run individual checks with performance timing
-        run_individual_checks(
-            config.checks,
-            config.project_path,
-            config.max_dead_code,
-            config.min_entropy,
-            config.max_complexity_p99,
-            violations,
-            results,
-            config.perf,
-        )
-        .await?;
+        let checks_config = IndividualChecksConfig {
+            checks: config.checks,
+            project_path: config.project_path,
+            max_dead_code: config.max_dead_code,
+            min_entropy: config.min_entropy,
+            max_complexity_p99: config.max_complexity_p99,
+            perf: config.perf,
+        };
+        run_individual_checks(checks_config, violations, results).await?;
     }
     Ok(())
 }
@@ -273,31 +271,36 @@ async fn run_all_checks(
     .await
 }
 
-/// Toyota Way: Extract Method - Run individual checks with timing (complexity ≤8)
-async fn run_individual_checks(
-    checks: &[QualityCheckType],
-    project_path: &Path,
+/// Configuration for running individual checks
+struct IndividualChecksConfig<'a> {
+    checks: &'a [QualityCheckType],
+    project_path: &'a Path,
     max_dead_code: f64,
     min_entropy: f64,
     max_complexity_p99: u32,
+    perf: bool,
+}
+
+/// Toyota Way: Extract Method - Run individual checks with timing (complexity ≤8)
+async fn run_individual_checks(
+    config: IndividualChecksConfig<'_>,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
-    perf: bool,
 ) -> Result<()> {
     use std::time::Instant;
 
-    for check in checks {
-        let check_start = if perf { Some(Instant::now()) } else { None };
+    for check in config.checks {
+        let check_start = if config.perf { Some(Instant::now()) } else { None };
 
         crate::cli::analysis_utilities::run_single_project_check(
             check,
-            project_path,
-            max_dead_code,
-            min_entropy,
-            max_complexity_p99,
+            config.project_path,
+            config.max_dead_code,
+            config.min_entropy,
+            config.max_complexity_p99,
             violations,
             results,
-            perf,
+            config.perf,
         )
         .await?;
 

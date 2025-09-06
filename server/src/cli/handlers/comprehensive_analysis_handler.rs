@@ -77,18 +77,17 @@ pub async fn handle_analyze_comprehensive(config: ComprehensiveAnalysisConfig) -
 
     // Add additional analyses if requested
     let enhanced_result = if config.include_duplicates || config.include_defects {
-        enhance_with_additional_analyses(
-            result,
-            &config.project_path,
-            config.include_duplicates,
-            config.include_defects,
-            config.confidence_threshold,
-            config.min_lines,
-            &config.include,
-            &config.exclude,
-            config.top_files,
-        )
-        .await?
+        let additional_config = AdditionalAnalysisConfig {
+            project_path: &config.project_path,
+            include_duplicates: config.include_duplicates,
+            include_defects: config.include_defects,
+            confidence_threshold: config.confidence_threshold,
+            min_lines: config.min_lines,
+            include: &config.include,
+            exclude: &config.exclude,
+            top_files: config.top_files,
+        };
+        enhance_with_additional_analyses(result, additional_config).await?
     } else {
         result
     };
@@ -117,20 +116,25 @@ pub async fn handle_analyze_comprehensive(config: ComprehensiveAnalysisConfig) -
     Ok(())
 }
 
-/// Enhance results with additional analyses not covered by the orchestrator
-async fn enhance_with_additional_analyses(
-    mut result: ComprehensiveAnalysisResult,
-    project_path: &Path,
+/// Configuration for additional analyses
+struct AdditionalAnalysisConfig<'a> {
+    project_path: &'a Path,
     include_duplicates: bool,
     include_defects: bool,
     confidence_threshold: f32,
     min_lines: usize,
-    include: &Option<String>,
-    exclude: &Option<String>,
+    include: &'a Option<String>,
+    exclude: &'a Option<String>,
     top_files: usize,
+}
+
+/// Enhance results with additional analyses not covered by the orchestrator
+async fn enhance_with_additional_analyses(
+    mut result: ComprehensiveAnalysisResult,
+    config: AdditionalAnalysisConfig<'_>,
 ) -> Result<ComprehensiveAnalysisResult> {
     // Add duplicate detection if requested
-    if include_duplicates {
+    if config.include_duplicates {
         eprintln!("👥 Detecting duplicates...");
         // Would integrate with duplicate detector service
         // For now, just note it in the summary
@@ -141,7 +145,7 @@ async fn enhance_with_additional_analyses(
     }
 
     // Add defect prediction if requested
-    if include_defects {
+    if config.include_defects {
         eprintln!("🐛 Predicting defects...");
 
         // Use our defect prediction facade
@@ -154,15 +158,15 @@ async fn enhance_with_additional_analyses(
         let facade = DefectPredictionFacade::new(registry);
 
         let request = DefectPredictionRequest {
-            project_path: project_path.to_path_buf(),
-            confidence_threshold,
-            min_lines,
+            project_path: config.project_path.to_path_buf(),
+            confidence_threshold: config.confidence_threshold,
+            min_lines: config.min_lines,
             include_low_confidence: false,
             high_risk_only: false,
             include_recommendations: true,
-            include: include.as_ref().map(|s| vec![s.clone()]),
-            exclude: exclude.as_ref().map(|s| vec![s.clone()]),
-            top_files,
+            include: config.include.as_ref().map(|s| vec![s.clone()]),
+            exclude: config.exclude.as_ref().map(|s| vec![s.clone()]),
+            top_files: config.top_files,
         };
 
         if let Ok(defect_result) = facade.analyze_project(request).await {

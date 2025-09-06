@@ -341,7 +341,7 @@ impl CommandExecutor {
                 min_grade,
                 output,
             } => {
-                super::handlers::handle_tdg_command(
+                let tdg_config = super::handlers::tdg_handlers::TdgCommandConfig {
                     path,
                     command,
                     format,
@@ -350,8 +350,8 @@ impl CommandExecutor {
                     include_components,
                     min_grade,
                     output,
-                )
-                .await
+                };
+                super::handlers::handle_tdg_command(tdg_config).await
             }
         }
     }
