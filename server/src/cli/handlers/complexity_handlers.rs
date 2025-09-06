@@ -64,14 +64,14 @@ impl ComplexityConfig {
 /// This helper function handles single file analysis with proper error handling
 /// and maintains consistency with the Issue #42 fix for multi-language support.
 async fn analyze_single_file(
-    file_path: &PathBuf,
+    file_path: &Path,
     config: &ComplexityConfig,
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
     eprintln!("🔍 Analyzing complexity of file: {}", file_path.display());
 
     // Ensure file exists and resolve absolute path
     let full_path = if file_path.is_absolute() {
-        file_path.clone()
+        file_path.to_path_buf()
     } else {
         config.project_path.join(file_path)
     };
@@ -734,7 +734,7 @@ fn run_complexity_analysis_sync(
     // Run the analysis
     runtime.block_on(async {
         let mut file_metrics = if path.is_file() {
-            analyze_single_file(&path.to_path_buf(), &config).await?
+            analyze_single_file(path, &config).await?
         } else {
             let detected_toolchain = config.detect_toolchain();
             analyze_project(detected_toolchain, &config).await?
@@ -1336,7 +1336,7 @@ fn print_satd_analysis_info(strict: bool, timeout: u64) {
 
 /// Toyota Way Helper: Run SATD analysis with timeout
 async fn run_satd_analysis(
-    path: &PathBuf,
+    path: &Path,
     include_tests: bool,
     strict: bool,
     timeout: u64,

@@ -490,9 +490,9 @@ fn create_large_test_graph() -> petgraph::stable_graph::StableGraph<
             visibility: "public".to_string(),
             metrics: ModuleMetrics {
                 complexity: (i % 10) + 1,
-                lines: (i * 10) + 20,
-                functions: (i % 5) + 1,
-                classes: i % 3,
+                lines: ((i * 10) + 20) as usize,
+                functions: ((i % 5) + 1) as usize,
+                classes: (i % 3) as usize,
             },
         });
         nodes.push(node);

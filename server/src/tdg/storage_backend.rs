@@ -11,6 +11,12 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
+/// Type alias for key-value pair
+pub type KeyValuePair = (Vec<u8>, Vec<u8>);
+
+/// Type alias for storage iterator
+pub type StorageIterator<'a> = Box<dyn Iterator<Item = Result<KeyValuePair>> + 'a>;
+
 /// Trait for storage backend implementations
 pub trait StorageBackend: Send + Sync {
     /// Store a key-value pair
@@ -26,7 +32,7 @@ pub trait StorageBackend: Send + Sync {
     fn contains(&self, key: &[u8]) -> Result<bool>;
 
     /// Iterate over all key-value pairs
-    fn iter(&self) -> Result<Box<dyn Iterator<Item = Result<(Vec<u8>, Vec<u8>)>> + '_>>;
+    fn iter(&self) -> Result<StorageIterator<'_>>;
 
     /// Get approximate size in bytes
     fn size_on_disk(&self) -> Result<u64>;
@@ -83,7 +89,7 @@ impl StorageBackend for SledBackend {
         Ok(self.tree.contains_key(key)?)
     }
 
-    fn iter(&self) -> Result<Box<dyn Iterator<Item = Result<(Vec<u8>, Vec<u8>)>> + '_>> {
+    fn iter(&self) -> Result<StorageIterator<'_>> {
         Ok(Box::new(self.tree.iter().map(|res| {
             res.map(|(k, v)| (k.to_vec(), v.to_vec()))
                 .map_err(|e| anyhow::anyhow!("Iteration error: {}", e))
@@ -157,7 +163,7 @@ impl StorageBackend for InMemoryBackend {
         Ok(self.data.contains_key(key))
     }
 
-    fn iter(&self) -> Result<Box<dyn Iterator<Item = Result<(Vec<u8>, Vec<u8>)>> + '_>> {
+    fn iter(&self) -> Result<StorageIterator<'_>> {
         let entries: Vec<_> = self
             .data
             .iter()
@@ -246,7 +252,7 @@ impl StorageBackend for RocksDbBackend {
         Ok(self.db.get(key)?.is_some())
     }
 
-    fn iter(&self) -> Result<Box<dyn Iterator<Item = Result<(Vec<u8>, Vec<u8>)>> + '_>> {
+    fn iter(&self) -> Result<StorageIterator<'_>> {
         use rocksdb::IteratorMode;
 
         let iter = self.db.iterator(IteratorMode::Start);

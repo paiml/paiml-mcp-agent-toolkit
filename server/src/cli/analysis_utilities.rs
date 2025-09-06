@@ -4078,7 +4078,7 @@ pub async fn handle_analyze_comprehensive(
 #[allow(clippy::too_many_arguments)]
 async fn run_comprehensive_analyses(
     report: &mut ComprehensiveReport,
-    project_path: &PathBuf,
+    project_path: &Path,
     include_complexity: bool,
     include_tdg: bool,
     include_dead_code: bool,

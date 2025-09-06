@@ -522,6 +522,8 @@ mod tests {
         });
 
         let metrics = ProjectMetrics {
+            total_complexity: 150,
+            total_lines: 1000,
             file_count: 2,
             function_count: 10,
             avg_complexity: 15.0,

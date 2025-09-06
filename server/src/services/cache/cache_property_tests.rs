@@ -351,7 +351,7 @@ mod tests {
                 // Clear and verify
                 manager.clear_all();
 
-                Ok(())
+                Ok::<(), proptest::test_runner::TestCaseError>(())
             })?;
         }
 

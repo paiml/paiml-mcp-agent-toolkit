@@ -495,7 +495,7 @@ pub struct RefactoringEstimate {
     pub suggested_actions: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Priority {
     Critical,
     High,
@@ -2296,7 +2296,7 @@ impl DeepContextAnalyzer {
 
     async fn execute_analysis_phase(
         &self,
-        project_path: &PathBuf,
+        project_path: &Path,
         tracker: &crate::services::progress::ProgressTracker,
         progress: &indicatif::ProgressBar,
     ) -> anyhow::Result<ParallelAnalysisResults> {
@@ -2386,7 +2386,7 @@ impl DeepContextAnalyzer {
 
     async fn execute_metadata_analysis_phase(
         &self,
-        project_path: &PathBuf,
+        project_path: &Path,
         progress: &indicatif::ProgressBar,
     ) -> anyhow::Result<(Option<BuildInfo>, Option<ProjectOverview>)> {
         progress.set_message("Analyzing project metadata...");
@@ -2397,7 +2397,7 @@ impl DeepContextAnalyzer {
 
     fn build_deep_context(
         &self,
-        project_path: &PathBuf,
+        project_path: &Path,
         file_tree: AnnotatedFileTree,
         analyses: ParallelAnalysisResults,
         cross_refs: FxHashMap<String, Vec<CrossLangReference>>,
@@ -2414,7 +2414,7 @@ impl DeepContextAnalyzer {
             metadata: ContextMetadata {
                 generated_at: Utc::now(),
                 tool_version: env!("CARGO_PKG_VERSION").to_string(),
-                project_root: project_path.clone(),
+                project_root: project_path.to_path_buf(),
                 cache_stats: CacheStats {
                     hit_rate: 0.0,
                     memory_efficiency: 0.0,
@@ -4809,6 +4809,12 @@ mod tests {
             cognitive_complexity: Some(8),
             churn_score: Some(0.3),
             dead_code_items: 2,
+            satd_items: 0,
+            centrality: None,
+            test_coverage: None,
+            big_o_complexity: None,
+            memory_complexity: None,
+            duplication_score: None,
         };
 
         assert_eq!(annotations.defect_score, Some(15.5));
@@ -4827,9 +4833,16 @@ mod tests {
             cognitive_complexity: Some(12),
             churn_score: Some(0.2),
             dead_code_items: 2,
+            satd_items: 0,
+            centrality: None,
+            test_coverage: None,
+            big_o_complexity: None,
+            memory_complexity: None,
+            duplication_score: None,
         };
 
         let node = AnnotatedNode {
+            name: "file.rs".to_string(),
             path: path.clone(),
             node_type: NodeType::File,
             annotations,
@@ -4851,6 +4864,12 @@ mod tests {
             cognitive_complexity: Some(18),
             churn_score: Some(0.1),
             dead_code_items: 5,
+            satd_items: 0,
+            centrality: Some(1.0),
+            test_coverage: Some(80.0),
+            big_o_complexity: Some("O(n)".to_string()),
+            memory_complexity: Some("O(1)".to_string()),
+            duplication_score: Some(0.05),
         };
 
         let root_node = AnnotatedNode {

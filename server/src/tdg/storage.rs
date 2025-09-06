@@ -254,13 +254,11 @@ impl TieredStore {
         let mut samples = 0;
 
         if let Ok(iter) = self.warm_backend.iter() {
-            for result in iter.take(10) {
-                if let Ok((_, compressed)) = result {
-                    total_compressed += compressed.len();
-                    // Estimate original size (this is approximate)
-                    total_original += compressed.len() * 3; // Typical compression is ~3:1
-                    samples += 1;
-                }
+            for (_, compressed) in iter.take(10).flatten() {
+                total_compressed += compressed.len();
+                // Estimate original size (this is approximate)
+                total_original += compressed.len() * 3; // Typical compression is ~3:1
+                samples += 1;
             }
         }
 
@@ -415,7 +413,7 @@ impl TieredStorageFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::unified_ast::Language;
+    use crate::tdg::language_simple::Language;
     use crate::tdg::Grade;
     use tempfile::TempDir;
 

@@ -99,21 +99,23 @@ pub async fn route_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::R
             bug_report_path,
         } => {
             super::refactor_auto_handlers::handle_refactor_auto(
-                project_path,
-                single_file_mode,
-                file,
-                format,
-                max_iterations,
-                checkpoint,
-                dry_run,
-                false, // ci_mode - use false for interactive mode
-                exclude,
-                include,
-                ignore_file,
-                test,
-                test_name,
-                github_issue,
-                bug_report_path,
+                super::refactor_auto_handlers::RefactorAutoConfig {
+                    project_path,
+                    single_file_mode,
+                    file,
+                    format,
+                    max_iterations,
+                    cache_dir: checkpoint,
+                    dry_run,
+                    ci_mode: false, // use false for interactive mode
+                    exclude_patterns: exclude,
+                    include_patterns: include,
+                    ignore_file,
+                    test_file: test,
+                    test_name,
+                    github_issue_url: github_issue,
+                    bug_report_path,
+                },
             )
             .await
         }

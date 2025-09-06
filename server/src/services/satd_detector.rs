@@ -451,7 +451,7 @@ impl SATDDetector {
         file_path.extension().and_then(|s| s.to_str()) == Some("rs")
     }
 
-    fn sort_debts(&self, debts: &mut Vec<TechnicalDebt>) {
+    fn sort_debts(&self, debts: &mut [TechnicalDebt]) {
         debts.sort_by_key(|d| (d.file.clone(), d.line, d.column));
     }
 }
@@ -1448,7 +1448,7 @@ impl SATDDetector {
 
     async fn run_git_blame(
         &self,
-        relative_path: &PathBuf,
+        relative_path: &Path,
         line: u32,
         project_root: &Path,
     ) -> Option<String> {

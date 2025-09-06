@@ -392,15 +392,15 @@ impl QualityGateEnforcer {
 impl QualityCheck {
     /// Check if this check matches another (for testing)
     pub fn matches(&self, other: &QualityCheck) -> bool {
-        match (self, other) {
-            (QualityCheck::Complexity(_), QualityCheck::Complexity(_)) => true,
-            (QualityCheck::TestCoverage(_), QualityCheck::TestCoverage(_)) => true,
-            (QualityCheck::Documentation, QualityCheck::Documentation) => true,
-            (QualityCheck::NoSatd, QualityCheck::NoSatd) => true,
-            (QualityCheck::LintCompliance, QualityCheck::LintCompliance) => true,
-            (QualityCheck::RoadmapUpdated, QualityCheck::RoadmapUpdated) => true,
-            _ => false,
-        }
+        matches!(
+            (self, other),
+            (QualityCheck::Complexity(_), QualityCheck::Complexity(_))
+                | (QualityCheck::TestCoverage(_), QualityCheck::TestCoverage(_))
+                | (QualityCheck::Documentation, QualityCheck::Documentation)
+                | (QualityCheck::NoSatd, QualityCheck::NoSatd)
+                | (QualityCheck::LintCompliance, QualityCheck::LintCompliance)
+                | (QualityCheck::RoadmapUpdated, QualityCheck::RoadmapUpdated)
+        )
     }
 }
 
