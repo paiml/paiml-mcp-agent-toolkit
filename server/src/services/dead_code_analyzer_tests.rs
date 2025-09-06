@@ -5,9 +5,8 @@
 
 #[cfg(test)]
 mod dead_code_analyzer_tests {
-    use super::super::dead_code_analyzer::*;
     use std::fs;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
     use std::process::Command;
     use tempfile::TempDir;
 
