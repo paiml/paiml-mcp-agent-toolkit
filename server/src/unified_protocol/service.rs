@@ -1708,4 +1708,5 @@ mod tests {
         assert_eq!(analysis.categories.get("TODO"), Some(&3));
         assert_eq!(analysis.files[0].items[0].line, 42);
     }
+
 }

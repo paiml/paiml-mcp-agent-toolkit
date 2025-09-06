@@ -1,6 +1,47 @@
 # PMAT Development Roadmap
 
-## Current Sprint: Sprint 70 - Test Suite FULLY RESTORED ✅ 🎯 MISSION ACCOMPLISHED
+## Current Sprint: Sprint 72 - Test Coverage Restoration 📈 ACTIVE
+- **Duration**: 2025-09-06 (in progress)
+- **Priority**: P0 - Quality Metrics
+- **Methodology**: TDD with incremental coverage improvements
+- **Goal**: Restore test coverage to 80%+ (Sprint 46 achievement)
+- **Status**: Planning Phase
+
+### Problem Statement
+After Sprint 71's clippy fixes and v2.60.0 release, we need to:
+1. Measure current test coverage accurately
+2. Identify coverage gaps in critical code paths
+3. Add comprehensive tests for recent changes
+4. Ensure coverage doesn't regress below 80%
+
+### Sprint 72 Objectives
+- **Measure**: Get accurate coverage baseline using cargo-llvm-cov
+- **Analyze**: Identify uncovered critical code paths
+- **Implement**: Add tests for uncovered functionality
+- **Validate**: Achieve and maintain ≥80% coverage
+- **Automate**: Ensure pre-commit hooks enforce coverage
+
+### Technical Tasks
+1. Run comprehensive coverage analysis
+2. Identify top 10 files with lowest coverage
+3. Write tests for critical uncovered paths
+4. Focus on high-value areas (AST, quality gates, refactoring)
+5. Update pre-commit hooks if needed
+
+### Expected Outcomes
+- Test coverage: Current → 80%+
+- All critical paths covered
+- Coverage enforcement in CI/CD
+- No regression from Sprint 46 achievement
+
+## Completed Sprint: Sprint 71 - Zero Clippy Violations ✅ COMPLETE
+- **Duration**: 2025-09-06
+- **Status**: ✅ COMPLETE - v2.60.0 Released
+- **Achievement**: Fixed all 38 clippy warnings → 0 violations
+- **Released**: v2.60.0 published to crates.io and GitHub
+- See full details below in Sprint 71 section
+
+## Completed Sprint: Sprint 70 - Test Suite FULLY RESTORED ✅ 🎯 MISSION ACCOMPLISHED
 - **Duration**: 2025-09-06 
 - **Priority**: P0 - Test Infrastructure COMPLETE
 - **Target**: Achieve 100% test compilation
