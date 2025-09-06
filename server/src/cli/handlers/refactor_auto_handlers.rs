@@ -24,6 +24,26 @@ use serde_json;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+/// Configuration for refactor auto command
+#[derive(Debug, Clone)]
+pub struct RefactorAutoConfig {
+    pub project_path: PathBuf,
+    pub single_file_mode: bool,
+    pub file: Option<PathBuf>,
+    pub format: RefactorAutoOutputFormat,
+    pub max_iterations: u32,
+    pub cache_dir: Option<PathBuf>,
+    pub dry_run: bool,
+    pub ci_mode: bool,
+    pub exclude_patterns: Vec<String>,
+    pub include_patterns: Vec<String>,
+    pub ignore_file: Option<PathBuf>,
+    pub test_file: Option<PathBuf>,
+    pub test_name: Option<String>,
+    pub github_issue_url: Option<String>,
+    pub bug_report_path: Option<PathBuf>,
+}
+
 /// Quality profile configuration for refactor auto
 #[derive(Debug, Clone)]
 struct QualityProfile {
@@ -118,7 +138,7 @@ pub struct RefactorProgress {
 }
 
 /// Current phase of refactoring
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub enum RefactorPhase {
     #[default]
     Initialization,
@@ -1858,40 +1878,23 @@ pub enum FixStrategy {
 ///
 /// # Panics
 /// - Current file is None when expected to be Some (internal logic error)
-#[allow(clippy::too_many_arguments)]
-pub async fn handle_refactor_auto(
-    project_path: PathBuf,
-    single_file_mode: bool,
-    file: Option<PathBuf>,
-    format: RefactorAutoOutputFormat,
-    max_iterations: u32,
-    _cache_dir: Option<PathBuf>,
-    dry_run: bool,
-    _ci_mode: bool,
-    exclude_patterns: Vec<String>,
-    include_patterns: Vec<String>,
-    ignore_file: Option<PathBuf>,
-    _test_file: Option<PathBuf>,
-    _test_name: Option<String>,
-    github_issue_url: Option<String>,
-    bug_report_path: Option<PathBuf>,
-) -> Result<()> {
+pub async fn handle_refactor_auto(config: RefactorAutoConfig) -> Result<()> {
     eprintln!("🚀 Starting automated refactoring...");
-    eprintln!("📁 Project: {}", project_path.display());
+    eprintln!("📁 Project: {}", config.project_path.display());
 
     // Phase 1: Setup refactoring context
     let mut context = setup_refactoring_context(
-        project_path,
-        single_file_mode,
-        file,
-        format,
-        max_iterations,
-        dry_run,
-        exclude_patterns,
-        include_patterns,
-        ignore_file,
-        github_issue_url,
-        bug_report_path,
+        config.project_path.clone(),
+        config.single_file_mode,
+        config.file.clone(),
+        config.format,
+        config.max_iterations,
+        config.dry_run,
+        config.exclude_patterns.clone(),
+        config.include_patterns.clone(),
+        config.ignore_file.clone(),
+        config.github_issue_url.clone(),
+        config.bug_report_path.clone(),
     )
     .await?;
 
@@ -1930,7 +1933,7 @@ pub async fn handle_refactor_auto(
     let mut iteration_results = Vec::new();
     let mut remaining_requests = refactoring_requests;
 
-    for iteration in 1..=max_iterations {
+    for iteration in 1..=config.max_iterations {
         if remaining_requests.is_empty() {
             break;
         }
@@ -2104,11 +2107,10 @@ mod tests {
     fn test_refactor_progress_default() {
         let progress = RefactorProgress::default();
 
-        assert_eq!(progress.files_analyzed, 0);
-        assert_eq!(progress.files_refactored, 0);
-        assert_eq!(progress.iterations_completed, 0);
-        assert!(!progress.is_complete);
-        assert!(progress.current_phase.contains("Starting"));
+        assert_eq!(progress.files_completed, 0);
+        assert_eq!(progress.files_remaining, 0);
+        assert_eq!(progress.overall_completion_percent, 0.0);
+        assert_eq!(progress.current_phase, RefactorPhase::default());
     }
 
     #[test]

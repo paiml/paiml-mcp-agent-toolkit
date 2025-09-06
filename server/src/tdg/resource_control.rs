@@ -460,7 +460,7 @@ impl PlatformResourceController {
             .unwrap_or(1000);
 
         // Estimate based on typical operation duration
-        (oldest_age / 2).max(500).min(30000) // 0.5s to 30s range
+        (oldest_age / 2).clamp(500, 30000) // 0.5s to 30s range
     }
 
     /// Estimate time for operation slot to become available
@@ -482,7 +482,7 @@ impl PlatformResourceController {
             total_age / ops.len() as u64
         };
 
-        (avg_age / ops.len() as u64).max(1000).min(15000) // 1s to 15s range
+        (avg_age / ops.len() as u64).clamp(1000, 15000) // 1s to 15s range
     }
 
     /// Trigger emergency cleanup of non-critical operations

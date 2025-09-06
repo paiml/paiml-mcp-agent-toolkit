@@ -12,6 +12,7 @@ use std::path::Path;
 
 /// Unified dead code analyzer implementation
 pub struct DeadCodeAnalyzer {
+    #[allow(dead_code)]
     inner: OriginalAnalyzer,
 }
 

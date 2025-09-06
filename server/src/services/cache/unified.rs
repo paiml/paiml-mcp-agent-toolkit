@@ -24,6 +24,10 @@ pub trait UnifiedCache: Send + Sync {
     fn stats(&self) -> Arc<CacheStats>;
     fn size_bytes(&self) -> usize;
     fn len(&self) -> usize;
+    
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 
     // Optional methods that implementations might have
     async fn evict_if_needed(&self) -> Result<()> {
