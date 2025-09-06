@@ -458,7 +458,6 @@ pub async fn start_dashboard_server(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::net::SocketAddr;
     use tokio::time::{sleep, Duration};
 
     #[tokio::test]

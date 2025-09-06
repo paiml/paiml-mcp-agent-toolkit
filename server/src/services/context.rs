@@ -1436,7 +1436,6 @@ fn count_ast_items(
 mod tests {
     use super::*;
     use std::fs;
-    use std::path::PathBuf;
     use tempfile::TempDir;
 
     // === Sprint 46 Phase 7: TDD Tests for context.rs ===

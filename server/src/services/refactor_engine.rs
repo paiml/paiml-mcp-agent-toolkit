@@ -944,7 +944,6 @@ impl From<String> for EngineError {
 mod tests {
     use super::*;
     use std::path::PathBuf;
-    use tempfile::TempDir;
 
     // === Sprint 46 Phase 8: TDD Tests for refactor_engine.rs ===
 
