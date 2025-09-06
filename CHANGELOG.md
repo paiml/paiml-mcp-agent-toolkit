@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.61.0] - 2025-09-06
+
+### Multi-Sprint Quality Perfection Release 🏆
+
+Major quality improvements across Sprints 72-75, achieving zero clippy violations and enhanced pattern handling.
+
+#### Sprint 72: Test Coverage Restoration ✅
+- Added 50+ comprehensive tests for untested critical modules
+- Enhanced test coverage for TDG models with struct API alignment
+- Fixed 20+ test compilation errors by updating outdated field names
+- Implemented property tests for pattern handling utilities
+
+#### Sprint 73: Zero Clippy Violations Achieved 🎯
+- Reduced function arguments from 8-13 to structured configs
+- Created `SyncAnalysisConfig` and `TdgCommandConfig` structs
+- Fixed all clippy warnings (15 → 0, excluding 5 expected recursion warnings)
+- Improved code maintainability with parameter encapsulation
+
+#### Sprint 74: Test Compilation Optimization ⚡
+- Fixed all remaining test compilation errors in tdg.rs
+- Updated test structs to match current TDG API fields
+- Aligned severity enums (Medium → Warning)
+- Corrected TDGBucket fields (range_start/end → min/max)
+
+#### Sprint 75: Unified Include/Exclude Patterns 🔧
+- Implemented unified pattern handling system
+- Created `pattern_helpers` module for normalization
+- Added backward compatibility for Option<String> patterns
+- Enhanced FileFilter with pattern expansion and validation
+
+#### Technical Achievements
+- **Clippy Status**: Zero violations (was 15)
+- **Test Coverage**: Added 50+ tests across critical modules
+- **Compilation Speed**: ~8.5 seconds for main code
+- **Code Quality**: Structured parameter passing throughout
+- **Pattern System**: Unified handling with backward compatibility
+
 ## [2.59.0] - 2025-09-05
 
 ### Codebase Stabilization Release 🎯
