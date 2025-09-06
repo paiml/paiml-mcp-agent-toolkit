@@ -466,15 +466,14 @@ mod new_tests {
             coupling_weight: 0.15,
             domain_risk_weight: 0.10,
             duplication_weight: 0.10,
-            normal_threshold: 1.5,
-            warning_threshold: 2.5,
-            percentile_window: 100,
+            critical_threshold: 2.5,
+            warning_threshold: 1.5,
         };
         
         assert_eq!(config.complexity_weight, 0.30);
         assert_eq!(config.churn_weight, 0.35);
-        assert_eq!(config.normal_threshold, 1.5);
-        assert_eq!(config.warning_threshold, 2.5);
+        assert_eq!(config.critical_threshold, 2.5);
+        assert_eq!(config.warning_threshold, 1.5);
     }
 
     #[test]
