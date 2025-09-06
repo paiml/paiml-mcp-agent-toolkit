@@ -23,6 +23,10 @@
 pub mod command_suggestions;
 pub mod file_filter;
 pub mod helpers;
+pub mod pattern_helpers;
+
+#[cfg(test)]
+mod pattern_helpers_integration_tests;
 
 #[cfg(test)]
 mod tests {
