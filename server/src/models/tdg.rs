@@ -387,44 +387,43 @@ mod new_tests {
     fn test_tdg_analysis() {
         let analysis = TDGAnalysis {
             score: TDGScore {
-                total: 75.0,
-                structural_complexity: 15.0,
-                semantic_complexity: 15.0,
-                duplication_ratio: 10.0,
-                coupling_score: 10.0,
-                doc_coverage: 8.0,
-                consistency_score: 8.0,
-                maintenance_burden: 9.0,
-                grade: Grade::B,
-                file_path: None,
+                value: 2.5,
+                components: TDGComponents {
+                    complexity: 0.8,
+                    churn: 0.5,
+                    coupling: 0.4,
+                    domain_risk: 0.3,
+                    duplication: 0.5,
+                },
+                severity: TDGSeverity::Warning,
+                percentile: 75.0,
                 confidence: 0.95,
-                language: Language::Rust,
             },
             explanation: "Test explanation".to_string(),
             recommendations: vec![],
         };
 
-        assert_eq!(analysis.score.total, 75.0);
+        assert_eq!(analysis.score.value, 2.5);
+        assert_eq!(analysis.score.percentile, 75.0);
         assert!(analysis.recommendations.is_empty());
     }
 
     #[test]
     fn test_recommendation_type() {
-        assert_eq!(RecommendationType::Refactor, RecommendationType::Refactor);
-        assert_ne!(RecommendationType::Refactor, RecommendationType::Review);
+        assert_eq!(RecommendationType::ReduceComplexity, RecommendationType::ReduceComplexity);
+        assert_ne!(RecommendationType::ReduceComplexity, RecommendationType::StabilizeChurn);
         
         let rec = TDGRecommendation {
-            recommendation_type: RecommendationType::Refactor,
-            priority: 1,
-            file_path: Some(PathBuf::from("test.rs")),
-            message: "Refactor complex function".to_string(),
-            impact: "High".to_string(),
-            effort: "Medium".to_string(),
-            related_files: vec![],
+            recommendation_type: RecommendationType::ReduceComplexity,
+            action: "Refactor complex function into smaller units".to_string(),
+            expected_reduction: 0.5,
+            estimated_hours: 4.0,
+            priority: 3,
         };
         
-        assert_eq!(rec.priority, 1);
-        assert_eq!(rec.message, "Refactor complex function");
+        assert_eq!(rec.priority, 3);
+        assert_eq!(rec.action, "Refactor complex function into smaller units");
+        assert_eq!(rec.expected_reduction, 0.5);
     }
 
     #[test]
@@ -432,53 +431,50 @@ mod new_tests {
         let dist = TDGDistribution {
             buckets: vec![
                 TDGBucket {
-                    range_start: 0.0,
-                    range_end: 1.5,
+                    min: 0.0,
+                    max: 1.5,
                     count: 50,
                     percentage: 50.0,
                 },
                 TDGBucket {
-                    range_start: 1.5,
-                    range_end: 3.0,
+                    min: 1.5,
+                    max: 3.0,
                     count: 30,
                     percentage: 30.0,
                 },
                 TDGBucket {
-                    range_start: 3.0,
-                    range_end: 5.0,
+                    min: 3.0,
+                    max: 5.0,
                     count: 20,
                     percentage: 20.0,
                 },
             ],
+            total_files: 100,
         };
         
         assert_eq!(dist.buckets.len(), 3);
         assert_eq!(dist.buckets[0].count, 50);
         assert_eq!(dist.buckets[0].percentage, 50.0);
+        assert_eq!(dist.total_files, 100);
     }
 
     #[test]
     fn test_tdg_config() {
         let config = TDGConfig {
-            max_complexity: 20,
-            max_churn_rate: 0.5,
-            max_coupling_score: 0.8,
-            domain_risk_weights: HashMap::new(),
-            duplication_threshold: 0.1,
-            enable_ml_predictions: false,
-            cache_results: true,
-            output_format: "json".to_string(),
-            verbose: false,
-            include_recommendations: true,
-            min_confidence: 0.7,
-            satd_weight: 0.3,
-            test_coverage_weight: 0.2,
+            complexity_weight: 0.30,
+            churn_weight: 0.35,
+            coupling_weight: 0.15,
+            domain_risk_weight: 0.10,
+            duplication_weight: 0.10,
+            normal_threshold: 1.5,
+            warning_threshold: 2.5,
+            percentile_window: 100,
         };
         
-        assert_eq!(config.max_complexity, 20);
-        assert_eq!(config.max_churn_rate, 0.5);
-        assert!(config.cache_results);
-        assert!(!config.enable_ml_predictions);
+        assert_eq!(config.complexity_weight, 0.30);
+        assert_eq!(config.churn_weight, 0.35);
+        assert_eq!(config.normal_threshold, 1.5);
+        assert_eq!(config.warning_threshold, 2.5);
     }
 
     #[test]
