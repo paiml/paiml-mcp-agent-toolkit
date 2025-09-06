@@ -283,3 +283,270 @@ pub enum SatdSeverity {
     High,
     Critical,
 }
+
+#[cfg(test)]
+mod new_tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_tdg_score_creation() {
+        let components = TDGComponents {
+            complexity: 1.5,
+            churn: 0.8,
+            coupling: 0.3,
+            domain_risk: 0.2,
+            duplication: 0.4,
+        };
+
+        let score = TDGScore {
+            value: 3.2,
+            components,
+            severity: TDGSeverity::Warning,
+            percentile: 75.0,
+            confidence: 0.9,
+        };
+
+        assert_eq!(score.value, 3.2);
+        assert_eq!(score.components.complexity, 1.5);
+        assert_eq!(score.severity, TDGSeverity::Warning);
+        assert_eq!(score.percentile, 75.0);
+        assert_eq!(score.confidence, 0.9);
+    }
+
+    #[test]
+    fn test_tdg_severity_ordering() {
+        // TDGSeverity doesn't implement Ord, just test equality
+        assert_eq!(TDGSeverity::Normal, TDGSeverity::Normal);
+        assert_eq!(TDGSeverity::Warning, TDGSeverity::Warning);
+        assert_eq!(TDGSeverity::Critical, TDGSeverity::Critical);
+        
+        assert_eq!(TDGSeverity::Normal, TDGSeverity::Normal);
+        assert_ne!(TDGSeverity::Normal, TDGSeverity::Critical);
+    }
+
+    #[test]
+    fn test_tdg_components_equality() {
+        let comp1 = TDGComponents {
+            complexity: 1.0,
+            churn: 2.0,
+            coupling: 3.0,
+            domain_risk: 4.0,
+            duplication: 5.0,
+        };
+
+        let comp2 = TDGComponents {
+            complexity: 1.0,
+            churn: 2.0,
+            coupling: 3.0,
+            domain_risk: 4.0,
+            duplication: 5.0,
+        };
+
+        assert_eq!(comp1, comp2);
+    }
+
+    #[test]
+    fn test_tdg_summary_creation() {
+        let summary = TDGSummary {
+            total_files: 100,
+            files_analyzed: 95,
+            high_risk_count: 10,
+            medium_risk_count: 20,
+            low_risk_count: 65,
+            average_tdg: 2.5,
+            max_tdg: 5.0,
+            median_tdg: 2.0,
+            p90_tdg: 4.0,
+            p99_tdg: 4.9,
+        };
+
+        assert_eq!(summary.total_files, 100);
+        assert_eq!(summary.files_analyzed, 95);
+        assert_eq!(summary.high_risk_count, 10);
+        assert_eq!(summary.average_tdg, 2.5);
+    }
+
+    #[test]
+    fn test_tdg_hotspot() {
+        let hotspot = TDGHotspot {
+            file_path: PathBuf::from("src/complex.rs"),
+            tdg_score: 4.5,
+            severity: TDGSeverity::Critical,
+            reason: "High complexity and churn".to_string(),
+            line_count: 1500,
+        };
+
+        assert_eq!(hotspot.file_path, PathBuf::from("src/complex.rs"));
+        assert_eq!(hotspot.tdg_score, 4.5);
+        assert_eq!(hotspot.severity, TDGSeverity::Critical);
+        assert_eq!(hotspot.reason, "High complexity and churn");
+        assert_eq!(hotspot.line_count, 1500);
+    }
+
+    #[test]
+    fn test_tdg_analysis() {
+        let analysis = TDGAnalysis {
+            summary: TDGSummary {
+                total_files: 50,
+                files_analyzed: 50,
+                high_risk_count: 5,
+                medium_risk_count: 10,
+                low_risk_count: 35,
+                average_tdg: 2.0,
+                max_tdg: 4.5,
+                median_tdg: 1.8,
+                p90_tdg: 3.5,
+                p99_tdg: 4.4,
+            },
+            hotspots: vec![],
+            recommendations: vec![],
+            timestamp: chrono::Utc::now(),
+        };
+
+        assert_eq!(analysis.summary.total_files, 50);
+        assert!(analysis.hotspots.is_empty());
+        assert!(analysis.recommendations.is_empty());
+    }
+
+    #[test]
+    fn test_recommendation_type() {
+        assert_eq!(RecommendationType::Refactor, RecommendationType::Refactor);
+        assert_ne!(RecommendationType::Refactor, RecommendationType::Review);
+        
+        let rec = TDGRecommendation {
+            recommendation_type: RecommendationType::Refactor,
+            priority: 1,
+            file_path: Some(PathBuf::from("test.rs")),
+            message: "Refactor complex function".to_string(),
+            impact: "High".to_string(),
+            effort: "Medium".to_string(),
+            related_files: vec![],
+        };
+        
+        assert_eq!(rec.priority, 1);
+        assert_eq!(rec.message, "Refactor complex function");
+    }
+
+    #[test]
+    fn test_tdg_distribution() {
+        let dist = TDGDistribution {
+            buckets: vec![
+                TDGBucket {
+                    range_start: 0.0,
+                    range_end: 1.5,
+                    count: 50,
+                    percentage: 50.0,
+                },
+                TDGBucket {
+                    range_start: 1.5,
+                    range_end: 3.0,
+                    count: 30,
+                    percentage: 30.0,
+                },
+                TDGBucket {
+                    range_start: 3.0,
+                    range_end: 5.0,
+                    count: 20,
+                    percentage: 20.0,
+                },
+            ],
+        };
+        
+        assert_eq!(dist.buckets.len(), 3);
+        assert_eq!(dist.buckets[0].count, 50);
+        assert_eq!(dist.buckets[0].percentage, 50.0);
+    }
+
+    #[test]
+    fn test_tdg_config() {
+        let config = TDGConfig {
+            max_complexity: 20,
+            max_churn_rate: 0.5,
+            max_coupling_score: 0.8,
+            domain_risk_weights: HashMap::new(),
+            duplication_threshold: 0.1,
+            enable_ml_predictions: false,
+            cache_results: true,
+            output_format: "json".to_string(),
+            verbose: false,
+            include_recommendations: true,
+            min_confidence: 0.7,
+            satd_weight: 0.3,
+            test_coverage_weight: 0.2,
+        };
+        
+        assert_eq!(config.max_complexity, 20);
+        assert_eq!(config.max_churn_rate, 0.5);
+        assert!(config.cache_results);
+        assert!(!config.enable_ml_predictions);
+    }
+
+    #[test]
+    fn test_satd_item_creation() {
+        let item = SatdItem {
+            file_path: PathBuf::from("lib.rs"),
+            line_number: 123,
+            comment_text: "TODO: Fix this hack".to_string(),
+            debt_type: "TODO".to_string(),
+            severity: SatdSeverity::Medium,
+            confidence: 0.95,
+        };
+
+        assert_eq!(item.file_path, PathBuf::from("lib.rs"));
+        assert_eq!(item.line_number, 123);
+        assert_eq!(item.comment_text, "TODO: Fix this hack");
+        assert_eq!(item.debt_type, "TODO");
+        assert_eq!(item.severity, SatdSeverity::Medium);
+        assert_eq!(item.confidence, 0.95);
+    }
+
+    #[test]
+    fn test_satd_severity_ordering() {
+        assert!(SatdSeverity::Low < SatdSeverity::Medium);
+        assert!(SatdSeverity::Medium < SatdSeverity::High);
+        assert!(SatdSeverity::High < SatdSeverity::Critical);
+        
+        let mut severities = vec![
+            SatdSeverity::High,
+            SatdSeverity::Low,
+            SatdSeverity::Critical,
+            SatdSeverity::Medium,
+        ];
+        
+        severities.sort();
+        
+        assert_eq!(severities, vec![
+            SatdSeverity::Low,
+            SatdSeverity::Medium,
+            SatdSeverity::High,
+            SatdSeverity::Critical,
+        ]);
+    }
+
+    #[test]
+    fn test_serialization_roundtrip() {
+        let original = TDGScore {
+            value: 3.14,
+            components: TDGComponents {
+                complexity: 1.1,
+                churn: 2.2,
+                coupling: 3.3,
+                domain_risk: 4.4,
+                duplication: 5.5,
+            },
+            severity: TDGSeverity::Critical,
+            percentile: 90.0,
+            confidence: 0.99,
+        };
+
+        let json = serde_json::to_string(&original).unwrap();
+        let deserialized: TDGScore = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(original, deserialized);
+        assert_eq!(original.value, deserialized.value);
+        assert_eq!(original.components, deserialized.components);
+        assert_eq!(original.severity, deserialized.severity);
+    }
+
+}
