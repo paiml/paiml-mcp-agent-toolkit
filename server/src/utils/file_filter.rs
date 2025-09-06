@@ -5,6 +5,7 @@
 use anyhow::Result;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use std::path::{Path, PathBuf};
+use super::pattern_helpers::{expand_patterns, validate_patterns};
 
 /// File filter that applies include/exclude patterns
 #[derive(Debug, Clone, Default)]
@@ -16,9 +17,16 @@ pub struct FileFilter {
 impl FileFilter {
     /// Create a new file filter from include/exclude patterns
     pub fn new(include_patterns: Vec<String>, exclude_patterns: Vec<String>) -> Result<Self> {
-        let include_set = if !include_patterns.is_empty() {
+        // Expand and validate patterns
+        let expanded_include = expand_patterns(&include_patterns);
+        let expanded_exclude = expand_patterns(&exclude_patterns);
+        
+        validate_patterns(&expanded_include)?;
+        validate_patterns(&expanded_exclude)?;
+        
+        let include_set = if !expanded_include.is_empty() {
             let mut builder = GlobSetBuilder::new();
-            for pattern in include_patterns {
+            for pattern in expanded_include {
                 builder.add(Glob::new(&pattern)?);
             }
             Some(builder.build()?)
@@ -26,9 +34,9 @@ impl FileFilter {
             None
         };
 
-        let exclude_set = if !exclude_patterns.is_empty() {
+        let exclude_set = if !expanded_exclude.is_empty() {
             let mut builder = GlobSetBuilder::new();
-            for pattern in exclude_patterns {
+            for pattern in expanded_exclude {
                 builder.add(Glob::new(&pattern)?);
             }
             Some(builder.build()?)
@@ -40,6 +48,16 @@ impl FileFilter {
             include_set,
             exclude_set,
         })
+    }
+    
+    /// Create a file filter from optional string patterns (backward compatibility)
+    pub fn from_optional(
+        include: &Option<String>, 
+        exclude: &Option<String>
+    ) -> Result<Self> {
+        use super::pattern_helpers::normalize_patterns;
+        let (include_vec, exclude_vec) = normalize_patterns(include, exclude);
+        Self::new(include_vec, exclude_vec)
     }
 
     /// Check if a file path should be included based on the filters
