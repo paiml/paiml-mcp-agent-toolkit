@@ -3198,9 +3198,11 @@ async fn run_single_file_complexity_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    eprint!("  🔍 Checking complexity...");
     let violations_found =
         check_single_file_complexity(project_path, single_file, max_complexity_p99).await?;
     results.complexity_violations = violations_found.len();
+    eprintln!(" {} violations found", results.complexity_violations);
     violations.extend(violations_found);
     Ok(())
 }
@@ -3212,8 +3214,10 @@ async fn run_single_file_dead_code_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    eprint!("  🔍 Checking dead code...");
     let violations_found = check_single_file_dead_code(project_path, single_file).await?;
     results.dead_code_violations = violations_found.len();
+    eprintln!(" {} violations found", results.dead_code_violations);
     violations.extend(violations_found);
     Ok(())
 }
@@ -3225,8 +3229,10 @@ async fn run_single_file_satd_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    eprint!("  🔍 Checking SATD...");
     let violations_found = check_single_file_satd(project_path, single_file).await?;
     results.satd_violations = violations_found.len();
+    eprintln!(" {} violations found", results.satd_violations);
     violations.extend(violations_found);
     Ok(())
 }
@@ -3238,8 +3244,10 @@ async fn run_single_file_security_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    eprint!("  🔍 Checking security...");
     let violations_found = check_single_file_security(project_path, single_file).await?;
     results.security_violations = violations_found.len();
+    eprintln!(" {} violations found", results.security_violations);
     violations.extend(violations_found);
     Ok(())
 }
@@ -4414,6 +4422,7 @@ pub async fn check_complexity(
     );
 
     // Convert violations to QualityViolation format
+    // ONLY count actual violations where complexity exceeds threshold
     for violation in &report.violations {
         match violation {
             crate::services::complexity::Violation::Error {
@@ -4422,36 +4431,53 @@ pub async fn check_complexity(
                 function,
                 rule,
                 message,
-                ..
+                value,
+                threshold,
+            } => {
+                // Only add if this is an actual threshold violation
+                if value > threshold {
+                    violations.push(QualityViolation {
+                        check_type: "complexity".to_string(),
+                        severity: "error".to_string(),
+                        file: file.clone(),
+                        line: Some(*line as usize),
+                        message: format!(
+                            "{}: {} - {} (complexity: {}, threshold: {})",
+                            function.as_deref().unwrap_or("global"),
+                            rule,
+                            message,
+                            value,
+                            threshold
+                        ),
+                    });
+                }
             }
-            | crate::services::complexity::Violation::Warning {
+            crate::services::complexity::Violation::Warning {
                 file,
                 line,
                 function,
                 rule,
                 message,
-                ..
+                value,
+                threshold,
             } => {
-                violations.push(QualityViolation {
-                    check_type: "complexity".to_string(),
-                    severity: if matches!(
-                        violation,
-                        crate::services::complexity::Violation::Error { .. }
-                    ) {
-                        "error"
-                    } else {
-                        "warning"
-                    }
-                    .to_string(),
-                    file: file.clone(),
-                    line: Some(*line as usize),
-                    message: format!(
-                        "{}: {} - {}",
-                        function.as_deref().unwrap_or("global"),
-                        rule,
-                        message
-                    ),
-                });
+                // Only add warnings if they exceed threshold
+                if value > threshold {
+                    violations.push(QualityViolation {
+                        check_type: "complexity".to_string(),
+                        severity: "warning".to_string(),
+                        file: file.clone(),
+                        line: Some(*line as usize),
+                        message: format!(
+                            "{}: {} - {} (complexity: {}, threshold: {})",
+                            function.as_deref().unwrap_or("global"),
+                            rule,
+                            message,
+                            value,
+                            threshold
+                        ),
+                    });
+                }
             }
         }
     }
