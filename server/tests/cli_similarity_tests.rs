@@ -4,16 +4,18 @@
 
 use assert_cmd::Command;
 use predicates::prelude::*;
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 #[test]
 fn test_cli_analyze_duplicates_exact() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Create test files with exact duplicates
     let file1 = temp_dir.path().join("file1.rs");
-    fs::write(&file1, r#"
+    fs::write(
+        &file1,
+        r#"
 fn process_data(x: i32) -> i32 {
     let result = x * 2;
     println!("Result: {}", result);
@@ -23,10 +25,14 @@ fn process_data(x: i32) -> i32 {
 fn another_function() {
     println!("Hello");
 }
-"#).unwrap();
-    
+"#,
+    )
+    .unwrap();
+
     let file2 = temp_dir.path().join("file2.rs");
-    fs::write(&file2, r#"
+    fs::write(
+        &file2,
+        r#"
 fn process_data(x: i32) -> i32 {
     let result = x * 2;
     println!("Result: {}", result);
@@ -36,8 +42,10 @@ fn process_data(x: i32) -> i32 {
 fn different_function() {
     println!("World");
 }
-"#).unwrap();
-    
+"#,
+    )
+    .unwrap();
+
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("analyze")
         .arg("duplicates")
@@ -49,7 +57,7 @@ fn different_function() {
         .arg("3")
         .arg("--format")
         .arg("summary");
-    
+
     cmd.assert()
         .success()
         .stderr(predicate::str::contains("Advanced similarity analysis"))
@@ -59,24 +67,32 @@ fn different_function() {
 #[test]
 fn test_cli_analyze_duplicates_fuzzy() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Create test files with renamed variables
     let file1 = temp_dir.path().join("module1.rs");
-    fs::write(&file1, r#"
+    fs::write(
+        &file1,
+        r#"
 fn calculate(a: i32, b: i32) -> i32 {
     let sum = a + b;
     sum * 2
 }
-"#).unwrap();
-    
+"#,
+    )
+    .unwrap();
+
     let file2 = temp_dir.path().join("module2.rs");
-    fs::write(&file2, r#"
+    fs::write(
+        &file2,
+        r#"
 fn calculate(x: i32, y: i32) -> i32 {
     let total = x + y;
     total * 2
 }
-"#).unwrap();
-    
+"#,
+    )
+    .unwrap();
+
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("analyze")
         .arg("duplicates")
@@ -88,7 +104,7 @@ fn calculate(x: i32, y: i32) -> i32 {
         .arg("0.7")
         .arg("--min-lines")
         .arg("3");
-    
+
     cmd.assert()
         .success()
         .stderr(predicate::str::contains("Analysis Complete"));
@@ -97,10 +113,12 @@ fn calculate(x: i32, y: i32) -> i32 {
 #[test]
 fn test_cli_analyze_duplicates_semantic() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Create semantically similar code
     let file1 = temp_dir.path().join("impl1.rs");
-    fs::write(&file1, r#"
+    fs::write(
+        &file1,
+        r#"
 fn sum_array(arr: &[i32]) -> i32 {
     let mut total = 0;
     for val in arr {
@@ -108,15 +126,21 @@ fn sum_array(arr: &[i32]) -> i32 {
     }
     total
 }
-"#).unwrap();
-    
+"#,
+    )
+    .unwrap();
+
     let file2 = temp_dir.path().join("impl2.rs");
-    fs::write(&file2, r#"
+    fs::write(
+        &file2,
+        r#"
 fn sum_array(arr: &[i32]) -> i32 {
     arr.iter().sum()
 }
-"#).unwrap();
-    
+"#,
+    )
+    .unwrap();
+
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("analyze")
         .arg("duplicates")
@@ -126,18 +150,19 @@ fn sum_array(arr: &[i32]) -> i32 {
         .arg("semantic")
         .arg("--threshold")
         .arg("0.6");
-    
-    cmd.assert()
-        .success();
+
+    cmd.assert().success();
 }
 
 #[test]
 fn test_cli_analyze_duplicates_all_types() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Create various types of duplicates
     let file1 = temp_dir.path().join("mixed1.rs");
-    fs::write(&file1, r#"
+    fs::write(
+        &file1,
+        r#"
 // Exact duplicate
 fn exact_dup() {
     println!("exact");
@@ -161,10 +186,14 @@ fn find_max(nums: &[i32]) -> Option<i32> {
     }
     Some(max)
 }
-"#).unwrap();
-    
+"#,
+    )
+    .unwrap();
+
     let file2 = temp_dir.path().join("mixed2.rs");
-    fs::write(&file2, r#"
+    fs::write(
+        &file2,
+        r#"
 // Exact duplicate
 fn exact_dup() {
     println!("exact");
@@ -179,8 +208,10 @@ fn process(val: i32) -> i32 {
 fn find_max(nums: &[i32]) -> Option<i32> {
     nums.iter().max().copied()
 }
-"#).unwrap();
-    
+"#,
+    )
+    .unwrap();
+
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("analyze")
         .arg("duplicates")
@@ -190,7 +221,7 @@ fn find_max(nums: &[i32]) -> Option<i32> {
         .arg("all")
         .arg("--format")
         .arg("json");
-    
+
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("\"exact_duplicates\""))
@@ -202,15 +233,19 @@ fn find_max(nums: &[i32]) -> Option<i32> {
 fn test_cli_analyze_duplicates_with_output_file() {
     let temp_dir = TempDir::new().unwrap();
     let output_file = temp_dir.path().join("report.json");
-    
+
     // Create test file
     let file = temp_dir.path().join("test.rs");
-    fs::write(&file, r#"
+    fs::write(
+        &file,
+        r#"
 fn test1() { println!("test"); }
 fn test2() { println!("test"); }
 fn test3() { println!("different"); }
-"#).unwrap();
-    
+"#,
+    )
+    .unwrap();
+
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("analyze")
         .arg("duplicates")
@@ -222,11 +257,11 @@ fn test3() { println!("different"); }
         .arg("json")
         .arg("--output")
         .arg(&output_file);
-    
+
     cmd.assert()
         .success()
         .stderr(predicate::str::contains("Report written to"));
-    
+
     // Verify output file was created
     assert!(output_file.exists());
     let content = fs::read_to_string(output_file).unwrap();
@@ -236,14 +271,14 @@ fn test3() { println!("different"); }
 #[test]
 fn test_cli_analyze_duplicates_csv_format() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Create test files
     let file1 = temp_dir.path().join("a.rs");
     fs::write(&file1, "fn dup() { println!(\"x\"); }\n").unwrap();
-    
+
     let file2 = temp_dir.path().join("b.rs");
     fs::write(&file2, "fn dup() { println!(\"x\"); }\n").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("analyze")
         .arg("duplicates")
@@ -251,20 +286,20 @@ fn test_cli_analyze_duplicates_csv_format() {
         .arg(temp_dir.path())
         .arg("--format")
         .arg("csv");
-    
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("Type,File1,Start1,End1,File2,Start2,End2"));
+
+    cmd.assert().success().stdout(predicate::str::contains(
+        "Type,File1,Start1,End1,File2,Start2,End2",
+    ));
 }
 
 #[test]
 fn test_cli_analyze_duplicates_sarif_format() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Create test file
     let file = temp_dir.path().join("test.rs");
     fs::write(&file, "fn x() { let a = 1; }\nfn y() { let a = 1; }\n").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("analyze")
         .arg("duplicates")
@@ -272,7 +307,7 @@ fn test_cli_analyze_duplicates_sarif_format() {
         .arg(temp_dir.path())
         .arg("--format")
         .arg("sarif");
-    
+
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("\"$schema\""))
@@ -282,18 +317,18 @@ fn test_cli_analyze_duplicates_sarif_format() {
 #[test]
 fn test_cli_analyze_duplicates_performance_metrics() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Create test file
     let file = temp_dir.path().join("perf.rs");
     fs::write(&file, "fn test() { println!(\"test\"); }\n").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("analyze")
         .arg("duplicates")
         .arg("--project-path")
         .arg(temp_dir.path())
         .arg("--perf");
-    
+
     cmd.assert()
         .success()
         .stderr(predicate::str::contains("Performance Metrics"));

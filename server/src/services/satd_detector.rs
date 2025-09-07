@@ -2407,7 +2407,7 @@ fn helper_test() {{
         let mut by_category = BTreeMap::new();
         let mut files = BTreeSet::new();
         files.insert("design.rs".to_string());
-        
+
         by_category.insert(
             "Design".to_string(),
             CategoryMetrics {

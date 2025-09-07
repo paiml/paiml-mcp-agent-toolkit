@@ -83,9 +83,9 @@ async fn main() -> Result<()> {
         10,      // Only report significant dead code
         false,   // Exclude tests
         None,
-        false, // Don't fail
-        10.0,  // 10% threshold (moderate)
-        60,    // Timeout in seconds
+        false,  // Don't fail
+        10.0,   // 10% threshold (moderate)
+        60,     // Timeout in seconds
         vec![], // Include patterns
         vec![], // Exclude patterns
     )
@@ -110,8 +110,8 @@ async fn main() -> Result<()> {
         true, // Include tests this time
         Some(output_path.clone()),
         false,
-        15.0, // Default threshold
-        60,   // Timeout in seconds
+        15.0,   // Default threshold
+        60,     // Timeout in seconds
         vec![], // Include patterns
         vec![], // Exclude patterns
     )

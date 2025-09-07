@@ -48,7 +48,8 @@ pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
             | TdgCommand::Storage { .. }
             | TdgCommand::Dashboard { .. } => {
                 // Handle diagnostic and dashboard commands
-                return super::tdg_diagnostic_handler::handle_tdg_diagnostics(&cmd, &config.path).await;
+                return super::tdg_diagnostic_handler::handle_tdg_diagnostics(&cmd, &config.path)
+                    .await;
             }
         }
     }

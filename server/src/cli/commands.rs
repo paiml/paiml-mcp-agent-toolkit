@@ -2167,7 +2167,12 @@ mod tests {
         }
 
         match dashboard {
-            TdgCommand::Dashboard { port, open, host, update_interval } => {
+            TdgCommand::Dashboard {
+                port,
+                open,
+                host,
+                update_interval,
+            } => {
                 assert_eq!(port, 8080);
                 assert!(open);
                 assert_eq!(host, "127.0.0.1");
@@ -2393,7 +2398,12 @@ mod tests {
         };
 
         match init {
-            RoadmapCommands::Init { version, title, duration_days, priority } => {
+            RoadmapCommands::Init {
+                version,
+                title,
+                duration_days,
+                priority,
+            } => {
                 assert_eq!(version, "v2.6.0");
                 assert_eq!(title, "Test Sprint");
                 assert_eq!(duration_days, 14);
@@ -2403,7 +2413,10 @@ mod tests {
         }
 
         match start {
-            RoadmapCommands::Start { task_id, create_branch } => {
+            RoadmapCommands::Start {
+                task_id,
+                create_branch,
+            } => {
                 assert_eq!(task_id, "task-123");
                 assert!(!create_branch);
             }
@@ -2465,11 +2478,7 @@ mod tests {
         }
 
         match stop {
-            AgentCommands::Stop {
-                force,
-                timeout,
-                ..
-            } => {
+            AgentCommands::Stop { force, timeout, .. } => {
                 assert!(!force);
                 assert_eq!(timeout, 10);
             }

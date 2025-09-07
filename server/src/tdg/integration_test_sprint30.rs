@@ -9,8 +9,8 @@
 #[cfg(test)]
 mod sprint30_integration_tests {
     use crate::tdg::{
-        AdaptiveThresholdFactory, OperationPriority, ResourceControllerFactory,
-        SchedulerFactory, TdgAnalyzer, TdgConfig, TieredStorageFactory,
+        AdaptiveThresholdFactory, OperationPriority, ResourceControllerFactory, SchedulerFactory,
+        TdgAnalyzer, TdgConfig, TieredStorageFactory,
     };
     use std::path::Path;
     use tokio::time::{sleep, Duration};

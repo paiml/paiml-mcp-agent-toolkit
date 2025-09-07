@@ -1157,7 +1157,7 @@ mod tests {
 
     // The following tests are commented out because UnifiedEngine no longer exists
     // These tests need to be rewritten for the current refactor engine implementation
-    
+
     // test_engine_is_complete() - needs rewrite for current engine
     // test_engine_get_state() - needs rewrite for current engine
 }

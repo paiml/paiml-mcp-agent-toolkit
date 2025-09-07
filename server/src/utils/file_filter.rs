@@ -2,10 +2,10 @@
 //!
 //! Provides glob-based filtering for analysis commands.
 
+use super::pattern_helpers::{expand_patterns, validate_patterns};
 use anyhow::Result;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use std::path::{Path, PathBuf};
-use super::pattern_helpers::{expand_patterns, validate_patterns};
 
 /// File filter that applies include/exclude patterns
 #[derive(Debug, Clone, Default)]
@@ -20,10 +20,10 @@ impl FileFilter {
         // Expand and validate patterns
         let expanded_include = expand_patterns(&include_patterns);
         let expanded_exclude = expand_patterns(&exclude_patterns);
-        
+
         validate_patterns(&expanded_include)?;
         validate_patterns(&expanded_exclude)?;
-        
+
         let include_set = if !expanded_include.is_empty() {
             let mut builder = GlobSetBuilder::new();
             for pattern in expanded_include {
@@ -49,12 +49,9 @@ impl FileFilter {
             exclude_set,
         })
     }
-    
+
     /// Create a file filter from optional string patterns (backward compatibility)
-    pub fn from_optional(
-        include: &Option<String>, 
-        exclude: &Option<String>
-    ) -> Result<Self> {
+    pub fn from_optional(include: &Option<String>, exclude: &Option<String>) -> Result<Self> {
         use super::pattern_helpers::normalize_patterns;
         let (include_vec, exclude_vec) = normalize_patterns(include, exclude);
         Self::new(include_vec, exclude_vec)

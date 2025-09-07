@@ -319,7 +319,7 @@ mod new_tests {
         assert_eq!(TDGSeverity::Normal, TDGSeverity::Normal);
         assert_eq!(TDGSeverity::Warning, TDGSeverity::Warning);
         assert_eq!(TDGSeverity::Critical, TDGSeverity::Critical);
-        
+
         assert_eq!(TDGSeverity::Normal, TDGSeverity::Normal);
         assert_ne!(TDGSeverity::Normal, TDGSeverity::Critical);
     }
@@ -409,9 +409,15 @@ mod new_tests {
 
     #[test]
     fn test_recommendation_type() {
-        assert_eq!(RecommendationType::ReduceComplexity, RecommendationType::ReduceComplexity);
-        assert_ne!(RecommendationType::ReduceComplexity, RecommendationType::StabilizeChurn);
-        
+        assert_eq!(
+            RecommendationType::ReduceComplexity,
+            RecommendationType::ReduceComplexity
+        );
+        assert_ne!(
+            RecommendationType::ReduceComplexity,
+            RecommendationType::StabilizeChurn
+        );
+
         let rec = TDGRecommendation {
             recommendation_type: RecommendationType::ReduceComplexity,
             action: "Refactor complex function into smaller units".to_string(),
@@ -419,7 +425,7 @@ mod new_tests {
             estimated_hours: 4.0,
             priority: 3,
         };
-        
+
         assert_eq!(rec.priority, 3);
         assert_eq!(rec.action, "Refactor complex function into smaller units");
         assert_eq!(rec.expected_reduction, 0.5);
@@ -450,7 +456,7 @@ mod new_tests {
             ],
             total_files: 100,
         };
-        
+
         assert_eq!(dist.buckets.len(), 3);
         assert_eq!(dist.buckets[0].count, 50);
         assert_eq!(dist.buckets[0].percentage, 50.0);
@@ -468,7 +474,7 @@ mod new_tests {
             critical_threshold: 2.5,
             warning_threshold: 1.5,
         };
-        
+
         assert_eq!(config.complexity_weight, 0.30);
         assert_eq!(config.churn_weight, 0.35);
         assert_eq!(config.critical_threshold, 2.5);
@@ -499,22 +505,25 @@ mod new_tests {
         assert!(SatdSeverity::Low < SatdSeverity::Medium);
         assert!(SatdSeverity::Medium < SatdSeverity::High);
         assert!(SatdSeverity::High < SatdSeverity::Critical);
-        
+
         let mut severities = vec![
             SatdSeverity::High,
             SatdSeverity::Low,
             SatdSeverity::Critical,
             SatdSeverity::Medium,
         ];
-        
+
         severities.sort();
-        
-        assert_eq!(severities, vec![
-            SatdSeverity::Low,
-            SatdSeverity::Medium,
-            SatdSeverity::High,
-            SatdSeverity::Critical,
-        ]);
+
+        assert_eq!(
+            severities,
+            vec![
+                SatdSeverity::Low,
+                SatdSeverity::Medium,
+                SatdSeverity::High,
+                SatdSeverity::Critical,
+            ]
+        );
     }
 
     #[test]
@@ -541,5 +550,4 @@ mod new_tests {
         assert_eq!(original.components, deserialized.components);
         assert_eq!(original.severity, deserialized.severity);
     }
-
 }

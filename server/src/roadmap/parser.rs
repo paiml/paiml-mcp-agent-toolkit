@@ -2,7 +2,7 @@
 
 use super::*;
 use anyhow::Result;
-use chrono::NaiveDate;
+use chrono::{NaiveDate, Utc};
 use regex::Regex;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -16,11 +16,7 @@ pub fn parse_roadmap(content: &str) -> Result<Roadmap> {
         completed_sprints: Vec::new(),
     };
 
-    // Parse sprints
-    let sprint_regex = Regex::new(r"## (?:Current |Previous |Next )?Sprint: (v[\d.]+) (.+)")?;
-    let task_regex = Regex::new(r"\| (PMAT-\d{4}) \| ([^|]+) \| ([^|]+) \| ([^|]+) \| ([^|]+) \|")?;
-    let done_regex = Regex::new(r"- \[([ x])\] (.+)")?;
-
+    let parsers = create_parsers()?;
     let lines: Vec<&str> = content.lines().collect();
     let mut i = 0;
 
@@ -28,139 +24,195 @@ pub fn parse_roadmap(content: &str) -> Result<Roadmap> {
         let line = lines[i];
 
         // Check for sprint header
-        if let Some(captures) = sprint_regex.captures(line) {
-            let version = captures.get(1).unwrap().as_str().to_string();
-            let title = captures.get(2).unwrap().as_str().to_string();
+        if let Some(captures) = parsers.sprint_regex.captures(line) {
+            let (sprint, version, advance) = parse_sprint_section(&lines, i, &captures, &parsers)?;
+            i += advance;
 
-            // Parse sprint metadata
-            let mut sprint = Sprint {
-                version: version.clone(),
-                title,
-                start_date: Utc::now(), // Default, will be parsed from content
-                end_date: Utc::now() + chrono::Duration::days(14), // Default 2 weeks
-                priority: Priority::P0,
-                tasks: Vec::new(),
-                definition_of_done: Vec::new(),
-                quality_gates: Vec::new(),
-            };
-
-            // Look for sprint details
-            i += 1;
-            while i < lines.len() {
-                let line = lines[i];
-
-                // Parse duration
-                if line.contains("**Duration**:") {
-                    if let Some(duration) = parse_duration(line) {
-                        sprint.start_date = duration.0;
-                        sprint.end_date = duration.1;
-                    }
-                }
-
-                // Parse priority
-                if line.contains("**Priority**:") {
-                    if let Some(priority) = parse_priority(line) {
-                        sprint.priority = priority;
-                    }
-                }
-
-                // Parse tasks table
-                if line.contains("| ID | Description |") {
-                    i += 2; // Skip header and separator
-                    while i < lines.len() && lines[i].starts_with('|') {
-                        if let Some(captures) = task_regex.captures(lines[i]) {
-                            let task = Task {
-                                id: captures.get(1).unwrap().as_str().to_string(),
-                                description: captures.get(2).unwrap().as_str().trim().to_string(),
-                                status: parse_task_status(captures.get(3).unwrap().as_str()),
-                                complexity: Complexity::from_str(
-                                    captures.get(4).unwrap().as_str().trim(),
-                                )
-                                .unwrap_or(Complexity::Medium),
-                                priority: Priority::from_str(
-                                    captures.get(5).unwrap().as_str().trim(),
-                                )
-                                .unwrap_or(Priority::P1),
-                                assignee: None,
-                                started_at: None,
-                                completed_at: None,
-                            };
-                            sprint.tasks.push(task);
-                        }
-                        i += 1;
-                    }
-                    continue;
-                }
-
-                // Parse Definition of Done
-                if line.contains("### Definition of Done") {
-                    i += 1;
-                    while i < lines.len() && lines[i].starts_with("- [") {
-                        if let Some(captures) = done_regex.captures(lines[i]) {
-                            let item = captures.get(2).unwrap().as_str().to_string();
-                            sprint.definition_of_done.push(item);
-                        }
-                        i += 1;
-                    }
-                    continue;
-                }
-
-                // Check for next sprint
-                if line.starts_with("## ") && line.contains("Sprint:") {
-                    break;
-                }
-
-                i += 1;
-            }
-
-            // Determine if this is the current sprint
-            if line.contains("Current Sprint:")
-                || (roadmap.current_sprint.is_none() && !line.contains("Previous"))
-            {
-                roadmap.current_sprint = Some(version.clone());
-            }
-
-            // Mark completed sprints
-            if line.contains("✅ COMPLETED") {
-                roadmap.completed_sprints.push(version.clone());
-            }
-
+            // Update roadmap state
+            update_roadmap_state(&mut roadmap, line, &version);
             roadmap.sprints.insert(version, sprint);
         }
-
         // Parse backlog
-        if line.contains("### Backlog") {
+        else if line.contains("### Backlog") {
+            let (tasks, advance) = parse_backlog_section(&lines, i, &parsers.task_regex)?;
+            i += advance;
+            roadmap.backlog = tasks;
+        } else {
             i += 1;
-            // Skip to table content
-            while i < lines.len() && !lines[i].starts_with('|') {
-                i += 1;
-            }
-            i += 2; // Skip header and separator
-
-            while i < lines.len() && lines[i].starts_with('|') {
-                if let Some(captures) = task_regex.captures(lines[i]) {
-                    let task = Task {
-                        id: captures.get(1).unwrap().as_str().to_string(),
-                        description: captures.get(2).unwrap().as_str().trim().to_string(),
-                        status: parse_task_status(captures.get(3).unwrap().as_str()),
-                        complexity: Complexity::from_str(captures.get(4).unwrap().as_str().trim())
-                            .unwrap_or(Complexity::Medium),
-                        priority: Priority::from_str(captures.get(5).unwrap().as_str().trim())
-                            .unwrap_or(Priority::P2),
-                        assignee: None,
-                        started_at: None,
-                        completed_at: None,
-                    };
-                    roadmap.backlog.push(task);
-                }
-                i += 1;
-            }
         }
-
-        i += 1;
     }
 
     Ok(roadmap)
+}
+
+/// Container for regex parsers
+struct Parsers {
+    sprint_regex: Regex,
+    task_regex: Regex,
+    done_regex: Regex,
+}
+
+/// Create regex parsers
+fn create_parsers() -> Result<Parsers> {
+    Ok(Parsers {
+        sprint_regex: Regex::new(r"## (?:Current |Previous |Next )?Sprint: (v[\d.]+) (.+)")?,
+        task_regex: Regex::new(r"\| (PMAT-\d{4}) \| ([^|]+) \| ([^|]+) \| ([^|]+) \| ([^|]+) \|")?,
+        done_regex: Regex::new(r"- \[([ x])\] (.+)")?,
+    })
+}
+
+/// Parse a sprint section
+fn parse_sprint_section(
+    lines: &[&str],
+    start_idx: usize,
+    captures: &regex::Captures,
+    parsers: &Parsers,
+) -> Result<(Sprint, String, usize)> {
+    let version = captures.get(1).unwrap().as_str().to_string();
+    let title = captures.get(2).unwrap().as_str().to_string();
+
+    let mut sprint = Sprint {
+        version: version.clone(),
+        title,
+        start_date: Utc::now(),
+        end_date: Utc::now() + chrono::Duration::days(14),
+        priority: Priority::P0,
+        tasks: Vec::new(),
+        definition_of_done: Vec::new(),
+        quality_gates: Vec::new(),
+    };
+
+    let mut i = start_idx + 1;
+    while i < lines.len() {
+        let line = lines[i];
+
+        // Parse duration
+        if line.contains("**Duration**:") {
+            if let Some(duration) = parse_duration(line) {
+                sprint.start_date = duration.0;
+                sprint.end_date = duration.1;
+            }
+            i += 1;
+        }
+        // Parse priority
+        else if line.contains("**Priority**:") {
+            if let Some(priority) = parse_priority(line) {
+                sprint.priority = priority;
+            }
+            i += 1;
+        }
+        // Parse tasks table
+        else if line.contains("| ID | Description |") {
+            let (tasks, advance) = parse_tasks_table(&lines[i..], &parsers.task_regex)?;
+            sprint.tasks = tasks;
+            i += advance;
+        }
+        // Parse Definition of Done
+        else if line.contains("### Definition of Done") {
+            let (items, advance) = parse_definition_of_done(&lines[i..], &parsers.done_regex)?;
+            sprint.definition_of_done = items;
+            i += advance;
+        }
+        // Check for next section
+        else if line.starts_with("## ") && line.contains("Sprint:") {
+            break;
+        } else {
+            i += 1;
+        }
+    }
+
+    Ok((sprint, version, i - start_idx))
+}
+
+/// Parse tasks table
+fn parse_tasks_table(lines: &[&str], task_regex: &Regex) -> Result<(Vec<Task>, usize)> {
+    let mut tasks = Vec::new();
+    let mut i = 2; // Skip header and separator
+
+    while i < lines.len() && lines[i].starts_with('|') {
+        if let Some(captures) = task_regex.captures(lines[i]) {
+            tasks.push(create_task_from_captures(&captures));
+        }
+        i += 1;
+    }
+
+    Ok((tasks, i))
+}
+
+/// Parse definition of done section
+fn parse_definition_of_done(lines: &[&str], done_regex: &Regex) -> Result<(Vec<String>, usize)> {
+    let mut items = Vec::new();
+    let mut i = 1;
+
+    while i < lines.len() && lines[i].starts_with("- [") {
+        if let Some(captures) = done_regex.captures(lines[i]) {
+            items.push(captures.get(2).unwrap().as_str().to_string());
+        }
+        i += 1;
+    }
+
+    Ok((items, i))
+}
+
+/// Parse backlog section
+fn parse_backlog_section(
+    lines: &[&str],
+    start_idx: usize,
+    task_regex: &Regex,
+) -> Result<(Vec<Task>, usize)> {
+    let mut i = start_idx + 1;
+
+    // Skip to table content
+    while i < lines.len() && !lines[i].starts_with('|') {
+        i += 1;
+    }
+
+    if i + 2 >= lines.len() {
+        return Ok((Vec::new(), i - start_idx));
+    }
+
+    i += 2; // Skip header and separator
+    let mut tasks = Vec::new();
+
+    while i < lines.len() && lines[i].starts_with('|') {
+        if let Some(captures) = task_regex.captures(lines[i]) {
+            tasks.push(create_task_from_captures(&captures));
+        }
+        i += 1;
+    }
+
+    Ok((tasks, i - start_idx))
+}
+
+/// Create a task from regex captures
+fn create_task_from_captures(captures: &regex::Captures) -> Task {
+    Task {
+        id: captures.get(1).unwrap().as_str().to_string(),
+        description: captures.get(2).unwrap().as_str().trim().to_string(),
+        status: parse_task_status(captures.get(3).unwrap().as_str()),
+        complexity: Complexity::from_str(captures.get(4).unwrap().as_str().trim())
+            .unwrap_or(Complexity::Medium),
+        priority: Priority::from_str(captures.get(5).unwrap().as_str().trim())
+            .unwrap_or(Priority::P1),
+        assignee: None,
+        started_at: None,
+        completed_at: None,
+    }
+}
+
+/// Update roadmap state based on sprint header
+fn update_roadmap_state(roadmap: &mut Roadmap, line: &str, version: &str) {
+    // Determine if this is the current sprint
+    if line.contains("Current Sprint:")
+        || (roadmap.current_sprint.is_none() && !line.contains("Previous"))
+    {
+        roadmap.current_sprint = Some(version.to_string());
+    }
+
+    // Mark completed sprints
+    if line.contains("✅ COMPLETED") {
+        roadmap.completed_sprints.push(version.to_string());
+    }
 }
 
 /// Convert a roadmap to markdown format
@@ -397,10 +449,7 @@ mod tests {
     #[test]
     fn test_parse_task_status() {
         assert_eq!(parse_task_status("Open"), TaskStatus::Planned);
-        assert_eq!(
-            parse_task_status("InProgress"),
-            TaskStatus::InProgress
-        );
+        assert_eq!(parse_task_status("InProgress"), TaskStatus::InProgress);
         assert_eq!(parse_task_status("Completed"), TaskStatus::Completed);
         assert_eq!(parse_task_status("Blocked"), TaskStatus::Blocked);
         // Note: Invalid status returns Planned as default

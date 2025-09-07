@@ -289,7 +289,9 @@ impl ContractAdapter {
         Ok(Box::new(contract))
     }
 
-    fn map_lint_hotspot_command(params: LintHotspotMapParams) -> Result<Box<dyn ContractValidation>> {
+    fn map_lint_hotspot_command(
+        params: LintHotspotMapParams,
+    ) -> Result<Box<dyn ContractValidation>> {
         let contract = AnalyzeLintHotspotContract {
             base: BaseAnalysisContract {
                 path: params.project_path.to_path_buf(),

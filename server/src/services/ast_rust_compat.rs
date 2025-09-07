@@ -7,10 +7,10 @@ use anyhow::Result;
 use std::path::Path;
 
 use crate::models::error::TemplateError;
+use crate::services::accurate_complexity_analyzer::AccurateComplexityAnalyzer;
 use crate::services::complexity::{ComplexityMetrics, FileComplexityMetrics, FunctionComplexity};
 use crate::services::context::{AstItem, FileContext};
 use crate::services::file_classifier::FileClassifier;
-use crate::services::accurate_complexity_analyzer::AccurateComplexityAnalyzer;
 
 // Import the new AST module
 use crate::ast::languages::rust::RustStrategy;
@@ -34,17 +34,17 @@ pub async fn analyze_rust_file_with_complexity_and_classifier(
         .analyze_file(path)
         .await
         .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
-    
+
     // Convert accurate metrics to old format
     let mut function_metrics = Vec::new();
     let mut total_cyclomatic = 0u32;
     let mut total_cognitive = 0u32;
     let mut max_nesting = 0u32;
-    
+
     for (i, func) in accurate_result.functions.iter().enumerate() {
         total_cyclomatic += func.cyclomatic_complexity;
         total_cognitive += func.cognitive_complexity;
-        
+
         function_metrics.push(FunctionComplexity {
             name: func.name.clone(),
             line_start: (i * 50) as u32, // Approximate line numbers
@@ -53,11 +53,11 @@ pub async fn analyze_rust_file_with_complexity_and_classifier(
                 cyclomatic: func.cyclomatic_complexity as u16,
                 cognitive: func.cognitive_complexity as u16,
                 nesting_max: ((func.cognitive_complexity / 3).min(255)) as u8, // Approximate nesting
-                lines: 50, // Approximate
+                lines: 50,                                                     // Approximate
                 halstead: None,
             },
         });
-        
+
         max_nesting = max_nesting.max(func.cognitive_complexity / 3);
     }
 
@@ -67,9 +67,9 @@ pub async fn analyze_rust_file_with_complexity_and_classifier(
     } else {
         1
     };
-    
+
     let avg_cognitive = if !function_metrics.is_empty() {
-        total_cognitive / function_metrics.len() as u32  
+        total_cognitive / function_metrics.len() as u32
     } else {
         0
     };

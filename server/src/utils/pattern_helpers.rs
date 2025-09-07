@@ -14,12 +14,12 @@ pub fn normalize_patterns(
         .as_ref()
         .map(|s| vec![s.clone()])
         .unwrap_or_default();
-    
+
     let exclude_vec = exclude
         .as_ref()
         .map(|s| vec![s.clone()])
         .unwrap_or_default();
-    
+
     (include_vec, exclude_vec)
 }
 
@@ -41,13 +41,11 @@ pub fn expand_patterns(patterns: &[String]) -> Vec<String> {
 /// Validate that glob patterns are syntactically correct
 pub fn validate_patterns(patterns: &[String]) -> Result<()> {
     use globset::Glob;
-    
+
     for pattern in patterns {
-        Glob::new(pattern).map_err(|e| {
-            anyhow!("Invalid glob pattern '{}': {}", pattern, e)
-        })?;
+        Glob::new(pattern).map_err(|e| anyhow!("Invalid glob pattern '{}': {}", pattern, e))?;
     }
-    
+
     Ok(())
 }
 
@@ -84,36 +82,34 @@ mod tests {
 
     #[test]
     fn test_normalize_patterns() {
-        let (inc, exc) = normalize_patterns(
-            &Some("**/*.rs".to_string()),
-            &Some("target/**".to_string()),
-        );
-        
+        let (inc, exc) =
+            normalize_patterns(&Some("**/*.rs".to_string()), &Some("target/**".to_string()));
+
         assert_eq!(inc, vec!["**/*.rs"]);
         assert_eq!(exc, vec!["target/**"]);
-        
+
         let (inc, exc) = normalize_patterns(&None, &None);
         assert!(inc.is_empty());
         assert!(exc.is_empty());
     }
-    
+
     #[test]
     fn test_expand_patterns() {
         let patterns = vec!["**/*.rs,**/*.py".to_string(), "src/**".to_string()];
         let expanded = expand_patterns(&patterns);
-        
+
         assert_eq!(expanded, vec!["**/*.rs", "**/*.py", "src/**"]);
     }
-    
+
     #[test]
     fn test_validate_patterns() {
         let valid = vec!["**/*.rs".to_string(), "src/**".to_string()];
         assert!(validate_patterns(&valid).is_ok());
-        
+
         let invalid = vec!["**/*[invalid".to_string()];
         assert!(validate_patterns(&invalid).is_err());
     }
-    
+
     #[test]
     fn test_default_exclude_patterns() {
         let defaults = default_exclude_patterns();
