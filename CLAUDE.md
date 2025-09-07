@@ -452,6 +452,64 @@ If a wrong version is published:
 
 **Remember**: The canonical system prevents version regression and ensures every release meets our extreme quality standards.
 
+## Build Artifact Management and Cleaning Strategy
+
+To prevent memory issues and ensure clean builds, especially during releases, we implement a systematic cleaning strategy:
+
+### Cleaning Commands
+
+```bash
+# Quick clean - just this package and incremental
+make clean-quick
+
+# Standard clean - all build artifacts
+make clean
+
+# Deep clean - including cargo caches
+make clean-deep
+```
+
+### When to Clean
+
+1. **Before Every Release**: Automatic via `make pre-release-checks`
+   - Ensures fresh, reproducible builds
+   - Prevents stale artifact issues
+   
+2. **Daily Development**:
+   - `make clean-quick` when switching between major features
+   - Clears incremental compilation cache
+   
+3. **Weekly Maintenance**:
+   - `make clean` to remove all build artifacts
+   - Frees up disk space (can be 5-10GB per project)
+   
+4. **Monthly Deep Clean**:
+   - `make clean-deep` to clear cargo registry caches
+   - Removes old dependency versions
+   - Can free up 5-10GB of disk space
+
+### Memory Management
+
+The project can consume significant memory during compilation:
+- Debug builds: 5-10GB
+- Release builds: 10-15GB
+- Test coverage: 15-20GB
+
+**Signs you need to clean**:
+- Swap usage exceeding 10GB
+- Compilation errors mentioning "out of memory"
+- Mysterious compilation failures
+- Slow incremental builds
+
+### Release Process Integration
+
+The cleaning strategy is integrated into our release process:
+1. `make pre-release-checks` automatically runs `clean-quick`
+2. Release checklist script includes cleaning step
+3. CI/CD pipelines start with clean workspace
+
+This ensures every release is built from a clean state, preventing artifact contamination and ensuring reproducibility.
+
 - workspace project
 - We use TDD. no code is written unless a test is written first.  new features require 80% coverage and passing pmat quality gates.  all code must be in roadmap and using a ticket that is updated when complete.  For tickets/bugs, we need to add doctests/property tests and cargo run --example.
 - this is a workspace project, never cd into server.

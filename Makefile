@@ -324,6 +324,24 @@ clean:
 	@rm -rf coverage/ artifacts/ target/
 	@echo "✅ Clean completed successfully!"
 
+# Quick clean - just this package and incremental
+clean-quick:
+	@echo "🚀 Quick clean (package and incremental only)..."
+	@cargo clean -p pmat --manifest-path server/Cargo.toml
+	@rm -rf target/debug/incremental
+	@rm -rf target/release/incremental
+	@echo "✅ Quick clean completed!"
+
+# Deep clean - including cargo caches
+clean-deep: clean
+	@echo "🧹 Deep cleaning including cargo caches..."
+	@rm -rf ~/.cargo/registry/cache/*
+	@rm -rf ~/.cargo/git/checkouts/*
+	@rm -rf target/
+	@echo "📊 Cargo cache size after cleaning:"
+	@du -sh ~/.cargo/registry/ ~/.cargo/git/ 2>/dev/null || true
+	@echo "✅ Deep clean completed!"
+
 # Clean /tmp aggressively - remove most temporary files
 clean-tmp:
 	@echo "🧹 Aggressively cleaning /tmp..."
@@ -1015,11 +1033,15 @@ install-release-tools:
 pre-release-checks:
 	@echo "🔍 Running pre-release checks..."
 	@echo ""
-	@echo "1️⃣ Version consistency check..."
+	@echo "1️⃣ Cleaning build artifacts for fresh release build..."
+	@$(MAKE) clean-quick
+	@echo "✅ Build artifacts cleaned"
+	@echo ""
+	@echo "2️⃣ Version consistency check..."
 	@grep '^version' Cargo.toml server/Cargo.toml | uniq -c | grep -q '      2 version' || (echo "❌ Version mismatch detected!" && exit 1)
 	@echo "✅ Versions are consistent"
 	@echo ""
-	@echo "2️⃣ Running quality gates..."
+	@echo "3️⃣ Running quality gates..."
 	@$(MAKE) lint || (echo "❌ Linting failed!" && exit 1)
 	@$(MAKE) test-fast || (echo "❌ Tests failed!" && exit 1)
 	@echo "✅ Quality gates passed"
