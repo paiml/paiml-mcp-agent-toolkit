@@ -38,6 +38,7 @@ pub mod refactor_auto_property_tests;
 pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod satd_handler;
+pub mod similarity_handler;
 pub mod tdg_diagnostic_handler;
 pub mod tdg_formatter;
 pub mod tdg_handlers;
