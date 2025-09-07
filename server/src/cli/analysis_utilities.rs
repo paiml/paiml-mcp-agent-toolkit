@@ -5762,6 +5762,11 @@ pub async fn analyze_project_files(
         .collect();
 
     // PERFORMANCE OPTIMIZATION: Process files in parallel batches
+    // Return early if no files to analyze
+    if files_to_analyze.is_empty() {
+        return Ok(Vec::new());
+    }
+    
     let batch_size = std::cmp::min(files_to_analyze.len(), 20); // Optimize batch size
     let mut results = Vec::new();
 
