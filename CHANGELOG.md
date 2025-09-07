@@ -7,14 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Sprint 78 - Quality Restoration (In Progress)
+## [2.64.0] - 2025-01-09
+
+### Sprint 78 - Quality Gate Fix & TDD Implementation ✅
+
+#### Fixed
+- **Critical P0: Quality-Gate Violation Counting** 🚨
+  - Fixed quality-gate incorrectly counting ALL analyzed functions as violations
+  - Now correctly counts only functions EXCEEDING thresholds (> not >=)
+  - Example: Function with complexity 10 is NOT a violation if threshold is 10
+  - Resolves issue where 0 actual violations were reported as 531 violations
+  - Quality-gate is now the single source of truth for quality metrics
 
 #### Added
+- **Test-Driven Development (TDD)**: Comprehensive test suite for quality-gate
+  - `quality_gate_complexity_test.rs`: Unit tests for violation counting
+  - `quality_gate_integration_test.rs`: End-to-end integration tests
+  - Tests verify threshold boundaries and multiple check types
+  - All tests passing with 100% correct behavior
+
 - **Build Cleaning Strategy**: Integrated cargo clean into release process
   - `make clean-quick`: Quick incremental cleaning
   - `make clean-deep`: Full cache cleaning including cargo registry
   - Automatic cleaning in pre-release checks
   - Memory management documentation
+
+- **Documentation**: Quality-gate specification
+  - Comprehensive specification in `docs/quality-gate-specification.md`
+  - Documents single source of truth principle
+  - Explains threshold-based violation counting
+  - Provides usage examples and testing guidelines
 
 #### Changed
 - **Complexity Reduction**: Major refactoring to reduce function complexity
@@ -24,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Extracted helper functions for better code organization
   - Improved maintainability and readability
   - Overall quality gate violations: 3,219 → 1,051 (67% reduction)
+
+- **Quality-Gate Output**: Enhanced visibility
+  - Added progress indicators for each check type
+  - Shows "X violations found" for each check
+  - Consistent output format across all interfaces (CLI, MCP, services)
 
 ## [2.63.0] - 2025-09-07
 
