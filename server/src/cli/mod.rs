@@ -579,21 +579,20 @@ pub async fn handle_analyze_defect_prediction(
 }
 
 pub async fn handle_analyze_duplicates(config: DuplicateHandlerConfig) -> anyhow::Result<()> {
-    // Convert to DuplicateAnalysisConfig
-    let analysis_config = handlers::duplication_analysis::DuplicateAnalysisConfig {
-        project_path: config.project_path,
-        detection_type: config.detection_type,
-        threshold: config.threshold as f64,
-        min_lines: config.min_lines,
-        max_tokens: config.max_tokens,
-        format: config.format,
-        perf: config.perf,
-        include: config.include,
-        exclude: config.exclude,
-        output: config.output,
-        top_files: 10, // Default to 10
-    };
-    handlers::handle_analyze_duplicates(analysis_config).await
+    // Use the new advanced similarity handler with entropy detection
+    handlers::similarity_handler::handle_analyze_similarity(
+        config.project_path,
+        config.detection_type,
+        config.threshold,
+        config.min_lines,
+        config.max_tokens,
+        config.format,
+        config.perf,
+        config.include,
+        config.exclude,
+        config.output,
+        10, // Default top_files to 10
+    ).await
 }
 
 #[allow(clippy::too_many_arguments)]
