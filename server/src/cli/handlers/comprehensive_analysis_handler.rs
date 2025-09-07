@@ -249,142 +249,128 @@ fn format_as_markdown(
     writeln!(&mut output, "# Comprehensive Code Analysis Report\n")?;
 
     if executive_summary {
-        writeln!(&mut output, "## Executive Summary\n")?;
-        writeln!(
-            &mut output,
-            "Project analysis completed with {} total files analyzed.\n",
-            result.summary.total_files
-        )?;
-        writeln!(
-            &mut output,
-            "- **Quality Score**: {:.1}%",
-            result.summary.quality_score
-        )?;
-        writeln!(
-            &mut output,
-            "- **Total Files**: {}",
-            result.summary.total_files
-        )?;
-        writeln!(
-            &mut output,
-            "- **Total Issues**: {}",
-            result.summary.total_issues
-        )?;
-        writeln!(
-            &mut output,
-            "- **Critical Issues**: {}",
-            result.summary.critical_issues
-        )?;
-        writeln!(&mut output)?;
-
-        if !result.summary.recommendations.is_empty() {
-            writeln!(&mut output, "### Key Recommendations\n")?;
-            for rec in &result.summary.recommendations {
-                writeln!(&mut output, "- {}", rec)?;
-            }
-            writeln!(&mut output)?;
-        }
+        format_executive_summary(&mut output, &result.summary)?;
     }
 
-    // Complexity section
+    // Delegate each section to specialized functions
     if let Some(complexity) = &result.complexity {
-        writeln!(&mut output, "## Complexity Analysis\n")?;
-        writeln!(
-            &mut output,
-            "- **Files Analyzed**: {}",
-            complexity.total_files
-        )?;
-        writeln!(
-            &mut output,
-            "- **Average Complexity**: {:.1}",
-            complexity.average_complexity
-        )?;
-        writeln!(
-            &mut output,
-            "- **Max Complexity**: {}",
-            complexity.max_complexity
-        )?;
-        writeln!(
-            &mut output,
-            "- **Violations**: {}",
-            complexity.violations.len()
-        )?;
-
-        if !complexity.violations.is_empty() {
-            writeln!(&mut output, "\n### Top Complexity Violations\n")?;
-            for (i, violation) in complexity.violations.iter().take(5).enumerate() {
-                writeln!(
-                    &mut output,
-                    "{}. {} - {} (complexity: {})",
-                    i + 1,
-                    violation.file_path,
-                    violation.function_name,
-                    violation.complexity
-                )?;
-            }
-        }
-        writeln!(&mut output)?;
+        format_complexity_section(&mut output, complexity)?;
     }
 
-    // Dead code section
     if let Some(dead_code) = &result.dead_code {
-        writeln!(&mut output, "## Dead Code Analysis\n")?;
-        writeln!(
-            &mut output,
-            "- **Files Analyzed**: {}",
-            dead_code.total_files
-        )?;
-        writeln!(
-            &mut output,
-            "- **Dead Items**: {}",
-            dead_code.dead_items.len()
-        )?;
-        writeln!(
-            &mut output,
-            "- **Dead Code %**: {:.1}%",
-            dead_code.dead_percentage
-        )?;
-
-        if !dead_code.dead_items.is_empty() {
-            writeln!(&mut output, "\n### Dead Code Items\n")?;
-            for (i, item) in dead_code.dead_items.iter().take(5).enumerate() {
-                writeln!(
-                    &mut output,
-                    "{}. {} - {} ({:?})",
-                    i + 1,
-                    item.file_path,
-                    item.item_name,
-                    item.item_type
-                )?;
-            }
-        }
-        writeln!(&mut output)?;
+        format_dead_code_section(&mut output, dead_code)?;
     }
 
-    // SATD section
     if let Some(satd) = &result.satd {
-        writeln!(&mut output, "## Technical Debt (SATD) Analysis\n")?;
-        writeln!(&mut output, "- **Files Analyzed**: {}", satd.total_files)?;
-        writeln!(&mut output, "- **Violations**: {}", satd.violations.len())?;
-
-        if !satd.violations.is_empty() {
-            writeln!(&mut output, "\n### SATD Violations\n")?;
-            for (i, violation) in satd.violations.iter().take(5).enumerate() {
-                writeln!(
-                    &mut output,
-                    "{}. {}:{} - {} ({:?})",
-                    i + 1,
-                    violation.file_path,
-                    violation.line_number,
-                    violation.violation_type,
-                    violation.severity
-                )?;
-            }
-        }
-        writeln!(&mut output)?;
+        format_satd_section(&mut output, satd)?;
     }
 
     Ok(output)
+}
+
+// Helper functions to reduce complexity below 20
+
+fn format_executive_summary(output: &mut String, summary: &crate::services::facades::analysis_orchestrator::AnalysisSummary) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "## Executive Summary\n")?;
+    writeln!(
+        output,
+        "Project analysis completed with {} total files analyzed.\n",
+        summary.total_files
+    )?;
+    
+    writeln!(output, "- **Quality Score**: {:.1}%", summary.quality_score)?;
+    writeln!(output, "- **Total Files**: {}", summary.total_files)?;
+    writeln!(output, "- **Total Issues**: {}", summary.total_issues)?;
+    writeln!(output, "- **Critical Issues**: {}", summary.critical_issues)?;
+    writeln!(output)?;
+    
+    if !summary.recommendations.is_empty() {
+        writeln!(output, "### Key Recommendations\n")?;
+        for rec in &summary.recommendations {
+            writeln!(output, "- {}", rec)?;
+        }
+        writeln!(output)?;
+    }
+    
+    Ok(())
+}
+
+fn format_complexity_section(output: &mut String, complexity: &crate::services::facades::complexity_facade::ComplexityAnalysisResult) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "## Complexity Analysis\n")?;
+    writeln!(output, "- **Files Analyzed**: {}", complexity.total_files)?;
+    writeln!(output, "- **Average Complexity**: {:.1}", complexity.average_complexity)?;
+    writeln!(output, "- **Max Complexity**: {}", complexity.max_complexity)?;
+    writeln!(output, "- **Violations**: {}", complexity.violations.len())?;
+    
+    if !complexity.violations.is_empty() {
+        writeln!(output, "\n### Top Complexity Violations\n")?;
+        for (i, violation) in complexity.violations.iter().take(5).enumerate() {
+            writeln!(
+                output,
+                "{}. {} - {} (complexity: {})",
+                i + 1,
+                violation.file_path,
+                violation.function_name,
+                violation.complexity
+            )?;
+        }
+    }
+    writeln!(output)?;
+    Ok(())
+}
+
+fn format_dead_code_section(output: &mut String, dead_code: &crate::services::facades::dead_code_facade::DeadCodeAnalysisResult) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "## Dead Code Analysis\n")?;
+    writeln!(output, "- **Files Analyzed**: {}", dead_code.total_files)?;
+    writeln!(output, "- **Dead Items**: {}", dead_code.dead_items.len())?;
+    writeln!(output, "- **Dead Code %**: {:.1}%", dead_code.dead_percentage)?;
+    
+    if !dead_code.dead_items.is_empty() {
+        writeln!(output, "\n### Dead Code Items\n")?;
+        for (i, item) in dead_code.dead_items.iter().take(5).enumerate() {
+            writeln!(
+                output,
+                "{}. {} - {} ({:?})",
+                i + 1,
+                item.file_path,
+                item.item_name,
+                item.item_type
+            )?;
+        }
+    }
+    writeln!(output)?;
+    Ok(())
+}
+
+fn format_satd_section(output: &mut String, satd: &crate::services::facades::satd_facade::SatdAnalysisResult) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "## Technical Debt (SATD) Analysis\n")?;
+    writeln!(output, "- **Files Analyzed**: {}", satd.total_files)?;
+    writeln!(output, "- **Violations**: {}", satd.violations.len())?;
+    
+    if !satd.violations.is_empty() {
+        writeln!(output, "\n### SATD Violations\n")?;
+        for (i, violation) in satd.violations.iter().take(5).enumerate() {
+            writeln!(
+                output,
+                "{}. {}:{} - {} ({:?})",
+                i + 1,
+                violation.file_path,
+                violation.line_number,
+                violation.violation_type,
+                violation.severity
+            )?;
+        }
+    }
+    writeln!(output)?;
+    Ok(())
 }
 
 /// Format as SARIF
