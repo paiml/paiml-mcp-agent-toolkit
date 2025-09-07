@@ -61,6 +61,14 @@ section() {
 # Pre-release checks
 section "PRE-RELEASE CHECKS"
 
+# 0. Clean build artifacts for fresh release
+echo -n "0️⃣  Cleaning build artifacts... "
+if make clean-quick > /dev/null 2>&1; then
+    echo -e "${GREEN}${CHECK} Build cleaned${NC}"
+else
+    echo -e "${YELLOW}${WARN} Could not clean build${NC}"
+fi
+
 # 1. Version consistency
 echo -n "1️⃣  Version consistency... "
 if grep '^version' Cargo.toml server/Cargo.toml | uniq -c | grep -q '      2 version'; then
