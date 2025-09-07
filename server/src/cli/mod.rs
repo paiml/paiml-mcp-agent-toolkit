@@ -592,7 +592,8 @@ pub async fn handle_analyze_duplicates(config: DuplicateHandlerConfig) -> anyhow
         config.exclude,
         config.output,
         10, // Default top_files to 10
-    ).await
+    )
+    .await
 }
 
 #[allow(clippy::too_many_arguments)]

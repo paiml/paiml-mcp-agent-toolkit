@@ -4623,13 +4623,15 @@ pub async fn check_dead_code(
 pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
     // Toyota Way: Use the ONE proper implementation, not duplicate logic
     use crate::services::satd_detector::SATDDetector;
-    
+
     let detector = SATDDetector::new();
     let include_tests = false; // Don't include test files in quality gate
-    
+
     // Use the proper SATD analyzer with context awareness
-    let satd_result = detector.analyze_project(project_path, include_tests).await?;
-    
+    let satd_result = detector
+        .analyze_project(project_path, include_tests)
+        .await?;
+
     // Convert SATD items to quality violations
     let violations: Vec<QualityViolation> = satd_result
         .items
@@ -4638,16 +4640,20 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
             check_type: "satd".to_string(),
             severity: match debt.severity {
                 crate::services::satd_detector::Severity::Critical => "error",
-                crate::services::satd_detector::Severity::High => "error", 
+                crate::services::satd_detector::Severity::High => "error",
                 crate::services::satd_detector::Severity::Medium => "warning",
                 crate::services::satd_detector::Severity::Low => "info",
-            }.to_string(),
+            }
+            .to_string(),
             file: debt.file.display().to_string(),
             line: Some(debt.line as usize),
-            message: format!("{}: {} (at column {})", debt.category, debt.text, debt.column),
+            message: format!(
+                "{}: {} (at column {})",
+                debt.category, debt.text, debt.column
+            ),
         })
         .collect();
-    
+
     Ok(violations)
 }
 
@@ -5766,7 +5772,7 @@ pub async fn analyze_project_files(
     if files_to_analyze.is_empty() {
         return Ok(Vec::new());
     }
-    
+
     let batch_size = std::cmp::min(files_to_analyze.len(), 20); // Optimize batch size
     let mut results = Vec::new();
 

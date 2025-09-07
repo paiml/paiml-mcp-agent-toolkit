@@ -262,14 +262,12 @@ pub struct AnnotatedNode {
     pub annotations: NodeAnnotations,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub enum NodeType {
     Directory,
     #[default]
     File,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NodeAnnotations {
@@ -2435,7 +2433,11 @@ impl DeepContextAnalyzer {
                 duplicate_code_results: params.analyses.duplicate_code_results,
                 satd_results: params.analyses.satd_results,
                 provability_results: params.analyses.provability_results,
-                cross_language_refs: params.cross_refs.into_iter().flat_map(|(_, refs)| refs).collect(),
+                cross_language_refs: params
+                    .cross_refs
+                    .into_iter()
+                    .flat_map(|(_, refs)| refs)
+                    .collect(),
                 big_o_analysis: params.analyses.big_o_analysis,
             },
             quality_scorecard: params.quality_scorecard,
@@ -5132,7 +5134,7 @@ mod tests {
         by_severity.insert("high".to_string(), 50);
         by_severity.insert("medium".to_string(), 30);
         by_severity.insert("low".to_string(), 20);
-        
+
         let defect_summary = DefectSummary {
             total_defects: 100,
             by_severity,

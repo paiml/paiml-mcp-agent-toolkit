@@ -456,10 +456,7 @@ mod tests {
         let generator = RoadmapTodoGenerator::new(config.clone());
 
         // Verify generator is created properly
-        assert_eq!(
-            generator.quality_config.coverage_min,
-            config.coverage_min
-        );
+        assert_eq!(generator.quality_config.coverage_min, config.coverage_min);
     }
 
     #[test]

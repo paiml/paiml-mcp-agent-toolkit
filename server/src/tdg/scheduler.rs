@@ -86,7 +86,12 @@ impl SimpleFairScheduler {
         let permit = self.high_priority.acquire().await?;
 
         // Convert to 'static lifetime for SchedulePermit
-        let static_permit = unsafe { std::mem::transmute::<tokio::sync::SemaphorePermit<'_>, tokio::sync::SemaphorePermit<'static>>(permit) };
+        let static_permit = unsafe {
+            std::mem::transmute::<
+                tokio::sync::SemaphorePermit<'_>,
+                tokio::sync::SemaphorePermit<'static>,
+            >(permit)
+        };
 
         let mut ops = self.active_ops.write().await;
 
@@ -132,7 +137,12 @@ impl SimpleFairScheduler {
         let permit = self.low_priority.acquire().await?;
 
         // Convert to 'static lifetime
-        let static_permit = unsafe { std::mem::transmute::<tokio::sync::SemaphorePermit<'_>, tokio::sync::SemaphorePermit<'static>>(permit) };
+        let static_permit = unsafe {
+            std::mem::transmute::<
+                tokio::sync::SemaphorePermit<'_>,
+                tokio::sync::SemaphorePermit<'static>,
+            >(permit)
+        };
 
         let mut ops = self.active_ops.write().await;
         ops.insert(

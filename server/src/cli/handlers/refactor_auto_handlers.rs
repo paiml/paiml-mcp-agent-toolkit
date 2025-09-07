@@ -2382,10 +2382,18 @@ mod tests {
         let result = extract_target_files_from_issue(&content, Path::new("/project")).unwrap();
 
         assert_eq!(result.len(), 4); // main.rs, test.rs, lib.rs, utils.rs
-        assert!(result.iter().any(|p| p.to_string_lossy().ends_with("main.rs")));
-        assert!(result.iter().any(|p| p.to_string_lossy().ends_with("test.rs")));
-        assert!(result.iter().any(|p| p.to_string_lossy().ends_with("lib.rs")));
-        assert!(result.iter().any(|p| p.to_string_lossy().ends_with("utils.rs")));
+        assert!(result
+            .iter()
+            .any(|p| p.to_string_lossy().ends_with("main.rs")));
+        assert!(result
+            .iter()
+            .any(|p| p.to_string_lossy().ends_with("test.rs")));
+        assert!(result
+            .iter()
+            .any(|p| p.to_string_lossy().ends_with("lib.rs")));
+        assert!(result
+            .iter()
+            .any(|p| p.to_string_lossy().ends_with("utils.rs")));
     }
 
     #[test]
@@ -2404,7 +2412,7 @@ mod tests {
     #[test]
     fn test_refactor_auto_config_creation() {
         use std::path::PathBuf;
-        
+
         let config = RefactorAutoConfig {
             project_path: PathBuf::from("/test/project"),
             single_file_mode: true,
@@ -2422,7 +2430,7 @@ mod tests {
             github_issue_url: None,
             bug_report_path: None,
         };
-        
+
         assert_eq!(config.project_path, PathBuf::from("/test/project"));
         assert!(config.single_file_mode);
         assert_eq!(config.file, Some(PathBuf::from("test.rs")));
@@ -2436,7 +2444,7 @@ mod tests {
     #[test]
     fn test_refactor_auto_config_default_values() {
         use std::path::PathBuf;
-        
+
         let config = RefactorAutoConfig {
             project_path: PathBuf::from("."),
             single_file_mode: false,
@@ -2454,7 +2462,7 @@ mod tests {
             github_issue_url: None,
             bug_report_path: None,
         };
-        
+
         assert_eq!(config.project_path, PathBuf::from("."));
         assert!(!config.single_file_mode);
         assert!(config.file.is_none());
@@ -2467,7 +2475,7 @@ mod tests {
     #[test]
     fn test_refactor_auto_config_clone() {
         use std::path::PathBuf;
-        
+
         let original = RefactorAutoConfig {
             project_path: PathBuf::from("/original"),
             single_file_mode: true,
@@ -2485,9 +2493,9 @@ mod tests {
             github_issue_url: Some("https://github.com/test".to_string()),
             bug_report_path: Some(PathBuf::from("bug.md")),
         };
-        
+
         let cloned = original.clone();
-        
+
         assert_eq!(cloned.project_path, original.project_path);
         assert_eq!(cloned.single_file_mode, original.single_file_mode);
         assert_eq!(cloned.file, original.file);

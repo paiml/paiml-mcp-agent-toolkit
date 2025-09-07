@@ -1,4 +1,4 @@
-use crate::mcp_server::cache::{McpCache, CacheConfig, CacheKeyBuilder};
+use crate::mcp_server::cache::{CacheConfig, CacheKeyBuilder, McpCache};
 use crate::mcp_server::handlers;
 use crate::mcp_server::state_manager::StateManager;
 use crate::models::mcp::{McpRequest, McpResponse};
@@ -141,7 +141,7 @@ impl McpServer {
             default_ttl: Duration::from_secs(600), // 10 minutes
             enable_metrics: true,
         };
-        
+
         Self {
             state_manager: Arc::new(Mutex::new(StateManager::new())),
             cache: Arc::new(McpCache::with_config(cache_config)),
@@ -455,7 +455,10 @@ impl McpServer {
             let mut hasher = DefaultHasher::new();
             request.method.hash(&mut hasher);
             request.params.hash(&mut hasher);
-            Some(CacheKeyBuilder::method_result_key(&request.method, hasher.finish()))
+            Some(CacheKeyBuilder::method_result_key(
+                &request.method,
+                hasher.finish(),
+            ))
         } else {
             None
         };
@@ -516,7 +519,7 @@ impl McpServer {
 
         Ok(McpResponse::success(request.id, result))
     }
-    
+
     /// Get cache metrics for monitoring
     pub async fn cache_metrics(&self) -> String {
         let metrics = self.cache.metrics().await;

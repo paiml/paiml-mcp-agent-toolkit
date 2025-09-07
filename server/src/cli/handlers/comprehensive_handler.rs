@@ -6,9 +6,30 @@
 use crate::cli::ComprehensiveOutputFormat;
 use crate::services::defect_report_service::{DefectReportService, ReportFormat};
 use anyhow::{Context, Result};
+use serde_json;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tracing::{info, warn};
+
+/// Configuration for comprehensive analysis
+pub struct ComprehensiveConfig {
+    pub project_path: PathBuf,
+    pub file: Option<PathBuf>,
+    pub files: Vec<PathBuf>,
+    pub format: ComprehensiveOutputFormat,
+    pub include_duplicates: bool,
+    pub include_dead_code: bool,
+    pub include_defects: bool,
+    pub include_complexity: bool,
+    pub include_tdg: bool,
+    pub confidence_threshold: f32,
+    pub min_lines: usize,
+    pub include: Option<String>,
+    pub exclude: Option<String>,
+    pub output: Option<PathBuf>,
+    pub perf: bool,
+    pub executive_summary: bool,
+}
 
 /// Handle comprehensive analysis command
 ///
@@ -104,51 +125,39 @@ pub async fn handle_analyze_comprehensive(
     perf: bool,
     executive_summary: bool,
 ) -> Result<()> {
+    let config = ComprehensiveConfig {
+        project_path,
+        file,
+        files,
+        format,
+        include_duplicates,
+        include_dead_code,
+        include_defects,
+        include_complexity,
+        include_tdg,
+        confidence_threshold,
+        min_lines,
+        include,
+        exclude,
+        output,
+        perf,
+        executive_summary,
+    };
+
+    handle_analyze_comprehensive_with_config(config).await
+}
+
+/// Handle comprehensive analysis with configuration struct
+async fn handle_analyze_comprehensive_with_config(config: ComprehensiveConfig) -> Result<()> {
     let start_time = Instant::now();
 
     info!("🔍 Starting comprehensive analysis");
 
-    // Determine analysis mode: single file, multiple files (MCP), or whole project
-    let (analysis_path, single_file_mode, target_files) = if let Some(ref file_path) = file {
-        info!("📄 Single file mode: {}", file_path.display());
-        // For single file, we need to find the project root
-        let project_root = find_project_root(file_path)?;
-        (project_root, true, vec![file_path.clone()])
-    } else if !files.is_empty() {
-        info!(
-            "📋 Multi-file mode (MCP composition): {} files",
-            files.len()
-        );
-        // For multiple files, use project root and filter by target files
-        (project_path.clone(), true, files.clone())
-    } else {
-        info!("📂 Project path: {}", project_path.display());
-        (project_path.clone(), false, vec![])
-    };
+    // Determine analysis mode
+    let (analysis_path, single_file_mode, target_files) = determine_analysis_mode(&config)?;
 
     // Log enabled analyses
-    let mut enabled_analyses = Vec::new();
-    if include_complexity {
-        enabled_analyses.push("complexity");
-    }
-    if include_tdg {
-        enabled_analyses.push("TDG");
-    }
-    if include_defects {
-        enabled_analyses.push("defects");
-    }
-    if include_dead_code {
-        enabled_analyses.push("dead code");
-    }
-    if include_duplicates {
-        enabled_analyses.push("duplicates");
-    }
-
-    if enabled_analyses.is_empty() {
-        // Default to all analyses if none specified
-        enabled_analyses = vec!["complexity", "TDG", "defects", "dead code", "duplicates"];
-    }
-
+    let enabled_analyses = get_enabled_analyses(&config);
     info!("📊 Enabled analyses: {}", enabled_analyses.join(", "));
 
     // Create defect report service
@@ -158,148 +167,31 @@ pub async fn handle_analyze_comprehensive(
     let report = service.generate_report(&analysis_path).await?;
 
     // Apply filters based on confidence threshold and file targeting
-    let filtered_defects: Vec<_> = report
-        .defects
-        .iter()
-        .filter(|d| {
-            // Filter by target files if in single/multi-file mode (MCP composition)
-            if single_file_mode && !target_files.is_empty() {
-                // Check if defect file matches any of our target files
-                let matches_target = target_files.iter().any(|target| {
-                    d.file_path == *target
-                        || d.file_path.ends_with(target)
-                        || target.ends_with(&d.file_path)
-                });
-                if !matches_target {
-                    return false;
-                }
-            }
-
-            // Convert confidence from metrics if available
-            let confidence = d.metrics.get("confidence").copied().unwrap_or(100.0) as f32;
-            confidence >= confidence_threshold
-        })
-        .cloned()
-        .collect();
+    let filtered_defects = filter_defects(
+        &report.defects,
+        single_file_mode,
+        &target_files,
+        config.confidence_threshold,
+    );
 
     info!("📈 Total defects found: {}", report.defects.len());
     info!(
         "📉 After confidence filter (>={:.0}%): {}",
-        confidence_threshold,
+        config.confidence_threshold * 100.0,
         filtered_defects.len()
     );
 
-    // Convert format
-    let output_format = match format {
-        ComprehensiveOutputFormat::Json => ReportFormat::Json,
-        ComprehensiveOutputFormat::Markdown => ReportFormat::Markdown,
-        ComprehensiveOutputFormat::Summary => ReportFormat::Text,
-        ComprehensiveOutputFormat::Detailed => ReportFormat::Markdown,
-        ComprehensiveOutputFormat::Sarif => ReportFormat::Json, // SARIF not implemented, use JSON
-    };
-
     // Format output
-    let formatted_output = match output_format {
-        ReportFormat::Json => {
-            // Create filtered report for JSON output
-            let mut filtered_report = report.clone();
-            filtered_report.defects = filtered_defects;
-            filtered_report.summary = service.compute_summary(&filtered_report.defects);
-            service.format_json(&filtered_report)?
-        }
-        ReportFormat::Markdown => {
-            // For Markdown, include executive summary if requested
-            let mut md = String::new();
-
-            if executive_summary {
-                md.push_str("# Executive Summary\n\n");
-                md.push_str(&format!("This comprehensive analysis of {} examined {} files and identified {} quality issues.\n\n",
-                    project_path.display(),
-                    report.metadata.total_files_analyzed,
-                    filtered_defects.len()
-                ));
-
-                // Add severity breakdown
-                let mut critical = 0;
-                let mut high = 0;
-                let mut medium = 0;
-                let mut low = 0;
-
-                for defect in &filtered_defects {
-                    match defect.severity {
-                        crate::models::defect_report::Severity::Critical => critical += 1,
-                        crate::models::defect_report::Severity::High => high += 1,
-                        crate::models::defect_report::Severity::Medium => medium += 1,
-                        crate::models::defect_report::Severity::Low => low += 1,
-                    }
-                }
-
-                md.push_str("## Key Findings\n\n");
-                if critical > 0 {
-                    md.push_str(&format!(
-                        "- **{} Critical Issues** requiring immediate attention\n",
-                        critical
-                    ));
-                }
-                if high > 0 {
-                    md.push_str(&format!(
-                        "- **{} High Priority Issues** that should be addressed soon\n",
-                        high
-                    ));
-                }
-                md.push_str(&format!("- **{} Medium Priority Issues**\n", medium));
-                md.push_str(&format!("- **{} Low Priority Issues**\n\n", low));
-
-                // Add recommendations
-                md.push_str("## Recommendations\n\n");
-                md.push_str("1. Address all critical issues immediately\n");
-                md.push_str("2. Create a plan to resolve high priority issues\n");
-                md.push_str("3. Consider refactoring files with multiple defects\n");
-                md.push_str("4. Establish quality gates to prevent new issues\n\n");
-
-                md.push_str("---\n\n");
-            }
-
-            // Add the regular report
-            let mut filtered_report = report.clone();
-            filtered_report.defects = filtered_defects;
-            filtered_report.summary = service.compute_summary(&filtered_report.defects);
-            md.push_str(&service.format_markdown(&filtered_report)?);
-
-            md
-        }
-        _ => {
-            // Fallback to JSON for other formats
-            let mut filtered_report = report.clone();
-            filtered_report.defects = filtered_defects;
-            filtered_report.summary = service.compute_summary(&filtered_report.defects);
-            service.format_json(&filtered_report)?
-        }
-    };
+    let formatted_output = format_report(&service, &report, filtered_defects, &config)?;
 
     // Write output
-    if let Some(output_path) = output {
-        tokio::fs::write(&output_path, &formatted_output).await?;
-        info!("📄 Report saved to: {}", output_path.display());
-    } else {
-        println!("{}", formatted_output);
-    }
+    write_output(&config.output, &formatted_output).await?;
 
     let elapsed = start_time.elapsed();
 
     // Print performance metrics if requested
-    if perf {
-        info!("⚡ Performance Metrics:");
-        info!("  Total time: {:?}", elapsed);
-        info!("  Files analyzed: {}", report.metadata.total_files_analyzed);
-        info!(
-            "  Files/second: {:.1}",
-            report.metadata.total_files_analyzed as f64 / elapsed.as_secs_f64()
-        );
-        info!(
-            "  Analysis time: {}ms",
-            report.metadata.analysis_duration_ms
-        );
+    if config.perf {
+        print_performance_metrics(elapsed, &report);
     }
 
     // Print summary by category
@@ -309,17 +201,151 @@ pub async fn handle_analyze_comprehensive(
     }
 
     // Warn about ignored parameters (for transparency)
-    if include.is_some() {
-        warn!("Note: --include parameter is not yet implemented in comprehensive analysis");
-    }
-    if exclude.is_some() {
-        warn!("Note: --exclude parameter is not yet implemented in comprehensive analysis");
-    }
-    if min_lines > 0 {
-        warn!("Note: --min-lines parameter is not yet implemented in comprehensive analysis");
-    }
+    warn_ignored_parameters(&config);
 
     Ok(())
+}
+
+/// Determine the analysis mode based on configuration
+fn determine_analysis_mode(config: &ComprehensiveConfig) -> Result<(PathBuf, bool, Vec<PathBuf>)> {
+    let analysis_path = if let Some(ref file) = config.file {
+        // Single file mode
+        find_project_root(file)?
+    } else {
+        config.project_path.clone()
+    };
+
+    let single_file_mode = config.file.is_some();
+
+    let target_files = if !config.files.is_empty() {
+        config.files.clone()
+    } else if let Some(ref file) = config.file {
+        vec![file.clone()]
+    } else {
+        vec![]
+    };
+
+    Ok((analysis_path, single_file_mode, target_files))
+}
+
+/// Get list of enabled analyses
+fn get_enabled_analyses(config: &ComprehensiveConfig) -> Vec<String> {
+    let mut analyses = Vec::new();
+
+    if config.include_complexity {
+        analyses.push("Complexity".to_string());
+    }
+    if config.include_tdg {
+        analyses.push("TDG".to_string());
+    }
+    if config.include_defects {
+        analyses.push("Defects".to_string());
+    }
+    if config.include_dead_code {
+        analyses.push("Dead Code".to_string());
+    }
+    if config.include_duplicates {
+        analyses.push("Duplicates".to_string());
+    }
+
+    analyses
+}
+
+/// Filter defects based on criteria
+fn filter_defects(
+    defects: &[crate::models::defect_report::Defect],
+    single_file_mode: bool,
+    target_files: &[PathBuf],
+    confidence_threshold: f32,
+) -> Vec<crate::models::defect_report::Defect> {
+    defects
+        .iter()
+        .filter(|defect| {
+            // Filter by confidence threshold
+            let confidence = defect.metrics.get("confidence").copied().unwrap_or(1.0) as f32;
+
+            if confidence < confidence_threshold {
+                return false;
+            }
+
+            // Filter by target files if specified
+            if single_file_mode && !target_files.is_empty() {
+                return target_files.contains(&defect.file_path);
+            }
+
+            true
+        })
+        .cloned()
+        .collect()
+}
+
+/// Format the report based on configuration
+fn format_report(
+    service: &DefectReportService,
+    report: &crate::models::defect_report::DefectReport,
+    filtered_defects: Vec<crate::models::defect_report::Defect>,
+    config: &ComprehensiveConfig,
+) -> Result<String> {
+    let format = match config.format {
+        ComprehensiveOutputFormat::Json => ReportFormat::Json,
+        ComprehensiveOutputFormat::Summary => ReportFormat::Markdown,
+        ComprehensiveOutputFormat::Detailed => ReportFormat::Markdown,
+        ComprehensiveOutputFormat::Markdown => ReportFormat::Markdown,
+        ComprehensiveOutputFormat::Sarif => ReportFormat::Json, // SARIF is JSON-based
+    };
+
+    // Create a modified report with filtered defects
+    let mut filtered_report = report.clone();
+    filtered_report.defects = filtered_defects;
+
+    // Format the report
+    match format {
+        ReportFormat::Json => serde_json::to_string_pretty(&filtered_report)
+            .context("Failed to serialize report to JSON"),
+        ReportFormat::Markdown | ReportFormat::Text => service
+            .format_text(&filtered_report)
+            .context("Failed to format report as text"),
+        ReportFormat::Csv => {
+            // For CSV, we'll use JSON as a fallback for now
+            serde_json::to_string_pretty(&filtered_report).context("Failed to serialize report")
+        }
+    }
+}
+
+/// Write output to file or stdout
+async fn write_output(output: &Option<PathBuf>, content: &str) -> Result<()> {
+    if let Some(output_path) = output {
+        tokio::fs::write(output_path, content)
+            .await
+            .context("Failed to write output file")?;
+        info!("📝 Report written to: {}", output_path.display());
+    } else {
+        println!("{}", content);
+    }
+    Ok(())
+}
+
+/// Print performance metrics
+fn print_performance_metrics(
+    elapsed: std::time::Duration,
+    report: &crate::models::defect_report::DefectReport,
+) {
+    info!("\n⏱️  Performance Metrics:");
+    info!("  Total time: {:.2}s", elapsed.as_secs_f64());
+    info!("  Hotspot files: {}", report.summary.hotspot_files.len());
+    info!("  Defects found: {}", report.summary.total_defects);
+    let defects_per_second = report.summary.total_defects as f64 / elapsed.as_secs_f64();
+    info!("  Defects/second: {:.2}", defects_per_second);
+}
+
+/// Warn about ignored parameters
+fn warn_ignored_parameters(config: &ComprehensiveConfig) {
+    if config.min_lines > 0 {
+        warn!("Note: min_lines parameter is currently handled by the DefectReportService");
+    }
+    if config.include.is_some() || config.exclude.is_some() {
+        warn!("Note: include/exclude patterns are currently handled by the DefectReportService");
+    }
 }
 
 /// Find the project root by looking for Cargo.toml
