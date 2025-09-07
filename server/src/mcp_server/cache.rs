@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use serde::{Serialize, Deserialize};
 use serde_json::Value;
 
 /// Cache entry with expiration tracking
@@ -66,6 +65,12 @@ pub struct McpCache {
     entries: Arc<RwLock<HashMap<String, CacheEntry>>>,
     config: CacheConfig,
     metrics: Arc<RwLock<CacheMetrics>>,
+}
+
+impl Default for McpCache {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl McpCache {
