@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Cleaned up unused imports to reduce compilation warnings
+- Enhanced quality gate file filtering to properly exclude test, example, demo, benchmark, mock, and stub files from production code analysis
+  - Expanded `is_excluded_filename` to catch all test patterns (tests.rs, test_harness.rs, property_tests, etc.)
+  - Unified test file detection logic across all quality checks for consistency
+  - Quality gate now focuses only on production code, making it actually useful
 
 ### Sprint 76: MCP Server Optimizations
 - Implemented caching layer with 5000 entry capacity and 10-minute TTL
