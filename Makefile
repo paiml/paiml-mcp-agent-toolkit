@@ -1038,8 +1038,13 @@ pre-release-checks:
 	@echo "✅ Build artifacts cleaned"
 	@echo ""
 	@echo "2️⃣ Version consistency check..."
-	@grep '^version' Cargo.toml server/Cargo.toml | uniq -c | grep -q '      2 version' || (echo "❌ Version mismatch detected!" && exit 1)
-	@echo "✅ Versions are consistent"
+	@workspace_version=$$(grep '^version = ' Cargo.toml | cut -d'"' -f2); \
+	 server_uses_workspace=$$(grep '^version.workspace = true' server/Cargo.toml); \
+	 if [ -n "$$workspace_version" ] && [ -n "$$server_uses_workspace" ]; then \
+		echo "✅ Versions are consistent (workspace: $$workspace_version, server: uses workspace)"; \
+	 else \
+		echo "❌ Version mismatch detected!"; exit 1; \
+	 fi
 	@echo ""
 	@echo "3️⃣ Running quality gates..."
 	@$(MAKE) lint || (echo "❌ Linting failed!" && exit 1)
