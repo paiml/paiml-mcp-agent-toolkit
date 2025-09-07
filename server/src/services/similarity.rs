@@ -474,7 +474,7 @@ impl SimilarityDetector {
                             },
                         ],
                         similarity: sim,
-                        clone_type: clone_type,
+                        clone_type,
                         lines: normalized[i].1.content.lines().count(),
                         tokens: self.count_tokens(&normalized[i].1.content),
                         content_preview: normalized[i]
@@ -525,7 +525,7 @@ impl SimilarityDetector {
                             },
                         ],
                         similarity: sim,
-                        clone_type: clone_type,
+                        clone_type,
                         lines: vectors[i].1.content.lines().count(),
                         tokens: self.count_tokens(&vectors[i].1.content),
                         content_preview: vectors[i]
