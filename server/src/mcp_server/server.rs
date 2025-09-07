@@ -1,8 +1,12 @@
+use crate::mcp_server::cache::{McpCache, CacheConfig, CacheKeyBuilder};
 use crate::mcp_server::handlers;
 use crate::mcp_server::state_manager::StateManager;
 use crate::models::mcp::{McpRequest, McpResponse};
 use serde_json::json;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::Mutex;
 use tracing::{debug, error, info};
@@ -98,6 +102,7 @@ use tracing::{debug, error, info};
 /// ```
 pub struct McpServer {
     state_manager: Arc<Mutex<StateManager>>,
+    cache: Arc<McpCache>,
 }
 
 impl McpServer {
@@ -131,8 +136,15 @@ impl McpServer {
     /// - Custom MCP clients
     /// - CI/CD pipeline integrations
     pub fn new() -> Self {
+        let cache_config = CacheConfig {
+            max_entries: 5000,
+            default_ttl: Duration::from_secs(600), // 10 minutes
+            enable_metrics: true,
+        };
+        
         Self {
             state_manager: Arc::new(Mutex::new(StateManager::new())),
+            cache: Arc::new(McpCache::with_config(cache_config)),
         }
     }
 
@@ -438,6 +450,24 @@ impl McpServer {
             ));
         }
 
+        // Check cache for read-only operations
+        let cache_key = if matches!(request.method.as_str(), "refactor.getState" | "initialize") {
+            let mut hasher = DefaultHasher::new();
+            request.method.hash(&mut hasher);
+            request.params.hash(&mut hasher);
+            Some(CacheKeyBuilder::method_result_key(&request.method, hasher.finish()))
+        } else {
+            None
+        };
+
+        // Try to get from cache
+        if let Some(key) = &cache_key {
+            if let Some(cached_value) = self.cache.get(key).await {
+                debug!("Cache hit for method: {}", request.method);
+                return Ok(McpResponse::success(request.id, cached_value));
+            }
+        }
+
         // Route to appropriate handler
         let result = match request.method.as_str() {
             "initialize" => {
@@ -478,7 +508,25 @@ impl McpServer {
             }
         };
 
+        // Cache the result for read-only operations
+        if let Some(key) = cache_key {
+            self.cache.set(key, result.clone()).await;
+            debug!("Cached result for method: {}", request.method);
+        }
+
         Ok(McpResponse::success(request.id, result))
+    }
+    
+    /// Get cache metrics for monitoring
+    pub async fn cache_metrics(&self) -> String {
+        let metrics = self.cache.metrics().await;
+        format!(
+            "Cache Metrics - Hits: {}, Misses: {}, Hit Ratio: {:.2}%, Size: {}",
+            metrics.hits,
+            metrics.misses,
+            metrics.hit_ratio() * 100.0,
+            self.cache.size().await
+        )
     }
 }
 

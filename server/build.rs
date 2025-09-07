@@ -17,6 +17,12 @@ fn main() {
     // Declare custom cfg flag for cargo publish detection
     println!("cargo:rustc-check-cfg=cfg(cargo_publish)");
 
+    // Fast build mode for development - skip heavy operations
+    if env::var("PMAT_FAST_BUILD").is_ok() {
+        println!("cargo:warning=Fast build mode enabled - skipping heavy build operations");
+        return;
+    }
+
     // Verify critical dependencies at build time
     verify_dependency_versions();
 
