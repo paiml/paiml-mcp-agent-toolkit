@@ -7,8 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **MCP Server Caching**: High-performance in-memory cache with TTL and metrics for improved response times
+- **Build Optimization**: PMAT_FAST_BUILD environment variable for faster development builds
+- **Cache Metrics**: Real-time monitoring of cache hit ratio and performance statistics
+
 ### Fixed
 - Cleaned up unused imports to reduce compilation warnings
+
+### Sprint 76: MCP Server Optimizations
+- Implemented caching layer with 5000 entry capacity and 10-minute TTL
+- Added cache integration for read-only MCP operations (initialize, getState)
+- Introduced cache metrics tracking (hits, misses, evictions, hit ratio)
+- Created CacheKeyBuilder for consistent cache key generation
+- Added comprehensive tests for cache functionality
 
 ## [2.61.0] - 2025-09-06
 
