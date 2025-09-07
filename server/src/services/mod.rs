@@ -129,6 +129,9 @@ pub mod dogfooding_engine;
 pub mod duplicate_detector;
 #[cfg(test)]
 mod duplicate_detector_property_tests;
+pub mod similarity; // Advanced similarity and entropy detection
+#[cfg(test)]
+pub mod similarity_tests;
 pub mod embedded_templates;
 pub mod enhanced_reporting;
 pub mod file_classifier;

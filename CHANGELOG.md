@@ -5,6 +5,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.63.0] - 2025-09-07
+
+### Code Similarity and Entropy Detection Release 🚀
+
+Comprehensive implementation of advanced code similarity detection with entropy analysis, addressing user-reported issues with duplicate and similar code detection.
+
+#### Sprint 77 Achievements ✅
+
+##### Added
+- **Comprehensive Similarity Detection**: Four types of clone detection (Type-1 through Type-4)
+  - Type-1: Exact duplicates with whitespace normalization
+  - Type-2: Renamed variables/functions (structural similarity)
+  - Type-3: Modified code with gaps/additions
+  - Type-4: Semantic equivalence (different implementations, same behavior)
+- **Advanced Algorithms**: Industry-standard computer science techniques
+  - Winnowing algorithm for fingerprinting (guaranteed substring detection)
+  - Shannon entropy analysis (H(X) = -Σ p(xi) * log2(p(xi)))
+  - TF-IDF for semantic similarity
+  - Cosine similarity for vector comparison
+  - Jaccard index for set-based similarity
+  - Levenshtein distance for fuzzy matching
+- **Rich Feature Set**: Comprehensive analysis capabilities
+  - Entropy-based complexity detection
+  - Pattern-based refactoring opportunities
+  - Multi-level similarity thresholds
+  - AST-based structural analysis
+  - Token-based semantic analysis
+- **Full Integration**: Complete CLI and MCP support
+  - CLI: `pmat analyze duplicates` with multiple detection types
+  - MCP: Three new tools (analyze_similarity, analyze_entropy, find_refactoring_opportunities)
+  - Multiple output formats: JSON, Markdown, CSV, SARIF, Summary
+- **Comprehensive Testing**: TDD approach throughout
+  - Test fixtures for all clone types
+  - CLI integration tests
+  - MCP tool tests
+  - Property-based testing
+  - Working example: `cargo run --example similarity_demo`
+- **Documentation**: Complete specification and examples
+  - Full specification: `docs/specifications/entropy.md`
+  - Updated README with usage examples
+  - Inline documentation for all public APIs
+
+#### Technical Achievements
+- **Code Quality**: All functions maintain <10 cyclomatic complexity
+- **Performance**: Optimized for 100K+ LOC codebases
+- **Test Coverage**: Comprehensive TDD implementation
+- **Zero SATD**: No technical debt comments
+- **Modular Design**: Clean separation of concerns
+- **Algorithm Accuracy**: Industry-standard implementations
+
+#### Files Added/Modified
+- **New Core Module**: `server/src/services/similarity.rs` (600+ lines)
+- **CLI Handler**: `server/src/cli/handlers/similarity_handler.rs`
+- **MCP Integration**: `server/src/mcp_server/tools/similarity_tools.rs`
+- **Test Suite**: `server/tests/cli_similarity_tests.rs`
+- **Test Fixtures**: `server/tests/fixtures/*.rs`
+- **Example**: `server/examples/similarity_demo.rs`
+- **Specification**: `docs/specifications/entropy.md`
+
 ## [2.62.0] - 2025-09-07
 
 ### Project Stabilization Release 🎯
