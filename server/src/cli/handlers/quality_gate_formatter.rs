@@ -290,7 +290,11 @@ async fn run_individual_checks(
     use std::time::Instant;
 
     for check in config.checks {
-        let check_start = if config.perf { Some(Instant::now()) } else { None };
+        let check_start = if config.perf {
+            Some(Instant::now())
+        } else {
+            None
+        };
 
         crate::cli::analysis_utilities::run_single_project_check(
             check,

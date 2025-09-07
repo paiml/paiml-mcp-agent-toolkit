@@ -149,7 +149,7 @@ impl SimilarityDetector {
     /// Detect exact duplicates
     pub fn detect_exact_duplicates(&self, files: &[(PathBuf, String)]) -> Vec<SimilarBlock> {
         let mut hash_map: HashMap<u64, Vec<(PathBuf, usize, usize, String)>> = HashMap::new();
-        
+
         for (path, content) in files {
             let blocks = self.extract_code_blocks(content, self.config.min_lines);
             for block in blocks {
@@ -174,7 +174,7 @@ impl SimilarityDetector {
         threshold: f64,
     ) -> Vec<SimilarBlock> {
         let mut normalized_blocks = Vec::new();
-        
+
         for (path, content) in files {
             let blocks = self.extract_code_blocks(content, self.config.min_lines);
             for block in blocks {
@@ -193,7 +193,7 @@ impl SimilarityDetector {
         threshold: f64,
     ) -> Vec<SimilarBlock> {
         let mut token_vectors = Vec::new();
-        
+
         for (path, content) in files {
             let blocks = self.extract_code_blocks(content, self.config.min_lines);
             for block in blocks {
@@ -211,13 +211,13 @@ impl SimilarityDetector {
         let mut all_entropies = Vec::new();
         let mut high_entropy = Vec::new();
         let mut low_entropy = Vec::new();
-        
+
         for (path, content) in files {
             let blocks = self.extract_code_blocks(content, self.config.min_lines);
             for block in blocks {
                 let entropy = self.calculate_entropy(&block.content);
                 all_entropies.push(entropy);
-                
+
                 let location = Location {
                     file: path.clone(),
                     start_line: block.start_line,
@@ -225,7 +225,7 @@ impl SimilarityDetector {
                     start_column: None,
                     end_column: None,
                 };
-                
+
                 if entropy > 4.0 {
                     high_entropy.push(EntropyBlock {
                         location,
@@ -243,15 +243,15 @@ impl SimilarityDetector {
                 }
             }
         }
-        
+
         let avg_entropy = if !all_entropies.is_empty() {
             all_entropies.iter().sum::<f64>() / all_entropies.len() as f64
         } else {
             0.0
         };
-        
+
         let recommendations = self.generate_recommendations(&high_entropy, &low_entropy);
-        
+
         EntropyReport {
             average_entropy: avg_entropy,
             high_entropy_blocks: high_entropy,
@@ -266,7 +266,7 @@ impl SimilarityDetector {
         files: &[(PathBuf, String)],
     ) -> Vec<RefactoringHint> {
         let mut hints = Vec::new();
-        
+
         // Find similar patterns
         let structural = self.detect_structural_similarity(files, 0.8);
         for similar in structural {
@@ -279,7 +279,7 @@ impl SimilarityDetector {
                 });
             }
         }
-        
+
         // Find semantic duplicates
         let semantic = self.detect_semantic_similarity(files, 0.7);
         for similar in semantic {
@@ -290,7 +290,7 @@ impl SimilarityDetector {
                 priority: Priority::Medium,
             });
         }
-        
+
         hints
     }
 
@@ -305,11 +305,11 @@ impl SimilarityDetector {
             None
         };
         let refactoring = self.find_refactoring_opportunities(files);
-        
+
         let total_clones = exact.len() + structural.len() + semantic.len();
         let duplication_percentage = self.calculate_duplication_percentage(files, &exact);
         let average_entropy = entropy.as_ref().map_or(0.0, |e| e.average_entropy);
-        
+
         ComprehensiveReport {
             exact_duplicates: exact,
             structural_similarities: structural,
@@ -334,11 +334,11 @@ impl SimilarityDetector {
     fn extract_code_blocks(&self, content: &str, min_lines: usize) -> Vec<CodeBlock> {
         let lines: Vec<&str> = content.lines().collect();
         let mut blocks = Vec::new();
-        
+
         for i in 0..lines.len().saturating_sub(min_lines - 1) {
             let block_lines = &lines[i..i + min_lines];
             let block_content = block_lines.join("\n");
-            
+
             if self.count_tokens(&block_content) >= self.config.min_tokens {
                 blocks.push(CodeBlock {
                     start_line: i + 1,
@@ -347,7 +347,7 @@ impl SimilarityDetector {
                 });
             }
         }
-        
+
         blocks
     }
 
@@ -360,21 +360,21 @@ impl SimilarityDetector {
         let mut result = text.to_string();
         let ident_pattern = regex::Regex::new(r"\b[a-zA-Z_][a-zA-Z0-9_]*\b").unwrap();
         let mut counter = 0;
-        
+
         for mat in ident_pattern.find_iter(text) {
             if !self.is_keyword(mat.as_str()) {
                 counter += 1;
                 result = result.replace(mat.as_str(), &format!("VAR{}", counter));
             }
         }
-        
+
         result
     }
 
     fn hash_content(&self, content: &str) -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         content.hash(&mut hasher);
         hasher.finish()
@@ -385,9 +385,25 @@ impl SimilarityDetector {
     }
 
     fn is_keyword(&self, word: &str) -> bool {
-        matches!(word, "fn" | "let" | "mut" | "if" | "else" | "match" | 
-                       "for" | "while" | "loop" | "return" | "use" | "pub" |
-                       "struct" | "enum" | "impl" | "trait" | "mod")
+        matches!(
+            word,
+            "fn" | "let"
+                | "mut"
+                | "if"
+                | "else"
+                | "match"
+                | "for"
+                | "while"
+                | "loop"
+                | "return"
+                | "use"
+                | "pub"
+                | "struct"
+                | "enum"
+                | "impl"
+                | "trait"
+                | "mod"
+        )
     }
 
     fn build_duplicate_blocks(
@@ -396,22 +412,25 @@ impl SimilarityDetector {
         clone_type: CloneType,
     ) -> Vec<SimilarBlock> {
         let mut blocks = Vec::new();
-        
+
         for (hash, locations) in hash_map {
             if locations.len() > 1 {
                 let content = &locations[0].3;
                 let lines = content.lines().count();
                 let tokens = self.count_tokens(content);
-                
+
                 blocks.push(SimilarBlock {
                     id: format!("{:x}", hash),
-                    locations: locations.iter().map(|(path, start, end, _)| Location {
-                        file: path.clone(),
-                        start_line: *start,
-                        end_line: *end,
-                        start_column: None,
-                        end_column: None,
-                    }).collect(),
+                    locations: locations
+                        .iter()
+                        .map(|(path, start, end, _)| Location {
+                            file: path.clone(),
+                            start_line: *start,
+                            end_line: *end,
+                            start_column: None,
+                            end_column: None,
+                        })
+                        .collect(),
                     similarity: 1.0,
                     clone_type,
                     lines,
@@ -420,7 +439,7 @@ impl SimilarityDetector {
                 });
             }
         }
-        
+
         blocks
     }
 
@@ -431,7 +450,7 @@ impl SimilarityDetector {
         clone_type: CloneType,
     ) -> Vec<SimilarBlock> {
         let mut similar = Vec::new();
-        
+
         for i in 0..normalized.len() {
             for j in i + 1..normalized.len() {
                 let sim = self.calculate_similarity(&normalized[i].2, &normalized[j].2);
@@ -455,16 +474,21 @@ impl SimilarityDetector {
                             },
                         ],
                         similarity: sim,
-                        clone_type: clone_type.clone(),
+                        clone_type: clone_type,
                         lines: normalized[i].1.content.lines().count(),
                         tokens: self.count_tokens(&normalized[i].1.content),
-                        content_preview: normalized[i].1.content.lines()
-                            .take(3).collect::<Vec<_>>().join("\n"),
+                        content_preview: normalized[i]
+                            .1
+                            .content
+                            .lines()
+                            .take(3)
+                            .collect::<Vec<_>>()
+                            .join("\n"),
                     });
                 }
             }
         }
-        
+
         similar
     }
 
@@ -475,10 +499,12 @@ impl SimilarityDetector {
         clone_type: CloneType,
     ) -> Vec<SimilarBlock> {
         let mut matches = Vec::new();
-        
+
         for i in 0..vectors.len() {
             for j in i + 1..vectors.len() {
-                let sim = self.token_analyzer.cosine_similarity(&vectors[i].2, &vectors[j].2);
+                let sim = self
+                    .token_analyzer
+                    .cosine_similarity(&vectors[i].2, &vectors[j].2);
                 if sim >= threshold {
                     matches.push(SimilarBlock {
                         id: format!("sem_{}", matches.len()),
@@ -499,16 +525,21 @@ impl SimilarityDetector {
                             },
                         ],
                         similarity: sim,
-                        clone_type: clone_type.clone(),
+                        clone_type: clone_type,
                         lines: vectors[i].1.content.lines().count(),
                         tokens: self.count_tokens(&vectors[i].1.content),
-                        content_preview: vectors[i].1.content.lines()
-                            .take(3).collect::<Vec<_>>().join("\n"),
+                        content_preview: vectors[i]
+                            .1
+                            .content
+                            .lines()
+                            .take(3)
+                            .collect::<Vec<_>>()
+                            .join("\n"),
                     });
                 }
             }
         }
-        
+
         matches
     }
 
@@ -516,7 +547,7 @@ impl SimilarityDetector {
         let len1 = text1.len() as f64;
         let len2 = text2.len() as f64;
         let dist = levenshtein::levenshtein(text1, text2) as f64;
-        
+
         1.0 - (dist / len1.max(len2))
     }
 
@@ -525,14 +556,13 @@ impl SimilarityDetector {
         files: &[(PathBuf, String)],
         duplicates: &[SimilarBlock],
     ) -> f64 {
-        let total_lines: usize = files.iter()
+        let total_lines: usize = files
+            .iter()
             .map(|(_, content)| content.lines().count())
             .sum();
-        
-        let duplicate_lines: usize = duplicates.iter()
-            .map(|d| d.lines * d.locations.len())
-            .sum();
-        
+
+        let duplicate_lines: usize = duplicates.iter().map(|d| d.lines * d.locations.len()).sum();
+
         if total_lines > 0 {
             (duplicate_lines as f64 / total_lines as f64) * 100.0
         } else {
@@ -546,27 +576,26 @@ impl SimilarityDetector {
         low_entropy: &[EntropyBlock],
     ) -> Vec<String> {
         let mut recommendations = Vec::new();
-        
+
         if !high_entropy.is_empty() {
             recommendations.push(format!(
                 "Found {} complex code blocks that should be simplified",
                 high_entropy.len()
             ));
         }
-        
+
         if !low_entropy.is_empty() {
             recommendations.push(format!(
                 "Found {} repetitive patterns that could be extracted",
                 low_entropy.len()
             ));
         }
-        
+
         if low_entropy.len() > 5 {
-            recommendations.push(
-                "Consider creating utility functions for common patterns".to_string()
-            );
+            recommendations
+                .push("Consider creating utility functions for common patterns".to_string());
         }
-        
+
         recommendations
     }
 }
@@ -585,7 +614,10 @@ pub struct Winnowing {
 
 impl Winnowing {
     pub fn new(window_size: usize, k_gram_size: usize) -> Self {
-        Self { window_size, k_gram_size }
+        Self {
+            window_size,
+            k_gram_size,
+        }
     }
 
     pub fn fingerprint(&self, text: &str) -> Vec<u64> {
@@ -596,41 +628,45 @@ impl Winnowing {
     pub fn similarity(&self, fp1: &[u64], fp2: &[u64]) -> f64 {
         let set1: HashSet<_> = fp1.iter().collect();
         let set2: HashSet<_> = fp2.iter().collect();
-        
+
         let intersection = set1.intersection(&set2).count() as f64;
         let union = set1.union(&set2).count() as f64;
-        
-        if union > 0.0 { intersection / union } else { 0.0 }
+
+        if union > 0.0 {
+            intersection / union
+        } else {
+            0.0
+        }
     }
 
     pub fn find_matches(&self, text_fp: &[u64], sub_fp: &[u64]) -> Vec<usize> {
         let mut matches = Vec::new();
         let sub_set: HashSet<_> = sub_fp.iter().collect();
-        
+
         for (i, fp) in text_fp.iter().enumerate() {
             if sub_set.contains(fp) {
                 matches.push(i);
             }
         }
-        
+
         matches
     }
 
     fn extract_k_grams(&self, text: &str) -> Vec<u64> {
         let chars: Vec<char> = text.chars().collect();
         let mut k_grams = Vec::new();
-        
+
         for i in 0..chars.len().saturating_sub(self.k_gram_size - 1) {
             let gram: String = chars[i..i + self.k_gram_size].iter().collect();
             k_grams.push(self.hash_k_gram(&gram));
         }
-        
+
         k_grams
     }
 
     fn select_fingerprints(&self, k_grams: &[u64]) -> Vec<u64> {
         let mut fingerprints = Vec::new();
-        
+
         for window in k_grams.windows(self.window_size) {
             if let Some(min) = window.iter().min() {
                 if !fingerprints.contains(min) {
@@ -638,14 +674,14 @@ impl Winnowing {
                 }
             }
         }
-        
+
         fingerprints
     }
 
     fn hash_k_gram(&self, gram: &str) -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         gram.hash(&mut hasher);
         hasher.finish()
@@ -663,19 +699,17 @@ impl TokenAnalyzer {
     }
 
     fn tokenize(&self, text: &str) -> Vec<String> {
-        text.split_whitespace()
-            .map(|s| s.to_lowercase())
-            .collect()
+        text.split_whitespace().map(|s| s.to_lowercase()).collect()
     }
 
     fn to_vector(&self, tokens: &[String]) -> TokenVector {
         let mut vector = HashMap::new();
         let total = tokens.len() as f64;
-        
+
         for token in tokens {
             *vector.entry(token.clone()).or_insert(0.0) += 1.0 / total;
         }
-        
+
         vector
     }
 
@@ -683,18 +717,18 @@ impl TokenAnalyzer {
         let mut dot_product = 0.0;
         let mut norm1 = 0.0;
         let mut norm2 = 0.0;
-        
+
         for (token, weight1) in v1 {
             norm1 += weight1 * weight1;
             if let Some(weight2) = v2.get(token) {
                 dot_product += weight1 * weight2;
             }
         }
-        
+
         for weight2 in v2.values() {
             norm2 += weight2 * weight2;
         }
-        
+
         if norm1 > 0.0 && norm2 > 0.0 {
             dot_product / (norm1.sqrt() * norm2.sqrt())
         } else {
@@ -714,11 +748,11 @@ impl EntropyCalculator {
     fn calculate(&self, text: &str) -> f64 {
         let mut char_counts = HashMap::new();
         let total = text.len() as f64;
-        
+
         for ch in text.chars() {
             *char_counts.entry(ch).or_insert(0) += 1;
         }
-        
+
         let mut entropy = 0.0;
         for count in char_counts.values() {
             let probability = *count as f64 / total;
@@ -726,7 +760,7 @@ impl EntropyCalculator {
                 entropy -= probability * probability.log2();
             }
         }
-        
+
         entropy
     }
 }

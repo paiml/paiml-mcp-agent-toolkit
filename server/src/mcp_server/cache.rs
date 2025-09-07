@@ -3,11 +3,11 @@
 //! Provides in-memory caching for frequently accessed data in the MCP server,
 //! reducing redundant computations and improving response times.
 
+use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use serde_json::Value;
 
 /// Cache entry with expiration tracking
 #[derive(Debug, Clone)]
@@ -100,7 +100,7 @@ impl McpCache {
                 return Some(entry.value.clone());
             }
         }
-        
+
         metrics.misses += 1;
         None
     }
@@ -113,11 +113,11 @@ impl McpCache {
     /// Set a value in the cache with custom TTL
     pub async fn set_with_ttl(&self, key: String, value: Value, ttl: Duration) {
         let mut entries = self.entries.write().await;
-        
+
         // Evict old entries if at capacity
         if entries.len() >= self.config.max_entries {
             self.evict_expired(&mut entries).await;
-            
+
             // If still at capacity, remove oldest entry
             if entries.len() >= self.config.max_entries {
                 if let Some(oldest_key) = self.find_oldest(&entries) {
@@ -130,10 +130,13 @@ impl McpCache {
             }
         }
 
-        entries.insert(key, CacheEntry {
-            value,
-            expires_at: Instant::now() + ttl,
-        });
+        entries.insert(
+            key,
+            CacheEntry {
+                value,
+                expires_at: Instant::now() + ttl,
+            },
+        );
     }
 
     /// Clear all cache entries
@@ -211,12 +214,17 @@ mod tests {
     #[tokio::test]
     async fn test_cache_basic_operations() {
         let cache = McpCache::new();
-        
+
         // Test set and get
-        cache.set("test_key".to_string(), Value::String("test_value".to_string())).await;
+        cache
+            .set(
+                "test_key".to_string(),
+                Value::String("test_value".to_string()),
+            )
+            .await;
         let value = cache.get("test_key").await;
         assert_eq!(value, Some(Value::String("test_value".to_string())));
-        
+
         // Test miss
         let missing = cache.get("missing_key").await;
         assert_eq!(missing, None);
@@ -225,20 +233,22 @@ mod tests {
     #[tokio::test]
     async fn test_cache_expiration() {
         let cache = McpCache::new();
-        
+
         // Set with very short TTL
-        cache.set_with_ttl(
-            "expire_key".to_string(),
-            Value::String("expire_value".to_string()),
-            Duration::from_millis(10)
-        ).await;
-        
+        cache
+            .set_with_ttl(
+                "expire_key".to_string(),
+                Value::String("expire_value".to_string()),
+                Duration::from_millis(10),
+            )
+            .await;
+
         // Should exist immediately
         assert!(cache.get("expire_key").await.is_some());
-        
+
         // Wait for expiration
         tokio::time::sleep(Duration::from_millis(20)).await;
-        
+
         // Should be expired
         assert!(cache.get("expire_key").await.is_none());
     }
@@ -246,13 +256,15 @@ mod tests {
     #[tokio::test]
     async fn test_cache_metrics() {
         let cache = McpCache::new();
-        
+
         // Generate some cache activity
-        cache.set("key1".to_string(), Value::String("value1".to_string())).await;
+        cache
+            .set("key1".to_string(), Value::String("value1".to_string()))
+            .await;
         let _ = cache.get("key1").await; // Hit
         let _ = cache.get("key2").await; // Miss
         let _ = cache.get("key1").await; // Hit
-        
+
         let metrics = cache.metrics().await;
         assert_eq!(metrics.hits, 2);
         assert_eq!(metrics.misses, 1);
@@ -268,14 +280,20 @@ mod tests {
             enable_metrics: true,
         };
         let cache = McpCache::with_config(config);
-        
+
         // Fill cache to capacity
-        cache.set("key1".to_string(), Value::String("value1".to_string())).await;
-        cache.set("key2".to_string(), Value::String("value2".to_string())).await;
-        
+        cache
+            .set("key1".to_string(), Value::String("value1".to_string()))
+            .await;
+        cache
+            .set("key2".to_string(), Value::String("value2".to_string()))
+            .await;
+
         // This should trigger eviction
-        cache.set("key3".to_string(), Value::String("value3".to_string())).await;
-        
+        cache
+            .set("key3".to_string(), Value::String("value3".to_string()))
+            .await;
+
         // Cache should not exceed max_entries
         assert!(cache.size().await <= 2);
     }
@@ -284,13 +302,13 @@ mod tests {
     fn test_cache_key_builder() {
         let analysis_key = CacheKeyBuilder::analysis_key("src/main.rs", "v1.0.0");
         assert_eq!(analysis_key, "analysis:src/main.rs:v1.0.0");
-        
+
         let refactor_key = CacheKeyBuilder::refactor_plan_key("src/lib.rs", 12345);
         assert_eq!(refactor_key, "refactor_plan:src/lib.rs:12345");
-        
+
         let complexity_key = CacheKeyBuilder::complexity_key("src/test.rs");
         assert_eq!(complexity_key, "complexity:src/test.rs");
-        
+
         let method_key = CacheKeyBuilder::method_result_key("refactor.start", 67890);
         assert_eq!(method_key, "method:refactor.start:67890");
     }

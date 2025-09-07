@@ -489,19 +489,19 @@ mod tests {
     #[test]
     fn test_storage_iterator_type_alias() {
         let backend = InMemoryBackend::new();
-        
+
         // Add test data
         backend.put(b"key1", b"value1").unwrap();
         backend.put(b"key2", b"value2").unwrap();
-        
+
         // Get iterator using the type alias
         let iter: StorageIterator = backend.iter().unwrap();
-        
+
         // Collect results
         let results: Vec<KeyValuePair> = iter.collect::<Result<Vec<_>>>().unwrap();
-        
+
         assert_eq!(results.len(), 2);
-        
+
         // Verify the KeyValuePair type alias works
         for pair in results {
             let (key, value): KeyValuePair = pair;

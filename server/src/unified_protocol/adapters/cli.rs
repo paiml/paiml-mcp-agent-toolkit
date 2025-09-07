@@ -8,8 +8,7 @@ use tracing::debug;
 
 use crate::cli::commands::ScaffoldCommands;
 use crate::cli::{
-    AnalyzeCommands, Commands, ComplexityOutputFormat, ContextFormat, DagType,
-    OutputFormat,
+    AnalyzeCommands, Commands, ComplexityOutputFormat, ContextFormat, DagType, OutputFormat,
 };
 use crate::models::churn::ChurnOutputFormat;
 use crate::unified_protocol::{
@@ -2212,11 +2211,16 @@ fn provability_format_to_string(format: &crate::cli::ProvabilityOutputFormat) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::{AnalyzeCommands, Commands, ComplexityOutputFormat, DagType, DeadCodeOutputFormat, OutputFormat, SatdOutputFormat};
-    use crate::cli::{DemoProtocol, DeepContextOutputFormat, DeepContextDagType, DeepContextCacheStrategy};
     use crate::cli::commands::ServeTransport;
+    use crate::cli::{
+        AnalyzeCommands, Commands, ComplexityOutputFormat, DagType, DeadCodeOutputFormat,
+        OutputFormat, SatdOutputFormat,
+    };
+    use crate::cli::{
+        DeepContextCacheStrategy, DeepContextDagType, DeepContextOutputFormat, DemoProtocol,
+    };
     use crate::models::churn::ChurnOutputFormat;
-    use crate::unified_protocol::{StatusCode, HeaderMap, Uuid};
+    use crate::unified_protocol::{HeaderMap, StatusCode, Uuid};
     use serde_json::{json, Value};
     use std::path::PathBuf;
 

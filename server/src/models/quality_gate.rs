@@ -98,15 +98,15 @@ mod tests {
             violations: Some(5),
             passed: false,
         };
-        
+
         assert_eq!(result.violations, Some(5));
         assert!(!result.passed);
-        
+
         let passing_result = QualityGateResult {
             violations: None,
             passed: true,
         };
-        
+
         assert!(passing_result.violations.is_none());
         assert!(passing_result.passed);
     }
@@ -114,7 +114,7 @@ mod tests {
     #[test]
     fn test_quality_gate_results_default() {
         let results = QualityGateResults::default();
-        
+
         assert!(results.passed);
         assert_eq!(results.total_violations, 0);
         assert_eq!(results.complexity_violations, 0);
@@ -137,7 +137,7 @@ mod tests {
             message: "Function too complex".to_string(),
             severity: ViolationSeverity::Error,
         };
-        
+
         assert_eq!(violation.file, "test.rs");
         assert_eq!(violation.line, Some(42));
         assert_eq!(violation.violation_type, "complexity");
@@ -169,7 +169,7 @@ mod tests {
     fn test_quality_check_type_equality() {
         assert_eq!(QualityCheckType::Complexity, QualityCheckType::Complexity);
         assert_ne!(QualityCheckType::Complexity, QualityCheckType::DeadCode);
-        
+
         let check1 = QualityCheckType::Satd;
         let check2 = QualityCheckType::Satd;
         assert_eq!(check1, check2);
@@ -178,12 +178,12 @@ mod tests {
     #[test]
     fn test_quality_gate_results_with_violations() {
         let mut results = QualityGateResults::default();
-        
+
         results.passed = false;
         results.total_violations = 3;
         results.complexity_violations = 2;
         results.satd_violations = 1;
-        
+
         results.violations.push(QualityViolation {
             file: "main.rs".to_string(),
             line: Some(10),
@@ -191,7 +191,7 @@ mod tests {
             message: "Cyclomatic complexity of 25 exceeds limit of 20".to_string(),
             severity: ViolationSeverity::Error,
         });
-        
+
         assert!(!results.passed);
         assert_eq!(results.total_violations, 3);
         assert_eq!(results.violations.len(), 1);
@@ -207,7 +207,7 @@ mod tests {
             message: "Test coverage below 80%".to_string(),
             severity: ViolationSeverity::Warning,
         };
-        
+
         assert_eq!(violation.file, "project");
         assert!(violation.line.is_none());
         assert_eq!(violation.severity, ViolationSeverity::Warning);
@@ -226,20 +226,18 @@ mod tests {
             duplicate_violations: 0,
             coverage_violations: 0,
             section_violations: 0,
-            violations: vec![
-                QualityViolation {
-                    file: "test.rs".to_string(),
-                    line: Some(100),
-                    violation_type: "complexity".to_string(),
-                    message: "Too complex".to_string(),
-                    severity: ViolationSeverity::Error,
-                }
-            ],
+            violations: vec![QualityViolation {
+                file: "test.rs".to_string(),
+                line: Some(100),
+                violation_type: "complexity".to_string(),
+                message: "Too complex".to_string(),
+                severity: ViolationSeverity::Error,
+            }],
         };
-        
+
         let json = serde_json::to_string(&original).unwrap();
         let deserialized: QualityGateResults = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(original.passed, deserialized.passed);
         assert_eq!(original.total_violations, deserialized.total_violations);
         assert_eq!(original.violations.len(), deserialized.violations.len());

@@ -1,10 +1,5 @@
 use anyhow::Result;
-use pmat::tdg::{
-    TieredStorageFactory,
-    SchedulerFactory, 
-    AdaptiveThresholdFactory,
-    ResourceLimits,
-};
+use pmat::tdg::{AdaptiveThresholdFactory, ResourceLimits, SchedulerFactory, TieredStorageFactory};
 use std::sync::Arc;
 use tempfile;
 

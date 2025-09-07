@@ -81,6 +81,7 @@ pub mod ast_cpp_compat; // Compatibility layer for C++ AST migration
                         // kotlin-ast feature is disabled
                         // #[cfg(feature = "kotlin-ast")]
                         // pub mod ast_kotlin;
+pub mod accurate_complexity_analyzer;
 #[cfg(feature = "python-ast")]
 pub mod ast_python;
 #[cfg(feature = "python-ast")]
@@ -102,12 +103,11 @@ pub mod canonical_query;
 pub mod cargo_dead_code_analyzer;
 pub mod code_intelligence;
 pub mod complexity;
-pub mod complexity_patterns;
-pub mod accurate_complexity_analyzer;
-#[cfg(test)]
-mod complexity_property_tests;
 #[cfg(test)]
 mod complexity_analyzer_tests;
+pub mod complexity_patterns;
+#[cfg(test)]
+mod complexity_property_tests;
 pub mod configuration_service;
 pub mod context;
 pub mod coupling_analyzer;
@@ -129,9 +129,6 @@ pub mod dogfooding_engine;
 pub mod duplicate_detector;
 #[cfg(test)]
 mod duplicate_detector_property_tests;
-pub mod similarity; // Advanced similarity and entropy detection
-#[cfg(test)]
-pub mod similarity_tests;
 pub mod embedded_templates;
 pub mod enhanced_reporting;
 pub mod file_classifier;
@@ -157,6 +154,9 @@ pub mod project_analyzer;
 pub mod project_meta_detector;
 pub mod proof_annotator;
 pub mod quality_gates;
+pub mod similarity; // Advanced similarity and entropy detection
+#[cfg(test)]
+pub mod similarity_tests;
 pub use quality_gates as quality_gate;
 #[cfg(test)]
 mod deep_context_property_tests;

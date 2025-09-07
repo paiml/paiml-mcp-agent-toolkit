@@ -328,7 +328,7 @@ mod tests {
                     // This test needs to be updated when the method is implemented
                     // For now, just verify the manager was created successfully
                     manager.clear_all();
-                    
+
                     // Original test code commented out:
                     // let context_clone = file_context.clone();
                     // let result = manager.get_or_compute_ast(&file_path, || async move {

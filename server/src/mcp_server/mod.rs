@@ -5,6 +5,6 @@ pub mod server;
 pub mod snapshots;
 pub mod state_manager;
 
-pub use cache::{McpCache, CacheConfig, CacheKeyBuilder};
+pub use cache::{CacheConfig, CacheKeyBuilder, McpCache};
 pub use server::McpServer;
 pub use state_manager::StateManager;
