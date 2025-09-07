@@ -19,6 +19,14 @@
 
 **Zero-configuration AI context generation system** with extreme quality enforcement and Toyota Way standards. Analyze any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com).
 
+> **🎯 v2.63.0 Release**: **Advanced Code Similarity Detection System!** Industry-leading duplicate and similarity detection:
+> - **🔍 4 Clone Types**: Exact (Type-1), Renamed (Type-2), Modified (Type-3), Semantic (Type-4) detection
+> - **📊 Entropy Analysis**: Shannon entropy for complexity measurement and pattern detection
+> - **🧮 Advanced Algorithms**: Winnowing, TF-IDF, Cosine Similarity, Jaccard Index, Levenshtein Distance
+> - **📄 Multi-Format Output**: JSON, Markdown, CSV, SARIF, and Summary formats
+> - **🚀 Performance**: Optimized for 100K+ LOC with parallel processing
+> - **🔧 Full Integration**: CLI commands, MCP tools, and comprehensive examples
+
 > **🚀 v2.39.0 Release**: **TDG System with MCP Integration & Advanced Monitoring!** Production-ready technical debt analysis:
 > - **🌐 Web Dashboard**: Real-time monitoring with Axum-based interface and Server-Sent Events
 > - **🛠️ 6 MCP Tools**: Enterprise-grade external integration (tdg_analyze_with_storage, tdg_system_diagnostics, etc.)
@@ -132,6 +140,11 @@ pmat analyze complexity --top-files 10
 
 # Find technical debt
 pmat analyze satd
+
+# Code similarity detection - v2.63.0! 🔍
+pmat analyze duplicates --detection-type all     # Find all types of duplicates
+pmat analyze duplicates --format sarif           # Export to SARIF format
+pmat analyze duplicates --detection-type semantic --threshold 0.7
 
 # Analysis with timeout control - NEW! 🔧
 pmat analyze complexity --timeout 30    # 30-second timeout

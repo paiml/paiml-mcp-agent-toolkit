@@ -9,14 +9,15 @@
 - **SATD**: Zero tolerance maintained ✅
 - **Build Time**: ~15s with PMAT_FAST_BUILD ✅
 
-### Latest Release: v2.62.0 - Project Stabilization 🎯
+### Latest Release: v2.63.0 - Code Similarity and Entropy Detection 🚀
 - **Release Date**: 2025-09-07
-- **Sprint Completed**: 76
+- **Sprint Completed**: 77
 - **Major Achievements**:
-  - Quality gate now properly filters test files (was analyzing 129+ test files)
-  - Reduced complexity violations (format_as_markdown: 45→10)
-  - Enforced quality gate standards in CLAUDE.md Rule #10
-  - MCP server caching implementation with TTL and metrics
+  - Comprehensive code similarity detection (Type-1 through Type-4 clones)
+  - Advanced entropy analysis with Shannon entropy calculation
+  - Industry-standard algorithms (Winnowing, TF-IDF, Cosine Similarity)
+  - Full TDD implementation with <10 complexity for all functions
+  - Complete CLI and MCP integration with multiple output formats
 
 ## Completed Sprint: Sprint 77 - Advanced Code Similarity Detection ✅
 - **Completion Date**: 2025-09-07
