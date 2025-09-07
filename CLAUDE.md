@@ -32,6 +32,7 @@ This guide provides the essential operational instructions for working on the `p
 7.  **NEVER Duplicate Core Logic:** There must be ONE implementation for each core feature. All providers (MCP, HTTP, CLI) must use the same underlying logic. If multiple tools need the same functionality, they must call the same service/function. No duplicate implementations allowed.
 8.  **ALWAYS Dogfood via MCP First:** We MUST use our own MCP tools as the primary interface. CLI commands are secondary. This ensures we continuously improve our MCP integration and experience the tool as our users do. Use MCP tools for analysis, refactoring, quality gates, and todo creation.
 9.  **ALWAYS Use PDMT for Todo Creation:** When creating todo lists or task breakdowns, you MUST use the PDMT (Pragmatic Deterministic MCP Templating) approach via MCP. This ensures deterministic, quality-enforced todo generation with proper validation commands and success criteria.
+10. **NEVER Bypass Quality Gates:** Zero tolerance for `--no-verify` or bypassing quality gates. All code MUST pass quality gates before committing. The quality gate now properly excludes test files and focuses on production code only. Maximum cyclomatic complexity is 20, and all functions must comply. If quality gate fails, fix the issues before proceeding.
 
 ## PDMT Todo Creation (Mandatory)
 
