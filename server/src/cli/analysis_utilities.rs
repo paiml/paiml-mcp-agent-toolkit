@@ -4330,10 +4330,8 @@ fn is_excluded_test_path(path: &Path) -> bool {
 fn is_test_filename(path: &Path) -> bool {
     if let Some(file_name) = path.file_name() {
         let fname = file_name.to_string_lossy();
-        fname.ends_with("_test.rs")
-            || fname.ends_with("_tests.rs")
-            || fname.starts_with("test_")
-            || fname.contains("_test_")
+        // Use the same logic as is_excluded_filename for consistency
+        is_excluded_filename(&fname)
     } else {
         false
     }
@@ -5914,10 +5912,36 @@ fn is_excluded_directory(path_str: &str) -> bool {
 
 /// Check if filename indicates a test file
 fn is_excluded_filename(filename: &str) -> bool {
+    // Test files
     filename.ends_with("_test.rs")
         || filename.ends_with("_tests.rs")
+        || filename.ends_with("tests.rs")
         || filename.starts_with("test_")
+        || filename.starts_with("tests_")
         || filename.contains("_test_")
+        || filename.contains("_tests_")
+        || filename.contains("test_harness")
+        || filename.contains("test_helpers")
+        || filename.contains("test_utils")
+        || filename.contains("_property_test")
+        || filename.contains("property_tests")
+        // Example and demo files
+        || filename.starts_with("example_")
+        || filename.starts_with("demo_")
+        || filename.contains("_example")
+        || filename.contains("_demo")
+        // Benchmark files
+        || filename.ends_with("_bench.rs")
+        || filename.ends_with("_benchmark.rs")
+        || filename.contains("bench_")
+        || filename.contains("benchmark_")
+        // Mock and stub files
+        || filename.starts_with("mock_")
+        || filename.starts_with("stub_")
+        || filename.starts_with("stubs_")
+        || filename.contains("_mock")
+        || filename.contains("_stub")
+        || filename.contains("_stubs")
 }
 
 /// Analyze a single file for complexity metrics
