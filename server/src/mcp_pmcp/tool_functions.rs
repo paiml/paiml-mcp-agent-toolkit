@@ -408,16 +408,18 @@ pub async fn tdg_analyze_with_storage(
 ) -> Result<Value> {
     let storage = create_storage_backend(storage_backend.as_deref())?;
     let analyzer = TdgAnalyzer::new()?;
-    
+
     let analysis_results = analyze_paths_with_storage(paths, &analyzer, storage.as_ref()).await?;
-    
+
     let storage_stats = storage.as_ref().get_stats();
-    
+
     build_analysis_response(analysis_results, storage_backend, storage_stats)
 }
 
 /// Create storage backend based on the provided backend type
-fn create_storage_backend(backend_type: Option<&str>) -> Result<Box<dyn crate::tdg::storage_backend::StorageBackend>> {
+fn create_storage_backend(
+    backend_type: Option<&str>,
+) -> Result<Box<dyn crate::tdg::storage_backend::StorageBackend>> {
     match backend_type {
         Some("inmemory") => {
             use crate::tdg::storage_backend::InMemoryBackend;
@@ -431,14 +433,12 @@ fn create_storage_backend(backend_type: Option<&str>) -> Result<Box<dyn crate::t
         #[cfg(feature = "rocksdb-backend")]
         Some("rocksdb") => {
             let temp_path = std::env::temp_dir().join("tdg-mcp-rocksdb");
-            return Err(anyhow::anyhow!("RocksDB backend not yet implemented"))
+            return Err(anyhow::anyhow!("RocksDB backend not yet implemented"));
         }
-        Some(backend) => {
-            return Err(anyhow::anyhow!(
-                "Unsupported storage backend: {}. Supported: sled, inmemory, rocksdb",
-                backend
-            ));
-        }
+        Some(backend) => Err(anyhow::anyhow!(
+            "Unsupported storage backend: {}. Supported: sled, inmemory, rocksdb",
+            backend
+        )),
     }
 }
 
@@ -461,14 +461,14 @@ async fn analyze_paths_with_storage(
 
     for path in paths {
         let analysis_result = analyze_single_path(&path, analyzer).await;
-        
+
         match analysis_result {
             Ok(project_score) => {
                 total_files += project_score.total_files;
                 avg_score += project_score.average_score;
-                
+
                 store_project_results(&project_score, storage).await;
-                
+
                 let result_json = create_success_result(&path, &project_score);
                 results.push(result_json);
             }
@@ -492,7 +492,7 @@ async fn analyze_paths_with_storage(
 
 /// Analyze a single path (file or directory)
 async fn analyze_single_path(
-    path: &PathBuf,
+    path: &Path,
     analyzer: &TdgAnalyzer,
 ) -> Result<crate::tdg::ProjectScore> {
     if path.is_dir() {
@@ -527,12 +527,12 @@ async fn store_project_results(
 
 /// Create a TDG record for storage
 fn create_tdg_record(
-    file_path: &PathBuf,
+    file_path: &Path,
     file_score: &crate::tdg::TdgScore,
 ) -> Result<crate::tdg::FullTdgRecord> {
     let content = std::fs::read(file_path).unwrap_or_default();
     let hash = blake3::hash(&content);
-    
+
     Ok(crate::tdg::FullTdgRecord {
         identity: create_file_identity(file_path, &hash, &content),
         score: file_score.clone(),
@@ -544,12 +544,12 @@ fn create_tdg_record(
 
 /// Create file identity for TDG record
 fn create_file_identity(
-    file_path: &PathBuf,
+    file_path: &Path,
     hash: &blake3::Hash,
     content: &[u8],
 ) -> crate::tdg::FileIdentity {
     crate::tdg::FileIdentity {
-        path: file_path.clone(),
+        path: file_path.to_path_buf(),
         content_hash: *hash,
         size_bytes: content.len() as u64,
         modified_time: std::time::SystemTime::now(),
@@ -591,7 +591,7 @@ fn create_analysis_metadata(file_score: &crate::tdg::TdgScore) -> crate::tdg::An
 }
 
 /// Create success result JSON
-fn create_success_result(path: &PathBuf, project_score: &crate::tdg::ProjectScore) -> Value {
+fn create_success_result(path: &Path, project_score: &crate::tdg::ProjectScore) -> Value {
     json!({
         "path": path.display().to_string(),
         "total_files": project_score.total_files,
@@ -602,7 +602,7 @@ fn create_success_result(path: &PathBuf, project_score: &crate::tdg::ProjectScor
 }
 
 /// Create error result JSON
-fn create_error_result(path: &PathBuf, error: &anyhow::Error) -> Value {
+fn create_error_result(path: &Path, error: &anyhow::Error) -> Value {
     json!({
         "path": path.display().to_string(),
         "error": error.to_string(),

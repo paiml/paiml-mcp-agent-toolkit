@@ -25,20 +25,14 @@ enum OutputFormat {
 }
 
 // Mock function signature for testing
-fn format_output_mock(
-    analysis: &SymbolTableAnalysis,
-    format: OutputFormat,
-) -> Result<String> {
+fn format_output_mock(analysis: &SymbolTableAnalysis, format: OutputFormat) -> Result<String> {
     match format {
-        OutputFormat::Json => {
-            Ok(format!(r#"{{"total_symbols": {}}}"#, analysis.total_symbols))
-        }
-        OutputFormat::Human => {
-            Ok(format!("Total symbols: {}", analysis.total_symbols))
-        }
-        OutputFormat::Markdown => {
-            Ok(format!("# Symbol Table\nTotal: {}", analysis.total_symbols))
-        }
+        OutputFormat::Json => Ok(format!(
+            r#"{{"total_symbols": {}}}"#,
+            analysis.total_symbols
+        )),
+        OutputFormat::Human => Ok(format!("Total symbols: {}", analysis.total_symbols)),
+        OutputFormat::Markdown => Ok(format!("# Symbol Table\nTotal: {}", analysis.total_symbols)),
     }
 }
 
@@ -48,11 +42,11 @@ fn test_format_output_json() -> Result<()> {
         symbols: vec![],
         total_symbols: 42,
     };
-    
+
     let output = format_output_mock(&analysis, OutputFormat::Json)?;
     assert!(output.contains("\"total_symbols\""));
     assert!(output.contains("42"));
-    
+
     Ok(())
 }
 
@@ -62,11 +56,11 @@ fn test_format_output_human() -> Result<()> {
         symbols: vec![],
         total_symbols: 10,
     };
-    
+
     let output = format_output_mock(&analysis, OutputFormat::Human)?;
     assert!(output.contains("Total symbols"));
     assert!(output.contains("10"));
-    
+
     Ok(())
 }
 
@@ -76,10 +70,10 @@ fn test_format_output_markdown() -> Result<()> {
         symbols: vec![],
         total_symbols: 5,
     };
-    
+
     let output = format_output_mock(&analysis, OutputFormat::Markdown)?;
     assert!(output.contains("# Symbol Table"));
     assert!(output.contains("5"));
-    
+
     Ok(())
 }

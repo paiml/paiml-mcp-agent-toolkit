@@ -16,7 +16,7 @@ fn test_quality_gate_counts_violations_correctly() {
     // Create test files with known complexity
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("test.rs");
-    
+
     // Write a function with complexity 12
     let test_code = r#"
 fn complex_function(x: i32, y: i32, z: i32) -> i32 {
@@ -62,7 +62,7 @@ fn complex_function(x: i32, y: i32, z: i32) -> i32 {
 
     // Get binary path
     let binary_path = get_pmat_binary_path();
-    
+
     // Run quality-gate
     let quality_output = std::process::Command::new(&binary_path)
         .args(&[
@@ -79,18 +79,20 @@ fn complex_function(x: i32, y: i32, z: i32) -> i32 {
 
     let quality_stderr = String::from_utf8_lossy(&quality_output.stderr);
     let quality_stdout = String::from_utf8_lossy(&quality_output.stdout);
-    
+
     // Should find exactly 1 violation (the function with complexity 12 > threshold 10)
     assert!(
-        quality_stderr.contains("1 violations found") || quality_stderr.contains("1 violation found"),
+        quality_stderr.contains("1 violations found")
+            || quality_stderr.contains("1 violation found"),
         "quality-gate should find exactly 1 violation, got stderr:\n{}\nstdout:\n{}",
         quality_stderr,
         quality_stdout
     );
-    
+
     // Verify it found the complex function
     assert!(
-        quality_stdout.contains("complex_function") || quality_stdout.contains("Complexity Issues: 1"),
+        quality_stdout.contains("complex_function")
+            || quality_stdout.contains("Complexity Issues: 1"),
         "quality-gate should report the complex function violation in output"
     );
 }
@@ -100,7 +102,7 @@ fn complex_function(x: i32, y: i32, z: i32) -> i32 {
 fn test_quality_gate_multiple_checks() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("test_multi.rs");
-    
+
     // Write code with complexity and SATD issues
     let test_code = r#"
 // TODO: This is a SATD comment that should be detected
@@ -127,7 +129,7 @@ fn unused_function() -> i32 {
     fs::write(&test_file, test_code).unwrap();
 
     let binary_path = get_pmat_binary_path();
-    
+
     // Run quality-gate with complexity check
     let complexity_output = std::process::Command::new(&binary_path)
         .args(&[
@@ -143,20 +145,21 @@ fn unused_function() -> i32 {
         .expect("Failed to run quality-gate for complexity");
 
     let complexity_stderr = String::from_utf8_lossy(&complexity_output.stderr);
-    
+
     // Should check complexity
     assert!(
-        complexity_stderr.contains("Checking complexity") || complexity_stderr.contains("🔍 Checking complexity"),
+        complexity_stderr.contains("Checking complexity")
+            || complexity_stderr.contains("🔍 Checking complexity"),
         "Should check complexity, got:\n{}",
         complexity_stderr
     );
-    
+
     // Should find complexity violations
     assert!(
         complexity_stderr.contains("violations found"),
         "Should find complexity violations"
     );
-    
+
     // Run quality-gate with SATD check
     let satd_output = std::process::Command::new(&binary_path)
         .args(&[
@@ -170,15 +173,15 @@ fn unused_function() -> i32 {
         .expect("Failed to run quality-gate for SATD");
 
     let satd_stderr = String::from_utf8_lossy(&satd_output.stderr);
-    
+
     // Should check SATD
     assert!(
         satd_stderr.contains("Checking SATD") || satd_stderr.contains("🔍 Checking SATD"),
         "Should check SATD, got:\n{}",
         satd_stderr
     );
-    
-    // Should find SATD violations  
+
+    // Should find SATD violations
     assert!(
         satd_stderr.contains("2 violations found"),
         "Should find 2 SATD violations (TODO and FIXME)"
@@ -190,7 +193,7 @@ fn unused_function() -> i32 {
 fn test_quality_gate_threshold_boundaries() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("threshold_test.rs");
-    
+
     // Simple function with known complexity 5
     let test_code = r#"
 fn simple_function(x: i32) -> i32 {
@@ -216,7 +219,7 @@ fn simple_function(x: i32) -> i32 {
     fs::write(&test_file, test_code).unwrap();
 
     let binary_path = get_pmat_binary_path();
-    
+
     // Test with threshold 5 (should pass - equal to threshold)
     let output_5 = std::process::Command::new(&binary_path)
         .args(&[
@@ -237,7 +240,7 @@ fn simple_function(x: i32) -> i32 {
         "Threshold 5 should find 0 violations for complexity 5, got:\n{}",
         stderr_5
     );
-    
+
     // Test with threshold 4 (should fail - below threshold)
     let output_4 = std::process::Command::new(&binary_path)
         .args(&[
@@ -268,12 +271,9 @@ fn get_pmat_binary_path() -> PathBuf {
         .parent()
         .unwrap()
         .to_path_buf();
-    
-    let binary_path = workspace_root
-        .join("target")
-        .join("debug")
-        .join("pmat");
-    
+
+    let binary_path = workspace_root.join("target").join("debug").join("pmat");
+
     if !binary_path.exists() {
         // Build the binary if it doesn't exist from workspace root
         std::process::Command::new("cargo")
@@ -282,7 +282,11 @@ fn get_pmat_binary_path() -> PathBuf {
             .output()
             .expect("Failed to build pmat");
     }
-    
-    assert!(binary_path.exists(), "pmat binary not found at {:?}", binary_path);
+
+    assert!(
+        binary_path.exists(),
+        "pmat binary not found at {:?}",
+        binary_path
+    );
     binary_path
 }

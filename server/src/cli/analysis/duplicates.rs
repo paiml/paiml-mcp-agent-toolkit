@@ -55,7 +55,7 @@ pub async fn handle_analyze_duplicates(
     top_files: usize,
 ) -> Result<()> {
     eprintln!("🔍 Detecting duplicate code blocks...");
-    
+
     let mut report = run_duplicate_detection(
         &project_path,
         detection_type,
@@ -64,8 +64,9 @@ pub async fn handle_analyze_duplicates(
         max_tokens,
         &include,
         &exclude,
-    ).await?;
-    
+    )
+    .await?;
+
     apply_top_files_filtering(&mut report, top_files);
     print_duplicate_summary(&report);
     write_duplicate_output(&report, format, output).await
@@ -73,7 +74,7 @@ pub async fn handle_analyze_duplicates(
 
 /// Run duplicate detection analysis
 async fn run_duplicate_detection(
-    project_path: &PathBuf,
+    project_path: &Path,
     detection_type: crate::cli::DuplicateType,
     threshold: f32,
     min_lines: usize,
@@ -89,7 +90,8 @@ async fn run_duplicate_detection(
         max_tokens,
         include,
         exclude,
-    ).await
+    )
+    .await
 }
 
 /// Apply top files filtering to report
@@ -97,7 +99,7 @@ fn apply_top_files_filtering(report: &mut DuplicateReport, top_files: usize) {
     if top_files == 0 {
         return;
     }
-    
+
     let top_file_names = get_top_files_by_duplication(&report.file_statistics, top_files);
     filter_blocks_by_files(report, &top_file_names);
     recalculate_statistics_after_filtering(report);
@@ -114,7 +116,7 @@ fn get_top_files_by_duplication(
             .partial_cmp(&a.1.duplication_percentage)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-    
+
     file_stats
         .into_iter()
         .take(top_files)
@@ -141,10 +143,10 @@ fn recalculate_statistics_after_filtering(report: &mut DuplicateReport) {
     for block in &report.duplicate_blocks {
         duplicate_lines += block.lines * block.locations.len();
     }
-    
+
     report.duplicate_lines = duplicate_lines;
     report.total_duplicates = report.duplicate_blocks.len();
-    
+
     if report.total_lines > 0 {
         report.duplication_percentage =
             (duplicate_lines as f32 / report.total_lines as f32) * 100.0;
@@ -167,14 +169,14 @@ async fn write_duplicate_output(
     output: Option<PathBuf>,
 ) -> Result<()> {
     let content = format_output(report, format)?;
-    
+
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
         eprintln!("📄 Report written to: {}", output_path.display());
     } else {
         println!("{}", content);
     }
-    
+
     Ok(())
 }
 
@@ -195,12 +197,13 @@ async fn detect_duplicates(
         max_tokens,
         include,
         exclude,
-    ).await?;
-    
+    )
+    .await?;
+
     let duplicate_blocks = find_duplicate_blocks(all_blocks, threshold);
     let duplicate_lines = calculate_duplicate_statistics(&duplicate_blocks, &mut file_stats);
     let duplication_percentage = calculate_duplication_percentage(duplicate_lines, total_lines);
-    
+
     Ok(build_duplicate_report(
         duplicate_blocks,
         duplicate_lines,
@@ -218,27 +221,28 @@ async fn collect_code_blocks(
     max_tokens: usize,
     include: &Option<String>,
     exclude: &Option<String>,
-) -> Result<(Vec<(String, String, usize, usize, String)>, usize, HashMap<String, FileStats>)> {
+) -> Result<(
+    Vec<(String, String, usize, usize, String)>,
+    usize,
+    HashMap<String, FileStats>,
+)> {
     use walkdir::WalkDir;
-    
+
     let mut all_blocks = Vec::new();
     let mut total_lines = 0usize;
     let mut file_stats = HashMap::new();
-    
+
     for entry in WalkDir::new(project_path) {
         let entry = entry?;
         let path = entry.path();
-        
+
         if should_analyze_file(path, include, exclude) {
-            if let Some((blocks, lines_count)) = process_source_file(
-                path,
-                detection_type.clone(),
-                min_lines,
-                max_tokens,
-            ).await {
+            if let Some((blocks, lines_count)) =
+                process_source_file(path, detection_type.clone(), min_lines, max_tokens).await
+            {
                 all_blocks.extend(blocks);
                 total_lines += lines_count;
-                
+
                 file_stats.insert(
                     path.to_string_lossy().to_string(),
                     FileStats {
@@ -250,16 +254,12 @@ async fn collect_code_blocks(
             }
         }
     }
-    
+
     Ok((all_blocks, total_lines, file_stats))
 }
 
 /// Check if file should be analyzed
-fn should_analyze_file(
-    path: &Path,
-    include: &Option<String>,
-    exclude: &Option<String>,
-) -> bool {
+fn should_analyze_file(path: &Path, include: &Option<String>, exclude: &Option<String>) -> bool {
     path.is_file() && is_source_file(path) && should_process_file(path, include, exclude)
 }
 
@@ -285,17 +285,17 @@ fn calculate_duplicate_statistics(
     file_stats: &mut HashMap<String, FileStats>,
 ) -> usize {
     let mut duplicate_lines = 0;
-    
+
     for block in duplicate_blocks {
         duplicate_lines += block.lines * block.locations.len();
-        
+
         for loc in &block.locations {
             if let Some(stats) = file_stats.get_mut(&loc.file) {
                 stats.duplicate_lines += block.lines;
             }
         }
     }
-    
+
     update_file_duplication_percentages(file_stats);
     duplicate_lines
 }
@@ -634,15 +634,13 @@ fn format_json_output(report: &DuplicateReport) -> Result<String> {
 /// assert!(output.contains("main.rs"));
 /// ```
 pub fn format_human_output(report: &DuplicateReport) -> Result<String> {
-    use std::fmt::Write;
-
     let mut output = String::new();
-    
+
     write_header(&mut output)?;
     write_summary(&mut output, report)?;
     write_top_files_section(&mut output, report)?;
     write_duplicate_blocks_section(&mut output, report)?;
-    
+
     Ok(output)
 }
 
@@ -656,12 +654,24 @@ fn write_header(output: &mut String) -> Result<()> {
 /// Write the summary section
 fn write_summary(output: &mut String, report: &DuplicateReport) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "## Summary")?;
-    writeln!(output, "- Total duplicate blocks: {}", report.total_duplicates)?;
-    writeln!(output, "- Duplicate lines: {} / {}", report.duplicate_lines, report.total_lines)?;
-    writeln!(output, "- Duplication percentage: {:.1}%\n", report.duplication_percentage)?;
-    
+    writeln!(
+        output,
+        "- Total duplicate blocks: {}",
+        report.total_duplicates
+    )?;
+    writeln!(
+        output,
+        "- Duplicate lines: {} / {}",
+        report.duplicate_lines, report.total_lines
+    )?;
+    writeln!(
+        output,
+        "- Duplication percentage: {:.1}%\n",
+        report.duplication_percentage
+    )?;
+
     Ok(())
 }
 
@@ -670,19 +680,19 @@ fn write_top_files_section(output: &mut String, report: &DuplicateReport) -> Res
     if report.file_statistics.is_empty() {
         return Ok(());
     }
-    
+
     use std::fmt::Write;
     writeln!(output, "## Top Files by Duplication\n")?;
-    
+
     let sorted_files = get_sorted_file_stats(&report.file_statistics);
     write_file_stats_list(output, &sorted_files)?;
-    
+
     Ok(())
 }
 
 /// Get file statistics sorted by duplication percentage
 fn get_sorted_file_stats(
-    file_stats: &std::collections::HashMap<String, FileStats>
+    file_stats: &std::collections::HashMap<String, FileStats>,
 ) -> Vec<(&String, &FileStats)> {
     let mut sorted_files: Vec<_> = file_stats.iter().collect();
     sorted_files.sort_by(|a, b| {
@@ -695,11 +705,11 @@ fn get_sorted_file_stats(
 
 /// Write the list of file statistics
 fn write_file_stats_list(
-    output: &mut String, 
-    sorted_files: &[(&String, &FileStats)]
+    output: &mut String,
+    sorted_files: &[(&String, &FileStats)],
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     for (i, (file_path, stats)) in sorted_files.iter().take(10).enumerate() {
         let filename = extract_filename(file_path);
         writeln!(
@@ -729,23 +739,18 @@ fn write_duplicate_blocks_section(output: &mut String, report: &DuplicateReport)
     if report.duplicate_blocks.is_empty() {
         return Ok(());
     }
-    
+
     use std::fmt::Write;
     writeln!(output, "## Duplicate Blocks\n")?;
-    
+
     write_block_details(output, &report.duplicate_blocks)?;
     write_remaining_blocks_count(output, report.duplicate_blocks.len())?;
-    
+
     Ok(())
 }
 
 /// Write detailed information about duplicate blocks
-fn write_block_details(
-    output: &mut String,
-    duplicate_blocks: &[DuplicateBlock]
-) -> Result<()> {
-    use std::fmt::Write;
-    
+fn write_block_details(output: &mut String, duplicate_blocks: &[DuplicateBlock]) -> Result<()> {
     for (i, block) in duplicate_blocks.iter().enumerate().take(20) {
         write_block_header(output, i + 1, block)?;
         write_block_locations(output, block)?;
@@ -755,11 +760,7 @@ fn write_block_details(
 }
 
 /// Write block header with summary info
-fn write_block_header(
-    output: &mut String,
-    block_num: usize,
-    block: &DuplicateBlock
-) -> Result<()> {
+fn write_block_header(output: &mut String, block_num: usize, block: &DuplicateBlock) -> Result<()> {
     use std::fmt::Write;
     writeln!(
         output,
@@ -775,11 +776,7 @@ fn write_block_header(
 fn write_block_locations(output: &mut String, block: &DuplicateBlock) -> Result<()> {
     use std::fmt::Write;
     for loc in &block.locations {
-        writeln!(
-            output,
-            "- {}:{}-{}",
-            loc.file, loc.start_line, loc.end_line
-        )?;
+        writeln!(output, "- {}:{}-{}", loc.file, loc.start_line, loc.end_line)?;
     }
     Ok(())
 }
@@ -798,11 +795,7 @@ fn write_block_preview(output: &mut String, block: &DuplicateBlock) -> Result<()
 fn write_remaining_blocks_count(output: &mut String, total_blocks: usize) -> Result<()> {
     if total_blocks > 20 {
         use std::fmt::Write;
-        writeln!(
-            output,
-            "... and {} more blocks",
-            total_blocks - 20
-        )?;
+        writeln!(output, "... and {} more blocks", total_blocks - 20)?;
     }
     Ok(())
 }

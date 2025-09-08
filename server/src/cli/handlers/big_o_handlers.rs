@@ -24,9 +24,9 @@ pub async fn handle_analyze_big_o(
     top_files: usize,
 ) -> Result<()> {
     let start_time = std::time::Instant::now();
-    
+
     print_analysis_header(&project_path, confidence_threshold);
-    
+
     let config = build_analysis_config(
         project_path,
         include,
@@ -34,26 +34,26 @@ pub async fn handle_analyze_big_o(
         confidence_threshold,
         analyze_space,
     );
-    
+
     if perf {
         debug!("Analysis configuration: {:?}", config);
     }
-    
+
     let analyzer = BigOAnalyzer::new();
     let mut report = analyzer.analyze(config).await?;
-    
+
     apply_report_filters(&mut report, high_complexity_only, top_files, perf);
-    
+
     let output_content = format_analysis_output(&analyzer, &report, format)?;
     write_analysis_output(&output_content, output).await?;
-    
+
     print_analysis_summary(&report, start_time.elapsed(), perf);
-    
+
     Ok(())
 }
 
 /// Print analysis header information
-fn print_analysis_header(project_path: &PathBuf, confidence_threshold: u8) {
+fn print_analysis_header(project_path: &Path, confidence_threshold: u8) {
     info!("🔍 Starting Big-O complexity analysis");
     info!("📂 Project path: {}", project_path.display());
     info!("🎯 Confidence threshold: {}%", confidence_threshold);
@@ -86,7 +86,7 @@ fn apply_report_filters(
     if high_complexity_only {
         apply_high_complexity_filter(report, perf);
     }
-    
+
     if top_files > 0 {
         apply_top_files_filter(report, top_files);
     }
@@ -98,11 +98,11 @@ fn apply_high_complexity_filter(
     perf: bool,
 ) {
     let original_count = report.high_complexity_functions.len();
-    
-    report.high_complexity_functions.retain(|f| {
-        is_high_complexity_class(&f.time_complexity.class)
-    });
-    
+
+    report
+        .high_complexity_functions
+        .retain(|f| is_high_complexity_class(&f.time_complexity.class));
+
     if perf {
         debug!(
             "Filtered from {} to {} high complexity functions",
@@ -113,9 +113,7 @@ fn apply_high_complexity_filter(
 }
 
 /// Check if complexity class is considered high
-fn is_high_complexity_class(
-    class: &crate::models::complexity_bound::BigOClass,
-) -> bool {
+fn is_high_complexity_class(class: &crate::models::complexity_bound::BigOClass) -> bool {
     matches!(
         class,
         crate::models::complexity_bound::BigOClass::Quadratic
@@ -133,7 +131,7 @@ fn apply_top_files_filter(
     let file_functions = group_functions_by_file(&report.high_complexity_functions);
     let file_scores = calculate_file_complexity_scores(&file_functions);
     let top_file_paths = get_top_file_paths(file_scores, top_files);
-    
+
     report
         .high_complexity_functions
         .retain(|f| top_file_paths.contains(&f.file_path));
@@ -144,7 +142,7 @@ fn group_functions_by_file(
     functions: &[crate::services::big_o_analyzer::FunctionComplexity],
 ) -> std::collections::HashMap<PathBuf, Vec<crate::services::big_o_analyzer::FunctionComplexity>> {
     use std::collections::HashMap;
-    
+
     let mut file_functions: HashMap<PathBuf, Vec<_>> = HashMap::new();
     for func in functions.iter().cloned() {
         file_functions
@@ -152,13 +150,16 @@ fn group_functions_by_file(
             .or_default()
             .push(func);
     }
-    
+
     file_functions
 }
 
 /// Calculate complexity scores for files
 fn calculate_file_complexity_scores(
-    file_functions: &std::collections::HashMap<PathBuf, Vec<crate::services::big_o_analyzer::FunctionComplexity>>,
+    file_functions: &std::collections::HashMap<
+        PathBuf,
+        Vec<crate::services::big_o_analyzer::FunctionComplexity>,
+    >,
 ) -> Vec<(PathBuf, f64)> {
     let mut file_scores: Vec<(PathBuf, f64)> = file_functions
         .iter()
@@ -170,15 +171,13 @@ fn calculate_file_complexity_scores(
             (path.clone(), score)
         })
         .collect();
-    
+
     file_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     file_scores
 }
 
 /// Get numeric score for complexity class
-fn get_complexity_class_score(
-    class: &crate::models::complexity_bound::BigOClass,
-) -> f64 {
+fn get_complexity_class_score(class: &crate::models::complexity_bound::BigOClass) -> f64 {
     match class {
         crate::models::complexity_bound::BigOClass::Constant => 1.0,
         crate::models::complexity_bound::BigOClass::Logarithmic => 2.0,
@@ -219,10 +218,7 @@ fn format_analysis_output(
 }
 
 /// Write analysis output to file or stdout
-async fn write_analysis_output(
-    content: &str,
-    output: Option<PathBuf>,
-) -> Result<()> {
+async fn write_analysis_output(content: &str, output: Option<PathBuf>) -> Result<()> {
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, content).await?;
         info!("📄 Big-O analysis saved to: {}", output_path.display());
@@ -240,14 +236,14 @@ fn print_analysis_summary(
 ) {
     info!("✅ Big-O analysis completed in {:?}", elapsed);
     info!("📊 Analyzed {} functions", report.analyzed_functions);
-    
+
     if !report.high_complexity_functions.is_empty() {
         info!(
             "⚠️ Found {} functions with high complexity",
             report.high_complexity_functions.len()
         );
     }
-    
+
     if perf {
         let functions_per_sec = report.analyzed_functions as f64 / elapsed.as_secs_f64();
         info!("⚡ Performance: {:.0} functions/second", functions_per_sec);

@@ -229,18 +229,18 @@ fn set_asset_hash_env() {
 /// Panics if `OUT_DIR` environment variable is not set
 fn compress_templates() {
     let templates_dir = Path::new("templates");
-    
+
     if !validate_templates_directory(templates_dir) {
         return;
     }
-    
+
     let (templates, total_original) = load_all_templates(templates_dir);
-    
+
     if templates.is_empty() {
         println!("cargo:warning=No templates found for compression");
         return;
     }
-    
+
     compress_and_save_templates(&templates, total_original);
 }
 
@@ -259,7 +259,7 @@ fn load_all_templates(templates_dir: &Path) -> (std::collections::HashMap<String
     use std::collections::HashMap;
     let mut templates = HashMap::new();
     let mut total_original = 0usize;
-    
+
     if let Ok(entries) = collect_template_files(templates_dir) {
         for entry in entries {
             if let Some((name, content)) = read_template_file(&entry) {
@@ -268,18 +268,21 @@ fn load_all_templates(templates_dir: &Path) -> (std::collections::HashMap<String
             }
         }
     }
-    
+
     (templates, total_original)
 }
 
 /// Compress templates and save to output file (cognitive complexity ≤8)
-fn compress_and_save_templates(templates: &std::collections::HashMap<String, String>, total_original: usize) {
+fn compress_and_save_templates(
+    templates: &std::collections::HashMap<String, String>,
+    total_original: usize,
+) {
     let serialized = serde_json_to_string(templates);
-    
+
     if let Some(compressed) = create_compressed_data(serialized.as_bytes()) {
         let total_compressed = compressed.len();
         let template_code = generate_template_output(&compressed, templates.len());
-        
+
         write_compressed_templates_file(&template_code);
         print_compression_stats(templates.len(), total_original, total_compressed);
     }
@@ -302,7 +305,7 @@ fn write_compressed_templates_file(template_code: &str) {
 fn print_compression_stats(template_count: usize, total_original: usize, total_compressed: usize) {
     #[allow(clippy::cast_precision_loss)]
     let reduction_percent = (1.0 - total_compressed as f64 / total_original as f64) * 100.0;
-    
+
     println!(
         "cargo:warning=Compressed {} templates ({} -> {} bytes, {:.1}% reduction)",
         template_count, total_original, total_compressed, reduction_percent

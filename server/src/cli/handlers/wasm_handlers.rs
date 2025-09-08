@@ -4,13 +4,13 @@
 //! AssemblyScript source code analysis.
 
 use crate::cli::ComplexityOutputFormat;
-use crate::services::wasm::{
-    AssemblyScriptParser, WasmBinaryAnalyzer, WasmComplexityAnalyzer, WasmLanguageDetector,
-    WasmSecurityValidator, WatParser, WasmMetrics, WasmComplexity,
-};
 use crate::models::unified_ast::AstDag;
+use crate::services::wasm::{
+    AssemblyScriptParser, WasmBinaryAnalyzer, WasmComplexity, WasmComplexityAnalyzer,
+    WasmLanguageDetector, WasmMetrics, WasmSecurityValidator, WatParser,
+};
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 /// Handle AssemblyScript analysis
@@ -30,9 +30,9 @@ pub async fn handle_analyze_assemblyscript(
 
     let results = process_assemblyscript_files(&project_path, wasm_complexity, security).await?;
     let elapsed = start.elapsed();
-    
+
     eprintln!("📊 Analysis complete in {:.2}s", elapsed.as_secs_f64());
-    
+
     let output_text = format_assemblyscript_results(&results, &format, perf, elapsed)?;
     write_analysis_output(output_text, output).await?;
 
@@ -40,7 +40,7 @@ pub async fn handle_analyze_assemblyscript(
 }
 
 async fn process_assemblyscript_files(
-    project_path: &PathBuf,
+    project_path: &Path,
     wasm_complexity: bool,
     security: bool,
 ) -> Result<Vec<(PathBuf, WasmComplexity)>> {
@@ -52,7 +52,15 @@ async fn process_assemblyscript_files(
     eprintln!("📁 Found {} AssemblyScript files", as_files.len());
 
     for file_path in as_files {
-        if let Some(analysis_result) = analyze_single_file(&file_path, &detector, &mut parser, wasm_complexity, security).await? {
+        if let Some(analysis_result) = analyze_single_file(
+            &file_path,
+            &detector,
+            &mut parser,
+            wasm_complexity,
+            security,
+        )
+        .await?
+        {
             results.push(analysis_result);
         }
     }
@@ -61,7 +69,7 @@ async fn process_assemblyscript_files(
 }
 
 async fn analyze_single_file(
-    file_path: &PathBuf,
+    file_path: &Path,
     detector: &WasmLanguageDetector,
     parser: &mut AssemblyScriptParser,
     wasm_complexity: bool,
@@ -85,14 +93,14 @@ async fn analyze_single_file(
     };
 
     eprintln!("✅ Parsed: {}", file_path.display());
-    
+
     let result = process_parsed_ast(&ast, file_path, wasm_complexity, security)?;
     Ok(result)
 }
 
 fn process_parsed_ast(
     ast: &AstDag,
-    file_path: &PathBuf,
+    file_path: &Path,
     wasm_complexity: bool,
     security: bool,
 ) -> Result<Option<(PathBuf, WasmComplexity)>> {
@@ -101,7 +109,7 @@ fn process_parsed_ast(
     if wasm_complexity {
         let complexity_analyzer = WasmComplexityAnalyzer::new();
         let complexity = complexity_analyzer.analyze_ast(ast)?;
-        result = Some((file_path.clone(), complexity));
+        result = Some((file_path.to_path_buf(), complexity));
     }
 
     if security {
@@ -111,7 +119,7 @@ fn process_parsed_ast(
     Ok(result)
 }
 
-fn validate_ast_security(ast: &AstDag, file_path: &PathBuf) {
+fn validate_ast_security(ast: &AstDag, file_path: &Path) {
     let security_validator = WasmSecurityValidator::new();
     if let Err(e) = security_validator.validate_ast(ast) {
         eprintln!("⚠️  Security issue in {}: {}", file_path.display(), e);
@@ -147,13 +155,20 @@ pub async fn handle_analyze_webassembly(
     let wasm_files = collect_wasm_files(&project_path, include_binary, include_text)?;
     eprintln!("📁 Found {} WebAssembly files", wasm_files.len());
 
-    let results = analyze_wasm_files(wasm_files, include_binary, include_text, security, complexity).await;
+    let results = analyze_wasm_files(
+        wasm_files,
+        include_binary,
+        include_text,
+        security,
+        complexity,
+    )
+    .await;
 
     let elapsed = start.elapsed();
     eprintln!("📊 Analysis complete in {:.2}s", elapsed.as_secs_f64());
 
     write_wasm_analysis_output(&results, &format, perf, elapsed, output).await?;
-    
+
     Ok(())
 }
 
@@ -168,7 +183,15 @@ async fn analyze_wasm_files(
     let mut results = Vec::new();
 
     for file_path in wasm_files {
-        if let Some(result) = analyze_single_wasm_file(&file_path, include_binary, include_text, security, complexity).await {
+        if let Some(result) = analyze_single_wasm_file(
+            &file_path,
+            include_binary,
+            include_text,
+            security,
+            complexity,
+        )
+        .await
+        {
             results.push(result);
         }
     }
@@ -178,31 +201,29 @@ async fn analyze_wasm_files(
 
 /// Analyze a single WASM file (cognitive complexity ≤7)
 async fn analyze_single_wasm_file(
-    file_path: &PathBuf,
+    file_path: &Path,
     include_binary: bool,
     include_text: bool,
     security: bool,
     complexity: bool,
 ) -> Option<(PathBuf, WasmMetrics)> {
     match file_path.extension().and_then(|s| s.to_str()) {
-        Some("wasm") if include_binary => {
-            analyze_wasm_binary(file_path).await
-        }
+        Some("wasm") if include_binary => analyze_wasm_binary(file_path).await,
         Some("wat") if include_text => {
             analyze_wat_text(file_path, security, complexity).await;
             None // WAT analysis doesn't return WasmMetrics currently
         }
-        _ => None
+        _ => None,
     }
 }
 
 /// Analyze WASM binary file (cognitive complexity ≤3)
-async fn analyze_wasm_binary(file_path: &PathBuf) -> Option<(PathBuf, WasmMetrics)> {
+async fn analyze_wasm_binary(file_path: &Path) -> Option<(PathBuf, WasmMetrics)> {
     let analyzer = WasmBinaryAnalyzer::new();
     match analyzer.analyze_file(file_path).await {
         Ok(analysis) => {
             eprintln!("✅ Analyzed binary: {}", file_path.display());
-            Some((file_path.clone(), analysis))
+            Some((file_path.to_path_buf(), analysis))
         }
         Err(e) => {
             eprintln!("❌ Failed to analyze {}: {}", file_path.display(), e);
@@ -212,17 +233,13 @@ async fn analyze_wasm_binary(file_path: &PathBuf) -> Option<(PathBuf, WasmMetric
 }
 
 /// Analyze WAT text file (cognitive complexity ≤6)
-async fn analyze_wat_text(
-    file_path: &PathBuf,
-    security: bool,
-    complexity: bool,
-) {
+async fn analyze_wat_text(file_path: &Path, security: bool, complexity: bool) {
     if let Ok(content) = tokio::fs::read_to_string(file_path).await {
         let mut parser = WatParser::new();
         match parser.parse(&content) {
             Ok(ast) => {
                 eprintln!("✅ Parsed WAT: {}", file_path.display());
-                process_wat_ast(&ast, &file_path, security, complexity);
+                process_wat_ast(&ast, file_path, security, complexity);
             }
             Err(e) => {
                 eprintln!("❌ Failed to parse {}: {}", file_path.display(), e);
@@ -232,12 +249,7 @@ async fn analyze_wat_text(
 }
 
 /// Process WAT AST for security and complexity (cognitive complexity ≤5)
-fn process_wat_ast(
-    ast: &AstDag,
-    file_path: &PathBuf,
-    security: bool,
-    complexity: bool,
-) {
+fn process_wat_ast(ast: &AstDag, file_path: &Path, security: bool, complexity: bool) {
     if complexity {
         let complexity_analyzer = WasmComplexityAnalyzer::new();
         let _ = complexity_analyzer.analyze_ast(ast);
@@ -272,7 +284,7 @@ async fn write_wasm_analysis_output(
 }
 
 /// Collect AssemblyScript files (.as, .ts with AS context)
-fn collect_assemblyscript_files(project_path: &PathBuf) -> Result<Vec<PathBuf>> {
+fn collect_assemblyscript_files(project_path: &Path) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
 
     for entry in WalkDir::new(project_path)
@@ -307,7 +319,7 @@ fn collect_assemblyscript_files(project_path: &PathBuf) -> Result<Vec<PathBuf>> 
 
 /// Collect WebAssembly files (.wasm, .wat)
 fn collect_wasm_files(
-    project_path: &PathBuf,
+    project_path: &Path,
     include_binary: bool,
     include_text: bool,
 ) -> Result<Vec<PathBuf>> {

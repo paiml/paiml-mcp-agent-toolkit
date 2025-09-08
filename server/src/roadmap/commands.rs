@@ -329,12 +329,9 @@ async fn show_status(
     Ok(())
 }
 
-fn show_task_status(
-    roadmap: &Roadmap,
-    task_id: &str,
-    format: OutputFormat,
-) -> Result<()> {
-    let task = roadmap.get_task(task_id)
+fn show_task_status(roadmap: &Roadmap, task_id: &str, format: OutputFormat) -> Result<()> {
+    let task = roadmap
+        .get_task(task_id)
         .context(format!("Task {} not found", task_id))?;
 
     match format {
@@ -354,11 +351,11 @@ fn display_task_details(task: &Task) {
     println!("  Description: {}", task.description);
     println!("  Complexity: {:?}", task.complexity);
     println!("  Priority: {:?}", task.priority);
-    
+
     if let Some(started) = task.started_at {
         println!("  Started: {}", started.format("%Y-%m-%d %H:%M"));
     }
-    
+
     if let Some(completed) = task.completed_at {
         println!("  Completed: {}", completed.format("%Y-%m-%d %H:%M"));
     }
@@ -373,7 +370,8 @@ async fn show_sprint_status(
         .or(roadmap.current_sprint.as_deref())
         .context("No sprint specified and no current sprint found")?;
 
-    let sprint = roadmap.get_sprint(sprint_id)
+    let sprint = roadmap
+        .get_sprint(sprint_id)
         .context(format!("Sprint {} not found", sprint_id))?;
 
     match format {
@@ -390,7 +388,7 @@ async fn show_sprint_status(
 
 fn display_sprint_details(sprint: &Sprint) {
     let (completed, in_progress, total) = calculate_sprint_progress(sprint);
-    
+
     println!("Sprint {}: {}", sprint.version, sprint.title);
     println!(
         "  Duration: {} to {}",
@@ -401,21 +399,25 @@ fn display_sprint_details(sprint: &Sprint) {
         "  Progress: {}/{} completed, {} in progress",
         completed, total, in_progress
     );
-    
+
     display_sprint_tasks(sprint);
 }
 
 fn calculate_sprint_progress(sprint: &Sprint) -> (usize, usize, usize) {
-    let completed = sprint.tasks.iter()
+    let completed = sprint
+        .tasks
+        .iter()
         .filter(|t| t.status == TaskStatus::Completed)
         .count();
-    
-    let in_progress = sprint.tasks.iter()
+
+    let in_progress = sprint
+        .tasks
+        .iter()
         .filter(|t| t.status == TaskStatus::InProgress)
         .count();
-    
+
     let total = sprint.tasks.len();
-    
+
     (completed, in_progress, total)
 }
 

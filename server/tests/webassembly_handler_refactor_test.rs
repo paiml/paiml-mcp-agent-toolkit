@@ -11,15 +11,15 @@ use tokio;
 async fn test_webassembly_handler_structure() -> Result<()> {
     let temp_dir = tempdir()?;
     let project_path = temp_dir.path().to_path_buf();
-    
+
     // Create test WASM file
     let wasm_file = project_path.join("test.wasm");
     tokio::fs::write(&wasm_file, b"fake wasm content").await?;
-    
+
     // Create test WAT file
     let wat_file = project_path.join("test.wat");
     tokio::fs::write(&wat_file, "(module)").await?;
-    
+
     let _result = handle_analyze_webassembly(
         project_path,
         ComplexityOutputFormat::Json,
@@ -30,8 +30,9 @@ async fn test_webassembly_handler_structure() -> Result<()> {
         false, // complexity
         None,  // output
         false, // perf
-    ).await;
-    
+    )
+    .await;
+
     assert!(true, "Function structure maintained");
     Ok(())
 }
@@ -40,10 +41,10 @@ async fn test_webassembly_handler_structure() -> Result<()> {
 async fn test_security_and_complexity_flags() -> Result<()> {
     let temp_dir = tempdir()?;
     let project_path = temp_dir.path().to_path_buf();
-    
+
     let wat_file = project_path.join("module.wat");
     tokio::fs::write(&wat_file, "(module (func))").await?;
-    
+
     // Test with security and complexity enabled
     let _result = handle_analyze_webassembly(
         project_path.clone(),
@@ -54,9 +55,10 @@ async fn test_security_and_complexity_flags() -> Result<()> {
         true,  // security enabled
         true,  // complexity enabled
         None,
-        true,  // perf enabled
-    ).await;
-    
+        true, // perf enabled
+    )
+    .await;
+
     assert!(true, "Security and complexity analysis works");
     Ok(())
 }
@@ -66,15 +68,20 @@ async fn test_output_file_handling() -> Result<()> {
     let temp_dir = tempdir()?;
     let project_path = temp_dir.path().to_path_buf();
     let output_file = temp_dir.path().join("output.json");
-    
+
     let _result = handle_analyze_webassembly(
         project_path,
         ComplexityOutputFormat::Json,
-        false, false, false, false, false,
+        false,
+        false,
+        false,
+        false,
+        false,
         Some(output_file),
         false,
-    ).await;
-    
+    )
+    .await;
+
     assert!(true, "Output file handling works");
     Ok(())
 }

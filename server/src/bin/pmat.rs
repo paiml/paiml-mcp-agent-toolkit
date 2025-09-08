@@ -110,7 +110,7 @@ async fn main() {
 
 fn categorize_error(error: &anyhow::Error) -> ExitCode {
     let error_str = error.to_string().to_lowercase();
-    
+
     if is_quality_gate_error(&error_str) {
         ExitCode::QualityGateFailure
     } else if is_configuration_error(&error_str) {

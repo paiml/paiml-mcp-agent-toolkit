@@ -166,14 +166,10 @@ async fn handle_enforce_extreme(
     clear_cache: bool,
 ) -> Result<()> {
     print_enforcement_header(&project_path);
-    
-    let profile = initialize_enforcement_environment(
-        &profile_name,
-        config_path,
-        &cache_dir,
-        clear_cache,
-    )?;
-    
+
+    let profile =
+        initialize_enforcement_environment(&profile_name, config_path, &cache_dir, clear_cache)?;
+
     if let Some(result) = handle_special_modes(
         list_violations,
         validate_only,
@@ -181,10 +177,12 @@ async fn handle_enforce_extreme(
         &profile,
         format,
         ci_mode,
-    ).await? {
+    )
+    .await?
+    {
         return result;
     }
-    
+
     let enforcement_config = EnforcementConfig {
         max_iterations,
         target_improvement,
@@ -199,7 +197,7 @@ async fn handle_enforce_extreme(
         format,
         ci_mode,
     };
-    
+
     run_main_enforcement_loop(&project_path, &profile, enforcement_config).await
 }
 
@@ -220,7 +218,7 @@ struct EnforcementConfig {
 }
 
 /// Print enforcement header
-fn print_enforcement_header(project_path: &PathBuf) {
+fn print_enforcement_header(project_path: &Path) {
     eprintln!("🎯 Starting Extreme Quality Enforcement");
     eprintln!("📁 Project: {}", project_path.display());
 }
@@ -233,11 +231,11 @@ fn initialize_enforcement_environment(
     clear_cache: bool,
 ) -> Result<QualityProfile> {
     let profile = load_quality_profile(profile_name, config_path)?;
-    
+
     if clear_cache {
         clear_enforcement_cache(cache_dir);
     }
-    
+
     Ok(profile)
 }
 
@@ -259,13 +257,17 @@ async fn handle_special_modes(
     ci_mode: bool,
 ) -> Result<Option<Result<()>>> {
     if list_violations {
-        return Ok(Some(list_all_violations(project_path, profile, format).await));
+        return Ok(Some(
+            list_all_violations(project_path, profile, format).await,
+        ));
     }
-    
+
     if validate_only {
-        return Ok(Some(validate_current_state(project_path, profile, format, ci_mode).await));
+        return Ok(Some(
+            validate_current_state(project_path, profile, format, ci_mode).await,
+        ));
     }
-    
+
     Ok(None)
 }
 
@@ -279,34 +281,34 @@ async fn run_main_enforcement_loop(
     let mut current_state = EnforcementState::Analyzing;
     let mut iteration = 0;
     let mut current_score = 0.0;
-    
+
     while should_continue_enforcement(current_state, iteration, &config, start_time) {
         iteration += 1;
         eprintln!("\n🔄 Iteration {}", iteration);
-        
-        let result = execute_enforcement_iteration(
-            project_path,
-            profile,
-            current_state,
-            &config,
-        ).await?;
-        
+
+        let result =
+            execute_enforcement_iteration(project_path, profile, current_state, &config).await?;
+
         current_state = result.state;
         current_score = result.score;
-        
+
         output_result(&result, config.format, config.show_progress)?;
-        
-        if should_stop_for_target_improvement(config.target_improvement, result.score, current_score) {
+
+        if should_stop_for_target_improvement(
+            config.target_improvement,
+            result.score,
+            current_score,
+        ) {
             eprintln!("✅ Target improvement achieved");
             break;
         }
-        
+
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
-    
+
     print_enforcement_summary(current_score, iteration, start_time.elapsed());
     handle_ci_mode_exit(config.ci_mode, current_state);
-    
+
     Ok(())
 }
 
@@ -320,14 +322,14 @@ fn should_continue_enforcement(
     if current_state == EnforcementState::Complete || iteration >= config.max_iterations {
         return false;
     }
-    
+
     if let Some(max_seconds) = config.max_time {
         if start_time.elapsed().as_secs() > max_seconds {
             eprintln!("⏱️  Time limit reached");
             return false;
         }
     }
-    
+
     true
 }
 
@@ -348,7 +350,8 @@ async fn execute_enforcement_iteration(
         config.specific_file.as_ref(),
         config.include_pattern.as_ref(),
         config.exclude_pattern.as_ref(),
-    ).await
+    )
+    .await
 }
 
 /// Check if should stop for target improvement

@@ -3519,9 +3519,11 @@ async fn execute_specific_quality_check(
     results: &mut QualityGateResults,
 ) -> Result<()> {
     use QualityCheckType::*;
-    
+
     match check {
-        Complexity => execute_complexity_check(project_path, max_complexity_p99, violations, results).await,
+        Complexity => {
+            execute_complexity_check(project_path, max_complexity_p99, violations, results).await
+        }
         DeadCode => execute_dead_code_check(project_path, max_dead_code, violations, results).await,
         Satd => execute_satd_check(project_path, violations, results).await,
         Entropy => execute_entropy_check(project_path, min_entropy, violations, results).await,
@@ -3561,7 +3563,8 @@ async fn execute_complexity_check(
         check_complexity(project_path, max_complexity_p99),
         |count| results.complexity_violations = count,
         violations,
-    ).await
+    )
+    .await
 }
 
 /// Helper for dead code check execution
@@ -3575,7 +3578,8 @@ async fn execute_dead_code_check(
         check_dead_code(project_path, max_dead_code),
         |count| results.dead_code_violations = count,
         violations,
-    ).await
+    )
+    .await
 }
 
 /// Helper for SATD check execution
@@ -3588,7 +3592,8 @@ async fn execute_satd_check(
         check_satd(project_path),
         |count| results.satd_violations = count,
         violations,
-    ).await
+    )
+    .await
 }
 
 /// Helper for entropy check execution
@@ -3602,7 +3607,8 @@ async fn execute_entropy_check(
         check_entropy(project_path, min_entropy),
         |count| results.entropy_violations = count,
         violations,
-    ).await
+    )
+    .await
 }
 
 /// Helper for security check execution
@@ -3615,7 +3621,8 @@ async fn execute_security_check(
         check_security(project_path),
         |count| results.security_violations = count,
         violations,
-    ).await
+    )
+    .await
 }
 
 /// Helper for duplicates check execution
@@ -3628,7 +3635,8 @@ async fn execute_duplicates_check(
         check_duplicates(project_path),
         |count| results.duplicate_violations = count,
         violations,
-    ).await
+    )
+    .await
 }
 
 /// Helper for coverage check execution
@@ -3641,7 +3649,8 @@ async fn execute_coverage_check(
         check_coverage(project_path, 80.0),
         |count| results.coverage_violations = count,
         violations,
-    ).await
+    )
+    .await
 }
 
 /// Helper for sections check execution
@@ -3654,7 +3663,8 @@ async fn execute_sections_check(
         check_sections(project_path),
         |count| results.section_violations = count,
         violations,
-    ).await
+    )
+    .await
 }
 
 /// Helper for provability check execution
@@ -3667,7 +3677,8 @@ async fn execute_provability_check(
         check_provability(project_path, 0.7),
         |count| results.provability_violations = count,
         violations,
-    ).await
+    )
+    .await
 }
 
 /// Runs all project-wide checks
@@ -4405,7 +4416,7 @@ fn is_test_filename(path: &Path) -> bool {
 /// Check if path is a build artifact that should be excluded from duplicate detection
 fn is_build_artifact(path: &Path) -> bool {
     let path_str = path.to_string_lossy();
-    path_str.contains("/target/") 
+    path_str.contains("/target/")
         || path_str.contains("/build/")
         || path_str.contains("/out/")
         || path_str.contains("/.cargo/")
@@ -4416,7 +4427,6 @@ fn is_build_artifact(path: &Path) -> bool {
         || path_str.starts_with("./target/")
         || path_str.starts_with("target/")
 }
-
 
 // Quality check functions
 
@@ -4509,16 +4519,32 @@ fn process_complexity_violation(
     violations: &mut Vec<QualityViolation>,
 ) {
     use crate::services::complexity::Violation;
-    
+
     let (file, line, function, rule, message, value, threshold, severity) = match violation {
-        Violation::Error { file, line, function, rule, message, value, threshold } => {
-            (file, line, function, rule, message, value, threshold, "error")
-        }
-        Violation::Warning { file, line, function, rule, message, value, threshold } => {
-            (file, line, function, rule, message, value, threshold, "warning")
-        }
+        Violation::Error {
+            file,
+            line,
+            function,
+            rule,
+            message,
+            value,
+            threshold,
+        } => (
+            file, line, function, rule, message, value, threshold, "error",
+        ),
+        Violation::Warning {
+            file,
+            line,
+            function,
+            rule,
+            message,
+            value,
+            threshold,
+        } => (
+            file, line, function, rule, message, value, threshold, "warning",
+        ),
     };
-    
+
     // Only add if this is an actual threshold violation
     if value > threshold {
         violations.push(QualityViolation {
@@ -5095,7 +5121,7 @@ async fn collect_file_hashes(
         if is_excluded_directory(&path_str) {
             continue;
         }
-        
+
         // Additional check: if path contains '/target/' anywhere, skip it
         if path_str.contains("/target/") {
             continue;
@@ -5993,32 +6019,83 @@ fn is_excluded_path(path: &Path) -> bool {
 fn is_excluded_directory(path_str: &str) -> bool {
     // Normalize path for consistent matching
     let normalized = path_str.replace("\\", "/");
-    
+
     // Directory name patterns to exclude (gitignore-style)
     let excluded_dir_names = [
-        "target", "build", "out", ".cargo", "node_modules", 
-        "dist", ".git", "vendor", "generated", ".aws-sam",
-        "coverage", "__pycache__", ".pytest_cache", ".cache",
-        "tmp", ".venv", "venv", "ENV", "env", ".terraform",
-        "site", "_site", ".jekyll-cache", ".idea", ".vscode",
+        "target",
+        "build",
+        "out",
+        ".cargo",
+        "node_modules",
+        "dist",
+        ".git",
+        "vendor",
+        "generated",
+        ".aws-sam",
+        "coverage",
+        "__pycache__",
+        ".pytest_cache",
+        ".cache",
+        "tmp",
+        ".venv",
+        "venv",
+        "ENV",
+        "env",
+        ".terraform",
+        "site",
+        "_site",
+        ".jekyll-cache",
+        ".idea",
+        ".vscode",
     ];
-    
+
     // Path patterns that should be excluded
     let excluded_path_patterns = [
-        "/target/", "/build/", "/out/", "/.cargo/", "/node_modules/",
-        "/dist/", "/.git/", "/vendor/", "/generated/", "/.aws-sam/",
-        "/coverage/", "/__pycache__/", "/.pytest_cache/", "/.cache/",
-        "/tmp/", "/.venv/", "/venv/", "/ENV/", "/env/", "/.terraform/",
-        "/site/", "/_site/", "/.jekyll-cache/", "/.idea/", "/.vscode/",
-        "/tests/", "/test/", "/examples/", "/benches/", "/benchmarks/",
-        "/fixtures/", "/testdata/", "/test_data/", "/debug_test/", "/test-",
+        "/target/",
+        "/build/",
+        "/out/",
+        "/.cargo/",
+        "/node_modules/",
+        "/dist/",
+        "/.git/",
+        "/vendor/",
+        "/generated/",
+        "/.aws-sam/",
+        "/coverage/",
+        "/__pycache__/",
+        "/.pytest_cache/",
+        "/.cache/",
+        "/tmp/",
+        "/.venv/",
+        "/venv/",
+        "/ENV/",
+        "/env/",
+        "/.terraform/",
+        "/site/",
+        "/_site/",
+        "/.jekyll-cache/",
+        "/.idea/",
+        "/.vscode/",
+        "/tests/",
+        "/test/",
+        "/examples/",
+        "/benches/",
+        "/benchmarks/",
+        "/fixtures/",
+        "/testdata/",
+        "/test_data/",
+        "/debug_test/",
+        "/test-",
     ];
-    
+
     // Check if the path contains any excluded directory patterns
-    if excluded_path_patterns.iter().any(|pattern| normalized.contains(pattern)) {
+    if excluded_path_patterns
+        .iter()
+        .any(|pattern| normalized.contains(pattern))
+    {
         return true;
     }
-    
+
     // Check if path starts with excluded directories (./target, target/, etc.)
     let path_components: Vec<&str> = normalized.trim_start_matches("./").split('/').collect();
     if let Some(first_component) = path_components.first() {
@@ -6026,7 +6103,7 @@ fn is_excluded_directory(path_str: &str) -> bool {
             return true;
         }
     }
-    
+
     false
 }
 
@@ -6043,10 +6120,15 @@ fn is_test_file(filename: &str) -> bool {
     const TEST_SUFFIXES: &[&str] = &["_test.rs", "_tests.rs", "tests.rs"];
     const TEST_PREFIXES: &[&str] = &["test_", "tests_"];
     const TEST_CONTAINS: &[&str] = &[
-        "_test_", "_tests_", "test_harness", 
-        "test_helpers", "test_utils", "_property_test", "property_tests"
+        "_test_",
+        "_tests_",
+        "test_harness",
+        "test_helpers",
+        "test_utils",
+        "_property_test",
+        "property_tests",
     ];
-    
+
     TEST_SUFFIXES.iter().any(|s| filename.ends_with(s))
         || TEST_PREFIXES.iter().any(|p| filename.starts_with(p))
         || TEST_CONTAINS.iter().any(|c| filename.contains(c))
@@ -6056,8 +6138,10 @@ fn is_test_file(filename: &str) -> bool {
 fn is_example_or_demo_file(filename: &str) -> bool {
     const EXAMPLE_DEMO_PREFIXES: &[&str] = &["example_", "demo_"];
     const EXAMPLE_DEMO_CONTAINS: &[&str] = &["_example", "_demo"];
-    
-    EXAMPLE_DEMO_PREFIXES.iter().any(|p| filename.starts_with(p))
+
+    EXAMPLE_DEMO_PREFIXES
+        .iter()
+        .any(|p| filename.starts_with(p))
         || EXAMPLE_DEMO_CONTAINS.iter().any(|c| filename.contains(c))
 }
 
@@ -6065,7 +6149,7 @@ fn is_example_or_demo_file(filename: &str) -> bool {
 fn is_benchmark_file(filename: &str) -> bool {
     const BENCH_SUFFIXES: &[&str] = &["_bench.rs", "_benchmark.rs"];
     const BENCH_CONTAINS: &[&str] = &["bench_", "benchmark_"];
-    
+
     BENCH_SUFFIXES.iter().any(|s| filename.ends_with(s))
         || BENCH_CONTAINS.iter().any(|c| filename.contains(c))
 }
@@ -6074,7 +6158,7 @@ fn is_benchmark_file(filename: &str) -> bool {
 fn is_mock_or_stub_file(filename: &str) -> bool {
     const MOCK_STUB_PREFIXES: &[&str] = &["mock_", "stub_", "stubs_"];
     const MOCK_STUB_CONTAINS: &[&str] = &["_mock", "_stub", "_stubs"];
-    
+
     MOCK_STUB_PREFIXES.iter().any(|p| filename.starts_with(p))
         || MOCK_STUB_CONTAINS.iter().any(|c| filename.contains(c))
 }
@@ -6137,13 +6221,7 @@ pub fn extract_identifiers(content: &str) -> Vec<super::NameInfo> {
     let patterns = get_identifier_patterns();
 
     for (pattern_str, kind) in patterns {
-        extract_identifiers_for_pattern(
-            content,
-            pattern_str,
-            kind,
-            &mut identifiers,
-            &mut seen,
-        );
+        extract_identifiers_for_pattern(content, pattern_str, kind, &mut identifiers, &mut seen);
     }
 
     identifiers
@@ -6183,13 +6261,13 @@ fn extract_identifiers_for_pattern(
     seen: &mut HashSet<String>,
 ) {
     use regex::Regex;
-    
+
     if let Ok(re) = Regex::new(pattern_str) {
         for (line_num, line) in content.lines().enumerate() {
             for cap in re.captures_iter(line) {
                 if let Some(name_match) = cap.get(1) {
                     let name = name_match.as_str().to_string();
-                    
+
                     // Skip if we've already seen this identifier
                     if seen.insert(name.clone()) {
                         identifiers.push(super::NameInfo {
@@ -7618,22 +7696,30 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
         use std::path::Path;
 
         // Should exclude target directory files
-        assert!(is_build_artifact(Path::new("./target/debug/build/pmat-123/out/tool_registry.rs")));
+        assert!(is_build_artifact(Path::new(
+            "./target/debug/build/pmat-123/out/tool_registry.rs"
+        )));
         assert!(is_build_artifact(Path::new("target/debug/deps/pmat.rs")));
-        
+
         // Should exclude other build artifacts
         assert!(is_build_artifact(Path::new("./build/generated.rs")));
         assert!(is_build_artifact(Path::new("./out/alias_table.rs")));
-        assert!(is_build_artifact(Path::new("./.cargo/registry/src/github.com/file.rs")));
-        assert!(is_build_artifact(Path::new("./node_modules/package/lib.js")));
+        assert!(is_build_artifact(Path::new(
+            "./.cargo/registry/src/github.com/file.rs"
+        )));
+        assert!(is_build_artifact(Path::new(
+            "./node_modules/package/lib.js"
+        )));
         assert!(is_build_artifact(Path::new("./dist/bundle.js")));
         assert!(is_build_artifact(Path::new("./.git/objects/ab/cd1234")));
         assert!(is_build_artifact(Path::new("./generated/proto.rs")));
-        
+
         // Should NOT exclude source files
         assert!(!is_build_artifact(Path::new("./server/src/lib.rs")));
         assert!(!is_build_artifact(Path::new("./src/main.rs")));
-        assert!(!is_build_artifact(Path::new("./server/src/handlers/tools.rs")));
+        assert!(!is_build_artifact(Path::new(
+            "./server/src/handlers/tools.rs"
+        )));
     }
 
     /// Test is_excluded_directory function excludes build directories
@@ -7651,9 +7737,13 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
         assert!(is_excluded_directory("./target/debug/build"));
         assert!(is_excluded_directory("./foo/node_modules/"));
         assert!(is_excluded_directory("./bar/.git/"));
-        assert!(is_excluded_directory("./server/target/debug/build/unicode_names2-c78072d37d9beb66/out/generated.rs"));
-        assert!(is_excluded_directory("./target/debug/build/rustpython-parser-5d3dfbfd27d1a200/out/keywords.rs"));
-        
+        assert!(is_excluded_directory(
+            "./server/target/debug/build/unicode_names2-c78072d37d9beb66/out/generated.rs"
+        ));
+        assert!(is_excluded_directory(
+            "./target/debug/build/rustpython-parser-5d3dfbfd27d1a200/out/keywords.rs"
+        ));
+
         // Should NOT exclude source directories
         assert!(!is_excluded_directory("server"));
         assert!(!is_excluded_directory("src"));

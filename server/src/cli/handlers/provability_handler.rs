@@ -55,16 +55,18 @@ pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()>
     let summaries = run_provability_analysis(&analyzer, &function_ids).await?;
     let filtered_summaries = prepare_filtered_summaries(&summaries, config.high_confidence_only);
     let content = format_provability_output(&function_ids, &filtered_summaries, &config)?;
-    
+
     write_provability_output(&content, &config.output).await?;
 
     Ok(())
 }
 
 /// Resolve function targets for analysis (cognitive complexity ≤6)
-async fn resolve_function_targets(config: &ProvabilityConfig) -> Result<Vec<crate::services::lightweight_provability_analyzer::FunctionId>> {
+async fn resolve_function_targets(
+    config: &ProvabilityConfig,
+) -> Result<Vec<crate::services::lightweight_provability_analyzer::FunctionId>> {
     use crate::cli::provability_helpers::*;
-    
+
     if config.functions.is_empty() {
         discover_project_functions(&config.project_path).await
     } else {
@@ -103,7 +105,7 @@ fn format_provability_output(
     config: &ProvabilityConfig,
 ) -> Result<String> {
     use crate::cli::provability_helpers::*;
-    
+
     match config.format {
         ProvabilityOutputFormat::Json => {
             format_provability_json(function_ids, summaries, config.include_evidence)
@@ -114,9 +116,7 @@ fn format_provability_output(
         ProvabilityOutputFormat::Full => {
             format_provability_detailed(function_ids, summaries, config.include_evidence)
         }
-        ProvabilityOutputFormat::Sarif => {
-            format_provability_sarif(function_ids, summaries)
-        }
+        ProvabilityOutputFormat::Sarif => format_provability_sarif(function_ids, summaries),
         ProvabilityOutputFormat::Markdown => {
             format_provability_detailed(function_ids, summaries, config.include_evidence)
         }

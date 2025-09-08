@@ -73,7 +73,7 @@ async fn show_diagnostics(
 fn show_plain_diagnostics(stats: &crate::tdg::storage::StorageStatistics, detailed: bool) {
     println!("TDG System Diagnostics\n");
     print_basic_storage_info(stats);
-    
+
     if detailed {
         show_backend_details(&stats.backend_stats);
     }
@@ -83,11 +83,11 @@ fn show_human_diagnostics(stats: &crate::tdg::storage::StorageStatistics, detail
     println!("=== TDG System Diagnostics ===\n");
     println!("Storage Diagnostics:");
     println!("{}", stats.format_diagnostic());
-    
+
     if detailed {
         show_human_backend_details(&stats.backend_stats);
     }
-    
+
     println!();
     println!("Note: Full diagnostic infrastructure is in development.");
     println!("Currently showing storage statistics only.");
@@ -95,7 +95,7 @@ fn show_human_diagnostics(stats: &crate::tdg::storage::StorageStatistics, detail
 
 fn show_json_diagnostics(
     stats: &crate::tdg::storage::StorageStatistics,
-    show_storage: bool
+    show_storage: bool,
 ) -> Result<()> {
     let json_output = json!({
         "storage": if show_storage { Some(stats) } else { None },
@@ -107,7 +107,7 @@ fn show_json_diagnostics(
 
 fn show_yaml_diagnostics(
     stats: &crate::tdg::storage::StorageStatistics,
-    show_storage: bool
+    show_storage: bool,
 ) -> Result<()> {
     let yaml_output = json!({
         "storage": if show_storage { Some(stats) } else { None },
@@ -144,7 +144,7 @@ fn print_basic_storage_info(stats: &crate::tdg::storage::StorageStatistics) {
 }
 
 fn show_backend_details(
-    backend_stats: &std::collections::HashMap<String, std::collections::HashMap<String, String>>
+    backend_stats: &std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 ) {
     println!("\nBackend Details:");
     for (tier, stats) in backend_stats {
@@ -153,7 +153,7 @@ fn show_backend_details(
 }
 
 fn show_human_backend_details(
-    backend_stats: &std::collections::HashMap<String, std::collections::HashMap<String, String>>
+    backend_stats: &std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 ) {
     println!("\nBackend Details:");
     for (tier, stats) in backend_stats {
@@ -164,7 +164,10 @@ fn show_human_backend_details(
     }
 }
 
-fn add_storage_table_rows(table: &mut prettytable::Table, stats: &crate::tdg::storage::StorageStatistics) {
+fn add_storage_table_rows(
+    table: &mut prettytable::Table,
+    stats: &crate::tdg::storage::StorageStatistics,
+) {
     table.add_row(row![
         "Storage",
         format!("{} entries", stats.total_entries),

@@ -3,30 +3,33 @@
 
 use anyhow::Result;
 use pmat::services::similarity::{
-    ComprehensiveReport, Metrics, SimilarBlock, EntropyReport, RefactoringHint,
+    ComprehensiveReport, EntropyReport, Metrics, RefactoringHint, SimilarBlock,
 };
 
 // Mock function signature for testing refactored structure
 fn format_detailed_report_mock(report: &ComprehensiveReport) -> Result<String> {
     let mut output = String::new();
-    
+
     // Test structure preservation
     output.push_str("# Comprehensive Code Similarity Report\n\n");
     output.push_str(&format!("## Overall Metrics\n"));
-    output.push_str(&format!("- Duplication Percentage: {:.1}%\n", report.metrics.duplication_percentage));
-    
+    output.push_str(&format!(
+        "- Duplication Percentage: {:.1}%\n",
+        report.metrics.duplication_percentage
+    ));
+
     Ok(output)
 }
 
 #[test]
 fn test_format_detailed_report_structure() -> Result<()> {
     let report = create_test_report();
-    
+
     let output = format_detailed_report_mock(&report)?;
     assert!(output.contains("# Comprehensive Code Similarity Report"));
     assert!(output.contains("## Overall Metrics"));
     assert!(output.contains("Duplication Percentage"));
-    
+
     Ok(())
 }
 
@@ -44,11 +47,11 @@ fn test_format_empty_report() -> Result<()> {
             total_clones: 0,
         },
     };
-    
+
     let output = format_detailed_report_mock(&report)?;
     assert!(!output.is_empty());
     assert!(output.contains("0.0%"));
-    
+
     Ok(())
 }
 
@@ -64,10 +67,10 @@ fn test_format_with_duplicates() -> Result<()> {
         content_preview: "test content".to_string(),
         clone_type: pmat::services::similarity::CloneType::Type1,
     }];
-    
+
     let output = format_detailed_report_mock(&report)?;
     assert!(!output.is_empty());
-    
+
     Ok(())
 }
 

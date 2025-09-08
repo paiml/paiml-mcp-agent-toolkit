@@ -406,19 +406,18 @@ fn format_json_output(table: &SymbolTable) -> Result<String> {
 
 /// Format human-readable output (cognitive complexity ≤8)
 fn format_human_output(table: SymbolTable, show_unreferenced: bool) -> Result<String> {
-    use std::fmt::Write;
     let mut output = String::new();
-    
+
     write_header(&mut output, table.total_symbols)?;
     write_symbols_by_type(&mut output, &table.symbols)?;
-    
+
     if show_unreferenced {
         write_unreferenced_symbols(&mut output, &table.unreferenced_symbols)?;
     }
-    
+
     write_most_referenced(&mut output, &table.most_referenced)?;
     write_top_files_by_count(&mut output, &table.symbols)?;
-    
+
     Ok(output)
 }
 
@@ -433,14 +432,12 @@ fn write_header(output: &mut String, total_symbols: usize) -> Result<()> {
 
 /// Write symbols grouped by type (cognitive complexity ≤8)
 fn write_symbols_by_type(output: &mut String, symbols: &[Symbol]) -> Result<()> {
-    use std::fmt::Write;
-    
     let by_type = group_symbols_by_type(symbols);
-    
+
     for (kind, syms) in by_type {
         write_symbol_group(output, &kind, &syms)?;
     }
-    
+
     Ok(())
 }
 
@@ -456,17 +453,17 @@ fn group_symbols_by_type(symbols: &[Symbol]) -> HashMap<SymbolKind, Vec<&Symbol>
 /// Write a single symbol group (cognitive complexity ≤6)
 fn write_symbol_group(output: &mut String, kind: &SymbolKind, syms: &[&Symbol]) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "### {:?} ({})", kind, syms.len())?;
-    
+
     for sym in syms.iter().take(10) {
         writeln!(output, "  - {} ({}:{})", sym.name, sym.file, sym.line)?;
     }
-    
+
     if syms.len() > 10 {
         writeln!(output, "  ... and {} more", syms.len() - 10)?;
     }
-    
+
     writeln!(output)?;
     Ok(())
 }
@@ -474,63 +471,63 @@ fn write_symbol_group(output: &mut String, kind: &SymbolKind, syms: &[&Symbol]) 
 /// Write unreferenced symbols section (cognitive complexity ≤5)
 fn write_unreferenced_symbols(output: &mut String, unreferenced: &[String]) -> Result<()> {
     use std::fmt::Write;
-    
+
     if unreferenced.is_empty() {
         return Ok(());
     }
-    
+
     writeln!(output, "## Unreferenced Symbols\n")?;
     for name in unreferenced {
         writeln!(output, "  - {}", name)?;
     }
-    
+
     Ok(())
 }
 
 /// Write most referenced symbols section (cognitive complexity ≤5)
 fn write_most_referenced(output: &mut String, most_referenced: &[(String, usize)]) -> Result<()> {
     use std::fmt::Write;
-    
+
     if most_referenced.is_empty() {
         return Ok(());
     }
-    
+
     writeln!(output, "\n## Most Referenced Symbols\n")?;
     for (name, count) in most_referenced {
         writeln!(output, "  - {}: {} references", name, count)?;
     }
-    
+
     Ok(())
 }
 
 /// Write top files by symbol count (cognitive complexity ≤8)
 fn write_top_files_by_count(output: &mut String, symbols: &[Symbol]) -> Result<()> {
     use std::fmt::Write;
-    
+
     if symbols.is_empty() {
         return Ok(());
     }
-    
+
     writeln!(output, "\n## Top Files by Symbol Count\n")?;
-    
+
     let sorted_files = get_sorted_file_counts(symbols);
-    
+
     for (i, (file_path, count)) in sorted_files.iter().take(10).enumerate() {
         let filename = extract_filename(file_path);
         writeln!(output, "{}. `{}` - {} symbols", i + 1, filename, count)?;
     }
-    
+
     Ok(())
 }
 
 /// Get file counts sorted by symbol count (cognitive complexity ≤5)
 fn get_sorted_file_counts(symbols: &[Symbol]) -> Vec<(&str, usize)> {
     let mut file_counts: HashMap<&str, usize> = HashMap::new();
-    
+
     for symbol in symbols {
         *file_counts.entry(&symbol.file).or_insert(0) += 1;
     }
-    
+
     let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
     sorted_files.sort_by(|a, b| b.1.cmp(&a.1));
     sorted_files
@@ -548,9 +545,9 @@ fn extract_filename(file_path: &str) -> &str {
 fn format_csv_output(table: SymbolTable) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
-    
+
     writeln!(&mut output, "name,kind,file,line,column,visibility")?;
-    
+
     for sym in table.symbols {
         writeln!(
             &mut output,
@@ -558,7 +555,7 @@ fn format_csv_output(table: SymbolTable) -> Result<String> {
             sym.name, sym.kind, sym.file, sym.line, sym.column, sym.visibility
         )?;
     }
-    
+
     Ok(output)
 }
 

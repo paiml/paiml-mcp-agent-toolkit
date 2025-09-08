@@ -192,7 +192,7 @@ pub fn format_provability_summary(
     top_files: usize,
 ) -> Result<String> {
     let mut output = String::new();
-    
+
     write_summary_header(&mut output, function_ids.len())?;
     write_score_distribution(&mut output, summaries)?;
     write_average_score(&mut output, summaries)?;
@@ -214,7 +214,7 @@ fn write_score_distribution(output: &mut String, summaries: &[ProofSummary]) -> 
     writeln!(output, "- High (≥80%): {} functions", high_count)?;
     writeln!(output, "- Medium (50-79%): {} functions", medium_count)?;
     writeln!(output, "- Low (<50%): {} functions", low_count)?;
-    
+
     Ok(())
 }
 
@@ -231,13 +231,17 @@ fn categorize_scores(summaries: &[ProofSummary]) -> (usize, usize, usize) {
         .iter()
         .filter(|s| s.provability_score < 0.5)
         .count();
-    
+
     (high_provability, medium_provability, low_provability)
 }
 
 fn write_average_score(output: &mut String, summaries: &[ProofSummary]) -> Result<()> {
     let avg_score = calculate_average_score(summaries);
-    writeln!(output, "\nAverage provability score: {:.1}%", avg_score * 100.0)?;
+    writeln!(
+        output,
+        "\nAverage provability score: {:.1}%",
+        avg_score * 100.0
+    )?;
     Ok(())
 }
 
@@ -262,7 +266,7 @@ fn write_top_files_section(
     writeln!(output, "\n## Top Files by Provability\n")?;
     let file_avg_scores = calculate_file_averages(function_ids, summaries);
     write_top_files_list(output, &file_avg_scores, top_files)?;
-    
+
     Ok(())
 }
 
@@ -271,7 +275,7 @@ fn calculate_file_averages<'a>(
     summaries: &'a [ProofSummary],
 ) -> Vec<(&'a str, f64, usize)> {
     let mut file_scores: HashMap<&str, Vec<f64>> = HashMap::new();
-    
+
     for (func_id, summary) in function_ids.iter().zip(summaries.iter()) {
         file_scores
             .entry(&func_id.file_path)
@@ -286,7 +290,7 @@ fn calculate_file_averages<'a>(
             (*file_path, avg_score, scores.len())
         })
         .collect();
-    
+
     file_avg_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     file_avg_scores
 }
@@ -297,7 +301,7 @@ fn write_top_files_list(
     top_files: usize,
 ) -> Result<()> {
     let files_to_show = if top_files == 0 { 10 } else { top_files };
-    
+
     for (i, (file_path, avg_score, function_count)) in
         file_avg_scores.iter().take(files_to_show).enumerate()
     {
@@ -311,7 +315,7 @@ fn write_top_files_list(
             function_count
         )?;
     }
-    
+
     Ok(())
 }
 
@@ -342,14 +346,14 @@ fn group_functions_by_file<'a>(
     summaries: &'a [ProofSummary],
 ) -> HashMap<&'a str, Vec<(&'a FunctionId, &'a ProofSummary)>> {
     let mut by_file = HashMap::new();
-    
+
     for (func_id, summary) in function_ids.iter().zip(summaries.iter()) {
         by_file
             .entry(func_id.file_path.as_str())
             .or_insert_with(Vec::new)
             .push((func_id, summary));
     }
-    
+
     by_file
 }
 
@@ -374,14 +378,14 @@ fn write_file_section(
 
     for (func_id, summary) in functions {
         write_function_details(output, func_id, summary)?;
-        
+
         if include_evidence && !summary.verified_properties.is_empty() {
             write_verified_properties(output, &summary.verified_properties)?;
         }
 
         writeln!(output)?;
     }
-    
+
     Ok(())
 }
 
@@ -407,7 +411,7 @@ fn write_function_details(
         "- **Verified Properties**: {}",
         summary.verified_properties.len()
     )?;
-    
+
     Ok(())
 }
 
@@ -416,7 +420,7 @@ fn write_verified_properties(
     properties: &[crate::services::lightweight_provability_analyzer::VerifiedProperty],
 ) -> Result<()> {
     writeln!(output, "\n#### Verified Properties:")?;
-    
+
     for prop in properties {
         writeln!(
             output,
@@ -426,7 +430,7 @@ fn write_verified_properties(
         )?;
         writeln!(output, "  - Evidence: {}", prop.evidence)?;
     }
-    
+
     Ok(())
 }
 
