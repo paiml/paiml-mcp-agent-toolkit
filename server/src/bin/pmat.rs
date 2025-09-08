@@ -95,31 +95,49 @@ fn init_tracing(cli: &cli::EarlyCliArgs) -> Result<()> {
 
 #[tokio::main]
 async fn main() {
-    // POSIX-compliant exit handling
     let exit_code = match run_main().await {
         Ok(()) => ExitCode::Success,
         Err(e) => {
             error!("Error: {}", e);
-
-            // Categorize errors for appropriate exit codes
-            let error_str = e.to_string().to_lowercase();
-            if error_str.contains("quality gate") || error_str.contains("violation") {
-                ExitCode::QualityGateFailure
-            } else if error_str.contains("config") || error_str.contains("parse") {
-                ExitCode::ConfigurationError
-            } else if error_str.contains("analysis") || error_str.contains("complexity") {
-                ExitCode::AnalysisError
-            } else if error_str.contains("permission") || error_str.contains("access") {
-                ExitCode::PermissionDenied
-            } else {
-                ExitCode::GeneralError
-            }
+            categorize_error(&e)
         }
     };
 
     if exit_code as i32 != 0 {
         process::exit(exit_code.into());
     }
+}
+
+fn categorize_error(error: &anyhow::Error) -> ExitCode {
+    let error_str = error.to_string().to_lowercase();
+    
+    if is_quality_gate_error(&error_str) {
+        ExitCode::QualityGateFailure
+    } else if is_configuration_error(&error_str) {
+        ExitCode::ConfigurationError
+    } else if is_analysis_error(&error_str) {
+        ExitCode::AnalysisError
+    } else if is_permission_error(&error_str) {
+        ExitCode::PermissionDenied
+    } else {
+        ExitCode::GeneralError
+    }
+}
+
+fn is_quality_gate_error(error_str: &str) -> bool {
+    error_str.contains("quality gate") || error_str.contains("violation")
+}
+
+fn is_configuration_error(error_str: &str) -> bool {
+    error_str.contains("config") || error_str.contains("parse")
+}
+
+fn is_analysis_error(error_str: &str) -> bool {
+    error_str.contains("analysis") || error_str.contains("complexity")
+}
+
+fn is_permission_error(error_str: &str) -> bool {
+    error_str.contains("permission") || error_str.contains("access")
 }
 
 async fn run_main() -> Result<()> {

@@ -201,44 +201,81 @@ fn extract_var_refs(text: &str) -> HashSet<String> {
 
     while i + 1 < bytes.len() {
         if bytes[i] == b'$' && i + 1 < bytes.len() {
-            match bytes[i + 1] {
-                b'(' => {
-                    if let Some(end) = text[i + 2..].find(')') {
-                        let var_ref = &text[i + 2..i + 2 + end];
-                        if !is_function_call(var_ref) && !is_automatic_var(var_ref) {
-                            let var_name = var_ref.split(':').next().unwrap_or(var_ref);
-                            vars.insert(var_name.to_string());
-                        }
-                        i += end + 3;
-                        continue;
-                    }
-                }
-                b'{' => {
-                    if let Some(end) = text[i + 2..].find('}') {
-                        let var_name = &text[i + 2..i + 2 + end];
-                        if !is_automatic_var(var_name) {
-                            vars.insert(var_name.to_string());
-                        }
-                        i += end + 3;
-                        continue;
-                    }
-                }
-                c if c.is_ascii_alphanumeric() || c == b'_' => {
-                    let byte_slice = [c];
-                    let var_name = std::str::from_utf8(&byte_slice).unwrap();
-                    if !is_automatic_var(var_name) {
-                        vars.insert(var_name.to_string());
-                    }
-                    i += 2;
-                    continue;
-                }
-                _ => {}
+            if let Some(jump) = process_variable_reference(text, &bytes, i + 1, &mut vars) {
+                i += jump;
+                continue;
             }
         }
         i += 1;
     }
 
     vars
+}
+
+fn process_variable_reference(
+    text: &str,
+    bytes: &[u8],
+    start_idx: usize,
+    vars: &mut HashSet<String>,
+) -> Option<usize> {
+    match bytes[start_idx] {
+        b'(' => process_parenthesized_var(text, start_idx, vars),
+        b'{' => process_braced_var(text, start_idx, vars),
+        c if c.is_ascii_alphanumeric() || c == b'_' => {
+            process_single_char_var(c, vars);
+            Some(2)
+        }
+        _ => None,
+    }
+}
+
+fn process_parenthesized_var(
+    text: &str,
+    start_idx: usize,
+    vars: &mut HashSet<String>,
+) -> Option<usize> {
+    if let Some(end) = text[start_idx + 1..].find(')') {
+        let var_ref = &text[start_idx + 1..start_idx + 1 + end];
+        if should_include_var_ref(var_ref) {
+            let var_name = extract_var_name(var_ref);
+            vars.insert(var_name.to_string());
+        }
+        Some(end + 3)
+    } else {
+        None
+    }
+}
+
+fn process_braced_var(
+    text: &str,
+    start_idx: usize,
+    vars: &mut HashSet<String>,
+) -> Option<usize> {
+    if let Some(end) = text[start_idx + 1..].find('}') {
+        let var_name = &text[start_idx + 1..start_idx + 1 + end];
+        if !is_automatic_var(var_name) {
+            vars.insert(var_name.to_string());
+        }
+        Some(end + 3)
+    } else {
+        None
+    }
+}
+
+fn process_single_char_var(c: u8, vars: &mut HashSet<String>) {
+    let byte_slice = [c];
+    let var_name = std::str::from_utf8(&byte_slice).unwrap();
+    if !is_automatic_var(var_name) {
+        vars.insert(var_name.to_string());
+    }
+}
+
+fn should_include_var_ref(var_ref: &str) -> bool {
+    !is_function_call(var_ref) && !is_automatic_var(var_ref)
+}
+
+fn extract_var_name(var_ref: &str) -> &str {
+    var_ref.split(':').next().unwrap_or(var_ref)
 }
 
 fn count_var_usage(text: &str) -> HashMap<String, usize> {

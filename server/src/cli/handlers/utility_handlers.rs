@@ -794,122 +794,170 @@ fn format_llm_optimized_output(
     detected_toolchain: &str,
     project_path: &Path,
 ) -> String {
-    // Optimized format for LLM consumption with minimal noise
     let mut output = String::new();
+    
+    format_project_header(&mut output, project_path, detected_toolchain);
+    format_project_summary(&mut output, &project_context.summary);
+    format_key_components(&mut output, project_context, deep_context);
+    format_quality_insights(&mut output, &deep_context.quality_scorecard);
+    format_recommendations(&mut output, &deep_context.recommendations);
+    
+    output
+}
+
+fn format_project_header(output: &mut String, project_path: &Path, detected_toolchain: &str) {
     output.push_str(&format!(
         "Project: {} ({})\n\n",
         project_path.display(),
         detected_toolchain
     ));
+}
 
-    // Summary
+fn format_project_summary(output: &mut String, summary: &crate::services::context::ProjectSummary) {
     output.push_str("Summary:\n");
-    output.push_str(&format!(
-        "- Files: {}\n",
-        project_context.summary.total_files
-    ));
-    output.push_str(&format!(
-        "- Functions: {}\n",
-        project_context.summary.total_functions
-    ));
+    output.push_str(&format!("- Files: {}\n", summary.total_files));
+    output.push_str(&format!("- Functions: {}\n", summary.total_functions));
     output.push_str(&format!(
         "- Types: {} structs, {} enums, {} traits\n\n",
-        project_context.summary.total_structs,
-        project_context.summary.total_enums,
-        project_context.summary.total_traits
+        summary.total_structs, summary.total_enums, summary.total_traits
     ));
+}
 
-    // Key files with functions
+fn format_key_components(
+    output: &mut String,
+    project_context: &crate::services::context::ProjectContext,
+    deep_context: &crate::services::deep_context::DeepContext,
+) {
     output.push_str("Key Components:\n\n");
+    
     for file in &project_context.files {
-        let functions: Vec<_> = file
-            .items
-            .iter()
-            .filter_map(|item| match item {
-                AstItem::Function { name, .. } => Some(name),
-                _ => None,
-            })
-            .collect();
-
+        let functions = extract_function_names(file);
         if !functions.is_empty() {
-            output.push_str(&format!("File: {}\n", file.path));
-            for func in functions {
-                output.push_str(&format!("  Function: {}", func));
-
-                // Add inline metadata
-                if let Some(complexity_metrics) = &file.complexity_metrics {
-                    if let Some(func_metrics) = complexity_metrics
-                        .functions
-                        .iter()
-                        .find(|f| &f.name == func)
-                    {
-                        if func_metrics.metrics.cyclomatic > 10 {
-                            output.push_str(&format!(
-                                " [complexity: {}]",
-                                func_metrics.metrics.cyclomatic
-                            ));
-                        }
-                        if func_metrics.metrics.cognitive > 15 {
-                            output.push_str(&format!(
-                                " [cognitive: {}]",
-                                func_metrics.metrics.cognitive
-                            ));
-                        }
-                    }
-                }
-
-                // Check if function is dead code
-                if let Some(dead_code_results) = &deep_context.analyses.dead_code_results {
-                    if let Some(file_metrics) = dead_code_results
-                        .ranked_files
-                        .iter()
-                        .find(|f| f.path.ends_with(&file.path))
-                    {
-                        if file_metrics.items.iter().any(|item| {
-                            matches!(
-                                item.item_type,
-                                crate::models::dead_code::DeadCodeType::Function
-                            ) && &item.name == func
-                        }) {
-                            output.push_str(" [DEAD CODE]");
-                        }
-                    }
-                }
-                output.push('\n');
-            }
-            output.push('\n');
+            format_file_functions(output, file, &functions, deep_context);
         }
     }
+}
 
-    // Quality insights
-    output.push_str("Quality Insights:\n");
-    output.push_str(&format!(
-        "- Overall Score: {:.1}/100\n",
-        deep_context.quality_scorecard.overall_health
-    ));
-    if deep_context.quality_scorecard.complexity_score < 80.0 {
-        output.push_str(&format!(
-            "- Complexity Score: {:.1}% (needs attention)\n",
-            deep_context.quality_scorecard.complexity_score
-        ));
-    }
-    if deep_context.quality_scorecard.maintainability_index < 80.0 {
-        output.push_str(&format!(
-            "- Maintainability: {:.1}% (could be improved)\n",
-            deep_context.quality_scorecard.maintainability_index
-        ));
+fn extract_function_names(file: &crate::services::context::FileContext) -> Vec<&str> {
+    file.items
+        .iter()
+        .filter_map(|item| match item {
+            AstItem::Function { name, .. } => Some(name.as_str()),
+            _ => None,
+        })
+        .collect()
+}
+
+fn format_file_functions(
+    output: &mut String,
+    file: &crate::services::context::FileContext,
+    functions: &[&str],
+    deep_context: &crate::services::deep_context::DeepContext,
+) {
+    output.push_str(&format!("File: {}\n", file.path));
+    
+    for func in functions {
+        output.push_str(&format!("  Function: {}", func));
+        add_function_metadata(output, file, func);
+        add_dead_code_marker(output, file, func, deep_context);
+        output.push('\n');
     }
     output.push('\n');
+}
 
-    // Top recommendations
-    if !deep_context.recommendations.is_empty() {
-        output.push_str("Key Recommendations:\n");
-        for (i, rec) in deep_context.recommendations.iter().take(3).enumerate() {
-            output.push_str(&format!("{}. {}: {}\n", i + 1, rec.title, rec.description));
-        }
+fn add_function_metadata(
+    output: &mut String,
+    file: &crate::services::context::FileContext,
+    func: &str,
+) {
+    let Some(complexity_metrics) = &file.complexity_metrics else { return; };
+    let Some(func_metrics) = find_function_metrics(complexity_metrics, func) else { return; };
+    
+    if func_metrics.metrics.cyclomatic > 10 {
+        output.push_str(&format!(" [complexity: {}]", func_metrics.metrics.cyclomatic));
     }
+    if func_metrics.metrics.cognitive > 15 {
+        output.push_str(&format!(" [cognitive: {}]", func_metrics.metrics.cognitive));
+    }
+}
 
-    output
+fn find_function_metrics<'a>(
+    complexity_metrics: &'a crate::services::complexity::FileComplexityMetrics,
+    func_name: &str,
+) -> Option<&'a crate::services::complexity::FunctionComplexity> {
+    complexity_metrics.functions.iter().find(|f| f.name == func_name)
+}
+
+fn add_dead_code_marker(
+    output: &mut String,
+    file: &crate::services::context::FileContext,
+    func: &str,
+    deep_context: &crate::services::deep_context::DeepContext,
+) {
+    if is_dead_code_function(file, func, deep_context) {
+        output.push_str(" [DEAD CODE]");
+    }
+}
+
+fn is_dead_code_function(
+    file: &crate::services::context::FileContext,
+    func: &str,
+    deep_context: &crate::services::deep_context::DeepContext,
+) -> bool {
+    let Some(dead_code_results) = &deep_context.analyses.dead_code_results else {
+        return false;
+    };
+    
+    let Some(file_metrics) = dead_code_results.ranked_files
+        .iter()
+        .find(|f| f.path.ends_with(&file.path)) else {
+        return false;
+    };
+    
+    file_metrics.items.iter().any(|item| {
+        matches!(
+            item.item_type,
+            crate::models::dead_code::DeadCodeType::Function
+        ) && item.name == func
+    })
+}
+
+fn format_quality_insights(
+    output: &mut String,
+    scorecard: &crate::services::deep_context::QualityScorecard,
+) {
+    output.push_str("Quality Insights:\n");
+    output.push_str(&format!("- Overall Score: {:.1}/100\n", scorecard.overall_health));
+    
+    if scorecard.complexity_score < 80.0 {
+        output.push_str(&format!(
+            "- Complexity Score: {:.1}% (needs attention)\n",
+            scorecard.complexity_score
+        ));
+    }
+    
+    if scorecard.maintainability_index < 80.0 {
+        output.push_str(&format!(
+            "- Maintainability: {:.1}% (could be improved)\n",
+            scorecard.maintainability_index
+        ));
+    }
+    
+    output.push('\n');
+}
+
+fn format_recommendations(
+    output: &mut String,
+    recommendations: &[crate::services::deep_context::PrioritizedRecommendation],
+) {
+    if recommendations.is_empty() {
+        return;
+    }
+    
+    output.push_str("Key Recommendations:\n");
+    for (i, rec) in recommendations.iter().take(3).enumerate() {
+        output.push_str(&format!("{}. {}: {}\n", i + 1, rec.title, rec.description));
+    }
 }
 
 // Removed - using the function from cli/mod.rs instead
