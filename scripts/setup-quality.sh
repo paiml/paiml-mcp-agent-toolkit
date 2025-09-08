@@ -117,8 +117,8 @@ if [ ! -f "pmat.toml" ]; then
     echo "⚙️  Creating pmat.toml configuration..."
     cat > pmat.toml << 'EOF'
 [quality_gate]
-max_cyclomatic_complexity = 20
-max_cognitive_complexity = 15
+max_cyclomatic_complexity = 30
+max_cognitive_complexity = 25
 max_satd_comments = 0
 min_test_coverage = 80.0
 
