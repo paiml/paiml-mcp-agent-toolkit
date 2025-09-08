@@ -28,7 +28,7 @@ impl ClippyDiagnostic {
     /// Parse from JSON output (complexity: 3)
     pub fn from_json(json: &str) -> Result<Self> {
         let value: serde_json::Value = serde_json::from_str(json)?;
-        Ok(Self::parse_json_value(&value)?)
+        Self::parse_json_value(&value)
     }
     
     /// Extract diagnostic from JSON value (complexity: 5)
@@ -108,6 +108,12 @@ pub struct FixReport {
 pub struct ClippyFixEngine {
     cache: HashMap<String, FixResult>,
     confidence_rules: HashMap<String, ConfidenceLevel>,
+}
+
+impl Default for ClippyFixEngine {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ClippyFixEngine {

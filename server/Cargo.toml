@@ -30,7 +30,7 @@ serde_json = { version = "1.0", default-features = false, features = ["std"] }
 handlebars = { version = "6.3", default-features = false, features = ["string_helpers"] }
 
 # MCP SDK - now core dependency for MCP server functionality
-pmcp = { version = "1.3.0", features = ["full", "validation"] }
+pmcp = { version = "1.4.1", features = ["full", "validation"] }
 
 # Caching
 lru = { version = "0.14", features = ["hashbrown"] }

@@ -7,6 +7,8 @@ use crate::cli::{ProofAnnotationOutputFormat, PropertyTypeFilter, VerificationMe
 use anyhow::Result;
 use std::path::PathBuf;
 use std::time::Instant;
+use crate::models::unified_ast::{Location, ProofAnnotation};
+use crate::services::proof_annotator::ProofAnnotator;
 
 /// Refactored handler for proof annotations analysis.
 #[allow(clippy::too_many_arguments)]
@@ -64,9 +66,9 @@ pub async fn handle_analyze_proof_annotations(
 /// Format proof annotations based on output format (complexity: 6)
 fn format_proof_annotations(
     format: ProofAnnotationOutputFormat,
-    annotations: &[impl std::fmt::Debug],
+    annotations: &[(Location, ProofAnnotation)],
     elapsed: std::time::Duration,
-    annotator: &impl std::fmt::Debug,
+    annotator: &ProofAnnotator,
     project_path: &PathBuf,
     include_evidence: bool,
 ) -> Result<String> {
