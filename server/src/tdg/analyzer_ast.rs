@@ -284,6 +284,51 @@ impl TdgAnalyzerAst {
             None
         }
     }
+    
+    // GREEN Phase: Public methods for TDG dogfooding - accessing stored scores
+    
+    /// Get a reference to the storage system for querying stored scores
+    pub fn get_storage(&self) -> Option<&TieredStore> {
+        self.storage.as_ref()
+    }
+    
+    /// Get stored score for a specific file
+    pub async fn get_stored_score(&self, path: &Path) -> Result<Option<TdgScore>> {
+        if let Some(storage) = &self.storage {
+            // Calculate content hash for the file
+            let source = fs::read_to_string(path)?;
+            let content_hash = blake3::hash(source.as_bytes());
+            
+            // Check hot cache first
+            if let Some(hot_entry) = storage.get_hot(&content_hash) {
+                let language = Language::from_extension(path);
+                let score = TdgScore {
+                    total: hot_entry.total_score,
+                    grade: Grade::from_score(hot_entry.total_score),
+                    language,
+                    confidence: language.confidence(),
+                    file_path: Some(path.to_path_buf()),
+                    ..Default::default()
+                };
+                return Ok(Some(score));
+            }
+            
+            // Check warm/cold storage
+            if let Some(record) = storage.retrieve_full(&content_hash).await? {
+                return Ok(Some(record.score));
+            }
+        }
+        Ok(None)
+    }
+    
+    /// Get storage statistics for monitoring
+    pub fn get_storage_stats(&self) -> Option<crate::tdg::StorageStatistics> {
+        if let Some(storage) = &self.storage {
+            Some(storage.get_statistics())
+        } else {
+            None
+        }
+    }
 
     /// Get adaptive threshold statistics for diagnostics
     pub async fn get_adaptive_stats(&self) -> Option<crate::tdg::PerformanceStatistics> {
