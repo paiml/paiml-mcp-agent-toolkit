@@ -271,131 +271,189 @@ pub async fn handle_analyze_lint_hotspot(
 async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> Result<()> {
     let start_time = std::time::Instant::now();
 
-    if params.format != LintHotspotOutputFormat::Json {
+    log_analysis_start(&params.format);
+    
+    let mut result = run_analysis_by_mode(&params).await?;
+    
+    apply_file_filters(&mut result, &params)?;
+    
+    let final_result = build_final_result(result, &params)?;
+    
+    output_results(&final_result, &params, start_time.elapsed()).await?;
+    
+    execute_enforcement_if_needed(&final_result, &params);
+    
+    check_exit_conditions(&final_result, &params);
+
+    Ok(())
+}
+
+/// Log analysis start message
+fn log_analysis_start(format: &LintHotspotOutputFormat) {
+    if *format != LintHotspotOutputFormat::Json {
         eprintln!("🔍 Running Clippy analysis...");
     }
+}
 
-    // Run clippy and analyze output
-    let mut result = if let Some(ref file_path) = params.file {
-        // Single file mode - analyze only the specified file
-        if params.format != LintHotspotOutputFormat::Json {
-            eprintln!("📄 Analyzing single file: {}", file_path.display());
-        }
-        run_clippy_analysis_single_file(&params.project_path, file_path, &params.clippy_flags)
-            .await?
+/// Run analysis based on single file or project mode
+async fn run_analysis_by_mode(params: &LintHotspotParams) -> Result<LintHotspotResult> {
+    if let Some(ref file_path) = params.file {
+        log_single_file_mode(file_path, &params.format);
+        run_clippy_analysis_single_file(&params.project_path, file_path, &params.clippy_flags).await
     } else {
-        // Normal mode - find the hotspot
-        run_clippy_analysis(&params.project_path, &params.clippy_flags).await?
-    };
-
-    // Apply include/exclude filters to results
-    if !params.include.is_empty() || !params.exclude.is_empty() {
-        use crate::utils::file_filter::FileFilter;
-        let filter = FileFilter::new(params.include.clone(), params.exclude.clone())?;
-
-        if filter.has_filters() {
-            // Filter detailed violations in the hotspot
-            result.hotspot.detailed_violations.retain(|violation| {
-                let path = std::path::Path::new(&violation.file);
-                filter.should_include(path)
-            });
-
-            // Filter all_violations
-            result.all_violations.retain(|violation| {
-                let path = std::path::Path::new(&violation.file);
-                filter.should_include(path)
-            });
-
-            // Filter summary_by_file - note the key is PathBuf, not a struct with a file field
-            let filtered_summary: HashMap<PathBuf, FileSummary> = result
-                .summary_by_file
-                .into_iter()
-                .filter(|(path, _summary)| filter.should_include(path))
-                .collect();
-            result.summary_by_file = filtered_summary;
-
-            // Recalculate hotspot metrics
-            result.hotspot.total_violations = result.hotspot.detailed_violations.len();
-            if result.hotspot.sloc > 0 {
-                result.hotspot.defect_density =
-                    result.hotspot.total_violations as f64 / result.hotspot.sloc as f64;
-            }
-        }
+        run_clippy_analysis(&params.project_path, &params.clippy_flags).await
     }
+}
 
-    // Generate enforcement metadata if requested
-    let enforcement = if params.enforcement_metadata || params.enforce {
-        Some(calculate_enforcement_metadata(
-            &result.hotspot,
-            params.min_confidence,
-        ))
+/// Log single file analysis mode
+fn log_single_file_mode(file_path: &Path, format: &LintHotspotOutputFormat) {
+    if *format != LintHotspotOutputFormat::Json {
+        eprintln!("📄 Analyzing single file: {}", file_path.display());
+    }
+}
+
+/// Apply include/exclude file filters to results
+fn apply_file_filters(result: &mut LintHotspotResult, params: &LintHotspotParams) -> Result<()> {
+    if params.include.is_empty() && params.exclude.is_empty() {
+        return Ok(());
+    }
+    
+    use crate::utils::file_filter::FileFilter;
+    let filter = FileFilter::new(params.include.clone(), params.exclude.clone())?;
+    
+    if !filter.has_filters() {
+        return Ok(());
+    }
+    
+    filter_violations(result, &filter);
+    recalculate_hotspot_metrics(result);
+    
+    Ok(())
+}
+
+/// Filter violations using file filter
+fn filter_violations(result: &mut LintHotspotResult, filter: &crate::utils::file_filter::FileFilter) {
+    result.hotspot.detailed_violations.retain(|violation| {
+        let path = std::path::Path::new(&violation.file);
+        filter.should_include(path)
+    });
+    
+    result.all_violations.retain(|violation| {
+        let path = std::path::Path::new(&violation.file);
+        filter.should_include(path)
+    });
+    
+    let filtered_summary: HashMap<PathBuf, FileSummary> = result
+        .summary_by_file
+        .drain()
+        .filter(|(path, _summary)| filter.should_include(path))
+        .collect();
+    result.summary_by_file = filtered_summary;
+}
+
+/// Recalculate hotspot metrics after filtering
+fn recalculate_hotspot_metrics(result: &mut LintHotspotResult) {
+    result.hotspot.total_violations = result.hotspot.detailed_violations.len();
+    if result.hotspot.sloc > 0 {
+        result.hotspot.defect_density =
+            result.hotspot.total_violations as f64 / result.hotspot.sloc as f64;
+    }
+}
+
+/// Build final result with enforcement and quality gate data
+fn build_final_result(mut result: LintHotspotResult, params: &LintHotspotParams) -> Result<LintHotspotResult> {
+    let enforcement = generate_enforcement_metadata_if_needed(&result.hotspot, params);
+    let refactor_chain = generate_refactor_chain_if_needed(&result.hotspot, params, &enforcement);
+    let quality_gate = check_quality_gates(&result.hotspot, params.max_density);
+    
+    result.enforcement = enforcement;
+    result.refactor_chain = refactor_chain;
+    result.quality_gate = quality_gate;
+    
+    Ok(result)
+}
+
+/// Generate enforcement metadata if requested
+fn generate_enforcement_metadata_if_needed(
+    hotspot: &LintHotspot, 
+    params: &LintHotspotParams
+) -> Option<EnforcementMetadata> {
+    if params.enforcement_metadata || params.enforce {
+        Some(calculate_enforcement_metadata(hotspot, params.min_confidence))
     } else {
         None
-    };
+    }
+}
 
-    // Generate refactor chain if enforcement is needed
-    let refactor_chain =
-        if params.enforce || (enforcement.as_ref().is_some_and(|e| e.requires_enforcement)) {
-            Some(generate_refactor_chain(
-                &result.hotspot,
-                params.min_confidence,
-            ))
-        } else {
-            None
-        };
+/// Generate refactor chain if enforcement is needed
+fn generate_refactor_chain_if_needed(
+    hotspot: &LintHotspot,
+    params: &LintHotspotParams,
+    enforcement: &Option<EnforcementMetadata>,
+) -> Option<RefactorChain> {
+    if params.enforce || enforcement.as_ref().is_some_and(|e| e.requires_enforcement) {
+        Some(generate_refactor_chain(hotspot, params.min_confidence))
+    } else {
+        None
+    }
+}
 
-    // Check quality gates
-    let quality_gate = check_quality_gates(&result.hotspot, params.max_density);
-
-    let final_result = LintHotspotResult {
-        hotspot: result.hotspot,
-        all_violations: result.all_violations,
-        summary_by_file: result.summary_by_file,
-        total_project_violations: result.total_project_violations,
-        enforcement,
-        refactor_chain,
-        quality_gate,
-    };
-
-    // Format and output results
+/// Output results to file or stdout
+async fn output_results(
+    final_result: &LintHotspotResult,
+    params: &LintHotspotParams,
+    elapsed: std::time::Duration,
+) -> Result<()> {
     let output_content = format_output(
-        &final_result,
-        params.format,
+        final_result,
+        params.format.clone(),
         params.perf,
-        start_time.elapsed(),
+        elapsed,
         params.top_files,
     )?;
-
-    if let Some(output_path) = params.output {
+    
+    if let Some(output_path) = &params.output {
         tokio::fs::write(output_path, &output_content).await?;
     } else {
         println!("{}", output_content);
     }
+    
+    Ok(())
+}
 
-    // Execute enforcement if requested
+/// Execute enforcement if requested and conditions are met
+fn execute_enforcement_if_needed(final_result: &LintHotspotResult, params: &LintHotspotParams) {
     if params.enforce && !params.dry_run && final_result.quality_gate.blocking {
         eprintln!("🚨 Enforcement required - executing refactor chain...");
-        // In a real implementation, this would execute the refactor chain
         eprintln!("⚠️  Enforcement execution not yet implemented");
     }
+}
 
-    // Exit with non-zero code if quality gate failed OR if enforce flag is set and there are violations
-    if !final_result.quality_gate.passed
-        || (params.enforce && final_result.total_project_violations > 0)
-    {
-        if params.enforce
-            && final_result.total_project_violations > 0
-            && final_result.quality_gate.passed
-        {
-            eprintln!(
-                "\n❌ Enforcement failed: {} violations found",
-                final_result.total_project_violations
-            );
-        }
+/// Check exit conditions and exit with error code if needed
+fn check_exit_conditions(final_result: &LintHotspotResult, params: &LintHotspotParams) {
+    if should_exit_with_error(final_result, params) {
+        log_enforcement_failure_if_needed(final_result, params);
         std::process::exit(1);
     }
+}
 
-    Ok(())
+/// Check if we should exit with error code
+fn should_exit_with_error(final_result: &LintHotspotResult, params: &LintHotspotParams) -> bool {
+    !final_result.quality_gate.passed
+        || (params.enforce && final_result.total_project_violations > 0)
+}
+
+/// Log enforcement failure message if conditions are met
+fn log_enforcement_failure_if_needed(final_result: &LintHotspotResult, params: &LintHotspotParams) {
+    if params.enforce
+        && final_result.total_project_violations > 0
+        && final_result.quality_gate.passed
+    {
+        eprintln!(
+            "\n❌ Enforcement failed: {} violations found",
+            final_result.total_project_violations
+        );
+    }
 }
 
 /// Run clippy and analyze the JSON output
@@ -404,162 +462,17 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
 ///
 /// Returns an error if the operation fails
 async fn run_clippy_analysis(project_path: &Path, clippy_flags: &str) -> Result<LintHotspotResult> {
-    // Parse clippy flags
     let flags: Vec<&str> = clippy_flags.split_whitespace().collect();
-
-    // Find workspace root if we're in a workspace
+    let output = execute_clippy_command(project_path, &flags).await?;
+    
+    check_clippy_output(&output)?;
+    
+    let mut file_metrics = parse_clippy_output(&output)?;
+    
     let workspace_root = find_workspace_root(project_path)?;
+    calculate_sloc_for_files(&mut file_metrics, project_path, workspace_root.as_ref()).await?;
 
-    // Run clippy with JSON output and all targets (extreme quality)
-    let mut cmd = Command::new("cargo");
-    cmd.current_dir(project_path)
-        .arg("clippy")
-        .arg("--all-targets")
-        .arg("--message-format=json");
-
-    // Add clippy flags after -- separator
-    if !flags.is_empty() {
-        cmd.arg("--");
-        cmd.args(&flags);
-    }
-
-    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
-
-    let output = cmd.output().await.context("Failed to run cargo clippy")?;
-
-    // Check if clippy failed - but warnings are expected with -W flags
-    if !output.status.success() && output.status.code() != Some(101) {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
-            eprintln!("⚠️  Clippy exited with status: {:?}", output.status);
-            eprintln!("Stderr: {}", stderr);
-        }
-        // Continue anyway - clippy returns non-zero on warnings with -W flags
-    }
-
-    // Parse JSON output line by line
-    let reader = BufReader::new(output.stdout.as_slice());
-    let mut file_metrics: HashMap<PathBuf, FileMetrics> = HashMap::new();
-
-    let mut message_count = 0;
-    for line in std::io::BufRead::lines(reader) {
-        let line = line?;
-        if let Ok(msg) = serde_json::from_str::<ClippyMessage>(&line) {
-            if let Some(diagnostic) = msg.message {
-                if msg.reason == Some("compiler-message".to_string()) {
-                    message_count += 1;
-                    process_diagnostic(&diagnostic, &mut file_metrics);
-                }
-            }
-        }
-    }
-    // Only print debug info if not in JSON mode
-    if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
-        eprintln!("📊 Processed {} compiler messages", message_count);
-        eprintln!("📁 Files with metrics: {}", file_metrics.len());
-    }
-
-    // Calculate SLOC for each file
-    for (file_path, metrics) in file_metrics.iter_mut() {
-        // Try multiple path resolutions to find the actual file
-        let actual_path = if file_path.exists() {
-            file_path.clone()
-        } else if let Some(ws_root) = &workspace_root {
-            // Try relative to workspace root
-            let ws_relative = ws_root.join(file_path);
-            if ws_relative.exists() {
-                ws_relative
-            } else {
-                // Try with "server/" prefix if not present
-                let with_server = ws_root.join("server").join(file_path);
-                if with_server.exists() {
-                    with_server
-                } else {
-                    // Try relative to project_path
-                    let project_relative = project_path.join(file_path);
-                    if project_relative.exists() {
-                        project_relative
-                    } else {
-                        file_path.clone()
-                    }
-                }
-            }
-        } else {
-            // No workspace, try relative to project_path
-            let project_relative = project_path.join(file_path);
-            if project_relative.exists() {
-                project_relative
-            } else {
-                file_path.clone()
-            }
-        };
-
-        if actual_path.exists() {
-            let content = tokio::fs::read_to_string(&actual_path).await?;
-            metrics.sloc = content
-                .lines()
-                .filter(|line| !line.trim().is_empty() && !line.trim().starts_with("//"))
-                .count();
-            if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() && metrics.sloc > 0 {
-                eprintln!("✓ File {} has {} SLOC", actual_path.display(), metrics.sloc);
-            }
-        } else if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
-            eprintln!("⚠️  Could not find file: {}", file_path.display());
-            eprintln!("   Tried: {}", actual_path.display());
-            if let Some(ws) = &workspace_root {
-                eprintln!("   Workspace root: {}", ws.display());
-            }
-        }
-    }
-
-    // Collect all violations across the project
-    let mut all_violations = Vec::new();
-    let mut summary_by_file = HashMap::new();
-    let mut total_project_violations = 0;
-
-    for (file_path, metrics) in &file_metrics {
-        all_violations.extend(metrics.detailed_violations.clone());
-
-        let total_file_violations = metrics.severity_counts.error
-            + metrics.severity_counts.warning
-            + metrics.severity_counts.suggestion;
-
-        total_project_violations += total_file_violations;
-
-        let defect_density = if metrics.sloc > 0 {
-            (total_file_violations as f64) / (metrics.sloc as f64)
-        } else {
-            0.0
-        };
-
-        summary_by_file.insert(
-            file_path.clone(),
-            FileSummary {
-                total_violations: total_file_violations,
-                errors: metrics.severity_counts.error,
-                warnings: metrics.severity_counts.warning,
-                sloc: metrics.sloc,
-                defect_density,
-            },
-        );
-    }
-
-    // Find the file with highest defect density (including detailed violations)
-    let hotspot = find_hotspot_with_details(file_metrics)?;
-
-    Ok(LintHotspotResult {
-        hotspot,
-        all_violations,
-        summary_by_file,
-        total_project_violations,
-        enforcement: None,
-        refactor_chain: None,
-        quality_gate: QualityGateStatus {
-            passed: true,
-            violations: vec![],
-            blocking: false,
-        },
-    })
+    build_lint_hotspot_result(file_metrics)
 }
 
 /// Run clippy on a single file and analyze the JSON output
@@ -1298,6 +1211,211 @@ fn format_sarif(result: &LintHotspotResult) -> Result<String> {
     });
 
     serde_json::to_string_pretty(&sarif).context("Failed to serialize to SARIF")
+}
+
+/// Execute clippy command with given flags (cognitive complexity ≤3)
+async fn execute_clippy_command(project_path: &Path, flags: &[&str]) -> Result<std::process::Output> {
+    let mut cmd = tokio::process::Command::new("cargo");
+    cmd.arg("clippy")
+        .arg("--message-format=json")
+        .args(flags)
+        .current_dir(project_path)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    
+    Ok(cmd.output().await?)
+}
+
+/// Check clippy output status (cognitive complexity ≤5)
+fn check_clippy_output(output: &std::process::Output) -> Result<()> {
+    if !output.status.success() && output.status.code() != Some(101) {
+        if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            eprintln!("⚠️  Clippy exited with status: {:?}", output.status);
+            eprintln!("Stderr: {}", stderr);
+        }
+    }
+    Ok(())
+}
+
+/// Parse clippy JSON output into file metrics (cognitive complexity ≤8)
+fn parse_clippy_output(output: &std::process::Output) -> Result<HashMap<PathBuf, FileMetrics>> {
+    let reader = BufReader::new(output.stdout.as_slice());
+    let mut file_metrics: HashMap<PathBuf, FileMetrics> = HashMap::new();
+    let mut message_count = 0;
+
+    for line in std::io::BufRead::lines(reader) {
+        let line = line?;
+        if let Ok(msg) = serde_json::from_str::<ClippyMessage>(&line) {
+            if let Some(diagnostic) = msg.message {
+                if msg.reason == Some("compiler-message".to_string()) {
+                    message_count += 1;
+                    process_diagnostic(&diagnostic, &mut file_metrics);
+                }
+            }
+        }
+    }
+
+    if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
+        eprintln!("📊 Processed {} compiler messages", message_count);
+        eprintln!("📁 Files with metrics: {}", file_metrics.len());
+    }
+
+    Ok(file_metrics)
+}
+
+/// Calculate SLOC for each file in metrics (cognitive complexity ≤8)
+async fn calculate_sloc_for_files(
+    file_metrics: &mut HashMap<PathBuf, FileMetrics>,
+    project_path: &Path,
+    workspace_root: Option<&PathBuf>,
+) -> Result<()> {
+    for (file_path, metrics) in file_metrics.iter_mut() {
+        let actual_path = resolve_file_path(file_path, project_path, workspace_root);
+        
+        if actual_path.exists() {
+            let content = tokio::fs::read_to_string(&actual_path).await?;
+            metrics.sloc = count_sloc(&content);
+            log_sloc_debug(&actual_path, metrics.sloc);
+        } else {
+            log_file_not_found_debug(file_path, &actual_path, workspace_root);
+        }
+    }
+    Ok(())
+}
+
+/// Resolve actual file path trying various locations (cognitive complexity ≤7)
+fn resolve_file_path(
+    file_path: &Path,
+    project_path: &Path,
+    workspace_root: Option<&PathBuf>,
+) -> PathBuf {
+    if file_path.exists() {
+        return file_path.to_path_buf();
+    }
+    
+    if let Some(ws_root) = workspace_root {
+        // Try relative to workspace root
+        let ws_relative = ws_root.join(file_path);
+        if ws_relative.exists() {
+            return ws_relative;
+        }
+        
+        // Try with "server/" prefix
+        let with_server = ws_root.join("server").join(file_path);
+        if with_server.exists() {
+            return with_server;
+        }
+    }
+    
+    // Try relative to project_path
+    let project_relative = project_path.join(file_path);
+    if project_relative.exists() {
+        project_relative
+    } else {
+        file_path.to_path_buf()
+    }
+}
+
+/// Count source lines of code (cognitive complexity ≤3)
+fn count_sloc(content: &str) -> usize {
+    content
+        .lines()
+        .filter(|line| !line.trim().is_empty() && !line.trim().starts_with("//"))
+        .count()
+}
+
+/// Log SLOC debug info if enabled (cognitive complexity ≤3)
+fn log_sloc_debug(path: &Path, sloc: usize) {
+    if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() && sloc > 0 {
+        eprintln!("✓ File {} has {} SLOC", path.display(), sloc);
+    }
+}
+
+/// Log file not found debug info if enabled (cognitive complexity ≤4)
+fn log_file_not_found_debug(
+    file_path: &Path,
+    actual_path: &Path,
+    workspace_root: Option<&PathBuf>,
+) {
+    if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
+        eprintln!("⚠️  Could not find file: {}", file_path.display());
+        eprintln!("   Tried: {}", actual_path.display());
+        if let Some(ws) = workspace_root {
+            eprintln!("   Workspace root: {}", ws.display());
+        }
+    }
+}
+
+/// Build final LintHotspotResult from file metrics (cognitive complexity ≤8)
+fn build_lint_hotspot_result(
+    file_metrics: HashMap<PathBuf, FileMetrics>,
+) -> Result<LintHotspotResult> {
+    let (all_violations, summary_by_file, total_project_violations) = 
+        collect_project_violations(&file_metrics);
+    
+    let hotspot = find_hotspot_with_details(file_metrics)?;
+    
+    Ok(LintHotspotResult {
+        hotspot,
+        all_violations,
+        summary_by_file,
+        total_project_violations,
+        enforcement: None,
+        refactor_chain: None,
+        quality_gate: QualityGateStatus {
+            passed: true,
+            violations: vec![],
+            blocking: false,
+        },
+    })
+}
+
+/// Collect all violations across the project (cognitive complexity ≤7)
+fn collect_project_violations(
+    file_metrics: &HashMap<PathBuf, FileMetrics>,
+) -> (Vec<ViolationDetail>, HashMap<PathBuf, FileSummary>, usize) {
+    let mut all_violations = Vec::new();
+    let mut summary_by_file = HashMap::new();
+    let mut total_project_violations = 0;
+
+    for (file_path, metrics) in file_metrics {
+        all_violations.extend(metrics.detailed_violations.clone());
+        
+        let total_file_violations = calculate_total_violations(metrics);
+        total_project_violations += total_file_violations;
+        
+        let defect_density = calculate_defect_density(total_file_violations, metrics.sloc);
+        
+        summary_by_file.insert(
+            file_path.clone(),
+            FileSummary {
+                total_violations: total_file_violations,
+                errors: metrics.severity_counts.error,
+                warnings: metrics.severity_counts.warning,
+                sloc: metrics.sloc,
+                defect_density,
+            },
+        );
+    }
+    
+    (all_violations, summary_by_file, total_project_violations)
+}
+
+/// Calculate total violations for a file (cognitive complexity ≤2)
+fn calculate_total_violations(metrics: &FileMetrics) -> usize {
+    metrics.severity_counts.error
+        + metrics.severity_counts.warning
+        + metrics.severity_counts.suggestion
+}
+
+/// Calculate defect density (cognitive complexity ≤2)
+fn calculate_defect_density(violations: usize, sloc: usize) -> f64 {
+    if sloc > 0 {
+        violations as f64 / sloc as f64
+    } else {
+        0.0
+    }
 }
 
 /// Find workspace root by looking for Cargo.toml with [workspace]
