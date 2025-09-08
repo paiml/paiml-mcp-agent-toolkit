@@ -64,11 +64,20 @@
 - **Focus**: Complete codebase compliance
 - **Required**: ALL new code ≤10 complexity
 
-### Sprint 85: Enhanced MCP Tool Coverage & Integration
-- **Goal**: Complete MCP feature parity
-- **Scope**: 90%+ CLI commands exposed via MCP
+### Sprint 85: Enhanced MCP Tool Coverage & Integration (IN PROGRESS)
+- **Goal**: Complete MCP feature parity and dogfooding improvements
+- **Scope**: 90%+ CLI commands exposed via MCP + TDG storage
 - **Focus**: Dogfooding and workflow automation
 - **Required**: ALL new code ≤10 complexity
+- **Status**: 🚧 IN PROGRESS
+
+#### Completed in Sprint 85:
+1. ✅ **TDG File Score Storage**: Implemented persistent storage for dogfooding
+   - Tiered storage system (hot/warm/cold) using sled backend
+   - Stores scores in ~/.pmat/tdg-warm and ~/.pmat/tdg-cold
+   - Blake3 content hashing for efficient caching
+   - TDD implementation with 6/9 tests passing
+   - v2.68.0 release with this feature
 
 ### ✅ COMPLETED: Sprint 80 - Pre-commit Hook Management as Core Feature 🎯
 - **Completion Date**: 2025-09-08
