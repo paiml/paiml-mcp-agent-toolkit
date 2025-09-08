@@ -99,13 +99,13 @@ pub struct FileMetadata {
 /// Comment style for different languages
 #[derive(Debug, Clone, PartialEq)]
 enum CommentStyle {
-    CStyle,      // //
-    Hash,        // #
-    Semicolon,   // ;
-    Percent,     // %
-    DoubleDash,  // --
-    Xml,         // <!--
-    None,        // No comments
+    CStyle,     // //
+    Hash,       // #
+    Semicolon,  // ;
+    Percent,    // %
+    DoubleDash, // --
+    Xml,        // <!--
+    None,       // No comments
 }
 
 /// Language-aware analysis service
@@ -230,32 +230,48 @@ impl LanguageAnalyzer {
             CommentStyle::None => false,
         }
     }
-    
+
     /// Get the comment style for a language
     fn get_comment_style(&self, language: Language) -> CommentStyle {
         match language {
             // C-style comments
-            Language::Rust | Language::C | Language::Cpp | Language::Go 
-            | Language::Java | Language::Kotlin | Language::JavaScript 
-            | Language::TypeScript | Language::CSharp | Language::Swift 
-            | Language::Dart | Language::Scala | Language::Groovy => CommentStyle::CStyle,
-            
+            Language::Rust
+            | Language::C
+            | Language::Cpp
+            | Language::Go
+            | Language::Java
+            | Language::Kotlin
+            | Language::JavaScript
+            | Language::TypeScript
+            | Language::CSharp
+            | Language::Swift
+            | Language::Dart
+            | Language::Scala
+            | Language::Groovy => CommentStyle::CStyle,
+
             // Hash comments
-            Language::Python | Language::Ruby | Language::Bash | Language::Zsh 
-            | Language::Fish | Language::Perl | Language::R | Language::YAML 
-            | Language::TOML | Language::Makefile => CommentStyle::Hash,
-            
+            Language::Python
+            | Language::Ruby
+            | Language::Bash
+            | Language::Zsh
+            | Language::Fish
+            | Language::Perl
+            | Language::R
+            | Language::YAML
+            | Language::TOML
+            | Language::Makefile => CommentStyle::Hash,
+
             // Other comment styles
             Language::Clojure => CommentStyle::Semicolon,
             Language::Erlang | Language::Matlab => CommentStyle::Percent,
             Language::SQL | Language::Haskell => CommentStyle::DoubleDash,
             Language::XML => CommentStyle::Xml,
-            
+
             // No comment style
             _ => CommentStyle::None,
         }
     }
-    
+
     /// Check if line is C-style comment
     fn is_c_style_comment(&self, line: &str) -> bool {
         line.starts_with("//") || line.starts_with("/*") || line.starts_with("*")
@@ -272,11 +288,12 @@ impl LanguageAnalyzer {
 
         for analysis_type in analysis_types {
             let result = if self.supports_analysis(language, analysis_type) {
-                self.perform_single_analysis(content, language, analysis_type).await
+                self.perform_single_analysis(content, language, analysis_type)
+                    .await
             } else {
                 self.create_unsupported_analysis_result(analysis_type.clone(), language)
             };
-            
+
             results.push(result);
         }
 
@@ -333,7 +350,7 @@ impl LanguageAnalyzer {
             error: None,
         }
     }
-    
+
     /// Get complexity keywords for a language
     fn get_complexity_keywords(&self, language: Language) -> Vec<&'static str> {
         match language {
@@ -342,15 +359,19 @@ impl LanguageAnalyzer {
             }
             Language::Python => vec!["if", "elif", "else", "for", "while", "try", "except"],
             Language::JavaScript | Language::TypeScript => {
-                vec!["if", "else", "for", "while", "switch", "case", "try", "catch"]
+                vec![
+                    "if", "else", "for", "while", "switch", "case", "try", "catch",
+                ]
             }
             Language::Java | Language::Kotlin => {
-                vec!["if", "else", "for", "while", "switch", "case", "try", "catch", "when"]
+                vec![
+                    "if", "else", "for", "while", "switch", "case", "try", "catch", "when",
+                ]
             }
             _ => vec!["if", "else", "for", "while"], // Basic keywords for other languages
         }
     }
-    
+
     /// Calculate complexity based on keyword counting
     fn calculate_keyword_complexity(&self, content: &str, keywords: &[&str]) -> usize {
         let mut complexity = 1; // Base complexity
@@ -416,7 +437,7 @@ impl LanguageAnalyzer {
             error: None,
         }
     }
-    
+
     /// Get security patterns for a language
     fn get_security_patterns(&self, language: Language) -> Vec<&'static str> {
         match language {
@@ -428,11 +449,11 @@ impl LanguageAnalyzer {
             _ => vec!["password", "secret", "token"],
         }
     }
-    
+
     /// Find security issues in content
     fn find_security_issues(&self, content: &str, patterns: &[&str]) -> Vec<serde_json::Value> {
         let mut issues = Vec::new();
-        
+
         for (line_num, line) in content.lines().enumerate() {
             for pattern in patterns {
                 if line.contains(pattern) {
@@ -444,7 +465,7 @@ impl LanguageAnalyzer {
                 }
             }
         }
-        
+
         issues
     }
 
@@ -512,7 +533,7 @@ impl LanguageAnalyzer {
             error: None,
         }
     }
-    
+
     /// Get import patterns for a language
     fn get_import_patterns(&self, language: Language) -> Vec<&'static str> {
         match language {
@@ -524,11 +545,11 @@ impl LanguageAnalyzer {
             _ => vec!["import", "include", "require"],
         }
     }
-    
+
     /// Find imports in content
     fn find_imports(&self, content: &str, patterns: &[&str]) -> Vec<serde_json::Value> {
         let mut imports = Vec::new();
-        
+
         for (line_num, line) in content.lines().enumerate() {
             for pattern in patterns {
                 if line.trim().starts_with(pattern) {
@@ -539,7 +560,7 @@ impl LanguageAnalyzer {
                 }
             }
         }
-        
+
         imports
     }
 

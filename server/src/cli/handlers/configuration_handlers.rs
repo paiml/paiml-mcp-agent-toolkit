@@ -19,7 +19,7 @@ pub async fn handle_configuration(
     config_path: Option<PathBuf>,
 ) -> Result<()> {
     let config_service = create_config_service(config_path);
-    
+
     execute_configuration_command(
         &config_service,
         ConfigurationCommand {
@@ -30,7 +30,8 @@ pub async fn handle_configuration(
             section,
             set,
         },
-    ).await
+    )
+    .await
 }
 
 struct ConfigurationCommand {

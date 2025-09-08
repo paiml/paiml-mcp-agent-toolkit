@@ -988,7 +988,7 @@ fn parse_complexity_args(arguments: serde_json::Value) -> Result<AnalyzeComplexi
 struct ComplexityAnalysisContext {
     project_path: PathBuf,
     toolchain: String,
-    thresholds: crate::services::complexity::ComplexityThresholds,
+    _thresholds: crate::services::complexity::ComplexityThresholds,
 }
 
 fn prepare_complexity_analysis(args: &AnalyzeComplexityArgs) -> ComplexityAnalysisContext {
@@ -999,10 +999,11 @@ fn prepare_complexity_analysis(args: &AnalyzeComplexityArgs) -> ComplexityAnalys
     ComplexityAnalysisContext {
         project_path,
         toolchain,
-        thresholds,
+        _thresholds: thresholds,
     }
 }
 
+#[allow(dead_code)]
 async fn perform_complexity_analysis(
     context: &ComplexityAnalysisContext,
     args: &AnalyzeComplexityArgs,
@@ -1077,7 +1078,7 @@ async fn handle_analyze_complexity(
     };
 
     let context = prepare_complexity_analysis(&args);
-    
+
     info!(
         "Analyzing complexity for {:?} using {} toolchain",
         context.project_path, context.toolchain
@@ -1886,7 +1887,7 @@ struct AnalyzeDefectProbabilityArgs {
     format: Option<String>,
 }
 
-fn get_relative_path(path: &PathBuf, project_path: &PathBuf) -> String {
+fn get_relative_path(path: &Path, project_path: &Path) -> String {
     path.strip_prefix(project_path)
         .unwrap_or(path)
         .to_string_lossy()
@@ -1909,7 +1910,7 @@ fn calculate_cognitive_complexity(cyclomatic_complexity: u32) -> u32 {
 fn calculate_duplicate_ratio(lines: &[&str]) -> f32 {
     let mut line_counts = std::collections::HashMap::new();
     let mut duplicate_lines = 0;
-    
+
     // Count non-empty, non-comment lines
     for line in lines {
         let trimmed = line.trim();
@@ -1917,15 +1918,15 @@ fn calculate_duplicate_ratio(lines: &[&str]) -> f32 {
             *line_counts.entry(trimmed).or_insert(0) += 1;
         }
     }
-    
+
     // Count duplicates
     for count in line_counts.values() {
         if *count > 1 {
             duplicate_lines += count - 1;
         }
     }
-    
-    if lines.len() > 0 {
+
+    if !lines.is_empty() {
         duplicate_lines as f32 / lines.len() as f32
     } else {
         0.0
@@ -1955,10 +1956,7 @@ fn calculate_afferent_coupling(content: &str) -> f32 {
         .count() as f32
 }
 
-fn get_churn_score(
-    relative_path: &str,
-    churn_map: &std::collections::HashMap<String, f32>,
-) -> f32 {
+fn get_churn_score(relative_path: &str, churn_map: &std::collections::HashMap<String, f32>) -> f32 {
     churn_map.get(relative_path).copied().unwrap_or(0.1)
 }
 
@@ -2848,7 +2846,7 @@ fn get_default_analysis_types() -> Vec<crate::services::deep_context::AnalysisTy
 
 fn parse_analysis_type_string(s: &str) -> Option<crate::services::deep_context::AnalysisType> {
     use crate::services::deep_context::AnalysisType;
-    
+
     match s {
         "ast" => Some(AnalysisType::Ast),
         "complexity" => Some(AnalysisType::Complexity),
@@ -3096,7 +3094,9 @@ struct MakefileLintArgs {
     gnu_version: String,
 }
 
-fn parse_makefile_lint_args(arguments: Option<serde_json::Value>) -> Result<MakefileLintArgs, String> {
+fn parse_makefile_lint_args(
+    arguments: Option<serde_json::Value>,
+) -> Result<MakefileLintArgs, String> {
     match arguments {
         Some(args) => serde_json::from_value(args)
             .map_err(|e| format!("Invalid analyze_makefile_lint arguments: {e}")),
@@ -3108,7 +3108,7 @@ async fn execute_makefile_linting(
     makefile_path: &std::path::Path,
 ) -> Result<crate::services::makefile_linter::LintResult, String> {
     use crate::services::makefile_linter;
-    
+
     makefile_linter::lint_makefile(makefile_path)
         .await
         .map_err(|e| format!("Makefile linting failed: {e}"))
@@ -3116,7 +3116,7 @@ async fn execute_makefile_linting(
 
 fn map_severity(severity: &crate::services::makefile_linter::Severity) -> &'static str {
     use crate::services::makefile_linter::Severity;
-    
+
     match severity {
         Severity::Error => "error",
         Severity::Warning => "warning",
@@ -3138,11 +3138,11 @@ fn format_violation(violation: &crate::services::makefile_linter::Violation) -> 
 
 fn count_violations_by_severity(
     violations: &[crate::services::makefile_linter::Violation],
-    target_severity: crate::services::makefile_linter::Severity,
+    _target_severity: crate::services::makefile_linter::Severity,
 ) -> usize {
     violations
         .iter()
-        .filter(|v| matches!(&v.severity, target_severity))
+        .filter(|v| matches!(&v.severity, _target_severity))
         .count()
 }
 
@@ -3151,7 +3151,7 @@ fn build_makefile_analysis(
     lint_result: &crate::services::makefile_linter::LintResult,
 ) -> serde_json::Value {
     use crate::services::makefile_linter::Severity;
-    
+
     json!({
         "path": args.path,
         "violations": lint_result.violations.iter().map(format_violation).collect::<Vec<_>>(),
@@ -3171,15 +3171,15 @@ async fn handle_analyze_makefile_lint(
         Ok(args) => args,
         Err(e) => return McpResponse::error(request_id, -32602, e),
     };
-    
+
     let makefile_path = std::path::Path::new(&args.path);
     info!("Analyzing Makefile at {:?}", makefile_path);
-    
+
     let lint_result = match execute_makefile_linting(makefile_path).await {
         Ok(result) => result,
         Err(e) => return McpResponse::error(request_id, -32000, e),
     };
-    
+
     let analysis = build_makefile_analysis(&args, &lint_result);
     McpResponse::success(request_id, analysis)
 }
@@ -3298,13 +3298,12 @@ fn default_summary_format() -> String {
 }
 
 fn parse_satd_args(arguments: serde_json::Value) -> Result<SatdArgs, String> {
-    serde_json::from_value(arguments)
-        .map_err(|e| format!("Invalid analyze_satd arguments: {e}"))
+    serde_json::from_value(arguments).map_err(|e| format!("Invalid analyze_satd arguments: {e}"))
 }
 
 fn create_satd_detector(strict: bool) -> crate::services::satd_detector::SATDDetector {
     use crate::services::satd_detector::SATDDetector;
-    
+
     if strict {
         SATDDetector::new_strict()
     } else {
@@ -3316,10 +3315,10 @@ async fn execute_satd_analysis(
     args: &SatdArgs,
 ) -> Result<crate::services::satd_detector::SATDAnalysisResult, String> {
     use std::path::Path;
-    
+
     let detector = create_satd_detector(args.strict);
     let project_path = Path::new(&args.project_path);
-    
+
     detector
         .analyze_project(project_path, !args.exclude_tests)
         .await
@@ -3329,9 +3328,12 @@ async fn execute_satd_analysis(
 fn filter_satd_items(
     mut result: crate::services::satd_detector::SATDAnalysisResult,
     critical_only: bool,
-) -> (crate::services::satd_detector::SATDAnalysisResult, Vec<crate::services::satd_detector::TechnicalDebt>) {
+) -> (
+    crate::services::satd_detector::SATDAnalysisResult,
+    Vec<crate::services::satd_detector::TechnicalDebt>,
+) {
     use crate::services::satd_detector::Severity;
-    
+
     let items = if critical_only {
         std::mem::take(&mut result.items)
             .into_iter()
@@ -3340,7 +3342,7 @@ fn filter_satd_items(
     } else {
         std::mem::take(&mut result.items)
     };
-    
+
     (result, items)
 }
 
@@ -3366,17 +3368,27 @@ fn format_satd_json_output(
     })
 }
 
-fn build_satd_summary_header(result: &crate::services::satd_detector::SATDAnalysisResult) -> String {
+fn build_satd_summary_header(
+    result: &crate::services::satd_detector::SATDAnalysisResult,
+) -> String {
     let mut summary = String::from("SATD Analysis Summary\n");
     summary.push_str("====================\n");
-    summary.push_str(&format!("Total debt items: {}\n", result.summary.total_items));
+    summary.push_str(&format!(
+        "Total debt items: {}\n",
+        result.summary.total_items
+    ));
     summary.push_str(&format!(
         "Debt density: {:.2} per KLOC\n",
         (result.summary.total_items as f64 / result.total_files_analyzed.max(1) as f64)
     ));
     summary.push_str(&format!(
         "Critical items: {}\n",
-        result.summary.by_severity.get("Critical").copied().unwrap_or(0)
+        result
+            .summary
+            .by_severity
+            .get("Critical")
+            .copied()
+            .unwrap_or(0)
     ));
     summary.push_str("\nTop files with technical debt:\n");
     summary
@@ -3384,16 +3396,21 @@ fn build_satd_summary_header(result: &crate::services::satd_detector::SATDAnalys
 
 fn group_and_sort_satd_items(
     items: &[crate::services::satd_detector::TechnicalDebt],
-) -> Vec<(&std::path::Path, Vec<&crate::services::satd_detector::TechnicalDebt>)> {
+) -> Vec<(
+    &std::path::Path,
+    Vec<&crate::services::satd_detector::TechnicalDebt>,
+)> {
     use std::collections::HashMap;
-    
-    let mut files_map: HashMap<&std::path::Path, Vec<&crate::services::satd_detector::TechnicalDebt>> =
-        HashMap::new();
-    
+
+    let mut files_map: HashMap<
+        &std::path::Path,
+        Vec<&crate::services::satd_detector::TechnicalDebt>,
+    > = HashMap::new();
+
     for item in items {
         files_map.entry(&item.file).or_default().push(item);
     }
-    
+
     let mut sorted_files: Vec<_> = files_map.into_iter().collect();
     sorted_files.sort_by_key(|(_, items)| -(items.len() as i32));
     sorted_files
@@ -3405,7 +3422,7 @@ fn format_satd_summary_output(
 ) -> serde_json::Value {
     let mut summary = build_satd_summary_header(result);
     let sorted_files = group_and_sort_satd_items(items);
-    
+
     for (path, file_items) in sorted_files.iter().take(10) {
         summary.push_str(&format!(
             "  {} - {} items\n",
@@ -3413,7 +3430,7 @@ fn format_satd_summary_output(
             file_items.len()
         ));
     }
-    
+
     json!({
         "formatted_output": summary,
         "stats": {
@@ -3443,17 +3460,17 @@ async fn handle_analyze_satd(
         Ok(args) => args,
         Err(e) => return McpResponse::error(request_id, -32602, e),
     };
-    
+
     info!("Analyzing SATD for project: {:?}", args.project_path);
-    
+
     let result = match execute_satd_analysis(&args).await {
         Ok(result) => result,
         Err(e) => return McpResponse::error(request_id, -32603, e),
     };
-    
+
     let (result, items) = filter_satd_items(result, args.critical_only);
     let output = format_satd_output(&args, &result, &items);
-    
+
     McpResponse::success(request_id, output)
 }
 
@@ -3489,7 +3506,7 @@ fn parse_lint_hotspot_args(arguments: serde_json::Value) -> Result<LintHotspotAr
 
 async fn execute_lint_hotspot_analysis(
     args: &LintHotspotArgs,
-    project_path: &std::path::PathBuf,
+    project_path: &Path,
 ) -> Result<std::path::PathBuf, String> {
     use crate::cli::handlers::lint_hotspot_handlers::handle_analyze_lint_hotspot;
     use crate::cli::LintHotspotOutputFormat;
@@ -3499,7 +3516,7 @@ async fn execute_lint_hotspot_analysis(
     let output_path = temp_file.path().to_path_buf();
 
     handle_analyze_lint_hotspot(
-        project_path.clone(),
+        project_path.to_path_buf(),
         None,
         LintHotspotOutputFormat::Json,
         100.0,
@@ -3520,13 +3537,14 @@ async fn execute_lint_hotspot_analysis(
     Ok(output_path)
 }
 
-async fn read_and_parse_lint_output(output_path: &std::path::Path) -> Result<serde_json::Value, String> {
+async fn read_and_parse_lint_output(
+    output_path: &std::path::Path,
+) -> Result<serde_json::Value, String> {
     let json_output = tokio::fs::read_to_string(output_path)
         .await
         .map_err(|e| format!("Failed to read temporary file: {e}"))?;
 
-    serde_json::from_str(&json_output)
-        .map_err(|e| format!("Failed to parse JSON output: {e}"))
+    serde_json::from_str(&json_output).map_err(|e| format!("Failed to parse JSON output: {e}"))
 }
 
 struct LintHotspotData {
@@ -3602,7 +3620,10 @@ async fn handle_analyze_lint_hotspot(
         Err(e) => return McpResponse::error(request_id, -32602, e),
     };
 
-    info!("Analyzing lint hotspots for project: {:?}", args.project_path);
+    info!(
+        "Analyzing lint hotspots for project: {:?}",
+        args.project_path
+    );
 
     let project_path = std::path::PathBuf::from(args.project_path.clone());
 

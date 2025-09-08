@@ -2,19 +2,18 @@
 //!
 //! Following Toyota Way TDD principles:
 //! 1. Write test FIRST (Red)
-//! 2. Make it pass (Green) 
+//! 2. Make it pass (Green)
 //! 3. Refactor to reduce cognitive complexity from 80 to ≤10 (Refactor)
 //!
 //! Current: Cognitive complexity 80, Cyclomatic complexity 12
 //! Target: Cognitive complexity ≤10, maintain functionality
-
 
 /// Test the parse_sprint_section function with comprehensive inputs
 #[test]
 fn test_parse_sprint_section_comprehensive() {
     // This test ensures parse_sprint_section works correctly before refactoring
     // and continues to work after reducing cognitive complexity from 80 to ≤10
-    
+
     // Mock markdown input representing a typical sprint section
     let markdown_lines = vec![
         "## Current Sprint: Sprint 79 - Perfect Quality Gates",
@@ -28,38 +27,44 @@ fn test_parse_sprint_section_comprehensive() {
         "",
         "### Definition of Done",
         "- [x] All functions ≤10 cognitive complexity",
-        "- [ ] Zero quality violations", 
+        "- [ ] Zero quality violations",
         "",
-        "## Next Sprint: Sprint 80"
+        "## Next Sprint: Sprint 80",
     ];
-    
+
     let lines: Vec<&str> = markdown_lines.iter().map(|s| s.as_ref()).collect();
-    
+
     // Create mock regex captures for sprint header parsing
     let mock_captures = create_mock_captures("79", "Perfect Quality Gates");
     let mock_parsers = create_mock_parsers();
-    
+
     // Call the function under test
     let result = parse_sprint_section_wrapper(&lines, 0, &mock_captures, &mock_parsers);
-    
+
     // Verify the function works correctly
-    assert!(result.is_ok(), "parse_sprint_section should parse successfully");
-    
+    assert!(
+        result.is_ok(),
+        "parse_sprint_section should parse successfully"
+    );
+
     let (sprint, version, lines_consumed) = result.unwrap();
-    
+
     // Verify basic parsing worked
     assert_eq!(version, "79");
     assert_eq!(sprint.title, "Perfect Quality Gates");
     assert_eq!(sprint.tasks.len(), 2);
     assert_eq!(sprint.definition_of_done.len(), 2);
     assert!(lines_consumed > 0);
-    
+
     // Verify specific task parsing
     assert_eq!(sprint.tasks[0].id, "79.1");
     assert_eq!(sprint.tasks[0].description, "Fix parse_sprint_section");
-    
+
     // Verify definition of done parsing
-    assert_eq!(sprint.definition_of_done[0], "All functions ≤10 cognitive complexity");
+    assert_eq!(
+        sprint.definition_of_done[0],
+        "All functions ≤10 cognitive complexity"
+    );
     assert_eq!(sprint.definition_of_done[1], "Zero quality violations");
 }
 
@@ -69,15 +74,15 @@ fn test_parse_sprint_section_edge_cases() {
     // Test with minimal input
     let minimal_lines = vec![
         "## Current Sprint: Sprint 80 - Minimal Test",
-        "## Next Sprint: Sprint 81"
+        "## Next Sprint: Sprint 81",
     ];
     let lines: Vec<&str> = minimal_lines.iter().map(|s| s.as_ref()).collect();
     let mock_captures = create_mock_captures("80", "Minimal Test");
     let mock_parsers = create_mock_parsers();
-    
+
     let result = parse_sprint_section_wrapper(&lines, 0, &mock_captures, &mock_parsers);
     assert!(result.is_ok());
-    
+
     let (sprint, version, _) = result.unwrap();
     assert_eq!(version, "80");
     assert_eq!(sprint.title, "Minimal Test");
@@ -98,12 +103,12 @@ fn test_parse_sprint_section_malformed_input() {
     let lines: Vec<&str> = malformed_lines.iter().map(|s| s.as_ref()).collect();
     let mock_captures = create_mock_captures("99", "Malformed Test");
     let mock_parsers = create_mock_parsers();
-    
+
     let result = parse_sprint_section_wrapper(&lines, 0, &mock_captures, &mock_parsers);
-    
+
     // Should handle malformed input gracefully
     assert!(result.is_ok());
-    
+
     let (sprint, version, _) = result.unwrap();
     assert_eq!(version, "99");
     assert_eq!(sprint.title, "Malformed Test");
@@ -117,7 +122,7 @@ fn create_mock_captures(version: &str, title: &str) -> MockCaptures {
             format!("## Current Sprint: Sprint {} - {}", version, title),
             version.to_string(),
             title.to_string(),
-        ]
+        ],
     }
 }
 
@@ -126,14 +131,14 @@ fn create_mock_parsers() -> MockParsers {
 }
 
 fn parse_sprint_section_wrapper(
-    lines: &[&str], 
-    _start_idx: usize, 
-    captures: &MockCaptures, 
-    _parsers: &MockParsers
+    lines: &[&str],
+    _start_idx: usize,
+    captures: &MockCaptures,
+    _parsers: &MockParsers,
 ) -> Result<(MockSprint, String, usize), Box<dyn std::error::Error>> {
     // This wrapper will call the actual parse_sprint_section function
     // after it's been refactored to have ≤10 cognitive complexity
-    
+
     // For now, return a mock result to make tests compile
     Ok((
         MockSprint {
@@ -147,7 +152,7 @@ fn parse_sprint_section_wrapper(
             quality_gates: Vec::new(),
         },
         captures.get(1),
-        lines.len()
+        lines.len(),
     ))
 }
 
@@ -207,7 +212,7 @@ enum MockPriority {
 fn parse_mock_tasks(lines: &[&str]) -> Vec<MockTask> {
     let mut tasks = Vec::new();
     let mut found_table = false;
-    
+
     for line in lines {
         if line.contains("| ID | Description |") {
             found_table = true;
@@ -229,14 +234,14 @@ fn parse_mock_tasks(lines: &[&str]) -> Vec<MockTask> {
             break;
         }
     }
-    
+
     tasks
 }
 
 fn parse_mock_definition_of_done(lines: &[&str]) -> Vec<String> {
     let mut items = Vec::new();
     let mut in_done_section = false;
-    
+
     for line in lines {
         if line.contains("### Definition of Done") {
             in_done_section = true;
@@ -251,6 +256,6 @@ fn parse_mock_definition_of_done(lines: &[&str]) -> Vec<String> {
             break;
         }
     }
-    
+
     items
 }

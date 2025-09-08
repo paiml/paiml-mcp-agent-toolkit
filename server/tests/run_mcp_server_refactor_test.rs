@@ -2,15 +2,15 @@
 //!
 //! Following Toyota Way TDD principles:
 //! 1. Write test FIRST (Red)
-//! 2. Make it pass (Green) 
+//! 2. Make it pass (Green)
 //! 3. Refactor to reduce cognitive complexity from 49 to ≤10 (Refactor)
 //!
 //! Current: Cognitive complexity 49, Cyclomatic complexity 11
 //! Target: Cognitive complexity ≤10, maintain functionality
 
-use std::sync::Arc;
-use pmat::{TemplateServerTrait, TemplateResource, TemplateRenderer, MetadataCache};
 use anyhow::Result;
+use pmat::{MetadataCache, TemplateRenderer, TemplateResource, TemplateServerTrait};
+use std::sync::Arc;
 
 // Mock template server for testing
 #[derive(Debug)]
@@ -52,16 +52,16 @@ impl TemplateServerTrait for MockTemplateServer {
 async fn test_run_mcp_server_structure() {
     // Test that run_mcp_server can be called with mock server
     // Note: This test focuses on the refactoring structure, not full I/O testing
-    
+
     let mock_server = Arc::new(MockTemplateServer);
-    
+
     // Verify the function signature exists and can be called
     // We can't easily test the full stdin/stdout interaction in a unit test,
     // but we can verify the function structure and error handling patterns
-    
+
     // After refactoring, the main function should have ≤10 cognitive complexity
     // Each extracted helper should have ≤5 cognitive complexity
-    
+
     assert!(true); // Structure validation placeholder
 }
 
@@ -72,7 +72,7 @@ fn test_run_mcp_server_error_patterns() {
     let invalid_json = "{ invalid json }";
     let parse_result = serde_json::from_str::<serde_json::Value>(invalid_json);
     assert!(parse_result.is_err());
-    
+
     // Test response serialization
     let response = serde_json::json!({
         "jsonrpc": "2.0",
@@ -96,10 +96,10 @@ fn test_mcp_request_response_structure() {
         "id": 1,
         "params": {}
     }"#;
-    
+
     let parse_result = serde_json::from_str::<serde_json::Value>(request_json);
     assert!(parse_result.is_ok());
-    
+
     let parsed = parse_result.unwrap();
     assert_eq!(parsed["method"], "test");
     assert_eq!(parsed["id"], 1);

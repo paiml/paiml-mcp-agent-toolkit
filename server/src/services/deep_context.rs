@@ -3716,15 +3716,15 @@ async fn analyze_ast_contexts(
 
 /// Discover files and filter for source files only
 fn discover_and_categorize_source_files(path: &std::path::Path) -> anyhow::Result<Vec<PathBuf>> {
-    use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
+    use crate::services::file_discovery::ProjectFileDiscovery;
 
     let discovery_config = create_ast_discovery_config();
     let discovery = ProjectFileDiscovery::new(path.to_path_buf()).with_config(discovery_config);
     let all_files = discovery.discover_files()?;
-    
+
     let categorized_files = categorize_files_in_parallel(all_files);
     let source_files = filter_and_categorize_files(categorized_files);
-    
+
     Ok(source_files)
 }
 
@@ -3739,9 +3739,11 @@ fn create_ast_discovery_config() -> crate::services::file_discovery::FileDiscove
 }
 
 /// Categorize files in parallel for better performance
-fn categorize_files_in_parallel(all_files: Vec<PathBuf>) -> Vec<(PathBuf, crate::services::file_discovery::FileCategory)> {
-    use crate::services::file_discovery::{FileCategory, ProjectFileDiscovery};
-    
+fn categorize_files_in_parallel(
+    all_files: Vec<PathBuf>,
+) -> Vec<(PathBuf, crate::services::file_discovery::FileCategory)> {
+    use crate::services::file_discovery::ProjectFileDiscovery;
+
     all_files
         .into_par_iter()
         .map(|file_path| {
@@ -3756,7 +3758,7 @@ fn filter_and_categorize_files(
     categorized_files: Vec<(PathBuf, crate::services::file_discovery::FileCategory)>,
 ) -> Vec<PathBuf> {
     use crate::services::file_discovery::FileCategory;
-    
+
     let mut source_files = Vec::new();
     let mut skipped_files = 0;
 
@@ -3783,7 +3785,7 @@ fn filter_and_categorize_files(
         source_files.len(),
         skipped_files
     );
-    
+
     source_files
 }
 
@@ -3796,7 +3798,9 @@ async fn analyze_source_files_for_contexts(
     let analysis_start = std::time::Instant::now();
 
     for file_path in source_files {
-        if let Some(enhanced_context) = analyze_single_file_for_context(&file_path, &mut file_count).await {
+        if let Some(enhanced_context) =
+            analyze_single_file_for_context(&file_path, &mut file_count).await
+        {
             enhanced_contexts.push(enhanced_context);
         }
     }
@@ -3807,19 +3811,18 @@ async fn analyze_source_files_for_contexts(
 
 /// Analyze single file and create enhanced context if successful
 async fn analyze_single_file_for_context(
-    file_path: &PathBuf,
+    file_path: &Path,
     file_count: &mut usize,
 ) -> Option<EnhancedFileContext> {
     let file_start = std::time::Instant::now();
-    
+
     if let Ok(file_context) = analyze_single_file(file_path).await {
         let ast_time = file_start.elapsed();
 
         if *file_count % 10 == 0 {
             info!(
                 "Progress: {} files processed. Last file - AST: {:?}",
-                file_count,
-                ast_time
+                file_count, ast_time
             );
         }
 
@@ -3835,7 +3838,7 @@ async fn analyze_single_file_for_context(
             },
             symbol_id: uuid::Uuid::new_v4().to_string(),
         };
-        
+
         *file_count += 1;
         Some(enhanced_context)
     } else {
@@ -4284,10 +4287,10 @@ fn analyze_rust_dead_functions(
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
     use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
-    
+
     for (line_num, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
-        
+
         if trimmed.starts_with("fn ") && !trimmed.contains("pub ") {
             if let Some(function_name) = extract_function_name_if_unused(lines, trimmed) {
                 *dead_functions += 1;
@@ -4309,10 +4312,10 @@ fn analyze_rust_dead_structs(
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
     use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
-    
+
     for (line_num, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
-        
+
         if trimmed.starts_with("struct ") && !trimmed.contains("pub ") {
             if let Some(struct_name) = extract_struct_name_if_unused(lines, trimmed) {
                 *dead_classes += 1;
@@ -4364,10 +4367,10 @@ fn analyze_typescript_dead_functions(
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
     use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
-    
+
     for (line_num, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
-        
+
         if trimmed.starts_with("function ") && !trimmed.contains("export") {
             if let Some(function_name) = extract_js_function_name_if_unused(lines, trimmed) {
                 *dead_functions += 1;
@@ -4389,10 +4392,10 @@ fn analyze_typescript_dead_classes(
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
     use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
-    
+
     for (line_num, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
-        
+
         if trimmed.starts_with("class ") && !trimmed.contains("export") {
             if let Some(class_name) = extract_class_name_if_unused(lines, trimmed) {
                 *dead_classes += 1;
@@ -4444,10 +4447,10 @@ fn analyze_python_dead_functions(
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
     use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
-    
+
     for (line_num, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
-        
+
         if trimmed.starts_with("def _") {
             if let Some(function_name) = extract_python_function_name_if_unused(lines, trimmed) {
                 *dead_functions += 1;
@@ -4469,10 +4472,10 @@ fn analyze_python_dead_classes(
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
     use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
-    
+
     for (line_num, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
-        
+
         if trimmed.starts_with("class _") {
             if let Some(class_name) = extract_python_class_name_if_unused(lines, trimmed) {
                 *dead_classes += 1;

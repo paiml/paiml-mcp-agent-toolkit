@@ -947,19 +947,19 @@ fn resolve_repo_spec(repo_spec: &str) -> Result<PathBuf> {
     if let Some(result) = try_local_path(repo_spec) {
         return result;
     }
-    
+
     if let Some(result) = try_github_shorthand(repo_spec) {
         return result;
     }
-    
+
     if let Some(result) = try_github_url(repo_spec) {
         return result;
     }
-    
+
     if let Some(result) = try_owner_repo_format(repo_spec) {
         return result;
     }
-    
+
     // Fall back to treating as local path
     Err(anyhow!("Repository not found: {}", repo_spec))
 }

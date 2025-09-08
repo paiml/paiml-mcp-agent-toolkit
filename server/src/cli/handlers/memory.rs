@@ -124,10 +124,10 @@ pub async fn handle_memory_command(command: &MemoryCommand) -> Result<()> {
 async fn handle_memory_stats(detailed: bool, format: &str) -> Result<()> {
     let manager = global_memory_manager()?;
     let stats = manager.stats();
-    
+
     let pool_stats_output = build_pool_stats_output(&stats.pool_stats);
     let recommendations = generate_memory_recommendations(&stats);
-    
+
     let output = MemoryStatsOutput {
         total_allocated: stats.total_allocated,
         peak_usage: stats.peak_usage,
@@ -136,19 +136,22 @@ async fn handle_memory_stats(detailed: bool, format: &str) -> Result<()> {
         pool_stats: pool_stats_output,
         recommendations,
     };
-    
+
     output_memory_stats(&output, format, detailed)
 }
 
 /// Build pool statistics output data  
 fn build_pool_stats_output(
-    pool_stats: &rustc_hash::FxHashMap<crate::services::memory_manager::PoolType, crate::services::memory_manager::PoolStats>,
+    pool_stats: &rustc_hash::FxHashMap<
+        crate::services::memory_manager::PoolType,
+        crate::services::memory_manager::PoolStats,
+    >,
 ) -> HashMap<String, PoolStatsOutput> {
     let mut pool_stats_output = HashMap::new();
-    
+
     for (pool_type, pool_stats) in pool_stats {
         let efficiency_rating = calculate_efficiency_rating(pool_stats.reuse_ratio);
-        
+
         pool_stats_output.insert(
             format!("{:?}", pool_type),
             PoolStatsOutput {
@@ -161,7 +164,7 @@ fn build_pool_stats_output(
             },
         );
     }
-    
+
     pool_stats_output
 }
 
@@ -183,14 +186,14 @@ fn generate_memory_recommendations(
     stats: &crate::services::memory_manager::MemoryStats,
 ) -> Vec<String> {
     let mut recommendations = Vec::new();
-    
+
     add_pressure_recommendations(&mut recommendations, stats.allocation_pressure);
     add_pool_efficiency_recommendations(&mut recommendations, &stats.pool_stats);
-    
+
     if recommendations.is_empty() {
         recommendations.push("Memory usage is optimal.".to_string());
     }
-    
+
     recommendations
 }
 
@@ -209,7 +212,10 @@ fn add_pressure_recommendations(recommendations: &mut Vec<String>, allocation_pr
 /// Add pool efficiency recommendations
 fn add_pool_efficiency_recommendations(
     recommendations: &mut Vec<String>,
-    pool_stats: &rustc_hash::FxHashMap<crate::services::memory_manager::PoolType, crate::services::memory_manager::PoolStats>,
+    pool_stats: &rustc_hash::FxHashMap<
+        crate::services::memory_manager::PoolType,
+        crate::services::memory_manager::PoolStats,
+    >,
 ) {
     for (pool_type, pool_stats) in pool_stats {
         if pool_stats.reuse_ratio < 0.3 {
@@ -227,7 +233,8 @@ fn output_memory_stats(output: &MemoryStatsOutput, format: &str, detailed: bool)
     match format {
         "json" => output_json_format(output),
         "csv" => output_csv_format(output),
-        "table" | _ => print_memory_stats_table(output, detailed),
+        "table" => print_memory_stats_table(output, detailed),
+        _ => print_memory_stats_table(output, detailed),
     }
 }
 

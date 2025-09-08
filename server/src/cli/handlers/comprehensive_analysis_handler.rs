@@ -35,15 +35,13 @@ pub struct ComprehensiveAnalysisConfig {
 
 /// Refactored handler for comprehensive analysis using the orchestrator facade.
 pub async fn handle_analyze_comprehensive(config: ComprehensiveAnalysisConfig) -> Result<()> {
-    use std::time::Instant;
-
     eprintln!("🔍 Running comprehensive analysis...");
     let start = init_timing(config.perf);
-    
+
     let analysis_path = determine_analysis_path(&config);
     let result = run_orchestrated_analysis(analysis_path, &config).await?;
     let enhanced_result = enhance_results_if_needed(result, &config).await?;
-    
+
     report_completion_and_performance(start, &config, &enhanced_result);
     output_results(
         enhanced_result,
@@ -83,7 +81,7 @@ async fn run_orchestrated_analysis(
 ) -> Result<ComprehensiveAnalysisResult> {
     let registry = Arc::new(ServiceRegistry::new());
     let orchestrator = AnalysisOrchestrator::new(registry);
-    
+
     let request = create_analysis_request(analysis_path, config);
     orchestrator.analyze(request).await
 }

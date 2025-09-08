@@ -113,7 +113,7 @@ pub fn format_tdg_markdown(
 
     write_tdg_header(&mut output)?;
     write_tdg_summary(&mut output, summary)?;
-    
+
     if !hotspots.is_empty() {
         write_tdg_hotspots(&mut output, hotspots, include_components)?;
     }
@@ -131,7 +131,7 @@ fn write_tdg_header(output: &mut String) -> Result<()> {
 /// Write TDG summary section
 fn write_tdg_summary(output: &mut String, summary: &TDGSummary) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "## Summary\n")?;
     writeln!(output, "- **Total Files**: {}", summary.total_files)?;
     writeln!(
@@ -151,7 +151,7 @@ fn write_tdg_summary(output: &mut String, summary: &TDGSummary) -> Result<()> {
         "- **Estimated Debt**: {:.1} hours\n",
         summary.estimated_debt_hours
     )?;
-    
+
     Ok(())
 }
 
@@ -162,13 +162,13 @@ fn write_tdg_hotspots(
     include_components: bool,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "## Top Hotspots\n")?;
 
     for (i, hotspot) in hotspots.iter().enumerate() {
         write_single_hotspot(output, i + 1, hotspot, include_components)?;
     }
-    
+
     Ok(())
 }
 
@@ -180,46 +180,58 @@ fn write_single_hotspot(
     include_components: bool,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "### {}. {}\n", index, hotspot.path)?;
     write_hotspot_basic_info(output, hotspot)?;
-    
+
     if include_components {
         write_component_breakdown(output, hotspot)?;
     }
-    
+
     Ok(())
 }
 
 /// Write basic hotspot information
 fn write_hotspot_basic_info(output: &mut String, hotspot: &TDGHotspot) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "- **TDG Score**: {:.3}", hotspot.tdg_score)?;
-    writeln!(
-        output,
-        "- **Primary Factor**: {}",
-        hotspot.primary_factor
-    )?;
+    writeln!(output, "- **Primary Factor**: {}", hotspot.primary_factor)?;
     writeln!(
         output,
         "- **Estimated Hours**: {:.1}\n",
         hotspot.estimated_hours
     )?;
-    
+
     Ok(())
 }
 
 /// Write component breakdown for a hotspot
 fn write_component_breakdown(output: &mut String, hotspot: &TDGHotspot) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "#### Component Breakdown:")?;
-    writeln!(output, "- Complexity: {:.3}", calculate_component_score(hotspot.tdg_score, 0.4))?;
-    writeln!(output, "- Churn: {:.3}", calculate_component_score(hotspot.tdg_score, 0.3))?;
-    writeln!(output, "- Duplication: {:.3}", calculate_component_score(hotspot.tdg_score, 0.2))?;
-    writeln!(output, "- Coupling: {:.3}\n", calculate_component_score(hotspot.tdg_score, 0.1))?;
-    
+    writeln!(
+        output,
+        "- Complexity: {:.3}",
+        calculate_component_score(hotspot.tdg_score, 0.4)
+    )?;
+    writeln!(
+        output,
+        "- Churn: {:.3}",
+        calculate_component_score(hotspot.tdg_score, 0.3)
+    )?;
+    writeln!(
+        output,
+        "- Duplication: {:.3}",
+        calculate_component_score(hotspot.tdg_score, 0.2)
+    )?;
+    writeln!(
+        output,
+        "- Coupling: {:.3}\n",
+        calculate_component_score(hotspot.tdg_score, 0.1)
+    )?;
+
     Ok(())
 }
 

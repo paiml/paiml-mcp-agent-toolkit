@@ -1715,8 +1715,8 @@ fn is_markdown_file(file_path: &Path) -> bool {
 
 /// Handle markdown file analysis
 async fn handle_markdown_analysis(
-    file_path: &Path, 
-    format: RefactorAutoOutputFormat
+    file_path: &Path,
+    format: RefactorAutoOutputFormat,
 ) -> Result<()> {
     eprintln!("📝 Detected markdown file - analyzing for quality issues...");
 
@@ -1767,9 +1767,7 @@ fn has_proper_headers(content: &str) -> bool {
 
 /// Check if content has code blocks without language specification
 fn has_unspecified_code_blocks(content: &str) -> bool {
-    content.contains("```\n") 
-        && !content.contains("```rust") 
-        && !content.contains("```bash")
+    content.contains("```\n") && !content.contains("```rust") && !content.contains("```bash")
 }
 
 /// Check if content has broken relative links
@@ -1810,7 +1808,6 @@ fn create_markdown_refactor_request(
     })
 }
 
-
 /// Print markdown analysis summary
 fn print_markdown_summary(refactor_request: &serde_json::Value) {
     eprintln!("📄 Markdown Analysis:");
@@ -1821,7 +1818,7 @@ fn print_markdown_summary(refactor_request: &serde_json::Value) {
             }
         }
     }
-    
+
     eprintln!("\n💡 Suggested fixes:");
     eprintln!("  • Add proper header hierarchy");
     eprintln!("  • Specify languages for all code blocks");

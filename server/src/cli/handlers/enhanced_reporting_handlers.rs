@@ -7,7 +7,7 @@ use crate::cli::*;
 use crate::models::defect_report::DefectReport;
 use crate::services::defect_report_service::{DefectReportService, ReportFormat};
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tracing::info;
 
@@ -224,7 +224,7 @@ fn determine_output_format(
 }
 
 /// Log report generation startup info (cognitive complexity ≤2)
-fn log_report_generation_start(project_path: &PathBuf, actual_format: &ReportOutputFormat) {
+fn log_report_generation_start(project_path: &Path, actual_format: &ReportOutputFormat) {
     info!("📊 Generating comprehensive defect report");
     info!("📂 Project path: {}", project_path.display());
     info!("📄 Output format: {:?}", actual_format);
@@ -277,11 +277,7 @@ async fn write_report_output(
 }
 
 /// Print comprehensive report summary (cognitive complexity ≤8)
-fn print_report_summary(
-    report: &DefectReport,
-    elapsed: std::time::Duration,
-    perf: bool,
-) {
+fn print_report_summary(report: &DefectReport, elapsed: std::time::Duration, perf: bool) {
     info!("✅ Report generation completed in {:?}", elapsed);
     info!("📊 Total Defects: {}", report.summary.total_defects);
     info!("📁 Files with defects: {}", report.file_index.len());

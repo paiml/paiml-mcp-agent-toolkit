@@ -319,11 +319,11 @@ fn extract_analysis_from_demo_report(
     let mut complexity_result = None;
     let mut dag_result = None;
     let mut timings = (0u64, 0u64, 0u64, 0u64);
-    
+
     for step in &demo_report.steps {
         process_demo_step(step, &mut complexity_result, &mut dag_result, &mut timings);
     }
-    
+
     (complexity_result, dag_result, timings)
 }
 
@@ -355,7 +355,7 @@ fn process_complexity_step(
     timings: &mut (u64, u64, u64, u64),
 ) {
     timings.1 = step.elapsed_ms;
-    
+
     if let Some(result) = &step.response.result {
         if let Some(complexity_report) = extract_complexity_from_result(result) {
             *complexity_result = Some(complexity_report);
@@ -363,14 +363,14 @@ fn process_complexity_step(
     }
 }
 
-/// Process DAG visualization step (cognitive complexity ≤6) 
+/// Process DAG visualization step (cognitive complexity ≤6)
 fn process_dag_step(
     step: &crate::demo::DemoStep,
     dag_result: &mut Option<crate::models::dag::DependencyGraph>,
     timings: &mut (u64, u64, u64, u64),
 ) {
     timings.2 = step.elapsed_ms;
-    
+
     if let Some(result) = &step.response.result {
         if let Some(dag) = extract_dag_from_result(result) {
             *dag_result = Some(dag);
@@ -389,7 +389,8 @@ fn extract_complexity_from_result(
 ) -> Option<crate::services::complexity::ComplexityReport> {
     let complexity_data = serde_json::from_value::<serde_json::Value>(result.clone()).ok()?;
     let report_value = complexity_data.get("report")?;
-    serde_json::from_value::<crate::services::complexity::ComplexityReport>(report_value.clone()).ok()
+    serde_json::from_value::<crate::services::complexity::ComplexityReport>(report_value.clone())
+        .ok()
 }
 
 /// Extract DAG from JSON result (cognitive complexity ≤4)
