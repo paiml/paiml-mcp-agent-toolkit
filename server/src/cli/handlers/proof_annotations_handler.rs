@@ -41,17 +41,14 @@ pub async fn handle_analyze_proof_annotations(
     eprintln!("✅ Found {} matching proof annotations", annotations.len());
 
     // Format output using helpers
-    let content = match format {
-        ProofAnnotationOutputFormat::Json => format_as_json(&annotations, elapsed, &annotator)?,
-        ProofAnnotationOutputFormat::Summary => format_as_summary(&annotations, elapsed)?,
-        ProofAnnotationOutputFormat::Full => {
-            format_as_full(&annotations, &project_path, include_evidence)?
-        }
-        ProofAnnotationOutputFormat::Markdown => {
-            format_as_markdown(&annotations, &project_path, include_evidence)?
-        }
-        ProofAnnotationOutputFormat::Sarif => format_as_sarif(&annotations, &project_path)?,
-    };
+    let content = format_proof_annotations(
+        format, 
+        &annotations, 
+        elapsed, 
+        &annotator, 
+        &project_path, 
+        include_evidence
+    )?;
 
     // Write output
     if let Some(output_path) = output {
@@ -62,4 +59,26 @@ pub async fn handle_analyze_proof_annotations(
     }
 
     Ok(())
+}
+
+/// Format proof annotations based on output format (complexity: 6)
+fn format_proof_annotations(
+    format: ProofAnnotationOutputFormat,
+    annotations: &[impl std::fmt::Debug],
+    elapsed: std::time::Duration,
+    annotator: &impl std::fmt::Debug,
+    project_path: &PathBuf,
+    include_evidence: bool,
+) -> Result<String> {
+    match format {
+        ProofAnnotationOutputFormat::Json => format_as_json(annotations, elapsed, annotator),
+        ProofAnnotationOutputFormat::Summary => format_as_summary(annotations, elapsed),
+        ProofAnnotationOutputFormat::Full => {
+            format_as_full(annotations, project_path, include_evidence)
+        }
+        ProofAnnotationOutputFormat::Markdown => {
+            format_as_markdown(annotations, project_path, include_evidence)
+        }
+        ProofAnnotationOutputFormat::Sarif => format_as_sarif(annotations, project_path),
+    }
 }
