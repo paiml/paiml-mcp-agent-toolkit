@@ -5,15 +5,8 @@
 
 use crate::services::clippy_fix::{ClippyFixEngine, ClippyDiagnostic, ConfidenceLevel};
 use anyhow::Result;
+use pmcp::ToolResult;
 use serde_json::{json, Value};
-
-// Workaround: Define ToolResult compatible with pmcp interface
-// NOTE: File issue with pmcp crate about ToolResult export
-#[derive(Debug)]
-pub enum ToolResult {
-    Success(Value),
-    Error(String),
-}
 
 /// Auto-fix clippy warnings with confidence-based filtering
 /// 
@@ -61,7 +54,7 @@ async fn run_clippy_analysis(path: &str) -> Result<Vec<ClippyDiagnostic>> {
     use tokio::process::Command;
     
     let output = Command::new("cargo")
-        .args(&["clippy", "--message-format=json"])
+        .args(["clippy", "--message-format=json"])
         .current_dir(path)
         .output()
         .await?;
@@ -193,5 +186,10 @@ fn create_fix_response(results: Value, is_dry_run: bool) -> ToolResult {
         "message": format!("🔧 Clippy fixes {} successfully", action)
     });
     
-    ToolResult::Success(response)
+    ToolResult {
+        content: vec![pmcp::Content::Text {
+            text: serde_json::to_string_pretty(&response).unwrap_or_else(|_| response.to_string()),
+        }],
+        is_error: false,
+    }
 }
