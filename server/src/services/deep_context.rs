@@ -3701,40 +3701,63 @@ async fn analyze_ast_contexts(
     path: &std::path::Path,
     _config: Option<FileClassifierConfig>,
 ) -> anyhow::Result<Vec<EnhancedFileContext>> {
-    use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
-
     let _start_time = std::time::Instant::now();
     info!("Starting AST analysis for path: {:?}", path);
 
-    let mut enhanced_contexts = Vec::new();
+    let source_files = discover_and_categorize_source_files(path)?;
+    let enhanced_contexts = analyze_source_files_for_contexts(source_files).await?;
 
-    // Use proper file discovery that respects .gitignore
-    let discovery_config = FileDiscoveryConfig {
+    info!(
+        "AST analysis completed. Generated {} file contexts",
+        enhanced_contexts.len()
+    );
+    Ok(enhanced_contexts)
+}
+
+/// Discover files and filter for source files only
+fn discover_and_categorize_source_files(path: &std::path::Path) -> anyhow::Result<Vec<PathBuf>> {
+    use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
+
+    let discovery_config = create_ast_discovery_config();
+    let discovery = ProjectFileDiscovery::new(path.to_path_buf()).with_config(discovery_config);
+    let all_files = discovery.discover_files()?;
+    
+    let categorized_files = categorize_files_in_parallel(all_files);
+    let source_files = filter_and_categorize_files(categorized_files);
+    
+    Ok(source_files)
+}
+
+/// Create discovery configuration for AST analysis
+fn create_ast_discovery_config() -> crate::services::file_discovery::FileDiscoveryConfig {
+    crate::services::file_discovery::FileDiscoveryConfig {
         respect_gitignore: true,
         filter_external_repos: true,
         max_files: Some(10_000), // Reasonable limit for AST analysis
         ..Default::default()
-    };
+    }
+}
 
-    let discovery = ProjectFileDiscovery::new(path.to_path_buf()).with_config(discovery_config);
-
-    let all_files = discovery.discover_files()?;
-
-    // Filter files based on category
-    use crate::services::file_discovery::FileCategory;
-
-    // Parallelize file categorization
-    let categorized_files: Vec<(PathBuf, FileCategory)> = all_files
+/// Categorize files in parallel for better performance
+fn categorize_files_in_parallel(all_files: Vec<PathBuf>) -> Vec<(PathBuf, crate::services::file_discovery::FileCategory)> {
+    use crate::services::file_discovery::{FileCategory, ProjectFileDiscovery};
+    
+    all_files
         .into_par_iter()
         .map(|file_path| {
             let category = ProjectFileDiscovery::categorize_file(&file_path);
             (file_path, category)
         })
-        .collect();
+        .collect()
+}
 
-    // Collect results in single pass
+/// Filter categorized files to extract only source files
+fn filter_and_categorize_files(
+    categorized_files: Vec<(PathBuf, crate::services::file_discovery::FileCategory)>,
+) -> Vec<PathBuf> {
+    use crate::services::file_discovery::FileCategory;
+    
     let mut source_files = Vec::new();
-    let mut essential_files = Vec::new();
     let mut skipped_files = 0;
 
     for (file_path, category) in categorized_files {
@@ -3747,8 +3770,6 @@ async fn analyze_ast_contexts(
                 debug!("Skipping generated/test file: {:?}", file_path);
             }
             FileCategory::EssentialDoc | FileCategory::BuildConfig => {
-                // Collect for compression and inclusion in report
-                essential_files.push((file_path.clone(), category));
                 debug!("Will compress metadata file: {:?}", file_path);
             }
             FileCategory::DevelopmentDoc => {
@@ -3762,42 +3783,68 @@ async fn analyze_ast_contexts(
         source_files.len(),
         skipped_files
     );
+    
+    source_files
+}
 
-    // Analyze each discovered source file WITHOUT TDG calculation
+/// Analyze source files and create enhanced contexts
+async fn analyze_source_files_for_contexts(
+    source_files: Vec<PathBuf>,
+) -> anyhow::Result<Vec<EnhancedFileContext>> {
+    let mut enhanced_contexts = Vec::new();
     let mut file_count = 0;
     let analysis_start = std::time::Instant::now();
 
     for file_path in source_files {
-        let file_start = std::time::Instant::now();
-        if let Ok(file_context) = analyze_single_file(&file_path).await {
-            let ast_time = file_start.elapsed();
-
-            if file_count % 10 == 0 {
-                info!(
-                    "Progress: {}/{} files. Last file - AST: {:?}",
-                    file_count,
-                    enhanced_contexts.capacity(),
-                    ast_time
-                );
-            }
-
-            let enhanced_context = EnhancedFileContext {
-                base: file_context,
-                complexity_metrics: None,
-                churn_metrics: None,
-                defects: DefectAnnotations {
-                    dead_code: None,
-                    technical_debt: Vec::new(),
-                    complexity_violations: Vec::new(),
-                    tdg_score: None, // Skip TDG calculation for context generation
-                },
-                symbol_id: uuid::Uuid::new_v4().to_string(),
-            };
+        if let Some(enhanced_context) = analyze_single_file_for_context(&file_path, &mut file_count).await {
             enhanced_contexts.push(enhanced_context);
-            file_count += 1;
         }
     }
 
+    log_analysis_completion(analysis_start, file_count);
+    Ok(enhanced_contexts)
+}
+
+/// Analyze single file and create enhanced context if successful
+async fn analyze_single_file_for_context(
+    file_path: &PathBuf,
+    file_count: &mut usize,
+) -> Option<EnhancedFileContext> {
+    let file_start = std::time::Instant::now();
+    
+    if let Ok(file_context) = analyze_single_file(file_path).await {
+        let ast_time = file_start.elapsed();
+
+        if *file_count % 10 == 0 {
+            info!(
+                "Progress: {} files processed. Last file - AST: {:?}",
+                file_count,
+                ast_time
+            );
+        }
+
+        let enhanced_context = EnhancedFileContext {
+            base: file_context,
+            complexity_metrics: None,
+            churn_metrics: None,
+            defects: DefectAnnotations {
+                dead_code: None,
+                technical_debt: Vec::new(),
+                complexity_violations: Vec::new(),
+                tdg_score: None, // Skip TDG calculation for context generation
+            },
+            symbol_id: uuid::Uuid::new_v4().to_string(),
+        };
+        
+        *file_count += 1;
+        Some(enhanced_context)
+    } else {
+        None
+    }
+}
+
+/// Log analysis completion statistics
+fn log_analysis_completion(analysis_start: std::time::Instant, file_count: usize) {
     let total_time = analysis_start.elapsed();
     info!(
         "AST analysis phase took {:?} for {} files ({:?} per file average)",
@@ -3805,12 +3852,6 @@ async fn analyze_ast_contexts(
         file_count,
         total_time / file_count.max(1) as u32
     );
-
-    info!(
-        "AST analysis completed. Generated {} file contexts",
-        enhanced_contexts.len()
-    );
-    Ok(enhanced_contexts)
 }
 
 /// Analyze a single source file and extract AST items
@@ -4232,15 +4273,23 @@ fn analyze_rust_dead_code(
     dead_classes: &mut usize,
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
-    use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
+    analyze_rust_dead_functions(lines, dead_functions, dead_items);
+    analyze_rust_dead_structs(lines, dead_classes, dead_items);
+}
 
+/// Analyze dead functions in Rust code
+fn analyze_rust_dead_functions(
+    lines: &[&str],
+    dead_functions: &mut usize,
+    dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
+) {
+    use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
+    
     for (line_num, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
-
-        // Look for unused functions (simple heuristic: private functions without callers in same file)
+        
         if trimmed.starts_with("fn ") && !trimmed.contains("pub ") {
-            let function_name = extract_function_name(trimmed);
-            if !function_name.is_empty() && !is_function_called_in_file(lines, &function_name) {
+            if let Some(function_name) = extract_function_name_if_unused(lines, trimmed) {
                 *dead_functions += 1;
                 dead_items.push(DeadCodeItem {
                     item_type: DeadCodeType::Function,
@@ -4250,11 +4299,22 @@ fn analyze_rust_dead_code(
                 });
             }
         }
+    }
+}
 
-        // Look for unused structs
+/// Analyze dead structs in Rust code
+fn analyze_rust_dead_structs(
+    lines: &[&str],
+    dead_classes: &mut usize,
+    dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
+) {
+    use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
+    
+    for (line_num, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        
         if trimmed.starts_with("struct ") && !trimmed.contains("pub ") {
-            let struct_name = extract_struct_name(trimmed);
-            if !struct_name.is_empty() && !is_type_used_in_file(lines, &struct_name) {
+            if let Some(struct_name) = extract_struct_name_if_unused(lines, trimmed) {
                 *dead_classes += 1;
                 dead_items.push(DeadCodeItem {
                     item_type: DeadCodeType::Class,
@@ -4267,21 +4327,49 @@ fn analyze_rust_dead_code(
     }
 }
 
+/// Extract function name if unused
+fn extract_function_name_if_unused(lines: &[&str], trimmed: &str) -> Option<String> {
+    let function_name = extract_function_name(trimmed);
+    if !function_name.is_empty() && !is_function_called_in_file(lines, &function_name) {
+        Some(function_name)
+    } else {
+        None
+    }
+}
+
+/// Extract struct name if unused
+fn extract_struct_name_if_unused(lines: &[&str], trimmed: &str) -> Option<String> {
+    let struct_name = extract_struct_name(trimmed);
+    if !struct_name.is_empty() && !is_type_used_in_file(lines, &struct_name) {
+        Some(struct_name)
+    } else {
+        None
+    }
+}
+
 fn analyze_typescript_dead_code(
     lines: &[&str],
     dead_functions: &mut usize,
     dead_classes: &mut usize,
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
-    use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
+    analyze_typescript_dead_functions(lines, dead_functions, dead_items);
+    analyze_typescript_dead_classes(lines, dead_classes, dead_items);
+}
 
+/// Analyze dead functions in TypeScript code
+fn analyze_typescript_dead_functions(
+    lines: &[&str],
+    dead_functions: &mut usize,
+    dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
+) {
+    use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
+    
     for (line_num, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
-
-        // Look for private functions
+        
         if trimmed.starts_with("function ") && !trimmed.contains("export") {
-            let function_name = extract_js_function_name(trimmed);
-            if !function_name.is_empty() && !is_function_called_in_file(lines, &function_name) {
+            if let Some(function_name) = extract_js_function_name_if_unused(lines, trimmed) {
                 *dead_functions += 1;
                 dead_items.push(DeadCodeItem {
                     item_type: DeadCodeType::Function,
@@ -4291,11 +4379,22 @@ fn analyze_typescript_dead_code(
                 });
             }
         }
+    }
+}
 
-        // Look for private classes
+/// Analyze dead classes in TypeScript code
+fn analyze_typescript_dead_classes(
+    lines: &[&str],
+    dead_classes: &mut usize,
+    dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
+) {
+    use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
+    
+    for (line_num, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        
         if trimmed.starts_with("class ") && !trimmed.contains("export") {
-            let class_name = extract_class_name(trimmed);
-            if !class_name.is_empty() && !is_type_used_in_file(lines, &class_name) {
+            if let Some(class_name) = extract_class_name_if_unused(lines, trimmed) {
                 *dead_classes += 1;
                 dead_items.push(DeadCodeItem {
                     item_type: DeadCodeType::Class,
@@ -4308,21 +4407,49 @@ fn analyze_typescript_dead_code(
     }
 }
 
+/// Extract JS function name if unused
+fn extract_js_function_name_if_unused(lines: &[&str], trimmed: &str) -> Option<String> {
+    let function_name = extract_js_function_name(trimmed);
+    if !function_name.is_empty() && !is_function_called_in_file(lines, &function_name) {
+        Some(function_name)
+    } else {
+        None
+    }
+}
+
+/// Extract class name if unused
+fn extract_class_name_if_unused(lines: &[&str], trimmed: &str) -> Option<String> {
+    let class_name = extract_class_name(trimmed);
+    if !class_name.is_empty() && !is_type_used_in_file(lines, &class_name) {
+        Some(class_name)
+    } else {
+        None
+    }
+}
+
 fn analyze_python_dead_code(
     lines: &[&str],
     dead_functions: &mut usize,
     dead_classes: &mut usize,
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
-    use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
+    analyze_python_dead_functions(lines, dead_functions, dead_items);
+    analyze_python_dead_classes(lines, dead_classes, dead_items);
+}
 
+/// Analyze dead functions in Python code
+fn analyze_python_dead_functions(
+    lines: &[&str],
+    dead_functions: &mut usize,
+    dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
+) {
+    use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
+    
     for (line_num, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
-
-        // Look for private functions (starting with underscore)
+        
         if trimmed.starts_with("def _") {
-            let function_name = extract_python_function_name(trimmed);
-            if !function_name.is_empty() && !is_function_called_in_file(lines, &function_name) {
+            if let Some(function_name) = extract_python_function_name_if_unused(lines, trimmed) {
                 *dead_functions += 1;
                 dead_items.push(DeadCodeItem {
                     item_type: DeadCodeType::Function,
@@ -4332,11 +4459,22 @@ fn analyze_python_dead_code(
                 });
             }
         }
+    }
+}
 
-        // Look for private classes
+/// Analyze dead classes in Python code
+fn analyze_python_dead_classes(
+    lines: &[&str],
+    dead_classes: &mut usize,
+    dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
+) {
+    use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
+    
+    for (line_num, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        
         if trimmed.starts_with("class _") {
-            let class_name = extract_python_class_name(trimmed);
-            if !class_name.is_empty() && !is_type_used_in_file(lines, &class_name) {
+            if let Some(class_name) = extract_python_class_name_if_unused(lines, trimmed) {
                 *dead_classes += 1;
                 dead_items.push(DeadCodeItem {
                     item_type: DeadCodeType::Class,
@@ -4346,6 +4484,26 @@ fn analyze_python_dead_code(
                 });
             }
         }
+    }
+}
+
+/// Extract Python function name if unused
+fn extract_python_function_name_if_unused(lines: &[&str], trimmed: &str) -> Option<String> {
+    let function_name = extract_python_function_name(trimmed);
+    if !function_name.is_empty() && !is_function_called_in_file(lines, &function_name) {
+        Some(function_name)
+    } else {
+        None
+    }
+}
+
+/// Extract Python class name if unused
+fn extract_python_class_name_if_unused(lines: &[&str], trimmed: &str) -> Option<String> {
+    let class_name = extract_python_class_name(trimmed);
+    if !class_name.is_empty() && !is_type_used_in_file(lines, &class_name) {
+        Some(class_name)
+    } else {
+        None
     }
 }
 
@@ -4457,7 +4615,7 @@ async fn analyze_duplicate_code(
     use crate::services::duplicate_detector::DuplicateDetectionEngine;
 
     let all_files = discover_project_files(path)?;
-    let files_for_analysis = filter_and_categorize_files(all_files)?;
+    let files_for_analysis = filter_and_categorize_files_for_duplicates(all_files)?;
     let engine = DuplicateDetectionEngine::default();
     engine.detect_duplicates(&files_for_analysis)
 }
@@ -4468,7 +4626,7 @@ fn discover_project_files(path: &std::path::Path) -> anyhow::Result<Vec<std::pat
     discovery_service.discover_files()
 }
 
-fn filter_and_categorize_files(
+fn filter_and_categorize_files_for_duplicates(
     all_files: Vec<std::path::PathBuf>,
 ) -> anyhow::Result<
     Vec<(

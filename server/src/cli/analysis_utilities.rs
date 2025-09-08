@@ -3518,82 +3518,19 @@ async fn execute_specific_quality_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    use QualityCheckType::*;
+    
     match check {
-        QualityCheckType::Complexity => {
-            execute_quality_check_template(
-                check_complexity(project_path, max_complexity_p99),
-                |count| results.complexity_violations = count,
-                violations,
-            )
-            .await
-        }
-        QualityCheckType::DeadCode => {
-            execute_quality_check_template(
-                check_dead_code(project_path, max_dead_code),
-                |count| results.dead_code_violations = count,
-                violations,
-            )
-            .await
-        }
-        QualityCheckType::Satd => {
-            execute_quality_check_template(
-                check_satd(project_path),
-                |count| results.satd_violations = count,
-                violations,
-            )
-            .await
-        }
-        QualityCheckType::Entropy => {
-            execute_quality_check_template(
-                check_entropy(project_path, min_entropy),
-                |count| results.entropy_violations = count,
-                violations,
-            )
-            .await
-        }
-        QualityCheckType::Security => {
-            execute_quality_check_template(
-                check_security(project_path),
-                |count| results.security_violations = count,
-                violations,
-            )
-            .await
-        }
-        QualityCheckType::Duplicates => {
-            execute_quality_check_template(
-                check_duplicates(project_path),
-                |count| results.duplicate_violations = count,
-                violations,
-            )
-            .await
-        }
-        QualityCheckType::Coverage => {
-            execute_quality_check_template(
-                check_coverage(project_path, 80.0),
-                |count| results.coverage_violations = count,
-                violations,
-            )
-            .await
-        }
-        QualityCheckType::Sections => {
-            execute_quality_check_template(
-                check_sections(project_path),
-                |count| results.section_violations = count,
-                violations,
-            )
-            .await
-        }
-        QualityCheckType::Provability => {
-            execute_quality_check_template(
-                check_provability(project_path, 0.7),
-                |count| results.provability_violations = count,
-                violations,
-            )
-            .await
-        }
-        QualityCheckType::All => {
-            unreachable!("All case handled in parent function")
-        }
+        Complexity => execute_complexity_check(project_path, max_complexity_p99, violations, results).await,
+        DeadCode => execute_dead_code_check(project_path, max_dead_code, violations, results).await,
+        Satd => execute_satd_check(project_path, violations, results).await,
+        Entropy => execute_entropy_check(project_path, min_entropy, violations, results).await,
+        Security => execute_security_check(project_path, violations, results).await,
+        Duplicates => execute_duplicates_check(project_path, violations, results).await,
+        Coverage => execute_coverage_check(project_path, violations, results).await,
+        Sections => execute_sections_check(project_path, violations, results).await,
+        Provability => execute_provability_check(project_path, violations, results).await,
+        All => unreachable!("All case handled in parent function"),
     }
 }
 
@@ -3611,6 +3548,126 @@ where
     set_result(violations_found.len());
     violations.extend(violations_found);
     Ok(())
+}
+
+/// Helper for complexity check execution
+async fn execute_complexity_check(
+    project_path: &Path,
+    max_complexity_p99: u32,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    execute_quality_check_template(
+        check_complexity(project_path, max_complexity_p99),
+        |count| results.complexity_violations = count,
+        violations,
+    ).await
+}
+
+/// Helper for dead code check execution
+async fn execute_dead_code_check(
+    project_path: &Path,
+    max_dead_code: f64,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    execute_quality_check_template(
+        check_dead_code(project_path, max_dead_code),
+        |count| results.dead_code_violations = count,
+        violations,
+    ).await
+}
+
+/// Helper for SATD check execution
+async fn execute_satd_check(
+    project_path: &Path,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    execute_quality_check_template(
+        check_satd(project_path),
+        |count| results.satd_violations = count,
+        violations,
+    ).await
+}
+
+/// Helper for entropy check execution
+async fn execute_entropy_check(
+    project_path: &Path,
+    min_entropy: f64,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    execute_quality_check_template(
+        check_entropy(project_path, min_entropy),
+        |count| results.entropy_violations = count,
+        violations,
+    ).await
+}
+
+/// Helper for security check execution
+async fn execute_security_check(
+    project_path: &Path,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    execute_quality_check_template(
+        check_security(project_path),
+        |count| results.security_violations = count,
+        violations,
+    ).await
+}
+
+/// Helper for duplicates check execution
+async fn execute_duplicates_check(
+    project_path: &Path,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    execute_quality_check_template(
+        check_duplicates(project_path),
+        |count| results.duplicate_violations = count,
+        violations,
+    ).await
+}
+
+/// Helper for coverage check execution
+async fn execute_coverage_check(
+    project_path: &Path,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    execute_quality_check_template(
+        check_coverage(project_path, 80.0),
+        |count| results.coverage_violations = count,
+        violations,
+    ).await
+}
+
+/// Helper for sections check execution
+async fn execute_sections_check(
+    project_path: &Path,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    execute_quality_check_template(
+        check_sections(project_path),
+        |count| results.section_violations = count,
+        violations,
+    ).await
+}
+
+/// Helper for provability check execution
+async fn execute_provability_check(
+    project_path: &Path,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    execute_quality_check_template(
+        check_provability(project_path, 0.7),
+        |count| results.provability_violations = count,
+        violations,
+    ).await
 }
 
 /// Runs all project-wide checks
@@ -4345,6 +4402,22 @@ fn is_test_filename(path: &Path) -> bool {
     }
 }
 
+/// Check if path is a build artifact that should be excluded from duplicate detection
+fn is_build_artifact(path: &Path) -> bool {
+    let path_str = path.to_string_lossy();
+    path_str.contains("/target/") 
+        || path_str.contains("/build/")
+        || path_str.contains("/out/")
+        || path_str.contains("/.cargo/")
+        || path_str.contains("/node_modules/")
+        || path_str.contains("/dist/")
+        || path_str.contains("/.git/")
+        || path_str.contains("/generated/")
+        || path_str.starts_with("./target/")
+        || path_str.starts_with("target/")
+}
+
+
 // Quality check functions
 
 /// Checks code complexity in a project and returns violations.
@@ -4424,65 +4497,45 @@ pub async fn check_complexity(
     // Convert violations to QualityViolation format
     // ONLY count actual violations where complexity exceeds threshold
     for violation in &report.violations {
-        match violation {
-            crate::services::complexity::Violation::Error {
-                file,
-                line,
-                function,
-                rule,
-                message,
-                value,
-                threshold,
-            } => {
-                // Only add if this is an actual threshold violation
-                if value > threshold {
-                    violations.push(QualityViolation {
-                        check_type: "complexity".to_string(),
-                        severity: "error".to_string(),
-                        file: file.clone(),
-                        line: Some(*line as usize),
-                        message: format!(
-                            "{}: {} - {} (complexity: {}, threshold: {})",
-                            function.as_deref().unwrap_or("global"),
-                            rule,
-                            message,
-                            value,
-                            threshold
-                        ),
-                    });
-                }
-            }
-            crate::services::complexity::Violation::Warning {
-                file,
-                line,
-                function,
-                rule,
-                message,
-                value,
-                threshold,
-            } => {
-                // Only add warnings if they exceed threshold
-                if value > threshold {
-                    violations.push(QualityViolation {
-                        check_type: "complexity".to_string(),
-                        severity: "warning".to_string(),
-                        file: file.clone(),
-                        line: Some(*line as usize),
-                        message: format!(
-                            "{}: {} - {} (complexity: {}, threshold: {})",
-                            function.as_deref().unwrap_or("global"),
-                            rule,
-                            message,
-                            value,
-                            threshold
-                        ),
-                    });
-                }
-            }
-        }
+        process_complexity_violation(violation, &mut violations);
     }
 
     Ok(violations)
+}
+
+/// Process a single complexity violation into QualityViolation format
+fn process_complexity_violation(
+    violation: &crate::services::complexity::Violation,
+    violations: &mut Vec<QualityViolation>,
+) {
+    use crate::services::complexity::Violation;
+    
+    let (file, line, function, rule, message, value, threshold, severity) = match violation {
+        Violation::Error { file, line, function, rule, message, value, threshold } => {
+            (file, line, function, rule, message, value, threshold, "error")
+        }
+        Violation::Warning { file, line, function, rule, message, value, threshold } => {
+            (file, line, function, rule, message, value, threshold, "warning")
+        }
+    };
+    
+    // Only add if this is an actual threshold violation
+    if value > threshold {
+        violations.push(QualityViolation {
+            check_type: "complexity".to_string(),
+            severity: severity.to_string(),
+            file: file.clone(),
+            line: Some(*line as usize),
+            message: format!(
+                "{}: {} - {} (complexity: {}, threshold: {})",
+                function.as_deref().unwrap_or("global"),
+                rule,
+                message,
+                value,
+                threshold
+            ),
+        });
+    }
 }
 
 /// Detects dead code in a project and returns violations.
@@ -5037,6 +5090,17 @@ async fn collect_file_hashes(
         let entry = entry?;
         let path = entry.path();
 
+        // Skip build artifacts and other excluded paths completely
+        let path_str = path.to_string_lossy();
+        if is_excluded_directory(&path_str) {
+            continue;
+        }
+        
+        // Additional check: if path contains '/target/' anywhere, skip it
+        if path_str.contains("/target/") {
+            continue;
+        }
+
         if should_process_file_for_duplicates(path) {
             if let Some(hash) = process_file_for_hash(path).await {
                 file_hashes
@@ -5051,7 +5115,7 @@ async fn collect_file_hashes(
 
 /// Check if file should be processed for duplicate detection
 fn should_process_file_for_duplicates(path: &Path) -> bool {
-    path.is_file() && is_source_file(path)
+    path.is_file() && is_source_file(path) && !is_build_artifact(path)
 }
 
 /// Process a file and return its content hash if valid
@@ -5927,58 +5991,92 @@ fn is_excluded_path(path: &Path) -> bool {
 
 /// Check if path contains excluded directories
 fn is_excluded_directory(path_str: &str) -> bool {
-    let excluded_dirs = [
-        "/target/",
-        "/node_modules/",
-        "/.git/",
-        "/vendor/",
-        "/tests/",
-        "/test/",
-        "/examples/",
-        "/benches/",
-        "/benchmarks/",
-        "/fixtures/",
-        "/testdata/",
-        "/test_data/",
-        "/debug_test/",
-        "/test-",
+    // Normalize path for consistent matching
+    let normalized = path_str.replace("\\", "/");
+    
+    // Directory name patterns to exclude (gitignore-style)
+    let excluded_dir_names = [
+        "target", "build", "out", ".cargo", "node_modules", 
+        "dist", ".git", "vendor", "generated", ".aws-sam",
+        "coverage", "__pycache__", ".pytest_cache", ".cache",
+        "tmp", ".venv", "venv", "ENV", "env", ".terraform",
+        "site", "_site", ".jekyll-cache", ".idea", ".vscode",
     ];
-
-    excluded_dirs.iter().any(|dir| path_str.contains(dir))
+    
+    // Path patterns that should be excluded
+    let excluded_path_patterns = [
+        "/target/", "/build/", "/out/", "/.cargo/", "/node_modules/",
+        "/dist/", "/.git/", "/vendor/", "/generated/", "/.aws-sam/",
+        "/coverage/", "/__pycache__/", "/.pytest_cache/", "/.cache/",
+        "/tmp/", "/.venv/", "/venv/", "/ENV/", "/env/", "/.terraform/",
+        "/site/", "/_site/", "/.jekyll-cache/", "/.idea/", "/.vscode/",
+        "/tests/", "/test/", "/examples/", "/benches/", "/benchmarks/",
+        "/fixtures/", "/testdata/", "/test_data/", "/debug_test/", "/test-",
+    ];
+    
+    // Check if the path contains any excluded directory patterns
+    if excluded_path_patterns.iter().any(|pattern| normalized.contains(pattern)) {
+        return true;
+    }
+    
+    // Check if path starts with excluded directories (./target, target/, etc.)
+    let path_components: Vec<&str> = normalized.trim_start_matches("./").split('/').collect();
+    if let Some(first_component) = path_components.first() {
+        if excluded_dir_names.contains(first_component) {
+            return true;
+        }
+    }
+    
+    false
 }
 
 /// Check if filename indicates a test file
-fn is_excluded_filename(filename: &str) -> bool {
-    // Test files
-    filename.ends_with("_test.rs")
-        || filename.ends_with("_tests.rs")
-        || filename.ends_with("tests.rs")
-        || filename.starts_with("test_")
-        || filename.starts_with("tests_")
-        || filename.contains("_test_")
-        || filename.contains("_tests_")
-        || filename.contains("test_harness")
-        || filename.contains("test_helpers")
-        || filename.contains("test_utils")
-        || filename.contains("_property_test")
-        || filename.contains("property_tests")
-        // Example and demo files
-        || filename.starts_with("example_")
-        || filename.starts_with("demo_")
-        || filename.contains("_example")
-        || filename.contains("_demo")
-        // Benchmark files
-        || filename.ends_with("_bench.rs")
-        || filename.ends_with("_benchmark.rs")
-        || filename.contains("bench_")
-        || filename.contains("benchmark_")
-        // Mock and stub files
-        || filename.starts_with("mock_")
-        || filename.starts_with("stub_")
-        || filename.starts_with("stubs_")
-        || filename.contains("_mock")
-        || filename.contains("_stub")
-        || filename.contains("_stubs")
+pub fn is_excluded_filename(filename: &str) -> bool {
+    is_test_file(filename)
+        || is_example_or_demo_file(filename)
+        || is_benchmark_file(filename)
+        || is_mock_or_stub_file(filename)
+}
+
+/// Check if filename is a test file (cognitive complexity ≤6)
+fn is_test_file(filename: &str) -> bool {
+    const TEST_SUFFIXES: &[&str] = &["_test.rs", "_tests.rs", "tests.rs"];
+    const TEST_PREFIXES: &[&str] = &["test_", "tests_"];
+    const TEST_CONTAINS: &[&str] = &[
+        "_test_", "_tests_", "test_harness", 
+        "test_helpers", "test_utils", "_property_test", "property_tests"
+    ];
+    
+    TEST_SUFFIXES.iter().any(|s| filename.ends_with(s))
+        || TEST_PREFIXES.iter().any(|p| filename.starts_with(p))
+        || TEST_CONTAINS.iter().any(|c| filename.contains(c))
+}
+
+/// Check if filename is an example or demo file (cognitive complexity ≤4)
+fn is_example_or_demo_file(filename: &str) -> bool {
+    const EXAMPLE_DEMO_PREFIXES: &[&str] = &["example_", "demo_"];
+    const EXAMPLE_DEMO_CONTAINS: &[&str] = &["_example", "_demo"];
+    
+    EXAMPLE_DEMO_PREFIXES.iter().any(|p| filename.starts_with(p))
+        || EXAMPLE_DEMO_CONTAINS.iter().any(|c| filename.contains(c))
+}
+
+/// Check if filename is a benchmark file (cognitive complexity ≤4)
+fn is_benchmark_file(filename: &str) -> bool {
+    const BENCH_SUFFIXES: &[&str] = &["_bench.rs", "_benchmark.rs"];
+    const BENCH_CONTAINS: &[&str] = &["bench_", "benchmark_"];
+    
+    BENCH_SUFFIXES.iter().any(|s| filename.ends_with(s))
+        || BENCH_CONTAINS.iter().any(|c| filename.contains(c))
+}
+
+/// Check if filename is a mock or stub file (cognitive complexity ≤4)
+fn is_mock_or_stub_file(filename: &str) -> bool {
+    const MOCK_STUB_PREFIXES: &[&str] = &["mock_", "stub_", "stubs_"];
+    const MOCK_STUB_CONTAINS: &[&str] = &["_mock", "_stub", "_stubs"];
+    
+    MOCK_STUB_PREFIXES.iter().any(|p| filename.starts_with(p))
+        || MOCK_STUB_CONTAINS.iter().any(|c| filename.contains(c))
 }
 
 /// Analyze a single file for complexity metrics
@@ -6033,13 +6131,27 @@ pub fn format_dead_code_output(
 
 // Name similarity helpers
 pub fn extract_identifiers(content: &str) -> Vec<super::NameInfo> {
-    use regex::Regex;
-
     let mut identifiers = Vec::new();
     let mut seen = HashSet::new();
 
-    // Language-agnostic identifier patterns
-    let patterns = vec![
+    let patterns = get_identifier_patterns();
+
+    for (pattern_str, kind) in patterns {
+        extract_identifiers_for_pattern(
+            content,
+            pattern_str,
+            kind,
+            &mut identifiers,
+            &mut seen,
+        );
+    }
+
+    identifiers
+}
+
+/// Get identifier extraction patterns for different languages
+fn get_identifier_patterns() -> Vec<(&'static str, &'static str)> {
+    vec![
         // Function/method definitions
         (r"(?m)^\s*(?:pub\s+)?(?:async\s+)?fn\s+(\w+)", "function"),
         (r"(?m)^\s*def\s+(\w+)", "function"),
@@ -6059,31 +6171,38 @@ pub fn extract_identifiers(content: &str) -> Vec<super::NameInfo> {
         (r"(?m)^\s*(?:pub\s+)?(?:const|static)\s+(\w+)", "constant"),
         (r"(?m)^\s*(?:let|const|var)\s+(\w+)", "variable"),
         (r"(?m)^\s*(\w+)\s*=\s*", "variable"),
-    ];
+    ]
+}
 
-    for (pattern_str, kind) in patterns {
-        if let Ok(re) = Regex::new(pattern_str) {
-            for (line_num, line) in content.lines().enumerate() {
-                for cap in re.captures_iter(line) {
-                    if let Some(name_match) = cap.get(1) {
-                        let name = name_match.as_str().to_string();
-
-                        // Skip if we've already seen this identifier
-                        if seen.insert(name.clone()) {
-                            identifiers.push(super::NameInfo {
-                                name,
-                                kind: kind.to_string(),
-                                file_path: PathBuf::from(""), // Will be filled by caller
-                                line: line_num + 1,
-                            });
-                        }
+/// Extract identifiers for a specific pattern
+fn extract_identifiers_for_pattern(
+    content: &str,
+    pattern_str: &str,
+    kind: &str,
+    identifiers: &mut Vec<super::NameInfo>,
+    seen: &mut HashSet<String>,
+) {
+    use regex::Regex;
+    
+    if let Ok(re) = Regex::new(pattern_str) {
+        for (line_num, line) in content.lines().enumerate() {
+            for cap in re.captures_iter(line) {
+                if let Some(name_match) = cap.get(1) {
+                    let name = name_match.as_str().to_string();
+                    
+                    // Skip if we've already seen this identifier
+                    if seen.insert(name.clone()) {
+                        identifiers.push(super::NameInfo {
+                            name,
+                            kind: kind.to_string(),
+                            file_path: PathBuf::from(""), // Will be filled by caller
+                            line: line_num + 1,
+                        });
                     }
                 }
             }
         }
     }
-
-    identifiers
 }
 
 /// Calculates normalized string similarity using Levenshtein distance
@@ -7491,6 +7610,55 @@ fn process_data(input: &str) -> Result<HashMap<String, u64>, Error> {
         assert_eq!(violations.len(), 0);
 
         Ok(())
+    }
+
+    /// Test is_build_artifact function excludes build directories
+    #[test]
+    fn test_is_build_artifact() {
+        use std::path::Path;
+
+        // Should exclude target directory files
+        assert!(is_build_artifact(Path::new("./target/debug/build/pmat-123/out/tool_registry.rs")));
+        assert!(is_build_artifact(Path::new("target/debug/deps/pmat.rs")));
+        
+        // Should exclude other build artifacts
+        assert!(is_build_artifact(Path::new("./build/generated.rs")));
+        assert!(is_build_artifact(Path::new("./out/alias_table.rs")));
+        assert!(is_build_artifact(Path::new("./.cargo/registry/src/github.com/file.rs")));
+        assert!(is_build_artifact(Path::new("./node_modules/package/lib.js")));
+        assert!(is_build_artifact(Path::new("./dist/bundle.js")));
+        assert!(is_build_artifact(Path::new("./.git/objects/ab/cd1234")));
+        assert!(is_build_artifact(Path::new("./generated/proto.rs")));
+        
+        // Should NOT exclude source files
+        assert!(!is_build_artifact(Path::new("./server/src/lib.rs")));
+        assert!(!is_build_artifact(Path::new("./src/main.rs")));
+        assert!(!is_build_artifact(Path::new("./server/src/handlers/tools.rs")));
+    }
+
+    /// Test is_excluded_directory function excludes build directories
+    #[test]
+    fn test_is_excluded_directory() {
+        // Should exclude build directories
+        assert!(is_excluded_directory("./target"));
+        assert!(is_excluded_directory("target"));
+        assert!(is_excluded_directory("target/"));
+        assert!(is_excluded_directory("./target/"));
+        assert!(is_excluded_directory("./build"));
+        assert!(is_excluded_directory("build"));
+        assert!(is_excluded_directory("./project/target/"));
+        assert!(is_excluded_directory("./project/target/debug"));
+        assert!(is_excluded_directory("./target/debug/build"));
+        assert!(is_excluded_directory("./foo/node_modules/"));
+        assert!(is_excluded_directory("./bar/.git/"));
+        assert!(is_excluded_directory("./server/target/debug/build/unicode_names2-c78072d37d9beb66/out/generated.rs"));
+        assert!(is_excluded_directory("./target/debug/build/rustpython-parser-5d3dfbfd27d1a200/out/keywords.rs"));
+        
+        // Should NOT exclude source directories
+        assert!(!is_excluded_directory("server"));
+        assert!(!is_excluded_directory("src"));
+        assert!(!is_excluded_directory("./server/src"));
+        assert!(!is_excluded_directory("./server/src/cli"));
     }
 
     /// Test check_single_file_complexity with high complexity function

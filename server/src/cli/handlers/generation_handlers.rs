@@ -182,55 +182,101 @@ pub async fn handle_scaffold_agent(params: ScaffoldAgentParams) -> Result<()> {
         deterministic_core,
         probabilistic_wrapper,
     } = params;
-    use crate::scaffold::agent::{
-        scaffold_agent, AgentContextBuilder, AgentFeature, InteractiveScaffolder, QualityLevel,
-    };
 
-    // Use interactive mode if requested
     if interactive {
-        let mut scaffolder = InteractiveScaffolder::new();
-        let context = scaffolder.run()?;
-
-        let output_path = output.unwrap_or_else(|| PathBuf::from(&context.name));
-
-        if !dry_run {
-            if output_path.exists() && !force {
-                anyhow::bail!(
-                    "Directory {} already exists. Use --force to overwrite.",
-                    output_path.display()
-                );
-            }
-
-            scaffold_agent(&context, &output_path).await?;
-            eprintln!(
-                "✅ Agent '{}' scaffolded successfully at {}",
-                context.name,
-                output_path.display()
-            );
-        } else {
-            eprintln!(
-                "🔍 Dry run - would generate agent '{}' at {}",
-                context.name,
-                output_path.display()
-            );
-        }
-
-        return Ok(());
+        return handle_interactive_scaffold(output, dry_run, force).await;
     }
 
-    // Build context from CLI arguments
-    let mut builder = AgentContextBuilder::new(&name, &template);
+    let context = build_agent_context(
+        &name,
+        &template,
+        &features,
+        &quality,
+        deterministic_core,
+        probabilistic_wrapper,
+    )?;
+    
+    let output_path = output.unwrap_or_else(|| PathBuf::from(&name));
+    
+    execute_scaffold_operation(&context, &output_path, &name, dry_run, force).await
+}
 
-    // Parse and add features
-    for feature_str in &features {
+/// Handle interactive scaffolding mode
+async fn handle_interactive_scaffold(
+    output: Option<PathBuf>,
+    dry_run: bool,
+    force: bool,
+) -> Result<()> {
+    use crate::scaffold::agent::{scaffold_agent, InteractiveScaffolder};
+    
+    let mut scaffolder = InteractiveScaffolder::new();
+    let context = scaffolder.run()?;
+    let output_path = output.unwrap_or_else(|| PathBuf::from(&context.name));
+    
+    if dry_run {
+        eprintln!(
+            "🔍 Dry run - would generate agent '{}' at {}",
+            context.name,
+            output_path.display()
+        );
+        return Ok(());
+    }
+    
+    validate_output_path(&output_path, force)?;
+    scaffold_agent(&context, &output_path).await?;
+    eprintln!(
+        "✅ Agent '{}' scaffolded successfully at {}",
+        context.name,
+        output_path.display()
+    );
+    
+    Ok(())
+}
+
+/// Build agent context from CLI arguments
+fn build_agent_context(
+    name: &str,
+    template: &str,
+    features: &[String],
+    quality: &str,
+    deterministic_core: Option<String>,
+    probabilistic_wrapper: Option<String>,
+) -> Result<crate::scaffold::agent::AgentContext> {
+    use crate::scaffold::agent::AgentContextBuilder;
+    
+    let mut builder = AgentContextBuilder::new(name, template);
+    builder = add_features_to_builder(builder, features);
+    builder = add_quality_level_to_builder(builder, quality);
+    builder = add_hybrid_specs_to_builder(builder, deterministic_core, probabilistic_wrapper)?;
+    
+    builder.build()
+}
+
+/// Add features to agent context builder
+fn add_features_to_builder(
+    mut builder: crate::scaffold::agent::AgentContextBuilder,
+    features: &[String],
+) -> crate::scaffold::agent::AgentContextBuilder {
+    use crate::scaffold::agent::AgentFeature;
+    
+    for feature_str in features {
         if let Ok(feature) = feature_str.parse::<AgentFeature>() {
             builder = builder.with_feature(feature);
         } else {
             eprintln!("⚠️ Warning: Unknown feature '{}', skipping", feature_str);
         }
     }
+    
+    builder
+}
 
-    // Parse quality level
+/// Add quality level to agent context builder
+fn add_quality_level_to_builder(
+    builder: crate::scaffold::agent::AgentContextBuilder,
+    quality: &str,
+) -> crate::scaffold::agent::AgentContextBuilder {
+    use crate::scaffold::agent::QualityLevel;
+    
     let quality_level = match quality.to_lowercase().as_str() {
         "standard" => QualityLevel::Standard,
         "strict" => QualityLevel::Strict,
@@ -240,58 +286,102 @@ pub async fn handle_scaffold_agent(params: ScaffoldAgentParams) -> Result<()> {
             QualityLevel::Strict
         }
     };
-    builder = builder.with_quality_level(quality_level);
+    
+    builder.with_quality_level(quality_level)
+}
 
-    // Handle hybrid agent specifications
+/// Add hybrid agent specifications to builder
+fn add_hybrid_specs_to_builder(
+    mut builder: crate::scaffold::agent::AgentContextBuilder,
+    deterministic_core: Option<String>,
+    probabilistic_wrapper: Option<String>,
+) -> Result<crate::scaffold::agent::AgentContextBuilder> {
     if let Some(_core_spec) = deterministic_core {
-        // Parse deterministic core spec (simplified for now)
-        use crate::scaffold::agent::hybrid::{CoreSpec, VerificationMethod};
-        let core = CoreSpec {
-            verification_method: VerificationMethod::PropertyTests,
-            max_complexity: 10,
-            invariants: Vec::new(),
-        };
-        builder = builder.with_deterministic_core(core);
+        builder = add_deterministic_core_spec(builder)?;
     }
-
+    
     if let Some(_wrapper_spec) = probabilistic_wrapper {
-        // Parse probabilistic wrapper spec (simplified for now)
-        use crate::scaffold::agent::hybrid::{FallbackStrategy, ModelType, WrapperSpec};
-        let wrapper = WrapperSpec {
-            model_type: ModelType::GPT4,
-            fallback_strategy: FallbackStrategy::Deterministic,
-            confidence_threshold: 0.95,
-        };
-        builder = builder.with_probabilistic_wrapper(wrapper);
+        builder = add_probabilistic_wrapper_spec(builder)?;
     }
+    
+    Ok(builder)
+}
 
-    let context = builder.build()?;
-    let output_path = output.unwrap_or_else(|| PathBuf::from(&name));
+/// Add deterministic core specification
+fn add_deterministic_core_spec(
+    builder: crate::scaffold::agent::AgentContextBuilder,
+) -> Result<crate::scaffold::agent::AgentContextBuilder> {
+    use crate::scaffold::agent::hybrid::{CoreSpec, VerificationMethod};
+    
+    let core = CoreSpec {
+        verification_method: VerificationMethod::PropertyTests,
+        max_complexity: 10,
+        invariants: Vec::new(),
+    };
+    
+    Ok(builder.with_deterministic_core(core))
+}
 
-    if dry_run {
-        eprintln!("🔍 Dry run mode - would generate the following:");
-        eprintln!("  Agent: {}", context.name);
-        eprintln!("  Template: {:?}", context.template_type);
-        eprintln!("  Quality: {:?}", context.quality_level);
-        eprintln!("  Features: {} enabled", context.features.len());
-        eprintln!("  Output: {}", output_path.display());
-    } else {
-        if output_path.exists() && !force {
-            anyhow::bail!(
-                "Directory {} already exists. Use --force to overwrite.",
-                output_path.display()
-            );
-        }
+/// Add probabilistic wrapper specification
+fn add_probabilistic_wrapper_spec(
+    builder: crate::scaffold::agent::AgentContextBuilder,
+) -> Result<crate::scaffold::agent::AgentContextBuilder> {
+    use crate::scaffold::agent::hybrid::{FallbackStrategy, ModelType, WrapperSpec};
+    
+    let wrapper = WrapperSpec {
+        model_type: ModelType::GPT4,
+        fallback_strategy: FallbackStrategy::Deterministic,
+        confidence_threshold: 0.95,
+    };
+    
+    Ok(builder.with_probabilistic_wrapper(wrapper))
+}
 
-        scaffold_agent(&context, &output_path).await?;
-        eprintln!(
-            "✅ Agent '{}' scaffolded successfully at {}",
-            name,
+/// Validate output path and force flag
+fn validate_output_path(output_path: &PathBuf, force: bool) -> Result<()> {
+    if output_path.exists() && !force {
+        anyhow::bail!(
+            "Directory {} already exists. Use --force to overwrite.",
             output_path.display()
         );
     }
-
     Ok(())
+}
+
+/// Execute the scaffold operation
+async fn execute_scaffold_operation(
+    context: &crate::scaffold::agent::AgentContext,
+    output_path: &PathBuf,
+    name: &str,
+    dry_run: bool,
+    force: bool,
+) -> Result<()> {
+    use crate::scaffold::agent::scaffold_agent;
+    
+    if dry_run {
+        print_dry_run_info(context, output_path);
+        return Ok(());
+    }
+    
+    validate_output_path(output_path, force)?;
+    scaffold_agent(context, output_path).await?;
+    eprintln!(
+        "✅ Agent '{}' scaffolded successfully at {}",
+        name,
+        output_path.display()
+    );
+    
+    Ok(())
+}
+
+/// Print dry run information
+fn print_dry_run_info(context: &crate::scaffold::agent::AgentContext, output_path: &PathBuf) {
+    eprintln!("🔍 Dry run mode - would generate the following:");
+    eprintln!("  Agent: {}", context.name);
+    eprintln!("  Template: {:?}", context.template_type);
+    eprintln!("  Quality: {:?}", context.quality_level);
+    eprintln!("  Features: {} enabled", context.features.len());
+    eprintln!("  Output: {}", output_path.display());
 }
 
 /// Handle listing available agent templates

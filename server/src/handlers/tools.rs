@@ -980,65 +980,123 @@ struct AnalyzeComplexityArgs {
     top_files: Option<usize>,
 }
 
-async fn handle_analyze_complexity(
-    request_id: serde_json::Value,
-    arguments: serde_json::Value,
-) -> McpResponse {
-    let args: AnalyzeComplexityArgs = match serde_json::from_value(arguments) {
-        Ok(a) => a,
-        Err(e) => {
-            return McpResponse::error(
-                request_id,
-                -32602,
-                format!("Invalid analyze_complexity arguments: {e}"),
-            );
-        }
-    };
+fn parse_complexity_args(arguments: serde_json::Value) -> Result<AnalyzeComplexityArgs, String> {
+    serde_json::from_value(arguments)
+        .map_err(|e| format!("Invalid analyze_complexity arguments: {e}"))
+}
 
+struct ComplexityAnalysisContext {
+    project_path: PathBuf,
+    toolchain: String,
+    thresholds: crate::services::complexity::ComplexityThresholds,
+}
+
+fn prepare_complexity_analysis(args: &AnalyzeComplexityArgs) -> ComplexityAnalysisContext {
     let project_path = resolve_project_path_complexity(args.project_path.clone());
-    let detected_toolchain = detect_toolchain(&args.toolchain, &project_path);
+    let toolchain = detect_toolchain(&args.toolchain, &project_path);
+    let thresholds = build_complexity_thresholds(args);
 
-    info!(
-        "Analyzing complexity for {:?} using {} toolchain",
-        project_path, detected_toolchain
-    );
+    ComplexityAnalysisContext {
+        project_path,
+        toolchain,
+        thresholds,
+    }
+}
 
-    let _thresholds = build_complexity_thresholds(&args);
-    let (file_metrics, file_count) =
-        analyze_project_files(&project_path, &detected_toolchain, &args).await;
-
-    // Import complexity analysis functionality
+async fn perform_complexity_analysis(
+    context: &ComplexityAnalysisContext,
+    args: &AnalyzeComplexityArgs,
+) -> (crate::services::complexity::ComplexityReport, usize) {
     use crate::services::complexity::*;
-    use crate::services::ranking::{rank_files_by_complexity, ComplexityRanker};
 
-    let report = aggregate_results(file_metrics.clone());
+    let (file_metrics, file_count) =
+        analyze_project_files(&context.project_path, &context.toolchain, args).await;
 
-    // Handle top_files ranking if requested
-    let content_text = if let Some(top_files_count) = args.top_files {
+    let report = aggregate_results(file_metrics);
+    (report, file_count)
+}
+
+fn generate_complexity_content(
+    report: &crate::services::complexity::ComplexityReport,
+    file_metrics: &[crate::services::complexity::FileComplexityMetrics],
+    args: &AnalyzeComplexityArgs,
+) -> String {
+    if let Some(top_files_count) = args.top_files {
         if top_files_count > 0 {
-            let ranker = ComplexityRanker::default();
-            let rankings = rank_files_by_complexity(&file_metrics, top_files_count, &ranker);
-            format_complexity_rankings(&rankings, &args)
+            generate_ranked_content(file_metrics, top_files_count, args)
         } else {
-            format_complexity_output(&report, &args)
+            format_complexity_output(report, args)
         }
     } else {
-        format_complexity_output(&report, &args)
-    };
+        format_complexity_output(report, args)
+    }
+}
 
+fn generate_ranked_content(
+    file_metrics: &[crate::services::complexity::FileComplexityMetrics],
+    top_files_count: usize,
+    args: &AnalyzeComplexityArgs,
+) -> String {
+    use crate::services::ranking::{rank_files_by_complexity, ComplexityRanker};
+
+    let ranker = ComplexityRanker::default();
+    let rankings = rank_files_by_complexity(file_metrics, top_files_count, &ranker);
+    format_complexity_rankings(&rankings, args)
+}
+
+fn build_complexity_response(
+    request_id: serde_json::Value,
+    content_text: String,
+    report: &crate::services::complexity::ComplexityReport,
+    toolchain: &str,
+    file_count: usize,
+    args: &AnalyzeComplexityArgs,
+) -> McpResponse {
     let result = json!({
         "content": [{
             "type": "text",
             "text": content_text
         }],
         "report": report,
-        "toolchain": detected_toolchain,
+        "toolchain": toolchain,
         "files_analyzed": file_count,
         "format": args.format.as_deref().unwrap_or("summary"),
         "top_files": args.top_files,
     });
 
     McpResponse::success(request_id, result)
+}
+
+async fn handle_analyze_complexity(
+    request_id: serde_json::Value,
+    arguments: serde_json::Value,
+) -> McpResponse {
+    let args = match parse_complexity_args(arguments) {
+        Ok(args) => args,
+        Err(e) => return McpResponse::error(request_id, -32602, e),
+    };
+
+    let context = prepare_complexity_analysis(&args);
+    
+    info!(
+        "Analyzing complexity for {:?} using {} toolchain",
+        context.project_path, context.toolchain
+    );
+
+    let (file_metrics, file_count) =
+        analyze_project_files(&context.project_path, &context.toolchain, &args).await;
+
+    let report = crate::services::complexity::aggregate_results(file_metrics.clone());
+    let content_text = generate_complexity_content(&report, &file_metrics, &args);
+
+    build_complexity_response(
+        request_id,
+        content_text,
+        &report,
+        &context.toolchain,
+        file_count,
+        &args,
+    )
 }
 
 fn resolve_project_path_complexity(project_path_arg: Option<String>) -> PathBuf {
@@ -1828,6 +1886,82 @@ struct AnalyzeDefectProbabilityArgs {
     format: Option<String>,
 }
 
+fn get_relative_path(path: &PathBuf, project_path: &PathBuf) -> String {
+    path.strip_prefix(project_path)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .to_string()
+}
+
+fn calculate_cyclomatic_complexity(content: &str) -> u32 {
+    let control_flow_keywords = ["if", "else", "for", "while", "match", "loop", "?"];
+    control_flow_keywords
+        .iter()
+        .map(|kw| content.matches(kw).count() as u32)
+        .sum::<u32>()
+        + 1
+}
+
+fn calculate_cognitive_complexity(cyclomatic_complexity: u32) -> u32 {
+    (cyclomatic_complexity as f32 * 1.5) as u32
+}
+
+fn calculate_duplicate_ratio(lines: &[&str]) -> f32 {
+    let mut line_counts = std::collections::HashMap::new();
+    let mut duplicate_lines = 0;
+    
+    // Count non-empty, non-comment lines
+    for line in lines {
+        let trimmed = line.trim();
+        if !trimmed.is_empty() && !trimmed.starts_with("//") {
+            *line_counts.entry(trimmed).or_insert(0) += 1;
+        }
+    }
+    
+    // Count duplicates
+    for count in line_counts.values() {
+        if *count > 1 {
+            duplicate_lines += count - 1;
+        }
+    }
+    
+    if lines.len() > 0 {
+        duplicate_lines as f32 / lines.len() as f32
+    } else {
+        0.0
+    }
+}
+
+fn calculate_efferent_coupling(content: &str) -> f32 {
+    content
+        .lines()
+        .filter(|line| line.trim().starts_with("use "))
+        .count() as f32
+}
+
+fn is_public_declaration(line: &str) -> bool {
+    let trimmed = line.trim();
+    trimmed.starts_with("pub fn")
+        || trimmed.starts_with("pub struct")
+        || trimmed.starts_with("pub enum")
+        || trimmed.starts_with("pub trait")
+        || trimmed.starts_with("pub mod")
+}
+
+fn calculate_afferent_coupling(content: &str) -> f32 {
+    content
+        .lines()
+        .filter(|line| is_public_declaration(line))
+        .count() as f32
+}
+
+fn get_churn_score(
+    relative_path: &str,
+    churn_map: &std::collections::HashMap<String, f32>,
+) -> f32 {
+    churn_map.get(relative_path).copied().unwrap_or(0.1)
+}
+
 // Helper function to calculate file metrics
 async fn calculate_file_metrics(
     path: PathBuf,
@@ -1836,70 +1970,17 @@ async fn calculate_file_metrics(
 ) -> crate::services::defect_probability::FileMetrics {
     use crate::services::defect_probability::FileMetrics;
 
-    let relative_path = path
-        .strip_prefix(&project_path)
-        .unwrap_or(&path)
-        .to_string_lossy()
-        .to_string();
-
-    // Calculate actual metrics for the file
+    let relative_path = get_relative_path(&path, &project_path);
     let content = tokio::fs::read_to_string(&path).await.unwrap_or_default();
     let lines: Vec<&str> = content.lines().collect();
     let lines_of_code = lines.len();
 
-    // Calculate basic complexity (count control flow keywords)
-    let control_flow_keywords = ["if", "else", "for", "while", "match", "loop", "?"];
-    let cyclomatic_complexity = control_flow_keywords
-        .iter()
-        .map(|kw| content.matches(kw).count() as u32)
-        .sum::<u32>()
-        + 1;
-
-    // Cognitive complexity is typically higher than cyclomatic
-    let cognitive_complexity = (cyclomatic_complexity as f32 * 1.5) as u32;
-
-    // Get actual churn score from git history, or default to 0.1
-    let churn_score = churn_map.get(&relative_path).copied().unwrap_or(0.1);
-
-    // Calculate duplicate ratio - count duplicate non-empty lines
-    let mut line_counts = std::collections::HashMap::new();
-    let mut duplicate_lines = 0;
-    for line in &lines {
-        let trimmed = line.trim();
-        if !trimmed.is_empty() && !trimmed.starts_with("//") {
-            *line_counts.entry(trimmed).or_insert(0) += 1;
-        }
-    }
-    for count in line_counts.values() {
-        if *count > 1 {
-            duplicate_lines += count - 1;
-        }
-    }
-    let duplicate_ratio = if lines_of_code > 0 {
-        duplicate_lines as f32 / lines_of_code as f32
-    } else {
-        0.0
-    };
-
-    // Calculate basic coupling metrics
-    // Efferent coupling: count "use" statements (dependencies this file has)
-    let efferent_coupling = content
-        .lines()
-        .filter(|line| line.trim().starts_with("use "))
-        .count() as f32;
-
-    // Afferent coupling: count "pub" items (things other files might depend on)
-    let afferent_coupling = content
-        .lines()
-        .filter(|line| {
-            let trimmed = line.trim();
-            trimmed.starts_with("pub fn")
-                || trimmed.starts_with("pub struct")
-                || trimmed.starts_with("pub enum")
-                || trimmed.starts_with("pub trait")
-                || trimmed.starts_with("pub mod")
-        })
-        .count() as f32;
+    let cyclomatic_complexity = calculate_cyclomatic_complexity(&content);
+    let cognitive_complexity = calculate_cognitive_complexity(cyclomatic_complexity);
+    let churn_score = get_churn_score(&relative_path, &churn_map);
+    let duplicate_ratio = calculate_duplicate_ratio(&lines);
+    let efferent_coupling = calculate_efferent_coupling(&content);
+    let afferent_coupling = calculate_afferent_coupling(&content);
 
     FileMetrics {
         file_path: relative_path,
@@ -2756,31 +2837,39 @@ fn default_top_files() -> usize {
     10
 }
 
+fn get_default_analysis_types() -> Vec<crate::services::deep_context::AnalysisType> {
+    use crate::services::deep_context::AnalysisType;
+    vec![
+        AnalysisType::Ast,
+        AnalysisType::Complexity,
+        AnalysisType::Churn,
+    ]
+}
+
+fn parse_analysis_type_string(s: &str) -> Option<crate::services::deep_context::AnalysisType> {
+    use crate::services::deep_context::AnalysisType;
+    
+    match s {
+        "ast" => Some(AnalysisType::Ast),
+        "complexity" => Some(AnalysisType::Complexity),
+        "churn" => Some(AnalysisType::Churn),
+        "dag" => Some(AnalysisType::Dag),
+        "dead_code" => Some(AnalysisType::DeadCode),
+        "satd" => Some(AnalysisType::Satd),
+        "tdg" => Some(AnalysisType::TechnicalDebtGradient),
+        _ => None,
+    }
+}
+
 fn parse_analysis_types(
     include_analyses: Option<Vec<String>>,
 ) -> Vec<crate::services::deep_context::AnalysisType> {
-    use crate::services::deep_context::AnalysisType;
-
-    if let Some(analyses) = include_analyses {
-        analyses
-            .into_iter()
-            .filter_map(|s| match s.as_str() {
-                "ast" => Some(AnalysisType::Ast),
-                "complexity" => Some(AnalysisType::Complexity),
-                "churn" => Some(AnalysisType::Churn),
-                "dag" => Some(AnalysisType::Dag),
-                "dead_code" => Some(AnalysisType::DeadCode),
-                "satd" => Some(AnalysisType::Satd),
-                "tdg" => Some(AnalysisType::TechnicalDebtGradient),
-                _ => None,
-            })
-            .collect()
-    } else {
-        vec![
-            AnalysisType::Ast,
-            AnalysisType::Complexity,
-            AnalysisType::Churn,
-        ]
+    match include_analyses {
+        Some(analyses) => analyses
+            .iter()
+            .filter_map(|s| parse_analysis_type_string(s))
+            .collect(),
+        None => get_default_analysis_types(),
     }
 }
 
@@ -2994,79 +3083,104 @@ fn format_deep_context_recommendations(
     }
 }
 
+#[derive(Deserialize)]
+struct MakefileLintArgs {
+    path: String,
+    #[serde(default)]
+    rules: Vec<String>,
+    #[serde(default)]
+    #[allow(dead_code)]
+    fix: bool,
+    #[serde(default)]
+    #[allow(dead_code)]
+    gnu_version: String,
+}
+
+fn parse_makefile_lint_args(arguments: Option<serde_json::Value>) -> Result<MakefileLintArgs, String> {
+    match arguments {
+        Some(args) => serde_json::from_value(args)
+            .map_err(|e| format!("Invalid analyze_makefile_lint arguments: {e}")),
+        None => Err("Missing required arguments for analyze_makefile_lint".to_string()),
+    }
+}
+
+async fn execute_makefile_linting(
+    makefile_path: &std::path::Path,
+) -> Result<crate::services::makefile_linter::LintResult, String> {
+    use crate::services::makefile_linter;
+    
+    makefile_linter::lint_makefile(makefile_path)
+        .await
+        .map_err(|e| format!("Makefile linting failed: {e}"))
+}
+
+fn map_severity(severity: &crate::services::makefile_linter::Severity) -> &'static str {
+    use crate::services::makefile_linter::Severity;
+    
+    match severity {
+        Severity::Error => "error",
+        Severity::Warning => "warning",
+        Severity::Performance => "performance",
+        Severity::Info => "info",
+    }
+}
+
+fn format_violation(violation: &crate::services::makefile_linter::Violation) -> serde_json::Value {
+    json!({
+        "rule": violation.rule,
+        "severity": map_severity(&violation.severity),
+        "line": violation.span.line,
+        "column": violation.span.column,
+        "message": violation.message,
+        "fix_hint": violation.fix_hint,
+    })
+}
+
+fn count_violations_by_severity(
+    violations: &[crate::services::makefile_linter::Violation],
+    target_severity: crate::services::makefile_linter::Severity,
+) -> usize {
+    violations
+        .iter()
+        .filter(|v| matches!(&v.severity, target_severity))
+        .count()
+}
+
+fn build_makefile_analysis(
+    args: &MakefileLintArgs,
+    lint_result: &crate::services::makefile_linter::LintResult,
+) -> serde_json::Value {
+    use crate::services::makefile_linter::Severity;
+    
+    json!({
+        "path": args.path,
+        "violations": lint_result.violations.iter().map(format_violation).collect::<Vec<_>>(),
+        "quality_score": lint_result.quality_score,
+        "rules_applied": args.rules,
+        "total_violations": lint_result.violations.len(),
+        "error_count": count_violations_by_severity(&lint_result.violations, Severity::Error),
+        "warning_count": count_violations_by_severity(&lint_result.violations, Severity::Warning),
+    })
+}
+
 async fn handle_analyze_makefile_lint(
     request_id: serde_json::Value,
     arguments: Option<serde_json::Value>,
 ) -> McpResponse {
-    #[derive(Deserialize)]
-    struct MakefileLintArgs {
-        path: String,
-        #[serde(default)]
-        rules: Vec<String>,
-        #[serde(default)]
-        #[allow(dead_code)]
-        fix: bool,
-        #[serde(default)]
-        #[allow(dead_code)]
-        gnu_version: String,
-    }
-
-    let args: MakefileLintArgs = match arguments {
-        Some(args) => match serde_json::from_value(args) {
-            Ok(args) => args,
-            Err(e) => {
-                return McpResponse::error(
-                    request_id,
-                    -32602,
-                    format!("Invalid analyze_makefile_lint arguments: {e}"),
-                );
-            }
-        },
-        None => {
-            return McpResponse::error(
-                request_id,
-                -32602,
-                "Missing required arguments for analyze_makefile_lint".to_string(),
-            );
-        }
+    let args = match parse_makefile_lint_args(arguments) {
+        Ok(args) => args,
+        Err(e) => return McpResponse::error(request_id, -32602, e),
     };
-
+    
     let makefile_path = std::path::Path::new(&args.path);
-
     info!("Analyzing Makefile at {:?}", makefile_path);
-
-    // Use the existing makefile linter service
-    use crate::services::makefile_linter;
-
-    let lint_result = match makefile_linter::lint_makefile(makefile_path).await {
+    
+    let lint_result = match execute_makefile_linting(makefile_path).await {
         Ok(result) => result,
-        Err(e) => {
-            return McpResponse::error(request_id, -32000, format!("Makefile linting failed: {e}"));
-        }
+        Err(e) => return McpResponse::error(request_id, -32000, e),
     };
-
-    let analysis = json!({
-        "path": args.path,
-        "violations": lint_result.violations.iter().map(|v| json!({
-            "rule": v.rule,
-            "severity": match v.severity {
-                makefile_linter::Severity::Error => "error",
-                makefile_linter::Severity::Warning => "warning",
-                makefile_linter::Severity::Performance => "performance",
-                makefile_linter::Severity::Info => "info",
-            },
-            "line": v.span.line,
-            "column": v.span.column,
-            "message": v.message,
-            "fix_hint": v.fix_hint,
-        })).collect::<Vec<_>>(),
-        "quality_score": lint_result.quality_score,
-        "rules_applied": args.rules,
-        "total_violations": lint_result.violations.len(),
-        "error_count": lint_result.violations.iter().filter(|v| matches!(v.severity, makefile_linter::Severity::Error)).count(),
-        "warning_count": lint_result.violations.iter().filter(|v| matches!(v.severity, makefile_linter::Severity::Warning)).count(),
-    });
-
+    
+    let analysis = build_makefile_analysis(&args, &lint_result);
     McpResponse::success(request_id, analysis)
 }
 
@@ -3161,313 +3275,349 @@ async fn handle_analyze_provability(
     McpResponse::success(request_id, analysis)
 }
 
+#[derive(Deserialize)]
+struct SatdArgs {
+    #[serde(default = "default_project_path")]
+    project_path: String,
+    #[serde(default)]
+    strict: bool,
+    #[serde(default = "default_true")]
+    exclude_tests: bool,
+    #[serde(default)]
+    critical_only: bool,
+    #[serde(default = "default_summary_format")]
+    format: String,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_summary_format() -> String {
+    "summary".to_string()
+}
+
+fn parse_satd_args(arguments: serde_json::Value) -> Result<SatdArgs, String> {
+    serde_json::from_value(arguments)
+        .map_err(|e| format!("Invalid analyze_satd arguments: {e}"))
+}
+
+fn create_satd_detector(strict: bool) -> crate::services::satd_detector::SATDDetector {
+    use crate::services::satd_detector::SATDDetector;
+    
+    if strict {
+        SATDDetector::new_strict()
+    } else {
+        SATDDetector::new()
+    }
+}
+
+async fn execute_satd_analysis(
+    args: &SatdArgs,
+) -> Result<crate::services::satd_detector::SATDAnalysisResult, String> {
+    use std::path::Path;
+    
+    let detector = create_satd_detector(args.strict);
+    let project_path = Path::new(&args.project_path);
+    
+    detector
+        .analyze_project(project_path, !args.exclude_tests)
+        .await
+        .map_err(|e| format!("Failed to analyze SATD: {e}"))
+}
+
+fn filter_satd_items(
+    mut result: crate::services::satd_detector::SATDAnalysisResult,
+    critical_only: bool,
+) -> (crate::services::satd_detector::SATDAnalysisResult, Vec<crate::services::satd_detector::TechnicalDebt>) {
+    use crate::services::satd_detector::Severity;
+    
+    let items = if critical_only {
+        std::mem::take(&mut result.items)
+            .into_iter()
+            .filter(|item| matches!(item.severity, Severity::Critical))
+            .collect::<Vec<_>>()
+    } else {
+        std::mem::take(&mut result.items)
+    };
+    
+    (result, items)
+}
+
+fn format_satd_json_output(
+    args: &SatdArgs,
+    result: &crate::services::satd_detector::SATDAnalysisResult,
+    items: &[crate::services::satd_detector::TechnicalDebt],
+) -> serde_json::Value {
+    json!({
+        "project_path": args.project_path,
+        "total_debt_items": result.summary.total_items,
+        "debt_density": (result.summary.total_items as f64 / result.total_files_analyzed.max(1) as f64),
+        "critical_items": result.summary.by_severity.get("Critical").copied().unwrap_or(0),
+        "categories": result.summary.by_category,
+        "items": items.iter().map(|item| json!({
+            "file": item.file.display().to_string(),
+            "line": item.line,
+            "column": item.column,
+            "category": format!("{:?}", item.category),
+            "severity": format!("{:?}", item.severity),
+            "text": item.text,
+        })).collect::<Vec<_>>(),
+    })
+}
+
+fn build_satd_summary_header(result: &crate::services::satd_detector::SATDAnalysisResult) -> String {
+    let mut summary = String::from("SATD Analysis Summary\n");
+    summary.push_str("====================\n");
+    summary.push_str(&format!("Total debt items: {}\n", result.summary.total_items));
+    summary.push_str(&format!(
+        "Debt density: {:.2} per KLOC\n",
+        (result.summary.total_items as f64 / result.total_files_analyzed.max(1) as f64)
+    ));
+    summary.push_str(&format!(
+        "Critical items: {}\n",
+        result.summary.by_severity.get("Critical").copied().unwrap_or(0)
+    ));
+    summary.push_str("\nTop files with technical debt:\n");
+    summary
+}
+
+fn group_and_sort_satd_items(
+    items: &[crate::services::satd_detector::TechnicalDebt],
+) -> Vec<(&std::path::Path, Vec<&crate::services::satd_detector::TechnicalDebt>)> {
+    use std::collections::HashMap;
+    
+    let mut files_map: HashMap<&std::path::Path, Vec<&crate::services::satd_detector::TechnicalDebt>> =
+        HashMap::new();
+    
+    for item in items {
+        files_map.entry(&item.file).or_default().push(item);
+    }
+    
+    let mut sorted_files: Vec<_> = files_map.into_iter().collect();
+    sorted_files.sort_by_key(|(_, items)| -(items.len() as i32));
+    sorted_files
+}
+
+fn format_satd_summary_output(
+    result: &crate::services::satd_detector::SATDAnalysisResult,
+    items: &[crate::services::satd_detector::TechnicalDebt],
+) -> serde_json::Value {
+    let mut summary = build_satd_summary_header(result);
+    let sorted_files = group_and_sort_satd_items(items);
+    
+    for (path, file_items) in sorted_files.iter().take(10) {
+        summary.push_str(&format!(
+            "  {} - {} items\n",
+            path.display(),
+            file_items.len()
+        ));
+    }
+    
+    json!({
+        "formatted_output": summary,
+        "stats": {
+            "total_items": result.summary.total_items,
+            "critical_items": result.summary.by_severity.get("Critical").copied().unwrap_or(0),
+            "debt_density": (result.summary.total_items as f64 / result.total_files_analyzed.max(1) as f64),
+        }
+    })
+}
+
+fn format_satd_output(
+    args: &SatdArgs,
+    result: &crate::services::satd_detector::SATDAnalysisResult,
+    items: &[crate::services::satd_detector::TechnicalDebt],
+) -> serde_json::Value {
+    match args.format.as_str() {
+        "json" => format_satd_json_output(args, result, items),
+        _ => format_satd_summary_output(result, items),
+    }
+}
+
 async fn handle_analyze_satd(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    #[derive(Deserialize)]
-    struct SatdArgs {
-        #[serde(default = "default_project_path")]
-        project_path: String,
-        #[serde(default)]
-        strict: bool,
-        #[serde(default = "default_true")]
-        exclude_tests: bool,
-        #[serde(default)]
-        critical_only: bool,
-        #[serde(default = "default_summary_format")]
-        format: String,
-    }
-
-    fn default_true() -> bool {
-        true
-    }
-
-    fn default_summary_format() -> String {
-        "summary".to_string()
-    }
-
-    let args: SatdArgs = match serde_json::from_value(arguments) {
+    let args = match parse_satd_args(arguments) {
         Ok(args) => args,
-        Err(e) => {
-            return McpResponse::error(
-                request_id,
-                -32602,
-                format!("Invalid analyze_satd arguments: {e}"),
-            );
-        }
+        Err(e) => return McpResponse::error(request_id, -32602, e),
     };
-
+    
     info!("Analyzing SATD for project: {:?}", args.project_path);
-
-    use crate::services::satd_detector::{SATDDetector, TechnicalDebt};
-    use std::path::Path;
-
-    let detector = if args.strict {
-        SATDDetector::new_strict()
-    } else {
-        SATDDetector::new()
-    };
-
-    let project_path = Path::new(&args.project_path);
-    let result = match detector
-        .analyze_project(project_path, !args.exclude_tests)
-        .await
-    {
+    
+    let result = match execute_satd_analysis(&args).await {
         Ok(result) => result,
-        Err(e) => {
-            return McpResponse::error(request_id, -32603, format!("Failed to analyze SATD: {e}"));
-        }
+        Err(e) => return McpResponse::error(request_id, -32603, e),
     };
-
-    // Filter critical items if requested
-    let items = if args.critical_only {
-        result
-            .items
-            .into_iter()
-            .filter(|item| {
-                matches!(
-                    item.severity,
-                    crate::services::satd_detector::Severity::Critical
-                )
-            })
-            .collect::<Vec<_>>()
-    } else {
-        result.items
-    };
-
-    // Format output based on requested format
-    let output = match args.format.as_str() {
-        "json" => json!({
-            "project_path": args.project_path,
-            "total_debt_items": result.summary.total_items,
-            "debt_density": (result.summary.total_items as f64 / result.total_files_analyzed.max(1) as f64),
-            "critical_items": result.summary.by_severity.get("Critical").copied().unwrap_or(0),
-            "categories": result.summary.by_category,
-            "items": items.iter().map(|item| json!({
-                "file": item.file.display().to_string(),
-                "line": item.line,
-                "column": item.column,
-                "category": format!("{:?}", item.category),
-                "severity": format!("{:?}", item.severity),
-                "text": item.text,
-            })).collect::<Vec<_>>(),
-        }),
-        _ => {
-            // Summary format
-            let mut summary = String::from("SATD Analysis Summary\n");
-            summary.push_str("====================\n");
-            summary.push_str(&format!(
-                "Total debt items: {}\n",
-                result.summary.total_items
-            ));
-            summary.push_str(&format!(
-                "Debt density: {:.2} per KLOC\n",
-                (result.summary.total_items as f64 / result.total_files_analyzed.max(1) as f64)
-            ));
-            summary.push_str(&format!(
-                "Critical items: {}\n",
-                result
-                    .summary
-                    .by_severity
-                    .get("Critical")
-                    .copied()
-                    .unwrap_or(0)
-            ));
-            summary.push_str("\nTop files with technical debt:\n");
-
-            // Group items by file
-            let mut files_map: std::collections::HashMap<&std::path::Path, Vec<&TechnicalDebt>> =
-                std::collections::HashMap::new();
-            for item in &items {
-                files_map.entry(&item.file).or_default().push(item);
-            }
-
-            let mut sorted_files: Vec<_> = files_map.iter().collect();
-            sorted_files.sort_by_key(|(_, items)| -(items.len() as i32));
-
-            for (path, file_items) in sorted_files.iter().take(10) {
-                summary.push_str(&format!(
-                    "  {} - {} items\n",
-                    path.display(),
-                    file_items.len()
-                ));
-            }
-
-            json!({
-                "formatted_output": summary,
-                "stats": {
-                    "total_items": result.summary.total_items,
-                    "critical_items": result.summary.by_severity.get("Critical").copied().unwrap_or(0),
-                    "debt_density": (result.summary.total_items as f64 / result.total_files_analyzed.max(1) as f64),
-                }
-            })
-        }
-    };
-
+    
+    let (result, items) = filter_satd_items(result, args.critical_only);
+    let output = format_satd_output(&args, &result, &items);
+    
     McpResponse::success(request_id, output)
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+struct LintHotspotArgs {
+    #[serde(default = "default_project_path")]
+    project_path: String,
+    #[serde(default = "default_top_files")]
+    top_files: usize,
+    #[serde(default = "default_min_violations")]
+    min_violations: usize,
+    #[serde(default)]
+    include: Option<String>,
+    #[serde(default)]
+    exclude: Option<String>,
+    #[serde(default = "default_table_format")]
+    format: String,
+}
+
+fn default_min_violations() -> usize {
+    1
+}
+
+fn default_table_format() -> String {
+    "table".to_string()
+}
+
+fn parse_lint_hotspot_args(arguments: serde_json::Value) -> Result<LintHotspotArgs, String> {
+    serde_json::from_value(arguments)
+        .map_err(|e| format!("Invalid analyze_lint_hotspot arguments: {e}"))
+}
+
+async fn execute_lint_hotspot_analysis(
+    args: &LintHotspotArgs,
+    project_path: &std::path::PathBuf,
+) -> Result<std::path::PathBuf, String> {
+    use crate::cli::handlers::lint_hotspot_handlers::handle_analyze_lint_hotspot;
+    use crate::cli::LintHotspotOutputFormat;
+
+    let temp_file = tempfile::NamedTempFile::new()
+        .map_err(|e| format!("Failed to create temporary file: {e}"))?;
+    let output_path = temp_file.path().to_path_buf();
+
+    handle_analyze_lint_hotspot(
+        project_path.clone(),
+        None,
+        LintHotspotOutputFormat::Json,
+        100.0,
+        0.0,
+        false,
+        false,
+        false,
+        Some(output_path.clone()),
+        false,
+        String::new(),
+        args.top_files,
+        Vec::new(),
+        Vec::new(),
+    )
+    .await
+    .map_err(|e| format!("Failed to analyze lint hotspots: {e}"))?;
+
+    Ok(output_path)
+}
+
+async fn read_and_parse_lint_output(output_path: &std::path::Path) -> Result<serde_json::Value, String> {
+    let json_output = tokio::fs::read_to_string(output_path)
+        .await
+        .map_err(|e| format!("Failed to read temporary file: {e}"))?;
+
+    serde_json::from_str(&json_output)
+        .map_err(|e| format!("Failed to parse JSON output: {e}"))
+}
+
+struct LintHotspotData {
+    hotspots: Vec<serde_json::Value>,
+    total_files: usize,
+    total_violations: usize,
+    average_violations_per_file: f64,
+}
+
+fn extract_lint_data(lint_data: &serde_json::Value) -> LintHotspotData {
+    LintHotspotData {
+        hotspots: lint_data["hotspots"].as_array().unwrap_or(&vec![]).clone(),
+        total_files: lint_data["total_files_analyzed"].as_u64().unwrap_or(0) as usize,
+        total_violations: lint_data["total_violations"].as_u64().unwrap_or(0) as usize,
+        average_violations_per_file: lint_data["average_violations_per_file"]
+            .as_f64()
+            .unwrap_or(0.0),
+    }
+}
+
+fn format_lint_hotspot_output(args: &LintHotspotArgs, data: &LintHotspotData) -> serde_json::Value {
+    match args.format.as_str() {
+        "json" => format_json_output(args, data),
+        "csv" => format_csv_output(),
+        _ => format_table_output(data),
+    }
+}
+
+fn format_json_output(args: &LintHotspotArgs, data: &LintHotspotData) -> serde_json::Value {
+    json!({
+        "project_path": args.project_path,
+        "total_files_analyzed": data.total_files,
+        "total_violations": data.total_violations,
+        "average_violations_per_file": data.average_violations_per_file,
+        "hotspots": data.hotspots,
+    })
+}
+
+fn format_csv_output() -> serde_json::Value {
+    json!({
+        "formatted_output": "file_path,violations,lines_of_code,defect_density\n",
+        "content_type": "text/csv"
+    })
+}
+
+fn format_table_output(data: &LintHotspotData) -> serde_json::Value {
+    let mut table = String::from("Lint Hotspot Analysis\n");
+    table.push_str("====================\n");
+    table.push_str(&format!("Total files analyzed: {}\n", data.total_files));
+    table.push_str(&format!("Total violations: {}\n", data.total_violations));
+    table.push_str(&format!(
+        "Average violations per file: {:.2}\n\n",
+        data.average_violations_per_file
+    ));
+    table.push_str("No hotspots found.\n");
+
+    json!({
+        "formatted_output": table,
+        "stats": {
+            "total_files": data.total_files,
+            "total_violations": data.total_violations,
+            "average_violations_per_file": data.average_violations_per_file,
+        }
+    })
 }
 
 async fn handle_analyze_lint_hotspot(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    #[derive(Deserialize)]
-    #[allow(dead_code)]
-    struct LintHotspotArgs {
-        #[serde(default = "default_project_path")]
-        project_path: String,
-        #[serde(default = "default_top_files")]
-        top_files: usize,
-        #[serde(default = "default_min_violations")]
-        min_violations: usize,
-        #[serde(default)]
-        include: Option<String>,
-        #[serde(default)]
-        exclude: Option<String>,
-        #[serde(default = "default_table_format")]
-        format: String,
-    }
-
-    fn default_min_violations() -> usize {
-        1
-    }
-
-    fn default_table_format() -> String {
-        "table".to_string()
-    }
-
-    let args: LintHotspotArgs = match serde_json::from_value(arguments) {
+    let args = match parse_lint_hotspot_args(arguments) {
         Ok(args) => args,
-        Err(e) => {
-            return McpResponse::error(
-                request_id,
-                -32602,
-                format!("Invalid analyze_lint_hotspot arguments: {e}"),
-            );
-        }
+        Err(e) => return McpResponse::error(request_id, -32602, e),
     };
 
-    info!(
-        "Analyzing lint hotspots for project: {:?}",
-        args.project_path
-    );
+    info!("Analyzing lint hotspots for project: {:?}", args.project_path);
 
-    use crate::cli::handlers::lint_hotspot_handlers::handle_analyze_lint_hotspot;
-    use crate::cli::LintHotspotOutputFormat;
-    use std::path::PathBuf;
+    let project_path = std::path::PathBuf::from(args.project_path.clone());
 
-    let project_path = PathBuf::from(args.project_path.clone());
-
-    // Create a temporary file to capture output
-    let temp_file = match tempfile::NamedTempFile::new() {
-        Ok(file) => file,
-        Err(e) => {
-            return McpResponse::error(
-                request_id,
-                -32603,
-                format!("Failed to create temporary file: {e}"),
-            );
-        }
-    };
-    let output_path = temp_file.path().to_path_buf();
-
-    // Execute lint hotspot analysis with JSON output format
-    let result = handle_analyze_lint_hotspot(
-        project_path.clone(),
-        None, // file
-        LintHotspotOutputFormat::Json,
-        100.0,                     // max_density
-        0.0,                       // min_confidence
-        false,                     // enforce
-        false,                     // dry_run
-        false,                     // enforcement_metadata
-        Some(output_path.clone()), // output to temp file
-        false,                     // perf
-        String::new(),             // clippy_flags
-        args.top_files,
-        Vec::new(), // include
-        Vec::new(), // exclude
-    )
-    .await;
-
-    if let Err(e) = result {
-        return McpResponse::error(
-            request_id,
-            -32603,
-            format!("Failed to analyze lint hotspots: {e}"),
-        );
-    }
-
-    // Read and parse the JSON output
-    let json_output = match tokio::fs::read_to_string(&output_path).await {
-        Ok(content) => content,
-        Err(e) => {
-            return McpResponse::error(
-                request_id,
-                -32603,
-                format!("Failed to read temporary file: {e}"),
-            );
-        }
+    let output_path = match execute_lint_hotspot_analysis(&args, &project_path).await {
+        Ok(path) => path,
+        Err(e) => return McpResponse::error(request_id, -32603, e),
     };
 
-    let lint_data: serde_json::Value = match serde_json::from_str(&json_output) {
+    let lint_data = match read_and_parse_lint_output(&output_path).await {
         Ok(data) => data,
-        Err(e) => {
-            return McpResponse::error(
-                request_id,
-                -32603,
-                format!("Failed to parse JSON output: {e}"),
-            );
-        }
+        Err(e) => return McpResponse::error(request_id, -32603, e),
     };
 
-    // Extract data from JSON
-    let hotspots = lint_data["hotspots"].as_array().unwrap_or(&vec![]).clone();
-    let total_files = lint_data["total_files_analyzed"].as_u64().unwrap_or(0) as usize;
-    let total_violations = lint_data["total_violations"].as_u64().unwrap_or(0) as usize;
-    let average_violations_per_file = lint_data["average_violations_per_file"]
-        .as_f64()
-        .unwrap_or(0.0);
-
-    // Format output based on requested format
-    let output = match args.format.as_str() {
-        "json" => json!({
-            "project_path": args.project_path,
-            "total_files_analyzed": total_files,
-            "total_violations": total_violations,
-            "average_violations_per_file": average_violations_per_file,
-            "hotspots": hotspots,
-        }),
-        "csv" => {
-            let csv = String::from("file_path,violations,lines_of_code,defect_density\n");
-            json!({
-                "formatted_output": csv,
-                "content_type": "text/csv"
-            })
-        }
-        _ => {
-            // Table format
-            let mut table = String::from("Lint Hotspot Analysis\n");
-            table.push_str("====================\n");
-            table.push_str(&format!("Total files analyzed: {}\n", total_files));
-            table.push_str(&format!("Total violations: {}\n", total_violations));
-            table.push_str(&format!(
-                "Average violations per file: {:.2}\n\n",
-                average_violations_per_file
-            ));
-            table.push_str("No hotspots found.\n");
-
-            json!({
-                "formatted_output": table,
-                "stats": {
-                    "total_files": total_files,
-                    "total_violations": total_violations,
-                    "average_violations_per_file": average_violations_per_file,
-                }
-            })
-        }
-    };
+    let extracted_data = extract_lint_data(&lint_data);
+    let output = format_lint_hotspot_output(&args, &extracted_data);
 
     McpResponse::success(request_id, output)
 }

@@ -101,7 +101,58 @@ pub async fn handle_refactor_docs(
 ) -> Result<()> {
     let start_time = std::time::Instant::now();
 
-    // Collect all directories to scan
+    let scan_dirs = collect_scan_directories(
+        &project_path, 
+        include_root, 
+        include_docs, 
+        additional_dirs
+    );
+    
+    let all_patterns = combine_patterns(
+        temp_patterns,
+        status_patterns,
+        artifact_patterns,
+        custom_patterns,
+    );
+
+    let mut result = perform_cruft_scan(
+        &scan_dirs,
+        &all_patterns,
+        &preserve_patterns,
+        min_age_days,
+        max_size_mb,
+        recursive,
+    ).await?;
+
+    result = handle_processing_modes(
+        result,
+        format,
+        dry_run,
+        auto_remove,
+        backup,
+        &backup_dir,
+    ).await?;
+
+    output_results(
+        &result,
+        format,
+        dry_run,
+        perf,
+        start_time.elapsed(),
+        output,
+    ).await?;
+
+    handle_exit_code(&result, auto_remove, dry_run);
+    Ok(())
+}
+
+/// Collect directories to scan based on configuration
+fn collect_scan_directories(
+    project_path: &PathBuf,
+    include_root: bool,
+    include_docs: bool,
+    additional_dirs: Vec<PathBuf>,
+) -> Vec<PathBuf> {
     let mut scan_dirs = Vec::new();
 
     if include_root {
@@ -116,76 +167,174 @@ pub async fn handle_refactor_docs(
     }
 
     scan_dirs.extend(additional_dirs);
+    scan_dirs
+}
 
-    // Combine all patterns
+/// Combine all pattern types into a single collection
+fn combine_patterns(
+    temp_patterns: Vec<String>,
+    status_patterns: Vec<String>,
+    artifact_patterns: Vec<String>,
+    custom_patterns: Vec<String>,
+) -> Vec<(String, FileCategory)> {
     let mut all_patterns = Vec::new();
     all_patterns.extend(
         temp_patterns
-            .iter()
-            .map(|p| (p.clone(), FileCategory::TemporaryScript)),
+            .into_iter()
+            .map(|p| (p, FileCategory::TemporaryScript)),
     );
     all_patterns.extend(
         status_patterns
-            .iter()
-            .map(|p| (p.clone(), FileCategory::StatusReport)),
+            .into_iter()
+            .map(|p| (p, FileCategory::StatusReport)),
     );
     all_patterns.extend(
         artifact_patterns
-            .iter()
-            .map(|p| (p.clone(), FileCategory::BuildArtifact)),
+            .into_iter()
+            .map(|p| (p, FileCategory::BuildArtifact)),
     );
     all_patterns.extend(
         custom_patterns
-            .iter()
-            .map(|p| (p.clone(), FileCategory::CustomPattern)),
+            .into_iter()
+            .map(|p| (p, FileCategory::CustomPattern)),
     );
+    all_patterns
+}
 
-    // Scan for cruft files
+/// Perform the cruft scanning with proper result sorting
+async fn perform_cruft_scan(
+    scan_dirs: &[PathBuf],
+    all_patterns: &[(String, FileCategory)],
+    preserve_patterns: &[String],
+    min_age_days: u32,
+    max_size_mb: u64,
+    recursive: bool,
+) -> Result<RefactorDocsResult> {
     let mut result = scan_for_cruft(
-        &scan_dirs,
-        &all_patterns,
-        &preserve_patterns,
+        scan_dirs,
+        all_patterns,
+        preserve_patterns,
         min_age_days,
         max_size_mb * 1024 * 1024, // Convert MB to bytes
         recursive,
-    )
-    .await?;
+    ).await?;
 
     // Sort cruft files by size (largest first)
     result
         .cruft_files
         .sort_by(|a, b| b.size_bytes.cmp(&a.size_bytes));
+    
+    Ok(result)
+}
 
-    // Handle interactive mode
-    if format == RefactorDocsOutputFormat::Interactive && !dry_run && !auto_remove {
-        result = handle_interactive_mode(result).await?;
+/// Handle processing modes (interactive, backup, removal)
+async fn handle_processing_modes(
+    mut result: RefactorDocsResult,
+    format: RefactorDocsOutputFormat,
+    dry_run: bool,
+    auto_remove: bool,
+    backup: bool,
+    backup_dir: &PathBuf,
+) -> Result<RefactorDocsResult> {
+    result = handle_interactive_processing(result, format, dry_run, auto_remove).await?;
+    handle_backup_processing(&result, backup, dry_run, auto_remove, backup_dir).await?;
+    handle_file_removal_processing(&result, dry_run, auto_remove, format).await?;
+    Ok(result)
+}
+
+/// Handle interactive mode processing
+async fn handle_interactive_processing(
+    result: RefactorDocsResult,
+    format: RefactorDocsOutputFormat,
+    dry_run: bool,
+    auto_remove: bool,
+) -> Result<RefactorDocsResult> {
+    if should_use_interactive_mode(format, dry_run, auto_remove) {
+        handle_interactive_mode(result).await
+    } else {
+        Ok(result)
     }
+}
 
-    // Create backup if requested
-    if backup && !dry_run && (!result.cruft_files.is_empty() || auto_remove) {
-        create_backup(&result.cruft_files, &backup_dir).await?;
+/// Check if interactive mode should be used
+fn should_use_interactive_mode(
+    format: RefactorDocsOutputFormat,
+    dry_run: bool,
+    auto_remove: bool,
+) -> bool {
+    format == RefactorDocsOutputFormat::Interactive && !dry_run && !auto_remove
+}
+
+/// Handle backup processing
+async fn handle_backup_processing(
+    result: &RefactorDocsResult,
+    backup: bool,
+    dry_run: bool,
+    auto_remove: bool,
+    backup_dir: &PathBuf,
+) -> Result<()> {
+    if should_create_backup(backup, dry_run, &result.cruft_files, auto_remove) {
+        create_backup(&result.cruft_files, backup_dir).await?
     }
+    Ok(())
+}
 
-    // Remove files if not in dry run mode
-    if !dry_run && (auto_remove || format == RefactorDocsOutputFormat::Interactive) {
-        remove_files(&result.cruft_files).await?;
+/// Check if backup should be created
+fn should_create_backup(
+    backup: bool,
+    dry_run: bool,
+    cruft_files: &[CruftFile],
+    auto_remove: bool,
+) -> bool {
+    backup && !dry_run && (!cruft_files.is_empty() || auto_remove)
+}
+
+/// Handle file removal processing
+async fn handle_file_removal_processing(
+    result: &RefactorDocsResult,
+    dry_run: bool,
+    auto_remove: bool,
+    format: RefactorDocsOutputFormat,
+) -> Result<()> {
+    if should_remove_files(dry_run, auto_remove, format) {
+        remove_files(&result.cruft_files).await?
     }
+    Ok(())
+}
 
-    // Format and output results
-    let output_content = format_output(&result, format, dry_run, perf, start_time.elapsed())?;
+/// Check if files should be removed
+fn should_remove_files(
+    dry_run: bool,
+    auto_remove: bool,
+    format: RefactorDocsOutputFormat,
+) -> bool {
+    !dry_run && (auto_remove || format == RefactorDocsOutputFormat::Interactive)
+}
+
+/// Output results based on format and configuration
+async fn output_results(
+    result: &RefactorDocsResult,
+    format: RefactorDocsOutputFormat,
+    dry_run: bool,
+    perf: bool,
+    elapsed: std::time::Duration,
+    output: Option<PathBuf>,
+) -> Result<()> {
+    let output_content = format_output(result, format, dry_run, perf, elapsed)?;
 
     if let Some(output_path) = output {
         tokio::fs::write(output_path, &output_content).await?;
     } else {
         println!("{}", output_content);
     }
+    Ok(())
+}
 
-    // Exit with appropriate code
+/// Handle appropriate exit code based on results
+fn handle_exit_code(result: &RefactorDocsResult, auto_remove: bool, dry_run: bool) {
     if !result.cruft_files.is_empty() && !auto_remove && !dry_run {
         std::process::exit(1); // Files found but not removed
     }
-
-    Ok(())
 }
 
 /// Scan directories for cruft files
@@ -202,96 +351,27 @@ async fn scan_for_cruft(
     let mut errors = Vec::new();
     let mut total_files_scanned = 0;
     let mut summary = CleanupSummary::default();
-
     let now = SystemTime::now();
 
     for dir in scan_dirs {
-        if !dir.exists() {
-            errors.push(format!("Directory does not exist: {}", dir.display()));
-            continue;
-        }
-
-        let files = if recursive {
-            collect_files_recursive(dir).await?
-        } else {
-            collect_files_flat(dir).await?
-        };
-
-        total_files_scanned += files.len();
-
-        for file_path in files {
-            // Check if file should be preserved
-            if should_preserve(&file_path, preserve_patterns) {
-                preserved_files.push(file_path.clone());
-                continue;
-            }
-
-            // Get file metadata
-            let metadata = match fs::metadata(&file_path) {
-                Ok(m) => m,
-                Err(e) => {
-                    errors.push(format!(
-                        "Failed to read metadata for {}: {}",
-                        file_path.display(),
-                        e
-                    ));
-                    continue;
-                }
-            };
-
-            // Skip if file is too large
-            if metadata.len() > max_size_bytes {
-                continue;
-            }
-
-            // Calculate age in days
-            let age_days = match metadata.modified() {
-                Ok(modified) => {
-                    let duration = now.duration_since(modified).unwrap_or_default();
-                    (duration.as_secs() / 86400) as u32
-                }
-                Err(_) => 0,
-            };
-
-            // Skip if file is too new
-            if age_days < min_age_days {
-                continue;
-            }
-
-            // Check against patterns
-            if let Some((pattern, category)) = matches_pattern(&file_path, patterns) {
-                let cruft = CruftFile {
-                    path: file_path,
-                    category,
-                    size_bytes: metadata.len(),
-                    modified: metadata.modified().unwrap_or(SystemTime::now()),
-                    age_days,
-                    reason: format!("Matches pattern: {}", pattern),
-                    pattern_matched: pattern,
-                };
-
-                // Update summary
-                let category_str = category.to_string();
-                *summary
-                    .files_by_category
-                    .entry(category_str.clone())
-                    .or_default() += 1;
-                *summary.size_by_category.entry(category_str).or_default() += metadata.len();
-                summary.oldest_file_days = summary.oldest_file_days.max(age_days);
-                summary.newest_file_days = if summary.newest_file_days == 0 {
-                    age_days
-                } else {
-                    summary.newest_file_days.min(age_days)
-                };
-
-                cruft_files.push(cruft);
-            }
-        }
+        let dir_result = process_directory(
+            dir,
+            patterns,
+            preserve_patterns,
+            min_age_days,
+            max_size_bytes,
+            recursive,
+            &now,
+        ).await?;
+        
+        cruft_files.extend(dir_result.cruft_files);
+        preserved_files.extend(dir_result.preserved_files);
+        errors.extend(dir_result.errors);
+        total_files_scanned += dir_result.files_scanned;
+        merge_summary(&mut summary, &dir_result.summary);
     }
 
-    summary.total_files_scanned = total_files_scanned;
-    summary.cruft_files_found = cruft_files.len();
-    summary.total_size_bytes = cruft_files.iter().map(|f| f.size_bytes).sum();
+    finalize_summary(&mut summary, total_files_scanned, &cruft_files);
 
     Ok(RefactorDocsResult {
         cruft_files,
@@ -299,6 +379,201 @@ async fn scan_for_cruft(
         preserved_files,
         errors,
     })
+}
+
+/// Result for processing a single directory
+struct DirectoryResult {
+    cruft_files: Vec<CruftFile>,
+    preserved_files: Vec<PathBuf>,
+    errors: Vec<String>,
+    files_scanned: usize,
+    summary: CleanupSummary,
+}
+
+/// Process a single directory for cruft files
+async fn process_directory(
+    dir: &PathBuf,
+    patterns: &[(String, FileCategory)],
+    preserve_patterns: &[String],
+    min_age_days: u32,
+    max_size_bytes: u64,
+    recursive: bool,
+    now: &SystemTime,
+) -> Result<DirectoryResult> {
+    if !dir.exists() {
+        return Ok(DirectoryResult {
+            cruft_files: Vec::new(),
+            preserved_files: Vec::new(),
+            errors: vec![format!("Directory does not exist: {}", dir.display())],
+            files_scanned: 0,
+            summary: CleanupSummary::default(),
+        });
+    }
+
+    let files = collect_directory_files(dir, recursive).await?;
+    let mut result = DirectoryResult {
+        cruft_files: Vec::new(),
+        preserved_files: Vec::new(),
+        errors: Vec::new(),
+        files_scanned: files.len(),
+        summary: CleanupSummary::default(),
+    };
+
+    for file_path in files {
+        process_file(
+            &file_path,
+            patterns,
+            preserve_patterns,
+            min_age_days,
+            max_size_bytes,
+            now,
+            &mut result,
+        ).await;
+    }
+
+    Ok(result)
+}
+
+/// Collect files from directory based on recursive setting
+async fn collect_directory_files(dir: &Path, recursive: bool) -> Result<Vec<PathBuf>> {
+    if recursive {
+        collect_files_recursive(dir).await
+    } else {
+        collect_files_flat(dir).await
+    }
+}
+
+/// Process a single file for cruft classification
+async fn process_file(
+    file_path: &PathBuf,
+    patterns: &[(String, FileCategory)],
+    preserve_patterns: &[String],
+    min_age_days: u32,
+    max_size_bytes: u64,
+    now: &SystemTime,
+    result: &mut DirectoryResult,
+) {
+    if should_preserve(file_path, preserve_patterns) {
+        result.preserved_files.push(file_path.clone());
+        return;
+    }
+
+    let metadata = match get_file_metadata(file_path) {
+        Ok(m) => m,
+        Err(error) => {
+            result.errors.push(error);
+            return;
+        }
+    };
+
+    if !passes_file_filters(&metadata, min_age_days, max_size_bytes, now) {
+        return;
+    }
+
+    if let Some((pattern, category)) = matches_pattern(file_path, patterns) {
+        let cruft = create_cruft_file(file_path, &metadata, category, &pattern, now);
+        update_summary_for_cruft(&mut result.summary, &cruft);
+        result.cruft_files.push(cruft);
+    }
+}
+
+/// Get file metadata with error handling
+fn get_file_metadata(file_path: &Path) -> Result<fs::Metadata, String> {
+    fs::metadata(file_path).map_err(|e| {
+        format!("Failed to read metadata for {}: {}", file_path.display(), e)
+    })
+}
+
+/// Check if file passes size and age filters
+fn passes_file_filters(
+    metadata: &fs::Metadata,
+    min_age_days: u32,
+    max_size_bytes: u64,
+    now: &SystemTime,
+) -> bool {
+    if metadata.len() > max_size_bytes {
+        return false;
+    }
+
+    let age_days = calculate_age_days(metadata, now);
+    age_days >= min_age_days
+}
+
+/// Calculate file age in days
+fn calculate_age_days(metadata: &fs::Metadata, now: &SystemTime) -> u32 {
+    match metadata.modified() {
+        Ok(modified) => {
+            let duration = now.duration_since(modified).unwrap_or_default();
+            (duration.as_secs() / 86400) as u32
+        }
+        Err(_) => 0,
+    }
+}
+
+/// Create a CruftFile from metadata and classification
+fn create_cruft_file(
+    file_path: &Path,
+    metadata: &fs::Metadata,
+    category: FileCategory,
+    pattern: &str,
+    now: &SystemTime,
+) -> CruftFile {
+    let age_days = calculate_age_days(metadata, now);
+    CruftFile {
+        path: file_path.to_path_buf(),
+        category,
+        size_bytes: metadata.len(),
+        modified: metadata.modified().unwrap_or(*now),
+        age_days,
+        reason: format!("Matches pattern: {}", pattern),
+        pattern_matched: pattern.to_string(),
+    }
+}
+
+/// Update summary statistics for a cruft file
+fn update_summary_for_cruft(summary: &mut CleanupSummary, cruft: &CruftFile) {
+    let category_str = cruft.category.to_string();
+    *summary
+        .files_by_category
+        .entry(category_str.clone())
+        .or_default() += 1;
+    *summary
+        .size_by_category
+        .entry(category_str)
+        .or_default() += cruft.size_bytes;
+    summary.oldest_file_days = summary.oldest_file_days.max(cruft.age_days);
+    summary.newest_file_days = if summary.newest_file_days == 0 {
+        cruft.age_days
+    } else {
+        summary.newest_file_days.min(cruft.age_days)
+    };
+}
+
+/// Merge directory summary into main summary
+fn merge_summary(main: &mut CleanupSummary, dir: &CleanupSummary) {
+    for (category, count) in &dir.files_by_category {
+        *main.files_by_category.entry(category.clone()).or_default() += count;
+    }
+    for (category, size) in &dir.size_by_category {
+        *main.size_by_category.entry(category.clone()).or_default() += size;
+    }
+    main.oldest_file_days = main.oldest_file_days.max(dir.oldest_file_days);
+    main.newest_file_days = if main.newest_file_days == 0 {
+        dir.newest_file_days
+    } else {
+        main.newest_file_days.min(dir.newest_file_days)
+    };
+}
+
+/// Finalize summary with total counts
+fn finalize_summary(
+    summary: &mut CleanupSummary,
+    total_files_scanned: usize,
+    cruft_files: &[CruftFile],
+) {
+    summary.total_files_scanned = total_files_scanned;
+    summary.cruft_files_found = cruft_files.len();
+    summary.total_size_bytes = cruft_files.iter().map(|f| f.size_bytes).sum();
 }
 
 /// Collect files recursively

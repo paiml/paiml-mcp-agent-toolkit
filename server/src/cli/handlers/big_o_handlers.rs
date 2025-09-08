@@ -24,135 +24,234 @@ pub async fn handle_analyze_big_o(
     top_files: usize,
 ) -> Result<()> {
     let start_time = std::time::Instant::now();
+    
+    print_analysis_header(&project_path, confidence_threshold);
+    
+    let config = build_analysis_config(
+        project_path,
+        include,
+        exclude,
+        confidence_threshold,
+        analyze_space,
+    );
+    
+    if perf {
+        debug!("Analysis configuration: {:?}", config);
+    }
+    
+    let analyzer = BigOAnalyzer::new();
+    let mut report = analyzer.analyze(config).await?;
+    
+    apply_report_filters(&mut report, high_complexity_only, top_files, perf);
+    
+    let output_content = format_analysis_output(&analyzer, &report, format)?;
+    write_analysis_output(&output_content, output).await?;
+    
+    print_analysis_summary(&report, start_time.elapsed(), perf);
+    
+    Ok(())
+}
 
+/// Print analysis header information
+fn print_analysis_header(project_path: &PathBuf, confidence_threshold: u8) {
     info!("🔍 Starting Big-O complexity analysis");
     info!("📂 Project path: {}", project_path.display());
     info!("🎯 Confidence threshold: {}%", confidence_threshold);
+}
 
-    // Create analyzer
-    let analyzer = BigOAnalyzer::new();
-
-    // Build configuration
-    let config = BigOAnalysisConfig {
-        project_path: project_path.clone(),
+/// Build analysis configuration
+fn build_analysis_config(
+    project_path: PathBuf,
+    include: Vec<String>,
+    exclude: Vec<String>,
+    confidence_threshold: u8,
+    analyze_space: bool,
+) -> BigOAnalysisConfig {
+    BigOAnalysisConfig {
+        project_path,
         include_patterns: include,
         exclude_patterns: exclude,
         confidence_threshold,
         analyze_space_complexity: analyze_space,
-    };
-
-    if perf {
-        debug!("Analysis configuration: {:?}", config);
     }
+}
 
-    // Perform analysis
-    let mut report = analyzer.analyze(config).await?;
-
-    // Filter high complexity only if requested
+/// Apply all report filters
+fn apply_report_filters(
+    report: &mut crate::services::big_o_analyzer::BigOAnalysisReport,
+    high_complexity_only: bool,
+    top_files: usize,
+    perf: bool,
+) {
     if high_complexity_only {
-        let original_count = report.high_complexity_functions.len();
-        report.high_complexity_functions.retain(|f| {
-            matches!(
-                f.time_complexity.class,
-                crate::models::complexity_bound::BigOClass::Quadratic
-                    | crate::models::complexity_bound::BigOClass::Cubic
-                    | crate::models::complexity_bound::BigOClass::Exponential
-                    | crate::models::complexity_bound::BigOClass::Factorial
-            )
-        });
-
-        if perf {
-            debug!(
-                "Filtered from {} to {} high complexity functions",
-                original_count,
-                report.high_complexity_functions.len()
-            );
-        }
+        apply_high_complexity_filter(report, perf);
     }
-
-    // Apply top_files filtering if specified
+    
     if top_files > 0 {
-        // Group functions by file
-        use std::collections::HashMap;
-        let mut file_functions: HashMap<PathBuf, Vec<_>> = HashMap::new();
-        for func in report.high_complexity_functions.clone() {
-            file_functions
-                .entry(func.file_path.clone())
-                .or_default()
-                .push(func);
-        }
-
-        // Sort files by complexity score (sum of function complexities)
-        let mut file_scores: Vec<(PathBuf, f64)> = file_functions
-            .iter()
-            .map(|(path, funcs)| {
-                let score: f64 = funcs
-                    .iter()
-                    .map(|f| match f.time_complexity.class {
-                        crate::models::complexity_bound::BigOClass::Constant => 1.0,
-                        crate::models::complexity_bound::BigOClass::Logarithmic => 2.0,
-                        crate::models::complexity_bound::BigOClass::Linear => 3.0,
-                        crate::models::complexity_bound::BigOClass::Linearithmic => 4.0,
-                        crate::models::complexity_bound::BigOClass::Quadratic => 5.0,
-                        crate::models::complexity_bound::BigOClass::Cubic => 6.0,
-                        crate::models::complexity_bound::BigOClass::Exponential => 7.0,
-                        crate::models::complexity_bound::BigOClass::Factorial => 8.0,
-                        crate::models::complexity_bound::BigOClass::Unknown => 3.0,
-                    })
-                    .sum();
-                (path.clone(), score)
-            })
-            .collect();
-
-        file_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-        // Keep only functions from top N files
-        let top_file_paths: std::collections::HashSet<_> = file_scores
-            .into_iter()
-            .take(top_files)
-            .map(|(path, _)| path)
-            .collect();
-
-        report
-            .high_complexity_functions
-            .retain(|f| top_file_paths.contains(&f.file_path));
+        apply_top_files_filter(report, top_files);
     }
+}
 
-    // Format output
-    let output_content = match format {
-        BigOOutputFormat::Json => analyzer.format_as_json(&report)?,
-        BigOOutputFormat::Markdown => analyzer.format_as_markdown(&report),
-        BigOOutputFormat::Summary => format_big_o_summary(&report),
-        BigOOutputFormat::Detailed => format_big_o_detailed(&report),
-    };
+/// Filter to keep only high complexity functions
+fn apply_high_complexity_filter(
+    report: &mut crate::services::big_o_analyzer::BigOAnalysisReport,
+    perf: bool,
+) {
+    let original_count = report.high_complexity_functions.len();
+    
+    report.high_complexity_functions.retain(|f| {
+        is_high_complexity_class(&f.time_complexity.class)
+    });
+    
+    if perf {
+        debug!(
+            "Filtered from {} to {} high complexity functions",
+            original_count,
+            report.high_complexity_functions.len()
+        );
+    }
+}
 
-    // Write output
+/// Check if complexity class is considered high
+fn is_high_complexity_class(
+    class: &crate::models::complexity_bound::BigOClass,
+) -> bool {
+    matches!(
+        class,
+        crate::models::complexity_bound::BigOClass::Quadratic
+            | crate::models::complexity_bound::BigOClass::Cubic
+            | crate::models::complexity_bound::BigOClass::Exponential
+            | crate::models::complexity_bound::BigOClass::Factorial
+    )
+}
+
+/// Apply top files filter
+fn apply_top_files_filter(
+    report: &mut crate::services::big_o_analyzer::BigOAnalysisReport,
+    top_files: usize,
+) {
+    let file_functions = group_functions_by_file(&report.high_complexity_functions);
+    let file_scores = calculate_file_complexity_scores(&file_functions);
+    let top_file_paths = get_top_file_paths(file_scores, top_files);
+    
+    report
+        .high_complexity_functions
+        .retain(|f| top_file_paths.contains(&f.file_path));
+}
+
+/// Group functions by their file paths
+fn group_functions_by_file(
+    functions: &[crate::services::big_o_analyzer::FunctionComplexity],
+) -> std::collections::HashMap<PathBuf, Vec<crate::services::big_o_analyzer::FunctionComplexity>> {
+    use std::collections::HashMap;
+    
+    let mut file_functions: HashMap<PathBuf, Vec<_>> = HashMap::new();
+    for func in functions.iter().cloned() {
+        file_functions
+            .entry(func.file_path.clone())
+            .or_default()
+            .push(func);
+    }
+    
+    file_functions
+}
+
+/// Calculate complexity scores for files
+fn calculate_file_complexity_scores(
+    file_functions: &std::collections::HashMap<PathBuf, Vec<crate::services::big_o_analyzer::FunctionComplexity>>,
+) -> Vec<(PathBuf, f64)> {
+    let mut file_scores: Vec<(PathBuf, f64)> = file_functions
+        .iter()
+        .map(|(path, funcs)| {
+            let score: f64 = funcs
+                .iter()
+                .map(|f| get_complexity_class_score(&f.time_complexity.class))
+                .sum();
+            (path.clone(), score)
+        })
+        .collect();
+    
+    file_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    file_scores
+}
+
+/// Get numeric score for complexity class
+fn get_complexity_class_score(
+    class: &crate::models::complexity_bound::BigOClass,
+) -> f64 {
+    match class {
+        crate::models::complexity_bound::BigOClass::Constant => 1.0,
+        crate::models::complexity_bound::BigOClass::Logarithmic => 2.0,
+        crate::models::complexity_bound::BigOClass::Linear => 3.0,
+        crate::models::complexity_bound::BigOClass::Linearithmic => 4.0,
+        crate::models::complexity_bound::BigOClass::Quadratic => 5.0,
+        crate::models::complexity_bound::BigOClass::Cubic => 6.0,
+        crate::models::complexity_bound::BigOClass::Exponential => 7.0,
+        crate::models::complexity_bound::BigOClass::Factorial => 8.0,
+        crate::models::complexity_bound::BigOClass::Unknown => 3.0,
+    }
+}
+
+/// Get top file paths from scores
+fn get_top_file_paths(
+    file_scores: Vec<(PathBuf, f64)>,
+    top_files: usize,
+) -> std::collections::HashSet<PathBuf> {
+    file_scores
+        .into_iter()
+        .take(top_files)
+        .map(|(path, _)| path)
+        .collect()
+}
+
+/// Format analysis output
+fn format_analysis_output(
+    analyzer: &BigOAnalyzer,
+    report: &crate::services::big_o_analyzer::BigOAnalysisReport,
+    format: BigOOutputFormat,
+) -> Result<String> {
+    match format {
+        BigOOutputFormat::Json => analyzer.format_as_json(report),
+        BigOOutputFormat::Markdown => Ok(analyzer.format_as_markdown(report)),
+        BigOOutputFormat::Summary => Ok(format_big_o_summary(report)),
+        BigOOutputFormat::Detailed => Ok(format_big_o_detailed(report)),
+    }
+}
+
+/// Write analysis output to file or stdout
+async fn write_analysis_output(
+    content: &str,
+    output: Option<PathBuf>,
+) -> Result<()> {
     if let Some(output_path) = output {
-        tokio::fs::write(&output_path, &output_content).await?;
+        tokio::fs::write(&output_path, content).await?;
         info!("📄 Big-O analysis saved to: {}", output_path.display());
     } else {
-        println!("{output_content}");
+        println!("{content}");
     }
+    Ok(())
+}
 
-    let elapsed = start_time.elapsed();
-
-    // Print summary
+/// Print analysis summary
+fn print_analysis_summary(
+    report: &crate::services::big_o_analyzer::BigOAnalysisReport,
+    elapsed: std::time::Duration,
+    perf: bool,
+) {
     info!("✅ Big-O analysis completed in {:?}", elapsed);
     info!("📊 Analyzed {} functions", report.analyzed_functions);
-
+    
     if !report.high_complexity_functions.is_empty() {
         info!(
             "⚠️ Found {} functions with high complexity",
             report.high_complexity_functions.len()
         );
     }
-
+    
     if perf {
         let functions_per_sec = report.analyzed_functions as f64 / elapsed.as_secs_f64();
         info!("⚡ Performance: {:.0} functions/second", functions_per_sec);
     }
-
-    Ok(())
 }
 
 /// Format Big-O report as summary with top files

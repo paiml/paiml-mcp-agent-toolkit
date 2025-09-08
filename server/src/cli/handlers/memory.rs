@@ -124,19 +124,31 @@ pub async fn handle_memory_command(command: &MemoryCommand) -> Result<()> {
 async fn handle_memory_stats(detailed: bool, format: &str) -> Result<()> {
     let manager = global_memory_manager()?;
     let stats = manager.stats();
+    
+    let pool_stats_output = build_pool_stats_output(&stats.pool_stats);
+    let recommendations = generate_memory_recommendations(&stats);
+    
+    let output = MemoryStatsOutput {
+        total_allocated: stats.total_allocated,
+        peak_usage: stats.peak_usage,
+        allocation_pressure: stats.allocation_pressure,
+        string_intern_size: stats.string_intern_size,
+        pool_stats: pool_stats_output,
+        recommendations,
+    };
+    
+    output_memory_stats(&output, format, detailed)
+}
 
+/// Build pool statistics output data  
+fn build_pool_stats_output(
+    pool_stats: &rustc_hash::FxHashMap<crate::services::memory_manager::PoolType, crate::services::memory_manager::PoolStats>,
+) -> HashMap<String, PoolStatsOutput> {
     let mut pool_stats_output = HashMap::new();
-    for (pool_type, pool_stats) in &stats.pool_stats {
-        let efficiency_rating = if pool_stats.reuse_ratio > 0.8 {
-            "Excellent"
-        } else if pool_stats.reuse_ratio > 0.6 {
-            "Good"
-        } else if pool_stats.reuse_ratio > 0.4 {
-            "Fair"
-        } else {
-            "Poor"
-        };
-
+    
+    for (pool_type, pool_stats) in pool_stats {
+        let efficiency_rating = calculate_efficiency_rating(pool_stats.reuse_ratio);
+        
         pool_stats_output.insert(
             format!("{:?}", pool_type),
             PoolStatsOutput {
@@ -149,19 +161,57 @@ async fn handle_memory_stats(detailed: bool, format: &str) -> Result<()> {
             },
         );
     }
+    
+    pool_stats_output
+}
 
-    // Generate recommendations
+/// Calculate efficiency rating from reuse ratio
+fn calculate_efficiency_rating(reuse_ratio: f64) -> &'static str {
+    if reuse_ratio > 0.8 {
+        "Excellent"
+    } else if reuse_ratio > 0.6 {
+        "Good"
+    } else if reuse_ratio > 0.4 {
+        "Fair"
+    } else {
+        "Poor"
+    }
+}
+
+/// Generate memory usage recommendations
+fn generate_memory_recommendations(
+    stats: &crate::services::memory_manager::MemoryStats,
+) -> Vec<String> {
     let mut recommendations = Vec::new();
-    if stats.allocation_pressure > 0.9 {
+    
+    add_pressure_recommendations(&mut recommendations, stats.allocation_pressure);
+    add_pool_efficiency_recommendations(&mut recommendations, &stats.pool_stats);
+    
+    if recommendations.is_empty() {
+        recommendations.push("Memory usage is optimal.".to_string());
+    }
+    
+    recommendations
+}
+
+/// Add memory pressure recommendations
+fn add_pressure_recommendations(recommendations: &mut Vec<String>, allocation_pressure: f64) {
+    if allocation_pressure > 0.9 {
         recommendations.push(
             "CRITICAL: Memory pressure very high. Consider reducing workload or increasing limits."
                 .to_string(),
         );
-    } else if stats.allocation_pressure > 0.8 {
+    } else if allocation_pressure > 0.8 {
         recommendations.push("WARNING: High memory pressure. Monitor usage closely.".to_string());
     }
+}
 
-    for (pool_type, pool_stats) in &stats.pool_stats {
+/// Add pool efficiency recommendations
+fn add_pool_efficiency_recommendations(
+    recommendations: &mut Vec<String>,
+    pool_stats: &rustc_hash::FxHashMap<crate::services::memory_manager::PoolType, crate::services::memory_manager::PoolStats>,
+) {
+    for (pool_type, pool_stats) in pool_stats {
         if pool_stats.reuse_ratio < 0.3 {
             recommendations.push(format!(
                 "Pool {:?} has low reuse efficiency ({:.1}%). Consider adjusting pool size.",
@@ -170,40 +220,30 @@ async fn handle_memory_stats(detailed: bool, format: &str) -> Result<()> {
             ));
         }
     }
+}
 
-    if recommendations.is_empty() {
-        recommendations.push("Memory usage is optimal.".to_string());
-    }
-
-    let output = MemoryStatsOutput {
-        total_allocated: stats.total_allocated,
-        peak_usage: stats.peak_usage,
-        allocation_pressure: stats.allocation_pressure,
-        string_intern_size: stats.string_intern_size,
-        pool_stats: pool_stats_output,
-        recommendations,
-    };
-
+/// Output memory statistics in requested format
+fn output_memory_stats(output: &MemoryStatsOutput, format: &str, detailed: bool) -> Result<()> {
     match format {
-        "json" => {
-            println!("{}", serde_json::to_string_pretty(&output)?);
-        }
-        "csv" => {
-            // Simple CSV output
-            println!("metric,value");
-            println!("total_allocated,{}", output.total_allocated);
-            println!("peak_usage,{}", output.peak_usage);
-            println!("allocation_pressure,{:.3}", output.allocation_pressure);
-            println!("string_intern_size,{}", output.string_intern_size);
-        }
-        "table" => {
-            print_memory_stats_table(&output, detailed)?;
-        }
-        _ => {
-            print_memory_stats_table(&output, detailed)?;
-        }
+        "json" => output_json_format(output),
+        "csv" => output_csv_format(output),
+        "table" | _ => print_memory_stats_table(output, detailed),
     }
+}
 
+/// Output statistics in JSON format
+fn output_json_format(output: &MemoryStatsOutput) -> Result<()> {
+    println!("{}", serde_json::to_string_pretty(output)?);
+    Ok(())
+}
+
+/// Output statistics in CSV format
+fn output_csv_format(output: &MemoryStatsOutput) -> Result<()> {
+    println!("metric,value");
+    println!("total_allocated,{}", output.total_allocated);
+    println!("peak_usage,{}", output.peak_usage);
+    println!("allocation_pressure,{:.3}", output.allocation_pressure);
+    println!("string_intern_size,{}", output.string_intern_size);
     Ok(())
 }
 

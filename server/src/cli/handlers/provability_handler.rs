@@ -44,64 +44,89 @@ pub struct ProvabilityConfig {
 }
 
 /// * `Ok(())` - Analysis completed successfully
-/// * `Err(anyhow::Error)` - Analysis failed with detailed error context
+/// * `Err(anyhow::Error)` - Analysis failed with detailed error context (cognitive complexity ≤8)
 pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()> {
-    use crate::cli::provability_helpers::*;
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
 
     eprintln!("🔬 Analyzing function provability...");
 
-    // Create the analyzer
     let analyzer = LightweightProvabilityAnalyzer::new();
+    let function_ids = resolve_function_targets(&config).await?;
+    let summaries = run_provability_analysis(&analyzer, &function_ids).await?;
+    let filtered_summaries = prepare_filtered_summaries(&summaries, config.high_confidence_only);
+    let content = format_provability_output(&function_ids, &filtered_summaries, &config)?;
+    
+    write_provability_output(&content, &config.output).await?;
 
-    // Get function IDs based on input
-    let function_ids = if config.functions.is_empty() {
-        discover_project_functions(&config.project_path).await?
+    Ok(())
+}
+
+/// Resolve function targets for analysis (cognitive complexity ≤6)
+async fn resolve_function_targets(config: &ProvabilityConfig) -> Result<Vec<crate::services::lightweight_provability_analyzer::FunctionId>> {
+    use crate::cli::provability_helpers::*;
+    
+    if config.functions.is_empty() {
+        discover_project_functions(&config.project_path).await
     } else {
         let mut ids = Vec::new();
         for spec in &config.functions {
             ids.push(parse_function_spec(spec, &config.project_path)?);
         }
-        ids
-    };
+        Ok(ids)
+    }
+}
 
-    // Analyze the functions
-    let summaries = analyzer.analyze_incrementally(&function_ids).await;
+/// Run provability analysis on function targets (cognitive complexity ≤3)
+async fn run_provability_analysis(
+    analyzer: &crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer,
+    function_ids: &[crate::services::lightweight_provability_analyzer::FunctionId],
+) -> Result<Vec<ProofSummary>> {
+    let summaries = analyzer.analyze_incrementally(function_ids).await;
     eprintln!("✅ Analyzed {} functions", summaries.len());
+    Ok(summaries)
+}
 
-    // Filter by confidence if requested
-    let filtered_summaries = filter_summaries(&summaries, config.high_confidence_only);
-    let filtered_summaries_owned: Vec<ProofSummary> =
-        filtered_summaries.into_iter().cloned().collect();
+/// Prepare filtered summaries for output (cognitive complexity ≤3)
+fn prepare_filtered_summaries(
+    summaries: &[ProofSummary],
+    high_confidence_only: bool,
+) -> Vec<ProofSummary> {
+    use crate::cli::provability_helpers::filter_summaries;
+    let filtered = filter_summaries(summaries, high_confidence_only);
+    filtered.into_iter().cloned().collect()
+}
 
-    // Format output based on requested format
-    let content = match config.format {
-        ProvabilityOutputFormat::Json => format_provability_json(
-            &function_ids,
-            &filtered_summaries_owned,
-            config.include_evidence,
-        )?,
+/// Format provability output based on config (cognitive complexity ≤8)
+fn format_provability_output(
+    function_ids: &[crate::services::lightweight_provability_analyzer::FunctionId],
+    summaries: &[ProofSummary],
+    config: &ProvabilityConfig,
+) -> Result<String> {
+    use crate::cli::provability_helpers::*;
+    
+    match config.format {
+        ProvabilityOutputFormat::Json => {
+            format_provability_json(function_ids, summaries, config.include_evidence)
+        }
         ProvabilityOutputFormat::Summary => {
-            format_provability_summary(&function_ids, &filtered_summaries_owned, config.top_files)?
+            format_provability_summary(function_ids, summaries, config.top_files)
         }
-        ProvabilityOutputFormat::Full => format_provability_detailed(
-            &function_ids,
-            &filtered_summaries_owned,
-            config.include_evidence,
-        )?,
+        ProvabilityOutputFormat::Full => {
+            format_provability_detailed(function_ids, summaries, config.include_evidence)
+        }
         ProvabilityOutputFormat::Sarif => {
-            format_provability_sarif(&function_ids, &filtered_summaries_owned)?
+            format_provability_sarif(function_ids, summaries)
         }
-        ProvabilityOutputFormat::Markdown => format_provability_detailed(
-            &function_ids,
-            &filtered_summaries_owned,
-            config.include_evidence,
-        )?,
-    };
+        ProvabilityOutputFormat::Markdown => {
+            format_provability_detailed(function_ids, summaries, config.include_evidence)
+        }
+    }
+}
 
-    // Write output
-    if let Some(output_path) = config.output {
-        tokio::fs::write(&output_path, &content).await?;
+/// Write provability output to file or stdout (cognitive complexity ≤4)
+async fn write_provability_output(content: &str, output_path: &Option<PathBuf>) -> Result<()> {
+    if let Some(output_path) = output_path {
+        tokio::fs::write(output_path, content).await?;
         eprintln!(
             "✅ Provability analysis written to: {}",
             output_path.display()
@@ -109,6 +134,5 @@ pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()>
     } else {
         println!("{}", content);
     }
-
     Ok(())
 }

@@ -202,50 +202,117 @@ fn format_defect_detailed(
     elapsed: std::time::Duration,
     include_recommendations: bool,
 ) -> Result<String> {
-    use std::fmt::Write;
     let mut output = String::new();
 
-    writeln!(&mut output, "🔮 Defect Prediction Detailed Report")?;
-    writeln!(&mut output, "===================================")?;
-    writeln!(&mut output)?;
-
+    write_detailed_header(&mut output)?;
+    
     for (file, score) in predictions {
-        writeln!(&mut output, "📄 File: {}", file)?;
-        writeln!(
-            &mut output,
-            "   Risk Level: {} ({:.1}%)",
-            match score.risk_level {
-                crate::services::defect_probability::RiskLevel::High => "🔴 HIGH",
-                crate::services::defect_probability::RiskLevel::Medium => "🟡 MEDIUM",
-                crate::services::defect_probability::RiskLevel::Low => "🟢 LOW",
-            },
-            score.probability * 100.0
-        )?;
-        writeln!(
-            &mut output,
-            "   Confidence: {:.1}%",
-            score.confidence * 100.0
-        )?;
-
-        if !score.contributing_factors.is_empty() {
-            writeln!(&mut output, "   Contributing Factors:")?;
-            for (factor, weight) in &score.contributing_factors {
-                writeln!(&mut output, "     - {}: {:.1}%", factor, weight * 100.0)?;
-            }
-        }
-
-        if include_recommendations && !score.recommendations.is_empty() {
-            writeln!(&mut output, "   Recommendations:")?;
-            for rec in &score.recommendations {
-                writeln!(&mut output, "     • {}", rec)?;
-            }
-        }
-        writeln!(&mut output)?;
+        write_file_details(&mut output, file, score, include_recommendations)?;
     }
 
-    writeln!(&mut output, "⏱️  Analysis time: {:.2?}", elapsed)?;
-
+    write_analysis_footer(&mut output, elapsed)?;
     Ok(output)
+}
+
+/// Write detailed report header
+fn write_detailed_header(output: &mut String) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "🔮 Defect Prediction Detailed Report")?;
+    writeln!(output, "===================================")?;
+    writeln!(output)?;
+    Ok(())
+}
+
+/// Write details for a single file
+fn write_file_details(
+    output: &mut String,
+    file: &str,
+    score: &DefectScore,
+    include_recommendations: bool,
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "📄 File: {}", file)?;
+    write_risk_level(output, score)?;
+    write_confidence_level(output, score)?;
+    write_contributing_factors(output, score)?;
+    
+    if include_recommendations {
+        write_recommendations(output, score)?;
+    }
+    
+    writeln!(output)?;
+    Ok(())
+}
+
+/// Write risk level information
+fn write_risk_level(output: &mut String, score: &DefectScore) -> Result<()> {
+    use std::fmt::Write;
+    let risk_display = format_risk_level_display(&score.risk_level);
+    writeln!(
+        output,
+        "   Risk Level: {} ({:.1}%)",
+        risk_display,
+        score.probability * 100.0
+    )?;
+    Ok(())
+}
+
+/// Format risk level for display
+fn format_risk_level_display(risk_level: &crate::services::defect_probability::RiskLevel) -> &'static str {
+    match risk_level {
+        crate::services::defect_probability::RiskLevel::High => "🔴 HIGH",
+        crate::services::defect_probability::RiskLevel::Medium => "🟡 MEDIUM",
+        crate::services::defect_probability::RiskLevel::Low => "🟢 LOW",
+    }
+}
+
+/// Write confidence level information
+fn write_confidence_level(output: &mut String, score: &DefectScore) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(
+        output,
+        "   Confidence: {:.1}%",
+        score.confidence * 100.0
+    )?;
+    Ok(())
+}
+
+/// Write contributing factors section
+fn write_contributing_factors(output: &mut String, score: &DefectScore) -> Result<()> {
+    use std::fmt::Write;
+    
+    if score.contributing_factors.is_empty() {
+        return Ok(());
+    }
+    
+    writeln!(output, "   Contributing Factors:")?;
+    for (factor, weight) in &score.contributing_factors {
+        writeln!(output, "     - {}: {:.1}%", factor, weight * 100.0)?;
+    }
+    Ok(())
+}
+
+/// Write recommendations section
+fn write_recommendations(output: &mut String, score: &DefectScore) -> Result<()> {
+    use std::fmt::Write;
+    
+    if score.recommendations.is_empty() {
+        return Ok(());
+    }
+    
+    writeln!(output, "   Recommendations:")?;
+    for rec in &score.recommendations {
+        writeln!(output, "     • {}", rec)?;
+    }
+    Ok(())
+}
+
+/// Write analysis footer with timing
+fn write_analysis_footer(output: &mut String, elapsed: std::time::Duration) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(output, "⏱️  Analysis time: {:.2?}", elapsed)?;
+    Ok(())
 }
 
 /// Format predictions as SARIF
