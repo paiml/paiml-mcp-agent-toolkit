@@ -294,6 +294,15 @@ impl ProofAnnotator {
     }
 }
 
+impl std::fmt::Debug for ProofAnnotator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProofAnnotator")
+            .field("sources_count", &self.sources.len())
+            .field("cache_stats", &self.cache_stats())
+            .finish()
+    }
+}
+
 /// Cache statistics
 #[derive(Debug)]
 pub struct CacheStats {
