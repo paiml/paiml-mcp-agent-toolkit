@@ -416,8 +416,8 @@ impl ConfigurationService {
                 default_toolchain: "rust".to_string(),
             },
             quality: QualityConfig {
-                max_complexity: 20,
-                max_cognitive_complexity: 15,
+                max_complexity: 30,
+                max_cognitive_complexity: 25,
                 min_coverage: 80.0,
                 allow_satd: false,
                 require_docs: true,
