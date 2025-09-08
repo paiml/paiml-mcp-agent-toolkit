@@ -621,6 +621,14 @@ pub enum TdgCommand {
         #[arg(long, default_value = "5")]
         update_interval: u64,
     },
+
+    /// Configuration management (single source of truth)
+    #[command(subcommand)]
+    Config(ConfigCommands),
+
+    /// Pre-commit hook management (core feature)
+    #[command(subcommand)]
+    Hooks(HooksCommands),
 }
 
 /// Analyze subcommands
@@ -2969,4 +2977,79 @@ pub enum AgentCommands {
         #[arg(long)]
         debug: bool,
     },
+}
+/// Configuration management commands
+#[derive(Subcommand, Clone)]
+#[cfg_attr(test, derive(Debug))]
+pub enum ConfigCommands {
+    /// Show complete configuration
+    Show {
+        /// Output format
+        #[arg(long, value_enum, default_value = "json")]
+        format: ConfigFormat,
+    },
+
+    /// Get specific configuration value
+    Get {
+        /// Configuration key path (e.g., hooks.quality_gates.max_cyclomatic_complexity)
+        key: String,
+    },
+
+    /// Validate configuration file
+    Validate {
+        /// Fix configuration issues automatically
+        #[arg(long)]
+        fix: bool,
+    },
+
+    /// Show configuration source hierarchy
+    Sources,
+}
+
+/// Pre-commit hook management commands  
+#[derive(Subcommand, Clone)]
+#[cfg_attr(test, derive(Debug))]
+pub enum HooksCommands {
+    /// Install or update pre-commit hooks
+    Install {
+        /// Force installation (overwrite existing)
+        #[arg(long)]
+        force: bool,
+
+        /// Create backup of existing hooks
+        #[arg(long, default_value = "true")]
+        backup: bool,
+    },
+
+    /// Remove PMAT-managed hooks
+    Uninstall {
+        /// Restore backup if available
+        #[arg(long)]
+        restore_backup: bool,
+    },
+
+    /// Show hook installation status
+    Status,
+
+    /// Verify hooks work with current configuration
+    Verify {
+        /// Fix issues automatically
+        #[arg(long)]
+        fix: bool,
+    },
+
+    /// Regenerate hooks from current configuration
+    Refresh,
+}
+
+/// Configuration output format
+#[derive(Debug, Clone, clap::ValueEnum)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum ConfigFormat {
+    /// JSON format
+    Json,
+    /// TOML format  
+    Toml,
+    /// Environment variables format
+    Env,
 }

@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.66.0] - 2025-09-08
+
+### Sprint 80 - Pre-commit Hook Management as Core Feature 🎯
+
+**MAJOR FEATURE**: Implemented pre-commit hook management as a core PMAT feature, establishing single source of truth configuration for quality gate enforcement.
+
+#### Added - Core Hook Management System
+- **🎯 Configuration Commands**: New `pmat tdg config` command suite
+  - `config show` - Display configuration in JSON/TOML/Env formats
+  - `config get` - Access specific configuration values with dot notation
+  - `config validate` - Validate configuration integrity
+  - `config sources` - Show configuration source hierarchy
+
+- **🔧 Hook Management Commands**: New `pmat tdg hooks` command suite
+  - `hooks install` - Install/update hooks with backup support
+  - `hooks uninstall` - Remove hooks with restore capability
+  - `hooks status` - Check installation and configuration status
+  - `hooks verify` - Verify and auto-fix hook issues
+  - `hooks refresh` - Update hooks from configuration changes
+
+- **📝 Template-Based Generation**: Dynamic hook script generation
+  - Configuration values injected from `pmat.toml`
+  - Quality gate thresholds synchronized automatically
+  - Documentation synchronization enforcement
+  - Task ID pattern validation
+
+#### Added - TDD Implementation
+- **Test Coverage**: 25 comprehensive TDD tests (11 config + 14 hooks)
+- **Property-Based Tests**: Idempotent installation, format roundtrip
+- **Integration Tests**: Configuration changes reflected in hooks
+- **Performance Tests**: Hook installation <5s, config loading <100ms
+
+#### Fixed - Configuration Duplication
+- **Single Source of Truth**: Eliminated hardcoded thresholds
+- **Dynamic Loading**: All values from `pmat.toml`
+- **Auto-Synchronization**: Hooks update with config changes
+- **Zero Duplication**: Removed redundant configuration files
+
+#### Improved - Developer Experience
+- **Easy Installation**: `pmat tdg hooks install --backup`
+- **Comprehensive Documentation**: [docs/hooks-management.md](docs/hooks-management.md)
+- **Dogfooding Success**: PMAT uses PMAT-managed hooks
+- **Toyota Way Compliance**: All functions ≤30 cyclomatic, ≤25 cognitive
+
+#### Technical Details
+- **Architecture**: HooksCommand and ConfigCommand implementations
+- **Integration**: Seamless CLI command routing through TdgCommand
+- **Storage**: Backup/restore system for existing hooks
+- **Platform Support**: Unix permissions, cross-platform paths
+
 ## [2.65.0] - 2025-09-08
 
 ### Sprint 79 Extension - Zero Violations Mission ACCOMPLISHED! 🎯
