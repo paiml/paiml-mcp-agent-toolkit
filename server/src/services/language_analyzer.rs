@@ -96,6 +96,18 @@ pub struct FileMetadata {
     pub confidence: f64,
 }
 
+/// Comment style for different languages
+#[derive(Debug, Clone, PartialEq)]
+enum CommentStyle {
+    CStyle,      // //
+    Hash,        // #
+    Semicolon,   // ;
+    Percent,     // %
+    DoubleDash,  // --
+    Xml,         // <!--
+    None,        // No comments
+}
+
 /// Language-aware analysis service
 pub struct LanguageAnalyzer {
     language_registry: LanguageRegistry,
@@ -208,51 +220,45 @@ impl LanguageAnalyzer {
 
     /// Check if a line is a comment for the given language
     fn is_comment_line(&self, line: &str, language: Language) -> bool {
+        match self.get_comment_style(language) {
+            CommentStyle::CStyle => self.is_c_style_comment(line),
+            CommentStyle::Hash => line.starts_with('#'),
+            CommentStyle::Semicolon => line.starts_with(';'),
+            CommentStyle::Percent => line.starts_with('%'),
+            CommentStyle::DoubleDash => line.starts_with("--"),
+            CommentStyle::Xml => line.starts_with("<!--"),
+            CommentStyle::None => false,
+        }
+    }
+    
+    /// Get the comment style for a language
+    fn get_comment_style(&self, language: Language) -> CommentStyle {
         match language {
             // C-style comments
-            Language::Rust
-            | Language::C
-            | Language::Cpp
-            | Language::Go
-            | Language::Java
-            | Language::Kotlin
-            | Language::JavaScript
-            | Language::TypeScript
-            | Language::CSharp
-            | Language::Swift
-            | Language::Dart
-            | Language::Scala
-            | Language::Groovy => {
-                line.starts_with("//") || line.starts_with("/*") || line.starts_with("*")
-            }
-
+            Language::Rust | Language::C | Language::Cpp | Language::Go 
+            | Language::Java | Language::Kotlin | Language::JavaScript 
+            | Language::TypeScript | Language::CSharp | Language::Swift 
+            | Language::Dart | Language::Scala | Language::Groovy => CommentStyle::CStyle,
+            
             // Hash comments
-            Language::Python
-            | Language::Ruby
-            | Language::Bash
-            | Language::Zsh
-            | Language::Fish
-            | Language::Perl
-            | Language::R
-            | Language::YAML
-            | Language::TOML
-            | Language::Makefile => line.starts_with('#'),
-
-            // Semicolon comments
-            Language::Clojure => line.starts_with(';'),
-
-            // Percent comments
-            Language::Erlang | Language::Matlab => line.starts_with('%'),
-
-            // Double dash comments
-            Language::SQL | Language::Haskell => line.starts_with("--"),
-
-            // HTML/XML comments
-            Language::XML => line.starts_with("<!--"),
-
-            // Other languages
-            _ => false,
+            Language::Python | Language::Ruby | Language::Bash | Language::Zsh 
+            | Language::Fish | Language::Perl | Language::R | Language::YAML 
+            | Language::TOML | Language::Makefile => CommentStyle::Hash,
+            
+            // Other comment styles
+            Language::Clojure => CommentStyle::Semicolon,
+            Language::Erlang | Language::Matlab => CommentStyle::Percent,
+            Language::SQL | Language::Haskell => CommentStyle::DoubleDash,
+            Language::XML => CommentStyle::Xml,
+            
+            // No comment style
+            _ => CommentStyle::None,
         }
+    }
+    
+    /// Check if line is C-style comment
+    fn is_c_style_comment(&self, line: &str) -> bool {
+        line.starts_with("//") || line.starts_with("/*") || line.starts_with("*")
     }
 
     /// Perform language-specific analyses
@@ -297,29 +303,8 @@ impl LanguageAnalyzer {
 
     /// Analyze complexity for the given language
     async fn analyze_complexity(&self, content: &str, language: Language) -> AnalysisResult {
-        // Simplified complexity analysis - count control flow keywords
-        let complexity_keywords = match language {
-            Language::Rust | Language::C | Language::Cpp | Language::Go => {
-                vec!["if", "else", "for", "while", "match", "switch", "case"]
-            }
-            Language::Python => vec!["if", "elif", "else", "for", "while", "try", "except"],
-            Language::JavaScript | Language::TypeScript => {
-                vec![
-                    "if", "else", "for", "while", "switch", "case", "try", "catch",
-                ]
-            }
-            Language::Java | Language::Kotlin => {
-                vec![
-                    "if", "else", "for", "while", "switch", "case", "try", "catch", "when",
-                ]
-            }
-            _ => vec!["if", "else", "for", "while"], // Basic keywords for other languages
-        };
-
-        let mut complexity = 1; // Base complexity
-        for keyword in complexity_keywords {
-            complexity += content.matches(keyword).count();
-        }
+        let complexity_keywords = self.get_complexity_keywords(language);
+        let complexity = self.calculate_keyword_complexity(content, &complexity_keywords);
 
         AnalysisResult {
             analysis_type: AnalysisType::Complexity,
@@ -331,6 +316,32 @@ impl LanguageAnalyzer {
             }),
             error: None,
         }
+    }
+    
+    /// Get complexity keywords for a language
+    fn get_complexity_keywords(&self, language: Language) -> Vec<&'static str> {
+        match language {
+            Language::Rust | Language::C | Language::Cpp | Language::Go => {
+                vec!["if", "else", "for", "while", "match", "switch", "case"]
+            }
+            Language::Python => vec!["if", "elif", "else", "for", "while", "try", "except"],
+            Language::JavaScript | Language::TypeScript => {
+                vec!["if", "else", "for", "while", "switch", "case", "try", "catch"]
+            }
+            Language::Java | Language::Kotlin => {
+                vec!["if", "else", "for", "while", "switch", "case", "try", "catch", "when"]
+            }
+            _ => vec!["if", "else", "for", "while"], // Basic keywords for other languages
+        }
+    }
+    
+    /// Calculate complexity based on keyword counting
+    fn calculate_keyword_complexity(&self, content: &str, keywords: &[&str]) -> usize {
+        let mut complexity = 1; // Base complexity
+        for keyword in keywords {
+            complexity += content.matches(keyword).count();
+        }
+        complexity
     }
 
     /// Analyze SATD (Self-Admitted Technical Debt)
@@ -376,27 +387,8 @@ impl LanguageAnalyzer {
 
     /// Analyze security issues (simplified)
     async fn analyze_security(&self, content: &str, language: Language) -> AnalysisResult {
-        let security_patterns = match language {
-            Language::JavaScript | Language::TypeScript => {
-                vec!["eval(", "innerHTML", "document.write"]
-            }
-            Language::Python => vec!["exec(", "eval(", "os.system"],
-            Language::SQL => vec!["DROP", "DELETE", "UPDATE"],
-            _ => vec!["password", "secret", "token"],
-        };
-
-        let mut issues = Vec::new();
-        for (line_num, line) in content.lines().enumerate() {
-            for pattern in &security_patterns {
-                if line.contains(pattern) {
-                    issues.push(serde_json::json!({
-                        "line": line_num + 1,
-                        "pattern": pattern,
-                        "severity": "medium"
-                    }));
-                }
-            }
-        }
+        let security_patterns = self.get_security_patterns(language);
+        let issues = self.find_security_issues(content, &security_patterns);
 
         AnalysisResult {
             analysis_type: AnalysisType::Security,
@@ -407,6 +399,37 @@ impl LanguageAnalyzer {
             }),
             error: None,
         }
+    }
+    
+    /// Get security patterns for a language
+    fn get_security_patterns(&self, language: Language) -> Vec<&'static str> {
+        match language {
+            Language::JavaScript | Language::TypeScript => {
+                vec!["eval(", "innerHTML", "document.write"]
+            }
+            Language::Python => vec!["exec(", "eval(", "os.system"],
+            Language::SQL => vec!["DROP", "DELETE", "UPDATE"],
+            _ => vec!["password", "secret", "token"],
+        }
+    }
+    
+    /// Find security issues in content
+    fn find_security_issues(&self, content: &str, patterns: &[&str]) -> Vec<serde_json::Value> {
+        let mut issues = Vec::new();
+        
+        for (line_num, line) in content.lines().enumerate() {
+            for pattern in patterns {
+                if line.contains(pattern) {
+                    issues.push(serde_json::json!({
+                        "line": line_num + 1,
+                        "pattern": pattern,
+                        "severity": "medium"
+                    }));
+                }
+            }
+        }
+        
+        issues
     }
 
     /// Analyze code style
@@ -460,26 +483,8 @@ impl LanguageAnalyzer {
 
     /// Analyze dependencies (simplified)
     async fn analyze_dependencies(&self, content: &str, language: Language) -> AnalysisResult {
-        let import_patterns = match language {
-            Language::Rust => vec!["use ", "extern crate"],
-            Language::Python => vec!["import ", "from "],
-            Language::JavaScript | Language::TypeScript => vec!["import ", "require("],
-            Language::Java | Language::Kotlin => vec!["import "],
-            Language::Go => vec!["import "],
-            _ => vec!["import", "include", "require"],
-        };
-
-        let mut imports = Vec::new();
-        for (line_num, line) in content.lines().enumerate() {
-            for pattern in &import_patterns {
-                if line.trim().starts_with(pattern) {
-                    imports.push(serde_json::json!({
-                        "line": line_num + 1,
-                        "import": line.trim()
-                    }));
-                }
-            }
-        }
+        let import_patterns = self.get_import_patterns(language);
+        let imports = self.find_imports(content, &import_patterns);
 
         AnalysisResult {
             analysis_type: AnalysisType::Dependencies,
@@ -490,6 +495,36 @@ impl LanguageAnalyzer {
             }),
             error: None,
         }
+    }
+    
+    /// Get import patterns for a language
+    fn get_import_patterns(&self, language: Language) -> Vec<&'static str> {
+        match language {
+            Language::Rust => vec!["use ", "extern crate"],
+            Language::Python => vec!["import ", "from "],
+            Language::JavaScript | Language::TypeScript => vec!["import ", "require("],
+            Language::Java | Language::Kotlin => vec!["import "],
+            Language::Go => vec!["import "],
+            _ => vec!["import", "include", "require"],
+        }
+    }
+    
+    /// Find imports in content
+    fn find_imports(&self, content: &str, patterns: &[&str]) -> Vec<serde_json::Value> {
+        let mut imports = Vec::new();
+        
+        for (line_num, line) in content.lines().enumerate() {
+            for pattern in patterns {
+                if line.trim().starts_with(pattern) {
+                    imports.push(serde_json::json!({
+                        "line": line_num + 1,
+                        "import": line.trim()
+                    }));
+                }
+            }
+        }
+        
+        imports
     }
 
     /// Analyze basic metrics

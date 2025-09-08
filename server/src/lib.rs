@@ -163,59 +163,94 @@ pub use services::template_service::{
     generate_template, list_templates, scaffold_project, search_templates, validate_template,
 };
 
-// MCP server runner function
+// MCP server runner function (cognitive complexity ≤8)
 pub async fn run_mcp_server<T: TemplateServerTrait + 'static>(server: Arc<T>) -> Result<()> {
-    use crate::models::mcp::{McpRequest, McpResponse};
-    use std::io::{self, BufRead, Write};
-    use tracing::{error, info};
+    use std::io::{self, BufRead};
+    use tracing::info;
 
     info!("MCP server ready, waiting for requests on stdin...");
 
-    // Read JSON-RPC requests from stdin
     let stdin = io::stdin();
     let mut stdout = io::stdout();
 
     for line in stdin.lock().lines() {
         let line = line?;
-
-        // Skip empty lines
-        if line.trim().is_empty() {
+        
+        if should_skip_line(&line) {
             continue;
         }
-
-        // Parse the JSON-RPC request
-        match serde_json::from_str::<McpRequest>(&line) {
-            Ok(request) => {
-                info!(
-                    "Received request: method={}, id={:?}",
-                    request.method, request.id
-                );
-
-                // Handle the request using the existing handler
-                let response = handlers::handle_request(Arc::clone(&server), request).await;
-
-                // Write response to stdout
-                let response_json = serde_json::to_string(&response)?;
-                writeln!(stdout, "{response_json}")?;
-                stdout.flush()?;
-            }
-            Err(e) => {
-                error!("Failed to parse JSON-RPC request: {}", e);
-
-                // Send error response
-                let error_response = McpResponse::error(
-                    serde_json::Value::Null,
-                    -32700,
-                    format!("Parse error: {e}"),
-                );
-
-                let response_json = serde_json::to_string(&error_response)?;
-                writeln!(stdout, "{response_json}")?;
-                stdout.flush()?;
-            }
-        }
+        
+        process_mcp_line(&line, Arc::clone(&server), &mut stdout).await?;
     }
 
+    Ok(())
+}
+
+/// Check if line should be skipped (cognitive complexity ≤2)
+fn should_skip_line(line: &str) -> bool {
+    line.trim().is_empty()
+}
+
+/// Process a single MCP line request (cognitive complexity ≤8)
+async fn process_mcp_line<T: TemplateServerTrait + 'static, W: std::io::Write>(
+    line: &str,
+    server: Arc<T>,
+    stdout: &mut W,
+) -> Result<()> {
+    
+    match parse_mcp_request(line) {
+        Ok(request) => handle_valid_request(request, server, stdout).await,
+        Err(e) => handle_parse_error(&e, stdout),
+    }
+}
+
+/// Parse MCP request from line (cognitive complexity ≤2)
+fn parse_mcp_request(line: &str) -> Result<crate::models::mcp::McpRequest> {
+    serde_json::from_str(line).map_err(anyhow::Error::from)
+}
+
+/// Handle valid MCP request (cognitive complexity ≤6)
+async fn handle_valid_request<T: TemplateServerTrait + 'static, W: std::io::Write>(
+    request: crate::models::mcp::McpRequest,
+    server: Arc<T>,
+    stdout: &mut W,
+) -> Result<()> {
+    use tracing::info;
+    
+    info!("Received request: method={}, id={:?}", request.method, request.id);
+    
+    let response = handlers::handle_request(server, request).await;
+    write_response_to_stdout(&response, stdout)
+}
+
+/// Handle JSON parse error (cognitive complexity ≤4)
+fn handle_parse_error<W: std::io::Write>(
+    error: &anyhow::Error,
+    stdout: &mut W,
+) -> Result<()> {
+    use crate::models::mcp::McpResponse;
+    use tracing::error;
+    
+    error!("Failed to parse JSON-RPC request: {}", error);
+    
+    let error_response = McpResponse::error(
+        serde_json::Value::Null,
+        -32700,
+        format!("Parse error: {error}"),
+    );
+    
+    write_response_to_stdout(&error_response, stdout)
+}
+
+/// Write response to stdout with error handling (cognitive complexity ≤3)
+fn write_response_to_stdout<W: std::io::Write>(
+    response: &crate::models::mcp::McpResponse,
+    stdout: &mut W,
+) -> Result<()> {
+    
+    let response_json = serde_json::to_string(response)?;
+    writeln!(stdout, "{response_json}")?;
+    stdout.flush()?;
     Ok(())
 }
 

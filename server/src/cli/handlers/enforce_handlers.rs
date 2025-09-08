@@ -165,93 +165,218 @@ async fn handle_enforce_extreme(
     cache_dir: Option<PathBuf>,
     clear_cache: bool,
 ) -> Result<()> {
+    print_enforcement_header(&project_path);
+    
+    let profile = initialize_enforcement_environment(
+        &profile_name,
+        config_path,
+        &cache_dir,
+        clear_cache,
+    )?;
+    
+    if let Some(result) = handle_special_modes(
+        list_violations,
+        validate_only,
+        &project_path,
+        &profile,
+        format,
+        ci_mode,
+    ).await? {
+        return result;
+    }
+    
+    let enforcement_config = EnforcementConfig {
+        max_iterations,
+        target_improvement,
+        max_time,
+        apply_suggestions,
+        specific_file,
+        include_pattern,
+        exclude_pattern,
+        single_file_mode,
+        dry_run,
+        show_progress,
+        format,
+        ci_mode,
+    };
+    
+    run_main_enforcement_loop(&project_path, &profile, enforcement_config).await
+}
+
+/// Configuration for enforcement loop
+struct EnforcementConfig {
+    max_iterations: u32,
+    target_improvement: Option<f32>,
+    max_time: Option<u64>,
+    apply_suggestions: bool,
+    specific_file: Option<PathBuf>,
+    include_pattern: Option<String>,
+    exclude_pattern: Option<String>,
+    single_file_mode: bool,
+    dry_run: bool,
+    show_progress: bool,
+    format: EnforceOutputFormat,
+    ci_mode: bool,
+}
+
+/// Print enforcement header
+fn print_enforcement_header(project_path: &PathBuf) {
     eprintln!("🎯 Starting Extreme Quality Enforcement");
     eprintln!("📁 Project: {}", project_path.display());
+}
 
-    // Load quality profile
-    let profile = load_quality_profile(&profile_name, config_path)?;
-
-    // Clear cache if requested
+/// Initialize enforcement environment
+fn initialize_enforcement_environment(
+    profile_name: &str,
+    config_path: Option<PathBuf>,
+    cache_dir: &Option<PathBuf>,
+    clear_cache: bool,
+) -> Result<QualityProfile> {
+    let profile = load_quality_profile(profile_name, config_path)?;
+    
     if clear_cache {
-        if let Some(cache_path) = &cache_dir {
-            eprintln!("🧹 Clearing cache at: {}", cache_path.display());
-            // In real implementation, would clear cache
-        }
+        clear_enforcement_cache(cache_dir);
     }
+    
+    Ok(profile)
+}
 
-    // List violations mode
+/// Clear enforcement cache
+fn clear_enforcement_cache(cache_dir: &Option<PathBuf>) {
+    if let Some(cache_path) = cache_dir {
+        eprintln!("🧹 Clearing cache at: {}", cache_path.display());
+        // In real implementation, would clear cache
+    }
+}
+
+/// Handle special modes (list violations, validate only)
+async fn handle_special_modes(
+    list_violations: bool,
+    validate_only: bool,
+    project_path: &PathBuf,
+    profile: &QualityProfile,
+    format: EnforceOutputFormat,
+    ci_mode: bool,
+) -> Result<Option<Result<()>>> {
     if list_violations {
-        return list_all_violations(&project_path, &profile, format).await;
+        return Ok(Some(list_all_violations(project_path, profile, format).await));
     }
-
-    // Validate only mode
+    
     if validate_only {
-        return validate_current_state(&project_path, &profile, format, ci_mode).await;
+        return Ok(Some(validate_current_state(project_path, profile, format, ci_mode).await));
     }
+    
+    Ok(None)
+}
 
-    // Main enforcement loop
+/// Run the main enforcement loop
+async fn run_main_enforcement_loop(
+    project_path: &PathBuf,
+    profile: &QualityProfile,
+    config: EnforcementConfig,
+) -> Result<()> {
     let start_time = Instant::now();
     let mut current_state = EnforcementState::Analyzing;
     let mut iteration = 0;
     let mut current_score = 0.0;
-
-    while current_state != EnforcementState::Complete && iteration < max_iterations {
-        // Check time limit
-        if let Some(max_seconds) = max_time {
-            if start_time.elapsed().as_secs() > max_seconds {
-                eprintln!("⏱️  Time limit reached");
-                break;
-            }
-        }
-
+    
+    while should_continue_enforcement(current_state, iteration, &config, start_time) {
         iteration += 1;
         eprintln!("\n🔄 Iteration {}", iteration);
-
-        // Run state machine step
-        let result = run_enforcement_step(
-            &project_path,
-            &profile,
+        
+        let result = execute_enforcement_iteration(
+            project_path,
+            profile,
             current_state,
-            single_file_mode,
-            dry_run,
-            apply_suggestions,
-            specific_file.as_ref(),
-            include_pattern.as_ref(),
-            exclude_pattern.as_ref(),
-        )
-        .await?;
-
-        // Update state
+            &config,
+        ).await?;
+        
         current_state = result.state;
         current_score = result.score;
-
-        // Output result based on format
-        output_result(&result, format, show_progress)?;
-
-        // Check target improvement
-        if let Some(target_delta) = target_improvement {
-            if result.score >= current_score + target_delta as f64 {
-                eprintln!("✅ Target improvement achieved");
-                break;
-            }
+        
+        output_result(&result, config.format, config.show_progress)?;
+        
+        if should_stop_for_target_improvement(config.target_improvement, result.score, current_score) {
+            eprintln!("✅ Target improvement achieved");
+            break;
         }
-
-        // Small delay between iterations to prevent CPU thrashing
+        
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
+    
+    print_enforcement_summary(current_score, iteration, start_time.elapsed());
+    handle_ci_mode_exit(config.ci_mode, current_state);
+    
+    Ok(())
+}
 
-    // Final status
+/// Check if enforcement should continue
+fn should_continue_enforcement(
+    current_state: EnforcementState,
+    iteration: u32,
+    config: &EnforcementConfig,
+    start_time: Instant,
+) -> bool {
+    if current_state == EnforcementState::Complete || iteration >= config.max_iterations {
+        return false;
+    }
+    
+    if let Some(max_seconds) = config.max_time {
+        if start_time.elapsed().as_secs() > max_seconds {
+            eprintln!("⏱️  Time limit reached");
+            return false;
+        }
+    }
+    
+    true
+}
+
+/// Execute a single enforcement iteration
+async fn execute_enforcement_iteration(
+    project_path: &PathBuf,
+    profile: &QualityProfile,
+    current_state: EnforcementState,
+    config: &EnforcementConfig,
+) -> Result<EnforcementResult> {
+    run_enforcement_step(
+        project_path,
+        profile,
+        current_state,
+        config.single_file_mode,
+        config.dry_run,
+        config.apply_suggestions,
+        config.specific_file.as_ref(),
+        config.include_pattern.as_ref(),
+        config.exclude_pattern.as_ref(),
+    ).await
+}
+
+/// Check if should stop for target improvement
+fn should_stop_for_target_improvement(
+    target_improvement: Option<f32>,
+    result_score: f64,
+    current_score: f64,
+) -> bool {
+    if let Some(target_delta) = target_improvement {
+        result_score >= current_score + target_delta as f64
+    } else {
+        false
+    }
+}
+
+/// Print enforcement summary
+fn print_enforcement_summary(current_score: f64, iteration: u32, duration: Duration) {
     eprintln!("\n🏁 Enforcement Complete");
     eprintln!("📊 Final Score: {:.2}/1.00", current_score);
     eprintln!("🔄 Iterations: {}", iteration);
-    eprintln!("⏱️  Duration: {:?}", start_time.elapsed());
+    eprintln!("⏱️  Duration: {:?}", duration);
+}
 
-    // Exit code based on CI mode
+/// Handle CI mode exit
+fn handle_ci_mode_exit(ci_mode: bool, current_state: EnforcementState) {
     if ci_mode && current_state != EnforcementState::Complete {
         std::process::exit(1);
     }
-
-    Ok(())
 }
 
 /// Run a single enforcement step
