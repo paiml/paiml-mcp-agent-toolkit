@@ -943,35 +943,65 @@ pub async fn resolve_repository_async(
 
 /// Parse different repository specification formats
 fn resolve_repo_spec(repo_spec: &str) -> Result<PathBuf> {
-    // Check if it's a local path first
-    let path = PathBuf::from(repo_spec);
-    if path.exists() {
-        return detect_repository(Some(path));
+    // Try each format in order of specificity
+    if let Some(result) = try_local_path(repo_spec) {
+        return result;
     }
-
-    // Handle GitHub shorthand formats
-    if repo_spec.starts_with("gh:") {
-        let repo_name = repo_spec.strip_prefix("gh:").unwrap();
-        // Convert GitHub shorthand to full URL
-        let github_url = format!("https://github.com/{}", repo_name);
-        return Ok(PathBuf::from(github_url));
+    
+    if let Some(result) = try_github_shorthand(repo_spec) {
+        return result;
     }
-
-    // Handle full GitHub URLs - now implemented!
-    if repo_spec.starts_with("https://github.com/") || repo_spec.starts_with("git@github.com:") {
-        // Return a placeholder that will trigger cloning in execute_with_diagram
-        return Ok(PathBuf::from(repo_spec));
+    
+    if let Some(result) = try_github_url(repo_spec) {
+        return result;
     }
-
-    // Handle owner/repo format (assume GitHub)
-    if repo_spec.contains('/') && !repo_spec.contains('.') {
-        // Convert owner/repo format to GitHub URL
-        let github_url = format!("https://github.com/{}", repo_spec);
-        return Ok(PathBuf::from(github_url));
+    
+    if let Some(result) = try_owner_repo_format(repo_spec) {
+        return result;
     }
-
+    
     // Fall back to treating as local path
     Err(anyhow!("Repository not found: {}", repo_spec))
+}
+
+/// Try to resolve as local path (cognitive complexity ≤2)
+fn try_local_path(repo_spec: &str) -> Option<Result<PathBuf>> {
+    let path = PathBuf::from(repo_spec);
+    if path.exists() {
+        Some(detect_repository(Some(path)))
+    } else {
+        None
+    }
+}
+
+/// Try to resolve GitHub shorthand format (gh:owner/repo) (cognitive complexity ≤2)
+fn try_github_shorthand(repo_spec: &str) -> Option<Result<PathBuf>> {
+    if repo_spec.starts_with("gh:") {
+        let repo_name = repo_spec.strip_prefix("gh:").unwrap();
+        let github_url = format!("https://github.com/{}", repo_name);
+        Some(Ok(PathBuf::from(github_url)))
+    } else {
+        None
+    }
+}
+
+/// Try to resolve full GitHub URLs (cognitive complexity ≤2)
+fn try_github_url(repo_spec: &str) -> Option<Result<PathBuf>> {
+    if repo_spec.starts_with("https://github.com/") || repo_spec.starts_with("git@github.com:") {
+        Some(Ok(PathBuf::from(repo_spec)))
+    } else {
+        None
+    }
+}
+
+/// Try to resolve owner/repo format (cognitive complexity ≤3)
+fn try_owner_repo_format(repo_spec: &str) -> Option<Result<PathBuf>> {
+    if repo_spec.contains('/') && !repo_spec.contains('.') {
+        let github_url = format!("https://github.com/{}", repo_spec);
+        Some(Ok(PathBuf::from(github_url)))
+    } else {
+        None
+    }
 }
 
 fn get_canonical_path(hint: Option<PathBuf>) -> Result<PathBuf> {

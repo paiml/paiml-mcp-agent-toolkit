@@ -521,6 +521,7 @@ pub enum DiagnosticOutputFormat {
 /// Storage management commands
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
+#[derive(Clone)]
 pub enum StorageCommand {
     /// Show storage statistics
     Stats {
@@ -554,6 +555,7 @@ pub enum StorageCommand {
 /// TDG subcommands
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
+#[derive(Clone)]
 pub enum TdgCommand {
     /// Compare two files or directories
     Compare {

@@ -4,6 +4,7 @@
 //! that consolidate multiple analysis outputs.
 
 use crate::cli::*;
+use crate::models::defect_report::DefectReport;
 use crate::services::defect_report_service::{DefectReportService, ReportFormat};
 use anyhow::Result;
 use std::path::PathBuf;
@@ -187,8 +188,31 @@ pub async fn handle_generate_report(
 ) -> Result<()> {
     let start_time = Instant::now();
 
-    // Determine actual output format based on shortcuts
-    let actual_format = if text {
+    let actual_format = determine_output_format(output_format, text, markdown, csv);
+    log_report_generation_start(&project_path, &actual_format);
+
+    let service = DefectReportService::new();
+    let report = service.generate_report(&project_path).await?;
+
+    let service_format = convert_to_service_format(actual_format);
+    let formatted_output = format_report_output(&service, &report, service_format)?;
+
+    write_report_output(formatted_output, output, service_format).await?;
+
+    let elapsed = start_time.elapsed();
+    print_report_summary(&report, elapsed, perf);
+
+    Ok(())
+}
+
+/// Determine final output format based on shortcuts (cognitive complexity ≤3)
+fn determine_output_format(
+    output_format: ReportOutputFormat,
+    text: bool,
+    markdown: bool,
+    csv: bool,
+) -> ReportOutputFormat {
+    if text {
         ReportOutputFormat::Text
     } else if markdown {
         ReportOutputFormat::Markdown
@@ -196,20 +220,19 @@ pub async fn handle_generate_report(
         ReportOutputFormat::Csv
     } else {
         output_format
-    };
+    }
+}
 
+/// Log report generation startup info (cognitive complexity ≤2)
+fn log_report_generation_start(project_path: &PathBuf, actual_format: &ReportOutputFormat) {
     info!("📊 Generating comprehensive defect report");
     info!("📂 Project path: {}", project_path.display());
     info!("📄 Output format: {:?}", actual_format);
+}
 
-    // Create reporting service
-    let service = DefectReportService::new();
-
-    // Generate comprehensive defect report
-    let report = service.generate_report(&project_path).await?;
-
-    // Convert output format
-    let service_format = match actual_format {
+/// Convert CLI output format to service format (cognitive complexity ≤7)
+fn convert_to_service_format(actual_format: ReportOutputFormat) -> ReportFormat {
+    match actual_format {
         ReportOutputFormat::Json => ReportFormat::Json,
         ReportOutputFormat::Csv => ReportFormat::Csv,
         ReportOutputFormat::Markdown => ReportFormat::Markdown,
@@ -218,34 +241,61 @@ pub async fn handle_generate_report(
         ReportOutputFormat::Html => ReportFormat::Markdown,
         ReportOutputFormat::Pdf => ReportFormat::Markdown,
         ReportOutputFormat::Dashboard => ReportFormat::Json,
-    };
+    }
+}
 
-    // Format output
-    let formatted_output = match service_format {
-        ReportFormat::Json => service.format_json(&report)?,
-        ReportFormat::Csv => service.format_csv(&report)?,
-        ReportFormat::Markdown => service.format_markdown(&report)?,
-        ReportFormat::Text => service.format_text(&report)?,
-    };
+/// Format report using service (cognitive complexity ≤4)
+fn format_report_output(
+    service: &DefectReportService,
+    report: &DefectReport,
+    service_format: ReportFormat,
+) -> Result<String> {
+    match service_format {
+        ReportFormat::Json => service.format_json(report),
+        ReportFormat::Csv => service.format_csv(report),
+        ReportFormat::Markdown => service.format_markdown(report),
+        ReportFormat::Text => service.format_text(report),
+    }
+}
 
-    // Write output
+/// Write report output to file or auto-generated filename (cognitive complexity ≤4)
+async fn write_report_output(
+    formatted_output: String,
+    output: Option<PathBuf>,
+    service_format: ReportFormat,
+) -> Result<()> {
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &formatted_output).await?;
         info!("📄 Report saved to: {}", output_path.display());
     } else {
-        // Auto-generate filename with timestamp if not specified
+        let service = DefectReportService::new();
         let filename = service.generate_filename(service_format);
         tokio::fs::write(&filename, &formatted_output).await?;
         info!("📄 Report saved to: {}", filename);
     }
+    Ok(())
+}
 
-    let elapsed = start_time.elapsed();
-
-    // Print summary
+/// Print comprehensive report summary (cognitive complexity ≤8)
+fn print_report_summary(
+    report: &DefectReport,
+    elapsed: std::time::Duration,
+    perf: bool,
+) {
     info!("✅ Report generation completed in {:?}", elapsed);
     info!("📊 Total Defects: {}", report.summary.total_defects);
     info!("📁 Files with defects: {}", report.file_index.len());
 
+    print_severity_summary(report);
+
+    if perf {
+        let files_per_sec = report.metadata.total_files_analyzed as f64 / elapsed.as_secs_f64();
+        info!("⚡ Performance: {:.0} files/second", files_per_sec);
+    }
+}
+
+/// Print severity-specific summary (cognitive complexity ≤4)
+fn print_severity_summary(report: &DefectReport) {
     if let Some(critical) = report.summary.by_severity.get("critical") {
         if *critical > 0 {
             info!("🚨 Critical Issues: {}", critical);
@@ -257,13 +307,6 @@ pub async fn handle_generate_report(
             info!("⚠️ High Severity Issues: {}", high);
         }
     }
-
-    if perf {
-        let files_per_sec = report.metadata.total_files_analyzed as f64 / elapsed.as_secs_f64();
-        info!("⚡ Performance: {:.0} files/second", files_per_sec);
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]

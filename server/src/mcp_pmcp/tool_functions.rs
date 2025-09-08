@@ -6,6 +6,7 @@ use crate::tdg::{
 };
 use anyhow::Result;
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 // Simple placeholder implementations that return success results
@@ -405,102 +406,75 @@ pub async fn tdg_analyze_with_storage(
     storage_backend: Option<String>, // "sled", "rocksdb", "inmemory"
     _priority: Option<String>,       // "critical", "high", "medium", "low"
 ) -> Result<Value> {
-    // Create appropriate storage backend
-    let storage = match storage_backend.as_deref() {
-        Some("inmemory") => TieredStorageFactory::create_in_memory(),
-        Some("sled") | None => TieredStorageFactory::create_default()?,
+    let storage = create_storage_backend(storage_backend.as_deref())?;
+    let analyzer = TdgAnalyzer::new()?;
+    
+    let analysis_results = analyze_paths_with_storage(paths, &analyzer, storage.as_ref()).await?;
+    
+    let storage_stats = storage.as_ref().get_stats();
+    
+    build_analysis_response(analysis_results, storage_backend, storage_stats)
+}
+
+/// Create storage backend based on the provided backend type
+fn create_storage_backend(backend_type: Option<&str>) -> Result<Box<dyn crate::tdg::storage_backend::StorageBackend>> {
+    match backend_type {
+        Some("inmemory") => {
+            use crate::tdg::storage_backend::InMemoryBackend;
+            Ok(Box::new(InMemoryBackend::new()))
+        }
+        Some("sled") | None => {
+            use crate::tdg::storage_backend::SledBackend;
+            let temp_path = std::env::temp_dir().join("tdg-mcp-sled");
+            Ok(Box::new(SledBackend::new(&temp_path)?))
+        }
         #[cfg(feature = "rocksdb-backend")]
         Some("rocksdb") => {
             let temp_path = std::env::temp_dir().join("tdg-mcp-rocksdb");
-            TieredStorageFactory::create_with_rocksdb(&temp_path)?
+            return Err(anyhow::anyhow!("RocksDB backend not yet implemented"))
         }
         Some(backend) => {
-            return Ok(json!({
-                "status": "error",
-                "message": format!("Unsupported storage backend: {}", backend),
-                "supported_backends": ["sled", "inmemory", "rocksdb"]
-            }))
+            return Err(anyhow::anyhow!(
+                "Unsupported storage backend: {}. Supported: sled, inmemory, rocksdb",
+                backend
+            ));
         }
-    };
+    }
+}
 
-    let analyzer = TdgAnalyzer::new()?;
+/// Analysis results container
+struct AnalysisResults {
+    results: Vec<Value>,
+    total_files: u32,
+    avg_score: f32,
+}
+
+/// Analyze all paths with storage
+async fn analyze_paths_with_storage(
+    paths: Vec<PathBuf>,
+    analyzer: &TdgAnalyzer,
+    storage: &dyn crate::tdg::storage_backend::StorageBackend,
+) -> Result<AnalysisResults> {
     let mut results = Vec::new();
     let mut total_files = 0;
     let mut avg_score = 0.0;
 
     for path in paths {
-        match if path.is_dir() {
-            analyzer.analyze_project(&path).await
-        } else {
-            analyzer.analyze_file(&path).await.map(|score| {
-                use crate::tdg::ProjectScore;
-                ProjectScore::aggregate(vec![score])
-            })
-        } {
+        let analysis_result = analyze_single_path(&path, analyzer).await;
+        
+        match analysis_result {
             Ok(project_score) => {
                 total_files += project_score.total_files;
                 avg_score += project_score.average_score;
-
-                // Store results in TDG storage system
-                for file_score in &project_score.files {
-                    if let Some(file_path) = &file_score.file_path {
-                        // Create a full TDG record for storage
-                        let content = std::fs::read(file_path).unwrap_or_default();
-                        let hash = blake3::hash(&content);
-
-                        let record = crate::tdg::FullTdgRecord {
-                            identity: crate::tdg::FileIdentity {
-                                path: file_path.clone(),
-                                content_hash: hash,
-                                size_bytes: content.len() as u64,
-                                modified_time: std::time::SystemTime::now(),
-                            },
-                            score: file_score.clone(),
-                            components: crate::tdg::ComponentScores {
-                                complexity_breakdown: std::collections::HashMap::new(),
-                                duplication_sources: Vec::new(),
-                                coupling_dependencies: Vec::new(),
-                                doc_missing_items: Vec::new(),
-                                consistency_violations: Vec::new(),
-                            },
-                            semantic_sig: crate::tdg::SemanticSignature {
-                                ast_structure_hash: hash.as_bytes()[0..8]
-                                    .iter()
-                                    .fold(0u64, |acc, &b| acc.wrapping_mul(256) + b as u64),
-                                identifier_pattern: "mcp_analysis".to_string(),
-                                control_flow_pattern: "function_call".to_string(),
-                                import_dependencies: Vec::new(),
-                            },
-                            metadata: crate::tdg::AnalysisMetadata {
-                                analyzer_version: "2.38.0-mcp".to_string(),
-                                analysis_duration_ms: 10,
-                                language_confidence: file_score.confidence,
-                                analysis_timestamp: std::time::SystemTime::now(),
-                                cache_hit: false,
-                            },
-                        };
-
-                        // Store in TDG system
-                        if let Err(e) = storage.store(record).await {
-                            eprintln!("Warning: Failed to store TDG record: {}", e);
-                        }
-                    }
-                }
-
-                results.push(json!({
-                    "path": path.display().to_string(),
-                    "total_files": project_score.total_files,
-                    "average_score": project_score.average_score,
-                    "average_grade": format!("{}", project_score.average_grade),
-                    "language_distribution": project_score.language_distribution,
-                }));
+                
+                store_project_results(&project_score, storage).await;
+                
+                let result_json = create_success_result(&path, &project_score);
+                results.push(result_json);
             }
             Err(e) => {
-                results.push(json!({
-                    "path": path.display().to_string(),
-                    "error": e.to_string(),
-                    "status": "failed"
-                }));
+                let error_result = create_error_result(&path, &e);
+                results.push(error_result);
             }
         }
     }
@@ -509,26 +483,150 @@ pub async fn tdg_analyze_with_storage(
         avg_score /= results.len() as f32;
     }
 
-    // Get storage statistics
-    let storage_stats = storage.get_statistics();
+    Ok(AnalysisResults {
+        results,
+        total_files: total_files.try_into().unwrap_or(0),
+        avg_score,
+    })
+}
 
+/// Analyze a single path (file or directory)
+async fn analyze_single_path(
+    path: &PathBuf,
+    analyzer: &TdgAnalyzer,
+) -> Result<crate::tdg::ProjectScore> {
+    if path.is_dir() {
+        analyzer.analyze_project(path).await
+    } else {
+        analyzer.analyze_file(path).await.map(|score| {
+            use crate::tdg::ProjectScore;
+            ProjectScore::aggregate(vec![score])
+        })
+    }
+}
+
+/// Store project analysis results in TDG storage
+async fn store_project_results(
+    project_score: &crate::tdg::ProjectScore,
+    storage: &dyn crate::tdg::storage_backend::StorageBackend,
+) {
+    for file_score in &project_score.files {
+        if let Some(file_path) = &file_score.file_path {
+            if let Ok(record) = create_tdg_record(file_path, file_score) {
+                // Convert record to key/value for storage
+                let key = file_path.to_string_lossy().as_bytes().to_vec();
+                if let Ok(value) = serde_json::to_vec(&record) {
+                    if let Err(e) = storage.put(&key, &value) {
+                        eprintln!("Warning: Failed to store TDG record: {}", e);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Create a TDG record for storage
+fn create_tdg_record(
+    file_path: &PathBuf,
+    file_score: &crate::tdg::TdgScore,
+) -> Result<crate::tdg::FullTdgRecord> {
+    let content = std::fs::read(file_path).unwrap_or_default();
+    let hash = blake3::hash(&content);
+    
+    Ok(crate::tdg::FullTdgRecord {
+        identity: create_file_identity(file_path, &hash, &content),
+        score: file_score.clone(),
+        components: create_component_scores(),
+        semantic_sig: create_semantic_signature(&hash),
+        metadata: create_analysis_metadata(file_score),
+    })
+}
+
+/// Create file identity for TDG record
+fn create_file_identity(
+    file_path: &PathBuf,
+    hash: &blake3::Hash,
+    content: &[u8],
+) -> crate::tdg::FileIdentity {
+    crate::tdg::FileIdentity {
+        path: file_path.clone(),
+        content_hash: *hash,
+        size_bytes: content.len() as u64,
+        modified_time: std::time::SystemTime::now(),
+    }
+}
+
+/// Create component scores for TDG record
+fn create_component_scores() -> crate::tdg::ComponentScores {
+    crate::tdg::ComponentScores {
+        complexity_breakdown: std::collections::HashMap::new(),
+        duplication_sources: Vec::new(),
+        coupling_dependencies: Vec::new(),
+        doc_missing_items: Vec::new(),
+        consistency_violations: Vec::new(),
+    }
+}
+
+/// Create semantic signature for TDG record
+fn create_semantic_signature(hash: &blake3::Hash) -> crate::tdg::SemanticSignature {
+    crate::tdg::SemanticSignature {
+        ast_structure_hash: hash.as_bytes()[0..8]
+            .iter()
+            .fold(0u64, |acc, &b| acc.wrapping_mul(256) + b as u64),
+        identifier_pattern: "mcp_analysis".to_string(),
+        control_flow_pattern: "function_call".to_string(),
+        import_dependencies: Vec::new(),
+    }
+}
+
+/// Create analysis metadata for TDG record
+fn create_analysis_metadata(file_score: &crate::tdg::TdgScore) -> crate::tdg::AnalysisMetadata {
+    crate::tdg::AnalysisMetadata {
+        analyzer_version: "2.38.0-mcp".to_string(),
+        analysis_duration_ms: 10,
+        language_confidence: file_score.confidence,
+        analysis_timestamp: std::time::SystemTime::now(),
+        cache_hit: false,
+    }
+}
+
+/// Create success result JSON
+fn create_success_result(path: &PathBuf, project_score: &crate::tdg::ProjectScore) -> Value {
+    json!({
+        "path": path.display().to_string(),
+        "total_files": project_score.total_files,
+        "average_score": project_score.average_score,
+        "average_grade": format!("{}", project_score.average_grade),
+        "language_distribution": project_score.language_distribution,
+    })
+}
+
+/// Create error result JSON
+fn create_error_result(path: &PathBuf, error: &anyhow::Error) -> Value {
+    json!({
+        "path": path.display().to_string(),
+        "error": error.to_string(),
+        "status": "failed"
+    })
+}
+
+/// Build final analysis response
+fn build_analysis_response(
+    analysis_results: AnalysisResults,
+    storage_backend: Option<String>,
+    storage_stats: HashMap<String, String>,
+) -> Result<Value> {
     Ok(json!({
         "status": "completed",
         "message": "TDG analysis with transactional storage completed",
         "result_type": "tdg_analysis_storage",
         "summary": {
-            "total_files_analyzed": total_files,
-            "average_score": avg_score,
+            "total_files_analyzed": analysis_results.total_files,
+            "average_score": analysis_results.avg_score,
             "storage_backend": storage_backend.unwrap_or("sled".to_string()),
-            "storage_stats": {
-                "total_entries": storage_stats.total_entries,
-                "hot_entries": storage_stats.hot_entries,
-                "warm_entries": storage_stats.warm_entries,
-                "cold_entries": storage_stats.cold_entries,
-                "compression_ratio": storage_stats.compression_ratio,
-            }
+            "storage_stats": storage_stats
         },
-        "results": results
+        "results": analysis_results.results
     }))
 }
 

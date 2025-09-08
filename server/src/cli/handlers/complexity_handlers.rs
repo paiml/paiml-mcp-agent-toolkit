@@ -477,7 +477,7 @@ pub async fn handle_analyze_complexity(
         );
     }
 
-    // Create configuration to reduce parameter passing and centralize logic
+    // Create configuration and analyze files
     let config = ComplexityConfig::from_args(
         project_path,
         toolchain,
@@ -488,51 +488,228 @@ pub async fn handle_analyze_complexity(
         top_files,
     );
 
-    // Detect toolchain (Issue #42 fix: supports multi-language when None)
-    let detected_toolchain = config.detect_toolchain();
+    let mut file_metrics = analyze_files_by_mode(file, files, &config).await?;
 
-    // Analyze files using extracted helper functions (reduces complexity)
-    eprintln!("⏰ Analysis timeout set to {} seconds", config.timeout);
-    let mut file_metrics = if let Some(single_file) = file {
-        analyze_single_file(&single_file, &config).await?
-    } else if !files.is_empty() {
-        analyze_multiple_files(&files, &config).await?
-    } else {
-        analyze_project(detected_toolchain, &config).await?
-    };
-
-    // Apply filtering using extracted helper functions
+    // Apply filtering and aggregation
     apply_complexity_filters(&mut file_metrics, max_cyclomatic, max_cognitive);
     apply_top_files_limit(&mut file_metrics, config.top_files);
 
-    // Aggregate results with custom thresholds
-    let summary =
-        aggregate_results_with_thresholds(file_metrics.clone(), max_cyclomatic, max_cognitive);
+    let summary = aggregate_results_with_thresholds(file_metrics.clone(), max_cyclomatic, max_cognitive);
 
     // Format and write output
     format_and_write_output(&summary, &file_metrics, format, output, top_files).await?;
 
-    // Check for violations and exit with error code if requested
-    if fail_on_violation {
-        let has_violations = file_metrics.iter().any(|file| {
-            let cyclomatic_exceeded = file
-                .functions
-                .iter()
-                .any(|func| func.metrics.cyclomatic > max_cyclomatic.unwrap_or(20));
-            let cognitive_exceeded = file
-                .functions
-                .iter()
-                .any(|func| func.metrics.cognitive > max_cognitive.unwrap_or(15));
-            cyclomatic_exceeded || cognitive_exceeded
-        });
-
-        if has_violations {
-            eprintln!("\n❌ Complexity violations found");
-            std::process::exit(1);
-        }
-    }
+    // Check violations if required
+    check_complexity_violations(&file_metrics, fail_on_violation, max_cyclomatic, max_cognitive);
 
     Ok(())
+}
+
+/// Analyze files based on the specified mode (single, multiple, or project)
+async fn analyze_files_by_mode(
+    file: Option<PathBuf>,
+    files: Vec<PathBuf>,
+    config: &ComplexityConfig,
+) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
+    eprintln!("⏰ Analysis timeout set to {} seconds", config.timeout);
+    
+    if let Some(single_file) = file {
+        analyze_single_file(&single_file, config).await
+    } else if !files.is_empty() {
+        analyze_multiple_files(&files, config).await
+    } else {
+        let detected_toolchain = config.detect_toolchain();
+        analyze_project(detected_toolchain, config).await
+    }
+}
+
+/// Check for complexity violations and exit if required
+fn check_complexity_violations(
+    file_metrics: &[crate::services::complexity::FileComplexityMetrics],
+    fail_on_violation: bool,
+    max_cyclomatic: Option<u16>,
+    max_cognitive: Option<u16>,
+) {
+    if !fail_on_violation {
+        return;
+    }
+
+    let has_violations = has_complexity_violations(file_metrics, max_cyclomatic, max_cognitive);
+    
+    if has_violations {
+        eprintln!("\n❌ Complexity violations found");
+        std::process::exit(1);
+    }
+}
+
+/// Check if any files have complexity violations
+fn has_complexity_violations(
+    file_metrics: &[crate::services::complexity::FileComplexityMetrics],
+    max_cyclomatic: Option<u16>,
+    max_cognitive: Option<u16>,
+) -> bool {
+    file_metrics.iter().any(|file| {
+        file.functions.iter().any(|func| {
+            let cyclomatic_exceeded = func.metrics.cyclomatic > max_cyclomatic.unwrap_or(20);
+            let cognitive_exceeded = func.metrics.cognitive > max_cognitive.unwrap_or(15);
+            cyclomatic_exceeded || cognitive_exceeded
+        })
+    })
+}
+
+/// Create dead code ranking result from cargo analysis report
+fn create_dead_code_ranking_result(
+    accurate_report: crate::services::cargo_dead_code_analyzer::AccurateDeadCodeReport,
+    files_with_dead_code_count: usize,
+    min_dead_lines: usize,
+    config: crate::models::dead_code::DeadCodeAnalysisConfig,
+) -> crate::models::dead_code::DeadCodeRankingResult {
+    use crate::models::dead_code::{DeadCodeRankingResult, DeadCodeSummary, ConfidenceLevel, FileDeadCodeMetrics};
+    use chrono::Utc;
+    
+    DeadCodeRankingResult {
+        ranked_files: convert_cargo_files_to_metrics(accurate_report.files_with_dead_code.clone(), min_dead_lines),
+        summary: create_dead_code_summary(&accurate_report, files_with_dead_code_count),
+        analysis_timestamp: Utc::now(),
+        config,
+    }
+}
+
+/// Convert cargo dead code files to metrics format
+fn convert_cargo_files_to_metrics(
+    cargo_files: Vec<crate::services::cargo_dead_code_analyzer::FileDeadCode>,
+    min_dead_lines: usize,
+) -> Vec<crate::models::dead_code::FileDeadCodeMetrics> {
+    use crate::models::dead_code::{FileDeadCodeMetrics, ConfidenceLevel};
+    
+    cargo_files
+        .into_iter()
+        .map(|file| {
+            let dead_functions_count = count_dead_items_by_kind(&file, &[
+                crate::services::cargo_dead_code_analyzer::DeadCodeKind::Function,
+                crate::services::cargo_dead_code_analyzer::DeadCodeKind::Method,
+            ]);
+            let dead_classes_count = count_dead_items_by_kind(&file, &[
+                crate::services::cargo_dead_code_analyzer::DeadCodeKind::Struct,
+                crate::services::cargo_dead_code_analyzer::DeadCodeKind::Enum,
+            ]);
+
+            FileDeadCodeMetrics {
+                path: file.file_path.display().to_string(),
+                dead_lines: file.dead_items.len() * 4, // Estimate lines per item
+                total_lines: 100,                      // Will be updated later if needed
+                dead_percentage: file.file_dead_percentage as f32,
+                dead_functions: dead_functions_count,
+                dead_classes: dead_classes_count,
+                dead_modules: 0,
+                unreachable_blocks: 0,
+                dead_score: file.file_dead_percentage as f32,
+                confidence: ConfidenceLevel::High, // Cargo-based detection is high confidence
+                items: Vec::new(), // Will be populated if needed for detailed reporting
+            }
+        })
+        .filter(|f| f.dead_lines >= min_dead_lines)
+        .collect()
+}
+
+/// Count dead items of specific kinds
+fn count_dead_items_by_kind(
+    file: &crate::services::cargo_dead_code_analyzer::FileDeadCode,
+    kinds: &[crate::services::cargo_dead_code_analyzer::DeadCodeKind],
+) -> usize {
+    file.dead_items
+        .iter()
+        .filter(|i| kinds.contains(&i.kind))
+        .count()
+}
+
+/// Create dead code summary from cargo report
+fn create_dead_code_summary(
+    accurate_report: &crate::services::cargo_dead_code_analyzer::AccurateDeadCodeReport,
+    files_with_dead_code_count: usize,
+) -> crate::models::dead_code::DeadCodeSummary {
+    use crate::models::dead_code::DeadCodeSummary;
+    
+    DeadCodeSummary {
+        total_files_analyzed: accurate_report.total_lines / 100, // Rough estimate
+        files_with_dead_code: files_with_dead_code_count,
+        total_dead_lines: accurate_report.dead_lines,
+        dead_percentage: accurate_report.dead_code_percentage as f32,
+        dead_functions: get_dead_count_by_types(accurate_report, &["function", "method"]),
+        dead_classes: get_dead_count_by_types(accurate_report, &["struct", "enum"]),
+        dead_modules: get_dead_count_by_types(accurate_report, &["module"]),
+        unreachable_blocks: 0, // Not tracked by cargo
+    }
+}
+
+/// Get total dead count for specific types
+fn get_dead_count_by_types(
+    report: &crate::services::cargo_dead_code_analyzer::AccurateDeadCodeReport,
+    types: &[&str],
+) -> usize {
+    types
+        .iter()
+        .map(|type_name| report.dead_by_type.get(*type_name).copied().unwrap_or(0))
+        .sum()
+}
+
+/// Write top files with SATD section
+fn write_top_files_with_satd_section(
+    output: &mut String,
+    result: &crate::services::satd_detector::SATDAnalysisResult,
+) {
+    use std::fmt::Write;
+    use std::collections::HashMap;
+    
+    writeln!(output, "\n## Top Files with SATD\n").unwrap();
+
+    // Group items by file and count them
+    let mut file_counts: HashMap<&std::path::Path, usize> = HashMap::new();
+    for item in &result.items {
+        *file_counts.entry(&item.file).or_insert(0) += 1;
+    }
+
+    // Sort files by SATD count (descending)
+    let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
+    sorted_files.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
+
+    // Show top 10 files with their SATD counts
+    for (i, (file, count)) in sorted_files.iter().take(10).enumerate() {
+        let filename = file.file_name().unwrap_or_default().to_string_lossy();
+        writeln!(
+            output,
+            "{}. `{}` - {} SATD items",
+            i + 1,
+            filename,
+            count
+        )
+        .unwrap();
+    }
+}
+
+/// Write critical SATD items section
+fn write_critical_items_section(
+    output: &mut String,
+    result: &crate::services::satd_detector::SATDAnalysisResult,
+) {
+    use std::fmt::Write;
+    
+    writeln!(output, "\n## Critical Items\n").unwrap();
+    for item in result
+        .items
+        .iter()
+        .filter(|i| i.severity == crate::services::satd_detector::Severity::Critical)
+        .take(5)
+    {
+        writeln!(
+            output,
+            "- `{}:{}` - {}",
+            item.file.file_name().unwrap_or_default().to_string_lossy(),
+            item.line,
+            item.text
+        )
+        .unwrap();
+    }
 }
 
 /// Handle watch mode for continuous complexity analysis
@@ -548,14 +725,29 @@ fn handle_watch_mode(
     format: ComplexityOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
+    print_watch_mode_intro(path);
+    let (mut watcher, rx) = create_file_watcher(path)?;
+    
+    let config = create_sync_config(path, toolchain, max_cyclomatic, max_cognitive, &include, timeout, top_files, format.clone(), output);
+    
+    // Initial analysis
+    run_initial_analysis(&config)?;
+    
+    // Watch for changes
+    watch_for_file_changes(rx, &config, &include, &mut watcher)
+}
+
+/// Print watch mode introduction messages
+fn print_watch_mode_intro(path: &Path) {
     eprintln!("👁️  Starting watch mode for complexity analysis...");
     eprintln!("📁 Watching: {}", path.display());
     eprintln!("🔄 Press Ctrl+C to stop watching\n");
+}
 
-    // Create a channel to receive file system events
+/// Create file system watcher
+fn create_file_watcher(path: &Path) -> Result<(RecommendedWatcher, std::sync::mpsc::Receiver<Event>)> {
     let (tx, rx) = channel();
-
-    // Create a watcher with a small debounce delay
+    
     let mut watcher = RecommendedWatcher::new(
         move |event: Result<Event, notify::Error>| {
             if let Ok(event) = event {
@@ -564,54 +756,56 @@ fn handle_watch_mode(
         },
         Config::default().with_poll_interval(Duration::from_secs(1)),
     )?;
-
+    
     // Start watching the path recursively
     watcher.watch(path, RecursiveMode::Recursive)?;
+    
+    Ok((watcher, rx))
+}
 
-    // Initial analysis
-    eprintln!("📊 Running initial complexity analysis...\n");
-    let config = SyncAnalysisConfig {
+/// Create synchronous analysis configuration
+fn create_sync_config<'a>(
+    path: &'a Path,
+    toolchain: Option<&'a str>,
+    max_cyclomatic: Option<u16>,
+    max_cognitive: Option<u16>,
+    include: &'a [String],
+    timeout: u64,
+    top_files: usize,
+    format: ComplexityOutputFormat,
+    output: Option<&'a Path>,
+) -> SyncAnalysisConfig<'a> {
+    SyncAnalysisConfig {
         path,
         toolchain,
         max_cyclomatic,
         max_cognitive,
-        include: &include,
+        include,
         timeout,
         top_files,
-        format: format.clone(),
+        format,
         output,
-    };
-    run_complexity_analysis_sync(config)?;
+    }
+}
 
-    // Watch for changes
+/// Run initial complexity analysis
+fn run_initial_analysis(config: &SyncAnalysisConfig) -> Result<()> {
+    eprintln!("📊 Running initial complexity analysis...\n");
+    run_complexity_analysis_sync(config.clone())
+}
+
+/// Watch for file changes and reanalyze when needed
+fn watch_for_file_changes(
+    rx: std::sync::mpsc::Receiver<Event>,
+    config: &SyncAnalysisConfig,
+    include: &[String],
+    _watcher: &mut RecommendedWatcher,
+) -> Result<()> {
     loop {
         match rx.recv() {
             Ok(event) => {
-                // Filter for relevant file changes
-                if should_reanalyze(&event, &include) {
-                    eprintln!("\n🔄 File change detected, reanalyzing...");
-                    if let Some(paths) = get_changed_paths(&event) {
-                        for changed_path in paths {
-                            eprintln!("  📝 Changed: {}", changed_path.display());
-                        }
-                    }
-                    eprintln!();
-
-                    // Run analysis again
-                    let config = SyncAnalysisConfig {
-                        path,
-                        toolchain,
-                        max_cyclomatic,
-                        max_cognitive,
-                        include: &include,
-                        timeout,
-                        top_files,
-                        format: format.clone(),
-                        output,
-                    };
-                    if let Err(e) = run_complexity_analysis_sync(config) {
-                        eprintln!("⚠️  Analysis error: {}", e);
-                    }
+                if should_reanalyze(&event, include) {
+                    handle_file_change_event(&event, config)?;
                 }
             }
             Err(e) => {
@@ -620,7 +814,24 @@ fn handle_watch_mode(
             }
         }
     }
+    Ok(())
+}
 
+/// Handle a file change event by reanalyzing
+fn handle_file_change_event(event: &Event, config: &SyncAnalysisConfig) -> Result<()> {
+    eprintln!("\n🔄 File change detected, reanalyzing...");
+    
+    if let Some(paths) = get_changed_paths(event) {
+        for changed_path in paths {
+            eprintln!("  📝 Changed: {}", changed_path.display());
+        }
+    }
+    eprintln!();
+
+    if let Err(e) = run_complexity_analysis_sync(config.clone()) {
+        eprintln!("⚠️  Analysis error: {}", e);
+    }
+    
     Ok(())
 }
 
@@ -628,39 +839,46 @@ fn handle_watch_mode(
 fn should_reanalyze(event: &Event, include_patterns: &[String]) -> bool {
     match event.kind {
         EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) => {
-            // Check if any of the changed paths match our include patterns
-            for path in &event.paths {
-                if let Some(path_str) = path.to_str() {
-                    // Check for source code files
-                    if path_str.ends_with(".rs")
-                        || path_str.ends_with(".ts")
-                        || path_str.ends_with(".tsx")
-                        || path_str.ends_with(".js")
-                        || path_str.ends_with(".jsx")
-                        || path_str.ends_with(".py")
-                        || path_str.ends_with(".c")
-                        || path_str.ends_with(".cpp")
-                        || path_str.ends_with(".h")
-                        || path_str.ends_with(".hpp")
-                    {
-                        // If no include patterns, analyze all source files
-                        if include_patterns.is_empty() {
-                            return true;
-                        }
-
-                        // Check against include patterns
-                        for pattern in include_patterns {
-                            if path_str.contains(pattern) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-            false
+            event.paths.iter().any(|path| should_analyze_path(path, include_patterns))
         }
         _ => false,
     }
+}
+
+/// Check if a specific path should be analyzed
+fn should_analyze_path(path: &std::path::Path, include_patterns: &[String]) -> bool {
+    let Some(path_str) = path.to_str() else {
+        return false;
+    };
+
+    if !is_source_code_file(path_str) {
+        return false;
+    }
+
+    should_include_file(path_str, include_patterns)
+}
+
+/// Check if file is a source code file
+fn is_source_code_file(path_str: &str) -> bool {
+    path_str.ends_with(".rs")
+        || path_str.ends_with(".ts")
+        || path_str.ends_with(".tsx")
+        || path_str.ends_with(".js")
+        || path_str.ends_with(".jsx")
+        || path_str.ends_with(".py")
+        || path_str.ends_with(".c")
+        || path_str.ends_with(".cpp")
+        || path_str.ends_with(".h")
+        || path_str.ends_with(".hpp")
+}
+
+/// Check if file should be included based on patterns
+fn should_include_file(path_str: &str, include_patterns: &[String]) -> bool {
+    if include_patterns.is_empty() {
+        return true;
+    }
+
+    include_patterns.iter().any(|pattern| path_str.contains(pattern))
 }
 
 /// Get the paths that changed from an event
@@ -708,6 +926,7 @@ async fn format_and_output_watch_results(
 }
 
 /// Configuration for synchronous complexity analysis
+#[derive(Debug, Clone)]
 struct SyncAnalysisConfig<'a> {
     path: &'a Path,
     toolchain: Option<&'a str>,
@@ -781,13 +1000,32 @@ pub async fn handle_analyze_churn(
     include: Vec<String>,
     exclude: Vec<String>,
 ) -> Result<()> {
-    use crate::models::churn::ChurnOutputFormat;
     use crate::services::git_analysis::GitAnalysisService;
     use crate::utils::file_filter::FileFilter;
 
     eprintln!("📊 Analyzing code churn for the last {} days...", days);
 
-    // Apply include/exclude filters if specified
+    // Create and apply file filters
+    let filter = create_and_report_file_filter(include, exclude)?;
+    
+    // Analyze code churn
+    let mut analysis = GitAnalysisService::analyze_code_churn(&project_path, days)
+        .map_err(|e| anyhow::anyhow!("Churn analysis failed: {}", e))?;
+
+    // Apply filtering and limits
+    apply_churn_filters(&mut analysis, &filter, top_files);
+    
+    eprintln!("✅ Analyzed {} files with changes", analysis.files.len());
+
+    // Format and write output
+    format_and_write_churn_output(analysis, format, output).await
+}
+
+/// Create file filter and report filter settings
+fn create_and_report_file_filter(
+    include: Vec<String>,
+    exclude: Vec<String>,
+) -> Result<crate::utils::file_filter::FileFilter> {
     if !include.is_empty() || !exclude.is_empty() {
         eprintln!("🔍 Applying file filters...");
         if !include.is_empty() {
@@ -797,14 +1035,16 @@ pub async fn handle_analyze_churn(
             eprintln!("  Exclude patterns: {:?}", exclude);
         }
     }
+    
+    crate::utils::file_filter::FileFilter::new(include, exclude)
+}
 
-    // Create file filter
-    let filter = FileFilter::new(include, exclude)?;
-
-    // Analyze code churn
-    let mut analysis = GitAnalysisService::analyze_code_churn(&project_path, days)
-        .map_err(|e| anyhow::anyhow!("Churn analysis failed: {}", e))?;
-
+/// Apply file filters and top files limit to churn analysis
+fn apply_churn_filters(
+    analysis: &mut crate::models::churn::CodeChurnAnalysis,
+    filter: &crate::utils::file_filter::FileFilter,
+    top_files: usize,
+) {
     // Apply file filter if filters are active
     if filter.has_filters() {
         analysis
@@ -816,18 +1056,21 @@ pub async fn handle_analyze_churn(
         analysis.summary.total_commits = analysis.files.iter().map(|f| f.commit_count).sum();
     }
 
-    eprintln!("✅ Analyzed {} files with changes", analysis.files.len());
-
     // Apply top_files limit if specified (0 means show all)
     if top_files > 0 && analysis.files.len() > top_files {
-        // Sort files by commit count descending
-        analysis
-            .files
-            .sort_by(|a, b| b.commit_count.cmp(&a.commit_count));
+        analysis.files.sort_by(|a, b| b.commit_count.cmp(&a.commit_count));
         analysis.files.truncate(top_files);
     }
+}
 
-    // Format output based on requested format
+/// Format churn analysis output and write to file or stdout
+async fn format_and_write_churn_output(
+    analysis: crate::models::churn::CodeChurnAnalysis,
+    format: crate::models::churn::ChurnOutputFormat,
+    output: Option<PathBuf>,
+) -> Result<()> {
+    use crate::models::churn::ChurnOutputFormat;
+    
     let content = match format {
         ChurnOutputFormat::Json => serde_json::to_string_pretty(&analysis)?,
         ChurnOutputFormat::Summary => {
@@ -839,9 +1082,7 @@ pub async fn handle_analyze_churn(
         ChurnOutputFormat::Csv => super::super::analysis_utilities::format_churn_as_csv(&analysis)?,
     };
 
-    // Write output
-    super::super::analysis_utilities::write_churn_output(content, output).await?;
-    Ok(())
+    super::super::analysis_utilities::write_churn_output(content, output).await
 }
 
 /// Handle dead code analysis command - REFACTORED
@@ -958,82 +1199,12 @@ async fn run_dead_code_analysis_with_filters(
 
     // Convert cargo report to ranking format for compatibility
     let files_with_dead_code_count = accurate_report.files_with_dead_code.len();
-    let mut analysis_result =
-        DeadCodeRankingResult {
-            ranked_files: accurate_report
-                .files_with_dead_code
-                .into_iter()
-                .map(|file| {
-                    let dead_functions_count = file
-                        .dead_items
-                        .iter()
-                        .filter(|i| {
-                            matches!(i.kind,
-                    crate::services::cargo_dead_code_analyzer::DeadCodeKind::Function |
-                    crate::services::cargo_dead_code_analyzer::DeadCodeKind::Method)
-                        })
-                        .count();
-                    let dead_classes_count =
-                        file.dead_items
-                            .iter()
-                            .filter(|i| {
-                                matches!(i.kind,
-                    crate::services::cargo_dead_code_analyzer::DeadCodeKind::Struct |
-                    crate::services::cargo_dead_code_analyzer::DeadCodeKind::Enum)
-                            })
-                            .count();
-
-                    FileDeadCodeMetrics {
-                        path: file.file_path.display().to_string(),
-                        dead_lines: file.dead_items.len() * 4, // Estimate lines per item
-                        total_lines: 100,                      // Will be updated later if needed
-                        dead_percentage: file.file_dead_percentage as f32,
-                        dead_functions: dead_functions_count,
-                        dead_classes: dead_classes_count,
-                        dead_modules: 0,
-                        unreachable_blocks: 0,
-                        dead_score: file.file_dead_percentage as f32,
-                        confidence: ConfidenceLevel::High, // Cargo-based detection is high confidence
-                        items: Vec::new(), // Will be populated if needed for detailed reporting
-                    }
-                })
-                .filter(|f| f.dead_lines >= min_dead_lines)
-                .collect(),
-            summary: DeadCodeSummary {
-                total_files_analyzed: accurate_report.total_lines / 100, // Rough estimate
-                files_with_dead_code: files_with_dead_code_count,
-                total_dead_lines: accurate_report.dead_lines,
-                dead_percentage: accurate_report.dead_code_percentage as f32,
-                dead_functions: accurate_report
-                    .dead_by_type
-                    .get("function")
-                    .copied()
-                    .unwrap_or(0)
-                    + accurate_report
-                        .dead_by_type
-                        .get("method")
-                        .copied()
-                        .unwrap_or(0),
-                dead_classes: accurate_report
-                    .dead_by_type
-                    .get("struct")
-                    .copied()
-                    .unwrap_or(0)
-                    + accurate_report
-                        .dead_by_type
-                        .get("enum")
-                        .copied()
-                        .unwrap_or(0),
-                dead_modules: accurate_report
-                    .dead_by_type
-                    .get("module")
-                    .copied()
-                    .unwrap_or(0),
-                unreachable_blocks: 0, // Not tracked by cargo
-            },
-            analysis_timestamp: Utc::now(),
-            config,
-        };
+    let mut analysis_result = create_dead_code_ranking_result(
+        accurate_report,
+        files_with_dead_code_count,
+        min_dead_lines,
+        config,
+    );
 
     // Apply file filter to results if filters are active
     if filter.has_filters() {
@@ -1160,63 +1331,83 @@ fn format_dead_code_as_summary(
     use std::fmt::Write;
     let mut output = String::new();
 
-    writeln!(&mut output, "# Dead Code Analysis Summary\n")?;
-    writeln!(&mut output, "📊 **Files analyzed**: {}", result.total_files)?;
+    write_dead_code_header(&mut output, result)?;
+    
+    if result.summary.dead_functions > 0 {
+        write_dead_code_by_type_section(&mut output, &result.summary)?;
+    }
+
+    if !result.files.is_empty() {
+        write_top_files_section(&mut output, &result.files)?;
+    }
+
+    Ok(output)
+}
+
+/// Write dead code analysis header section
+fn write_dead_code_header(
+    output: &mut String,
+    result: &crate::models::dead_code::DeadCodeResult,
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "# Dead Code Analysis Summary\n")?;
+    writeln!(output, "📊 **Files analyzed**: {}", result.total_files)?;
     writeln!(
-        &mut output,
+        output,
         "☠️  **Files with dead code**: {}",
         result.summary.files_with_dead_code
     )?;
     writeln!(
-        &mut output,
+        output,
         "📏 **Total dead lines**: {}",
         result.summary.total_dead_lines
     )?;
     writeln!(
-        &mut output,
+        output,
         "📈 **Dead code percentage**: {:.2}%\n",
         result.summary.dead_percentage
     )?;
+    
+    Ok(())
+}
 
-    if result.summary.dead_functions > 0 {
-        writeln!(&mut output, "## Dead Code by Type\n")?;
+/// Write dead code by type breakdown section
+fn write_dead_code_by_type_section(
+    output: &mut String,
+    summary: &crate::models::dead_code::DeadCodeSummary,
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "## Dead Code by Type\n")?;
+    writeln!(output, "- **Dead functions**: {}", summary.dead_functions)?;
+    writeln!(output, "- **Dead classes**: {}", summary.dead_classes)?;
+    writeln!(output, "- **Dead variables**: {}", summary.dead_modules)?;
+    writeln!(output, "- **Unreachable blocks**: {}", summary.unreachable_blocks)?;
+    
+    Ok(())
+}
+
+/// Write top files with dead code section
+fn write_top_files_section(
+    output: &mut String,
+    files: &[crate::models::dead_code::FileDeadCodeMetrics],
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "\n## Top Files with Dead Code\n")?;
+    for (i, file) in files.iter().take(10).enumerate() {
         writeln!(
-            &mut output,
-            "- **Dead functions**: {}",
-            result.summary.dead_functions
-        )?;
-        writeln!(
-            &mut output,
-            "- **Dead classes**: {}",
-            result.summary.dead_classes
-        )?;
-        writeln!(
-            &mut output,
-            "- **Dead variables**: {}",
-            result.summary.dead_modules
-        )?;
-        writeln!(
-            &mut output,
-            "- **Unreachable blocks**: {}",
-            result.summary.unreachable_blocks
+            output,
+            "{}. `{}` - {:.1}% dead ({} lines)",
+            i + 1,
+            file.path,
+            file.dead_percentage,
+            file.dead_lines
         )?;
     }
-
-    if !result.files.is_empty() {
-        writeln!(&mut output, "\n## Top Files with Dead Code\n")?;
-        for (i, file) in result.files.iter().take(10).enumerate() {
-            writeln!(
-                &mut output,
-                "{}. `{}` - {:.1}% dead ({} lines)",
-                i + 1,
-                file.path,
-                file.dead_percentage,
-                file.dead_lines
-            )?;
-        }
-    }
-
-    Ok(output)
+    
+    Ok(())
 }
 
 /// Format result as markdown
@@ -1667,53 +1858,10 @@ pub fn format_satd_summary(
         }
     }
 
-    // Show top files with SATD
+    // Show additional sections if items exist
     if !result.items.is_empty() {
-        writeln!(&mut output, "\n## Top Files with SATD\n").unwrap();
-
-        // Group items by file and count them
-        use std::collections::HashMap;
-        let mut file_counts: HashMap<&std::path::Path, usize> = HashMap::new();
-        for item in &result.items {
-            *file_counts.entry(&item.file).or_insert(0) += 1;
-        }
-
-        // Sort files by SATD count (descending)
-        let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
-        sorted_files.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
-
-        // Show top 10 files with their SATD counts
-        for (i, (file, count)) in sorted_files.iter().take(10).enumerate() {
-            let filename = file.file_name().unwrap_or_default().to_string_lossy();
-            writeln!(
-                &mut output,
-                "{}. `{}` - {} SATD items",
-                i + 1,
-                filename,
-                count
-            )
-            .unwrap();
-        }
-    }
-
-    // Show critical items
-    if !result.items.is_empty() {
-        writeln!(&mut output, "\n## Critical Items\n").unwrap();
-        for item in result
-            .items
-            .iter()
-            .filter(|i| i.severity == crate::services::satd_detector::Severity::Critical)
-            .take(5)
-        {
-            writeln!(
-                &mut output,
-                "- `{}:{}` - {}",
-                item.file.file_name().unwrap_or_default().to_string_lossy(),
-                item.line,
-                item.text
-            )
-            .unwrap();
-        }
+        write_top_files_with_satd_section(&mut output, result);
+        write_critical_items_section(&mut output, result);
     }
 
     output
