@@ -21,6 +21,54 @@ This guide provides the essential operational instructions for working on the `p
 -   **Genchi Genbutsu (現地現物): Go and See.** We don't guess where problems are. We use `pmat`'s analysis tools to find the *actual* root cause of quality issues, such as complexity hotspots or technical debt.
 -   **Jidoka (自働化): Automation with a Human Touch.** We use `pmat refactor auto` to automate the creation of a refactoring plan, but an intelligent agent (you) must verify and apply the changes, ensuring correctness.
 
+## 🚨 CRITICAL: A+ Code Standard for ALL NEW Code
+
+**ABSOLUTE REQUIREMENT**: All NEW code written MUST achieve A+ quality standards:
+- **Maximum Cyclomatic Complexity**: ≤10 (not 20, not 15, TEN!)
+- **Maximum Cognitive Complexity**: ≤10 (simple, readable, maintainable)
+- **TDD Mandatory**: Write test FIRST, then implementation
+- **Test Coverage**: 100% for new functions (no exceptions)
+- **Zero SATD**: No TODO, FIXME, HACK, or "temporary" solutions
+- **Function Size**: ≤30 lines (if longer, decompose it)
+- **Single Responsibility**: Each function does ONE thing well
+
+**Why This Matters**:
+- We have 565 legacy complexity violations to fix
+- We CANNOT add more technical debt while fixing old debt
+- Every new complex function adds 10+ hours to future refactoring
+- A+ code is EASIER to write than B- code when done properly
+
+**Enforcement**:
+```rust
+// ❌ BAD: Complexity 15+
+fn process_data(items: Vec<Item>) -> Result<Output> {
+    let mut results = Vec::new();
+    for item in items {
+        if item.valid {
+            if item.type == "A" {
+                // ... 20 more lines of nested logic
+            }
+        }
+    }
+    // ... more complexity
+}
+
+// ✅ GOOD: Complexity ≤10
+fn process_data(items: Vec<Item>) -> Result<Output> {
+    items.into_iter()
+        .filter(|item| item.valid)
+        .map(process_single_item)
+        .collect()
+}
+
+fn process_single_item(item: Item) -> Result<ItemOutput> {
+    match item.item_type {
+        ItemType::A => process_type_a(item),
+        ItemType::B => process_type_b(item),
+    }
+}
+```
+
 ## Absolute Rules
 
 1.  **NEVER `cd server`:** All commands **MUST** be run from the project root (`/home/noah/src/paiml-mcp-agent-toolkit`). The `Makefile` is configured to correctly handle the workspace structure.

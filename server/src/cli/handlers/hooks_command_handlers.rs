@@ -310,26 +310,26 @@ echo "📊 Running quality gate checks..."
 
 # 1. Complexity analysis
 echo -n "  Complexity check... "
-if pmat analyze complexity --max-cyclomatic $PMAT_MAX_CYCLOMATIC_COMPLEXITY --quiet; then
+COMPLEXITY_OUTPUT=$(pmat analyze complexity --max-cyclomatic $PMAT_MAX_CYCLOMATIC_COMPLEXITY --max-cognitive $PMAT_MAX_COGNITIVE_COMPLEXITY 2>&1)
+if echo "$COMPLEXITY_OUTPUT" | grep -q "Issues Found.*❌.*Errors: 0"; then
     echo "✅"
 else
     echo "❌"
-    echo "   Complexity exceeds threshold ($PMAT_MAX_CYCLOMATIC_COMPLEXITY)"
+    echo "$COMPLEXITY_OUTPUT" | grep "Issues Found" | head -1
+    echo "   Complexity exceeds thresholds (Cyclomatic: $PMAT_MAX_CYCLOMATIC_COMPLEXITY, Cognitive: $PMAT_MAX_COGNITIVE_COMPLEXITY)"
     exit 1
 fi
 
 # 2. SATD (Self-Admitted Technical Debt) check
 echo -n "  SATD check... "
-if pmat analyze satd --quiet; then
+SATD_OUTPUT=$(pmat analyze satd 2>&1)
+if echo "$SATD_OUTPUT" | grep -q "Total SATD comments found: 0"; then
     echo "✅"
 else
-    SATD_COUNT=$(pmat analyze satd --format json 2>/dev/null | grep -c "TODO\|FIXME\|HACK" || echo "0")
-    if [ "$SATD_COUNT" -gt "$PMAT_MAX_SATD_COMMENTS" ]; then
-        echo "❌"
-        echo "   SATD comments exceed threshold ($PMAT_MAX_SATD_COMMENTS)"
-        exit 1
-    fi
-    echo "✅"
+    echo "❌"
+    echo "$SATD_OUTPUT" | grep "Total SATD comments found" | head -1
+    echo "   SATD comments exceed threshold ($PMAT_MAX_SATD_COMMENTS)"
+    exit 1
 fi
 
 # 3. Documentation synchronization

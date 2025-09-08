@@ -17,31 +17,58 @@
 - **Build Time**: ~15s with PMAT_FAST_BUILD ✅ (optimized performance)
 - **Clippy Warnings**: Reduced from 150+ to ~100 (major code quality improvements)
 
-## 🚀 NEXT PRIORITY: Sprint 81 - Enhanced MCP Tool Coverage & Integration 🎯
+## 🚀 NEXT PRIORITY: Sprint 81 - Automated Clippy Fix System 🎯
 - **Start Date**: 2025-09-08
-- **Priority**: P0 - Critical Feature Expansion
-- **Goal**: Expand MCP tool coverage to include all major PMAT features for better dogfooding
+- **Priority**: P0 - Critical Quality Automation
+- **Goal**: Implement production-grade automated clippy error resolution system
 - **Status**: 📋 **PLANNED**
 - **Ticket**: PMAT-81
+- **Specification**: [docs/specifications/auto-clippy-fix-guide.md](../specifications/auto-clippy-fix-guide.md)
 
-### Objective: Complete MCP Feature Parity
-**Problem**: Many PMAT features lack MCP tool exposure, limiting dogfooding opportunities
-**Solution**: Systematic expansion of MCP tool coverage for all major commands
+### Objective: Automated Code Quality Enforcement
+**Problem**: 100+ clippy warnings require manual fixing, blocking quality gates
+**Solution**: AST-based automated fix engine with confidence scoring and transactional safety
 
 ### Sprint 81 Goals:
-1. ⏳ **MCP Hooks Tools**: Add MCP tools for all hooks commands (install, status, verify, refresh)
-2. ⏳ **MCP Config Tools**: Add MCP tools for config management (show, get, validate)
-3. ⏳ **MCP Enhancement Tools**: Expose enhance commands via MCP (optimize, security, performance)
-4. ⏳ **MCP Generation Tools**: Add generation capabilities (test, docs, mermaid)
-5. ⏳ **MCP Workflow Tools**: Create high-level workflow tools combining multiple operations
-6. ⏳ **Documentation**: Complete MCP usage guide with examples
+1. ⏳ **Core Engine**: AST-based fix engine with confidence scoring
+2. ⏳ **Caching Layer**: Bloom filter + Sled storage for performance
+3. ⏳ **Batch Processing**: Parallel fix application with dependency resolution
+4. ⏳ **Safety Features**: Transactional rollback, test validation
+5. ⏳ **MCP Integration**: Expose via MCP tools for dogfooding
+6. ⏳ **TDD Implementation**: 100% test coverage with A+ code quality
 
 ### Success Criteria:
-- **Feature Parity**: 90%+ of CLI commands available as MCP tools
-- **Dogfooding**: PMAT development primarily uses MCP tools over CLI
-- **Performance**: MCP tools respond in <500ms for all operations
-- **Documentation**: Every MCP tool has usage examples
-- **Testing**: 100% MCP tool test coverage
+- **Fix Rate**: 80%+ of clippy warnings auto-fixed
+- **Performance**: <5 seconds for 100 warnings
+- **Safety**: Zero breaking changes introduced
+- **Code Quality**: ALL new code ≤10 complexity (A+ standard)
+- **Test Coverage**: 100% for new code
+
+## 📅 FUTURE SPRINTS: Phased Complexity Reduction Plan
+
+### Sprint 82: First Complexity Reduction Wave (25/20 thresholds)
+- **Goal**: Reduce thresholds from 30/25 to 25/20
+- **Scope**: ~90 violations, 80 hours estimated
+- **Focus**: Top 10 complexity hotspots
+- **Required**: ALL new code ≤10 complexity
+
+### Sprint 83: Second Complexity Reduction Wave (22/17 thresholds)  
+- **Goal**: Reduce thresholds from 25/20 to 22/17
+- **Scope**: ~250 violations, 80 hours estimated
+- **Focus**: Critical path functions
+- **Required**: ALL new code ≤10 complexity
+
+### Sprint 84: Final Complexity Reduction (20/15 thresholds)
+- **Goal**: Achieve strict 20/15 thresholds
+- **Scope**: Remaining ~225 violations
+- **Focus**: Complete codebase compliance
+- **Required**: ALL new code ≤10 complexity
+
+### Sprint 85: Enhanced MCP Tool Coverage & Integration
+- **Goal**: Complete MCP feature parity
+- **Scope**: 90%+ CLI commands exposed via MCP
+- **Focus**: Dogfooding and workflow automation
+- **Required**: ALL new code ≤10 complexity
 
 ### ✅ COMPLETED: Sprint 80 - Pre-commit Hook Management as Core Feature 🎯
 - **Completion Date**: 2025-09-08

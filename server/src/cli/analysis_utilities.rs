@@ -4484,24 +4484,31 @@ pub async fn check_complexity(
     max_complexity: u32,
 ) -> Result<Vec<QualityViolation>> {
     use crate::services::complexity::aggregate_results_with_thresholds;
+    use crate::services::configuration_service::configuration;
 
     let mut violations = Vec::new();
+
+    // Get thresholds from configuration service - SINGLE SOURCE OF TRUTH
+    let config_service = configuration();
+    let config = config_service.get_config()?;
+    let max_cyclomatic = config.quality.max_complexity;
+    let max_cognitive = config.quality.max_cognitive_complexity;
 
     // Use the existing analyze_project_files function - the ONE implementation
     let file_metrics = analyze_project_files(
         project_path,
         None, // Auto-detect toolchain
         &[],  // Empty include pattern means all files
-        max_complexity as u16,
-        15, // Default cognitive complexity
+        max_cyclomatic as u16,
+        max_cognitive as u16,
     )
     .await?;
 
     // Check for violations using the same logic as analyze complexity
     let report = aggregate_results_with_thresholds(
         file_metrics.clone(),
-        Some(max_complexity as u16),
-        Some(15), // Default cognitive complexity threshold
+        Some(max_cyclomatic as u16),
+        Some(max_cognitive as u16),
     );
 
     // Convert violations to QualityViolation format
