@@ -378,32 +378,59 @@ pub async fn validate_template<T: TemplateServerTrait>(
     uri: &str,
     parameters: &serde_json::Value,
 ) -> Result<ValidationResult, TemplateError> {
-    let metadata =
-        server
-            .get_template_metadata(uri)
-            .await
-            .map_err(|_| TemplateError::TemplateNotFound {
-                uri: uri.to_string(),
-            })?;
-
-    let mut errors = Vec::new();
-
-    // Convert parameters to Map if it's an object
-    let params_map = if let serde_json::Value::Object(map) = parameters {
-        map
-    } else {
-        errors.push(ValidationError {
-            field: "parameters".to_string(),
-            message: "Parameters must be an object".to_string(),
-        });
-        return Ok(ValidationResult {
-            valid: false,
-            errors,
-        });
+    let metadata = get_template_metadata(server, uri).await?;
+    let params_map = match extract_params_map(parameters) {
+        Ok(map) => map,
+        Err(validation_result) => return Ok(validation_result),
     };
+    
+    let mut errors = Vec::new();
+    validate_required_parameters(&metadata.parameters, &params_map, &mut errors);
+    validate_parameter_values(&metadata.parameters, &params_map, &mut errors);
 
-    // Check required parameters
-    for param in &metadata.parameters {
+    Ok(ValidationResult {
+        valid: errors.is_empty(),
+        errors,
+    })
+}
+
+async fn get_template_metadata<T: TemplateServerTrait>(
+    server: Arc<T>,
+    uri: &str,
+) -> Result<crate::models::template::TemplateResource, TemplateError> {
+    server
+        .get_template_metadata(uri)
+        .await
+        .map(|arc_resource| (*arc_resource).clone())
+        .map_err(|_| TemplateError::TemplateNotFound {
+            uri: uri.to_string(),
+        })
+}
+
+fn extract_params_map(
+    parameters: &serde_json::Value,
+) -> Result<&Map<String, serde_json::Value>, ValidationResult> {
+    match parameters {
+        serde_json::Value::Object(map) => Ok(map),
+        _ => {
+            let error = ValidationError {
+                field: "parameters".to_string(),
+                message: "Parameters must be an object".to_string(),
+            };
+            Err(ValidationResult {
+                valid: false,
+                errors: vec![error],
+            })
+        }
+    }
+}
+
+fn validate_required_parameters(
+    param_specs: &[crate::models::template::ParameterSpec],
+    params_map: &Map<String, serde_json::Value>,
+    errors: &mut Vec<ValidationError>,
+) {
+    for param in param_specs {
         if param.required && !params_map.contains_key(&param.name) {
             errors.push(ValidationError {
                 field: param.name.clone(),
@@ -411,22 +438,16 @@ pub async fn validate_template<T: TemplateServerTrait>(
             });
         }
     }
+}
 
-    // Validate parameter values
+fn validate_parameter_values(
+    param_specs: &[crate::models::template::ParameterSpec],
+    params_map: &Map<String, serde_json::Value>,
+    errors: &mut Vec<ValidationError>,
+) {
     for (key, value) in params_map {
-        if let Some(param_spec) = metadata.parameters.iter().find(|p| p.name == *key) {
-            if let Some(pattern) = &param_spec.validation_pattern {
-                if let Ok(regex) = regex::Regex::new(pattern) {
-                    if let Some(str_val) = value.as_str() {
-                        if !regex.is_match(str_val) {
-                            errors.push(ValidationError {
-                                field: key.clone(),
-                                message: format!("Does not match pattern: {pattern}"),
-                            });
-                        }
-                    }
-                }
-            }
+        if let Some(param_spec) = param_specs.iter().find(|p| p.name == *key) {
+            validate_parameter_pattern(param_spec, key, value, errors);
         } else {
             errors.push(ValidationError {
                 field: key.clone(),
@@ -434,11 +455,26 @@ pub async fn validate_template<T: TemplateServerTrait>(
             });
         }
     }
+}
 
-    Ok(ValidationResult {
-        valid: errors.is_empty(),
-        errors,
-    })
+fn validate_parameter_pattern(
+    param_spec: &crate::models::template::ParameterSpec,
+    key: &str,
+    value: &serde_json::Value,
+    errors: &mut Vec<ValidationError>,
+) {
+    if let Some(pattern) = &param_spec.validation_pattern {
+        if let Ok(regex) = regex::Regex::new(pattern) {
+            if let Some(str_val) = value.as_str() {
+                if !regex.is_match(str_val) {
+                    errors.push(ValidationError {
+                        field: key.to_string(),
+                        message: format!("Does not match pattern: {pattern}"),
+                    });
+                }
+            }
+        }
+    }
 }
 
 // Result types for CLI

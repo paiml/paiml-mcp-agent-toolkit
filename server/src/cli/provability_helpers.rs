@@ -192,14 +192,33 @@ pub fn format_provability_summary(
     top_files: usize,
 ) -> Result<String> {
     let mut output = String::new();
+    
+    write_summary_header(&mut output, function_ids.len())?;
+    write_score_distribution(&mut output, summaries)?;
+    write_average_score(&mut output, summaries)?;
+    write_top_files_section(&mut output, function_ids, summaries, top_files)?;
 
-    writeln!(&mut output, "# Provability Analysis Summary\n")?;
-    writeln!(
-        &mut output,
-        "Total functions analyzed: {}",
-        function_ids.len()
-    )?;
+    Ok(output)
+}
 
+fn write_summary_header(output: &mut String, total_functions: usize) -> Result<()> {
+    writeln!(output, "# Provability Analysis Summary\n")?;
+    writeln!(output, "Total functions analyzed: {}", total_functions)?;
+    Ok(())
+}
+
+fn write_score_distribution(output: &mut String, summaries: &[ProofSummary]) -> Result<()> {
+    let (high_count, medium_count, low_count) = categorize_scores(summaries);
+
+    writeln!(output, "\n## Score Distribution:")?;
+    writeln!(output, "- High (≥80%): {} functions", high_count)?;
+    writeln!(output, "- Medium (50-79%): {} functions", medium_count)?;
+    writeln!(output, "- Low (<50%): {} functions", low_count)?;
+    
+    Ok(())
+}
+
+fn categorize_scores(summaries: &[ProofSummary]) -> (usize, usize, usize) {
     let high_provability = summaries
         .iter()
         .filter(|s| s.provability_score >= 0.8)
@@ -212,71 +231,95 @@ pub fn format_provability_summary(
         .iter()
         .filter(|s| s.provability_score < 0.5)
         .count();
+    
+    (high_provability, medium_provability, low_provability)
+}
 
-    writeln!(&mut output, "\n## Score Distribution:")?;
-    writeln!(&mut output, "- High (≥80%): {} functions", high_provability)?;
-    writeln!(
-        &mut output,
-        "- Medium (50-79%): {} functions",
-        medium_provability
-    )?;
-    writeln!(&mut output, "- Low (<50%): {} functions", low_provability)?;
+fn write_average_score(output: &mut String, summaries: &[ProofSummary]) -> Result<()> {
+    let avg_score = calculate_average_score(summaries);
+    writeln!(output, "\nAverage provability score: {:.1}%", avg_score * 100.0)?;
+    Ok(())
+}
 
-    let avg_score = if !summaries.is_empty() {
-        summaries.iter().map(|s| s.provability_score).sum::<f64>() / summaries.len() as f64
-    } else {
+fn calculate_average_score(summaries: &[ProofSummary]) -> f64 {
+    if summaries.is_empty() {
         0.0
-    };
+    } else {
+        summaries.iter().map(|s| s.provability_score).sum::<f64>() / summaries.len() as f64
+    }
+}
 
-    writeln!(
-        &mut output,
-        "\nAverage provability score: {:.1}%",
-        avg_score * 100.0
-    )?;
-
-    // Show top files by provability
-    if !function_ids.is_empty() {
-        writeln!(&mut output, "\n## Top Files by Provability\n")?;
-
-        // Group by file and calculate average score per file
-        let mut file_scores: HashMap<&str, Vec<f64>> = HashMap::new();
-        for (func_id, summary) in function_ids.iter().zip(summaries.iter()) {
-            file_scores
-                .entry(&func_id.file_path)
-                .or_default()
-                .push(summary.provability_score);
-        }
-
-        // Calculate average scores and sort
-        let mut file_avg_scores: Vec<_> = file_scores
-            .iter()
-            .map(|(file_path, scores)| {
-                let avg_score = scores.iter().sum::<f64>() / scores.len() as f64;
-                (file_path, avg_score, scores.len())
-            })
-            .collect();
-        file_avg_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-        let files_to_show = if top_files == 0 { 10 } else { top_files };
-        for (i, (file_path, avg_score, function_count)) in
-            file_avg_scores.iter().take(files_to_show).enumerate()
-        {
-            let filename = std::path::Path::new(file_path)
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or(file_path);
-            writeln!(
-                &mut output,
-                "{}. `{}` - {:.1}% avg score ({} functions)",
-                i + 1,
-                filename,
-                avg_score * 100.0,
-                function_count
-            )?;
-        }
+fn write_top_files_section(
+    output: &mut String,
+    function_ids: &[FunctionId],
+    summaries: &[ProofSummary],
+    top_files: usize,
+) -> Result<()> {
+    if function_ids.is_empty() {
+        return Ok(());
     }
 
-    Ok(output)
+    writeln!(output, "\n## Top Files by Provability\n")?;
+    let file_avg_scores = calculate_file_averages(function_ids, summaries);
+    write_top_files_list(output, &file_avg_scores, top_files)?;
+    
+    Ok(())
+}
+
+fn calculate_file_averages<'a>(
+    function_ids: &'a [FunctionId],
+    summaries: &'a [ProofSummary],
+) -> Vec<(&'a str, f64, usize)> {
+    let mut file_scores: HashMap<&str, Vec<f64>> = HashMap::new();
+    
+    for (func_id, summary) in function_ids.iter().zip(summaries.iter()) {
+        file_scores
+            .entry(&func_id.file_path)
+            .or_default()
+            .push(summary.provability_score);
+    }
+
+    let mut file_avg_scores: Vec<_> = file_scores
+        .iter()
+        .map(|(file_path, scores)| {
+            let avg_score = scores.iter().sum::<f64>() / scores.len() as f64;
+            (*file_path, avg_score, scores.len())
+        })
+        .collect();
+    
+    file_avg_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    file_avg_scores
+}
+
+fn write_top_files_list(
+    output: &mut String,
+    file_avg_scores: &[(&str, f64, usize)],
+    top_files: usize,
+) -> Result<()> {
+    let files_to_show = if top_files == 0 { 10 } else { top_files };
+    
+    for (i, (file_path, avg_score, function_count)) in
+        file_avg_scores.iter().take(files_to_show).enumerate()
+    {
+        let filename = extract_filename(file_path);
+        writeln!(
+            output,
+            "{}. `{}` - {:.1}% avg score ({} functions)",
+            i + 1,
+            filename,
+            avg_score * 100.0,
+            function_count
+        )?;
+    }
+    
+    Ok(())
+}
+
+fn extract_filename(file_path: &str) -> &str {
+    std::path::Path::new(file_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(file_path)
 }
 
 /// Format provability results as detailed markdown
@@ -288,56 +331,103 @@ pub fn format_provability_detailed(
     let mut output = String::new();
 
     writeln!(&mut output, "# Detailed Provability Analysis\n")?;
-
-    // Group by file
-    let mut by_file: HashMap<&str, Vec<(&FunctionId, &ProofSummary)>> = HashMap::new();
-    for (func_id, summary) in function_ids.iter().zip(summaries.iter()) {
-        by_file
-            .entry(&func_id.file_path)
-            .or_default()
-            .push((func_id, summary));
-    }
-
-    for (file_path, functions) in by_file {
-        writeln!(&mut output, "## {}\n", file_path)?;
-
-        for (func_id, summary) in functions {
-            writeln!(&mut output, "### Function: `{}`", func_id.function_name)?;
-            writeln!(&mut output, "- **Line**: {}", func_id.line_number)?;
-            writeln!(
-                &mut output,
-                "- **Provability Score**: {:.1}%",
-                summary.provability_score * 100.0
-            )?;
-            writeln!(
-                &mut output,
-                "- **Analysis Time**: {}μs",
-                summary.analysis_time_us
-            )?;
-            writeln!(
-                &mut output,
-                "- **Verified Properties**: {}",
-                summary.verified_properties.len()
-            )?;
-
-            if include_evidence && !summary.verified_properties.is_empty() {
-                writeln!(&mut output, "\n#### Verified Properties:")?;
-                for prop in &summary.verified_properties {
-                    writeln!(
-                        &mut output,
-                        "- **{:?}** (confidence: {:.0}%)",
-                        prop.property_type,
-                        prop.confidence * 100.0
-                    )?;
-                    writeln!(&mut output, "  - Evidence: {}", prop.evidence)?;
-                }
-            }
-
-            writeln!(&mut output)?;
-        }
-    }
+    let by_file = group_functions_by_file(function_ids, summaries);
+    write_detailed_analysis_by_file(&mut output, by_file, include_evidence)?;
 
     Ok(output)
+}
+
+fn group_functions_by_file<'a>(
+    function_ids: &'a [FunctionId],
+    summaries: &'a [ProofSummary],
+) -> HashMap<&'a str, Vec<(&'a FunctionId, &'a ProofSummary)>> {
+    let mut by_file = HashMap::new();
+    
+    for (func_id, summary) in function_ids.iter().zip(summaries.iter()) {
+        by_file
+            .entry(func_id.file_path.as_str())
+            .or_insert_with(Vec::new)
+            .push((func_id, summary));
+    }
+    
+    by_file
+}
+
+fn write_detailed_analysis_by_file(
+    output: &mut String,
+    by_file: HashMap<&str, Vec<(&FunctionId, &ProofSummary)>>,
+    include_evidence: bool,
+) -> Result<()> {
+    for (file_path, functions) in by_file {
+        write_file_section(output, file_path, &functions, include_evidence)?;
+    }
+    Ok(())
+}
+
+fn write_file_section(
+    output: &mut String,
+    file_path: &str,
+    functions: &[(&FunctionId, &ProofSummary)],
+    include_evidence: bool,
+) -> Result<()> {
+    writeln!(output, "## {}\n", file_path)?;
+
+    for (func_id, summary) in functions {
+        write_function_details(output, func_id, summary)?;
+        
+        if include_evidence && !summary.verified_properties.is_empty() {
+            write_verified_properties(output, &summary.verified_properties)?;
+        }
+
+        writeln!(output)?;
+    }
+    
+    Ok(())
+}
+
+fn write_function_details(
+    output: &mut String,
+    func_id: &FunctionId,
+    summary: &ProofSummary,
+) -> Result<()> {
+    writeln!(output, "### Function: `{}`", func_id.function_name)?;
+    writeln!(output, "- **Line**: {}", func_id.line_number)?;
+    writeln!(
+        output,
+        "- **Provability Score**: {:.1}%",
+        summary.provability_score * 100.0
+    )?;
+    writeln!(
+        output,
+        "- **Analysis Time**: {}μs",
+        summary.analysis_time_us
+    )?;
+    writeln!(
+        output,
+        "- **Verified Properties**: {}",
+        summary.verified_properties.len()
+    )?;
+    
+    Ok(())
+}
+
+fn write_verified_properties(
+    output: &mut String,
+    properties: &[crate::services::lightweight_provability_analyzer::VerifiedProperty],
+) -> Result<()> {
+    writeln!(output, "\n#### Verified Properties:")?;
+    
+    for prop in properties {
+        writeln!(
+            output,
+            "- **{:?}** (confidence: {:.0}%)",
+            prop.property_type,
+            prop.confidence * 100.0
+        )?;
+        writeln!(output, "  - Evidence: {}", prop.evidence)?;
+    }
+    
+    Ok(())
 }
 
 /// Format provability results as SARIF

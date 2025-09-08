@@ -237,44 +237,13 @@ pub struct CliResponse {
 
 // Helper functions
 fn parse_http_request(raw: &[u8]) -> Result<HttpRequest, ProtocolError> {
-    // Simple HTTP parsing - in production would use a proper HTTP parser
     let request_str = String::from_utf8_lossy(raw);
     let lines: Vec<&str> = request_str.lines().collect();
 
-    if lines.is_empty() {
-        return Err(ProtocolError::InvalidParams("Empty request".to_string()));
-    }
-
-    let request_line: Vec<&str> = lines[0].split_whitespace().collect();
-    if request_line.len() < 2 {
-        return Err(ProtocolError::InvalidParams(
-            "Invalid request line".to_string(),
-        ));
-    }
-
-    let method = request_line[0].to_string();
-    let path = request_line[1].to_string();
-
-    // Parse headers
-    let mut headers = HashMap::new();
-    let mut body_start = 0;
-    for (i, line) in lines.iter().enumerate().skip(1) {
-        if line.is_empty() {
-            body_start = i + 1;
-            break;
-        }
-        if let Some((key, value)) = line.split_once(": ") {
-            headers.insert(key.to_string(), value.to_string());
-        }
-    }
-
-    // Parse body if present
-    let body = if body_start < lines.len() {
-        let body_str = lines[body_start..].join("\n");
-        serde_json::from_str(&body_str).unwrap_or(Value::Null)
-    } else {
-        Value::Null
-    };
+    validate_request_lines(&lines)?;
+    let (method, path) = parse_request_line(&lines[0])?;
+    let (headers, body_start) = parse_headers(&lines);
+    let body = parse_body(&lines, body_start);
 
     Ok(HttpRequest {
         method,
@@ -282,6 +251,53 @@ fn parse_http_request(raw: &[u8]) -> Result<HttpRequest, ProtocolError> {
         headers,
         body,
     })
+}
+
+fn validate_request_lines(lines: &[&str]) -> Result<(), ProtocolError> {
+    if lines.is_empty() {
+        Err(ProtocolError::InvalidParams("Empty request".to_string()))
+    } else {
+        Ok(())
+    }
+}
+
+fn parse_request_line(line: &str) -> Result<(String, String), ProtocolError> {
+    let request_line: Vec<&str> = line.split_whitespace().collect();
+    
+    if request_line.len() < 2 {
+        return Err(ProtocolError::InvalidParams(
+            "Invalid request line".to_string(),
+        ));
+    }
+
+    Ok((request_line[0].to_string(), request_line[1].to_string()))
+}
+
+fn parse_headers(lines: &[&str]) -> (HashMap<String, String>, usize) {
+    let mut headers = HashMap::new();
+    let mut body_start = 0;
+    
+    for (i, line) in lines.iter().enumerate().skip(1) {
+        if line.is_empty() {
+            body_start = i + 1;
+            break;
+        }
+        
+        if let Some((key, value)) = line.split_once(": ") {
+            headers.insert(key.to_string(), value.to_string());
+        }
+    }
+
+    (headers, body_start)
+}
+
+fn parse_body(lines: &[&str], body_start: usize) -> Value {
+    if body_start >= lines.len() {
+        return Value::Null;
+    }
+
+    let body_str = lines[body_start..].join("\n");
+    serde_json::from_str(&body_str).unwrap_or(Value::Null)
 }
 
 fn route_to_operation(path: &str, method: &str) -> Result<Operation, ProtocolError> {

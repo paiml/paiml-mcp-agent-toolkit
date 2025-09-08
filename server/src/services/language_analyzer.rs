@@ -271,34 +271,50 @@ impl LanguageAnalyzer {
         let mut results = Vec::new();
 
         for analysis_type in analysis_types {
-            if !self.supports_analysis(language, analysis_type) {
-                results.push(AnalysisResult {
-                    analysis_type: analysis_type.clone(),
-                    success: false,
-                    data: serde_json::json!({"error": "Analysis not supported for this language"}),
-                    error: Some(format!(
-                        "Analysis {:?} not supported for language {:?}",
-                        analysis_type, language
-                    )),
-                });
-                continue;
-            }
-
-            let result = match analysis_type {
-                AnalysisType::Complexity => self.analyze_complexity(content, language).await,
-                AnalysisType::Satd => self.analyze_satd(content, language).await,
-                AnalysisType::DeadCode => self.analyze_dead_code(content, language).await,
-                AnalysisType::Security => self.analyze_security(content, language).await,
-                AnalysisType::Style => self.analyze_style(content, language).await,
-                AnalysisType::Documentation => self.analyze_documentation(content, language).await,
-                AnalysisType::Dependencies => self.analyze_dependencies(content, language).await,
-                AnalysisType::Metrics => self.analyze_metrics(content, language).await,
+            let result = if self.supports_analysis(language, analysis_type) {
+                self.perform_single_analysis(content, language, analysis_type).await
+            } else {
+                self.create_unsupported_analysis_result(analysis_type.clone(), language)
             };
-
+            
             results.push(result);
         }
 
         Ok(results)
+    }
+
+    async fn perform_single_analysis(
+        &self,
+        content: &str,
+        language: Language,
+        analysis_type: &AnalysisType,
+    ) -> AnalysisResult {
+        match analysis_type {
+            AnalysisType::Complexity => self.analyze_complexity(content, language).await,
+            AnalysisType::Satd => self.analyze_satd(content, language).await,
+            AnalysisType::DeadCode => self.analyze_dead_code(content, language).await,
+            AnalysisType::Security => self.analyze_security(content, language).await,
+            AnalysisType::Style => self.analyze_style(content, language).await,
+            AnalysisType::Documentation => self.analyze_documentation(content, language).await,
+            AnalysisType::Dependencies => self.analyze_dependencies(content, language).await,
+            AnalysisType::Metrics => self.analyze_metrics(content, language).await,
+        }
+    }
+
+    fn create_unsupported_analysis_result(
+        &self,
+        analysis_type: AnalysisType,
+        language: Language,
+    ) -> AnalysisResult {
+        AnalysisResult {
+            analysis_type: analysis_type.clone(),
+            success: false,
+            data: serde_json::json!({"error": "Analysis not supported for this language"}),
+            error: Some(format!(
+                "Analysis {:?} not supported for language {:?}",
+                analysis_type, language
+            )),
+        }
     }
 
     /// Analyze complexity for the given language

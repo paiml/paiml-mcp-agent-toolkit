@@ -28,39 +28,73 @@ pub async fn handle_analyze_tdg(config: TdgAnalysisConfig) -> Result<()> {
     let _top_files = config.top_files.unwrap_or(10);
 
     let result = if config.path.is_dir() {
-        let project_score = analyzer.analyze_project(&config.path).await?;
-
-        match config.format {
-            TdgOutputFormat::Table => format_project(&project_score),
-            TdgOutputFormat::Json => serde_json::to_string_pretty(&project_score)?,
-            TdgOutputFormat::Markdown => format_project(&project_score),
-            TdgOutputFormat::Sarif => {
-                let sarif = create_sarif_output(&project_score);
-                serde_json::to_string_pretty(&sarif)?
-            }
-        }
+        analyze_project_path(&analyzer, &config.path, &config.format).await?
     } else {
-        let score = analyzer.analyze_file(&config.path).await?;
-
-        match config.format {
-            TdgOutputFormat::Table => format_human(&score),
-            TdgOutputFormat::Json => format_json(&score),
-            TdgOutputFormat::Markdown => format_markdown(&score),
-            TdgOutputFormat::Sarif => {
-                let sarif = create_file_sarif_output(&score);
-                serde_json::to_string_pretty(&sarif)?
-            }
-        }
+        analyze_single_file(&analyzer, &config.path, &config.format).await?
     };
 
-    if let Some(output_path) = config.output {
-        tokio::fs::write(&output_path, &result).await?;
+    write_or_print_result(&result, config.output).await?;
+    eprintln!("✅ TDG analysis complete");
+    Ok(())
+}
+
+async fn analyze_project_path(
+    analyzer: &TdgAnalyzer,
+    path: &PathBuf,
+    format: &TdgOutputFormat,
+) -> Result<String> {
+    let project_score = analyzer.analyze_project(path).await?;
+    format_project_result(&project_score, format)
+}
+
+async fn analyze_single_file(
+    analyzer: &TdgAnalyzer,
+    path: &PathBuf,
+    format: &TdgOutputFormat,
+) -> Result<String> {
+    let score = analyzer.analyze_file(path).await?;
+    format_file_result(&score, format)
+}
+
+fn format_project_result(
+    project_score: &crate::tdg::ProjectScore,
+    format: &TdgOutputFormat,
+) -> Result<String> {
+    let result = match format {
+        TdgOutputFormat::Table => format_project(project_score),
+        TdgOutputFormat::Json => serde_json::to_string_pretty(project_score)?,
+        TdgOutputFormat::Markdown => format_project(project_score),
+        TdgOutputFormat::Sarif => {
+            let sarif = create_sarif_output(project_score);
+            serde_json::to_string_pretty(&sarif)?
+        }
+    };
+    Ok(result)
+}
+
+fn format_file_result(
+    score: &crate::tdg::TdgScore,
+    format: &TdgOutputFormat,
+) -> Result<String> {
+    let result = match format {
+        TdgOutputFormat::Table => format_human(score),
+        TdgOutputFormat::Json => format_json(score),
+        TdgOutputFormat::Markdown => format_markdown(score),
+        TdgOutputFormat::Sarif => {
+            let sarif = create_file_sarif_output(score);
+            serde_json::to_string_pretty(&sarif)?
+        }
+    };
+    Ok(result)
+}
+
+async fn write_or_print_result(result: &str, output_path: Option<PathBuf>) -> Result<()> {
+    if let Some(output_path) = output_path {
+        tokio::fs::write(&output_path, result).await?;
         eprintln!("📝 Results written to {}", output_path.display());
     } else {
         println!("{}", result);
     }
-
-    eprintln!("✅ TDG analysis complete");
     Ok(())
 }
 
@@ -74,12 +108,22 @@ pub async fn handle_tdg_compare(
 
     let analyzer = TdgAnalyzer::new()?;
     let comparison = analyzer.compare(&path1, &path2).await?;
+    let result = format_comparison_result(&comparison, &format)?;
 
+    write_or_print_result(&result, output).await?;
+    eprintln!("✅ TDG comparison complete");
+    Ok(())
+}
+
+fn format_comparison_result(
+    comparison: &crate::tdg::Comparison,
+    format: &TdgOutputFormat,
+) -> Result<String> {
     let result = match format {
-        TdgOutputFormat::Table => format_comparison(&comparison),
-        TdgOutputFormat::Json => serde_json::to_string_pretty(&comparison)?,
+        TdgOutputFormat::Table => format_comparison(comparison),
+        TdgOutputFormat::Json => serde_json::to_string_pretty(comparison)?,
         TdgOutputFormat::Markdown => {
-            let mut md = format_comparison(&comparison);
+            let mut md = format_comparison(comparison);
             md.insert_str(0, "# TDG Comparison Report\n\n");
             md
         }
@@ -87,16 +131,7 @@ pub async fn handle_tdg_compare(
             anyhow::bail!("SARIF format is not supported for comparisons")
         }
     };
-
-    if let Some(output_path) = output {
-        tokio::fs::write(&output_path, &result).await?;
-        eprintln!("📝 Results written to {}", output_path.display());
-    } else {
-        println!("{}", result);
-    }
-
-    eprintln!("✅ TDG comparison complete");
-    Ok(())
+    Ok(result)
 }
 
 fn create_sarif_output(project: &crate::tdg::ProjectScore) -> serde_json::Value {

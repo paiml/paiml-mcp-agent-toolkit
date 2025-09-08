@@ -467,7 +467,7 @@ async fn run_clippy_analysis(project_path: &Path, clippy_flags: &str) -> Result<
     
     check_clippy_output(&output)?;
     
-    let mut file_metrics = parse_clippy_output(&output)?;
+    let mut file_metrics = parse_clippy_json_output(&output)?;
     
     let workspace_root = find_workspace_root(project_path)?;
     calculate_sloc_for_files(&mut file_metrics, project_path, workspace_root.as_ref()).await?;
@@ -485,104 +485,153 @@ async fn run_clippy_analysis_single_file(
     file_path: &Path,
     clippy_flags: &str,
 ) -> Result<LintHotspotResult> {
-    // Parse clippy flags
-    let flags: Vec<&str> = clippy_flags.split_whitespace().collect();
+    let output = run_clippy_command(project_path, clippy_flags).await?;
+    let abs_file_path = resolve_absolute_path(project_path, file_path);
+    
+    let (file_violations, all_violations, severity_dist) = 
+        parse_clippy_output(&output.stdout, &abs_file_path, file_path)?;
+    
+    let sloc = count_source_lines(project_path, file_path).await.unwrap_or(100);
+    
+    create_single_file_result(file_path, file_violations, all_violations, severity_dist, sloc)
+}
 
-    // Run clippy with JSON output (include all targets for single file too)
+async fn run_clippy_command(project_path: &Path, clippy_flags: &str) -> Result<std::process::Output> {
+    let flags: Vec<&str> = clippy_flags.split_whitespace().collect();
     let mut cmd = Command::new("cargo");
+    
     cmd.current_dir(project_path)
         .arg("clippy")
         .arg("--all-targets")
-        .arg("--message-format=json");
+        .arg("--message-format=json")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
-    // Add clippy flags after -- separator
     if !flags.is_empty() {
-        cmd.arg("--");
-        cmd.args(&flags);
+        cmd.arg("--").args(&flags);
     }
 
-    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    cmd.output().await.context("Failed to run cargo clippy")
+}
 
-    let output = cmd.output().await.context("Failed to run cargo clippy")?;
+fn resolve_absolute_path(project_path: &Path, file_path: &Path) -> PathBuf {
+    if file_path.is_absolute() {
+        file_path.to_path_buf()
+    } else {
+        project_path.join(file_path)
+    }
+}
 
-    // Parse JSON output line by line
-    let reader = BufReader::new(output.stdout.as_slice());
+fn parse_clippy_output(
+    stdout: &[u8], 
+    abs_file_path: &Path, 
+    file_path: &Path
+) -> Result<(Vec<ViolationDetail>, Vec<ViolationDetail>, SeverityDistribution)> {
+    let reader = BufReader::new(stdout);
     let mut file_violations = Vec::new();
     let mut all_violations = Vec::new();
     let mut severity_dist = SeverityDistribution::default();
 
-    // Convert file_path to absolute path for comparison
-    let abs_file_path = if file_path.is_absolute() {
-        file_path.to_path_buf()
-    } else {
-        project_path.join(file_path)
-    };
-
     for line in std::io::BufRead::lines(reader) {
         let line = line?;
-        if let Ok(msg) = serde_json::from_str::<ClippyMessage>(&line) {
-            if let (Some("compiler-message"), Some(diagnostic)) =
-                (msg.reason.as_deref(), &msg.message)
-            {
-                // Check if this diagnostic is for our target file
-                if let Some(span) = diagnostic
-                    .spans
-                    .iter()
-                    .find(|s| s.is_primary || diagnostic.spans.len() == 1)
-                {
-                    let diagnostic_path = PathBuf::from(&span.file_name);
-
-                    // Check if this is our target file (handle both absolute and relative paths)
-                    let matches = diagnostic_path == abs_file_path
-                        || diagnostic_path == *file_path
-                        || diagnostic_path.ends_with(file_path);
-
-                    if matches {
-                        // Create violation detail
-                        let violation = ViolationDetail {
-                            file: file_path.to_path_buf(),
-                            line: span.line_start,
-                            column: span.column_start,
-                            end_line: span.line_end,
-                            end_column: span.column_end,
-                            lint_name: diagnostic
-                                .code
-                                .as_ref()
-                                .map(|c| c.code.clone())
-                                .unwrap_or_default(),
-                            message: diagnostic.message.clone(),
-                            severity: diagnostic.level.clone(),
-                            suggestion: span.suggested_replacement.clone(),
-                            machine_applicable: span
-                                .suggestion_applicability
-                                .as_ref()
-                                .map(|a| a == "machine-applicable" || a == "maybe-incorrect")
-                                .unwrap_or(false),
-                        };
-
-                        file_violations.push(violation.clone());
-                        all_violations.push(violation);
-
-                        // Update severity distribution
-                        match diagnostic.level.as_str() {
-                            "error" => severity_dist.error += 1,
-                            "warning" => severity_dist.warning += 1,
-                            _ => severity_dist.note += 1,
-                        }
-                    }
-                }
-            }
+        if let Some(violation) = parse_clippy_line(&line, abs_file_path, file_path)? {
+            file_violations.push(violation.clone());
+            update_severity_distribution(&mut severity_dist, &violation.severity);
+            all_violations.push(violation);
         }
     }
 
-    // Count lines in the file
-    let sloc = count_source_lines(project_path, file_path)
-        .await
-        .unwrap_or(100);
+    Ok((file_violations, all_violations, severity_dist))
+}
+
+fn parse_clippy_line(
+    line: &str, 
+    abs_file_path: &Path, 
+    file_path: &Path
+) -> Result<Option<ViolationDetail>> {
+    let msg = match serde_json::from_str::<ClippyMessage>(line) {
+        Ok(msg) => msg,
+        Err(_) => return Ok(None),
+    };
+
+    let (Some("compiler-message"), Some(diagnostic)) = (msg.reason.as_deref(), &msg.message) else {
+        return Ok(None);
+    };
+
+    let Some(span) = find_primary_span(diagnostic) else {
+        return Ok(None);
+    };
+
+    if !is_target_file(&span.file_name, abs_file_path, file_path) {
+        return Ok(None);
+    }
+
+    Ok(Some(create_violation_detail(file_path, span, diagnostic)))
+}
+
+fn find_primary_span(diagnostic: &DiagnosticMessage) -> Option<&DiagnosticSpan> {
+    diagnostic.spans.iter()
+        .find(|s| s.is_primary || diagnostic.spans.len() == 1)
+}
+
+fn is_target_file(diagnostic_file: &str, abs_file_path: &Path, file_path: &Path) -> bool {
+    let diagnostic_path = PathBuf::from(diagnostic_file);
+    diagnostic_path == *abs_file_path
+        || diagnostic_path == *file_path
+        || diagnostic_path.ends_with(file_path)
+}
+
+fn create_violation_detail(
+    file_path: &Path,
+    span: &DiagnosticSpan,
+    diagnostic: &DiagnosticMessage,
+) -> ViolationDetail {
+    ViolationDetail {
+        file: file_path.to_path_buf(),
+        line: span.line_start,
+        column: span.column_start,
+        end_line: span.line_end,
+        end_column: span.column_end,
+        lint_name: extract_lint_name(diagnostic),
+        message: diagnostic.message.clone(),
+        severity: diagnostic.level.clone(),
+        suggestion: span.suggested_replacement.clone(),
+        machine_applicable: is_machine_applicable(span),
+    }
+}
+
+fn extract_lint_name(diagnostic: &DiagnosticMessage) -> String {
+    diagnostic.code
+        .as_ref()
+        .map(|c| c.code.clone())
+        .unwrap_or_default()
+}
+
+fn is_machine_applicable(span: &DiagnosticSpan) -> bool {
+    span.suggestion_applicability
+        .as_ref()
+        .map(|a| a == "machine-applicable" || a == "maybe-incorrect")
+        .unwrap_or(false)
+}
+
+fn update_severity_distribution(severity_dist: &mut SeverityDistribution, level: &str) {
+    match level {
+        "error" => severity_dist.error += 1,
+        "warning" => severity_dist.warning += 1,
+        _ => severity_dist.note += 1,
+    }
+}
+
+fn create_single_file_result(
+    file_path: &Path,
+    file_violations: Vec<ViolationDetail>,
+    all_violations: Vec<ViolationDetail>,
+    severity_dist: SeverityDistribution,
+    sloc: usize,
+) -> Result<LintHotspotResult> {
     let total_violations = file_violations.len();
     let defect_density = (total_violations as f64 / sloc as f64) * 100.0;
 
-    // Create hotspot for the single file
     let hotspot = LintHotspot {
         file: file_path.to_path_buf(),
         defect_density,
@@ -592,6 +641,7 @@ async fn run_clippy_analysis_single_file(
         top_lints: count_top_lints(&file_violations),
         detailed_violations: file_violations,
     };
+
     let mut summary_by_file = HashMap::new();
     summary_by_file.insert(
         file_path.to_path_buf(),
@@ -612,7 +662,7 @@ async fn run_clippy_analysis_single_file(
         enforcement: None,
         refactor_chain: None,
         quality_gate: QualityGateStatus {
-            passed: defect_density <= 5.0, // Use default threshold
+            passed: defect_density <= 5.0,
             violations: vec![],
             blocking: false,
         },
@@ -1239,7 +1289,7 @@ fn check_clippy_output(output: &std::process::Output) -> Result<()> {
 }
 
 /// Parse clippy JSON output into file metrics (cognitive complexity ≤8)
-fn parse_clippy_output(output: &std::process::Output) -> Result<HashMap<PathBuf, FileMetrics>> {
+fn parse_clippy_json_output(output: &std::process::Output) -> Result<HashMap<PathBuf, FileMetrics>> {
     let reader = BufReader::new(output.stdout.as_slice());
     let mut file_metrics: HashMap<PathBuf, FileMetrics> = HashMap::new();
     let mut message_count = 0;
