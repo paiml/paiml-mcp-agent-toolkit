@@ -13,6 +13,7 @@ pub mod churn_formatter;
 pub mod complexity_handlers;
 pub mod comprehensive_analysis_handler;
 pub mod comprehensive_handler;
+pub mod config_command_handlers;
 pub mod configuration_handlers;
 pub mod defect_prediction_handler;
 pub mod demo_handlers;
@@ -20,6 +21,7 @@ pub mod duplication_analysis;
 pub mod enforce_handlers;
 pub mod enhanced_reporting_handlers;
 pub mod generation_handlers;
+pub mod hooks_command_handlers;
 pub mod incremental_coverage_handler;
 pub mod lint_hotspot_handlers;
 #[cfg(test)]
@@ -58,6 +60,7 @@ pub use cache::handle_cache_command;
 pub use complexity_handlers::{
     handle_analyze_churn, handle_analyze_complexity, handle_analyze_dag, handle_analyze_dead_code,
 };
+pub use config_command_handlers::handle_config_command;
 pub use configuration_handlers::handle_configuration;
 pub use defect_prediction_handler::handle_analyze_defect_prediction;
 pub use demo_handlers::{handle_demo, handle_quality_gate};
@@ -67,6 +70,7 @@ pub use generation_handlers::{
     handle_generate, handle_list_agent_templates, handle_scaffold, handle_scaffold_agent,
     handle_validate, handle_validate_agent_template, ScaffoldAgentParams,
 };
+pub use hooks_command_handlers::handle_hooks_command;
 pub use incremental_coverage_handler::handle_analyze_incremental_coverage;
 pub use lint_hotspot_handlers::handle_analyze_lint_hotspot;
 pub use memory::handle_memory_command;

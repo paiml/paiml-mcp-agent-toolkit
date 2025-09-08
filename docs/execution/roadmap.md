@@ -17,6 +17,33 @@
 - **Build Time**: ~15s with PMAT_FAST_BUILD ✅ (optimized performance)
 - **Clippy Warnings**: Reduced from 150+ to ~100 (major code quality improvements)
 
+## 🚀 NEXT PRIORITY: Sprint 80 - Pre-commit Hook Management as Core Feature 🎯
+- **Start Date**: 2025-09-08
+- **Priority**: P0 - Critical Quality Infrastructure
+- **Goal**: Eliminate configuration duplication by making pre-commit hook management a core PMAT feature
+- **Status**: 🚧 **IN PROGRESS**
+- **Ticket**: PMAT-80
+- **Specification**: [docs/specifications/pre-commit-hooks-spec.md](../specifications/pre-commit-hooks-spec.md)
+
+### Objective: Single Source of Truth for Quality Gates
+**Problem**: Currently require manual updates to 5+ locations for quality threshold changes  
+**Solution**: Dynamic hook management with `pmat.toml` as the single configuration source
+
+### Sprint 80 Goals:
+1. ✅ **Specification Complete**: Comprehensive pre-commit hooks specification written
+2. 🚧 **Core Infrastructure**: `pmat config` and `pmat hooks` command implementation (TDD)
+3. ⏳ **Dynamic Hook Generation**: Template-based hook generation from live config
+4. ⏳ **Quality Gate Integration**: Hooks use dynamic thresholds from `pmat.toml`
+5. ⏳ **Dogfooding Validation**: Self-host PMAT development with PMAT-managed hooks
+6. ⏳ **Documentation & Release**: Update docs and release v2.66.0
+
+### Success Criteria:
+- **Single Source**: Only `pmat.toml` contains quality gate thresholds
+- **Zero Duplication**: No hardcoded or duplicated threshold configurations
+- **Automatic Management**: Hooks auto-update when config changes
+- **Toyota Way Compliance**: All code ≤30 cyclomatic, ≤25 cognitive complexity
+- **Performance**: Hook execution <30s, config loading <100ms
+
 ### 🎯 COMPLETED: Sprint 79 Extension - Zero Violations Mission 🏆
 - **Completion Date**: 2025-09-08
 - **Priority**: P0 - Critical Quality Milestone
