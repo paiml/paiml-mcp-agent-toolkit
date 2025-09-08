@@ -1,5 +1,5 @@
 use crate::cli::commands::{DiagnosticOutputFormat, StorageCommand, TdgCommand};
-use crate::tdg::{StorageBackendType, StorageConfig, TieredStorageFactory};
+use crate::tdg::{StorageBackendType, StorageConfig, TieredStorageFactory, TieredStore};
 use anyhow::Result;
 use prettytable::row;
 use serde_json::json;
@@ -204,13 +204,13 @@ async fn handle_storage_command(command: &StorageCommand, base_path: &PathBuf) -
     match command {
         StorageCommand::Stats { detailed } => handle_stats(&storage, *detailed),
         StorageCommand::Cleanup { max_age } => handle_cleanup(&storage, *max_age),
-        StorageCommand::Migrate { backend, path } => handle_migrate(backend, path.as_deref()),
+        StorageCommand::Migrate { backend, path } => handle_migrate(backend, path.as_ref()),
         StorageCommand::Flush => handle_flush(&storage),
     }
 }
 
 /// Handle stats command
-fn handle_stats(storage: &crate::tdg::storage::TieredStorageImpl, detailed: bool) -> Result<()> {
+fn handle_stats(storage: &TieredStore, detailed: bool) -> Result<()> {
     let stats = storage.get_statistics();
     println!("=== TDG Storage Statistics ===\n");
     println!("{}", stats.format_diagnostic());
@@ -235,7 +235,7 @@ fn print_backend_statistics(
 }
 
 /// Handle cleanup command
-fn handle_cleanup(storage: &crate::tdg::storage::TieredStorageImpl, max_age: u64) -> Result<()> {
+fn handle_cleanup(storage: &TieredStore, max_age: u64) -> Result<()> {
     let removed = storage.cleanup_hot_cache(max_age);
     println!("Cleaned up {} expired hot cache entries", removed);
     Ok(())
@@ -291,7 +291,7 @@ fn create_migration_configs(
 }
 
 /// Handle flush command
-fn handle_flush(storage: &crate::tdg::storage::TieredStorageImpl) -> Result<()> {
+fn handle_flush(storage: &TieredStore) -> Result<()> {
     storage.flush()?;
     println!("✅ All pending writes flushed to storage");
     Ok(())
