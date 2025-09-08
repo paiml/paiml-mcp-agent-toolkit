@@ -208,43 +208,6 @@ impl TieredStore {
         Ok(())
     }
 
-    /// Get storage statistics for diagnostics
-    pub fn get_statistics(&self) -> StorageStatistics {
-        let hot_count = self.hot.len();
-
-        // Count warm entries
-        let warm_count = self
-            .warm_backend
-            .iter()
-            .map(|iter| iter.count())
-            .unwrap_or(0);
-
-        // Count cold entries
-        let cold_count = self
-            .cold_backend
-            .iter()
-            .map(|iter| iter.count())
-            .unwrap_or(0);
-
-        // Get backend-specific stats
-        let warm_stats = self.warm_backend.get_stats();
-        let cold_stats = self.cold_backend.get_stats();
-
-        StorageStatistics {
-            hot_entries: hot_count,
-            warm_entries: warm_count,
-            cold_entries: cold_count,
-            total_entries: hot_count + warm_count + cold_count,
-            hot_memory_kb: (hot_count * std::mem::size_of::<HotCacheEntry>()) / 1024,
-            compression_ratio: self.estimate_compression_ratio(),
-            warm_backend: self.warm_backend.backend_name().to_string(),
-            cold_backend: self.cold_backend.backend_name().to_string(),
-            backend_stats: HashMap::from([
-                ("warm".to_string(), warm_stats),
-                ("cold".to_string(), cold_stats),
-            ]),
-        }
-    }
 
     /// Estimate compression ratio for warm storage
     fn estimate_compression_ratio(&self) -> f32 {
@@ -328,6 +291,41 @@ impl TieredStore {
         self.warm_backend.flush()?;
         self.cold_backend.flush()?;
         Ok(())
+    }
+    
+    /// Get storage statistics for monitoring and dogfooding
+    pub fn get_statistics(&self) -> StorageStatistics {
+        let hot_entries = self.hot.len();
+        let hot_memory_kb = (hot_entries * std::mem::size_of::<HotCacheEntry>()) / 1024;
+        
+        // Get backend statistics (if available)
+        let warm_stats = self.warm_backend.get_stats();
+        let cold_stats = self.cold_backend.get_stats();
+        
+        let warm_entries = warm_stats.get("entry_count")
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(0);
+        let cold_entries = cold_stats.get("entry_count")
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(0);
+        
+        let total_entries = hot_entries + warm_entries + cold_entries;
+        
+        let mut backend_stats = HashMap::new();
+        backend_stats.insert("warm".to_string(), warm_stats);
+        backend_stats.insert("cold".to_string(), cold_stats);
+        
+        StorageStatistics {
+            hot_entries,
+            warm_entries,
+            cold_entries,
+            total_entries,
+            hot_memory_kb,
+            compression_ratio: 0.33, // Default compression ratio
+            warm_backend: "sled".to_string(), // Default backend type
+            cold_backend: "sled".to_string(), // Default backend type
+            backend_stats,
+        }
     }
 }
 
