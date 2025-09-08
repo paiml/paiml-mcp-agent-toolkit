@@ -494,13 +494,19 @@ pub async fn handle_analyze_complexity(
     apply_complexity_filters(&mut file_metrics, max_cyclomatic, max_cognitive);
     apply_top_files_limit(&mut file_metrics, config.top_files);
 
-    let summary = aggregate_results_with_thresholds(file_metrics.clone(), max_cyclomatic, max_cognitive);
+    let summary =
+        aggregate_results_with_thresholds(file_metrics.clone(), max_cyclomatic, max_cognitive);
 
     // Format and write output
     format_and_write_output(&summary, &file_metrics, format, output, top_files).await?;
 
     // Check violations if required
-    check_complexity_violations(&file_metrics, fail_on_violation, max_cyclomatic, max_cognitive);
+    check_complexity_violations(
+        &file_metrics,
+        fail_on_violation,
+        max_cyclomatic,
+        max_cognitive,
+    );
 
     Ok(())
 }
@@ -512,7 +518,7 @@ async fn analyze_files_by_mode(
     config: &ComplexityConfig,
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
     eprintln!("⏰ Analysis timeout set to {} seconds", config.timeout);
-    
+
     if let Some(single_file) = file {
         analyze_single_file(&single_file, config).await
     } else if !files.is_empty() {
@@ -535,7 +541,7 @@ fn check_complexity_violations(
     }
 
     let has_violations = has_complexity_violations(file_metrics, max_cyclomatic, max_cognitive);
-    
+
     if has_violations {
         eprintln!("\n❌ Complexity violations found");
         std::process::exit(1);
@@ -564,11 +570,14 @@ fn create_dead_code_ranking_result(
     min_dead_lines: usize,
     config: crate::models::dead_code::DeadCodeAnalysisConfig,
 ) -> crate::models::dead_code::DeadCodeRankingResult {
-    use crate::models::dead_code::{DeadCodeRankingResult, DeadCodeSummary, ConfidenceLevel, FileDeadCodeMetrics};
+    use crate::models::dead_code::DeadCodeRankingResult;
     use chrono::Utc;
-    
+
     DeadCodeRankingResult {
-        ranked_files: convert_cargo_files_to_metrics(accurate_report.files_with_dead_code.clone(), min_dead_lines),
+        ranked_files: convert_cargo_files_to_metrics(
+            accurate_report.files_with_dead_code.clone(),
+            min_dead_lines,
+        ),
         summary: create_dead_code_summary(&accurate_report, files_with_dead_code_count),
         analysis_timestamp: Utc::now(),
         config,
@@ -580,19 +589,25 @@ fn convert_cargo_files_to_metrics(
     cargo_files: Vec<crate::services::cargo_dead_code_analyzer::FileDeadCode>,
     min_dead_lines: usize,
 ) -> Vec<crate::models::dead_code::FileDeadCodeMetrics> {
-    use crate::models::dead_code::{FileDeadCodeMetrics, ConfidenceLevel};
-    
+    use crate::models::dead_code::{ConfidenceLevel, FileDeadCodeMetrics};
+
     cargo_files
         .into_iter()
         .map(|file| {
-            let dead_functions_count = count_dead_items_by_kind(&file, &[
-                crate::services::cargo_dead_code_analyzer::DeadCodeKind::Function,
-                crate::services::cargo_dead_code_analyzer::DeadCodeKind::Method,
-            ]);
-            let dead_classes_count = count_dead_items_by_kind(&file, &[
-                crate::services::cargo_dead_code_analyzer::DeadCodeKind::Struct,
-                crate::services::cargo_dead_code_analyzer::DeadCodeKind::Enum,
-            ]);
+            let dead_functions_count = count_dead_items_by_kind(
+                &file,
+                &[
+                    crate::services::cargo_dead_code_analyzer::DeadCodeKind::Function,
+                    crate::services::cargo_dead_code_analyzer::DeadCodeKind::Method,
+                ],
+            );
+            let dead_classes_count = count_dead_items_by_kind(
+                &file,
+                &[
+                    crate::services::cargo_dead_code_analyzer::DeadCodeKind::Struct,
+                    crate::services::cargo_dead_code_analyzer::DeadCodeKind::Enum,
+                ],
+            );
 
             FileDeadCodeMetrics {
                 path: file.file_path.display().to_string(),
@@ -629,7 +644,7 @@ fn create_dead_code_summary(
     files_with_dead_code_count: usize,
 ) -> crate::models::dead_code::DeadCodeSummary {
     use crate::models::dead_code::DeadCodeSummary;
-    
+
     DeadCodeSummary {
         total_files_analyzed: accurate_report.total_lines / 100, // Rough estimate
         files_with_dead_code: files_with_dead_code_count,
@@ -658,9 +673,9 @@ fn write_top_files_with_satd_section(
     output: &mut String,
     result: &crate::services::satd_detector::SATDAnalysisResult,
 ) {
-    use std::fmt::Write;
     use std::collections::HashMap;
-    
+    use std::fmt::Write;
+
     writeln!(output, "\n## Top Files with SATD\n").unwrap();
 
     // Group items by file and count them
@@ -676,14 +691,7 @@ fn write_top_files_with_satd_section(
     // Show top 10 files with their SATD counts
     for (i, (file, count)) in sorted_files.iter().take(10).enumerate() {
         let filename = file.file_name().unwrap_or_default().to_string_lossy();
-        writeln!(
-            output,
-            "{}. `{}` - {} SATD items",
-            i + 1,
-            filename,
-            count
-        )
-        .unwrap();
+        writeln!(output, "{}. `{}` - {} SATD items", i + 1, filename, count).unwrap();
     }
 }
 
@@ -693,7 +701,7 @@ fn write_critical_items_section(
     result: &crate::services::satd_detector::SATDAnalysisResult,
 ) {
     use std::fmt::Write;
-    
+
     writeln!(output, "\n## Critical Items\n").unwrap();
     for item in result
         .items
@@ -727,12 +735,22 @@ fn handle_watch_mode(
 ) -> Result<()> {
     print_watch_mode_intro(path);
     let (mut watcher, rx) = create_file_watcher(path)?;
-    
-    let config = create_sync_config(path, toolchain, max_cyclomatic, max_cognitive, &include, timeout, top_files, format.clone(), output);
-    
+
+    let config = create_sync_config(
+        path,
+        toolchain,
+        max_cyclomatic,
+        max_cognitive,
+        &include,
+        timeout,
+        top_files,
+        format.clone(),
+        output,
+    );
+
     // Initial analysis
     run_initial_analysis(&config)?;
-    
+
     // Watch for changes
     watch_for_file_changes(rx, &config, &include, &mut watcher)
 }
@@ -745,9 +763,11 @@ fn print_watch_mode_intro(path: &Path) {
 }
 
 /// Create file system watcher
-fn create_file_watcher(path: &Path) -> Result<(RecommendedWatcher, std::sync::mpsc::Receiver<Event>)> {
+fn create_file_watcher(
+    path: &Path,
+) -> Result<(RecommendedWatcher, std::sync::mpsc::Receiver<Event>)> {
     let (tx, rx) = channel();
-    
+
     let mut watcher = RecommendedWatcher::new(
         move |event: Result<Event, notify::Error>| {
             if let Ok(event) = event {
@@ -756,10 +776,10 @@ fn create_file_watcher(path: &Path) -> Result<(RecommendedWatcher, std::sync::mp
         },
         Config::default().with_poll_interval(Duration::from_secs(1)),
     )?;
-    
+
     // Start watching the path recursively
     watcher.watch(path, RecursiveMode::Recursive)?;
-    
+
     Ok((watcher, rx))
 }
 
@@ -820,7 +840,7 @@ fn watch_for_file_changes(
 /// Handle a file change event by reanalyzing
 fn handle_file_change_event(event: &Event, config: &SyncAnalysisConfig) -> Result<()> {
     eprintln!("\n🔄 File change detected, reanalyzing...");
-    
+
     if let Some(paths) = get_changed_paths(event) {
         for changed_path in paths {
             eprintln!("  📝 Changed: {}", changed_path.display());
@@ -831,16 +851,17 @@ fn handle_file_change_event(event: &Event, config: &SyncAnalysisConfig) -> Resul
     if let Err(e) = run_complexity_analysis_sync(config.clone()) {
         eprintln!("⚠️  Analysis error: {}", e);
     }
-    
+
     Ok(())
 }
 
 /// Check if we should reanalyze based on the event type
 fn should_reanalyze(event: &Event, include_patterns: &[String]) -> bool {
     match event.kind {
-        EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) => {
-            event.paths.iter().any(|path| should_analyze_path(path, include_patterns))
-        }
+        EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) => event
+            .paths
+            .iter()
+            .any(|path| should_analyze_path(path, include_patterns)),
         _ => false,
     }
 }
@@ -878,7 +899,9 @@ fn should_include_file(path_str: &str, include_patterns: &[String]) -> bool {
         return true;
     }
 
-    include_patterns.iter().any(|pattern| path_str.contains(pattern))
+    include_patterns
+        .iter()
+        .any(|pattern| path_str.contains(pattern))
 }
 
 /// Get the paths that changed from an event
@@ -1001,20 +1024,19 @@ pub async fn handle_analyze_churn(
     exclude: Vec<String>,
 ) -> Result<()> {
     use crate::services::git_analysis::GitAnalysisService;
-    use crate::utils::file_filter::FileFilter;
 
     eprintln!("📊 Analyzing code churn for the last {} days...", days);
 
     // Create and apply file filters
     let filter = create_and_report_file_filter(include, exclude)?;
-    
+
     // Analyze code churn
     let mut analysis = GitAnalysisService::analyze_code_churn(&project_path, days)
         .map_err(|e| anyhow::anyhow!("Churn analysis failed: {}", e))?;
 
     // Apply filtering and limits
     apply_churn_filters(&mut analysis, &filter, top_files);
-    
+
     eprintln!("✅ Analyzed {} files with changes", analysis.files.len());
 
     // Format and write output
@@ -1035,7 +1057,7 @@ fn create_and_report_file_filter(
             eprintln!("  Exclude patterns: {:?}", exclude);
         }
     }
-    
+
     crate::utils::file_filter::FileFilter::new(include, exclude)
 }
 
@@ -1058,7 +1080,9 @@ fn apply_churn_filters(
 
     // Apply top_files limit if specified (0 means show all)
     if top_files > 0 && analysis.files.len() > top_files {
-        analysis.files.sort_by(|a, b| b.commit_count.cmp(&a.commit_count));
+        analysis
+            .files
+            .sort_by(|a, b| b.commit_count.cmp(&a.commit_count));
         analysis.files.truncate(top_files);
     }
 }
@@ -1070,7 +1094,7 @@ async fn format_and_write_churn_output(
     output: Option<PathBuf>,
 ) -> Result<()> {
     use crate::models::churn::ChurnOutputFormat;
-    
+
     let content = match format {
         ChurnOutputFormat::Json => serde_json::to_string_pretty(&analysis)?,
         ChurnOutputFormat::Summary => {
@@ -1169,13 +1193,9 @@ async fn run_dead_code_analysis_with_filters(
     include: Vec<String>,
     exclude: Vec<String>,
 ) -> Result<crate::models::dead_code::DeadCodeResult> {
-    use crate::models::dead_code::{
-        ConfidenceLevel, DeadCodeAnalysisConfig, DeadCodeRankingResult, DeadCodeSummary,
-        FileDeadCodeMetrics,
-    };
+    use crate::models::dead_code::DeadCodeAnalysisConfig;
     use crate::services::cargo_dead_code_analyzer::CargoDeadCodeAnalyzer;
     use crate::utils::file_filter::FileFilter;
-    use chrono::Utc;
 
     // Create file filter
     let filter = FileFilter::new(include, exclude)?;
@@ -1328,11 +1348,10 @@ fn format_dead_code_as_sarif(result: &crate::models::dead_code::DeadCodeResult) 
 fn format_dead_code_as_summary(
     result: &crate::models::dead_code::DeadCodeResult,
 ) -> Result<String> {
-    use std::fmt::Write;
     let mut output = String::new();
 
     write_dead_code_header(&mut output, result)?;
-    
+
     if result.summary.dead_functions > 0 {
         write_dead_code_by_type_section(&mut output, &result.summary)?;
     }
@@ -1350,7 +1369,7 @@ fn write_dead_code_header(
     result: &crate::models::dead_code::DeadCodeResult,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "# Dead Code Analysis Summary\n")?;
     writeln!(output, "📊 **Files analyzed**: {}", result.total_files)?;
     writeln!(
@@ -1368,7 +1387,7 @@ fn write_dead_code_header(
         "📈 **Dead code percentage**: {:.2}%\n",
         result.summary.dead_percentage
     )?;
-    
+
     Ok(())
 }
 
@@ -1378,13 +1397,17 @@ fn write_dead_code_by_type_section(
     summary: &crate::models::dead_code::DeadCodeSummary,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "## Dead Code by Type\n")?;
     writeln!(output, "- **Dead functions**: {}", summary.dead_functions)?;
     writeln!(output, "- **Dead classes**: {}", summary.dead_classes)?;
     writeln!(output, "- **Dead variables**: {}", summary.dead_modules)?;
-    writeln!(output, "- **Unreachable blocks**: {}", summary.unreachable_blocks)?;
-    
+    writeln!(
+        output,
+        "- **Unreachable blocks**: {}",
+        summary.unreachable_blocks
+    )?;
+
     Ok(())
 }
 
@@ -1394,7 +1417,7 @@ fn write_top_files_section(
     files: &[crate::models::dead_code::FileDeadCodeMetrics],
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "\n## Top Files with Dead Code\n")?;
     for (i, file) in files.iter().take(10).enumerate() {
         writeln!(
@@ -1406,7 +1429,7 @@ fn write_top_files_section(
             file.dead_lines
         )?;
     }
-    
+
     Ok(())
 }
 

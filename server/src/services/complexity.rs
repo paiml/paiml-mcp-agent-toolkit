@@ -475,13 +475,8 @@ pub fn aggregate_results_with_thresholds(
     let mut analysis_data = analyze_file_metrics(&file_metrics, &rules, &thresholds);
     let summary_stats = calculate_summary_statistics(&mut analysis_data);
     let technical_debt = calculate_technical_debt(&analysis_data.violations);
-    
-    build_complexity_report(
-        file_metrics,
-        analysis_data,
-        summary_stats,
-        technical_debt,
-    )
+
+    build_complexity_report(file_metrics, analysis_data, summary_stats, technical_debt)
 }
 
 /// Build custom thresholds from optional parameters
@@ -490,7 +485,7 @@ fn build_custom_thresholds(
     max_cognitive: Option<u16>,
 ) -> ComplexityThresholds {
     let mut thresholds = ComplexityThresholds::default();
-    
+
     if let Some(max_cyc) = max_cyclomatic {
         thresholds.cyclomatic_warn = max_cyc.saturating_sub(5).max(1);
         thresholds.cyclomatic_error = max_cyc;
@@ -499,7 +494,7 @@ fn build_custom_thresholds(
         thresholds.cognitive_warn = max_cog.saturating_sub(5).max(1);
         thresholds.cognitive_error = max_cog;
     }
-    
+
     thresholds
 }
 
@@ -534,12 +529,12 @@ fn analyze_file_metrics(
         hotspots: Vec::new(),
         total_functions: 0,
     };
-    
+
     for file in file_metrics {
         process_file_functions(file, rules, thresholds, &mut data);
         process_file_classes(file, rules, &mut data);
     }
-    
+
     data
 }
 
@@ -551,13 +546,19 @@ fn process_file_functions(
     data: &mut AnalysisData,
 ) {
     let (cyclomatic_rule, cognitive_rule) = rules;
-    
+
     for func in &file.functions {
         data.total_functions += 1;
         data.all_cyclomatic.push(func.metrics.cyclomatic);
         data.all_cognitive.push(func.metrics.cognitive);
-        
-        check_function_violations(func, file, cyclomatic_rule, cognitive_rule, &mut data.violations);
+
+        check_function_violations(
+            func,
+            file,
+            cyclomatic_rule,
+            cognitive_rule,
+            &mut data.violations,
+        );
         check_function_hotspots(func, file, thresholds, &mut data.hotspots);
     }
 }
@@ -569,14 +570,20 @@ fn process_file_classes(
     data: &mut AnalysisData,
 ) {
     let (cyclomatic_rule, cognitive_rule) = rules;
-    
+
     for class in &file.classes {
         for method in &class.methods {
             data.total_functions += 1;
             data.all_cyclomatic.push(method.metrics.cyclomatic);
             data.all_cognitive.push(method.metrics.cognitive);
-            
-            check_method_violations(method, file, cyclomatic_rule, cognitive_rule, &mut data.violations);
+
+            check_method_violations(
+                method,
+                file,
+                cyclomatic_rule,
+                cognitive_rule,
+                &mut data.violations,
+            );
         }
     }
 }
@@ -589,21 +596,15 @@ fn check_function_violations(
     cognitive_rule: &CognitiveComplexityRule,
     violations: &mut Vec<Violation>,
 ) {
-    if let Some(violation) = cyclomatic_rule.evaluate(
-        &func.metrics,
-        &file.path,
-        func.line_start,
-        Some(&func.name),
-    ) {
+    if let Some(violation) =
+        cyclomatic_rule.evaluate(&func.metrics, &file.path, func.line_start, Some(&func.name))
+    {
         violations.push(violation);
     }
-    
-    if let Some(violation) = cognitive_rule.evaluate(
-        &func.metrics,
-        &file.path,
-        func.line_start,
-        Some(&func.name),
-    ) {
+
+    if let Some(violation) =
+        cognitive_rule.evaluate(&func.metrics, &file.path, func.line_start, Some(&func.name))
+    {
         violations.push(violation);
     }
 }
@@ -624,7 +625,7 @@ fn check_method_violations(
     ) {
         violations.push(violation);
     }
-    
+
     if let Some(violation) = cognitive_rule.evaluate(
         &method.metrics,
         &file.path,
@@ -667,15 +668,16 @@ struct SummaryStats {
 fn calculate_summary_statistics(data: &mut AnalysisData) -> SummaryStats {
     data.all_cyclomatic.sort_unstable();
     data.all_cognitive.sort_unstable();
-    
+
     let p90_stats = calculate_percentiles(&data.all_cyclomatic, &data.all_cognitive);
     let median_stats = calculate_medians(&data.all_cyclomatic, &data.all_cognitive);
     let max_stats = calculate_max_values(&data.all_cyclomatic, &data.all_cognitive);
-    
+
     // Sort and limit hotspots
-    data.hotspots.sort_unstable_by(|a, b| b.complexity.cmp(&a.complexity));
+    data.hotspots
+        .sort_unstable_by(|a, b| b.complexity.cmp(&a.complexity));
     data.hotspots.truncate(10);
-    
+
     SummaryStats {
         median_cyclomatic: median_stats.0,
         median_cognitive: median_stats.1,
@@ -706,7 +708,7 @@ fn calculate_median(values: &[u16]) -> f32 {
     if values.is_empty() {
         return 0.0;
     }
-    
+
     let mid = values.len() / 2;
     if values.len() % 2 == 0 {
         (values[mid - 1] + values[mid]) as f32 / 2.0

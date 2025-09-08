@@ -85,7 +85,7 @@ async fn handle_agent_start(config: AgentStartConfig) -> Result<()> {
     let foreground = config.foreground;
     let daemon_config = prepare_daemon_config(config).await?;
     let daemon = AgentDaemon::new(daemon_config);
-    
+
     start_daemon_with_mode(daemon, foreground).await
 }
 

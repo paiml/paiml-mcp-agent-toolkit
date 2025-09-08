@@ -3,7 +3,7 @@ use crate::cli::TdgOutputFormat;
 use crate::tdg::{Grade, TdgAnalyzer, TdgConfig};
 use anyhow::{anyhow, Result};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Configuration for TDG command handling
 pub struct TdgCommandConfig {
@@ -65,8 +65,8 @@ async fn handle_tdg_subcommand(
 /// Handle TDG compare subcommand (cognitive complexity ≤4)
 async fn handle_compare_command(
     analyzer: &TdgAnalyzer,
-    source1: &PathBuf,
-    source2: &PathBuf,
+    source1: &Path,
+    source2: &Path,
     config: &TdgCommandConfig,
 ) -> Result<()> {
     let comparison = analyzer.compare(source1, source2).await?;
@@ -77,7 +77,7 @@ async fn handle_compare_command(
     } else {
         println!("{}", output_str);
     }
-    
+
     Ok(())
 }
 
@@ -94,10 +94,7 @@ async fn execute_tdg_analysis(
 }
 
 /// Validate minimum grade requirement (cognitive complexity ≤4)
-fn validate_minimum_grade(
-    score: &crate::tdg::TdgScore,
-    config: &TdgCommandConfig,
-) -> Result<()> {
+fn validate_minimum_grade(score: &crate::tdg::TdgScore, config: &TdgCommandConfig) -> Result<()> {
     if let Some(min_grade_str) = &config.min_grade {
         let min_grade = parse_grade(min_grade_str)?;
         if score.grade < min_grade {
@@ -112,14 +109,15 @@ fn validate_minimum_grade(
 }
 
 /// Format TDG output based on config (cognitive complexity ≤3)
-fn format_tdg_output(
-    score: &crate::tdg::TdgScore,
-    config: &TdgCommandConfig,
-) -> Result<String> {
+fn format_tdg_output(score: &crate::tdg::TdgScore, config: &TdgCommandConfig) -> Result<String> {
     if config.quiet {
         Ok(format!("{:.1}", score.total))
     } else {
-        format_tdg_score(score.clone(), config.format.clone(), config.include_components)
+        format_tdg_score(
+            score.clone(),
+            config.format.clone(),
+            config.include_components,
+        )
     }
 }
 

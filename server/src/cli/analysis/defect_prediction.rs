@@ -205,7 +205,7 @@ fn format_defect_detailed(
     let mut output = String::new();
 
     write_detailed_header(&mut output)?;
-    
+
     for (file, score) in predictions {
         write_file_details(&mut output, file, score, include_recommendations)?;
     }
@@ -231,16 +231,16 @@ fn write_file_details(
     include_recommendations: bool,
 ) -> Result<()> {
     use std::fmt::Write;
-    
+
     writeln!(output, "📄 File: {}", file)?;
     write_risk_level(output, score)?;
     write_confidence_level(output, score)?;
     write_contributing_factors(output, score)?;
-    
+
     if include_recommendations {
         write_recommendations(output, score)?;
     }
-    
+
     writeln!(output)?;
     Ok(())
 }
@@ -259,7 +259,9 @@ fn write_risk_level(output: &mut String, score: &DefectScore) -> Result<()> {
 }
 
 /// Format risk level for display
-fn format_risk_level_display(risk_level: &crate::services::defect_probability::RiskLevel) -> &'static str {
+fn format_risk_level_display(
+    risk_level: &crate::services::defect_probability::RiskLevel,
+) -> &'static str {
     match risk_level {
         crate::services::defect_probability::RiskLevel::High => "🔴 HIGH",
         crate::services::defect_probability::RiskLevel::Medium => "🟡 MEDIUM",
@@ -270,22 +272,18 @@ fn format_risk_level_display(risk_level: &crate::services::defect_probability::R
 /// Write confidence level information
 fn write_confidence_level(output: &mut String, score: &DefectScore) -> Result<()> {
     use std::fmt::Write;
-    writeln!(
-        output,
-        "   Confidence: {:.1}%",
-        score.confidence * 100.0
-    )?;
+    writeln!(output, "   Confidence: {:.1}%", score.confidence * 100.0)?;
     Ok(())
 }
 
 /// Write contributing factors section
 fn write_contributing_factors(output: &mut String, score: &DefectScore) -> Result<()> {
     use std::fmt::Write;
-    
+
     if score.contributing_factors.is_empty() {
         return Ok(());
     }
-    
+
     writeln!(output, "   Contributing Factors:")?;
     for (factor, weight) in &score.contributing_factors {
         writeln!(output, "     - {}: {:.1}%", factor, weight * 100.0)?;
@@ -296,11 +294,11 @@ fn write_contributing_factors(output: &mut String, score: &DefectScore) -> Resul
 /// Write recommendations section
 fn write_recommendations(output: &mut String, score: &DefectScore) -> Result<()> {
     use std::fmt::Write;
-    
+
     if score.recommendations.is_empty() {
         return Ok(());
     }
-    
+
     writeln!(output, "   Recommendations:")?;
     for rec in &score.recommendations {
         writeln!(output, "     • {}", rec)?;

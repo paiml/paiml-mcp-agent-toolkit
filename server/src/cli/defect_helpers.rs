@@ -183,7 +183,7 @@ pub fn format_defect_markdown(
     let mut output = String::new();
 
     writeln!(&mut output, "# Defect Prediction Report\n")?;
-    
+
     write_summary_section(&mut output, predictions)?;
     write_risk_distribution_table(&mut output, predictions)?;
     write_detailed_predictions(&mut output, predictions, include_recommendations)?;
@@ -205,15 +205,15 @@ fn write_risk_distribution_table(
 ) -> Result<()> {
     let (high_risk, medium_risk, low_risk) = calculate_risk_counts(predictions);
     let total = predictions.len() as f64;
-    
+
     writeln!(output, "\n### Risk Distribution")?;
     writeln!(output, "| Risk Level | Count | Percentage |")?;
     writeln!(output, "|------------|-------|------------|")?;
-    
+
     write_risk_row(output, "High (>70%)", high_risk, total)?;
     write_risk_row(output, "Medium (40-70%)", medium_risk, total)?;
     write_risk_row(output, "Low (<40%)", low_risk, total)?;
-    
+
     Ok(())
 }
 
@@ -223,17 +223,17 @@ fn calculate_risk_counts(predictions: &[(String, DefectScore)]) -> (usize, usize
         .iter()
         .filter(|(_, s)| s.probability > 0.7)
         .count();
-    
+
     let medium_risk = predictions
         .iter()
         .filter(|(_, s)| s.probability > 0.4 && s.probability <= 0.7)
         .count();
-    
+
     let low_risk = predictions
         .iter()
         .filter(|(_, s)| s.probability <= 0.4)
         .count();
-    
+
     (high_risk, medium_risk, low_risk)
 }
 
@@ -256,11 +256,11 @@ fn write_detailed_predictions(
     include_recommendations: bool,
 ) -> Result<()> {
     writeln!(output, "\n## Detailed Predictions\n")?;
-    
+
     for (file, score) in predictions.iter().take(20) {
         write_single_prediction(output, file, score, include_recommendations)?;
     }
-    
+
     Ok(())
 }
 
@@ -272,29 +272,41 @@ fn write_single_prediction(
     include_recommendations: bool,
 ) -> Result<()> {
     writeln!(output, "### {}\n", file)?;
-    
+
     write_prediction_metrics(output, score)?;
-    
+
     if include_recommendations {
         write_recommendations(output, score.probability as f64)?;
     }
-    
+
     writeln!(output)?;
     Ok(())
 }
 
 /// Write prediction metrics (cognitive complexity ≤4)
 fn write_prediction_metrics(output: &mut String, score: &DefectScore) -> Result<()> {
-    writeln!(output, "- **Probability**: {:.1}%", score.probability as f64 * 100.0)?;
-    writeln!(output, "- **Confidence**: {:.1}%", score.confidence as f64 * 100.0)?;
-    writeln!(output, "- **Risk Factors**: {:?}", score.contributing_factors)?;
+    writeln!(
+        output,
+        "- **Probability**: {:.1}%",
+        score.probability as f64 * 100.0
+    )?;
+    writeln!(
+        output,
+        "- **Confidence**: {:.1}%",
+        score.confidence as f64 * 100.0
+    )?;
+    writeln!(
+        output,
+        "- **Risk Factors**: {:?}",
+        score.contributing_factors
+    )?;
     Ok(())
 }
 
 /// Write recommendations based on probability (cognitive complexity ≤7)
 fn write_recommendations(output: &mut String, probability: f64) -> Result<()> {
     writeln!(output, "\n#### Recommendations:")?;
-    
+
     if probability > 0.7 {
         writeln!(output, "- 🔴 High priority for code review")?;
         writeln!(output, "- Add comprehensive test coverage")?;
@@ -305,7 +317,7 @@ fn write_recommendations(output: &mut String, probability: f64) -> Result<()> {
     } else {
         writeln!(output, "- 🟢 Monitor during regular maintenance")?;
     }
-    
+
     Ok(())
 }
 

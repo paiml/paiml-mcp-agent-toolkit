@@ -795,13 +795,13 @@ fn format_llm_optimized_output(
     project_path: &Path,
 ) -> String {
     let mut output = String::new();
-    
+
     format_project_header(&mut output, project_path, detected_toolchain);
     format_project_summary(&mut output, &project_context.summary);
     format_key_components(&mut output, project_context, deep_context);
     format_quality_insights(&mut output, &deep_context.quality_scorecard);
     format_recommendations(&mut output, &deep_context.recommendations);
-    
+
     output
 }
 
@@ -829,7 +829,7 @@ fn format_key_components(
     deep_context: &crate::services::deep_context::DeepContext,
 ) {
     output.push_str("Key Components:\n\n");
-    
+
     for file in &project_context.files {
         let functions = extract_function_names(file);
         if !functions.is_empty() {
@@ -855,7 +855,7 @@ fn format_file_functions(
     deep_context: &crate::services::deep_context::DeepContext,
 ) {
     output.push_str(&format!("File: {}\n", file.path));
-    
+
     for func in functions {
         output.push_str(&format!("  Function: {}", func));
         add_function_metadata(output, file, func);
@@ -870,11 +870,18 @@ fn add_function_metadata(
     file: &crate::services::context::FileContext,
     func: &str,
 ) {
-    let Some(complexity_metrics) = &file.complexity_metrics else { return; };
-    let Some(func_metrics) = find_function_metrics(complexity_metrics, func) else { return; };
-    
+    let Some(complexity_metrics) = &file.complexity_metrics else {
+        return;
+    };
+    let Some(func_metrics) = find_function_metrics(complexity_metrics, func) else {
+        return;
+    };
+
     if func_metrics.metrics.cyclomatic > 10 {
-        output.push_str(&format!(" [complexity: {}]", func_metrics.metrics.cyclomatic));
+        output.push_str(&format!(
+            " [complexity: {}]",
+            func_metrics.metrics.cyclomatic
+        ));
     }
     if func_metrics.metrics.cognitive > 15 {
         output.push_str(&format!(" [cognitive: {}]", func_metrics.metrics.cognitive));
@@ -885,7 +892,10 @@ fn find_function_metrics<'a>(
     complexity_metrics: &'a crate::services::complexity::FileComplexityMetrics,
     func_name: &str,
 ) -> Option<&'a crate::services::complexity::FunctionComplexity> {
-    complexity_metrics.functions.iter().find(|f| f.name == func_name)
+    complexity_metrics
+        .functions
+        .iter()
+        .find(|f| f.name == func_name)
 }
 
 fn add_dead_code_marker(
@@ -907,13 +917,15 @@ fn is_dead_code_function(
     let Some(dead_code_results) = &deep_context.analyses.dead_code_results else {
         return false;
     };
-    
-    let Some(file_metrics) = dead_code_results.ranked_files
+
+    let Some(file_metrics) = dead_code_results
+        .ranked_files
         .iter()
-        .find(|f| f.path.ends_with(&file.path)) else {
+        .find(|f| f.path.ends_with(&file.path))
+    else {
         return false;
     };
-    
+
     file_metrics.items.iter().any(|item| {
         matches!(
             item.item_type,
@@ -927,22 +939,25 @@ fn format_quality_insights(
     scorecard: &crate::services::deep_context::QualityScorecard,
 ) {
     output.push_str("Quality Insights:\n");
-    output.push_str(&format!("- Overall Score: {:.1}/100\n", scorecard.overall_health));
-    
+    output.push_str(&format!(
+        "- Overall Score: {:.1}/100\n",
+        scorecard.overall_health
+    ));
+
     if scorecard.complexity_score < 80.0 {
         output.push_str(&format!(
             "- Complexity Score: {:.1}% (needs attention)\n",
             scorecard.complexity_score
         ));
     }
-    
+
     if scorecard.maintainability_index < 80.0 {
         output.push_str(&format!(
             "- Maintainability: {:.1}% (could be improved)\n",
             scorecard.maintainability_index
         ));
     }
-    
+
     output.push('\n');
 }
 
@@ -953,7 +968,7 @@ fn format_recommendations(
     if recommendations.is_empty() {
         return;
     }
-    
+
     output.push_str("Key Recommendations:\n");
     for (i, rec) in recommendations.iter().take(3).enumerate() {
         output.push_str(&format!("{}. {}: {}\n", i + 1, rec.title, rec.description));

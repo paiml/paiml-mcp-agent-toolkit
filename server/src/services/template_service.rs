@@ -383,10 +383,10 @@ pub async fn validate_template<T: TemplateServerTrait>(
         Ok(map) => map,
         Err(validation_result) => return Ok(validation_result),
     };
-    
+
     let mut errors = Vec::new();
-    validate_required_parameters(&metadata.parameters, &params_map, &mut errors);
-    validate_parameter_values(&metadata.parameters, &params_map, &mut errors);
+    validate_required_parameters(&metadata.parameters, params_map, &mut errors);
+    validate_parameter_values(&metadata.parameters, params_map, &mut errors);
 
     Ok(ValidationResult {
         valid: errors.is_empty(),

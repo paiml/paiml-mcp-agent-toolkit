@@ -101,13 +101,9 @@ pub async fn handle_refactor_docs(
 ) -> Result<()> {
     let start_time = std::time::Instant::now();
 
-    let scan_dirs = collect_scan_directories(
-        &project_path, 
-        include_root, 
-        include_docs, 
-        additional_dirs
-    );
-    
+    let scan_dirs =
+        collect_scan_directories(&project_path, include_root, include_docs, additional_dirs);
+
     let all_patterns = combine_patterns(
         temp_patterns,
         status_patterns,
@@ -122,25 +118,13 @@ pub async fn handle_refactor_docs(
         min_age_days,
         max_size_mb,
         recursive,
-    ).await?;
+    )
+    .await?;
 
-    result = handle_processing_modes(
-        result,
-        format,
-        dry_run,
-        auto_remove,
-        backup,
-        &backup_dir,
-    ).await?;
+    result =
+        handle_processing_modes(result, format, dry_run, auto_remove, backup, &backup_dir).await?;
 
-    output_results(
-        &result,
-        format,
-        dry_run,
-        perf,
-        start_time.elapsed(),
-        output,
-    ).await?;
+    output_results(&result, format, dry_run, perf, start_time.elapsed(), output).await?;
 
     handle_exit_code(&result, auto_remove, dry_run);
     Ok(())
@@ -148,7 +132,7 @@ pub async fn handle_refactor_docs(
 
 /// Collect directories to scan based on configuration
 fn collect_scan_directories(
-    project_path: &PathBuf,
+    project_path: &Path,
     include_root: bool,
     include_docs: bool,
     additional_dirs: Vec<PathBuf>,
@@ -156,7 +140,7 @@ fn collect_scan_directories(
     let mut scan_dirs = Vec::new();
 
     if include_root {
-        scan_dirs.push(project_path.clone());
+        scan_dirs.push(project_path.to_path_buf());
     }
 
     if include_docs {
@@ -217,13 +201,14 @@ async fn perform_cruft_scan(
         min_age_days,
         max_size_mb * 1024 * 1024, // Convert MB to bytes
         recursive,
-    ).await?;
+    )
+    .await?;
 
     // Sort cruft files by size (largest first)
     result
         .cruft_files
         .sort_by(|a, b| b.size_bytes.cmp(&a.size_bytes));
-    
+
     Ok(result)
 }
 
@@ -234,7 +219,7 @@ async fn handle_processing_modes(
     dry_run: bool,
     auto_remove: bool,
     backup: bool,
-    backup_dir: &PathBuf,
+    backup_dir: &Path,
 ) -> Result<RefactorDocsResult> {
     result = handle_interactive_processing(result, format, dry_run, auto_remove).await?;
     handle_backup_processing(&result, backup, dry_run, auto_remove, backup_dir).await?;
@@ -271,7 +256,7 @@ async fn handle_backup_processing(
     backup: bool,
     dry_run: bool,
     auto_remove: bool,
-    backup_dir: &PathBuf,
+    backup_dir: &Path,
 ) -> Result<()> {
     if should_create_backup(backup, dry_run, &result.cruft_files, auto_remove) {
         create_backup(&result.cruft_files, backup_dir).await?
@@ -303,11 +288,7 @@ async fn handle_file_removal_processing(
 }
 
 /// Check if files should be removed
-fn should_remove_files(
-    dry_run: bool,
-    auto_remove: bool,
-    format: RefactorDocsOutputFormat,
-) -> bool {
+fn should_remove_files(dry_run: bool, auto_remove: bool, format: RefactorDocsOutputFormat) -> bool {
     !dry_run && (auto_remove || format == RefactorDocsOutputFormat::Interactive)
 }
 
@@ -362,8 +343,9 @@ async fn scan_for_cruft(
             max_size_bytes,
             recursive,
             &now,
-        ).await?;
-        
+        )
+        .await?;
+
         cruft_files.extend(dir_result.cruft_files);
         preserved_files.extend(dir_result.preserved_files);
         errors.extend(dir_result.errors);
@@ -392,7 +374,7 @@ struct DirectoryResult {
 
 /// Process a single directory for cruft files
 async fn process_directory(
-    dir: &PathBuf,
+    dir: &Path,
     patterns: &[(String, FileCategory)],
     preserve_patterns: &[String],
     min_age_days: u32,
@@ -428,7 +410,8 @@ async fn process_directory(
             max_size_bytes,
             now,
             &mut result,
-        ).await;
+        )
+        .await;
     }
 
     Ok(result)
@@ -445,7 +428,7 @@ async fn collect_directory_files(dir: &Path, recursive: bool) -> Result<Vec<Path
 
 /// Process a single file for cruft classification
 async fn process_file(
-    file_path: &PathBuf,
+    file_path: &Path,
     patterns: &[(String, FileCategory)],
     preserve_patterns: &[String],
     min_age_days: u32,
@@ -454,7 +437,7 @@ async fn process_file(
     result: &mut DirectoryResult,
 ) {
     if should_preserve(file_path, preserve_patterns) {
-        result.preserved_files.push(file_path.clone());
+        result.preserved_files.push(file_path.to_path_buf());
         return;
     }
 
@@ -479,9 +462,8 @@ async fn process_file(
 
 /// Get file metadata with error handling
 fn get_file_metadata(file_path: &Path) -> Result<fs::Metadata, String> {
-    fs::metadata(file_path).map_err(|e| {
-        format!("Failed to read metadata for {}: {}", file_path.display(), e)
-    })
+    fs::metadata(file_path)
+        .map_err(|e| format!("Failed to read metadata for {}: {}", file_path.display(), e))
 }
 
 /// Check if file passes size and age filters
@@ -537,10 +519,7 @@ fn update_summary_for_cruft(summary: &mut CleanupSummary, cruft: &CruftFile) {
         .files_by_category
         .entry(category_str.clone())
         .or_default() += 1;
-    *summary
-        .size_by_category
-        .entry(category_str)
-        .or_default() += cruft.size_bytes;
+    *summary.size_by_category.entry(category_str).or_default() += cruft.size_bytes;
     summary.oldest_file_days = summary.oldest_file_days.max(cruft.age_days);
     summary.newest_file_days = if summary.newest_file_days == 0 {
         cruft.age_days

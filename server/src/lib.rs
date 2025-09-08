@@ -175,11 +175,11 @@ pub async fn run_mcp_server<T: TemplateServerTrait + 'static>(server: Arc<T>) ->
 
     for line in stdin.lock().lines() {
         let line = line?;
-        
+
         if should_skip_line(&line) {
             continue;
         }
-        
+
         process_mcp_line(&line, Arc::clone(&server), &mut stdout).await?;
     }
 
@@ -197,7 +197,6 @@ async fn process_mcp_line<T: TemplateServerTrait + 'static, W: std::io::Write>(
     server: Arc<T>,
     stdout: &mut W,
 ) -> Result<()> {
-    
     match parse_mcp_request(line) {
         Ok(request) => handle_valid_request(request, server, stdout).await,
         Err(e) => handle_parse_error(&e, stdout),
@@ -216,29 +215,29 @@ async fn handle_valid_request<T: TemplateServerTrait + 'static, W: std::io::Writ
     stdout: &mut W,
 ) -> Result<()> {
     use tracing::info;
-    
-    info!("Received request: method={}, id={:?}", request.method, request.id);
-    
+
+    info!(
+        "Received request: method={}, id={:?}",
+        request.method, request.id
+    );
+
     let response = handlers::handle_request(server, request).await;
     write_response_to_stdout(&response, stdout)
 }
 
 /// Handle JSON parse error (cognitive complexity ≤4)
-fn handle_parse_error<W: std::io::Write>(
-    error: &anyhow::Error,
-    stdout: &mut W,
-) -> Result<()> {
+fn handle_parse_error<W: std::io::Write>(error: &anyhow::Error, stdout: &mut W) -> Result<()> {
     use crate::models::mcp::McpResponse;
     use tracing::error;
-    
+
     error!("Failed to parse JSON-RPC request: {}", error);
-    
+
     let error_response = McpResponse::error(
         serde_json::Value::Null,
         -32700,
         format!("Parse error: {error}"),
     );
-    
+
     write_response_to_stdout(&error_response, stdout)
 }
 
@@ -247,7 +246,6 @@ fn write_response_to_stdout<W: std::io::Write>(
     response: &crate::models::mcp::McpResponse,
     stdout: &mut W,
 ) -> Result<()> {
-    
     let response_json = serde_json::to_string(response)?;
     writeln!(stdout, "{response_json}")?;
     stdout.flush()?;

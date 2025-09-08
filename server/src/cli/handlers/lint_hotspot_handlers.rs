@@ -272,17 +272,17 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
     let start_time = std::time::Instant::now();
 
     log_analysis_start(&params.format);
-    
+
     let mut result = run_analysis_by_mode(&params).await?;
-    
+
     apply_file_filters(&mut result, &params)?;
-    
+
     let final_result = build_final_result(result, &params)?;
-    
+
     output_results(&final_result, &params, start_time.elapsed()).await?;
-    
+
     execute_enforcement_if_needed(&final_result, &params);
-    
+
     check_exit_conditions(&final_result, &params);
 
     Ok(())
@@ -317,32 +317,35 @@ fn apply_file_filters(result: &mut LintHotspotResult, params: &LintHotspotParams
     if params.include.is_empty() && params.exclude.is_empty() {
         return Ok(());
     }
-    
+
     use crate::utils::file_filter::FileFilter;
     let filter = FileFilter::new(params.include.clone(), params.exclude.clone())?;
-    
+
     if !filter.has_filters() {
         return Ok(());
     }
-    
+
     filter_violations(result, &filter);
     recalculate_hotspot_metrics(result);
-    
+
     Ok(())
 }
 
 /// Filter violations using file filter
-fn filter_violations(result: &mut LintHotspotResult, filter: &crate::utils::file_filter::FileFilter) {
+fn filter_violations(
+    result: &mut LintHotspotResult,
+    filter: &crate::utils::file_filter::FileFilter,
+) {
     result.hotspot.detailed_violations.retain(|violation| {
         let path = std::path::Path::new(&violation.file);
         filter.should_include(path)
     });
-    
+
     result.all_violations.retain(|violation| {
         let path = std::path::Path::new(&violation.file);
         filter.should_include(path)
     });
-    
+
     let filtered_summary: HashMap<PathBuf, FileSummary> = result
         .summary_by_file
         .drain()
@@ -361,25 +364,31 @@ fn recalculate_hotspot_metrics(result: &mut LintHotspotResult) {
 }
 
 /// Build final result with enforcement and quality gate data
-fn build_final_result(mut result: LintHotspotResult, params: &LintHotspotParams) -> Result<LintHotspotResult> {
+fn build_final_result(
+    mut result: LintHotspotResult,
+    params: &LintHotspotParams,
+) -> Result<LintHotspotResult> {
     let enforcement = generate_enforcement_metadata_if_needed(&result.hotspot, params);
     let refactor_chain = generate_refactor_chain_if_needed(&result.hotspot, params, &enforcement);
     let quality_gate = check_quality_gates(&result.hotspot, params.max_density);
-    
+
     result.enforcement = enforcement;
     result.refactor_chain = refactor_chain;
     result.quality_gate = quality_gate;
-    
+
     Ok(result)
 }
 
 /// Generate enforcement metadata if requested
 fn generate_enforcement_metadata_if_needed(
-    hotspot: &LintHotspot, 
-    params: &LintHotspotParams
+    hotspot: &LintHotspot,
+    params: &LintHotspotParams,
 ) -> Option<EnforcementMetadata> {
     if params.enforcement_metadata || params.enforce {
-        Some(calculate_enforcement_metadata(hotspot, params.min_confidence))
+        Some(calculate_enforcement_metadata(
+            hotspot,
+            params.min_confidence,
+        ))
     } else {
         None
     }
@@ -411,13 +420,13 @@ async fn output_results(
         elapsed,
         params.top_files,
     )?;
-    
+
     if let Some(output_path) = &params.output {
         tokio::fs::write(output_path, &output_content).await?;
     } else {
         println!("{}", output_content);
     }
-    
+
     Ok(())
 }
 
@@ -464,11 +473,11 @@ fn log_enforcement_failure_if_needed(final_result: &LintHotspotResult, params: &
 async fn run_clippy_analysis(project_path: &Path, clippy_flags: &str) -> Result<LintHotspotResult> {
     let flags: Vec<&str> = clippy_flags.split_whitespace().collect();
     let output = execute_clippy_command(project_path, &flags).await?;
-    
+
     check_clippy_output(&output)?;
-    
+
     let mut file_metrics = parse_clippy_json_output(&output)?;
-    
+
     let workspace_root = find_workspace_root(project_path)?;
     calculate_sloc_for_files(&mut file_metrics, project_path, workspace_root.as_ref()).await?;
 
@@ -487,19 +496,30 @@ async fn run_clippy_analysis_single_file(
 ) -> Result<LintHotspotResult> {
     let output = run_clippy_command(project_path, clippy_flags).await?;
     let abs_file_path = resolve_absolute_path(project_path, file_path);
-    
-    let (file_violations, all_violations, severity_dist) = 
+
+    let (file_violations, all_violations, severity_dist) =
         parse_clippy_output(&output.stdout, &abs_file_path, file_path)?;
-    
-    let sloc = count_source_lines(project_path, file_path).await.unwrap_or(100);
-    
-    create_single_file_result(file_path, file_violations, all_violations, severity_dist, sloc)
+
+    let sloc = count_source_lines(project_path, file_path)
+        .await
+        .unwrap_or(100);
+
+    create_single_file_result(
+        file_path,
+        file_violations,
+        all_violations,
+        severity_dist,
+        sloc,
+    )
 }
 
-async fn run_clippy_command(project_path: &Path, clippy_flags: &str) -> Result<std::process::Output> {
+async fn run_clippy_command(
+    project_path: &Path,
+    clippy_flags: &str,
+) -> Result<std::process::Output> {
     let flags: Vec<&str> = clippy_flags.split_whitespace().collect();
     let mut cmd = Command::new("cargo");
-    
+
     cmd.current_dir(project_path)
         .arg("clippy")
         .arg("--all-targets")
@@ -523,10 +543,14 @@ fn resolve_absolute_path(project_path: &Path, file_path: &Path) -> PathBuf {
 }
 
 fn parse_clippy_output(
-    stdout: &[u8], 
-    abs_file_path: &Path, 
-    file_path: &Path
-) -> Result<(Vec<ViolationDetail>, Vec<ViolationDetail>, SeverityDistribution)> {
+    stdout: &[u8],
+    abs_file_path: &Path,
+    file_path: &Path,
+) -> Result<(
+    Vec<ViolationDetail>,
+    Vec<ViolationDetail>,
+    SeverityDistribution,
+)> {
     let reader = BufReader::new(stdout);
     let mut file_violations = Vec::new();
     let mut all_violations = Vec::new();
@@ -545,9 +569,9 @@ fn parse_clippy_output(
 }
 
 fn parse_clippy_line(
-    line: &str, 
-    abs_file_path: &Path, 
-    file_path: &Path
+    line: &str,
+    abs_file_path: &Path,
+    file_path: &Path,
 ) -> Result<Option<ViolationDetail>> {
     let msg = match serde_json::from_str::<ClippyMessage>(line) {
         Ok(msg) => msg,
@@ -570,7 +594,9 @@ fn parse_clippy_line(
 }
 
 fn find_primary_span(diagnostic: &DiagnosticMessage) -> Option<&DiagnosticSpan> {
-    diagnostic.spans.iter()
+    diagnostic
+        .spans
+        .iter()
         .find(|s| s.is_primary || diagnostic.spans.len() == 1)
 }
 
@@ -601,7 +627,8 @@ fn create_violation_detail(
 }
 
 fn extract_lint_name(diagnostic: &DiagnosticMessage) -> String {
-    diagnostic.code
+    diagnostic
+        .code
         .as_ref()
         .map(|c| c.code.clone())
         .unwrap_or_default()
@@ -1264,7 +1291,10 @@ fn format_sarif(result: &LintHotspotResult) -> Result<String> {
 }
 
 /// Execute clippy command with given flags (cognitive complexity ≤3)
-async fn execute_clippy_command(project_path: &Path, flags: &[&str]) -> Result<std::process::Output> {
+async fn execute_clippy_command(
+    project_path: &Path,
+    flags: &[&str],
+) -> Result<std::process::Output> {
     let mut cmd = tokio::process::Command::new("cargo");
     cmd.arg("clippy")
         .arg("--message-format=json")
@@ -1272,24 +1302,27 @@ async fn execute_clippy_command(project_path: &Path, flags: &[&str]) -> Result<s
         .current_dir(project_path)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
-    
+
     Ok(cmd.output().await?)
 }
 
 /// Check clippy output status (cognitive complexity ≤5)
 fn check_clippy_output(output: &std::process::Output) -> Result<()> {
-    if !output.status.success() && output.status.code() != Some(101) {
-        if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            eprintln!("⚠️  Clippy exited with status: {:?}", output.status);
-            eprintln!("Stderr: {}", stderr);
-        }
+    if !output.status.success()
+        && output.status.code() != Some(101)
+        && std::env::var("LINT_HOTSPOT_DEBUG").is_ok()
+    {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eprintln!("⚠️  Clippy exited with status: {:?}", output.status);
+        eprintln!("Stderr: {}", stderr);
     }
     Ok(())
 }
 
 /// Parse clippy JSON output into file metrics (cognitive complexity ≤8)
-fn parse_clippy_json_output(output: &std::process::Output) -> Result<HashMap<PathBuf, FileMetrics>> {
+fn parse_clippy_json_output(
+    output: &std::process::Output,
+) -> Result<HashMap<PathBuf, FileMetrics>> {
     let reader = BufReader::new(output.stdout.as_slice());
     let mut file_metrics: HashMap<PathBuf, FileMetrics> = HashMap::new();
     let mut message_count = 0;
@@ -1322,7 +1355,7 @@ async fn calculate_sloc_for_files(
 ) -> Result<()> {
     for (file_path, metrics) in file_metrics.iter_mut() {
         let actual_path = resolve_file_path(file_path, project_path, workspace_root);
-        
+
         if actual_path.exists() {
             let content = tokio::fs::read_to_string(&actual_path).await?;
             metrics.sloc = count_sloc(&content);
@@ -1343,21 +1376,21 @@ fn resolve_file_path(
     if file_path.exists() {
         return file_path.to_path_buf();
     }
-    
+
     if let Some(ws_root) = workspace_root {
         // Try relative to workspace root
         let ws_relative = ws_root.join(file_path);
         if ws_relative.exists() {
             return ws_relative;
         }
-        
+
         // Try with "server/" prefix
         let with_server = ws_root.join("server").join(file_path);
         if with_server.exists() {
             return with_server;
         }
     }
-    
+
     // Try relative to project_path
     let project_relative = project_path.join(file_path);
     if project_relative.exists() {
@@ -1401,11 +1434,11 @@ fn log_file_not_found_debug(
 fn build_lint_hotspot_result(
     file_metrics: HashMap<PathBuf, FileMetrics>,
 ) -> Result<LintHotspotResult> {
-    let (all_violations, summary_by_file, total_project_violations) = 
+    let (all_violations, summary_by_file, total_project_violations) =
         collect_project_violations(&file_metrics);
-    
+
     let hotspot = find_hotspot_with_details(file_metrics)?;
-    
+
     Ok(LintHotspotResult {
         hotspot,
         all_violations,
@@ -1431,12 +1464,12 @@ fn collect_project_violations(
 
     for (file_path, metrics) in file_metrics {
         all_violations.extend(metrics.detailed_violations.clone());
-        
+
         let total_file_violations = calculate_total_violations(metrics);
         total_project_violations += total_file_violations;
-        
+
         let defect_density = calculate_defect_density(total_file_violations, metrics.sloc);
-        
+
         summary_by_file.insert(
             file_path.clone(),
             FileSummary {
@@ -1448,7 +1481,7 @@ fn collect_project_violations(
             },
         );
     }
-    
+
     (all_violations, summary_by_file, total_project_violations)
 }
 

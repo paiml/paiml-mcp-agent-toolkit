@@ -2,14 +2,14 @@
 //!
 //! Following Toyota Way TDD principles:
 //! 1. Write test FIRST (Red)
-//! 2. Make it pass (Green) 
+//! 2. Make it pass (Green)
 //! 3. Refactor to reduce cognitive complexity from 44 to ≤10 (Refactor)
 //!
 //! Current: Cognitive complexity 44, Cyclomatic complexity 13
 //! Target: Cognitive complexity ≤10, maintain functionality
 
-use pmat::cli::handlers::provability_handler::{handle_analyze_provability, ProvabilityConfig};
 use pmat::cli::enums::ProvabilityOutputFormat;
+use pmat::cli::handlers::provability_handler::{handle_analyze_provability, ProvabilityConfig};
 use std::path::PathBuf;
 
 /// Test provability handler basic functionality
@@ -17,7 +17,7 @@ use std::path::PathBuf;
 async fn test_handle_analyze_provability_structure() {
     // Test that the function can be called with basic config
     // Note: This test focuses on structure and error handling, not full analysis
-    
+
     let config = ProvabilityConfig {
         project_path: PathBuf::from("."),
         functions: vec![],
@@ -28,7 +28,7 @@ async fn test_handle_analyze_provability_structure() {
         output: None,
         top_files: 5,
     };
-    
+
     // The function should handle the request (may succeed or fail based on actual analysis)
     let result = handle_analyze_provability(config).await;
     // Either outcome is acceptable for routing test - we're testing structure
@@ -48,7 +48,7 @@ fn test_provability_config_structure() {
         output: Some(PathBuf::from("output.json")),
         top_files: 10,
     };
-    
+
     // Verify configuration structure
     assert_eq!(config.project_path, PathBuf::from("test_project"));
     assert_eq!(config.functions.len(), 1);
@@ -68,10 +68,10 @@ fn test_provability_output_formats() {
         ProvabilityOutputFormat::Sarif,
         ProvabilityOutputFormat::Markdown,
     ];
-    
+
     // Ensure all formats are handled
     assert_eq!(formats.len(), 5);
-    
+
     // After refactoring, format handling should be in a separate function
     // with cognitive complexity ≤8
 }
@@ -82,7 +82,7 @@ fn test_provability_error_patterns() {
     // Test path validation
     let invalid_path = PathBuf::from("/nonexistent/path/that/should/not/exist");
     assert!(!invalid_path.exists());
-    
+
     // After refactoring, error handling should be distributed across helper functions
     // Each helper should have cognitive complexity ≤8
     assert!(true);

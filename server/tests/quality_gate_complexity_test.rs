@@ -1,5 +1,5 @@
 //! Test for quality-gate complexity counting
-//! 
+//!
 //! This test ensures that quality-gate only counts functions that ACTUALLY
 //! exceed the complexity threshold, not all violations/warnings/info messages.
 //!
@@ -14,10 +14,10 @@ fn test_quality_gate_counts_only_threshold_violations() {
     // Create a test file with known complexity
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("test.rs");
-    
+
     // Write test code with:
     // - One function with complexity 5 (below threshold of 10)
-    // - One function with complexity 8 (below threshold of 10)  
+    // - One function with complexity 8 (below threshold of 10)
     // - One function with complexity 12 (above threshold of 10)
     let test_code = r#"
 // Function with complexity 5 (below threshold)
@@ -107,7 +107,7 @@ fn complex_function(x: i32, y: i32, z: i32) -> i32 {
         .join("target")
         .join("debug")
         .join("pmat");
-    
+
     if !binary_path.exists() {
         // Build the binary if it doesn't exist
         std::process::Command::new("cargo")
@@ -115,7 +115,7 @@ fn complex_function(x: i32, y: i32, z: i32) -> i32 {
             .output()
             .expect("Failed to build pmat");
     }
-    
+
     let output = std::process::Command::new(binary_path)
         .args(&[
             "quality-gate",
@@ -152,7 +152,7 @@ fn complex_function(x: i32, y: i32, z: i32) -> i32 {
 fn test_quality_gate_zero_violations_when_all_below_threshold() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("simple.rs");
-    
+
     // Write test code with all functions below complexity 10
     let test_code = r#"
 fn simple1(x: i32) -> i32 {
@@ -178,7 +178,7 @@ fn simple3(x: bool) -> i32 {
         .join("target")
         .join("debug")
         .join("pmat");
-    
+
     let output = std::process::Command::new(binary_path)
         .args(&[
             "quality-gate",
@@ -193,7 +193,7 @@ fn simple3(x: bool) -> i32 {
         .expect("Failed to run quality-gate");
 
     let stderr = String::from_utf8_lossy(&output.stderr);
-    
+
     // Should find 0 violations
     assert!(
         stderr.contains("0 violations found") || stderr.contains("Quality Gate: PASSED"),

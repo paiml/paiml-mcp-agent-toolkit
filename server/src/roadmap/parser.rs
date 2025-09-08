@@ -73,7 +73,7 @@ fn parse_sprint_section(
 
     let mut sprint = create_initial_sprint(&version, &title);
     let lines_consumed = parse_sprint_content(lines, start_idx, &mut sprint, parsers)?;
-    
+
     Ok((sprint, version, lines_consumed))
 }
 
@@ -99,17 +99,17 @@ fn parse_sprint_content(
     parsers: &Parsers,
 ) -> Result<usize> {
     let mut i = start_idx + 1;
-    
+
     while i < lines.len() {
         let line = lines[i];
-        
+
         if is_next_section_start(line) {
             break;
         }
-        
+
         i += process_sprint_line(lines, i, sprint, parsers)?;
     }
-    
+
     Ok(i - start_idx)
 }
 
@@ -121,7 +121,7 @@ fn process_sprint_line(
     parsers: &Parsers,
 ) -> Result<usize> {
     let line = lines[current_idx];
-    
+
     if line.contains("**Duration**:") {
         process_duration_line(line, sprint);
         Ok(1)
@@ -133,7 +133,8 @@ fn process_sprint_line(
         sprint.tasks = tasks;
         Ok(advance)
     } else if line.contains("### Definition of Done") {
-        let (items, advance) = parse_definition_of_done(&lines[current_idx..], &parsers.done_regex)?;
+        let (items, advance) =
+            parse_definition_of_done(&lines[current_idx..], &parsers.done_regex)?;
         sprint.definition_of_done = items;
         Ok(advance)
     } else {
@@ -255,9 +256,9 @@ fn update_roadmap_state(roadmap: &mut Roadmap, line: &str, version: &str) {
 /// Convert a roadmap to markdown format
 pub fn roadmap_to_markdown(roadmap: &Roadmap) -> Result<String> {
     let mut output = String::new();
-    
+
     output.push_str("# PMAT Development Roadmap\n\n");
-    
+
     // Extract each section to reduce cognitive complexity
     add_current_sprint_section(&mut output, roadmap)?;
     add_completed_sprints_section(&mut output, roadmap)?;

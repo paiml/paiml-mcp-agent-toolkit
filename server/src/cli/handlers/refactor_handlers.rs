@@ -169,13 +169,13 @@ pub async fn route_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::R
 pub async fn handle_refactor_serve(params: RefactorServeParams) -> anyhow::Result<()> {
     let extracted_params = extract_refactor_params(params);
     log_refactor_server_startup(&extracted_params);
-    
+
     let refactor_config = setup_refactor_configuration(&extracted_params).await?;
     let checkpoint_path = setup_checkpoint_directory(&extracted_params).await?;
     let (cache, ast_engine) = setup_cache_and_ast_engine(extracted_params.memory_limit)?;
     let engine_mode = create_engine_mode(&extracted_params, &checkpoint_path);
     let targets = discover_and_prioritize_targets(&extracted_params, &refactor_config).await?;
-    
+
     let summary = execute_refactor_engine(
         ast_engine,
         cache,
@@ -183,11 +183,12 @@ pub async fn handle_refactor_serve(params: RefactorServeParams) -> anyhow::Resul
         refactor_config.clone(),
         targets,
         extracted_params.max_runtime,
-    ).await?;
-    
+    )
+    .await?;
+
     print_refactor_summary(&summary);
     handle_auto_commit(&refactor_config, &summary).await?;
-    
+
     Ok(())
 }
 
@@ -221,7 +222,7 @@ fn extract_refactor_params(params: RefactorServeParams) -> ExtractedRefactorPara
         auto_commit,
         max_runtime,
     } = params;
-    
+
     ExtractedRefactorParams {
         mode,
         config,
@@ -257,7 +258,9 @@ async fn setup_refactor_configuration(
 }
 
 /// Load base configuration from JSON file or use defaults
-async fn load_base_configuration(params: &ExtractedRefactorParams) -> anyhow::Result<RefactorConfig> {
+async fn load_base_configuration(
+    params: &ExtractedRefactorParams,
+) -> anyhow::Result<RefactorConfig> {
     if let Some(config_path) = &params.config {
         println!("📋 Loading config from: {}", config_path.display());
         load_refactor_config_json(config_path).await
@@ -285,15 +288,20 @@ fn apply_command_line_overrides(config: &mut RefactorConfig, params: &ExtractedR
 
 /// Setup checkpoint directory for resume functionality
 async fn setup_checkpoint_directory(params: &ExtractedRefactorParams) -> anyhow::Result<PathBuf> {
-    let checkpoint_path = params.checkpoint_dir.clone()
+    let checkpoint_path = params
+        .checkpoint_dir
+        .clone()
         .unwrap_or_else(|| params.project.join(".refactor_checkpoints"));
 
     if params.resume {
-        println!("🔄 Resuming from checkpoint in: {}", checkpoint_path.display());
+        println!(
+            "🔄 Resuming from checkpoint in: {}",
+            checkpoint_path.display()
+        );
     } else {
         tokio::fs::create_dir_all(&checkpoint_path).await?;
     }
-    
+
     Ok(checkpoint_path)
 }
 
@@ -311,13 +319,10 @@ fn setup_cache_and_ast_engine(
 }
 
 /// Create engine mode based on refactor mode and checkpoint path
-fn create_engine_mode(
-    params: &ExtractedRefactorParams,
-    checkpoint_path: &PathBuf,
-) -> EngineMode {
+fn create_engine_mode(params: &ExtractedRefactorParams, checkpoint_path: &Path) -> EngineMode {
     match params.mode {
         RefactorMode::Batch => EngineMode::Batch {
-            checkpoint_dir: checkpoint_path.clone(),
+            checkpoint_dir: checkpoint_path.to_path_buf(),
             resume: params.resume,
             parallel_workers: params.parallel,
         },
@@ -334,12 +339,15 @@ async fn discover_and_prioritize_targets(
     config: &RefactorConfig,
 ) -> anyhow::Result<Vec<PathBuf>> {
     let mut targets = discover_refactor_targets(&params.project).await?;
-    
+
     if let Some(priority_expr) = &config.priority_expression {
-        println!("🔀 Sorting {} targets by priority expression", targets.len());
+        println!(
+            "🔀 Sorting {} targets by priority expression",
+            targets.len()
+        );
         targets = sort_targets_by_priority(targets, priority_expr).await?;
     }
-    
+
     println!("🎯 Found {} refactoring targets", targets.len());
     Ok(targets)
 }
@@ -354,7 +362,7 @@ async fn execute_refactor_engine(
     max_runtime: Option<u64>,
 ) -> anyhow::Result<Summary> {
     let mut engine = UnifiedEngine::new(ast_engine, cache, engine_mode, refactor_config, targets);
-    
+
     if let Some(runtime_seconds) = max_runtime {
         execute_with_timeout(engine, runtime_seconds).await
     } else {
@@ -369,9 +377,9 @@ async fn execute_with_timeout(
 ) -> anyhow::Result<Summary> {
     let limit = Duration::from_secs(runtime_seconds);
     println!("⏱️  Maximum runtime: {} seconds", limit.as_secs());
-    
+
     let result = tokio::time::timeout(limit, engine.run()).await;
-    
+
     match result {
         Ok(summary) => summary.map_err(anyhow::Error::from),
         Err(_) => {
@@ -388,16 +396,16 @@ fn print_refactor_summary(summary: &Summary) {
     println!("\n✅ Refactor server completed:");
     println!("   Files processed: {}", summary.files_processed);
     println!("   Refactors applied: {}", summary.refactors_applied);
-    println!("   Complexity reduction: {:.2}%", summary.complexity_reduction);
+    println!(
+        "   Complexity reduction: {:.2}%",
+        summary.complexity_reduction
+    );
     println!("   SATD removed: {}", summary.satd_removed);
     println!("   Runtime: {:.2}s", start_time.elapsed().as_secs_f64());
 }
 
 /// Handle auto-commit if configured and refactors were applied
-async fn handle_auto_commit(
-    config: &RefactorConfig,
-    summary: &Summary,
-) -> anyhow::Result<()> {
+async fn handle_auto_commit(config: &RefactorConfig, summary: &Summary) -> anyhow::Result<()> {
     if let Some(commit_template) = &config.auto_commit_template {
         if summary.refactors_applied > 0 {
             println!("\n📝 Creating auto-commit...");

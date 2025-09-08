@@ -48,13 +48,13 @@ pub struct ThresholdConfig {
 impl Default for ThresholdConfig {
     fn default() -> Self {
         Self {
-            max_cyclomatic_complexity: 30,  // Enterprise standard (was 10 - too strict)
-            max_cognitive_complexity: 25,   // Reasonable threshold (was 15 - too strict)
-            max_nesting_depth: 4,           // Allow reasonable nesting (was 3)
+            max_cyclomatic_complexity: 30, // Enterprise standard (was 10 - too strict)
+            max_cognitive_complexity: 25,  // Reasonable threshold (was 15 - too strict)
+            max_nesting_depth: 4,          // Allow reasonable nesting (was 3)
             min_token_sequence: 50,
             similarity_threshold: 0.85,
-            max_coupling: 15,               // More realistic (was 10)
-            min_doc_coverage: 0.75,         // Balanced target (was 0.8)
+            max_coupling: 15,       // More realistic (was 10)
+            min_doc_coverage: 0.75, // Balanced target (was 0.8)
         }
     }
 }

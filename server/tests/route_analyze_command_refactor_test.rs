@@ -2,14 +2,14 @@
 //!
 //! Following Toyota Way TDD principles:
 //! 1. Write test FIRST (Red)
-//! 2. Make it pass (Green) 
+//! 2. Make it pass (Green)
 //! 3. Refactor to reduce cognitive complexity from 59 to ≤10 (Refactor)
 //!
 //! Current: Cognitive complexity 59, Cyclomatic complexity 5
 //! Target: Cognitive complexity ≤10, maintain functionality
 
-use pmat::cli::AnalyzeCommands;
 use pmat::cli::handlers::analysis_handlers::route_analyze_command;
+use pmat::cli::AnalyzeCommands;
 use pmat::cli::ComplexityOutputFormat;
 use std::path::PathBuf;
 
@@ -18,7 +18,7 @@ use std::path::PathBuf;
 async fn test_route_analyze_command_comprehensive() {
     // This test ensures route_analyze_command works correctly before refactoring
     // and continues to work after reducing cognitive complexity from 59 to ≤10
-    
+
     // Test Complexity command routing
     let complexity_cmd = AnalyzeCommands::Complexity {
         path: PathBuf::from("."),
@@ -36,7 +36,7 @@ async fn test_route_analyze_command_comprehensive() {
         fail_on_violation: false,
         timeout: 60,
     };
-    
+
     // Should route to complexity handler without errors
     let result = route_analyze_command(complexity_cmd).await;
     // Note: This may fail due to actual analysis, but routing should work
@@ -47,7 +47,7 @@ async fn test_route_analyze_command_comprehensive() {
 #[tokio::test]
 async fn test_route_analyze_command_variants() {
     use pmat::cli::{DeadCodeOutputFormat, SatdOutputFormat};
-    
+
     // Test DeadCode command routing
     let dead_code_cmd = AnalyzeCommands::DeadCode {
         path: PathBuf::from("."),
@@ -63,11 +63,11 @@ async fn test_route_analyze_command_variants() {
         include: vec![],
         exclude: vec![],
     };
-    
+
     let result = route_analyze_command(dead_code_cmd).await;
     // Routing should work regardless of analysis outcome
     assert!(result.is_ok() || result.is_err());
-    
+
     // Test SATD command routing
     let satd_cmd = AnalyzeCommands::Satd {
         path: PathBuf::from("."),
@@ -86,7 +86,7 @@ async fn test_route_analyze_command_variants() {
         include: vec![],
         exclude: vec![],
     };
-    
+
     let result = route_analyze_command(satd_cmd).await;
     // Routing should work regardless of analysis outcome
     assert!(result.is_ok() || result.is_err());
@@ -112,7 +112,7 @@ async fn test_route_analyze_command_parameter_migration() {
         fail_on_violation: false,
         timeout: 60,
     };
-    
+
     let result = route_analyze_command(complexity_cmd_deprecated).await;
     // Should handle deprecated parameter migration
     assert!(result.is_ok() || result.is_err());
@@ -123,12 +123,12 @@ async fn test_route_analyze_command_parameter_migration() {
 fn test_route_analyze_command_structure() {
     // Verify that the routing function exists and has expected signature
     // This ensures our refactoring maintains the public interface
-    
+
     // The function should be async and take AnalyzeCommands
     // Return type should be Result<()>
-    
+
     // After refactoring, each match arm should have ≤8 cognitive complexity
     // Main routing function should have ≤10 cognitive complexity
-    
+
     assert!(true); // Placeholder for structure validation
 }

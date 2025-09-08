@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::cli::enums::TdgOutputFormat;
 use crate::tdg::formatters::{
@@ -40,7 +40,7 @@ pub async fn handle_analyze_tdg(config: TdgAnalysisConfig) -> Result<()> {
 
 async fn analyze_project_path(
     analyzer: &TdgAnalyzer,
-    path: &PathBuf,
+    path: &Path,
     format: &TdgOutputFormat,
 ) -> Result<String> {
     let project_score = analyzer.analyze_project(path).await?;
@@ -49,7 +49,7 @@ async fn analyze_project_path(
 
 async fn analyze_single_file(
     analyzer: &TdgAnalyzer,
-    path: &PathBuf,
+    path: &Path,
     format: &TdgOutputFormat,
 ) -> Result<String> {
     let score = analyzer.analyze_file(path).await?;
@@ -72,10 +72,7 @@ fn format_project_result(
     Ok(result)
 }
 
-fn format_file_result(
-    score: &crate::tdg::TdgScore,
-    format: &TdgOutputFormat,
-) -> Result<String> {
+fn format_file_result(score: &crate::tdg::TdgScore, format: &TdgOutputFormat) -> Result<String> {
     let result = match format {
         TdgOutputFormat::Table => format_human(score),
         TdgOutputFormat::Json => format_json(score),

@@ -201,7 +201,7 @@ fn extract_var_refs(text: &str) -> HashSet<String> {
 
     while i + 1 < bytes.len() {
         if bytes[i] == b'$' && i + 1 < bytes.len() {
-            if let Some(jump) = process_variable_reference(text, &bytes, i + 1, &mut vars) {
+            if let Some(jump) = process_variable_reference(text, bytes, i + 1, &mut vars) {
                 i += jump;
                 continue;
             }
@@ -246,11 +246,7 @@ fn process_parenthesized_var(
     }
 }
 
-fn process_braced_var(
-    text: &str,
-    start_idx: usize,
-    vars: &mut HashSet<String>,
-) -> Option<usize> {
+fn process_braced_var(text: &str, start_idx: usize, vars: &mut HashSet<String>) -> Option<usize> {
     if let Some(end) = text[start_idx + 1..].find('}') {
         let var_name = &text[start_idx + 1..start_idx + 1 + end];
         if !is_automatic_var(var_name) {

@@ -133,26 +133,26 @@ use std::path::PathBuf;
 /// - Concurrency: Handlers may implement parallel processing internally
 pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
     use cli::*;
-    
+
     match cmd {
         // Core analysis commands
-        AnalyzeCommands::Complexity { .. } 
+        AnalyzeCommands::Complexity { .. }
         | AnalyzeCommands::Churn { .. }
         | AnalyzeCommands::DeadCode { .. }
         | AnalyzeCommands::Dag { .. }
         | AnalyzeCommands::Satd { .. } => route_core_analysis(cmd).await,
-        
+
         // Advanced analysis commands
         AnalyzeCommands::DeepContext { .. }
         | AnalyzeCommands::Tdg { .. }
         | AnalyzeCommands::LintHotspot { .. }
         | AnalyzeCommands::Comprehensive { .. } => route_advanced_analysis(cmd).await,
-        
+
         // Quality analysis commands
         AnalyzeCommands::Duplicates { .. }
         | AnalyzeCommands::DefectPrediction { .. }
         | AnalyzeCommands::Provability { .. } => route_quality_analysis(cmd).await,
-        
+
         // Specialized analysis commands
         AnalyzeCommands::GraphMetrics { .. }
         | AnalyzeCommands::NameSimilarity { .. }
@@ -160,11 +160,12 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         | AnalyzeCommands::IncrementalCoverage { .. }
         | AnalyzeCommands::SymbolTable { .. }
         | AnalyzeCommands::BigO { .. } => route_specialized_analysis(cmd).await,
-        
+
         // Language-specific commands
-        AnalyzeCommands::AssemblyScript { .. }
-        | AnalyzeCommands::WebAssembly { .. } => route_language_specific_analysis(cmd).await,
-        
+        AnalyzeCommands::AssemblyScript { .. } | AnalyzeCommands::WebAssembly { .. } => {
+            route_language_specific_analysis(cmd).await
+        }
+
         // System commands
         AnalyzeCommands::Makefile { .. } => route_system_analysis(cmd).await,
     }
@@ -209,7 +210,9 @@ async fn route_specialized_analysis(cmd: AnalyzeCommands) -> Result<()> {
         AnalyzeCommands::GraphMetrics { .. } => route_graph_metrics_analysis(cmd).await,
         AnalyzeCommands::NameSimilarity { .. } => route_name_similarity_analysis(cmd).await,
         AnalyzeCommands::ProofAnnotations { .. } => route_proof_annotations_analysis(cmd).await,
-        AnalyzeCommands::IncrementalCoverage { .. } => route_incremental_coverage_analysis(cmd).await,
+        AnalyzeCommands::IncrementalCoverage { .. } => {
+            route_incremental_coverage_analysis(cmd).await
+        }
         AnalyzeCommands::SymbolTable { .. } => route_symbol_table_analysis(cmd).await,
         AnalyzeCommands::BigO { .. } => route_big_o_analysis(cmd).await,
         _ => unreachable!("Expected specialized analysis command"),
@@ -250,12 +253,25 @@ async fn route_complexity_analysis(cmd: AnalyzeCommands) -> Result<()> {
         top_files,
         fail_on_violation,
         timeout,
-    } = cmd {
+    } = cmd
+    {
         route_complexity_command(
-            path, project_path, file, files, toolchain, format,
-            output, max_cyclomatic, max_cognitive, include,
-            watch, top_files, fail_on_violation, timeout
-        ).await
+            path,
+            project_path,
+            file,
+            files,
+            toolchain,
+            format,
+            output,
+            max_cyclomatic,
+            max_cognitive,
+            include,
+            watch,
+            top_files,
+            fail_on_violation,
+            timeout,
+        )
+        .await
     } else {
         unreachable!("Expected Complexity command")
     }
@@ -271,7 +287,8 @@ async fn route_churn_analysis(cmd: AnalyzeCommands) -> Result<()> {
         top_files,
         include,
         exclude,
-    } = cmd {
+    } = cmd
+    {
         super::complexity_handlers::handle_analyze_churn(
             project_path,
             days,
@@ -280,7 +297,8 @@ async fn route_churn_analysis(cmd: AnalyzeCommands) -> Result<()> {
             top_files,
             include,
             exclude,
-        ).await
+        )
+        .await
     } else {
         unreachable!("Expected Churn command")
     }
@@ -301,7 +319,8 @@ async fn route_dead_code_analysis(cmd: AnalyzeCommands) -> Result<()> {
         timeout,
         include,
         exclude,
-    } = cmd {
+    } = cmd
+    {
         super::complexity_handlers::handle_analyze_dead_code(
             path,
             format,
@@ -315,7 +334,8 @@ async fn route_dead_code_analysis(cmd: AnalyzeCommands) -> Result<()> {
             timeout,
             include,
             exclude,
-        ).await
+        )
+        .await
     } else {
         unreachable!("Expected DeadCode command")
     }
@@ -334,7 +354,8 @@ async fn route_dag_analysis(cmd: AnalyzeCommands) -> Result<()> {
         include_duplicates,
         include_dead_code,
         enhanced,
-    } = cmd {
+    } = cmd
+    {
         super::complexity_handlers::handle_analyze_dag(
             dag_type,
             project_path,
@@ -346,7 +367,8 @@ async fn route_dag_analysis(cmd: AnalyzeCommands) -> Result<()> {
             include_duplicates,
             include_dead_code,
             enhanced,
-        ).await
+        )
+        .await
     } else {
         unreachable!("Expected Dag command")
     }
@@ -369,7 +391,8 @@ async fn route_satd_analysis(cmd: AnalyzeCommands) -> Result<()> {
         timeout,
         include,
         exclude,
-    } = cmd {
+    } = cmd
+    {
         use super::satd_handler::SatdAnalysisConfig;
 
         let config = SatdAnalysisConfig {
@@ -413,10 +436,11 @@ async fn route_deep_context_analysis(cmd: AnalyzeCommands) -> Result<()> {
         parallel,
         verbose,
         top_files,
-    } = cmd {
+    } = cmd
+    {
         let converted_dag_type = convert_deep_context_dag_type(dag_type);
         let converted_cache_strategy = convert_cache_strategy(cache_strategy);
-        
+
         super::advanced_analysis_handlers::handle_analyze_deep_context(
             project_path,
             output,
@@ -433,7 +457,8 @@ async fn route_deep_context_analysis(cmd: AnalyzeCommands) -> Result<()> {
             parallel.is_some(),
             verbose,
             top_files,
-        ).await
+        )
+        .await
     } else {
         unreachable!("Expected DeepContext command")
     }
@@ -468,7 +493,8 @@ async fn route_tdg_analysis(cmd: AnalyzeCommands) -> Result<()> {
         output,
         critical_only,
         verbose,
-    } = cmd {
+    } = cmd
+    {
         use super::new_tdg_handler::TdgAnalysisConfig;
 
         let config = TdgAnalysisConfig {
@@ -504,7 +530,8 @@ async fn route_lint_hotspot_analysis(cmd: AnalyzeCommands) -> Result<()> {
         top_files,
         include,
         exclude,
-    } = cmd {
+    } = cmd
+    {
         super::lint_hotspot_handlers::handle_analyze_lint_hotspot(
             project_path,
             file,
@@ -520,7 +547,8 @@ async fn route_lint_hotspot_analysis(cmd: AnalyzeCommands) -> Result<()> {
             top_files,
             include,
             exclude,
-        ).await
+        )
+        .await
     } else {
         unreachable!("Expected LintHotspot command")
     }
@@ -546,7 +574,8 @@ async fn route_comprehensive_analysis(cmd: AnalyzeCommands) -> Result<()> {
         perf,
         executive_summary,
         top_files: _,
-    } = cmd {
+    } = cmd
+    {
         super::advanced_analysis_handlers::handle_analyze_comprehensive(
             project_path,
             file,
@@ -564,7 +593,8 @@ async fn route_comprehensive_analysis(cmd: AnalyzeCommands) -> Result<()> {
             output,
             perf,
             executive_summary,
-        ).await
+        )
+        .await
     } else {
         unreachable!("Expected Comprehensive command")
     }
@@ -584,7 +614,8 @@ async fn route_duplicates_analysis(cmd: AnalyzeCommands) -> Result<()> {
         exclude,
         output,
         top_files,
-    } = cmd {
+    } = cmd
+    {
         let config = super::duplication_analysis::DuplicateAnalysisConfig {
             project_path,
             detection_type,
@@ -619,7 +650,8 @@ async fn route_defect_prediction_analysis(cmd: AnalyzeCommands) -> Result<()> {
         output,
         perf,
         top_files,
-    } = cmd {
+    } = cmd
+    {
         use super::defect_prediction_handler::DefectPredictionConfig;
 
         let config = DefectPredictionConfig {
@@ -654,7 +686,8 @@ async fn route_provability_analysis(cmd: AnalyzeCommands) -> Result<()> {
         include_evidence,
         output,
         top_files,
-    } = cmd {
+    } = cmd
+    {
         use super::provability_handler::ProvabilityConfig;
 
         let config = ProvabilityConfig {
@@ -691,7 +724,8 @@ async fn route_graph_metrics_analysis(cmd: AnalyzeCommands) -> Result<()> {
         perf,
         top_k,
         min_centrality,
-    } = cmd {
+    } = cmd
+    {
         super::advanced_analysis_handlers::handle_analyze_graph_metrics(
             project_path,
             metrics,
@@ -707,7 +741,8 @@ async fn route_graph_metrics_analysis(cmd: AnalyzeCommands) -> Result<()> {
             perf,
             top_k,
             min_centrality,
-        ).await
+        )
+        .await
     } else {
         unreachable!("Expected GraphMetrics command")
     }
@@ -729,7 +764,8 @@ async fn route_name_similarity_analysis(cmd: AnalyzeCommands) -> Result<()> {
         perf,
         fuzzy,
         case_sensitive,
-    } = cmd {
+    } = cmd
+    {
         super::name_similarity_analysis::handle_analyze_name_similarity(
             project_path,
             query,
@@ -744,7 +780,8 @@ async fn route_name_similarity_analysis(cmd: AnalyzeCommands) -> Result<()> {
             perf,
             fuzzy,
             case_sensitive,
-        ).await
+        )
+        .await
     } else {
         unreachable!("Expected NameSimilarity command")
     }
@@ -763,7 +800,8 @@ async fn route_proof_annotations_analysis(cmd: AnalyzeCommands) -> Result<()> {
         perf,
         clear_cache,
         top_files: _top_files,
-    } = cmd {
+    } = cmd
+    {
         super::proof_annotations_handler::handle_analyze_proof_annotations(
             project_path,
             format,
@@ -774,7 +812,8 @@ async fn route_proof_annotations_analysis(cmd: AnalyzeCommands) -> Result<()> {
             output,
             perf,
             clear_cache,
-        ).await
+        )
+        .await
     } else {
         unreachable!("Expected ProofAnnotations command")
     }
@@ -795,7 +834,8 @@ async fn route_incremental_coverage_analysis(cmd: AnalyzeCommands) -> Result<()>
         cache_dir,
         force_refresh,
         top_files,
-    } = cmd {
+    } = cmd
+    {
         use super::incremental_coverage_handler::IncrementalCoverageConfig;
 
         let config = IncrementalCoverageConfig {
@@ -833,7 +873,8 @@ async fn route_symbol_table_analysis(cmd: AnalyzeCommands) -> Result<()> {
         output,
         perf,
         top_files: _top_files,
-    } = cmd {
+    } = cmd
+    {
         super::advanced_analysis_handlers::handle_analyze_symbol_table(
             project_path,
             format,
@@ -845,7 +886,8 @@ async fn route_symbol_table_analysis(cmd: AnalyzeCommands) -> Result<()> {
             show_references,
             output,
             perf,
-        ).await
+        )
+        .await
     } else {
         unreachable!("Expected SymbolTable command")
     }
@@ -864,7 +906,8 @@ async fn route_big_o_analysis(cmd: AnalyzeCommands) -> Result<()> {
         output,
         perf,
         top_files,
-    } = cmd {
+    } = cmd
+    {
         super::big_o_handlers::handle_analyze_big_o(
             project_path,
             format,
@@ -876,7 +919,8 @@ async fn route_big_o_analysis(cmd: AnalyzeCommands) -> Result<()> {
             output,
             perf,
             top_files,
-        ).await
+        )
+        .await
     } else {
         unreachable!("Expected BigO command")
     }
@@ -894,7 +938,8 @@ async fn route_assemblyscript_analysis(cmd: AnalyzeCommands) -> Result<()> {
         timeout,
         perf,
         top_files: _top_files,
-    } = cmd {
+    } = cmd
+    {
         super::wasm_handlers::handle_analyze_assemblyscript(
             project_path,
             format,
@@ -904,7 +949,8 @@ async fn route_assemblyscript_analysis(cmd: AnalyzeCommands) -> Result<()> {
             output,
             timeout,
             perf,
-        ).await
+        )
+        .await
     } else {
         unreachable!("Expected AssemblyScript command")
     }
@@ -923,7 +969,8 @@ async fn route_webassembly_analysis(cmd: AnalyzeCommands) -> Result<()> {
         output,
         perf,
         top_files: _top_files,
-    } = cmd {
+    } = cmd
+    {
         super::wasm_handlers::handle_analyze_webassembly(
             project_path,
             format,
@@ -934,7 +981,8 @@ async fn route_webassembly_analysis(cmd: AnalyzeCommands) -> Result<()> {
             complexity,
             output,
             perf,
-        ).await
+        )
+        .await
     } else {
         unreachable!("Expected WebAssembly command")
     }
@@ -949,7 +997,8 @@ async fn route_makefile_analysis(cmd: AnalyzeCommands) -> Result<()> {
         fix,
         gnu_version,
         top_files,
-    } = cmd {
+    } = cmd
+    {
         super::advanced_analysis_handlers::handle_analyze_makefile(
             path,
             rules,
@@ -957,7 +1006,8 @@ async fn route_makefile_analysis(cmd: AnalyzeCommands) -> Result<()> {
             fix,
             Some(gnu_version),
             top_files,
-        ).await
+        )
+        .await
     } else {
         unreachable!("Expected Makefile command")
     }
