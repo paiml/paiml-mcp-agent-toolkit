@@ -39,6 +39,12 @@ pub async fn handle_tdg_diagnostics(command: &TdgCommand, base_path: &PathBuf) -
             open,
             update_interval,
         } => handle_dashboard_command(*port, host.clone(), *open, *update_interval).await,
+        TdgCommand::Config(config_cmd) => {
+            super::config_command_handlers::handle_config_command(config_cmd).await
+        }
+        TdgCommand::Hooks(hooks_cmd) => {
+            super::hooks_command_handlers::handle_hooks_command(hooks_cmd).await
+        }
     }
 }
 
@@ -196,68 +202,98 @@ async fn handle_storage_command(command: &StorageCommand, base_path: &PathBuf) -
     let storage = TieredStorageFactory::create_at_path(base_path)?;
 
     match command {
-        StorageCommand::Stats { detailed } => {
-            let stats = storage.get_statistics();
-            println!("=== TDG Storage Statistics ===\n");
-            println!("{}", stats.format_diagnostic());
+        StorageCommand::Stats { detailed } => handle_stats(&storage, *detailed),
+        StorageCommand::Cleanup { max_age } => handle_cleanup(&storage, *max_age),
+        StorageCommand::Migrate { backend, path } => handle_migrate(backend, path.as_deref()),
+        StorageCommand::Flush => handle_flush(&storage),
+    }
+}
 
-            if *detailed {
-                println!("\nBackend Statistics:");
-                for (tier, backend_stats) in &stats.backend_stats {
-                    println!("\n{}:", tier);
-                    for (key, value) in backend_stats {
-                        println!("  {}: {}", key, value);
-                    }
-                }
-            }
-        }
-        StorageCommand::Cleanup { max_age } => {
-            let removed = storage.cleanup_hot_cache(*max_age);
-            println!("Cleaned up {} expired hot cache entries", removed);
-        }
-        StorageCommand::Migrate { backend, path } => {
-            let backend_type = match backend.as_str() {
-                "sled" => StorageBackendType::Sled,
-                "rocksdb" => StorageBackendType::RocksDb,
-                "inmemory" => StorageBackendType::InMemory,
-                _ => {
-                    return Err(anyhow::anyhow!(
-                        "Unknown backend type: {}. Valid options: sled, rocksdb, inmemory",
-                        backend
-                    ));
-                }
-            };
+/// Handle stats command
+fn handle_stats(storage: &crate::tdg::storage::TieredStorageImpl, detailed: bool) -> Result<()> {
+    let stats = storage.get_statistics();
+    println!("=== TDG Storage Statistics ===\n");
+    println!("{}", stats.format_diagnostic());
 
-            // Create new backend configurations
-            let warm_config = StorageConfig {
-                backend_type,
-                path: path.as_ref().map(|p| p.join("tdg-warm")),
-                cache_size_mb: Some(128),
-                compression: true,
-            };
+    if detailed {
+        print_backend_statistics(&stats.backend_stats);
+    }
+    Ok(())
+}
 
-            let cold_config = StorageConfig {
-                backend_type,
-                path: path.as_ref().map(|p| p.join("tdg-cold")),
-                cache_size_mb: Some(64),
-                compression: false,
-            };
-
-            println!("Migrating storage to {} backend...", backend);
-
-            // Note: This requires mutable access to storage which we don't have here
-            // In a real implementation, we'd need to refactor the storage API
-            println!("⚠️  Migration requires restart to take effect");
-            println!("New configuration:");
-            println!("  Warm storage: {:?}", warm_config);
-            println!("  Cold storage: {:?}", cold_config);
-        }
-        StorageCommand::Flush => {
-            storage.flush()?;
-            println!("✅ All pending writes flushed to storage");
+/// Print backend statistics
+fn print_backend_statistics(
+    backend_stats: &std::collections::HashMap<String, std::collections::HashMap<String, String>>,
+) {
+    println!("\nBackend Statistics:");
+    for (tier, backend_stats) in backend_stats {
+        println!("\n{}:", tier);
+        for (key, value) in backend_stats {
+            println!("  {}: {}", key, value);
         }
     }
+}
 
+/// Handle cleanup command
+fn handle_cleanup(storage: &crate::tdg::storage::TieredStorageImpl, max_age: u64) -> Result<()> {
+    let removed = storage.cleanup_hot_cache(max_age);
+    println!("Cleaned up {} expired hot cache entries", removed);
+    Ok(())
+}
+
+/// Handle migrate command
+fn handle_migrate(backend: &str, path: Option<&PathBuf>) -> Result<()> {
+    let backend_type = parse_backend_type(backend)?;
+    let (warm_config, cold_config) = create_migration_configs(backend_type, path);
+
+    println!("Migrating storage to {} backend...", backend);
+    println!("⚠️  Migration requires restart to take effect");
+    println!("New configuration:");
+    println!("  Warm storage: {:?}", warm_config);
+    println!("  Cold storage: {:?}", cold_config);
+
+    Ok(())
+}
+
+/// Parse backend type from string
+fn parse_backend_type(backend: &str) -> Result<StorageBackendType> {
+    match backend {
+        "sled" => Ok(StorageBackendType::Sled),
+        "rocksdb" => Ok(StorageBackendType::RocksDb),
+        "inmemory" => Ok(StorageBackendType::InMemory),
+        _ => Err(anyhow::anyhow!(
+            "Unknown backend type: {}. Valid options: sled, rocksdb, inmemory",
+            backend
+        )),
+    }
+}
+
+/// Create migration configurations
+fn create_migration_configs(
+    backend_type: StorageBackendType,
+    path: Option<&PathBuf>,
+) -> (StorageConfig, StorageConfig) {
+    let warm_config = StorageConfig {
+        backend_type,
+        path: path.map(|p| p.join("tdg-warm")),
+        cache_size_mb: Some(128),
+        compression: true,
+    };
+
+    let cold_config = StorageConfig {
+        backend_type,
+        path: path.map(|p| p.join("tdg-cold")),
+        cache_size_mb: Some(64),
+        compression: false,
+    };
+
+    (warm_config, cold_config)
+}
+
+/// Handle flush command
+fn handle_flush(storage: &crate::tdg::storage::TieredStorageImpl) -> Result<()> {
+    storage.flush()?;
+    println!("✅ All pending writes flushed to storage");
     Ok(())
 }
 

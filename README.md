@@ -19,6 +19,16 @@
 
 **Zero-configuration AI context generation system** with extreme quality enforcement and Toyota Way standards. Analyze any codebase instantly through CLI, MCP, or HTTP interfaces. Built by [Pragmatic AI Labs](https://paiml.com).
 
+## 🔥 Core Features
+
+### 🎯 [Pre-commit Hooks Management](docs/hooks-management.md) *(New in v2.66.0)*
+**Single source of truth configuration for quality gate enforcement!** Eliminate configuration duplication with PMAT-managed pre-commit hooks:
+- **Dynamic Hook Generation**: Hooks generated from `pmat.toml` configuration
+- **Quality Gate Enforcement**: Complexity, SATD, coverage checks at commit time
+- **Zero Configuration Duplication**: One config file, all thresholds synchronized
+- **Easy Management**: `pmat tdg hooks install --backup` to get started
+- [**📖 Full Documentation →**](docs/hooks-management.md)
+
 > **🎯 v2.63.0 Release**: **Advanced Code Similarity Detection System!** Industry-leading duplicate and similarity detection:
 > - **🔍 4 Clone Types**: Exact (Type-1), Renamed (Type-2), Modified (Type-3), Semantic (Type-4) detection
 > - **📊 Entropy Analysis**: Shannon entropy for complexity measurement and pattern detection
