@@ -19,49 +19,85 @@ pub struct TdgCommandConfig {
 
 /// Handle TDG command execution
 pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
-    // Load configuration if provided
-    let tdg_config = if let Some(config_path) = &config.config {
-        let config_content = fs::read_to_string(config_path)?;
-        toml::from_str(&config_content)?
-    } else {
-        TdgConfig::default()
-    };
-
-    // Create analyzer with configuration and storage
+    let tdg_config = load_tdg_configuration(&config)?;
     let analyzer = TdgAnalyzer::with_storage(tdg_config)?;
 
-    // Handle subcommands
-    if let Some(cmd) = config.command {
-        match cmd {
-            TdgCommand::Compare { source1, source2 } => {
-                let comparison = analyzer.compare(&source1, &source2).await?;
-                let output_str = format_comparison(comparison, config.format)?;
-
-                if let Some(output_path) = &config.output {
-                    fs::write(output_path, output_str)?;
-                } else {
-                    println!("{}", output_str);
-                }
-                return Ok(());
-            }
-            TdgCommand::Diagnostics { .. }
-            | TdgCommand::Storage { .. }
-            | TdgCommand::Dashboard { .. } => {
-                // Handle diagnostic and dashboard commands
-                return super::tdg_diagnostic_handler::handle_tdg_diagnostics(&cmd, &config.path)
-                    .await;
-            }
-        }
+    if let Some(ref cmd) = config.command {
+        return handle_tdg_subcommand(cmd.clone(), &analyzer, &config).await;
     }
 
-    // Analyze single file or directory
-    let score = if config.path.is_dir() {
-        analyzer.analyze_project(&config.path).await?.average()
-    } else {
-        analyzer.analyze_file(&config.path).await?
-    };
+    let score = execute_tdg_analysis(&analyzer, &config).await?;
+    validate_minimum_grade(&score, &config)?;
+    let output_str = format_tdg_output(&score, &config)?;
+    write_tdg_output(&output_str, &config)?;
 
-    // Check minimum grade if specified (for CI/CD)
+    Ok(())
+}
+
+/// Load TDG configuration from file or use default (cognitive complexity ≤3)
+fn load_tdg_configuration(config: &TdgCommandConfig) -> Result<TdgConfig> {
+    if let Some(config_path) = &config.config {
+        let config_content = fs::read_to_string(config_path)?;
+        Ok(toml::from_str(&config_content)?)
+    } else {
+        Ok(TdgConfig::default())
+    }
+}
+
+/// Handle TDG subcommands (cognitive complexity ≤8)
+async fn handle_tdg_subcommand(
+    cmd: TdgCommand,
+    analyzer: &TdgAnalyzer,
+    config: &TdgCommandConfig,
+) -> Result<()> {
+    match cmd {
+        TdgCommand::Compare { source1, source2 } => {
+            handle_compare_command(analyzer, &source1, &source2, config).await
+        }
+        TdgCommand::Diagnostics { .. }
+        | TdgCommand::Storage { .. }
+        | TdgCommand::Dashboard { .. } => {
+            super::tdg_diagnostic_handler::handle_tdg_diagnostics(&cmd, &config.path).await
+        }
+    }
+}
+
+/// Handle TDG compare subcommand (cognitive complexity ≤4)
+async fn handle_compare_command(
+    analyzer: &TdgAnalyzer,
+    source1: &PathBuf,
+    source2: &PathBuf,
+    config: &TdgCommandConfig,
+) -> Result<()> {
+    let comparison = analyzer.compare(source1, source2).await?;
+    let output_str = format_comparison(comparison, config.format.clone())?;
+
+    if let Some(output_path) = &config.output {
+        fs::write(output_path, output_str)?;
+    } else {
+        println!("{}", output_str);
+    }
+    
+    Ok(())
+}
+
+/// Execute TDG analysis on file or directory (cognitive complexity ≤3)
+async fn execute_tdg_analysis(
+    analyzer: &TdgAnalyzer,
+    config: &TdgCommandConfig,
+) -> Result<crate::tdg::TdgScore> {
+    if config.path.is_dir() {
+        Ok(analyzer.analyze_project(&config.path).await?.average())
+    } else {
+        analyzer.analyze_file(&config.path).await
+    }
+}
+
+/// Validate minimum grade requirement (cognitive complexity ≤4)
+fn validate_minimum_grade(
+    score: &crate::tdg::TdgScore,
+    config: &TdgCommandConfig,
+) -> Result<()> {
     if let Some(min_grade_str) = &config.min_grade {
         let min_grade = parse_grade(min_grade_str)?;
         if score.grade < min_grade {
@@ -72,21 +108,28 @@ pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
             ));
         }
     }
+    Ok(())
+}
 
-    // Format output
-    let output_str = if config.quiet {
-        format!("{:.1}", score.total)
+/// Format TDG output based on config (cognitive complexity ≤3)
+fn format_tdg_output(
+    score: &crate::tdg::TdgScore,
+    config: &TdgCommandConfig,
+) -> Result<String> {
+    if config.quiet {
+        Ok(format!("{:.1}", score.total))
     } else {
-        format_tdg_score(score, config.format, config.include_components)?
-    };
+        format_tdg_score(score.clone(), config.format.clone(), config.include_components)
+    }
+}
 
-    // Write output
+/// Write TDG output to file or stdout (cognitive complexity ≤3)
+fn write_tdg_output(output_str: &str, config: &TdgCommandConfig) -> Result<()> {
     if let Some(output_path) = &config.output {
         fs::write(output_path, output_str)?;
     } else {
         println!("{}", output_str);
     }
-
     Ok(())
 }
 

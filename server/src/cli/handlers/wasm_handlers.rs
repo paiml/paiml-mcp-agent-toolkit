@@ -6,8 +6,9 @@
 use crate::cli::ComplexityOutputFormat;
 use crate::services::wasm::{
     AssemblyScriptParser, WasmBinaryAnalyzer, WasmComplexityAnalyzer, WasmLanguageDetector,
-    WasmSecurityValidator, WatParser,
+    WasmSecurityValidator, WatParser, WasmMetrics, WasmComplexity,
 };
+use crate::models::unified_ast::AstDag;
 use anyhow::Result;
 use std::path::PathBuf;
 use walkdir::WalkDir;
@@ -94,68 +95,125 @@ pub async fn handle_analyze_webassembly(
     perf: bool,
 ) -> Result<()> {
     eprintln!("🔍 Analyzing WebAssembly files...");
-
     let start = std::time::Instant::now();
-    let mut results = Vec::new();
 
-    // Collect WASM files
     let wasm_files = collect_wasm_files(&project_path, include_binary, include_text)?;
     eprintln!("📁 Found {} WebAssembly files", wasm_files.len());
 
-    for file_path in wasm_files {
-        match file_path.extension().and_then(|s| s.to_str()) {
-            Some("wasm") if include_binary => {
-                let analyzer = WasmBinaryAnalyzer::new();
-                match analyzer.analyze_file(&file_path).await {
-                    Ok(analysis) => {
-                        eprintln!("✅ Analyzed binary: {}", file_path.display());
-                        results.push((file_path, analysis));
-                    }
-                    Err(e) => {
-                        eprintln!("❌ Failed to analyze {}: {}", file_path.display(), e);
-                    }
-                }
-            }
-            Some("wat") if include_text => {
-                let mut parser = WatParser::new();
-                if let Ok(content) = tokio::fs::read_to_string(&file_path).await {
-                    match parser.parse(&content) {
-                        Ok(ast) => {
-                            eprintln!("✅ Parsed WAT: {}", file_path.display());
-
-                            if complexity {
-                                let complexity_analyzer = WasmComplexityAnalyzer::new();
-                                let _complexity = complexity_analyzer.analyze_ast(&ast)?;
-                            }
-
-                            if security {
-                                let security_validator = WasmSecurityValidator::new();
-                                if let Err(e) = security_validator.validate_ast(&ast) {
-                                    eprintln!(
-                                        "⚠️  Security issue in {}: {}",
-                                        file_path.display(),
-                                        e
-                                    );
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("❌ Failed to parse {}: {}", file_path.display(), e);
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
+    let results = analyze_wasm_files(wasm_files, include_binary, include_text, security, complexity).await;
 
     let elapsed = start.elapsed();
     eprintln!("📊 Analysis complete in {:.2}s", elapsed.as_secs_f64());
 
-    // Format output
-    let output_text = format_webassembly_results(&results, &format, perf, elapsed)?;
+    write_wasm_analysis_output(&results, &format, perf, elapsed, output).await?;
+    
+    Ok(())
+}
 
-    // Write output
+/// Analyze WASM files based on type and flags (cognitive complexity ≤8)
+async fn analyze_wasm_files(
+    wasm_files: Vec<PathBuf>,
+    include_binary: bool,
+    include_text: bool,
+    security: bool,
+    complexity: bool,
+) -> Vec<(PathBuf, WasmMetrics)> {
+    let mut results = Vec::new();
+
+    for file_path in wasm_files {
+        if let Some(result) = analyze_single_wasm_file(&file_path, include_binary, include_text, security, complexity).await {
+            results.push(result);
+        }
+    }
+
+    results
+}
+
+/// Analyze a single WASM file (cognitive complexity ≤7)
+async fn analyze_single_wasm_file(
+    file_path: &PathBuf,
+    include_binary: bool,
+    include_text: bool,
+    security: bool,
+    complexity: bool,
+) -> Option<(PathBuf, WasmMetrics)> {
+    match file_path.extension().and_then(|s| s.to_str()) {
+        Some("wasm") if include_binary => {
+            analyze_wasm_binary(file_path).await
+        }
+        Some("wat") if include_text => {
+            analyze_wat_text(file_path, security, complexity).await;
+            None // WAT analysis doesn't return WasmMetrics currently
+        }
+        _ => None
+    }
+}
+
+/// Analyze WASM binary file (cognitive complexity ≤3)
+async fn analyze_wasm_binary(file_path: &PathBuf) -> Option<(PathBuf, WasmMetrics)> {
+    let analyzer = WasmBinaryAnalyzer::new();
+    match analyzer.analyze_file(file_path).await {
+        Ok(analysis) => {
+            eprintln!("✅ Analyzed binary: {}", file_path.display());
+            Some((file_path.clone(), analysis))
+        }
+        Err(e) => {
+            eprintln!("❌ Failed to analyze {}: {}", file_path.display(), e);
+            None
+        }
+    }
+}
+
+/// Analyze WAT text file (cognitive complexity ≤6)
+async fn analyze_wat_text(
+    file_path: &PathBuf,
+    security: bool,
+    complexity: bool,
+) {
+    if let Ok(content) = tokio::fs::read_to_string(file_path).await {
+        let mut parser = WatParser::new();
+        match parser.parse(&content) {
+            Ok(ast) => {
+                eprintln!("✅ Parsed WAT: {}", file_path.display());
+                process_wat_ast(&ast, &file_path, security, complexity);
+            }
+            Err(e) => {
+                eprintln!("❌ Failed to parse {}: {}", file_path.display(), e);
+            }
+        }
+    }
+}
+
+/// Process WAT AST for security and complexity (cognitive complexity ≤5)
+fn process_wat_ast(
+    ast: &AstDag,
+    file_path: &PathBuf,
+    security: bool,
+    complexity: bool,
+) {
+    if complexity {
+        let complexity_analyzer = WasmComplexityAnalyzer::new();
+        let _ = complexity_analyzer.analyze_ast(ast);
+    }
+
+    if security {
+        let security_validator = WasmSecurityValidator::new();
+        if let Err(e) = security_validator.validate_ast(ast) {
+            eprintln!("⚠️  Security issue in {}: {}", file_path.display(), e);
+        }
+    }
+}
+
+/// Write WASM analysis output (cognitive complexity ≤4)
+async fn write_wasm_analysis_output(
+    results: &[(PathBuf, WasmMetrics)],
+    format: &ComplexityOutputFormat,
+    perf: bool,
+    elapsed: std::time::Duration,
+    output: Option<PathBuf>,
+) -> Result<()> {
+    let output_text = format_webassembly_results(results, format, perf, elapsed)?;
+
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &output_text).await?;
         eprintln!("📝 Results written to: {}", output_path.display());
@@ -228,7 +286,7 @@ fn collect_wasm_files(
 
 /// Format AssemblyScript analysis results
 fn format_assemblyscript_results(
-    results: &[(PathBuf, crate::services::wasm::WasmComplexity)],
+    results: &[(PathBuf, WasmComplexity)],
     format: &ComplexityOutputFormat,
     perf: bool,
     elapsed: std::time::Duration,
@@ -287,7 +345,7 @@ fn format_assemblyscript_results(
 
 /// Format WebAssembly analysis results
 fn format_webassembly_results(
-    results: &[(PathBuf, crate::services::wasm::WasmMetrics)],
+    results: &[(PathBuf, WasmMetrics)],
     format: &ComplexityOutputFormat,
     perf: bool,
     elapsed: std::time::Duration,

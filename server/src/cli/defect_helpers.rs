@@ -183,88 +183,130 @@ pub fn format_defect_markdown(
     let mut output = String::new();
 
     writeln!(&mut output, "# Defect Prediction Report\n")?;
+    
+    write_summary_section(&mut output, predictions)?;
+    write_risk_distribution_table(&mut output, predictions)?;
+    write_detailed_predictions(&mut output, predictions, include_recommendations)?;
 
-    // Summary statistics
-    writeln!(&mut output, "## Summary\n")?;
-    writeln!(
-        &mut output,
-        "**Total files analyzed**: {}",
-        predictions.len()
-    )?;
+    Ok(output)
+}
 
+/// Write summary section (cognitive complexity ≤3)
+fn write_summary_section(output: &mut String, predictions: &[(String, DefectScore)]) -> Result<()> {
+    writeln!(output, "## Summary\n")?;
+    writeln!(output, "**Total files analyzed**: {}", predictions.len())?;
+    Ok(())
+}
+
+/// Write risk distribution table (cognitive complexity ≤8)
+fn write_risk_distribution_table(
+    output: &mut String,
+    predictions: &[(String, DefectScore)],
+) -> Result<()> {
+    let (high_risk, medium_risk, low_risk) = calculate_risk_counts(predictions);
+    let total = predictions.len() as f64;
+    
+    writeln!(output, "\n### Risk Distribution")?;
+    writeln!(output, "| Risk Level | Count | Percentage |")?;
+    writeln!(output, "|------------|-------|------------|")?;
+    
+    write_risk_row(output, "High (>70%)", high_risk, total)?;
+    write_risk_row(output, "Medium (40-70%)", medium_risk, total)?;
+    write_risk_row(output, "Low (<40%)", low_risk, total)?;
+    
+    Ok(())
+}
+
+/// Calculate risk counts (cognitive complexity ≤6)
+fn calculate_risk_counts(predictions: &[(String, DefectScore)]) -> (usize, usize, usize) {
     let high_risk = predictions
         .iter()
         .filter(|(_, s)| s.probability > 0.7)
         .count();
+    
     let medium_risk = predictions
         .iter()
         .filter(|(_, s)| s.probability > 0.4 && s.probability <= 0.7)
         .count();
+    
     let low_risk = predictions
         .iter()
         .filter(|(_, s)| s.probability <= 0.4)
         .count();
+    
+    (high_risk, medium_risk, low_risk)
+}
 
-    writeln!(&mut output, "\n### Risk Distribution")?;
-    writeln!(&mut output, "| Risk Level | Count | Percentage |")?;
-    writeln!(&mut output, "|------------|-------|------------|")?;
+/// Write a single risk row (cognitive complexity ≤3)
+fn write_risk_row(output: &mut String, label: &str, count: usize, total: f64) -> Result<()> {
     writeln!(
-        &mut output,
-        "| High (>70%) | {} | {:.1}% |",
-        high_risk,
-        (high_risk as f64 / predictions.len() as f64) * 100.0
+        output,
+        "| {} | {} | {:.1}% |",
+        label,
+        count,
+        (count as f64 / total) * 100.0
     )?;
-    writeln!(
-        &mut output,
-        "| Medium (40-70%) | {} | {:.1}% |",
-        medium_risk,
-        (medium_risk as f64 / predictions.len() as f64) * 100.0
-    )?;
-    writeln!(
-        &mut output,
-        "| Low (<40%) | {} | {:.1}% |",
-        low_risk,
-        (low_risk as f64 / predictions.len() as f64) * 100.0
-    )?;
+    Ok(())
+}
 
-    // Detailed predictions
-    writeln!(&mut output, "\n## Detailed Predictions\n")?;
-
+/// Write detailed predictions section (cognitive complexity ≤7)
+fn write_detailed_predictions(
+    output: &mut String,
+    predictions: &[(String, DefectScore)],
+    include_recommendations: bool,
+) -> Result<()> {
+    writeln!(output, "\n## Detailed Predictions\n")?;
+    
     for (file, score) in predictions.iter().take(20) {
-        writeln!(&mut output, "### {}\n", file)?;
-        writeln!(
-            &mut output,
-            "- **Probability**: {:.1}%",
-            score.probability * 100.0
-        )?;
-        writeln!(
-            &mut output,
-            "- **Confidence**: {:.1}%",
-            score.confidence * 100.0
-        )?;
-        writeln!(
-            &mut output,
-            "- **Risk Factors**: {:?}",
-            score.contributing_factors
-        )?;
-
-        if include_recommendations {
-            writeln!(&mut output, "\n#### Recommendations:")?;
-            if score.probability > 0.7 {
-                writeln!(&mut output, "- 🔴 High priority for code review")?;
-                writeln!(&mut output, "- Add comprehensive test coverage")?;
-                writeln!(&mut output, "- Consider refactoring to reduce complexity")?;
-            } else if score.probability > 0.4 {
-                writeln!(&mut output, "- 🟡 Schedule for regular review")?;
-                writeln!(&mut output, "- Improve test coverage")?;
-            } else {
-                writeln!(&mut output, "- 🟢 Monitor during regular maintenance")?;
-            }
-        }
-        writeln!(&mut output)?;
+        write_single_prediction(output, file, score, include_recommendations)?;
     }
+    
+    Ok(())
+}
 
-    Ok(output)
+/// Write a single prediction (cognitive complexity ≤8)
+fn write_single_prediction(
+    output: &mut String,
+    file: &str,
+    score: &DefectScore,
+    include_recommendations: bool,
+) -> Result<()> {
+    writeln!(output, "### {}\n", file)?;
+    
+    write_prediction_metrics(output, score)?;
+    
+    if include_recommendations {
+        write_recommendations(output, score.probability as f64)?;
+    }
+    
+    writeln!(output)?;
+    Ok(())
+}
+
+/// Write prediction metrics (cognitive complexity ≤4)
+fn write_prediction_metrics(output: &mut String, score: &DefectScore) -> Result<()> {
+    writeln!(output, "- **Probability**: {:.1}%", score.probability as f64 * 100.0)?;
+    writeln!(output, "- **Confidence**: {:.1}%", score.confidence as f64 * 100.0)?;
+    writeln!(output, "- **Risk Factors**: {:?}", score.contributing_factors)?;
+    Ok(())
+}
+
+/// Write recommendations based on probability (cognitive complexity ≤7)
+fn write_recommendations(output: &mut String, probability: f64) -> Result<()> {
+    writeln!(output, "\n#### Recommendations:")?;
+    
+    if probability > 0.7 {
+        writeln!(output, "- 🔴 High priority for code review")?;
+        writeln!(output, "- Add comprehensive test coverage")?;
+        writeln!(output, "- Consider refactoring to reduce complexity")?;
+    } else if probability > 0.4 {
+        writeln!(output, "- 🟡 Schedule for regular review")?;
+        writeln!(output, "- Improve test coverage")?;
+    } else {
+        writeln!(output, "- 🟢 Monitor during regular maintenance")?;
+    }
+    
+    Ok(())
 }
 
 /// Format defect predictions as SARIF

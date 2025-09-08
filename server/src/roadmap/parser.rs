@@ -71,57 +71,94 @@ fn parse_sprint_section(
     let version = captures.get(1).unwrap().as_str().to_string();
     let title = captures.get(2).unwrap().as_str().to_string();
 
-    let mut sprint = Sprint {
-        version: version.clone(),
-        title,
+    let mut sprint = create_initial_sprint(&version, &title);
+    let lines_consumed = parse_sprint_content(lines, start_idx, &mut sprint, parsers)?;
+    
+    Ok((sprint, version, lines_consumed))
+}
+
+/// Create initial sprint structure with defaults (cognitive complexity ≤2)
+fn create_initial_sprint(version: &str, title: &str) -> Sprint {
+    Sprint {
+        version: version.to_string(),
+        title: title.to_string(),
         start_date: Utc::now(),
         end_date: Utc::now() + chrono::Duration::days(14),
         priority: Priority::P0,
         tasks: Vec::new(),
         definition_of_done: Vec::new(),
         quality_gates: Vec::new(),
-    };
+    }
+}
 
+/// Parse sprint content and return lines consumed (cognitive complexity ≤8)
+fn parse_sprint_content(
+    lines: &[&str],
+    start_idx: usize,
+    sprint: &mut Sprint,
+    parsers: &Parsers,
+) -> Result<usize> {
     let mut i = start_idx + 1;
+    
     while i < lines.len() {
         let line = lines[i];
-
-        // Parse duration
-        if line.contains("**Duration**:") {
-            if let Some(duration) = parse_duration(line) {
-                sprint.start_date = duration.0;
-                sprint.end_date = duration.1;
-            }
-            i += 1;
-        }
-        // Parse priority
-        else if line.contains("**Priority**:") {
-            if let Some(priority) = parse_priority(line) {
-                sprint.priority = priority;
-            }
-            i += 1;
-        }
-        // Parse tasks table
-        else if line.contains("| ID | Description |") {
-            let (tasks, advance) = parse_tasks_table(&lines[i..], &parsers.task_regex)?;
-            sprint.tasks = tasks;
-            i += advance;
-        }
-        // Parse Definition of Done
-        else if line.contains("### Definition of Done") {
-            let (items, advance) = parse_definition_of_done(&lines[i..], &parsers.done_regex)?;
-            sprint.definition_of_done = items;
-            i += advance;
-        }
-        // Check for next section
-        else if line.starts_with("## ") && line.contains("Sprint:") {
+        
+        if is_next_section_start(line) {
             break;
-        } else {
-            i += 1;
         }
+        
+        i += process_sprint_line(lines, i, sprint, parsers)?;
     }
+    
+    Ok(i - start_idx)
+}
 
-    Ok((sprint, version, i - start_idx))
+/// Process a single sprint line and return advancement (cognitive complexity ≤6)
+fn process_sprint_line(
+    lines: &[&str],
+    current_idx: usize,
+    sprint: &mut Sprint,
+    parsers: &Parsers,
+) -> Result<usize> {
+    let line = lines[current_idx];
+    
+    if line.contains("**Duration**:") {
+        process_duration_line(line, sprint);
+        Ok(1)
+    } else if line.contains("**Priority**:") {
+        process_priority_line(line, sprint);
+        Ok(1)
+    } else if line.contains("| ID | Description |") {
+        let (tasks, advance) = parse_tasks_table(&lines[current_idx..], &parsers.task_regex)?;
+        sprint.tasks = tasks;
+        Ok(advance)
+    } else if line.contains("### Definition of Done") {
+        let (items, advance) = parse_definition_of_done(&lines[current_idx..], &parsers.done_regex)?;
+        sprint.definition_of_done = items;
+        Ok(advance)
+    } else {
+        Ok(1)
+    }
+}
+
+/// Check if line indicates start of next section (cognitive complexity ≤1)
+fn is_next_section_start(line: &str) -> bool {
+    line.starts_with("## ") && line.contains("Sprint:")
+}
+
+/// Process duration line and update sprint dates (cognitive complexity ≤2)
+fn process_duration_line(line: &str, sprint: &mut Sprint) {
+    if let Some(duration) = parse_duration(line) {
+        sprint.start_date = duration.0;
+        sprint.end_date = duration.1;
+    }
+}
+
+/// Process priority line and update sprint priority (cognitive complexity ≤2)
+fn process_priority_line(line: &str, sprint: &mut Sprint) {
+    if let Some(priority) = parse_priority(line) {
+        sprint.priority = priority;
+    }
 }
 
 /// Parse tasks table
@@ -355,7 +392,7 @@ fn parse_task_status(s: &str) -> TaskStatus {
     let s = s.trim();
     TaskStatus::from_emoji(s).unwrap_or_else(|| match s.to_lowercase().as_str() {
         "planned" => TaskStatus::Planned,
-        "in_progress" | "in progress" => TaskStatus::InProgress,
+        "in_progress" | "in progress" | "inprogress" => TaskStatus::InProgress,
         "completed" | "done" => TaskStatus::Completed,
         "blocked" => TaskStatus::Blocked,
         "deferred" => TaskStatus::Deferred,

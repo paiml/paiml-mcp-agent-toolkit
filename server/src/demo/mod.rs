@@ -319,46 +319,85 @@ fn extract_analysis_from_demo_report(
     let mut complexity_result = None;
     let mut dag_result = None;
     let mut timings = (0u64, 0u64, 0u64, 0u64);
-
+    
     for step in &demo_report.steps {
-        match step.capability {
-            "AST Context Analysis" => timings.0 = step.elapsed_ms,
-            "Code Complexity Analysis" => {
-                timings.1 = step.elapsed_ms;
-                // Try to extract complexity data from step response
-                if let Some(result) = &step.response.result {
-                    if let Ok(complexity_data) =
-                        serde_json::from_value::<serde_json::Value>(result.clone())
-                    {
-                        // Parse the full complexity report from the "report" field
-                        if let Some(report) = complexity_data.get("report") {
-                            if let Ok(report) = serde_json::from_value::<
-                                crate::services::complexity::ComplexityReport,
-                            >(report.clone())
-                            {
-                                complexity_result = Some(report);
-                            }
-                        }
-                    }
-                }
-            }
-            "DAG Visualization" => {
-                timings.2 = step.elapsed_ms;
-                // Try to extract DAG data from step response
-                if let Some(result) = &step.response.result {
-                    if let Ok(dag_data) =
-                        serde_json::from_value::<serde_json::Value>(result.clone())
-                    {
-                        dag_result = parse_dag_data(&dag_data);
-                    }
-                }
-            }
-            "Code Churn Analysis" => timings.3 = step.elapsed_ms,
-            _ => {}
+        process_demo_step(step, &mut complexity_result, &mut dag_result, &mut timings);
+    }
+    
+    (complexity_result, dag_result, timings)
+}
+
+/// Process a single demo step (cognitive complexity ≤8)
+fn process_demo_step(
+    step: &crate::demo::DemoStep,
+    complexity_result: &mut Option<crate::services::complexity::ComplexityReport>,
+    dag_result: &mut Option<crate::models::dag::DependencyGraph>,
+    timings: &mut (u64, u64, u64, u64),
+) {
+    match step.capability {
+        "AST Context Analysis" => process_ast_step(step, timings),
+        "Code Complexity Analysis" => process_complexity_step(step, complexity_result, timings),
+        "DAG Visualization" => process_dag_step(step, dag_result, timings),
+        "Code Churn Analysis" => process_churn_step(step, timings),
+        _ => {} // Unknown capability - skip
+    }
+}
+
+/// Process AST context analysis step (cognitive complexity 1)
+fn process_ast_step(step: &crate::demo::DemoStep, timings: &mut (u64, u64, u64, u64)) {
+    timings.0 = step.elapsed_ms;
+}
+
+/// Process complexity analysis step (cognitive complexity ≤6)
+fn process_complexity_step(
+    step: &crate::demo::DemoStep,
+    complexity_result: &mut Option<crate::services::complexity::ComplexityReport>,
+    timings: &mut (u64, u64, u64, u64),
+) {
+    timings.1 = step.elapsed_ms;
+    
+    if let Some(result) = &step.response.result {
+        if let Some(complexity_report) = extract_complexity_from_result(result) {
+            *complexity_result = Some(complexity_report);
         }
     }
+}
 
-    (complexity_result, dag_result, timings)
+/// Process DAG visualization step (cognitive complexity ≤6) 
+fn process_dag_step(
+    step: &crate::demo::DemoStep,
+    dag_result: &mut Option<crate::models::dag::DependencyGraph>,
+    timings: &mut (u64, u64, u64, u64),
+) {
+    timings.2 = step.elapsed_ms;
+    
+    if let Some(result) = &step.response.result {
+        if let Some(dag) = extract_dag_from_result(result) {
+            *dag_result = Some(dag);
+        }
+    }
+}
+
+/// Process code churn analysis step (cognitive complexity 1)
+fn process_churn_step(step: &crate::demo::DemoStep, timings: &mut (u64, u64, u64, u64)) {
+    timings.3 = step.elapsed_ms;
+}
+
+/// Extract complexity report from JSON result (cognitive complexity ≤5)
+fn extract_complexity_from_result(
+    result: &serde_json::Value,
+) -> Option<crate::services::complexity::ComplexityReport> {
+    let complexity_data = serde_json::from_value::<serde_json::Value>(result.clone()).ok()?;
+    let report_value = complexity_data.get("report")?;
+    serde_json::from_value::<crate::services::complexity::ComplexityReport>(report_value.clone()).ok()
+}
+
+/// Extract DAG from JSON result (cognitive complexity ≤4)
+fn extract_dag_from_result(
+    result: &serde_json::Value,
+) -> Option<crate::models::dag::DependencyGraph> {
+    let dag_data = serde_json::from_value::<serde_json::Value>(result.clone()).ok()?;
+    parse_dag_data(&dag_data)
 }
 
 #[allow(dead_code)]
