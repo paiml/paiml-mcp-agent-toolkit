@@ -157,86 +157,121 @@ fn convert_edge_type(fuzz_type: &FuzzEdgeType) -> EdgeType {
 }
 
 fn assert_invariants(mermaid: &str, graph: &DependencyGraph) {
-    // Critical: Verify syntax validity
+    verify_syntax_validity(mermaid);
+    verify_node_definitions(mermaid);
+    verify_all_nodes_represented(mermaid, graph);
+    verify_no_unescaped_pipes(mermaid);
+    verify_edges_reference_existing_nodes(mermaid, graph);
+}
+
+fn verify_syntax_validity(mermaid: &str) {
     assert!(mermaid.starts_with("graph TD\n"), "Missing graph header");
-    
-    // Verify no unescaped special chars in node definitions
+}
+
+fn verify_node_definitions(mermaid: &str) {
     let lines: Vec<&str> = mermaid.lines().collect();
     for line in &lines[1..] {
-        if line.trim().is_empty() {
+        if should_skip_line(line) {
             continue;
         }
         
-        // Skip edge lines
-        if line.contains("-->") || line.contains("-.->") || 
-           line.contains("--|>") || line.contains("-->>") || line.contains("---") {
-            continue;
-        }
-        
-        // Skip style lines
-        if line.trim().starts_with("style ") {
-            continue;
-        }
-        
-        // Node lines must have proper quoting
-        if line.contains('[') {
-            assert!(line.contains("[\"") && line.contains("\"]"), 
-                "Improperly quoted node: {}", line);
-        } else if line.contains("{{") {
-            assert!(line.contains("{{\"") && line.contains("\"}}"), 
-                "Improperly quoted module: {}", line);
-        }
+        verify_node_quoting(line);
+    }
+}
+
+fn should_skip_line(line: &str) -> bool {
+    if line.trim().is_empty() {
+        return true;
     }
     
-    // Verify all nodes are represented
+    if is_edge_line(line) {
+        return true;
+    }
+    
+    line.trim().starts_with("style ")
+}
+
+fn verify_node_quoting(line: &str) {
+    if line.contains('[') {
+        assert!(line.contains("[\"") && line.contains("\"]"), 
+            "Improperly quoted node: {}", line);
+    } else if line.contains("{{") {
+        assert!(line.contains("{{\"") && line.contains("\"}}"), 
+            "Improperly quoted module: {}", line);
+    }
+}
+
+fn verify_all_nodes_represented(mermaid: &str, graph: &DependencyGraph) {
     for (id, _) in &graph.nodes {
-        let sanitized_id = id.replace("::", "_")
-            .replace(['/', '.', '-', ' '], "_");
+        let sanitized_id = sanitize_node_id(id);
         assert!(mermaid.contains(&sanitized_id), 
             "Node {} not found in output", id);
     }
-    
-    // Verify no raw pipe characters in labels
+}
+
+fn sanitize_node_id(id: &str) -> String {
+    id.replace("::", "_")
+      .replace(['/', '.', '-', ' '], "_")
+}
+
+fn verify_no_unescaped_pipes(mermaid: &str) {
     assert!(!has_unescaped_pipes(mermaid), 
         "Found unescaped pipe character in output");
-    
-    // Verify edges reference existing nodes
+}
+
+fn verify_edges_reference_existing_nodes(mermaid: &str, graph: &DependencyGraph) {
     for edge in &graph.edges {
-        if graph.nodes.contains_key(&edge.from) && graph.nodes.contains_key(&edge.to) {
-            let from_id = edge.from.replace("::", "_")
-                .replace(['/', '.', '-', ' '], "_");
-            let _to_id = edge.to.replace("::", "_")
-                .replace(['/', '.', '-', ' '], "_");
-            
-            // Edge should be present
-            let edge_pattern = format!("{} ", from_id);
-            assert!(mermaid.contains(&edge_pattern), 
-                "Edge from {} not found", edge.from);
+        if both_nodes_exist(&edge.from, &edge.to, graph) {
+            verify_edge_present(mermaid, &edge.from);
         }
     }
 }
 
+fn both_nodes_exist(from: &str, to: &str, graph: &DependencyGraph) -> bool {
+    graph.nodes.contains_key(from) && graph.nodes.contains_key(to)
+}
+
+fn verify_edge_present(mermaid: &str, from_id: &str) {
+    let sanitized_from = sanitize_node_id(from_id);
+    let edge_pattern = format!("{} ", sanitized_from);
+    assert!(mermaid.contains(&edge_pattern), 
+        "Edge from {} not found", from_id);
+}
+
+fn is_edge_line(line: &str) -> bool {
+    line.contains("-->") || line.contains("-.->") || 
+    line.contains("--|>") || line.contains("-->>") || line.contains("---")
+}
+
 fn has_unescaped_pipes(mermaid: &str) -> bool {
-    // Check for unescaped pipes (not &#124;)
     for line in mermaid.lines() {
         if line.contains('[') || line.contains("{{") {
-            // Within node definitions
-            if let Some(start) = line.find("[\"") {
-                if let Some(end) = line.rfind("\"]") {
-                    let content = &line[start+2..end];
-                    if content.contains('|') && !content.contains("&#124;") {
-                        return true;
-                    }
-                }
+            if has_unescaped_pipe_in_brackets(line) {
+                return true;
             }
-            if let Some(start) = line.find("{{\"") {
-                if let Some(end) = line.rfind("\"}}") {
-                    let content = &line[start+3..end];
-                    if content.contains('|') && !content.contains("&#124;") {
-                        return true;
-                    }
-                }
+            if has_unescaped_pipe_in_braces(line) {
+                return true;
             }
+        }
+    }
+    false
+}
+
+fn has_unescaped_pipe_in_brackets(line: &str) -> bool {
+    if let Some(start) = line.find("[\"") {
+        if let Some(end) = line.rfind("\"]") {
+            let content = &line[start+2..end];
+            return content.contains('|') && !content.contains("&#124;");
+        }
+    }
+    false
+}
+
+fn has_unescaped_pipe_in_braces(line: &str) -> bool {
+    if let Some(start) = line.find("{{\"") {
+        if let Some(end) = line.rfind("\"}}") {
+            let content = &line[start+3..end];
+            return content.contains('|') && !content.contains("&#124;");
         }
     }
     false

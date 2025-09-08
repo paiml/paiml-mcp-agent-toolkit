@@ -385,57 +385,111 @@ impl ComplexityVisitor {
 pub async fn analyze_file_complexity(path: &Path, content: &str) -> Result<FileComplexityMetrics> {
     let language = Language::from_path(path);
 
-    // For Rust files, prefer AST-based analysis
-    if language == Language::Rust {
-        match crate::services::ast_rust::analyze_rust_file_with_complexity(path).await {
-            Ok(metrics) => return Ok(metrics),
-            Err(_) => {
-                eprintln!(
-                    "Warning: AST analysis failed for {}, using heuristic fallback",
-                    path.display()
-                );
-            }
-        }
+    // Try AST analysis first for Rust files
+    if let Some(metrics) = try_ast_analysis(path, language).await {
+        return Ok(metrics);
     }
 
-    // Use appropriate language analyzer
-    let analyzer: Box<dyn LanguageAnalyzer> = match language {
+    // Fall back to heuristic analysis
+    analyze_with_heuristics(path, content, language)
+}
+
+async fn try_ast_analysis(path: &Path, language: Language) -> Option<FileComplexityMetrics> {
+    if language != Language::Rust {
+        return None;
+    }
+
+    match crate::services::ast_rust::analyze_rust_file_with_complexity(path).await {
+        Ok(metrics) => Some(metrics),
+        Err(_) => {
+            eprintln!(
+                "Warning: AST analysis failed for {}, using heuristic fallback",
+                path.display()
+            );
+            None
+        }
+    }
+}
+
+fn analyze_with_heuristics(
+    path: &Path,
+    content: &str,
+    language: Language,
+) -> Result<FileComplexityMetrics> {
+    match language {
+        Language::Unknown => Ok(create_empty_metrics(path, content)),
+        _ => {
+            let analyzer = create_analyzer(language);
+            analyze_functions_with_analyzer(path, content, &*analyzer)
+        }
+    }
+}
+
+fn create_empty_metrics(path: &Path, content: &str) -> FileComplexityMetrics {
+    FileComplexityMetrics {
+        path: path.to_string_lossy().to_string(),
+        total_complexity: ComplexityMetrics {
+            cyclomatic: 1,
+            cognitive: 0,
+            nesting_max: 0,
+            lines: content.lines().count() as u16,
+            halstead: None,
+        },
+        functions: vec![],
+        classes: vec![],
+    }
+}
+
+fn create_analyzer(language: Language) -> Box<dyn LanguageAnalyzer> {
+    match language {
         Language::Rust => Box::new(RustAnalyzer),
         Language::JavaScript | Language::TypeScript => Box::new(JavaScriptAnalyzer),
         Language::Python => Box::new(PythonAnalyzer),
-        Language::Unknown => {
-            // Return empty metrics for unknown languages
-            return Ok(FileComplexityMetrics {
-                path: path.to_string_lossy().to_string(),
-                total_complexity: ComplexityMetrics {
-                    cyclomatic: 1,
-                    cognitive: 0,
-                    nesting_max: 0,
-                    lines: content.lines().count() as u16,
-                    halstead: None,
-                },
-                functions: vec![],
-                classes: vec![],
-            });
-        }
-    };
-
-    // Extract and analyze functions
-    let function_infos = analyzer.extract_functions(content);
-    let mut functions = Vec::new();
-
-    for info in function_infos {
-        let metrics = analyzer.estimate_complexity(content, &info);
-        functions.push(FunctionComplexity {
-            name: info.name,
-            line_start: (info.line_start + 1) as u32,
-            line_end: (info.line_end + 1) as u32,
-            metrics,
-        });
+        Language::Unknown => unreachable!("Unknown language should be handled earlier"),
     }
+}
 
-    // Calculate total complexity
-    let total_complexity = ComplexityMetrics {
+fn analyze_functions_with_analyzer(
+    path: &Path,
+    content: &str,
+    analyzer: &dyn LanguageAnalyzer,
+) -> Result<FileComplexityMetrics> {
+    let function_infos = analyzer.extract_functions(content);
+    let functions = process_function_infos(content, function_infos, analyzer);
+    let total_complexity = calculate_total_complexity(&functions, content);
+
+    Ok(FileComplexityMetrics {
+        path: path.to_string_lossy().to_string(),
+        total_complexity,
+        functions,
+        classes: vec![],
+    })
+}
+
+fn process_function_infos(
+    content: &str,
+    function_infos: Vec<FunctionInfo>,
+    analyzer: &dyn LanguageAnalyzer,
+) -> Vec<FunctionComplexity> {
+    function_infos
+        .into_iter()
+        .map(|info| {
+            let metrics = analyzer.estimate_complexity(content, &info);
+            FunctionComplexity {
+                name: info.name,
+                line_start: (info.line_start + 1) as u32,
+                line_end: (info.line_end + 1) as u32,
+                metrics,
+            }
+        })
+        .collect()
+}
+
+fn calculate_total_complexity(
+    functions: &[FunctionComplexity],
+    content: &str,
+) -> ComplexityMetrics {
+    ComplexityMetrics {
         cyclomatic: functions
             .iter()
             .map(|f| f.metrics.cyclomatic)
@@ -453,14 +507,7 @@ pub async fn analyze_file_complexity(path: &Path, content: &str) -> Result<FileC
             .unwrap_or(0),
         lines: content.lines().count() as u16,
         halstead: None,
-    };
-
-    Ok(FileComplexityMetrics {
-        path: path.to_string_lossy().to_string(),
-        total_complexity,
-        functions,
-        classes: vec![],
-    })
+    }
 }
 
 #[cfg(test)]

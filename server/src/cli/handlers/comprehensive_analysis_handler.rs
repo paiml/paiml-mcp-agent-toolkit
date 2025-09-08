@@ -38,73 +38,13 @@ pub async fn handle_analyze_comprehensive(config: ComprehensiveAnalysisConfig) -
     use std::time::Instant;
 
     eprintln!("🔍 Running comprehensive analysis...");
-    let start = if config.perf {
-        Some(Instant::now())
-    } else {
-        None
-    };
-
-    // Determine the path to analyze
-    let analysis_path = if let Some(single_file) = config.file.clone() {
-        // Single file analysis
-        single_file
-    } else if !config.files.is_empty() {
-        // Multiple files - analyze the common parent directory
-        // For now, just use the project path
-        config.project_path.clone()
-    } else {
-        // Full project analysis
-        config.project_path.clone()
-    };
-
-    // Create service registry and orchestrator
-    let registry = Arc::new(ServiceRegistry::new());
-    let orchestrator = AnalysisOrchestrator::new(registry);
-
-    // Build analysis request
-    let request = ComprehensiveAnalysisRequest {
-        path: analysis_path,
-        include_complexity: config.include_complexity,
-        include_dead_code: config.include_dead_code,
-        include_satd: config.include_tdg, // Using TDG flag for SATD
-        include_tests: false,
-        language: None, // Auto-detect
-        parallel: true, // Use parallel execution for performance
-    };
-
-    // Perform orchestrated analysis
-    let result = orchestrator.analyze(request).await?;
-
-    // Add additional analyses if requested
-    let enhanced_result = if config.include_duplicates || config.include_defects {
-        let additional_config = AdditionalAnalysisConfig {
-            project_path: &config.project_path,
-            include_duplicates: config.include_duplicates,
-            include_defects: config.include_defects,
-            confidence_threshold: config.confidence_threshold,
-            min_lines: config.min_lines,
-            include: &config.include,
-            exclude: &config.exclude,
-            top_files: config.top_files,
-        };
-        enhance_with_additional_analyses(result, additional_config).await?
-    } else {
-        result
-    };
-
-    // Show performance metrics if requested
-    if let Some(start_time) = start {
-        let elapsed = start_time.elapsed();
-        eprintln!("✅ Comprehensive analysis completed in {:?}", elapsed);
-
-        if config.perf {
-            print_performance_breakdown(&enhanced_result, elapsed.as_millis() as u64);
-        }
-    } else {
-        eprintln!("✅ Comprehensive analysis completed");
-    }
-
-    // Format and output results
+    let start = init_timing(config.perf);
+    
+    let analysis_path = determine_analysis_path(&config);
+    let result = run_orchestrated_analysis(analysis_path, &config).await?;
+    let enhanced_result = enhance_results_if_needed(result, &config).await?;
+    
+    report_completion_and_performance(start, &config, &enhanced_result);
     output_results(
         enhanced_result,
         config.format,
@@ -114,6 +54,95 @@ pub async fn handle_analyze_comprehensive(config: ComprehensiveAnalysisConfig) -
     .await?;
 
     Ok(())
+}
+
+fn init_timing(perf: bool) -> Option<std::time::Instant> {
+    if perf {
+        Some(std::time::Instant::now())
+    } else {
+        None
+    }
+}
+
+fn determine_analysis_path(config: &ComprehensiveAnalysisConfig) -> PathBuf {
+    if let Some(single_file) = &config.file {
+        single_file.clone()
+    } else if !config.files.is_empty() {
+        // Multiple files - analyze the common parent directory
+        // For now, just use the project path
+        config.project_path.clone()
+    } else {
+        // Full project analysis
+        config.project_path.clone()
+    }
+}
+
+async fn run_orchestrated_analysis(
+    analysis_path: PathBuf,
+    config: &ComprehensiveAnalysisConfig,
+) -> Result<ComprehensiveAnalysisResult> {
+    let registry = Arc::new(ServiceRegistry::new());
+    let orchestrator = AnalysisOrchestrator::new(registry);
+    
+    let request = create_analysis_request(analysis_path, config);
+    orchestrator.analyze(request).await
+}
+
+fn create_analysis_request(
+    path: PathBuf,
+    config: &ComprehensiveAnalysisConfig,
+) -> ComprehensiveAnalysisRequest {
+    ComprehensiveAnalysisRequest {
+        path,
+        include_complexity: config.include_complexity,
+        include_dead_code: config.include_dead_code,
+        include_satd: config.include_tdg, // Using TDG flag for SATD
+        include_tests: false,
+        language: None, // Auto-detect
+        parallel: true, // Use parallel execution for performance
+    }
+}
+
+async fn enhance_results_if_needed(
+    result: ComprehensiveAnalysisResult,
+    config: &ComprehensiveAnalysisConfig,
+) -> Result<ComprehensiveAnalysisResult> {
+    if config.include_duplicates || config.include_defects {
+        let additional_config = create_additional_config(config);
+        enhance_with_additional_analyses(result, additional_config).await
+    } else {
+        Ok(result)
+    }
+}
+
+fn create_additional_config(config: &ComprehensiveAnalysisConfig) -> AdditionalAnalysisConfig {
+    AdditionalAnalysisConfig {
+        project_path: &config.project_path,
+        include_duplicates: config.include_duplicates,
+        include_defects: config.include_defects,
+        confidence_threshold: config.confidence_threshold,
+        min_lines: config.min_lines,
+        include: &config.include,
+        exclude: &config.exclude,
+        top_files: config.top_files,
+    }
+}
+
+fn report_completion_and_performance(
+    start: Option<std::time::Instant>,
+    config: &ComprehensiveAnalysisConfig,
+    result: &ComprehensiveAnalysisResult,
+) {
+    if let Some(start_time) = start {
+        let elapsed = start_time.elapsed();
+        eprintln!("✅ Comprehensive analysis completed in {:?}", elapsed);
+
+        if config.perf {
+            print_performance_breakdown(result, elapsed.as_millis() as u64);
+        }
+    } else {
+        eprintln!("✅ Comprehensive analysis completed");
+    }
 }
 
 /// Configuration for additional analyses

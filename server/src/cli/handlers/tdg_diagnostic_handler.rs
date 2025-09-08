@@ -1,6 +1,7 @@
 use crate::cli::commands::{DiagnosticOutputFormat, StorageCommand, TdgCommand};
 use crate::tdg::{StorageBackendType, StorageConfig, TieredStorageFactory};
 use anyhow::Result;
+use prettytable::row;
 use serde_json::json;
 use std::path::PathBuf;
 
@@ -51,107 +52,139 @@ async fn show_diagnostics(
     _show_resources: bool,
     format: DiagnosticOutputFormat,
 ) -> Result<()> {
-    // For now, we'll show basic storage diagnostics since that's what we have implemented
+    if !show_storage {
+        return Ok(());
+    }
+
     let storage = TieredStorageFactory::create_at_path(base_path)?;
     let stats = storage.get_statistics();
 
     match format {
-        DiagnosticOutputFormat::Plain => {
-            // Plain text format without decorations
-            if show_storage {
-                println!("TDG System Diagnostics\n");
-                println!("Storage: {} entries", stats.total_entries);
-                println!(
-                    "Hot: {}, Warm: {}, Cold: {}",
-                    stats.hot_entries, stats.warm_entries, stats.cold_entries
-                );
-                println!(
-                    "Backends - Warm: {}, Cold: {}",
-                    stats.warm_backend, stats.cold_backend
-                );
-                println!(
-                    "Compression: {:.1}%, Memory: {} KB",
-                    stats.compression_ratio * 100.0,
-                    stats.hot_memory_kb
-                );
-                if detailed {
-                    println!("\nBackend Details:");
-                    for (tier, backend_stats) in &stats.backend_stats {
-                        println!("{}: {:?}", tier, backend_stats);
-                    }
-                }
-            }
-        }
-        DiagnosticOutputFormat::Human => {
-            println!("=== TDG System Diagnostics ===\n");
-
-            if show_storage {
-                println!("Storage Diagnostics:");
-                println!("{}", stats.format_diagnostic());
-                if detailed {
-                    println!("\nBackend Details:");
-                    for (tier, backend_stats) in &stats.backend_stats {
-                        println!("  {}:", tier);
-                        for (key, value) in backend_stats {
-                            println!("    {}: {}", key, value);
-                        }
-                    }
-                }
-                println!();
-            }
-
-            // Placeholder for other diagnostics
-            println!("Note: Full diagnostic infrastructure is in development.");
-            println!("Currently showing storage statistics only.");
-        }
-        DiagnosticOutputFormat::Json => {
-            let json_output = json!({
-                "storage": if show_storage { Some(&stats) } else { None },
-                "note": "Full diagnostic infrastructure in development"
-            });
-            println!("{}", serde_json::to_string_pretty(&json_output)?);
-        }
-        DiagnosticOutputFormat::Yaml => {
-            let yaml_output = json!({
-                "storage": if show_storage { Some(&stats) } else { None },
-                "note": "Full diagnostic infrastructure in development"
-            });
-            println!("{}", serde_yaml::to_string(&yaml_output)?);
-        }
-        DiagnosticOutputFormat::Table => {
-            use prettytable::{row, Table};
-
-            let mut table = Table::new();
-            table.add_row(row!["Component", "Status", "Details"]);
-
-            if show_storage {
-                table.add_row(row![
-                    "Storage",
-                    format!("{} entries", stats.total_entries),
-                    format!(
-                        "Hot: {}, Warm: {}, Cold: {}",
-                        stats.hot_entries, stats.warm_entries, stats.cold_entries
-                    )
-                ]);
-
-                table.add_row(row![
-                    "Backends",
-                    format!("Warm: {}", stats.warm_backend),
-                    format!("Cold: {}", stats.cold_backend)
-                ]);
-
-                table.add_row(row![
-                    "Compression",
-                    format!("{:.1}%", stats.compression_ratio * 100.0),
-                    format!("Memory: {} KB", stats.hot_memory_kb)
-                ]);
-            }
-
-            table.printstd();
-        }
+        DiagnosticOutputFormat::Plain => show_plain_diagnostics(&stats, detailed),
+        DiagnosticOutputFormat::Human => show_human_diagnostics(&stats, detailed),
+        DiagnosticOutputFormat::Json => show_json_diagnostics(&stats, show_storage)?,
+        DiagnosticOutputFormat::Yaml => show_yaml_diagnostics(&stats, show_storage)?,
+        DiagnosticOutputFormat::Table => show_table_diagnostics(&stats),
     }
 
     Ok(())
+}
+
+fn show_plain_diagnostics(stats: &crate::tdg::storage::StorageStatistics, detailed: bool) {
+    println!("TDG System Diagnostics\n");
+    print_basic_storage_info(stats);
+    
+    if detailed {
+        show_backend_details(&stats.backend_stats);
+    }
+}
+
+fn show_human_diagnostics(stats: &crate::tdg::storage::StorageStatistics, detailed: bool) {
+    println!("=== TDG System Diagnostics ===\n");
+    println!("Storage Diagnostics:");
+    println!("{}", stats.format_diagnostic());
+    
+    if detailed {
+        show_human_backend_details(&stats.backend_stats);
+    }
+    
+    println!();
+    println!("Note: Full diagnostic infrastructure is in development.");
+    println!("Currently showing storage statistics only.");
+}
+
+fn show_json_diagnostics(
+    stats: &crate::tdg::storage::StorageStatistics,
+    show_storage: bool
+) -> Result<()> {
+    let json_output = json!({
+        "storage": if show_storage { Some(stats) } else { None },
+        "note": "Full diagnostic infrastructure in development"
+    });
+    println!("{}", serde_json::to_string_pretty(&json_output)?);
+    Ok(())
+}
+
+fn show_yaml_diagnostics(
+    stats: &crate::tdg::storage::StorageStatistics,
+    show_storage: bool
+) -> Result<()> {
+    let yaml_output = json!({
+        "storage": if show_storage { Some(stats) } else { None },
+        "note": "Full diagnostic infrastructure in development"
+    });
+    println!("{}", serde_yaml::to_string(&yaml_output)?);
+    Ok(())
+}
+
+fn show_table_diagnostics(stats: &crate::tdg::storage::StorageStatistics) {
+    use prettytable::{row, Table};
+
+    let mut table = Table::new();
+    table.add_row(row!["Component", "Status", "Details"]);
+    add_storage_table_rows(&mut table, stats);
+    table.printstd();
+}
+
+fn print_basic_storage_info(stats: &crate::tdg::storage::StorageStatistics) {
+    println!("Storage: {} entries", stats.total_entries);
+    println!(
+        "Hot: {}, Warm: {}, Cold: {}",
+        stats.hot_entries, stats.warm_entries, stats.cold_entries
+    );
+    println!(
+        "Backends - Warm: {}, Cold: {}",
+        stats.warm_backend, stats.cold_backend
+    );
+    println!(
+        "Compression: {:.1}%, Memory: {} KB",
+        stats.compression_ratio * 100.0,
+        stats.hot_memory_kb
+    );
+}
+
+fn show_backend_details(
+    backend_stats: &std::collections::HashMap<String, std::collections::HashMap<String, String>>
+) {
+    println!("\nBackend Details:");
+    for (tier, stats) in backend_stats {
+        println!("{}: {:?}", tier, stats);
+    }
+}
+
+fn show_human_backend_details(
+    backend_stats: &std::collections::HashMap<String, std::collections::HashMap<String, String>>
+) {
+    println!("\nBackend Details:");
+    for (tier, stats) in backend_stats {
+        println!("  {}:", tier);
+        for (key, value) in stats {
+            println!("    {}: {}", key, value);
+        }
+    }
+}
+
+fn add_storage_table_rows(table: &mut prettytable::Table, stats: &crate::tdg::storage::StorageStatistics) {
+    table.add_row(row![
+        "Storage",
+        format!("{} entries", stats.total_entries),
+        format!(
+            "Hot: {}, Warm: {}, Cold: {}",
+            stats.hot_entries, stats.warm_entries, stats.cold_entries
+        )
+    ]);
+
+    table.add_row(row![
+        "Backends",
+        format!("Warm: {}", stats.warm_backend),
+        format!("Cold: {}", stats.cold_backend)
+    ]);
+
+    table.add_row(row![
+        "Compression",
+        format!("{:.1}%", stats.compression_ratio * 100.0),
+        format!("Memory: {} KB", stats.hot_memory_kb)
+    ]);
 }
 
 /// Handle storage management commands
