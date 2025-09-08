@@ -1691,6 +1691,33 @@ pub enum AnalyzeCommands {
         #[arg(long, default_value = "10")]
         top_files: usize,
     },
+
+    /// Automated clippy fixes with confidence-based filtering
+    Clippy {
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        project_path: PathBuf,
+
+        /// Confidence level for automated fixes (high, medium, low)
+        #[arg(long, short = 'c', default_value = "high")]
+        confidence: String,
+
+        /// Dry run - show what would be fixed without making changes
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Specific clippy codes to fix (comma-separated list)
+        #[arg(long, value_delimiter = ',')]
+        fix_codes: Vec<String>,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Show performance metrics
+        #[arg(long)]
+        perf: bool,
+    },
 }
 
 /// Enforce subcommands

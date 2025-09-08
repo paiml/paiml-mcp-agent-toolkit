@@ -1876,7 +1876,8 @@ impl CliAdapter {
             | AnalyzeCommands::DeadCode { .. }
             | AnalyzeCommands::Satd { .. }
             | AnalyzeCommands::Tdg { .. }
-            | AnalyzeCommands::LintHotspot { .. } => AnalyzeCommandCategory::Basic,
+            | AnalyzeCommands::LintHotspot { .. }
+            | AnalyzeCommands::Clippy { .. } => AnalyzeCommandCategory::Basic,
 
             // Advanced analysis commands (comprehensive)
             AnalyzeCommands::DeepContext { .. }

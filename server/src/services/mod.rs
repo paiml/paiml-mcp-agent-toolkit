@@ -100,6 +100,7 @@ mod big_o_analyzer_issue54_test;
 mod big_o_analyzer_property_tests;
 pub mod cache;
 pub mod canonical_query;
+pub mod clippy_fix;
 pub mod cargo_dead_code_analyzer;
 pub mod code_intelligence;
 pub mod complexity;
