@@ -1944,11 +1944,47 @@ pub enum FixStrategy {
 /// # Panics
 /// - Current file is None when expected to be Some (internal logic error)
 pub async fn handle_refactor_auto(config: RefactorAutoConfig) -> Result<()> {
+    print_refactoring_header(&config);
+
+    // Phase 1: Initialize context
+    let mut context = initialize_refactoring_context(&config).await?;
+
+    // Phase 2: Check for early exit conditions
+    if should_exit_early(&context).await? {
+        return Ok(());
+    }
+
+    // Phase 3: Discover and analyze files
+    prepare_source_files(&mut context).await?;
+    
+    // Phase 4: Generate refactoring plan
+    let refactoring_requests = create_refactoring_plan(&context).await?;
+    if refactoring_requests.is_empty() {
+        eprintln!("✅ No refactoring needed - project already meets quality standards!");
+        return Ok(());
+    }
+
+    // Phase 5: Execute refactoring
+    let iteration_results = execute_refactoring_cycles(
+        refactoring_requests,
+        &context,
+        config.max_iterations,
+    ).await?;
+
+    // Phase 6: Finalize and report
+    finalize_refactoring(&iteration_results, &context).await?;
+    Ok(())
+}
+
+/// Print refactoring header information
+fn print_refactoring_header(config: &RefactorAutoConfig) {
     eprintln!("🚀 Starting automated refactoring...");
     eprintln!("📁 Project: {}", config.project_path.display());
+}
 
-    // Phase 1: Setup refactoring context
-    let mut context = setup_refactoring_context(
+/// Initialize the refactoring context from configuration
+async fn initialize_refactoring_context(config: &RefactorAutoConfig) -> Result<RefactorContext> {
+    setup_refactoring_context(
         config.project_path.clone(),
         config.single_file_mode,
         config.file.clone(),
@@ -1960,103 +1996,149 @@ pub async fn handle_refactor_auto(config: RefactorAutoConfig) -> Result<()> {
         config.ignore_file.clone(),
         config.github_issue_url.clone(),
         config.bug_report_path.clone(),
-    )
-    .await?;
+    ).await
+}
 
-    // Phase 2: Handle special modes (single file, bug reports, GitHub issues)
+/// Check if we should exit early due to special modes
+async fn should_exit_early(context: &RefactorContext) -> Result<bool> {
     #[allow(clippy::redundant_pattern_matching)]
-    if let Some(_) = handle_special_modes(&context).await? {
-        return Ok(()); // Special mode completed
+    if let Some(_) = handle_special_modes(context).await? {
+        return Ok(true);
     }
+    Ok(false)
+}
 
-    // Phase 3: Load ignore patterns and discover source files
+/// Prepare source files for analysis
+async fn prepare_source_files(context: &mut RefactorContext) -> Result<()> {
     context.ignore_patterns = load_ignore_patterns(&context.config.patterns).await?;
     context.source_files = discover_source_files(
         &context.config.project_path,
         &context.config.patterns,
         &context.ignore_patterns,
-    )
-    .await?;
+    ).await?;
 
     eprintln!(
         "📁 Discovered {} source files for analysis",
         context.source_files.len()
     );
+    Ok(())
+}
 
-    // Phase 4: Analyze project quality comprehensively
-    let quality_analysis = analyze_project_quality(&context).await?;
+/// Create a refactoring plan based on quality analysis
+async fn create_refactoring_plan(context: &RefactorContext) -> Result<Vec<RefactoringRequest>> {
+    let quality_analysis = analyze_project_quality(context).await?;
+    generate_refactoring_requests(&quality_analysis, context).await
+}
 
-    // Phase 5: Generate targeted refactoring requests
-    let refactoring_requests = generate_refactoring_requests(&quality_analysis, &context).await?;
-
-    if refactoring_requests.is_empty() {
-        eprintln!("✅ No refactoring needed - project already meets quality standards!");
-        return Ok(());
-    }
-
-    // Phase 6: Execute refactoring iterations
+/// Execute refactoring iterations
+async fn execute_refactoring_cycles(
+    refactoring_requests: Vec<RefactoringRequest>,
+    context: &RefactorContext,
+    max_iterations: u32,
+) -> Result<Vec<IterationResult>> {
     let mut iteration_results = Vec::new();
     let mut remaining_requests = refactoring_requests;
 
-    for iteration in 1..=config.max_iterations {
+    for iteration in 1..=max_iterations {
         if remaining_requests.is_empty() {
             break;
         }
 
-        let iteration_result =
-            execute_refactoring_iteration(&remaining_requests, &context, iteration).await?;
+        let result = execute_single_iteration(
+            &remaining_requests,
+            context,
+            iteration,
+            &mut iteration_results,
+        ).await?;
 
-        let validation_result = validate_refactoring_results(&iteration_result, &context).await?;
-
-        if !validation_result.overall_success {
-            eprintln!("❌ Iteration {} failed validation - stopping", iteration);
+        if !result.should_continue {
             break;
         }
 
-        // Filter out successful requests for next iteration
-        remaining_requests.retain(|req| {
+        remaining_requests = result.remaining_requests;
+    }
+
+    Ok(iteration_results)
+}
+
+/// Execute a single refactoring iteration
+async fn execute_single_iteration(
+    requests: &[RefactoringRequest],
+    context: &RefactorContext,
+    iteration: u32,
+    results: &mut Vec<IterationResult>,
+) -> Result<IterationContinuation> {
+    let iteration_result = execute_refactoring_iteration(requests, context, iteration).await?;
+    let validation_result = validate_refactoring_results(&iteration_result, context).await?;
+
+    if !validation_result.overall_success {
+        eprintln!("❌ Iteration {} failed validation - stopping", iteration);
+        return Ok(IterationContinuation {
+            should_continue: false,
+            remaining_requests: vec![],
+        });
+    }
+
+    let remaining = filter_successful_requests(requests, &iteration_result);
+    results.push(iteration_result);
+
+    if validation_result.quality_improved {
+        eprintln!("✅ Iteration {} completed successfully", iteration);
+    }
+
+    Ok(IterationContinuation {
+        should_continue: true,
+        remaining_requests: remaining,
+    })
+}
+
+/// Filter out successfully refactored files
+fn filter_successful_requests(
+    requests: &[RefactoringRequest],
+    iteration_result: &IterationResult,
+) -> Vec<RefactoringRequest> {
+    requests.iter()
+        .filter(|req| {
             !iteration_result
                 .successful_requests
                 .iter()
                 .any(|success| success.request.target_file == req.target_file)
-        });
+        })
+        .cloned()
+        .collect()
+}
 
-        iteration_results.push(iteration_result);
+/// Finalize refactoring and generate output
+async fn finalize_refactoring(
+    iteration_results: &[IterationResult],
+    context: &RefactorContext,
+) -> Result<()> {
+    let final_validation = get_final_validation(iteration_results, context).await?;
+    format_and_output_results(iteration_results, &final_validation, context).await
+}
 
-        if validation_result.quality_improved {
-            eprintln!("✅ Iteration {} completed successfully", iteration);
-        }
-    }
-
-    // Phase 7: Final validation and output
-    let final_validation = if let Some(last_result) = iteration_results.last() {
-        validate_refactoring_results(last_result, &context).await?
+/// Get final validation results
+async fn get_final_validation(
+    iteration_results: &[IterationResult],
+    context: &RefactorContext,
+) -> Result<ValidationResult> {
+    if let Some(last_result) = iteration_results.last() {
+        validate_refactoring_results(last_result, context).await
     } else {
-        ValidationResult {
+        Ok(ValidationResult {
             overall_success: true,
             compilation_passed: true,
             tests_passed: true,
             quality_improved: false,
             issues_found: vec![],
-        }
-    };
-
-    // Phase 8: Format and output comprehensive results
-    format_and_output_results(&iteration_results, &final_validation, &context).await?;
-
-    let total_time = context.start_time.elapsed();
-    eprintln!(
-        "🎉 Automated refactoring completed in {:.2}s",
-        total_time.as_secs_f64()
-    );
-
-    if final_validation.overall_success {
-        eprintln!("✅ All quality standards met!");
-        Ok(())
-    } else {
-        eprintln!("❌ Some quality issues remain");
-        std::process::exit(1);
+        })
     }
+}
+
+/// Helper struct for iteration continuation
+struct IterationContinuation {
+    should_continue: bool,
+    remaining_requests: Vec<RefactoringRequest>,
 }
 
 /// Get lint violations for a single file (helper function)
