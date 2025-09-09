@@ -3,6 +3,8 @@
 //! Following Toyota Way TDD: RED -> GREEN -> REFACTOR
 //! Tests written FIRST before implementation
 
+#![cfg(feature = "ruchy-ast")]
+
 use anyhow::Result;
 use pmat::services::complexity::{ComplexityMetrics, FileComplexityMetrics, FunctionComplexity};
 use pmat::services::languages::ruchy::analyze_ruchy_file_with_parser;
