@@ -38,6 +38,14 @@
 - **Easy Management**: `pmat tdg hooks install --backup` to get started
 - [**📖 Full Documentation →**](docs/hooks-management.md)
 
+> **🚀 v2.70.0 Release**: **Actionable Entropy Analysis System!** Transform noisy entropy into actionable code improvements:
+> - **🎯 AST Pattern Detection**: 6 actionable pattern types (ErrorHandling, DataValidation, ResourceManagement, etc.)
+> - **🔧 Fix Suggestions**: Each violation includes specific refactoring advice with LOC reduction estimates
+> - **📊 Noise Reduction**: From 2255+ character-based violations to 10-50 actionable violations
+> - **🔌 MCP Integration**: Full `analyze_entropy` tool with parameter schema for external tools
+> - **🛡️ Quality Gate Integration**: Entropy violations trigger quality gate failures in Strict/Extreme profiles
+> - **📋 CLAUDE.md Enforcement**: Mandatory entropy analysis in quality standards and daily workflows
+
 > **🎯 v2.63.0 Release**: **Advanced Code Similarity Detection System!** Industry-leading duplicate and similarity detection:
 > - **🔍 4 Clone Types**: Exact (Type-1), Renamed (Type-2), Modified (Type-3), Semantic (Type-4) detection
 > - **📊 Entropy Analysis**: Actionable AST pattern-based entropy with fix suggestions and LOC reduction estimates
