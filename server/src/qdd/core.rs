@@ -19,6 +19,7 @@ pub struct QualityThresholds {
     pub max_cognitive: u32,
     pub min_coverage: u32,
     pub max_tdg: u32,
+    pub max_entropy_violations: u32,  // New: Maximum allowed entropy violations
     pub zero_satd: bool,
     pub zero_dead_code: bool,
     pub require_doctests: bool,
@@ -61,6 +62,7 @@ impl QualityProfile {
                 max_cognitive: 5,
                 min_coverage: 90,
                 max_tdg: 3,
+                max_entropy_violations: 2,  // Extreme: very low tolerance for entropy violations
                 zero_satd: true,
                 zero_dead_code: true,
                 require_doctests: true,
@@ -85,6 +87,7 @@ impl QualityProfile {
                 max_cognitive: 10,
                 min_coverage: 80,
                 max_tdg: 5,
+                max_entropy_violations: 5,  // Standard: moderate tolerance
                 zero_satd: true,
                 zero_dead_code: false,
                 require_doctests: true,
@@ -109,6 +112,7 @@ impl QualityProfile {
                 max_cognitive: 20,
                 min_coverage: 60,
                 max_tdg: 10,
+                max_entropy_violations: 15,  // Relaxed: higher tolerance for legacy code
                 zero_satd: false,
                 zero_dead_code: false,
                 require_doctests: false,

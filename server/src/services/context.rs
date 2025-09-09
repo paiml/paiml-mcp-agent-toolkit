@@ -302,7 +302,7 @@ impl RustVisitor {
         }
     }
 
-    fn get_line(&self, _span: proc_macro2::Span) -> usize {
+    fn get_line<T: syn::spanned::Spanned>(&self, _span: T) -> usize {
         // For simplicity, return 1. In production, use a proper source map
         1
     }

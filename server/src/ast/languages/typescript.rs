@@ -3,8 +3,12 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use std::path::Path;
+
+#[cfg(feature = "typescript-ast")]
 use swc_common::{FileName, SourceMap};
+#[cfg(feature = "typescript-ast")]
 use swc_ecma_ast::{Decl, Module, ModuleDecl, ModuleItem, Stmt};
+#[cfg(feature = "typescript-ast")]
 use swc_ecma_parser::{lexer::Lexer, EsConfig, Parser, StringInput, Syntax, TsConfig};
 
 use super::LanguageStrategy;
