@@ -1209,7 +1209,7 @@ impl TdgAnalyzerAst {
             15.0 // Neutral score if can't create temp dir
         };
         
-        // Clean up temp directory
+        // Remove temporary directory
         let _ = std::fs::remove_dir_all(&temp_dir);
         
         score

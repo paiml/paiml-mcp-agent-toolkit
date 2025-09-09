@@ -19,7 +19,6 @@ pub enum RefactoringTarget {
 pub struct QualityRefactoringEngine {
     profile: QualityProfile,
     analyzer: CodeAnalyzer,
-    pattern_engine: PatternEngine,
 }
 
 impl QualityRefactoringEngine {
@@ -27,7 +26,6 @@ impl QualityRefactoringEngine {
     pub fn new(profile: QualityProfile) -> Self {
         Self {
             analyzer: CodeAnalyzer::new(profile.clone()),
-            pattern_engine: PatternEngine::new(),
             profile,
         }
     }
@@ -254,13 +252,11 @@ impl QualityRefactoringEngine {
 }
 
 /// Code analyzer for quality metrics
-pub struct CodeAnalyzer {
-    profile: QualityProfile,
-}
+pub struct CodeAnalyzer {}
 
 impl CodeAnalyzer {
-    pub fn new(profile: QualityProfile) -> Self {
-        Self { profile }
+    pub fn new(_profile: QualityProfile) -> Self {
+        Self {}
     }
     
     /// Analyze code quality

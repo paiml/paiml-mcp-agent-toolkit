@@ -320,7 +320,7 @@ else
     exit 1
 fi
 
-# 2. SATD (Self-Admitted Technical Debt) check
+# 2. SATD (Self-Admitted Quality Issues) check
 echo -n "  SATD check... "
 SATD_OUTPUT=$(pmat analyze satd 2>&1)
 if echo "$SATD_OUTPUT" | grep -q "Total SATD comments found: 0"; then
