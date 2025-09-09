@@ -206,56 +206,52 @@ fn format_summary_report(report: &ComprehensiveReport) -> Result<String> {
     let mut output = String::new();
 
     writeln!(&mut output, "# Code Similarity Analysis Summary\n")?;
-    writeln!(&mut output, "## Metrics")?;
-    writeln!(
-        &mut output,
-        "- Duplication: {:.1}%",
-        report.metrics.duplication_percentage
-    )?;
-    writeln!(
-        &mut output,
-        "- Average Entropy: {:.2}",
-        report.metrics.average_entropy
-    )?;
-    writeln!(
-        &mut output,
-        "- Total Clones: {}",
-        report.metrics.total_clones
-    )?;
-    writeln!(&mut output)?;
-
-    writeln!(&mut output, "## Clone Types")?;
-    writeln!(
-        &mut output,
-        "- Exact Duplicates: {}",
-        report.exact_duplicates.len()
-    )?;
-    writeln!(
-        &mut output,
-        "- Structural Similarities: {}",
-        report.structural_similarities.len()
-    )?;
-    writeln!(
-        &mut output,
-        "- Semantic Similarities: {}",
-        report.semantic_similarities.len()
-    )?;
-    writeln!(&mut output)?;
-
-    if !report.refactoring_opportunities.is_empty() {
-        writeln!(&mut output, "## Top Refactoring Opportunities")?;
-        for (i, hint) in report.refactoring_opportunities.iter().take(5).enumerate() {
-            writeln!(
-                &mut output,
-                "{}. {}: {}",
-                i + 1,
-                hint.pattern,
-                hint.suggestion
-            )?;
-        }
-    }
+    
+    format_summary_metrics(&mut output, &report.metrics)?;
+    format_summary_clone_types(&mut output, report)?;
+    format_summary_refactoring_opportunities(&mut output, &report.refactoring_opportunities)?;
 
     Ok(output)
+}
+
+fn format_summary_metrics(output: &mut String, metrics: &Metrics) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "## Metrics")?;
+    writeln!(output, "- Duplication: {:.1}%", metrics.duplication_percentage)?;
+    writeln!(output, "- Average Entropy: {:.2}", metrics.average_entropy)?;
+    writeln!(output, "- Total Clones: {}", metrics.total_clones)?;
+    writeln!(output)?;
+    
+    Ok(())
+}
+
+fn format_summary_clone_types(output: &mut String, report: &ComprehensiveReport) -> Result<()> {
+    use std::fmt::Write;
+    
+    writeln!(output, "## Clone Types")?;
+    writeln!(output, "- Exact Duplicates: {}", report.exact_duplicates.len())?;
+    writeln!(output, "- Structural Similarities: {}", report.structural_similarities.len())?;
+    writeln!(output, "- Semantic Similarities: {}", report.semantic_similarities.len())?;
+    writeln!(output)?;
+    
+    Ok(())
+}
+
+fn format_summary_refactoring_opportunities(
+    output: &mut String, 
+    opportunities: &[RefactoringHint]
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    if !opportunities.is_empty() {
+        writeln!(output, "## Top Refactoring Opportunities")?;
+        for (i, hint) in opportunities.iter().take(5).enumerate() {
+            writeln!(output, "{}. {}: {}", i + 1, hint.pattern, hint.suggestion)?;
+        }
+    }
+    
+    Ok(())
 }
 
 fn format_detailed_report(report: &ComprehensiveReport) -> Result<String> {

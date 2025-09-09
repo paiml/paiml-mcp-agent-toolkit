@@ -213,16 +213,30 @@ pub fn format_as_summary(
     use std::fmt::Write;
     let mut output = String::new();
 
+    format_summary_header(&mut output, annotations, elapsed)?;
+    format_summary_property_counts(&mut output, annotations)?;
+    format_summary_top_files(&mut output, annotations)?;
+
+    Ok(output)
+}
+
+fn format_summary_header(
+    output: &mut String,
+    annotations: &[(Location, ProofAnnotation)],
+    elapsed: std::time::Duration,
+) -> Result<()> {
+    use std::fmt::Write;
+    
     let total_proofs = annotations.len();
     let high_confidence = annotations
         .iter()
         .filter(|(_, ann)| matches!(ann.confidence_level, ConfidenceLevel::High))
         .count();
 
-    writeln!(&mut output, "Proof Annotations Summary:")?;
-    writeln!(&mut output, "Total proofs: {}\n", total_proofs)?;
+    writeln!(output, "Proof Annotations Summary:")?;
+    writeln!(output, "Total proofs: {}\n", total_proofs)?;
     writeln!(
-        &mut output,
+        output,
         "High confidence: {} ({:.1}%)",
         high_confidence,
         if total_proofs > 0 {
@@ -231,13 +245,17 @@ pub fn format_as_summary(
             0.0
         }
     )?;
-    writeln!(
-        &mut output,
-        "Analysis time: {:.2}s\n",
-        elapsed.as_secs_f64()
-    )?;
+    writeln!(output, "Analysis time: {:.2}s\n", elapsed.as_secs_f64())?;
+    
+    Ok(())
+}
 
-    // Group by property type
+fn format_summary_property_counts(
+    output: &mut String,
+    annotations: &[(Location, ProofAnnotation)],
+) -> Result<()> {
+    use std::fmt::Write;
+    
     let mut property_counts = std::collections::HashMap::new();
     for (_, ann) in annotations {
         let key = format!("{:?}", ann.property_proven);
@@ -245,44 +263,51 @@ pub fn format_as_summary(
     }
 
     if !property_counts.is_empty() {
-        writeln!(&mut output, "\nProofs by property type:")?;
+        writeln!(output, "\nProofs by property type:")?;
         for (prop_type, count) in property_counts {
-            writeln!(&mut output, "  {}: {}", prop_type, count)?;
+            writeln!(output, "  {}: {}", prop_type, count)?;
         }
     }
+    
+    Ok(())
+}
 
-    // Show top files with most proof annotations
-    if !annotations.is_empty() {
-        writeln!(&mut output, "\n## Top Files with Proof Annotations\n")?;
+fn format_summary_top_files(
+    output: &mut String,
+    annotations: &[(Location, ProofAnnotation)],
+) -> Result<()> {
+    use std::fmt::Write;
+    
+    if annotations.is_empty() {
+        return Ok(());
+    }
+    
+    writeln!(output, "\n## Top Files with Proof Annotations\n")?;
 
-        // Count annotations per file
-        let mut file_counts: std::collections::HashMap<&std::path::Path, usize> =
-            std::collections::HashMap::new();
-        for (location, _) in annotations {
-            *file_counts.entry(&location.file_path).or_insert(0) += 1;
-        }
-
-        // Sort files by annotation count
-        let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
-        sorted_files.sort_by(|a, b| b.1.cmp(&a.1));
-
-        // Display top 10 files
-        for (i, (file_path, count)) in sorted_files.iter().take(10).enumerate() {
-            let filename = file_path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or(file_path.to_str().unwrap_or("unknown"));
-            writeln!(
-                &mut output,
-                "{}. `{}` - {} annotations",
-                i + 1,
-                filename,
-                count
-            )?;
-        }
+    let mut file_counts: std::collections::HashMap<&std::path::Path, usize> =
+        std::collections::HashMap::new();
+    for (location, _) in annotations {
+        *file_counts.entry(&location.file_path).or_insert(0) += 1;
     }
 
-    Ok(output)
+    let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
+    sorted_files.sort_by(|a, b| b.1.cmp(&a.1));
+
+    for (i, (file_path, count)) in sorted_files.iter().take(10).enumerate() {
+        let filename = file_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(file_path.to_str().unwrap_or("unknown"));
+        writeln!(
+            output,
+            "{}. `{}` - {} annotations",
+            i + 1,
+            filename,
+            count
+        )?;
+    }
+    
+    Ok(())
 }
 
 /// Format annotations as full detailed output
