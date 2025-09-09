@@ -53,29 +53,8 @@ pub async fn handle_scaffold(
 
     let params_json = super::super::analysis_utilities::params_to_json(params);
 
-    // If no templates specified, use default templates for the toolchain
-    let templates_to_use = if templates.is_empty() {
-        match toolchain.as_str() {
-            "rust" => vec![
-                "makefile".to_string(),
-                "readme".to_string(),
-                "gitignore".to_string(),
-            ],
-            "deno" => vec![
-                "makefile".to_string(),
-                "readme".to_string(),
-                "gitignore".to_string(),
-            ],
-            "python-uv" => vec![
-                "makefile".to_string(),
-                "readme".to_string(),
-                "gitignore".to_string(),
-            ],
-            _ => vec!["readme".to_string()],
-        }
-    } else {
-        templates
-    };
+    // Toyota Way: Extract Method - Reduce complexity by extracting template resolution
+    let templates_to_use = resolve_scaffold_templates(&toolchain, templates);
 
     let results = scaffold_project(
         server.clone(),
@@ -127,6 +106,27 @@ pub async fn handle_scaffold(
     }
 
     Ok(())
+}
+
+/// Toyota Way: Extract Method - Resolve templates based on toolchain
+fn resolve_scaffold_templates(toolchain: &str, templates: Vec<String>) -> Vec<String> {
+    if templates.is_empty() {
+        get_default_scaffold_templates(toolchain)
+    } else {
+        templates
+    }
+}
+
+/// Toyota Way: Extract Method - Get default templates for toolchain
+fn get_default_scaffold_templates(toolchain: &str) -> Vec<String> {
+    match toolchain {
+        "rust" | "deno" | "python-uv" => vec![
+            "makefile".to_string(),
+            "readme".to_string(),
+            "gitignore".to_string(),
+        ],
+        _ => vec!["readme".to_string()],
+    }
 }
 
 /// Handle template validation command
