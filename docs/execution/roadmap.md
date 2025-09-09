@@ -64,20 +64,36 @@
 - **Focus**: Complete codebase compliance
 - **Required**: ALL new code ≤10 complexity
 
-### Sprint 85: Enhanced MCP Tool Coverage & Integration (IN PROGRESS)
-- **Goal**: Complete MCP feature parity and dogfooding improvements
-- **Scope**: 90%+ CLI commands exposed via MCP + TDG storage
-- **Focus**: Dogfooding and workflow automation
-- **Required**: ALL new code ≤10 complexity
-- **Status**: 🚧 IN PROGRESS
+### Sprint 85: Quality-Driven Development (QDD) Tool Implementation 🚀
+- **Goal**: Unified tool for creating AND refactoring code with guaranteed quality
+- **Scope**: Complete QDD system with MCP integration
+- **Focus**: TDD implementation with ≤10 complexity and A+ TDG scores
+- **Required**: ALL new code ≤10 complexity, 80%+ coverage, A+ TDG
+- **Status**: 🚧 IN PROGRESS - ALL NIGHT IMPLEMENTATION
 
 #### Completed in Sprint 85:
 1. ✅ **TDG File Score Storage**: Implemented persistent storage for dogfooding
    - Tiered storage system (hot/warm/cold) using sled backend
-   - Stores scores in ~/.pmat/tdg-warm and ~/.pmat/tdg-cold
+   - Stores scores in ~/.pmat/tdg-warm and ~/.pmat/tdg-cold (3.6MB+ real data)
    - Blake3 content hashing for efficient caching
    - TDD implementation with 6/9 tests passing
    - v2.68.0 release with this feature
+   - ✅ **Documentation**: Updated CLAUDE.md and README.md with actionable usage
+   - ✅ **Examples**: Created tdg_dogfooding_demo.sh for practical demonstration
+
+#### Next Steps in Sprint 85 (Actionable Improvements):
+1. 🎯 **Quality Trend Analysis**: Use stored scores for regression detection
+   - Implement score comparison across git commits
+   - Add alerts for quality degradation
+   - Create weekly quality reports from stored data
+2. 🚀 **CI/CD Integration**: Leverage cached scores for faster pipelines
+   - Skip re-analysis of unchanged files using storage
+   - Implement quality gates based on historical scores
+   - Add performance metrics tracking
+3. 📊 **Storage Analytics**: Enhanced monitoring and cleanup
+   - Automatic old score archival and compression
+   - Storage growth trend analysis
+   - Cache hit ratio optimization
 
 ### ✅ COMPLETED: Sprint 80 - Pre-commit Hook Management as Core Feature 🎯
 - **Completion Date**: 2025-09-08

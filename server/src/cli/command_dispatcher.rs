@@ -3,7 +3,7 @@
 //! This module implements a dispatch table pattern to reduce cyclomatic complexity
 //! in the CLI module by delegating command execution to specialized handlers.
 
-use super::commands::{RoadmapCommands, ScaffoldCommands};
+use super::commands::{QddCommands, RoadmapCommands, ScaffoldCommands};
 use super::{AnalyzeCommands, Commands, DemoProtocol, OutputFormat, RefactorCommands};
 use crate::cli::handlers;
 use crate::cli::handlers::cache::CacheCommand;
@@ -87,6 +87,7 @@ impl CommandDispatcher {
                 .await
             }
             Commands::Analyze(analyze_cmd) => Self::execute_analyze_command(analyze_cmd).await,
+            Commands::Qdd(qdd_cmd) => Self::execute_qdd_command(qdd_cmd).await,
             Commands::Demo {
                 path,
                 url,
@@ -483,6 +484,12 @@ impl CommandDispatcher {
     pub async fn execute_analyze_command(analyze_cmd: AnalyzeCommands) -> anyhow::Result<()> {
         // Delegate to the modular analysis handlers
         super::handlers::route_analyze_command(analyze_cmd).await
+    }
+
+    /// Execute QDD commands using handler pattern (reduces CC)
+    pub async fn execute_qdd_command(qdd_cmd: QddCommands) -> anyhow::Result<()> {
+        // Delegate to the QDD handlers
+        super::handlers::qdd_handlers::handle_qdd_command(qdd_cmd).await
     }
 
     /// Execute refactor commands using handler pattern (reduces CC)

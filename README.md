@@ -21,6 +21,15 @@
 
 ## 🔥 Core Features
 
+### 🗄️ [TDG Dogfooding Storage](docs/TDG_GUIDE.md) *(NEW in v2.68.0)*
+**Persistent file score storage for continuous quality improvement!** PMAT now tracks its own quality metrics:
+- **📊 Automatic Storage**: Every TDG analysis automatically persists scores to disk
+- **⚡ Smart Caching**: Repeated analyses use stored scores for instant results  
+- **📈 Historical Tracking**: Foundation for quality trend analysis and regression detection
+- **💾 Tiered Storage**: Hot/warm/cold storage optimization (3.6MB+ real data stored)
+- **🔍 Storage Management**: `pmat tdg storage stats` for monitoring and diagnostics
+- **🏭 True Dogfooding**: PMAT eating its own dog food by tracking its own code quality
+
 ### 🎯 [Pre-commit Hooks Management](docs/hooks-management.md) *(New in v2.66.0)*
 **Single source of truth configuration for quality gate enforcement!** Eliminate configuration duplication with PMAT-managed pre-commit hooks:
 - **Dynamic Hook Generation**: Hooks generated from `pmat.toml` configuration
@@ -142,8 +151,12 @@ pmat tdg . --include-components
 # Start TDG web dashboard
 pmat tdg dashboard --port 8081 --open
 
-# TDG analysis with storage
-pmat tdg server/src/tdg/analyzer_ast.rs --storage-backend sled
+# TDG analysis with automatic persistent storage (NEW - v2.68.0!)
+pmat tdg server/src/tdg/analyzer_ast.rs
+# Scores automatically stored in ~/.pmat/tdg-warm and ~/.pmat/tdg-cold
+
+# View storage statistics and dogfooding progress
+pmat tdg storage stats
 
 # Get complexity metrics
 pmat analyze complexity --top-files 10
