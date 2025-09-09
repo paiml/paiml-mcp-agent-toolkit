@@ -644,100 +644,138 @@ fn format_function_annotations(
 ) -> String {
     let mut annotations = String::new();
 
-    // Add complexity metrics
-    if let Some(complexity_metrics) = &file.complexity_metrics {
-        if let Some(func) = complexity_metrics
-            .functions
-            .iter()
-            .find(|f| f.name == func_name)
-        {
-            annotations.push_str(&format!(" [complexity: {}]", func.metrics.cyclomatic));
-            annotations.push_str(&format!(" [cognitive: {}]", func.metrics.cognitive));
-
-            // Add Big-O complexity based on cyclomatic complexity
-            let big_o = match func.metrics.cyclomatic {
-                1..=3 => "O(1)",
-                4..=7 => "O(n)",
-                8..=15 => "O(n log n)",
-                16..=25 => "O(n²)",
-                _ => "O(?)",
-            };
-            annotations.push_str(&format!(" [big-o: {}]", big_o));
-        }
-    }
-
-    // Check if function is dead code
-    if let Some(dead_code_results) = &analyses.dead_code_results {
-        if let Some(file_metrics) = dead_code_results
-            .ranked_files
-            .iter()
-            .find(|f| f.path.ends_with(&file.path))
-        {
-            if file_metrics.items.iter().any(|item| {
-                matches!(
-                    item.item_type,
-                    crate::models::dead_code::DeadCodeType::Function
-                ) && item.name == func_name
-            }) {
-                annotations.push_str(" [dead: true]");
-            }
-        }
-    }
-
-    // Add SATD count
-    if let Some(satd_results) = &analyses.satd_results {
-        let satd_count = satd_results
-            .items
-            .iter()
-            .filter(|item| item.file.to_string_lossy().ends_with(&file.path))
-            .count();
-        if satd_count > 0 {
-            annotations.push_str(&format!(" [SATD: {}]", satd_count));
-        }
-    }
-
-    // Add provability and coverage (mock values for now)
-    annotations.push_str(" [provability: 75%]");
-    annotations.push_str(" [coverage: 65%]");
-
-    // Add code churn (file-level metric)
-    if let Some(churn_analysis) = &analyses.churn_analysis {
-        if let Some(file_metrics) = churn_analysis.files.iter().find(|f| {
-            f.relative_path.ends_with(&file.path) || f.path.to_string_lossy().ends_with(&file.path)
-        }) {
-            if file_metrics.churn_score > 0.0 {
-                annotations.push_str(&format!(" [churn: {:.2}]", file_metrics.churn_score));
-            }
-        }
-    }
-
-    // Add defect probability (heuristic based on complexity and churn)
-    if let Some(complexity_metrics) = &file.complexity_metrics {
-        if let Some(func) = complexity_metrics
-            .functions
-            .iter()
-            .find(|f| f.name == func_name)
-        {
-            let complexity_factor = (func.metrics.cyclomatic as f32 / 30.0).min(1.0);
-            let churn_factor = analyses
-                .churn_analysis
-                .as_ref()
-                .and_then(|ca| {
-                    ca.files.iter().find(|f| {
-                        f.relative_path.ends_with(&file.path)
-                            || f.path.to_string_lossy().ends_with(&file.path)
-                    })
-                })
-                .map(|f| f.churn_score)
-                .unwrap_or(0.0);
-            let defect_prob = (complexity_factor * 0.7 + churn_factor * 0.3).min(1.0);
-            if defect_prob > 0.1 {
-                annotations.push_str(&format!(" [defect-prob: {:.0}%]", defect_prob * 100.0));
-            }
-        }
-    }
+    add_complexity_annotations(&mut annotations, func_name, file);
+    add_dead_code_annotations(&mut annotations, func_name, file, analyses);
+    add_satd_annotations(&mut annotations, file, analyses);
+    add_static_annotations(&mut annotations);
+    add_churn_annotations(&mut annotations, file, analyses);
+    add_defect_probability_annotations(&mut annotations, func_name, file, analyses);
 
     annotations
+}
+
+fn add_complexity_annotations(
+    annotations: &mut String,
+    func_name: &str,
+    file: &crate::services::context::FileContext,
+) {
+    let Some(complexity_metrics) = &file.complexity_metrics else { return };
+    let Some(func) = complexity_metrics.functions.iter().find(|f| f.name == func_name) else { return };
+    
+    annotations.push_str(&format!(" [complexity: {}]", func.metrics.cyclomatic));
+    annotations.push_str(&format!(" [cognitive: {}]", func.metrics.cognitive));
+    
+    let big_o = get_big_o_complexity(func.metrics.cyclomatic.into());
+    annotations.push_str(&format!(" [big-o: {}]", big_o));
+}
+
+fn get_big_o_complexity(cyclomatic: u32) -> &'static str {
+    match cyclomatic {
+        1..=3 => "O(1)",
+        4..=7 => "O(n)",
+        8..=15 => "O(n log n)",
+        16..=25 => "O(n²)",
+        _ => "O(?)",
+    }
+}
+
+fn add_dead_code_annotations(
+    annotations: &mut String,
+    func_name: &str,
+    file: &crate::services::context::FileContext,
+    analyses: &crate::services::deep_context::AnalysisResults,
+) {
+    let Some(dead_code_results) = &analyses.dead_code_results else { return };
+    let Some(file_metrics) = dead_code_results.ranked_files.iter().find(|f| f.path.ends_with(&file.path)) else { return };
+    
+    if is_function_dead_code(file_metrics, func_name) {
+        annotations.push_str(" [dead: true]");
+    }
+}
+
+fn is_function_dead_code(
+    file_metrics: &crate::models::dead_code::FileDeadCodeMetrics,
+    func_name: &str,
+) -> bool {
+    file_metrics.items.iter().any(|item| {
+        matches!(item.item_type, crate::models::dead_code::DeadCodeType::Function) 
+            && item.name == func_name
+    })
+}
+
+fn add_satd_annotations(
+    annotations: &mut String,
+    file: &crate::services::context::FileContext,
+    analyses: &crate::services::deep_context::AnalysisResults,
+) {
+    let Some(satd_results) = &analyses.satd_results else { return };
+    
+    let satd_count = satd_results
+        .items
+        .iter()
+        .filter(|item| item.file.to_string_lossy().ends_with(&file.path))
+        .count();
+    
+    if satd_count > 0 {
+        annotations.push_str(&format!(" [SATD: {}]", satd_count));
+    }
+}
+
+fn add_static_annotations(annotations: &mut String) {
+    annotations.push_str(" [provability: 75%]");
+    annotations.push_str(" [coverage: 65%]");
+}
+
+fn add_churn_annotations(
+    annotations: &mut String,
+    file: &crate::services::context::FileContext,
+    analyses: &crate::services::deep_context::AnalysisResults,
+) {
+    let Some(churn_analysis) = &analyses.churn_analysis else { return };
+    let Some(file_metrics) = find_churn_file_metrics(churn_analysis, &file.path) else { return };
+    
+    if file_metrics.churn_score > 0.0 {
+        annotations.push_str(&format!(" [churn: {:.2}]", file_metrics.churn_score));
+    }
+}
+
+fn find_churn_file_metrics<'a>(
+    churn_analysis: &'a crate::models::churn::CodeChurnAnalysis,
+    file_path: &str,
+) -> Option<&'a crate::models::churn::FileChurnMetrics> {
+    churn_analysis.files.iter().find(|f| {
+        f.relative_path.ends_with(file_path) || f.path.to_string_lossy().ends_with(file_path)
+    })
+}
+
+fn add_defect_probability_annotations(
+    annotations: &mut String,
+    func_name: &str,
+    file: &crate::services::context::FileContext,
+    analyses: &crate::services::deep_context::AnalysisResults,
+) {
+    let Some(complexity_metrics) = &file.complexity_metrics else { return };
+    let Some(func) = complexity_metrics.functions.iter().find(|f| f.name == func_name) else { return };
+    
+    let complexity_factor = (func.metrics.cyclomatic as f32 / 30.0).min(1.0);
+    let churn_factor = get_churn_factor(analyses, &file.path);
+    let defect_prob = (complexity_factor * 0.7 + churn_factor * 0.3).min(1.0);
+    
+    if defect_prob > 0.1 {
+        annotations.push_str(&format!(" [defect-prob: {:.0}%]", defect_prob * 100.0));
+    }
+}
+
+fn get_churn_factor(
+    analyses: &crate::services::deep_context::AnalysisResults,
+    file_path: &str,
+) -> f32 {
+    analyses
+        .churn_analysis
+        .as_ref()
+        .and_then(|ca| find_churn_file_metrics(ca, file_path))
+        .map(|f| f.churn_score)
+        .unwrap_or(0.0)
 }
 
 /// Format as SARIF output
@@ -1106,83 +1144,87 @@ pub async fn handle_serve(
     transport: crate::cli::commands::ServeTransport,
 ) -> Result<()> {
     use crate::cli::commands::ServeTransport;
+    let addr = format!("{}:{}", host, port);
 
     match transport {
-        ServeTransport::Http => {
-            eprintln!("🚀 Starting PMAT HTTP server on http://{host}:{port}");
-            eprintln!("✅ Server ready!");
-            eprintln!("📍 Health check: http://{host}:{port}/health");
-            eprintln!("📍 API base: http://{host}:{port}/api/v1");
-            if cors {
-                eprintln!("🌐 CORS enabled for all origins");
-            }
-            eprintln!("\n🔧 HTTP server functionality ready for implementation.");
-        }
-
-        ServeTransport::WebSocket => {
-            eprintln!("🚀 Starting PMAT WebSocket server on ws://{host}:{port}");
-            eprintln!("✅ WebSocket server ready!");
-            eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
-            eprintln!("🔌 MCP protocol over WebSocket");
-
-            // Start actual WebSocket server
-            let addr = format!("{}:{}", host, port);
-            return start_websocket_server(addr).await;
-        }
-
-        ServeTransport::HttpSse => {
-            eprintln!("🚀 Starting PMAT HTTP-SSE server on http://{host}:{port}");
-            eprintln!("✅ HTTP-SSE server ready!");
-            eprintln!("📍 SSE endpoint: http://{host}:{port}/sse");
-            eprintln!("📍 Message endpoint: http://{host}:{port}/message");
-            eprintln!("🌊 MCP protocol over Server-Sent Events");
-            if cors {
-                eprintln!("🌐 CORS enabled for all origins");
-            }
-
-            // Start HTTP-SSE server
-            let addr = format!("{}:{}", host, port);
-            return start_http_sse_server(addr, cors).await;
-        }
-
-        ServeTransport::Both => {
-            eprintln!("🚀 Starting PMAT hybrid server (HTTP + WebSocket) on {host}:{port}");
-            eprintln!("✅ Hybrid server ready!");
-            eprintln!("📍 HTTP endpoint: http://{host}:{port}");
-            eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
-            eprintln!("🔌 MCP protocol over both transports");
-            if cors {
-                eprintln!("🌐 CORS enabled for all origins");
-            }
-
-            // Start hybrid server (HTTP + WebSocket)
-            let addr = format!("{}:{}", host, port);
-            return start_hybrid_server(addr, cors).await;
-        }
-
-        ServeTransport::All => {
-            eprintln!("🚀 Starting PMAT full server (HTTP + WebSocket + SSE) on {host}:{port}");
-            eprintln!("✅ All transports ready!");
-            eprintln!("📍 HTTP endpoint: http://{host}:{port}");
-            eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
-            eprintln!("📍 SSE endpoint: http://{host}:{port}/sse");
-            eprintln!("🌐 MCP protocol over all transports");
-            if cors {
-                eprintln!("🌐 CORS enabled for all origins");
-            }
-
-            // Start full multi-transport server
-            let addr = format!("{}:{}", host, port);
-            return start_full_server(addr, cors).await;
-        }
+        ServeTransport::Http => handle_http_server(&host, port, cors).await,
+        ServeTransport::WebSocket => handle_websocket_server(&addr).await,
+        ServeTransport::HttpSse => handle_http_sse_server(&addr, &host, port, cors).await,
+        ServeTransport::Both => handle_hybrid_server(&addr, &host, port, cors).await,
+        ServeTransport::All => handle_full_server(&addr, &host, port, cors).await,
     }
+}
 
+async fn handle_http_server(host: &str, port: u16, cors: bool) -> Result<()> {
+    eprintln!("🚀 Starting PMAT HTTP server on http://{host}:{port}");
+    eprintln!("✅ Server ready!");
+    eprintln!("📍 Health check: http://{host}:{port}/health");
+    eprintln!("📍 API base: http://{host}:{port}/api/v1");
+    
+    if cors {
+        eprintln!("🌐 CORS enabled for all origins");
+    }
+    
+    eprintln!("\n🔧 HTTP server functionality ready for implementation.");
+    wait_for_shutdown().await
+}
+
+async fn handle_websocket_server(addr: &str) -> Result<()> {
+    eprintln!("🚀 Starting PMAT WebSocket server on ws://{addr}");
+    eprintln!("✅ WebSocket server ready!");
+    eprintln!("📍 WebSocket endpoint: ws://{addr}");
+    eprintln!("🔌 MCP protocol over WebSocket");
+    
+    start_websocket_server(addr.to_string()).await
+}
+
+async fn handle_http_sse_server(addr: &str, host: &str, port: u16, cors: bool) -> Result<()> {
+    eprintln!("🚀 Starting PMAT HTTP-SSE server on http://{host}:{port}");
+    eprintln!("✅ HTTP-SSE server ready!");
+    eprintln!("📍 SSE endpoint: http://{host}:{port}/sse");
+    eprintln!("📍 Message endpoint: http://{host}:{port}/message");
+    eprintln!("🌊 MCP protocol over Server-Sent Events");
+    
+    if cors {
+        eprintln!("🌐 CORS enabled for all origins");
+    }
+    
+    start_http_sse_server(addr.to_string(), cors).await
+}
+
+async fn handle_hybrid_server(addr: &str, host: &str, port: u16, cors: bool) -> Result<()> {
+    eprintln!("🚀 Starting PMAT hybrid server (HTTP + WebSocket) on {host}:{port}");
+    eprintln!("✅ Hybrid server ready!");
+    eprintln!("📍 HTTP endpoint: http://{host}:{port}");
+    eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
+    eprintln!("🔌 MCP protocol over both transports");
+    
+    if cors {
+        eprintln!("🌐 CORS enabled for all origins");
+    }
+    
+    start_hybrid_server(addr.to_string(), cors).await
+}
+
+async fn handle_full_server(addr: &str, host: &str, port: u16, cors: bool) -> Result<()> {
+    eprintln!("🚀 Starting PMAT full server (HTTP + WebSocket + SSE) on {host}:{port}");
+    eprintln!("✅ All transports ready!");
+    eprintln!("📍 HTTP endpoint: http://{host}:{port}");
+    eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
+    eprintln!("📍 SSE endpoint: http://{host}:{port}/sse");
+    eprintln!("🌐 MCP protocol over all transports");
+    
+    if cors {
+        eprintln!("🌐 CORS enabled for all origins");
+    }
+    
+    start_full_server(addr.to_string(), cors).await
+}
+
+async fn wait_for_shutdown() -> Result<()> {
     eprintln!("Press Ctrl+C to exit.\n");
-
-    // Wait for shutdown signal
     tokio::signal::ctrl_c().await?;
     eprintln!("🛑 Shutting down server...");
-
     Ok(())
 }
 
