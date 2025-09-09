@@ -1802,6 +1802,7 @@ dependencies = [
  "allocator-api2",
  "equivalent",
  "foldhash",
+ "serde",
 ]
 
 [[package]]
@@ -3366,7 +3367,7 @@ dependencies = [
 
 [[package]]
 name = "pmat"
-version = "2.75.0"
+version = "2.76.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -3468,6 +3469,7 @@ dependencies = [
  "url",
  "uuid",
  "walkdir",
+ "wasmparser",
  "webbrowser",
  "xxhash-rust",
 ]
@@ -5912,6 +5914,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f143854a3b13752c6950862c906306adb27c7e839f7414cec8fea35beab624c1"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "wasmparser"
+version = "0.239.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c9d90bb93e764f6beabf1d02028c70a2156a6583e63ac4218dd07ef733368b0"
+dependencies = [
+ "bitflags 2.9.4",
+ "hashbrown 0.15.5",
+ "indexmap",
+ "semver",
+ "serde",
 ]
 
 [[package]]
