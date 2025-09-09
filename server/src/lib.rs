@@ -20,6 +20,7 @@ pub mod test_performance; // Performance testing per SPECIFICATION.md Section 30
                           // pub mod testing;
 pub mod unified_protocol;
 pub mod utils;
+pub mod wasm; // WebAssembly quality assurance module
 
 use anyhow::Result;
 use lru::LruCache;

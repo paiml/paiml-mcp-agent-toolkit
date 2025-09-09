@@ -17,6 +17,7 @@ use crate::cli::{
     QualityGateOutputFormat, QualityProfile, RefactorAutoOutputFormat, RefactorDocsOutputFormat, 
     RefactorMode, RefactorOutputFormat, ReportOutputFormat, SatdOutputFormat, SatdSeverity, 
     SearchScope, SymbolTableOutputFormat, SymbolTypeFilter, TdgOutputFormat, VerificationMethodFilter,
+    WasmOutputFormat,
 };
 use crate::models::churn::ChurnOutputFormat;
 use clap::{Parser, Subcommand};
@@ -1755,6 +1756,40 @@ pub enum AnalyzeCommands {
         /// Include test files in analysis
         #[arg(long)]
         include_tests: bool,
+    },
+
+    /// Analyze WebAssembly modules for quality, security, and performance
+    Wasm {
+        /// Path to WASM file to analyze
+        wasm_file: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', value_enum, default_value = "summary")]
+        format: WasmOutputFormat,
+
+        /// Run formal verification for memory safety
+        #[arg(long)]
+        verify: bool,
+
+        /// Run security vulnerability scanning
+        #[arg(long)]
+        security: bool,
+
+        /// Run performance profiling
+        #[arg(long)]
+        profile: bool,
+
+        /// Baseline WASM file for quality comparison
+        #[arg(long)]
+        baseline: Option<PathBuf>,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Enable verbose output with detailed analysis
+        #[arg(long)]
+        verbose: bool,
     },
 }
 

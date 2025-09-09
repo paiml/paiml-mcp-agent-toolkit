@@ -1914,7 +1914,8 @@ impl CliAdapter {
             | AnalyzeCommands::ProofAnnotations { .. }
             | AnalyzeCommands::IncrementalCoverage { .. }
             | AnalyzeCommands::AssemblyScript { .. }
-            | AnalyzeCommands::WebAssembly { .. } => AnalyzeCommandCategory::Specialized,
+            | AnalyzeCommands::WebAssembly { .. }
+            | AnalyzeCommands::Wasm { .. } => AnalyzeCommandCategory::Specialized,
         }
     }
 }
