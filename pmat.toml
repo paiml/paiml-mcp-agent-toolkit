@@ -2,8 +2,8 @@
 # Realistic thresholds based on industry best practices
 
 [quality_gate]
-max_cyclomatic_complexity = 30  # Enterprise standard (allows current development)
-max_cognitive_complexity = 25   # Maintainable threshold (allows current development)
+max_cyclomatic_complexity = 25  # Sprint 82 target (reduced from 30)
+max_cognitive_complexity = 20   # Sprint 82 target (reduced from 25)
 max_satd_comments = 0           # Zero tolerance for technical debt
 min_test_coverage = 80.0        # High coverage requirement maintained
 
