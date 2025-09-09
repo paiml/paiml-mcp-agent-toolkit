@@ -70,28 +70,63 @@ pub fn calculate_simple_complexity(content: &str) -> u32 {
 
     for line in content.lines() {
         let trimmed = line.trim();
-        // Count branching statements
-        if trimmed.starts_with("if ") || trimmed.starts_with("else if") {
-            complexity += 1;
-        }
-        if trimmed.starts_with("for ") || trimmed.starts_with("while ") {
-            complexity += 1;
-        }
-        if trimmed.starts_with("match ") || trimmed.starts_with("switch ") {
-            complexity += 1;
-        }
-        if trimmed.contains("=>") || trimmed.starts_with("case ") {
-            complexity += 1;
-        }
-        if trimmed.contains("&&") || trimmed.contains("||") {
-            complexity += 1;
-        }
-        if trimmed.starts_with("catch") || trimmed.starts_with("except") {
-            complexity += 1;
-        }
+        complexity += count_line_complexity(trimmed);
     }
 
     complexity
+}
+
+fn count_line_complexity(line: &str) -> u32 {
+    let mut line_complexity = 0u32;
+    
+    line_complexity += count_conditional_statements(line);
+    line_complexity += count_loop_statements(line);
+    line_complexity += count_pattern_matching(line);
+    line_complexity += count_logical_operators(line);
+    line_complexity += count_exception_handling(line);
+    
+    line_complexity
+}
+
+fn count_conditional_statements(line: &str) -> u32 {
+    if line.starts_with("if ") || line.starts_with("else if") {
+        1
+    } else {
+        0
+    }
+}
+
+fn count_loop_statements(line: &str) -> u32 {
+    if line.starts_with("for ") || line.starts_with("while ") {
+        1
+    } else {
+        0
+    }
+}
+
+fn count_pattern_matching(line: &str) -> u32 {
+    if line.starts_with("match ") || line.starts_with("switch ") ||
+       line.contains("=>") || line.starts_with("case ") {
+        1
+    } else {
+        0
+    }
+}
+
+fn count_logical_operators(line: &str) -> u32 {
+    if line.contains("&&") || line.contains("||") {
+        1
+    } else {
+        0
+    }
+}
+
+fn count_exception_handling(line: &str) -> u32 {
+    if line.starts_with("catch") || line.starts_with("except") {
+        1
+    } else {
+        0
+    }
 }
 
 /// Calculate simple churn score based on file content
