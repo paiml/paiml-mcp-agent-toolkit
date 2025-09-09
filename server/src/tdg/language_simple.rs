@@ -76,7 +76,7 @@ impl std::fmt::Display for Language {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum NamingStyle {
     SnakeCase,
     CamelCase,

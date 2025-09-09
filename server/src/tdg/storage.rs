@@ -433,6 +433,7 @@ mod tests {
                 coupling_score: 14.0,
                 doc_coverage: 9.0,
                 consistency_score: 8.0,
+                entropy_score: 16.0,
                 total: 88.0,
                 grade: Grade::AMinus,
                 confidence: 0.95,

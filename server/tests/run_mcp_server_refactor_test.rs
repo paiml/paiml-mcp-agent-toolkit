@@ -9,7 +9,7 @@
 //! Target: Cognitive complexity ≤10, maintain functionality
 
 use anyhow::Result;
-use pmat::{MetadataCache, TemplateRenderer, TemplateResource, TemplateServerTrait};
+use pmat::{MetadataCache, ContentCache, S3Client, PublicTemplateRenderer as TemplateRenderer, PublicTemplateResource as TemplateResource, TemplateServerTrait};
 use std::sync::Arc;
 
 // Mock template server for testing
@@ -40,6 +40,22 @@ impl TemplateServerTrait for MockTemplateServer {
     fn get_renderer(&self) -> &TemplateRenderer {
         // For testing, we'll create a minimal renderer
         unsafe { std::mem::transmute(&()) } // This is a hack for testing only
+    }
+    
+    fn get_metadata_cache(&self) -> Option<&MetadataCache> {
+        None
+    }
+    
+    fn get_content_cache(&self) -> Option<&ContentCache> {
+        None
+    }
+    
+    fn get_s3_client(&self) -> Option<&S3Client> {
+        None
+    }
+    
+    fn get_bucket_name(&self) -> Option<&str> {
+        None
     }
 
     fn get_metadata_cache(&self) -> Option<&MetadataCache> {
