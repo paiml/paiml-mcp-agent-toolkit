@@ -30,6 +30,7 @@ impl ContractMcpServer {
             .tool(create_analyze_dead_code_tool())
             .tool(create_analyze_tdg_tool())
             .tool(create_analyze_lint_hotspot_tool())
+            .tool(create_analyze_entropy_tool())
             .tool(create_quality_gate_tool())
             .tool(create_refactor_auto_tool())
             .build()
@@ -53,6 +54,7 @@ impl ContractMcpServer {
             "analyze_dead_code" => self.handle_analyze_dead_code(params).await,
             "analyze_tdg" => self.handle_analyze_tdg(params).await,
             "analyze_lint_hotspot" => self.handle_analyze_lint_hotspot(params).await,
+            "analyze_entropy" => self.handle_analyze_entropy(params).await,
             "quality_gate" => self.handle_quality_gate(params).await,
             "refactor_auto" => self.handle_refactor_auto(params).await,
             _ => Err(anyhow::anyhow!("Unknown tool: {}", name))
@@ -86,6 +88,12 @@ impl ContractMcpServer {
     async fn handle_analyze_lint_hotspot(&self, params: Value) -> Result<ToolResult> {
         let contract = serde_json::from_value::<AnalyzeLintHotspotContract>(params)?;
         let result = self.service.analyze_lint_hotspot(contract).await?;
+        Ok(ToolResult::Success(result))
+    }
+    
+    async fn handle_analyze_entropy(&self, params: Value) -> Result<ToolResult> {
+        let contract = serde_json::from_value::<AnalyzeEntropyContract>(params)?;
+        let result = self.service.analyze_entropy(contract).await?;
         Ok(ToolResult::Success(result))
     }
     
@@ -399,6 +407,55 @@ fn create_analyze_lint_hotspot_tool() -> ToolDefinition {
                 }
             },
             "required": ["path"]
+        }),
+    }
+}
+
+/// Create tool definition for analyze_entropy  
+fn create_analyze_entropy_tool() -> ToolDefinition {
+    ToolDefinition {
+        name: "analyze_entropy".to_string(),
+        description: "Analyze pattern entropy for actionable quality improvements".to_string(),
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string", 
+                    "description": "Project path to analyze",
+                    "default": "."
+                },
+                "format": {
+                    "type": "string",
+                    "enum": ["summary", "detailed", "json", "markdown"],
+                    "description": "Output format",
+                    "default": "summary"
+                },
+                "output": {
+                    "type": "string",
+                    "description": "Output file path (optional)"
+                },
+                "min_severity": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high"],
+                    "description": "Minimum severity level to report",
+                    "default": "medium"
+                },
+                "top_violations": {
+                    "type": "integer",
+                    "description": "Number of top violations to show (0 = all)",
+                    "default": 20
+                },
+                "file": {
+                    "type": "string",
+                    "description": "Specific file to analyze (optional)"
+                },
+                "include_tests": {
+                    "type": "boolean",
+                    "description": "Include test files in analysis",
+                    "default": false
+                }
+            },
+            "required": []
         }),
     }
 }

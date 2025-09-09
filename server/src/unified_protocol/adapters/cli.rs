@@ -1892,7 +1892,8 @@ impl CliAdapter {
             | AnalyzeCommands::Satd { .. }
             | AnalyzeCommands::Tdg { .. }
             | AnalyzeCommands::LintHotspot { .. }
-            | AnalyzeCommands::Clippy { .. } => AnalyzeCommandCategory::Basic,
+            | AnalyzeCommands::Clippy { .. }
+            | AnalyzeCommands::Entropy { .. } => AnalyzeCommandCategory::Basic,
 
             // Advanced analysis commands (comprehensive)
             AnalyzeCommands::DeepContext { .. }

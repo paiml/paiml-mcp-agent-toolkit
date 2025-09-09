@@ -47,6 +47,11 @@ impl ContractService {
         self.inner.analyze_lint_hotspot(contract).await
     }
 
+    /// Process analyze entropy contract
+    pub async fn analyze_entropy(&self, contract: AnalyzeEntropyContract) -> Result<Value> {
+        self.inner.analyze_entropy(contract).await
+    }
+
     /// Process quality gate contract
     pub async fn quality_gate(&self, contract: QualityGateContract) -> Result<Value> {
         self.inner.quality_gate(contract).await

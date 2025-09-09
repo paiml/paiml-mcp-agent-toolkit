@@ -1150,5 +1150,58 @@ mod tests {
 
         assert_eq!(SatdSeverity::Low, SatdSeverity::Low);
         assert_ne!(SatdSeverity::Low, SatdSeverity::High);
+
+        assert_eq!(EntropyOutputFormat::Summary, EntropyOutputFormat::Summary);
+        assert_ne!(EntropyOutputFormat::Summary, EntropyOutputFormat::Json);
+
+        assert_eq!(EntropySeverity::Low, EntropySeverity::Low);
+        assert_ne!(EntropySeverity::Low, EntropySeverity::High);
+    }
+}
+
+/// Entropy analysis output format
+#[derive(Clone, Debug, ValueEnum, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum EntropyOutputFormat {
+    /// Summary with top violations
+    Summary,
+    /// Detailed violation report
+    Detailed,
+    /// JSON format for tooling
+    Json,
+    /// Markdown report
+    Markdown,
+}
+
+impl fmt::Display for EntropyOutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            EntropyOutputFormat::Summary => write!(f, "summary"),
+            EntropyOutputFormat::Detailed => write!(f, "detailed"),
+            EntropyOutputFormat::Json => write!(f, "json"),
+            EntropyOutputFormat::Markdown => write!(f, "markdown"),
+        }
+    }
+}
+
+/// Entropy violation severity levels
+#[derive(Clone, Debug, ValueEnum, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum EntropySeverity {
+    /// Low severity violations
+    Low,
+    /// Medium severity violations
+    Medium,
+    /// High severity violations
+    High,
+}
+
+impl fmt::Display for EntropySeverity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            EntropySeverity::Low => write!(f, "low"),
+            EntropySeverity::Medium => write!(f, "medium"),
+            EntropySeverity::High => write!(f, "high"),
+        }
     }
 }
