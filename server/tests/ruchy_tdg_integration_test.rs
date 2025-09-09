@@ -2,7 +2,7 @@
 //! 
 //! Testing Ruchy language detection and TDG scoring integration
 
-#[cfg(test)]
+#[cfg(all(test, feature = "ruchy-ast"))]
 mod ruchy_tdg_integration_tests {
     use std::path::Path;
     
