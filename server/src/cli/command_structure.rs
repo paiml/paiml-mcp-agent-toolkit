@@ -113,6 +113,11 @@ impl CommandExecutor {
             Commands::Analyze(analyze_cmd) => {
                 self.registry.analyze_handlers.execute(analyze_cmd).await
             }
+            
+            Commands::Qdd(qdd_cmd) => {
+                use crate::cli::handlers::qdd_handlers;
+                qdd_handlers::handle_qdd_command(qdd_cmd).await
+            }
 
             // Utility commands
             Commands::List {
