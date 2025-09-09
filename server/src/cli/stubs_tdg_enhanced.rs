@@ -23,32 +23,65 @@ pub async fn handle_analyze_tdg_enhanced(
     output: Option<PathBuf>,
     critical_only: bool,
     verbose: bool,
-    _include: Vec<String>, // Not used yet but kept for interface compatibility
+    _include: Vec<String>,
     watch: bool,
 ) -> Result<()> {
-    use crate::services::tdg_calculator::TDGCalculator;
-    
+    // Handle watch mode
     if watch {
-        eprintln!("⏱️  Watch mode: Monitoring for file changes...");
-        eprintln!("Press Ctrl+C to stop watching");
-        // Watch mode would use file system events, for now run once
-        // In production, this would use notify crate for file watching
+        handle_watch_mode();
     }
     
+    // Print analysis header
+    print_analysis_header(&project_path, threshold, top, &format);
+    
+    // Prepare files for analysis
+    let files_to_analyze = prepare_files_for_analysis(file, files);
+    
+    // Perform TDG analysis
+    let summary = perform_tdg_analysis(&project_path).await?;
+    
+    // Filter and sort hotspots
+    let filtered_hotspots = filter_and_sort_hotspots(&summary, threshold, critical_only, top);
+    
+    // Generate output content
+    let output_content = generate_output_content(
+        &summary,
+        &filtered_hotspots,
+        format,
+        threshold,
+        critical_only,
+        include_components,
+        verbose,
+    )?;
+    
+    // Write or print output
+    handle_output(output, &output_content)?;
+    
+    Ok(())
+}
+
+/// Handle watch mode notification
+fn handle_watch_mode() {
+    eprintln!("⏱️  Watch mode: Monitoring for file changes...");
+    eprintln!("Press Ctrl+C to stop watching");
+}
+
+/// Print analysis header information
+fn print_analysis_header(project_path: &PathBuf, threshold: f64, top: usize, format: &TdgOutputFormat) {
     eprintln!("🔍 Analyzing Technical Debt Gradient...");
-    
-    // Create TDG calculator
-    let calculator = TDGCalculator::new();
-    
-    // For now, we only support project mode fully
-    // Single file and multi-file modes fall back to project analysis
-    // Handle single file or multiple files analysis
-    let files_to_analyze: Vec<PathBuf> = if let Some(single_file) = file {
+    eprintln!("📁 Project path: {}", project_path.display());
+    eprintln!("📊 Threshold: {threshold}");
+    eprintln!("🔝 Top: {top} files");
+    eprintln!("📄 Format: {:?}", format);
+}
+
+/// Prepare files for analysis
+fn prepare_files_for_analysis(file: Option<PathBuf>, files: Vec<PathBuf>) -> Vec<PathBuf> {
+    let files_to_analyze = if let Some(single_file) = file {
         vec![single_file]
     } else if !files.is_empty() {
         files
     } else {
-        // Analyze entire project
         vec![]
     };
     
@@ -56,15 +89,22 @@ pub async fn handle_analyze_tdg_enhanced(
         eprintln!("📄 Analyzing {} specific file(s)", files_to_analyze.len());
     }
     
-    eprintln!("📁 Project path: {}", project_path.display());
-    eprintln!("📊 Threshold: {threshold}");
-    eprintln!("🔝 Top: {top} files");
-    eprintln!("📄 Format: {:?}", format);
+    files_to_analyze
+}
 
-    // Analyze the directory
-    let summary = calculator.analyze_directory(&project_path).await?;
-    
-    // Filter hotspots based on threshold and critical_only flag
+/// Perform TDG analysis on the project
+async fn perform_tdg_analysis(project_path: &PathBuf) -> Result<TDGSummary> {
+    let calculator = TDGCalculator::new();
+    calculator.analyze_directory(project_path).await
+}
+
+/// Filter and sort hotspots based on criteria
+fn filter_and_sort_hotspots(
+    summary: &TDGSummary,
+    threshold: f64,
+    critical_only: bool,
+    top: usize,
+) -> Vec<crate::models::tdg::TDGHotspot> {
     let mut filtered_hotspots: Vec<_> = summary.hotspots.iter()
         .filter(|h| {
             if critical_only {
@@ -79,9 +119,20 @@ pub async fn handle_analyze_tdg_enhanced(
     
     // Sort by TDG score descending
     filtered_hotspots.sort_by(|a, b| b.tdg_score.partial_cmp(&a.tdg_score).unwrap());
-    
-    // Generate output based on format
-    let output_content = match format {
+    filtered_hotspots
+}
+
+/// Generate output content based on format
+fn generate_output_content(
+    summary: &TDGSummary,
+    filtered_hotspots: &[crate::models::tdg::TDGHotspot],
+    format: TdgOutputFormat,
+    threshold: f64,
+    critical_only: bool,
+    include_components: bool,
+    verbose: bool,
+) -> Result<String> {
+    match format {
         TdgOutputFormat::Table => {
             let mut table = String::new();
             table.push_str("\n# Technical Debt Gradient Analysis\n\n");
@@ -249,17 +300,18 @@ pub async fn handle_analyze_tdg_enhanced(
             });
             serde_json::to_string_pretty(&sarif)?
         }
-    };
-    
-    // Output results
+    }
+}
+
+/// Handle output - write to file or print to stdout
+async fn handle_output(output: Option<PathBuf>, output_content: &str) -> Result<()> {
     if let Some(output_path) = output {
-        tokio::fs::write(&output_path, &output_content).await?;
+        tokio::fs::write(&output_path, output_content).await?;
         eprintln!("📝 Results written to {}", output_path.display());
     } else {
         println!("{output_content}");
     }
     
     eprintln!("✅ TDG analysis complete");
-
     Ok(())
 }
