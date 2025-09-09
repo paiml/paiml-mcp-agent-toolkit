@@ -165,7 +165,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         | AnalyzeCommands::BigO { .. } => route_specialized_analysis(cmd).await,
 
         // Language-specific commands
-        AnalyzeCommands::AssemblyScript { .. } | AnalyzeCommands::WebAssembly { .. } => {
+        AnalyzeCommands::AssemblyScript { .. } | AnalyzeCommands::WebAssembly { .. } | AnalyzeCommands::Wasm { .. } => {
             route_language_specific_analysis(cmd).await
         }
 
@@ -229,6 +229,7 @@ async fn route_language_specific_analysis(cmd: AnalyzeCommands) -> Result<()> {
     match cmd {
         AnalyzeCommands::AssemblyScript { .. } => route_assemblyscript_analysis(cmd).await,
         AnalyzeCommands::WebAssembly { .. } => route_webassembly_analysis(cmd).await,
+        AnalyzeCommands::Wasm { .. } => route_wasm_analysis(cmd).await,
         _ => unreachable!("Expected language-specific analysis command"),
     }
 }
@@ -990,6 +991,34 @@ async fn route_webassembly_analysis(cmd: AnalyzeCommands) -> Result<()> {
         .await
     } else {
         unreachable!("Expected WebAssembly command")
+    }
+}
+
+async fn route_wasm_analysis(cmd: AnalyzeCommands) -> Result<()> {
+    if let AnalyzeCommands::Wasm {
+        wasm_file,
+        format,
+        verify,
+        security,
+        profile,
+        baseline,
+        output,
+        verbose,
+    } = cmd
+    {
+        super::wasm_handler::handle_analyze_wasm(
+            wasm_file,
+            format,
+            verify,
+            security,
+            profile,
+            baseline,
+            output,
+            verbose,
+        )
+        .await
+    } else {
+        unreachable!("Expected Wasm command")
     }
 }
 

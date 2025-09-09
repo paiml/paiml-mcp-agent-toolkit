@@ -164,6 +164,7 @@ sys-info = "0.9.1"
 
 # Storage backends
 rocksdb = { version = "0.24", optional = true, default-features = false, features = ["lz4", "snappy"] }
+wasmparser = "0.239.0"
 
 [dev-dependencies]
 mockall = "0.13"

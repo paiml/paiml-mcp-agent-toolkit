@@ -1203,3 +1203,27 @@ impl fmt::Display for EntropySeverity {
         }
     }
 }
+
+/// Output format for WASM analysis
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum WasmOutputFormat {
+    /// Summary output with key metrics
+    Summary,
+    /// Detailed analysis with all components
+    Detailed,
+    /// JSON format for programmatic use
+    Json,
+    /// SARIF format for security results
+    Sarif,
+}
+
+impl fmt::Display for WasmOutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            WasmOutputFormat::Summary => write!(f, "summary"),
+            WasmOutputFormat::Detailed => write!(f, "detailed"),
+            WasmOutputFormat::Json => write!(f, "json"),
+            WasmOutputFormat::Sarif => write!(f, "sarif"),
+        }
+    }
+}
