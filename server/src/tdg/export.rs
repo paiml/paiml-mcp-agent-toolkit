@@ -813,6 +813,7 @@ mod tests {
             coupling_score: 12.0,
             doc_coverage: 8.0,
             consistency_score: 8.0,
+            entropy_score: 15.0,
             total: 83.0,
             grade: Grade::BPlus,
             confidence: 0.95,

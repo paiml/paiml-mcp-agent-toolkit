@@ -32,8 +32,12 @@ use crate::models::template::TemplateResource;
 use crate::services::renderer::TemplateRenderer;
 
 // Type aliases to reduce complexity
-type MetadataCache = Arc<RwLock<LruCache<String, Arc<TemplateResource>>>>;
-type ContentCache = Arc<RwLock<LruCache<String, Arc<str>>>>;
+pub type MetadataCache = Arc<RwLock<LruCache<String, Arc<TemplateResource>>>>;
+pub type ContentCache = Arc<RwLock<LruCache<String, Arc<str>>>>;
+
+// Re-exports for test compatibility
+pub use crate::services::renderer::TemplateRenderer as PublicTemplateRenderer;
+pub use crate::models::template::TemplateResource as PublicTemplateResource;
 
 // Dummy type for S3Client to satisfy trait requirements without AWS SDK
 pub struct S3Client;
