@@ -35,6 +35,7 @@ impl QualityProfiles {
                 max_cognitive: 15,
                 min_coverage: 85,
                 max_tdg: 5,
+                max_entropy_violations: 3,  // Strict: max 3 entropy violations
                 zero_satd: true,
                 zero_dead_code: true,
                 require_doctests: true,
@@ -79,6 +80,7 @@ impl QualityProfiles {
                 max_cognitive: 12,
                 min_coverage: 75,
                 max_tdg: 8,
+                max_entropy_violations: 5,  // Relaxed: allow more entropy for rapid iteration
                 zero_satd: false, // Allow some TODOs for rapid iteration
                 zero_dead_code: false,
                 require_doctests: false,
@@ -117,6 +119,7 @@ impl QualityProfiles {
                 max_cognitive: 25,
                 min_coverage: 50, // Start with achievable goals
                 max_tdg: 15,
+                max_entropy_violations: 10,  // Very relaxed: legacy code may have many patterns
                 zero_satd: false,
                 zero_dead_code: false,
                 require_doctests: false,

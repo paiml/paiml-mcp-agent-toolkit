@@ -67,6 +67,7 @@ pub struct TdgScore {
     pub coupling_score: f32,
     pub doc_coverage: f32,
     pub consistency_score: f32,
+    pub entropy_score: f32,  // New: Pattern entropy analysis
     pub total: f32,
     pub grade: Grade,
     pub confidence: f32,
@@ -84,6 +85,7 @@ impl Default for TdgScore {
             coupling_score: 15.0,
             doc_coverage: 10.0,
             consistency_score: 10.0,
+            entropy_score: 0.0,  // New: Start with 0, calculated during analysis
             total: 100.0,
             grade: Grade::APLus,
             confidence: 1.0,
@@ -101,7 +103,8 @@ impl TdgScore {
             + self.duplication_ratio
             + self.coupling_score
             + self.doc_coverage
-            + self.consistency_score;
+            + self.consistency_score
+            + self.entropy_score;  // Include entropy in total score
 
         self.grade = Grade::from_score(self.total);
     }
@@ -243,6 +246,7 @@ impl ProjectScore {
         avg.coupling_score = self.files.iter().map(|s| s.coupling_score).sum::<f32>() / count;
         avg.doc_coverage = self.files.iter().map(|s| s.doc_coverage).sum::<f32>() / count;
         avg.consistency_score = self.files.iter().map(|s| s.consistency_score).sum::<f32>() / count;
+        avg.entropy_score = self.files.iter().map(|s| s.entropy_score).sum::<f32>() / count;
         avg.confidence = self.files.iter().map(|s| s.confidence).sum::<f32>() / count;
 
         avg.calculate_total();
@@ -421,11 +425,12 @@ mod tests {
         score.coupling_score = 14.0;
         score.doc_coverage = 9.0;
         score.consistency_score = 8.0;
+        score.entropy_score = 12.0;  // New: Include entropy in test
 
         score.calculate_total();
 
-        assert_eq!(score.total, 88.0);
-        assert_eq!(score.grade, Grade::AMinus);
+        assert_eq!(score.total, 100.0);  // Updated total: 88.0 + 12.0 = 100.0
+        assert_eq!(score.grade, Grade::APLus);  // Updated grade: 100.0 = A+
     }
 
     #[test]

@@ -14,6 +14,7 @@ pub enum Language {
     Ruby,
     Swift,
     Kotlin,
+    Ruchy,
     Unknown,
 }
 
@@ -31,6 +32,7 @@ impl Language {
             Some("rb") => Language::Ruby,
             Some("swift") => Language::Swift,
             Some("kt") | Some("kts") => Language::Kotlin,
+            Some("ruchy") | Some("rh") => Language::Ruchy,
             _ => Language::Unknown,
         }
     }
@@ -48,6 +50,7 @@ impl Language {
             Language::Ruby => 0.85,
             Language::Swift => 0.85,
             Language::Kotlin => 0.85,
+            Language::Ruchy => 0.95,
             Language::Unknown => 0.5,
         }
     }
@@ -67,6 +70,7 @@ impl std::fmt::Display for Language {
             Language::Ruby => write!(f, "Ruby"),
             Language::Swift => write!(f, "Swift"),
             Language::Kotlin => write!(f, "Kotlin"),
+            Language::Ruchy => write!(f, "Ruchy"),
             Language::Unknown => write!(f, "Unknown"),
         }
     }
@@ -126,6 +130,7 @@ impl LanguageRules {
             Language::JavaScript => Self::javascript_rules(),
             Language::TypeScript => Self::typescript_rules(),
             Language::Go => Self::go_rules(),
+            Language::Ruchy => Self::ruchy_rules(),
             _ => Self::rust_rules(), // Default
         }
     }
@@ -179,6 +184,16 @@ impl LanguageRules {
             variable_style: NamingStyle::CamelCase,
         }
     }
+
+    pub fn ruchy_rules() -> Self {
+        LanguageRules {
+            language: Language::Ruchy,
+            function_style: NamingStyle::SnakeCase,      // fun hello_world() 
+            type_style: NamingStyle::PascalCase,         // struct Point, enum Color
+            constant_style: NamingStyle::ScreamingSnakeCase, // const MAX_SIZE
+            variable_style: NamingStyle::SnakeCase,      // let my_variable
+        }
+    }
 }
 
 #[cfg(test)]
@@ -214,6 +229,14 @@ mod tests {
             Language::Cpp
         );
         assert_eq!(
+            Language::from_extension(Path::new("test.ruchy")),
+            Language::Ruchy
+        );
+        assert_eq!(
+            Language::from_extension(Path::new("script.rh")),
+            Language::Ruchy
+        );
+        assert_eq!(
             Language::from_extension(Path::new("test.unknown")),
             Language::Unknown
         );
@@ -242,5 +265,23 @@ mod tests {
         assert!(NamingStyle::KebabCase.matches("kebab-case"));
         assert!(NamingStyle::KebabCase.matches("my-component-123"));
         assert!(!NamingStyle::KebabCase.matches("snake_case"));
+    }
+
+    #[test]
+    fn test_ruchy_language_rules() {
+        let rules = LanguageRules::for_language(Language::Ruchy);
+        
+        assert_eq!(rules.language, Language::Ruchy);
+        assert_eq!(rules.function_style, NamingStyle::SnakeCase);
+        assert_eq!(rules.type_style, NamingStyle::PascalCase);
+        assert_eq!(rules.constant_style, NamingStyle::ScreamingSnakeCase);
+        assert_eq!(rules.variable_style, NamingStyle::SnakeCase);
+    }
+
+    #[test]
+    fn test_ruchy_language_confidence() {
+        assert_eq!(Language::Ruchy.confidence(), 0.95);
+        assert!(Language::Ruchy.confidence() > Language::Java.confidence());
+        assert!(Language::Ruchy.confidence() == Language::Go.confidence());
     }
 }

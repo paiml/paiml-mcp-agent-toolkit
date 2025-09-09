@@ -3,6 +3,8 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use std::path::Path;
+
+#[cfg(feature = "c-ast")]
 use tree_sitter::{Parser as TsParser, Tree};
 
 use super::LanguageStrategy;
@@ -25,6 +27,7 @@ impl CStrategy {
         Self
     }
 
+    #[cfg(feature = "c-ast")]
     fn parse_with_tree_sitter(&self, content: &str) -> Result<Tree> {
         let mut parser = TsParser::new();
         let language = tree_sitter_c::language();
@@ -35,6 +38,11 @@ impl CStrategy {
         parser
             .parse(content, None)
             .ok_or_else(|| anyhow::anyhow!("Failed to parse C code"))
+    }
+
+    #[cfg(not(feature = "c-ast"))]
+    fn parse_with_tree_sitter(&self, _content: &str) -> Result<Tree> {
+        Err(anyhow::anyhow!("C AST parsing not available - compile with 'c-ast' feature"))
     }
 
     fn convert_to_dag(&self, tree: &Tree, content: &str) -> AstDag {

@@ -2,8 +2,10 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use rustpython_parser::{ast, Parse};
 use std::path::Path;
+
+#[cfg(feature = "python-ast")]
+use rustpython_parser::{ast, Parse};
 
 use super::LanguageStrategy;
 use crate::ast::core::{
