@@ -100,11 +100,28 @@ pub fn format_single_proof(
     output: &mut String,
     include_evidence: bool,
 ) -> Result<()> {
+    format_proof_header(location, output)?;
+    format_proof_metadata(annotation, output)?;
+    format_proof_assumptions(&annotation.assumptions, output)?;
+    
+    if include_evidence {
+        format_proof_evidence(annotation, output)?;
+    }
+    
+    writeln!(output)?;
+    Ok(())
+}
+
+fn format_proof_header(location: &Location, output: &mut String) -> Result<()> {
     writeln!(
         output,
         "### Position {}-{}\n",
         location.span.start.0, location.span.end.0
     )?;
+    Ok(())
+}
+
+fn format_proof_metadata(annotation: &ProofAnnotation, output: &mut String) -> Result<()> {
     writeln!(output, "**Property**: {:?}", annotation.property_proven)?;
     writeln!(output, "**Method**: {:?}", annotation.method)?;
     writeln!(
@@ -118,21 +135,24 @@ pub fn format_single_proof(
         "**Verified**: {}",
         annotation.date_verified.format("%Y-%m-%d %H:%M:%S UTC")
     )?;
+    Ok(())
+}
 
-    if !annotation.assumptions.is_empty() {
+fn format_proof_assumptions(assumptions: &[String], output: &mut String) -> Result<()> {
+    if !assumptions.is_empty() {
         writeln!(output, "\n**Assumptions**:")?;
-        for assumption in &annotation.assumptions {
+        for assumption in assumptions {
             writeln!(output, "- {}", assumption)?;
         }
     }
+    Ok(())
+}
 
-    if include_evidence {
-        writeln!(output, "\n**Evidence**: {:?}", annotation.evidence_type)?;
-        if let Some(ref spec_id) = annotation.specification_id {
-            writeln!(output, "**Specification ID**: {}", spec_id)?;
-        }
+fn format_proof_evidence(annotation: &ProofAnnotation, output: &mut String) -> Result<()> {
+    writeln!(output, "\n**Evidence**: {:?}", annotation.evidence_type)?;
+    if let Some(ref spec_id) = annotation.specification_id {
+        writeln!(output, "**Specification ID**: {}", spec_id)?;
     }
-    writeln!(output)?;
     Ok(())
 }
 
