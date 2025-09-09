@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.69.0] - 2025-09-09
+
+### Sprint 86 - Quality-Driven Development (QDD) Tool Implementation 🎯
+
+**MAJOR ACHIEVEMENT**: Implemented complete Quality-Driven Development tool with TDD methodology, enabling automated code generation and refactoring with guaranteed quality standards.
+
+#### Added - QDD Module and Tools
+- **🏗️ Core QDD Module**: Complete quality-driven development implementation
+  - Quality profiles: extreme (≤5 complexity), standard (≤10), relaxed (≤20)
+  - Code generator with quality guarantees
+  - Refactoring engine with pattern detection
+  - SOLID, DRY, KISS, YAGNI enforcement
+- **🧪 TDD Implementation**: 37 comprehensive tests with full coverage
+  - RED-GREEN-REFACTOR methodology throughout
+  - Pattern detection tests (DRY, complexity, SATD)
+  - Quality profile validation tests
+- **🔧 MCP Integration**: `quality_driven_development` tool available via MCP
+  - Create operation for generating quality code
+  - Refactor operation for improving existing code
+  - Validate operation for checking quality compliance
+- **💻 CLI Commands**: New `pmat qdd` subcommands
+  - `pmat qdd create` - Generate code with quality standards
+  - `pmat qdd refactor` - Refactor existing code to meet standards
+  - `pmat qdd validate` - Validate code against quality profiles
+
+#### Enhanced - Toyota Way Implementation
+- **📊 Zero SATD**: Enforced zero-tolerance for technical debt comments
+- **⚡ Low Complexity**: All QDD functions ≤10 cyclomatic complexity
+- **✅ Quality Gates**: Integrated with existing quality gate system
+- **🎯 Deterministic**: Reproducible code generation with quality guarantees
+
 ## [2.68.0] - 2025-09-08
 
 ### Sprint 85 - TDG Dogfooding Storage Implementation 🎯
