@@ -30,6 +30,7 @@ impl SimpleMcpHandler {
             "analyze_dead_code" => self.handle_analyze_dead_code(params).await,
             "analyze_tdg" => self.handle_analyze_tdg(params).await,
             "analyze_lint_hotspot" => self.handle_analyze_lint_hotspot(params).await,
+            "analyze_entropy" => self.handle_analyze_entropy(params).await,
             "quality_gate" => self.handle_quality_gate(params).await,
             "refactor_auto" => self.handle_refactor_auto(params).await,
             _ => Err(anyhow::anyhow!("Unknown tool: {}", name)),
@@ -66,6 +67,11 @@ impl SimpleMcpHandler {
         self.service.quality_gate(contract).await
     }
 
+    async fn handle_analyze_entropy(&self, params: Value) -> Result<Value> {
+        let contract = serde_json::from_value::<AnalyzeEntropyContract>(params)?;
+        self.service.analyze_entropy(contract).await
+    }
+
     async fn handle_refactor_auto(&self, params: Value) -> Result<Value> {
         let contract = serde_json::from_value::<RefactorAutoContract>(params)?;
         self.service.refactor_auto(contract).await
@@ -99,6 +105,11 @@ impl SimpleMcpHandler {
                     "name": "analyze_lint_hotspot",
                     "description": "Find lint hotspots",
                     "parameters": self.get_lint_hotspot_schema()
+                },
+                {
+                    "name": "analyze_entropy",
+                    "description": "Analyze actionable entropy patterns",
+                    "parameters": self.get_entropy_schema()
                 },
                 {
                     "name": "quality_gate",
@@ -222,6 +233,24 @@ impl SimpleMcpHandler {
                 "file": {"type": "string"},
                 "fail_on_violation": {"type": "boolean"},
                 "verbose": {"type": "boolean"}
+            },
+            "required": ["path"]
+        })
+    }
+
+    fn get_entropy_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "format": {"type": "string", "enum": ["table", "json", "yaml", "markdown", "csv", "summary"]},
+                "output": {"type": "string"},
+                "top_files": {"type": "integer"},
+                "include_tests": {"type": "boolean"},
+                "timeout": {"type": "integer"},
+                "min_severity": {"type": "string", "enum": ["low", "medium", "high"]},
+                "top_violations": {"type": "integer"},
+                "file": {"type": "string"}
             },
             "required": ["path"]
         })

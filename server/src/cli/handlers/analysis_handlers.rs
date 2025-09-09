@@ -153,7 +153,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         AnalyzeCommands::Duplicates { .. }
         | AnalyzeCommands::DefectPrediction { .. }
         | AnalyzeCommands::Provability { .. }
-        | AnalyzeCommands::Clippy { .. } => route_quality_analysis(cmd).await,
+        | AnalyzeCommands::Clippy { .. }
+        | AnalyzeCommands::Entropy { .. } => route_quality_analysis(cmd).await,
 
         // Specialized analysis commands
         AnalyzeCommands::GraphMetrics { .. }
@@ -203,6 +204,7 @@ async fn route_quality_analysis(cmd: AnalyzeCommands) -> Result<()> {
         AnalyzeCommands::DefectPrediction { .. } => route_defect_prediction_analysis(cmd).await,
         AnalyzeCommands::Provability { .. } => route_provability_analysis(cmd).await,
         AnalyzeCommands::Clippy { .. } => route_clippy_analysis(cmd).await,
+        AnalyzeCommands::Entropy { .. } => route_entropy_analysis(cmd).await,
         _ => unreachable!("Expected quality analysis command"),
     }
 }
@@ -1111,6 +1113,129 @@ async fn route_clippy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         Ok(())
     } else {
         unreachable!("Expected Clippy command")
+    }
+}
+
+/// Route entropy analysis command
+async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
+    if let AnalyzeCommands::Entropy {
+        project_path,
+        format,
+        output,
+        min_severity,
+        top_violations,
+        file,
+        include_tests,
+    } = cmd
+    {
+        use crate::entropy::{EntropyAnalyzer, EntropyConfig};
+        use crate::cli::{EntropyOutputFormat, EntropySeverity};
+        use crate::entropy::violation_detector::Severity;
+        use std::fs;
+
+        // Convert CLI severity to entropy severity
+        let min_sev = match min_severity {
+            EntropySeverity::Low => Severity::Low,
+            EntropySeverity::Medium => Severity::Medium,
+            EntropySeverity::High => Severity::High,
+        };
+
+        // Create entropy configuration
+        let mut config = EntropyConfig::default();
+        config.min_severity = min_sev;
+        
+        // Update exclude paths if tests should be excluded
+        if !include_tests {
+            config.exclude_paths.push("**/*test*.rs".to_string());
+            config.exclude_paths.push("tests/**".to_string());
+        }
+
+        // Create analyzer and run analysis
+        let analyzer = EntropyAnalyzer::with_config(config);
+        
+        let analysis_path = if let Some(file_path) = file {
+            file_path
+        } else {
+            project_path
+        };
+
+        let report = analyzer.analyze(&analysis_path).await?;
+
+        // Generate output based on format
+        let output_content = match format {
+            EntropyOutputFormat::Summary => {
+                let violations = if top_violations > 0 && report.actionable_violations.len() > top_violations {
+                    report.actionable_violations.iter().take(top_violations).cloned().collect::<Vec<_>>()
+                } else {
+                    report.actionable_violations.clone()
+                };
+                
+                format!(
+                    "Entropy Analysis Summary\n========================\n\n\
+                     Files Analyzed: {}\n\
+                     Total Violations: {}\n\
+                     Potential LOC Reduction: {} lines ({:.1}%)\n\n\
+                     Top Violations:\n{}\n",
+                    report.total_files_analyzed,
+                    report.actionable_violations.len(),
+                    report.total_loc_reduction(),
+                    report.reduction_percentage(),
+                    violations.iter()
+                        .enumerate()
+                        .map(|(i, v)| format!(
+                            "{}. {} (saves {} lines)\n   Fix: {}",
+                            i + 1, v.message, v.estimated_loc_reduction, v.fix_suggestion
+                        ))
+                        .collect::<Vec<_>>()
+                        .join("\n\n")
+                )
+            },
+            EntropyOutputFormat::Detailed => report.format_report(),
+            EntropyOutputFormat::Json => serde_json::to_string_pretty(&report)?,
+            EntropyOutputFormat::Markdown => {
+                format!(
+                    "# Entropy Analysis Report\n\n\
+                     ## Summary\n\n\
+                     - **Files Analyzed**: {}\n\
+                     - **Total Violations**: {}\n\
+                     - **Potential LOC Reduction**: {} lines ({:.1}%)\n\n\
+                     ## Violations\n\n{}\n",
+                    report.total_files_analyzed,
+                    report.actionable_violations.len(),
+                    report.total_loc_reduction(),
+                    report.reduction_percentage(),
+                    report.actionable_violations.iter()
+                        .take(if top_violations == 0 { usize::MAX } else { top_violations })
+                        .map(|v| format!(
+                            "### {} ({:?})\n\n\
+                             **Pattern**: {:?} (repeated {} times)\n\
+                             **Fix**: {}\n\
+                             **LOC Reduction**: {} lines\n\
+                             **Affected Files**: {}\n",
+                            v.message,
+                            v.severity,
+                            v.pattern.pattern_type,
+                            v.pattern.repetitions,
+                            v.fix_suggestion,
+                            v.estimated_loc_reduction,
+                            v.affected_files.len()
+                        ))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                )
+            },
+        };
+
+        // Output results
+        if let Some(output_path) = output {
+            fs::write(output_path, output_content)?;
+        } else {
+            println!("{}", output_content);
+        }
+
+        Ok(())
+    } else {
+        unreachable!("Expected Entropy command")
     }
 }
 

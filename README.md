@@ -40,7 +40,7 @@
 
 > **🎯 v2.63.0 Release**: **Advanced Code Similarity Detection System!** Industry-leading duplicate and similarity detection:
 > - **🔍 4 Clone Types**: Exact (Type-1), Renamed (Type-2), Modified (Type-3), Semantic (Type-4) detection
-> - **📊 Entropy Analysis**: Shannon entropy for complexity measurement and pattern detection
+> - **📊 Entropy Analysis**: Actionable AST pattern-based entropy with fix suggestions and LOC reduction estimates
 > - **🧮 Advanced Algorithms**: Winnowing, TF-IDF, Cosine Similarity, Jaccard Index, Levenshtein Distance
 > - **📄 Multi-Format Output**: JSON, Markdown, CSV, SARIF, and Summary formats
 > - **🚀 Performance**: Optimized for 100K+ LOC with parallel processing

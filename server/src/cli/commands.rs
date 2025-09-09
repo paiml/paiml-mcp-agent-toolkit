@@ -10,13 +10,13 @@ use crate::cli::{
     AnalysisType, BigOOutputFormat, ComplexityOutputFormat, ComprehensiveOutputFormat,
     ContextFormat, DagType, DeadCodeOutputFormat, DeepContextCacheStrategy, DeepContextDagType,
     DeepContextOutputFormat, DefectPredictionOutputFormat, DemoProtocol, DuplicateOutputFormat,
-    DuplicateType, EnforceOutputFormat, ExplainLevel, GraphMetricType, GraphMetricsOutputFormat,
-    IncrementalCoverageOutputFormat, LintHotspotOutputFormat, MakefileOutputFormat,
-    NameSimilarityOutputFormat, OutputFormat, ProofAnnotationOutputFormat, PropertyTypeFilter,
-    ProvabilityOutputFormat, QualityCheckType, QualityGateOutputFormat, QualityProfile,
-    RefactorAutoOutputFormat, RefactorDocsOutputFormat, RefactorMode, RefactorOutputFormat,
-    ReportOutputFormat, SatdOutputFormat, SatdSeverity, SearchScope, SymbolTableOutputFormat,
-    SymbolTypeFilter, TdgOutputFormat, VerificationMethodFilter,
+    DuplicateType, EnforceOutputFormat, EntropyOutputFormat, EntropySeverity, ExplainLevel, 
+    GraphMetricType, GraphMetricsOutputFormat, IncrementalCoverageOutputFormat, 
+    LintHotspotOutputFormat, MakefileOutputFormat, NameSimilarityOutputFormat, OutputFormat, 
+    ProofAnnotationOutputFormat, PropertyTypeFilter, ProvabilityOutputFormat, QualityCheckType, 
+    QualityGateOutputFormat, QualityProfile, RefactorAutoOutputFormat, RefactorDocsOutputFormat, 
+    RefactorMode, RefactorOutputFormat, ReportOutputFormat, SatdOutputFormat, SatdSeverity, 
+    SearchScope, SymbolTableOutputFormat, SymbolTypeFilter, TdgOutputFormat, VerificationMethodFilter,
 };
 use crate::models::churn::ChurnOutputFormat;
 use clap::{Parser, Subcommand};
@@ -1721,6 +1721,40 @@ pub enum AnalyzeCommands {
         /// Show performance metrics
         #[arg(long)]
         perf: bool,
+    },
+
+    /// Analyze pattern entropy for actionable quality improvements
+    ///
+    /// Identifies repetitive AST patterns that can be refactored into reusable components.
+    /// Provides specific fix suggestions and estimated LOC reduction for each violation.
+    Entropy {
+        /// Project path to analyze
+        #[arg(short = 'p', long, default_value = ".")]
+        project_path: PathBuf,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "summary")]
+        format: EntropyOutputFormat,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Minimum severity level to report
+        #[arg(long, value_enum, default_value = "medium")]
+        min_severity: EntropySeverity,
+
+        /// Number of top violations to show (0 = all)
+        #[arg(long, default_value_t = 20)]
+        top_violations: usize,
+
+        /// Only analyze specific file
+        #[arg(long)]
+        file: Option<PathBuf>,
+
+        /// Include test files in analysis
+        #[arg(long)]
+        include_tests: bool,
     },
 }
 
