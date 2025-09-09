@@ -276,6 +276,140 @@ make test    # Includes TDG validation
 3. **Quality Trends**: Foundation for future trend analysis features
 4. **Storage Cleanup**: Consider archival of very old scores if needed
 
+## Quality-Driven Development (QDD) with TDD (Mandatory)
+
+**MANDATORY**: We MUST use our Quality-Driven Development (QDD) tool for ALL new code creation and refactoring. This ensures consistent quality standards across the entire codebase.
+
+### QDD Core Principles
+- **Test-Driven Development (TDD)**: RED-GREEN-REFACTOR cycle is mandatory
+  - Write failing test FIRST
+  - Write minimal code to pass
+  - Refactor to meet quality standards
+- **Quality Profiles**: Use appropriate profile for context
+  - `extreme`: ≤5 complexity, 90% coverage (critical code)
+  - `standard`: ≤10 complexity, 80% coverage (default)
+  - `relaxed`: ≤20 complexity, 60% coverage (legacy/migration)
+- **Pattern Enforcement**: SOLID, DRY, KISS, YAGNI principles
+- **Zero SATD**: No technical debt comments allowed
+
+### QDD Workflows (v2.69.0+)
+
+#### 1. Creating New Code with QDD
+```bash
+# Create new function with quality guarantees
+pmat qdd create --type function --name process_data \
+  --purpose "Process incoming data with validation" \
+  --profile standard
+
+# Create new module with tests
+pmat qdd create --type module --name data_processor \
+  --purpose "Data processing module with quality standards" \
+  --profile extreme
+
+# Create service with full documentation
+pmat qdd create --type service --name api_handler \
+  --purpose "API request handler with error recovery" \
+  --profile standard
+```
+
+#### 2. Refactoring Existing Code
+```bash
+# Refactor high-complexity function
+pmat qdd refactor --file src/complex_file.rs \
+  --function complex_function --profile standard
+
+# Refactor entire file to meet standards
+pmat qdd refactor --file src/legacy_code.rs \
+  --profile extreme
+
+# Batch refactoring with validation
+for file in $(pmat analyze complexity --top-files 10 | grep ".rs"); do
+  pmat qdd refactor --file $file --profile standard
+done
+```
+
+#### 3. Validating Code Quality
+```bash
+# Validate single file meets QDD standards
+pmat qdd validate --file src/new_feature.rs --profile standard
+
+# Validate entire module
+pmat qdd validate --path src/modules/critical/ --profile extreme
+
+# Pre-commit validation
+pmat qdd validate --changed-files --profile standard
+```
+
+### TDD + QDD Integration Workflow
+
+**MANDATORY WORKFLOW for new features**:
+
+1. **Write Test First** (RED):
+   ```rust
+   #[test]
+   fn test_new_feature() {
+       // Test for feature that doesn't exist yet
+       assert_eq!(process_data(&input), expected);
+   }
+   ```
+
+2. **Generate Implementation with QDD** (GREEN):
+   ```bash
+   pmat qdd create --type function --name process_data \
+     --inputs "input:&str" --output "Result<String>" \
+     --profile standard
+   ```
+
+3. **Refactor with QDD** (REFACTOR):
+   ```bash
+   pmat qdd refactor --file src/feature.rs \
+     --function process_data --profile extreme
+   ```
+
+4. **Validate Quality**:
+   ```bash
+   pmat qdd validate --file src/feature.rs --profile standard
+   pmat quality-gate --file src/feature.rs
+   ```
+
+### Daily QDD Practice
+
+**Before Writing Any Code**:
+1. **Check Existing Quality**: `pmat tdg <file>` (uses persistent scoring)
+2. **Generate with QDD**: `pmat qdd create` (never write code manually for new features)
+3. **Validate Standards**: `pmat qdd validate` (ensure compliance)
+
+**During Development**:
+1. **TDD Cycle**: Test → QDD Create → Refactor
+2. **Complexity Check**: `pmat analyze complexity --file <file>`
+3. **Pattern Check**: `pmat qdd validate --patterns SOLID,DRY`
+
+**Before Committing**:
+1. **QDD Validation**: `pmat qdd validate --changed-files`
+2. **TDG Scoring**: `pmat tdg <changed-files>` (stores persistently)
+3. **Quality Gate**: `pmat quality-gate --file <changed-files>`
+4. **Test Coverage**: Ensure ≥80% coverage maintained
+
+### QDD Enforcement Rules
+
+1. **NEVER write new functions manually** - Use `pmat qdd create`
+2. **NEVER refactor without QDD** - Use `pmat qdd refactor`
+3. **NEVER skip validation** - Use `pmat qdd validate` before commits
+4. **ALWAYS use TDD** - Test first, QDD implementation second
+5. **ALWAYS check TDG scores** - Persistent scoring tracks quality over time
+
+### Integration with CI/CD
+
+```yaml
+# Example CI pipeline integration
+quality-check:
+  script:
+    - pmat qdd validate --all --profile standard
+    - pmat tdg . --enforce-thresholds --fail-on-grade-below A-
+    - pmat quality-gate --all
+    - cargo test --all
+```
+
 ## The Kaizen Refactoring Loop (The "Kata")
 
 This is the core workflow for improving the codebase. Treat it as a repeatable practice (a kata) to drive quality.
@@ -598,6 +732,8 @@ The cleaning strategy is integrated into our release process:
 This ensures every release is built from a clean state, preventing artifact contamination and ensuring reproducibility.
 
 - workspace project
-- We use TDD. no code is written unless a test is written first.  new features require 80% coverage and passing pmat quality gates.  all code must be in roadmap and using a ticket that is updated when complete.  For tickets/bugs, we need to add doctests/property tests and cargo run --example.
+- **We use TDD + QDD MANDATORY**: No code is written unless a test is written first. Use `pmat qdd create` for ALL new code generation. New features require 80% coverage and passing pmat quality gates. All code must be in roadmap and using a ticket that is updated when complete. For tickets/bugs, we need to add doctests/property tests and cargo run --example.
+- **TDG Persistent Scoring**: We use `pmat tdg` with persistent storage (~/.pmat/tdg-*) to track quality scores over time. Every analyzed file is stored and cached for historical tracking and performance.
+- **QDD Enforcement**: Use `pmat qdd create/refactor/validate` for ALL code changes. Quality profiles (extreme/standard/relaxed) ensure consistent standards. Never write code manually - always use QDD tools.
 - this is a workspace project, never cd into server.
-- We practice the toyota way.  EVERY defect is our problem.  We never "allow them", we use five-whys, fix root cause, even if unrelated to a problem we are working on.
+- We practice the toyota way. EVERY defect is our problem. We never "allow them", we use five-whys, fix root cause, even if unrelated to a problem we are working on.
