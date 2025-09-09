@@ -20,40 +20,55 @@ pub async fn handle_telemetry(
 ) -> Result<()> {
     let start_time = Instant::now();
 
+    // Handle reset command
     if reset {
-        #[cfg(test)]
-        {
-            telemetry().reset();
-            println!("🔄 Telemetry data reset successfully");
-            return Ok(());
-        }
-
-        #[cfg(not(test))]
-        {
-            println!("⚠️ Telemetry reset is only available in test builds");
-            return Ok(());
-        }
+        return handle_reset_command().await;
     }
 
+    // Handle test event command
     if test_event {
-        record_test_telemetry_event().await?;
-        println!("✅ Test telemetry event recorded successfully");
-        return Ok(());
+        return handle_test_event_command().await;
     }
 
-    if let Some(service_name) = service {
-        show_service_telemetry(&service_name).await?;
-    } else if system {
-        show_system_telemetry().await?;
-    } else {
-        // Default: show system overview
-        show_system_overview().await?;
-    }
+    // Handle display commands
+    handle_display_command(system, service).await?;
 
     // Record this telemetry command execution
     let _ = record_telemetry_command_execution(start_time).await;
 
     Ok(())
+}
+
+/// Handle reset command based on build configuration
+async fn handle_reset_command() -> Result<()> {
+    #[cfg(test)]
+    {
+        telemetry().reset();
+        println!("🔄 Telemetry data reset successfully");
+        Ok(())
+    }
+
+    #[cfg(not(test))]
+    {
+        println!("⚠️ Telemetry reset is only available in test builds");
+        Ok(())
+    }
+}
+
+/// Handle test event recording command
+async fn handle_test_event_command() -> Result<()> {
+    record_test_telemetry_event().await?;
+    println!("✅ Test telemetry event recorded successfully");
+    Ok(())
+}
+
+/// Handle display command based on options
+async fn handle_display_command(system: bool, service: Option<String>) -> Result<()> {
+    match (system, service) {
+        (_, Some(service_name)) => show_service_telemetry(&service_name).await,
+        (true, None) => show_system_telemetry().await,
+        (false, None) => show_system_overview().await,
+    }
 }
 
 /// Show comprehensive system telemetry data
