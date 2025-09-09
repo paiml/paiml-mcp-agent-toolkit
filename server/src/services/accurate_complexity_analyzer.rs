@@ -157,7 +157,12 @@ impl ComplexityVisitor {
     }
 
     fn add_cognitive(&mut self, base: u32) {
-        // Cognitive complexity increases with nesting
+        // Add base cognitive complexity
+        self.cognitive += base;
+    }
+    
+    fn add_cognitive_with_nesting(&mut self, base: u32) {
+        // Add cognitive complexity including nesting penalty
         self.cognitive += base + self.nesting_level;
     }
 }
@@ -166,18 +171,18 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
     fn visit_expr(&mut self, expr: &'ast Expr) {
         match expr {
             // Control flow that adds to cyclomatic complexity
-            Expr::If(_) => {
+            Expr::If(_if_expr) => {
                 self.add_cyclomatic(1);
+                // For Sprint 82 fix: Just add 1 for cognitive complexity
+                // Don't use nesting incorrectly
                 self.add_cognitive(1);
-                self.nesting_level += 1;
+                // Still visit children
                 syn::visit::visit_expr(self, expr);
-                self.nesting_level -= 1;
             }
             Expr::Match(match_expr) => {
                 // Match adds 1, plus 1 for each arm with a guard
                 self.add_cyclomatic(1);
                 self.add_cognitive(1);
-                self.nesting_level += 1;
 
                 for arm in &match_expr.arms {
                     if arm.guard.is_some() {
@@ -187,21 +192,16 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
                 }
 
                 syn::visit::visit_expr(self, expr);
-                self.nesting_level -= 1;
             }
             Expr::While(_) | Expr::ForLoop(_) => {
                 self.add_cyclomatic(1);
                 self.add_cognitive(1);
-                self.nesting_level += 1;
                 syn::visit::visit_expr(self, expr);
-                self.nesting_level -= 1;
             }
             Expr::Loop(_) => {
                 self.add_cyclomatic(1);
                 self.add_cognitive(1);
-                self.nesting_level += 1;
                 syn::visit::visit_expr(self, expr);
-                self.nesting_level -= 1;
             }
             // Binary operators that create branches
             Expr::Binary(bin) => {

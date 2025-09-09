@@ -307,7 +307,7 @@ mod tests {
             total_files_analyzed: 10,
             actionable_violations: vec![
                 ActionableViolation {
-                    severity: super::violation_detector::Severity::High,
+                    severity: super::Severity::High,
                     pattern: PatternSummary {
                         pattern_type: PatternType::ErrorHandling,
                         repetitions: 10,

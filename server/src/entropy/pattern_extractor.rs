@@ -614,7 +614,7 @@ mod tests {
         
         collection.add_pattern(pattern);
         let summary = collection.summary();
-        assert_eq!(summary.total_patterns, 1);
-        assert_eq!(summary.total_instances, 3);
+        assert_eq!(summary.repetitions, 3);
+        assert_eq!(summary.pattern_type, PatternType::ErrorHandling);
     }
 }
