@@ -1859,7 +1859,7 @@ pub enum QddCodeType {
 }
 
 /// QDD quality profiles  
-#[derive(clap::ValueEnum, Clone, Debug)]
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
 pub enum QddQualityProfile {
     Extreme,
     Standard,

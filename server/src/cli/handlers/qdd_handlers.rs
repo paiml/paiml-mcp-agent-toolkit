@@ -2,9 +2,9 @@
 //! Toyota Way: Single Responsibility and DRY principles
 
 use crate::cli::commands::{QddCommands, QddCodeType, QddQualityProfile, QddOutputFormat};
-use crate::qdd::{QddTool, QddOperation, CreateSpec, RefactorSpec, CodeType, Parameter, QualityProfile};
+use crate::qdd::{QddTool, QddOperation, CreateSpec, RefactorSpec, CodeType, Parameter, QualityProfile, QddResult};
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Handle QDD CLI commands
 pub async fn handle_qdd_command(command: QddCommands) -> Result<()> {
@@ -49,47 +49,81 @@ async fn handle_qdd_create(
     output_type: String,
     output_file: Option<PathBuf>,
 ) -> Result<()> {
-    // Convert CLI types to QDD types
-    let qdd_code_type = match code_type {
+    let qdd_code_type = convert_code_type(code_type);
+    let quality_profile = convert_quality_profile(profile);
+    let parameters = convert_parameters(inputs);
+    let create_spec = build_create_spec(qdd_code_type, name, purpose, parameters, output_type);
+    
+    let result = execute_create_operation(quality_profile, create_spec).await?;
+    display_create_results(profile, &result);
+    output_generated_code(output_file, &result)?;
+    
+    Ok(())
+}
+
+/// Convert CLI code type to QDD code type
+fn convert_code_type(code_type: QddCodeType) -> CodeType {
+    match code_type {
         QddCodeType::Function => CodeType::Function,
         QddCodeType::Module => CodeType::Module,
         QddCodeType::Service => CodeType::Service,
         QddCodeType::Test => CodeType::Test,
-    };
-    
-    let quality_profile = match profile {
+    }
+}
+
+/// Convert CLI quality profile to QDD quality profile
+fn convert_quality_profile(profile: QddQualityProfile) -> QualityProfile {
+    match profile {
         QddQualityProfile::Extreme => QualityProfile::extreme(),
         QddQualityProfile::Standard => QualityProfile::standard(),
         QddQualityProfile::Relaxed => QualityProfile::relaxed(),
-    };
-    
-    let parameters: Vec<Parameter> = inputs
-        .into_iter()
+    }
+}
+
+/// Convert input parameters to QDD parameters
+fn convert_parameters(inputs: Vec<(String, String)>) -> Vec<Parameter> {
+    inputs.into_iter()
         .map(|(param_type, param_name)| Parameter {
             name: param_name,
             param_type,
             description: None,
         })
-        .collect();
-    
-    let create_spec = CreateSpec {
-        code_type: qdd_code_type,
-        name: name.clone(),
-        purpose: purpose.clone(),
-        inputs: parameters,
+        .collect()
+}
+
+/// Build create specification
+fn build_create_spec(
+    code_type: CodeType,
+    name: String,
+    purpose: String,
+    inputs: Vec<Parameter>,
+    output_type: String,
+) -> CreateSpec {
+    CreateSpec {
+        code_type,
+        name,
+        purpose,
+        inputs,
         outputs: Parameter {
             name: "result".to_string(),
             param_type: output_type,
             description: Some("Function output".to_string()),
         },
-    };
-    
-    // Create QDD tool and execute
+    }
+}
+
+/// Execute create operation
+async fn execute_create_operation(
+    quality_profile: QualityProfile,
+    create_spec: CreateSpec,
+) -> Result<QddResult> {
     let qdd_tool = QddTool::with_profile(quality_profile);
     let operation = QddOperation::Create(create_spec);
-    let result = qdd_tool.execute(operation).await?;
-    
-    // Output results
+    qdd_tool.execute(operation).await
+}
+
+/// Display creation results
+fn display_create_results(profile: QddQualityProfile, result: &QddResult) {
     println!("🎯 QDD Code Creation Successful!");
     println!("✅ Quality Profile: {:?}", profile);
     println!("📊 Quality Score: {:.1}", result.quality_score.overall);
@@ -97,26 +131,30 @@ async fn handle_qdd_create(
     println!("📈 Coverage: {:.1}%", result.quality_score.coverage);
     println!("🏗️  TDG Score: {}", result.quality_score.tdg);
     println!();
-    
-    // Write to file or stdout
-    if let Some(output_path) = output_file {
-        let full_content = format!(
-            "{}\n\n{}\n\n{}",
-            result.code,
-            result.tests,
-            result.documentation
-        );
-        std::fs::write(&output_path, full_content)?;
-        println!("💾 Generated code written to: {}", output_path.display());
-    } else {
-        println!("📝 Generated Code:");
-        println!("{}", result.code);
-        println!("\n🧪 Generated Tests:");
-        println!("{}", result.tests);
-        println!("\n📚 Generated Documentation:");
-        println!("{}", result.documentation);
+}
+
+/// Output generated code to file or stdout
+fn output_generated_code(output_file: Option<PathBuf>, result: &QddResult) -> Result<()> {
+    match output_file {
+        Some(output_path) => {
+            let full_content = format!(
+                "{}\n\n{}\n\n{}",
+                result.code,
+                result.tests,
+                result.documentation
+            );
+            std::fs::write(&output_path, full_content)?;
+            println!("💾 Generated code written to: {}", output_path.display());
+        }
+        None => {
+            println!("📝 Generated Code:");
+            println!("{}", result.code);
+            println!("\n🧪 Generated Tests:");
+            println!("{}", result.tests);
+            println!("\n📚 Generated Documentation:");
+            println!("{}", result.documentation);
+        }
     }
-    
     Ok(())
 }
 
@@ -130,18 +168,43 @@ async fn handle_qdd_refactor(
     output: Option<PathBuf>,
     dry_run: bool,
 ) -> Result<()> {
+    validate_file_exists(&file)?;
+    
+    let quality_profile = create_quality_profile(profile, max_complexity, min_coverage);
+    let refactor_spec = create_refactor_spec(&file, function.clone(), &quality_profile);
+    
+    if dry_run {
+        return handle_dry_run(&file, &function, profile, &quality_profile);
+    }
+    
+    let result = execute_refactoring(quality_profile, refactor_spec).await?;
+    display_refactor_results(&file, function, profile, &result);
+    save_refactored_code(&output.unwrap_or(file), &result.code)?;
+    display_rollback_info(&result);
+    
+    Ok(())
+}
+
+/// Validate that the target file exists
+fn validate_file_exists(file: &Path) -> Result<()> {
     if !file.exists() {
         return Err(anyhow::anyhow!("File does not exist: {}", file.display()));
     }
-    
-    // Convert CLI types to QDD types
+    Ok(())
+}
+
+/// Create quality profile with optional overrides
+fn create_quality_profile(
+    profile: QddQualityProfile,
+    max_complexity: Option<u32>,
+    min_coverage: Option<u32>,
+) -> QualityProfile {
     let mut quality_profile = match profile {
         QddQualityProfile::Extreme => QualityProfile::extreme(),
         QddQualityProfile::Standard => QualityProfile::standard(),
         QddQualityProfile::Relaxed => QualityProfile::relaxed(),
     };
     
-    // Override thresholds if specified
     if let Some(complexity) = max_complexity {
         quality_profile.thresholds.max_complexity = complexity;
     }
@@ -149,30 +212,57 @@ async fn handle_qdd_refactor(
         quality_profile.thresholds.min_coverage = coverage;
     }
     
-    let refactor_spec = RefactorSpec {
-        file_path: file.clone(),
-        function_name: function.clone(),
+    quality_profile
+}
+
+/// Create refactor specification
+fn create_refactor_spec(
+    file: &Path,
+    function: Option<String>,
+    quality_profile: &QualityProfile,
+) -> RefactorSpec {
+    RefactorSpec {
+        file_path: file.to_path_buf(),
+        function_name: function,
         target_metrics: quality_profile.thresholds.clone(),
-    };
-    
-    if dry_run {
-        println!("🔍 DRY RUN: Would refactor file: {}", file.display());
-        if let Some(func) = &function {
-            println!("🎯 Target function: {}", func);
-        }
-        println!("📊 Quality profile: {:?}", profile);
-        println!("🔧 Max complexity: {}", quality_profile.thresholds.max_complexity);
-        println!("📈 Min coverage: {}%", quality_profile.thresholds.min_coverage);
-        println!("⚠️  Use without --dry-run to execute refactoring");
-        return Ok(());
     }
-    
-    // Create QDD tool and execute refactoring
+}
+
+/// Handle dry run mode
+fn handle_dry_run(
+    file: &Path,
+    function: &Option<String>,
+    profile: QddQualityProfile,
+    quality_profile: &QualityProfile,
+) -> Result<()> {
+    println!("🔍 DRY RUN: Would refactor file: {}", file.display());
+    if let Some(func) = function {
+        println!("🎯 Target function: {}", func);
+    }
+    println!("📊 Quality profile: {:?}", profile);
+    println!("🔧 Max complexity: {}", quality_profile.thresholds.max_complexity);
+    println!("📈 Min coverage: {}%", quality_profile.thresholds.min_coverage);
+    println!("⚠️  Use without --dry-run to execute refactoring");
+    Ok(())
+}
+
+/// Execute the refactoring operation
+async fn execute_refactoring(
+    quality_profile: QualityProfile,
+    refactor_spec: RefactorSpec,
+) -> Result<QddResult> {
     let qdd_tool = QddTool::with_profile(quality_profile);
     let operation = QddOperation::Refactor(refactor_spec);
-    let result = qdd_tool.execute(operation).await?;
-    
-    // Output results
+    qdd_tool.execute(operation).await
+}
+
+/// Display refactoring results
+fn display_refactor_results(
+    file: &Path,
+    function: Option<String>,
+    profile: QddQualityProfile,
+    result: &QddResult,
+) {
     println!("🎯 QDD Refactoring Successful!");
     println!("📁 File: {}", file.display());
     if let Some(func) = function {
@@ -184,17 +274,20 @@ async fn handle_qdd_refactor(
     println!("📈 Coverage: {:.1}%", result.quality_score.coverage);
     println!("🏗️  TDG Score: {}", result.quality_score.tdg);
     println!();
-    
-    // Write refactored code
-    let output_path = output.unwrap_or(file);
-    std::fs::write(&output_path, &result.code)?;
+}
+
+/// Save refactored code to file
+fn save_refactored_code(output_path: &Path, code: &str) -> Result<()> {
+    std::fs::write(output_path, code)?;
     println!("💾 Refactored code written to: {}", output_path.display());
-    
+    Ok(())
+}
+
+/// Display rollback information if available
+fn display_rollback_info(result: &QddResult) {
     if result.rollback_plan.checkpoints.len() > 0 {
         println!("🔄 {} rollback checkpoints available", result.rollback_plan.checkpoints.len());
     }
-    
-    Ok(())
 }
 
 /// Handle QDD validate command
