@@ -1161,7 +1161,6 @@ mod tests {
 
 /// Entropy analysis output format
 #[derive(Clone, Debug, ValueEnum, PartialEq, Eq, Deserialize, Serialize)]
-#[cfg_attr(test, derive(PartialEq))]
 pub enum EntropyOutputFormat {
     /// Summary with top violations
     Summary,
@@ -1186,7 +1185,6 @@ impl fmt::Display for EntropyOutputFormat {
 
 /// Entropy violation severity levels
 #[derive(Clone, Debug, ValueEnum, PartialEq, Eq, Deserialize, Serialize)]
-#[cfg_attr(test, derive(PartialEq))]
 pub enum EntropySeverity {
     /// Low severity violations
     Low,
