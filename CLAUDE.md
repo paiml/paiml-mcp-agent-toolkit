@@ -188,7 +188,40 @@ pmat mcp serve --port 3000
 # - tdg_export_data
 ```
 
-#### 4. Advanced Features
+#### 4. TDG Dogfooding Storage (NEW - v2.68.0)
+**MANDATORY**: We now persistently store all TDG scores for historical tracking and quality trend analysis.
+
+```bash
+# TDG automatically stores scores in ~/.pmat/tdg-warm and ~/.pmat/tdg-cold
+# Every analysis is cached - repeated analyses use stored scores
+
+# Check storage statistics
+pmat tdg storage stats
+# Output shows:
+# - Total entries: number of files analyzed
+# - Hot/warm/cold tier distribution  
+# - Storage size and compression ratios
+
+# Analyze file (stores score automatically)
+pmat tdg server/src/lib.rs
+# Score: 100.0/100 (A+) - stored for future reference
+
+# Re-analyze same file (uses cached score)
+pmat tdg server/src/lib.rs  
+# Score: 100.0/100 (A+) - retrieved from storage
+
+# View storage location and size
+du -sh ~/.pmat/tdg-*
+# Example output: 3.6M ~/.pmat/tdg-warm, 528K ~/.pmat/tdg-cold
+```
+
+**Dogfooding Benefits**:
+- **Historical Tracking**: Every analyzed file is remembered
+- **Performance**: Cache hits avoid re-analysis
+- **Quality Trends**: Foundation for tracking code quality over time
+- **CI/CD Integration**: Stored scores can be used for quality gates
+
+#### 5. Advanced Features
 ```bash
 # Performance profiling with flame graphs
 pmat tdg profile server/src/tdg/ --flame-graph
@@ -225,17 +258,23 @@ make test    # Includes TDG validation
 
 ### Daily Dogfooding Practice
 
-**Before Every Commit**:
-1. **TDG Analysis**: `pmat tdg <changed-files>` 
+**Before Every Commit** (Enhanced with Storage):
+1. **TDG Analysis**: `pmat tdg <changed-files>` (automatically stores scores)
 2. **Quality Gate**: `pmat quality-gate --file <changed-files>`
-3. **Dashboard Check**: `pmat tdg dashboard` (verify no regressions)
+3. **Storage Check**: `pmat tdg storage stats` (monitor dogfooding progress)
 4. **Standard Gates**: `make lint && make test`
 
-**Weekly Quality Review**:
-1. **Full Project Analysis**: `pmat tdg . --top-files 20`
-2. **Trend Analysis**: `pmat tdg dashboard` (check performance trends)
+**Weekly Quality Review** (Leveraging Stored Data):
+1. **Full Project Analysis**: `pmat tdg . --top-files 20` (uses cached scores when possible)
+2. **Storage Analysis**: `du -sh ~/.pmat/tdg-* && pmat tdg storage stats` (track growth)
 3. **Export Reports**: `pmat tdg export . --format markdown --output weekly-report.md`
 4. **Kaizen Planning**: Use worst-graded files for next improvement cycle
+
+**Monthly Dogfooding Health Check**:
+1. **Storage Growth**: Monitor ~/.pmat/tdg-* directory sizes
+2. **Cache Hit Ratio**: Look for consistent scores on unchanged files
+3. **Quality Trends**: Foundation for future trend analysis features
+4. **Storage Cleanup**: Consider archival of very old scores if needed
 
 ## The Kaizen Refactoring Loop (The "Kata")
 

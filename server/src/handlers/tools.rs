@@ -100,6 +100,7 @@ fn is_analysis_tool(tool_name: &str) -> bool {
             | "analyze_makefile_lint"
             | "analyze_provability"
             | "analyze_satd"
+            | "quality_driven_development"
             | "analyze_lint_hotspot"
     )
 }
@@ -224,6 +225,7 @@ async fn handle_specialized_analysis_tools(
             Some(handle_analyze_provability(request_id, Some(arguments)).await)
         }
         "analyze_lint_hotspot" => Some(handle_analyze_lint_hotspot(request_id, arguments).await),
+        "quality_driven_development" => Some(handle_quality_driven_development(request_id, arguments).await),
         _ => None,
     }
 }
@@ -3641,4 +3643,67 @@ async fn handle_analyze_lint_hotspot(
     let output = format_lint_hotspot_output(&args, &extracted_data);
 
     McpResponse::success(request_id, output)
+}
+
+/// Handle Quality-Driven Development (QDD) tool calls
+async fn handle_quality_driven_development(
+    request_id: serde_json::Value,
+    arguments: serde_json::Value,
+) -> McpResponse {
+    // Parse QDD arguments
+    #[derive(Deserialize)]
+    struct QddArgs {
+        operation_type: String,
+        quality_profile: Option<String>,
+        code_type: Option<String>,
+        name: Option<String>,
+        purpose: Option<String>,
+        file_path: Option<String>,
+        inputs: Option<Vec<(String, String)>>,
+        output_type: Option<String>,
+    }
+    
+    let args: QddArgs = match serde_json::from_value(arguments) {
+        Ok(a) => a,
+        Err(e) => {
+            return McpResponse::error(
+                request_id,
+                -32602,
+                format!("Invalid quality_driven_development arguments: {}", e),
+            );
+        }
+    };
+    
+    info!(
+        "Executing QDD operation: {} with profile: {:?}",
+        args.operation_type, args.quality_profile
+    );
+    
+    // Convert file_path to PathBuf if provided
+    let file_path_buf = args.file_path.as_ref().map(|p| PathBuf::from(p));
+    
+    // Call the actual QDD function
+    match crate::mcp_pmcp::tool_functions::quality_driven_development(
+        &args.operation_type,
+        args.quality_profile.as_deref(),
+        args.code_type.as_deref(),
+        args.name.as_deref(),
+        args.purpose.as_deref(),
+        file_path_buf.as_ref(),
+        args.inputs,
+        args.output_type.as_deref(),
+    ).await {
+        Ok(result) => {
+            info!("QDD operation completed successfully");
+            McpResponse::success(request_id, result)
+        }
+        Err(e) => {
+            error!("QDD operation failed: {}", e);
+            McpResponse::error(
+                request_id,
+                -32603,
+                format!("Quality-driven development failed: {}", e),
+            )
+        }
+    }
 }

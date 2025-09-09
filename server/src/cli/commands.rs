@@ -167,6 +167,10 @@ pub enum Commands {
     /// Analyze code metrics and patterns
     #[command(subcommand)]
     Analyze(AnalyzeCommands),
+    
+    /// Quality-Driven Development (QDD) tool for creating and refactoring code with guaranteed quality
+    #[command(subcommand)]
+    Qdd(QddCommands),
 
     /// Run interactive demo of all capabilities
     Demo {
@@ -1718,6 +1722,133 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         perf: bool,
     },
+}
+
+/// Quality-Driven Development (QDD) subcommands
+#[derive(Subcommand)]
+#[cfg_attr(test, derive(Debug))]
+pub enum QddCommands {
+    /// Create high-quality code from specification
+    Create {
+        /// Type of code to create
+        #[arg(long, value_enum, default_value = "function")]
+        code_type: QddCodeType,
+        
+        /// Name of the code element (function, module, etc.)
+        #[arg(long)]
+        name: String,
+        
+        /// Purpose/description of the code
+        #[arg(long)]
+        purpose: String,
+        
+        /// Quality profile to use
+        #[arg(long, value_enum, default_value = "standard")]
+        profile: QddQualityProfile,
+        
+        /// Input parameters as type:name pairs
+        #[arg(long, value_parser = parse_parameter)]
+        input: Vec<(String, String)>,
+        
+        /// Output type
+        #[arg(long, default_value = "()")]
+        output: String,
+        
+        /// Output file path
+        #[arg(short, long)]
+        output_file: Option<PathBuf>,
+    },
+    
+    /// Refactor existing code to meet quality standards  
+    Refactor {
+        /// File to refactor
+        #[arg(short, long)]
+        file: PathBuf,
+        
+        /// Specific function to refactor (optional)
+        #[arg(long)]
+        function: Option<String>,
+        
+        /// Quality profile to target
+        #[arg(long, value_enum, default_value = "standard")]
+        profile: QddQualityProfile,
+        
+        /// Maximum complexity allowed
+        #[arg(long)]
+        max_complexity: Option<u32>,
+        
+        /// Minimum test coverage required (%)
+        #[arg(long)]
+        min_coverage: Option<u32>,
+        
+        /// Output file path (default: overwrite original)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+        
+        /// Dry run - show what would be changed
+        #[arg(long)]
+        dry_run: bool,
+    },
+    
+    /// Validate code against quality standards
+    Validate {
+        /// File or directory to validate
+        #[arg(short, long, default_value = ".")]
+        path: PathBuf,
+        
+        /// Quality profile to validate against
+        #[arg(long, value_enum, default_value = "standard")]
+        profile: QddQualityProfile,
+        
+        /// Output format
+        #[arg(long, value_enum, default_value = "summary")]
+        format: QddOutputFormat,
+        
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+        
+        /// Fail on any violations
+        #[arg(long)]
+        strict: bool,
+    },
+}
+
+/// QDD code types
+#[derive(clap::ValueEnum, Clone)]
+#[cfg_attr(test, derive(Debug))]
+pub enum QddCodeType {
+    Function,
+    Module,
+    Service,
+    Test,
+}
+
+/// QDD quality profiles  
+#[derive(clap::ValueEnum, Clone, Debug)]
+pub enum QddQualityProfile {
+    Extreme,
+    Standard,
+    Relaxed,
+}
+
+/// QDD output formats
+#[derive(clap::ValueEnum, Clone)]
+#[cfg_attr(test, derive(Debug))]
+pub enum QddOutputFormat {
+    Summary,
+    Detailed,
+    Json,
+    Markdown,
+}
+
+/// Parse parameter as type:name
+fn parse_parameter(s: &str) -> Result<(String, String), String> {
+    let parts: Vec<&str> = s.split(':').collect();
+    if parts.len() != 2 {
+        return Err("Parameter must be in format type:name".to_string());
+    }
+    Ok((parts[0].to_string(), parts[1].to_string()))
 }
 
 /// Enforce subcommands

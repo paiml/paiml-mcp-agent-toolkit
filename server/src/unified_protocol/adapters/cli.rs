@@ -6,7 +6,7 @@ use axum::http::Method;
 use serde_json::{json, Value};
 use tracing::debug;
 
-use crate::cli::commands::ScaffoldCommands;
+use crate::cli::commands::{QddCommands, ScaffoldCommands};
 use crate::cli::{
     AnalyzeCommands, Commands, ComplexityOutputFormat, ContextFormat, DagType, OutputFormat,
 };
@@ -66,6 +66,7 @@ impl CliAdapter {
                 skip_expensive_metrics: _,
             } => Self::decode_context(toolchain.as_deref(), project_path, output, format),
             Commands::Analyze(analyze_cmd) => Self::decode_analyze_command(analyze_cmd),
+            Commands::Qdd(_) => Self::cli_only_command_error(),
             Commands::Demo {
                 path,
                 url,
@@ -1646,6 +1647,15 @@ impl CliInput {
         }
     }
 
+    /// Toyota Way Extract Method: Get QDD command name
+    fn get_qdd_command_name(qdd_cmd: &QddCommands) -> &'static str {
+        match qdd_cmd {
+            QddCommands::Create { .. } => "qdd-create",
+            QddCommands::Refactor { .. } => "qdd-refactor",
+            QddCommands::Validate { .. } => "qdd-validate",
+        }
+    }
+
     /// Toyota Way Extract Method: Basic analysis command names
     fn get_basic_analyze_command_name(analyze_cmd: &AnalyzeCommands) -> &'static str {
         match analyze_cmd {
@@ -1714,6 +1724,8 @@ impl CliInput {
         match command {
             // Special case: Analyze command needs sub-command delegation
             Commands::Analyze(analyze_cmd) => Self::get_analyze_command_name(analyze_cmd),
+            // Special case: QDD command needs sub-command delegation
+            Commands::Qdd(qdd_cmd) => Self::get_qdd_command_name(qdd_cmd),
             // All other commands: extract name directly using category dispatch
             _ => Self::get_simple_command_name(command),
         }
@@ -1761,6 +1773,9 @@ impl CliInput {
             Commands::Enforce(_) => CommandCategory::Enforcement,
             Commands::Analyze(_) => {
                 unreachable!("Analyze commands handled by get_analyze_command_name")
+            }
+            Commands::Qdd(_) => {
+                unreachable!("QDD commands handled by get_qdd_command_name")
             }
         }
     }

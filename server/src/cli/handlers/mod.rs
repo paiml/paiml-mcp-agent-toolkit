@@ -28,6 +28,7 @@ pub mod lint_hotspot_handlers;
 pub mod lint_hotspot_property_tests;
 pub mod memory;
 pub mod name_similarity_analysis;
+pub mod qdd_handlers;
 pub mod new_tdg_handler;
 pub mod proof_annotations_handler;
 pub mod provability_handler;

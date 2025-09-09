@@ -13,6 +13,7 @@ pub mod scaffold;
 pub mod services;
 pub mod stateless_server;
 pub mod tdg; // Technical Debt Grading system
+pub mod qdd; // Quality-Driven Development tool
 pub mod test_performance; // Performance testing per SPECIFICATION.md Section 30
                           // #[cfg(test)]
                           // pub mod testing;
