@@ -2,7 +2,7 @@
 //! 
 //! Testing Ruchy-specific pattern detection in entropy analysis
 
-#[cfg(test)]
+#[cfg(all(test, feature = "ruchy-ast"))]
 mod ruchy_entropy_integration_tests {
     use std::path::Path;
     

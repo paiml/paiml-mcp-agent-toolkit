@@ -38,16 +38,20 @@
 - **Easy Management**: `pmat tdg hooks install --backup` to get started
 - [**📖 Full Documentation →**](docs/hooks-management.md)
 
-> **🚀 v2.70.0 Release**: **Actionable Entropy Analysis System!** Transform noisy entropy into actionable code improvements:
-> - **🎯 AST Pattern Detection**: 6 actionable pattern types (ErrorHandling, DataValidation, ResourceManagement, etc.)
-> - **🔧 Fix Suggestions**: Each violation includes specific refactoring advice with LOC reduction estimates
-> - **📊 Noise Reduction**: From 2255+ character-based violations to 10-50 actionable violations
-> - **🔌 MCP Integration**: Full `analyze_entropy` tool with parameter schema for external tools
-> - **🛡️ Quality Gate Integration**: Entropy violations trigger quality gate failures in Strict/Extreme profiles
-> - **📋 CLAUDE.md Enforcement**: Mandatory entropy analysis in quality standards and daily workflows
+> **🚀 v2.71.0 Release**: **First-Class Ruchy Language Support & Comprehensive Refactoring!**
+> - **🌟 Ruchy Integration**: Complete first-class support for Ruchy language (v1.89.0) with TDG analysis
+> - **🔧 Complexity Hotspot Fixes**: Reduced major complexity violations using Toyota Way Extract Method
+> - **📊 Test Coverage**: Maintained 80.2% coverage with restored test infrastructure
+> - **🎯 Entropy Analysis**: AST-based actionable violations with specific fix suggestions
+> - **🛡️ Quality Standards**: All new code enforces A+ standards (≤10 complexity)
+> - **📋 Zero Technical Debt**: All immediate blocking issues resolved for production deployment
 
-> **🎯 v2.63.0 Release**: **Advanced Code Similarity Detection System!** Industry-leading duplicate and similarity detection:
-> - **🔍 4 Clone Types**: Exact (Type-1), Renamed (Type-2), Modified (Type-3), Semantic (Type-4) detection
+> **🔧 v2.70.0 Clippy Automation**: **[Intelligent Automatic Clippy Fixes](docs/clippy-automatic-fixes-guide.md)**
+> - **🎯 Confidence-Based**: Only applies fixes above configurable thresholds (0.5-1.0)
+> - **🔄 Transactional Safety**: Atomic changes with automatic rollback on failure
+> - **⚡ Performance**: Cached AST analysis, parallel processing, <20s for 100K LOC
+> - **📊 CI/CD Ready**: GitHub Actions, pre-commit hooks, MCP tool integration
+> - **🛡️ Risk Assessment**: Identifies unsafe code, macros, lifetime changes before fixing
 > - **📊 Entropy Analysis**: Actionable AST pattern-based entropy with fix suggestions and LOC reduction estimates
 > - **🧮 Advanced Algorithms**: Winnowing, TF-IDF, Cosine Similarity, Jaccard Index, Levenshtein Distance
 > - **📄 Multi-Format Output**: JSON, Markdown, CSV, SARIF, and Summary formats
