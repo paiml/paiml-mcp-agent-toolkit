@@ -57,26 +57,8 @@ fn detect_execution_mode() -> ExecutionMode {
 
 /// Initialize the enhanced tracing system based on CLI flags
 fn init_tracing(cli: &cli::EarlyCliArgs) -> Result<()> {
-    let filter = if cli.is_mcp_server {
-        // In MCP server mode, disable all logging unless debug is explicitly enabled
-        if cli.debug {
-            EnvFilter::new("warn,pmat=debug")
-        } else {
-            EnvFilter::new("off")
-        }
-    } else if let Some(ref custom) = cli.trace_filter {
-        EnvFilter::try_new(custom)?
-    } else if cli.trace {
-        EnvFilter::new("debug,pmat=trace")
-    } else if cli.debug {
-        EnvFilter::new("warn,pmat=debug")
-    } else if cli.verbose {
-        EnvFilter::new("warn,pmat=info")
-    } else {
-        // Production default: only errors and warnings
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn"))
-    };
-
+    let filter = create_env_filter(cli)?;
+    
     tracing_subscriber::registry()
         .with(filter)
         .with(
@@ -86,12 +68,52 @@ fn init_tracing(cli: &cli::EarlyCliArgs) -> Result<()> {
                 .with_file(cli.trace)
                 .with_line_number(cli.trace)
                 .compact()
-                .with_writer(std::io::stderr), // Always write to stderr
+                .with_writer(std::io::stderr)
         )
         .init();
 
     Ok(())
 }
+
+/// Create environment filter based on CLI flags
+fn create_env_filter(cli: &cli::EarlyCliArgs) -> Result<EnvFilter> {
+    if cli.is_mcp_server {
+        Ok(create_mcp_filter(cli.debug))
+    } else {
+        create_cli_filter(cli)
+    }
+}
+
+/// Create filter for MCP server mode
+fn create_mcp_filter(debug: bool) -> EnvFilter {
+    if debug {
+        EnvFilter::new("warn,pmat=debug")
+    } else {
+        EnvFilter::new("off")
+    }
+}
+
+/// Create filter for CLI mode
+fn create_cli_filter(cli: &cli::EarlyCliArgs) -> Result<EnvFilter> {
+    if let Some(ref custom) = cli.trace_filter {
+        return Ok(EnvFilter::try_new(custom)?);
+    }
+    
+    let filter_str = match (cli.trace, cli.debug, cli.verbose) {
+        (true, _, _) => "debug,pmat=trace",
+        (_, true, _) => "warn,pmat=debug",
+        (_, _, true) => "warn,pmat=info",
+        _ => return Ok(get_default_filter()),
+    };
+    
+    Ok(EnvFilter::new(filter_str))
+}
+
+/// Get default production filter
+fn get_default_filter() -> EnvFilter {
+    EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn"))
+}
+
 
 #[tokio::main]
 async fn main() {
@@ -110,17 +132,13 @@ async fn main() {
 
 fn categorize_error(error: &anyhow::Error) -> ExitCode {
     let error_str = error.to_string().to_lowercase();
-
-    if is_quality_gate_error(&error_str) {
-        ExitCode::QualityGateFailure
-    } else if is_configuration_error(&error_str) {
-        ExitCode::ConfigurationError
-    } else if is_analysis_error(&error_str) {
-        ExitCode::AnalysisError
-    } else if is_permission_error(&error_str) {
-        ExitCode::PermissionDenied
-    } else {
-        ExitCode::GeneralError
+    
+    match () {
+        _ if is_quality_gate_error(&error_str) => ExitCode::QualityGateFailure,
+        _ if is_configuration_error(&error_str) => ExitCode::ConfigurationError,
+        _ if is_analysis_error(&error_str) => ExitCode::AnalysisError,
+        _ if is_permission_error(&error_str) => ExitCode::PermissionDenied,
+        _ => ExitCode::GeneralError,
     }
 }
 
