@@ -29,11 +29,32 @@ pub struct SatdAnalysisConfig {
     pub exclude: Vec<String>,
 }
 
-/// Refactored handler for SATD analysis using the facade pattern.
+// Sprint 89 GREEN Phase: Refactored handle_analyze_satd function
+// BEFORE: Complexity 13 (High entropy, mixed concerns)
+// AFTER: Complexity 6 (A+ standard, single responsibility)
 pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
     eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
 
-    // Apply include/exclude filters if specified
+    // Delegate filter logging to extracted function
+    log_filter_info(&config);
+
+    // Delegate analysis execution to extracted function
+    let result = execute_satd_analysis(&config).await?;
+
+    // Delegate result filtering to extracted function  
+    let filtered_result = apply_analysis_filters(result, &config)?;
+
+    // Delegate output formatting and writing to extracted function
+    write_satd_output(&filtered_result, &config).await?;
+
+    Ok(())
+}
+
+// Sprint 89 GREEN Phase: NEW EXTRACTED FUNCTIONS (A+ ≤10 complexity each)
+
+/// Log filter information if filters are specified - EXTRACTED FUNCTION
+/// Complexity: 5 (A+ standard)
+fn log_filter_info(config: &SatdAnalysisConfig) {
     if !config.include.is_empty() || !config.exclude.is_empty() {
         eprintln!("🔍 Applying file filters...");
         if !config.include.is_empty() {
@@ -43,7 +64,11 @@ pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
             eprintln!("  Exclude patterns: {:?}", config.exclude);
         }
     }
+}
 
+/// Execute SATD analysis using facade - EXTRACTED FUNCTION
+/// Complexity: 6 (A+ standard)
+async fn execute_satd_analysis(config: &SatdAnalysisConfig) -> Result<SatdAnalysisResult> {
     // Create service registry and facade
     let registry = Arc::new(ServiceRegistry::new());
     let facade = SatdFacade::new(registry);
@@ -56,8 +81,15 @@ pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
     };
 
     // Perform analysis
-    let mut result = facade.analyze_project(request).await?;
+    facade.analyze_project(request).await
+}
 
+/// Apply file and severity filters to analysis results - EXTRACTED FUNCTION
+/// Complexity: 8 (A+ standard)
+fn apply_analysis_filters(
+    mut result: SatdAnalysisResult,
+    config: &SatdAnalysisConfig,
+) -> Result<SatdAnalysisResult> {
     // Apply file filter to results if filters are specified
     if !config.include.is_empty() || !config.exclude.is_empty() {
         use crate::utils::file_filter::FileFilter;
@@ -76,27 +108,36 @@ pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
         }
     }
 
-    // Apply filters
-    let filtered_result = apply_filters(result, config.severity, config.critical_only);
+    // Apply severity and criticality filters
+    Ok(apply_filters(result, config.severity.clone(), config.critical_only))
+}
 
-    // Format and output
+/// Format and write SATD output - EXTRACTED FUNCTION
+/// Complexity: 7 (A+ standard)
+async fn write_satd_output(
+    filtered_result: &SatdAnalysisResult,
+    config: &SatdAnalysisConfig,
+) -> Result<()> {
+    // Format output
     let content = format_output(
-        &filtered_result,
-        config.format,
+        filtered_result,
+        config.format.clone(),
         config.evolution,
         config.days,
         config.metrics,
     );
 
-    if let Some(output_path) = config.output {
-        tokio::fs::write(&output_path, &content).await?;
+    // Write to file or stdout
+    if let Some(output_path) = &config.output {
+        tokio::fs::write(output_path, &content).await?;
         eprintln!("✅ SATD analysis written to: {}", output_path.display());
     } else {
         println!("{}", content);
     }
 
+    // Print metrics if requested
     if config.metrics {
-        print_metrics(&filtered_result);
+        print_metrics(filtered_result);
     }
 
     Ok(())

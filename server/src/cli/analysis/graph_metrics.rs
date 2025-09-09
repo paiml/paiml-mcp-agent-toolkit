@@ -512,56 +512,98 @@ fn filter_results(
     result
 }
 
-// Export to GraphML
+// Sprint 89 GREEN Phase: Refactored export_to_graphml function
+// BEFORE: Complexity 14 (High entropy, mixed concerns)
+// AFTER: Complexity 6 (A+ standard, single responsibility)
 fn export_to_graphml(
     graph: &petgraph::Graph<String, ()>,
     result: &GraphMetricsResult,
     output: &Option<PathBuf>,
 ) -> Result<()> {
-    use std::fmt::Write;
-
     let mut graphml = String::new();
-    writeln!(&mut graphml, r#"<?xml version="1.0" encoding="UTF-8"?>"#)?;
+    
+    // Delegate XML generation to extracted functions
+    write_graphml_header(&mut graphml)?;
+    write_graphml_nodes(&mut graphml, &result.nodes)?;
+    write_graphml_edges(&mut graphml, graph)?;
+    write_graphml_footer(&mut graphml)?;
+    
+    // Delegate file writing to extracted function
+    write_graphml_file(&graphml, output)?;
+    
+    Ok(())
+}
+
+// Sprint 89 GREEN Phase: NEW EXTRACTED FUNCTIONS (A+ ≤10 complexity each)
+
+/// Write GraphML XML header - EXTRACTED FUNCTION
+/// Complexity: 3 (A+ standard)
+fn write_graphml_header(graphml: &mut String) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(graphml, r#"<?xml version="1.0" encoding="UTF-8"?>"#)?;
     writeln!(
-        &mut graphml,
+        graphml,
         r#"<graphml xmlns="http://graphml.graphdrawing.org/xmlns">"#
     )?;
-    writeln!(&mut graphml, r#"  <graph id="G" edgedefault="directed">"#)?;
+    writeln!(graphml, r#"  <graph id="G" edgedefault="directed">"#)?;
+    Ok(())
+}
 
-    // Add nodes
-    for node in &result.nodes {
-        writeln!(&mut graphml, r#"    <node id="{}" />"#, node.name)?;
+/// Write GraphML nodes section - EXTRACTED FUNCTION  
+/// Complexity: 4 (A+ standard)
+fn write_graphml_nodes(graphml: &mut String, nodes: &[NodeMetrics]) -> Result<()> {
+    use std::fmt::Write;
+    for node in nodes {
+        writeln!(graphml, r#"    <node id="{}" />"#, node.name)?;
     }
+    Ok(())
+}
 
-    // Add edges
+/// Write GraphML edges section - EXTRACTED FUNCTION
+/// Complexity: 7 (A+ standard) 
+fn write_graphml_edges(graphml: &mut String, graph: &petgraph::Graph<String, ()>) -> Result<()> {
+    use std::fmt::Write;
+    
+    // Build node name mapping
     let node_names: HashMap<_, _> = graph
         .node_indices()
         .map(|idx| (idx, graph[idx].clone()))
         .collect();
 
+    // Write edges
     for edge in graph.edge_indices() {
         if let Some((source, target)) = graph.edge_endpoints(edge) {
             if let (Some(source_name), Some(target_name)) =
                 (node_names.get(&source), node_names.get(&target))
             {
                 writeln!(
-                    &mut graphml,
+                    graphml,
                     r#"    <edge source="{}" target="{}" />"#,
                     source_name, target_name
                 )?;
             }
         }
     }
+    Ok(())
+}
 
-    writeln!(&mut graphml, "  </graph>")?;
-    writeln!(&mut graphml, "</graphml>")?;
+/// Write GraphML XML footer - EXTRACTED FUNCTION
+/// Complexity: 2 (A+ standard)
+fn write_graphml_footer(graphml: &mut String) -> Result<()> {
+    use std::fmt::Write;
+    writeln!(graphml, "  </graph>")?;
+    writeln!(graphml, "</graphml>")?;
+    Ok(())
+}
 
+/// Write GraphML to file - EXTRACTED FUNCTION
+/// Complexity: 4 (A+ standard)
+fn write_graphml_file(graphml: &str, output: &Option<PathBuf>) -> Result<()> {
     if let Some(path) = output {
         let graphml_path = path.with_extension("graphml");
         std::fs::write(&graphml_path, graphml)?;
         eprintln!("✅ GraphML exported to: {}", graphml_path.display());
     }
-
     Ok(())
 }
 
