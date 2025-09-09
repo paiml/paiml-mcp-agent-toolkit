@@ -196,6 +196,23 @@ pub struct AnalyzeLintHotspotContract {
     pub dry_run: bool,
 }
 
+/// Contract for analyze entropy command
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AnalyzeEntropyContract {
+    /// Base parameters (inherited)
+    #[serde(flatten)]
+    pub base: BaseAnalysisContract,
+
+    /// Minimum severity level to report
+    pub min_severity: Option<String>,
+
+    /// Maximum number of violations to show (0 = all)
+    pub top_violations: Option<usize>,
+
+    /// Specific file to analyze instead of project
+    pub file: Option<PathBuf>,
+}
+
 /// Contract for quality gate command
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct QualityGateContract {
@@ -337,6 +354,38 @@ impl ContractValidation for AnalyzeLintHotspotContract {
             return Err(ContractError::InvalidValue(
                 "min_confidence must be 0-1".into(),
             ));
+        }
+
+        Ok(())
+    }
+}
+
+impl ContractValidation for AnalyzeEntropyContract {
+    fn validate(&self) -> Result<(), ContractError> {
+        self.base.validate()?;
+
+        // Validate severity level if provided
+        if let Some(severity) = &self.min_severity {
+            match severity.as_str() {
+                "low" | "medium" | "high" => {},
+                _ => return Err(ContractError::InvalidValue(
+                    "min_severity must be 'low', 'medium', or 'high'".into()
+                )),
+            }
+        }
+
+        // Validate top_violations if provided
+        if let Some(violations) = self.top_violations {
+            if violations > 1000 {
+                return Err(ContractError::TooManyFiles(violations));
+            }
+        }
+
+        // Validate file path if provided
+        if let Some(file) = &self.file {
+            if !file.exists() {
+                return Err(ContractError::PathNotFound(file.clone()));
+            }
         }
 
         Ok(())

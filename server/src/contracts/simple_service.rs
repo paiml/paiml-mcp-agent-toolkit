@@ -140,24 +140,126 @@ impl SimpleContractService {
         })?)
     }
 
+    /// Process analyze entropy contract
+    pub async fn analyze_entropy(&self, contract: AnalyzeEntropyContract) -> Result<Value> {
+        contract.validate()?;
+
+        use crate::entropy::{EntropyAnalyzer, EntropyConfig};
+        use crate::entropy::violation_detector::Severity;
+
+        // Convert contract parameters to entropy config
+        let mut config = EntropyConfig::default();
+        
+        if let Some(severity_str) = &contract.min_severity {
+            config.min_severity = match severity_str.as_str() {
+                "low" => Severity::Low,
+                "medium" => Severity::Medium,
+                "high" => Severity::High,
+                _ => Severity::Medium,
+            };
+        }
+
+        if !contract.base.include_tests {
+            config.exclude_paths.push("**/*test*.rs".to_string());
+            config.exclude_paths.push("tests/**".to_string());
+        }
+
+        // Create analyzer and run analysis
+        let analyzer = EntropyAnalyzer::with_config(config);
+        
+        let analysis_path = if let Some(file_path) = &contract.file {
+            file_path
+        } else {
+            &contract.base.path
+        };
+
+        let report = analyzer.analyze(analysis_path).await?;
+
+        let total_violations = report.actionable_violations.len();
+        let total_loc_reduction = report.total_loc_reduction();
+        let reduction_percentage = report.reduction_percentage();
+
+        // Limit violations if requested
+        let violations = if let Some(limit) = contract.top_violations {
+            if limit > 0 && report.actionable_violations.len() > limit {
+                report.actionable_violations.into_iter().take(limit).collect()
+            } else {
+                report.actionable_violations
+            }
+        } else {
+            report.actionable_violations
+        };
+
+        // Convert to the format expected by the contract system
+        Ok(serde_json::to_value(EntropyResponse {
+            violations,
+            total_files_analyzed: report.total_files_analyzed,
+            total_violations,
+            potential_loc_reduction: total_loc_reduction,
+            reduction_percentage,
+            summary: format!(
+                "Entropy analysis for {} found {} actionable violations with {:.1}% potential reduction",
+                analysis_path.display(),
+                total_violations,
+                reduction_percentage
+            ),
+            metadata: self.create_metadata(&contract.base),
+        })?)
+    }
+
     /// Process quality gate contract
     pub async fn quality_gate(&self, contract: QualityGateContract) -> Result<Value> {
         contract.validate()?;
 
-        let violations = vec![QualityViolation {
-            rule: "complexity_threshold".to_string(),
-            severity: ViolationSeverity::Warning,
-            message: "Function exceeds complexity threshold".to_string(),
-            file: contract.base.path.display().to_string(),
-            line: 45,
-        }];
+        let mut violations = Vec::new();
+
+        // Check entropy violations if enabled
+        if matches!(contract.profile, QualityProfile::Strict | QualityProfile::Extreme) {
+            let entropy_contract = AnalyzeEntropyContract {
+                base: contract.base.clone(),
+                min_severity: Some("medium".to_string()),
+                top_violations: Some(10),
+                file: contract.file.clone(),
+            };
+
+            match self.analyze_entropy(entropy_contract).await {
+                Ok(entropy_result) => {
+                    if let Ok(entropy_response) = serde_json::from_value::<EntropyResponse>(entropy_result) {
+                        // Convert high-severity entropy violations to quality gate violations
+                        for violation in entropy_response.violations.iter().take(5) {
+                            if matches!(violation.severity, crate::entropy::violation_detector::Severity::High) {
+                                violations.push(QualityViolation {
+                                    rule: format!("entropy_{:?}", violation.pattern.pattern_type),
+                                    severity: ViolationSeverity::Warning,
+                                    message: format!("High entropy pattern detected: {} ({} repetitions)", 
+                                        violation.message, violation.pattern.repetitions),
+                                    file: contract.base.path.display().to_string(),
+                                    line: 1, // We don't have location info in PatternSummary yet
+                                });
+                            }
+                        }
+                    }
+                }
+                Err(_) => {
+                    // Don't fail quality gate if entropy analysis fails
+                    violations.push(QualityViolation {
+                        rule: "entropy_analysis".to_string(),
+                        severity: ViolationSeverity::Info,
+                        message: "Entropy analysis could not be performed".to_string(),
+                        file: contract.base.path.display().to_string(),
+                        line: 1,
+                    });
+                }
+            }
+        }
 
         let passed = violations.is_empty();
+        let violation_count = violations.len();
 
         if contract.fail_on_violation && !passed {
             return Err(anyhow::anyhow!(
                 "Quality gate failed with {} violations",
-                violations.len()
+                violation_count
             ));
         }
 
@@ -166,9 +268,10 @@ impl SimpleContractService {
             violations,
             profile: contract.profile,
             summary: format!(
-                "Quality gate check for {} using {:?} profile",
+                "Quality gate check for {} using {:?} profile - {} entropy violations found",
                 contract.base.path.display(),
-                contract.profile
+                contract.profile,
+                violation_count
             ),
             metadata: self.create_metadata(&contract.base),
         })?)
@@ -242,7 +345,18 @@ struct RefactorResponse {
     summary: String,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
+struct EntropyResponse {
+    violations: Vec<crate::entropy::violation_detector::ActionableViolation>,
+    total_files_analyzed: usize,
+    total_violations: usize,
+    potential_loc_reduction: usize,
+    reduction_percentage: f64,
+    summary: String,
+    metadata: AnalysisMetadata,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
 struct AnalysisMetadata {
     path: String,
     format: OutputFormat,

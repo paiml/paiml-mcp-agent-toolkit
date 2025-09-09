@@ -242,17 +242,23 @@ pmat tdg export . --all-formats --output-dir ./tdg-reports/
 - **Duplication**: <10% code duplication (measured)
 - **Documentation**: >70% coverage for public APIs (tracked)
 - **Technical Debt**: Zero SATD comments (zero-tolerance)
+- **Entropy Analysis**: ≤10 high-severity actionable violations per project (enforced in quality gates)
 
 **Enforcement Commands**:
 ```bash
-# Run quality gate (fails build if standards not met)
-pmat quality-gate --file <file.rs>
+# Run quality gate (fails build if standards not met, includes entropy checks for strict/extreme profiles)
+pmat quality-gate --file <file.rs> --profile strict
 
 # Comprehensive project analysis
 pmat tdg . --enforce-thresholds --fail-on-grade-below A-
 
+# NEW: Entropy analysis for actionable violations (v2.69.0+)
+# MCP PRIMARY: Use MCP analyze_entropy tool with {"path": ".", "min_severity": "high", "top_violations": 10}
+# FALLBACK: CLI analysis when MCP unavailable
+pmat analyze entropy . --min-severity high --top-violations 10
+
 # Integration with make commands
-make lint    # Includes TDG quality checks
+make lint    # Includes TDG quality checks + entropy analysis
 make test    # Includes TDG validation
 ```
 
@@ -260,15 +266,17 @@ make test    # Includes TDG validation
 
 **Before Every Commit** (Enhanced with Storage):
 1. **TDG Analysis**: `pmat tdg <changed-files>` (automatically stores scores)
-2. **Quality Gate**: `pmat quality-gate --file <changed-files>`
-3. **Storage Check**: `pmat tdg storage stats` (monitor dogfooding progress)
-4. **Standard Gates**: `make lint && make test`
+2. **Entropy Analysis**: `pmat analyze entropy --file <changed-files>` (detect actionable patterns)
+3. **Quality Gate**: `pmat quality-gate --file <changed-files>`
+4. **Storage Check**: `pmat tdg storage stats` (monitor dogfooding progress)
+5. **Standard Gates**: `make lint && make test`
 
 **Weekly Quality Review** (Leveraging Stored Data):
 1. **Full Project Analysis**: `pmat tdg . --top-files 20` (uses cached scores when possible)
-2. **Storage Analysis**: `du -sh ~/.pmat/tdg-* && pmat tdg storage stats` (track growth)
-3. **Export Reports**: `pmat tdg export . --format markdown --output weekly-report.md`
-4. **Kaizen Planning**: Use worst-graded files for next improvement cycle
+2. **Entropy Pattern Review**: `pmat analyze entropy --top-violations 10` (identify refactoring opportunities)
+3. **Storage Analysis**: `du -sh ~/.pmat/tdg-* && pmat tdg storage stats` (track growth)
+4. **Export Reports**: `pmat tdg export . --format markdown --output weekly-report.md`
+5. **Kaizen Planning**: Use worst-graded files and entropy violations for next improvement cycle
 
 **Monthly Dogfooding Health Check**:
 1. **Storage Growth**: Monitor ~/.pmat/tdg-* directory sizes
@@ -376,19 +384,22 @@ pmat qdd validate --changed-files --profile standard
 
 **Before Writing Any Code**:
 1. **Check Existing Quality**: `pmat tdg <file>` (uses persistent scoring)
-2. **Generate with QDD**: `pmat qdd create` (never write code manually for new features)
-3. **Validate Standards**: `pmat qdd validate` (ensure compliance)
+2. **Check Pattern Entropy**: `pmat analyze entropy --file <file>` (identify refactoring needs)
+3. **Generate with QDD**: `pmat qdd create` (never write code manually for new features)
+4. **Validate Standards**: `pmat qdd validate` (ensure compliance)
 
 **During Development**:
 1. **TDD Cycle**: Test → QDD Create → Refactor
 2. **Complexity Check**: `pmat analyze complexity --file <file>`
-3. **Pattern Check**: `pmat qdd validate --patterns SOLID,DRY`
+3. **Entropy Monitoring**: `pmat analyze entropy --file <file>` (watch for new patterns)
+4. **Pattern Check**: `pmat qdd validate --patterns SOLID,DRY`
 
 **Before Committing**:
 1. **QDD Validation**: `pmat qdd validate --changed-files`
 2. **TDG Scoring**: `pmat tdg <changed-files>` (stores persistently)
-3. **Quality Gate**: `pmat quality-gate --file <changed-files>`
-4. **Test Coverage**: Ensure ≥80% coverage maintained
+3. **Entropy Check**: `pmat analyze entropy --file <changed-files>` (final pattern review)
+4. **Quality Gate**: `pmat quality-gate --file <changed-files>`
+5. **Test Coverage**: Ensure ≥80% coverage maintained
 
 ### QDD Enforcement Rules
 
@@ -406,9 +417,110 @@ quality-check:
   script:
     - pmat qdd validate --all --profile standard
     - pmat tdg . --enforce-thresholds --fail-on-grade-below A-
+    - pmat analyze entropy --min-severity medium --top-violations 5
     - pmat quality-gate --all
     - cargo test --all
 ```
+
+## Actionable Entropy Analysis (Mandatory Sprint 83+)
+
+**MANDATORY**: We MUST use our Actionable Entropy Analysis for ALL pattern detection and refactoring identification. This replaces noisy character-based entropy with AST pattern analysis that provides specific, actionable fix suggestions.
+
+### Core Entropy Principles
+- **AST-Based Analysis**: Detects repetitive AST patterns, not character entropy
+- **Actionable Violations**: Each violation includes specific fix suggestion and LOC reduction estimate
+- **Pattern-Focused**: Identifies 6 key pattern types for targeted refactoring
+- **Quality Threshold**: Target 10-50 violations (not 2255 like character entropy)
+
+### Pattern Types Analyzed
+1. **ErrorHandling**: try/catch, Result handling patterns → Extract error handler functions
+2. **DataValidation**: Input validation patterns → Create validation traits/modules
+3. **ResourceManagement**: open/close, lock/unlock patterns → Implement RAII/guards
+4. **ControlFlow**: if/else chains, match statements → Strategy patterns/polymorphism
+5. **DataTransformation**: map/filter/reduce patterns → Data transformation pipelines
+6. **ApiCall**: HTTP/RPC call patterns → API client abstractions
+
+### Mandatory Usage Workflows
+
+#### Daily Entropy Analysis
+```bash
+# Before writing any code - check existing patterns
+pmat analyze entropy --file <target-file> --min-severity medium
+
+# During development - watch for new patterns
+pmat analyze entropy --file <changed-files> --top-violations 5
+
+# Before commits - final pattern review
+pmat analyze entropy --file <all-changed-files> --min-severity low
+```
+
+#### Weekly Pattern Review
+```bash
+# Project-wide pattern identification
+pmat analyze entropy --top-violations 10 --format markdown --output entropy-report.md
+
+# Focus on high-impact violations
+pmat analyze entropy --min-severity high --format json | jq '.actionable_violations[] | select(.estimated_loc_reduction > 50)'
+```
+
+#### Integration with Refactoring
+```bash
+# Use entropy to guide refactor decisions
+pmat analyze entropy --file src/complex_module.rs --format detailed
+
+# After refactoring - verify pattern reduction
+pmat analyze entropy --file src/complex_module.rs --top-violations 3
+```
+
+### Entropy Quality Standards
+- **Maximum Violations per File**: ≤5 medium/high severity violations
+- **Pattern Repetition Threshold**: ≤5 instances of same pattern before violation
+- **Minimum Pattern Diversity**: ≥30% (Shannon entropy of pattern distribution)
+- **Cross-File Duplication**: ≤2 files sharing same pattern before violation
+
+### Enforcement Integration
+- **Pre-commit Hooks**: Include entropy analysis in quality gates
+- **CI/CD Pipeline**: Fail builds with >10 high-severity entropy violations
+- **Code Reviews**: Use entropy report to guide review focus
+- **Refactoring Planning**: Use entropy violations to prioritize technical debt
+
+### Output Format Examples
+
+**Summary Format** (Default):
+```
+Entropy Analysis Summary
+========================
+
+Files Analyzed: 15
+Total Violations: 3
+Potential LOC Reduction: 120 lines (8.5%)
+
+1. ErrorHandling pattern repeated 8 times (saves 45 lines)
+   Fix: Extract to `handle_validation_error()` function
+```
+
+**JSON Format** (For tooling):
+```json
+{
+  "actionable_violations": [{
+    "severity": "High",
+    "pattern": {
+      "pattern_type": "ErrorHandling",
+      "repetitions": 8,
+      "variation_score": 0.3
+    },
+    "fix_suggestion": "Extract to handle_validation_error() function",
+    "estimated_loc_reduction": 45
+  }]
+}
+```
+
+### Enforcement Rules
+1. **NEVER ignore entropy violations** - All violations must be addressed or justified
+2. **ALWAYS use specific fixes** - Apply suggested refactoring, don't just add comments
+3. **ALWAYS verify improvement** - Re-run entropy analysis after fixes
+4. **ALWAYS target actionable patterns** - Focus on patterns with clear fix paths
+5. **ALWAYS check cross-file patterns** - Highest priority for shared modules
 
 ## The Kaizen Refactoring Loop (The "Kata")
 
@@ -427,6 +539,9 @@ First, "go and see" the problems. Use our MCP tools (PRIMARY) to identify the mo
 -   **For Technical Debt (MCP First):**
     - **✅ PRIMARY**: Use MCP `analyze_satd` tool
     - **⚠️ FALLBACK**: `pmat analyze satd`
+-   **For Actionable Entropy Violations (MCP First):**
+    - **✅ PRIMARY**: Use MCP `analyze_entropy` tool with `{"min_severity": "high", "top_violations": 10}`
+    - **⚠️ FALLBACK**: `pmat analyze entropy --min-severity high --top-violations 10`
 -   **For Unused Code (MCP First):**
     - **✅ PRIMARY**: Use MCP `analyze_dead_code` tool
     - **⚠️ FALLBACK**: `pmat analyze dead-code`
