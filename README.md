@@ -21,7 +21,7 @@
 
 ## 🔥 Core Features
 
-### 🔬 [WebAssembly Quality Assurance](docs/specifications/wasm-quality-assurance.md) *(NEW in v2.77.0)*
+### 🔬 [WebAssembly Quality Assurance](docs/wasm-features.md) *(NEW in v2.77.0)*
 **Comprehensive WASM module analysis and verification!** Analyze WebAssembly binaries for quality, security, and performance:
 - **🔍 Streaming Analysis**: Handle large WASM files with streaming parser pipeline
 - **🔒 Formal Verification**: Incremental verification with shadow stack analysis
@@ -29,6 +29,7 @@
 - **📊 Performance Profiling**: Instruction mix analysis and hot function identification
 - **📈 Quality Baselines**: Multi-anchor comparison with release/preview/experimental baselines
 - **📝 Multiple Output Formats**: Summary, JSON, Detailed, SARIF for CI/CD integration
+- **[📖 Full Documentation →](docs/wasm-features.md)** | **[🔧 Usage Guide →](docs/wasm-features.md#usage-guide)** | **[🚀 Examples →](docs/wasm-features.md#integration-examples)**
 
 ### 🗄️ [TDG Dogfooding Storage](docs/TDG_GUIDE.md) *(NEW in v2.68.0)*
 **Persistent file score storage for continuous quality improvement!** PMAT now tracks its own quality metrics:
@@ -205,6 +206,7 @@ pmat analyze wasm module.wasm --security         # Security vulnerability scan
 pmat analyze wasm module.wasm --profile          # Performance profiling
 pmat analyze wasm module.wasm --baseline ref.wasm # Quality comparison
 pmat analyze wasm module.wasm --format sarif     # CI/CD integration
+# 📖 See full documentation: docs/wasm-features.md
 
 # Start MCP server
 pmat mcp
