@@ -193,3 +193,33 @@ fn create_fix_response(results: Value, is_dry_run: bool) -> ToolResult {
         is_error: false,
     }
 }
+
+#[cfg(test)]
+mod property_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn parse_confidence_level_valid(level in prop::sample::select(vec!["high", "medium", "low"])) {
+            let result = parse_confidence_level(&Some(level.to_string()));
+            prop_assert!(result.is_ok());
+        }
+
+        #[test]
+        fn parse_confidence_level_invalid(level in "[a-z]{5,10}") {
+            if !["high", "medium", "low"].contains(&level.as_str()) {
+                let result = parse_confidence_level(&Some(level));
+                prop_assert!(result.is_err());
+            }
+        }
+
+        #[test]
+        fn confidence_meets_minimum_transitivity() {
+            // High confidence meets all minimums
+            prop_assert!(confidence_meets_minimum(ConfidenceLevel::High, ConfidenceLevel::High));
+            prop_assert!(confidence_meets_minimum(ConfidenceLevel::High, ConfidenceLevel::Medium));
+            prop_assert!(confidence_meets_minimum(ConfidenceLevel::High, ConfidenceLevel::Low));
+        }
+    }
+}

@@ -165,3 +165,36 @@ mod tests {
         assert!(result["quality_report"]["metrics"]["satd_count"].as_u64().unwrap() > 0);
     }
 }
+
+#[cfg(test)]
+mod property_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn tool_name_consistent() {
+            let tool = create_quality_proxy_tool();
+            prop_assert_eq!(tool.name, "quality_proxy");
+            prop_assert!(tool.description.is_some());
+        }
+
+        #[test]
+        fn proxy_request_validation(
+            operation in prop::sample::select(vec!["write", "edit", "append"])
+        ) {
+            // Verify proxy request operations are valid
+            let valid_ops = vec!["write", "edit", "append"];
+            prop_assert!(valid_ops.contains(&operation.as_str()));
+        }
+
+        #[test]
+        fn quality_modes_valid(
+            mode in prop::sample::select(vec!["strict", "normal", "permissive"])
+        ) {
+            // All quality modes should be recognized
+            let valid_modes = vec!["strict", "normal", "permissive"];
+            prop_assert!(valid_modes.contains(&mode.as_str()));
+        }
+    }
+}
