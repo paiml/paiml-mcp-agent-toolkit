@@ -53,6 +53,23 @@ This staged approach prevents wasting CI resources when basic checks are failing
   - Complexity metrics
   - Documentation checks
 
+### 🧪 Property Testing (`property-tests.yml` & `property-test-validation.yml`)
+- **property-test-validation.yml** (NEW - Sprint 88)
+  - **Triggers**: Push/PR on Rust changes, Daily schedule, Manual dispatch
+  - **Purpose**: Enforces 80% property test file coverage threshold
+  - **Jobs**:
+    - Counts files with property tests (target: 431/539 files)
+    - Validates all property tests compile and pass
+    - Performance monitoring (5-minute timeout)
+    - PR commenting with coverage status
+- **property-tests.yml**
+  - **Triggers**: Push/PR on Rust changes, Manual dispatch
+  - **Jobs**:
+    - Comprehensive property test execution
+    - Coverage analysis with tarpaulin
+    - Platform matrix testing (Linux, macOS, Windows)
+    - QuickCheck fuzzing for PRs
+
 ### 🚀 Performance (`benchmark.yml`)
 - **Triggers**: Manual dispatch only (orchestrated by main.yml)
 - **Jobs**:
