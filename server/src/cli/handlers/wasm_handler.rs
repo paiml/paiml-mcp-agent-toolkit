@@ -125,7 +125,7 @@ async fn run_profiling_if_requested(
 /// Run baseline comparison if requested (Complexity: 5)
 async fn run_baseline_comparison_if_requested(
     baseline: Option<PathBuf>,
-    binary: &[u8],
+    _binary: &[u8],
     analysis_result: &AnalysisResult,
 ) -> Result<Option<QualityAssessment>> {
     let baseline_path = match baseline {

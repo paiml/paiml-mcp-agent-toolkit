@@ -209,28 +209,6 @@ impl TieredStore {
     }
 
 
-    /// Estimate compression ratio for warm storage
-    fn estimate_compression_ratio(&self) -> f32 {
-        // Sample a few entries to estimate compression
-        let mut total_original = 0usize;
-        let mut total_compressed = 0usize;
-        let mut samples = 0;
-
-        if let Ok(iter) = self.warm_backend.iter() {
-            for (_, compressed) in iter.take(10).flatten() {
-                total_compressed += compressed.len();
-                // Estimate original size (this is approximate)
-                total_original += compressed.len() * 3; // Typical compression is ~3:1
-                samples += 1;
-            }
-        }
-
-        if samples > 0 && total_original > 0 {
-            total_compressed as f32 / total_original as f32
-        } else {
-            0.33 // Default estimate for LZ4 compression
-        }
-    }
 
     /// Clean up expired hot cache entries
     pub fn cleanup_hot_cache(&self, max_age_seconds: u64) -> usize {

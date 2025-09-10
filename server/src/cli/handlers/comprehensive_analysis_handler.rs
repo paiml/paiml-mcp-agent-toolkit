@@ -113,7 +113,7 @@ async fn enhance_results_if_needed(
     }
 }
 
-fn create_additional_config(config: &ComprehensiveAnalysisConfig) -> AdditionalAnalysisConfig {
+fn create_additional_config(config: &ComprehensiveAnalysisConfig) -> AdditionalAnalysisConfig<'_> {
     AdditionalAnalysisConfig {
         project_path: &config.project_path,
         include_duplicates: config.include_duplicates,

@@ -202,7 +202,7 @@ async fn handle_enforce_extreme(
 }
 
 /// Configuration for enforcement loop
-struct EnforcementConfig {
+pub struct EnforcementConfig {
     max_iterations: u32,
     target_improvement: Option<f32>,
     max_time: Option<u64>,
@@ -617,7 +617,7 @@ pub async fn handle_analyzing_state(
     project_path: &PathBuf,
     profile: &QualityProfile,
     single_file_mode: bool,
-    dry_run: bool,
+    _dry_run: bool,
     specific_file: Option<&PathBuf>,
 ) -> Result<EnforcementResult> {
     let mut violations = Vec::new();
@@ -869,7 +869,7 @@ pub async fn run_tdg_analysis(
 /// Run dead code analysis - extracted from list_all_violations (complexity: ≤10)
 pub async fn run_dead_code_analysis(
     project_path: &PathBuf,
-    profile: &QualityProfile,
+    _profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
     use crate::cli::handlers::complexity_handlers::handle_analyze_dead_code;
     use crate::cli::DeadCodeOutputFormat;
@@ -956,7 +956,7 @@ pub async fn run_duplication_analysis(
 
 /// Run coverage analysis - extracted from list_all_violations (complexity: ≤10)
 pub async fn run_coverage_analysis(
-    project_path: &PathBuf,
+    _project_path: &PathBuf,
     profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
     let mut violations = Vec::new();
@@ -1167,8 +1167,8 @@ pub async fn handle_validating_enforcement_state(
     single_file_mode: bool,
     dry_run: bool,
     specific_file: Option<&PathBuf>,
-    include_pattern: Option<&String>,
-    exclude_pattern: Option<&String>,
+    _include_pattern: Option<&String>,
+    _exclude_pattern: Option<&String>,
 ) -> Result<EnforcementResult> {
     // Re-run analysis to validate improvements
     let mut result = handle_analyzing_state(project_path, profile, single_file_mode, dry_run, specific_file).await?;

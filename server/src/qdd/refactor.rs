@@ -328,6 +328,7 @@ pub struct CodeAnalysis {
 
 /// Pattern engine for applying design patterns
 pub struct PatternEngine {
+    #[allow(dead_code)]
     patterns: std::collections::HashMap<String, String>,
 }
 
