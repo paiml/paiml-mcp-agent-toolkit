@@ -132,6 +132,12 @@ pub struct InstructionProfiler {
     total_instructions: usize,
 }
 
+impl Default for InstructionProfiler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InstructionProfiler {
     pub fn new() -> Self {
         Self {
@@ -144,12 +150,10 @@ impl InstructionProfiler {
         if let Payload::CodeSectionEntry(body) = payload {
             // Count instructions by category
             if let Ok(reader) = body.get_operators_reader() {
-                for op in reader {
-                    if let Ok(operator) = op {
-                        self.total_instructions += 1;
-                        let category = categorize_operator(&operator);
-                        *self.instruction_counts.entry(category).or_insert(0) += 1;
-                    }
+                for operator in reader.into_iter().flatten() {
+                    self.total_instructions += 1;
+                    let category = categorize_operator(&operator);
+                    *self.instruction_counts.entry(category).or_insert(0) += 1;
                 }
             }
         }
@@ -170,6 +174,12 @@ impl InstructionProfiler {
 #[derive(Debug, Clone)]
 pub struct SecurityAuditor {
     checks: Vec<SecurityCheck>,
+}
+
+impl Default for SecurityAuditor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SecurityAuditor {
@@ -205,6 +215,12 @@ pub struct SecurityReport {
     pub failed_checks: Vec<String>,
     pub warnings: Vec<String>,
     pub is_safe: bool,
+}
+
+impl Default for SecurityReport {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SecurityReport {

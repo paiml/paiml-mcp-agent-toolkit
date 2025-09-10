@@ -12,6 +12,12 @@ pub struct PatternDetector {
     found: Vec<VulnerabilityMatch>,
 }
 
+impl Default for PatternDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PatternDetector {
     pub fn new() -> Self {
         Self {

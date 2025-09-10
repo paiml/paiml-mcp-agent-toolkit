@@ -48,6 +48,12 @@ pub struct PatternCollection {
     pub total_files: usize,
 }
 
+impl Default for PatternCollection {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PatternCollection {
     pub fn new() -> Self {
         Self {

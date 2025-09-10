@@ -2,7 +2,6 @@
 
 use anyhow::{Result, anyhow};
 use wasmparser::{Operator, ValType};
-use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 
 /// Incremental verifier for property-based safety checks
@@ -256,6 +255,12 @@ impl StackAnalyzer {
 /// Differential testing for cross-runtime validation
 pub struct DifferentialTester {
     test_cases: Vec<TestCase>,
+}
+
+impl Default for DifferentialTester {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DifferentialTester {
