@@ -831,7 +831,6 @@ if (x > 0 && y < 10) {
 
 #[cfg(test)]
 mod property_tests {
-    use super::*;
     use proptest::prelude::*;
     use std::fs;
     use tempfile::TempDir;
