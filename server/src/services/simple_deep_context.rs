@@ -870,8 +870,8 @@ fn func_{i}() {{
                 let test_file = src_dir.join("test.rs");
                 fs::write(&test_file, code).unwrap();
 
-                let analyzer = SimpleDeepContext::new();
-                let config = SimpleAnalysisConfig {
+                let analyzer = crate::services::simple_deep_context::SimpleDeepContext::new();
+                let config = crate::services::simple_deep_context::SimpleAnalysisConfig {
                     project_path: temp_dir.path().to_path_buf(),
                     include_features: vec![],
                     include_patterns: vec![],
