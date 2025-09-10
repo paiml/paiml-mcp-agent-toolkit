@@ -1140,7 +1140,7 @@ impl TdgAnalyzerAst {
     /// Score entropy analysis - pattern repetition and violation detection
     fn score_entropy_analysis(&self, source: &str, _language: Language, tracker: &mut PenaltyTracker) -> f32 {
         // Create entropy analyzer
-        let analyzer = EntropyAnalyzer::new();
+        let _analyzer = EntropyAnalyzer::new();
         
         // Create a temp directory for analysis since entropy analyzer expects a project
         use std::io::Write;

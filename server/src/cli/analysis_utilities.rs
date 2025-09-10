@@ -4481,7 +4481,7 @@ fn is_build_artifact(path: &Path) -> bool {
 /// ```
 pub async fn check_complexity(
     project_path: &Path,
-    max_complexity: u32,
+    _max_complexity: u32,
 ) -> Result<Vec<QualityViolation>> {
     use crate::services::complexity::aggregate_results_with_thresholds;
     use crate::services::configuration_service::configuration;

@@ -57,6 +57,7 @@ impl Default for EntropyConfig {
 
 /// Main entropy analyzer
 pub struct EntropyAnalyzer {
+    #[allow(dead_code)]
     config: EntropyConfig,
     pattern_extractor: PatternExtractor,
     violation_detector: ViolationDetector,

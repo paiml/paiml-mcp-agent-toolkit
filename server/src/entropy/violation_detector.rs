@@ -312,7 +312,7 @@ impl ViolationDetector {
     }
 
     /// Extract context name from pattern
-    fn context_name(&self, pattern: &AstPattern) -> &str {
+    fn context_name(&self, _pattern: &AstPattern) -> &str {
         // Extract meaningful name from pattern
         // Simplified - would analyze actual AST
         "context"

@@ -5,7 +5,6 @@
 
 use crate::cli::{self, AnalyzeCommands};
 use anyhow::Result;
-use serde_json::json;
 use std::path::PathBuf;
 
 /// Router for all analysis commands - central dispatch for CLI analyze subcommands.
@@ -1102,8 +1101,7 @@ async fn route_clippy_analysis(cmd: AnalyzeCommands) -> Result<()> {
     } = cmd
     {
         // Call the auto_clippy_fix MCP tool function directly
-        // NOTE: Disabled due to pmcp ToolResult import issue - see issue #XXX
-        // use crate::mcp_pmcp::tools::auto_clippy_fix::auto_clippy_fix;
+        use crate::mcp_pmcp::tools::auto_clippy_fix::auto_clippy_fix;
         
         let confidence_level = Some(confidence.clone());
         let codes = if fix_codes.is_empty() { 
@@ -1112,8 +1110,6 @@ async fn route_clippy_analysis(cmd: AnalyzeCommands) -> Result<()> {
             Some(fix_codes.clone()) 
         };
         
-        // NOTE: Re-enable after fixing pmcp ToolResult import issue
-        /*
         let result = auto_clippy_fix(
             Some(project_path.to_string_lossy().to_string()),
             confidence_level,
@@ -1121,22 +1117,14 @@ async fn route_clippy_analysis(cmd: AnalyzeCommands) -> Result<()> {
             codes,
         )
         .await?;
-        */
         
-        // NOTE: Implement direct clippy fix logic here temporarily
-        // For now, provide a stub implementation
         if let Some(output_path) = output {
             use std::fs;
-            let stub_result = json!({
-                "action": if dry_run { "analyzed" } else { "applied" },
-                "message": "🔧 Clippy fix temporarily disabled due to pmcp import issue",
-                "confidence": confidence,
-                "codes": codes
-            });
-            let content = serde_json::to_string_pretty(&stub_result)?;
-            fs::write(output_path, content)?;
+            let content = serde_json::to_string_pretty(&result)?;
+            fs::write(&output_path, content)?;
+            eprintln!("📁 Results written to {}", output_path.display());
         } else {
-            println!("🔧 Clippy fix temporarily disabled due to pmcp import issue");
+            eprintln!("{:?}", result);
         }
         
         Ok(())

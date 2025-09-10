@@ -398,7 +398,7 @@ impl TestGenerator {
     }
     
     /// Generate comprehensive tests for a function
-    pub fn generate_for_function(&self, code: &str, spec: &CreateSpec) -> Result<String> {
+    pub fn generate_for_function(&self, _code: &str, spec: &CreateSpec) -> Result<String> {
         let mut tests = String::new();
         
         tests.push_str("#[cfg(test)]\nmod tests {\n    use super::*;\n\n");
@@ -465,7 +465,7 @@ impl TestGenerator {
     }
     
     /// Generate tests for any code
-    pub fn generate_tests(&self, code: &str) -> Result<String> {
+    pub fn generate_tests(&self, _code: &str) -> Result<String> {
         let mut tests = String::new();
         
         tests.push_str("#[cfg(test)]\nmod tests {\n    use super::*;\n\n");

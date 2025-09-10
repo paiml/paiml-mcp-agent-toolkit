@@ -10,7 +10,9 @@ use crate::wasm::security::{PatternDetector, VulnerabilityMatch};
 
 /// Core WASM analyzer with streaming analysis capabilities
 pub struct WasmAnalyzer {
+    #[allow(dead_code)]
     parser: Parser,
+    #[allow(dead_code)]
     validator: Validator,
     instruction_profiler: InstructionProfiler,
     pattern_detector: PatternDetector,
@@ -109,7 +111,7 @@ pub struct ModuleInfo {
 }
 
 impl ModuleInfo {
-    fn from_validator(validator: Validator) -> Self {
+    fn from_validator(_validator: Validator) -> Self {
         // Extract module info from validator state
         // This is simplified - real implementation would extract actual counts
         Self {

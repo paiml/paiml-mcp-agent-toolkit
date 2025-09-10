@@ -161,10 +161,6 @@ impl ComplexityVisitor {
         self.cognitive += base;
     }
     
-    fn add_cognitive_with_nesting(&mut self, base: u32) {
-        // Add cognitive complexity including nesting penalty
-        self.cognitive += base + self.nesting_level;
-    }
 }
 
 impl<'ast> Visit<'ast> for ComplexityVisitor {
