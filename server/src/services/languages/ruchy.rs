@@ -438,17 +438,17 @@ impl RuchyComplexityAnalyzer {
 
     /// Calculate Halstead metrics for current function
     fn calculate_halstead(&self) -> HalsteadMetrics {
-        let n1 = self.operators.len() as u32;
-        let n2 = self.operands.len() as u32;
-        let n1_total = self.operator_count;
-        let n2_total = self.operand_count;
+        let operators_unique = self.operators.len() as u32;
+        let operands_unique = self.operands.len() as u32;
+        let operators_total = self.operator_count;
+        let operands_total = self.operand_count;
 
-        let n = (n1 + n2) as f64;
-        let n_total = (n1_total + n2_total) as f64;
+        let n = (operators_unique + operands_unique) as f64;
+        let n_total = (operators_total + operands_total) as f64;
 
         let volume = if n > 0.0 { n_total * n.log2() } else { 0.0 };
-        let difficulty = if n2 > 0 {
-            (n1 as f64 / 2.0) * (n2_total as f64 / n2 as f64)
+        let difficulty = if operands_unique > 0 {
+            (operators_unique as f64 / 2.0) * (operands_total as f64 / operands_unique as f64)
         } else {
             0.0
         };
@@ -457,10 +457,10 @@ impl RuchyComplexityAnalyzer {
         let bugs = volume / 3000.0; // Industry average
 
         HalsteadMetrics {
-            n1,
-            n2,
-            n1_total,
-            n2_total,
+            operators_unique,
+            operands_unique,
+            operators_total,
+            operands_total,
             volume,
             difficulty,
             effort,
@@ -1591,10 +1591,10 @@ mod tests {
 
         let halstead = analyzer.calculate_halstead();
 
-        assert_eq!(halstead.n1, 2); // 2 distinct operators
-        assert_eq!(halstead.n2, 3); // 3 distinct operands
-        assert_eq!(halstead.n1_total, 3); // 3 total operators
-        assert_eq!(halstead.n2_total, 4); // 4 total operands
+        assert_eq!(halstead.operators_unique, 2); // 2 distinct operators
+        assert_eq!(halstead.operands_unique, 3); // 3 distinct operands
+        assert_eq!(halstead.operators_total, 3); // 3 total operators
+        assert_eq!(halstead.operands_total, 4); // 4 total operands
         assert!(halstead.volume > 0.0);
     }
 

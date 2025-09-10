@@ -1,28 +1,99 @@
 //! Zero-overhead complexity analysis system
 //!
 //! This module provides code complexity analysis without increasing binary size
-//! beyond 2% by leveraging existing AST infrastructure.
+//! beyond 2% by leveraging existing AST infrastructure. It calculates multiple
+//! complexity metrics including cyclomatic, cognitive, and nesting complexity.
+//!
+//! ## Key Features
+//!
+//! - **McCabe Cyclomatic Complexity**: Measures the number of linearly independent paths
+//! - **Cognitive Complexity**: Sonar method for measuring how hard code is to understand  
+//! - **Nesting Depth**: Maximum depth of nested control structures
+//! - **Halstead Metrics**: Software science metrics for program complexity
+//!
+//! ## Quick Start
+//!
+//! ```rust
+//! use pmat::services::complexity::{ComplexityMetrics, HalsteadMetrics};
+//!
+//! // Create basic complexity metrics
+//! let metrics = ComplexityMetrics::new(5, 8, 3, 42);
+//! assert_eq!(metrics.cyclomatic, 5);
+//! assert_eq!(metrics.cognitive, 8);
+//! assert_eq!(metrics.nesting_max, 3);
+//! assert_eq!(metrics.lines, 42);
+//! assert!(metrics.halstead.is_none());
+//!
+//! // Create with Halstead metrics
+//! let halstead = HalsteadMetrics::new(10, 5, 20, 8);
+//! let metrics_with_halstead = ComplexityMetrics::with_halstead(5, 8, 3, 42, halstead);
+//! assert!(metrics_with_halstead.halstead.is_some());
+//! ```
 
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-/// Core complexity metrics for a code unit (function/method/class)
+/// Core complexity metrics for a code unit (function/method/class).
+///
+/// This struct encapsulates various complexity measurements that help assess
+/// code maintainability and difficulty of understanding. All metrics follow
+/// industry standards for software quality measurement.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::complexity::{ComplexityMetrics, HalsteadMetrics};
+///
+/// // Simple function with low complexity
+/// let simple = ComplexityMetrics::new(1, 1, 1, 5);
+/// assert_eq!(simple.cyclomatic, 1);
+/// assert!(simple.is_simple());
+///
+/// // Complex function requiring attention
+/// let complex = ComplexityMetrics::new(15, 20, 5, 100);
+/// assert_eq!(complex.cyclomatic, 15);
+/// assert!(!complex.is_simple());
+/// assert!(complex.needs_refactoring());
+/// ```
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
 pub struct ComplexityMetrics {
-    /// McCabe cyclomatic complexity
+    /// McCabe cyclomatic complexity - counts decision points + 1
     pub cyclomatic: u16,
-    /// Cognitive complexity (Sonar method)
+    /// Cognitive complexity (Sonar method) - measures understandability
     pub cognitive: u16,
-    /// Maximum nesting depth
+    /// Maximum nesting depth of control structures
     pub nesting_max: u8,
-    /// Logical lines of code
+    /// Logical lines of code (excluding comments and blank lines)
     pub lines: u16,
-    /// Halstead software science metrics
+    /// Halstead software science metrics (optional)
     pub halstead: Option<HalsteadMetrics>,
 }
 
 impl ComplexityMetrics {
-    /// The ONE way to create ComplexityMetrics - Toyota Way principle
+    /// Creates new complexity metrics with core measurements.
+    ///
+    /// This is the primary constructor following Toyota Way principle of
+    /// having one clear way to create objects.
+    ///
+    /// # Arguments
+    ///
+    /// * `cyclomatic` - McCabe cyclomatic complexity (decision points + 1)
+    /// * `cognitive` - Cognitive complexity (Sonar method)
+    /// * `nesting_max` - Maximum nesting depth
+    /// * `lines` - Logical lines of code
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::complexity::ComplexityMetrics;
+    ///
+    /// let metrics = ComplexityMetrics::new(3, 5, 2, 25);
+    /// assert_eq!(metrics.cyclomatic, 3);
+    /// assert_eq!(metrics.cognitive, 5);
+    /// assert_eq!(metrics.nesting_max, 2);
+    /// assert_eq!(metrics.lines, 25);
+    /// assert!(metrics.halstead.is_none());
+    /// ```
     pub fn new(cyclomatic: u16, cognitive: u16, nesting_max: u8, lines: u16) -> Self {
         Self {
             cyclomatic,
@@ -33,7 +104,30 @@ impl ComplexityMetrics {
         }
     }
 
-    /// Create with halstead metrics (only when actually calculated)
+    /// Creates complexity metrics with Halstead measurements included.
+    ///
+    /// Use this constructor when you have calculated Halstead software
+    /// science metrics in addition to the core complexity measurements.
+    ///
+    /// # Arguments
+    ///
+    /// * `cyclomatic` - McCabe cyclomatic complexity
+    /// * `cognitive` - Cognitive complexity  
+    /// * `nesting_max` - Maximum nesting depth
+    /// * `lines` - Logical lines of code
+    /// * `halstead` - Halstead software science metrics
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::complexity::{ComplexityMetrics, HalsteadMetrics};
+    ///
+    /// let halstead = HalsteadMetrics::new(8, 4, 16, 10);
+    /// let metrics = ComplexityMetrics::with_halstead(3, 5, 2, 25, halstead);
+    /// assert_eq!(metrics.cyclomatic, 3);
+    /// assert!(metrics.halstead.is_some());
+    /// assert_eq!(metrics.halstead.unwrap().operators_unique, 8);
+    /// ```
     pub fn with_halstead(
         cyclomatic: u16,
         cognitive: u16,
@@ -49,29 +143,204 @@ impl ComplexityMetrics {
             halstead: Some(halstead),
         }
     }
+
+    /// Checks if the code unit has low complexity (easy to understand).
+    ///
+    /// Returns true if both cyclomatic and cognitive complexity are below
+    /// typical thresholds for simple code.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::complexity::ComplexityMetrics;
+    ///
+    /// let simple = ComplexityMetrics::new(2, 3, 1, 10);
+    /// assert!(simple.is_simple());
+    ///
+    /// let complex = ComplexityMetrics::new(12, 15, 4, 50);
+    /// assert!(!complex.is_simple());
+    /// ```
+    pub fn is_simple(&self) -> bool {
+        self.cyclomatic <= 5 && self.cognitive <= 7
+    }
+
+    /// Checks if the code unit needs refactoring due to high complexity.
+    ///
+    /// Returns true if either cyclomatic or cognitive complexity exceeds
+    /// recommended thresholds for maintainable code.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::complexity::ComplexityMetrics;
+    ///
+    /// let simple = ComplexityMetrics::new(3, 4, 2, 15);
+    /// assert!(!simple.needs_refactoring());
+    ///
+    /// let complex = ComplexityMetrics::new(15, 20, 5, 100);
+    /// assert!(complex.needs_refactoring());
+    /// ```
+    pub fn needs_refactoring(&self) -> bool {
+        self.cyclomatic > 10 || self.cognitive > 15
+    }
+
+    /// Calculates a composite complexity score.
+    ///
+    /// Combines multiple complexity metrics into a single score for ranking
+    /// and comparison purposes. Higher scores indicate more complex code.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::complexity::ComplexityMetrics;
+    ///
+    /// let simple = ComplexityMetrics::new(1, 1, 1, 5);
+    /// let complex = ComplexityMetrics::new(10, 15, 4, 80);
+    ///
+    /// assert!(complex.complexity_score() > simple.complexity_score());
+    /// ```
+    pub fn complexity_score(&self) -> f64 {
+        // Weighted combination of complexity metrics
+        (self.cyclomatic as f64 * 1.0) +
+        (self.cognitive as f64 * 1.2) +
+        (self.nesting_max as f64 * 2.0) +
+        (self.lines as f64 * 0.1)
+    }
 }
 
-/// Halstead software science metrics for CLI output
+/// Halstead software science metrics for quantitative program analysis.
+///
+/// These metrics were developed by Maurice Halstead in 1977 to provide
+/// objective measurements of program complexity based on the number of
+/// operators and operands in the source code.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::complexity::HalsteadMetrics;
+///
+/// // Create Halstead metrics for a simple function
+/// let metrics = HalsteadMetrics::new(6, 4, 12, 8);
+/// assert_eq!(metrics.operators_unique, 6);
+/// assert_eq!(metrics.operands_unique, 4);
+/// assert_eq!(metrics.operators_total, 12);
+/// assert_eq!(metrics.operands_total, 8);
+///
+/// // Calculate derived metrics
+/// let calculated = metrics.calculate_derived();
+/// assert!(calculated.volume > 0.0);
+/// assert!(calculated.effort > 0.0);
+/// ```
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
 pub struct HalsteadMetrics {
-    /// Number of distinct operators
-    pub n1: u32,
-    /// Number of distinct operands
-    pub n2: u32,
-    /// Total number of operators
-    pub n1_total: u32,
-    /// Total number of operands
-    pub n2_total: u32,
-    /// Program volume
+    /// n1: Number of distinct operators (unique operators like +, -, if, while)
+    pub operators_unique: u32,
+    /// n2: Number of distinct operands (unique variables, constants, identifiers)  
+    pub operands_unique: u32,
+    /// N1: Total number of operators used
+    pub operators_total: u32,
+    /// N2: Total number of operands used
+    pub operands_total: u32,
+    /// V: Program volume (N * log2(n))
     pub volume: f64,
-    /// Program difficulty
+    /// D: Program difficulty (n1/2 * N2/n2)
     pub difficulty: f64,
-    /// Programming effort
+    /// E: Programming effort (V * D)
     pub effort: f64,
-    /// Time to program (in hours)
+    /// T: Time to program in hours (E / 18 seconds per mental discrimination)
     pub time: f64,
-    /// Delivered bugs estimate
+    /// B: Delivered bugs estimate (E^(2/3) / 3000)
     pub bugs: f64,
+}
+
+impl HalsteadMetrics {
+    /// Creates new Halstead metrics with basic counts.
+    ///
+    /// This constructor initializes the base measurements and sets
+    /// derived metrics to zero. Use `calculate_derived()` to compute
+    /// volume, difficulty, effort, time, and bugs.
+    ///
+    /// # Arguments
+    ///
+    /// * `operators_unique` - Number of distinct operators
+    /// * `operands_unique` - Number of distinct operands
+    /// * `operators_total` - Total count of operators used
+    /// * `operands_total` - Total count of operands used
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::complexity::HalsteadMetrics;
+    ///
+    /// let metrics = HalsteadMetrics::new(8, 6, 20, 15);
+    /// assert_eq!(metrics.operators_unique, 8);
+    /// assert_eq!(metrics.operands_unique, 6);
+    /// assert_eq!(metrics.volume, 0.0); // Not calculated yet
+    /// ```
+    pub fn new(operators_unique: u32, operands_unique: u32, operators_total: u32, operands_total: u32) -> Self {
+        Self {
+            operators_unique,
+            operands_unique, 
+            operators_total,
+            operands_total,
+            volume: 0.0,
+            difficulty: 0.0,
+            effort: 0.0,
+            time: 0.0,
+            bugs: 0.0,
+        }
+    }
+
+    /// Calculates all derived Halstead metrics from the base counts.
+    ///
+    /// Computes volume, difficulty, effort, programming time, and bug estimates
+    /// using the standard Halstead formulas.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::complexity::HalsteadMetrics;
+    ///
+    /// let base = HalsteadMetrics::new(10, 8, 25, 20);
+    /// let calculated = base.calculate_derived();
+    /// 
+    /// assert!(calculated.volume > 0.0);
+    /// assert!(calculated.difficulty > 0.0);
+    /// assert!(calculated.effort > 0.0);
+    /// assert!(calculated.time > 0.0);
+    /// assert!(calculated.bugs >= 0.0);
+    /// ```
+    pub fn calculate_derived(mut self) -> Self {
+        // Prevent division by zero
+        if self.operators_unique == 0 || self.operands_unique == 0 {
+            return self;
+        }
+
+        let total = self.operators_total + self.operands_total;
+        let unique = self.operators_unique + self.operands_unique;
+
+        // V = N * log2(n) - Program Volume
+        if unique > 0 {
+            self.volume = total as f64 * (unique as f64).log2();
+        }
+
+        // D = (n1/2) * (N2/n2) - Program Difficulty
+        if self.operands_unique > 0 {
+            self.difficulty = (self.operators_unique as f64 / 2.0) * 
+                             (self.operands_total as f64 / self.operands_unique as f64);
+        }
+
+        // E = V * D - Programming Effort
+        self.effort = self.volume * self.difficulty;
+
+        // T = E / 18 - Time to program in hours (18 mental discriminations per second)
+        self.time = self.effort / 18.0;
+
+        // B = E^(2/3) / 3000 - Delivered bugs estimate
+        self.bugs = self.effort.powf(2.0/3.0) / 3000.0;
+
+        self
+    }
 }
 
 /// Complexity metrics for an entire file
@@ -407,6 +676,7 @@ impl ComplexityRule for CognitiveComplexityRule {
 ///         cognitive: 8,
 ///         nesting_max: 3,
 ///         lines: 50,
+///         halstead: None,
 ///     },
 ///     functions: vec![],
 ///     classes: vec![],
@@ -440,6 +710,7 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 ///     cognitive: 30,
 ///     nesting_max: 3,
 ///     lines: 100,
+///     halstead: None,
 /// };
 ///
 /// let func = FunctionComplexity {
@@ -780,6 +1051,7 @@ fn build_complexity_report(
 ///             cognitive: 7,
 ///             nesting_max: 2,
 ///             lines: 30,
+///             halstead: None,
 ///         },
 ///         functions: vec![],
 ///         classes: vec![],
@@ -791,6 +1063,7 @@ fn build_complexity_report(
 ///             cognitive: 4,
 ///             nesting_max: 1,
 ///             lines: 20,
+///             halstead: None,
 ///         },
 ///         functions: vec![],
 ///         classes: vec![],

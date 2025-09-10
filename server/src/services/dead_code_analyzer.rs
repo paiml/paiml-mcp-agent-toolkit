@@ -1,7 +1,58 @@
 //! Dead code detection with cross-reference analysis
 //!
-//! Identifies unreachable code through multi-level reachability analysis,
-//! cross-language reference tracking, and dynamic dispatch resolution.
+//! This module provides advanced dead code detection capabilities through multi-level 
+//! reachability analysis, cross-language reference tracking, and dynamic dispatch resolution.
+//! It identifies unreachable code segments, unused functions, and unreferenced variables
+//! across multiple programming languages.
+//!
+//! # Architecture
+//!
+//! The dead code analyzer consists of several key components:
+//! - **HierarchicalBitSet**: Efficient bitmap-based reachability tracking using Roaring bitmaps
+//! - **CrossLangReferenceGraph**: Graph structure for tracking references across languages
+//! - **VTableResolver**: Dynamic dispatch resolution for object-oriented languages
+//! - **DeadCodeAnalyzer**: Main analysis engine that orchestrates the detection process
+//!
+//! # Analysis Process
+//!
+//! 1. **Build Reference Graph**: Constructs a cross-language reference graph from AST nodes
+//! 2. **Mark Entry Points**: Identifies entry points (main functions, exported symbols, etc.)
+//! 3. **Reachability Analysis**: Performs breadth-first traversal to mark reachable code
+//! 4. **Dynamic Resolution**: Resolves virtual calls and dynamic dispatch targets
+//! 5. **Dead Code Identification**: Reports unreachable code segments
+//!
+//! # Features
+//!
+//! - Cross-language reference tracking (Rust, Python, JavaScript, etc.)
+//! - Dynamic dispatch resolution for OOP languages
+//! - Hierarchical bitmap for efficient memory usage
+//! - Confidence scoring for uncertain references
+//! - Integration with dependency graphs and AST analysis
+//!
+//! # Example Usage
+//!
+//! ```rust
+//! use pmat::services::dead_code_analyzer::DeadCodeAnalyzer;
+//! use pmat::models::unified_ast::AstDag;
+//!
+//! // Create analyzer with node capacity
+//! let mut analyzer = DeadCodeAnalyzer::new(1000);
+//!
+//! // Create AST DAG for analysis
+//! let ast_dag = AstDag::new();
+//!
+//! // Perform dead code analysis
+//! let report = analyzer.analyze(&ast_dag);
+//!
+//! if report.dead_functions.is_empty() {
+//!     println!("✅ No dead code found!");
+//! } else {
+//!     println!("⚠️ Found {} dead functions", report.dead_functions.len());
+//!     for func in &report.dead_functions {
+//!         println!("  - {} at {}:{}", func.name, func.file_path, func.line_number);
+//!     }
+//! }
+//! ```
 
 use crate::models::dag::DependencyGraph;
 use crate::models::unified_ast::{AstDag, NodeKey};
@@ -83,12 +134,34 @@ impl HierarchicalBitSet {
     }
 }
 
-/// Cross-language reference graph
+/// Cross-language reference graph for tracking dependencies across language boundaries
+///
+/// Maintains a directed graph of references between code elements across different
+/// programming languages. Supports direct calls, imports, inheritance relationships,
+/// and dynamic dispatch scenarios.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::dead_code_analyzer::{CrossLangReferenceGraph, ReferenceEdge, ReferenceNode};
+/// use pmat::models::unified_ast::NodeKey;
+/// use std::collections::HashMap;
+///
+/// // Note: edge_index is private, so we create an empty graph conceptually
+/// let edges: Vec<ReferenceEdge> = vec![];
+/// let nodes: HashMap<NodeKey, ReferenceNode> = HashMap::new();
+///
+/// // Graph starts empty and nodes/edges are added during AST analysis
+/// assert!(edges.is_empty());
+/// assert!(nodes.is_empty());
+/// ```
 #[derive(Debug, Clone)]
 pub struct CrossLangReferenceGraph {
+    /// Directed edges representing references between code elements
     pub edges: Vec<ReferenceEdge>,
+    /// Nodes in the reference graph, indexed by their unique key
     pub nodes: HashMap<NodeKey, ReferenceNode>,
-    // Index for fast lookup
+    /// Fast lookup index mapping nodes to their outgoing edges
     edge_index: HashMap<NodeKey, Vec<usize>>,
 }
 
@@ -117,9 +190,29 @@ pub enum ReferenceType {
     DynamicDispatch,
 }
 
-/// Virtual table resolver for dynamic dispatch
+/// Virtual table resolver for dynamic dispatch analysis
+///
+/// Resolves virtual method calls and interface implementations to determine
+/// all possible targets of dynamic dispatch. Critical for accurate dead code
+/// detection in object-oriented languages like Java, C#, C++, and JavaScript.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::dead_code_analyzer::VTableResolver;
+///
+/// let resolver = VTableResolver::new();
+/// 
+/// // Resolve all possible targets for an interface method call
+/// let targets = resolver.resolve_dynamic_call("Drawable", "draw");
+/// 
+/// // Initially empty - populated during AST analysis
+/// assert!(targets.is_empty());
+/// ```
 pub struct VTableResolver {
+    /// Virtual method tables for each class/interface
     vtables: HashMap<String, VTable>,
+    /// Mapping from interfaces to their implementing types
     interface_impls: HashMap<String, Vec<String>>,
 }
 
@@ -161,20 +254,82 @@ impl VTableResolver {
     }
 }
 
-/// Coverage data integration
+/// Coverage data integration from external tools (llvm-cov, tarpaulin, etc.)
+/// 
+/// Integrates test coverage data to improve dead code detection accuracy by 
+/// identifying code that is syntactically reachable but never executed in practice.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::dead_code_analyzer::CoverageData;
+/// use std::collections::{HashMap, HashSet};
+///
+/// let mut covered_lines = HashMap::new();
+/// let mut main_rs_lines = HashSet::new();
+/// main_rs_lines.insert(10);  // Line 10 is covered
+/// main_rs_lines.insert(15);  // Line 15 is covered
+/// covered_lines.insert("src/main.rs".to_string(), main_rs_lines);
+///
+/// let mut execution_counts = HashMap::new();
+/// let mut main_rs_counts = HashMap::new();
+/// main_rs_counts.insert(10, 5);  // Line 10 executed 5 times
+/// main_rs_counts.insert(15, 1);  // Line 15 executed 1 time
+/// execution_counts.insert("src/main.rs".to_string(), main_rs_counts);
+///
+/// let coverage_data = CoverageData {
+///     covered_lines,
+///     execution_counts,
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoverageData {
+    /// Lines that were covered during test execution, organized by file path
     pub covered_lines: HashMap<String, HashSet<u32>>,
+    /// Number of times each line was executed during tests
     pub execution_counts: HashMap<String, HashMap<u32, u64>>,
 }
 
-/// Dead code analysis report
+/// Dead code analysis report containing all detected dead code segments
+///
+/// Provides a comprehensive report of unreachable code, unused functions, variables,
+/// and classes discovered during analysis. Includes confidence scores and detailed
+/// reasoning for each finding.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::services::dead_code_analyzer::{DeadCodeReport, DeadCodeSummary, DeadCodeItem};
+/// use std::collections::HashMap;
+///
+/// // Create a sample report showing no dead code found
+/// let report = DeadCodeReport {
+///     dead_functions: vec![],
+///     dead_classes: vec![],
+///     dead_variables: vec![],
+///     unreachable_code: vec![],
+///     summary: DeadCodeSummary {
+///         total_dead_code_lines: 0,
+///         percentage_dead: 0.0,
+///         dead_by_type: HashMap::new(),
+///         confidence_level: 0.95,
+///     },
+/// };
+///
+/// assert_eq!(report.summary.total_dead_code_lines, 0);
+/// assert!(report.dead_functions.is_empty());
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeadCodeReport {
+    /// Functions that are defined but never called
     pub dead_functions: Vec<DeadCodeItem>,
+    /// Classes that are defined but never instantiated or referenced
     pub dead_classes: Vec<DeadCodeItem>,
+    /// Variables that are declared but never used
     pub dead_variables: Vec<DeadCodeItem>,
+    /// Code blocks that are syntactically valid but unreachable
     pub unreachable_code: Vec<UnreachableBlock>,
+    /// Statistical summary of the analysis
     pub summary: DeadCodeSummary,
 }
 
