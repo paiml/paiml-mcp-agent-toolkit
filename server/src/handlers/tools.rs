@@ -3680,7 +3680,7 @@ async fn handle_quality_driven_development(
     );
     
     // Convert file_path to PathBuf if provided
-    let file_path_buf = args.file_path.as_ref().map(|p| PathBuf::from(p));
+    let file_path_buf = args.file_path.as_ref().map(PathBuf::from);
     
     // Call the actual QDD function
     match crate::mcp_pmcp::tool_functions::quality_driven_development(

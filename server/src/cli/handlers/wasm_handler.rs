@@ -70,7 +70,7 @@ fn load_wasm_file(wasm_file: &PathBuf) -> Result<Vec<u8>> {
 
 /// Run basic WASM analysis (Complexity: 2)
 fn run_basic_analysis(binary: &[u8]) -> Result<AnalysisResult> {
-    let mut analyzer = WasmAnalyzer::new()?;
+    let analyzer = WasmAnalyzer::new()?;
     analyzer.analyze(binary)
 }
 
@@ -478,7 +478,7 @@ fn create_sarif_rule(pattern: &str) -> serde_json::Value {
 /// Create SARIF results from vulnerabilities (Complexity: 3)
 fn create_sarif_results(vulnerabilities: &[VulnerabilityMatch]) -> Vec<serde_json::Value> {
     vulnerabilities.iter()
-        .map(|v| create_sarif_result(v))
+        .map(create_sarif_result)
         .collect()
 }
 

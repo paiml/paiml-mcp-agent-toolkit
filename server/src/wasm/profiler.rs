@@ -6,12 +6,18 @@ use std::time::Duration;
 use tokio::task::JoinHandle;
 use wasmparser::{Operator, Payload};
 
-use super::{ProfilingReport, InstructionMix, HotFunction, MemoryProfile, GrowthEvent};
+use super::{ProfilingReport, InstructionMix, HotFunction, MemoryProfile};
 
 /// Non-blocking profiler using shadow stack instrumentation
 pub struct AsyncProfiler {
     shadow_stacks: Arc<RwLock<Vec<ShadowStack>>>,
     sample_interval: Duration,
+}
+
+impl Default for AsyncProfiler {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AsyncProfiler {
@@ -288,6 +294,12 @@ fn categorize_for_profiling(op: &Operator) -> InstructionCategory {
 /// Profile aggregator for multiple runs
 pub struct ProfileAggregator {
     profiles: Vec<ProfilingReport>,
+}
+
+impl Default for ProfileAggregator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ProfileAggregator {

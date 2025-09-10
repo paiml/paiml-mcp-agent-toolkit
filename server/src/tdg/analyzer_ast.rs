@@ -324,11 +324,7 @@ impl TdgAnalyzerAst {
     
     /// Get storage statistics for monitoring
     pub fn get_storage_stats(&self) -> Option<crate::tdg::StorageStatistics> {
-        if let Some(storage) = &self.storage {
-            Some(storage.get_statistics())
-        } else {
-            None
-        }
+        self.storage.as_ref().map(|storage| storage.get_statistics())
     }
 
     /// Get adaptive threshold statistics for diagnostics
