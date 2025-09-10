@@ -847,9 +847,42 @@ The cleaning strategy is integrated into our release process:
 
 This ensures every release is built from a clean state, preventing artifact contamination and ensuring reproducibility.
 
+## WebAssembly Quality Assurance (v2.77.0+)
+
+**MANDATORY**: We MUST use our WASM analysis tools for ALL WebAssembly module quality assurance. This includes Ruchy notebooks and any WASM binaries in the ecosystem.
+
+### WASM Dogfooding Practices
+
+#### Daily WASM Analysis
+```bash
+# Before deploying any WASM module
+pmat analyze wasm module.wasm --verify --security
+
+# For Ruchy notebooks
+pmat analyze wasm ../ruchy/notebooks/*.wasm --security
+
+# Quality baseline comparison
+pmat analyze wasm current.wasm --baseline stable.wasm
+```
+
+#### WASM Quality Standards
+- **Verification**: All production WASM must pass formal verification
+- **Security**: Zero critical vulnerabilities allowed
+- **Performance**: No regression from baseline
+- **Complexity**: Functions must meet same ≤10 complexity standards
+
+#### Integration Requirements
+- **CI/CD**: WASM analysis in all pipelines
+- **Pre-commit**: Security scanning for .wasm files
+- **Release Gates**: Verification and security must pass
+- **Baseline Tracking**: Store reference WASM for comparison
+
+### Core Dogfooding Principles
+
 - workspace project
 - **We use TDD + QDD MANDATORY**: No code is written unless a test is written first. Use `pmat qdd create` for ALL new code generation. New features require 80% coverage and passing pmat quality gates. All code must be in roadmap and using a ticket that is updated when complete. For tickets/bugs, we need to add doctests/property tests and cargo run --example.
 - **TDG Persistent Scoring**: We use `pmat tdg` with persistent storage (~/.pmat/tdg-*) to track quality scores over time. Every analyzed file is stored and cached for historical tracking and performance.
 - **QDD Enforcement**: Use `pmat qdd create/refactor/validate` for ALL code changes. Quality profiles (extreme/standard/relaxed) ensure consistent standards. Never write code manually - always use QDD tools.
+- **WASM Quality Assurance**: Use `pmat analyze wasm` for ALL WebAssembly module analysis. Formal verification, security scanning, and performance profiling are mandatory for production WASM.
 - this is a workspace project, never cd into server.
 - We practice the toyota way. EVERY defect is our problem. We never "allow them", we use five-whys, fix root cause, even if unrelated to a problem we are working on.

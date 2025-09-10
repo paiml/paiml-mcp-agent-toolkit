@@ -21,6 +21,15 @@
 
 ## 🔥 Core Features
 
+### 🔬 [WebAssembly Quality Assurance](docs/specifications/wasm-quality-assurance.md) *(NEW in v2.77.0)*
+**Comprehensive WASM module analysis and verification!** Analyze WebAssembly binaries for quality, security, and performance:
+- **🔍 Streaming Analysis**: Handle large WASM files with streaming parser pipeline
+- **🔒 Formal Verification**: Incremental verification with shadow stack analysis
+- **🛡️ Security Scanning**: Pattern-based vulnerability detection (buffer overflow, integer overflow, etc.)
+- **📊 Performance Profiling**: Instruction mix analysis and hot function identification
+- **📈 Quality Baselines**: Multi-anchor comparison with release/preview/experimental baselines
+- **📝 Multiple Output Formats**: Summary, JSON, Detailed, SARIF for CI/CD integration
+
 ### 🗄️ [TDG Dogfooding Storage](docs/TDG_GUIDE.md) *(NEW in v2.68.0)*
 **Persistent file score storage for continuous quality improvement!** PMAT now tracks its own quality metrics:
 - **📊 Automatic Storage**: Every TDG analysis automatically persists scores to disk
@@ -38,13 +47,13 @@
 - **Easy Management**: `pmat tdg hooks install --backup` to get started
 - [**📖 Full Documentation →**](docs/hooks-management.md)
 
-> **🚀 v2.71.0 Release**: **First-Class Ruchy Language Support & Comprehensive Refactoring!**
-> - **🌟 Ruchy Integration**: Complete first-class support for Ruchy language (v1.89.0) with TDG analysis
-> - **🔧 Complexity Hotspot Fixes**: Reduced major complexity violations using Toyota Way Extract Method
-> - **📊 Test Coverage**: Maintained 80.2% coverage with restored test infrastructure
-> - **🎯 Entropy Analysis**: AST-based actionable violations with specific fix suggestions
-> - **🛡️ Quality Standards**: All new code enforces A+ standards (≤10 complexity)
-> - **📋 Zero Technical Debt**: All immediate blocking issues resolved for production deployment
+> **🚀 v2.77.0 Release**: **WebAssembly Quality Assurance & Sprint 89 Technical Debt Elimination!**
+> - **🔬 WASM Module**: Complete WebAssembly analysis, verification, and security scanning
+> - **🔒 Formal Verification**: Incremental verification with shadow stack analysis for WASM binaries
+> - **🛡️ Security Scanning**: Pattern-based vulnerability detection for common WASM exploits
+> - **📊 Performance Profiling**: Instruction mix analysis and hot function identification
+> - **🔧 Sprint 89 Complete**: Eliminated 62% of complexity in WASM handler (26→10 cyclomatic)
+> - **📈 Quality Baselines**: Multi-anchor baseline system for regression detection
 
 > **🔧 v2.70.0 Clippy Automation**: **[Intelligent Automatic Clippy Fixes](docs/clippy-automatic-fixes-guide.md)**
 > - **🎯 Confidence-Based**: Only applies fixes above configurable thresholds (0.5-1.0)
@@ -188,6 +197,14 @@ pmat analyze satd --timeout 45          # 45-second timeout
 
 # Run quality gates
 pmat quality-gate --strict
+
+# WebAssembly Analysis - NEW in v2.77.0! 🔬
+pmat analyze wasm module.wasm                    # Basic analysis
+pmat analyze wasm module.wasm --verify           # With formal verification
+pmat analyze wasm module.wasm --security         # Security vulnerability scan
+pmat analyze wasm module.wasm --profile          # Performance profiling
+pmat analyze wasm module.wasm --baseline ref.wasm # Quality comparison
+pmat analyze wasm module.wasm --format sarif     # CI/CD integration
 
 # Start MCP server
 pmat mcp

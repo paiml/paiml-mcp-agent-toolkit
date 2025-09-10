@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.77.0] - 2025-09-10
+
+### Sprint 89 - WebAssembly Quality Assurance & Technical Debt Elimination 🔬
+
+**MAJOR FEATURE**: Complete WebAssembly module analysis, verification, and security scanning for quality assurance.
+
+#### Added
+- **🔬 WASM Analysis Module**: Comprehensive WebAssembly binary analysis
+  - Streaming parser pipeline for large WASM files
+  - Function-level complexity metrics
+  - Instruction profiling and pattern detection
+  - Memory safety validation
+  
+- **🔒 Formal Verification**: Incremental verification system
+  - Shadow stack analysis for type safety
+  - Memory bounds checking
+  - Integer overflow detection
+  - Stack balance verification
+  
+- **🛡️ Security Scanning**: Pattern-based vulnerability detection
+  - Buffer overflow patterns
+  - Integer overflow vulnerabilities
+  - Unchecked memory growth
+  - Indirect call validation
+  
+- **📊 Performance Profiling**: Non-blocking shadow stack profiler
+  - Instruction mix analysis
+  - Hot function identification
+  - Control flow metrics
+  - Memory operation profiling
+  
+- **📈 Quality Baselines**: Multi-anchor baseline system
+  - Release/Preview/Experimental anchors
+  - Fuzzy hardware matching
+  - Regression detection
+  - Quality trend analysis
+
+#### Fixed
+- **🔧 Sprint 89 Complexity Reduction**: Eliminated 62% of complexity in WASM handler
+  - `handle_analyze_wasm`: 26→10 cyclomatic (62% reduction)
+  - `format_results`: 43→19 cognitive (56% reduction)
+  - Extracted 36 focused helper functions
+  - All functions now have single responsibility
+
+#### Technical Details
+- **Output Formats**: Summary, JSON, Detailed, SARIF
+- **CLI Integration**: `pmat analyze wasm` with full option set
+- **MCP Support**: Complete MCP protocol integration
+- **TDD Implementation**: Full test-driven development cycle
+- **Dependencies**: wasmparser for streaming analysis
+
 ## [2.71.0] - 2025-09-09
 
 ### Sprint 82 - P0 CRITICAL: Complexity Analyzer Bug Fix 🚨
