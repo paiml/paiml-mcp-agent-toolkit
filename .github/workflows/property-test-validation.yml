@@ -1,0 +1,275 @@
+name: Property Test Validation (80% Coverage)
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'server/src/**/*.rs'
+      - 'server/Cargo.toml'
+      - '.github/workflows/property-test-validation.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'server/src/**/*.rs'
+      - 'server/Cargo.toml'
+  schedule:
+    # Run daily at 2 AM UTC to ensure coverage doesn't regress
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      verbose:
+        description: 'Enable verbose output'
+        required: false
+        default: 'false'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  PROPTEST_CASES: 100  # Run 100 cases per property test
+  PROPTEST_MAX_SHRINK_ITERS: 100
+
+jobs:
+  validate-property-coverage:
+    name: Validate 80% Property Test Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+    
+    - name: Cache dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: "server -> target"
+        cache-on-failure: true
+    
+    - name: Count total Rust source files
+      id: count_files
+      run: |
+        total_files=$(find server/src -name "*.rs" -type f | wc -l)
+        echo "total_files=$total_files" >> $GITHUB_OUTPUT
+        echo "📊 Total Rust source files: $total_files"
+    
+    - name: Count files with property tests
+      id: count_property_tests
+      run: |
+        # Count files that contain property test modules or proptest! macros
+        files_with_tests=$(grep -r "proptest!" server/src --include="*.rs" -l 2>/dev/null | wc -l || echo "0")
+        files_with_modules=$(grep -r "mod property_tests" server/src --include="*.rs" -l 2>/dev/null | wc -l || echo "0")
+        
+        # Combine unique files (some may have both)
+        all_test_files=$(mktemp)
+        grep -r "proptest!" server/src --include="*.rs" -l 2>/dev/null > "$all_test_files" || true
+        grep -r "mod property_tests" server/src --include="*.rs" -l 2>/dev/null >> "$all_test_files" || true
+        
+        unique_test_files=$(sort -u "$all_test_files" | wc -l)
+        echo "files_with_property_tests=$unique_test_files" >> $GITHUB_OUTPUT
+        echo "✅ Files with property tests: $unique_test_files"
+    
+    - name: Calculate property test coverage percentage
+      id: calculate_coverage
+      run: |
+        total_files=${{ steps.count_files.outputs.total_files }}
+        files_with_tests=${{ steps.count_property_tests.outputs.files_with_property_tests }}
+        
+        if [ "$total_files" -eq 0 ]; then
+          coverage=0
+        else
+          coverage=$(awk "BEGIN {printf \"%.1f\", ($files_with_tests / $total_files) * 100}")
+        fi
+        
+        echo "coverage=$coverage" >> $GITHUB_OUTPUT
+        echo "📈 Property test coverage: $coverage% ($files_with_tests/$total_files files)"
+        
+        # Create coverage badge data
+        if (( $(echo "$coverage >= 80" | bc -l) )); then
+          badge_color="brightgreen"
+          badge_message="$coverage%25"
+        elif (( $(echo "$coverage >= 60" | bc -l) )); then
+          badge_color="yellow"
+          badge_message="$coverage%25"
+        else
+          badge_color="red"
+          badge_message="$coverage%25"
+        fi
+        
+        echo "badge_color=$badge_color" >> $GITHUB_OUTPUT
+        echo "badge_message=$badge_message" >> $GITHUB_OUTPUT
+    
+    - name: Verify 80% coverage threshold
+      run: |
+        coverage=${{ steps.calculate_coverage.outputs.coverage }}
+        threshold=80.0
+        
+        if (( $(echo "$coverage < $threshold" | bc -l) )); then
+          echo "❌ FAILURE: Property test coverage $coverage% is below required threshold of $threshold%"
+          echo "Files with property tests: ${{ steps.count_property_tests.outputs.files_with_property_tests }}"
+          echo "Total files: ${{ steps.count_files.outputs.total_files }}"
+          echo ""
+          echo "To fix this, run: scripts/rapid_property_test_injection.py"
+          exit 1
+        else
+          echo "✅ SUCCESS: Property test coverage $coverage% meets or exceeds threshold of $threshold%"
+        fi
+    
+    - name: Run property tests
+      run: |
+        cd server
+        echo "🧪 Running all property tests..."
+        
+        # Run property tests with increased case count for CI
+        PROPTEST_CASES=100 cargo test --lib --bins -- proptest 2>&1 | tee property_test_output.log
+        
+        # Check for failures
+        if grep -q "test result: FAILED" property_test_output.log; then
+          echo "❌ Property tests failed!"
+          exit 1
+        fi
+        
+        echo "✅ All property tests passed!"
+    
+    - name: Validate property test compilation
+      run: |
+        cd server
+        echo "🔨 Validating all property tests compile..."
+        
+        # Compile tests without running to ensure they all build
+        cargo test --lib --bins --no-run 2>&1 | tee compilation_output.log
+        
+        if grep -q "error\[E" compilation_output.log; then
+          echo "❌ Property test compilation failed!"
+          exit 1
+        fi
+        
+        echo "✅ All property tests compile successfully!"
+    
+    - name: Check for property test patterns
+      run: |
+        cd server
+        echo "🔍 Analyzing property test patterns..."
+        
+        # Count different types of property tests
+        basic_tests=$(grep -r "prop_assert!(true)" --include="*.rs" | wc -l || echo "0")
+        meaningful_tests=$(grep -r "prop_assert!" --include="*.rs" | grep -v "prop_assert!(true)" | wc -l || echo "0")
+        
+        echo "📊 Property test statistics:"
+        echo "  - Basic placeholder tests: $basic_tests"
+        echo "  - Meaningful property tests: $meaningful_tests"
+        
+        if [ "$meaningful_tests" -lt 100 ]; then
+          echo "⚠️ Warning: Only $meaningful_tests meaningful property tests found"
+          echo "Consider upgrading placeholder tests to meaningful property validations"
+        fi
+    
+    - name: Generate coverage report
+      if: always()
+      run: |
+        cat << EOF > property_test_report.md
+        # Property Test Coverage Report
+        
+        **Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        **Coverage**: ${{ steps.calculate_coverage.outputs.coverage }}%
+        **Files with Tests**: ${{ steps.count_property_tests.outputs.files_with_property_tests }}
+        **Total Files**: ${{ steps.count_files.outputs.total_files }}
+        **Status**: ${{ steps.calculate_coverage.outputs.coverage >= 80 && '✅ PASSING' || '❌ FAILING' }}
+        
+        ## Threshold Compliance
+        - Required: 80.0%
+        - Actual: ${{ steps.calculate_coverage.outputs.coverage }}%
+        - Margin: $(echo "${{ steps.calculate_coverage.outputs.coverage }} - 80.0" | bc)%
+        
+        ## Recommendations
+        $(if [ "${{ steps.calculate_coverage.outputs.coverage }}" -lt "80" ]; then
+          echo "- ⚠️ Coverage below threshold. Run scripts/rapid_property_test_injection.py"
+        else
+          echo "- ✅ Coverage meets requirements. Consider adding more meaningful tests."
+        fi)
+        EOF
+        
+        cat property_test_report.md
+    
+    - name: Upload coverage report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: property-test-coverage-report
+        path: property_test_report.md
+        retention-days: 30
+    
+    - name: Comment PR with coverage
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const coverage = '${{ steps.calculate_coverage.outputs.coverage }}';
+          const threshold = 80.0;
+          const passing = parseFloat(coverage) >= threshold;
+          const emoji = passing ? '✅' : '❌';
+          
+          const comment = `## ${emoji} Property Test Coverage Report
+          
+          **Coverage**: ${coverage}% (${passing ? 'PASSING' : 'FAILING'})
+          **Threshold**: ${threshold}%
+          **Files with Tests**: ${{ steps.count_property_tests.outputs.files_with_property_tests }}/${{ steps.count_files.outputs.total_files }}
+          
+          ${!passing ? '⚠️ **Action Required**: Run `scripts/rapid_property_test_injection.py` to add missing property tests.' : '✨ Coverage requirement satisfied!'}`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  property-test-performance:
+    name: Property Test Performance Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: "server -> target"
+    
+    - name: Run property tests with timing
+      run: |
+        cd server
+        echo "⏱️ Measuring property test performance..."
+        
+        start_time=$(date +%s)
+        
+        # Run with limited cases for performance testing
+        PROPTEST_CASES=10 timeout 300 cargo test --lib -- proptest || {
+          echo "❌ Property tests exceeded 5 minute timeout"
+          exit 1
+        }
+        
+        end_time=$(date +%s)
+        duration=$((end_time - start_time))
+        
+        echo "✅ Property tests completed in ${duration} seconds"
+        
+        if [ "$duration" -gt 180 ]; then
+          echo "⚠️ Warning: Property tests took longer than 3 minutes"
+        fi
+    
+    - name: Check memory usage
+      run: |
+        cd server
+        echo "💾 Checking memory usage during property tests..."
+        
+        # Run tests with memory monitoring
+        /usr/bin/time -v cargo test --lib -- proptest 2>&1 | grep "Maximum resident set size" || true
