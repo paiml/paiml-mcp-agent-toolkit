@@ -1,0 +1,299 @@
+# WebAssembly Analysis Guide
+
+## Overview
+
+PMAT v2.77.0 introduces comprehensive WebAssembly (WASM) module analysis capabilities, providing quality assurance, security scanning, and performance profiling for WASM binaries. This feature is particularly useful for analyzing WASM notebooks from projects like Ruchy.
+
+## Quick Start
+
+```bash
+# Basic WASM analysis
+pmat analyze wasm module.wasm
+
+# Full analysis with all features
+pmat analyze wasm module.wasm --verify --security --profile
+
+# Compare against baseline
+pmat analyze wasm module.wasm --baseline reference.wasm
+
+# Export to SARIF for CI/CD
+pmat analyze wasm module.wasm --security --format sarif --output report.sarif
+```
+
+## Features
+
+### 1. Core Analysis
+
+The basic WASM analysis provides:
+- **Function Count**: Total number of functions in the module
+- **Instruction Count**: Total instructions across all functions
+- **Binary Size**: Size of the WASM binary
+- **Memory Pages**: Memory allocation requirements
+- **Complexity Metrics**: Maximum cyclomatic complexity
+
+```bash
+pmat analyze wasm module.wasm --format summary
+```
+
+### 2. Formal Verification
+
+Enable incremental formal verification to ensure memory safety and type correctness:
+
+```bash
+pmat analyze wasm module.wasm --verify
+```
+
+Verification checks:
+- **Memory Bounds**: All memory accesses are within bounds
+- **Type Safety**: Stack operations maintain type consistency
+- **Stack Balance**: Functions maintain proper stack discipline
+- **Integer Overflow**: Arithmetic operations are checked
+
+### 3. Security Scanning
+
+Pattern-based vulnerability detection for common WASM exploits:
+
+```bash
+pmat analyze wasm module.wasm --security
+```
+
+Detects patterns:
+- **Buffer Overflows**: Unchecked memory access patterns
+- **Integer Overflows**: Unsafe arithmetic operations
+- **Memory Growth**: Unbounded memory allocation
+- **Indirect Calls**: Potentially unsafe function pointer usage
+
+Severity levels:
+- **Critical**: Immediate exploitation risk
+- **High**: Significant security concern
+- **Medium**: Potential vulnerability
+- **Low**: Best practice violation
+
+### 4. Performance Profiling
+
+Shadow stack profiling for performance analysis:
+
+```bash
+pmat analyze wasm module.wasm --profile
+```
+
+Profiling metrics:
+- **Instruction Mix**: Distribution of instruction types
+  - Control flow (branches, loops)
+  - Memory operations (loads, stores)
+  - Arithmetic operations
+  - Function calls
+- **Hot Functions**: Functions consuming most execution time
+- **Complexity Hotspots**: High-complexity function identification
+
+### 5. Quality Baselines
+
+Compare WASM modules against baseline versions:
+
+```bash
+pmat analyze wasm current.wasm --baseline stable.wasm
+```
+
+Baseline comparison:
+- **Complexity Regression**: Detect complexity increases
+- **Size Growth**: Monitor binary size changes
+- **Performance Impact**: Identify performance regressions
+- **Memory Usage**: Track memory requirement changes
+
+Multi-anchor system:
+- **Release Baseline**: Stable production version
+- **Preview Baseline**: Beta/preview version
+- **Experimental Baseline**: Development version
+
+## Output Formats
+
+### Summary (Default)
+Human-readable summary of key metrics:
+```
+WASM Analysis Summary
+====================
+
+Functions: 42
+Instructions: 1337
+Binary Size: 65536 bytes
+Memory Pages: 4
+Max Complexity: 15
+
+Verification: ✅ SAFE
+
+Security Vulnerabilities:
+  Critical: 0
+  High: 1
+  Medium: 3
+  Low: 7
+```
+
+### JSON
+Machine-readable format for tooling integration:
+```bash
+pmat analyze wasm module.wasm --format json --output analysis.json
+```
+
+### Detailed
+Comprehensive analysis with all details:
+```bash
+pmat analyze wasm module.wasm --format detailed --verbose
+```
+
+### SARIF
+Static Analysis Results Interchange Format for CI/CD:
+```bash
+pmat analyze wasm module.wasm --security --format sarif --output vulnerabilities.sarif
+```
+
+## Integration Examples
+
+### GitHub Actions
+```yaml
+- name: WASM Security Analysis
+  run: |
+    pmat analyze wasm build/module.wasm \
+      --security \
+      --format sarif \
+      --output wasm-security.sarif
+    
+- name: Upload SARIF
+  uses: github/codeql-action/upload-sarif@v2
+  with:
+    sarif_file: wasm-security.sarif
+```
+
+### Pre-commit Hook
+```bash
+#!/bin/bash
+# .git/hooks/pre-commit
+
+# Check WASM files for security issues
+for wasm in $(git diff --cached --name-only | grep "\.wasm$"); do
+  pmat analyze wasm "$wasm" --security --verify
+  if [ $? -ne 0 ]; then
+    echo "WASM analysis failed for $wasm"
+    exit 1
+  fi
+done
+```
+
+### Makefile Integration
+```makefile
+wasm-check:
+	pmat analyze wasm build/module.wasm \
+	  --verify --security --profile \
+	  --baseline stable/module.wasm
+
+wasm-report:
+	pmat analyze wasm build/module.wasm \
+	  --format detailed \
+	  --output reports/wasm-analysis.md
+```
+
+## Use Cases
+
+### 1. Ruchy Notebook Analysis
+Analyze WASM notebooks generated by Ruchy:
+```bash
+# Analyze Ruchy notebook WASM
+pmat analyze wasm ../ruchy/notebooks/example.wasm \
+  --verify --security --profile
+
+# Compare notebook versions
+pmat analyze wasm ../ruchy/notebooks/current.wasm \
+  --baseline ../ruchy/notebooks/stable.wasm
+```
+
+### 2. CI/CD Quality Gates
+Enforce quality standards in CI/CD pipelines:
+```bash
+# Fail build on critical vulnerabilities
+pmat analyze wasm build/module.wasm --security || exit 1
+
+# Fail on verification errors
+pmat analyze wasm build/module.wasm --verify || exit 1
+
+# Fail on performance regression
+pmat analyze wasm build/module.wasm \
+  --profile \
+  --baseline releases/latest.wasm || exit 1
+```
+
+### 3. Security Auditing
+Comprehensive security audit of WASM modules:
+```bash
+# Full security scan with detailed output
+pmat analyze wasm module.wasm \
+  --security \
+  --verify \
+  --format detailed \
+  --verbose \
+  --output security-audit.md
+```
+
+### 4. Performance Optimization
+Identify performance bottlenecks:
+```bash
+# Profile and identify hot functions
+pmat analyze wasm module.wasm \
+  --profile \
+  --format json | \
+  jq '.profiling.hot_functions[] | select(.percentage > 10)'
+```
+
+## Best Practices
+
+1. **Always Verify**: Run verification on production WASM modules
+2. **Security First**: Scan for vulnerabilities before deployment
+3. **Baseline Comparison**: Track quality metrics over time
+4. **CI/CD Integration**: Automate analysis in build pipelines
+5. **Regular Audits**: Schedule periodic security audits
+
+## Troubleshooting
+
+### Invalid WASM Binary
+```
+Error: Invalid WASM magic number
+```
+Ensure the file is a valid WebAssembly binary (starts with `\0asm`).
+
+### Large File Handling
+For very large WASM files, the streaming parser handles them efficiently:
+```bash
+# Analysis automatically uses streaming for large files
+pmat analyze wasm large-module.wasm
+```
+
+### Memory Limitations
+If analysis runs out of memory:
+```bash
+# Increase stack size if needed
+ulimit -s unlimited
+pmat analyze wasm module.wasm
+```
+
+## Technical Details
+
+### Architecture
+- **Streaming Parser**: Handles large files without loading entirely into memory
+- **Incremental Verification**: Verifies functions individually for efficiency
+- **Shadow Stack Profiling**: Non-intrusive performance analysis
+- **Pattern Matching**: AST-based vulnerability pattern detection
+
+### Dependencies
+- `wasmparser`: WebAssembly binary parsing
+- `serde`: Serialization for output formats
+- `chrono`: Timestamp handling for baselines
+
+### Performance
+- Streaming analysis: O(n) memory usage
+- Verification: O(n) time complexity
+- Security scanning: O(n*m) where m is pattern count
+- Profiling: O(n) with minimal overhead
+
+## Related Documentation
+
+- [WASM Quality Assurance Specification](specifications/wasm-quality-assurance.md)
+- [Quality Gates Guide](quality-gates.md)
+- [MCP Integration](mcp-integration.md)
