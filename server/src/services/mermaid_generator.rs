@@ -1189,3 +1189,4 @@ mod tests {
 #[cfg(test)]
 #[path = "mermaid_property_tests.rs"]
 mod property_tests;
+

@@ -164,3 +164,4 @@ mod tests {
         assert!(matches!(result.unwrap_err(), AnalysisError::Io(_)));
     }
 }
+

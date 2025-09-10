@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+#[cfg(test)]
+use proptest::prelude::*;
+
 /// Technical Debt Gradient (TDG) - Primary code quality metric
 /// Replaces defect probability throughout the system
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -235,6 +238,92 @@ pub struct TDGBucket {
 
     /// Percentage of total files
     pub percentage: f64,
+}
+
+#[cfg(test)]
+mod property_tests {
+    use super::*;
+
+    prop_compose! {
+        fn valid_tdg_score()(
+            value in 0.0..10.0,
+            complexity in 0.0..5.0,
+            churn in 0.0..5.0,
+            coupling in 0.0..5.0,
+            domain_risk in 0.0..5.0,
+            duplication in 0.0..5.0,
+            percentile in 0.0..100.0,
+            confidence in 0.0..1.0
+        ) -> TDGScore {
+            TDGScore {
+                value,
+                components: TDGComponents {
+                    complexity,
+                    churn,
+                    coupling,
+                    domain_risk,
+                    duplication,
+                },
+                severity: if value > 2.5 { TDGSeverity::Critical }
+                         else if value > 1.5 { TDGSeverity::Warning }
+                         else { TDGSeverity::Normal },
+                percentile,
+                confidence,
+            }
+        }
+    }
+
+
+    proptest! {
+        #[test]
+        fn tdg_score_roundtrip_serialization(score in valid_tdg_score()) {
+            let json = serde_json::to_string(&score)?;
+            let deserialized: TDGScore = serde_json::from_str(&json)?;
+            prop_assert_eq!(score, deserialized);
+        }
+
+        #[test] 
+        fn tdg_severity_matches_value(score in valid_tdg_score()) {
+            match score.severity {
+                TDGSeverity::Normal => prop_assert!(score.value <= 1.5),
+                TDGSeverity::Warning => prop_assert!(score.value > 1.5 && score.value <= 2.5),
+                TDGSeverity::Critical => prop_assert!(score.value > 2.5),
+            }
+        }
+
+        #[test]
+        fn tdg_percentile_in_valid_range(score in valid_tdg_score()) {
+            prop_assert!(score.percentile >= 0.0 && score.percentile <= 100.0);
+        }
+
+        #[test] 
+        fn tdg_confidence_in_valid_range(score in valid_tdg_score()) {
+            prop_assert!(score.confidence >= 0.0 && score.confidence <= 1.0);
+        }
+
+        #[test]
+        fn tdg_components_non_negative(score in valid_tdg_score()) {
+            prop_assert!(score.components.complexity >= 0.0);
+            prop_assert!(score.components.churn >= 0.0);
+            prop_assert!(score.components.coupling >= 0.0);
+            prop_assert!(score.components.domain_risk >= 0.0);
+            prop_assert!(score.components.duplication >= 0.0);
+        }
+
+
+        #[test]
+        fn tdg_severity_ordering_consistent(value in 0.0..10.0) {
+            let severity = if value > 2.5 { TDGSeverity::Critical }
+                          else if value > 1.5 { TDGSeverity::Warning }
+                          else { TDGSeverity::Normal };
+            
+            match severity {
+                TDGSeverity::Normal => prop_assert!(value <= 1.5),
+                TDGSeverity::Warning => prop_assert!(value > 1.5 && value <= 2.5),
+                TDGSeverity::Critical => prop_assert!(value > 2.5),
+            }
+        }
+    }
 }
 
 #[cfg(test)]
