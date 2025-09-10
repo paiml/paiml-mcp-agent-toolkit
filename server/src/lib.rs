@@ -1,3 +1,100 @@
+//! # PMAT (Professional Project Quantitative Analysis Toolkit)
+//!
+//! A comprehensive toolkit for project analysis, quality assurance, and technical debt management.
+//! PMAT provides multiple interfaces (CLI, MCP, HTTP API) for analyzing code quality, complexity,
+//! and generating actionable insights for software development teams.
+//!
+//! ## Core Modules
+//!
+//! ### Analysis Engines
+//! - [`complexity`](services/complexity.rs) - Code complexity analysis using AST parsing
+//! - [`entropy`] - Actionable entropy analysis for pattern detection
+//! - [`tdg`] - Technical Debt Grading system with persistent scoring
+//! - [`wasm`] - WebAssembly quality assurance and verification
+//!
+//! ### Quality Assurance  
+//! - [`qdd`] - Quality-Driven Development with automated code generation
+//! - [`services`] - Core analysis services and quality gates
+//! - [`models`] - Data models for analysis results and reports
+//!
+//! ### Interface Modules
+//! - [`cli`] - Command-line interface with 25+ commands
+//! - [`mcp_server`] - Model Context Protocol server implementation  
+//! - [`handlers`] - HTTP API handlers for REST endpoints
+//! - [`demo`] - Demo server and showcase functionality
+//!
+//! ### Infrastructure
+//! - [`agent`] - Claude Code Agent Mode implementation
+//! - [`ast`] - Unified AST module for multi-language parsing
+//! - [`contracts`] - Uniform contracts across ALL interfaces (CLI, MCP, HTTP)
+//! - [`protocol`] - Unified protocol design per SPECIFICATION.md Section 3
+//! - [`utils`] - Common utilities and helpers
+//!
+//! ## Quick Start Examples
+//!
+//! ### Basic Usage
+//!
+//! ```rust
+//! use pmat::{MetadataCache, ContentCache};
+//! use std::sync::Arc;
+//! use tokio::sync::RwLock;
+//! use lru::LruCache;
+//! use std::num::NonZeroUsize;
+//!
+//! // Create caches for template management
+//! let metadata_cache: MetadataCache = Arc::new(RwLock::new(
+//!     LruCache::new(NonZeroUsize::new(100).unwrap())
+//! ));
+//! let content_cache: ContentCache = Arc::new(RwLock::new(
+//!     LruCache::new(NonZeroUsize::new(50).unwrap())  
+//! ));
+//!
+//! // Caches are ready for use
+//! assert!(metadata_cache.read().await.len() == 0);
+//! assert!(content_cache.read().await.len() == 0);
+//! ```
+//!
+//! ### Template Server Implementation
+//!
+//! ```rust
+//! use pmat::{TemplateServerTrait, S3Client};
+//! use anyhow::Result;
+//! use std::sync::Arc;
+//!
+//! // Example template server implementation
+//! struct MyTemplateServer {
+//!     client: S3Client,
+//! }
+//!
+//! #[async_trait::async_trait]
+//! impl TemplateServerTrait for MyTemplateServer {
+//!     async fn get_template_metadata(&self, uri: &str) -> Result<Arc<pmat::PublicTemplateResource>> {
+//!         // Implementation would fetch from storage
+//!         # use pmat::PublicTemplateResource;
+//!         # let resource = PublicTemplateResource::default();
+//!         # Ok(Arc::new(resource))
+//!         Ok(Arc::new(PublicTemplateResource::default()))
+//!     }
+//!
+//!     async fn get_template_content(&self, s3_key: &str) -> Result<Arc<str>> {
+//!         // Implementation would fetch content from S3
+//!         Ok(Arc::from("template content"))
+//!     }
+//!
+//!     async fn list_templates(&self, prefix: &str) -> Result<Vec<Arc<pmat::PublicTemplateResource>>> {
+//!         // Implementation would list templates with prefix filter
+//!         Ok(vec![])
+//!     }
+//!
+//!     fn get_metadata_cache(&self) -> Option<&pmat::MetadataCache> {
+//!         None // Optional caching
+//!     }
+//! }
+//!
+//! let server = MyTemplateServer { client: S3Client };
+//! // Server is ready to handle template requests
+//! ```
+
 pub mod agent; // Claude Code Agent Mode implementation
 pub mod ast; // Unified AST module for all language parsing
 pub mod cli;
@@ -32,26 +129,177 @@ use tracing::info;
 use crate::models::template::TemplateResource;
 use crate::services::renderer::TemplateRenderer;
 
-// Type aliases to reduce complexity
+/// Shared cache for template metadata with LRU eviction policy.
+///
+/// This cache stores parsed template metadata to avoid repeated parsing operations.
+/// Uses Arc<RwLock<>> for thread-safe access across async contexts.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::MetadataCache;
+/// use std::sync::Arc;
+/// use tokio::sync::RwLock;
+/// use lru::LruCache;
+/// use std::num::NonZeroUsize;
+///
+/// // Create a metadata cache with 100 entry capacity
+/// let cache: MetadataCache = Arc::new(RwLock::new(
+///     LruCache::new(NonZeroUsize::new(100).unwrap())
+/// ));
+///
+/// // Cache starts empty
+/// assert!(cache.read().await.len() == 0);
+/// ```
 pub type MetadataCache = Arc<RwLock<LruCache<String, Arc<TemplateResource>>>>;
+
+/// Shared cache for template content with LRU eviction policy.
+///
+/// This cache stores rendered template content to improve performance
+/// for frequently accessed templates.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::ContentCache;
+/// use std::sync::Arc;
+/// use tokio::sync::RwLock;
+/// use lru::LruCache;
+/// use std::num::NonZeroUsize;
+///
+/// // Create a content cache with 50 entry capacity
+/// let cache: ContentCache = Arc::new(RwLock::new(
+///     LruCache::new(NonZeroUsize::new(50).unwrap())
+/// ));
+///
+/// // Insert content into cache
+/// {
+///     let mut cache_guard = cache.write().await;
+///     cache_guard.put("template_key".to_string(), Arc::from("template content"));
+/// }
+///
+/// // Retrieve content from cache
+/// let content = cache.read().await.peek("template_key").cloned();
+/// assert_eq!(content.as_deref(), Some("template content"));
+/// ```
 pub type ContentCache = Arc<RwLock<LruCache<String, Arc<str>>>>;
 
 // Re-exports for test compatibility
 pub use crate::services::renderer::TemplateRenderer as PublicTemplateRenderer;
 pub use crate::models::template::TemplateResource as PublicTemplateResource;
 
-// Dummy type for S3Client to satisfy trait requirements without AWS SDK
+/// Placeholder S3 client for template storage operations.
+///
+/// This is a lightweight implementation that satisfies trait requirements
+/// without requiring the full AWS SDK dependency.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::S3Client;
+///
+/// let client = S3Client;
+/// // Client can be used in template server implementations
+/// ```
 pub struct S3Client;
 
+/// Template server trait defining the interface for template management operations.
+///
+/// This trait provides methods for retrieving template metadata and content,
+/// as well as access to caching and rendering capabilities. Implementations
+/// can use different storage backends (S3, local filesystem, etc.).
+///
+/// # Examples
+///
+/// ```rust
+/// use pmat::{TemplateServerTrait, TemplateRenderer, S3Client, MetadataCache, ContentCache};
+/// use anyhow::Result;
+/// use std::sync::Arc;
+///
+/// struct ExampleTemplateServer {
+///     renderer: TemplateRenderer,
+/// }
+///
+/// #[async_trait::async_trait]
+/// impl TemplateServerTrait for ExampleTemplateServer {
+///     async fn get_template_metadata(&self, uri: &str) -> Result<Arc<pmat::PublicTemplateResource>> {
+///         // Fetch metadata from storage based on URI
+///         Ok(Arc::new(pmat::PublicTemplateResource::default()))
+///     }
+///
+///     async fn get_template_content(&self, s3_key: &str) -> Result<Arc<str>> {
+///         // Fetch template content from storage
+///         Ok(Arc::from("template content"))
+///     }
+///
+///     async fn list_templates(&self, prefix: &str) -> Result<Vec<Arc<pmat::PublicTemplateResource>>> {
+///         // List templates with optional prefix filter
+///         Ok(vec![])
+///     }
+///
+///     fn get_renderer(&self) -> &TemplateRenderer {
+///         &self.renderer
+///     }
+///
+///     fn get_metadata_cache(&self) -> Option<&MetadataCache> {
+///         None // No caching in this example
+///     }
+///
+///     fn get_content_cache(&self) -> Option<&ContentCache> {
+///         None
+///     }
+///
+///     fn get_s3_client(&self) -> Option<&S3Client> {
+///         None
+///     }
+///
+///     fn get_bucket_name(&self) -> Option<&str> {
+///         None
+///     }
+/// }
+/// ```
 #[async_trait::async_trait]
 pub trait TemplateServerTrait: Send + Sync {
+    /// Retrieves template metadata for the given URI.
+    ///
+    /// # Arguments
+    /// * `uri` - The URI identifying the template
+    ///
+    /// # Returns
+    /// Template resource containing metadata information
     async fn get_template_metadata(&self, uri: &str) -> Result<Arc<TemplateResource>>;
+
+    /// Retrieves template content from storage.
+    ///
+    /// # Arguments  
+    /// * `s3_key` - The storage key for the template content
+    ///
+    /// # Returns
+    /// Template content as a shared string reference
     async fn get_template_content(&self, s3_key: &str) -> Result<Arc<str>>;
+
+    /// Lists templates with optional prefix filtering.
+    ///
+    /// # Arguments
+    /// * `prefix` - Optional prefix to filter template names
+    ///
+    /// # Returns
+    /// Vector of template resources matching the prefix
     async fn list_templates(&self, prefix: &str) -> Result<Vec<Arc<TemplateResource>>>;
+
+    /// Gets the template renderer instance.
     fn get_renderer(&self) -> &TemplateRenderer;
+
+    /// Gets the metadata cache if available.
     fn get_metadata_cache(&self) -> Option<&MetadataCache>;
+
+    /// Gets the content cache if available.  
     fn get_content_cache(&self) -> Option<&ContentCache>;
+
+    /// Gets the S3 client if available.
     fn get_s3_client(&self) -> Option<&S3Client>;
+
+    /// Gets the S3 bucket name if available.
     fn get_bucket_name(&self) -> Option<&str>;
 }
 
