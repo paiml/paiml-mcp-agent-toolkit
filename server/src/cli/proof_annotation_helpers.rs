@@ -210,7 +210,7 @@ pub fn format_as_summary(
     annotations: &[(Location, ProofAnnotation)],
     elapsed: std::time::Duration,
 ) -> Result<String> {
-    use std::fmt::Write;
+    
     let mut output = String::new();
 
     format_summary_header(&mut output, annotations, elapsed)?;

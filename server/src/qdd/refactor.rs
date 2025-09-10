@@ -331,6 +331,12 @@ pub struct PatternEngine {
     patterns: std::collections::HashMap<String, String>,
 }
 
+impl Default for PatternEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PatternEngine {
     pub fn new() -> Self {
         let mut patterns = std::collections::HashMap::new();

@@ -531,7 +531,7 @@ impl DocGenerator {
         
         for (i, param) in spec.inputs.iter().enumerate() {
             if i > 0 { docs.push_str(", "); }
-            docs.push_str(&format!("{}", self.generate_example_value(&param.param_type)));
+            docs.push_str(&self.generate_example_value(&param.param_type).to_string());
         }
         
         docs.push_str(");\n");

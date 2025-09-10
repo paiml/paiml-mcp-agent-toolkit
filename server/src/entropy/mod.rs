@@ -63,6 +63,12 @@ pub struct EntropyAnalyzer {
     entropy_calculator: EntropyCalculator,
 }
 
+impl Default for EntropyAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EntropyAnalyzer {
     /// Create new analyzer with default config
     pub fn new() -> Self {

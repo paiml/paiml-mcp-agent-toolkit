@@ -285,7 +285,7 @@ fn save_refactored_code(output_path: &Path, code: &str) -> Result<()> {
 
 /// Display rollback information if available
 fn display_rollback_info(result: &QddResult) {
-    if result.rollback_plan.checkpoints.len() > 0 {
+    if !result.rollback_plan.checkpoints.is_empty() {
         println!("🔄 {} rollback checkpoints available", result.rollback_plan.checkpoints.len());
     }
 }
