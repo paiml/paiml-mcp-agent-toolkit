@@ -123,6 +123,7 @@ pub struct Checkpoint {
 
 /// Main QDD tool interface
 pub struct QddTool {
+    #[allow(dead_code)]
     profile: QualityProfile,
     generator: QualityCodeGenerator,
     refactor_engine: QualityRefactoringEngine,

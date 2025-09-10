@@ -6,6 +6,7 @@ use serde::{Serialize, Deserialize};
 
 /// Incremental verifier for property-based safety checks
 pub struct IncrementalVerifier {
+    #[allow(dead_code)]
     invariants: InvariantChecker,
     stack_analyzer: StackAnalyzer,
 }
@@ -127,6 +128,7 @@ impl VerificationResult {
 /// Invariant checker for safety properties
 #[derive(Debug, Clone)]
 struct InvariantChecker {
+    #[allow(dead_code)]
     invariants: Vec<SafetyInvariant>,
 }
 
@@ -142,6 +144,7 @@ impl InvariantChecker {
         }
     }
 
+    #[allow(dead_code)]
     fn check_all(&self, _module: &[u8]) -> Vec<InvariantViolation> {
         // Check each invariant
         Vec::new()
@@ -159,6 +162,7 @@ enum SafetyInvariant {
 
 /// Invariant violation record
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct InvariantViolation {
     invariant: SafetyInvariant,
     location: usize,
@@ -168,6 +172,7 @@ struct InvariantViolation {
 /// Stack type analyzer for type checking
 #[derive(Debug, Clone)]
 struct StackAnalyzer {
+    #[allow(dead_code)]
     type_stack: Vec<ValType>,
 }
 
@@ -226,12 +231,12 @@ impl StackAnalyzer {
             }
             
             // Local operations
-            LocalGet { local_index } => {
+            LocalGet { local_index: _ } => {
                 // Would need local types from function signature
                 stack.push(ValType::I32); // Simplified
             }
             
-            LocalSet { local_index } => {
+            LocalSet { local_index: _ } => {
                 if stack.is_empty() {
                     return Err(anyhow!("Stack underflow"));
                 }
@@ -254,6 +259,7 @@ impl StackAnalyzer {
 
 /// Differential testing for cross-runtime validation
 pub struct DifferentialTester {
+    #[allow(dead_code)]
     test_cases: Vec<TestCase>,
 }
 
@@ -286,7 +292,7 @@ impl DifferentialTester {
     }
 
     /// Run differential testing between runtimes
-    pub fn differential_test(&self, module: &[u8]) -> DifferentialResult {
+    pub fn differential_test(&self, _module: &[u8]) -> DifferentialResult {
         // This would compare execution across wasmtime, wasmer, etc.
         // Simplified for now
         DifferentialResult::Consistent

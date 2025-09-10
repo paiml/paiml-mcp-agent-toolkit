@@ -112,6 +112,7 @@ impl EntropyReport {
 
 /// Calculates entropy metrics
 pub struct EntropyCalculator {
+    #[allow(dead_code)]
     config: EntropyConfig,
 }
 
