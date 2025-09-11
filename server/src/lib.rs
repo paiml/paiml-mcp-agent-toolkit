@@ -116,6 +116,7 @@ pub mod test_performance; // Performance testing per SPECIFICATION.md Section 30
                           // #[cfg(test)]
                           // pub mod testing;
 pub mod unified_protocol;
+pub mod unified_quality; // Unified Quality Enforcement System
 pub mod utils;
 pub mod wasm; // WebAssembly quality assurance module
 
