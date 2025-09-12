@@ -544,7 +544,7 @@ mod tests {
         
         // Second call should use cache
         let found2 = discovery.find_nearest(temp_dir.path());
-        assert_eq!(found2, Some(agents_path));
+        assert_eq!(found2, Some(agents_path.clone()));
         
         // Clear cache
         discovery.clear_cache();
