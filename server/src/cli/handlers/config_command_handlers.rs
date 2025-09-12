@@ -165,7 +165,45 @@ async fn handle_validate(fix: bool) -> Result<()> {
 
     if fix && !result.errors.is_empty() {
         println!("🔧 Auto-fix enabled, attempting to fix configuration issues...");
-        // TODO: Implement auto-fix logic
+        let config_service = configuration();
+        let mut config = config_service.get_config()?;
+        let mut fixed_issues = Vec::new();
+        
+        for error in &result.errors {
+            match error.as_str() {
+                msg if msg.contains("max_complexity must be > 0") => {
+                    config.quality.max_complexity = 20;
+                    fixed_issues.push("Set max_complexity to 20");
+                }
+                msg if msg.contains("min_coverage must be between 0 and 100") => {
+                    config.quality.min_coverage = config.quality.min_coverage.clamp(0.0, 100.0);
+                    fixed_issues.push("Clamped min_coverage to valid range");
+                }
+                msg if msg.contains("project_name cannot be empty") => {
+                    if config.system.project_name.is_empty() {
+                        config.system.project_name = "pmat-project".to_string();
+                        fixed_issues.push("Set default project name");
+                    }
+                }
+                msg if msg.contains("max_concurrent_operations must be > 0") => {
+                    if config.system.max_concurrent_operations == 0 {
+                        config.system.max_concurrent_operations = 4;
+                        fixed_issues.push("Set max_concurrent_operations to 4");
+                    }
+                }
+                _ => {}
+            }
+        }
+        
+        if !fixed_issues.is_empty() {
+            println!("✅ Fixed issues: {}", fixed_issues.join(", "));
+            
+            // Write corrected config back to file
+            let config_path = std::env::current_dir()?.join("pmat.toml");
+            let toml_content = toml::to_string_pretty(&config)?;
+            std::fs::write(&config_path, toml_content)?;
+            println!("📝 Updated configuration file: {}", config_path.display());
+        }
     }
 
     print_validation_result(&result)?;
