@@ -72,6 +72,10 @@ impl ViolationDetector {
         // Filter by minimum severity
         violations.retain(|v| v.severity >= self.config.min_severity);
 
+        // TOYOTA WAY FIX: Deduplicate violations to prevent false inflation
+        // Issue: Same pattern reported by multiple detection methods
+        violations = self.deduplicate_violations(violations);
+
         // Sort by priority
         violations.sort_by(|a, b| {
             b.priority_score.partial_cmp(&a.priority_score).unwrap()
@@ -316,6 +320,39 @@ impl ViolationDetector {
         // Extract meaningful name from pattern
         // Simplified - would analyze actual AST
         "context"
+    }
+
+    /// Deduplicate violations to prevent the same pattern being reported multiple times
+    /// 
+    /// Issue: Same pattern can be detected by multiple methods (repetitive, cross-file, etc.)
+    /// causing inflated violation counts. This deduplicates based on pattern type and core message.
+    fn deduplicate_violations(&self, violations: Vec<ActionableViolation>) -> Vec<ActionableViolation> {
+        use std::collections::HashMap;
+        
+        let mut unique_violations: HashMap<String, ActionableViolation> = HashMap::new();
+        
+        for violation in violations {
+            // Create a key based on pattern type and the core pattern identifier
+            let key = format!(
+                "{}:{}:{}",
+                violation.pattern.pattern_type as u8,
+                violation.pattern.repetitions,
+                violation.pattern.example_code.len() // Use code length as pattern identifier
+            );
+            
+            // Keep the violation with highest severity/priority
+            match unique_violations.get(&key) {
+                Some(existing) if existing.priority_score >= violation.priority_score => {
+                    // Keep existing
+                }
+                _ => {
+                    // Replace or insert new
+                    unique_violations.insert(key, violation);
+                }
+            }
+        }
+        
+        unique_violations.into_values().collect()
     }
 }
 

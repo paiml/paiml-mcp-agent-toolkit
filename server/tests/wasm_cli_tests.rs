@@ -174,10 +174,11 @@ fn test_wasm_output_formats() {
         WasmOutputFormat::Detailed,
         WasmOutputFormat::Sarif,
     ] {
+        let format_clone = format;
         let result = tokio_test::block_on(async {
             wasm_handler::handle_analyze_wasm(
                 wasm_path.clone(),
-                format,
+                format_clone,
                 false,
                 false,
                 false,

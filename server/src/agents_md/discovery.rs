@@ -3,6 +3,7 @@
 //! Discovers and monitors AGENTS.md files in project hierarchies with caching.
 
 use super::*;
+use crate::utils::path_validator::PathValidator;
 use anyhow::Result;
 use dashmap::DashMap;
 use notify::{Event as NotifyEvent, EventKind, RecommendedWatcher};
@@ -131,18 +132,14 @@ impl AgentsMdDiscovery {
         }
         
         // Start from the given path and traverse up
-        let mut current = if path.is_file() {
-            path.parent()?
-        } else {
-            path
-        };
+        let mut current = PathValidator::get_valid_parent(path).ok()?;
         
         let mut depth = 0;
         
         loop {
             let agents_path = current.join(&self.config.file_name);
             
-            if agents_path.exists() && agents_path.is_file() {
+            if PathValidator::ensure_file(&agents_path).is_ok() {
                 // Cache the discovery
                 self.cache_file(&agents_path, depth);
                 return Some(agents_path);
@@ -322,7 +319,7 @@ impl AgentsMdDiscovery {
         
         // Check for AGENTS.md in this directory
         let agents_path = dir.join(&self.config.file_name);
-        if agents_path.exists() && agents_path.is_file() {
+        if PathValidator::ensure_file(&agents_path).is_ok() {
             if let Ok(metadata) = std::fs::metadata(&agents_path) {
                 if let Ok(modified) = metadata.modified() {
                     let file = AgentsMdFile {
