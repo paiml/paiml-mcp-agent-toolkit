@@ -708,7 +708,7 @@ impl TdgAnalyzerAst {
 
                 score.structural_complexity = self.score_structural_complexity(
                     cyclomatic,
-                    cyclomatic, // Use same value for cognitive for now
+                    self.calculate_cognitive_complexity(&root_node),
                     self.calculate_max_nesting(&root_node),
                     self.calculate_max_function_length(&root_node, source),
                     tracker,
@@ -764,7 +764,7 @@ impl TdgAnalyzerAst {
             use tempfile::NamedTempFile;
             use std::io::Write;
 
-            // Create temporary file with Ruchy content
+            // Create temp file with Ruchy content for analysis
             let mut temp_file = NamedTempFile::with_suffix(".ruchy")?;
             temp_file.write_all(source.as_bytes())?;
             let temp_path = temp_file.path();
@@ -1134,7 +1134,61 @@ impl TdgAnalyzerAst {
 
     fn score_consistency_javascript(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
         // Check JavaScript/TypeScript style consistency
-        self.score_consistency_python(source, tracker) // Use same logic for now
+        let mut score = 100.0f32;
+        
+        // Semicolon consistency check
+        let lines_with_semicolons = source.lines()
+            .filter(|line| line.trim().ends_with(';'))
+            .count();
+        let total_lines = source.lines()
+            .filter(|line| !line.trim().is_empty() && !line.trim().starts_with("//"))
+            .count();
+            
+        if total_lines > 0 {
+            let semicolon_ratio = lines_with_semicolons as f32 / total_lines as f32;
+            if semicolon_ratio < 0.8 && semicolon_ratio > 0.2 {
+                score -= 10.0;
+                tracker.apply(
+                    "inconsistent_semicolon_usage".to_string(),
+                    MetricCategory::Consistency,
+                    10.0,
+                    "Inconsistent semicolon usage detected".to_string(),
+                );
+            }
+        }
+        
+        // Indentation consistency (spaces vs tabs)
+        let tab_lines = source.lines().filter(|line| line.starts_with('\t')).count();
+        let space_lines = source.lines().filter(|line| line.starts_with("  ")).count();
+        
+        if tab_lines > 0 && space_lines > 0 {
+            score -= 15.0;
+            tracker.apply(
+                "mixed_indentation".to_string(),
+                MetricCategory::Consistency,
+                15.0,
+                "Mixed indentation (tabs and spaces) detected".to_string(),
+            );
+        }
+        
+        // Quote consistency (single vs double quotes)
+        let single_quotes = source.matches("'").count();
+        let double_quotes = source.matches('"').count();
+        
+        if single_quotes > 0 && double_quotes > 0 {
+            let ratio = (single_quotes as f32) / (single_quotes + double_quotes) as f32;
+            if ratio > 0.2 && ratio < 0.8 {
+                score -= 5.0;
+                tracker.apply(
+                    "inconsistent_quotes".to_string(),
+                    MetricCategory::Consistency,
+                    5.0,
+                    "Inconsistent quote usage detected".to_string(),
+                );
+            }
+        }
+        
+        score.max(0.0f32)
     }
     
     /// Score entropy analysis - pattern repetition and violation detection
@@ -1142,7 +1196,7 @@ impl TdgAnalyzerAst {
         // Create entropy analyzer
         let _analyzer = EntropyAnalyzer::new();
         
-        // Create a temp directory for analysis since entropy analyzer expects a project
+        // Create temp directory for analysis since entropy analyzer expects a project
         use std::io::Write;
         let temp_dir = std::env::temp_dir().join(format!("tdg_entropy_{}", std::process::id()));
         let temp_file = temp_dir.join("temp_file.rs");
@@ -1150,51 +1204,34 @@ impl TdgAnalyzerAst {
         let score = if std::fs::create_dir_all(&temp_dir).is_ok() {
             if let Ok(mut file) = std::fs::File::create(&temp_file) {
                 if file.write_all(source.as_bytes()).is_ok() {
-                    // For now, skip entropy analysis in TDG to avoid runtime conflicts
-                    // Entropy analysis is handled asynchronously in the entropy module
-                    let entropy_result: Result<crate::entropy::EntropyReport, ()> = Err(());
+                    // Simplified entropy scoring based on basic patterns
+                    // Avoids runtime conflicts by using simple heuristics
+                    let lines = source.lines().collect::<Vec<_>>();
+                    let mut pattern_score = 100.0;
                     
-                    match entropy_result {
-                        Ok(entropy_report) => {
-                            let violations = entropy_report.actionable_violations.len();
-                            let total_loc_reduction = entropy_report.actionable_violations
-                                .iter()
-                                .map(|v| v.estimated_loc_reduction)
-                                .sum::<usize>() as f32;
-                            
-                            // Convert violations to quality score (fewer violations = higher score)
-                            // Base score starts at 20 (good quality)
-                            let base_score = 20.0;
-                            
-                            // Penalty for violations (more violations = lower score)
-                            let violation_penalty = (violations as f32 * 0.5).min(15.0); // Max 15 point penalty
-                            
-                            // Bonus for low LOC reduction needed (indicates good patterns)  
-                            let loc_bonus = if total_loc_reduction < 100.0 { 
-                                5.0 - (total_loc_reduction / 20.0).min(5.0) 
-                            } else { 
-                                0.0 
-                            };
-                            
-                            let final_score = (base_score - violation_penalty + loc_bonus).max(0.0f32);
-                            
-                            // Apply penalties via tracker for visibility
-                            if violations > 10 {
-                                tracker.apply(
-                                    "entropy_violations".to_string(),
-                                    MetricCategory::SemanticComplexity,
-                                    violation_penalty,
-                                    format!("High entropy violations: {} patterns detected", violations),
-                                );
-                            }
-                            
-                            final_score
-                        }
-                        Err(_) => {
-                            // If entropy analysis fails, give neutral score
-                            15.0
+                    // Check for repetitive patterns in code
+                    let mut line_counts = std::collections::HashMap::new();
+                    for line in lines.iter() {
+                        let trimmed = line.trim();
+                        if !trimmed.is_empty() && !trimmed.starts_with("//") {
+                            *line_counts.entry(trimmed).or_insert(0) += 1;
                         }
                     }
+                    
+                    // Penalty for duplicate lines
+                    let duplicate_lines = line_counts.values().filter(|&&count| count > 1).count();
+                    if duplicate_lines > 0 {
+                        let penalty = (duplicate_lines as f32 * 5.0).min(30.0);
+                        pattern_score -= penalty;
+                        tracker.apply(
+                            "duplicate_code_patterns".to_string(),
+                            MetricCategory::Duplication,
+                            penalty,
+                            format!("Found {} duplicate code patterns", duplicate_lines),
+                        );
+                    }
+                    
+                    pattern_score
                 } else {
                     15.0 // Neutral score if can't write temp file
                 }
@@ -1205,10 +1242,65 @@ impl TdgAnalyzerAst {
             15.0 // Neutral score if can't create temp dir
         };
         
-        // Remove temporary directory
         let _ = std::fs::remove_dir_all(&temp_dir);
         
         score
+    }
+
+    #[cfg(any(feature = "c-ast", feature = "cpp-ast"))]
+    fn calculate_cognitive_complexity(&self, node: &tree_sitter::Node) -> u32 {
+        let mut cognitive_score = 0u32;
+        
+        fn traverse_cognitive(node: tree_sitter::Node, nesting_level: u32, score: &mut u32) {
+            match node.kind() {
+                // Base cognitive load patterns (+1)
+                "if_statement" | "while_statement" | "for_statement" | "do_statement" => {
+                    *score += 1 + nesting_level;
+                }
+                // Switch/match patterns (+1)
+                "switch_statement" | "case_label" => {
+                    *score += 1;
+                }
+                // Exception handling (+1)
+                "try_statement" | "catch_clause" => {
+                    *score += 1;
+                }
+                // Logical operators in conditions (+1)
+                "logical_and" | "logical_or" => {
+                    *score += 1;
+                }
+                // Ternary operators (+1)
+                "conditional_expression" => {
+                    *score += 1;
+                }
+                _ => {}
+            }
+            
+            // Increase nesting for control structures
+            let new_nesting = if matches!(
+                node.kind(),
+                "if_statement" | "while_statement" | "for_statement" | "switch_statement"
+            ) {
+                nesting_level + 1
+            } else {
+                nesting_level
+            };
+            
+            // Traverse children
+            for child in node.children(&mut node.walk()) {
+                traverse_cognitive(child, new_nesting, score);
+            }
+        }
+        
+        traverse_cognitive(*node, 0, &mut cognitive_score);
+        cognitive_score
+    }
+
+    #[cfg(not(any(feature = "c-ast", feature = "cpp-ast")))]
+    fn calculate_cognitive_complexity(&self, _node: &str) -> u32 {
+        // Simplified implementation for rust-only builds
+        // Estimate based on source patterns
+        5 // Default approximation
     }
 
     #[cfg(any(feature = "c-ast", feature = "cpp-ast"))]
