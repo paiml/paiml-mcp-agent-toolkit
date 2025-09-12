@@ -21,6 +21,12 @@
 
 ## 🔥 Core Features
 
+### 🌟 [Revolutionary Features: Unified Quality & AGENTS.md](docs/REVOLUTIONARY_FEATURES.md) *(NEW)*
+**Two groundbreaking systems that redefine code quality and AI collaboration!**
+- **[Unified Quality Enforcement System](docs/REVOLUTIONARY_FEATURES.md#unified-quality-enforcement-system)** (v2.82.0): Real-time monitoring with ML intelligence and SRE-style budgets
+- **[AGENTS.md Integration](docs/REVOLUTIONARY_FEATURES.md#agentsmd-integration)** (v2.83.0): Bridge markdown-based agent guidance with PMAT's quality enforcement
+- **[📖 Full Documentation →](docs/REVOLUTIONARY_FEATURES.md)** | **[🚀 Quick Start →](docs/REVOLUTIONARY_FEATURES.md#quick-start)** | **[🏗️ Architecture →](docs/REVOLUTIONARY_FEATURES.md#architecture)**
+
 ### 🚀 [Unified Quality Enforcement System](docs/unified_quality_deployment_guide.md) *(NEW in v2.82.0)*
 **Complete quality automation from monitoring to enforcement!** Revolutionary dual-track quality system with immediate production value:
 - **🔄 Real-time Monitoring**: 5-10ms file analysis with incremental AST parsing
@@ -30,6 +36,16 @@
 - **📊 Comprehensive Observability**: Web dashboard (port 8080), Prometheus metrics, GitHub Actions
 - **🎓 Progressive Adoption**: Team onboarding with gamification and phased rollout
 - **[📖 Deployment Guide →](docs/unified_quality_deployment_guide.md)** | **[🔧 Quick Start →](docs/unified_quality_deployment_guide.md#phase-1-foundation-setup-week-1)** | **[📊 Dashboard →](http://localhost:8080)**
+
+### 🤖 [AGENTS.md Integration](docs/REVOLUTIONARY_FEATURES.md#agentsmd-integration) *(NEW in v2.83.0)*
+**Bridge AI agents with your codebase through standardized markdown!** Complete integration of the AGENTS.md standard:
+- **📝 Full Parser**: Extract commands, guidelines, and quality rules from AGENTS.md files
+- **🔍 Auto-Discovery**: Find and watch AGENTS.md files with caching and real-time updates
+- **⚡ Safe Execution**: Sandboxed command execution with resource limits and quality gates
+- **🎨 Generator**: Create AGENTS.md from PMAT analysis with language-specific templates
+- **🌉 MCP Bridge**: Bidirectional translation between AGENTS.md and MCP protocols
+- **✅ Quality Integration**: Apply PMAT quality standards to all agent operations
+- **[📖 Full Documentation →](docs/REVOLUTIONARY_FEATURES.md#agentsmd-integration)** | **[📄 Example AGENTS.md →](docs/REVOLUTIONARY_FEATURES.md#example-agentsmd-file)** | **[🚀 Quick Start →](docs/REVOLUTIONARY_FEATURES.md#using-agentsmd-integration)**
 
 ### 🔬 [WebAssembly Quality Assurance](docs/wasm-features.md) *(NEW in v2.77.0)*
 **Comprehensive WASM module analysis and verification!** Analyze WebAssembly binaries for quality, security, and performance:
