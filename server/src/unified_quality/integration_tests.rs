@@ -101,11 +101,12 @@ mod tests {
         assert_eq!(session.quality_mode, QualityMode::Observe);
         
         // Simulate tutorial completion and phase progression
-        onboarding.complete_tutorial("test-team", "quality_philosophy".to_string(), 1)
+        let team_id: crate::unified_quality::enforcement::TeamId = "test-team".to_string();
+        onboarding.complete_tutorial(&team_id, "quality_philosophy".to_string(), 1)
             .expect("Failed to complete tutorial");
         
         // Generate progress report
-        let report = onboarding.generate_progress_report("test-team")
+        let report = onboarding.generate_progress_report(&team_id)
             .expect("Failed to generate progress report");
         
         assert!(report.overall_completion > 0.0);
@@ -259,7 +260,7 @@ mod tests {
         
         // Verify suggestions include refactoring recommendations
         let has_complexity_suggestion = suggestions.iter().any(|s| 
-            s.content.contains("Extract")
+            s.pattern.name.contains("Extract") || s.preview.contains("Extract")
         );
         assert!(has_complexity_suggestion);
         
@@ -365,7 +366,7 @@ mod tests {
         let monitor = QualityMonitor::new(MonitorConfig::default())?;
         let assistant = QualityAssistant::new();
         let enforcer = ErrorBudgetEnforcer::new(EnforcerConfig::default());
-        let automator = ConservativeAutomator::new();
+        let automator = ConservativeAutomator::new(crate::unified_quality::automation::AutomatorConfig::default());
         
         Ok(ProductionSystem {
             monitor,
@@ -538,8 +539,7 @@ mod tests {
     }
     
     async fn test_automation_phase(automator: &mut ConservativeAutomator, test_file: &PathBuf) {
-        let transforms = automator.get_safe_transforms()
-            .expect("Failed to get automation suggestions");
+        let transforms = automator.get_safe_transforms();
         
         // Might be empty if no safe transforms are available, which is OK
         println!("🤖 Automation phase: {} safe transforms suggested", transforms.len());
