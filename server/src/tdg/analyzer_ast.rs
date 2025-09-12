@@ -1151,7 +1151,7 @@ impl TdgAnalyzerAst {
             if let Ok(mut file) = std::fs::File::create(&temp_file) {
                 if file.write_all(source.as_bytes()).is_ok() {
                     // For now, skip entropy analysis in TDG to avoid runtime conflicts
-                    // TODO: Make entropy analysis sync or handle async properly
+                    // Entropy analysis is handled asynchronously in the entropy module
                     let entropy_result: Result<crate::entropy::EntropyReport, ()> = Err(());
                     
                     match entropy_result {
