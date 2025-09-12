@@ -90,6 +90,7 @@ pub struct Change {
 }
 
 /// Git safety net for automated changes
+#[allow(dead_code)]
 pub struct GitSafetyNet {
     /// Working directory
     work_dir: PathBuf,
@@ -99,6 +100,7 @@ pub struct GitSafetyNet {
 }
 
 /// Rollback manager for undoing changes
+#[allow(dead_code)]
 pub struct RollbackManager {
     /// Rollback points
     rollback_points: Vec<RollbackPoint>,

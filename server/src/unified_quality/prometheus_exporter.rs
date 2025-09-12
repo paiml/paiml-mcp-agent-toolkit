@@ -16,6 +16,7 @@ use crate::unified_quality::events::QualityEvent;
 use crate::unified_quality::foundation::QualityMonitor;
 
 /// Prometheus metrics registry for quality tracking
+#[allow(dead_code)]
 pub struct QualityMetricsRegistry {
     /// Registry for all metrics
     registry: Registry,

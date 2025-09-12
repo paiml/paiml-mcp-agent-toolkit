@@ -5,7 +5,7 @@
 use crate::cli::proof_annotation_helpers::*;
 use crate::cli::{ProofAnnotationOutputFormat, PropertyTypeFilter, VerificationMethodFilter};
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 use crate::models::unified_ast::{Location, ProofAnnotation};
 use crate::services::proof_annotator::ProofAnnotator;
@@ -69,7 +69,7 @@ fn format_proof_annotations(
     annotations: &[(Location, ProofAnnotation)],
     elapsed: std::time::Duration,
     annotator: &ProofAnnotator,
-    project_path: &PathBuf,
+    project_path: &Path,
     include_evidence: bool,
 ) -> Result<String> {
     match format {

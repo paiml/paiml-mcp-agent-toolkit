@@ -480,7 +480,7 @@ pub async fn handle_refactor_status(
     println!("📊 Reading refactor status from: {}", checkpoint.display());
 
     // Delegate file validation to extracted function
-    validate_checkpoint_file(&checkpoint)?;
+    validate_checkpoint_file(checkpoint.as_path())?;
     
     // Delegate file reading to extracted function
     let checkpoint_data = read_checkpoint_data(&checkpoint).await?;
@@ -495,7 +495,7 @@ pub async fn handle_refactor_status(
 
 /// Validate checkpoint file existence - EXTRACTED FUNCTION
 /// Complexity: 2 (A+ standard)
-fn validate_checkpoint_file(checkpoint: &PathBuf) -> anyhow::Result<()> {
+fn validate_checkpoint_file(checkpoint: &Path) -> anyhow::Result<()> {
     if !checkpoint.exists() {
         return Err(anyhow::anyhow!(
             "Checkpoint file not found: {}",
@@ -521,7 +521,7 @@ fn format_refactor_status(
     match format {
         RefactorOutputFormat::Json => format_as_json(checkpoint_data),
         RefactorOutputFormat::Table => format_as_table(checkpoint_data),
-        RefactorOutputFormat::Summary => format_as_summary(checkpoint_data, checkpoint),
+        RefactorOutputFormat::Summary => format_as_summary(checkpoint_data, checkpoint.as_path()),
     }
 }
 
@@ -590,7 +590,7 @@ fn print_table_footer() {
 
 /// Format status as summary - EXTRACTED FUNCTION
 /// Complexity: 6 (A+ standard)
-fn format_as_summary(checkpoint_data: &str, checkpoint: &PathBuf) -> anyhow::Result<()> {
+fn format_as_summary(checkpoint_data: &str, checkpoint: &Path) -> anyhow::Result<()> {
     let state: serde_json::Value = serde_json::from_str(checkpoint_data)?;
     println!("🔧 Refactor Status Summary");
     println!("   Checkpoint: {}", checkpoint.display());
