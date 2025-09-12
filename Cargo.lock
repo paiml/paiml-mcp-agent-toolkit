@@ -3489,7 +3489,7 @@ dependencies = [
 
 [[package]]
 name = "pmat"
-version = "2.85.0"
+version = "2.86.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
