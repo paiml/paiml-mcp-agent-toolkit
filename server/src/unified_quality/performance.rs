@@ -132,6 +132,7 @@ impl Default for RetentionConfig {
 }
 
 /// Performance metrics collector
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PerformanceMetrics {
     /// Time-series data

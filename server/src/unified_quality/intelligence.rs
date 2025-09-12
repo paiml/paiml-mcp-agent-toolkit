@@ -126,6 +126,7 @@ struct RejectedSuggestion {
 }
 
 /// Outcome of applying a suggestion
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum SuggestionOutcome {
     Success,

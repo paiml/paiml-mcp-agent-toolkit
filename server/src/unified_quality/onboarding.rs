@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use crate::unified_quality::{QualityMode, QualityPhilosophy};
 
 /// Team onboarding system for progressive quality adoption
+#[allow(dead_code)]
 pub struct TeamOnboarding {
     /// Current onboarding sessions
     sessions: HashMap<TeamId, OnboardingSession>,

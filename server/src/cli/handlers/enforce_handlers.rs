@@ -434,19 +434,19 @@ async fn list_all_violations(
     all_violations.extend(satd_violations);
 
     eprintln!("  🔍 Analyzing technical debt gradient...");
-    let tdg_violations = run_tdg_analysis(&project_path_buf, profile).await?;
+    let tdg_violations = run_tdg_analysis(project_path_buf.as_path(), profile).await?;
     all_violations.extend(tdg_violations);
 
     eprintln!("  🔍 Analyzing dead code...");
-    let dead_code_violations = run_dead_code_analysis(&project_path_buf, profile).await?;
+    let dead_code_violations = run_dead_code_analysis(project_path_buf.as_path(), profile).await?;
     all_violations.extend(dead_code_violations);
 
     eprintln!("  🔍 Analyzing code duplication...");
-    let duplication_violations = run_duplication_analysis(&project_path_buf, profile).await?;
+    let duplication_violations = run_duplication_analysis(project_path_buf.as_path(), profile).await?;
     all_violations.extend(duplication_violations);
 
     eprintln!("  🔍 Checking test coverage...");
-    let coverage_violations = run_coverage_analysis(&project_path_buf, profile).await?;
+    let coverage_violations = run_coverage_analysis(project_path_buf.as_path(), profile).await?;
     all_violations.extend(coverage_violations);
 
     eprintln!("\n📊 Found {} violations", all_violations.len());
@@ -828,7 +828,7 @@ pub async fn run_satd_analysis(
 
 /// Run TDG analysis - extracted from list_all_violations (complexity: ≤10)
 pub async fn run_tdg_analysis(
-    project_path: &PathBuf,
+    project_path: &Path,
     profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
     use crate::cli::handlers::advanced_analysis_handlers::handle_analyze_tdg;
@@ -868,7 +868,7 @@ pub async fn run_tdg_analysis(
 
 /// Run dead code analysis - extracted from list_all_violations (complexity: ≤10)
 pub async fn run_dead_code_analysis(
-    project_path: &PathBuf,
+    project_path: &Path,
     _profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
     use crate::cli::handlers::complexity_handlers::handle_analyze_dead_code;
@@ -911,7 +911,7 @@ pub async fn run_dead_code_analysis(
 
 /// Run duplication analysis - extracted from list_all_violations (complexity: ≤10)
 pub async fn run_duplication_analysis(
-    project_path: &PathBuf,
+    project_path: &Path,
     profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
     use crate::cli::handlers::duplication_analysis::{
@@ -922,7 +922,7 @@ pub async fn run_duplication_analysis(
     let mut violations = Vec::new();
     
     let dup_config = DuplicateAnalysisConfig {
-        project_path: project_path.clone(),
+        project_path: project_path.to_path_buf(),
         detection_type: DuplicateType::Exact,
         threshold: 0.8,
         min_lines: 10,
@@ -956,7 +956,7 @@ pub async fn run_duplication_analysis(
 
 /// Run coverage analysis - extracted from list_all_violations (complexity: ≤10)
 pub async fn run_coverage_analysis(
-    _project_path: &PathBuf,
+    _project_path: &Path,
     profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
     let mut violations = Vec::new();
