@@ -3,6 +3,24 @@ use std::fmt::Write;
 
 use crate::tdg::{Comparison, Grade, ProjectScore, TdgScore};
 
+/// Format TDG score for human-readable console output.
+/// 
+/// Creates a visually appealing boxed display showing the TDG score,
+/// grade, language confidence, and detailed breakdown of score components.
+/// 
+/// # Arguments
+/// * `score` - The TDG score to format
+/// 
+/// # Returns
+/// A formatted string with boxed output suitable for terminal display
+/// 
+/// # Example
+/// ```
+/// use pmat::tdg::{TdgScore, Grade};
+/// let score = TdgScore::new(85.5, Grade::A, 0.95);
+/// let output = format_human(&score);
+/// assert!(output.contains("85.5/100 (A)"));
+/// ```
 pub fn format_human(score: &TdgScore) -> String {
     let mut output = String::new();
 
@@ -158,10 +176,46 @@ pub fn format_human(score: &TdgScore) -> String {
     output
 }
 
+/// Format TDG score as JSON output.
+/// 
+/// Serializes the TDG score to a JSON string for programmatic consumption
+/// or integration with other tools and systems.
+/// 
+/// # Arguments  
+/// * `score` - The TDG score to serialize
+/// 
+/// # Returns
+/// A JSON string representation of the TDG score
+/// 
+/// # Example
+/// ```
+/// use pmat::tdg::{TdgScore, Grade};
+/// let score = TdgScore::new(85.5, Grade::A, 0.95);
+/// let json = format_json(&score);
+/// assert!(json.contains("85.5"));
+/// ```
 pub fn format_json(score: &TdgScore) -> String {
     serde_json::to_string_pretty(score).unwrap_or_else(|_| "{}".to_string())
 }
 
+/// Format TDG score as Markdown output.
+/// 
+/// Creates a Markdown-formatted report suitable for documentation, 
+/// README files, or integration with documentation systems.
+/// 
+/// # Arguments
+/// * `score` - The TDG score to format as Markdown
+/// 
+/// # Returns  
+/// A Markdown string with formatted tables and sections
+/// 
+/// # Example
+/// ```
+/// use pmat::tdg::{TdgScore, Grade};
+/// let score = TdgScore::new(85.5, Grade::A, 0.95);
+/// let md = format_markdown(&score);
+/// assert!(md.contains("## TDG Score"));
+/// ```
 pub fn format_markdown(score: &TdgScore) -> String {
     let mut output = String::new();
 
@@ -257,6 +311,26 @@ pub fn format_markdown(score: &TdgScore) -> String {
     output
 }
 
+/// Format comparison between two TDG scores.
+/// 
+/// Creates a side-by-side comparison showing the differences between
+/// two TDG scores, highlighting improvements or regressions.
+/// 
+/// # Arguments
+/// * `comparison` - The comparison data structure containing before/after scores
+/// 
+/// # Returns
+/// A formatted string showing the comparison in a boxed layout
+/// 
+/// # Example
+/// ```
+/// use pmat::tdg::{Comparison, TdgScore, Grade};
+/// let before = TdgScore::new(75.0, Grade::B, 0.9);
+/// let after = TdgScore::new(85.0, Grade::A, 0.95);
+/// let comparison = Comparison::new(before, after);
+/// let output = format_comparison(&comparison);
+/// assert!(output.contains("improvement"));
+/// ```
 pub fn format_comparison(comparison: &Comparison) -> String {
     let mut output = String::new();
 
@@ -442,6 +516,24 @@ pub fn format_comparison(comparison: &Comparison) -> String {
     output
 }
 
+/// Format project-level TDG score.
+/// 
+/// Creates a comprehensive project-level report showing aggregate TDG scores,
+/// file counts, and overall project health metrics.
+/// 
+/// # Arguments
+/// * `project` - The project score data structure
+/// 
+/// # Returns
+/// A formatted string with project-level metrics and summary
+/// 
+/// # Example
+/// ```
+/// use pmat::tdg::ProjectScore;
+/// let project = ProjectScore::new("my-project", 85.0, 42);
+/// let output = format_project(&project);
+/// assert!(output.contains("Project Score"));
+/// ```
 pub fn format_project(project: &ProjectScore) -> String {
     let mut output = String::new();
 
