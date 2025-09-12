@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.84.0] - 2025-09-12
+
+### Sprint 98 - CRITICAL FIX: Entropy Detection False Positives 🚨
+
+**CRITICAL BUG FIX**: Fixed major false positive issue in entropy detection that was reporting 5,831 incorrect violations. Applied Toyota Way principles to stop the line and fix the defect immediately.
+
+#### Fixed
+- **🐛 Entropy False Positives**: Replaced Shannon character entropy with AST pattern-based detection
+  - Was: 5,831 false violations from character randomness
+  - Now: 281 real violations from code patterns (95% reduction)
+  - Root cause: Quality gate using legacy entropy function
+  - Solution: Integrated modern AST-based entropy analyzer
+
+#### Changed
+- **📊 Quality Gate Accuracy**: Total violations 5,872 → 329 (94% reduction)
+  - Entropy now detects actual repetitive patterns
+  - Each violation includes actionable fix suggestion
+  - LOC reduction estimates for prioritization
+  - Severity-based filtering (Medium+ only)
+
+#### Toyota Way Applied
+- **Andon**: Stopped Sprint 100 to fix critical defect
+- **Five Whys**: Systematic root cause analysis
+- **Genchi Genbutsu**: Examined actual code execution
+- **Kaizen**: Continuous improvement achieved
+
 ## [2.83.0] - 2025-09-12
 
 ### Sprint 94 - AGENTS.md Integration 🤖
