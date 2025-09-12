@@ -66,7 +66,7 @@ impl ContractMetadata {
         Self {
             created_at: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_else(|_| std::time::Duration::from_secs(0))
                 .as_secs(),
             created_by: created_by.to_string(),
             description: None,
